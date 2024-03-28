@@ -31,6 +31,7 @@
 class C2Compiler : public AbstractCompiler {
  private:
   static bool init_c2_runtime();
+  static bool _reinitialize_vm_klasses;
 
 public:
   C2Compiler() : AbstractCompiler(compiler_c2) {}
@@ -51,6 +52,11 @@ public:
   static const char* retry_no_escape_analysis();
   static const char* retry_no_locks_coarsening();
   static const char* retry_class_loading_during_parsing();
+
+  // (DCEVM)
+  static bool is_reinitialize_vm_klasses() { return _reinitialize_vm_klasses; }
+  static void set_reinitialize_vm_klasses() { _reinitialize_vm_klasses = true; }
+  static void clear_reinitialize_vm_klasses() { _reinitialize_vm_klasses = false; }
 
   // Print compilation timers and statistics
   void print_timers();

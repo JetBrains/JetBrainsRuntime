@@ -489,7 +489,9 @@ void C2_MacroAssembler::string_indexof(Register haystack, Register needle,
   }
   bne(tmp3, skipch, BMSKIP); // if not equal, skipch is bad char
   add(result, haystack, isLL ? nlen_tmp : ch2);
-  ld(ch2, Address(result)); // load 8 bytes from source string
+  // load 8 bytes from source string
+  // if isLL is false then read granularity can be 2
+  load_long_misaligned(ch2, Address(result), ch1, isLL ? 1 : 2); // can use ch1 as temp register here as it will be trashed by next mv anyway
   mv(ch1, tmp6);
   if (isLL) {
     j(BMLOOPSTR1_AFTER_LOAD);
@@ -672,10 +674,30 @@ void C2_MacroAssembler::string_indexof_linearscan(Register haystack, Register ne
     slli(tmp3, result_tmp, haystack_chr_shift); // result as tmp
     add(haystack, haystack, tmp3);
     neg(hlen_neg, tmp3);
+    if (AvoidUnalignedAccesses) {
+      // preload first value, then we will read by 1 character per loop, instead of four
+      // just shifting previous ch2 right by size of character in bits
+      add(tmp3, haystack, hlen_neg);
+      (this->*load_4chr)(ch2, Address(tmp3), noreg);
+      if (isLL) {
+        // need to erase 1 most significant byte in 32-bit value of ch2
+        slli(ch2, ch2, 40);
+        srli(ch2, ch2, 32);
+      } else {
+        slli(ch2, ch2, 16); // 2 most significant bytes will be erased by this operation
+      }
+    }
 
     bind(CH1_LOOP);
-    add(ch2, haystack, hlen_neg);
-    (this->*load_4chr)(ch2, Address(ch2), noreg);
+    add(tmp3, haystack, hlen_neg);
+    if (AvoidUnalignedAccesses) {
+      srli(ch2, ch2, isLL ? 8 : 16);
+      (this->*haystack_load_1chr)(tmp3, Address(tmp3, isLL ? 3 : 6), noreg);
+      slli(tmp3, tmp3, isLL ? 24 : 48);
+      add(ch2, ch2, tmp3);
+    } else {
+      (this->*load_4chr)(ch2, Address(tmp3), noreg);
+    }
     beq(ch1, ch2, MATCH);
     add(hlen_neg, hlen_neg, haystack_chr_size);
     blez(hlen_neg, CH1_LOOP);
@@ -693,10 +715,23 @@ void C2_MacroAssembler::string_indexof_linearscan(Register haystack, Register ne
     slli(tmp3, result_tmp, haystack_chr_shift);
     add(haystack, haystack, tmp3);
     neg(hlen_neg, tmp3);
-
+    if (AvoidUnalignedAccesses) {
+      // preload first value, then we will read by 1 character per loop, instead of two
+      // just shifting previous ch2 right by size of character in bits
+      add(tmp3, haystack, hlen_neg);
+      (this->*haystack_load_1chr)(ch2, Address(tmp3), noreg);
+      slli(ch2, ch2, isLL ? 8 : 16);
+    }
     bind(CH1_LOOP);
     add(tmp3, haystack, hlen_neg);
-    (this->*load_2chr)(ch2, Address(tmp3), noreg);
+    if (AvoidUnalignedAccesses) {
+      srli(ch2, ch2, isLL ? 8 : 16);
+      (this->*haystack_load_1chr)(tmp3, Address(tmp3, isLL ? 1 : 2), noreg);
+      slli(tmp3, tmp3, isLL ? 8 : 16);
+      add(ch2, ch2, tmp3);
+    } else {
+      (this->*load_2chr)(ch2, Address(tmp3), noreg);
+    }
     beq(ch1, ch2, MATCH);
     add(hlen_neg, hlen_neg, haystack_chr_size);
     blez(hlen_neg, CH1_LOOP);
@@ -720,7 +755,14 @@ void C2_MacroAssembler::string_indexof_linearscan(Register haystack, Register ne
 
     bind(FIRST_LOOP);
     add(ch2, haystack, hlen_neg);
-    (this->*load_2chr)(ch2, Address(ch2), noreg);
+    if (AvoidUnalignedAccesses) {
+      (this->*haystack_load_1chr)(tmp2, Address(ch2, isLL ? 1 : 2), noreg); // we need a temp register, we can safely use hlen_tmp here, which is a synonym for tmp2
+      (this->*haystack_load_1chr)(ch2, Address(ch2), noreg);
+      slli(tmp2, tmp2, isLL ? 8 : 16);
+      add(ch2, ch2, tmp2);
+    } else {
+      (this->*load_2chr)(ch2, Address(ch2), noreg);
+    }
     beq(first, ch2, STR1_LOOP);
 
     bind(STR2_NEXT);
@@ -744,10 +786,7 @@ void C2_MacroAssembler::string_indexof_linearscan(Register haystack, Register ne
     bind(DO1);
     (this->*needle_load_1chr)(ch1, Address(needle), noreg);
     sub(result_tmp, haystack_len, 1);
-    mv(tmp3, result_tmp);
-    if (haystack_chr_shift) {
-      slli(tmp3, result_tmp, haystack_chr_shift);
-    }
+    slli(tmp3, result_tmp, haystack_chr_shift);
     add(haystack, haystack, tmp3);
     neg(hlen_neg, tmp3);
 
@@ -822,9 +861,10 @@ void C2_MacroAssembler::string_compare(Register str1, Register str2,
   // load first parts of strings and finish initialization while loading
   {
     if (str1_isL == str2_isL) { // LL or UU
+      // check if str1 and str2 is same pointer
+      beq(str1, str2, DONE);
       // load 8 bytes once to compare
       ld(tmp1, Address(str1));
-      beq(str1, str2, DONE);
       ld(tmp2, Address(str2));
       mv(t0, STUB_THRESHOLD);
       bge(cnt2, t0, STUB);
@@ -867,9 +907,8 @@ void C2_MacroAssembler::string_compare(Register str1, Register str2,
       addi(cnt1, cnt1, 8);
     }
     addi(cnt2, cnt2, isUL ? 4 : 8);
+    bne(tmp1, tmp2, DIFFERENCE);
     bgez(cnt2, TAIL);
-    xorr(tmp3, tmp1, tmp2);
-    bnez(tmp3, DIFFERENCE);
 
     // main loop
     bind(NEXT_WORD);
@@ -898,38 +937,30 @@ void C2_MacroAssembler::string_compare(Register str1, Register str2,
       addi(cnt1, cnt1, 8);
       addi(cnt2, cnt2, 4);
     }
-    bgez(cnt2, TAIL);
-
-    xorr(tmp3, tmp1, tmp2);
-    beqz(tmp3, NEXT_WORD);
-    j(DIFFERENCE);
+    bne(tmp1, tmp2, DIFFERENCE);
+    bltz(cnt2, NEXT_WORD);
     bind(TAIL);
-    xorr(tmp3, tmp1, tmp2);
-    bnez(tmp3, DIFFERENCE);
-    // Last longword.  In the case where length == 4 we compare the
-    // same longword twice, but that's still faster than another
-    // conditional branch.
     if (str1_isL == str2_isL) { // LL or UU
-      ld(tmp1, Address(str1));
-      ld(tmp2, Address(str2));
+      load_long_misaligned(tmp1, Address(str1), tmp3, isLL ? 1 : 2);
+      load_long_misaligned(tmp2, Address(str2), tmp3, isLL ? 1 : 2);
     } else if (isLU) { // LU case
-      lwu(tmp1, Address(str1));
-      ld(tmp2, Address(str2));
+      load_int_misaligned(tmp1, Address(str1), tmp3, false);
+      load_long_misaligned(tmp2, Address(str2), tmp3, 2);
       inflate_lo32(tmp3, tmp1);
       mv(tmp1, tmp3);
     } else { // UL case
-      lwu(tmp2, Address(str2));
-      ld(tmp1, Address(str1));
+      load_int_misaligned(tmp2, Address(str2), tmp3, false);
+      load_long_misaligned(tmp1, Address(str1), tmp3, 2);
       inflate_lo32(tmp3, tmp2);
       mv(tmp2, tmp3);
     }
     bind(TAIL_CHECK);
-    xorr(tmp3, tmp1, tmp2);
-    beqz(tmp3, DONE);
+    beq(tmp1, tmp2, DONE);
 
     // Find the first different characters in the longwords and
     // compute their difference.
     bind(DIFFERENCE);
+    xorr(tmp3, tmp1, tmp2);
     ctzc_bit(result, tmp3, isLL); // count zero from lsb to msb
     srl(tmp1, tmp1, result);
     srl(tmp2, tmp2, result);
@@ -1099,8 +1130,10 @@ void C2_MacroAssembler::arrays_equals(Register a1, Register a2, Register tmp3,
 // and a2 and the length in cnt1.
 // elem_size is the element size in bytes: either 1 or 2.
 // There are two implementations.  For arrays >= 8 bytes, all
-// comparisons (including the final one, which may overlap) are
-// performed 8 bytes at a time.  For strings < 8 bytes, we compare a
+// comparisons (for hw supporting unaligned access: including the final one,
+// which may overlap) are performed 8 bytes at a time.
+// For strings < 8 bytes (and for tails of long strings when
+// AvoidUnalignedAccesses is true), we compare a
 // halfword, then a short, and then a byte.
 
 void C2_MacroAssembler::string_equals(Register a1, Register a2,
@@ -1111,10 +1144,11 @@ void C2_MacroAssembler::string_equals(Register a1, Register a2,
   Register tmp2 = t1;
 
   assert(elem_size == 1 || elem_size == 2, "must be 2 or 1 byte");
-  assert_different_registers(a1, a2, result, cnt1, t0, t1);
+  assert_different_registers(a1, a2, result, cnt1, tmp1, tmp2);
 
   BLOCK_COMMENT("string_equals {");
 
+  beqz(cnt1, SAME);
   mv(result, false);
 
   // Check for short strings, i.e. smaller than wordSize.
@@ -1129,26 +1163,31 @@ void C2_MacroAssembler::string_equals(Register a1, Register a2,
     add(a2, a2, wordSize);
     sub(cnt1, cnt1, wordSize);
     bne(tmp1, tmp2, DONE);
-  } bgtz(cnt1, NEXT_WORD);
+  } bgez(cnt1, NEXT_WORD);
 
-  // Last longword.  In the case where length == 4 we compare the
-  // same longword twice, but that's still faster than another
-  // conditional branch.
-  // cnt1 could be 0, -1, -2, -3, -4 for chars; -4 only happens when
-  // length == 4.
-  add(tmp1, a1, cnt1);
-  ld(tmp1, Address(tmp1, 0));
-  add(tmp2, a2, cnt1);
-  ld(tmp2, Address(tmp2, 0));
-  bne(tmp1, tmp2, DONE);
-  j(SAME);
+  if (!AvoidUnalignedAccesses) {
+    // Last longword.  In the case where length == 4 we compare the
+    // same longword twice, but that's still faster than another
+    // conditional branch.
+    // cnt1 could be 0, -1, -2, -3, -4 for chars; -4 only happens when
+    // length == 4.
+    add(tmp1, a1, cnt1);
+    ld(tmp1, Address(tmp1, 0));
+    add(tmp2, a2, cnt1);
+    ld(tmp2, Address(tmp2, 0));
+    bne(tmp1, tmp2, DONE);
+    j(SAME);
+  } else {
+    add(tmp1, cnt1, wordSize);
+    beqz(tmp1, SAME);
+  }
 
   bind(SHORT);
   Label TAIL03, TAIL01;
 
   // 0-7 bytes left.
-  test_bit(t0, cnt1, 2);
-  beqz(t0, TAIL03);
+  test_bit(tmp1, cnt1, 2);
+  beqz(tmp1, TAIL03);
   {
     lwu(tmp1, Address(a1, 0));
     add(a1, a1, 4);
@@ -1159,8 +1198,8 @@ void C2_MacroAssembler::string_equals(Register a1, Register a2,
 
   bind(TAIL03);
   // 0-3 bytes left.
-  test_bit(t0, cnt1, 1);
-  beqz(t0, TAIL01);
+  test_bit(tmp1, cnt1, 1);
+  beqz(tmp1, TAIL01);
   {
     lhu(tmp1, Address(a1, 0));
     add(a1, a1, 2);
@@ -1172,8 +1211,8 @@ void C2_MacroAssembler::string_equals(Register a1, Register a2,
   bind(TAIL01);
   if (elem_size == 1) { // Only needed when comparing 1-byte elements
     // 0-1 bytes left.
-    test_bit(t0, cnt1, 0);
-    beqz(t0, SAME);
+    test_bit(tmp1, cnt1, 0);
+    beqz(tmp1, SAME);
     {
       lbu(tmp1, Address(a1, 0));
       lbu(tmp2, Address(a2, 0));

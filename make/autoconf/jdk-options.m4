@@ -566,29 +566,6 @@ AC_DEFUN_ONCE([JDKOPT_SETUP_JLINK_OPTIONS],
 
 ################################################################################
 #
-# Check if building of the jtreg failure handler should be enabled.
-#
-AC_DEFUN_ONCE([JDKOPT_ENABLE_DISABLE_FAILURE_HANDLER],
-[
-  UTIL_ARG_ENABLE(NAME: jtreg-failure-handler, DEFAULT: auto,
-      RESULT: BUILD_FAILURE_HANDLER,
-      DESC: [enable building of the jtreg failure handler],
-      DEFAULT_DESC: [enabled if jtreg is present],
-      CHECKING_MSG: [if the jtreg failure handler should be built],
-      CHECK_AVAILABLE: [
-        AC_MSG_CHECKING([if the jtreg failure handler is available])
-        if test "x$JT_HOME" != "x"; then
-          AC_MSG_RESULT([yes])
-        else
-          AVAILABLE=false
-          AC_MSG_RESULT([no (jtreg not present)])
-        fi
-      ])
-  AC_SUBST(BUILD_FAILURE_HANDLER)
-])
-
-################################################################################
-#
 # Enable or disable generation of the classlist at build time
 #
 AC_DEFUN_ONCE([JDKOPT_ENABLE_DISABLE_GENERATE_CLASSLIST],
@@ -812,6 +789,9 @@ AC_DEFUN([JDKOPT_CHECK_CODESIGN_PARAMS],
   $RM "$CODESIGN_TESTFILE"
   $TOUCH "$CODESIGN_TESTFILE"
   CODESIGN_SUCCESS=false
+
+  $ECHO "check codesign, calling $CODESIGN $PARAMS $CODESIGN_TESTFILE" >&AS_MESSAGE_LOG_FD
+
   eval \"$CODESIGN\" $PARAMS \"$CODESIGN_TESTFILE\" 2>&AS_MESSAGE_LOG_FD \
       >&AS_MESSAGE_LOG_FD && CODESIGN_SUCCESS=true
   $RM "$CODESIGN_TESTFILE"

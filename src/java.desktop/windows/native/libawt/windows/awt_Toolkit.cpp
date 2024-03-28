@@ -919,6 +919,20 @@ void AwtToolkit::DestroyComponentHWND(HWND hwnd)
 void SpyWinMessage(HWND hwnd, UINT message, LPCTSTR szComment);
 #endif
 
+static BOOL CALLBACK UpdateAllThreadWindowSizes(HWND hWnd, LPARAM)
+{
+    TRY;
+    AwtComponent *c = AwtComponent::GetComponent(hWnd);
+    if (c) {
+        RECT r;
+        GetWindowRect(hWnd, &r);
+        c->WmSize(SIZENORMAL, r.right-r.left, r.bottom-r.top);
+        c->Invalidate(NULL);
+    }
+    return TRUE;
+    CATCH_BAD_ALLOC_RET(FALSE);
+}
+
 /*
  * An AwtToolkit window is just a means of routing toolkit messages to here.
  */
@@ -1309,6 +1323,7 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
       case WM_DISPLAYCHANGE: {
           // Reinitialize screens
           initScreens(env);
+          ::EnumThreadWindows(MainThread(), (WNDENUMPROC)UpdateAllThreadWindowSizes, 0);
 
           // Notify Java side - call WToolkit.displayChanged()
           jclass clazz = env->FindClass("sun/awt/windows/WToolkit");
@@ -1327,8 +1342,10 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
       }
       /* Session management */
       case WM_QUERYENDSESSION: {
-          /* Shut down cleanly */
-          if (!isSuddenTerminationEnabled) {
+          // Shut down cleanly
+          // If m_messageLoopResult is EXIT_ALL_ENCLOSING_LOOPS means that application is already in process a closing.
+          // No need to repeat such logic via WM_QUERYENDSESSION and WM_ENDSESSION.
+          if (!isSuddenTerminationEnabled || AwtToolkit::GetInstance().m_messageLoopResult == EXIT_ALL_ENCLOSING_LOOPS) {
               return FALSE;
           }
           if (JVM_RaiseSignal(SIGTERM)) {

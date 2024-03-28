@@ -30,6 +30,7 @@
 
 #include "awt.h"
 #include "awt_p.h"
+#include "debug_assert.h"
 
 #include <sun_awt_X11InputMethodBase.h>
 #include <sun_awt_X11_XInputMethod.h>
@@ -540,7 +541,7 @@ setXICWindowFocus(XIC ic, Window w)
 #define INITIAL_LOOKUP_BUF_SIZE 512
 
 Boolean
-awt_x11inputmethod_lookupString(XKeyPressedEvent *event, KeySym *keysymp)
+awt_x11inputmethod_lookupString(XKeyPressedEvent *event, KeySym *keysymp, const Boolean keyPressContainsThePreeditTextOfLastXResetIC)
 {
     JNIEnv *env = GetJNIEnv();
     X11InputMethodData *pX11IMData = NULL;
@@ -626,17 +627,22 @@ awt_x11inputmethod_lookupString(XKeyPressedEvent *event, KeySym *keysymp)
         /*FALLTHRU*/
     case XLookupChars:
         /*
-        printf("lookupString: status=XLookupChars, type=%d, state=%x, keycode=%x, keysym=%x\n",
-               event->type, event->state, event->keycode, keysym);
+        printf("lookupString: status=XLookupChars, type=%d, state=%x, keycode=%x, keysym=%x, keyPressContainsThePreeditTextOfLastXResetIC=%d\n",
+               event->type, event->state, event->keycode, keysym, (int)keyPressContainsThePreeditTextOfLastXResetIC);
         */
-        javastr = JNU_NewStringPlatform(env, (const char *)pX11IMData->lookup_buf);
-        if (javastr != NULL) {
-            JNU_CallMethodByName(env, NULL,
-                                 currentX11InputMethodInstance,
-                                 "dispatchCommittedText",
-                                 "(Ljava/lang/String;J)V",
-                                 javastr,
-                                 event->time);
+
+        // JBR-3112
+        // See sun.awt.X11.XToolkit#doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC
+        if (!keyPressContainsThePreeditTextOfLastXResetIC) {
+            javastr = JNU_NewStringPlatform(env, (const char *)pX11IMData->lookup_buf);
+            if (javastr != NULL) {
+                JNU_CallMethodByName(env, NULL,
+                                     currentX11InputMethodInstance,
+                                     "dispatchCommittedText",
+                                     "(Ljava/lang/String;J)V",
+                                     javastr,
+                                     event->time);
+            }
         }
         break;
 
@@ -2064,7 +2070,7 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_X11_XInputMethod_doesFocusedXICSupportMo
             result = JNI_TRUE;
         }
     } else {
-        assert( (pX11IMData->current_ic == pX11IMData->ic_passive.xic) );
+        DASSERT(pX11IMData->current_ic == pX11IMData->ic_passive.xic);
         if ( (pX11IMData->ic_passive.inputStyle & XIMPreeditPosition) == XIMPreeditPosition ) {
             result = JNI_TRUE;
         }
@@ -2426,8 +2432,8 @@ static Bool jbNewXimClient_initializeXICs(
                     __func__, inputStylesToTry.pairsCount);
 
         // If one of the contexts is NULL then both of them are expected to be NULL
-        assert( (activeClientIc.xic == NULL) );
-        assert( (passiveClientIc.xic == NULL) );
+        DASSERT(activeClientIc.xic == NULL);
+        DASSERT(passiveClientIc.xic == NULL);
 
         goto finally;
     }
@@ -2583,8 +2589,8 @@ static jbNewXimClient_PrioritizedStyles jbNewXimClient_chooseAndPrioritizeInputS
 
     unsigned int i = 0, j = 0;
 
-    assert( (activeClientStylesCount  <= JBNEWXIMCLIENT_COUNTOF_SUPPORTED_INPUT_STYLES) );
-    assert( (passiveClientStylesCount <= JBNEWXIMCLIENT_COUNTOF_SUPPORTED_INPUT_STYLES) );
+    DASSERT(activeClientStylesCount  <= JBNEWXIMCLIENT_COUNTOF_SUPPORTED_INPUT_STYLES);
+    DASSERT(passiveClientStylesCount <= JBNEWXIMCLIENT_COUNTOF_SUPPORTED_INPUT_STYLES);
 
     result.pairsCount = 0;
 
@@ -2617,7 +2623,7 @@ static jbNewXimClient_PrioritizedStyles jbNewXimClient_chooseAndPrioritizeInputS
     }
 
     // Combining the pairs (activeClientStyles[i], passiveClientStyles[j]) into result
-    assert( (activeClientStylesCount * passiveClientStylesCount <= sizeof(result.combinations) / sizeof(result.combinations[0])) );
+    DASSERT(activeClientStylesCount * passiveClientStylesCount <= sizeof(result.combinations) / sizeof(result.combinations[0]));
     for (i = 0; i < activeClientStylesCount; ++i) {
         const jbNewXimClient_SupportedInputStyle activeStyle = activeClientStyles[i];
 
@@ -2841,7 +2847,7 @@ finally:
             xic = NULL;
         }
         if (preeditFontSet != NULL) {
-            assert( (xicDisplay != NULL) );
+            DASSERT(xicDisplay != NULL);
             XFreeFontSet(xicDisplay, preeditFontSet);
             preeditFontSet = NULL;
         }
@@ -3007,11 +3013,11 @@ static void jbNewXimClient_destroyInputContext(jbNewXimClient_ExtendedInputConte
         XDestroyIC(localContext.xic);
     }
     if (localContext.preeditCustomFontSet != NULL) {
-        assert( (localContext.xicDisplay != NULL) );
+        DASSERT(localContext.xicDisplay != NULL);
         XFreeFontSet(localContext.xicDisplay, localContext.preeditCustomFontSet);
     }
     if ((localContext.statusCustomFontSet != NULL) && (localContext.statusCustomFontSet != localContext.preeditCustomFontSet)) {
-        assert( (localContext.xicDisplay != NULL) );
+        DASSERT(localContext.xicDisplay != NULL);
         XFreeFontSet(localContext.xicDisplay, localContext.statusCustomFontSet);
     }
     if (localContext.preeditAndStatusCallbacks != NULL) {

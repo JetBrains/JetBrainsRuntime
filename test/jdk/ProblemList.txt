@@ -119,7 +119,6 @@ java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generi
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
-java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java 8239801 macosx-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/FrameLocation/FrameLocation.java 8233703 linux-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
@@ -127,7 +126,6 @@ java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java 8060176 
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java 8060176 windows-all,macosx-all
 java/awt/dnd/MissingEventsOnModalDialog/MissingEventsOnModalDialogTest.java 8164464 linux-all,macosx-all
 java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.java 8171510 macosx-all
-javax/swing/dnd/7171812/bug7171812.java 8041447 macosx-all
 java/awt/Focus/ChoiceFocus/ChoiceFocus.java 8169103 windows-all,macosx-all
 java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java 8198618 macosx-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252 macosx-all
@@ -207,7 +205,6 @@ java/awt/TrayIcon/ModalityTest/ModalityTest.java 8150540 windows-all,macosx-all
 java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java 8150540 windows-all
 java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java 8150540 windows-all
 java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java 8150540 windows-all
-java/awt/TrayIcon/SystemTrayInstance/SystemTrayInstanceTest.java 8193543 linux-all
 java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java 8150540 windows-all
 java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java 8150540 windows-all
 java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java 8150540 windows-all
@@ -386,7 +383,6 @@ java/awt/Modal/MultipleDialogs/MultipleDialogs3Test.java 8198665 macosx-all
 java/awt/Modal/MultipleDialogs/MultipleDialogs4Test.java 8198665 macosx-all
 java/awt/Modal/MultipleDialogs/MultipleDialogs5Test.java 8198665 macosx-all
 java/awt/Mouse/EnterExitEvents/DragWindowOutOfFrameTest.java 8177326 macosx-all
-java/awt/Mouse/EnterExitEvents/DragWindowTest.java 8023562 macosx-all
 java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java 8005021 macosx-all
 java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java 8051455 macosx-all
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 7124407 macosx-all
@@ -456,15 +452,14 @@ java/awt/Modal/OnTop/OnTopTKModal6Test.java 8198666 macosx-all
 java/awt/List/SingleModeDeselect/SingleModeDeselect.java 8196367 windows-all
 java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java 8061235 macosx-all
 javax/print/PrintSEUmlauts/PrintSEUmlauts.java 8135174 generic-all
+java/awt/font/Rotate/RotatedTextTest.java 8219641 linux-all
 java/awt/font/TextLayout/LigatureCaretTest.java 8266312  generic-all
 java/awt/image/VolatileImage/CustomCompositeTest.java 8199002 windows-all,linux-all
 java/awt/image/VolatileImage/GradientPaints.java 8199003 linux-all
 java/awt/JAWT/JAWT.sh 8197798 windows-all,linux-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java 8202926 linux-all
 java/awt/datatransfer/ConstructFlavoredObjectTest/ConstructFlavoredObjectTest.java 8202860 linux-all
-java/awt/dnd/DisposeFrameOnDragCrash/DisposeFrameOnDragTest.java 8202790 macosx-all,linux-all
 java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.java 8202882 linux-all
-java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java 8202931 macosx-all,linux-all
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275 macosx-all
 java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java 6848810 macosx-all,linux-all
 java/awt/Component/NativeInLightShow/NativeInLightShow.java 8202932 linux-all
@@ -505,6 +500,7 @@ java/awt/Robot/Delay/InterruptOfDelay.java 8265986 macosx-all
 java/awt/MenuBar/TestNoScreenMenuBar.java 8265987 macosx-all
 
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 generic-all
+java/awt/Graphics2D/DrawString/RotTransText.java 8316878 linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java 8257529 windows-x64
 
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787 linux-x64
@@ -532,7 +528,7 @@ java/foreign/TestMismatch.java 8249684 macosx-all
 java/lang/ProcessHandle/InfoTest.java                           8211847 aix-ppc64
 java/lang/invoke/LFCaching/LFMultiThreadCachingTest.java        8151492 generic-all
 java/lang/invoke/LFCaching/LFGarbageCollectedTest.java          8078602 generic-all
-java/lang/invoke/lambda/LambdaFileEncodingSerialization.java    8249079 linux-x64
+java/lang/invoke/lambda/LambdaFileEncodingSerialization.java    8249079 linux-all
 java/lang/invoke/RicochetTest.java                              8251969 generic-all
 
 ############################################################################
@@ -595,7 +591,7 @@ java/net/ServerSocket/AcceptInheritHandle.java                  8211854 aix-ppc6
 
 # jdk_nio
 
-java/nio/channels/DatagramChannel/Unref.java                    8233519 generic-all
+java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-all
 
 java/nio/channels/AsynchronousSocketChannel/StressLoopback.java 8211851 aix-ppc64
 
@@ -612,6 +608,7 @@ java/rmi/transport/rapidExportUnexport/RapidExportUnexport.java 7146541 linux-al
 java/rmi/transport/checkLeaseInfoLeak/CheckLeaseLeak.java       7191877 generic-all
 
 java/rmi/registry/readTest/CodebaseTest.java                    8173324 windows-all
+java/rmi/registry/multipleRegistries/MultipleRegistries.java    8268182 macosx-all
 
 java/rmi/Naming/DefaultRegistryPort.java                        8005619 windows-all
 java/rmi/Naming/legalRegistryNames/LegalRegistryNames.java      8005619 windows-all
@@ -629,8 +626,6 @@ com/sun/nio/sctp/SctpChannel/SocketOptionTests.java             8141694 linux-al
 ############################################################################
 
 # jdk_security
-
-sun/security/pkcs11/sslecc/ClientJSSEServerJSSE.java            8161536 generic-all
 
 javax/net/ssl/DTLS/CipherSuite.java                             8202059 macosx-x64
 
@@ -652,7 +647,7 @@ com/sun/security/sasl/gsskerb/ConfSecurityLayer.java            8039280 generic-
 com/sun/security/sasl/gsskerb/NoSecurityLayer.java              8039280 generic-all
 javax/security/auth/kerberos/KerberosHashEqualsTest.java        8039280 generic-all
 javax/security/auth/kerberos/KerberosTixDateTest.java           8039280 generic-all
-javax/security/auth/callback/PasswordCallback/CheckCleanerBound.java 8285785,8286045,8287596 generic-all
+javax/security/auth/callback/PasswordCallback/CheckCleanerBound.java 8286045 generic-all
 sun/security/provider/PolicyFile/GrantAllPermToExtWhenNoPolicy.java 8039280 generic-all
 sun/security/provider/PolicyParser/ExtDirsChange.java           8039280 generic-all
 sun/security/provider/PolicyParser/PrincipalExpansionError.java 8039280 generic-all
@@ -761,8 +756,6 @@ com/sun/jdi/NashornPopFrameTest.java                            8225620 generic-
 
 com/sun/jdi/InvokeHangTest.java                                 8218463 linux-all
 
-com/sun/jdi/AfterThreadDeathTest.java                           8232839 linux-all
-
 ############################################################################
 
 # jdk_time
@@ -788,10 +781,10 @@ sun/tools/jstatd/TestJstatdDefaults.java                        8081569,8226420 
 sun/tools/jstatd/TestJstatdRmiPort.java                         8226420,8251259 windows-all
 sun/tools/jstatd/TestJstatdServer.java                          8081569,8226420 windows-all
 
-sun/tools/jstat/jstatLineCounts1.sh                             8268211 linux-aarch64
-sun/tools/jstat/jstatLineCounts2.sh                             8268211 linux-aarch64
-sun/tools/jstat/jstatLineCounts3.sh                             8268211 linux-aarch64
-sun/tools/jstat/jstatLineCounts4.sh                             8268211 linux-aarch64
+sun/tools/jstat/jstatLineCounts1.sh                             8248691,8268211 linux-ppc64le,aix-ppc64,linux-aarch64
+sun/tools/jstat/jstatLineCounts2.sh                             8248691,8268211 linux-ppc64le,aix-ppc64,linux-aarch64
+sun/tools/jstat/jstatLineCounts3.sh                             8248691,8268211 linux-ppc64le,aix-ppc64,linux-aarch64
+sun/tools/jstat/jstatLineCounts4.sh                             8248691,8268211 linux-ppc64le,aix-ppc64,linux-aarch64
 
 ############################################################################
 
@@ -805,7 +798,6 @@ javax/script/Test7.java                                         8239361 generic-
 
 # jdk_jfr
 
-jdk/jfr/event/runtime/TestNetworkUtilizationEvent.java          8228990,8229370    generic-all
 jdk/jfr/event/compiler/TestCodeSweeper.java                     8225209    generic-all
 jdk/jfr/event/os/TestThreadContextSwitches.java                 8247776 windows-all
 jdk/jfr/startupargs/TestStartName.java                          8214685 windows-x64

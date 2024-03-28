@@ -1350,7 +1350,7 @@ static int patch_imm_in_li32(address branch, int32_t target) {
 static long get_offset_of_jal(address insn_addr) {
   assert_cond(insn_addr != NULL);
   long offset = 0;
-  unsigned insn = *(unsigned*)insn_addr;
+  unsigned insn = Assembler::ld_instr(insn_addr);
   long val = (long)Assembler::sextract(insn, 31, 12);
   offset |= ((val >> 19) & 0x1) << 20;
   offset |= (val & 0xff) << 12;
@@ -1363,7 +1363,7 @@ static long get_offset_of_jal(address insn_addr) {
 static long get_offset_of_conditional_branch(address insn_addr) {
   long offset = 0;
   assert_cond(insn_addr != NULL);
-  unsigned insn = *(unsigned*)insn_addr;
+  unsigned insn = Assembler::ld_instr(insn_addr);
   offset = (long)Assembler::sextract(insn, 31, 31);
   offset = (offset << 12) | (((long)(Assembler::sextract(insn, 7, 7) & 0x1)) << 11);
   offset = offset | (((long)(Assembler::sextract(insn, 30, 25) & 0x3f)) << 5);
@@ -1375,35 +1375,35 @@ static long get_offset_of_conditional_branch(address insn_addr) {
 static long get_offset_of_pc_relative(address insn_addr) {
   long offset = 0;
   assert_cond(insn_addr != NULL);
-  offset = ((long)(Assembler::sextract(((unsigned*)insn_addr)[0], 31, 12))) << 12;                                  // Auipc.
-  offset += ((long)Assembler::sextract(((unsigned*)insn_addr)[1], 31, 20));                                         // Addi/Jalr/Load.
+  offset = ((long)(Assembler::sextract(Assembler::ld_instr(insn_addr), 31, 12))) << 12;                               // Auipc.
+  offset += ((long)Assembler::sextract(Assembler::ld_instr(insn_addr + 4), 31, 20));                                  // Addi/Jalr/Load.
   offset = (offset << 32) >> 32;
   return offset;
 }
 
 static address get_target_of_movptr(address insn_addr) {
   assert_cond(insn_addr != NULL);
-  intptr_t target_address = (((int64_t)Assembler::sextract(((unsigned*)insn_addr)[0], 31, 12)) & 0xfffff) << 29;    // Lui.
-  target_address += ((int64_t)Assembler::sextract(((unsigned*)insn_addr)[1], 31, 20)) << 17;                        // Addi.
-  target_address += ((int64_t)Assembler::sextract(((unsigned*)insn_addr)[3], 31, 20)) << 6;                         // Addi.
-  target_address += ((int64_t)Assembler::sextract(((unsigned*)insn_addr)[5], 31, 20));                              // Addi/Jalr/Load.
+  intptr_t target_address = (((int64_t)Assembler::sextract(Assembler::ld_instr(insn_addr), 31, 12)) & 0xfffff) << 29; // Lui.
+  target_address += ((int64_t)Assembler::sextract(Assembler::ld_instr(insn_addr + 4), 31, 20)) << 17;                 // Addi.
+  target_address += ((int64_t)Assembler::sextract(Assembler::ld_instr(insn_addr + 12), 31, 20)) << 6;                 // Addi.
+  target_address += ((int64_t)Assembler::sextract(Assembler::ld_instr(insn_addr + 20), 31, 20));                      // Addi/Jalr/Load.
   return (address) target_address;
 }
 
 static address get_target_of_li64(address insn_addr) {
   assert_cond(insn_addr != NULL);
-  intptr_t target_address = (((int64_t)Assembler::sextract(((unsigned*)insn_addr)[0], 31, 12)) & 0xfffff) << 44;    // Lui.
-  target_address += ((int64_t)Assembler::sextract(((unsigned*)insn_addr)[1], 31, 20)) << 32;                        // Addi.
-  target_address += ((int64_t)Assembler::sextract(((unsigned*)insn_addr)[3], 31, 20)) << 20;                        // Addi.
-  target_address += ((int64_t)Assembler::sextract(((unsigned*)insn_addr)[5], 31, 20)) << 8;                         // Addi.
-  target_address += ((int64_t)Assembler::sextract(((unsigned*)insn_addr)[7], 31, 20));                              // Addi.
+  intptr_t target_address = (((int64_t)Assembler::sextract(Assembler::ld_instr(insn_addr), 31, 12)) & 0xfffff) << 44; // Lui.
+  target_address += ((int64_t)Assembler::sextract(Assembler::ld_instr(insn_addr + 4), 31, 20)) << 32;                 // Addi.
+  target_address += ((int64_t)Assembler::sextract(Assembler::ld_instr(insn_addr + 12), 31, 20)) << 20;                // Addi.
+  target_address += ((int64_t)Assembler::sextract(Assembler::ld_instr(insn_addr + 20), 31, 20)) << 8;                 // Addi.
+  target_address += ((int64_t)Assembler::sextract(Assembler::ld_instr(insn_addr + 28), 31, 20));                      // Addi.
   return (address)target_address;
 }
 
 static address get_target_of_li32(address insn_addr) {
   assert_cond(insn_addr != NULL);
-  intptr_t target_address = (((int64_t)Assembler::sextract(((unsigned*)insn_addr)[0], 31, 12)) & 0xfffff) << 12;    // Lui.
-  target_address += ((int64_t)Assembler::sextract(((unsigned*)insn_addr)[1], 31, 20));                              // Addiw.
+  intptr_t target_address = (((int64_t)Assembler::sextract(Assembler::ld_instr(insn_addr), 31, 12)) & 0xfffff) << 12; // Lui.
+  target_address += ((int64_t)Assembler::sextract(Assembler::ld_instr(insn_addr + 4), 31, 20));                       // Addiw.
   return (address)target_address;
 }
 
@@ -1428,7 +1428,7 @@ int MacroAssembler::pd_patch_instruction_size(address branch, address target) {
   } else {
 #ifdef ASSERT
     tty->print_cr("pd_patch_instruction_size: instruction 0x%x at " INTPTR_FORMAT " could not be patched!\n",
-                  *(unsigned*)branch, p2i(branch));
+                  Assembler::ld_instr(branch), p2i(branch));
     Disassembler::decode(branch - 16, branch + 16);
 #endif
     ShouldNotReachHere();
@@ -1571,6 +1571,28 @@ void MacroAssembler::xorrw(Register Rd, Register Rs1, Register Rs2) {
   sign_extend(Rd, Rd, 32);
 }
 
+// Rd = Rs1 & (~Rd2)
+void MacroAssembler::andn(Register Rd, Register Rs1, Register Rs2) {
+  if (UseZbb) {
+    Assembler::andn(Rd, Rs1, Rs2);
+    return;
+  }
+
+  notr(Rd, Rs2);
+  andr(Rd, Rs1, Rd);
+}
+
+// Rd = Rs1 | (~Rd2)
+void MacroAssembler::orn(Register Rd, Register Rs1, Register Rs2) {
+  if (UseZbb) {
+    Assembler::orn(Rd, Rs1, Rs2);
+    return;
+  }
+
+  notr(Rd, Rs2);
+  orr(Rd, Rs1, Rd);
+}
+
 // Note: load_unsigned_short used to be called load_unsigned_word.
 int MacroAssembler::load_unsigned_short(Register dst, Address src) {
   int off = offset();
@@ -1613,6 +1635,114 @@ void MacroAssembler::store_sized_value(Address dst, Register src, size_t size_in
     case  2:  sh(src, dst); break;
     case  1:  sb(src, dst); break;
     default:  ShouldNotReachHere();
+  }
+}
+
+// granularity is 1 OR 2 bytes per load. dst and src.base() allowed to be the same register
+void MacroAssembler::load_short_misaligned(Register dst, Address src, Register tmp, bool is_signed, int granularity) {
+  if (granularity != 1 && granularity != 2) {
+    ShouldNotReachHere();
+  }
+  if (AvoidUnalignedAccesses && (granularity != 2)) {
+    assert_different_registers(dst, tmp);
+    assert_different_registers(tmp, src.base());
+    is_signed ? lb(tmp, Address(src.base(), src.offset() + 1)) : lbu(tmp, Address(src.base(), src.offset() + 1));
+    slli(tmp, tmp, 8);
+    lbu(dst, src);
+    add(dst, dst, tmp);
+  } else {
+    is_signed ? lh(dst, src) : lhu(dst, src);
+  }
+}
+
+// granularity is 1, 2 OR 4 bytes per load, if granularity 2 or 4 then dst and src.base() allowed to be the same register
+void MacroAssembler::load_int_misaligned(Register dst, Address src, Register tmp, bool is_signed, int granularity) {
+  if (AvoidUnalignedAccesses && (granularity != 4)) {
+    switch(granularity) {
+      case 1:
+        assert_different_registers(dst, tmp, src.base());
+        lbu(dst, src);
+        lbu(tmp, Address(src.base(), src.offset() + 1));
+        slli(tmp, tmp, 8);
+        add(dst, dst, tmp);
+        lbu(tmp, Address(src.base(), src.offset() + 2));
+        slli(tmp, tmp, 16);
+        add(dst, dst, tmp);
+        is_signed ? lb(tmp, Address(src.base(), src.offset() + 3)) : lbu(tmp, Address(src.base(), src.offset() + 3));
+        slli(tmp, tmp, 24);
+        add(dst, dst, tmp);
+        break;
+      case 2:
+        assert_different_registers(dst, tmp);
+        assert_different_registers(tmp, src.base());
+        is_signed ? lh(tmp, Address(src.base(), src.offset() + 2)) : lhu(tmp, Address(src.base(), src.offset() + 2));
+        slli(tmp, tmp, 16);
+        lhu(dst, src);
+        add(dst, dst, tmp);
+        break;
+      default:
+        ShouldNotReachHere();
+    }
+  } else {
+    is_signed ? lw(dst, src) : lwu(dst, src);
+  }
+}
+
+// granularity is 1, 2, 4 or 8 bytes per load, if granularity 4 or 8 then dst and src.base() allowed to be same register
+void MacroAssembler::load_long_misaligned(Register dst, Address src, Register tmp, int granularity) {
+  if (AvoidUnalignedAccesses && (granularity != 8)) {
+    switch(granularity){
+      case 1:
+        assert_different_registers(dst, tmp, src.base());
+        lbu(dst, src);
+        lbu(tmp, Address(src.base(), src.offset() + 1));
+        slli(tmp, tmp, 8);
+        add(dst, dst, tmp);
+        lbu(tmp, Address(src.base(), src.offset() + 2));
+        slli(tmp, tmp, 16);
+        add(dst, dst, tmp);
+        lbu(tmp, Address(src.base(), src.offset() + 3));
+        slli(tmp, tmp, 24);
+        add(dst, dst, tmp);
+        lbu(tmp, Address(src.base(), src.offset() + 4));
+        slli(tmp, tmp, 32);
+        add(dst, dst, tmp);
+        lbu(tmp, Address(src.base(), src.offset() + 5));
+        slli(tmp, tmp, 40);
+        add(dst, dst, tmp);
+        lbu(tmp, Address(src.base(), src.offset() + 6));
+        slli(tmp, tmp, 48);
+        add(dst, dst, tmp);
+        lbu(tmp, Address(src.base(), src.offset() + 7));
+        slli(tmp, tmp, 56);
+        add(dst, dst, tmp);
+        break;
+      case 2:
+        assert_different_registers(dst, tmp, src.base());
+        lhu(dst, src);
+        lhu(tmp, Address(src.base(), src.offset() + 2));
+        slli(tmp, tmp, 16);
+        add(dst, dst, tmp);
+        lhu(tmp, Address(src.base(), src.offset() + 4));
+        slli(tmp, tmp, 32);
+        add(dst, dst, tmp);
+        lhu(tmp, Address(src.base(), src.offset() + 6));
+        slli(tmp, tmp, 48);
+        add(dst, dst, tmp);
+        break;
+      case 4:
+        assert_different_registers(dst, tmp);
+        assert_different_registers(tmp, src.base());
+        lwu(tmp, Address(src.base(), src.offset() + 4));
+        slli(tmp, tmp, 32);
+        lwu(dst, src);
+        add(dst, dst, tmp);
+        break;
+      default:
+        ShouldNotReachHere();
+    }
+  } else {
+    ld(dst, src);
   }
 }
 
@@ -1773,6 +1903,22 @@ void MacroAssembler::ror_imm(Register dst, Register src, uint32_t shift, Registe
   assert(shift < 64, "shift amount must be < 64");
   slli(tmp, src, 64 - shift);
   srli(dst, src, shift);
+  orr(dst, dst, tmp);
+}
+
+// rotate left with shift bits, 32-bit version
+void MacroAssembler::rolw_imm(Register dst, Register src, uint32_t shift, Register tmp) {
+  if (UseZbb) {
+    // no roliw available
+    roriw(dst, src, 32 - shift);
+    return;
+  }
+
+  assert_different_registers(dst, tmp);
+  assert_different_registers(src, tmp);
+  assert(shift < 32, "shift amount must be < 32");
+  srliw(tmp, src, 32 - shift);
+  slliw(dst, src, shift);
   orr(dst, dst, tmp);
 }
 
@@ -3985,18 +4131,17 @@ void MacroAssembler::ctzc_bit(Register Rd, Register Rs, bool isLL, Register tmp1
 void MacroAssembler::inflate_lo32(Register Rd, Register Rs, Register tmp1, Register tmp2) {
   assert_different_registers(Rd, Rs, tmp1, tmp2);
 
-  mv(tmp1, 0xFF);
-  mv(Rd, zr);
-  for (int i = 0; i <= 3; i++) {
+  mv(tmp1, 0xFF000000); // first byte mask at lower word
+  andr(Rd, Rs, tmp1);
+  for (int i = 0; i < 2; i++) {
+    slli(Rd, Rd, wordSize);
+    srli(tmp1, tmp1, wordSize);
     andr(tmp2, Rs, tmp1);
-    if (i) {
-      slli(tmp2, tmp2, i * 8);
-    }
     orr(Rd, Rd, tmp2);
-    if (i != 3) {
-      slli(tmp1, tmp1, 8);
-    }
   }
+  slli(Rd, Rd, wordSize);
+  andi(tmp2, Rs, 0xFF); // last byte mask at lower word
+  orr(Rd, Rd, tmp2);
 }
 
 // This instruction reads adjacent 4 bytes from the upper half of source register,
@@ -4005,17 +4150,8 @@ void MacroAssembler::inflate_lo32(Register Rd, Register Rs, Register tmp1, Regis
 // Rd: 00A700A600A500A4
 void MacroAssembler::inflate_hi32(Register Rd, Register Rs, Register tmp1, Register tmp2) {
   assert_different_registers(Rd, Rs, tmp1, tmp2);
-
-  mv(tmp1, 0xFF00000000);
-  mv(Rd, zr);
-  for (int i = 0; i <= 3; i++) {
-    andr(tmp2, Rs, tmp1);
-    orr(Rd, Rd, tmp2);
-    srli(Rd, Rd, 8);
-    if (i != 3) {
-      slli(tmp1, tmp1, 8);
-    }
-  }
+  srli(Rs, Rs, 32);   // only upper 32 bits are needed
+  inflate_lo32(Rd, Rs, tmp1, tmp2);
 }
 
 // The size of the blocks erased by the zero_blocks stub.  We must
@@ -4382,11 +4518,17 @@ void MacroAssembler::cmp_l2i(Register dst, Register src1, Register src2, Registe
   bind(done);
 }
 
-void MacroAssembler::test_bit(Register Rd, Register Rs, uint32_t bit_pos, Register tmp) {
+void MacroAssembler::test_bit(Register Rd, Register Rs, uint32_t bit_pos) {
   assert(bit_pos < 64, "invalid bit range");
   if (UseZbs) {
     bexti(Rd, Rs, bit_pos);
     return;
   }
-  andi(Rd, Rs, 1UL << bit_pos, tmp);
+  int64_t imm = (int64_t)(1UL << bit_pos);
+  if (is_simm12(imm)) {
+    and_imm12(Rd, Rs, imm);
+  } else {
+    srli(Rd, Rs, bit_pos);
+    and_imm12(Rd, Rd, 1);
+  }
 }

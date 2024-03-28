@@ -47,7 +47,8 @@ void G1FullGCMarkTask::work(uint worker_id) {
   G1FullGCMarker* marker = collector()->marker(worker_id);
   MarkingCodeBlobClosure code_closure(marker->mark_closure(), !CodeBlobToOopClosure::FixRelocations);
 
-  if (ClassUnloading) {
+  // (DCEVM) always process all roots (simulate ClassUnloading=false)
+  if (!AllowEnhancedClassRedefinition && ClassUnloading) {
     _root_processor.process_strong_roots(marker->mark_closure(),
                                          marker->cld_closure(),
                                          &code_closure);

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -x
+
 # @test
 # @summary CDSArchivesTest.sh checks jsa files exist in jbrsdk distributions, jbr distributions are skipped
 # @run shell CDSArchivesTest.sh
@@ -9,9 +11,10 @@ if [ -z "${TESTJAVA}" ]; then
   exit 1
 fi
 
-source ${TESTJAVA}/release
-echo "Checking $IMPLEMENTOR_VERSION"
-if [[ "$IMPLEMENTOR_VERSION" != *"JBRSDK"* ]]; then
+IMPLEMENTOR_VERSION=$(cat ${TESTJAVA}/release | grep "IMPLEMENTOR_VERSION" | cut -d"=" -f2)
+
+echo "Checking ${IMPLEMENTOR_VERSION}"
+if [ "${IMPLEMENTOR_VERSION}" != *"JBRSDK"* ]; then
   echo "Test executed for JBRSDK only"
   echo "skipping the test"
   exit 0

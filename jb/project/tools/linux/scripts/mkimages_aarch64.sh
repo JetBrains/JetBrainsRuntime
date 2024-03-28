@@ -77,13 +77,15 @@ function create_image_bundle {
     sed 's/JBR/JBRSDK/g' "$IMAGES_DIR"/"$__root_dir"/release > release
     mv release "$IMAGES_DIR"/"$__root_dir"/release
     cp $IMAGES_DIR/jdk/lib/src.zip "$IMAGES_DIR"/"$__root_dir"/lib
-    cp $IMAGES_DIR/jdk/lib/server/*.jsa "$IMAGES_DIR"/"$__root_dir"/lib/server
     copy_jmods "$__modules" "$__modules_path" "$IMAGES_DIR"/"$__root_dir"/jmods
+    "$IMAGES_DIR"/"$__root_dir"/bin/java -Xshare:dump
+    "$IMAGES_DIR"/"$__root_dir"/bin/java -Xshare:dump -XX:-UseCompressedOops
     zip_native_debug_symbols $IMAGES_DIR/jdk "${JBR}_diz"
   fi
 
   # jmod does not preserve file permissions (JDK-8173610)
   [ -f "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper
+  [ -f "$IMAGES_DIR"/"$__root_dir"/lib/cef_server ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/cef_server
 
   echo Creating "$JBR".tar.gz ...
 

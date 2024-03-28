@@ -92,14 +92,15 @@ private:
   ciInstance* get_unloaded_instance(ciInstanceKlass* klass);
 
   static int compare_cimetadata(ciMetadata** a, ciMetadata** b);
-  void do_reinitialize_vm_classes();
 public:
   static bool is_initialized() { return _initialized; }
+
+  // (DCEVM)
   static bool is_reinitialize_vm_klasses() { return _reinitialize_vm_klasses; }
   static void set_reinitialize_vm_klasses() { _reinitialize_vm_klasses = true; }
+  static void reinitialize_vm_classes_dcevm();
 
   static void initialize();
-  static void reinitialize_vm_classes();
   void init_shared_objects();
   void remove_symbols();
 

@@ -523,7 +523,7 @@ define SetupRunGtestTestBody
 	    $$(subst $$(TOPDIR)/, , $$($1_TEST_RESULTS_DIR))))
 	$$(if $$(wildcard $$($1_RESULT_FILE)), \
 	  $$(eval $1_TOTAL := $$(shell $$(AWK) '/==========.* tests? from .* \
-	      test cases? ran/ { print $$$$2 }' $$($1_RESULT_FILE))) \
+	      test (cases?|suites?) ran/ { print $$$$2 }' $$($1_RESULT_FILE))) \
 	  $$(if $$($1_TOTAL), , $$(eval $1_TOTAL := 0)) \
 	  $$(eval $1_PASSED := $$(shell $$(AWK) '/\[  PASSED  \] .* tests?./ \
 	      { print $$$$4 }' $$($1_RESULT_FILE))) \
@@ -850,8 +850,9 @@ define SetupRunJtregTestBody
     endif
   endif
 
-  clean-workdir-$1:
+  clean-outputdirs-$1:
 	$$(RM) -r $$($1_TEST_SUPPORT_DIR)
+	$$(RM) -r $$($1_TEST_RESULTS_DIR)
 
   $1_COMMAND_LINE := \
       $$(JAVA) $$($1_JTREG_LAUNCHER_OPTIONS) \
@@ -896,7 +897,7 @@ define SetupRunJtregTestBody
         done
   endif
 
-  run-test-$1: pre-run-test clean-workdir-$1
+  run-test-$1: pre-run-test clean-outputdirs-$1
 	$$(call LogWarn)
 	$$(call LogWarn, Running test '$$($1_TEST)')
 	$$(call MakeDir, $$($1_TEST_RESULTS_DIR) $$($1_TEST_SUPPORT_DIR) \
@@ -933,9 +934,9 @@ define SetupRunJtregTestBody
 	  $$(eval $1_TOTAL := 1) \
 	)
 
-  $1: run-test-$1 parse-test-$1 clean-workdir-$1
+  $1: run-test-$1 parse-test-$1 clean-outputdirs-$1
 
-  TARGETS += $1 run-test-$1 parse-test-$1 clean-workdir-$1
+  TARGETS += $1 run-test-$1 parse-test-$1 clean-outputdirs-$1
   TEST_TARGETS += parse-test-$1
 
 endef

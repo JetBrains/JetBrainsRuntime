@@ -111,16 +111,22 @@
 
 ############################################################################
 
-java/awt/Dialog/CloseDialog/CloseDialogTest.java JBR-6537 macosx-all
+java/awt/Choice/GetSizeTest/GetSizeTest.java JBR-837 macosx-all,windows-all
+java/awt/Dialog/CloseDialog/CloseDialogTest.java JBR-6537,JBR-6538 macosx-all,windows-all
+java/awt/EventQueue/6980209/bug6980209.java 8198615,JBR-6699 macosx-all,linux-all
 java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-6334 macosx-all
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6348,JBR-6349 windows-aarch64,linux-all
+java/awt/Focus/6378278/InputVerifierTest.java JBR-6700 linux-all
+java/awt/Focus/6382144/EndlessLoopTest.java JBR-6701 linux-all
+java/awt/Focus/6981400/Test1.java 8029675,JBR-5510,JBR-6702 windows-all,macosx-all,linux-all
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335,NOBUG linux-all,windows-all #timeout on windows
-java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java NOBUG windows-all timeout
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
+java/awt/ScrollPane/ScrollPaneScrollEnd.java JBR-6882 windows-all
 
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-6485 linux-all
+javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-6698 windows-all,linux-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java NOBUG windows-x64 #timeout
 
 jb/java/awt/CustomTitleBar/FrameNativeControlsMacOSTest.java JBR-6354 macosx-all

@@ -131,12 +131,26 @@ class FieldInfo {
     return cp->symbol_at(index);
   }
 
+  // (DCEVM) - name() duplicate for internal fields to resolve gcc compilation "nonnull" issue
+  Symbol* name_internal_dcevm() const {
+    assert(is_internal(), "internal only");
+    int index = name_index();
+    return lookup_symbol(index);
+  }
+
   Symbol* signature(ConstantPool* cp) const {
     int index = signature_index();
     if (is_internal()) {
       return lookup_symbol(index);
     }
     return cp->symbol_at(index);
+  }
+
+  // (DCEVM) - signature() duplicate for internal fields to resolve gcc compilation "nonnull" issue
+  Symbol* signature_internal_dcevm() const {
+    assert(is_internal(), "internal only");
+    int index = signature_index();
+    return lookup_symbol(index);
   }
 
   void set_access_flags(u2 val)                  { _shorts[access_flags_offset] = val;             }

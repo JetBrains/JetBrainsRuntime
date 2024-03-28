@@ -81,6 +81,7 @@
 #if INCLUDE_JVMCI
 #include "jvmci/jvmciJavaClasses.hpp"
 #endif
+#include "prims/jvmtiEnhancedRedefineClasses.hpp"
 
 #define INJECTED_FIELD_COMPUTE_OFFSET(klass, name, signature, may_be_java)    \
   klass::_##name##_offset = JavaClasses::compute_injected_offset(JavaClasses::klass##_##name##_enum);
@@ -762,7 +763,8 @@ char* java_lang_String::as_utf8_string(oop java_string, typeArrayOop value, int 
 }
 
 bool java_lang_String::equals(oop java_string, const jchar* chars, int len) {
-  assert(java_string->klass() == vmClasses::String_klass(),
+  assert(java_string->klass() == vmClasses::String_klass()
+          || (Universe::is_inside_redefinition() && java_string->klass()->newest_version() == vmClasses::String_klass()),
          "must be java_string");
   typeArrayOop value = java_lang_String::value_no_keepalive(java_string);
   int length = java_lang_String::length(java_string, value);
@@ -819,8 +821,13 @@ void java_lang_String::print(oop java_string, outputStream* st) {
 
   st->print("\"");
   for (int index = 0; index < length; index++) {
-    st->print("%c", (!is_latin1) ?  value->char_at(index) :
-                           ((jchar) value->byte_at(index)) & 0xff );
+    jchar c = (!is_latin1) ?  value->char_at(index) :
+                             ((jchar) value->byte_at(index)) & 0xff;
+    if (c < ' ') {
+      st->print("\\x%02X", c); // print control characters e.g. \x0A
+    } else {
+      st->print("%c", c);
+    }
   }
   st->print("\"");
 }
@@ -1686,7 +1693,8 @@ BasicType java_lang_Class::as_BasicType(oop java_class, Klass** reference_klass)
 
 oop java_lang_Class::primitive_mirror(BasicType t) {
   oop mirror = Universe::java_mirror(t);
-  assert(mirror != NULL && mirror->is_a(vmClasses::Class_klass()), "must be a Class");
+  assert(mirror != NULL && (mirror->is_a(vmClasses::Class_klass())
+    || (Universe::is_inside_redefinition() && vmClasses::Class_klass()->old_version() != NULL && mirror->is_a(vmClasses::Class_klass()->old_version()))), "must be a Class");
   assert(java_lang_Class::is_primitive(mirror), "must be primitive");
   return mirror;
 }

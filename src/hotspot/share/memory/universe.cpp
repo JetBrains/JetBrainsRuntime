@@ -147,7 +147,8 @@ int             Universe::_base_vtable_size = 0;
 bool            Universe::_bootstrapping = false;
 bool            Universe::_module_initialized = false;
 bool            Universe::_fully_initialized = false;
-bool            Universe::_is_redefining_gc_run = false; // FIXME: review
+bool            Universe::_is_redefining_gc_run = false;
+bool            Universe::_is_inside_redefinition = false;
 
 OopStorage*     Universe::_vm_weak = NULL;
 OopStorage*     Universe::_vm_global = NULL;
@@ -927,12 +928,34 @@ void Universe::initialize_known_methods(TRAPS) {
                           vmSymbols::doStackWalk_signature(), false, CHECK);
 }
 
-void Universe::reinitialize_loader_addClass_method(TRAPS) {
+void Universe::reinitialize_known_method_dcevm(TRAPS) {
+  // Set up method for registering loaded classes in class loader vector
+  initialize_known_method(_finalizer_register_cache,
+                          vmClasses::Finalizer_klass(),
+                          "register",
+                          vmSymbols::object_void_signature(), true, CHECK);
+
+  initialize_known_method(_throw_illegal_access_error_cache,
+                          vmClasses::internal_Unsafe_klass(),
+                          "throwIllegalAccessError",
+                          vmSymbols::void_method_signature(), true, CHECK);
+
+  initialize_known_method(_throw_no_such_method_error_cache,
+                          vmClasses::internal_Unsafe_klass(),
+                          "throwNoSuchMethodError",
+                          vmSymbols::void_method_signature(), true, CHECK);
+
   // Set up method for registering loaded classes in class loader vector
   initialize_known_method(_loader_addClass_cache,
                           vmClasses::ClassLoader_klass(),
                           "addClass",
                           vmSymbols::class_void_signature(), false, CHECK);
+
+  // Set up method for stack walking
+  initialize_known_method(_do_stack_walk_cache,
+                          vmClasses::AbstractStackWalker_klass(),
+                          "doStackWalk",
+                          vmSymbols::doStackWalk_signature(), false, CHECK);
 }
 
 void universe2_init() {
@@ -1267,3 +1290,9 @@ bool Universe::is_in_heap(const void* p) {
 }
 
 #endif // ASSERT
+
+void Universe::update_vmClasses_dcevm() {
+  _the_array_interfaces_array->at_put(0, vmClasses::Cloneable_klass()->newest_version());
+  _the_array_interfaces_array->at_put(1, vmClasses::Serializable_klass()->newest_version());
+}
+

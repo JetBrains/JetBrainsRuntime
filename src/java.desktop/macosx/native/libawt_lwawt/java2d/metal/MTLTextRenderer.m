@@ -105,6 +105,11 @@ static jint vertexCacheIndex = 0;
         LCD_ADD_VERTEX(TX1, TY1, DX1, DY1, 0); \
     } while (0)
 
+static void MTLTR_SyncFlushGlyphVertexCache(MTLContext *mtlc) {
+    MTLVertexCache_FlushGlyphVertexCache(mtlc);
+    [mtlc commitCommandBuffer:YES display:NO];
+}
+
 /**
  * Initializes the one glyph cache (texture and data structure).
  * If lcdCache is JNI_TRUE, the texture will contain RGB data,
@@ -122,7 +127,7 @@ MTLTR_ValidateGlyphCache(MTLContext *mtlc, BMTLSDOps *dstOps, jboolean lcdCache)
                                cellWidth:MTLTR_CACHE_CELL_WIDTH
                               cellHeight:MTLTR_CACHE_CELL_HEIGHT
                              pixelFormat:(lcdCache)?MTLPixelFormatBGRA8Unorm:MTLPixelFormatA8Unorm
-                                    func:MTLVertexCache_FlushGlyphVertexCache])
+                                    func:MTLTR_SyncFlushGlyphVertexCache])
     {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
                       "MTLTR_InitGlyphCache: could not init MTL glyph cache");
@@ -132,6 +137,28 @@ MTLTR_ValidateGlyphCache(MTLContext *mtlc, BMTLSDOps *dstOps, jboolean lcdCache)
             [mtlc.encoderManager getLCDEncoder:dstOps->pTexture isSrcOpaque:YES isDstOpaque:YES]:
             [mtlc.encoderManager getTextEncoder:dstOps isSrcOpaque:NO gammaCorrection:YES];
     return JNI_TRUE;
+}
+
+void
+MTLTR_EnableGlyphVertexCache(MTLContext *mtlc, BMTLSDOps *dstOps)
+{
+    J2dTraceLn(J2D_TRACE_INFO, "MTLTR_EnableGlyphVertexCache");
+
+    if (!MTLVertexCache_InitVertexCache()) {
+        return;
+    }
+
+    if (!MTLTR_ValidateGlyphCache(mtlc, dstOps, JNI_FALSE)) {
+        return;
+    }
+}
+
+void
+MTLTR_DisableGlyphVertexCache(MTLContext *mtlc)
+{
+    J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DisableGlyphVertexCache");
+    MTLVertexCache_FlushGlyphVertexCache(mtlc);
+    MTLVertexCache_FreeVertexCache();
 }
 
 /**
@@ -161,10 +188,12 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
     if ([gc isCacheFull:glyph]) {
         if (lcdCache) {
             [mtlc.glyphCacheLCD free];
+            MTLTR_ValidateGlyphCache(mtlc, dstOps, lcdCache);
         } else {
+            MTLTR_DisableGlyphVertexCache(mtlc);
             [mtlc.glyphCacheAA free];
+            MTLTR_EnableGlyphVertexCache(mtlc, dstOps);
         }
-        MTLTR_ValidateGlyphCache(mtlc, dstOps, lcdCache);
     }
     ccinfo = [gc addGlyph:glyph];
 
@@ -239,28 +268,6 @@ MTLTR_SetLCDContrast(MTLContext *mtlc,
             {invgamma, invgamma, invgamma}};
     [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
     return JNI_TRUE;
-}
-
-void
-MTLTR_EnableGlyphVertexCache(MTLContext *mtlc, BMTLSDOps *dstOps)
-{
-J2dTraceLn(J2D_TRACE_INFO, "MTLTR_EnableGlyphVertexCache");
-
-    if (!MTLVertexCache_InitVertexCache()) {
-        return;
-    }
-
-    if (!MTLTR_ValidateGlyphCache(mtlc, dstOps, JNI_FALSE)) {
-        return;
-    }
-}
-
-void
-MTLTR_DisableGlyphVertexCache(MTLContext *mtlc)
-{
-    J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DisableGlyphVertexCache");
-    MTLVertexCache_FlushGlyphVertexCache(mtlc);
-    MTLVertexCache_FreeVertexCache();
 }
 
 static MTLPaint* storedPaint = nil;
@@ -598,10 +605,6 @@ MTLTR_DrawColorGlyphNoCache(MTLContext *mtlc,
     return JNI_TRUE;
 }
 
-// see DrawGlyphList.c for more on this macro...
-#define FLOOR_ASSIGN(l, r) \
-    if ((r)<0) (l) = ((int)floor(r)); else (l) = ((int)(r))
-
 #define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
     if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f
 
@@ -646,19 +649,30 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
             jfloat posy = NEXT_FLOAT(positions);
             glyphx = glyphListOrigX + posx + ginfo->topLeftX;
             glyphy = glyphListOrigY + posy + ginfo->topLeftY;
-            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, ginfo->subpixelResolutionX);
-            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ginfo->subpixelResolutionY);
-            FLOOR_ASSIGN(x, glyphx);
-            FLOOR_ASSIGN(y, glyphy);
         } else {
             glyphx = glyphListOrigX + ginfo->topLeftX;
             glyphy = glyphListOrigY + ginfo->topLeftY;
-            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, ginfo->subpixelResolutionX);
-            ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ginfo->subpixelResolutionY);
-            FLOOR_ASSIGN(x, glyphx);
-            FLOOR_ASSIGN(y, glyphy);
             glyphListOrigX += ginfo->advanceX;
             glyphListOrigY += ginfo->advanceY;
+        }
+
+        int rx = ginfo->subpixelResolutionX;
+        int ry = ginfo->subpixelResolutionY;
+        ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, rx);
+        ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ry);
+        int subx = 0, suby = 0;
+        // see DrawGlyphList.c FLOOR_ASSIGN & getSubpixelGlyphImage
+        if (glyphx >= 0.0f && glyphy >= 0.0f) {
+            x = (int) glyphx;
+            y = (int) glyphy;
+            subx = ((int) (glyphx * (float) rx)) % rx;
+            suby = ((int) (glyphy * (float) ry)) % ry;
+        } else {
+            float fx = floor(glyphx), fy = floor(glyphy);
+            x = (int) fx;
+            y = (int) fy;
+            subx = (int) ((glyphx - fx) * (float) rx);
+            suby = (int) ((glyphy - fy) * (float) ry);
         }
 
         if (ginfo->image == NULL) {
@@ -670,13 +684,11 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         J2dTraceLn1(J2D_TRACE_INFO, "rowBytes = %d", ginfo->rowBytes);
         if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
             // grayscale or monochrome glyph data
-            int rx = ginfo->subpixelResolutionX;
-            int ry = ginfo->subpixelResolutionY;
             int subimage;
             if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
                 subimage = 0;
             } else {
-                subimage = (jint)((glyphx - x) * rx) + (jint)((glyphy - y) * ry) * rx;
+                subimage = subx + suby * rx;
             }
             if (ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)

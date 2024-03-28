@@ -556,6 +556,27 @@ Java_sun_java2d_opengl_OGLSurfaceData_loadNativeRasterWithRects
         J2dTraceLn(J2D_TRACE_VERBOSE, "OGLSurfaceData_loadNativeRasterWithRects: via glDrawPix (i.e. OGLBlitSwToSurface)");
     }
 
+    // Save GL context
+    GLint pv[4];
+    j2d_glGetIntegerv(GL_VIEWPORT, pv);
+    j2d_glViewport(0, 0, width, height);
+
+    j2d_glMatrixMode(GL_MODELVIEW);
+    j2d_glPushMatrix();
+    j2d_glLoadIdentity();
+
+    j2d_glMatrixMode(GL_PROJECTION);
+    j2d_glPushMatrix();
+    j2d_glLoadIdentity();
+    j2d_glOrtho(0.0, (GLdouble)width, (GLdouble)height, 0.0, -1.0, 1.0);
+
+    const GLboolean scissorEnabled = j2d_glIsEnabled(GL_SCISSOR_TEST);
+    const GLboolean depthEnabled = j2d_glIsEnabled(GL_DEPTH_TEST);
+    const GLboolean blendEnabled = j2d_glIsEnabled(GL_BLEND);
+    j2d_glDisable(GL_SCISSOR_TEST);
+    j2d_glDisable(GL_DEPTH_TEST);
+    j2d_glDisable(GL_BLEND);
+
     // Render.
     if (pRects == 0 || rectsCount < 1) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "OGLSurfaceData_loadNativeRasterWithRects: do full copy of raster:");
@@ -590,10 +611,24 @@ Java_sun_java2d_opengl_OGLSurfaceData_loadNativeRasterWithRects
         }
     }
 
-    // Restore state.
+    // Restore GL context
     if (viaTexSubImage) {
         j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     }
+
+    j2d_glMatrixMode(GL_MODELVIEW);
+    j2d_glPopMatrix();
+    j2d_glMatrixMode(GL_PROJECTION);
+    j2d_glPopMatrix();
+
+    j2d_glViewport(pv[0], pv[1], (GLsizei)pv[2], (GLsizei)pv[3]);
+
+    if (scissorEnabled)
+        j2d_glEnable(GL_SCISSOR_TEST);
+    if (depthEnabled)
+        j2d_glEnable(GL_DEPTH_TEST);
+    if (blendEnabled)
+        j2d_glEnable(GL_BLEND);
 
     return JNI_TRUE;
 }

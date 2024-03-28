@@ -407,6 +407,11 @@ class MacroAssembler: public Assembler {
   void load_sized_value(Register dst, Address src, size_t size_in_bytes, bool is_signed, Register dst2 = noreg);
   void store_sized_value(Address dst, Register src, size_t size_in_bytes, Register src2 = noreg);
 
+  // Misaligned loads, will use the best way, according to the AvoidUnalignedAccess flag
+  void load_short_misaligned(Register dst, Address src, Register tmp, bool is_signed, int granularity = 1);
+  void load_int_misaligned(Register dst, Address src, Register tmp, bool is_signed, int granularity = 1);
+  void load_long_misaligned(Register dst, Address src, Register tmp, int granularity = 1);
+
  public:
   // Standard pseudo instructions
   inline void nop() {
@@ -568,7 +573,9 @@ class MacroAssembler: public Assembler {
   void NAME(Register Rs1, Register Rs2, const address dest) {                                            \
     assert_cond(dest != NULL);                                                                           \
     int64_t offset = dest - pc();                                                                        \
-    guarantee(is_simm13(offset) && ((offset % 2) == 0), "offset is invalid.");                           \
+    guarantee(is_simm13(offset) && is_even(offset),                                                      \
+              "offset is invalid: is_simm_13: %s offset: " INT64_FORMAT,                                 \
+              BOOL_TO_STR(is_simm13(offset)), offset);                                                   \
     Assembler::NAME(Rs1, Rs2, offset);                                                                   \
   }                                                                                                      \
   INSN_ENTRY_RELOC(void, NAME(Register Rs1, Register Rs2, address dest, relocInfo::relocType rtype))     \
@@ -729,6 +736,10 @@ public:
   void orrw(Register Rd, Register Rs1, Register Rs2);
   void xorrw(Register Rd, Register Rs1, Register Rs2);
 
+  // logic with negate
+  void andn(Register Rd, Register Rs1, Register Rs2);
+  void orn(Register Rd, Register Rs1, Register Rs2);
+
   // revb
   void revb_h_h(Register Rd, Register Rs, Register tmp = t0);                           // reverse bytes in halfword in lower 16 bits, sign-extend
   void revb_w_w(Register Rd, Register Rs, Register tmp1 = t0, Register tmp2 = t1);      // reverse bytes in lower word, sign-extend
@@ -740,6 +751,7 @@ public:
   void revb(Register Rd, Register Rs, Register tmp1 = t0, Register tmp2 = t1);          // reverse bytes in doubleword
 
   void ror_imm(Register dst, Register src, uint32_t shift, Register tmp = t0);
+  void rolw_imm(Register dst, Register src, uint32_t, Register tmp = t0);
   void andi(Register Rd, Register Rn, int64_t imm, Register tmp = t0);
   void orptr(Address adr, RegisterOrConstant src, Register tmp1 = t0, Register tmp2 = t1);
 
@@ -1132,7 +1144,7 @@ public:
   void shadd(Register Rd, Register Rs1, Register Rs2, Register tmp, int shamt);
 
   // test single bit in Rs, result is set to Rd
-  void test_bit(Register Rd, Register Rs, uint32_t bit_pos, Register tmp = t0);
+  void test_bit(Register Rd, Register Rs, uint32_t bit_pos);
 
   // Here the float instructions with safe deal with some exceptions.
   // e.g. convert from NaN, +Inf, -Inf to int, float, double

@@ -43,22 +43,21 @@ class MemoryCounter {
   volatile size_t   _count;
   volatile size_t   _size;
 
-  DEBUG_ONLY(volatile size_t   _peak_count;)
-  DEBUG_ONLY(volatile size_t   _peak_size; )
+  // Peak size and count. Note: Peak count is the count at the point
+  // peak size was reached, not the absolute highest peak count.
+  volatile size_t _peak_count;
+  volatile size_t _peak_size;
+  void update_peak(size_t size, size_t cnt);
 
  public:
-  MemoryCounter() : _count(0), _size(0) {
-    DEBUG_ONLY(_peak_count = 0;)
-    DEBUG_ONLY(_peak_size  = 0;)
-  }
+  MemoryCounter() : _count(0), _size(0), _peak_count(0), _peak_size(0) {}
 
   inline void allocate(size_t sz) {
     size_t cnt = Atomic::add(&_count, size_t(1), memory_order_relaxed);
     if (sz > 0) {
       size_t sum = Atomic::add(&_size, sz, memory_order_relaxed);
-      DEBUG_ONLY(update_peak_size(sum);)
+      update_peak(sum, cnt);
     }
-    DEBUG_ONLY(update_peak_count(cnt);)
   }
 
   inline void deallocate(size_t sz) {
@@ -74,19 +73,20 @@ class MemoryCounter {
     if (sz != 0) {
       assert(sz >= 0 || size() >= size_t(-sz), "Must be");
       size_t sum = Atomic::add(&_size, size_t(sz), memory_order_relaxed);
-      DEBUG_ONLY(update_peak_size(sum);)
+      update_peak(sum, _count);
     }
   }
 
   inline size_t count() const { return Atomic::load(&_count); }
   inline size_t size()  const { return Atomic::load(&_size);  }
 
-#ifdef ASSERT
-  void update_peak_count(size_t cnt);
-  void update_peak_size(size_t sz);
-  size_t peak_count() const;
-  size_t peak_size()  const;
-#endif // ASSERT
+  inline size_t peak_count() const {
+    return Atomic::load(&_peak_count);
+  }
+
+  inline size_t peak_size() const {
+    return Atomic::load(&_peak_size);
+  }
 };
 
 /*
@@ -123,12 +123,14 @@ class MallocMemory {
   }
 
   inline size_t malloc_size()  const { return _malloc.size(); }
+  inline size_t malloc_peak_size()  const { return _malloc.peak_size(); }
   inline size_t malloc_count() const { return _malloc.count();}
   inline size_t arena_size()   const { return _arena.size();  }
+  inline size_t arena_peak_size()  const { return _arena.peak_size(); }
   inline size_t arena_count()  const { return _arena.count(); }
 
-  DEBUG_ONLY(inline const MemoryCounter& malloc_counter() const { return _malloc; })
-  DEBUG_ONLY(inline const MemoryCounter& arena_counter()  const { return _arena;  })
+  const MemoryCounter* malloc_counter() const { return &_malloc; }
+  const MemoryCounter* arena_counter()  const { return &_arena;  }
 };
 
 class MallocMemorySummary;
@@ -140,7 +142,7 @@ class MallocMemorySnapshot : public ResourceObj {
 
  private:
   MallocMemory      _malloc[mt_number_of_types];
-  MemoryCounter     _tracking_header;
+  MemoryCounter     _all_mallocs;
 
 
  public:
@@ -149,14 +151,18 @@ class MallocMemorySnapshot : public ResourceObj {
     return &_malloc[index];
   }
 
-  inline MemoryCounter* malloc_overhead() {
-    return &_tracking_header;
-  }
+  inline size_t malloc_overhead() const;
 
   // Total malloc invocation count
-  size_t total_count() const;
+  size_t total_count() const {
+    return _all_mallocs.count();
+  }
+
   // Total malloc'd memory amount
-  size_t total() const;
+  size_t total() const {
+    return _all_mallocs.size() + malloc_overhead() + total_arena();
+  }
+
   // Total malloc'd memory used by arenas
   size_t total_arena() const;
 
@@ -170,7 +176,7 @@ class MallocMemorySnapshot : public ResourceObj {
     // copy is going on, because their size is adjusted using this
     // buffer in make_adjustment().
     ThreadCritical tc;
-    s->_tracking_header = _tracking_header;
+    s->_all_mallocs = _all_mallocs;
     for (int index = 0; index < mt_number_of_types; index ++) {
       s->_malloc[index] = _malloc[index];
     }
@@ -194,10 +200,12 @@ class MallocMemorySummary : AllStatic {
 
    static inline void record_malloc(size_t size, MEMFLAGS flag) {
      as_snapshot()->by_type(flag)->record_malloc(size);
+     as_snapshot()->_all_mallocs.allocate(size);
    }
 
    static inline void record_free(size_t size, MEMFLAGS flag) {
      as_snapshot()->by_type(flag)->record_free(size);
+     as_snapshot()->_all_mallocs.deallocate(size);
    }
 
    static inline void record_new_arena(MEMFLAGS flag) {
@@ -217,18 +225,9 @@ class MallocMemorySummary : AllStatic {
      s->make_adjustment();
    }
 
-   // Record memory used by malloc tracking header
-   static inline void record_new_malloc_header(size_t sz) {
-     as_snapshot()->malloc_overhead()->allocate(sz);
-   }
-
-   static inline void record_free_malloc_header(size_t sz) {
-     as_snapshot()->malloc_overhead()->deallocate(sz);
-   }
-
    // The memory used by malloc tracking headers
    static inline size_t tracking_overhead() {
-     return as_snapshot()->malloc_overhead()->size();
+     return as_snapshot()->malloc_overhead();
    }
 
   static MallocMemorySnapshot* as_snapshot() {
@@ -267,7 +266,7 @@ class MallocMemorySummary : AllStatic {
  *
  *           8        9        10       11       12       13       14       15          16 ++
  *       +--------+--------+--------+--------+--------+--------+--------+--------+  ------------------------
- *  ...  |   bucket idx    |     pos idx     | flags  | unused |     canary      |  ... User payload ....
+ *  ...  |   malloc site table marker        | flags  | unused |     canary      |  ... User payload ....
  *       +--------+--------+--------+--------+--------+--------+--------+--------+  ------------------------
  *
  * Layout on 32-bit:
@@ -279,7 +278,7 @@ class MallocMemorySummary : AllStatic {
  *
  *           8        9        10       11       12       13       14       15          16 ++
  *       +--------+--------+--------+--------+--------+--------+--------+--------+  ------------------------
- *  ...  |   bucket idx    |     pos idx     | flags  | unused |     canary      |  ... User payload ....
+ *  ...  |   malloc site table marker        | flags  | unused |     canary      |  ... User payload ....
  *       +--------+--------+--------+--------+--------+--------+--------+--------+  ------------------------
  *
  * Notes:
@@ -294,15 +293,11 @@ class MallocMemorySummary : AllStatic {
 class MallocHeader {
 
   NOT_LP64(uint32_t _alt_canary);
-  size_t _size;
-  uint16_t _bucket_idx;
-  uint16_t _pos_idx;
-  uint8_t _flags;
-  uint8_t _unused;
+  const size_t _size;
+  const uint32_t _mst_marker;
+  const uint8_t _flags;
+  const uint8_t _unused;
   uint16_t _canary;
-
-#define MAX_MALLOCSITE_TABLE_SIZE (USHRT_MAX - 1)
-#define MAX_BUCKET_LENGTH         (USHRT_MAX - 1)
 
   static const uint16_t _header_canary_life_mark = 0xE99E;
   static const uint16_t _header_canary_dead_mark = 0xD99D;
@@ -314,12 +309,7 @@ class MallocHeader {
   // We discount sizes larger than these
   static const size_t max_reasonable_malloc_size = LP64_ONLY(256 * G) NOT_LP64(3500 * M);
 
-  // Check block integrity. If block is broken, print out a report
-  // to tty (optionally with hex dump surrounding the broken block),
-  // then trigger a fatal error.
-  void check_block_integrity() const;
   void print_block_on_error(outputStream* st, address bad_address) const;
-  void mark_block_as_dead();
 
   static uint16_t build_footer(uint8_t b1, uint8_t b2) { return ((uint16_t)b1 << 8) | (uint16_t)b2; }
 
@@ -329,47 +319,33 @@ class MallocHeader {
 
  public:
 
-  MallocHeader(size_t size, MEMFLAGS flags, const NativeCallStack& stack, NMT_TrackingLevel level) {
+  MallocHeader(size_t size, MEMFLAGS flags, const NativeCallStack& stack, uint32_t mst_marker)
+    : _size(size), _mst_marker(mst_marker), _flags(NMTUtil::flag_to_index(flags)),
+      _unused(0), _canary(_header_canary_life_mark)
+  {
     assert(size < max_reasonable_malloc_size, "Too large allocation size?");
-
-    _flags = NMTUtil::flag_to_index(flags);
-    set_size(size);
-    if (level == NMT_detail) {
-      size_t bucket_idx;
-      size_t pos_idx;
-      if (record_malloc_site(stack, size, &bucket_idx, &pos_idx, flags)) {
-        assert(bucket_idx <= MAX_MALLOCSITE_TABLE_SIZE, "Overflow bucket index");
-        assert(pos_idx <= MAX_BUCKET_LENGTH, "Overflow bucket position index");
-        _bucket_idx = (uint16_t)bucket_idx;
-        _pos_idx = (uint16_t)pos_idx;
-      }
-    }
-
-    _unused = 0;
-    _canary = _header_canary_life_mark;
     // On 32-bit we have some bits more, use them for a second canary
     // guarding the start of the header.
     NOT_LP64(_alt_canary = _header_alt_canary_life_mark;)
     set_footer(_footer_canary_life_mark); // set after initializing _size
-
-    MallocMemorySummary::record_malloc(size, flags);
-    MallocMemorySummary::record_new_malloc_header(sizeof(MallocHeader));
   }
 
   inline size_t   size()  const { return _size; }
   inline MEMFLAGS flags() const { return (MEMFLAGS)_flags; }
+  inline uint32_t mst_marker() const { return _mst_marker; }
   bool get_stack(NativeCallStack& stack) const;
 
-  // Cleanup tracking information and mark block as dead before the memory is released.
-  void release();
+  void mark_block_as_dead();
 
- private:
-  inline void set_size(size_t size) {
-    _size = size;
-  }
-  bool record_malloc_site(const NativeCallStack& stack, size_t size,
-    size_t* bucket_idx, size_t* pos_idx, MEMFLAGS flags) const;
+  // Check block integrity. If block is broken, print out a report
+  // to tty (optionally with hex dump surrounding the broken block),
+  // then trigger a fatal error.
+  void check_block_integrity() const;
 };
+
+size_t MallocMemorySnapshot::malloc_overhead() const {
+  return _all_mallocs.count() * sizeof(MallocHeader);
+}
 
 // This needs to be true on both 64-bit and 32-bit platforms
 STATIC_ASSERT(sizeof(MallocHeader) == (sizeof(uint64_t) * 2));
@@ -381,15 +357,9 @@ class MallocTracker : AllStatic {
   // Initialize malloc tracker for specific tracking level
   static bool initialize(NMT_TrackingLevel level);
 
-  // malloc tracking header size for specific tracking level
-  static inline size_t malloc_header_size(NMT_TrackingLevel level) {
-    return (level == NMT_off) ? 0 : sizeof(MallocHeader);
-  }
-
-  // malloc tracking footer size for specific tracking level
-  static inline size_t malloc_footer_size(NMT_TrackingLevel level) {
-    return (level == NMT_off) ? 0 : sizeof(uint16_t);
-  }
+  // The overhead that is incurred by switching on NMT (we need, per malloc allocation,
+  // space for header and 16-bit footer)
+  static const size_t overhead_per_malloc = sizeof(MallocHeader) + sizeof(uint16_t);
 
   // Parameter name convention:
   // memblock :   the beginning address for user data
@@ -401,29 +371,10 @@ class MallocTracker : AllStatic {
 
   // Record  malloc on specified memory block
   static void* record_malloc(void* malloc_base, size_t size, MEMFLAGS flags,
-    const NativeCallStack& stack, NMT_TrackingLevel level);
+    const NativeCallStack& stack);
 
   // Record free on specified memory block
   static void* record_free(void* memblock);
-
-  // Offset memory address to header address
-  static inline void* get_base(void* memblock);
-  static inline void* get_base(void* memblock, NMT_TrackingLevel level) {
-    if (memblock == NULL || level == NMT_off) return memblock;
-    return (char*)memblock - malloc_header_size(level);
-  }
-
-  // Get memory size
-  static inline size_t get_size(void* memblock) {
-    MallocHeader* header = malloc_header(memblock);
-    return header->size();
-  }
-
-  // Get memory type
-  static inline MEMFLAGS get_flags(void* memblock) {
-    MallocHeader* header = malloc_header(memblock);
-    return header->flags();
-  }
 
   static inline void record_new_arena(MEMFLAGS flags) {
     MallocMemorySummary::record_new_arena(flags);
@@ -439,8 +390,11 @@ class MallocTracker : AllStatic {
  private:
   static inline MallocHeader* malloc_header(void *memblock) {
     assert(memblock != NULL, "NULL pointer");
-    MallocHeader* header = (MallocHeader*)((char*)memblock - sizeof(MallocHeader));
-    return header;
+    return (MallocHeader*)((char*)memblock - sizeof(MallocHeader));
+  }
+  static inline const MallocHeader* malloc_header(const void *memblock) {
+    assert(memblock != NULL, "NULL pointer");
+    return (const MallocHeader*)((const char*)memblock - sizeof(MallocHeader));
   }
 };
 

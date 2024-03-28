@@ -326,7 +326,10 @@ class ClassLoaderData : public CHeapObj<mtClass> {
     return (unsigned)((uintptr_t)this >> 3);
   }
 
-  JFR_ONLY(DEFINE_TRACE_ID_METHODS;)
+  int keep_alive_cnt() const       { return _keep_alive; }
+
+
+    JFR_ONLY(DEFINE_TRACE_ID_METHODS;)
 };
 
 #endif // SHARE_CLASSFILE_CLASSLOADERDATA_HPP

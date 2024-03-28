@@ -76,6 +76,11 @@ public:
   virtual void do_field(fieldDescriptor* fd) = 0;
 };
 
+class FieldClosureDcevm: public StackObj {
+public:
+  virtual void do_field(InstanceKlass* ik, fieldDescriptor* fd, FieldInfo* internal_field) = 0;
+};
+
 // Print fields.
 // If "obj" argument to constructor is NULL, prints static fields, otherwise prints non-static fields.
 class FieldPrinter: public FieldClosure {
@@ -1011,6 +1016,11 @@ public:
   // Iterators
   void do_local_static_fields(FieldClosure* cl);
   void do_nonstatic_fields(FieldClosure* cl); // including inherited fields
+
+  // (DCEVM)
+  int do_nonstatic_fields_dcevm_collect_fields(int* fields, int depth);
+  void do_nonstatic_fields_dcevm(FieldClosureDcevm* cl); // including inherited fields
+
   void do_local_static_fields(void f(fieldDescriptor*, Handle, TRAPS), Handle, TRAPS);
 
   // Advanced class redefinition: FIXME: why here?
