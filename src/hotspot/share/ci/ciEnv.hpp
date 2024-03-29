@@ -466,6 +466,9 @@ public:
   void dump_replay_data(outputStream* out);
   void dump_replay_data_unsafe(outputStream* out);
   void dump_compile_data(outputStream* out);
+
+  const char *replay_name(const InstanceKlass* ik) const;
+  const char *replay_name(ciKlass* i) const;
 };
 
 #endif // SHARE_CI_CIENV_HPP
