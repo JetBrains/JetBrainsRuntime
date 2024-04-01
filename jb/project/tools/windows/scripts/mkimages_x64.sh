@@ -40,6 +40,7 @@ function do_configure {
     --with-nvdacontrollerclient=$NVDA_PATH \
     --disable-ccache \
     --enable-cds=yes \
+    $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
     || do_exit $?
