@@ -21,12 +21,9 @@ javax/swing/dnd/7171812/bug7171812.java nobug windows-all
 javax/swing/event/RightAltKeyTest.java nobug windows-all
 javax/swing/JComboBox/8033069/bug8033069NoScrollBar.java nobug windows-all
 javax/swing/JComboBox/8033069/bug8033069ScrollBar.java nobug windows-all
-javax/swing/JComboBox/8182031/ComboPopupTest.java nobug windows-all
-javax/swing/JEditorPane/6917744/bug6917744.java 8213124 macosx-all,windows-all
 javax/swing/JFrame/8016356/bug8016356.java nobug windows-all
 javax/swing/JMenu/6538132/6538132.java 8197552 windows-all
 javax/swing/JMenuItem/6209975/bug6209975.java JBR-4894 windows-all
-javax/swing/JPopupMenu/4634626/bug4634626.java nobug windows-all
 javax/swing/JPopupMenu/4760494/bug4760494.java JBR-4894 windows-all
 javax/swing/JPopupMenu/7156657/bug7156657.java nobug windows-all
 javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java nobug windows-all
