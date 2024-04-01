@@ -33,6 +33,7 @@ JCEF_PATH=${JCEF_PATH:=$WORK_DIR/jcef_win_aarch64}
 
 function do_configure {
   sh ./configure \
+    --enable-option-checking=fatal \
     --openjdk-target=aarch64-unknown-cygwin \
     $WITH_DEBUG_LEVEL \
     --with-vendor-name="$VENDOR_NAME" \
@@ -45,9 +46,11 @@ function do_configure {
     --with-boot-jdk=$BOOT_JDK \
     --with-build-jdk=$BUILD_JDK \
     --disable-ccache \
+    --enable-cds=yes \
+    $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
-    --enable-cds=yes || do_exit $?
+    || do_exit $?
 }
 
 function create_image_bundle {
@@ -66,12 +69,14 @@ function create_image_bundle {
     --module-path $__modules_path --no-man-pages --compress=2 \
     --add-modules $__modules --output $__root_dir || do_exit $?
 
-  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__arch_name/release
+  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__root_dir/release
   if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' $__root_dir/release > release
     mv release $__root_dir/release
     cp $IMAGES_DIR/jdk/lib/src.zip $__root_dir/lib
-    cp $IMAGES_DIR/jdk/bin/*.pdb $__root_dir/bin
+    for dir in $(ls -d $IMAGES_DIR/jdk/*); do
+      rsync -amv --include="*/" --include="*.pdb" --exclude="*" $dir $__root_dir
+    done
     copy_jmods "$__modules" "$__modules_path" "$__root_dir"/jmods
   fi
 }
@@ -122,13 +127,12 @@ if [ $? -eq 0 ]; then
 fi
 
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
-  if [ "$bundle_type" == "jcef" ]; then
-    git apply -p0 < jb/project/tools/patches/add_jcef_module_aarch64.patch || do_exit $?
-    update_jsdk_mods "$BUILD_JDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
-    cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not unchanged
-    cat $JCEF_PATH/jcef.version >> $JSDK/release
-  fi
+  git apply -p0 < jb/project/tools/patches/add_jcef_module_aarch64.patch || do_exit $?
+  update_jsdk_mods "$BUILD_JDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
+  cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not unchanged
+
   jbr_name_postfix="_${bundle_type}"
+  cat $JCEF_PATH/jcef.version >> $JSDK/release
 else
   jbr_name_postfix=""
 fi
