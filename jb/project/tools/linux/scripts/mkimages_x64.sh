@@ -43,6 +43,7 @@ function do_configure {
     --with-boot-jdk="$BOOT_JDK" \
     --enable-cds=yes \
     $LINUX_TARGET \
+    $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
