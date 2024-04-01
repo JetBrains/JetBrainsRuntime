@@ -25,6 +25,13 @@ source jb/project/tools/common/scripts/common.sh
 JCEF_PATH=${JCEF_PATH:=./jcef_linux_x64}
 
 function do_configure {
+  if is_musl; then
+    LINUX_TARGET=""
+  else
+    LINUX_TARGET="\
+      --build=x86_64-unknown-linux-gnu \
+      --openjdk-target=x86_64-unknown-linux-gnu"
+  fi
   sh configure \
     $WITH_DEBUG_LEVEL \
     --with-vendor-name="$VENDOR_NAME" \
@@ -35,6 +42,8 @@ function do_configure {
     --with-version-opt=b"$build_number" \
     --with-boot-jdk="$BOOT_JDK" \
     --enable-cds=yes \
+    $LINUX_TARGET \
+    $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
@@ -59,8 +68,16 @@ function create_image_bundle {
 
   libc_type_suffix=''
   fastdebug_infix=''
+  __cds_opt=''
 
-  if is_musl; then libc_type_suffix='musl-' ; fi
+  if is_musl; then
+    libc_type_suffix='musl-'
+  else
+    LINUX_TARGET="\
+      --build=x86_64-unknown-linux-gnu \
+      --openjdk-target=x86_64-unknown-linux-gnu"
+  fi
+  if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then __cds_opt="--generate-cds-archive"; fi
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-linux-${libc_type_suffix}x64-${fastdebug_infix}b${build_number}
@@ -70,7 +87,7 @@ function create_image_bundle {
   [ -d "$IMAGES_DIR"/"$__root_dir" ] && rm -rf "${IMAGES_DIR:?}"/"$__root_dir"
   $JSDK/bin/jlink \
     --module-path "$__modules_path" --no-man-pages --compress=2 \
-    --add-modules "$__modules" --output "$IMAGES_DIR"/"$__root_dir"
+    $__cds_opt --add-modules "$__modules" --output "$IMAGES_DIR"/"$__root_dir"
 
   grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> "$IMAGES_DIR"/"$__root_dir"/release
   if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
@@ -104,6 +121,7 @@ jbr_name_postfix=""
 
 case "$bundle_type" in
   "jcef")
+    do_reset_changes=1
     jbr_name_postfix="_${bundle_type}"
     jbrsdk_name_postfix="_${bundle_type}"
     do_maketest=1
@@ -117,6 +135,7 @@ case "$bundle_type" in
     jbrsdk_name_postfix="_ft"
     ;;
   "fd")
+    do_reset_changes=1
     jbr_name_postfix="_${bundle_type}"
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=linux-x86_64-server-fastdebug
