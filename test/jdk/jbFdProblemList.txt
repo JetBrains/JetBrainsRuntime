@@ -124,6 +124,7 @@ java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335,NOBUG l
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
 java/awt/ScrollPane/ScrollPaneScrollEnd.java JBR-6882 windows-all
+java/awt/Window/HandleWindowDestroyTest/HandleWindowDestroyTest.java JBR-6540 macosx-all
 
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-6485 linux-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-6698 windows-all,linux-all
@@ -139,10 +140,9 @@ jb/java/awt/Focus/RequestFocusInParent.java NOBUG windows-x64 #NullPointerExcept
 jb/java/awt/Focus/SecondLevelPopupTest.java NOBUG windows-x64 #NullPointerException
 jb/java/awt/Focus/TitleBarClickTest.java NOBUG windows-x64 #timeout
 jb/java/awt/Focus/WrongFrameFocusedOnModalDialogClosing.java NOBUG windows-x64 #timeout
-java/awt/Window/HandleWindowDestroyTest/HandleWindowDestroyTest.java JBR-6540 macosx-all
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984,NOBUG windows-x64,macosx-all #timeout
 jb/java/awt/Window/UndecoratedDialogInTransientsChain.java NOBUG windows-x64 #Frame should have been closed
 jb/java/jcef/HwFacadeWindowNoFrontTest.java NOBUG windows-x64 #window is not above the bottom frame
-jb/sun/awt/macos/InputMethodTest/KeyCodesTest.java JBR-6480 macosx-x64
+jb/sun/awt/macos/InputMethodTest/KeyCodesTest.java JBR-6480 macosx-all
 
 sun/awt/dnd/8024061/bug8024061.java NOBUG windows-x64 #Timed out waiting for dragEnter()
