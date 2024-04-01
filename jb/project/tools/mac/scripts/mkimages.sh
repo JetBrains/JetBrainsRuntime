@@ -46,6 +46,7 @@ function do_configure {
     --with-boot-jdk="$BOOT_JDK" \
     --with-macosx-version-max="${MACOSX_VERSION_MAX}" \
     --enable-cds=yes \
+    $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
