@@ -25,6 +25,7 @@ function do_configure {
     --with-boot-jdk="$BOOT_JDK" \
     $STATIC_CONF_ARGS \
     --enable-cds=yes \
+    $DISABLE_WARNINGS_AS_ERRORS \
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
     || do_exit $?
