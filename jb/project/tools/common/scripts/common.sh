@@ -17,9 +17,11 @@ function getVersionProp() {
   grep "^${1}" make/conf/version-numbers.conf | cut -d'=' -f2
 }
 
-while getopts ":i?" o; do
+DISABLE_WARNINGS_AS_ERRORS=""
+while getopts ":iw?" o; do
     case "${o}" in
         i) INC_BUILD=1 ;;
+        w) DISABLE_WARNINGS_AS_ERRORS="--disable-warnings-as-errors" ;;
     esac
 done
 shift $((OPTIND-1))
