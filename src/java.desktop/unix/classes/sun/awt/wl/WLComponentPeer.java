@@ -593,10 +593,10 @@ public class WLComponentPeer implements ComponentPeer {
                 try {
                     return WLRobotPeer.getLocationOfWLSurface(wlSurfacePtr);
                 } catch (UnsupportedOperationException ignore) {
-                    return new Point(0, 0);
+                    return new Point();
                 }
             } else {
-                throw new UnsupportedOperationException("getLocationOnScreen() not supported without wayland surface");
+                return new Point();
             }
         }, Point::new);
     }
