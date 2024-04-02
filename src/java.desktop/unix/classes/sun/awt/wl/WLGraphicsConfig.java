@@ -82,7 +82,10 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public Rectangle getBounds() {
-        return new Rectangle(width, height);
+        // NB: despite the claims of GraphicsConfiguration.getBounds()'s javadoc,
+        // the value returned is expected to be in user-space coordinates,
+        // same as windows sizes, offsets, components' coordinates, etc.
+        return new Rectangle((int) (width / effectiveScale), (int) (height / effectiveScale));
     }
 
     /**
