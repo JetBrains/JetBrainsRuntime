@@ -44,6 +44,15 @@ public final class P11Util {
         // empty
     }
 
+    static boolean isNSS(Token token) {
+        char[] tokenLabel = token.tokenInfo.label;
+        if (tokenLabel != null && tokenLabel.length >= 3) {
+            return (tokenLabel[0] == 'N' && tokenLabel[1] == 'S'
+                    && tokenLabel[2] == 'S');
+        }
+        return false;
+    }
+
     static Provider getSunProvider() {
         Provider p = sun;
         if (p == null) {
