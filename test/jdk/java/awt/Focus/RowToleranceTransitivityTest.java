@@ -130,12 +130,14 @@ public class RowToleranceTransitivityTest {
     static void test() throws Exception {
         robot.delay(500);
 
-        clickOn(ft);
-
-        robot.delay(500);
-
-        if (KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner() != ft) {
-            throw new RuntimeException("Cannot set initial focus");
+        // Set focus on the first component to start traversal
+        if (!setFocusOn(ft, new Runnable() {
+            public void run() {
+                clickOn(ft);
+            }
+            })) {
+            System.out.println("Couldn't set focus on " + ft);
+            throw new RuntimeException("Test couldn't be performed.");
         }
 
         robot.delay(500);
