@@ -261,10 +261,8 @@ final class P11Cipher extends CipherSpi {
                 // no native padding support; use our own padding impl
                 paddingObj = new PKCS5Padding(blockSize);
                 padBuffer = new byte[blockSize];
-                char[] tokenLabel = token.tokenInfo.label;
                 // NSS requires block-sized updates in multi-part operations.
-                reqBlockUpdates = ((tokenLabel[0] == 'N' && tokenLabel[1] == 'S'
-                        && tokenLabel[2] == 'S') ? true : false);
+                reqBlockUpdates = P11Util.isNSS(token);
             }
         } else {
             throw new NoSuchPaddingException("Unsupported padding " + padding);
