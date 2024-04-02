@@ -126,7 +126,7 @@ $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 ### Ubuntu Linux
 Install the necessary tools, libraries, and headers with:
 ```
-$ sudo apt-get install autoconf make build-essential libwayland-dev libx11-dev libxext-dev libxrender-dev \
+$ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev \
        libxtst-dev libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev libwayland-dev \
        libxkbcommon-x11-0
 ```
