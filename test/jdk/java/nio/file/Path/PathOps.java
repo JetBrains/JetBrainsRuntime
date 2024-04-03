@@ -22,14 +22,21 @@
  */
 
 /* @test
- * @bug 4313887 6838333 6925932 7006126 8037945 8072495 8140449 8254876 8298478
+ * @bug 4313887 6838333 6925932 7006126 7029979 8037945 8072495 8140449
+ * 8254876 8298478
  * @summary Unit test for java.nio.file.Path path operations
+ * @library .. /test/lib
+ * @build jdk.test.lib.Platform
+ * @run main PathOps
  */
 
+import java.io.File;
 import java.nio.file.FileSystems;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
+import jdk.test.lib.Platform;
 
 public class PathOps {
 
@@ -214,6 +221,34 @@ public class PathOps {
         out.println("check normalized path");
         checkPath();
         check(path.normalize(), expected);
+        return this;
+    }
+
+    PathOps equals(String other) {
+        out.format("test equals %s\n", other);
+        checkPath();
+
+        Path that = Path.of(other);
+        check(that, path.toString());
+        check(path.hashCode() == that.hashCode(), true);
+
+        return this;
+    }
+
+    PathOps notEquals(Object other) {
+        out.format("test not equals %s\n", other);
+        checkPath();
+        check(path.equals(other), false);
+
+        return this;
+    }
+
+    PathOps toFile() {
+        out.println("check toFile");
+        checkPath();
+        File file = path.toFile();
+        check(file.toString(), path.toString());
+        check(file.toPath().equals(path), true);
         return this;
     }
 
@@ -1393,6 +1428,18 @@ public class PathOps {
             .parent(null)
             .name(null);
 
+        // equals
+        test("this")
+            .equals("this")
+            .notEquals(Path.of("that"))
+            .notEquals(null)
+            .notEquals(new Object())
+            .equals(Path.of("This"));
+
+        // toFile
+        test("C:\\foo\\bar\\gus")
+            .toFile();
+
         // invalid
         test(":\\foo")
             .invalid();
@@ -2045,6 +2092,18 @@ public class PathOps {
         test("/foo/bar/gus/../..")
             .normalize("/foo");
 
+        // equals
+        test("this")
+            .equals("this")
+            .notEquals(Path.of("that"))
+            .notEquals(null)
+            .notEquals(new Object())
+            .notEquals(Path.of("This"));
+
+        // toFile
+        test("/foo/bar/gus")
+            .toFile();
+
         // invalid
         test("foo\u0000bar")
             .invalid();
@@ -2122,7 +2181,7 @@ public class PathOps {
 
         // operating system specific
         String osname = System.getProperty("os.name");
-        if (osname.startsWith("Windows")) {
+        if (Platform.isWindows()) {
             doWindowsTests();
         } else {
             doUnixTests();
