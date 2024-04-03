@@ -126,4 +126,5 @@ javax/swing/plaf/nimbus/8041642/bug8041642.java JBR-6698 linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,JBR-6274 windows-x64,macosx-all
 
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-2651 generic-all
+jb/java/awt/Window/UndecoratedDialogInTransientsChain.java JBR-6924 windows-all
 jb/sun/awt/macos/InputMethodTest/KeyCodesTest.java JBR-6480 macosx-all

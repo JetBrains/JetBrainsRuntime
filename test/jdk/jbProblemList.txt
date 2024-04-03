@@ -281,6 +281,7 @@ java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java JBR-5812 linux-all
 java/awt/Toolkit/SecurityTest/SecurityTest2.java JBR-5225 windows-all
 java/awt/Toolkit/SunDisplayChangerLeakTest/SunDisplayChangerLeakTest.java JBR-5051 windows-all
 java/awt/Toolkit/ToolkitPropertyTest/ToolkitPropertyTest_Enable.java 6847163 linux-all,windows-all
+java/awt/TrayIcon/8072769/bug8072769.java JBR-6913 windows-all
 java/awt/TrayIcon/ActionCommand/ActionCommand.java 8150540,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/ActionEventMask/ActionEventMask.java 8150540,8242801,8295300,JBR-3107 windows-all,macosx-all,linux-all
 java/awt/TrayIcon/ActionEventTest/ActionEventTest.java 8150540,8242801 windows-all,macosx-all
@@ -318,7 +319,7 @@ java/awt/Window/ShapedAndTranslucentWindows/Translucent.java 8222328 windows-all
 java/awt/Window/AlwaysOnTop/AlwaysOnTopEvenOfWindow.java JBR-6686 linux-aarch64
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593,8253184 linux-all,windows-all
 java/awt/Window/AlwaysOnTop/TestAlwaysOnTopBeforeShow.java JBR-6661 windows-all
-java/awt/Window/Grab/GrabTest.java 8253184 windows-all
+java/awt/Window/Grab/GrabTest.java 8253184,JBR-6922 windows-all,linux-all
 java/awt/Window/GrabSequence/GrabSequence.java 6848409 macosx-all,linux-all
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux-all
 java/awt/FontClass/FontAccess.java JBR-5225 windows-all
@@ -1047,7 +1048,7 @@ javax/swing/JInternalFrame/6647340/bug6647340.java 8253184 windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java JBR-788 windows-all,linux-all
 javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java JBR-5539 windows-all,,linux-5.18.2-arch1-1
 javax/swing/JInternalFrame/Test6325652.java JBR-6111 windows-all
-javax/swing/JInternalFrame/Test6505027.java JBR-5954 linux-all,osx-all
+javax/swing/JInternalFrame/Test6505027.java JBR-5954 linux-all,macosx-all
 javax/swing/JInternalFrame/Test6802868.java 8253184 windows-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java JBR-5210 windows-all
 javax/swing/dnd/8139050/NativeErrorsInTableDnD.java 8202765,JBR-5210  macosx-all,linux-all,windows-all
@@ -1411,7 +1412,7 @@ jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-5465,JBR-5550 windows-a
 jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465,JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-5828 windows-all
 jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5345 windows-x64
-jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-5910 windows-x64
+jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-6914 windows-all
 jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5345,JBR-6835 windows-all,macosx-all
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5345 windows-all
 jb/java/awt/CustomTitleBar/WindowResizeTest.java JBR-5592 windows-all
