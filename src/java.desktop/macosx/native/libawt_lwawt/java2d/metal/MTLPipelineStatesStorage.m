@@ -255,8 +255,11 @@ union StateIndex {
 }
 
 - (void) dealloc {
-    [super dealloc];
     [computeStates release];
+    self.library = nil;
+    self.shaders = nil;
+    self.states = nil;
+    [super dealloc];
 }
 @end
 
