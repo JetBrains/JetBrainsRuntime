@@ -83,7 +83,7 @@ for i in `seq $N` ; do
 #  -jar $RENDERPERFTEST $OPTS 2>&1 | awk '/'$1'/{print $3 }' | tee test_run.log
 
   $JAVA $J2D_OPTS -DTRACE=$TRACE \
-  -jar $RENDERPERFTEST $OPTS -v 2>&1 | tee render_$1.log | grep -v "^#" | tail -n 2 | \
+  -jar $RENDERPERFTEST $OPTS -v 2>&1 | tee render_$1$MODE.log | grep -v "^#" | tail -n 2 | \
   awk '/'$1'/{print $3 }' 
   if [ $i -ne $N ]; then
     sleep $ST
