@@ -103,11 +103,6 @@ class ClassLoaderDataGraph : public AllStatic {
   static void rollback_redefinition();
   static bool dictionary_classes_do_update_klass(Thread* current, Symbol* name, InstanceKlass* k, InstanceKlass* old_klass);
 
-  // VM_CounterDecay iteration support
-  static InstanceKlass* try_get_next_class();
-  static void adjust_saved_class(ClassLoaderData* cld);
-  static void adjust_saved_class(Klass* klass);
-
   static void verify_dictionary();
   static void print_dictionary(outputStream* st);
   static void print_table_statistics(outputStream* st);
