@@ -1313,10 +1313,9 @@ bool os::dll_address_to_library_name(address addr, char* buf,
 
 // Loads .dll/.so and in case of error it checks if .dll/.so was built
 // for the same architecture as Hotspot is running on.
-void *os::dll_load(const char *filename, char *ebuf, int ebuflen) {
+static void* dll_load_library(const char *filename, char *ebuf, int ebuflen) {
 
   log_info(os)("attempting shared library load of %s", filename);
-
   if (ebuf && ebuflen > 0) {
     ebuf[0] = '\0';
     ebuf[ebuflen - 1] = '\0';
@@ -1358,6 +1357,26 @@ void* os::dll_lookup(void* handle, const char* name) {
 
 void* os::get_default_process_handle() {
   return (void*)::dlopen(NULL, RTLD_LAZY);
+}
+// Load library named <filename>
+// If filename matches <name>.so, and loading fails, repeat with <name>.a.
+void *os::dll_load(const char *filename, char *ebuf, int ebuflen) {
+  void* result = nullptr;
+  char* const file_path = strdup(filename);
+  char* const pointer_to_dot = strrchr(file_path, '.');
+  const char old_extension[] = ".so";
+  const char new_extension[] = ".a";
+  STATIC_ASSERT(sizeof(old_extension) >= sizeof(new_extension));
+  // First try to load the existing file.
+  result = dll_load_library(filename, ebuf, ebuflen);
+  // If the load fails,we try to reload by changing the extension to .a for .so files only.
+  // Shared object in .so format dont have braces, hence they get removed for archives with members.
+  if (result == nullptr && pointer_to_dot != nullptr && strcmp(pointer_to_dot, old_extension) == 0) {
+    snprintf(pointer_to_dot, sizeof(old_extension), "%s", new_extension);
+    result = dll_load_library(file_path, ebuf, ebuflen);
+  }
+  FREE_C_HEAP_ARRAY(char, file_path);
+  return result;
 }
 
 void os::print_dll_info(outputStream *st) {
