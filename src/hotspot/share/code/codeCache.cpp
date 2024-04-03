@@ -1046,7 +1046,6 @@ CodeCache::UnloadingScope::UnloadingScope(BoolObjectClosure* is_alive)
 CodeCache::UnloadingScope::~UnloadingScope() {
   IsUnloadingBehaviour::set_current(_saved_behaviour);
   DependencyContext::cleaning_end();
-  CodeCache::flush_unlinked_nmethods();
 }
 
 void CodeCache::verify_oops() {
