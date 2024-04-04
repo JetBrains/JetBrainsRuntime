@@ -73,7 +73,7 @@ SWINGMARK_RESOURCES = \
 all: mkdirs SwingMark.jar
 
 run: mkdirs SwingMark.jar
-	cd $(DIST) && java -jar SwingMark.jar -q
+	cd $(DIST) && java -Dsun.java2d.d3d=true -jar SwingMark.jar -q
 
 SwingMark.jar: \
 	$(SWINGMARK_CLASSES) \

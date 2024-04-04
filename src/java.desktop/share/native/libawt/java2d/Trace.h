@@ -53,26 +53,6 @@ extern "C" {
 JNIEXPORT void JNICALL
 J2dTraceImpl(int level, jboolean cr, const char *string, ...);
 
-#ifndef DEBUG
-#define J2dTrace(level, string)
-#define J2dTrace1(level, string, arg1)
-#define J2dTrace2(level, string, arg1, arg2)
-#define J2dTrace3(level, string, arg1, arg2, arg3)
-#define J2dTrace4(level, string, arg1, arg2, arg3, arg4)
-#define J2dTrace5(level, string, arg1, arg2, arg3, arg4, arg5)
-#define J2dTrace6(level, string, arg1, arg2, arg3, arg4, arg5, arg6)
-#define J2dTrace7(level, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-#define J2dTrace8(level, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
-#define J2dTraceLn(level, string)
-#define J2dTraceLn1(level, string, arg1)
-#define J2dTraceLn2(level, string, arg1, arg2)
-#define J2dTraceLn3(level, string, arg1, arg2, arg3)
-#define J2dTraceLn4(level, string, arg1, arg2, arg3, arg4)
-#define J2dTraceLn5(level, string, arg1, arg2, arg3, arg4, arg5)
-#define J2dTraceLn6(level, string, arg1, arg2, arg3, arg4, arg5, arg6)
-#define J2dTraceLn7(level, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-#define J2dTraceLn8(level, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
-#else /* DEBUG */
 #define J2dTrace(level, string) { \
             J2dTraceImpl(level, JNI_FALSE, string); \
         }
@@ -127,8 +107,6 @@ J2dTraceImpl(int level, jboolean cr, const char *string, ...);
 #define J2dTraceLn8(level, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) { \
             J2dTraceImpl(level, JNI_TRUE, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8); \
         }
-#endif /* DEBUG */
-
 
 /**
  * NOTE: Use the following RlsTrace calls very carefully; they are compiled

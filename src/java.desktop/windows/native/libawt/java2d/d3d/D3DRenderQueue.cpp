@@ -41,8 +41,13 @@
 #include "D3DTextRenderer.h"
 #include "Trace.h"
 #include "awt_Toolkit.h"
+#include <windows.h>
+#include <cstdio>
 
 BOOL DWMIsCompositionEnabled();
+
+UINT64 lastTime = 0;
+int fps = 0;
 
 /**
  * References to the "current" context and destination surface.
@@ -156,6 +161,21 @@ D3DRQ_SwapBuffers(D3DPipelineManager *pMgr, D3DSDOps *d3dsdo,
     }
 
     res = pSwapChain->Present(pSrcRect, pDstRect, 0, NULL, 0);
+    if (res == D3D_OK) {
+        FILETIME ft;
+        GetSystemTimeAsFileTime(&ft);
+        ULARGE_INTEGER li;
+        li.LowPart = ft.dwLowDateTime;
+        li.HighPart = ft.dwHighDateTime;
+        UINT64 curTime = li.QuadPart / 10000;
+        if (curTime - lastTime > 1000) {
+            J2dTraceLn1(J2D_TRACE_ERROR, "Current native FPS = %d \n", fps);
+            lastTime = curTime;
+            fps = 0;
+        } else {
+            fps++;
+        }
+    }
     res = D3DRQ_MarkLostIfNeeded(res, d3dsdo);
 
     return res;
@@ -189,17 +209,17 @@ D3DRQ_MarkLostIfNeeded(HRESULT res, D3DSDOps *d3dops)
     return res;
 }
 
-void D3DRQ_FlushBuffer(void *pParam)
+extern "C"
 {
-    FlushBufferStruct *pFlush = (FlushBufferStruct*)pParam;
-    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_d3d_D3DRenderQueue_flushBuffer
+        (JNIEnv *env, jobject d3dr, jlong buf, jint limit) {
     unsigned char *b, *end;
-    int limit;
     HRESULT res = S_OK;
     BOOL bSync = FALSE;
 
-    b = pFlush->buffer;
-    limit = pFlush->limit;
+    b = (unsigned char *) jlong_to_ptr(buf);
     J2dTraceLn1(J2D_TRACE_INFO, "D3DRQ_flushBuffer: limit=%d", limit);
 
     end = b + limit;
@@ -223,9 +243,8 @@ void D3DRQ_FlushBuffer(void *pParam)
 
         switch (opcode) {
 
-        // draw ops
-        case sun_java2d_pipe_BufferedOpCodes_DRAW_LINE:
-            {
+            // draw ops
+            case sun_java2d_pipe_BufferedOpCodes_DRAW_LINE: {
                 jint x1 = NEXT_INT(b);
                 jint y1 = NEXT_INT(b);
                 jint x2 = NEXT_INT(b);
@@ -234,9 +253,8 @@ void D3DRQ_FlushBuffer(void *pParam)
                 CONTINUE_IF_NULL(d3dc);
                 res = D3DRenderer_DrawLine(d3dc, x1, y1, x2, y2);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_DRAW_RECT:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_DRAW_RECT: {
                 jint x = NEXT_INT(b);
                 jint y = NEXT_INT(b);
                 jint w = NEXT_INT(b);
@@ -244,40 +262,36 @@ void D3DRQ_FlushBuffer(void *pParam)
                 CONTINUE_IF_NULL(d3dc);
                 res = D3DRenderer_DrawRect(d3dc, x, y, w, h);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_DRAW_POLY:
-            {
-                jint nPoints      = NEXT_INT(b);
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_DRAW_POLY: {
+                jint nPoints = NEXT_INT(b);
                 jboolean isClosed = NEXT_BOOLEAN(b);
-                jint transX       = NEXT_INT(b);
-                jint transY       = NEXT_INT(b);
-                jint *xPoints = (jint *)b;
-                jint *yPoints = ((jint *)b) + nPoints;
+                jint transX = NEXT_INT(b);
+                jint transY = NEXT_INT(b);
+                jint *xPoints = (jint *) b;
+                jint *yPoints = ((jint *) b) + nPoints;
                 CONTINUE_IF_NULL(d3dc);
                 res = D3DRenderer_DrawPoly(d3dc, nPoints, isClosed,
                                            transX, transY,
-                                     xPoints, yPoints);
+                                           xPoints, yPoints);
                 SKIP_BYTES(b, nPoints * BYTES_PER_POLY_POINT);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_DRAW_PIXEL:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_DRAW_PIXEL: {
                 jint x = NEXT_INT(b);
                 jint y = NEXT_INT(b);
 
                 CONTINUE_IF_NULL(d3dc);
                 res = D3DRenderer_DrawLine(d3dc, x, y, x, y);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES: {
                 jint count = NEXT_INT(b);
-                res = D3DRenderer_DrawScanlines(d3dc, count, (jint *)b);
+                res = D3DRenderer_DrawScanlines(d3dc, count, (jint *) b);
                 SKIP_BYTES(b, count * BYTES_PER_SCANLINE);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_DRAW_PARALLELOGRAM:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_DRAW_PARALLELOGRAM: {
                 jfloat x11 = NEXT_FLOAT(b);
                 jfloat y11 = NEXT_FLOAT(b);
                 jfloat dx21 = NEXT_FLOAT(b);
@@ -294,9 +308,8 @@ void D3DRQ_FlushBuffer(void *pParam)
                                                     dx12, dy12,
                                                     lwr21, lwr12);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_DRAW_AAPARALLELOGRAM:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_DRAW_AAPARALLELOGRAM: {
                 jfloat x11 = NEXT_FLOAT(b);
                 jfloat y11 = NEXT_FLOAT(b);
                 jfloat dx21 = NEXT_FLOAT(b);
@@ -313,11 +326,10 @@ void D3DRQ_FlushBuffer(void *pParam)
                                                       dx12, dy12,
                                                       lwr21, lwr12);
             }
-            break;
+                break;
 
-        // fill ops
-        case sun_java2d_pipe_BufferedOpCodes_FILL_RECT:
-            {
+                // fill ops
+            case sun_java2d_pipe_BufferedOpCodes_FILL_RECT: {
                 jint x = NEXT_INT(b);
                 jint y = NEXT_INT(b);
                 jint w = NEXT_INT(b);
@@ -326,9 +338,8 @@ void D3DRQ_FlushBuffer(void *pParam)
                 CONTINUE_IF_NULL(d3dc);
                 res = D3DRenderer_FillRect(d3dc, x, y, w, h);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_FILL_PARALLELOGRAM:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_FILL_PARALLELOGRAM: {
                 jfloat x11 = NEXT_FLOAT(b);
                 jfloat y11 = NEXT_FLOAT(b);
                 jfloat dx21 = NEXT_FLOAT(b);
@@ -342,9 +353,8 @@ void D3DRQ_FlushBuffer(void *pParam)
                                                     dx21, dy21,
                                                     dx12, dy12);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM: {
                 jfloat x11 = NEXT_FLOAT(b);
                 jfloat y11 = NEXT_FLOAT(b);
                 jfloat dx21 = NEXT_FLOAT(b);
@@ -358,30 +368,28 @@ void D3DRQ_FlushBuffer(void *pParam)
                                                       dx21, dy21,
                                                       dx12, dy12);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_FILL_SPANS:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_FILL_SPANS: {
                 jint count = NEXT_INT(b);
-                res = D3DRenderer_FillSpans(d3dc, count, (jint *)b);
+                res = D3DRenderer_FillSpans(d3dc, count, (jint *) b);
                 SKIP_BYTES(b, count * BYTES_PER_SPAN);
             }
-            break;
+                break;
 
-        // text-related ops
-        case sun_java2d_pipe_BufferedOpCodes_DRAW_GLYPH_LIST:
-            {
-                jint numGlyphs        = NEXT_INT(b);
-                jint packedParams     = NEXT_INT(b);
+                // text-related ops
+            case sun_java2d_pipe_BufferedOpCodes_DRAW_GLYPH_LIST: {
+                jint numGlyphs = NEXT_INT(b);
+                jint packedParams = NEXT_INT(b);
                 jfloat glyphListOrigX = NEXT_FLOAT(b);
                 jfloat glyphListOrigY = NEXT_FLOAT(b);
                 jboolean usePositions = EXTRACT_BOOLEAN(packedParams,
                                                         OFFSET_POSITIONS);
-                jboolean subPixPos    = EXTRACT_BOOLEAN(packedParams,
-                                                        OFFSET_SUBPIXPOS);
-                jboolean rgbOrder     = EXTRACT_BOOLEAN(packedParams,
-                                                        OFFSET_RGBORDER);
-                jint lcdContrast      = EXTRACT_BYTE(packedParams,
-                                                     OFFSET_CONTRAST);
+                jboolean subPixPos = EXTRACT_BOOLEAN(packedParams,
+                                                     OFFSET_SUBPIXPOS);
+                jboolean rgbOrder = EXTRACT_BOOLEAN(packedParams,
+                                                    OFFSET_RGBORDER);
+                jint lcdContrast = EXTRACT_BYTE(packedParams,
+                                                OFFSET_CONTRAST);
                 unsigned char *images = b;
                 unsigned char *positions;
                 jint bytesPerGlyph;
@@ -399,49 +407,47 @@ void D3DRQ_FlushBuffer(void *pParam)
                                           images, positions);
                 SKIP_BYTES(b, numGlyphs * bytesPerGlyph);
             }
-            break;
+                break;
 
-        // copy-related ops
-        case sun_java2d_pipe_BufferedOpCodes_COPY_AREA:
-            {
-                jint x  = NEXT_INT(b);
-                jint y  = NEXT_INT(b);
-                jint w  = NEXT_INT(b);
-                jint h  = NEXT_INT(b);
+                // copy-related ops
+            case sun_java2d_pipe_BufferedOpCodes_COPY_AREA: {
+                jint x = NEXT_INT(b);
+                jint y = NEXT_INT(b);
+                jint w = NEXT_INT(b);
+                jint h = NEXT_INT(b);
                 jint dx = NEXT_INT(b);
                 jint dy = NEXT_INT(b);
                 res = D3DBlitLoops_CopyArea(env, d3dc, dstOps,
                                             x, y, w, h, dx, dy);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_BLIT:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_BLIT: {
                 jint packedParams = NEXT_INT(b);
-                jint sx1          = NEXT_INT(b);
-                jint sy1          = NEXT_INT(b);
-                jint sx2          = NEXT_INT(b);
-                jint sy2          = NEXT_INT(b);
-                jdouble dx1       = NEXT_DOUBLE(b);
-                jdouble dy1       = NEXT_DOUBLE(b);
-                jdouble dx2       = NEXT_DOUBLE(b);
-                jdouble dy2       = NEXT_DOUBLE(b);
-                jlong pSrc        = NEXT_LONG(b);
-                jlong pDst        = NEXT_LONG(b);
-                jint hint         = EXTRACT_BYTE(packedParams, OFFSET_HINT);
-                jboolean texture  = EXTRACT_BOOLEAN(packedParams,
-                                                    OFFSET_TEXTURE);
-                jboolean rtt      = EXTRACT_BOOLEAN(packedParams,
-                                                    OFFSET_RTT);
-                jboolean xform    = EXTRACT_BOOLEAN(packedParams,
-                                                    OFFSET_XFORM);
-                jboolean isoblit  = EXTRACT_BOOLEAN(packedParams,
-                                                    OFFSET_ISOBLIT);
+                jint sx1 = NEXT_INT(b);
+                jint sy1 = NEXT_INT(b);
+                jint sx2 = NEXT_INT(b);
+                jint sy2 = NEXT_INT(b);
+                jdouble dx1 = NEXT_DOUBLE(b);
+                jdouble dy1 = NEXT_DOUBLE(b);
+                jdouble dx2 = NEXT_DOUBLE(b);
+                jdouble dy2 = NEXT_DOUBLE(b);
+                jlong pSrc = NEXT_LONG(b);
+                jlong pDst = NEXT_LONG(b);
+                jint hint = EXTRACT_BYTE(packedParams, OFFSET_HINT);
+                jboolean texture = EXTRACT_BOOLEAN(packedParams,
+                                                   OFFSET_TEXTURE);
+                jboolean rtt = EXTRACT_BOOLEAN(packedParams,
+                                               OFFSET_RTT);
+                jboolean xform = EXTRACT_BOOLEAN(packedParams,
+                                                 OFFSET_XFORM);
+                jboolean isoblit = EXTRACT_BOOLEAN(packedParams,
+                                                   OFFSET_ISOBLIT);
                 if (isoblit) {
                     res = D3DBlitLoops_IsoBlit(env, d3dc, pSrc, pDst,
                                                xform, hint, texture, rtt,
                                                sx1, sy1, sx2, sy2,
                                                dx1, dy1, dx2, dy2);
-                    D3DRQ_MarkLostIfNeeded(res, (D3DSDOps*)pSrc);
+                    D3DRQ_MarkLostIfNeeded(res, (D3DSDOps *) pSrc);
                 } else {
                     jint srctype = EXTRACT_BYTE(packedParams, OFFSET_SRCTYPE);
                     res = D3DBlitLoops_Blit(env, d3dc, pSrc, pDst,
@@ -450,55 +456,51 @@ void D3DRQ_FlushBuffer(void *pParam)
                                             dx1, dy1, dx2, dy2);
                 }
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_SURFACE_TO_SW_BLIT:
-            {
-                jint sx      = NEXT_INT(b);
-                jint sy      = NEXT_INT(b);
-                jint dx      = NEXT_INT(b);
-                jint dy      = NEXT_INT(b);
-                jint w       = NEXT_INT(b);
-                jint h       = NEXT_INT(b);
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_SURFACE_TO_SW_BLIT: {
+                jint sx = NEXT_INT(b);
+                jint sy = NEXT_INT(b);
+                jint dx = NEXT_INT(b);
+                jint dy = NEXT_INT(b);
+                jint w = NEXT_INT(b);
+                jint h = NEXT_INT(b);
                 jint dsttype = NEXT_INT(b);
-                jlong pSrc   = NEXT_LONG(b);
-                jlong pDst   = NEXT_LONG(b);
+                jlong pSrc = NEXT_LONG(b);
+                jlong pDst = NEXT_LONG(b);
                 res = D3DBlitLoops_SurfaceToSwBlit(env, d3dc,
                                                    pSrc, pDst, dsttype,
                                                    sx, sy, dx, dy, w, h);
-                D3DRQ_MarkLostIfNeeded(res, (D3DSDOps*)pSrc);
+                D3DRQ_MarkLostIfNeeded(res, (D3DSDOps *) pSrc);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_MASK_FILL:
-            {
-                jint x        = NEXT_INT(b);
-                jint y        = NEXT_INT(b);
-                jint w        = NEXT_INT(b);
-                jint h        = NEXT_INT(b);
-                jint maskoff  = NEXT_INT(b);
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_MASK_FILL: {
+                jint x = NEXT_INT(b);
+                jint y = NEXT_INT(b);
+                jint w = NEXT_INT(b);
+                jint h = NEXT_INT(b);
+                jint maskoff = NEXT_INT(b);
                 jint maskscan = NEXT_INT(b);
-                jint masklen  = NEXT_INT(b);
+                jint masklen = NEXT_INT(b);
                 unsigned char *pMask = (masklen > 0) ? b : NULL;
                 res = D3DMaskFill_MaskFill(d3dc, x, y, w, h,
                                            maskoff, maskscan, masklen, pMask);
                 SKIP_BYTES(b, masklen);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_MASK_BLIT:
-            {
-                jint dstx     = NEXT_INT(b);
-                jint dsty     = NEXT_INT(b);
-                jint width    = NEXT_INT(b);
-                jint height   = NEXT_INT(b);
-                jint masklen  = width * height * sizeof(jint);
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_MASK_BLIT: {
+                jint dstx = NEXT_INT(b);
+                jint dsty = NEXT_INT(b);
+                jint width = NEXT_INT(b);
+                jint height = NEXT_INT(b);
+                jint masklen = width * height * sizeof(jint);
                 res = D3DMaskBlit_MaskBlit(env, d3dc,
                                            dstx, dsty, width, height, b);
                 SKIP_BYTES(b, masklen);
             }
-            break;
+                break;
 
-        // state-related ops
-        case sun_java2d_pipe_BufferedOpCodes_SET_RECT_CLIP:
-            {
+                // state-related ops
+            case sun_java2d_pipe_BufferedOpCodes_SET_RECT_CLIP: {
                 jint x1 = NEXT_INT(b);
                 jint y1 = NEXT_INT(b);
                 jint x2 = NEXT_INT(b);
@@ -506,55 +508,47 @@ void D3DRQ_FlushBuffer(void *pParam)
                 CONTINUE_IF_NULL(d3dc);
                 res = d3dc->SetRectClip(x1, y1, x2, y2);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_BEGIN_SHAPE_CLIP:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_BEGIN_SHAPE_CLIP: {
                 CONTINUE_IF_NULL(d3dc);
                 res = d3dc->BeginShapeClip();
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_SET_SHAPE_CLIP_SPANS:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_SET_SHAPE_CLIP_SPANS: {
                 jint count = NEXT_INT(b);
-                res = D3DRenderer_FillSpans(d3dc, count, (jint *)b);
+                res = D3DRenderer_FillSpans(d3dc, count, (jint *) b);
                 SKIP_BYTES(b, count * BYTES_PER_SPAN);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_END_SHAPE_CLIP:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_END_SHAPE_CLIP: {
                 CONTINUE_IF_NULL(d3dc);
                 res = d3dc->EndShapeClip();
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_RESET_CLIP:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_RESET_CLIP: {
                 CONTINUE_IF_NULL(d3dc);
                 res = d3dc->ResetClip();
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_SET_ALPHA_COMPOSITE:
-            {
-                jint rule         = NEXT_INT(b);
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_SET_ALPHA_COMPOSITE: {
+                jint rule = NEXT_INT(b);
                 jfloat extraAlpha = NEXT_FLOAT(b);
-                jint flags        = NEXT_INT(b);
+                jint flags = NEXT_INT(b);
                 CONTINUE_IF_NULL(d3dc);
                 res = d3dc->SetAlphaComposite(rule, extraAlpha, flags);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_SET_XOR_COMPOSITE:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_SET_XOR_COMPOSITE: {
                 jint xorPixel = NEXT_INT(b);
 //                res = d3dc->SetXorComposite(d3dc, xorPixel);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_RESET_COMPOSITE:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_RESET_COMPOSITE: {
                 CONTINUE_IF_NULL(d3dc);
                 res = d3dc->ResetComposite();
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_SET_TRANSFORM:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_SET_TRANSFORM: {
                 jdouble m00 = NEXT_DOUBLE(b);
                 jdouble m10 = NEXT_DOUBLE(b);
                 jdouble m01 = NEXT_DOUBLE(b);
@@ -563,17 +557,15 @@ void D3DRQ_FlushBuffer(void *pParam)
                 jdouble m12 = NEXT_DOUBLE(b);
                 res = d3dc->SetTransform(m00, m10, m01, m11, m02, m12);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_RESET_TRANSFORM:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_RESET_TRANSFORM: {
                 CONTINUE_IF_NULL(d3dc);
                 res = d3dc->ResetTransform();
             }
-            break;
+                break;
 
-        // context-related ops
-        case sun_java2d_pipe_BufferedOpCodes_SET_SURFACES:
-            {
+                // context-related ops
+            case sun_java2d_pipe_BufferedOpCodes_SET_SURFACES: {
                 jlong pSrc = NEXT_LONG(b);
                 jlong pDst = NEXT_LONG(b);
                 D3DContext *oldd3dc = NULL;
@@ -582,11 +574,11 @@ void D3DRQ_FlushBuffer(void *pParam)
                     d3dc = NULL;
                     oldd3dc->UpdateState(STATE_CHANGE);
                 }
-                dstOps = (D3DSDOps *)jlong_to_ptr(pDst);
+                dstOps = (D3DSDOps *) jlong_to_ptr(pDst);
                 res = pMgr->GetD3DContext(dstOps->adapter, &d3dc);
                 if (FAILED(res)) {
                     J2dRlsTraceLn(J2D_TRACE_ERROR,
-                        "D3DRQ_FlushBuffer: failed to get context");
+                                  "D3DRQ_FlushBuffer: failed to get context");
                     D3DRQ_ResetCurrentContextAndDestination();
                     break;
                 }
@@ -599,9 +591,8 @@ void D3DRQ_FlushBuffer(void *pParam)
                 CONTINUE_IF_NULL(dstOps->pResource);
                 res = d3dc->SetRenderTarget(dstOps->pResource->GetSurface());
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_SET_SCRATCH_SURFACE:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_SET_SCRATCH_SURFACE: {
                 jint screen = NEXT_INT(b);
                 jint adapter = pMgr->GetAdapterOrdinalForScreen(screen);
                 D3DContext *oldd3dc = NULL;
@@ -613,42 +604,38 @@ void D3DRQ_FlushBuffer(void *pParam)
                 res = pMgr->GetD3DContext(adapter, &d3dc);
                 if (FAILED(res)) {
                     J2dRlsTraceLn(J2D_TRACE_ERROR,
-                        "D3DRQ_FlushBuffer: failed to get context");
+                                  "D3DRQ_FlushBuffer: failed to get context");
                     D3DRQ_ResetCurrentContextAndDestination();
                 } else if (oldd3dc != d3dc && oldd3dc != NULL) {
                     res = oldd3dc->EndScene();
                 }
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE: {
                 jlong pData = NEXT_LONG(b);
-                D3DSDOps *d3dsdo = (D3DSDOps *)jlong_to_ptr(pData);
+                D3DSDOps *d3dsdo = (D3DSDOps *) jlong_to_ptr(pData);
                 D3DSD_Flush(d3dsdo);
                 if (dstOps == d3dsdo) {
                     dstOps = NULL;
                 }
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_DISPOSE_SURFACE:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_DISPOSE_SURFACE: {
                 jlong pData = NEXT_LONG(b);
-                D3DSDOps *d3dsdo = (D3DSDOps *)jlong_to_ptr(pData);
+                D3DSDOps *d3dsdo = (D3DSDOps *) jlong_to_ptr(pData);
                 D3DSD_Flush(d3dsdo);
                 if (dstOps == d3dsdo) {
                     dstOps = NULL;
                 }
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_DISPOSE_CONFIG:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_DISPOSE_CONFIG: {
                 jlong pConfigInfo = NEXT_LONG(b);
                 CONTINUE_IF_NULL(d3dc);
                 // REMIND: does this need to be implemented for D3D?
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_INVALIDATE_CONTEXT:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_INVALIDATE_CONTEXT: {
                 // flush just in case there are any pending operations in
                 // the hardware pipe
                 if (d3dc != NULL) {
@@ -659,16 +646,14 @@ void D3DRQ_FlushBuffer(void *pParam)
                 // destination surface that are maintained at the native level
                 D3DRQ_ResetCurrentContextAndDestination();
             }
-            break;
+                break;
 
-        case sun_java2d_pipe_BufferedOpCodes_SYNC:
-            {
+            case sun_java2d_pipe_BufferedOpCodes_SYNC: {
                 bSync = TRUE;
             }
-            break;
+                break;
 
-        case sun_java2d_pipe_BufferedOpCodes_RESTORE_DEVICES:
-            {
+            case sun_java2d_pipe_BufferedOpCodes_RESTORE_DEVICES: {
                 J2dTraceLn(J2D_TRACE_INFO, "D3DRQ_FlushBuffer:  RESTORE_DEVICES");
                 if (SUCCEEDED(res = pMgr->HandleLostDevices())) {
                     bLostDevices = FALSE;
@@ -676,86 +661,84 @@ void D3DRQ_FlushBuffer(void *pParam)
                     bLostDevices = TRUE;
                 }
             }
-            break;
-        // multibuffering ops
-        case sun_java2d_pipe_BufferedOpCodes_SWAP_BUFFERS:
-            {
+                break;
+                // multibuffering ops
+            case sun_java2d_pipe_BufferedOpCodes_SWAP_BUFFERS: {
                 jlong sdo = NEXT_LONG(b);
                 jint x1 = NEXT_INT(b);
                 jint y1 = NEXT_INT(b);
                 jint x2 = NEXT_INT(b);
                 jint y2 = NEXT_INT(b);
 
-                res = D3DRQ_SwapBuffers(pMgr, (D3DSDOps *)jlong_to_ptr(sdo),
+                res = D3DRQ_SwapBuffers(pMgr, (D3DSDOps *) jlong_to_ptr(sdo),
                                         x1, y1, x2, y2);
             }
-            break;
+                break;
 
-        // special no-op (mainly used for achieving 8-byte alignment)
-        case sun_java2d_pipe_BufferedOpCodes_NOOP:
-            break;
+                // special no-op (mainly used for achieving 8-byte alignment)
+            case sun_java2d_pipe_BufferedOpCodes_NOOP:
+                break;
 
-        // paint-related ops
-        case sun_java2d_pipe_BufferedOpCodes_RESET_PAINT:
-            {
+                // paint-related ops
+            case sun_java2d_pipe_BufferedOpCodes_RESET_PAINT: {
                 res = D3DPaints_ResetPaint(d3dc);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_SET_COLOR:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_SET_COLOR: {
                 jint pixel = NEXT_INT(b);
                 res = D3DPaints_SetColor(d3dc, pixel);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_SET_GRADIENT_PAINT:
-            {
-                jboolean useMask= NEXT_BOOLEAN(b);
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_SET_GRADIENT_PAINT: {
+                jboolean useMask = NEXT_BOOLEAN(b);
                 jboolean cyclic = NEXT_BOOLEAN(b);
-                jdouble p0      = NEXT_DOUBLE(b);
-                jdouble p1      = NEXT_DOUBLE(b);
-                jdouble p3      = NEXT_DOUBLE(b);
-                jint pixel1     = NEXT_INT(b);
-                jint pixel2     = NEXT_INT(b);
+                jdouble p0 = NEXT_DOUBLE(b);
+                jdouble p1 = NEXT_DOUBLE(b);
+                jdouble p3 = NEXT_DOUBLE(b);
+                jint pixel1 = NEXT_INT(b);
+                jint pixel2 = NEXT_INT(b);
                 res = D3DPaints_SetGradientPaint(d3dc, useMask, cyclic,
                                                  p0, p1, p3,
                                                  pixel1, pixel2);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_SET_LINEAR_GRADIENT_PAINT:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_SET_LINEAR_GRADIENT_PAINT: {
                 jboolean useMask = NEXT_BOOLEAN(b);
-                jboolean linear  = NEXT_BOOLEAN(b);
+                jboolean linear = NEXT_BOOLEAN(b);
                 jint cycleMethod = NEXT_INT(b);
-                jint numStops    = NEXT_INT(b);
-                jfloat p0        = NEXT_FLOAT(b);
-                jfloat p1        = NEXT_FLOAT(b);
-                jfloat p3        = NEXT_FLOAT(b);
+                jint numStops = NEXT_INT(b);
+                jfloat p0 = NEXT_FLOAT(b);
+                jfloat p1 = NEXT_FLOAT(b);
+                jfloat p3 = NEXT_FLOAT(b);
                 void *fractions, *pixels;
-                fractions = b; SKIP_BYTES(b, numStops * sizeof(jfloat));
-                pixels    = b; SKIP_BYTES(b, numStops * sizeof(jint));
+                fractions = b;
+                SKIP_BYTES(b, numStops * sizeof(jfloat));
+                pixels = b;
+                SKIP_BYTES(b, numStops * sizeof(jint));
                 res = D3DPaints_SetLinearGradientPaint(d3dc, dstOps,
-                                                        useMask, linear,
-                                                        cycleMethod, numStops,
-                                                        p0, p1, p3,
-                                                        fractions, pixels);
+                                                       useMask, linear,
+                                                       cycleMethod, numStops,
+                                                       p0, p1, p3,
+                                                       fractions, pixels);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_SET_RADIAL_GRADIENT_PAINT:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_SET_RADIAL_GRADIENT_PAINT: {
                 jboolean useMask = NEXT_BOOLEAN(b);
-                jboolean linear  = NEXT_BOOLEAN(b);
-                jint numStops    = NEXT_INT(b);
+                jboolean linear = NEXT_BOOLEAN(b);
+                jint numStops = NEXT_INT(b);
                 jint cycleMethod = NEXT_INT(b);
-                jfloat m00       = NEXT_FLOAT(b);
-                jfloat m01       = NEXT_FLOAT(b);
-                jfloat m02       = NEXT_FLOAT(b);
-                jfloat m10       = NEXT_FLOAT(b);
-                jfloat m11       = NEXT_FLOAT(b);
-                jfloat m12       = NEXT_FLOAT(b);
-                jfloat focusX    = NEXT_FLOAT(b);
+                jfloat m00 = NEXT_FLOAT(b);
+                jfloat m01 = NEXT_FLOAT(b);
+                jfloat m02 = NEXT_FLOAT(b);
+                jfloat m10 = NEXT_FLOAT(b);
+                jfloat m11 = NEXT_FLOAT(b);
+                jfloat m12 = NEXT_FLOAT(b);
+                jfloat focusX = NEXT_FLOAT(b);
                 void *fractions, *pixels;
-                fractions = b; SKIP_BYTES(b, numStops * sizeof(jfloat));
-                pixels    = b; SKIP_BYTES(b, numStops * sizeof(jint));
+                fractions = b;
+                SKIP_BYTES(b, numStops * sizeof(jfloat));
+                pixels = b;
+                SKIP_BYTES(b, numStops * sizeof(jint));
                 res = D3DPaints_SetRadialGradientPaint(d3dc, dstOps,
                                                        useMask, linear,
                                                        cycleMethod, numStops,
@@ -764,114 +747,86 @@ void D3DRQ_FlushBuffer(void *pParam)
                                                        focusX,
                                                        fractions, pixels);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_SET_TEXTURE_PAINT:
-            {
-                jboolean useMask= NEXT_BOOLEAN(b);
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_SET_TEXTURE_PAINT: {
+                jboolean useMask = NEXT_BOOLEAN(b);
                 jboolean filter = NEXT_BOOLEAN(b);
-                jlong pSrc      = NEXT_LONG(b);
-                jdouble xp0     = NEXT_DOUBLE(b);
-                jdouble xp1     = NEXT_DOUBLE(b);
-                jdouble xp3     = NEXT_DOUBLE(b);
-                jdouble yp0     = NEXT_DOUBLE(b);
-                jdouble yp1     = NEXT_DOUBLE(b);
-                jdouble yp3     = NEXT_DOUBLE(b);
+                jlong pSrc = NEXT_LONG(b);
+                jdouble xp0 = NEXT_DOUBLE(b);
+                jdouble xp1 = NEXT_DOUBLE(b);
+                jdouble xp3 = NEXT_DOUBLE(b);
+                jdouble yp0 = NEXT_DOUBLE(b);
+                jdouble yp1 = NEXT_DOUBLE(b);
+                jdouble yp3 = NEXT_DOUBLE(b);
                 res = D3DPaints_SetTexturePaint(d3dc, useMask, pSrc, filter,
                                                 xp0, xp1, xp3,
                                                 yp0, yp1, yp3);
             }
-            break;
+                break;
 
-        // BufferedImageOp-related ops
-        case sun_java2d_pipe_BufferedOpCodes_ENABLE_CONVOLVE_OP:
-            {
-                jlong pSrc        = NEXT_LONG(b);
+                // BufferedImageOp-related ops
+            case sun_java2d_pipe_BufferedOpCodes_ENABLE_CONVOLVE_OP: {
+                jlong pSrc = NEXT_LONG(b);
                 jboolean edgeZero = NEXT_BOOLEAN(b);
-                jint kernelWidth  = NEXT_INT(b);
+                jint kernelWidth = NEXT_INT(b);
                 jint kernelHeight = NEXT_INT(b);
                 res = D3DBufImgOps_EnableConvolveOp(d3dc, pSrc, edgeZero,
                                                     kernelWidth, kernelHeight, b);
                 SKIP_BYTES(b, kernelWidth * kernelHeight * sizeof(jfloat));
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_DISABLE_CONVOLVE_OP:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_DISABLE_CONVOLVE_OP: {
                 res = D3DBufImgOps_DisableConvolveOp(d3dc);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_ENABLE_RESCALE_OP:
-            {
-                jlong pSrc          = NEXT_LONG(b); // unused
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_ENABLE_RESCALE_OP: {
+                jlong pSrc = NEXT_LONG(b); // unused
                 jboolean nonPremult = NEXT_BOOLEAN(b);
-                jint numFactors     = 4;
+                jint numFactors = 4;
                 unsigned char *scaleFactors = b;
                 unsigned char *offsets = (b + numFactors * sizeof(jfloat));
                 res = D3DBufImgOps_EnableRescaleOp(d3dc, nonPremult,
                                                    scaleFactors, offsets);
                 SKIP_BYTES(b, numFactors * sizeof(jfloat) * 2);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_DISABLE_RESCALE_OP:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_DISABLE_RESCALE_OP: {
                 D3DBufImgOps_DisableRescaleOp(d3dc);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_ENABLE_LOOKUP_OP:
-            {
-                jlong pSrc          = NEXT_LONG(b); // unused
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_ENABLE_LOOKUP_OP: {
+                jlong pSrc = NEXT_LONG(b); // unused
                 jboolean nonPremult = NEXT_BOOLEAN(b);
-                jboolean shortData  = NEXT_BOOLEAN(b);
-                jint numBands       = NEXT_INT(b);
-                jint bandLength     = NEXT_INT(b);
-                jint offset         = NEXT_INT(b);
-                jint bytesPerElem = shortData ? sizeof(jshort):sizeof(jbyte);
+                jboolean shortData = NEXT_BOOLEAN(b);
+                jint numBands = NEXT_INT(b);
+                jint bandLength = NEXT_INT(b);
+                jint offset = NEXT_INT(b);
+                jint bytesPerElem = shortData ? sizeof(jshort) : sizeof(jbyte);
                 void *tableValues = b;
                 res = D3DBufImgOps_EnableLookupOp(d3dc, nonPremult, shortData,
                                                   numBands, bandLength, offset,
                                                   tableValues);
                 SKIP_BYTES(b, numBands * bandLength * bytesPerElem);
             }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_DISABLE_LOOKUP_OP:
-            {
+                break;
+            case sun_java2d_pipe_BufferedOpCodes_DISABLE_LOOKUP_OP: {
                 res = D3DBufImgOps_DisableLookupOp(d3dc);
             }
-            break;
+                break;
 
-        default:
-            J2dRlsTraceLn1(J2D_TRACE_ERROR,
-                "D3DRQ_flushBuffer: invalid opcode=%d", opcode);
-            return;
+            default: J2dRlsTraceLn1(J2D_TRACE_ERROR,
+                                    "D3DRQ_flushBuffer: invalid opcode=%d", opcode);
+                return;
         }
         // we may mark the surface lost repeatedly but that won't do much harm
-        res = D3DRQ_MarkLostIfNeeded(res, dstOps);
-    }
-
-    if (d3dc != NULL) {
-        res = d3dc->EndScene();
-        // REMIND: EndScene is not really enough to flush the
-        // whole d3d pipeline
-
-        // REMIND: there may be an issue with BeginScene/EndScene
-        // for each flushQueue, because of the blits, which flush
-        // the queue
-        if (bSync) {
-            res = d3dc->Sync();
-        }
+//        res = D3DRQ_MarkLostIfNeeded(res, dstOps);
     }
 
     // REMIND: we need to also handle hard errors here as well, and disable
     // particular context if needed
-    D3DRQ_MarkLostIfNeeded(res, dstOps);
+//    D3DRQ_MarkLostIfNeeded(res, dstOps);
+}
 
-    if (!JNU_IsNull(env, pFlush->runnable)) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "  executing runnable");
-        jboolean hasException;
-        JNU_CallMethodByName(env, &hasException, pFlush->runnable, "run", "()V");
-        if (hasException) {
-            J2dTraceLn(J2D_TRACE_ERROR, "  exception occurred while executing runnable");
-        }
-    }
 }
 
 /**
@@ -904,38 +859,4 @@ D3DRQ_ResetCurrentContextAndDestination()
 
     d3dc = NULL;
     dstOps = NULL;
-}
-
-extern "C"
-{
-
-/*
- * Class:     sun_java2d_d3d_D3DRenderQueue
- * Method:    flushBuffer
- * Signature: (JILjava/lang/Runnable;)V
- */
-JNIEXPORT void JNICALL
-Java_sun_java2d_d3d_D3DRenderQueue_flushBuffer
-  (JNIEnv *env, jobject d3drq, jlong buf, jint limit, jobject runnable)
-{
-    FlushBufferStruct bufstr;
-    // just in case we forget to init any new fields
-    ZeroMemory(&bufstr, sizeof(FlushBufferStruct));
-
-    bufstr.buffer = (unsigned char *)jlong_to_ptr(buf);
-    if (bufstr.buffer == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "D3DRenderQueue_flushBuffer: cannot get direct buffer address");
-        return;
-    }
-    bufstr.limit = limit;
-
-    bufstr.runnable = JNU_IsNull(env, runnable) ?
-        NULL : env->NewGlobalRef(runnable);
-    AwtToolkit::GetInstance().InvokeFunction(D3DRQ_FlushBuffer, &bufstr);
-    if (!JNU_IsNull(env, bufstr.runnable)) {
-        env->DeleteGlobalRef(bufstr.runnable);
-    }
-}
-
 }

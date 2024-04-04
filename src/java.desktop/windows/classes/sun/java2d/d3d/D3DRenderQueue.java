@@ -25,9 +25,18 @@
 
 package sun.java2d.d3d;
 
-import sun.java2d.ScreenUpdateManager;
+import sun.awt.AWTThreading;
+import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
+
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 import static sun.java2d.pipe.BufferedOpCodes.*;
 
 /**
@@ -36,9 +45,11 @@ import static sun.java2d.pipe.BufferedOpCodes.*;
 public class D3DRenderQueue extends RenderQueue {
 
     private static D3DRenderQueue theInstance;
-    private static Thread rqThread;
+    private final QueueFlusher flusher;
 
+    @SuppressWarnings("removal")
     private D3DRenderQueue() {
+        flusher = AccessController.doPrivileged((PrivilegedAction<QueueFlusher>) QueueFlusher::new);
     }
 
     /**
@@ -49,12 +60,6 @@ public class D3DRenderQueue extends RenderQueue {
     public static synchronized D3DRenderQueue getInstance() {
         if (theInstance == null) {
             theInstance = new D3DRenderQueue();
-            // no need to lock, no one has reference to this instance yet
-            theInstance.flushAndInvokeNow(new Runnable() {
-                public void run() {
-                    rqThread = Thread.currentThread();
-                }
-            });
         }
         return theInstance;
     }
@@ -70,12 +75,6 @@ public class D3DRenderQueue extends RenderQueue {
      */
     public static void sync() {
         if (theInstance != null) {
-            // need to make sure any/all screen surfaces are presented prior
-            // to completing the sync operation
-            D3DScreenUpdateManager mgr =
-                (D3DScreenUpdateManager)ScreenUpdateManager.getInstance();
-            mgr.runUpdateNow();
-
             theInstance.lock();
             try {
                 theInstance.ensureCapacity(4);
@@ -104,14 +103,6 @@ public class D3DRenderQueue extends RenderQueue {
     }
 
     /**
-     * @return true if current thread is the render queue thread,
-     * false otherwise
-     */
-    public static boolean isRenderQueueThread() {
-        return (Thread.currentThread() == rqThread);
-    }
-
-    /**
      * Disposes the native memory associated with the given native
      * graphics config info pointer on the single queue flushing thread.
      */
@@ -132,28 +123,116 @@ public class D3DRenderQueue extends RenderQueue {
         }
     }
 
+    /**
+     * Returns true if the current thread is the OGL QueueFlusher thread.
+     */
+    public static boolean isQueueFlusherThread() {
+        return (Thread.currentThread() == getInstance().flusher.thread);
+    }
+
     public void flushNow() {
         // assert lock.isHeldByCurrentThread();
-        flushBuffer(null);
+        try {
+            flusher.flushNow();
+        } catch (Exception e) {
+            System.err.println("exception in flushNow:");
+            e.printStackTrace();
+        }
     }
 
     public void flushAndInvokeNow(Runnable r) {
-        // assert lock.isHeldByCurrentThread();
-        flushBuffer(r);
+        try {
+            flusher.flushAndInvokeNow(r);
+        } catch (Exception e) {
+            System.err.println("exception in flushAndInvokeNow:");
+            e.printStackTrace();
+        }
     }
 
-    private native void flushBuffer(long buf, int limit, Runnable task);
+    private native void flushBuffer(long buf, int limit);
 
-    private void flushBuffer(Runnable task) {
+    private void flushBuffer() {
         // assert lock.isHeldByCurrentThread();
         int limit = buf.position();
-        if (limit > 0 || task != null) {
+        if (limit > 0) {
             // process the queue
-            flushBuffer(buf.getAddress(), limit, task);
+            flushBuffer(buf.getAddress(), limit);
         }
         // reset the buffer position
         buf.clear();
         // clear the set of references, since we no longer need them
         refSet.clear();
+    }
+
+    private class QueueFlusher implements Runnable {
+        private static volatile boolean needsFlush;
+        private static volatile boolean flushDone;
+
+        private Lock lock = new ReentrantLock();
+
+        private Runnable task;
+        private Error error;
+        private final Thread thread;
+
+        public QueueFlusher() {
+            String name = "Java2D Queue Flusher";
+            thread = new Thread(ThreadGroupUtils.getRootThreadGroup(),
+                    this, name, 0, false);
+            thread.setDaemon(true);
+            thread.setPriority(Thread.MAX_PRIORITY);
+            thread.start();
+        }
+
+        public void flushNow() {
+            flushNow(null);
+        }
+
+        private void flushNow(Runnable task) {
+            Error err;
+            while (needsFlush) {
+            }
+            if (task != null) {
+                this.task = task;
+            }
+            // wake up the flusher
+            flushDone = false;
+            needsFlush = true;
+
+            err = error;
+            while (!flushDone) {
+            }
+        }
+
+        public void flushAndInvokeNow(Runnable task) {
+            flushNow(task);
+        }
+
+        public synchronized void run() {
+            boolean timedOut = false;
+            while (true) {
+                while (!needsFlush) {
+                }
+                try {
+                    // reset the throwable state
+                    error = null;
+                    // flush the buffer now
+                    flushBuffer();
+                    // if there's a task, invoke that now as well
+                    if (task != null) {
+                        task.run();
+                    }
+                } catch (Error e) {
+                    error = e;
+                } catch (Exception x) {
+                    System.err.println("exception in QueueFlusher:");
+                    x.printStackTrace();
+                } finally {
+                    task = null;
+                    // allow the waiting thread to continue
+                    needsFlush = false;
+                }
+                flushDone = true;
+            }
+        }
     }
 }
