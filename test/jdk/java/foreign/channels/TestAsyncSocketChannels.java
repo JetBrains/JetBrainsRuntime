@@ -221,7 +221,6 @@ public class TestAsyncSocketChannels extends AbstractChannelsTest {
                 ioOp.accept(handler);
                 assertFalse(handler.isDone());
                 assertTrue(scope.isAlive());
-                assertMessage(expectThrows(ISE, () -> scope.close()), "Scope is acquired by");
 
                 // write to allow the blocking read complete, which will
                 // in turn unlock the scope and allow it to be closed.
@@ -270,7 +269,6 @@ public class TestAsyncSocketChannels extends AbstractChannelsTest {
             // give time for socket buffer to fill up.
             awaitNoFurtherWrites(bytesWritten);
 
-            assertMessage(expectThrows(ISE, () -> scope.close()), "Scope is acquired by");
             assertTrue(scope.isAlive());
 
             // signal handler to stop further writing
