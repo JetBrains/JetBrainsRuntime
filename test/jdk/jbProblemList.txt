@@ -132,6 +132,8 @@ java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java 820420
 java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java JBR-94 windows-x64,linux-all
 
 java/awt/event/StressTest/MouseAndKeyEventStressTest.java JBR-6479 generic-all
+java/awt/FileDialog/8003399/bug8003399.java TBD windows-all
+java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java JBR-5178 windows-all
@@ -151,7 +153,6 @@ java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-al
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
-java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
 java/awt/dnd/DragTriggerEventTest.java 8320083,JBR-6548 windows-all,linux-all
 java/awt/dnd/DropActionChangeTest.java JBR-6489 generic-all
 java/awt/dnd/DropTargetEnterExitTest/ExtraDragEnterTest.java 8029680 generic-all
@@ -718,6 +719,7 @@ java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787,8253184 lin
 
 # jdk_beans
 
+java/beans/Beans/TypoInBeanDescription.java JBR-6916 windows-x64
 java/beans/Introspector/8132566/OverridePropertyInfoTest.java   8132565 generic-all
 java/beans/Introspector/8132566/OverrideUserDefPropertyInfoTest.java 8132565 generic-all
 
@@ -973,6 +975,7 @@ javax/swing/JPopupMenu/4760494/bug4760494.java 8253184 windows-all
 javax/swing/JPopupMenu/4870644/bug4870644.java 8194130 macosx-all,linux-all
 javax/swing/JPopupMenu/4966112/bug4966112.java 8253184 windows-all
 javax/swing/JPopupMenu/6415145/bug6415145.java 8197552 windows-all
+javax/swing/JPopupMenu/6495920/bug6495920.java JBR-6928 linux-x64
 javax/swing/JPopupMenu/6515446/bug6515446.java 8197552,JBR-6531 windows-all,linux-all
 javax/swing/JPopupMenu/6544309/bug6544309.java JBR-6532 windows-all,linux-all
 javax/swing/JPopupMenu/6675802/bug6675802.java JBR-5767 windows-all
