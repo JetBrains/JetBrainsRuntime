@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,24 +25,22 @@
  * @summary a jtreg wrapper for gtest tests
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
+ *          java.xml
  * @requires vm.flagless
  * @run main/native GTestWrapper
  */
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
-import java.util.stream.Collectors;
-
-import java.io.File;
-import java.nio.file.Paths;
-import java.nio.file.Path;
-
 import jdk.test.lib.Platform;
 import jdk.test.lib.Utils;
 import jdk.test.lib.process.ProcessTools;
-import jdk.test.lib.process.OutputAnalyzer;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class GTestWrapper {
     public static void main(String[] args) throws Throwable {
@@ -77,13 +75,33 @@ public class GTestWrapper {
             env.put(pathVar, path + File.pathSeparator + ldLibraryPath);
         }
 
-        pb.command(new String[] {
-            execPath.toString(),
-            "-jdk",
-            System.getProperty("test.jdk"),
-            "--gtest_catch_exceptions=0"
-        });
-        ProcessTools.executeCommand(pb).shouldHaveExitValue(0);
+        Path resultFile = Paths.get("test_result.xml");
+        pb.command(execPath.toAbsolutePath().toString(),
+                "-jdk", Utils.TEST_JDK,
+                "--gtest_output=xml:" + resultFile);
+        int exitCode = ProcessTools.executeCommand(pb).getExitValue();
+        if (exitCode != 0) {
+            List<String> failedTests = failedTests(resultFile);
+            String message = "gtest execution failed; exit code = " + exitCode + ".";
+            if (!failedTests.isEmpty()) {
+                message += " the failed tests: " + failedTests;
+            }
+            throw new AssertionError(message);
+        }
+    }
+
+    private static List<String> failedTests(Path xml) {
+        if (!Files.exists(xml)) {
+            System.err.println("WARNING: test result file (" + xml + ") hasn't been found");
+        }
+
+        try {
+            return new GTestResultParser(xml).failedTests();
+        } catch (Throwable t) {
+            System.err.println("WARNING: failed to parse result file (" + xml + ") " + t);
+            t.printStackTrace();
+        }
+        return Collections.emptyList();
     }
 
     private static String getJVMVariantSubDir() {
