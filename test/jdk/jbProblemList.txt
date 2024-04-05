@@ -710,6 +710,7 @@ java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787,8253184 lin
 
 # jdk_beans
 
+java/beans/Beans/TypoInBeanDescription.java JBR-6916 windows-x64
 java/beans/Introspector/8132566/OverridePropertyInfoTest.java   8132565 generic-all
 java/beans/Introspector/8132566/OverrideUserDefPropertyInfoTest.java 8132565 generic-all
 
@@ -1246,8 +1247,7 @@ javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java 8197552 windows-a
 javax/swing/JComboBox/8057893/bug8057893.java JBR-6756 windows-all
 
 javax/swing/JList/4618767/JListSelectedElementTest.java JBR-4955 windows-all
-# to remove
-# javax/swing/JList/6462008/bug6462008.java                                           nobug windows-all
+javax/swing/JList/6462008/bug6462008.java JBR-6773 windows-all
 
 # no printer found
 java/awt/print/PrinterJob/CheckPrivilege.java                                       JBR-893 generic-all
