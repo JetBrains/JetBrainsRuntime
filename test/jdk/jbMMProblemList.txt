@@ -99,13 +99,11 @@ java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5510 linu
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java 8222323,JBR-5510 windows-all,linux-all
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java 8253184,JBR-5510 windows-all,linux-all
-java/awt/Window/TranslucentJAppletTest/TranslucentJAppletTest.java JBR-5510 linux-all
 java/awt/Window/WindowTitleVisibleTest/WindowTitleVisibleTestLinuxGnome.java nobug linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java nobug linux-all
 javax/swing/JButton/8151303/PressedIconTest.java 8266246,JBR-5210,JBR-5510 macosx-aarch64,windows-all,linux-all
 javax/swing/JComponent/7154030/bug7154030.java 8297454,JBR-5510 macosx-all,linux-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-all
-javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510,JBR-6283 windows-all,linux-all,macos-all
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5510 linux-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106,JBR-5510 macosx-aarch64,linux-all
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,linux-all

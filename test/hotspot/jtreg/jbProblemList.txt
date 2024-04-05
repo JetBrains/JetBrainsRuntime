@@ -123,6 +123,7 @@ gc/stress/gclocker/TestGCLockerWithG1.java 8180622 generic-all
 gc/stress/gclocker/TestGCLockerWithShenandoah.java initial_run generic-all
 gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java 8192647 generic-all
 gc/stress/TestStressG1Humongous.java 8286554 windows-x64
+gc/stress/TestStressRSetCoarsening.java#id2 JBR-6706 windows-x64
 
 gc/metaspace/CompressedClassSpaceSizeInJmapHeap.java 8241293 macosx-x64
 gc/metaspace/TestMetaspacePerfCounters.java#id3 initial_run generic-all

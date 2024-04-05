@@ -7,7 +7,6 @@ javax/swing/JInternalFrame/Test6505027.java         nobug macosx-all,linux-all,w
 javax/swing/JPopupMenu/4634626/bug4634626.java      nobug macosx-all,linux-all,windows-all
 javax/swing/JPopupMenu/4966112/bug4966112.java      nobug macosx-all,linux-all,windows-all
 jb/java/awt/Desktop/AboutHandlerTest.java           nobug macosx-all,linux-all,windows-all
-sun/java2d/GdiRendering/InsetClipping.java          nobug macosx-all,linux-all,windows-all
 
 # VoiceOver on MacOS
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-5397 macosx-all
@@ -23,29 +22,31 @@ java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java JBR-4997,JBR-5729,J
 java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-5210,8298247,JBR-5397 windows-all,linux-all,macosx-all
 java/awt/Focus/8073453/SwingFocusTransitionTest.java JBR-5210,JBR-5397 windows-all,macosx-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252,JBR-5178,JBR-6750,JBR-5397 windows-all,linux-all,macosx-all
-java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayoutTraversalTest.java JBR-5397 macosx-all
-java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java JBR-5397 macosx-all
+java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayoutTraversalTest.java JBR-5210,JBR-5397 windows-all,macosx-all
+java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java JBR-5210,JBR-5397 windows-all,macosx-all
 java/awt/hidpi/properties/HiDPIPropertiesUnixTest.java JBR-5397 macosx-all
 java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemonicKeyTypedTest.java JBR-5397 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java JBR-5397 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java JBR-5397,JBR-4074 macosx-all,windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5397,JBR-5505 macosx-all,windows-all
 java/awt/Modal/ModalFocusTransferTests/FocusTransferDWFAppModalTest.java JBR-5397 macosx-all
-java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java JBR-5397 macosx-all
+java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java JBR-5397,JBR-5802 macosx-all,windows-all
+java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-6948 windows-x64
 java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java JBR-5397 macosx-all
-javax/swing/JFileChooser/4524490/bug4524490.java JBR-5397 macosx-all
+
+javax/swing/JFileChooser/4524490/bug4524490.java JBR-5397,JBR-5846 macosx-all,windows-all
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-5397 macosx-all
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880,JBR-5397 windows-all,macosx-all
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949,JBR-5397 linux-all,windows-all,macosx-all
 javax/swing/JLabel/6596966/bug6596966.java 8197552,JBR-5397 windows-all,macosx-all
 javax/swing/JList/4618767/JListSelectedElementTest.java JBR-4955,JBR-5397 windows-all,macosx-all
-javax/swing/JList/6462008/bug6462008.java JBR-5397 macosx-all
-javax/swing/JMenu/4213634/bug4213634.java JBR-5397 macosx-all
-javax/swing/JMenu/4515762/bug4515762.java JBR-5397 macosx-all
-javax/swing/JMenu/4692443/bug4692443.java JBR-5397 macosx-all
+javax/swing/JList/6462008/bug6462008.java JBR-5397,JBR-6773 macosx-all,windows-all
+javax/swing/JMenu/4213634/bug4213634.java 8197552,JBR-5397 windows-all,macosx-all
+javax/swing/JMenu/4515762/bug4515762.java 8197552,JBR-5397 windows-all,macosx-all
+javax/swing/JMenu/4692443/bug4692443.java JBR-5397,JBR-6093 macosx-all,windows-all
 javax/swing/JMenu/6470128/bug6470128.java 8253184,JBR-6307,JBR-5397 windows-all,linux-all,macosx-all
-javax/swing/JMenuBar/4750590/bug4750590.java JBR-5397 macosx-all
-javax/swing/JMenuItem/4171437/bug4171437.java JBR-5397 macosx-all
+javax/swing/JMenuBar/4750590/bug4750590.java JBR-5397,JBR-6094 macosx-all,windows-all
+javax/swing/JMenuItem/4171437/bug4171437.java JBR-5397,JBR-6112 macosx-all,windows-all
 javax/swing/JMenuItem/6249972/bug6249972.java 8197552,JBR-5397 windows-all,macosx-all
 javax/swing/JMenuItem/JMenuItemSetAcceleratorTest.java JBR-5397 macosx-all
 javax/swing/JPopupMenu/4458079/bug4458079.java JBR-5397 macosx-all
@@ -58,7 +59,7 @@ javax/swing/JSplitPane/4615365/JSplitPaneDividerLocationTest.java JBR-5397 macos
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5397 macosx-all
 javax/swing/JTable/8236907/LastVisibleRow.java JBR-5397 macosx-all
 javax/swing/JTextField/4532513/DefaultCaretRequestsFocusTest.java JBR-5397 macosx-all
-javax/swing/JTextField/8036819/bug8036819.java JBR-5397 macosx-all
+javax/swing/JTextField/8036819/bug8036819.java JBR-5397,JBR-6113 macosx-all,windows-all
 javax/swing/JToolTip/bug5047379.java JBR-5397 macosx-all
 javax/swing/JTree/4518432/JTreeNodeCopyPasteTest.java JBR-5397 macosx-all
 javax/swing/JTree/4618767/JTreeSelectedElementTest.java JBR-5397 macosx-all
@@ -67,12 +68,12 @@ javax/swing/plaf/aqua/JInternalFrameBorderTest.java JBR-5397 macosx-all
 javax/swing/plaf/basic/BasicMenuUI/4983388/bug4983388.java 8253184,JBR-6727,JBR-5397 windows-all,linux-all,macosx-all
 javax/swing/plaf/synth/7158712/bug7158712.java JBR-125,8322653,JBR-5397 linux-all,windows-all,macosx-all
 javax/swing/Popup/TaskbarPositionTest.java 8310689,JBR-5397 windows-all,macosx-all
-javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-5397 macosx-all
-sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5397 macosx-all
+javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-5397,JBR-6465 macosx-all,windows-all,linux-aarch64
+sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5397,8212240,JBR-5510,JBR-6285,8253184 macosx-all,linux-all,windows-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java JBR-5397 macosx-all
 sun/java2d/DirectX/OnScreenRenderingResizeTest/OnScreenRenderingResizeTest.java JBR-5397 macosx-all
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5397 macosx-all
-sun/java2d/GdiRendering/InsetClipping.java JBR-5397 macosx-all
+sun/java2d/GdiRendering/InsetClipping.java JBR-5397,7124403,JBR-6513 macosx-all,windows-all,linux-all
 java/awt/Focus/NullActiveWindowOnFocusLost/NullActiveWindowOnFocusLost.java JBR-5397 macosx-all
 java/awt/FullScreen/BufferStrategyExceptionTest/BufferStrategyExceptionTest.java JBR-5397 macosx-all
 java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java 7019055,8266245,JBR-5397 windows-all,linux-all,macosx-aarch64,macosx-all
@@ -100,11 +101,15 @@ javax/swing/JComboBox/8033069/bug8033069ScrollBar.java JBR-5397 macosx-all
 javax/swing/JComboBox/8182031/ComboPopupTest.java 8253184,JBR-5397 windows-all,macosx-all
 javax/swing/JComboBox/JComboBoxPopupMenuEventTest.java JBR-5397 macosx-all
 javax/swing/JComboBox/JComboBoxWithTitledBorderTest.java JBR-5397 macosx-all
-javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510,JBR-5397 windows-all,linux-5.18.2-arch1-1,macosx-all
+javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510,JBR-6283,JBR-5397 windows-all,linux-5.18.2-arch1-1,macosx-all
 javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-5397 macosx-all
 
 # Windows (ZoomText, NVDA, or JAWS is enabled during testing)
+java/awt/Button/DoubleActionEventTest.java JBR-6949 windows-x64
+java/awt/Choice/ChoiceConsumeMouseEvents.java JBR-6951 windows-x64
+java/awt/Choice/ChoiceFreezeTest.java JBR-6952 windows-x64
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857,JBR-5505 macosx-all,windows-all
+java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5510,8310487,JBR-6950 linux-5.18.2-arch1-1,linux-all,windows-x64
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490,JBR-5505 windows-all,linux-all
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,JBR-5915,JBR-5505 macosx-all,linux-all,windows-all
 java/awt/Focus/6378278/InputVerifierTest.java JBR-5505 windows-all
