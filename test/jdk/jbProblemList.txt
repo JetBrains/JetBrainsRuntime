@@ -227,7 +227,7 @@ java/awt/Mixing/AWT_Mixing/JTextFieldOverlapping.java 8158801,JBR-5510 windows-a
 java/awt/Mixing/AWT_Mixing/JToggleButtonInGlassPaneOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JToggleButtonOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Mixing/HWDisappear.java 8253184 windows-all
+java/awt/Mixing/HWDisappear.java 8253184,JBR-6818 windows-all,linux-all
 java/awt/Mixing/MixingInHwPanel.java 8253184 windows-all
 java/awt/Mixing/MixingOnDialog.java 8225777 linux-all
 java/awt/Mixing/NonOpaqueInternalFrame.java 7124549 macosx-all
@@ -277,7 +277,6 @@ java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java 8196018 
 java/awt/ScrollPane/ScrollPanePreferredSize/ScrollPanePreferredSize.java 8253184 windows-all
 java/awt/Toolkit/Headless/HeadlessToolkit.java JBR-6550 macosx-all
 java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java JBR-5765 macosx-all
-java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java JBR-5812 linux-all
 java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java JBR-5812 linux-all
 java/awt/Toolkit/SecurityTest/SecurityTest2.java JBR-5225 windows-all
 java/awt/Toolkit/SunDisplayChangerLeakTest/SunDisplayChangerLeakTest.java JBR-5051 windows-all
@@ -1215,12 +1214,10 @@ java/awt/TextArea/TextAreaTwicePack/TextAreaTwicePack.java 8253184 windows-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java 8253184 windows-all
 java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java JBR-6748 linux-x64
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter.java 8254841 macosx-all
-java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289,JBR-5359 windows-x64,windows-aarch64
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335 linux-all
 java/awt/Focus/RequestOnCompWithNullParent/RequestOnCompWithNullParent1.java JBR-6507 linux-all
 java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java JBR-6052 macosx-all,linux-all
-java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335 linux-all
 java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java 8258103,8253184 linux-all,windows-all
 
 java/util/Properties/PropertiesStoreTest.java 8282023 generic-all
@@ -1406,7 +1403,7 @@ java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5359 windows-aarch64
 java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java 8049405 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JInternalFrameOverlapping.java JBR-5359,JBR-5510 windows-aarch64,linux-5.18.2-arch1-1
-java/awt/Mixing/LWPopupMenu.java JBR-824 linux-all,windows-x64
+java/awt/Mixing/LWPopupMenu.java JBR-824 generic-all
 java/awt/Mixing/OpaqueTest.java JBR-5707 linux-all
 java/awt/Mixing/OverlappingButtons.java JBR-5707 linux-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5359,JBR-5510 windows-all,linux-5.18.2-arch1-1
