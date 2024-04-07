@@ -58,6 +58,7 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradien
 
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-6589 windows-all
 
+sanity/client/SwingSet/src/InternalFrameDemoTest.java 8253184,JBR-6685 windows-all,linux-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001,JBR-6293 linux-all,windows-all
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,windows-all
 
@@ -65,8 +66,10 @@ sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,wi
 # the below tests are not intended to be executed in S2 configurations because
 # the tests contains tags to be launched for various scales including S2
 #
-java/awt/Graphics/XORPaint.java                                                     nobug generic-all
-java/awt/Graphics2D/LargeWindowPaintTest.java                                       nobug generic-all
+java/awt/Graphics/XORPaint.java#id0                                                 nobug generic-all
+java/awt/Graphics2D/LargeWindowPaintTest.java#ZGenerational                         nobug generic-all
+java/awt/Graphics2D/LargeWindowPaintTest.java#ZSinglege                             nobug generic-all
+java/awt/Graphics2D/LargeWindowPaintTest.java#default                               nobug generic-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  nobug generic-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             nobug generic-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java                  nobug generic-all
