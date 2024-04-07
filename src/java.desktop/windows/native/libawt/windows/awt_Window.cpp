@@ -3455,6 +3455,30 @@ void AwtWindow::_SetRoundedCorners(void *param) {
     delete rcs;
 }
 
+void AwtWindow::_SetRoundedCorners(void *param) {
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+
+    RoundedCornersStruct *rcs = (RoundedCornersStruct *)param;
+    jobject self = rcs->window;
+
+    PDATA pData;
+    JNI_CHECK_PEER_GOTO(self, ret);
+    AwtWindow *window = (AwtWindow *)pData;
+
+    DwmSetWindowAttribute(window->GetHWnd(), DWMWA_WINDOW_CORNER_PREFERENCE, &rcs->type, sizeof(DWM_WINDOW_CORNER_PREFERENCE));
+
+    if (rcs->isBorderColor) {
+        jint red = (rcs->borderColor >> 16) & 0xff;
+        jint green = (rcs->borderColor >> 8) & 0xff;
+        jint blue  = (rcs->borderColor >> 0) & 0xff;
+        COLORREF borderColor = RGB(red, green, blue);
+        DwmSetWindowAttribute(window->GetHWnd(), DWMWA_BORDER_COLOR, &borderColor, sizeof(COLORREF));
+    }
+  ret:
+    env->DeleteGlobalRef(self);
+    delete rcs;
+}
+
 void AwtWindow::_UpdateWindow(void* param)
 {
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
