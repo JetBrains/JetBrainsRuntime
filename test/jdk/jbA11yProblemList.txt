@@ -32,14 +32,16 @@ java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java JBR
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5397,JBR-5505 macosx-all,windows-all
 java/awt/Modal/ModalFocusTransferTests/FocusTransferDWFAppModalTest.java JBR-5397 macosx-all
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java JBR-5397 macosx-all
+java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-6948 windows-x64
 java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java JBR-5397 macosx-all
+
 javax/swing/JFileChooser/4524490/bug4524490.java JBR-5397 macosx-all
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-5397 macosx-all
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880,JBR-5397 windows-all,macosx-all
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949,JBR-5397 linux-all,windows-all,macosx-all
 javax/swing/JLabel/6596966/bug6596966.java 8197552,JBR-5397 windows-all,macosx-all
 javax/swing/JList/4618767/JListSelectedElementTest.java JBR-4955,JBR-5397 windows-all,macosx-all
-javax/swing/JList/6462008/bug6462008.java JBR-5397 macosx-all
+javax/swing/JList/6462008/bug6462008.java JBR-5397,JBR-6773 macosx-all,windows-all
 javax/swing/JMenu/4213634/bug4213634.java JBR-5397 macosx-all
 javax/swing/JMenu/4515762/bug4515762.java JBR-5397 macosx-all
 javax/swing/JMenu/4692443/bug4692443.java JBR-5397 macosx-all
@@ -79,7 +81,7 @@ java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java 7019055,8266245,JBR-5
 java/awt/Mouse/EnterExitEvents/DragWindowTest.java JBR-5397 macosx-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java JBR-5397 macosx-all
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java 8253184,JBR-6752,JBR-5397 windows-all,linux-all,macosx-all
-java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java JBR-5397 macosx-all
+java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java 8157147,JBR-5397 linux-all,windows-all,macosx-all
 java/awt/Paint/PaintNativeOnUpdate.java JBR-5397 macosx-all
 java/awt/PopupMenu/PopupMenuLocation.java JBR-5397 macosx-all
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java JBR-5397 macosx-all
@@ -104,7 +106,11 @@ javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-5397 macosx-all
 
 # Windows (ZoomText, NVDA, or JAWS is enabled during testing)
 com/sun/java/accessibility/util/8051626/Bug8051626.java JBR-5505 windows-all
+java/awt/Button/DoubleActionEventTest.java JBR-6949 windows-x64
+java/awt/Choice/ChoiceConsumeMouseEvents.java JBR-6951 windows-x64
+java/awt/Choice/ChoiceFreezeTest.java JBR-6952 windows-x64
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-5505 windows-all
+java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-6950 windows-x64
 java/awt/Debug/DumpOnKey/DumpOnKey.java JBR-5505 windows-all
 java/awt/Dialog/ModalDialogPermission/ModalDialogPermission.java JBR-5505 windows-all
 java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java JBR-5505 windows-all

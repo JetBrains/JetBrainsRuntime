@@ -321,6 +321,7 @@ java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java 8222328 windows-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java 8222328 windows-all,linux-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java 8165218,8222328 windows-all,macosx-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/Translucent.java 8222328 windows-all,linux-all,macosx-all
+java/awt/Window/AlwaysOnTop/AlwaysOnTopEvenOfWindow.java JBR-6946 linux-aarch64
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593,8253184 linux-all,windows-all
 java/awt/Window/Grab/GrabTest.java 8253184,JBR-6775 windows-all,linux-all,macosx-all
 java/awt/Window/GrabSequence/GrabSequence.java 6848409, macosx-all,linux-all
@@ -366,7 +367,7 @@ java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-6284 linux-5.18.2-arch1-1
 java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java JBR-5799 windows-all
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java 6849371 generic-all
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-6284 linux-5.18.2-arch1-1
-java/awt/Choice/GetSizeTest/GetSizeTest.java JBR-837 macosx-all
+java/awt/Choice/GetSizeTest/GetSizeTest.java JBR-837 macosx-all,windows-all
 java/awt/Component/F10TopToplevel/F10TopToplevel.java JBR-5687 linux-all
 java/awt/Component/GetScreenLocTest/GetScreenLocTest.java 4753654 generic-all
 java/awt/Component/SetComponentsBounds/SetComponentsBounds.java JBR-4275 linux-all
@@ -1221,7 +1222,7 @@ java/awt/TextArea/TextAreaTwicePack/TextAreaTwicePack.java 8253184 windows-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java 8253184 windows-all
 java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java JBR-6748 linux-x64
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter.java 8254841 macosx-all
-java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289 windows-x64
+java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289 windows-all
 java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java JBR-6052 macosx-all,linux-all
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335 linux-all
 java/awt/Focus/RequestOnCompWithNullParent/RequestOnCompWithNullParent1.java JBR-6507 linux-all
