@@ -9,6 +9,7 @@ java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
 java/awt/dnd/ImageTransferTest/ImageTransferTest.java  JBR-6442 linux-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-6442 linux-all
 java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
+java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-all
 java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
 java/awt/Focus/6378278/InputVerifierTest.java JBR-5799 windows-all
 java/awt/Focus/6382144/EndlessLoopTest.java JBR-6090 windows-all
@@ -47,8 +48,9 @@ java/awt/Mixing/Validating.java JBR-5908,JBR-6090 linux-all,windows-all
 java/awt/Modal/BlockedMouseInputTest2.java JBR-6090 windows-all
 java/awt/Modal/BlockedMouseInputTest3.java JBR-6134 windows-x64
 java/awt/PopupMenu/PopupMenuLocation.java                                           8238720,8288415,JBR-5071 windows-all,macosx-all,linux-all
+java/awt/ScrollPane/ScrollPaneWindowsTest.java JBR-6944 windows-x64
 java/awt/Window/AlwaysOnTop/AlwaysOnTopEvenOfWindow.java JBR-6686 linux-all
-java/awt/Window/AlwaysOnTop/SyncAlwaysOnTopFieldTest.java JBR-6845 linux-x64
+java/awt/Window/AlwaysOnTop/SyncAlwaysOnTopFieldTest.java JBR-6845 linux-x64,linux-aarch64
 java/awt/Window/HandleWindowDestroyTest/HandleWindowDestroyTest.java JBR-6540 macosx-all
 java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5513 linux-all
@@ -56,6 +58,33 @@ javax/swing/JComponent/7154030/bug7154030.java 8297454,JBR-5510,JBR-6134 macosx-
 javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510,JBR-6283 windows-all,linux-all,macosx-all
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      7124313,JBR-5071 macosx-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6090 linux-all,windows-all
+
+jb/java/awt/Focus/ComplexFocusSequence.java JBR-6856 windows-x64
+jb/java/awt/Focus/FrameAfterPopup.java JBR-6856 windows-x64
+jb/java/awt/Focus/MaximizedCustomDecorationsTest.java JBR-6856 windows-x64
+jb/java/awt/Focus/RobotSmokeTest.java JBR-6856 windows-x64
+jb/java/awt/Focus/SequentialModalDialogsTest.java JBR-6856 windows-x64
+jb/java/awt/Focus/TitleBarClickTest.java JBR-3180,JBR-6856 linux-5.18.2-arch1-1,windows-x64
+jb/java/awt/Focus/TypeaheadRequestFocusTest.java JBR-6856 windows-x64
+jb/java/awt/Focus/TypeaheadSetVisibleTest.java JBR-6856 windows-x64
+jb/java/awt/Focus/TypeaheadToFrontTest.java JBR-6856 windows-x64
+jb/java/awt/Focus/WindowWithoutParentTest.java JBR-6856 windows-x64
+jb/java/awt/Focus/WrongFrameFocusedOnModalDialogClosing.java JBR-6856 windows-x64
+jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984,JBR-6856 macosx-all,windows-x64
+jb/java/awt/Window/SiblingOrderTest.java JBR-6856 windows-x64
+
+jb/java/awt/Focus/FileDialogClosing.java JBR-5799 windows-all
+jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-5799 windows-all
+jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
+jb/java/awt/Focus/PopupFromMenuTest.java JBR-5799 windows-all
+jb/java/awt/Focus/PopupIncomingFocusTest.java                                       JBR-2651 generic-all
+jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
+jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
+jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                          JBR-6090 windows-all
+jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
+jb/javax/swing/JPopupMenu/JPopupMenuOutOfWindowTest.java JBR-6682,JBR-6945 linux-all,windows-x64
+
+jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
 
 sanity/client/SwingSet/src/InternalFrameDemoTest.java 8253184,JBR-6685 windows-all,linux-all
 sun/java2d/GdiRendering/ClipShapeRendering.java                                     JBR-5204 linux-all,windows-all
@@ -90,33 +119,3 @@ jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java                    
 jb/java/awt/CustomTitleBar/WindowResizeTest.java                                    nobug generic-all
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java                             nobug generic-all
 jb/java/awt/CustomTitleBar/WindowVisibilityTest.java                                nobug generic-all
-
-java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-all
-
-jb/java/awt/Focus/ComplexFocusSequence.java JBR-6856 windows-x64
-jb/java/awt/Focus/FrameAfterPopup.java JBR-6856 windows-x64
-jb/java/awt/Focus/MaximizedCustomDecorationsTest.java JBR-6856 windows-x64
-jb/java/awt/Focus/RobotSmokeTest.java JBR-6856 windows-x64
-jb/java/awt/Focus/SequentialModalDialogsTest.java JBR-6856 windows-x64
-jb/java/awt/Focus/TitleBarClickTest.java JBR-3180,JBR-6856 linux-5.18.2-arch1-1,windows-x64
-jb/java/awt/Focus/TypeaheadRequestFocusTest.java JBR-6856 windows-x64
-jb/java/awt/Focus/TypeaheadSetVisibleTest.java JBR-6856 windows-x64
-jb/java/awt/Focus/TypeaheadToFrontTest.java JBR-6856 windows-x64
-jb/java/awt/Focus/WindowWithoutParentTest.java JBR-6856 windows-x64
-jb/java/awt/Focus/WrongFrameFocusedOnModalDialogClosing.java JBR-6856 windows-x64
-jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984,JBR-6856 macosx-all,windows-x64
-jb/java/awt/Window/SiblingOrderTest.java JBR-6856 windows-x64
-
-jb/java/awt/Focus/FileDialogClosing.java JBR-5799 windows-all
-jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-5799 windows-all
-jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
-jb/java/awt/Focus/PopupFromMenuTest.java JBR-5799 windows-all
-jb/java/awt/Focus/PopupIncomingFocusTest.java                                       JBR-2651 generic-all
-jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
-jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
-jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                          JBR-6090 windows-all
-java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java           JBR-6089 windows-all
-java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java       JBR-6089 windows-all
-java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java          JBR-5513 linux-all
-jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
-jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
