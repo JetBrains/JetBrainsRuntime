@@ -38,19 +38,17 @@ MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLGC_DestroyMTLGraphicsConfig");
     JNI_COCOA_ENTER(env);
+    __block MTLGraphicsConfigInfo *mtlinfo = (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
+    if (mtlinfo == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR,
+                      "MTLGC_DestroyMTLGraphicsConfig: info is null");
+        return;
+    }
+    __block MTLContext *mtlc = (MTLContext*)mtlinfo->context;
+    mtlinfo->context = nil;
     [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
-        MTLGraphicsConfigInfo *mtlinfo =
-            (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
-        if (mtlinfo == NULL) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR,
-                          "MTLGC_DestroyMTLGraphicsConfig: info is null");
-            return;
-        }
-
-        MTLContext *mtlc = (MTLContext*)mtlinfo->context;
         if (mtlc != NULL) {
-            [mtlinfo->context release];
-            mtlinfo->context = nil;
+            [mtlc release];
         }
         free(mtlinfo);
     }];
