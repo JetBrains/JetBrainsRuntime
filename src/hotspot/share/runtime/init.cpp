@@ -37,6 +37,7 @@
 #include "prims/jvmtiExport.hpp"
 #include "prims/methodHandles.hpp"
 #include "runtime/atomicAccess.hpp"
+#include "runtime/arguments.hpp"
 #include "runtime/continuation.hpp"
 #include "runtime/flags/jvmFlag.hpp"
 #include "runtime/globals.hpp"
@@ -139,6 +140,9 @@ jint init_globals() {
   if (status != JNI_OK) {
     return status;
   }
+
+  Arguments::post_init_system_properties();
+
 #ifdef LEAK_SANITIZER
   {
     // Register the Java heap with LSan.
