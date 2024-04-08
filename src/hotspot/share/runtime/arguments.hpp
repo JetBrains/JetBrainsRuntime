@@ -446,6 +446,8 @@ class Arguments : AllStatic {
   // System properties
   static void init_system_properties();
 
+  static void post_init_system_properties();
+
   // Update/Initialize System properties after JDK version number is known
   static void init_version_specific_system_properties();
 
