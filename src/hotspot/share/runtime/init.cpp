@@ -34,6 +34,7 @@
 #include "prims/downcallLinker.hpp"
 #include "prims/jvmtiExport.hpp"
 #include "prims/methodHandles.hpp"
+#include "runtime/arguments.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/continuation.hpp"
 #include "runtime/flags/jvmFlag.hpp"
@@ -133,6 +134,8 @@ jint init_globals() {
                                   // initial_stubs_init and metaspace_init.
   if (status != JNI_OK)
     return status;
+
+  Arguments::post_init_system_properties();
 
 #ifdef LEAK_SANITIZER
   {
