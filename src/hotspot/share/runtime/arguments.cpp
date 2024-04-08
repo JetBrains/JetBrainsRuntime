@@ -431,6 +431,30 @@ void Arguments::init_system_properties() {
   os::init_system_properties_values();
 }
 
+static const char * get_virtualization_type() {
+    VirtualizationType vrt = VM_Version::get_detected_virtualization();
+    if (vrt == XenHVM || vrt == XenPVHVM) {
+        return "Xen";
+    } else if (vrt == KVM) {
+        return "KVM";
+    } else if (vrt == VMWare) {
+        return "VMWare";
+    } else if (vrt == HyperV) {
+        return "HyperV";
+    } else if (vrt == HyperVRole) {
+        // Enables users to create and manage virtual machines (VMs) on a physical host machine,
+        // but doesn't mean we are running in virtual.
+        return "none";
+    }
+
+    return "none";
+}
+
+void Arguments::post_init_system_properties() {
+    const char *virtualization_type = get_virtualization_type();
+    PropertyList_add(&_system_properties, new SystemProperty("intellij.os.virtualization", virtualization_type, false));
+}
+
 // Update/Initialize System properties after JDK version number is known
 void Arguments::init_version_specific_system_properties() {
   enum { bufsz = 16 };
