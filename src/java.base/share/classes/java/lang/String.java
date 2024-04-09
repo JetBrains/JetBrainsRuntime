@@ -563,9 +563,9 @@ public final class String
                     }
                 }
                 if (dp == 0 || dst == null) {
-                    dst = new byte[length << 1];
+                    dst = StringUTF16.newBytesFor(length);
                 } else {
-                    byte[] buf = new byte[length << 1];
+                    byte[] buf = StringUTF16.newBytesFor(length);
                     StringLatin1.inflate(dst, 0, buf, 0, dp);
                     dst = buf;
                 }
@@ -589,7 +589,7 @@ public final class String
                 this.value = Arrays.copyOfRange(bytes, offset, offset + length);
                 this.coder = LATIN1;
             } else {
-                byte[] dst = new byte[length << 1];
+                byte[] dst = StringUTF16.newBytesFor(length);
                 int dp = 0;
                 while (dp < length) {
                     int b = bytes[offset++];
@@ -723,9 +723,9 @@ public final class String
                 }
             }
             if (dp == 0 || dst == null) {
-                dst = new byte[length << 1];
+                dst = StringUTF16.newBytesFor(length);
             } else {
-                byte[] buf = new byte[length << 1];
+                byte[] buf = StringUTF16.newBytesFor(length);
                 StringLatin1.inflate(dst, 0, buf, 0, dp);
                 dst = buf;
             }
@@ -1267,7 +1267,7 @@ public final class String
             return Arrays.copyOf(val, val.length);
 
         int dp = 0;
-        byte[] dst = new byte[val.length << 1];
+        byte[] dst = StringUTF16.newBytesFor(val.length);
         for (byte c : val) {
             if (c < 0) {
                 dst[dp++] = (byte) (0xc0 | ((c & 0xff) >> 6));
