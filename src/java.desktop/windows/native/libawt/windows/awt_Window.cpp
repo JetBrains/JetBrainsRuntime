@@ -2861,8 +2861,9 @@ void AwtWindow::_SetRoundedCorners(void *param) {
     jobject self = rcs->window;
 
     PDATA pData;
+    AwtWindow *window;
     JNI_CHECK_PEER_GOTO(self, ret);
-    AwtWindow *window = (AwtWindow *)pData;
+    window = (AwtWindow *)pData;
 
     DwmSetWindowAttribute(window->GetHWnd(), DWMWA_WINDOW_CORNER_PREFERENCE, &rcs->type, sizeof(DWM_WINDOW_CORNER_PREFERENCE));
 
