@@ -228,16 +228,20 @@ namespace CustomTitleBarControlsSupport {
             return availability == Availability::AVAILABLE;
         }
 
-        // Init GDI+
         ULONG_PTR startupToken;
         GdiplusStartupInput input;
+        JNIEnv *env;
+        bool win11OrNewer;
+        jclass jcWindow;
+
+        // Init GDI+
         if (GdiplusStartup(&startupToken, &input, nullptr) != Ok) {
             goto fail;
         }
 
         // Choose Win10/11 style
-        JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
-        bool win11OrNewer = (bool) JNU_GetStaticFieldByName(env, nullptr, "sun/awt/windows/WFramePeer", "WIN11_OR_NEWER", "Z").z;
+        env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
+        win11OrNewer = (bool) JNU_GetStaticFieldByName(env, nullptr, "sun/awt/windows/WFramePeer", "WIN11_OR_NEWER", "Z").z;
         if (win11OrNewer) {
             PaintIcon = PaintIconWin11;
             DEFAULT_COLORS = DEFAULT_COLORS_WIN11;
@@ -247,7 +251,7 @@ namespace CustomTitleBarControlsSupport {
         }
 
         // Find internalCustomTitleBarUpdateInsets java method
-        jclass jcWindow = env->FindClass("java/awt/Window");
+        jcWindow = env->FindClass("java/awt/Window");
         if (!jcWindow) goto fail;
         jmUpdateInsets = env->GetMethodID(jcWindow, "internalCustomTitleBarUpdateInsets", "(FF)V");
         env->DeleteLocalRef(jcWindow);
