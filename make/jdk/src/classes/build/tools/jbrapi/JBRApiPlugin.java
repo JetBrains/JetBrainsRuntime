@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.channels.OverlappingFileLockException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.locks.LockSupport;
@@ -399,6 +400,12 @@ public class JBRApiPlugin implements Plugin {
     @Override
     public void init(JavacTask jt, String... args) {
         Path output = Path.of(args[0]);
+        String implVersion;
+        try {
+            implVersion = Files.readString(Path.of(args[1])).strip();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         elements = jt.getElements();
         trees = Trees.instance(jt);
         types = jt.getTypes();
@@ -429,6 +436,7 @@ public class JBRApiPlugin implements Plugin {
                         r.read(file);
                         var unresolvedErrors = r.addBindings();
                         file.setLength(0);
+                        file.writeBytes("VERSION " + implVersion + "\n");
                         r.write(file);
                         if (!unresolvedErrors.isEmpty()) {
                             throw new RuntimeException(String.join("\n", unresolvedErrors));

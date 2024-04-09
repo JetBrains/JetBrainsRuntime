@@ -112,6 +112,14 @@ public class JBRApi {
     }
 
     /**
+     * @return JBR API version supported by current implementation.
+     */
+    @Provides("JBR.ServiceApi")
+    public static String getImplVersion() {
+        return proxyRepository.getVersion();
+    }
+
+    /**
      * @param extension extension name
      * @return true if all methods belonging to given extension are supported
      * @apiNote this method is a part of internal {@link com.jetbrains.JBR.ServiceApi}

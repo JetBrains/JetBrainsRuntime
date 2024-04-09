@@ -61,6 +61,10 @@ class ProxyRepository {
         registry = new Registry(registryStream, serviceAnnotation, providedAnnotation, providesAnnotation);
     }
 
+    String getVersion() {
+        return registry.version;
+    }
+
     synchronized Proxy getProxy(Class<?> clazz, Mapping[] specialization) {
         Key key = new Key(clazz, specialization);
         Proxy p = proxies.get(key);
@@ -232,6 +236,7 @@ class ProxyRepository {
         private final Module annotationsModule;
         private ClassLoader classLoader;
         private final Map<String, Entry> entries = new HashMap<>();
+        private final String version;
 
         private Registry(InputStream inputStream,
                          Class<? extends Annotation> serviceAnnotation,
@@ -242,6 +247,7 @@ class ProxyRepository {
             this.providesAnnotation = providesAnnotation;
             annotationsModule = serviceAnnotation == null ? null : serviceAnnotation.getModule();
             classLoader = annotationsModule != null ? annotationsModule.getClassLoader() : ClassLoaders.appClassLoader();
+            String version = null;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                 String s;
                 while ((s = reader.readLine()) != null) {
@@ -285,6 +291,7 @@ class ProxyRepository {
                             }
                             if (tokens.length > 6 && tokens[6].equals("INTERNAL")) entry.flags |= Proxy.INTERNAL;
                         }
+                        case "VERSION" -> version = tokens[1];
                     }
                 }
             } catch (IOException e) {
@@ -294,6 +301,7 @@ class ProxyRepository {
                 entries.clear();
                 throw e;
             }
+            this.version = version;
         }
 
         private synchronized void updateClassLoader(ClassLoader newLoader) {
