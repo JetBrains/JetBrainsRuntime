@@ -1348,9 +1348,10 @@ void _UpdateIcon(void* p) {
 
     jobject self = reinterpret_cast<jobject>(p);
     PDATA pData;
+    AwtFrame* frame;
     JNI_CHECK_PEER_GOTO(self, ret);
 
-    AwtFrame* frame = (AwtFrame*)pData;
+    frame = (AwtFrame*)pData;
     frame->DoUpdateIcon();
 ret:
     env->DeleteGlobalRef(self);
@@ -2064,13 +2065,16 @@ void AwtFrame::_UpdateCustomTitleBar(void* p) {
 
     jobject self = reinterpret_cast<jobject>(p);
     PDATA pData;
+    AwtFrame* frame;
+    BOOL old;
+    jobject target;
     JNI_CHECK_PEER_GOTO(self, ret);
 
-    AwtFrame* frame = (AwtFrame*)pData;
-    BOOL old = frame->HasCustomTitleBar();
+    frame = (AwtFrame*)pData;
+    old = frame->HasCustomTitleBar();
     frame->customTitleBarHeight = -1.0f; // Reset to uninitialized
     if (frame->HasCustomTitleBar() != old) frame->RedrawNonClient();
-    jobject target = frame->GetTarget(env);
+    target = frame->GetTarget(env);
     CustomTitleBarControls::Refresh(frame->customTitleBarControls, frame->GetHWnd(), target, env);
     env->DeleteLocalRef(target);
     ret:
