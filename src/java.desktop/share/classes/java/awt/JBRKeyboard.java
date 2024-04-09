@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright 2024 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,28 +23,21 @@
  * questions.
  */
 
-#ifndef __AWTEVENT_H
-#define __AWTEVENT_H
+package java.awt;
 
-#import <Carbon/Carbon.h>
+import sun.awt.AWTAccessor;
 
-jlong UTC(NSEvent *event);
-void DeliverJavaKeyEvent(JNIEnv *env, NSEvent *event, jobject peer);
-void DeliverJavaMouseEvent(JNIEnv *env, NSEvent *event, jobject peer);
-void SendAdditionalJavaEvents(JNIEnv *env, NSEvent *nsEvent, jobject peer);
-jint GetJavaMouseModifiers(NSUInteger modifierFlags);
-jint NsKeyModifiersToJavaModifiers(NSUInteger nsFlags, BOOL isExtMods);
-NSUInteger JavaModifiersToNsKeyModifiers(jint javaModifiers, BOOL isExtMods);
-unichar NsCharToJavaChar(unichar nsChar, NSUInteger modifiers, BOOL spaceKeyTyped);
+import java.awt.event.KeyEvent;
+import java.util.Map;
 
-struct KeyCodeTranslationResult {
-    unichar character;
-    BOOL isSuccess;
-    BOOL isDead;
-    BOOL isTyped;
-};
+/**
+ * Implementation for platform-agnostic parts of JBR keyboard API
+ */
+class JBRKeyboard {
+    public JBRKeyboard() {}
 
-TISInputSourceRef GetCurrentUnderlyingLayout(BOOL useNationalLayouts);
-struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef layout, unsigned short keyCode, unsigned mods);
-
-#endif /* __AWTEVENT_H */
+    public Object getKeyEventProperty(KeyEvent event, String name) {
+        Map<String, Object> properties = AWTAccessor.getKeyEventAccessor().getJBRExtraProperties(event);
+        return (properties == null) ? null : properties.get(name);
+    }
+}

@@ -67,6 +67,6 @@ public class JBRApiModule {
                 .service("com.jetbrains.WindowMove", "java.awt.Window$WindowMoveService")
                 .service("com.jetbrains.FontMetricsAccessor", "sun.font.FontDesignMetrics$Accessor")
                 .clientProxy("sun.font.FontDesignMetrics$Overrider", "com.jetbrains.FontMetricsAccessor$Overrider")
-        ;
+                .service("com.jetbrains.Keyboard", "java.awt.JBRKeyboard");
     }
 }
