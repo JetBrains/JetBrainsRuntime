@@ -144,9 +144,9 @@ class SmartHolder : public SmartHolderBase<T> {
 template <typename T>
 class SmartHolder<T[]> : public SmartHolderBase<T> {
     virtual void Clean() {
-        if (m_pointer) {
-            delete [] m_pointer;
-            m_pointer = NULL;
+        if (this->m_pointer) {
+            delete [] this->m_pointer;
+            this->m_pointer = NULL;
         }
     }
 };
@@ -655,9 +655,9 @@ public:
 
                 LPCWSTR buttonLabel = nullptr;
                 if (isFolder) {
-                    buttonLabel = data->selectFolderButtonText ? data->selectFolderButtonText : L"Select Folder";
+                    buttonLabel = data->selectFolderButtonText ? (WCHAR*) data->selectFolderButtonText : L"Select Folder";
                 } else {
-                    buttonLabel = data->openButtonText ? data->openButtonText : L"Open";
+                    buttonLabel = data->openButtonText ? (WCHAR*) data->openButtonText : L"Open";
                 }
                 OLE_HRT(fileDialog->SetOkButtonLabel(buttonLabel));
 
