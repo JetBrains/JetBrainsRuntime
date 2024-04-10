@@ -114,6 +114,7 @@
 # jdk_awt
 
 java/awt/Button/DisabledButtonPress.java JBR-5799 windows-aarch64
+java/awt/Desktop/8064934/bug8064934.java JBR-5764,JBR-5799 windows-all
 java/awt/Debug/DumpOnKey/DumpOnKey.java JBR-5225 windows-all
 java/awt/Desktop/8064934/bug8064934.java JBR-5764,JBR-5799 windows-all
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,JBR-5915 macosx-all,linux-all
@@ -673,6 +674,7 @@ java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787,8253184 lin
 
 # jdk_beans
 
+java/beans/Beans/TypoInBeanDescription.java JBR-6916 windows-x64
 java/beans/Introspector/8132566/OverridePropertyInfoTest.java   8132565 generic-all
 java/beans/Introspector/8132566/OverrideUserDefPropertyInfoTest.java 8132565 generic-all
 
@@ -895,10 +897,14 @@ javax/swing/JButton/8151303/PressedIconTest.java JBR-5210,JBR-5510 windows-all,l
 javax/swing/JButton/PressedButtonRightClickTest.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6524757.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6827032.java JBR-5210 windows-all
+javax/swing/JComboBox/4743225/bug4743225.java JBR-5210 windows-all
+javax/swing/JComboBox/6236162/bug6236162.java JBR-5210 windows-all
 javax/swing/JComboBox/6406264/bug6406264.java JBR-5210,JBR-5510 windows-all,linux-5.18.2-arch1-1
+javax/swing/JComboBox/6607130/bug6607130.java JBR-5799 windows-x64
 javax/swing/JComboBox/bug4890345.java JBR-5799 windows-all
 javax/swing/JComboBox/bug4924758.java JBR-5846 windows-all
 javax/swing/JComboBox/bug5029504.java JBR-5799 windows-all
+javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java JBR-5210 windows-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949 linux-all,windows-all
@@ -920,6 +926,7 @@ javax/swing/JMenuItem/6249972/bug6249972.java 8197552 windows-all
 javax/swing/JOptionPane/7138665/bug7138665.java JBR-5799 windows-all
 javax/swing/JOptionPane/8081019/bug8081019.java JBR-5767 windows-all
 javax/swing/JPopupMenu/6415145/bug6415145.java 8197552 windows-all
+javax/swing/JPopupMenu/6495920/bug6495920.java JBR-6928 linux-x64
 javax/swing/JPopupMenu/6515446/bug6515446.java 8197552,JBR-6531 windows-all,linux-all
 javax/swing/JPopupMenu/6544309/bug6544309.java JBR-6532 windows-all,linux-all
 javax/swing/JRadioButton/8033699/bug8033699.java 8197552 windows-all
@@ -954,7 +961,6 @@ javax/swing/JFileChooser/4524490/bug4524490.java JBR-5846 windows-all
 javax/swing/JFileChooser/8021253/bug8021253.java JBR-107 windows-all
 javax/swing/JFileChooser/8041694/bug8041694.java JBR-5210 windows-all
 javax/swing/JFileChooser/6396844/TwentyThousandTest.java 8198003 generic-all
-javax/swing/JFileChooser/6520101/bug6520101.java JBR-5703 linux-5.8.0-1032-raspi
 javax/swing/JFileChooser/6570445/bug6570445.java JBR-5767 windows-all
 javax/swing/JFileChooser/6738668/bug6738668.java JBR-5767 windows-all
 javax/swing/JFileChooser/7036025/bug7036025.java JBR-5767 windows-all
@@ -980,7 +986,10 @@ javax/swing/text/AbstractDocument/8190763/TestCCEOnEditEvent.java JBR-5799 windo
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/text/TableView/TableViewLayoutTest.java 8194936,JBR-4316,JBR-5510 linux-5.18.2-arch1-1,linux-all
 javax/swing/JFileChooser/6798062/bug6798062.java 8146446 windows-all
+javax/swing/JComboBox/4515752/DefaultButtonTest.java JBR-5799 windows-all
 javax/swing/JComboBox/4523758/bug4523758.java 8253184 windows-all
+javax/swing/JComboBox/8032878/bug8032878.java JBR-5210 windows-all
+javax/swing/JComboBox/8057893/bug8057893.java JBR-6751 windows-all
 javax/swing/JComboBox/8072767/bug8072767.java JBR-5540 windows-all
 javax/swing/JComboBox/8182031/ComboPopupTest.java 8253184 windows-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java JBR-788 windows-all,linux-all
@@ -1003,6 +1012,7 @@ javax/swing/JRootPane/4670486/bug4670486.java JBR-6631 windows-all
 javax/swing/JRootPane/DefaultButtonTest.java JBR-5739 windows-all,linux-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java JBR-5210 windows-all
 javax/swing/text/html/StyleSheet/bug4936917.java JBR-899,JBR-5510 windows-all,linux-5.18.2-arch1-1
+javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id0 JBR-5799 windows-all
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-5779 linux-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8253184,JBR-5510,JBR-803 windows-all,linux-5.18.2-arch1-1,linux-all
