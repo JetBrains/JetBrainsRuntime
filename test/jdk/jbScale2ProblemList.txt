@@ -36,8 +36,14 @@ java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720,8
 java/awt/Graphics/LineClipTest.java                                                 JBR-5071 linux-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071 linux-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050,JBR-5071 windows-all,macosx-all,linux-all
-java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5510 macosx-all,linux-5.18.2-arch1-1
-java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5510 linux-5.18.2-arch1-1
+java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5510,JBR-6090 macosx-all,linux-5.18.2-arch1-1,windows-all
+java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5510,JBR-6090 linux-5.18.2-arch1-1,windows-all
+java/awt/Mixing/LWPopupMenu.java JBR-824,JBR-6134 generic-all,windows-x64
+java/awt/Mixing/MixingOnDialog.java JBR-6134,JBR-6090 windows-x64,windows-all
+java/awt/Mixing/MixingOnShrinkingHWButton.java JBR-6134 windows-x64
+java/awt/Mixing/OpaqueTest.java JBR-5707,JBR-6090 linux-all,windows-all
+java/awt/Mixing/OverlappingButtons.java JBR-5707,JBR-6090 linux-all,windows-all
+java/awt/Mixing/Validating.java JBR-6090 windows-all
 java/awt/Modal/BlockedMouseInputTest2.java JBR-6090 windows-all
 java/awt/PopupMenu/PopupMenuLocation.java                                           8238720,JBR-5071 windows-all,macosx-all,linux-all
 java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
@@ -51,8 +57,10 @@ sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001,JBR-6293 linux-all,windo
 # the below tests are not intended to be executed in S2 configurations because
 # the tests contains tags to be launched for various scales including S2
 #
-java/awt/Graphics/XORPaint.java                                                     nobug generic-all
-java/awt/Graphics2D/LargeWindowPaintTest.java                                       nobug generic-all
+java/awt/Graphics/XORPaint.java#id0                                                 nobug generic-all
+java/awt/Graphics2D/LargeWindowPaintTest.java#ZGenerational                         nobug generic-all
+java/awt/Graphics2D/LargeWindowPaintTest.java#ZSinglege                             nobug generic-all
+java/awt/Graphics2D/LargeWindowPaintTest.java#default                               nobug generic-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  nobug generic-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             nobug generic-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java                  nobug generic-all
@@ -88,6 +96,8 @@ jb/java/awt/Focus/ModalDialogOverSiblingTest.java                               
 jb/java/awt/Focus/PopupFromMenuTest.java JBR-5799 windows-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java                                       JBR-2651 generic-all
 jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
+jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
 jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
+jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                          JBR-6090 windows-all
 jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
 jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
