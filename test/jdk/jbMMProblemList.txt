@@ -107,12 +107,10 @@ java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5510 linu
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-5510 linux-all
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java 8253184,JBR-5510 windows-all,linux-all
-java/awt/Window/TranslucentJAppletTest/TranslucentJAppletTest.java JBR-5510 linux-all
 java/awt/Window/WindowTitleVisibleTest/WindowTitleVisibleTestLinuxGnome.java NOBUG linux-all
 javax/swing/JButton/8151303/PressedIconTest.java JBR-5210,JBR-5510 windows-all,linux-all
 javax/swing/JComponent/7154030/bug7154030.java JBR-5510 linux-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-all
-javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5510 linux-all
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-5510,JBR-6160 linux-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java JBR-5510 linux-all
