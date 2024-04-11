@@ -1,0 +1,32 @@
+#############################################################################
+
+# :hotspot_runtime
+
+runtime/8176717/TestInheritFD.java JBR-6974 linux-all
+
+#############################################################################
+
+# :hotspot_serviceability
+
+serviceability/dcmd/framework/HelpTest.java JBR-6974 linux-all
+serviceability/dcmd/framework/InvalidCommandTest.java JBR-6974 linux-all
+serviceability/dcmd/framework/VMVersionTest.java JBR-6974 linux-all
+serviceability/tmtools/jstat/GcCapacityTest.java JBR-6974 linux-all
+serviceability/tmtools/jstat/GcCauseTest01.java JBR-6974 linux-all
+serviceability/tmtools/jstat/GcCauseTest02.java JBR-6974 linux-all
+serviceability/tmtools/jstat/GcCauseTest03.java JBR-6974 linux-all
+serviceability/tmtools/jstat/GcNewTest.java JBR-6974 linux-all
+serviceability/tmtools/jstat/GcTest01.java JBR-6974 linux-all
+serviceability/tmtools/jstat/GcTest02.java JBR-6974 linux-all
+
+#############################################################################
+
+# :vmTestbase_*
+
+#############################################################################
+
+vmTestbase/nsk/aod/AttachProvider/AttachProvider01/AttachProvider01.java JBR-6970 linux-all
+vmTestbase/nsk/aod/VirtualMachine/VirtualMachine05/VirtualMachine05.java JBR-6970 linux-all
+vmTestbase/nsk/aod/VirtualMachineDescriptor/VirtualMachineDescriptor01/VirtualMachineDescriptor01.java JBR-6970 linux-all
+
+
