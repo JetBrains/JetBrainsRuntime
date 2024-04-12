@@ -42,7 +42,20 @@ public class NPECheckRequests {
     BrokenComponent foo;
 
     public void init() {
-        frame = new JFrame();
+        frame = new JFrame() {
+            @Override
+            public void validate() {
+                try {
+                    super.validate();
+                } catch (RuntimeException e) {
+                    if (foo.broken) {
+                        // expected, ignore
+                    } else {
+                        throw e;
+                    }
+                }
+            }
+        };
         p = new JPanel();
         BoxLayout boxLayout = new BoxLayout(p, BoxLayout.X_AXIS);
         p.setLayout(boxLayout);
