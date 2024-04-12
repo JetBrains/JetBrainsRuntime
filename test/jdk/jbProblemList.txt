@@ -114,7 +114,6 @@
 # jdk_awt
 
 java/awt/Button/DisabledButtonPress.java JBR-5799 windows-aarch64
-java/awt/Desktop/8064934/bug8064934.java JBR-5764,JBR-5799 windows-all
 java/awt/Debug/DumpOnKey/DumpOnKey.java JBR-5225 windows-all
 java/awt/Desktop/8064934/bug8064934.java JBR-5764,JBR-5799 windows-all
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,JBR-5915 macosx-all,linux-all
@@ -951,9 +950,6 @@ javax/swing/JButton/4659800/EnterKeyActivatesButton.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6541987.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test7194184.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test8051548.java JBR-5210 windows-all
-javax/swing/JComboBox/4743225/bug4743225.java JBR-5210 windows-all
-javax/swing/JComboBox/6236162/bug6236162.java JBR-5210 windows-all
-javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java JBR-5210 windows-all
 javax/swing/JComboBox/DisabledComboBoxFontTestAuto.java 8310072 linux-all,windows-all
 javax/swing/JEditorPane/bug4714674.java JBR-5810 windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java JBR-912 windows-all
@@ -1025,7 +1021,7 @@ javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java  JBR-5510 lin
 javax/swing/JInternalFrame/8020708/bug8020708.java JBR-4879 windows-all
 javax/swing/JInternalFrame/8069348/bug8069348.java 8253184,JBR-900 macosx-aarch64,windows-all
 javax/swing/text/DefaultEditorKit/4278839/bug4278839.java CODETOOLS-7901623 windows-all
-javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-896 windows-all
+javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-896,JBR-6760 windows-all,linux-i386
 javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-5386 windows-all,linux-all
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210 windows-all
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all
@@ -1189,8 +1185,6 @@ com/sun/jndi/dns/ConfigTests/Timeout.java 8220213 generic-all
 
 # various Windows are created spontaneously during test execution
 
-javax/swing/JComboBox/8032878/bug8032878.java JBR-5210 windows-all
-
 javax/swing/JList/4618767/JListSelectedElementTest.java                             JBR-4955 windows-all
 
 # no printer found
@@ -1258,7 +1252,7 @@ javax/swing/JSpinner/TestJSpinnerFocusLost.java JBR-5210 windows-all
 javax/swing/JTable/7068740/bug7068740.java 8197552 windows-all
 javax/swing/JTable/8236907/LastVisibleRow.java JBR-6066 macosx-aarch64
 javax/swing/JTable/JTableOrientationNavTest/JTableOrientationNavTest.java JBR-6836 linux-all
-javax/swing/text/AbstractDocument/6968363/Test6968363.java JBR-4880 windows-all
+javax/swing/text/AbstractDocument/6968363/Test6968363.java JBR-4880,JBR-6760 windows-all,linux-i386
 
 javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
 javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
@@ -1400,8 +1394,6 @@ javax/swing/Headless/HeadlessJTextField.java JBR-6760 linux-i386
 javax/swing/Headless/HeadlessJEditorPane.java JBR-6760 linux-i386
 javax/swing/text/html/parser/Parser/6836089/bug6836089.java JBR-6760 linux-i386
 javax/swing/text/DevanagariEditor.java JBR-6760 linux-i386
-javax/swing/text/AbstractDocument/6968363/Test6968363.java JBR-6760 linux-i386
-javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-6760 linux-i386
 javax/swing/JLabel/6501991/bug6501991.java JBR-6760 linux-i386
 javax/swing/JTextField/bug4300552.java JBR-6760 linux-i386
 javax/swing/JTextField/SwingUnicodeTest.java JBR-6760 linux-i386
