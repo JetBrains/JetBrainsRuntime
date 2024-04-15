@@ -49,6 +49,7 @@ java/awt/Mixing/Validating.java JBR-5908,JBR-6090 linux-all,windows-all
 java/awt/Modal/BlockedMouseInputTest2.java JBR-6090 windows-all
 java/awt/Modal/BlockedMouseInputTest3.java JBR-6134 windows-x64
 java/awt/PopupMenu/PopupMenuLocation.java                                           8238720,JBR-5071 windows-all,macosx-all,linux-all
+java/awt/Window/AlwaysOnTop/SyncAlwaysOnTopFieldTest.java JBR-6845 linux-all
 java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5513 linux-all
 javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-6100 linux-all
@@ -68,7 +69,7 @@ sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,wi
 #
 java/awt/Graphics/XORPaint.java#id0                                                 nobug generic-all
 java/awt/Graphics2D/LargeWindowPaintTest.java#ZGenerational                         nobug generic-all
-java/awt/Graphics2D/LargeWindowPaintTest.java#ZSinglege                             nobug generic-all
+java/awt/Graphics2D/LargeWindowPaintTest.java#ZSinglegen                            nobug generic-all
 java/awt/Graphics2D/LargeWindowPaintTest.java#default                               nobug generic-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  nobug generic-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             nobug generic-all
@@ -106,7 +107,6 @@ jb/java/awt/Focus/PopupFromMenuTest.java JBR-5799 windows-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java                                       JBR-2651 generic-all
 jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
 jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
-jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
 jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                          JBR-6090 windows-all
 jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
 jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all

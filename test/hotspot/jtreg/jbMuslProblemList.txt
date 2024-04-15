@@ -28,5 +28,3 @@ serviceability/tmtools/jstat/GcTest02.java JBR-6974 linux-all
 vmTestbase/nsk/aod/AttachProvider/AttachProvider01/AttachProvider01.java JBR-6970 linux-all
 vmTestbase/nsk/aod/VirtualMachine/VirtualMachine05/VirtualMachine05.java JBR-6970 linux-all
 vmTestbase/nsk/aod/VirtualMachineDescriptor/VirtualMachineDescriptor01/VirtualMachineDescriptor01.java JBR-6970 linux-all
-
-
