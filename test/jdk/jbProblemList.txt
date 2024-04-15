@@ -690,7 +690,7 @@ java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java 8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java 8233568 macosx-all
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java 7185258,JBR-64 macosx-all,windows-all
 java/awt/event/SequencedEvent/MultipleContextsFunctionalTest.java 8271519 linux-all
-java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720 windows-all
+java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720,JBR-6931 windows-all,linux-aarch64
 java/awt/Paint/bug8024864.java JBR-6544 generic-all
 java/awt/Paint/ComponentIsNotDrawnAfterRemoveAddTest/ComponentIsNotDrawnAfterRemoveAddTest.java 8253184,JBR-6844 windows-all,linux-all
 java/awt/Paint/ListRepaint.java JBR-5060 linux-all
@@ -839,6 +839,7 @@ sun/security/pkcs11/KeyStore/SecretKeysBasic.java               8209398 generic-
 security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java  8224768 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/AmazonCA.java 8309088 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#actalisauthenticationrootca 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#certignarootca 8324583 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#quovadisrootca1g3 8324583 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#quovadisrootca3g3 8324583 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#digicerttlsrsarootg5 8324583 generic-all
@@ -851,6 +852,7 @@ security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootecccar3 8324583 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootecccar4 8324583 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#microsoftecc2017 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#sslrootevrsaca 8324583 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/EmSignRootG2CA.java 8327084 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/GoogleCA.java 8308592 generic-all
 
@@ -999,7 +1001,6 @@ javax/swing/JFileChooser/8021253/bug8021253.java JBR-107 windows-all
 javax/swing/JFileChooser/8041694/bug8041694.java JBR-5210 windows-all
 javax/swing/JFileChooser/8062561/bug8062561.java JBR-5808 windows-all
 javax/swing/JFileChooser/6396844/TwentyThousandTest.java 8198003 generic-all
-javax/swing/JFileChooser/6520101/bug6520101.java JBR-5703 linux-5.8.0-1032-raspi
 javax/swing/JFileChooser/8194044/FileSystemRootTest.java 8305413,JBR-5767 windows-aarch64,windows-all
 javax/swing/JFrame/8016356/bug8016356.java JBR-108 windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106,JBR-5510 macosx-aarch64,linux-5.18.2-arch1-1
