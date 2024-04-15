@@ -61,6 +61,7 @@ gtest/NMTGtests.java#nmt-summary JBR-5718 generic-all
 gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
 
 gc/shenandoah/TestAllocHumongousFragment.java#aggressive 8309622 generic-all
+gc/shenandoah/TestAllocHumongousFragment.java#iu-aggressive 8309622 generic-all
 gc/shenandoah/TestAllocIntArrays.java#iu-aggressive 8309622 generic-all
 gc/shenandoah/TestAllocObjects.java#aggressive initial_run generic-all
 gc/shenandoah/TestAllocObjects.java#iu-aggressive initial_run generic-all
@@ -209,7 +210,7 @@ vmTestbase/nsk/jdi/Value/type/type002/type002.java time_out_intermittent macosx-
 vmTestbase/nsk/jdi/Value/type/type003/TestDescription.java time_out_intermittent macosx-all
 vmTestbase/nsk/jdi/VirtualMachine/allThreads/allthreads001/TestDescription.java JBR-6530 macosx-all
 vmTestbase/nsk/jdi/VirtualMachine/canGetBytecodes/cangetbytecodes001/TestDescription.java time_out_intermittent macosx-aarch64
-vmTestbase/nsk/jdi/VirtualMachine/canGetCurrentContendedMonitor/cangccm001/TestDescription.java time_out_intermittent macosx-aarch64
+vmTestbase/nsk/jdi/VirtualMachine/canGetCurrentContendedMonitor/cangccm001/TestDescription.java JBR-6994 macosx-all
 vmTestbase/nsk/jdi/VirtualMachine/canGetMonitorInfo/cangetmonitorinfo001/TestDescription.java JBR-6361 macosx-aarch64
 vmTestbase/nsk/jdi/VirtualMachine/canGetOwnedMonitorInfo/cangetinfo001/TestDescription.java JBR-6831 macosx-aarch64
 vmTestbase/nsk/jdi/VirtualMachine/canGetSourceDebugExtension/cangetsde001/TestDescription.java JBR-6645 macosx-aarch64
