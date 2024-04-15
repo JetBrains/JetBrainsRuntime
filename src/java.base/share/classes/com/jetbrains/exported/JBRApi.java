@@ -70,8 +70,8 @@ public class JBRApi {
     }
 
     /**
-     * If a JBR API service has a defined implementation class, it is instantiated via a no-arg constructor
-     * or static factory method {@code create()}. {@link ServiceNotAvailableException}
+     * If a JBR API service has a defined implementation class, it is instantiated via static factory method
+     * {@code create()} or a no-arg constructor. {@link ServiceNotAvailableException}
      * may be thrown from that constructor or factory method to indicate that service is unavailable for some reason.
      * Exception is not propagated to user, but rather {@code null} is returned for that service.
      * Optional message and cause can be specified, but only used for logging (when explicitly enabled by VM flag).

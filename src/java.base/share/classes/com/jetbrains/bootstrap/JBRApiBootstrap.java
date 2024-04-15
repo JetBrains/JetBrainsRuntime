@@ -46,7 +46,7 @@ public class JBRApiBootstrap {
      */
     public static synchronized Object bootstrap(MethodHandles.Lookup outerLookup) {
         if (!JBRApi.ENABLED) return null;
-        if (Boolean.getBoolean("jetbrains.api.verbose")) {
+        if (Boolean.getBoolean("jetbrains.runtime.api.verbose")) {
             System.out.println("JBR API bootstrap in compatibility mode: Object bootstrap(MethodHandles.Lookup)");
         }
         Class<?> apiInterface;

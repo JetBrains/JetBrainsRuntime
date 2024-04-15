@@ -25,7 +25,6 @@
 
 package com.jetbrains.internal;
 
-import jdk.internal.access.JavaLangInvokeAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.loader.ClassLoaders;
 
@@ -47,8 +46,6 @@ import static java.lang.invoke.MethodHandles.Lookup;
  * @see ProxyRepository#getProxy(Class, Mapping[])
  */
 class ProxyRepository {
-    private static final JavaLangInvokeAccess INVOKE_ACCESS = SharedSecrets.getJavaLangInvokeAccess();
-
     private static final Proxy NONE = Proxy.empty(null), INVALID = Proxy.empty(false);
 
     private final Registry registry;
@@ -89,7 +86,7 @@ class ProxyRepository {
                 }
             } else if (!Arrays.equals(specialization, inverseSpecialization)) { // Try implicit proxy
                 inverseKey = new Key(clazz, inverseSpecialization);
-                Lookup lookup = INVOKE_ACCESS.lookupIn(clazz);
+                Lookup lookup = SharedSecrets.getJavaLangInvokeAccess().lookupIn(clazz);
                 Proxy.Info info = new Proxy.Info(lookup, lookup, 0);
                 p = Proxy.create(this, info, specialization, info, inverseSpecialization);
             } else p = NONE;
@@ -225,7 +222,7 @@ class ProxyRepository {
                     }
                     if (c == null) throw e;
                 }
-                return INVOKE_ACCESS.lookupIn(c);
+                return SharedSecrets.getJavaLangInvokeAccess().lookupIn(c);
             }
 
             @Override
