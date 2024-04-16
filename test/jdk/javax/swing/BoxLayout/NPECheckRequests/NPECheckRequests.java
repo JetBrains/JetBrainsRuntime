@@ -31,12 +31,14 @@
 import java.awt.BorderLayout;
 import java.lang.reflect.InvocationTargetException;
 import java.awt.Dimension;
+import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 public class NPECheckRequests {
+    private static final Logger LOG = Logger.getLogger(NPECheckRequests.class.getName());
     JFrame frame;
     JPanel p;
     BrokenComponent foo;
@@ -47,9 +49,9 @@ public class NPECheckRequests {
             public void validate() {
                 try {
                     super.validate();
-                } catch (RuntimeException e) {
+                } catch (BrokenComponentException e) {
                     if (foo.broken) {
-                        // expected, ignore
+                        LOG.info("Caught BrokenComponentException in JFrame.validate() - expected, ignored");
                     } else {
                         throw e;
                     }
@@ -65,8 +67,8 @@ public class NPECheckRequests {
         frame.add(p, BorderLayout.CENTER);
         try {
             frame.pack();
-        } catch (RuntimeException ignored) {
-            // our broken component threw an exception
+        } catch (BrokenComponentException ignored) {
+            LOG.info("Caught BrokenComponentException in JFrame.pack() - expected, ignored");
         }
     }
 
@@ -90,9 +92,15 @@ public class NPECheckRequests {
         @Override
         public Dimension getPreferredSize() {
             if (broken) {
-                throw new RuntimeException("Broken component");
+                throw new BrokenComponentException();
             }
             return super.getPreferredSize();
+        }
+    }
+
+    private static class BrokenComponentException extends RuntimeException {
+        BrokenComponentException() {
+            super("Broken component");
         }
     }
 
