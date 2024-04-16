@@ -46,7 +46,7 @@ public class TestSimpleTagInherit extends JavadocTester {
     };
 
     public static void main(String... args) throws Exception {
-        TestSimpleTagInherit tester = new TestSimpleTagInherit();
+        var tester = new TestSimpleTagInherit();
         tester.runTests();
     }
 
