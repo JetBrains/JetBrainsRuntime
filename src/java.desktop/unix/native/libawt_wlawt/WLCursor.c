@@ -105,7 +105,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
         return 0;
     int32_t byteSize = pixelCount * 4;
     jint *sharedBuffer;
-    struct wl_shm_pool *pool = CreateShmPool(byteSize, "customCursor", (void**)&sharedBuffer);
+    struct wl_shm_pool *pool = CreateShmPool(byteSize, "customCursor", (void**)&sharedBuffer, NULL);
     if (!pool)
         return 0;
 
