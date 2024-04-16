@@ -1344,7 +1344,7 @@ public abstract class SSLContextImpl extends SSLContextSpi {
     }
 
     /*
-     * The SSLContext implementation for customized TLS protocols
+     * The SSLContext implementation for customized DTLS protocols
      *
      * @see SSLContext
      */
@@ -1402,13 +1402,11 @@ public abstract class SSLContextImpl extends SSLContextSpi {
                         ProtocolVersion.DTLS12,
                         ProtocolVersion.DTLS10
                 };
-                if (!client)
-                    return Arrays.asList(candidates);
             } else {
                 // Use the customized TLS protocols.
                 candidates =
                         new ProtocolVersion[customized.size()];
-                candidates = customized.toArray(candidates);
+                candidates = refactored.toArray(candidates);
             }
 
             return getAvailableProtocols(candidates);

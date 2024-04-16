@@ -38,6 +38,9 @@
 import java.net.DatagramPacket;
 import java.net.SocketAddress;
 
+import jdk.test.lib.security.SecurityUtils;
+
+
 /**
  * Test that a server is able to discard invalid initial ClientHello silently.
  */
@@ -45,6 +48,7 @@ public class NoMacInitialClientHello extends DTLSOverDatagram {
     boolean needInvalidRecords = true;
 
     public static void main(String[] args) throws Exception {
+        SecurityUtils.removeFromDisabledTlsAlgs("DTLSv1.0");
         System.setProperty("jdk.tls.useExtendedMasterSecret", "false");
         NoMacInitialClientHello testCase = new NoMacInitialClientHello();
         testCase.runTest(testCase);

@@ -38,6 +38,8 @@ import java.net.DatagramPacket;
 import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import jdk.test.lib.security.SecurityUtils;
+
 /**
  * Test that if handshake messages are changed, the handshake would fail
  * because of handshaking hash verification.
@@ -46,6 +48,7 @@ public class InvalidRecords extends DTLSOverDatagram {
     private static final AtomicBoolean needInvalidRecords = new AtomicBoolean(true);
 
     public static void main(String[] args) throws Exception {
+        SecurityUtils.removeFromDisabledTlsAlgs("DTLSv1.0");
         InvalidRecords testCase = new InvalidRecords();
         testCase.runTest(testCase);
 
