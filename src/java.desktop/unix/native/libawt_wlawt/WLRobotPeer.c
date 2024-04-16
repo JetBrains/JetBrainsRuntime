@@ -642,7 +642,7 @@ allocate_buffer(JNIEnv *env, int width, int height, uint32_t **buffer_data, size
         return NULL;
     }
 
-    struct wl_shm_pool *pool = CreateShmPool(*size, "wl_shm_robot", (void**)buffer_data);
+    struct wl_shm_pool *pool = CreateShmPool(*size, "wl_shm_robot", (void**)buffer_data, NULL);
     if (!pool) {
         JNU_ThrowByName(env, "java/awt/AWTError", "couldn't create shared memory pool");
         return NULL;
