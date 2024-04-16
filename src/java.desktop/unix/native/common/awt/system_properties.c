@@ -27,7 +27,6 @@
 
 #include "system_properties.h"
 
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +41,8 @@
 static DBusConnection *connection = NULL;
 static JNIEnv *env = NULL;
 static DBusApi *dBus = NULL;
+static DBusMessage *msg_freedesktop_appearance = NULL;
+static DBusMessage *msg_gnome_desktop = NULL;
 static bool initialized = false;
 static bool logEnabled = true;
 extern JavaVM *jvm;
@@ -77,41 +78,11 @@ static bool dbusCheckError(DBusError *err, const char *msg) {
     return is_error_set;
 }
 
-bool SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_) {
-    env = env_;
-    dBus = dBus_;
-    DBusError err;
-    int ret;
-
-    dBus->dbus_error_init(&err);
-    if ((connection = dBus->dbus_bus_get(DBUS_BUS_SESSION, &err)) == NULL) {
-        printError("DBus error: connection is Null\n");
-        return false;
-    }
-    if (dbusCheckError(&err, "connection error")) {
-        return false;
-    }
-
-    ret = dBus->dbus_bus_request_name(connection, "dbus.JBR.server", DBUS_NAME_FLAG_REPLACE_EXISTING , &err);
-    if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER && ret != DBUS_REQUEST_NAME_REPLY_IN_QUEUE) {
-        printError("DBus error: Failed to acquire service name \n");
-        return false;
-    }
-    if (dbusCheckError(&err, "error request 'dbus.JBR.server' name on the bus")) {
-        return false;
-    }
-
-    dBus->dbus_connection_flush(connection);
-    initialized = true;
-
-    return true;
-}
-
 // current implementation of object decomposition supports only
 // primitive types (including a recursive type wrapper)
-static bool getBasicIter(void *val, DBusMessageIter *iter, int demand_type) {
-    int type = dBus->dbus_message_iter_get_arg_type(iter);
-    switch (type)
+static bool decomposeDBusReply(void *val, DBusMessageIter *iter, int demand_type) {
+    int cur_type = dBus->dbus_message_iter_get_arg_type(iter);
+    switch (cur_type)
     {
         case DBUS_TYPE_INT16:
         case DBUS_TYPE_UINT16:
@@ -119,12 +90,9 @@ static bool getBasicIter(void *val, DBusMessageIter *iter, int demand_type) {
         case DBUS_TYPE_UINT32:
         case DBUS_TYPE_INT64:
         case DBUS_TYPE_UINT64:
-        case DBUS_TYPE_DOUBLE:
-        case DBUS_TYPE_BYTE:
-        case DBUS_TYPE_BOOLEAN:
         case DBUS_TYPE_STRING:
         {
-            if (type != demand_type) {
+            if (cur_type != demand_type) {
                 return false;
             }
             dBus->dbus_message_iter_get_basic(iter, val);
@@ -132,9 +100,9 @@ static bool getBasicIter(void *val, DBusMessageIter *iter, int demand_type) {
         }
         case DBUS_TYPE_VARIANT:
         {
-            DBusMessageIter sub_iter;
-            dBus->dbus_message_iter_recurse(iter, &sub_iter);
-            bool res = getBasicIter(val, &sub_iter, demand_type);
+            DBusMessageIter unwrap_iter;
+            dBus->dbus_message_iter_recurse(iter, &unwrap_iter);
+            bool res = decomposeDBusReply(val, &unwrap_iter, demand_type);
             // current implementation doesn't support types with multiple fields
             if (dBus->dbus_message_iter_next(iter)) {
                 return false;
@@ -147,31 +115,22 @@ static bool getBasicIter(void *val, DBusMessageIter *iter, int demand_type) {
     }
 }
 
-static bool sendDBusMessageWithReply(const char *messages[], int message_count, void *val, int demand_type) {
-    DBusError error;
-    DBusMessage *message = NULL;
-    DBusMessage *reply = NULL;
+static DBusMessage *createDBusMessage(const char *messages[], int message_count) {
+    DBusMessage *msg = NULL;
     DBusMessageIter iter;
-    bool res = false;
 
-    if (!initialized) {
-        return false;
-    }
-
-    dBus->dbus_error_init(&error);
-    message = dBus->dbus_message_new_method_call(NULL, DESKTOP_PATH, SETTING_INTERFACE, SETTING_INTERFACE_METHOD);
-    if (message == NULL) {
+    msg = dBus->dbus_message_new_method_call(NULL, DESKTOP_PATH, SETTING_INTERFACE, SETTING_INTERFACE_METHOD);
+    if (msg == NULL) {
         printError("DBus error: cannot allocate message\n");
         goto cleanup;
     }
 
-    dBus->dbus_message_set_auto_start(message, true);
-    if (!dBus->dbus_message_set_destination(message, DESKTOP_DESTINATION)) {
+    if (!dBus->dbus_message_set_destination(msg, DESKTOP_DESTINATION)) {
         printError("DBus error: cannot set destination\n");
         goto cleanup;
     }
 
-    dBus->dbus_message_iter_init_append(message, &iter);
+    dBus->dbus_message_iter_init_append(msg, &iter);
 
     for (int i = 0; i < message_count; i++) {
         if (!dBus->dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &messages[i])) {
@@ -180,54 +139,107 @@ static bool sendDBusMessageWithReply(const char *messages[], int message_count, 
         }
     }
 
-    if ((reply = dBus->dbus_connection_send_with_reply_and_block(connection, message, REPLY_TIMEOUT, &error)) == NULL) {
+    return msg;
+
+cleanup:
+    if (msg) {
+        dBus->dbus_message_unref(msg);
+    }
+    return NULL;
+}
+
+static bool sendDBusMessageWithReply(DBusMessage *msg, void *val, int demand_type) {
+    DBusError error;
+    DBusMessage *reply = NULL;
+    DBusMessageIter iter;
+    bool res = false;
+
+    dBus->dbus_error_init(&error);
+
+    if ((reply = dBus->dbus_connection_send_with_reply_and_block(connection, msg, REPLY_TIMEOUT, &error)) == NULL) {
         printError("DBus error: cannot get reply or sent message. %s\n", dBus->dbus_error_is_set(&error) ? error.message : "");
         goto cleanup;
     }
 
-    if (!dBus->dbus_message_iter_init (reply, &iter)) {
+    if (!dBus->dbus_message_iter_init(reply, &iter)) {
         printError("DBus error: cannot process message\n");
         goto cleanup;
     }
 
-    res = getBasicIter(val, &iter, demand_type);
-
+    res = decomposeDBusReply(val, &iter, demand_type);
 cleanup:
     if (reply) {
         dBus->dbus_message_unref(reply);
-    }
-    if (message) {
-        dBus->dbus_message_unref(message);
     }
     return res;
 }
 
 JNIEXPORT jint JNICALL Java_sun_awt_UNIXToolkit_isSystemDarkColorScheme() {
     static int use_freedesktop_appearance = -1;
-    const char *freedesktop_appearance_messages[] = {"org.freedesktop.appearance", "color-scheme"};
-    const char *gnome_desktop_messages[] = {"org.gnome.desktop.interface", "gtk-theme"};
+    if (!initialized) {
+        return UNKNOWN_RESULT;
+    }
 
     if (use_freedesktop_appearance == -1) {
         unsigned int res = 0;
         logEnabled = false;
         use_freedesktop_appearance =
-                sendDBusMessageWithReply(freedesktop_appearance_messages, 2, &res, DBUS_TYPE_UINT32);
+                sendDBusMessageWithReply(msg_freedesktop_appearance, &res, DBUS_TYPE_UINT32);
         logEnabled = true;
     }
 
     if (use_freedesktop_appearance) {
         unsigned int res = 0;
-        if (!sendDBusMessageWithReply(freedesktop_appearance_messages, 2, &res, DBUS_TYPE_UINT32)) {
+        if (!sendDBusMessageWithReply(msg_freedesktop_appearance, &res, DBUS_TYPE_UINT32)) {
             return UNKNOWN_RESULT;
         }
         return res;
     } else {
         char *res = NULL;
-        if (!sendDBusMessageWithReply(gnome_desktop_messages, 2, &res, DBUS_TYPE_STRING)) {
+        if (!sendDBusMessageWithReply(msg_gnome_desktop, &res, DBUS_TYPE_STRING)) {
             return UNKNOWN_RESULT;
         }
         return (res != NULL) ? strstr(res, "dark") != NULL : UNKNOWN_RESULT;
     }
+}
+
+void SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_) {
+    env = env_;
+    dBus = dBus_;
+    DBusError err;
+    int ret;
+
+    dBus->dbus_error_init(&err);
+    if ((connection = dBus->dbus_bus_get(DBUS_BUS_SESSION, &err)) == NULL) {
+        printError("DBus error: connection is Null\n");
+        return;
+    }
+    if (dbusCheckError(&err, "connection error")) {
+        return;
+    }
+
+    ret = dBus->dbus_bus_request_name(connection, "dbus.JBR.server", DBUS_NAME_FLAG_REPLACE_EXISTING , &err);
+    if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER && ret != DBUS_REQUEST_NAME_REPLY_IN_QUEUE) {
+        printError("DBus error: Failed to acquire service name \n");
+        return;
+    }
+    if (dbusCheckError(&err, "error request 'dbus.JBR.server' name on the bus")) {
+        return;
+    }
+
+    dBus->dbus_connection_flush(connection);
+
+    const char *freedesktop_appearance_messages[] = {"org.freedesktop.appearance", "color-scheme"};
+    const char *gnome_desktop_messages[] = {"org.gnome.desktop.interface", "gtk-theme"};
+    msg_freedesktop_appearance = createDBusMessage(freedesktop_appearance_messages, 2);
+    msg_gnome_desktop = createDBusMessage(gnome_desktop_messages, 2);
+    if (msg_freedesktop_appearance == NULL || msg_gnome_desktop == NULL) {
+        return;
+    }
+
+    initialized = true;
+
+    return;
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_UNIXToolkit_toolkitInit() {

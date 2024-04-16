@@ -121,10 +121,8 @@ public abstract class UNIXToolkit extends SunToolkit
         log.fine(str);
     }
 
-    private static native void toolkitInit();
-
-    protected UNIXToolkit() {
-        toolkitInit();
+    @Override
+    protected void initializeDesktopProperties() {
         initSystemPropertyWatcher();
     }
 
@@ -587,9 +585,12 @@ public abstract class UNIXToolkit extends SunToolkit
 
     private static Thread systemPropertyWatcher = null;
 
-    private void initSystemPropertyWatcher() {
-        int initialSystemDarkColorScheme = isSystemDarkColorScheme();
+    private static native void toolkitInit();
 
+    private void initSystemPropertyWatcher() {
+        toolkitInit();
+
+        int initialSystemDarkColorScheme = isSystemDarkColorScheme();
         if (initialSystemDarkColorScheme >= 0) {
             setDesktopProperty(OS_THEME_IS_DARK, initialSystemDarkColorScheme != 0);
 
