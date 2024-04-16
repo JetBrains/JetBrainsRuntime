@@ -72,4 +72,4 @@ JNIEnv *getEnv();
 int wlFlushToServer(JNIEnv* env);
 struct wl_cursor_theme *getCursorTheme(int scale);
 
-struct wl_shm_pool *CreateShmPool(size_t size, const char *name, void **data);
+struct wl_shm_pool *CreateShmPool(size_t size, const char *name, void **data, int* poolFDPtr);
