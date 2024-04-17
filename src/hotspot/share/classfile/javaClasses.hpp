@@ -532,11 +532,11 @@ class java_lang_Throwable: AllStatic {
   static void set_depth(oop throwable, int value);
   // Needed by JVMTI to filter out this internal field.
   static int get_backtrace_offset() { return backtrace_offset;}
-  static int get_detailMessage_offset() { return detailMessage_offset;}
   // Message
+  static int get_detailMessage_offset() { return detailMessage_offset;}
   static oop message(oop throwable);
+  static const char* message_as_utf8(oop throwable);
   static void set_message(oop throwable, oop value);
-  static Symbol* detail_message(oop throwable);
   static void print_stack_element(outputStream *st, const methodHandle& method, int bci);
   static void print_stack_usage(Handle stream);
 

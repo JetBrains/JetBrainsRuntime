@@ -484,9 +484,9 @@ bool ConstantPoolCacheEntry::save_and_throw_indy_exc(
     CLEAR_PENDING_EXCEPTION;
     return false;
   }
-
+  ResourceMark rm(THREAD);
   Symbol* error = PENDING_EXCEPTION->klass()->name();
-  Symbol* message = java_lang_Throwable::detail_message(PENDING_EXCEPTION);
+  const char* message = java_lang_Throwable::message_as_utf8(PENDING_EXCEPTION);
   assert(message != NULL, "Missing detail message");
 
   SystemDictionary::add_resolution_error(cpool, index, error, message);
