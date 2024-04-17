@@ -25,6 +25,29 @@
  * questions.
  */
 
+// This file contains constants and typedefs from libdbus-1 headers,
+// which carry the following copyright:
+/*
+ * Copyright (C) 2003  CodeFactory AB
+ *
+ * Licensed under the Academic Free License version 2.1
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
 #ifndef JETBRAINSRUNTIME_DBUS_INTERFACE_H
 #define JETBRAINSRUNTIME_DBUS_INTERFACE_H
 
@@ -39,34 +62,13 @@
 
 typedef enum
 {
-    DBUS_BUS_SESSION,    /**< The login session bus */
-    DBUS_BUS_SYSTEM,     /**< The systemwide bus */
-    DBUS_BUS_STARTER     /**< The bus that started us, if any */
+    DBUS_BUS_SESSION,
+    DBUS_BUS_SYSTEM,
+    DBUS_BUS_STARTER
 } DBusBusType;
-
-typedef enum
-{
-    DBUS_HANDLER_RESULT_HANDLED,         /**< Message has had its effect - no need to run more handlers. */
-    DBUS_HANDLER_RESULT_NOT_YET_HANDLED, /**< Message has not had any effect - see if other handlers want it. */
-    DBUS_HANDLER_RESULT_NEED_MEMORY      /**< Need more memory in order to return #DBUS_HANDLER_RESULT_HANDLED or #DBUS_HANDLER_RESULT_NOT_YET_HANDLED. Please try again later with more memory. */
-} DBusHandlerResult;
-
-typedef enum
-{
-    DBUS_DISPATCH_DATA_REMAINS,  /**< There is more data to potentially convert to messages. */
-    DBUS_DISPATCH_COMPLETE,      /**< All currently available data has been processed. */
-    DBUS_DISPATCH_NEED_MEMORY    /**< More memory is needed to continue. */
-} DBusDispatchStatus;
 
 typedef struct DBusConnection DBusConnection;
 typedef struct DBusMessage DBusMessage;
-
-typedef DBusHandlerResult (*DBusHandleMessageFunction) (DBusConnection     *connection,
-                                                        DBusMessage        *message,
-                                                        void               *user_data);
-
-typedef void (*DBusFreeFunction) (void *memory);
-
 typedef struct DBusError DBusError;
 
 struct DBusError
@@ -119,6 +121,10 @@ struct DBusMessageIter
 #define DBUS_TYPE_VARIANT       ((int) 'v')
 #define DBUS_TYPE_INVALID       ((int) '\0')
 
+typedef struct DBusConnection DBusConnection;
+typedef struct DBusMessage DBusMessage;
+typedef struct DBusError DBusError;
+
 typedef struct DBusApi {
     void (*dbus_get_version)(int *major_version_p, int *minor_version_p, int *micro_version_p);
 
@@ -132,18 +138,7 @@ typedef struct DBusApi {
 
     int (*dbus_bus_request_name)(DBusConnection *connection, const char *name, unsigned int flags, DBusError *error);
 
-    void (*dbus_bus_add_match)(DBusConnection *connection, const char *rule, DBusError *error);
-
-    dbus_bool_t (*dbus_connection_add_filter)(DBusConnection *connection, DBusHandleMessageFunction function,
-            void *user_data, DBusFreeFunction free_data_function);
-
     void (*dbus_connection_flush)(DBusConnection *connection);
-
-    dbus_bool_t (*dbus_connection_read_write)(DBusConnection *connection, int timeout_milliseconds);
-
-    DBusDispatchStatus (*dbus_connection_dispatch)(DBusConnection *connection);
-
-    dbus_bool_t (*dbus_message_is_signal)(DBusMessage *message, const char *iface, const char *signal_name);
 
     DBusMessage* (*dbus_message_new_method_call)(const char *bus_name, const char *path,
             const char *iface, const char *method);
@@ -168,8 +163,6 @@ typedef struct DBusApi {
     dbus_bool_t (*dbus_message_iter_next)(DBusMessageIter *iter);
 
     void (*dbus_message_unref)(DBusMessage *message);
-
-    void (*dbus_message_set_auto_start)(DBusMessage *message, dbus_bool_t auto_start);
 } DBusApi;
 
 

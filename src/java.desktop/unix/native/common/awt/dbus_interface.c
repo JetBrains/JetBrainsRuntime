@@ -53,12 +53,7 @@ static bool DBusApi_init(DBusApi* dBusApi, void *libhandle) {
     dBusApi->dbus_bus_get = dlsym(libhandle, "dbus_bus_get");
     dBusApi->dbus_error_is_set = dlsym(libhandle, "dbus_error_is_set");
     dBusApi->dbus_bus_request_name = dlsym(libhandle, "dbus_bus_request_name");
-    dBusApi->dbus_bus_add_match = dlsym(libhandle, "dbus_bus_add_match");
-    dBusApi->dbus_connection_add_filter = dlsym(libhandle, "dbus_connection_add_filter");
     dBusApi->dbus_connection_flush = dlsym(libhandle, "dbus_connection_flush");
-    dBusApi->dbus_connection_read_write = dlsym(libhandle, "dbus_connection_read_write");
-    dBusApi->dbus_connection_dispatch = dlsym(libhandle, "dbus_connection_dispatch");
-    dBusApi->dbus_message_is_signal = dlsym(libhandle, "dbus_message_is_signal");
     dBusApi->dbus_message_new_method_call = dlsym(libhandle, "dbus_message_new_method_call");
     dBusApi->dbus_message_set_destination = dlsym(libhandle, "dbus_message_set_destination");
     dBusApi->dbus_message_iter_init_append = dlsym(libhandle, "dbus_message_iter_init_append");
@@ -70,19 +65,16 @@ static bool DBusApi_init(DBusApi* dBusApi, void *libhandle) {
     dBusApi->dbus_message_iter_recurse = dlsym(libhandle, "dbus_message_iter_recurse");
     dBusApi->dbus_message_iter_next = dlsym(libhandle, "dbus_message_iter_next");
     dBusApi->dbus_message_unref = dlsym(libhandle, "dbus_message_unref");
-    dBusApi->dbus_message_set_auto_start = dlsym(libhandle, "dbus_message_set_auto_start");
+    dBusApi->dbus_error_free = dlsym(libhandle, "dbus_error_free");
 
     return dBusApi->dbus_error_init != NULL && dBusApi->dbus_bus_get != NULL && dBusApi->dbus_error_is_set != NULL &&
-            dBusApi->dbus_bus_request_name != NULL && dBusApi->dbus_bus_add_match != NULL &&
-            dBusApi->dbus_connection_add_filter != NULL && dBusApi->dbus_connection_flush != NULL &&
-            dBusApi->dbus_connection_read_write != NULL && dBusApi->dbus_connection_dispatch != NULL &&
-            dBusApi->dbus_message_is_signal != NULL && dBusApi->dbus_message_new_method_call != NULL &&
+            dBusApi->dbus_bus_request_name != NULL && dBusApi->dbus_connection_flush != NULL &&
             dBusApi->dbus_message_set_destination != NULL && dBusApi->dbus_message_iter_init_append != NULL &&
             dBusApi->dbus_message_iter_append_basic != NULL && dBusApi->dbus_connection_send_with_reply_and_block != NULL &&
             dBusApi->dbus_message_iter_init != NULL && dBusApi->dbus_message_iter_get_arg_type != NULL &&
             dBusApi->dbus_message_iter_get_basic != NULL && dBusApi->dbus_message_iter_recurse != NULL &&
             dBusApi->dbus_message_iter_next != NULL && dBusApi->dbus_message_unref != NULL &&
-            dBusApi->dbus_message_set_auto_start != NULL;
+            dBusApi->dbus_message_new_method_call != NULL && dBusApi->dbus_error_free != NULL;
 }
 
 DBusApi* DBusApi_setupDBus(void *libhandle) {

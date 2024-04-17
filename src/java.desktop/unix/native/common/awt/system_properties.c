@@ -117,10 +117,9 @@ static bool decomposeDBusReply(void *val, DBusMessageIter *iter, int demand_type
 
 static DBusMessage *createDBusMessage(const char *messages[], int message_count) {
     DBusMessage *msg = NULL;
-    DBusMessageIter iter;
+    DBusMessageIter msg_iter;
 
-    msg = dBus->dbus_message_new_method_call(NULL, DESKTOP_PATH, SETTING_INTERFACE, SETTING_INTERFACE_METHOD);
-    if (msg == NULL) {
+    if ((msg = dBus->dbus_message_new_method_call(NULL, DESKTOP_PATH, SETTING_INTERFACE, SETTING_INTERFACE_METHOD)) == NULL) {
         printError("DBus error: cannot allocate message\n");
         goto cleanup;
     }
@@ -130,17 +129,16 @@ static DBusMessage *createDBusMessage(const char *messages[], int message_count)
         goto cleanup;
     }
 
-    dBus->dbus_message_iter_init_append(msg, &iter);
+    dBus->dbus_message_iter_init_append(msg, &msg_iter);
 
     for (int i = 0; i < message_count; i++) {
-        if (!dBus->dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &messages[i])) {
+        if (!dBus->dbus_message_iter_append_basic(&msg_iter, DBUS_TYPE_STRING, &messages[i])) {
             printError("DBus error: cannot append to message\n");
             goto cleanup;
         }
     }
 
     return msg;
-
 cleanup:
     if (msg) {
         dBus->dbus_message_unref(msg);
@@ -150,26 +148,25 @@ cleanup:
 
 static bool sendDBusMessageWithReply(DBusMessage *msg, void *val, int demand_type) {
     DBusError error;
-    DBusMessage *reply = NULL;
-    DBusMessageIter iter;
+    DBusMessage *msg_reply = NULL;
+    DBusMessageIter msg_iter;
     bool res = false;
 
     dBus->dbus_error_init(&error);
-
-    if ((reply = dBus->dbus_connection_send_with_reply_and_block(connection, msg, REPLY_TIMEOUT, &error)) == NULL) {
-        printError("DBus error: cannot get reply or sent message. %s\n", dBus->dbus_error_is_set(&error) ? error.message : "");
+    if ((msg_reply = dBus->dbus_connection_send_with_reply_and_block(connection, msg, REPLY_TIMEOUT, &error)) == NULL) {
+        printError("DBus error: cannot get msg_reply or sent message. %s\n", dBus->dbus_error_is_set(&error) ? error.message : "");
         goto cleanup;
     }
 
-    if (!dBus->dbus_message_iter_init(reply, &iter)) {
+    if (!dBus->dbus_message_iter_init(msg_reply, &msg_iter)) {
         printError("DBus error: cannot process message\n");
         goto cleanup;
     }
 
-    res = decomposeDBusReply(val, &iter, demand_type);
+    res = decomposeDBusReply(val, &msg_iter, demand_type);
 cleanup:
-    if (reply) {
-        dBus->dbus_message_unref(reply);
+    if (msg_reply) {
+        dBus->dbus_message_unref(msg_reply);
     }
     return res;
 }
