@@ -36,6 +36,7 @@ m4_include([lib-x11.m4])
 m4_include([lib-fontconfig.m4])
 m4_include([lib-speechd.m4])
 m4_include([lib-nvdacontrollerclient.m4])
+m4_include([lib-dbus.m4])
 m4_include([lib-tests.m4])
 
 ################################################################################
@@ -143,6 +144,7 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBRARIES],
   LIB_SETUP_X11
   LIB_SETUP_SPEECHD
   LIB_SETUP_NVDACONTROLLERCLIENT
+  LIB_SETUP_DBUS
   LIB_TESTS_SETUP_GTEST
 
   # Math library
