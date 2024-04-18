@@ -201,7 +201,7 @@ abstract class Mapping {
             } else {
                 mt = MethodType.methodType(to, from);
             }
-            context.invokeDynamic(mt, toProxy::getWrapperConstructor);
+            context.invokeDynamic(mt, toProxy::getConstructor);
         }
         void extractNonNull(AccessContext.Method context) {
             context.addDependency(fromProxy);
@@ -408,7 +408,8 @@ abstract class Mapping {
                 return CustomOptional.wrap(specialization[0]);
             }
             Proxy p = proxyRepository.getProxy(userType, specialization);
-            if (p.supported() != Boolean.FALSE && p.inverse().supported() != Boolean.FALSE) {
+            if (p.supported() != Boolean.FALSE && p.inverse().supported() != Boolean.FALSE &&
+                    (p.getFlags() & Proxy.SERVICE) == 0 && (p.inverse().getFlags() & Proxy.SERVICE) == 0) {
                 if (p.getInterface() != null && p.inverse().getInterface() != null) {
                     return new Dynamic2Way(userType, p.inverse().getInterface(), p, p.inverse());
                 } else if (p.getInterface() != null) {

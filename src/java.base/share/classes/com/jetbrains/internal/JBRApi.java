@@ -195,7 +195,7 @@ public class JBRApi {
             return null;
         }
         try {
-            MethodHandle constructor = p.getServiceConstructor();
+            MethodHandle constructor = p.getConstructor();
             return (T) (EXTENSIONS_ENABLED ? constructor.invoke(extensions) : constructor.invoke());
         } catch (com.jetbrains.exported.JBRApi.ServiceNotAvailableException | NullPointerException e) {
             if (VERBOSE) {

@@ -109,8 +109,7 @@ class Proxy {
     private volatile Set<Proxy> directDependencies = Set.of();
     private volatile Set<Enum<?>> supportedExtensions = Set.of();
 
-    private volatile MethodHandle wrapperConstructor;
-    private volatile MethodHandle serviceConstructor;
+    private volatile MethodHandle constructor;
 
     /**
      * Creates empty proxy.
@@ -215,12 +214,12 @@ class Proxy {
     }
 
     private synchronized boolean define() {
-        if (wrapperConstructor != null || serviceConstructor != null) return true;
+        if (constructor != null) return true;
         if (!generate()) return false;
-        generator.define();
-        wrapperConstructor = generator.findWrapperConstructor();
-        if ((flags & SERVICE) != 0) serviceConstructor = generator.findServiceConstructor(wrapperConstructor);
-        for (Proxy p : directDependencies) p.define();
+        constructor = generator.define((flags & SERVICE) != 0);
+        for (Proxy p : directDependencies) {
+            if (!p.define()) return false;
+        }
         return true;
     }
 
@@ -240,21 +239,12 @@ class Proxy {
      * First parameter is target object to which it would delegate method calls.
      * Second parameter is extensions bitfield (if extensions are enabled).
      */
-    MethodHandle getWrapperConstructor() throws NullPointerException {
-        Objects.requireNonNull(wrapperConstructor, "No wrapper constructor for proxy: " + interFace.getCanonicalName());
+    MethodHandle getConstructor() throws NullPointerException {
         if (JBRApi.LOG_DEPRECATED && interFace.isAnnotationPresent(Deprecated.class)) {
             Utils.log(Utils.BEFORE_BOOTSTRAP_DYNAMIC, System.err,
                     "Warning: using deprecated JBR API interface " + interFace.getCanonicalName());
         }
-        return wrapperConstructor;
-    }
-    /**
-     * @return method handle for the constructor of this service.
-     * Constructor accepts an extensions bitfield, if extensions are enabled, and no-arg otherwise.
-     */
-    MethodHandle getServiceConstructor() throws NullPointerException {
-        Objects.requireNonNull(serviceConstructor, "No service constructor for proxy: " + interFace.getCanonicalName());
-        return serviceConstructor;
+        return constructor;
     }
 
     /**

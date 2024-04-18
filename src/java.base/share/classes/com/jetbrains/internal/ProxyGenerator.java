@@ -38,6 +38,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.jetbrains.exported.JBRApi.ServiceNotAvailableException;
 import static com.jetbrains.internal.ASMUtils.*;
 import static com.jetbrains.internal.JBRApi.EXTENSIONS_ENABLED;
 import static java.lang.invoke.MethodHandles.Lookup;
@@ -134,54 +135,42 @@ class ProxyGenerator {
     }
 
     /**
-     * @return method handle to constructor of generated service class, or null.
-     * Constructor accepts an extensions bitfield, if extensions are enabled, and no-arg otherwise.
+     * @return service target instance, if any
      */
-    MethodHandle findServiceConstructor(MethodHandle wrapperConstructor) {
+    private Object createServiceTarget() throws Throwable {
         try {
-            if (wrapperConstructor != null) {
-                Exception exception = null;
-                MethodHandle constructor = null;
-                try {
-                    if (constructor == null) constructor = info.targetLookup.findStatic(
-                            info.targetLookup.lookupClass(), "create", MethodType.methodType(info.targetLookup.lookupClass()));
-                } catch (NoSuchMethodException | IllegalAccessException e) {
-                    exception = e;
-                }
-                try {
-                    if (constructor == null) constructor = info.targetLookup.findConstructor(
-                            info.targetLookup.lookupClass(), MethodType.methodType(void.class));
-                } catch (NoSuchMethodException | IllegalAccessException e) {
-                    exception.addSuppressed(e);
-                }
-                if (constructor == null) throw new Exception("No service factory method or constructor found", exception);
-                return MethodHandles.foldArguments(wrapperConstructor,
-                        constructor.asType(MethodType.methodType(constructorTargetParameterType)));
-            } else {
-                return generatedProxy.findConstructor(generatedProxy.lookupClass(), EXTENSIONS_ENABLED ?
-                        MethodType.methodType(void.class, long[].class) :
-                        MethodType.methodType(void.class));
+            Exception exception = null;
+            MethodHandle constructor = null;
+            try {
+                if (constructor == null) constructor = info.targetLookup.findStatic(
+                        info.targetLookup.lookupClass(), "create", MethodType.methodType(info.targetLookup.lookupClass()));
+            } catch (NoSuchMethodException | IllegalAccessException e) {
+                exception = e;
             }
-        } catch (Exception e) {
+            try {
+                if (constructor == null) constructor = info.targetLookup.findConstructor(
+                        info.targetLookup.lookupClass(), MethodType.methodType(void.class));
+            } catch (NoSuchMethodException | IllegalAccessException e) {
+                exception.addSuppressed(e);
+            }
+            if (constructor == null) throw new ServiceNotAvailableException("No service factory method or constructor found", exception);
+            return constructor.invoke();
+        } catch (ServiceNotAvailableException e) {
             if (JBRApi.VERBOSE) e.printStackTrace(System.err);
             return null;
         }
     }
 
     /**
-     * @return method handle to wrapper constructor of generated proxy class, or null.
-     * First parameter is target object to which it would delegate method calls.
+     * First parameter is target object to which it would delegate method calls (if target exists).
      * Second parameter is extensions bitfield (if extensions are enabled).
+     * @return method handle to constructor of generated proxy class, or null.
      */
-    MethodHandle findWrapperConstructor() {
-        try {
-            return info.targetLookup == null ? null :
-                    generatedProxy.findConstructor(generatedProxy.lookupClass(), EXTENSIONS_ENABLED ?
-                                    MethodType.methodType(void.class, constructorTargetParameterType, long[].class) :
-                                    MethodType.methodType(void.class, constructorTargetParameterType));
-        } catch (NoSuchMethodException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
+    private MethodHandle findConstructor() throws NoSuchMethodException, IllegalAccessException {
+        MethodType constructorType = MethodType.methodType(void.class);
+        if (info.targetLookup != null) constructorType = constructorType.appendParameterTypes(constructorTargetParameterType);
+        if (EXTENSIONS_ENABLED) constructorType = constructorType.appendParameterTypes(long[].class);
+        return generatedProxy.findConstructor(generatedProxy.lookupClass(), constructorType);
     }
 
     /**
@@ -197,12 +186,17 @@ class ProxyGenerator {
 
     /**
      * Define generated class.
+     * @return method handle to constructor of generated proxy class, or null.
      */
-    void define() {
+    MethodHandle define(boolean service) {
         try {
+            Object sericeTarget = service && info.targetLookup != null ? createServiceTarget() : null;
             generatedProxy = proxyGenLookup.defineHiddenClass(
                     originalProxyWriter.toByteArray(), false, Lookup.ClassOption.STRONG, Lookup.ClassOption.NESTMATE);
-        } catch (IllegalAccessException e) {
+            MethodHandle constructor = findConstructor();
+            if (sericeTarget != null) constructor = MethodHandles.insertArguments(constructor, 0, sericeTarget);
+            return constructor;
+        } catch (Throwable e) {
             throw new RuntimeException(e);
         }
     }
