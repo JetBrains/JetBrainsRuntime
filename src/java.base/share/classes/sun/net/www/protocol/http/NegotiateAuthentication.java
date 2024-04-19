@@ -136,7 +136,7 @@ class NegotiateAuthentication extends AuthenticationInfo {
 
     @Override
     protected boolean useAuthCache() {
-        return super.useAuthCache() && cacheSPNEGO;
+        return false;
     }
 
     /**
