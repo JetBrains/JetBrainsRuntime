@@ -33,12 +33,15 @@ import java.awt.im.spi.InputMethodContext;
 import java.awt.peer.ComponentPeer;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
+import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import sun.awt.AWTAccessor;
+import sun.awt.SunToolkit;
 import sun.awt.X11GraphicsDevice;
 import sun.awt.X11GraphicsEnvironment;
 import sun.awt.X11InputMethod;
@@ -300,6 +303,68 @@ public class XInputMethod extends X11InputMethod {
         XWindow peer = AWTAccessor.getComponentAccessor()
                                   .getPeer(clientComponentWindow);
         return peer.getContentWindow();
+    }
+
+
+    // Must be accessed under the AWT lock
+    private static boolean xicDestroyMustBeDelayed = false;
+    private static final int XIC_DELAYED_TO_BE_DESTROYED_CAPACITY = 16;
+    private static final Queue<Long> xicDelayedToBeDestroyed = new ArrayDeque<>(XIC_DELAYED_TO_BE_DESTROYED_CAPACITY);
+
+    static void delayAllXICDestroyUntilAFurtherNotice()  {
+        assert(SunToolkit.isAWTLockHeldByCurrentThread());
+
+        xicDestroyMustBeDelayed = true;
+    }
+
+    static void delayedXICDestroyShouldBeDone() {
+        assert(SunToolkit.isAWTLockHeldByCurrentThread());
+
+        xicDestroyMustBeDelayed = false;
+        doDelayedXICDestroy(false, -1);
+    }
+
+    private static void doDelayedXICDestroy(boolean forced, int maxCountToDestroy) {
+        assert(SunToolkit.isAWTLockHeldByCurrentThread());
+        assert(forced || !xicDestroyMustBeDelayed);
+
+        while ( (maxCountToDestroy != 0) && !xicDelayedToBeDestroyed.isEmpty() ) {
+            final long pX11Data = xicDelayedToBeDestroyed.remove();
+            assert(pX11Data != 0);
+            --maxCountToDestroy;
+            realDisposeXICNative(pX11Data);
+        }
+    }
+
+    @Override
+    protected void disposeXIC() {
+        awtLock();
+        try {
+            if (!xicDestroyMustBeDelayed) {
+                super.disposeXIC();
+                return;
+            }
+
+            final long pX11IMData = pData;
+
+            // 1. Unset focus
+            // 2. Unset all the native pointers to this instance of XInputMethod
+            // 3. Unset all the java pointers to the native context
+            prepareForDelayedDisposeXIC_unsetFocusAndDetachCurrentXIC();
+
+            // 4. Reset all the XICs of the native context
+            prepareForDelayedDisposeXIC_resetSpecifiedCtx(pX11IMData);
+
+            // 5. Post the pointer to the native context to xicDelayedToBeDestroyed
+            // 5.1. Make sure there's space available in xicDelayedToBeDestroyed
+            if (xicDelayedToBeDestroyed.size() >= XIC_DELAYED_TO_BE_DESTROYED_CAPACITY) {
+                doDelayedXICDestroy(true, xicDelayedToBeDestroyed.size() - XIC_DELAYED_TO_BE_DESTROYED_CAPACITY + 1);
+            }
+
+            xicDelayedToBeDestroyed.add(pX11IMData);
+        } finally {
+            awtUnlock();
+        }
     }
 
 
@@ -613,7 +678,12 @@ public class XInputMethod extends X11InputMethod {
     private native boolean createXICNative(long window, boolean preferBelowTheSpot);
     private native boolean recreateXICNative(long window, long px11data, int ctxid, boolean preferBelowTheSpot);
     private native int releaseXICNative(long px11data);
+    private static native void realDisposeXICNative(long pX11IMData);
     private native void setXICFocusNative(long window, boolean value, boolean active);
+    // TODO: better naming
+    // TODO: docs
+    private native void prepareForDelayedDisposeXIC_unsetFocusAndDetachCurrentXIC();
+    private static native void prepareForDelayedDisposeXIC_resetSpecifiedCtx(long pX11IMData);
     private native void adjustStatusWindow(long window);
 
     private native boolean doesFocusedXICSupportMovingCandidatesNativeWindow();

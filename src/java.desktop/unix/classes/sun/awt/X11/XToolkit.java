@@ -1023,11 +1023,15 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 final boolean isKeyEvent = ( (ev.get_type() == XConstants.KeyPress) ||
                                              (ev.get_type() == XConstants.KeyRelease) );
 
+                final long keyEventSerial = isKeyEvent ? ev.get_xkey().get_serial() : -1;
+
                 if (keyEventLog.isLoggable(PlatformLogger.Level.FINE) && isKeyEvent) {
                     keyEventLog.fine("before XFilterEvent:" + ev);
                 }
                 if (XlibWrapper.XFilterEvent(ev.getPData(), w)) {
                     if (isKeyEvent) {
+                        lastFilteredKeyEventSerial = keyEventSerial;
+                        XInputMethod.delayAllXICDestroyUntilAFurtherNotice();
                         XInputMethod.onXKeyEventFiltering(true);
                     }
                     continue;
@@ -1039,6 +1043,9 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
                 if (isKeyEvent) {
                     XInputMethod.onXKeyEventFiltering(false);
+                    if (keyEventSerial == lastFilteredKeyEventSerial) {
+                        XInputMethod.delayedXICDestroyShouldBeDone();
+                    }
                 }
 
                 dispatchEvent(ev);
@@ -1114,6 +1121,10 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                  (ev.get_y_root()    == 0) &&
                  (ev.get_state()     == 0) );
     }
+
+
+    // TODO: docs
+    private long lastFilteredKeyEventSerial = -1;
 
 
     /**

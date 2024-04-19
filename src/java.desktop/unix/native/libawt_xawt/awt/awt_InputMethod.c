@@ -1639,6 +1639,78 @@ Java_sun_awt_X11_XInputMethod_releaseXICNative(JNIEnv *env,
 
 
 JNIEXPORT void JNICALL
+Java_sun_awt_X11_XInputMethod_realDisposeXICNative(JNIEnv *env, jclass clazz, jlong pData)
+{
+    X11InputMethodData *pX11IMData = (X11InputMethodData *)pData;
+    if (pX11IMData == NULL) {
+        return;
+    }
+
+    AWT_LOCK();
+    destroyX11InputMethodData(env, pX11IMData); pX11IMData = NULL; pData = 0;
+    AWT_UNLOCK();
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_unsetFocusAndDetachCurrentXIC
+  (JNIEnv *env, jobject this)
+{
+    DASSERT(env != NULL);
+    X11InputMethodData *pX11IMData = NULL;
+
+    AWT_LOCK();
+    pX11IMData = getX11InputMethodData(env, this);
+    if (pX11IMData == NULL) {
+        AWT_UNLOCK();
+        return;
+    }
+
+    if (pX11IMData->ic_active.xic != (XIC)0) {
+        setXICFocus(pX11IMData->ic_active.xic, False);
+    }
+    if ( (pX11IMData->ic_passive.xic != (XIC)0) && (pX11IMData->ic_passive.xic != pX11IMData->ic_active.xic) ) {
+        setXICFocus(pX11IMData->ic_passive.xic, False);
+    }
+    pX11IMData->current_ic = (XIC)0;
+
+    setX11InputMethodData(env, this, NULL);
+    if ( (*env)->IsSameObject(env, pX11IMData->x11inputmethod, currentX11InputMethodInstance) == JNI_TRUE ) {
+        currentX11InputMethodInstance = NULL;
+        currentFocusWindow = 0;
+    }
+
+    AWT_UNLOCK();
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_resetSpecifiedCtx
+  (JNIEnv *env, jclass clazz, const long pData)
+{
+    X11InputMethodData * const pX11IMData = (X11InputMethodData *)pData;
+    char* preeditText = NULL;
+
+    if (pX11IMData == NULL) {
+        return;
+    }
+
+    AWT_LOCK();
+
+    if (pX11IMData->ic_active.xic != (XIC)0) {
+        if ( (preeditText = XmbResetIC(pX11IMData->ic_active.xic)) != NULL ) {
+           (void)XFree(preeditText); preeditText = NULL;
+        }
+    }
+    if ( (pX11IMData->ic_passive.xic != (XIC)0) && (pX11IMData->ic_passive.xic != pX11IMData->ic_active.xic) ) {
+        if ( (preeditText = XmbResetIC(pX11IMData->ic_passive.xic)) != NULL ) {
+            (void)XFree(preeditText); preeditText = NULL;
+        }
+    }
+
+    AWT_UNLOCK();
+}
+
+
+JNIEXPORT void JNICALL
 Java_sun_awt_X11_XInputMethod_setXICFocusNative(JNIEnv *env,
                                                 jobject this,
                                                 jlong w,
