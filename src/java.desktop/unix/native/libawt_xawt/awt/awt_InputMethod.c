@@ -1652,7 +1652,7 @@ Java_sun_awt_X11_XInputMethod_realDisposeXICNative(JNIEnv *env, jclass clazz, jl
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_unsetFocusAndDetachCurrentXIC
+Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_1unsetFocusAndDetachCurrentXIC
   (JNIEnv *env, jobject this)
 {
     DASSERT(env != NULL);
@@ -1683,8 +1683,8 @@ Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_unsetFocusAndDetachCur
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_resetSpecifiedCtx
-  (JNIEnv *env, jclass clazz, const long pData)
+Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_1resetSpecifiedCtx
+  (JNIEnv *env, jclass clazz, const jlong pData)
 {
     X11InputMethodData * const pX11IMData = (X11InputMethodData *)pData;
     char* preeditText = NULL;
