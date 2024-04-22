@@ -29,14 +29,17 @@
 ################################################################################
 AC_DEFUN_ONCE([LIB_SETUP_DBUS],
 [
-  AC_ARG_WITH(dbus-cflags, [AS_HELP_STRING([--with-dbus-cflags],
-      [specify include directory for the dbus files])])
+  AC_ARG_WITH(dbus-includes, [AS_HELP_STRING([--with-dbus-includes],
+      [specify include directories for the dbus files as list separated by space])])
 
-  if test "x${with_dbus_cflags}" != x; then
-    DBUS_CFLAGS="${with_dbus_cflags}"
+  if test "x${with_dbus_includes}" != x; then
+    DBUS_CFLAGS=""
+    for include in $with_dbus_includes; do
+      DBUS_CFLAGS="${DBUS_CFLAGS}-I${include} "
+    done
   else
     PKG_CHECK_MODULES(DBUS, dbus-1, [], [AC_MSG_ERROR([Can't find dbus-1 library.
-    You can install dbus-1 library or specify include directory manually by giving --with-dbus-include option.])])
+    You can install dbus-1 library or specify include directories manually by giving --with-dbus-includes option.])])
   fi
 
   AC_SUBST(DBUS_CFLAGS)
