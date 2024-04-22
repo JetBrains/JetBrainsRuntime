@@ -169,6 +169,10 @@ public final class LauncherHelper {
             case "locale":
                 printLocale();
                 break;
+            case "security":
+                var opt = opts.length > 2 ? opts[2].trim() : "all";
+                SecuritySettings.printSecuritySettings(opt, ostream);
+                break;
             case "system":
                 if (System.getProperty("os.name").contains("Linux")) {
                     printSystemMetrics();
@@ -178,6 +182,7 @@ public final class LauncherHelper {
                 printVmSettings(initialHeapSize, maxHeapSize, stackSize);
                 printProperties();
                 printLocale();
+                SecuritySettings.printSecuritySummarySettings(ostream);
                 if (System.getProperty("os.name").contains("Linux")) {
                     printSystemMetrics();
                 }
@@ -315,9 +320,10 @@ public final class LauncherHelper {
                 ostream.print(INDENT + INDENT);
             }
         }
+        ostream.println();
     }
 
-    public static void printSystemMetrics() {
+    private static void printSystemMetrics() {
         Metrics c = Container.metrics();
 
         ostream.println("Operating System Metrics:");
