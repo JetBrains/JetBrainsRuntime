@@ -29,7 +29,7 @@
 #define JETBRAINSRUNTIME_SYSTEM_PROPERTIES_H
 
 #include <stdbool.h>
-#include <jni.h>
+#include "jni.h"
 #include <jni_util.h>
 
 #include "dbus_interface.h"
