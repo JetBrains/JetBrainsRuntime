@@ -83,11 +83,13 @@ AC_DEFUN_ONCE([LIB_DETERMINE_DEPENDENCIES],
     NEEDS_LIB_FREETYPE=true
   fi
 
-  # Check if alsa is needed
+  # Check if alsa and dbus is needed
   if test "x$OPENJDK_TARGET_OS" = xlinux; then
     NEEDS_LIB_ALSA=true
+    NEEDS_LIB_DBUS=true
   else
     NEEDS_LIB_ALSA=false
+    NEEDS_LIB_DBUS=false
   fi
 
   # Check if ffi is needed
