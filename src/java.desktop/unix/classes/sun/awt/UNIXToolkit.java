@@ -25,7 +25,6 @@
 package sun.awt;
 
 import java.awt.RenderingHints;
-import java.awt.Toolkit;
 
 import static java.awt.RenderingHints.KEY_TEXT_ANTIALIASING;
 import static java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_DEFAULT;
