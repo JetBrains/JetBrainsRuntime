@@ -1297,19 +1297,17 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
         int ry = ginfo->subpixelResolutionY;
         ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, rx);
         ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ry);
-        int subx = 0, suby = 0;
-        // see DrawGlyphList.c FLOOR_ASSIGN & getSubpixelGlyphImage
-        if (glyphx >= 0.0f && glyphy >= 0.0f) {
-            x = (int) glyphx;
-            y = (int) glyphy;
-            subx = ((int) (glyphx * (float) rx)) % rx;
-            suby = ((int) (glyphy * (float) ry)) % ry;
+        float fx = floor(glyphx);
+        float fy = floor(glyphy);
+        x = (int) fx;
+        y = (int) fy;
+        int subimage;
+        if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
+            subimage = 0;
         } else {
-            float fx = floor(glyphx), fy = floor(glyphy);
-            x = (int) fx;
-            y = (int) fy;
-            subx = (int) ((glyphx - fx) * (float) rx);
-            suby = (int) ((glyphy - fy) * (float) ry);
+            int subx = (int) ((glyphx - fx) * (float) rx);
+            int suby = (int) ((glyphy - fy) * (float) ry);
+            subimage = subx + suby * rx;
         }
 
         if (ginfo->image == NULL) {
@@ -1321,12 +1319,6 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
                 OGLContext_InitGrayRenderHints(env, oglc);
             }
             // grayscale or monochrome glyph data
-            int subimage;
-            if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
-                subimage = 0;
-            } else {
-                subimage = subx + suby * rx;
-            }
             if (ginfo->width <= OGLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= OGLTR_CACHE_CELL_HEIGHT)
             {
