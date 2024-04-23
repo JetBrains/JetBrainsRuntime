@@ -372,15 +372,15 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
             DisableColorGlyphPainting(mtlc);
         }
 
-        if (!MTLTR_ValidateGlyphCache(mtlc, dstOps, JNI_TRUE)) {
-            return JNI_FALSE;
-        }
-
         if (rgbOrder != lastRGBOrder) {
             // need to invalidate the cache in this case; see comments
             // for lastRGBOrder above
-            [mtlc.glyphCacheLCD invalidate];
+            [mtlc.glyphCacheLCD free];
             lastRGBOrder = rgbOrder;
+        }
+
+        if (!MTLTR_ValidateGlyphCache(mtlc, dstOps, JNI_TRUE)) {
+            return JNI_FALSE;
         }
 
         glyphMode = MODE_USE_CACHE_LCD;
