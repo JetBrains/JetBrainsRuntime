@@ -666,19 +666,17 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         int ry = ginfo->subpixelResolutionY;
         ADJUST_SUBPIXEL_GLYPH_POSITION(glyphx, rx);
         ADJUST_SUBPIXEL_GLYPH_POSITION(glyphy, ry);
-        int subx = 0, suby = 0;
-        // see DrawGlyphList.c FLOOR_ASSIGN & getSubpixelGlyphImage
-        if (glyphx >= 0.0f && glyphy >= 0.0f) {
-            x = (int) glyphx;
-            y = (int) glyphy;
-            subx = ((int) (glyphx * (float) rx)) % rx;
-            suby = ((int) (glyphy * (float) ry)) % ry;
+        float fx = floor(glyphx);
+        float fy = floor(glyphy);
+        x = (int) fx;
+        y = (int) fy;
+        int subimage;
+        if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
+            subimage = 0;
         } else {
-            float fx = floor(glyphx), fy = floor(glyphy);
-            x = (int) fx;
-            y = (int) fy;
-            subx = (int) ((glyphx - fx) * (float) rx);
-            suby = (int) ((glyphy - fy) * (float) ry);
+            int subx = (int) ((glyphx - fx) * (float) rx);
+            int suby = (int) ((glyphy - fy) * (float) ry);
+            subimage = subx + suby * rx;
         }
 
         if (ginfo->image == NULL) {
@@ -690,12 +688,6 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         J2dTraceLn(J2D_TRACE_INFO, "rowBytes = %d", ginfo->rowBytes);
         if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
             // grayscale or monochrome glyph data
-            int subimage;
-            if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
-                subimage = 0;
-            } else {
-                subimage = subx + suby * rx;
-            }
             if (ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
             {
