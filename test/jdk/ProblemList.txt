@@ -533,8 +533,6 @@ java/lang/management/ThreadMXBean/ThreadMXBeanStateTest.java    8247426 generic-
 
 javax/management/MBeanServer/OldMBeanServerTest.java            8030957 aix-all
 
-javax/management/remote/mandatory/notif/NotifReconnectDeadlockTest.java 8042215 generic-all
-
 ############################################################################
 
 # jdk_net
