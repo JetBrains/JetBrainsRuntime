@@ -75,8 +75,9 @@ class WLPointerEvent {
         RIGHT(0x111, MouseEvent.BUTTON3),
 
         // Extra mouse buttons
-        // Most mice use BTN_SIDE for backward, BTN_EXTRA for forward, but libinput also
-        // has BTN_FORWARD and BTN_BACK for seemingly the same reason.
+        // Most mice use BTN_SIDE for backward, BTN_EXTRA for forward.
+        // There are also BTN_FORWARD and BTN_BACK, but they are different buttons, it seems.
+        // On Logitech MX Master 3S, BTN_FORWARD is the thumb button.
         // The default X11 configuration has them as mouse button 8 and 9 respectfully,
         // XToolkit converts them to Java codes by subtracting 2.
         // Then, IDEA converts them to its internal codes by also subtracting 2
@@ -93,8 +94,8 @@ class WLPointerEvent {
         // Since the buttons 4-7 are not actually buttons, they are ignored
         // They will be skipped in WLToolkit
 
-        FORWARD(0x115, 5),
-        BACK(0x116, 4),
+        FORWARD(0x115, 6),
+        BACK(0x116, 7),
         SIDE(0x113, 4),
         EXTRA(0x114, 5),
 
@@ -144,8 +145,10 @@ class WLPointerEvent {
                 case LEFT   -> "left";
                 case MIDDLE -> "middle";
                 case RIGHT  -> "right";
-                case FORWARD, EXTRA -> "forward";
-                case BACK, SIDE -> "backward";
+                case FORWARD -> "forward";
+                case BACK -> "back";
+                case SIDE -> "side";
+                case EXTRA -> "extra";
             };
         }
 
