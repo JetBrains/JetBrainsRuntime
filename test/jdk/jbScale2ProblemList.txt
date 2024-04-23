@@ -10,7 +10,7 @@ java/awt/dnd/ImageTransferTest/ImageTransferTest.java  JBR-6442 linux-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-6442 linux-all
 java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-all
-java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
+java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-all,windows-aarch64,macosx-all
 java/awt/Focus/6378278/InputVerifierTest.java JBR-5799 windows-all
 java/awt/Focus/6382144/EndlessLoopTest.java JBR-6090 windows-all
 java/awt/Focus/8282640/ScrollPaneFocusBugTest.java JBR-6090 windows-all
@@ -47,7 +47,7 @@ java/awt/Mixing/OverlappingButtons.java JBR-5707,JBR-6090 linux-all,windows-all
 java/awt/Mixing/Validating.java JBR-5908,JBR-6090 linux-all,windows-all
 java/awt/Modal/BlockedMouseInputTest2.java JBR-6090 windows-all
 java/awt/Modal/BlockedMouseInputTest3.java JBR-6134 windows-x64
-java/awt/PopupMenu/PopupMenuLocation.java                                           8238720,8288415,JBR-5071 windows-all,macosx-all,linux-all
+java/awt/PopupMenu/PopupMenuLocation.java 8238720,8288415,JBR-5071 windows-all,macosx-all,linux-all
 java/awt/ScrollPane/ScrollPaneWindowsTest.java JBR-6944 windows-x64
 java/awt/Window/AlwaysOnTop/AlwaysOnTopEvenOfWindow.java JBR-6686 linux-all
 java/awt/Window/AlwaysOnTop/SyncAlwaysOnTopFieldTest.java JBR-6845 linux-x64,linux-aarch64
