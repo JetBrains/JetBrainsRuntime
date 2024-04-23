@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "memory/allocation.hpp"
 #include "runtime/os.hpp"
+#include "sanitizers/address.hpp"
 #include "services/mallocHeader.inline.hpp"
 #include "services/memTracker.hpp"
 #include "unittest.hpp"
@@ -32,6 +33,8 @@
 // Uncomment to get test output
 //#define LOG_PLEASE
 #include "testutils.hpp"
+
+#if !INCLUDE_ASAN
 
 using ::testing::HasSubstr;
 
@@ -121,3 +124,5 @@ static void test_for_mmap(size_t sz, ssize_t offset) {
 
 TEST_VM(NMT, location_printing_mmap_1) { test_for_mmap(os::vm_page_size(), 0);  }
 TEST_VM(NMT, location_printing_mmap_2) { test_for_mmap(os::vm_page_size(), os::vm_page_size() - 1);  }
+
+#endif // !INCLUDE_ASAN
