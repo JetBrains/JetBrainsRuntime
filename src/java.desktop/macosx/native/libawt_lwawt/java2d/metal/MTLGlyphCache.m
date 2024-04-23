@@ -215,37 +215,6 @@
     }
     return JNI_FALSE;
 }
-/**
- * Invalidates all cells in the cache.  Note that this method does not
- * attempt to compact the cache in any way; it just invalidates any cells
- * that already exist.
- */
-- (void) invalidate
-{
-    MTLCacheCellInfo *cellinfo;
-
-    J2dTraceLn(J2D_TRACE_INFO, "MTLGlyphCache.invalidate");
-
-    if (_cacheInfo == NULL) {
-        return;
-    }
-
-    // flush any pending vertices that may be depending on the current
-    // glyph cache layout
-    if (_cacheInfo->Flush != NULL) {
-        _cacheInfo->Flush(_cacheInfo->mtlc);
-    }
-
-    cellinfo = _cacheInfo->head;
-    while (cellinfo != NULL) {
-        if (cellinfo->glyphInfo != NULL) {
-            // if the cell is occupied, notify the base glyph that its
-            // cached version for this cache is about to be invalidated
-            MTLGlyphCache_RemoveCellInfo(cellinfo->glyphInfo, cellinfo);
-        }
-        cellinfo = cellinfo->next;
-    }
-}
 
 /**
  * Invalidates and frees all cells and the cache itself. The "cache" pointer
