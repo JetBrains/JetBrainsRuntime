@@ -73,6 +73,7 @@
 #include "utilities/count_trailing_zeros.hpp"
 #include "utilities/defaultStream.hpp"
 #include "utilities/events.hpp"
+#include "utilities/macros.hpp"
 #include "utilities/powerOfTwo.hpp"
 
 #ifndef _WINDOWS
@@ -1145,6 +1146,8 @@ void os::print_location(outputStream* st, intptr_t x, bool verbose) {
     return;
   }
 
+#if !INCLUDE_ASAN
+
   bool accessible = is_readable_pointer(addr);
 
   // Check if addr is a JNI handle.
@@ -1231,7 +1234,10 @@ void os::print_location(outputStream* st, intptr_t x, bool verbose) {
     return;
   }
 
+#endif // !INCLUDE_ASAN
+
   st->print_cr(INTPTR_FORMAT " is an unknown value", p2i(addr));
+
 }
 
 bool is_pointer_bad(intptr_t* ptr) {
