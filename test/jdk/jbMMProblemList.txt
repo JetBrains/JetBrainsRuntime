@@ -85,7 +85,6 @@ java/awt/MouseInfo/MultiscreenPointerInfo.java nobug linux-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java 8253184 windows-all,linux-all
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java nobug linux-all
 java/awt/Paint/PaintNativeOnUpdate.java 8253184,JBR-5510 windows-all,linux-all
-java/awt/PopupMenu/PopupMenuLocation.java 8238720,8288415 windows-all,macosx-all,linux-all
 java/awt/PopupMenu/PopupMenuStayOpen.java JBR-6286 linux-all
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8277816,8253184,JBR-5510 macosx-aarch64,windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java  8277816,8253184 macosx-aarch64,windows-all,linux-all
