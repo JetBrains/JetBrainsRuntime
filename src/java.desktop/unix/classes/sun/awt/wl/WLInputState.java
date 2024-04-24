@@ -155,7 +155,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 eventWithTimestamp,
                 eventWithCoordinates,
                 pointerButtonPressedEvent,
-                0,
+                modifiers & ~WLPointerEvent.PointerButtonCodes.combinedMask(),
                 surfaceForKeyboardInput,
                 false);
     }
@@ -201,7 +201,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
         int newModifiers = modifiers;
 
         if (pointerEvent.hasLeaveEvent()) {
-            return 0;
+            return modifiers & ~WLPointerEvent.PointerButtonCodes.combinedMask();
         }
 
         if (pointerEvent.hasButtonEvent()) {
