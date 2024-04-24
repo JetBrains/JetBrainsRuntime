@@ -127,8 +127,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      * related to Wayland are reported via an exception.
      */
     private static final int READ_RESULT_ERROR = 2;
-    
-    private static final int MOUSE_BUTTONS_COUNT = 3;
+
+    private static final int MOUSE_BUTTONS_COUNT = 7;
     private static final int AWT_MULTICLICK_DEFAULT_TIME_MS = 500;
 
     private static boolean initialized = false;
