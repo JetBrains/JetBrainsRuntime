@@ -70,18 +70,47 @@ class WLPointerEvent {
 
     public enum PointerButtonCodes {
         // see <linux/input-event-codes.h>
-        LEFT(0x110, MouseEvent.BUTTON1, InputEvent.BUTTON1_DOWN_MASK),
-        MIDDLE(0x112, MouseEvent.BUTTON2, InputEvent.BUTTON2_DOWN_MASK),
-        RIGHT(0x111, MouseEvent.BUTTON3, InputEvent.BUTTON3_DOWN_MASK);
+        LEFT(0x110, MouseEvent.BUTTON1),
+        MIDDLE(0x112, MouseEvent.BUTTON2),
+        RIGHT(0x111, MouseEvent.BUTTON3),
+
+        // Extra mouse buttons
+        // Most mice use BTN_SIDE for backward, BTN_EXTRA for forward.
+        // There are also BTN_FORWARD and BTN_BACK, but they are different buttons, it seems.
+        // On Logitech MX Master 3S, BTN_FORWARD is the thumb button.
+        // The default X11 configuration has them as mouse button 8 and 9 respectfully,
+        // XToolkit converts them to Java codes by subtracting 2.
+        // Then, IDEA converts them to its internal codes by also subtracting 2
+        // This is because on X11 the mouse button numbering is as follows:
+        //   - 1: Left
+        //   - 2: Middle
+        //   - 3: Right
+        //   - 4: Vertical scroll up
+        //   - 5: Vertical scroll down
+        //   - 6: Horizontal scroll left
+        //   - 7: Horizontal scroll right
+        //   - 8: Backwards
+        //   - 9: Forwards
+        // Since the buttons 4-7 are not actually buttons, they are ignored
+        // They will be skipped in WLToolkit
+
+        FORWARD(0x115, 6),
+        BACK(0x116, 7),
+        SIDE(0x113, 4),
+        EXTRA(0x114, 5),
+
+        ;
 
         public final int linuxCode; // The code from <linux/input-event-codes.h>
         public final int javaCode;  // The code from MouseEvents.BUTTONx
-        public final int javaMask;  // The mask from InputEvent.BUTTONx_DOWN_MASK
 
-        PointerButtonCodes(int linuxCode, int javaCode, int javaMask) {
+        PointerButtonCodes(int linuxCode, int javaCode) {
             this.linuxCode = linuxCode;
             this.javaCode  = javaCode;
-            this.javaMask  = javaMask;
+        }
+
+        public int mask() {
+            return InputEvent.getMaskForButton(javaCode);
         }
 
         static PointerButtonCodes recognizedOrNull(int linuxCode) {
@@ -95,7 +124,7 @@ class WLPointerEvent {
 
         static boolean anyMatchMask(int mask) {
             for (var c : values()) {
-                if ((mask & c.javaMask) != 0) {
+                if ((mask & c.mask()) != 0) {
                     return true;
                 }
             }
@@ -106,7 +135,7 @@ class WLPointerEvent {
         static int combinedMask() {
             int mask = 0;
             for (var c : values()) {
-                mask |= c.javaMask;
+                mask |= c.mask();
             }
             return mask;
         }
@@ -116,6 +145,10 @@ class WLPointerEvent {
                 case LEFT   -> "left";
                 case MIDDLE -> "middle";
                 case RIGHT  -> "right";
+                case FORWARD -> "forward";
+                case BACK -> "back";
+                case SIDE -> "side";
+                case EXTRA -> "extra";
             };
         }
 
