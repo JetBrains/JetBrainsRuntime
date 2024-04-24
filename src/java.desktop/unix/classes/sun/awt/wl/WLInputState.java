@@ -216,9 +216,9 @@ record WLInputState(WLPointerEvent eventWithSurface,
                     = WLPointerEvent.PointerButtonCodes.recognizedOrNull(pointerEvent.getButtonCode());
             if (buttonCode != null) {
                 if (pointerEvent.getIsButtonPressed()) {
-                    newModifiers |= buttonCode.javaMask;
+                    newModifiers |= buttonCode.mask();
                 } else {
-                    newModifiers &= ~buttonCode.javaMask;
+                    newModifiers &= ~buttonCode.mask();
                 }
             }
         }
