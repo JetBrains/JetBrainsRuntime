@@ -30,6 +30,7 @@ import java.awt.Component;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.GraphicsConfiguration;
 import java.awt.Insets;
 import java.awt.SystemColor;
 import java.awt.Window;
