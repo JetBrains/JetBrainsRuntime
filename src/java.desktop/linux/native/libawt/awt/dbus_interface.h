@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  *
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -69,7 +69,6 @@ typedef struct DBusApi {
 
     void (*dbus_message_unref)(DBusMessage *message);
 } DBusApi;
-
 
 DBusApi* DBusApi_setupDBus(void *libhandle);
 DBusApi* DBusApi_setupDBusDefault();

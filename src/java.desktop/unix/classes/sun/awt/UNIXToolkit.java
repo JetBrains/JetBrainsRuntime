@@ -584,10 +584,12 @@ public abstract class UNIXToolkit extends SunToolkit
 
     private static Thread systemPropertyWatcher = null;
 
-    private static native void toolkitInit();
+    private static native boolean toolkitInit();
 
     private void initSystemPropertyWatcher() {
-        toolkitInit();
+        if (!toolkitInit()) {
+            return;
+        }
 
         int initialSystemDarkColorScheme = isSystemDarkColorScheme();
         if (initialSystemDarkColorScheme >= 0) {

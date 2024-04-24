@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  *
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -32,9 +32,13 @@
 #include <jni.h>
 #include <jni_util.h>
 
+#ifdef DBUS_FOUND
+
 #include "dbus_interface.h"
 
-void SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_);
+jboolean SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_);
 void SystemProperties_pullEvent(void);
+
+#endif
 
 #endif //JETBRAINSRUNTIME_SYSTEM_PROPERTIES_H

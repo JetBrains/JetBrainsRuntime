@@ -34,18 +34,22 @@ AC_DEFUN_ONCE([LIB_SETUP_DBUS],
 
   if test "x$NEEDS_LIB_DBUS" = xfalse; then
     DBUS_CFLAGS=
+    DBUS_FOUND=false
   else
     if test "x${with_dbus_includes}" != x; then
+      DBUS_FOUND=true
       DBUS_CFLAGS=""
       for include in $with_dbus_includes; do
         DBUS_CFLAGS="${DBUS_CFLAGS}-I${include} "
       done
     else
-      PKG_CHECK_MODULES(DBUS, dbus-1, [], [AC_MSG_ERROR([Can't find dbus-1 library.
-      You can install dbus-1 library or specify include directories manually by giving --with-dbus-includes option.])])
+      PKG_CHECK_MODULES(DBUS, dbus-1, [DBUS_FOUND=true], [
+        DBUS_FOUND=false
+        AC_MSG_NOTICE([Can't find dbus-1 library. This library is needed to use some features. You can install dbus-1 library or specify include directories manually by giving --with-dbus-includes option.])
+      ])
     fi
   fi
 
   AC_SUBST(DBUS_CFLAGS)
-  AC_SUBST(DBUS_LIB)
+  AC_SUBST(DBUS_FOUND)
 ])

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  *
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,6 +26,8 @@
  */
 
 #include "system_properties.h"
+
+#ifdef DBUS_FOUND
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -200,7 +202,7 @@ JNIEXPORT jint JNICALL Java_sun_awt_UNIXToolkit_isSystemDarkColorScheme() {
     }
 }
 
-void SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_) {
+jboolean SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_) {
     env = env_;
     dBus = dBus_;
     DBusError err;
@@ -209,19 +211,19 @@ void SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_) {
     dBus->dbus_error_init(&err);
     if ((connection = dBus->dbus_bus_get(DBUS_BUS_SESSION, &err)) == NULL) {
         printError("DBus error: connection is Null\n");
-        return;
+        return JNI_FALSE;
     }
     if (dbusCheckError(&err, "connection error")) {
-        return;
+        return JNI_FALSE;
     }
 
     ret = dBus->dbus_bus_request_name(connection, "dbus.JBR.server", DBUS_NAME_FLAG_REPLACE_EXISTING , &err);
     if (ret != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER && ret != DBUS_REQUEST_NAME_REPLY_IN_QUEUE) {
         printError("DBus error: Failed to acquire service name \n");
-        return;
+        return JNI_FALSE;
     }
     if (dbusCheckError(&err, "error request 'dbus.JBR.server' name on the bus")) {
-        return;
+        return JNI_FALSE;
     }
 
     dBus->dbus_connection_flush(connection);
@@ -231,17 +233,30 @@ void SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_) {
     msg_freedesktop_appearance = createDBusMessage(freedesktop_appearance_messages, 2);
     msg_gnome_desktop = createDBusMessage(gnome_desktop_messages, 2);
     if (msg_freedesktop_appearance == NULL || msg_gnome_desktop == NULL) {
-        return;
+        return JNI_FALSE;
     }
 
     initialized = true;
 
-    return;
+    return JNI_TRUE;
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_UNIXToolkit_toolkitInit() {
+JNIEXPORT jboolean JNICALL Java_sun_awt_UNIXToolkit_toolkitInit() {
     DBusApi *dBus = DBusApi_setupDBusDefault();
     if (dBus) {
-        SystemProperties_setup(dBus, env);
+        return SystemProperties_setup(dBus, env);
     }
+    return JNI_FALSE;
 }
+
+#else
+
+JNIEXPORT jint JNICALL Java_sun_awt_UNIXToolkit_isSystemDarkColorScheme() {
+    return -1;
+}
+
+JNIEXPORT jboolean JNICALL Java_sun_awt_UNIXToolkit_toolkitInit() {
+    return JNI_FALSE;
+}
+
+#endif

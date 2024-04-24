@@ -75,6 +75,10 @@ ifeq ($(call isTargetOs, windows), true)
       #
 endif
 
+ifeq ($(DBUS_FOUND), false)
+  LIBAWT_EXCLUDE_FILES += dbus_interface.c dbus_interface.h
+endif
+
 ifeq ($(call isTargetOs, linux macosx aix), true)
   LIBAWT_EXCLUDE_FILES += awt_Font.c CUPSfuncs.c fontpath.c X11Color.c
 endif
@@ -101,6 +105,10 @@ LIBAWT_EXTRA_HEADER_DIRS := \
     #
 
 LIBAWT_CFLAGS := -D__MEDIALIB_OLD_NAMES -D__USE_J2D_NAMES -DMLIB_NO_LIBSUNMATH
+
+ifeq ($(DBUS_FOUND), true)
+  LIBAWT_CFLAGS += -DDBUS_FOUND
+endif
 
 ifeq ($(call isTargetOs, windows), true)
   LIBAWT_CFLAGS += -EHsc -DUNICODE -D_UNICODE
