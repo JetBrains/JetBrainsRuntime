@@ -841,7 +841,7 @@ AWT_ASSERT_APPKIT_THREAD;
         isDisabled = !awtWindow.isEnabled;
     }
 
-    if (menuBar == nil) {
+    if (menuBar == nil && [ApplicationDelegate sharedDelegate] != nil) {
         menuBar = [[ApplicationDelegate sharedDelegate] defaultMenuBar];
         isDisabled = NO;
     }
@@ -1228,7 +1228,7 @@ JNI_COCOA_ENTER(env);
         window.javaMenuBar = menuBar;
 
         CMenuBar* actualMenuBar = menuBar;
-        if (actualMenuBar == nil) {
+        if (actualMenuBar == nil && [ApplicationDelegate sharedDelegate] != nil) {
             actualMenuBar = [[ApplicationDelegate sharedDelegate] defaultMenuBar];
         }
 
