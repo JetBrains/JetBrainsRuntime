@@ -33,7 +33,6 @@ import java.io.File;
 import java.io.RandomAccessFile;
 import java.io.UncheckedIOException;
 import java.lang.ref.Cleaner.Cleanable;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.file.InvalidPathException;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -1419,14 +1418,19 @@ public class ZipFile implements ZipConstants, Closeable {
             }
         }
         private static final HashMap<Key, Source> files = new HashMap<>();
-
+        /**
+         * Use the platform's default file system to avoid
+         * issues when the VM is configured to use a custom file system provider.
+         */
+        private static final java.nio.file.FileSystem builtInFS =
+                DefaultFileSystemProvider.theFileSystem();
 
         static Source get(File file, boolean toDelete, ZipCoder zc) throws IOException {
             final Key key;
             try {
                 key = new Key(file,
-                        Files.readAttributes(file.toPath(), BasicFileAttributes.class),
-                        zc);
+                        Files.readAttributes(builtInFS.getPath(file.getPath()),
+                                BasicFileAttributes.class), zc);
             } catch (InvalidPathException ipe) {
                 throw new IOException(ipe);
             }
