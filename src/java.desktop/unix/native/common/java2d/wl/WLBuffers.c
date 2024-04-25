@@ -93,7 +93,6 @@ AssertDrawLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int lin
 const int MAX_BUFFERS_IN_USE = 2;
 
 static bool traceEnabled;    // set the J2D_STATS env var to enable
-static bool traceFPSEnabled; // set the J2D_FPS env var to enable
 
 /**
  * Represents one rectangular area linked into a list.
@@ -285,6 +284,10 @@ struct WLSurfaceBufferManager {
      * on the screen.
      */
     WLDrawBuffer        bufferForDraw; // only accessed under drawLock
+
+    jobject              surfaceDataWeakRef;
+    FrameCounterCallback frameSentCallback;
+    FrameCounterCallback frameDroppedCallback;
 };
 
 static inline void
@@ -309,7 +312,7 @@ AssertShowLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int lin
 static jlong
 GetJavaTimeNanos(void) {
     jlong result = 0;
-    if (traceEnabled || traceFPSEnabled) {
+    if (traceEnabled) {
         struct timespec tp;
         const jlong NANOSECS_PER_SEC = 1000000000L;
         clock_gettime(CLOCK_MONOTONIC, &tp);
@@ -332,24 +335,6 @@ WLBufferTrace(WLSurfaceBufferManager* manager, const char *fmt, ...)
                 manager->bufferForDraw.frameID);
         fflush(stderr);
         va_end(args);
-    }
-}
-
-static void
-WLBufferTraceFrame(WLSurfaceBufferManager* manager)
-{
-    if (traceFPSEnabled) {
-        static jlong lastFrameTime = 0;
-        static int frameCount = 0;
-
-        jlong curTime = GetJavaTimeNanos();
-        frameCount++;
-        if (curTime - lastFrameTime > 1000000000L) {
-            fprintf(stderr, "FPS: %d\n", frameCount);
-            fflush(stderr);
-            lastFrameTime = curTime;
-            frameCount = 0;
-        }
     }
 }
 
@@ -667,6 +652,10 @@ ShowBufferIsAvailable(WLSurfaceBufferManager * manager)
                 return false; // failed to resize, likely due to OOM
             }
         }
+    } else {
+        if (manager->frameDroppedCallback != NULL) {
+            manager->frameDroppedCallback(manager->surfaceDataWeakRef);
+        }
     }
 
     return canSendMoreBuffers;
@@ -792,7 +781,9 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
 
     jlong endTime = GetJavaTimeNanos();
     WLBufferTrace(manager, "SendShowBufferToWayland (%lldns)", endTime - startTime);
-    WLBufferTraceFrame(manager);
+    if (manager->frameSentCallback != NULL) {
+        manager->frameSentCallback(manager->surfaceDataWeakRef);
+    }
 }
 
 static void
@@ -945,10 +936,16 @@ HaveEnoughMemoryForWindow(jint width, jint height)
 }
 
 WLSurfaceBufferManager *
-WLSBM_Create(jint width, jint height, jint scale, jint bgPixel, jint wlShmFormat)
+WLSBM_Create(jint width,
+             jint height,
+             jint scale,
+             jint bgPixel,
+             jint wlShmFormat,
+             jobject surfaceDataWeakRef,
+             FrameCounterCallback frameSentCallback,
+             FrameCounterCallback frameDroppedCallback)
 {
     traceEnabled = getenv("J2D_STATS");
-    traceFPSEnabled = getenv("J2D_FPS");
 
     if (!HaveEnoughMemoryForWindow(width, height)) {
        return NULL;
@@ -964,6 +961,9 @@ WLSBM_Create(jint width, jint height, jint scale, jint bgPixel, jint wlShmFormat
     manager->scale = scale;
     manager->bgPixel = bgPixel;
     manager->format = wlShmFormat;
+    manager->surfaceDataWeakRef = surfaceDataWeakRef;
+    manager->frameSentCallback = frameSentCallback;
+    manager->frameDroppedCallback = frameDroppedCallback;
 
     pthread_mutex_init(&manager->showLock, NULL);
 
@@ -1006,6 +1006,9 @@ void
 WLSBM_Destroy(WLSurfaceBufferManager * manager)
 {
     J2dTrace(J2D_TRACE_INFO, "WLSBM_Destroy: manger %p\n", manager);
+
+    JNIEnv* env = getEnv();
+    (*env)->DeleteWeakGlobalRef(env, manager->surfaceDataWeakRef);
 
     // NB: must never be called in parallel with the Wayland event handlers
     // because their callbacks retain a pointer to this manager.
