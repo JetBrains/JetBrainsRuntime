@@ -493,6 +493,7 @@ public:
   }
 
   void set_containing_obj(oop obj) {
+    assert(!_g1h->is_obj_dead_cond(obj, _vo), "Precondition");
     _containing_obj = obj;
   }
 
@@ -519,8 +520,6 @@ public:
   template <class T>
   void do_oop_work(T* p) {
     assert(_containing_obj != NULL, "Precondition");
-    assert(!_g1h->is_obj_dead_cond(_containing_obj, _vo),
-      "Precondition");
     verify_liveness(p);
   }
 
@@ -577,8 +576,6 @@ public:
   template <class T>
   void do_oop_work(T* p) {
     assert(_containing_obj != NULL, "Precondition");
-    assert(!_g1h->is_obj_dead_cond(_containing_obj, _vo),
-      "Precondition");
     verify_remembered_set(p);
   }
 
