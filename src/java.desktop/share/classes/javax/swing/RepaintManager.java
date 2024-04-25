@@ -42,6 +42,8 @@ import sun.java2d.SunGraphicsEnvironment;
 
 import com.sun.java.swing.SwingUtilities3;
 import java.awt.geom.AffineTransform;
+import java.util.stream.Collectors;
+
 import sun.java2d.SunGraphics2D;
 import sun.java2d.pipe.Region;
 import sun.swing.SwingAccessor;
@@ -740,7 +742,14 @@ public class RepaintManager
 
             for (Window window : windows) {
                 AWTAccessor.getWindowAccessor().updateWindow(window);
+                AWTAccessor.getWindowAccessor().bumpCounter(window, "swing.RepaintManager.updateWindows");
             }
+        } else {
+            dirtyComponents.keySet().stream()
+                    .map(c -> c instanceof Window w ? w : SwingUtilities.getWindowAncestor(c))
+                    .filter(Objects::nonNull)
+                    .forEach(w -> AWTAccessor.getWindowAccessor()
+                            .bumpCounter(w, "swing.RepaintManager.updateWindows"));
         }
     }
 
