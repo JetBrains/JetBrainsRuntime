@@ -241,7 +241,7 @@ jboolean SystemProperties_setup(DBusApi *dBus_, JNIEnv *env_) {
     return JNI_TRUE;
 }
 
-JNIEXPORT jboolean JNICALL Java_sun_awt_UNIXToolkit_toolkitInit() {
+JNIEXPORT jboolean JNICALL Java_sun_awt_UNIXToolkit_dbusInit() {
     DBusApi *dBus = DBusApi_setupDBusDefault();
     if (dBus) {
         return SystemProperties_setup(dBus, env);
