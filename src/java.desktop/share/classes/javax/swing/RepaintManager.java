@@ -47,6 +47,7 @@ import sun.java2d.pipe.Region;
 import sun.swing.SwingAccessor;
 import sun.swing.SwingUtilities2;
 import sun.swing.SwingUtilities2.RepaintListener;
+import java.util.stream.Collectors;
 
 /**
  * This class manages repaint requests, allowing the number
@@ -715,6 +716,13 @@ public class RepaintManager
     }
 
     private void updateWindows(Map<Component,Rectangle> dirtyComponents) {
+        dirtyComponents.keySet().stream()
+                    .map(c -> c instanceof Window w ? w : SwingUtilities.getWindowAncestor(c))
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .forEach(w -> AWTAccessor.getWindowAccessor()
+                            .bumpCounter(w, "swing.RepaintManager.updateWindows"));
+
         Toolkit toolkit = Toolkit.getDefaultToolkit();
         if (!(toolkit instanceof SunToolkit &&
               ((SunToolkit)toolkit).needUpdateWindow()))
