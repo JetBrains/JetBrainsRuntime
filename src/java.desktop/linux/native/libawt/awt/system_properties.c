@@ -255,7 +255,7 @@ JNIEXPORT jint JNICALL Java_sun_awt_UNIXToolkit_isSystemDarkColorScheme() {
     return -1;
 }
 
-JNIEXPORT jboolean JNICALL Java_sun_awt_UNIXToolkit_toolkitInit() {
+JNIEXPORT jboolean JNICALL Java_sun_awt_UNIXToolkit_dbusInit() {
     return JNI_FALSE;
 }
 
