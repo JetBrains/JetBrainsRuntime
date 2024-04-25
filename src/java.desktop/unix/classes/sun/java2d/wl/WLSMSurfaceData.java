@@ -26,11 +26,14 @@
 
 package sun.java2d.wl;
 
+import java.awt.Component;
+import java.awt.Window;
 import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
 
+import sun.awt.AWTAccessor;
 import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLSMGraphicsConfig;
 import sun.java2d.SurfaceData;
@@ -47,6 +50,11 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
     public native void assignSurface(long surfacePtr);
 
     private native void initOps(int width, int height, int scale, int backgroundRGB, int wlShmFormat);
+    private static native void initIDs();
+
+    static {
+        initIDs();
+    }
 
     private WLSMSurfaceData(WLComponentPeer peer, SurfaceType surfaceType, ColorModel colorModel, int scale, int wlShmFormat) {
         super(surfaceType, colorModel);
@@ -139,6 +147,24 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
             }
         }
         return pixels;
+    }
+
+    private void countNewFrame() {
+        // Called from the native code when this surface data has been sent to the Wayland server
+        Component target = peer.getTarget();
+        if (target instanceof Window window) {
+            AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.frames");
+        }
+    }
+
+    private void countDroppedFrame() {
+        // Called from the native code when an attempt was made to send this surface data to
+        // the Wayland server, but that attempt was not successful. This can happen, for example,
+        // when those attempts are too frequent.
+        Component target = peer.getTarget();
+        if (target instanceof Window window) {
+            AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.framesDropped");
+        }
     }
 
     private native int pixelAt(int x, int y);
