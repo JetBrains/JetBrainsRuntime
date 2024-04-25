@@ -389,6 +389,7 @@ public class Window extends Container implements Accessible {
 
     private static final PlatformLogger log = PlatformLogger.getLogger("java.awt.Window");
     private static final PlatformLogger focusRequestLog = PlatformLogger.getLogger("jb.focus.requests");
+    private static final PlatformLogger perfLog = PlatformLogger.getLogger("awt.window.counters");
 
     private static final boolean locationByPlatformProp;
 
@@ -4276,6 +4277,8 @@ public class Window extends Container implements Accessible {
     }
 
     static {
+        String counters = System.getProperty("awt.window.counters");
+
         AWTAccessor.setWindowAccessor(new AWTAccessor.WindowAccessor() {
             public void updateWindow(Window window) {
                 window.updateWindow();
@@ -4300,12 +4303,103 @@ public class Window extends Container implements Accessible {
             public Window[] getOwnedWindows(Window w) {
                 return w.getOwnedWindows_NoClientCode();
             }
+
+            public boolean countersEnabled(Window w) {
+                // May want to selectively enable or disable counters per window
+                return counters != null;
+            }
+
+            public void bumpCounter(Window w, String counterName) {
+                Objects.requireNonNull(w);
+                Objects.requireNonNull(counterName);
+
+                PerfCounter newCounter;
+                long curTimeNanos = System.nanoTime();
+                synchronized (w.perfCounters) {
+                    newCounter = w.perfCounters.compute(counterName, (k, v) ->
+                            v == null
+                            ? new PerfCounter(curTimeNanos, 1L)
+                            : new PerfCounter(curTimeNanos, v.value + 1));
+                }
+                PerfCounter prevCounter;
+                synchronized (w.perfCountersPrev) {
+                    prevCounter = w.perfCountersPrev.putIfAbsent(counterName, newCounter);
+                }
+                if (prevCounter != null) {
+                    long nanosInSecond = java.util.concurrent.TimeUnit.SECONDS.toNanos(1);
+                    long timeDeltaNanos = curTimeNanos - prevCounter.updateTimeNanos;
+                    if (timeDeltaNanos > nanosInSecond) {
+                        long valPerSecond = (long) ((double) (newCounter.value - prevCounter.value)
+                                * nanosInSecond / timeDeltaNanos);
+                        boolean traceAllCounters = Objects.equals(counters, "")
+                                || Objects.equals(counters, "stdout")
+                                || Objects.equals(counters, "stderr");
+                        boolean traceEnabled = traceAllCounters || (counters != null && counters.contains(counterName));
+                        if (traceEnabled) {
+                            if (counters.contains("stderr")) {
+                                System.err.println(counterName + " per second: " + valPerSecond);
+                            } else {
+                                System.out.println(counterName + " per second: " + valPerSecond);
+                            }
+                        }
+                        if (perfLog.isLoggable(PlatformLogger.Level.FINE)) {
+                            perfLog.fine(counterName + " per second: " + valPerSecond);
+                        }
+                        synchronized (w.perfCountersPrev) {
+                            w.perfCountersPrev.put(counterName, newCounter);
+                        }
+                    }
+                }
+            }
+
+            public long getCounter(Window w, String counterName) {
+                Objects.requireNonNull(w);
+                Objects.requireNonNull(counterName);
+
+                synchronized (w.perfCounters) {
+                    PerfCounter counter = w.perfCounters.get(counterName);
+                    return counter != null ? counter.value : -1L;
+                }
+            }
+
+            public long getCounterPerSecond(Window w, String counterName) {
+                Objects.requireNonNull(w);
+                Objects.requireNonNull(counterName);
+
+                PerfCounter newCounter;
+                PerfCounter prevCounter;
+
+                synchronized (w.perfCounters) {
+                    newCounter = w.perfCounters.get(counterName);
+                }
+
+                synchronized (w.perfCountersPrev) {
+                    prevCounter = w.perfCountersPrev.get(counterName);
+                }
+
+                if (newCounter != null && prevCounter != null) {
+                    long timeDeltaNanos = newCounter.updateTimeNanos - prevCounter.updateTimeNanos;
+                    // Note that this time delta will usually be above one second.
+                    if (timeDeltaNanos > 0) {
+                        long nanosInSecond = java.util.concurrent.TimeUnit.SECONDS.toNanos(1);
+                        long valPerSecond = (long) ((double) (newCounter.value - prevCounter.value)
+                                * nanosInSecond / timeDeltaNanos);
+                        return valPerSecond;
+                    }
+                }
+                return -1;
+            }
         }); // WindowAccessor
     } // static
 
     // a window doesn't need to be updated in the Z-order.
     @Override
     void updateZOrder() {}
+
+    private record PerfCounter(Long updateTimeNanos, Long value) {}
+
+    private transient final Map<String, PerfCounter> perfCounters = new HashMap<>(4);
+    private transient final Map<String, PerfCounter> perfCountersPrev = new HashMap<>(4);
 
 } // class Window
 
