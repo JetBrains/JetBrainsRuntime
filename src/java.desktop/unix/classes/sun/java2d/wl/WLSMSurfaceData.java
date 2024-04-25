@@ -26,11 +26,14 @@
 
 package sun.java2d.wl;
 
+import java.awt.Component;
+import java.awt.Window;
 import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
 
+import sun.awt.AWTAccessor;
 import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLSMGraphicsConfig;
 import sun.java2d.SurfaceData;
@@ -46,9 +49,14 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
 
     public native void assignSurface(long surfacePtr);
 
-    private native void initOps(int width, int height, int scale, int backgroundRGB, int wlShmFormat);
+    private native void initOps(int width, int height, int scale, int backgroundRGB, int wlShmFormat, boolean perfCountersEnabled);
+    private static native void initIDs();
 
-    private WLSMSurfaceData(WLComponentPeer peer, SurfaceType surfaceType, ColorModel colorModel, int scale, int wlShmFormat) {
+    static {
+        initIDs();
+    }
+
+    private WLSMSurfaceData(WLComponentPeer peer, SurfaceType surfaceType, ColorModel colorModel, int scale, int wlShmFormat, boolean perfCountersEnabled) {
         super(surfaceType, colorModel);
         this.peer = peer;
 
@@ -63,7 +71,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
             log.fine(String.format("Shared memory surface data %dx%d x%d scale, format %d", width, height, scale, wlShmFormat));
         }
 
-        initOps(width, height, scale, backgroundPixel, wlShmFormat);
+        initOps(width, height, scale, backgroundPixel, wlShmFormat, perfCountersEnabled);
     }
 
     /**
@@ -75,7 +83,9 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
         }
         ColorModel cm = graphicsConfig.getColorModel();
         SurfaceType surfaceType = graphicsConfig.getSurfaceType();
-        return new WLSMSurfaceData(peer, surfaceType, cm, graphicsConfig.getWlScale(), graphicsConfig.getWlShmFormat());
+        Window target = peer.getTarget() instanceof Window ? (Window)peer.getTarget() : null;
+        boolean perfCountersEnabled = target != null && AWTAccessor.getWindowAccessor().countersEnabled(target);
+        return new WLSMSurfaceData(peer, surfaceType, cm, graphicsConfig.getWlScale(), graphicsConfig.getWlShmFormat(), perfCountersEnabled);
     }
 
     @Override
@@ -139,6 +149,24 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
             }
         }
         return pixels;
+    }
+
+    private void countNewFrame() {
+        // Called from the native code when this surface data has been sent to the Wayland server
+        Component target = peer.getTarget();
+        if (target instanceof Window window) {
+            AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.frames");
+        }
+    }
+
+    private void countDroppedFrame() {
+        // Called from the native code when an attempt was made to send this surface data to
+        // the Wayland server, but that attempt was not successful. This can happen, for example,
+        // when those attempts are too frequent.
+        Component target = peer.getTarget();
+        if (target instanceof Window window) {
+            AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.framesDropped");
+        }
     }
 
     private native int pixelAt(int x, int y);
