@@ -587,8 +587,10 @@ public abstract class UNIXToolkit extends SunToolkit
     private static native boolean dbusInit();
 
     private void initSystemPropertyWatcher() {
-        String dbusEnabled = System.getProperty("jbr.dbus.enabled", "true").toLowerCase();
-        if (!dbusEnabled.equals("true") || !dbusInit()) {
+        @SuppressWarnings("removal")
+        String dbusEnabled = AccessController.doPrivileged(
+                new GetPropertyAction("jbr.dbus.enabled", "true")).toLowerCase();
+        if (!"true".equals(dbusEnabled) || !dbusInit()) {
             return;
         }
 
