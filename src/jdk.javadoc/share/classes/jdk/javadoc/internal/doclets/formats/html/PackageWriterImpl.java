@@ -115,9 +115,9 @@ public class PackageWriterImpl extends HtmlDocletWriter
                 contents.moduleLabel);
         navBar.setNavLinkModule(linkContent);
         navBar.setUserHeader(getUserHeaderFooter(true));
-        htmlTree.addContent(navBar.getContent(true));
+        htmlTree.add(navBar.getContent(true));
         if (configuration.allowTag(HtmlTag.HEADER)) {
-            bodyTree.addContent(htmlTree);
+            bodyTree.add(htmlTree);
         }
         HtmlTree div = new HtmlTree(HtmlTag.DIV);
         div.setStyle(HtmlStyle.header);
@@ -125,24 +125,24 @@ public class PackageWriterImpl extends HtmlDocletWriter
             ModuleElement mdle = configuration.docEnv.getElementUtils().getModuleOf(packageElement);
             Content classModuleLabel = HtmlTree.SPAN(HtmlStyle.moduleLabelInPackage, contents.moduleLabel);
             Content moduleNameDiv = HtmlTree.DIV(HtmlStyle.subTitle, classModuleLabel);
-            moduleNameDiv.addContent(Contents.SPACE);
-            moduleNameDiv.addContent(getModuleLink(mdle,
+            moduleNameDiv.add(Contents.SPACE);
+            moduleNameDiv.add(getModuleLink(mdle,
                     new StringContent(mdle.getQualifiedName().toString())));
-            div.addContent(moduleNameDiv);
+            div.add(moduleNameDiv);
         }
         Content annotationContent = new HtmlTree(HtmlTag.P);
         addAnnotationInfo(packageElement, annotationContent);
-        div.addContent(annotationContent);
+        div.add(annotationContent);
         Content tHeading = HtmlTree.HEADING(HtmlConstants.TITLE_HEADING, true,
                 HtmlStyle.title, contents.packageLabel);
-        tHeading.addContent(Contents.SPACE);
+        tHeading.add(Contents.SPACE);
         Content packageHead = new StringContent(heading);
-        tHeading.addContent(packageHead);
-        div.addContent(tHeading);
+        tHeading.add(packageHead);
+        div.add(tHeading);
         if (configuration.allowTag(HtmlTag.MAIN)) {
-            mainTree.addContent(div);
+            mainTree.add(div);
         } else {
-            bodyTree.addContent(div);
+            bodyTree.add(div);
         }
         return bodyTree;
     }
@@ -169,14 +169,14 @@ public class PackageWriterImpl extends HtmlDocletWriter
             HtmlTree deprDiv = new HtmlTree(HtmlTag.DIV);
             deprDiv.setStyle(HtmlStyle.deprecationBlock);
             Content deprPhrase = HtmlTree.SPAN(HtmlStyle.deprecatedLabel, getDeprecatedPhrase(packageElement));
-            deprDiv.addContent(deprPhrase);
+            deprDiv.add(deprPhrase);
             if (!deprs.isEmpty()) {
                 List<? extends DocTree> commentTags = ch.getDescription(configuration, deprs.get(0));
                 if (!commentTags.isEmpty()) {
                     addInlineDeprecatedComment(packageElement, deprs.get(0), deprDiv);
                 }
             }
-            div.addContent(deprDiv);
+            div.add(deprDiv);
         }
     }
 
@@ -267,7 +267,7 @@ public class PackageWriterImpl extends HtmlDocletWriter
                         configuration, LinkInfoImpl.Kind.PACKAGE, klass));
                 ContentBuilder description = new ContentBuilder();
                 if (utils.isDeprecated(klass)) {
-                    description.addContent(getDeprecatedPhrase(klass));
+                    description.add(getDeprecatedPhrase(klass));
                     List<? extends DocTree> tags = utils.getDeprecatedTrees(klass);
                     if (!tags.isEmpty()) {
                         addSummaryDeprecatedComment(klass, tags.get(0), description);
@@ -278,7 +278,7 @@ public class PackageWriterImpl extends HtmlDocletWriter
                 table.addRow(classLink, description);
             }
             Content li = HtmlTree.LI(HtmlStyle.blockList, table.toContent());
-            summaryContentTree.addContent(li);
+            summaryContentTree.add(li);
         }
     }
 
@@ -289,7 +289,7 @@ public class PackageWriterImpl extends HtmlDocletWriter
     public void addPackageDescription(Content packageContentTree) {
         if (!utils.getBody(packageElement).isEmpty()) {
             Content tree = configuration.allowTag(HtmlTag.SECTION) ? sectionTree : packageContentTree;
-            tree.addContent(links.createAnchor(SectionName.PACKAGE_DESCRIPTION));
+            tree.add(links.createAnchor(SectionName.PACKAGE_DESCRIPTION));
             addDeprecationInfo(tree);
             addInlineComment(packageElement, tree);
         }
@@ -305,7 +305,7 @@ public class PackageWriterImpl extends HtmlDocletWriter
                 : packageContentTree;
         addTagsInfo(packageElement, htmlTree);
         if (configuration.allowTag(HtmlTag.SECTION)) {
-            packageContentTree.addContent(sectionTree);
+            packageContentTree.add(sectionTree);
         }
     }
 
@@ -315,10 +315,10 @@ public class PackageWriterImpl extends HtmlDocletWriter
     @Override
     public void addPackageContent(Content contentTree, Content packageContentTree) {
         if (configuration.allowTag(HtmlTag.MAIN)) {
-            mainTree.addContent(packageContentTree);
-            contentTree.addContent(mainTree);
+            mainTree.add(packageContentTree);
+            contentTree.add(mainTree);
         } else {
-            contentTree.addContent(packageContentTree);
+            contentTree.add(packageContentTree);
         }
     }
 
@@ -331,10 +331,10 @@ public class PackageWriterImpl extends HtmlDocletWriter
                 ? HtmlTree.FOOTER()
                 : contentTree;
         navBar.setUserFooter(getUserHeaderFooter(false));
-        htmlTree.addContent(navBar.getContent(false));
+        htmlTree.add(navBar.getContent(false));
         addBottom(htmlTree);
         if (configuration.allowTag(HtmlTag.FOOTER)) {
-            contentTree.addContent(htmlTree);
+            contentTree.add(htmlTree);
         }
     }
 

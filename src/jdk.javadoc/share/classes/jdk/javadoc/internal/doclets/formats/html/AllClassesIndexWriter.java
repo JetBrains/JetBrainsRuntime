@@ -108,26 +108,26 @@ public class AllClassesIndexWriter extends HtmlDocletWriter {
                 : bodyTree;
         addTop(htmlTree);
         navBar.setUserHeader(getUserHeaderFooter(true));
-        htmlTree.addContent(navBar.getContent(true));
+        htmlTree.add(navBar.getContent(true));
         if (configuration.allowTag(HtmlTag.HEADER)) {
-            bodyTree.addContent(htmlTree);
+            bodyTree.add(htmlTree);
         }
         Content allClassesContent = new ContentBuilder();
         addContents(allClassesContent);
         if (configuration.allowTag(HtmlTag.MAIN)) {
-            mainTree.addContent(allClassesContent);
-            bodyTree.addContent(mainTree);
+            mainTree.add(allClassesContent);
+            bodyTree.add(mainTree);
         } else {
-            bodyTree.addContent(allClassesContent);
+            bodyTree.add(allClassesContent);
         }
         Content tree = (configuration.allowTag(HtmlTag.FOOTER))
                 ? HtmlTree.FOOTER()
                 : bodyTree;
         navBar.setUserFooter(getUserHeaderFooter(false));
-        tree.addContent(navBar.getContent(false));
+        tree.add(navBar.getContent(false));
         addBottom(tree);
         if (configuration.allowTag(HtmlTag.FOOTER)) {
-            bodyTree.addContent(tree);
+            bodyTree.add(tree);
         }
         printHtmlDocument(null, true, bodyTree);
     }
@@ -166,14 +166,14 @@ public class AllClassesIndexWriter extends HtmlDocletWriter {
         Content pHeading = HtmlTree.HEADING(HtmlConstants.TITLE_HEADING, true,
                 HtmlStyle.title, titleContent);
         Content headerDiv = HtmlTree.DIV(HtmlStyle.header, pHeading);
-        content.addContent(headerDiv);
+        content.add(headerDiv);
         if (!table.isEmpty()) {
             HtmlTree li = HtmlTree.LI(HtmlStyle.blockList, table.toContent());
             HtmlTree ul = HtmlTree.UL(HtmlStyle.blockList, li);
             HtmlTree div = new HtmlTree(HtmlTag.DIV);
             div.setStyle(HtmlStyle.allClassesContainer);
-            div.addContent(ul);
-            content.addContent(div);
+            div.add(ul);
+            content.add(div);
             if (table.needsScript()) {
                 getMainBodyScript().append(table.getScript());
             }
@@ -192,7 +192,7 @@ public class AllClassesIndexWriter extends HtmlDocletWriter {
                 configuration, LinkInfoImpl.Kind.INDEX, klass));
         ContentBuilder description = new ContentBuilder();
         if (utils.isDeprecated(klass)) {
-            description.addContent(getDeprecatedPhrase(klass));
+            description.add(getDeprecatedPhrase(klass));
             List<? extends DocTree> tags = utils.getDeprecatedTrees(klass);
             if (!tags.isEmpty()) {
                 addSummaryDeprecatedComment(klass, tags.get(0), description);

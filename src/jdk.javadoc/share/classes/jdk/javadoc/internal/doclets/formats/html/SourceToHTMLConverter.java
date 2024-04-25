@@ -195,7 +195,7 @@ public class SourceToHTMLConverter {
             }
             addBlankLines(pre);
             Content div = HtmlTree.DIV(HtmlStyle.sourceContainer, pre);
-            body.addContent((configuration.allowTag(HtmlTag.MAIN)) ? HtmlTree.MAIN(div) : div);
+            body.add((configuration.allowTag(HtmlTag.MAIN)) ? HtmlTree.MAIN(div) : div);
             writeToFile(body, outputdir.resolve(configuration.docPaths.forClass(te)));
         } catch (IOException e) {
             String message = resources.getText("doclet.exception.read.file", fo.getName());
@@ -240,7 +240,7 @@ public class SourceToHTMLConverter {
         }
         DocPath p = relativePath.resolve(stylesheet);
         HtmlTree link = HtmlTree.LINK("stylesheet", "text/css", p.getPath(), "Style");
-        head.addContent(link);
+        head.add(link);
         addStylesheets(head);
     }
 
@@ -252,7 +252,7 @@ public class SourceToHTMLConverter {
                 DocPath ssheetPath = DocPath.create(file.getName());
                 HtmlTree slink = HtmlTree.LINK("stylesheet", "text/css", relativePath.resolve(ssheetPath).getPath(),
                         "Style");
-                tree.addContent(slink);
+                tree.add(slink);
             });
         }
     }
@@ -276,13 +276,13 @@ public class SourceToHTMLConverter {
         HtmlTree span = new HtmlTree(HtmlTag.SPAN);
         span.setStyle(HtmlStyle.sourceLineNo);
         if (lineno < 10) {
-            span.addContent("00" + Integer.toString(lineno));
+            span.add("00" + Integer.toString(lineno));
         } else if (lineno < 100) {
-            span.addContent("0" + Integer.toString(lineno));
+            span.add("0" + Integer.toString(lineno));
         } else {
-            span.addContent(Integer.toString(lineno));
+            span.add(Integer.toString(lineno));
         }
-        pre.addContent(span);
+        pre.add(span);
     }
 
     /**
@@ -297,8 +297,8 @@ public class SourceToHTMLConverter {
             Content anchor = HtmlTree.A(configuration.htmlVersion,
                     "line." + Integer.toString(currentLineNo),
                     new StringContent(utils.replaceTabs(line)));
-            pre.addContent(anchor);
-            pre.addContent(NEW_LINE);
+            pre.add(anchor);
+            pre.add(NEW_LINE);
         }
     }
 
@@ -309,7 +309,7 @@ public class SourceToHTMLConverter {
      */
     private static void addBlankLines(Content pre) {
         for (int i = 0; i < NUM_BLANK_LINES; i++) {
-            pre.addContent(NEW_LINE);
+            pre.add(NEW_LINE);
         }
     }
 

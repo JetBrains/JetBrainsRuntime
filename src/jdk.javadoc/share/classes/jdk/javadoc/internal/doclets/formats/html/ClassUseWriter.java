@@ -255,23 +255,23 @@ public class ClassUseWriter extends SubWriterHolderWriter {
         if (pkgSet.size() > 0) {
             addClassUse(div);
         } else {
-            div.addContent(contents.getContent("doclet.ClassUse_No.usage.of.0",
+            div.add(contents.getContent("doclet.ClassUse_No.usage.of.0",
                     utils.getFullyQualifiedName(typeElement)));
         }
         if (configuration.allowTag(HtmlTag.MAIN)) {
-            mainTree.addContent(div);
-            body.addContent(mainTree);
+            mainTree.add(div);
+            body.add(mainTree);
         } else {
-            body.addContent(div);
+            body.add(div);
         }
         HtmlTree htmlTree = (configuration.allowTag(HtmlTag.FOOTER))
                 ? HtmlTree.FOOTER()
                 : body;
         navBar.setUserFooter(getUserHeaderFooter(false));
-        htmlTree.addContent(navBar.getContent(false));
+        htmlTree.add(navBar.getContent(false));
         addBottom(htmlTree);
         if (configuration.allowTag(HtmlTag.FOOTER)) {
-            body.addContent(htmlTree);
+            body.add(htmlTree);
         }
         printHtmlDocument(null, true, body);
     }
@@ -289,7 +289,7 @@ public class ClassUseWriter extends SubWriterHolderWriter {
             addPackageAnnotationList(ul);
         }
         addClassList(ul);
-        contentTree.addContent(ul);
+        contentTree.add(ul);
     }
 
     /**
@@ -311,7 +311,7 @@ public class ClassUseWriter extends SubWriterHolderWriter {
             addPackageUse(pkg, table);
         }
         Content li = HtmlTree.LI(HtmlStyle.blockList, table.toContent());
-        contentTree.addContent(li);
+        contentTree.add(li);
     }
 
     /**
@@ -341,7 +341,7 @@ public class ClassUseWriter extends SubWriterHolderWriter {
             table.addRow(getPackageLink(pkg), summary);
         }
         Content li = HtmlTree.LI(HtmlStyle.blockList, table.toContent());
-        contentTree.addContent(li);
+        contentTree.add(li);
     }
 
     /**
@@ -362,16 +362,16 @@ public class ClassUseWriter extends SubWriterHolderWriter {
                             typeElement)),
                     getPackageLink(pkg, utils.getPackageName(pkg)));
             Content heading = HtmlTree.HEADING(HtmlConstants.SUMMARY_HEADING, link);
-            htmlTree.addContent(heading);
+            htmlTree.add(heading);
             addClassUse(pkg, htmlTree);
             if (configuration.allowTag(HtmlTag.SECTION)) {
-                ul.addContent(HtmlTree.LI(HtmlStyle.blockList, htmlTree));
+                ul.add(HtmlTree.LI(HtmlStyle.blockList, htmlTree));
             } else {
-                ul.addContent(htmlTree);
+                ul.add(htmlTree);
             }
         }
         Content li = HtmlTree.LI(HtmlStyle.blockList, ul);
-        contentTree.addContent(li);
+        contentTree.add(li);
     }
 
     /**
@@ -488,21 +488,21 @@ public class ClassUseWriter extends SubWriterHolderWriter {
                 .label(configuration.getText("doclet.Class")));
         navBar.setNavLinkClass(classLinkContent);
         navBar.setUserHeader(getUserHeaderFooter(true));
-        htmlTree.addContent(navBar.getContent(true));
+        htmlTree.add(navBar.getContent(true));
         if (configuration.allowTag(HtmlTag.HEADER)) {
-            bodyTree.addContent(htmlTree);
+            bodyTree.add(htmlTree);
         }
         ContentBuilder headContent = new ContentBuilder();
-        headContent.addContent(contents.getContent("doclet.ClassUse_Title", cltype));
-        headContent.addContent(new HtmlTree(HtmlTag.BR));
-        headContent.addContent(clname);
+        headContent.add(contents.getContent("doclet.ClassUse_Title", cltype));
+        headContent.add(new HtmlTree(HtmlTag.BR));
+        headContent.add(clname);
         Content heading = HtmlTree.HEADING(HtmlConstants.CLASS_PAGE_HEADING,
                 true, HtmlStyle.title, headContent);
         Content div = HtmlTree.DIV(HtmlStyle.header, heading);
         if (configuration.allowTag(HtmlTag.MAIN)) {
-            mainTree.addContent(div);
+            mainTree.add(div);
         } else {
-            bodyTree.addContent(div);
+            bodyTree.add(div);
         }
         return bodyTree;
     }

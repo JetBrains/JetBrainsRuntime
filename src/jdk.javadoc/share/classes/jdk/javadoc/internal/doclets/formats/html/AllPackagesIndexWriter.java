@@ -90,9 +90,9 @@ public class AllPackagesIndexWriter extends HtmlDocletWriter {
                 : bodyTree;
         addTop(htmlTree);
         navBar.setUserHeader(getUserHeaderFooter(true));
-        htmlTree.addContent(navBar.getContent(true));
+        htmlTree.add(navBar.getContent(true));
         if (configuration.allowTag(HtmlTag.HEADER)) {
-            bodyTree.addContent(htmlTree);
+            bodyTree.add(htmlTree);
         }
         HtmlTree div = new HtmlTree(HtmlTag.DIV);
         div.setStyle(HtmlStyle.allPackagesContainer);
@@ -102,21 +102,21 @@ public class AllPackagesIndexWriter extends HtmlDocletWriter {
                 HtmlStyle.title, titleContent);
         Content headerDiv = HtmlTree.DIV(HtmlStyle.header, pHeading);
         if (configuration.allowTag(HtmlTag.MAIN)) {
-            mainTree.addContent(headerDiv);
-            mainTree.addContent(div);
-            bodyTree.addContent(mainTree);
+            mainTree.add(headerDiv);
+            mainTree.add(div);
+            bodyTree.add(mainTree);
         } else {
-            bodyTree.addContent(headerDiv);
-            bodyTree.addContent(div);
+            bodyTree.add(headerDiv);
+            bodyTree.add(div);
         }
         Content tree = (configuration.allowTag(HtmlTag.FOOTER))
                 ? HtmlTree.FOOTER()
                 : bodyTree;
         navBar.setUserFooter(getUserHeaderFooter(false));
-        tree.addContent(navBar.getContent(false));
+        tree.add(navBar.getContent(false));
         addBottom(tree);
         if (configuration.allowTag(HtmlTag.FOOTER)) {
-            bodyTree.addContent(tree);
+            bodyTree.add(tree);
         }
         printHtmlDocument(null, true, bodyTree);
     }
@@ -141,6 +141,6 @@ public class AllPackagesIndexWriter extends HtmlDocletWriter {
             }
         }
         HtmlTree li = HtmlTree.LI(HtmlStyle.blockList, table.toContent());
-        content.addContent(HtmlTree.UL(HtmlStyle.blockList, li));
+        content.add(HtmlTree.UL(HtmlStyle.blockList, li));
     }
 }

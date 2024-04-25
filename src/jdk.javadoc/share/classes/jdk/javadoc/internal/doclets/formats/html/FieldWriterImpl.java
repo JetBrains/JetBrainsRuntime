@@ -75,7 +75,7 @@ public class FieldWriterImpl extends AbstractMemberWriter
     @Override
     public Content getMemberSummaryHeader(TypeElement typeElement,
             Content memberSummaryTree) {
-        memberSummaryTree.addContent(HtmlConstants.START_OF_FIELD_SUMMARY);
+        memberSummaryTree.add(HtmlConstants.START_OF_FIELD_SUMMARY);
         Content memberTree = writer.getMemberTreeHeader();
         writer.addSummaryHeader(this, typeElement, memberTree);
         return memberTree;
@@ -94,13 +94,13 @@ public class FieldWriterImpl extends AbstractMemberWriter
      */
     @Override
     public Content getFieldDetailsTreeHeader(TypeElement typeElement, Content memberDetailsTree) {
-        memberDetailsTree.addContent(HtmlConstants.START_OF_FIELD_DETAILS);
+        memberDetailsTree.add(HtmlConstants.START_OF_FIELD_DETAILS);
         Content fieldDetailsTree = writer.getMemberTreeHeader();
-        fieldDetailsTree.addContent(links.createAnchor(
+        fieldDetailsTree.add(links.createAnchor(
                 SectionName.FIELD_DETAIL));
         Content heading = HtmlTree.HEADING(HtmlConstants.DETAILS_HEADING,
                 contents.fieldDetailsLabel);
-        fieldDetailsTree.addContent(heading);
+        fieldDetailsTree.add(heading);
         return fieldDetailsTree;
     }
 
@@ -109,11 +109,11 @@ public class FieldWriterImpl extends AbstractMemberWriter
      */
     @Override
     public Content getFieldDocTreeHeader(VariableElement field, Content fieldDetailsTree) {
-        fieldDetailsTree.addContent(links.createAnchor(name(field)));
+        fieldDetailsTree.add(links.createAnchor(name(field)));
         Content fieldTree = writer.getMemberTreeHeader();
         Content heading = new HtmlTree(HtmlConstants.MEMBER_HEADING);
-        heading.addContent(name(field));
-        fieldTree.addContent(heading);
+        heading.add(name(field));
+        fieldTree.add(heading);
         return fieldTree;
     }
 
@@ -127,8 +127,8 @@ public class FieldWriterImpl extends AbstractMemberWriter
         addModifiers(field, pre);
         Content fieldlink = writer.getLink(new LinkInfoImpl(
                 configuration, LinkInfoImpl.Kind.MEMBER, field.asType()));
-        pre.addContent(fieldlink);
-        pre.addContent(" ");
+        pre.add(fieldlink);
+        pre.add(" ");
         if (configuration.linksource) {
             Content fieldName = new StringContent(name(field));
             writer.addSrcLink(field, fieldName, pre);
@@ -192,7 +192,7 @@ public class FieldWriterImpl extends AbstractMemberWriter
     public void addSummaryLabel(Content memberTree) {
         Content label = HtmlTree.HEADING(HtmlConstants.SUMMARY_HEADING,
                 contents.fieldSummaryLabel);
-        memberTree.addContent(label);
+        memberTree.add(label);
     }
 
     /**
@@ -227,7 +227,7 @@ public class FieldWriterImpl extends AbstractMemberWriter
      */
     @Override
     public void addSummaryAnchor(TypeElement typeElement, Content memberTree) {
-        memberTree.addContent(links.createAnchor(
+        memberTree.add(links.createAnchor(
                 SectionName.FIELD_SUMMARY));
     }
 
@@ -236,7 +236,7 @@ public class FieldWriterImpl extends AbstractMemberWriter
      */
     @Override
     public void addInheritedSummaryAnchor(TypeElement typeElement, Content inheritedTree) {
-        inheritedTree.addContent(links.createAnchor(
+        inheritedTree.add(links.createAnchor(
                 SectionName.FIELDS_INHERITANCE, configuration.getClassName(typeElement)));
     }
 
@@ -259,9 +259,9 @@ public class FieldWriterImpl extends AbstractMemberWriter
         }
         Content labelHeading = HtmlTree.HEADING(HtmlConstants.INHERITED_SUMMARY_HEADING,
                 label);
-        labelHeading.addContent(Contents.SPACE);
-        labelHeading.addContent(classLink);
-        inheritedTree.addContent(labelHeading);
+        labelHeading.add(Contents.SPACE);
+        labelHeading.add(classLink);
+        inheritedTree.add(labelHeading);
     }
 
     /**
@@ -273,7 +273,7 @@ public class FieldWriterImpl extends AbstractMemberWriter
         Content memberLink = HtmlTree.SPAN(HtmlStyle.memberNameLink,
                 writer.getDocLink(context, typeElement , member, name(member), false));
         Content code = HtmlTree.CODE(memberLink);
-        tdSummary.addContent(code);
+        tdSummary.add(code);
     }
 
     /**
@@ -281,7 +281,7 @@ public class FieldWriterImpl extends AbstractMemberWriter
      */
     @Override
     protected void addInheritedSummaryLink(TypeElement typeElement, Element member, Content linksTree) {
-        linksTree.addContent(
+        linksTree.add(
                 writer.getDocLink(LinkInfoImpl.Kind.MEMBER, typeElement, member,
                 name(member), false));
     }

@@ -74,7 +74,7 @@ public class AnnotationTypeOptionalMemberWriterImpl extends
     @Override
     public Content getMemberSummaryHeader(TypeElement typeElement,
             Content memberSummaryTree) {
-        memberSummaryTree.addContent(
+        memberSummaryTree.add(
                 HtmlConstants.START_OF_ANNOTATION_TYPE_OPTIONAL_MEMBER_SUMMARY);
         Content memberTree = writer.getMemberTreeHeader();
         writer.addSummaryHeader(this, typeElement, memberTree);
@@ -101,8 +101,8 @@ public class AnnotationTypeOptionalMemberWriterImpl extends
                 Content dt = HtmlTree.DT(contents.default_);
                 Content dl = HtmlTree.DL(dt);
                 Content dd = HtmlTree.DD(new StringContent(value.toString()));
-                dl.addContent(dd);
-                annotationDocTree.addContent(dl);
+                dl.add(dd);
+                annotationDocTree.add(dl);
             }
         }
     }
@@ -114,7 +114,7 @@ public class AnnotationTypeOptionalMemberWriterImpl extends
     public void addSummaryLabel(Content memberTree) {
         Content label = HtmlTree.HEADING(HtmlConstants.SUMMARY_HEADING,
                 contents.annotateTypeOptionalMemberSummaryLabel);
-        memberTree.addContent(label);
+        memberTree.add(label);
     }
 
     /**
@@ -149,7 +149,7 @@ public class AnnotationTypeOptionalMemberWriterImpl extends
      */
     @Override
     public void addSummaryAnchor(TypeElement typeElement, Content memberTree) {
-        memberTree.addContent(links.createAnchor(
+        memberTree.add(links.createAnchor(
                 SectionName.ANNOTATION_TYPE_OPTIONAL_ELEMENT_SUMMARY));
     }
 }

@@ -106,13 +106,13 @@ public class ModuleFrameWriter extends HtmlDocletWriter {
                 : configuration.docPaths.moduleSummary(moduleElement);
         Content heading = HtmlTree.HEADING(HtmlConstants.TITLE_HEADING, HtmlStyle.bar,
                 mdlgen.links.createLink(moduleSummary, mdlLabel, "", "classFrame"));
-        htmlTree.addContent(heading);
+        htmlTree.add(heading);
         HtmlTree div = new HtmlTree(HtmlTag.DIV);
         div.setStyle(HtmlStyle.indexContainer);
         mdlgen.addClassListing(div);
-        htmlTree.addContent(div);
+        htmlTree.add(div);
         if (configuration.allowTag(HtmlTag.MAIN)) {
-            body.addContent(htmlTree);
+            body.add(htmlTree);
         }
         mdlgen.printHtmlDocument(
                 configuration.metakeywords.getMetaKeywordsForModule(moduleElement), false, body);
@@ -178,7 +178,7 @@ public class ModuleFrameWriter extends HtmlDocletWriter {
                 if (!printedHeader) {
                     Content heading = HtmlTree.HEADING(HtmlConstants.CONTENT_HEADING,
                             true, labelContent);
-                    htmlTree.addContent(heading);
+                    htmlTree.add(heading);
                     printedHeader = true;
                 }
                 Content arr_i_name = new StringContent(utils.getSimpleName(typeElement));
@@ -188,11 +188,11 @@ public class ModuleFrameWriter extends HtmlDocletWriter {
                 Content link = getLink(new LinkInfoImpl(configuration,
                         LinkInfoImpl.Kind.ALL_CLASSES_FRAME, typeElement).label(arr_i_name).target("classFrame"));
                 Content li = HtmlTree.LI(link);
-                ul.addContent(li);
+                ul.add(li);
             }
-            htmlTree.addContent(ul);
+            htmlTree.add(ul);
             if (configuration.allowTag(HtmlTag.SECTION)) {
-                contentTree.addContent(htmlTree);
+                contentTree.add(htmlTree);
             }
         }
     }

@@ -72,7 +72,7 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
     @Override
     public Content getMemberSummaryHeader(TypeElement typeElement,
             Content memberSummaryTree) {
-        memberSummaryTree.addContent(HtmlConstants.START_OF_NESTED_CLASS_SUMMARY);
+        memberSummaryTree.add(HtmlConstants.START_OF_NESTED_CLASS_SUMMARY);
         Content memberTree = writer.getMemberTreeHeader();
         writer.addSummaryHeader(this, typeElement, memberTree);
         return memberTree;
@@ -93,7 +93,7 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
     public void addSummaryLabel(Content memberTree) {
         Content label = HtmlTree.HEADING(HtmlConstants.SUMMARY_HEADING,
                 contents.nestedClassSummary);
-        memberTree.addContent(label);
+        memberTree.add(label);
     }
 
     /**
@@ -130,7 +130,7 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
      */
     @Override
     public void addSummaryAnchor(TypeElement typeElement, Content memberTree) {
-        memberTree.addContent(links.createAnchor(
+        memberTree.add(links.createAnchor(
                 SectionName.NESTED_CLASS_SUMMARY));
     }
 
@@ -139,7 +139,7 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
      */
     @Override
     public void addInheritedSummaryAnchor(TypeElement typeElement, Content inheritedTree) {
-        inheritedTree.addContent(links.createAnchor(
+        inheritedTree.add(links.createAnchor(
                 SectionName.NESTED_CLASSES_INHERITANCE,
                 utils.getFullyQualifiedName(typeElement)));
     }
@@ -163,9 +163,9 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
         }
         Content labelHeading = HtmlTree.HEADING(HtmlConstants.INHERITED_SUMMARY_HEADING,
                 label);
-        labelHeading.addContent(Contents.SPACE);
-        labelHeading.addContent(classLink);
-        inheritedTree.addContent(labelHeading);
+        labelHeading.add(Contents.SPACE);
+        labelHeading.add(classLink);
+        inheritedTree.add(labelHeading);
     }
 
     /**
@@ -177,7 +177,7 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
         Content memberLink = HtmlTree.SPAN(HtmlStyle.memberNameLink,
                 writer.getLink(new LinkInfoImpl(configuration, context, (TypeElement)member)));
         Content code = HtmlTree.CODE(memberLink);
-        tdSummary.addContent(code);
+        tdSummary.add(code);
     }
 
     /**
@@ -185,7 +185,7 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
      */
     @Override
     protected void addInheritedSummaryLink(TypeElement typeElement, Element member, Content linksTree) {
-        linksTree.addContent(
+        linksTree.add(
                 writer.getLink(new LinkInfoImpl(configuration, LinkInfoImpl.Kind.MEMBER,
                         (TypeElement)member)));
     }

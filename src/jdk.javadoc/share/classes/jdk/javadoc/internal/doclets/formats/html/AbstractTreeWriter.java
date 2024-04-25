@@ -93,9 +93,9 @@ public abstract class AbstractTreeWriter extends HtmlDocletWriter {
                 addExtendsImplements(parent, local, li);
                 addLevelInfo(local, classtree.directSubClasses(local, isEnum),
                              isEnum, li);   // Recurse
-                ul.addContent(li);
+                ul.add(li);
             }
-            contentTree.addContent(ul);
+            contentTree.add(ul);
         }
     }
 
@@ -123,13 +123,13 @@ public abstract class AbstractTreeWriter extends HtmlDocletWriter {
             if (configuration.allowTag(HtmlTag.SECTION)) {
                 htmlTree = HtmlTree.SECTION(sectionHeading);
             } else {
-                div.addContent(sectionHeading);
+                div.add(sectionHeading);
                 htmlTree = div;
             }
             addLevelInfo(!utils.isInterface(firstTypeElement) ? firstTypeElement : null,
                     sset, isEnums, htmlTree);
             if (configuration.allowTag(HtmlTag.SECTION)) {
-                div.addContent(htmlTree);
+                div.add(htmlTree);
             }
         }
     }
@@ -156,21 +156,21 @@ public abstract class AbstractTreeWriter extends HtmlDocletWriter {
                         if (isFirst) {
                             isFirst = false;
                             if (utils.isInterface(typeElement)) {
-                                contentTree.addContent(" (");
-                                contentTree.addContent(contents.also);
-                                contentTree.addContent(" extends ");
+                                contentTree.add(" (");
+                                contentTree.add(contents.also);
+                                contentTree.add(" extends ");
                             } else {
-                                contentTree.addContent(" (implements ");
+                                contentTree.add(" (implements ");
                             }
                         } else {
-                            contentTree.addContent(", ");
+                            contentTree.add(", ");
                         }
                         addPreQualifiedClassLink(LinkInfoImpl.Kind.TREE, intf, contentTree);
                     }
                 }
             }
             if (!isFirst) {
-                contentTree.addContent(")");
+                contentTree.add(")");
             }
         }
     }

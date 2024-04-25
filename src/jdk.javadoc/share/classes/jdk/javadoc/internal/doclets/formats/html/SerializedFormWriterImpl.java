@@ -85,18 +85,18 @@ public class SerializedFormWriterImpl extends SubWriterHolderWriter
                 : bodyTree;
         addTop(htmlTree);
         navBar.setUserHeader(getUserHeaderFooter(true));
-        htmlTree.addContent(navBar.getContent(true));
+        htmlTree.add(navBar.getContent(true));
         if (configuration.allowTag(HtmlTag.HEADER)) {
-            bodyTree.addContent(htmlTree);
+            bodyTree.add(htmlTree);
         }
         Content h1Content = new StringContent(header);
         Content heading = HtmlTree.HEADING(HtmlConstants.TITLE_HEADING, true,
                 HtmlStyle.title, h1Content);
         Content div = HtmlTree.DIV(HtmlStyle.header, heading);
         if (configuration.allowTag(HtmlTag.MAIN)) {
-            mainTree.addContent(div);
+            mainTree.add(div);
         } else {
-            bodyTree.addContent(div);
+            bodyTree.add(div);
         }
         return bodyTree;
     }
@@ -137,8 +137,8 @@ public class SerializedFormWriterImpl extends SubWriterHolderWriter
     public Content getPackageHeader(String packageName) {
         Content heading = HtmlTree.HEADING(HtmlConstants.PACKAGE_HEADING, true,
                 contents.packageLabel);
-        heading.addContent(Contents.SPACE);
-        heading.addContent(packageName);
+        heading.add(Contents.SPACE);
+        heading.add(packageName);
         return heading;
     }
 
@@ -188,7 +188,7 @@ public class SerializedFormWriterImpl extends SubWriterHolderWriter
             configuration.getContent(
             "doclet.Class_0_extends_implements_serializable", classLink,
             superClassLink);
-        li.addContent(HtmlTree.HEADING(HtmlConstants.SERIALIZED_MEMBER_HEADING,
+        li.add(HtmlTree.HEADING(HtmlConstants.SERIALIZED_MEMBER_HEADING,
                 className));
         return li;
     }
@@ -215,9 +215,9 @@ public class SerializedFormWriterImpl extends SubWriterHolderWriter
     public void addSerialUIDInfo(String header, String serialUID,
             Content serialUidTree) {
         Content headerContent = new StringContent(header);
-        serialUidTree.addContent(HtmlTree.DT(headerContent));
+        serialUidTree.add(HtmlTree.DT(headerContent));
         Content serialContent = new StringContent(serialUID);
-        serialUidTree.addContent(HtmlTree.DD(serialContent));
+        serialUidTree.add(HtmlTree.DD(serialContent));
     }
 
     /**
@@ -241,7 +241,7 @@ public class SerializedFormWriterImpl extends SubWriterHolderWriter
         HtmlTree divContent = HtmlTree.DIV(HtmlStyle.serializedFormContainer,
                 serializedTreeContent);
         if (configuration.allowTag(HtmlTag.MAIN)) {
-            mainTree.addContent(divContent);
+            mainTree.add(divContent);
             return mainTree;
         } else {
             return divContent;
@@ -253,7 +253,7 @@ public class SerializedFormWriterImpl extends SubWriterHolderWriter
      */
     public void addPackageSerializedTree(Content serializedSummariesTree,
             Content packageSerializedTree) {
-        serializedSummariesTree.addContent((configuration.allowTag(HtmlTag.SECTION))
+        serializedSummariesTree.add((configuration.allowTag(HtmlTag.SECTION))
                 ? HtmlTree.LI(HtmlStyle.blockList, packageSerializedTree)
                 : packageSerializedTree);
     }
@@ -268,10 +268,10 @@ public class SerializedFormWriterImpl extends SubWriterHolderWriter
                 ? HtmlTree.FOOTER()
                 : serializedTree;
         navBar.setUserFooter(getUserHeaderFooter(false));
-        htmlTree.addContent(navBar.getContent(false));
+        htmlTree.add(navBar.getContent(false));
         addBottom(htmlTree);
         if (configuration.allowTag(HtmlTag.FOOTER)) {
-            serializedTree.addContent(htmlTree);
+            serializedTree.add(htmlTree);
         }
     }
 

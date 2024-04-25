@@ -71,7 +71,7 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
      */
     public Content getMemberSummaryHeader(TypeElement typeElement,
             Content memberSummaryTree) {
-        memberSummaryTree.addContent(
+        memberSummaryTree.add(
                 HtmlConstants.START_OF_ANNOTATION_TYPE_FIELD_SUMMARY);
         Content memberTree = writer.getMemberTreeHeader();
         writer.addSummaryHeader(this, typeElement, memberTree);
@@ -96,7 +96,7 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
      * {@inheritDoc}
      */
     public void addAnnotationFieldDetailsMarker(Content memberDetails) {
-        memberDetails.addContent(HtmlConstants.START_OF_ANNOTATION_TYPE_FIELD_DETAILS);
+        memberDetails.add(HtmlConstants.START_OF_ANNOTATION_TYPE_FIELD_DETAILS);
     }
 
     /**
@@ -105,11 +105,11 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
     public void addAnnotationDetailsTreeHeader(TypeElement typeElement,
             Content memberDetailsTree) {
         if (!writer.printedAnnotationFieldHeading) {
-            memberDetailsTree.addContent(links.createAnchor(
+            memberDetailsTree.add(links.createAnchor(
                     SectionName.ANNOTATION_TYPE_FIELD_DETAIL));
             Content heading = HtmlTree.HEADING(HtmlConstants.DETAILS_HEADING,
                     contents.fieldDetailsLabel);
-            memberDetailsTree.addContent(heading);
+            memberDetailsTree.add(heading);
             writer.printedAnnotationFieldHeading = true;
         }
     }
@@ -119,11 +119,11 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
      */
     public Content getAnnotationDocTreeHeader(Element member,
             Content annotationDetailsTree) {
-        annotationDetailsTree.addContent(links.createAnchor(name(member)));
+        annotationDetailsTree.add(links.createAnchor(name(member)));
         Content annotationDocTree = writer.getMemberTreeHeader();
         Content heading = new HtmlTree(HtmlConstants.MEMBER_HEADING);
-        heading.addContent(name(member));
-        annotationDocTree.addContent(heading);
+        heading.add(name(member));
+        annotationDocTree.add(heading);
         return annotationDocTree;
     }
 
@@ -137,8 +137,8 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
         Content link =
                 writer.getLink(new LinkInfoImpl(configuration,
                         LinkInfoImpl.Kind.MEMBER, getType(member)));
-        pre.addContent(link);
-        pre.addContent(Contents.SPACE);
+        pre.add(link);
+        pre.add(Contents.SPACE);
         if (configuration.linksource) {
             Content memberName = new StringContent(name(member));
             writer.addSrcLink(member, memberName, pre);
@@ -194,7 +194,7 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
     public void addSummaryLabel(Content memberTree) {
         Content label = HtmlTree.HEADING(HtmlConstants.SUMMARY_HEADING,
                 contents.fieldSummaryLabel);
-        memberTree.addContent(label);
+        memberTree.add(label);
     }
 
     /**
@@ -230,7 +230,7 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
      */
     @Override
     public void addSummaryAnchor(TypeElement typeElement, Content memberTree) {
-        memberTree.addContent(links.createAnchor(
+        memberTree.add(links.createAnchor(
                 SectionName.ANNOTATION_TYPE_FIELD_SUMMARY));
     }
 
@@ -257,7 +257,7 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
         Content memberLink = HtmlTree.SPAN(HtmlStyle.memberNameLink,
                 writer.getDocLink(context, member, name(member), false));
         Content code = HtmlTree.CODE(memberLink);
-        tdSummary.addContent(code);
+        tdSummary.add(code);
     }
 
     /**
