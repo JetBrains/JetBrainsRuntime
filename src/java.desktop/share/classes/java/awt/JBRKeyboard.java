@@ -28,16 +28,99 @@ package java.awt;
 import sun.awt.AWTAccessor;
 
 import java.awt.event.KeyEvent;
+import java.security.InvalidParameterException;
 import java.util.Map;
 
 /**
  * Implementation for platform-agnostic parts of JBR keyboard API
  */
 class JBRKeyboard {
+    /** (Integer) Java key code as if the keyboard was a US QWERTY one */
+    public static final String US_KEYCODE = "US_KEYCODE";
+
+    /** (Integer) VK_DEAD_* keycode for the base key, or VK_UNDEFINED if the base key is not dead */
+    public static final String DEAD_KEYCODE = "DEAD_KEYCODE";
+
+    /** (Integer) VK_DEAD_* keycode for the key with modifiers, or VK_UNDEFINED if the key with modifiers is not dead */
+    public static final String DEAD_KEYSTROKE = "DEAD_KEYSTROKE";
+
+    /** (String) The characters that this specific event has generated as a sequence of KEY_TYPED events */
+    public static final String CHARACTERS = "CHARACTERS";
+
+    /** (Integer) Raw platform-dependent keycode for the specific key on the keyboard */
+    public static final String RAW_KEYCODE = "RAW_KEYCODE";
+
+    /** (String) Keyboard layout ID, associated with the event in an platform-dependent format */
+    public static final String KEYBOARD_LAYOUT = "KEYBOARD_LAYOUT";
+
     public JBRKeyboard() {}
 
-    public Object getKeyEventProperty(KeyEvent event, String name) {
+    private Object getKeyEventProperty(KeyEvent event, String name) {
         Map<String, Object> properties = AWTAccessor.getKeyEventAccessor().getJBRExtraProperties(event);
         return (properties == null) ? null : properties.get(name);
+    }
+
+    public int getKeyEventUSKeyCode(KeyEvent event) {
+        if (event.getID() == KeyEvent.KEY_PRESSED || event.getID() == KeyEvent.KEY_RELEASED) {
+            var prop = getKeyEventProperty(event, US_KEYCODE);
+            if (!(prop instanceof Integer)) {
+                throw new UnsupportedOperationException("US_KEYCODE property is invalid");
+            }
+            return (Integer)prop;
+        } else {
+            throw new IllegalArgumentException("event is not KEY_PRESSED or KEY_RELEASED");
+        }
+    }
+
+    public int getKeyEventDeadKeyCode(KeyEvent event) {
+        if (event.getID() == KeyEvent.KEY_PRESSED || event.getID() == KeyEvent.KEY_RELEASED) {
+            var prop = getKeyEventProperty(event, DEAD_KEYCODE);
+            if (!(prop instanceof Integer)) {
+                throw new UnsupportedOperationException("DEAD_KEYCODE property is invalid");
+            }
+            return (Integer)prop;
+        } else {
+            throw new IllegalArgumentException("event is not KEY_PRESSED or KEY_RELEASED");
+        }
+    }
+
+    public int getKeyEventDeadKeyStroke(KeyEvent event) {
+        if (event.getID() == KeyEvent.KEY_PRESSED || event.getID() == KeyEvent.KEY_RELEASED) {
+            var prop = getKeyEventProperty(event, DEAD_KEYSTROKE);
+            if (!(prop instanceof Integer)) {
+                throw new UnsupportedOperationException("DEAD_KEYSTROKE property is invalid");
+            }
+            return (Integer)prop;
+        } else {
+            throw new IllegalArgumentException("event is not KEY_PRESSED or KEY_RELEASED");
+        }
+    }
+
+    public String getKeyEventCharacters(KeyEvent event) {
+        if (event.getID() == KeyEvent.KEY_RELEASED) {
+            return "";
+        }
+
+        if (event.getID() == KeyEvent.KEY_TYPED) {
+            return String.valueOf(event.getKeyChar());
+        }
+
+        if (event.getID() == KeyEvent.KEY_PRESSED) {
+            var prop = getKeyEventProperty(event, CHARACTERS);
+            if (!(prop instanceof String)) {
+                throw new UnsupportedOperationException("CHARACTERS property is invalid");
+            }
+            return (String)prop;
+        }
+
+        throw new IllegalArgumentException("event with unknown ID");
+    }
+
+    public String getKeyEventKeyboardLayout(KeyEvent event) {
+        var prop = getKeyEventProperty(event, KEYBOARD_LAYOUT);
+        if (!(prop instanceof String)) {
+            throw new UnsupportedOperationException("KEYBOARD_LAYOUT property is invalid");
+        }
+        return (String)prop;
     }
 }
