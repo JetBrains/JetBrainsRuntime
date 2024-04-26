@@ -1191,6 +1191,15 @@ postKeyTypedEvents(const char *string) {
     }
 }
 
+static uint16_t
+getJavaKeyCharForKeycode(xkb_keycode_t xkbKeycode) {
+    uint32_t codepoint = xkb.state_key_get_utf32(keyboard.state, xkbKeycode);
+    if (codepoint == 0 || codepoint >= 0xffff) {
+        return java_awt_event_KeyEvent_CHAR_UNDEFINED;
+    }
+    return (uint16_t)codepoint;
+}
+
 // Posts an XKB keysym as KEY_TYPED events, without consulting the current compose state.
 static void
 handleKeyTypeNoCompose(xkb_keycode_t xkbKeycode) {
@@ -1285,7 +1294,7 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
             .keyLocation = javaKeyLocation,
             .rawCode = keycode,
             .extendedKeyCode = javaExtendedKeyCode,
-            .keyChar = java_awt_event_KeyEvent_CHAR_UNDEFINED,
+            .keyChar = getJavaKeyCharForKeycode(xkbKeycode),
     };
 
     wlPostKeyEvent(&event);
