@@ -200,7 +200,6 @@ final class CPlatformResponder {
         HashMap<String, Object> properties = new HashMap<>();
 
         properties.put("RAW_KEYCODE", keyCode);
-        properties.put("KEYBOARD_LAYOUT", LWCToolkit.getKeyboardLayoutId());
 
         char testChar = KeyEvent.CHAR_UNDEFINED;
 
@@ -246,8 +245,7 @@ final class CPlatformResponder {
             properties.put("US_KEYCODE", out[2]);
             properties.put("DEAD_KEYCODE", out[3]);
             if (chars != null && chars.isEmpty()) {
-                int deadKeyComboCode = out[4];
-                properties.put("DEAD_KEYSTROKE", deadKeyComboCode);
+                properties.put("DEAD_KEYSTROKE", out[4]);
             } else {
                 properties.put("DEAD_KEYSTROKE", KeyEvent.VK_UNDEFINED);
             }

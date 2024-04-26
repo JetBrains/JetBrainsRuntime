@@ -23,21 +23,26 @@
  * questions.
  */
 
-package java.awt;
+package sun.lwawt.macosx;
 
-import sun.awt.AWTAccessor;
+import com.jetbrains.desktop.JBRKeyboard;
 
-import java.awt.event.KeyEvent;
-import java.util.Map;
+import java.util.List;
 
-/**
- * Implementation for platform-agnostic parts of JBR keyboard API
- */
-class JBRKeyboard {
-    public JBRKeyboard() {}
+public class JBRKeyboardMacOS extends JBRKeyboard {
+    @Override
+    public String getCurrentKeyboardLayout() {
+        // ensure LWCToolkit is initialized
+        LWCToolkit.getLWCToolkit();
 
-    public Object getKeyEventProperty(KeyEvent event, String name) {
-        Map<String, Object> properties = AWTAccessor.getKeyEventAccessor().getJBRExtraProperties(event);
-        return (properties == null) ? null : properties.get(name);
+        return LWCToolkit.getKeyboardLayoutId();
+    }
+
+    @Override
+    public List<String> getEnabledKeyboardLayouts() {
+        // ensure LWCToolkit is initialized
+        LWCToolkit.getLWCToolkit();
+
+        return LWCToolkit.getKeyboardLayoutList(false);
     }
 }
