@@ -477,12 +477,15 @@ java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java 8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java 8233568 macosx-all
 java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720 windows-all
 java/awt/PopupMenu/PopupMenuLocation.java 8238720 windows-all
-java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720 windows-all
-java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java   8238720 windows-all
+java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720,8324782 windows-all,macosx-all
+java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java   8238720,8324782 windows-all,macosx-all
 java/awt/event/MouseEvent/FrameMouseEventAbsoluteCoordsTest/FrameMouseEventAbsoluteCoordsTest.java 8238720 windows-all
 
 # Several tests which fail sometimes on macos11
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java 8266243 macosx-aarch64
+
+# This test fails on macOS 14
+java/awt/Choice/SelectNewItemTest/SelectNewItemTest.java 8324782 macosx-all
 
 ############################################################################
 
@@ -654,6 +657,9 @@ javax/sound/midi/Sequencer/Recording.java 8167580,8265485 linux-all,solaris-all,
 ############################################################################
 
 # jdk_imageio
+
+# This test fails on macOS 14
+javax/swing/plaf/synth/7158712/bug7158712.java 8324782 macosx-all
 
 ############################################################################
 
