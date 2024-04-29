@@ -100,6 +100,7 @@ jb/java/awt/CustomTitleBar/WindowVisibilityTest.java                            
 
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-all
 
+jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728 linux-all,windows-x64
 jb/java/awt/Focus/FileDialogClosing.java JBR-5799 windows-all
 jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-5799 windows-all
 jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
