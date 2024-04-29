@@ -66,6 +66,7 @@ import jdk.internal.perf.PerfCounter;
 import jdk.internal.ref.CleanerFactory;
 import jdk.internal.vm.annotation.Stable;
 import sun.nio.cs.UTF_8;
+import sun.nio.fs.DefaultFileSystemProvider;
 import sun.security.action.GetPropertyAction;
 import java.security.AccessController;
 
@@ -1405,13 +1406,19 @@ class ZipFile implements ZipConstants, Closeable {
             }
         }
         private static final HashMap<Key, Source> files = new HashMap<>();
-
+        /**
+         * Use the platform's default file system to avoid
+         * issues when the VM is configured to use a custom file system provider.
+         */
+        private static final java.nio.file.FileSystem builtInFS =
+                DefaultFileSystemProvider.theFileSystem();
 
         static Source get(File file, boolean toDelete, ZipCoder zc) throws IOException {
             final Key key;
             try {
                 key = new Key(file,
-                        Files.readAttributes(file.toPath(), BasicFileAttributes.class));
+                        Files.readAttributes(builtInFS.getPath(file.getPath()),
+                                BasicFileAttributes.class));
             } catch (InvalidPathException ipe) {
                 throw new IOException(ipe);
             }
