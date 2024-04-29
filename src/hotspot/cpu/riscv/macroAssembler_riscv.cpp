@@ -720,7 +720,7 @@ void MacroAssembler::super_call_VM_leaf(address entry_point, Register arg_0, Reg
 
 void MacroAssembler::la(Register Rd, const address dest) {
   int64_t offset = dest - pc();
-  if (is_simm32(offset)) {
+  if (is_valid_32bit_offset(offset)) {
     auipc(Rd, (int32_t)offset + 0x800);  //0x800, Note:the 11th sign bit
     addi(Rd, Rd, ((int64_t)offset << 52) >> 52);
   } else {
