@@ -1118,6 +1118,7 @@ jdk_swing_wayland= \
     -javax/swing/JEditorPane/6917744/bug6917744.java \
     -javax/swing/JEditorPane/8195095/ImageViewTest.java \
     -javax/swing/JEditorPane/TestBrowserBGColor.java \
+    -javax/swing/JFileChooser/4524490/bug4524490.java \
     -javax/swing/JFileChooser/6570445/bug6570445.java \
     -javax/swing/JFileChooser/6738668/bug6738668.java \
     -javax/swing/JFileChooser/7036025/bug7036025.java \
@@ -1138,6 +1139,8 @@ jdk_swing_wayland= \
     -javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java \
     -javax/swing/JInternalFrame/8146321/JInternalFrameIconTest.java \
     -javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java \
+    -javax/swing/JInternalFrame/bug4309079.java \
+    -javax/swing/JInternalFrame/bug4732229.java \
     -javax/swing/JInternalFrame/JInternalFrameTest.java \
     -javax/swing/JInternalFrame/NormalBoundsTest.java \
     -javax/swing/JInternalFrame/Test6325652.java \
@@ -1158,6 +1161,7 @@ jdk_swing_wayland= \
     -javax/swing/JMenu/PopupReferenceMemoryLeak.java \
     -javax/swing/JMenu/TestDisabledMenuForegroundColor.java \
     -javax/swing/JMenuBar/4750590/bug4750590.java \
+    -javax/swing/JMenuBar/bug4802656.java \
     -javax/swing/JMenuBar/MisplacedBorder/MisplacedBorder.java \
     -javax/swing/JMenuBar/MenuBarRTLBug.java \
     -javax/swing/JMenuItem/4171437/bug4171437.java \
@@ -1274,6 +1278,8 @@ jdk_swing_wayland= \
     -javax/swing/text/Caret/TestCaretPosition.java \
     -javax/swing/text/Caret/TestCaretPositionJTextPane.java \
     -javax/swing/text/CSSBorder/6796710/bug6796710.java \
+    -javax/swing/text/DefaultCaret/bug4197894.java \
+    -javax/swing/text/DefaultCaret/bug4203175.java \
     -javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java \
     -javax/swing/text/DefaultCaret/HidingSelection/MultiSelectionTest.java \
     -javax/swing/text/DefaultEditorKit/4278839/bug4278839.java \
@@ -1284,6 +1290,7 @@ jdk_swing_wayland= \
     -javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java \
     -javax/swing/text/html/StyleSheet/bug4936917.java \
     -javax/swing/text/html/TestFormViewNPE.java \
+    -javax/swing/text/rtf/bug4178276.java \
     -javax/swing/text/JTextComponent/6361367/bug6361367.java \
     -javax/swing/text/StyledEditorKit/4506788/bug4506788.java \
     -javax/swing/text/Utilities/8142966/SwingFontMetricsTest.java \
