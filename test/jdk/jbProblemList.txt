@@ -961,6 +961,7 @@ javax/swing/JMenuItem/bug4839464.java JBR-5911 windows-all
 javax/swing/JOptionPane/6428694/bug6428694.java JBR-5892 windows-aarch64
 javax/swing/JOptionPane/7138665/bug7138665.java JBR-5799 windows-all
 javax/swing/JPopupMenu/6415145/bug6415145.java 8197552 windows-all
+javax/swing/JPopupMenu/6495920/bug6495920.java JBR-6928 linux-x64
 javax/swing/JPopupMenu/6515446/bug6515446.java 8197552,JBR-6531 windows-all,linux-all
 javax/swing/JPopupMenu/6544309/bug6544309.java JBR-6532 windows-all,linux-all
 javax/swing/JPopupMenu/6987844/bug6987844.java JBR-6718 linux-all,windows-all
