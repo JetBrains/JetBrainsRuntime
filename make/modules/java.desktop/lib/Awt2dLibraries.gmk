@@ -79,7 +79,7 @@ ifeq ($(call isTargetOs, windows), true)
 endif
 
 ifeq ($(DBUS_FOUND), false)
-  LIBAWT_EXCLUDE_FILES += dbus_interface.c dbus_interface.h
+  LIBAWT_EXFILES += dbus_interface.c dbus_interface.h
 endif
 
 ifeq ($(call isTargetOs, linux macosx aix), true)
