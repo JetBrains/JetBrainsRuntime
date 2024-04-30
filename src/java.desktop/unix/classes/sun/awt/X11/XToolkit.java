@@ -1183,7 +1183,9 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         }
         X11GraphicsDevice x11gd = (X11GraphicsDevice) gd;
         int screenNum = x11gd.getScreen();
-        if (localEnv.runningXinerama() && screenNum != 0) {
+        Rectangle screen = gc.getBounds();
+        boolean isFirstScreen = screen.x == 0 && screen.y == 0;
+        if (localEnv.runningXinerama() && !isFirstScreen) {
             // We cannot estimate insets for non-default screen,
             // there are often none.
             return new Insets(0, 0, 0, 0);
@@ -1192,7 +1194,6 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         XToolkit.awtLock();
         try {
             Rectangle workArea = getWorkArea(XlibUtil.getRootWindow(screenNum));
-            Rectangle screen = gc.getBounds();
             if (workArea != null) {
                 Point p = x11gd.scaleDown(workArea.x, workArea.y);
                 workArea.x = p.x;
@@ -1201,8 +1202,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 workArea.height = x11gd.scaleDown(workArea.height);
                 workArea = workArea.intersection(screen);
                 if (!workArea.isEmpty()) {
-                    int top = workArea.y - screen.y;
-                    int left = workArea.x - screen.x;
+                    int top = workArea.y;
+                    int left = workArea.x;
                     int bottom = screen.height - workArea.height - top;
                     int right = screen.width - workArea.width - left;
                     return new Insets(top, left, bottom, right);
