@@ -76,6 +76,8 @@ AssertDrawLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int lin
 #define MUTEX_LOCK(m)   if (pthread_mutex_lock(&(m)))   { WL_FATAL_ERROR("Failed to lock mutex"); }
 #define MUTEX_UNLOCK(m) if (pthread_mutex_unlock(&(m))) { WL_FATAL_ERROR("Failed to unlock mutex"); }
 
+#define CLAMP(val, min, max) ((val) < (min) ? (min) : ((val) > (max) ? (max) : (val)))
+
 /**
  * The maximum number of buffers that can be simultaneously in use by Wayland.
  * When a new frame is ready to be sent to Wayland and the number of buffers
@@ -496,6 +498,8 @@ SurfaceBufferResize(WLSurfaceBufferManager * manager, WLSurfaceBuffer* buffer)
 
     wl_buffer_destroy(buffer->wlBuffer);
     buffer->wlBuffer = NULL;
+    DamageList_FreeAll(buffer->damageList);
+    buffer->damageList = NULL;
 
     buffer->width = newWidth;
     buffer->height = newHeight;
@@ -799,21 +803,24 @@ CopyDamagedArea(WLSurfaceBufferManager * manager, jint x, jint y, jint width, ji
     assert(manager->bufferForDraw.data != NULL);
     assert(manager->bufferForDraw.width == manager->bufferForShow.wlSurfaceBuffer->width);
     assert(manager->bufferForDraw.height == manager->bufferForShow.wlSurfaceBuffer->height);
-    assert(x >= 0);
-    assert(y >= 0);
-    assert(width >= 0);
-    assert(height >= 0);
-    assert(height + y >= 0);
-    assert(width + x >= 0);
-    assert(width <= manager->bufferForDraw.width);
-    assert(height <= manager->bufferForDraw.height);
+    assert(manager->bufferForShow.wlSurfaceBuffer->bytesAllocated >= DrawBufferSizeInBytes(manager));
+
+    jint bufferWidth = manager->bufferForDraw.width;
+    jint bufferHeight = manager->bufferForDraw.height;
+
+    // Clamp the damaged area to the size of the destination in order not to crash in case of
+    // an error on the client side that "damaged" an area larger than our buffer.
+    x = CLAMP(x, 0, bufferWidth - 1);
+    y = CLAMP(y, 0, bufferHeight - 1);
+    width = CLAMP(width, 0, bufferWidth - x);
+    height = CLAMP(height, 0, bufferHeight - y);
 
     pixel_t * dest = manager->bufferForShow.wlSurfaceBuffer->data;
     pixel_t * src  = manager->bufferForDraw.data;
 
     for (jint i = y; i < height + y; i++) {
-        pixel_t * dest_row = &dest[i * manager->bufferForDraw.width];
-        pixel_t * src_row  = &src [i * manager->bufferForDraw.width];
+        pixel_t * dest_row = &dest[i * bufferWidth];
+        pixel_t * src_row  = &src [i * bufferWidth];
         for (jint j = x; j < width + x; j++) {
             dest_row[j] = src_row[j];
         }
