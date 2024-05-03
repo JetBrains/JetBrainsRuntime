@@ -177,6 +177,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_pixelsAt(JNIEnv *env, jobject wsd, jint x, ji
     }
 
     if (rasInfo.bounds.x2 - rasInfo.bounds.x1 < width || rasInfo.bounds.y2 - rasInfo.bounds.y1 < height) {
+        SurfaceData_InvokeUnlock(env, ops, &rasInfo);
         JNU_ThrowByName(env, "java/lang/ArrayIndexOutOfBoundsException", "Surface too small");
         return NULL;
     }
