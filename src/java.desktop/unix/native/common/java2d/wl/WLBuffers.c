@@ -844,6 +844,7 @@ CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager)
     MUTEX_LOCK(manager->drawLock);
 
     if (manager->bufferForShow.wlSurfaceBuffer == NULL || manager->bufferForDraw.data == NULL) {
+        MUTEX_UNLOCK(manager->drawLock);
         return;
     }
 
@@ -1057,7 +1058,7 @@ WLDrawBuffer *
 WLSBM_BufferAcquireForDrawing(WLSurfaceBufferManager * manager)
 {
     WLBufferTrace(manager, "WLSBM_BufferAcquireForDrawing(%d)", manager->bufferForDraw.frameID);
-    MUTEX_LOCK(manager->drawLock);
+    MUTEX_LOCK(manager->drawLock); // unlocked in WLSBM_BufferReturn()
     if (manager->bufferForDraw.resizePending) {
         WLBufferTrace(manager, "WLSBM_BufferAcquireForDrawing - creating a new draw buffer because the size has changed");
         DrawBufferResize(manager);
@@ -1069,7 +1070,7 @@ void
 WLSBM_BufferReturn(WLSurfaceBufferManager * manager, WLDrawBuffer * buffer)
 {
     if (&manager->bufferForDraw == buffer) {
-        MUTEX_UNLOCK(buffer->manager->drawLock);
+        MUTEX_UNLOCK(buffer->manager->drawLock); // locked in WLSBM_BufferAcquireForDrawing()
         WLBufferTrace(manager, "WLSBM_BufferReturn(%d)", manager->bufferForDraw.frameID);
     } else {
         WL_FATAL_ERROR("WLSBM_BufferReturn() called with an unidentified buffer");
