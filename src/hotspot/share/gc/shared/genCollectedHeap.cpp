@@ -36,6 +36,7 @@
 #include "gc/serial/markSweep.hpp"
 #include "gc/shared/adaptiveSizePolicy.hpp"
 #include "gc/shared/cardTableBarrierSet.hpp"
+#include "gc/shared/classUnloadingContext.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "gc/shared/collectorCounters.hpp"
 #include "gc/shared/continuationGCSupport.inline.hpp"
@@ -555,6 +556,9 @@ void GenCollectedHeap::do_collection(bool           full,
 
     CodeCache::on_gc_marking_cycle_start();
 
+    ClassUnloadingContext ctx(1 /* num_nmethod_unlink_workers */,
+                              false /* lock_codeblob_free_separately */);
+
     collect_generation(_old_gen,
                        full,
                        size,
@@ -570,7 +574,7 @@ void GenCollectedHeap::do_collection(bool           full,
     _young_gen->compute_new_size();
 
     // Delete metaspaces for unloaded class loaders and clean up loader_data graph
-    ClassLoaderDataGraph::purge(/*at_safepoint*/true);
+    ClassLoaderDataGraph::purge(true /* at_safepoint */);
     DEBUG_ONLY(MetaspaceUtils::verify();)
 
     // Need to clear claim bits for the next mark.
