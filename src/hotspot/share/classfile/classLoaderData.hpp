@@ -186,12 +186,16 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   ClassLoaderData* next() const;
   void unlink_next();
 
-  void set_unloading_next(ClassLoaderData* unloading_next);
-  ClassLoaderData* unloading_next() const;
-
   ClassLoaderData(Handle h_class_loader, bool has_class_mirror_holder);
+
+public:
   ~ClassLoaderData();
 
+  void set_unloading_next(ClassLoaderData* unloading_next);
+  ClassLoaderData* unloading_next() const;
+  void unload();
+
+private:
   // The CLD are not placed in the Heap, so the Card Table or
   // the Mod Union Table can't be used to mark when CLD have modified oops.
   // The CT and MUT bits saves this information for the whole class loader data.
@@ -205,11 +209,11 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   // (DCEVM)
   void exchange_holders(ClassLoaderData* cld);
 
+  void classes_do(void f(Klass* const));
+
  private:
-  void unload();
   bool keep_alive() const       { return _keep_alive > 0; }
 
-  void classes_do(void f(Klass* const));
   void loaded_classes_do(KlassClosure* klass_closure);
   void classes_do(void f(InstanceKlass*));
   void methods_do(void f(Method*));
