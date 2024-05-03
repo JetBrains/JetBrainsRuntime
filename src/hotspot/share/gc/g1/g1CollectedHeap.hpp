@@ -1265,6 +1265,8 @@ public:
   // Performs cleaning of data structures after class unloading.
   void complete_cleaning(bool class_unloading_occurred);
 
+  void unload_classes_and_code(const char* description, BoolObjectClosure* cl, GCTimer* timer);
+
   // Verification
 
   // Perform any cleanup actions necessary before allowing a verification.
