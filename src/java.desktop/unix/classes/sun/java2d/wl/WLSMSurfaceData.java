@@ -49,14 +49,14 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
 
     public native void assignSurface(long surfacePtr);
 
-    private native void initOps(int width, int height, int scale, int backgroundRGB, int wlShmFormat);
+    private native void initOps(int width, int height, int scale, int backgroundRGB, int wlShmFormat, boolean perfCountersEnabled);
     private static native void initIDs();
 
     static {
         initIDs();
     }
 
-    private WLSMSurfaceData(WLComponentPeer peer, SurfaceType surfaceType, ColorModel colorModel, int scale, int wlShmFormat) {
+    private WLSMSurfaceData(WLComponentPeer peer, SurfaceType surfaceType, ColorModel colorModel, int scale, int wlShmFormat, boolean perfCountersEnabled) {
         super(surfaceType, colorModel);
         this.peer = peer;
 
@@ -71,7 +71,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
             log.fine(String.format("Shared memory surface data %dx%d x%d scale, format %d", width, height, scale, wlShmFormat));
         }
 
-        initOps(width, height, scale, backgroundPixel, wlShmFormat);
+        initOps(width, height, scale, backgroundPixel, wlShmFormat, perfCountersEnabled);
     }
 
     /**
@@ -83,7 +83,9 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
         }
         ColorModel cm = graphicsConfig.getColorModel();
         SurfaceType surfaceType = graphicsConfig.getSurfaceType();
-        return new WLSMSurfaceData(peer, surfaceType, cm, graphicsConfig.getWlScale(), graphicsConfig.getWlShmFormat());
+        Window target = peer.getTarget() instanceof Window ? (Window)peer.getTarget() : null;
+        boolean perfCountersEnabled = target != null && AWTAccessor.getWindowAccessor().countersEnabled(target);
+        return new WLSMSurfaceData(peer, surfaceType, cm, graphicsConfig.getWlScale(), graphicsConfig.getWlShmFormat(), perfCountersEnabled);
     }
 
     @Override

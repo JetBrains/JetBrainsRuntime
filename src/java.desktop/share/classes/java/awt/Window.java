@@ -4507,6 +4507,11 @@ public class Window extends Container implements Accessible {
                 return w.getOwnedWindows_NoClientCode();
             }
 
+            public boolean countersEnabled(Window w) {
+                // May want to selectively enable or disable counters per window
+                return counters != null;
+            }
+
             public void bumpCounter(Window w, String counterName) {
                 Objects.requireNonNull(w);
                 Objects.requireNonNull(counterName);

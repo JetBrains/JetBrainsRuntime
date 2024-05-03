@@ -365,7 +365,8 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
                                            jint height,
                                            jint scale,
                                            jint backgroundRGB,
-                                           jint wlShmFormat)
+                                           jint wlShmFormat,
+                                           jboolean perfCountersEnabled)
 {
 #ifndef HEADLESS
 
@@ -393,7 +394,9 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
     wsdo->sdOps.GetRasInfo = WLSD_GetRasInfo;
     wsdo->sdOps.Dispose = WLSD_Dispose;
     wsdo->bufferManager = WLSBM_Create(width, height, scale, backgroundRGB, wlShmFormat,
-                                       surfaceDataWeakRef, CountFrameSent, CountFrameDropped);
+                                       surfaceDataWeakRef,
+                                       perfCountersEnabled ? CountFrameSent : NULL,
+                                       perfCountersEnabled ? CountFrameDropped : NULL);
     if (wsdo->bufferManager == NULL) {
         JNU_ThrowOutOfMemoryError(env, "Failed to create Wayland surface buffer manager");
         return;

@@ -347,6 +347,7 @@ public final class AWTAccessor {
          */
         Window[] getOwnedWindows(Window w);
 
+        boolean countersEnabled(Window w);
         void bumpCounter(Window w, String counterName);
         long getCounter(Window w, String counterName);
         long getCounterPerSecond(Window w, String counterName);
