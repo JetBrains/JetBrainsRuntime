@@ -980,7 +980,7 @@ javax/swing/JPopupMenu/4760494/bug4760494.java 8253184 windows-all
 javax/swing/JPopupMenu/4870644/bug4870644.java 8194130 macosx-all,linux-all
 javax/swing/JPopupMenu/4966112/bug4966112.java 8253184 windows-all
 javax/swing/JPopupMenu/6415145/bug6415145.java 8197552 windows-all
-javax/swing/JPopupMenu/6495920/bug6495920.java JBR-6928 linux-x64
+javax/swing/JPopupMenu/6495920/bug6495920.java JBR-6928 linux-all
 javax/swing/JPopupMenu/6515446/bug6515446.java 8197552,JBR-6531 windows-all,linux-all
 javax/swing/JPopupMenu/6544309/bug6544309.java JBR-6532 windows-all,linux-all
 javax/swing/JPopupMenu/6675802/bug6675802.java JBR-5767 windows-all
