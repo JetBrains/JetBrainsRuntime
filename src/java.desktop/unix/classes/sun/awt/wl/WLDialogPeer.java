@@ -60,8 +60,13 @@ public class WLDialogPeer extends WLDecoratedPeer implements DialogPeer {
     }
 
     @Override
+    public boolean isFrameStateSupported(int state) {
+        return state == Frame.NORMAL;
+    }
+
+    @Override
     public void setState(int newState) {
-        throw new UnsupportedOperationException();
+        // Ignored
     }
 
     @Override
@@ -71,6 +76,6 @@ public class WLDialogPeer extends WLDecoratedPeer implements DialogPeer {
 
     @Override
     public void setExtendedState(int newState) {
-        throw new UnsupportedOperationException();
+        // Ignored
     }
 }
