@@ -47,6 +47,7 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     public abstract boolean isResizable();
     public abstract boolean isInteractivelyResizable();
 
+    public abstract boolean isFrameStateSupported(int state);
     public abstract void setState(int newState);
     public abstract int getState();
     public abstract void setExtendedState(int newState);
