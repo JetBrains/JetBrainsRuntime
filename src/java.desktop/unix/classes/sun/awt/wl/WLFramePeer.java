@@ -84,6 +84,15 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
     }
 
     @Override
+    public boolean isFrameStateSupported(int state) {
+        return switch (state) {
+            case Frame.NORMAL, Frame.ICONIFIED, Frame.MAXIMIZED_BOTH, Frame.MAXIMIZED_HORIZ, Frame.MAXIMIZED_VERT ->
+                    true;
+            default -> false;
+        };
+    }
+
+    @Override
     public void setState(int newState) {
         if (!isVisible()) return;
 
