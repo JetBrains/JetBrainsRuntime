@@ -4200,6 +4200,25 @@ SWPointer::SWPointer(MemNode* mem, SuperWord* slp, Node_Stack *nstack, bool anal
   NOT_PRODUCT(if(_slp->is_trace_alignment()) _tracer.restore_depth();)
   NOT_PRODUCT(_tracer.ctor_6(mem);)
 
+  // In the pointer analysis, and especially the AlignVector, analysis we assume that
+  // stride and scale are not too large. For example, we multiply "scale * stride",
+  // and assume that this does not overflow the int range. We also take "abs(scale)"
+  // and "abs(stride)", which would overflow for min_int = -(2^31). Still, we want
+  // to at least allow small and moderately large stride and scale. Therefore, we
+  // allow values up to 2^30, which is only a factor 2 smaller than the max/min int.
+  // Normal performance relevant code will have much lower values. And the restriction
+  // allows us to keep the rest of the autovectorization code much simpler, since we
+  // do not have to deal with overflows.
+  jlong long_scale  = _scale;
+  jlong long_stride = slp->lp()->stride_is_con() ? slp->iv_stride() : 0;
+  jlong max_val = 1 << 30;
+  if (abs(long_scale) >= max_val ||
+      abs(long_stride) >= max_val ||
+      abs(long_scale * long_stride) >= max_val) {
+    assert(!valid(), "adr stride*scale is too large");
+    return;
+  }
+
   _base = base;
   _adr  = adr;
   assert(valid(), "Usable");
