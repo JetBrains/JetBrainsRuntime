@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -166,10 +166,10 @@ void DowncallStubGenerator::generate() {
   locs.set(StubLocations::TARGET_ADDRESS, _abi._scratch2);
 
   if (_captured_state_mask != 0) {
-    __ block_comment("{ _captured_state_mask is set");
+    __ block_comment("_captured_state_mask_is_set {");
     locs.set_frame_data(StubLocations::CAPTURED_STATE_BUFFER, allocated_frame_size);
     allocated_frame_size += BytesPerWord;
-    __ block_comment("} _captured_state_mask is set");
+    __ block_comment("} _captured_state_mask_is_set");
   }
 
   allocated_frame_size = align_up(allocated_frame_size, StackAlignmentInBytes);
@@ -184,7 +184,7 @@ void DowncallStubGenerator::generate() {
   _frame_complete = __ pc() - start;  // frame build complete.
 
   if (_needs_transition) {
-    __ block_comment("{ thread java2native");
+    __ block_comment("thread_java2native {");
     __ get_PC(Z_R1_scratch);
     address the_pc = __ pc();
     __ set_last_Java_frame(Z_SP, Z_R1_scratch);
@@ -194,18 +194,18 @@ void DowncallStubGenerator::generate() {
 
     // State transition
     __ set_thread_state(_thread_in_native);
-    __ block_comment("} thread java2native");
+    __ block_comment("} thread_java2native");
   }
-  __ block_comment("{ argument shuffle");
+  __ block_comment("argument_shuffle {");
   arg_shuffle.generate(_masm, shuffle_reg, frame::z_jit_out_preserve_size, _abi._shadow_space_bytes, locs);
-  __ block_comment("} argument shuffle");
+  __ block_comment("} argument_shuffle");
 
   __ call(as_Register(locs.get(StubLocations::TARGET_ADDRESS)));
 
   //////////////////////////////////////////////////////////////////////////////
 
   if (_captured_state_mask != 0) {
-    __ block_comment("{ save thread local");
+    __ block_comment("save_thread_local {");
 
       out_reg_spiller.generate_spill(_masm, spill_offset);
 
@@ -216,7 +216,7 @@ void DowncallStubGenerator::generate() {
 
       out_reg_spiller.generate_fill(_masm, spill_offset);
 
-    __ block_comment("} save thread local");
+    __ block_comment("} save_thread_local");
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -227,7 +227,7 @@ void DowncallStubGenerator::generate() {
   Label L_after_reguard;
 
   if (_needs_transition) {
-    __ block_comment("{ thread native2java");
+    __ block_comment("thread_native2java {");
     __ set_thread_state(_thread_in_native_trans);
 
     if (!UseSystemMemoryBarrier) {
@@ -244,14 +244,16 @@ void DowncallStubGenerator::generate() {
     // change thread state
     __ set_thread_state(_thread_in_Java);
 
-    __ block_comment("reguard stack check");
-    __ z_cli(Address(Z_thread, JavaThread::stack_guard_state_offset() + in_ByteSize(sizeof(StackOverflow::StackGuardState) - 1)),
-        StackOverflow::stack_guard_yellow_reserved_disabled);
+    __ block_comment("reguard_stack_check {");
+    __ z_cli(Address(Z_thread,
+                     JavaThread::stack_guard_state_offset() + in_ByteSize(sizeof(StackOverflow::StackGuardState) - 1)),
+                     StackOverflow::stack_guard_yellow_reserved_disabled);
     __ z_bre(L_reguard);
+    __ block_comment("} reguard_stack_check");
     __ bind(L_after_reguard);
 
     __ reset_last_Java_frame();
-    __ block_comment("} thread native2java");
+    __ block_comment("} thread_native2java");
   }
 
   __ pop_frame();
@@ -261,7 +263,7 @@ void DowncallStubGenerator::generate() {
   //////////////////////////////////////////////////////////////////////////////
 
   if (_needs_transition) {
-    __ block_comment("{ L_safepoint_poll_slow_path");
+    __ block_comment("L_safepoint_poll_slow_path {");
     __ bind(L_safepoint_poll_slow_path);
 
       // Need to save the native result registers around any runtime calls.
@@ -277,7 +279,7 @@ void DowncallStubGenerator::generate() {
     __ block_comment("} L_safepoint_poll_slow_path");
 
     //////////////////////////////////////////////////////////////////////////////
-    __ block_comment("{ L_reguard");
+    __ block_comment("L_reguard {");
     __ bind(L_reguard);
 
       // Need to save the native result registers around any runtime calls.
