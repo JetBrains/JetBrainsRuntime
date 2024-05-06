@@ -63,7 +63,7 @@ static void preserve_callee_saved_registers(MacroAssembler* _masm, const ABIDesc
 
   int offset = reg_save_area_offset;
 
-  __ block_comment("{ preserve_callee_saved_regs ");
+  __ block_comment("preserve_callee_saved_regs {");
   for (int i = 0; i < Register::number_of_registers; i++) {
     Register reg = as_Register(i);
     // Z_SP saved/restored by prologue/epilogue
@@ -82,7 +82,7 @@ static void preserve_callee_saved_registers(MacroAssembler* _masm, const ABIDesc
     }
   }
 
-  __ block_comment("} preserve_callee_saved_regs ");
+  __ block_comment("} preserve_callee_saved_regs");
 }
 
 static void restore_callee_saved_registers(MacroAssembler* _masm, const ABIDescriptor& abi, int reg_save_area_offset) {
@@ -92,7 +92,7 @@ static void restore_callee_saved_registers(MacroAssembler* _masm, const ABIDescr
 
   int offset = reg_save_area_offset;
 
-  __ block_comment("{ restore_callee_saved_regs ");
+  __ block_comment("restore_callee_saved_regs {");
   for (int i = 0; i < Register::number_of_registers; i++) {
     Register reg = as_Register(i);
     // Z_SP saved/restored by prologue/epilogue
@@ -111,7 +111,7 @@ static void restore_callee_saved_registers(MacroAssembler* _masm, const ABIDescr
     }
   }
 
-  __ block_comment("} restore_callee_saved_regs ");
+  __ block_comment("} restore_callee_saved_regs");
 }
 
 static const int upcall_stub_code_base_size = 1024; // depends on GC (resolve_jobject)
@@ -199,7 +199,7 @@ address UpcallLinker::make_upcall_stub(jobject receiver, Method* entry,
   // Java methods won't preserve them, so save them here:
   preserve_callee_saved_registers(_masm, abi, reg_save_area_offset);
 
-  __ block_comment("{ on_entry");
+  __ block_comment("on_entry {");
   __ load_const_optimized(call_target_address, CAST_FROM_FN_PTR(uint64_t, UpcallLinker::on_entry));
   __ z_aghik(Z_ARG1, Z_SP, frame_data_offset);
   __ call(call_target_address);
@@ -207,14 +207,14 @@ address UpcallLinker::make_upcall_stub(jobject receiver, Method* entry,
   __ block_comment("} on_entry");
 
   arg_spiller.generate_fill(_masm, arg_save_area_offset);
-  __ block_comment("{ argument shuffle");
+  __ block_comment("argument_shuffle {");
   arg_shuffle.generate(_masm, shuffle_reg, abi._shadow_space_bytes, frame::z_jit_out_preserve_size, locs);
-  __ block_comment("} argument shuffle");
+  __ block_comment("} argument_shuffle");
 
-  __ block_comment("{ receiver ");
+  __ block_comment("receiver {");
   __ load_const_optimized(Z_ARG1, (intptr_t)receiver);
   __ resolve_jobject(Z_ARG1, Z_tmp_1, Z_tmp_2);
-  __ block_comment("} receiver ");
+  __ block_comment("} receiver");
 
   __ load_const_optimized(Z_method, (intptr_t)entry);
   __ z_stg(Z_method, Address(Z_thread, in_bytes(JavaThread::callee_target_offset())));
@@ -250,7 +250,7 @@ address UpcallLinker::make_upcall_stub(jobject receiver, Method* entry,
 
   result_spiller.generate_spill(_masm, res_save_area_offset);
 
-  __ block_comment("{ on_exit");
+  __ block_comment("on_exit {");
   __ load_const_optimized(call_target_address, CAST_FROM_FN_PTR(uint64_t, UpcallLinker::on_exit));
   __ z_aghik(Z_ARG1, Z_SP, frame_data_offset);
   __ call(call_target_address);
@@ -266,7 +266,7 @@ address UpcallLinker::make_upcall_stub(jobject receiver, Method* entry,
 
   //////////////////////////////////////////////////////////////////////////////
 
-  __ block_comment("{ exception handler");
+  __ block_comment("exception_handler {");
 
   intptr_t exception_handler_offset = __ pc() - start;
 
@@ -277,7 +277,7 @@ address UpcallLinker::make_upcall_stub(jobject receiver, Method* entry,
   __ call_c(call_target_address);
   __ should_not_reach_here();
 
-  __ block_comment("} exception handler");
+  __ block_comment("} exception_handler");
 
   _masm->flush();
 
