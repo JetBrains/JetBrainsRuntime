@@ -320,7 +320,7 @@ public class WLFrameDecoration {
         } else if (e.getID() == MouseEvent.MOUSE_DRAGGED && pressedInDragStartArea() && isSignificantDrag(point)) {
             peer.startDrag();
         } else if (e.getID() == MouseEvent.MOUSE_CLICKED && e.getClickCount() == 2 && pressedInDragStartArea()
-                && peer.isResizable()) {
+                && peer.isFrameStateSupported(Frame.MAXIMIZED_BOTH)) {
             toggleMaximizedState();
         } else if (e.getID() == MouseEvent.MOUSE_MOVED && !pointerInside) {
             peer.updateCursorImmediately();
