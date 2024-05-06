@@ -316,20 +316,26 @@ public class XInputMethod extends X11InputMethod {
             log.fine("delayAllXICDestroyUntilAFurtherNotice(): is getting called", new Throwable("Stacktrace"));
         }
 
-        assert(SunToolkit.isAWTLockHeldByCurrentThread());
+        XToolkit.awtLock();
+        try {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("delayAllXICDestroyUntilAFurtherNotice(): xicDestroyMustBeDelayed=={0}", xicDestroyMustBeDelayed);
+            }
 
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("delayAllXICDestroyUntilAFurtherNotice(): xicDestroyMustBeDelayed=={0}", xicDestroyMustBeDelayed);
+            xicDestroyMustBeDelayed = true;
+        } finally {
+            XToolkit.awtUnlock();
         }
-
-        xicDestroyMustBeDelayed = true;
     }
 
     static void delayedXICDestroyShouldBeDone() {
-        assert(SunToolkit.isAWTLockHeldByCurrentThread());
-
-        xicDestroyMustBeDelayed = false;
-        doDelayedXICDestroy(false, -1);
+        XToolkit.awtLock();
+        try {
+            xicDestroyMustBeDelayed = false;
+            doDelayedXICDestroy(false, -1);
+        } finally {
+            XToolkit.awtUnlock();
+        }
     }
 
     private static void doDelayedXICDestroy(boolean forced, int maxCountToDestroy) {
