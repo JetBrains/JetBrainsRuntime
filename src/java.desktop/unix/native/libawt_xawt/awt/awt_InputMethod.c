@@ -1659,6 +1659,7 @@ Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_1unsetFocusAndDetachCu
     X11InputMethodData *pX11IMData = NULL;
 
     AWT_LOCK();
+
     pX11IMData = getX11InputMethodData(env, this);
     if (pX11IMData == NULL) {
         AWT_UNLOCK();

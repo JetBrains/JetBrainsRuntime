@@ -1030,7 +1030,14 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 }
                 if (XlibWrapper.XFilterEvent(ev.getPData(), w)) {
                     if (isKeyEvent) {
+                        if (keyEventLog.isLoggable(PlatformLogger.Level.FINE)) {
+                            keyEventLog.fine(
+                                "Setting lastFilteredKeyEventSerial=={0} to {1}",
+                                lastFilteredKeyEventSerial, keyEventSerial
+                            );
+                        }
                         lastFilteredKeyEventSerial = keyEventSerial;
+
                         XInputMethod.delayAllXICDestroyUntilAFurtherNotice();
                         XInputMethod.onXKeyEventFiltering(true);
                     }

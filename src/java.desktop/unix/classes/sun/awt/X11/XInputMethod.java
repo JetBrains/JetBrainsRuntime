@@ -312,7 +312,15 @@ public class XInputMethod extends X11InputMethod {
     private static final Queue<Long> xicDelayedToBeDestroyed = new ArrayDeque<>(XIC_DELAYED_TO_BE_DESTROYED_CAPACITY);
 
     static void delayAllXICDestroyUntilAFurtherNotice()  {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("delayAllXICDestroyUntilAFurtherNotice(): is getting called", new Throwable("Stacktrace"));
+        }
+
         assert(SunToolkit.isAWTLockHeldByCurrentThread());
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("delayAllXICDestroyUntilAFurtherNotice(): xicDestroyMustBeDelayed=={0}", xicDestroyMustBeDelayed);
+        }
 
         xicDestroyMustBeDelayed = true;
     }
@@ -325,14 +333,28 @@ public class XInputMethod extends X11InputMethod {
     }
 
     private static void doDelayedXICDestroy(boolean forced, int maxCountToDestroy) {
+        final boolean isFineLoggable = log.isLoggable(PlatformLogger.Level.FINE);
+
+        if (isFineLoggable) {
+            log.fine(
+                "doDelayedXICDestroy(forced==" + forced, ", maxCountToDestroy==", + maxCountToDestroy + "): is getting called",
+                new Throwable("Stacktrace")
+            );
+        }
+
         assert(SunToolkit.isAWTLockHeldByCurrentThread());
         assert(forced || !xicDestroyMustBeDelayed);
 
         while ( (maxCountToDestroy != 0) && !xicDelayedToBeDestroyed.isEmpty() ) {
-            final long pX11Data = xicDelayedToBeDestroyed.remove();
-            assert(pX11Data != 0);
+            final long pX11IMData = xicDelayedToBeDestroyed.remove();
             --maxCountToDestroy;
-            realDisposeXICNative(pX11Data);
+
+            if (isFineLoggable) {
+                log.fine("doDelayedXICDestroy(): destroying pX11IMData={0}", pX11IMData);
+            }
+
+            assert(pX11IMData != 0);
+            realDisposeXICNative(pX11IMData);
         }
     }
 
@@ -340,6 +362,10 @@ public class XInputMethod extends X11InputMethod {
     protected void disposeXIC() {
         awtLock();
         try {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("disposeXIC(): xicDestroyMustBeDelayed=={0}", xicDestroyMustBeDelayed);
+            }
+
             if (!xicDestroyMustBeDelayed) {
                 super.disposeXIC();
                 return;
@@ -355,12 +381,32 @@ public class XInputMethod extends X11InputMethod {
             // 4. Reset all the XICs of the native context
             prepareForDelayedDisposeXIC_resetSpecifiedCtx(pX11IMData);
 
+            if (pX11IMData == 0) {
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.warning("disposeXIC(): pX11IMData==NULL, skipped");
+                }
+                return;
+            }
+
             // 5. Post the pointer to the native context to xicDelayedToBeDestroyed
             // 5.1. Make sure there's space available in xicDelayedToBeDestroyed
             if (xicDelayedToBeDestroyed.size() >= XIC_DELAYED_TO_BE_DESTROYED_CAPACITY) {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine(
+                        "disposeXIC(): xicDelayedToBeDestroyed.size()=={0} >= XIC_DELAYED_TO_BE_DESTROYED_CAPACITY",
+                        xicDelayedToBeDestroyed.size()
+                    );
+                }
+
                 doDelayedXICDestroy(true, xicDelayedToBeDestroyed.size() - XIC_DELAYED_TO_BE_DESTROYED_CAPACITY + 1);
             }
 
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine(
+                    "disposeXIC(): adding pX11IMData=={0} to xicDelayedToBeDestroyed (which already contains {1} elements)",
+                    pX11IMData, xicDelayedToBeDestroyed.size()
+                );
+            }
             xicDelayedToBeDestroyed.add(pX11IMData);
         } finally {
             awtUnlock();
