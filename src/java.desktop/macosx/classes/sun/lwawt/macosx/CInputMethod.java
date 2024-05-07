@@ -532,25 +532,23 @@ public final class CInputMethod extends InputMethodAdapter {
         fCurrentText.addAttribute(TextAttribute.INPUT_METHOD_HIGHLIGHT, theHighlight, begin, end);
     }
 
-   /* Called from JNI to select the previously typed glyph during press and hold */
-    private void selectPreviousGlyph() {
-        if (fIMContext == null || fAwtFocussedComponent == null) return; // ???
+    private void selectRange(int selectionStart, int length) {
+        if (fIMContext == null || fAwtFocussedComponent == null) {
+            return;
+        }
+        final int selectionEnd = selectionStart + length;
         try {
             LWCToolkit.invokeLater(new Runnable() {
                 public void run() {
-                    final int offset = fIMContext.getInsertPositionOffset();
-                    if (offset < 1) return; // ???
-
                     if (fAwtFocussedComponent instanceof JTextComponent) {
-                        ((JTextComponent) fAwtFocussedComponent).select(offset - 1, offset);
+                        ((JTextComponent) fAwtFocussedComponent).select(selectionStart, selectionEnd);
                         return;
                     }
 
                     if (fAwtFocussedComponent instanceof TextComponent) {
-                        ((TextComponent) fAwtFocussedComponent).select(offset - 1, offset);
+                        ((TextComponent) fAwtFocussedComponent).select(selectionStart, selectionEnd);
                         return;
                     }
-                    // TODO: Ideally we want to disable press-and-hold in this case
                 }
             }, fAwtFocussedComponent);
         } catch (Exception e) {
