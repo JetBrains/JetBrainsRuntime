@@ -1676,6 +1676,8 @@ Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_1unsetFocusAndDetachCu
 
     setX11InputMethodData(env, this, NULL);
     if ( (*env)->IsSameObject(env, pX11IMData->x11inputmethod, currentX11InputMethodInstance) == JNI_TRUE ) {
+        // currentX11InputMethodInstance never holds a "unique" java ref - it only holds a "weak" copy of
+        //   _X11InputMethodData::x11inputmethod, so we mustn't DeleteGlobalRef here
         currentX11InputMethodInstance = NULL;
         currentFocusWindow = 0;
     }

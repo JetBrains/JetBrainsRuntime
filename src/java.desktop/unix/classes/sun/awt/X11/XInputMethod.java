@@ -306,7 +306,10 @@ public class XInputMethod extends X11InputMethod {
     }
 
 
-    // Must be accessed under the AWT lock
+    // JBR-6456: Sudden keyboard death on Linux using iBus.
+    // xicDestroyMustBeDelayed, XIC_DELAYED_TO_BE_DESTROYED_CAPACITY, xicDelayedToBeDestroyed can only be accessed
+    //   under the AWT lock
+    // See the #disposeXIC method for the purpose of these fields
     private static boolean xicDestroyMustBeDelayed = false;
     private static final int XIC_DELAYED_TO_BE_DESTROYED_CAPACITY = 16;
     private static final Queue<Long> xicDelayedToBeDestroyed = new ArrayDeque<>(XIC_DELAYED_TO_BE_DESTROYED_CAPACITY);
@@ -373,18 +376,50 @@ public class XInputMethod extends X11InputMethod {
             }
 
             if (!xicDestroyMustBeDelayed) {
+                // JBR-6456: Sudden keyboard death on Linux using iBus.
+                // iBus's X11 frontend being run in the async mode (IBUS_ENABLE_SYNC_MODE=0) has a bug leading to a
+                //   violation of the communication protocol between iBus and Xlib (so-called "XIM protocol"),
+                //   later causing Xlib to behave unexpectedly from iBus's point of view, breaking iBus's
+                //   internal state. After all, iBus starts to "steal" all the keyboard events
+                //   (so that each call of XFilterEvent(...) with an instance of XKeyEvent returns True).
+                // The initial iBus's bug only appears when XDestroyIC(...) gets called right after a call of
+                //   XFilterEvent(...) with an instance of XKeyEvent returned True,
+                //   meaning that iBus has started, but hasn't finished yet processing of the key event.
+                // In case of AWT/Swing apps, XDestroyIC gets called whenever a focused HW window gets closed
+                //   (because it leads to disposing of the associated input context,
+                //    see java.awt.Window#doDispose and sun.awt.im.InputContext#dispose)
+                // So, to work around iBus's bug, we have to avoid calling XDestroyIC until iBus finishes processing of
+                //   all the keyboard events it has already started processing of, i.e. until a call of
+                //   XFilterEvent(...) returns False.
+                // To achieve that, the implemented fix delays destroying of input contexts whenever a call of
+                //   XFilterEvent(...) with an instance of XKeyEvent returns True until one of the next calls of
+                //   XFilterEvent(...) with the same instance of XKeyEvent returns False.
+                //   The delaying is implemented via storing the native pointers to the input contexts to
+                //   xicDelayedToBeDestroyed instead of applying XDestroyIC(...) immediately.
+                //   The xicDelayedToBeDestroyed's size is explicitly limited to
+                //      XIC_DELAYED_TO_BE_DESTROYED_CAPACITY. If the limit gets reached, a few input contexts gets
+                //      pulled from there and destroyed regardless of the current value of xicDestroyMustBeDelayed.
+                // The xicDestroyMustBeDelayed field is responsible for indication whether it's required to delay
+                //   the destroying or not. It gets set in #delayAllXICDestroyUntilAFurtherNotice
+                //   and unset in delayedXICDestroyShouldBeDone; both are called by sun.awt.X11.XToolkit depending on
+                //   the value returned by the calls of sun.awt.X11.XlibWrapper#XFilterEvent.
+
                 super.disposeXIC();
                 return;
             }
 
             final long pX11IMData = pData;
 
-            // 1. Unset focus
-            // 2. Unset all the native pointers to this instance of XInputMethod
-            // 3. Unset all the java pointers to the native context
+            // To make sure that the delayed to be destroyed input context won't get used by AWT/Swing or Xlib
+            //   by a mistake, the following things are done:
+            //     1. The input method focus gets detached from the input context (via a call of XUnsetICFocus)
+            //     2. All the native pointers to this instance of XInputMethod
+            //        (now it's just the variable currentX11InputMethodInstance in awt_InputMethod.c) get unset
+            //     3. All the java pointers to the native context (now it's just sun.awt.X11InputMethodBase#pData)
+            //        get unset as well
             prepareForDelayedDisposeXIC_unsetFocusAndDetachCurrentXIC();
 
-            // 4. Reset all the XICs of the native context
+            //     4. The state of the native context gets reset (effectively via a call of XmbResetIC)
             prepareForDelayedDisposeXIC_resetSpecifiedCtx(pX11IMData);
 
             if (pX11IMData == 0) {
@@ -394,8 +429,8 @@ public class XInputMethod extends X11InputMethod {
                 return;
             }
 
-            // 5. Post the pointer to the native context to xicDelayedToBeDestroyed
-            // 5.1. Make sure there's space available in xicDelayedToBeDestroyed
+            // If the storage is full, a few input context are pulled from there and destroyed regardless of
+            //   the value of xicDestroyMustBeDelayed
             if (xicDelayedToBeDestroyed.size() >= XIC_DELAYED_TO_BE_DESTROYED_CAPACITY) {
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
                     log.fine(
@@ -733,8 +768,12 @@ public class XInputMethod extends X11InputMethod {
     private static native void realDisposeXICNative(long pX11IMData);
     private native void setXICFocusNative(long window, boolean value, boolean active);
     // TODO: better naming
-    // TODO: docs
+
+    // 1. Applies XUnsetICFocus to the current input context
+    // 2. Unsets currentX11InputMethodInstance if it's set to this instance of XInputMethod
+    // 3. Unsets sun.awt.X11InputMethodBase#pData
     private native void prepareForDelayedDisposeXIC_unsetFocusAndDetachCurrentXIC();
+    // Applies XmbResetIC to the passed input context
     private static native void prepareForDelayedDisposeXIC_resetSpecifiedCtx(long pX11IMData);
     private native void adjustStatusWindow(long window);
 

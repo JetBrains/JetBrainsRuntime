@@ -1051,6 +1051,11 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 if (isKeyEvent) {
                     XInputMethod.onXKeyEventFiltering(false);
                     if (keyEventSerial == lastFilteredKeyEventSerial) {
+                        // JBR-6456: Sudden keyboard death on Linux using iBus.
+                        // If more than 1 key events are being processed by iBus
+                        //   (i.e. more than one in a row calls of XFilterEvent(...) with instances of XKeyEvent have
+                        //    returned true),
+                        //   we have to postpone destroying until the very last one is completely processed)
                         XInputMethod.delayedXICDestroyShouldBeDone();
                     }
                 }
@@ -1130,7 +1135,11 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
     }
 
 
-    // TODO: docs
+    // JBR-6456: Sudden keyboard death on Linux using iBus.
+    // The field holds the value of sun.awt.X11.XKeyEvent#get_serial of the last key event, which
+    //   XFilterEvent(...) returned True for.
+    // See the usages of the variable for more info.
+    // See sun.awt.X11.XInputMethod#disposeXIC for the detailed explanation of the whole fix.
     private long lastFilteredKeyEventSerial = -1;
 
 
