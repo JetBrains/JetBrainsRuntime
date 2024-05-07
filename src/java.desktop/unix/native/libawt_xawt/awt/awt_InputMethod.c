@@ -1639,20 +1639,7 @@ Java_sun_awt_X11_XInputMethod_releaseXICNative(JNIEnv *env,
 
 
 JNIEXPORT void JNICALL
-Java_sun_awt_X11_XInputMethod_realDisposeXICNative(JNIEnv *env, jclass clazz, jlong pData)
-{
-    X11InputMethodData *pX11IMData = (X11InputMethodData *)pData;
-    if (pX11IMData == NULL) {
-        return;
-    }
-
-    AWT_LOCK();
-    destroyX11InputMethodData(env, pX11IMData); pX11IMData = NULL; pData = 0;
-    AWT_UNLOCK();
-}
-
-JNIEXPORT void JNICALL
-Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_1unsetFocusAndDetachCurrentXIC
+Java_sun_awt_X11_XInputMethod_delayedDisposeXIC_1preparation_1unsetFocusAndDetachCurrentXICNative
   (JNIEnv *env, jobject this)
 {
     DASSERT(env != NULL);
@@ -1686,7 +1673,7 @@ Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_1unsetFocusAndDetachCu
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_1resetSpecifiedCtx
+Java_sun_awt_X11_XInputMethod_delayedDisposeXIC_1preparation_1resetSpecifiedCtxNative
   (JNIEnv *env, jclass clazz, const jlong pData)
 {
     X11InputMethodData * const pX11IMData = (X11InputMethodData *)pData;
@@ -1709,6 +1696,19 @@ Java_sun_awt_X11_XInputMethod_prepareForDelayedDisposeXIC_1resetSpecifiedCtx
         }
     }
 
+    AWT_UNLOCK();
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_X11_XInputMethod_delayedDisposeXIC_1disposeXICNative(JNIEnv *env, jclass clazz, jlong pData)
+{
+    X11InputMethodData *pX11IMData = (X11InputMethodData *)pData;
+    if (pX11IMData == NULL) {
+        return;
+    }
+
+    AWT_LOCK();
+    destroyX11InputMethodData(env, pX11IMData); pX11IMData = NULL; pData = 0;
     AWT_UNLOCK();
 }
 

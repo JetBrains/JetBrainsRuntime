@@ -363,7 +363,7 @@ public class XInputMethod extends X11InputMethod {
             }
 
             assert(pX11IMData != 0);
-            realDisposeXICNative(pX11IMData);
+            delayedDisposeXIC_disposeXICNative(pX11IMData);
         }
     }
 
@@ -417,10 +417,10 @@ public class XInputMethod extends X11InputMethod {
             //        (now it's just the variable currentX11InputMethodInstance in awt_InputMethod.c) get unset
             //     3. All the java pointers to the native context (now it's just sun.awt.X11InputMethodBase#pData)
             //        get unset as well
-            prepareForDelayedDisposeXIC_unsetFocusAndDetachCurrentXIC();
+            delayedDisposeXIC_preparation_unsetFocusAndDetachCurrentXICNative();
 
             //     4. The state of the native context gets reset (effectively via a call of XmbResetIC)
-            prepareForDelayedDisposeXIC_resetSpecifiedCtx(pX11IMData);
+            delayedDisposeXIC_preparation_resetSpecifiedCtxNative(pX11IMData);
 
             if (pX11IMData == 0) {
                 if (log.isLoggable(PlatformLogger.Level.WARNING)) {
@@ -765,17 +765,17 @@ public class XInputMethod extends X11InputMethod {
     private native boolean createXICNative(long window, boolean preferBelowTheSpot);
     private native boolean recreateXICNative(long window, long px11data, int ctxid, boolean preferBelowTheSpot);
     private native int releaseXICNative(long px11data);
-    private static native void realDisposeXICNative(long pX11IMData);
     private native void setXICFocusNative(long window, boolean value, boolean active);
-    // TODO: better naming
+    private native void adjustStatusWindow(long window);
 
     // 1. Applies XUnsetICFocus to the current input context
     // 2. Unsets currentX11InputMethodInstance if it's set to this instance of XInputMethod
     // 3. Unsets sun.awt.X11InputMethodBase#pData
-    private native void prepareForDelayedDisposeXIC_unsetFocusAndDetachCurrentXIC();
+    private native void delayedDisposeXIC_preparation_unsetFocusAndDetachCurrentXICNative();
     // Applies XmbResetIC to the passed input context
-    private static native void prepareForDelayedDisposeXIC_resetSpecifiedCtx(long pX11IMData);
-    private native void adjustStatusWindow(long window);
+    private static native void delayedDisposeXIC_preparation_resetSpecifiedCtxNative(long pX11IMData);
+    // Applies XDestroyIC to the passed input context
+    private static native void delayedDisposeXIC_disposeXICNative(long pX11IMData);
 
     private native boolean doesFocusedXICSupportMovingCandidatesNativeWindow();
 
