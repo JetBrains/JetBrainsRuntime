@@ -151,6 +151,7 @@ public:
   void add_code_root(nmethod* nm);
   void add_code_root_locked(nmethod* nm);
   void remove_code_root(nmethod* nm);
+  void bulk_remove_code_roots();
 
   // Applies blk->do_code_blob() to each of the entries in _code_roots
   void code_roots_do(CodeBlobClosure* blk) const;
