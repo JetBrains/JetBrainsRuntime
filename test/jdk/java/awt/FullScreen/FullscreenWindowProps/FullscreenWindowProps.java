@@ -58,6 +58,8 @@ public final class FullscreenWindowProps {
                 g.drawString(displayMode.toString(), 100, 100);
             }
         };
+
+        DisplayMode initialDisplayMode = gd.getDisplayMode();
         try {
             frame.setUndecorated(true); // workaround JDK-8256257
             frame.setBackground(Color.MAGENTA);
@@ -95,6 +97,7 @@ public final class FullscreenWindowProps {
             checkSize(frameBounds.height, screenBounds.height, "height");
         } finally {
             gd.setFullScreenWindow(null);
+            gd.setDisplayMode(initialDisplayMode);
             frame.dispose();
             Thread.sleep(10000);
         }
