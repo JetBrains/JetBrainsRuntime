@@ -316,7 +316,7 @@ public class XInputMethod extends X11InputMethod {
 
     static void delayAllXICDestroyUntilAFurtherNotice()  {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("delayAllXICDestroyUntilAFurtherNotice(): is getting called", new Throwable("Stacktrace"));
+            log.fine("delayAllXICDestroyUntilAFurtherNotice(): is being called", new Throwable("Stacktrace"));
         }
 
         XToolkit.awtLock();
@@ -346,7 +346,7 @@ public class XInputMethod extends X11InputMethod {
 
         if (isFineLoggable) {
             log.fine(
-                "doDelayedXICDestroy(forced==" + forced, ", maxCountToDestroy==", + maxCountToDestroy + "): is getting called",
+                "doDelayedXICDestroy(forced==" + forced + ", maxCountToDestroy==" + maxCountToDestroy + "): is being called",
                 new Throwable("Stacktrace")
             );
         }
@@ -423,8 +423,8 @@ public class XInputMethod extends X11InputMethod {
             delayedDisposeXIC_preparation_resetSpecifiedCtxNative(pX11IMData);
 
             if (pX11IMData == 0) {
-                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
-                    log.warning("disposeXIC(): pX11IMData==NULL, skipped");
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("disposeXIC(): pX11IMData==NULL, skipped");
                 }
                 return;
             }
