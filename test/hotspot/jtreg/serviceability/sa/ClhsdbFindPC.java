@@ -85,9 +85,9 @@ public class ClhsdbFindPC {
             theApp = new LingeredAppWithTrivialMain();
             theApp.setForceCrash(withCore);
             if (withXcomp) {
-                LingeredApp.startApp(List.of("-Xcomp"), theApp);
+                LingeredApp.startApp(List.of("-Xcomp", CoreUtils.getAlwaysPretouchArg(withCore)), theApp);
             } else {
-                LingeredApp.startApp(List.of("-Xint"), theApp);
+                LingeredApp.startApp(List.of("-Xint", CoreUtils.getAlwaysPretouchArg(withCore)), theApp);
             }
             System.out.print("Started LingeredApp ");
             if (withXcomp) {

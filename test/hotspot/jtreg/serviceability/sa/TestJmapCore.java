@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,6 +74,7 @@ public class TestJmapCore {
                 "-Xmx512m", "-XX:MaxMetaspaceSize=64m", "-XX:+CrashOnOutOfMemoryError", "-XX:-TransmitErrorReport",
                 // The test loads lots of small classes to exhaust Metaspace, skip method
                 // dependency verification to improve performance in debug builds.
+                CoreUtils.getAlwaysPretouchArg(true),
                 Platform.isDebugBuild() ? "-XX:-VerifyDependencies" : "--show-version",
                 TestJmapCore.class.getName(), type);
 

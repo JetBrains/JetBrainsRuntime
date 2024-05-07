@@ -174,7 +174,7 @@ serviceability/sa/ClhsdbJdis.java 8193639 solaris-all
 serviceability/sa/ClhsdbJhisto.java 8193639,8211767 solaris-all,linux-ppc64le,linux-ppc64
 serviceability/sa/ClhsdbJstack.java 8193639 solaris-all
 serviceability/sa/ClhsdbLongConstant.java 8193639 solaris-all
-serviceability/sa/ClhsdbPmap.java 8269982,8294316,8193639,8211767,8267433 solaris-all,linux-ppc64le,linux-ppc64,macosx-aarch64,macosx-x64
+serviceability/sa/ClhsdbPmap.java 8294316,8193639,8211767,8267433 solaris-all,linux-ppc64le,linux-ppc64,macosx-x64
 serviceability/sa/ClhsdbPrintAll.java 8193639 solaris-all
 serviceability/sa/ClhsdbPrintAs.java 8193639 solaris-all
 serviceability/sa/ClhsdbPrintStatics.java 8193639 solaris-all
@@ -202,8 +202,8 @@ serviceability/sa/TestInstanceKlassSize.java 8193639 solaris-all
 serviceability/sa/TestInstanceKlassSizeForInterface.java 8193639 solaris-all
 serviceability/sa/TestIntConstant.java 8193639,8211767 solaris-all,linux-ppc64le,linux-ppc64
 serviceability/sa/TestJhsdbJstackLock.java 8193639 solaris-all
-serviceability/sa/TestJmapCore.java 8269982,8294316,8193639,8267433 solaris-all,macosx-aarch64,macosx-x64
-serviceability/sa/TestJmapCoreMetaspace.java 8269982,8294316,8193639,8267433 solaris-all,macosx-aarch64,macosx-x64
+serviceability/sa/TestJmapCore.java 8294316,8193639,8267433 solaris-all,macosx-x64
+serviceability/sa/TestJmapCoreMetaspace.java 8294316,8193639,8267433 solaris-all,macosx-x64
 serviceability/sa/TestPrintMdo.java 8193639 solaris-all
 serviceability/sa/TestRevPtrsForInvokeDynamic.java 8191270 generic-all
 serviceability/sa/TestType.java 8193639 solaris-all
