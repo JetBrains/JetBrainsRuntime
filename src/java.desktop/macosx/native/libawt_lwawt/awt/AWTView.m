@@ -60,7 +60,6 @@ static unichar lastCtrlCombo;
 
 // Uncomment this line to see fprintfs of each InputMethod API being called on this View
 //#define IM_DEBUG TRUE
-//#define EXTRA_DEBUG
 //#define LOG_KEY_EVENTS
 
 static BOOL shouldUsePressAndHold() {
@@ -95,7 +94,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, i
 
     fEnablePressAndHold = shouldUsePressAndHold();
     fInPressAndHold = NO;
-    fPAHNeedsToSelect = NO;
 
     mouseIsOver = NO;
     [self resetTrackingArea];
@@ -365,6 +363,8 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     fprintf(stderr, "\tmodifierFlags: 0x%08x\n", (unsigned)[event modifierFlags]);
     TISInputSourceRef is = TISCopyCurrentKeyboardLayoutInputSource();
     fprintf(stderr, "\tTISCopyCurrentKeyboardLayoutInputSource: %s\n", is == nil ? "(nil)" : [(NSString*) TISGetInputSourceProperty(is, kTISPropertyInputSourceID) UTF8String]);
+    fprintf(stderr, "\twillBeHandledByComplexInputMethod: %s\n", [event willBeHandledByComplexInputMethod] ? "true" : "false");
+    CFRelease(is);
 }
 #endif
 
@@ -376,6 +376,7 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     fKeyEventsNeeded = YES;
 
     NSString *eventCharacters = [event characters];
+    unsigned mods = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
 
     if (([event modifierFlags] & NSControlKeyMask) && [eventCharacters length] == 1) {
         lastCtrlCombo = [eventCharacters characterAtIndex:0];
@@ -395,7 +396,6 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
         fProcessingKeystroke = NO;
         if (!fInPressAndHold) {
             fInPressAndHold = YES;
-            fPAHNeedsToSelect = YES;
         } else {
             // Abandon input to reset IM and unblock input after canceling
             // input accented symbols
@@ -1157,7 +1157,9 @@ static jclass jc_CInputMethod = NULL;
 - (void) insertText:(id)aString replacementRange:(NSRange)replacementRange
 {
 #ifdef IM_DEBUG
-    fprintf(stderr, "AWTView InputMethod Selector Called : [insertText]: %s\n", [aString UTF8String]);
+    fprintf(stderr,
+            "AWTView InputMethod Selector Called : [insertText]: %s, replacementRange: location=%lu, length=%lu\n",
+            [aString UTF8String], replacementRange.location, replacementRange.length);
 #endif // IM_DEBUG
 
     NSMutableString * useString = [self parseString:aString];
@@ -1195,12 +1197,12 @@ static jclass jc_CInputMethod = NULL;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
 
     GET_CIM_CLASS();
-    // We need to select the previous glyph so that it is overwritten.
-    if (fPAHNeedsToSelect) {
-        DECLARE_METHOD(jm_selectPreviousGlyph, jc_CInputMethod, "selectPreviousGlyph", "()V");
-        (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_selectPreviousGlyph);
+
+    if (replacementRange.length > 0) {
+        DECLARE_METHOD(jm_selectRange, jc_CInputMethod, "selectRange", "(II)V");
+        (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_selectRange, replacementRange.location,
+                               replacementRange.length);
         CHECK_EXCEPTION();
-        fPAHNeedsToSelect = NO;
     }
 
     if (usingComplexIM) {
@@ -1217,7 +1219,6 @@ static jclass jc_CInputMethod = NULL;
         actualCharacters = [useString copy];
         fKeyEventsNeeded = YES;
     }
-    fPAHNeedsToSelect = NO;
 
     // Abandon input to reset IM and unblock input after entering accented
     // symbols
@@ -1256,13 +1257,23 @@ static jclass jc_CInputMethod = NULL;
     NSAttributedString *attrString = (isAttributedString ? (NSAttributedString *)aString : nil);
     NSString *incomingString = (isAttributedString ? [aString string] : aString);
 #ifdef IM_DEBUG
-    fprintf(stderr, "AWTView InputMethod Selector Called : [setMarkedText] \"%s\", loc=%lu, length=%lu\n", [incomingString UTF8String], (unsigned long)selectionRange.location, (unsigned long)selectionRange.length);
+    fprintf(stderr, "AWTView InputMethod Selector Called :[setMarkedText] \"%s\","
+                    "selectionRange(%lu, %lu), replacementRange(%lu, %lu)\n", [incomingString UTF8String],
+            selectionRange.location, selectionRange.length, replacementRange.location, replacementRange.length);
 #endif // IM_DEBUG
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_CIM_CLASS();
     DECLARE_METHOD(jm_startIMUpdate, jc_CInputMethod, "startIMUpdate", "(Ljava/lang/String;)V");
     DECLARE_METHOD(jm_addAttribute, jc_CInputMethod, "addAttribute", "(ZZII)V");
     DECLARE_METHOD(jm_dispatchText, jc_CInputMethod, "dispatchText", "(IIZ)V");
+
+    if (replacementRange.length > 0) {
+        DECLARE_METHOD(jm_selectRange, jc_CInputMethod, "selectRange", "(II)V");
+        (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_selectRange, replacementRange.location,
+                               replacementRange.length);
+        CHECK_EXCEPTION();
+    }
+
 
     // NSInputContext already did the analysis of the TSM event and created attributes indicating
     // the underlining and color that should be done to the string.  We need to look at the underline
@@ -1297,14 +1308,6 @@ static jclass jc_CInputMethod = NULL;
                 CHECK_EXCEPTION();
             }
         }
-    }
-
-    DECLARE_METHOD(jm_selectPreviousGlyph, jc_CInputMethod, "selectPreviousGlyph", "()V");
-    // We need to select the previous glyph so that it is overwritten.
-    if (fPAHNeedsToSelect) {
-        (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_selectPreviousGlyph);
-         CHECK_EXCEPTION();
-        fPAHNeedsToSelect = NO;
     }
 
     (*env)->CallVoidMethod(env, fInputMethodLOCKABLE, jm_dispatchText,
