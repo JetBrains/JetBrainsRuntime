@@ -49,6 +49,7 @@ public class InputMethodTest {
         CtrlShortcutNewWindowTest (new CtrlShortcutNewWindowTest()),
         DeadKeysTest (new DeadKeysTest()),
         FocusMoveUncommitedCharactersTest (new FocusMoveUncommitedCharactersTest()),
+        JapaneseReconvertTest(new JapaneseReconvertTest()),
         KeyCodesTest (new KeyCodesTest()),
         NextAppWinKeyTestDead (new NextAppWinKeyTest(true)),
         NextAppWinKeyTestNormal (new NextAppWinKeyTest(false)),
