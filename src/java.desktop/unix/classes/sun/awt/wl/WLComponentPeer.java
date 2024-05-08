@@ -306,6 +306,7 @@ public class WLComponentPeer implements ComponentPeer {
                     nativeCreateWLPopup(nativePtr, getParentNativePtr(target),
                             thisWidth, thisHeight,
                             parentX + offsetX, parentY + offsetY);
+                    nativeSetSize(nativePtr, thisWidth, thisHeight);
                 } else {
                     int xNative = javaUnitsToSurfaceUnits(target.getX());
                     int yNative = javaUnitsToSurfaceUnits(target.getY());
@@ -314,6 +315,7 @@ public class WLComponentPeer implements ComponentPeer {
                             xNative, yNative,
                             isModal, isMaximized, isMinimized,
                             title, WLToolkit.getApplicationID());
+                    nativeSetSize(nativePtr, thisWidth, thisHeight);
                 }
                 final long wlSurfacePtr = getWLSurface(nativePtr);
                 WLToolkit.registerWLSurface(wlSurfacePtr, this);
@@ -483,6 +485,9 @@ public class WLComponentPeer implements ComponentPeer {
 
     private void setSizeTo(int newWidth, int newHeight) {
         Dimension newSize = constrainSize(newWidth, newHeight);
+        performLocked(() -> {
+            nativeSetSize(nativePtr, javaUnitsToSurfaceUnits(newSize.width), javaUnitsToSurfaceUnits(newSize.height));
+        });
         synchronized (dataLock) {
             this.width = newSize.width;
             this.height = newSize.height;
@@ -1023,6 +1028,7 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeRequestFullScreen(long ptr, int wlID);
     private native void nativeRequestUnsetFullScreen(long ptr);
 
+    private native void nativeSetSize(long ptr, int width, int height);
     private native void nativeSetWindowGeometry(long ptr, int x, int y, int width, int height);
     private native void nativeSetMinimumSize(long ptr, int width, int height);
     private native void nativeSetMaximumSize(long ptr, int width, int height);

@@ -1118,6 +1118,7 @@ WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height, ji
         JNU_ThrowOutOfMemoryError(getEnv(), "Wayland surface buffer too large");
         return;
     }
+    scale = 1;
 
     MUTEX_LOCK(manager->drawLock);
     MUTEX_LOCK(manager->showLock);
