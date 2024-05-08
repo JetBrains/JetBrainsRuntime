@@ -253,7 +253,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
         }
     }
 
-    static double effectiveScaleFrom(int displayScale) {
+    static double effectiveScaleFrom(double displayScale) {
         return debugScaleEnabled ? SunGraphicsEnvironment.getDebugScale() : displayScale;
     }
 

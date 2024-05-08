@@ -121,7 +121,7 @@ public class WLComponentPeer implements ComponentPeer {
     private final Object dataLock = new Object();
     int width;  // protected by dataLock
     int height; // protected by dataLock
-    int wlBufferScale; // protected by dataLock
+    double wlBufferScale; // protected by dataLock
     double effectiveScale; // protected by dataLock
 
     static {
@@ -354,14 +354,15 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     void updateSurfaceData() {
+        // TODO: remove scale from here?
         SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
-                getBufferWidth(), getBufferHeight(), getBufferScale());
+                getBufferWidth(), getBufferHeight(), (int)getBufferScale());
         updateWindowGeometry();
     }
 
     void configureWLSurface() {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine(String.format("%s is configured to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
+            log.fine(String.format("%s is configured to %dx%d with %fx scale", this, getBufferWidth(), getBufferHeight(), getBufferScale()));
         }
         updateSurfaceData();
     }
@@ -471,7 +472,7 @@ public class WLComponentPeer implements ComponentPeer {
         if (sizeChanged) {
             setSizeTo(newSize.width, newSize.height);
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                log.fine(String.format("%s is resizing its buffer to %dx%d with %dx scale",
+                log.fine(String.format("%s is resizing its buffer to %dx%d with %fx scale",
                         this, getBufferWidth(), getBufferHeight(), getBufferScale()));
             }
             updateSurfaceData();
@@ -534,7 +535,7 @@ public class WLComponentPeer implements ComponentPeer {
      * to buffers' whenever Wayland protocol requires "buffer-local" coordinates.
      * See wl_surface.set_buffer_scale in wayland.xml for more details.
      */
-    int getBufferScale() {
+    double getBufferScale() {
         synchronized(dataLock) {
             return wlBufferScale;
         }
@@ -1240,6 +1241,18 @@ public class WLComponentPeer implements ComponentPeer {
             // so it is highly likely that they won't get the initial paint event because of
             // the size change from target.setSize() above.
             postPaintEvent();
+        }
+    }
+
+    void notifyScaleChanged(int numerator) {
+        // Called from the native code
+        double newScale = numerator / 120.0;
+        synchronized (dataLock) {
+            System.err.printf("notifyScaleChanged %f -> %f\n", wlBufferScale, newScale);
+            //wlBufferScale = newScale;
+            // effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(newScale);
+            //updateSurfaceData();
+            //postPaintEvent(); // not sure if this is necessary
         }
     }
 

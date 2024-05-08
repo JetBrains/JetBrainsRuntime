@@ -46,9 +46,9 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
 
     public native void assignSurface(long surfacePtr);
 
-    private native void initOps(int width, int height, int scale, int backgroundRGB, int wlShmFormat);
+    private native void initOps(int width, int height, int backgroundRGB, int wlShmFormat);
 
-    private WLSMSurfaceData(WLComponentPeer peer, SurfaceType surfaceType, ColorModel colorModel, int scale, int wlShmFormat) {
+    private WLSMSurfaceData(WLComponentPeer peer, SurfaceType surfaceType, ColorModel colorModel, int wlShmFormat) {
         super(surfaceType, colorModel);
         this.peer = peer;
 
@@ -60,10 +60,10 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
         int height = peer.getBufferHeight();
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine(String.format("Shared memory surface data %dx%d x%d scale, format %d", width, height, scale, wlShmFormat));
+            log.fine(String.format("Shared memory surface data %dx%d x%d scale, format %d", width, height, wlShmFormat));
         }
 
-        initOps(width, height, scale, backgroundPixel, wlShmFormat);
+        initOps(width, height, backgroundPixel, wlShmFormat);
     }
 
     /**
@@ -75,7 +75,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
         }
         ColorModel cm = graphicsConfig.getColorModel();
         SurfaceType surfaceType = graphicsConfig.getSurfaceType();
-        return new WLSMSurfaceData(peer, surfaceType, cm, graphicsConfig.getWlScale(), graphicsConfig.getWlShmFormat());
+        return new WLSMSurfaceData(peer, surfaceType, cm, graphicsConfig.getWlShmFormat());
     }
 
     @Override

@@ -66,7 +66,7 @@ struct wl_compositor *wl_compositor = NULL;
 struct xdg_wm_base *xdg_wm_base = NULL;
 struct wp_viewporter *wp_viewporter = NULL;
 struct xdg_activation_v1 *xdg_activation_v1 = NULL;
-struct gtk_shell1* gtk_shell1 = NULL;
+struct gtk_shell1* gtk_shell1 = NULL; // NB: optional
 struct wl_seat     *wl_seat = NULL;
 
 struct wl_keyboard *wl_keyboard;
@@ -78,6 +78,7 @@ struct wl_cursor_theme *cursor_themes[MAX_CURSOR_SCALE] = {NULL};
 struct wl_surface *wl_surface_in_focus = NULL;
 struct wl_data_device_manager *wl_ddm = NULL;
 struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm = NULL;
+struct wp_fractional_scale_manager_v1* wp_fractional_scale_manager = NULL; // NB: optional
 
 uint32_t last_mouse_pressed_serial = 0;
 uint32_t last_pointer_enter_serial = 0;
@@ -528,7 +529,9 @@ registry_global(void *data, struct wl_registry *wl_registry,
     } else if (strcmp(interface, wp_viewporter_interface.name) == 0) {
         wp_viewporter = wl_registry_bind(wl_registry, name, &wp_viewporter_interface, 1);
     }
-
+    else if (strcmp(interface, wp_fractional_scale_manager_v1_interface.name) == 0) {
+        wp_fractional_scale_manager = wl_registry_bind(wl_registry, name, &wp_fractional_scale_manager_v1_interface, 1);
+    }
 #ifdef WAKEFIELD_ROBOT
     else if (strcmp(interface, wakefield_interface.name) == 0) {
         wakefield = wl_registry_bind(wl_registry, name, &wakefield_interface, 1);
