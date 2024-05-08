@@ -130,7 +130,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_revalidate(JNIEnv *env, jobject wsd,
         return;
     }
 
-    WLSBM_SizeChangeTo(wsdo->bufferManager, width, height, scale);
+    WLSBM_SizeChangeTo(wsdo->bufferManager, width, height);
 #endif /* !HEADLESS */
 }
 
@@ -364,7 +364,6 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
                                            jint width,
                                            jint height,
-                                           jint scale,
                                            jint backgroundRGB,
                                            jint wlShmFormat,
                                            jboolean perfCountersEnabled)
@@ -393,7 +392,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
     wsdo->sdOps.Unlock = WLSD_Unlock;
     wsdo->sdOps.GetRasInfo = WLSD_GetRasInfo;
     wsdo->sdOps.Dispose = WLSD_Dispose;
-    wsdo->bufferManager = WLSBM_Create(width, height, scale, backgroundRGB, wlShmFormat,
+    wsdo->bufferManager = WLSBM_Create(width, height, backgroundRGB, wlShmFormat,
                                        surfaceDataWeakRef,
                                        perfCountersEnabled ? CountFrameSent : NULL,
                                        perfCountersEnabled ? CountFrameDropped : NULL);
