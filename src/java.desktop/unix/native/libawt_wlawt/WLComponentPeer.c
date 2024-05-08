@@ -89,6 +89,7 @@ static void delete_all_tokens(struct activation_token_list_item *list) {
 struct WLFrame {
     jobject nativeFramePeer; // weak reference
     struct wl_surface *wl_surface;
+    struct wp_viewport *wp_viewport;
     struct xdg_surface *xdg_surface;
     struct gtk_surface1 *gtk_surface;
     struct WLFrame *parent;
@@ -439,13 +440,14 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
     if (frame->wl_surface) return;
     frame->wl_surface = wl_compositor_create_surface(wl_compositor);
     CHECK_NULL(frame->wl_surface);
+    frame->wp_viewport = wp_viewporter_get_viewport(wp_viewporter, frame->wl_surface);
+    CHECK_NULL(frame->wp_viewport);
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
     CHECK_NULL(frame->xdg_surface);
     if (gtk_shell1 != NULL) {
         frame->gtk_surface = gtk_shell1_get_gtk_surface(gtk_shell1, frame->wl_surface);
         CHECK_NULL(frame->gtk_surface);
     }
-
     wl_surface_add_listener(frame->wl_surface, &wl_surface_listener, frame);
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
     frame->toplevel = JNI_TRUE;
@@ -518,6 +520,8 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
     if (frame->wl_surface) return;
     frame->wl_surface = wl_compositor_create_surface(wl_compositor);
     CHECK_NULL(frame->wl_surface);
+    frame->wp_viewport = wp_viewporter_get_viewport(wp_viewporter, frame->wl_surface);
+    CHECK_NULL(frame->wp_viewport);
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
     CHECK_NULL(frame->xdg_surface);
 
@@ -532,7 +536,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
     CHECK_NULL(frame->xdg_popup);
     xdg_popup_add_listener(frame->xdg_popup, &xdg_popup_listener, frame);
     xdg_positioner_destroy(xdg_positioner);
-
     // From xdg-shell.xml: "After creating a role-specific object and
     // setting it up, the client must perform an initial commit
     // without any buffer attached"
@@ -574,6 +577,7 @@ DoHide(JNIEnv *env, struct WLFrame *frame)
         if (frame->gtk_surface != NULL) {
             gtk_surface1_destroy(frame->gtk_surface);
         }
+        wp_viewport_destroy(frame->wp_viewport);
         xdg_surface_destroy(frame->xdg_surface);
         wl_surface_destroy(frame->wl_surface);
         delete_all_tokens(frame->activation_token_list);
@@ -584,6 +588,7 @@ DoHide(JNIEnv *env, struct WLFrame *frame)
         frame->xdg_surface = NULL;
         frame->xdg_toplevel = NULL;
         frame->xdg_popup = NULL;
+        frame->wp_viewport = NULL;
         frame->toplevel = JNI_FALSE;
     }
 }
@@ -631,6 +636,21 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
         wlFlushToServer(env);
     }
 }
+
+/**
+ * Specifies the size of the Wayland's surface in surface units.
+ * For the resulting image on the screen to look sharp this size should be
+ * multiple of backing buffer's size with the ratio matching the display scale.
+ */
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetSurfaceSize
+        (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)
+{
+    struct WLFrame *frame = jlong_to_ptr(ptr);
+    if (frame->wp_viewport != NULL) {
+        wp_viewport_set_destination(frame->wp_viewport, width, height);
+    }
+}
+
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetWindowGeometry
         (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y, jint width, jint height)
