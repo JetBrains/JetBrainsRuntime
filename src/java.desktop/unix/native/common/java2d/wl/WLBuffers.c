@@ -273,9 +273,6 @@ struct WLSurfaceBufferManager {
     /// Does not exceed MAX_BUFFERS_IN_USE elements.
     WLSurfaceBuffer *   buffersInUse;  // only accessed under showLock
 
-    /// The scale of wl_surface (see Wayland docs for more info on that).
-    jint                scale;         // only accessed under showLock
-
     pthread_mutex_t     drawLock;
 
     /**
@@ -763,7 +760,7 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
 
     // wl_buffer_listener will release bufferForShow when Wayland's done with it
     wl_surface_attach(manager->wlSurface, buffer->wlBuffer, 0, 0);
-    wl_surface_set_buffer_scale(manager->wlSurface, manager->scale);
+    //NB: do not specify scale for the buffer; we scale with wp_viewporter
 
     // Better wait for the frame event so as not to overwhelm Wayland with
     // frequent surface updates that it cannot deliver to the screen anyway.
@@ -938,7 +935,6 @@ HaveEnoughMemoryForWindow(jint width, jint height)
 WLSurfaceBufferManager *
 WLSBM_Create(jint width,
              jint height,
-             jint scale,
              jint bgPixel,
              jint wlShmFormat,
              jobject surfaceDataWeakRef,
@@ -958,7 +954,6 @@ WLSBM_Create(jint width,
 
     manager->bufferForDraw.width = width;
     manager->bufferForDraw.height = height;
-    manager->scale = scale;
     manager->bgPixel = bgPixel;
     manager->format = wlShmFormat;
     manager->surfaceDataWeakRef = surfaceDataWeakRef;
@@ -1119,7 +1114,7 @@ WLSB_DataGet(WLDrawBuffer * buffer)
 }
 
 void
-WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height, jint scale)
+WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height)
 {
     if (!HaveEnoughMemoryForWindow(width, height)) {
         JNU_ThrowOutOfMemoryError(getEnv(), "Wayland surface buffer too large");
@@ -1128,13 +1123,7 @@ WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height, ji
 
     MUTEX_LOCK(manager->drawLock);
     MUTEX_LOCK(manager->showLock);
-    const bool change_needed =
-               manager->bufferForDraw.width != width
-            || manager->bufferForDraw.height != height
-            || manager->scale != scale;
-    manager->scale = scale;
-
-    if (change_needed) {
+    if (manager->bufferForDraw.width != width || manager->bufferForDraw.height != height) {
         manager->bufferForDraw.width  = width;
         manager->bufferForDraw.height = height;
         manager->bufferForDraw.resizePending = true;
