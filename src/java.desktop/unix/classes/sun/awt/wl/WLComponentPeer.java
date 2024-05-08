@@ -119,8 +119,8 @@ public class WLComponentPeer implements ComponentPeer {
     boolean visible = false;
 
     private final Object dataLock = new Object();
-    int width;  // protected by dataLock
-    int height; // protected by dataLock
+    int width;  // in native pixels, protected by dataLock
+    int height; // in native pixels, protected by dataLock
     int wlBufferScale; // protected by dataLock
     double effectiveScale; // protected by dataLock
 
@@ -306,6 +306,7 @@ public class WLComponentPeer implements ComponentPeer {
                     nativeCreateWLPopup(nativePtr, getParentNativePtr(target),
                             thisWidth, thisHeight,
                             parentX + offsetX, parentY + offsetY);
+                    nativeSetSurfaceSize(nativePtr, thisWidth, thisHeight);
                 } else {
                     int xNative = javaUnitsToSurfaceUnits(target.getX());
                     int yNative = javaUnitsToSurfaceUnits(target.getY());
@@ -314,6 +315,7 @@ public class WLComponentPeer implements ComponentPeer {
                             xNative, yNative,
                             isModal, isMaximized, isMinimized,
                             title, WLToolkit.getApplicationID());
+                    nativeSetSurfaceSize(nativePtr, thisWidth, thisHeight);
                 }
                 final long wlSurfacePtr = getWLSurface(nativePtr);
                 WLToolkit.registerWLSurface(wlSurfacePtr, this);
@@ -483,6 +485,9 @@ public class WLComponentPeer implements ComponentPeer {
 
     private void setSizeTo(int newWidth, int newHeight) {
         Dimension newSize = constrainSize(newWidth, newHeight);
+        performLocked(() -> {
+            nativeSetSurfaceSize(nativePtr, javaUnitsToSurfaceUnits(newSize.width), javaUnitsToSurfaceUnits(newSize.height));
+        });
         synchronized (dataLock) {
             this.width = newSize.width;
             this.height = newSize.height;
@@ -523,11 +528,10 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     /**
-     * Returns the scale of wl_buffer attached to this component's wl_surface.
-     * Buffer coordinate space is linearly scaled wrt the component (or surface)
-     * coordinate space, so component's coordinates have to be translated
-     * to buffers' whenever Wayland protocol requires "buffer-local" coordinates.
-     * See wl_surface.set_buffer_scale in wayland.xml for more details.
+     * Represents the scale ratio of Wayland's backing buffer in pixel units
+     * to surface units. Wayland events are generated in surface units, while
+     * painting should be performed in pixel units.
+     * The ratio is enforced with nativeSetSize().
      */
     int getBufferScale() {
         synchronized(dataLock) {
@@ -1023,6 +1027,7 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeRequestFullScreen(long ptr, int wlID);
     private native void nativeRequestUnsetFullScreen(long ptr);
 
+    private native void nativeSetSurfaceSize(long ptr, int width, int height);
     private native void nativeSetWindowGeometry(long ptr, int x, int y, int width, int height);
     private native void nativeSetMinimumSize(long ptr, int width, int height);
     private native void nativeSetMaximumSize(long ptr, int width, int height);
