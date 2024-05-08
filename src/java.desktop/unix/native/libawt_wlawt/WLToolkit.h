@@ -28,6 +28,7 @@
 #include "xdg-shell-client-protocol.h"
 #include "xdg-activation-v1-client-protocol.h"
 #include "primary-selection-client-protocol.h"
+#include "viewporter-client-protocol.h"
 #include "jvm_md.h"
 #include "jni_util.h"
 
@@ -54,6 +55,7 @@ extern struct wl_display *wl_display;
 extern struct wl_pointer *wl_pointer;
 extern struct wl_compositor *wl_compositor;
 extern struct xdg_wm_base *xdg_wm_base;
+extern struct wp_viewporter *wp_viewporter;
 extern struct xdg_activation_v1 *xdg_activation_v1;
 extern struct gtk_shell1* gtk_shell1; // optional, check for NULL before use
 
