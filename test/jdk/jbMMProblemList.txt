@@ -17,7 +17,6 @@ java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442 linux-all
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
-java/awt/Robot/NonEmptyErrorStream.java JBR-5442 linux-all
 java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
 java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-6065 windows-all
 java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
