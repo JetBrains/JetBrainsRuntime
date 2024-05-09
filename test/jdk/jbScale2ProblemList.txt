@@ -11,6 +11,7 @@ java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-6292 windows-all
 java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java JBR-6292 windows-all
 java/awt/event/MouseEvent/FrameMouseEventAbsoluteCoordsTest/FrameMouseEventAbsoluteCoordsTest.java 8238720,JBR-6095 windows-all,linux-all
+java/awt/event/MouseEvent/MouseEnterExitTest.java JBR-7113 linux-all
 java/awt/event/StressTest/MouseAndKeyEventStressTest.java JBR-6479,JBR-6090 generic-all
 java/awt/Focus/6378278/InputVerifierTest.java JBR-5799,JBR-6090 windows-all
 java/awt/Focus/6382144/EndlessLoopTest.java JBR-6090 windows-all
