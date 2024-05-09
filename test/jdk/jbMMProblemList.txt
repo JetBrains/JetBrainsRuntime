@@ -99,7 +99,7 @@ java/awt/Modal/BlockedMouseInputTest.java NOBUG linux-all
 java/awt/Modal/ModalDialogOrderingTest/ModalDialogOrderingTest.java 8066259,8253184,JBR-5510 macosx-all,windows-all,linux-all
 java/awt/Modal/MultipleDialogs/MultipleDialogs4Test.java 8198665,8253184,JBR-5510 macosx-all,windows-all,linux-all
 java/awt/Paint/PaintNativeOnUpdate.java 8253184,JBR-5510 windows-all,linux-all
-java/awt/PopupMenu/PopupMenuStayOpen.java NOBUG linux-all
+java/awt/PopupMenu/PopupMenuLocation.java JBR-7079 linux-x64
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,NOBUG windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java NOBUG linux-all
 java/awt/Window/8159168/SetShapeTest.java 8253184,JBR-5510 windows-all,linux-all
