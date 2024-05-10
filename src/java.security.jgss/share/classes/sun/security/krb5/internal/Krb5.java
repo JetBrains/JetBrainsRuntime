@@ -313,8 +313,6 @@ public class Krb5 {
     public static final boolean DEBUG =
         java.security.AccessController.doPrivileged(
               new sun.security.action.GetBooleanAction("sun.security.krb5.debug"));
-    public static final sun.security.util.HexDumpEncoder hexDumper =
-        new sun.security.util.HexDumpEncoder();
 
     static {
         errMsgList = new Hashtable<Integer,String> ();
