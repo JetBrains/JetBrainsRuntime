@@ -40,6 +40,7 @@ import java.text.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.text.JTextComponent;
 
+import com.jetbrains.desktop.JBRTextInput;
 import sun.awt.AWTAccessor;
 import sun.awt.im.InputMethodAdapter;
 import sun.lwawt.*;
@@ -533,6 +534,12 @@ public class CInputMethod extends InputMethodAdapter {
                     if (fAwtFocussedComponent instanceof TextComponent) {
                         ((TextComponent) fAwtFocussedComponent).select(selectionStart, selectionEnd);
                         return;
+                    }
+
+                    var desc = (CInputMethodDescriptor)LWCToolkit.getLWCToolkit().getInputMethodAdapterDescriptor();
+                    if (desc.textInputEventListener != null) {
+                        var event = new JBRTextInput.SelectTextRangeEvent(fAwtFocussedComponent, selectionStart, length);
+                        desc.textInputEventListener.handleSelectTextRangeEvent(event);
                     }
                 }
             }, fAwtFocussedComponent);
