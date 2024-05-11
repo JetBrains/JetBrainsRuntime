@@ -1,0 +1,14 @@
+java/awt/image/multiresolution/MultiresolutionIconTest.java JBR-7146 macosx-12.7.4
+java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java JBR-7146 macosx-12.7.4
+java/awt/Paint/PaintNativeOnUpdate.java JBR-7146 macosx-12.7.4
+java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java JBR-7146 macosx-12.7.4
+java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-7146 macosx-12.7.4
+java/awt/Window/WindowTitleVisibleTest/WindowTitleVisibleTest.java JBR-7146 macosx-12.7.4
+javax/swing/JButton/8151303/PressedIconTest.java JBR-7146 macosx-12.7.4
+javax/swing/JComponent/7154030/bug7154030.java JBR-7146 macosx-12.7.4
+javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java JBR-7146 macosx-12.7.4
+javax/swing/JInternalFrame/DockIconRepaint/DockIconRepaint.java JBR-7146 macosx-12.7.4
+javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-7146 macosx-12.7.4
+javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java JBR-7146 macosx-12.7.4
+javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-7146 macosx-12.7.4
+jb/java/awt/Window/MacNativeTransparentTitlebarWithCustomHeight.java JBR-7146 macosx-12.7.4

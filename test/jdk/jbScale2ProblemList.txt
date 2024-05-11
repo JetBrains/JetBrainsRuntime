@@ -57,6 +57,7 @@ javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-6100 linux-all
 javax/swing/JComponent/7154030/bug7154030.java JBR-6134 windows-x64
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      JBR-5071 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6090,JBR-6360 linux-all,windows-all,macosx-all
+javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-5342 linux-all
 
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-6589 windows-all
 
@@ -72,6 +73,7 @@ java/awt/Graphics/XORPaint.java#id0                                             
 java/awt/Graphics2D/LargeWindowPaintTest.java#ZGenerational                         nobug generic-all
 java/awt/Graphics2D/LargeWindowPaintTest.java#ZSinglegen                            nobug generic-all
 java/awt/Graphics2D/LargeWindowPaintTest.java#default                               nobug generic-all
+java/awt/image/multiresolution/MultiresolutionIconTest.java                         nobug generic-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  nobug generic-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             nobug generic-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java                  nobug generic-all
