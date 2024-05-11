@@ -111,6 +111,7 @@ java/awt/Choice/ChoiceFreezeTest.java JBR-6952 windows-x64
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857,JBR-5505 macosx-all,windows-all
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5510,8310487,JBR-6950 linux-5.18.2-arch1-1,linux-all,windows-x64
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490,JBR-5505 windows-all,linux-all
+java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-all
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,JBR-5915,JBR-5505 macosx-all,linux-all,windows-all
 java/awt/Focus/6378278/InputVerifierTest.java JBR-5505 windows-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 8169110,JBR-5505 linux-all,windows-all

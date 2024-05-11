@@ -1,0 +1,1 @@
+java/awt/image/multiresolution/MultiresolutionIconTest.java JBR-7146 macosx-12.7.4
