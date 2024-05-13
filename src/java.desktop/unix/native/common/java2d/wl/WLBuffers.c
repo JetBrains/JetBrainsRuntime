@@ -514,6 +514,7 @@ SurfaceBufferResize(WLSurfaceBufferManager * manager, WLSurfaceBuffer* buffer)
         buffer->bytesAllocated = requiredSize;
     }
 
+    printf("SurfaceBufferResize -> %dx%d\n", buffer->width, buffer->height);
     const int32_t stride = (int32_t) (buffer->width * sizeof(pixel_t));
     buffer->wlBuffer = wl_shm_pool_create_buffer(buffer->wlPool, 0,
                                                  buffer->width,
@@ -768,7 +769,7 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
 
     // wl_buffer_listener will release bufferForShow when Wayland's done with it
     wl_surface_attach(manager->wlSurface, buffer->wlBuffer, 0, 0);
-    wl_surface_set_buffer_scale(manager->wlSurface, 1); // we scale with a viewport
+    //wl_surface_set_buffer_scale(manager->wlSurface, 1); // we scale with a viewport
 
     // Better wait for the frame event so as not to overwhelm Wayland with
     // frequent surface updates that it cannot deliver to the screen anyway.

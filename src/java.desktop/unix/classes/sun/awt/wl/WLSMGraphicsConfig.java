@@ -55,7 +55,7 @@ public class WLSMGraphicsConfig extends WLGraphicsConfig {
     private WLSMGraphicsConfig(WLGraphicsDevice device,
                                int width,
                                int height,
-                               int scale,
+                               double scale,
                                boolean translucencyCapable) {
         super(device, width, height, scale);
         this.translucencyCapable = translucencyCapable;
@@ -67,7 +67,7 @@ public class WLSMGraphicsConfig extends WLGraphicsConfig {
     public static WLSMGraphicsConfig getConfig(WLGraphicsDevice device,
                                                int width,
                                                int height,
-                                               int scale,
+                                               double scale,
                                                boolean translucencyCapable) {
         var newConfig = new WLSMGraphicsConfig(device, width, height, scale, translucencyCapable);
         if (log.isLoggable(PlatformLogger.Level.FINE)) {

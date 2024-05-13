@@ -89,7 +89,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
         return wlID;
     }
 
-    void updateConfiguration(String name, int width, int height, int scale) {
+    void updateConfiguration(String name, int width, int height, double scale) {
         this.name = name;
 
         WLGraphicsConfig config = defaultConfig;
@@ -100,7 +100,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
             // It is necessary to create a new object whenever config changes as its
             // identity is used to detect changes in scale, among other things.
             if (WLGraphicsEnvironment.isVulkanEnabled()) {
-                newDefaultConfig = WLVKGraphicsConfig.getConfig(this, width, height, scale);
+                newDefaultConfig = WLVKGraphicsConfig.getConfig(this, width, height, (int)scale);
                 newConfigs = new GraphicsConfiguration[1];
                 newConfigs[0] = newDefaultConfig;
             } else {
@@ -145,7 +145,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
         this.x = similarDevice.x;
         this.y = similarDevice.y;
 
-        int newScale = similarDevice.getWlScale();
+        double newScale = similarDevice.getWlScale();
         Rectangle newBounds = similarDevice.defaultConfig.getBounds();
         updateConfiguration(similarDevice.name, newBounds.width, newBounds.height, newScale);
     }
@@ -154,7 +154,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
                                                            int x, int y,
                                                            int width, int height,
                                                            int widthMm, int heightMm,
-                                                           int scale) {
+                                                           double scale) {
         WLGraphicsDevice device = new WLGraphicsDevice(id, x, y, widthMm, heightMm);
         device.updateConfiguration(name, width, height, scale);
         return device;
@@ -207,7 +207,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
         return defaultConfig;
     }
 
-    int getWlScale() {
+    double getWlScale() {
         return defaultConfig.getWlScale();
     }
 

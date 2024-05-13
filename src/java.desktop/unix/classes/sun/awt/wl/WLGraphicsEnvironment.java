@@ -50,6 +50,18 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     private static boolean vulkanRequested = false;
     private static int vulkanRequestedDeviceNumber = -1;
     private static final boolean debugScaleEnabled;
+
+
+    public static final int WL_OUTPUT_TRANSFORM_NORMAL = 0;
+    public static final int WL_OUTPUT_TRANSFORM_90 = 1;
+    public static final int WL_OUTPUT_TRANSFORM_180 = 2;
+    public static final int WL_OUTPUT_TRANSFORM_270 = 3;
+    public static final int WL_OUTPUT_TRANSFORM_FLIPPED = 4;
+    public static final int WL_OUTPUT_TRANSFORM_FLIPPED_90 = 5;
+    public static final int WL_OUTPUT_TRANSFORM_FLIPPED_180 = 6;
+    public static final int WL_OUTPUT_TRANSFORM_FLIPPED_270 = 7;
+
+
     @SuppressWarnings("removal")
     private static String vulkanOption =
             AccessController.doPrivileged(
@@ -127,12 +139,31 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     private final List<WLGraphicsDevice> devices = new ArrayList<>(5);
 
     private void notifyOutputConfigured(String name, String make, String model, int wlID,
-                                        int x, int y, int width, int height, int widthMm, int heightMm,
+                                        int x, int y,
+                                        int width, int height,
+                                        int widthLogical, int heightLogical,
+                                        int widthMm, int heightMm,
                                         int subpixel, int transform, int scale) {
         // Called from native code whenever a new output appears or an existing one changes its properties
         // NB: initially called during WLToolkit.initIDs() on the main thread; later on EDT.
         if (log.isLoggable(Level.FINE)) {
-            log.fine(String.format("Output configured id=%d at (%d, %d) %dx%d %dx scale", wlID, x, y, width, height, scale));
+            log.fine(String.format("Output configured id=%d at (%d, %d) %dx%d (%dx%d logical) %dx scale",
+                    wlID, x, y, width, height, widthLogical, heightLogical, scale));
+        }
+
+        double realScale = scale;
+        if (widthLogical != 0 && heightLogical != 0) {
+            switch (transform) {
+                case WL_OUTPUT_TRANSFORM_NORMAL,
+                     WL_OUTPUT_TRANSFORM_180,
+                     WL_OUTPUT_TRANSFORM_FLIPPED,
+                     WL_OUTPUT_TRANSFORM_FLIPPED_180
+                        -> realScale = (double) width / widthLogical;
+                default
+                        -> realScale = (double) height / widthLogical;
+            }
+            realScale = ((int)(realScale * 100)) / 100.0;
+            System.out.printf("real scale %f\n", realScale);
         }
 
         String humanID =
@@ -147,10 +178,10 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
                     newOutput = false;
                     if (gd.isSameDeviceAs(wlID, x, y)) {
                         // These coordinates and the size are not scaled.
-                        gd.updateConfiguration(humanID, width, height, scale);
+                        gd.updateConfiguration(humanID, width, height, realScale);
                     } else {
                         final WLGraphicsDevice updatedDevice = WLGraphicsDevice.createWithConfiguration(wlID, humanID,
-                                x, y, width, height, widthMm, heightMm, scale);
+                                x, y, width, height, widthMm, heightMm, realScale);
                         devices.set(i, updatedDevice);
                         gd.invalidate(updatedDevice);
                     }
@@ -159,7 +190,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
             }
             if (newOutput) {
                 final WLGraphicsDevice gd = WLGraphicsDevice.createWithConfiguration(wlID, humanID, x, y,
-                        width, height, widthMm, heightMm, scale);
+                        width, height, widthMm, heightMm, realScale);
                 devices.add(gd);
             }
         }

@@ -39,10 +39,10 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
     private final WLGraphicsDevice device;
     private final int width;
     private final int height;
-    private final int wlScale; // as reported by Wayland
+    private final double wlScale; // as derived from Wayland
     private final double effectiveScale; // as enforced by Java
 
-    protected WLGraphicsConfig(WLGraphicsDevice device, int width, int height, int wlScale) {
+    protected WLGraphicsConfig(WLGraphicsDevice device, int width, int height, double wlScale) {
         this.device = device;
         this.width = width;
         this.height = height;
@@ -50,7 +50,7 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
         this.effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(wlScale);
     }
 
-    boolean differsFrom(int width, int height, int scale) {
+    boolean differsFrom(int width, int height, double scale) {
         return width != this.width || height != this.height || scale != this.wlScale;
     }
 
@@ -89,9 +89,9 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
     }
 
     /**
-     * Returns the preferred Wayland buffer scale for this display configuration.
+     * Returns the preferred ratio of logical to physical hardware window size for this display configuration.
      */
-    public int getWlScale() {
+    public double getWlScale() {
         return wlScale;
     }
 
@@ -108,6 +108,6 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public String toString() {
-        return String.format("%dx%d %dx scale", width, height, wlScale);
+        return String.format("%dx%d %fx scale", width, height, wlScale);
     }
 }

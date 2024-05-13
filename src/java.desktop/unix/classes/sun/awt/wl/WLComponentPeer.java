@@ -121,7 +121,7 @@ public class WLComponentPeer implements ComponentPeer {
     private final Object dataLock = new Object();
     int width;  // protected by dataLock
     int height; // protected by dataLock
-    double wlBufferScale; // protected by dataLock
+    double wlScale; // protected by dataLock
     double effectiveScale; // protected by dataLock
 
     static {
@@ -138,7 +138,7 @@ public class WLComponentPeer implements ComponentPeer {
         width = size.width;
         height = size.height;
         final WLGraphicsConfig config = (WLGraphicsConfig)target.getGraphicsConfiguration();
-        wlBufferScale = config.getWlScale();
+        wlScale = config.getWlScale();
         effectiveScale = config.getEffectiveScale();
         surfaceData = config.createSurfaceData(this);
         nativePtr = nativeCreateFrame();
@@ -528,16 +528,9 @@ public class WLComponentPeer implements ComponentPeer {
         }
     }
 
-    /**
-     * Returns the scale of wl_buffer attached to this component's wl_surface.
-     * Buffer coordinate space is linearly scaled wrt the component (or surface)
-     * coordinate space, so component's coordinates have to be translated
-     * to buffers' whenever Wayland protocol requires "buffer-local" coordinates.
-     * See wl_surface.set_buffer_scale in wayland.xml for more details.
-     */
     double getBufferScale() {
         synchronized(dataLock) {
-            return wlBufferScale;
+            return wlScale;
         }
     }
 
@@ -833,7 +826,11 @@ public class WLComponentPeer implements ComponentPeer {
         WLComponentPeer peer = inputState.getPeer();
         if (peer == null) return;
         Cursor cursor = peer.getCursor(inputState.getPointerX(), inputState.getPointerY());
-        setCursor(cursor, getGraphicsDevice() != null ? getGraphicsDevice().getWlScale() : 1);
+
+        double deviceScale = (getGraphicsDevice() != null ? (getGraphicsDevice().getWlScale() + 0.5) : 1.0);
+        int scale = (int)deviceScale;
+        // TODO: make cursor support fractional scale
+        setCursor(cursor, scale);
     }
 
     Cursor getCursor(int x, int y) {
@@ -944,16 +941,17 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public boolean updateGraphicsData(GraphicsConfiguration gc) {
-        final int newWlScale = ((WLGraphicsConfig)gc).getWlScale();
+        double newWlScale = ((WLGraphicsConfig)gc).getWlScale();
+        double newEffectiveScale = ((WLGraphicsConfig)gc).getEffectiveScale();
 
         WLGraphicsDevice gd = ((WLGraphicsConfig) gc).getDevice();
         gd.addWindow(this);
         synchronized (dataLock) {
-            if (newWlScale != wlBufferScale) {
-                wlBufferScale = newWlScale;
-                effectiveScale = ((WLGraphicsConfig)gc).getEffectiveScale();
+            if (newWlScale != wlScale) {
+                wlScale = newWlScale;
+                effectiveScale = newEffectiveScale;
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                    log.fine(String.format("%s is updating buffer to %dx%d with %dx scale", this, getBufferWidth(), getBufferHeight(), wlBufferScale));
+                    log.fine(String.format("%s is updating buffer to %dx%d with %fx scale", this, getBufferWidth(), getBufferHeight(), wlScale));
                 }
                 updateSurfaceData();
                 postPaintEvent();
@@ -1187,7 +1185,7 @@ public class WLComponentPeer implements ComponentPeer {
             return value;
         } else {
             synchronized (dataLock) {
-                return (int)(value * wlBufferScale / effectiveScale);
+                return (int)(value * wlScale / effectiveScale);
             }
         }
     }
@@ -1201,7 +1199,7 @@ public class WLComponentPeer implements ComponentPeer {
             return value;
         } else {
             synchronized (dataLock) {
-                return (int)(value * effectiveScale / wlBufferScale);
+                return (int)(value * effectiveScale / wlScale);
             }
         }
     }
@@ -1246,14 +1244,20 @@ public class WLComponentPeer implements ComponentPeer {
 
     void notifyScaleChanged(int numerator) {
         // Called from the native code
+
+        // NB: this scale is not really usable for us because it must be in perfect sync with
+        // GraphicsConfiguration.getDefaultTransform(), which is an attribute of the graphics device,
+        // not of the window.
+
+        /*
         double newScale = numerator / 120.0;
         synchronized (dataLock) {
-            System.err.printf("notifyScaleChanged %f -> %f\n", wlBufferScale, newScale);
-            //wlBufferScale = newScale;
-            // effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(newScale);
-            //updateSurfaceData();
-            //postPaintEvent(); // not sure if this is necessary
+            wlBufferScale = newScale;
+            effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(newScale);
+            updateSurfaceData();
+            postPaintEvent(); // not sure if this is necessary
         }
+         */
     }
 
     void notifyEnteredOutput(int wlOutputID) {
@@ -1300,7 +1304,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     private WLGraphicsDevice getGraphicsDevice() {
-        int scale = 0;
+        double scale = 0;
         WLGraphicsDevice theDevice = null;
         // AFAIK there's no way of knowing which WLGraphicsDevice is displaying
         // the largest portion of this component, so choose the first in the ordered list

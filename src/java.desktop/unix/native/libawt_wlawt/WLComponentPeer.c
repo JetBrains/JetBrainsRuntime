@@ -692,6 +692,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetSize
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->wp_viewport != NULL) {
+        printf("viewport -> %dx%d\n", width, height);
         wp_viewport_set_destination(frame->wp_viewport, width, height);
     }
 }

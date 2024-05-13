@@ -74,7 +74,7 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
 
     private static native long getVKConfigInfo();
 
-    public WLVKGraphicsConfig(WLGraphicsDevice device, int width, int height, int scale, ContextCapabilities vkCaps) {
+    public WLVKGraphicsConfig(WLGraphicsDevice device, int width, int height, double scale, ContextCapabilities vkCaps) {
         super(device, width, height, scale);
         this.vkCaps = vkCaps;
         context = new VKContext(VKRenderQueue.getInstance());
@@ -85,7 +85,7 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
         return this;
     }
 
-    public static WLVKGraphicsConfig getConfig(WLGraphicsDevice device, int width, int height, int scale)
+    public static WLVKGraphicsConfig getConfig(WLGraphicsDevice device, int width, int height, double scale)
     {
         ContextCapabilities caps = new VKContext.VKContextCaps(
             CAPS_PS30 | CAPS_PS20 | CAPS_RT_TEXTURE_ALPHA |
