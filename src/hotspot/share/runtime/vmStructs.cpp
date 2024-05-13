@@ -2557,7 +2557,7 @@ typedef HashtableEntry<InstanceKlass*, mtClass>  KlassHashtableEntry;
   /* Calling convention constants */                                      \
   /********************************/                                      \
                                                                           \
-  NOT_PPC64( declare_constant(RegisterImpl::number_of_registers) )        \
+  NOT_S390(NOT_PPC64(declare_constant(RegisterImpl::number_of_registers)))\
   declare_constant(ConcreteRegisterImpl::number_of_registers)             \
   declare_preprocessor_constant("REG_COUNT", REG_COUNT)                \
   declare_c2_preprocessor_constant("SAVED_ON_ENTRY_REG_COUNT", SAVED_ON_ENTRY_REG_COUNT) \
