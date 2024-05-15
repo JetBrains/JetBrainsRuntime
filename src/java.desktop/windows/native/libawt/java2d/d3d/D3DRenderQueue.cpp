@@ -70,6 +70,7 @@ D3DRQ_SwapBuffers(D3DPipelineManager *pMgr, D3DSDOps *d3dsdo,
     J2dTraceLn(J2D_TRACE_VERBOSE, "  x1=%d y1=%d x2=%d y2=%d",
                x1, y1, x2, y2);
 
+    RETURN_STATUS_IF_NULL(pMgr, E_FAIL);
     RETURN_STATUS_IF_NULL(d3dsdo, E_FAIL);
     RETURN_STATUS_IF_NULL(d3dsdo->pResource, E_FAIL);
     RETURN_STATUS_IF_NULL(pSwapChain=d3dsdo->pResource->GetSwapChain(), E_FAIL);
@@ -110,6 +111,14 @@ D3DRQ_SwapBuffers(D3DPipelineManager *pMgr, D3DSDOps *d3dsdo,
                        "D3DRQ_SwapBuffers: surface/window dimensions mismatch: "\
                        "win: w=%d h=%d, bb: w=%d h=%d",
                        ww, wh, params.BackBufferWidth, params.BackBufferHeight);
+
+            JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+            jobject sdObject;
+            RETURN_STATUS_IF_NULL(sdObject = env->NewLocalRef(d3dsdo->sdOps.sdObject), D3DERR_INVALIDCALL);
+            JNU_CallMethodByName(env, NULL, sdObject,
+                                       "replaceSurfaceDataDelayed", "()V");
+
+            env->DeleteLocalRef(sdObject);
 
             return S_OK;
         }
@@ -189,17 +198,17 @@ D3DRQ_MarkLostIfNeeded(HRESULT res, D3DSDOps *d3dops)
     return res;
 }
 
-void D3DRQ_FlushBuffer(void *pParam)
+extern "C" {
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_d3d_D3DRenderQueue_flushBuffer
+        (JNIEnv *env, jobject d3dr, jlong buf, jint limit)
 {
-    FlushBufferStruct *pFlush = (FlushBufferStruct*)pParam;
-    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     unsigned char *b, *end;
-    int limit;
     HRESULT res = S_OK;
     BOOL bSync = FALSE;
 
-    b = pFlush->buffer;
-    limit = pFlush->limit;
+    b = (unsigned char *) jlong_to_ptr(buf);
     J2dTraceLn(J2D_TRACE_INFO, "D3DRQ_flushBuffer: limit=%d", limit);
 
     end = b + limit;
@@ -863,15 +872,8 @@ void D3DRQ_FlushBuffer(void *pParam)
     // REMIND: we need to also handle hard errors here as well, and disable
     // particular context if needed
     D3DRQ_MarkLostIfNeeded(res, dstOps);
+}
 
-    if (!JNU_IsNull(env, pFlush->runnable)) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "  executing runnable");
-        jboolean hasException;
-        JNU_CallMethodByName(env, &hasException, pFlush->runnable, "run", "()V");
-        if (hasException) {
-            J2dTraceLn(J2D_TRACE_ERROR, "  exception occurred while executing runnable");
-        }
-    }
 }
 
 /**
@@ -904,38 +906,4 @@ D3DRQ_ResetCurrentContextAndDestination()
 
     d3dc = NULL;
     dstOps = NULL;
-}
-
-extern "C"
-{
-
-/*
- * Class:     sun_java2d_d3d_D3DRenderQueue
- * Method:    flushBuffer
- * Signature: (JILjava/lang/Runnable;)V
- */
-JNIEXPORT void JNICALL
-Java_sun_java2d_d3d_D3DRenderQueue_flushBuffer
-  (JNIEnv *env, jobject d3drq, jlong buf, jint limit, jobject runnable)
-{
-    FlushBufferStruct bufstr;
-    // just in case we forget to init any new fields
-    ZeroMemory(&bufstr, sizeof(FlushBufferStruct));
-
-    bufstr.buffer = (unsigned char *)jlong_to_ptr(buf);
-    if (bufstr.buffer == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "D3DRenderQueue_flushBuffer: cannot get direct buffer address");
-        return;
-    }
-    bufstr.limit = limit;
-
-    bufstr.runnable = JNU_IsNull(env, runnable) ?
-        NULL : env->NewGlobalRef(runnable);
-    AwtToolkit::GetInstance().InvokeFunction(D3DRQ_FlushBuffer, &bufstr);
-    if (!JNU_IsNull(env, bufstr.runnable)) {
-        env->DeleteGlobalRef(bufstr.runnable);
-    }
-}
-
 }
