@@ -26,8 +26,36 @@
 #import <AppKit/AppKit.h>
 #import <objc/message.h>
 
+#import "JNIUtilities.h"
+#import "PropertiesUtilities.h"
 #import "ThreadUtilities.h"
 
+
+#define USE_LWC_LOG 1
+
+#if USE_LWC_LOG == 1
+    void lwc_plog(JNIEnv* env, const char *formatMsg, ...);
+#endif
+
+/* Returns the MainThread latency threshold in milliseconds
+ * used to detect slow operations that may cause high latencies or delays.
+ * If <=0, the MainThread monitor is disabled */
+int getMainThreadLatencyThreshold() {
+    static int latency = -1; // undefined
+    if (latency == -1) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (env == NULL) return NO;
+        NSString *MTLatencyProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.awt.mac.mainThreadLatency"
+                                                                          withEnv:env];
+        // 0 means disabled:
+        latency = (MTLatencyProp != nil) ? [MTLatencyProp intValue] : 0; // ms
+    }
+    return latency;
+}
+
+static const char* toCString(id obj) {
+    return obj == nil ? "nil" : [NSString stringWithFormat:@"%@", obj].UTF8String;
+}
 
 // The following must be named "jvm", as there are extern references to it in AWT
 JavaVM *jvm = NULL;
@@ -119,20 +147,41 @@ AWT_ASSERT_APPKIT_THREAD;
   Block_release(blockCopy);
 }
 
++ (void)performOnMainThreadNowOrLater:(void (^)())block {
+    if ([NSThread isMainThread]) {
+        block();
+    } else {
+        [self performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block) waitUntilDone:NO];
+    }
+}
+
 + (void)performOnMainThreadWaiting:(BOOL)wait block:(void (^)())block {
-    if ([NSThread isMainThread] && wait == YES) {
+    if ([NSThread isMainThread] && wait) {
         block();
     } else {
         [self performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block) waitUntilDone:wait];
     }
 }
 
++ (NSString*)getCaller {
+    const NSArray<NSString*> *symbols = NSThread.callStackSymbols;
+
+    for (NSUInteger i = 2, len = symbols.count; i < len; i++) {
+         NSString* symbol = symbols[i];
+         if (![symbol hasPrefix: @"performOnMainThread"]) {
+             return symbol;
+         }
+    }
+    return nil;
+}
+
 + (void)performOnMainThread:(SEL)aSelector on:(id)target withObject:(id)arg waitUntilDone:(BOOL)wait {
-    if ([NSThread isMainThread] && wait == YES) {
-        [target performSelector:aSelector withObject:arg];
-    } else {
-        if (wait && isEventDispatchThread()) {
-            void (^blockCopy)(void) = Block_copy(^(){
+    const int mtThreshold = getMainThreadLatencyThreshold();
+    if (mtThreshold <= 0.0) {
+        if ([NSThread isMainThread] && wait) {
+            [target performSelector:aSelector withObject:arg];
+        } else if (wait && isEventDispatchThread()) {
+            void (^blockCopy)(void) = Block_copy(^() {
                 setBlockingEventDispatchThread(YES);
                 @try {
                     [target performSelector:aSelector withObject:arg];
@@ -143,6 +192,47 @@ AWT_ASSERT_APPKIT_THREAD;
             [self performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:YES modes:javaModes];
         } else {
             [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
+        }
+    } else {
+        // Perform instrumentation on selector:
+        const NSString* caller = [self getCaller];
+        BOOL invokeDirect = NO;
+        BOOL blockingEDT;
+        if ([NSThread isMainThread] && wait) {
+            invokeDirect = YES;
+            blockingEDT = NO;
+        } else if (wait && isEventDispatchThread()) {
+            blockingEDT = YES;
+        } else {
+            blockingEDT = NO;
+        }
+        const char* operation = (invokeDirect ? "now  " : (blockingEDT ? "block" : "later"));
+
+        void (^blockCopy)(void) = Block_copy(^(){
+            const CFTimeInterval start = CACurrentMediaTime();
+            if (blockingEDT) {
+                setBlockingEventDispatchThread(YES);
+            }
+            @try {
+                [target performSelector:aSelector withObject:arg];
+            } @finally {
+                if (blockingEDT) {
+                    setBlockingEventDispatchThread(NO);
+                }
+                const double elapsedMs = (CACurrentMediaTime() - start) * 1000.0;
+                if (elapsedMs > mtThreshold) {
+#if USE_LWC_LOG == 1
+                    lwc_plog([self getJNIEnv], "performOnMainThread(%s)[time: %.3lf ms]: [%s]", operation, elapsedMs, toCString(caller));
+#else
+                    NSLog(@"performOnMainThread(%s)[time: %.3lf ms]: [%@]", operation, elapsedMs, caller);
+#endif
+                }
+            }
+        });
+        if (invokeDirect) {
+            [self performSelector:@selector(invokeBlockCopy:) withObject:blockCopy];
+        } else {
+            [self performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:wait modes:javaModes];
         }
     }
 }
@@ -183,3 +273,42 @@ JNIEXPORT void JNICALL Java_sun_awt_AWTThreading_notifyEventDispatchThreadStarte
     }
 }
 
+#if USE_LWC_LOG == 1
+void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
+    if (formatMsg == NULL)
+        return;
+
+    static jobject loggerObject = NULL;
+    static jmethodID midWarn = NULL;
+
+    if (loggerObject == NULL) {
+        DECLARE_CLASS(lwctClass, "sun/lwawt/macosx/LWCToolkit");
+        jfieldID fieldId = (*env)->GetStaticFieldID(env, lwctClass, "log", "Lsun/util/logging/PlatformLogger;");
+        CHECK_NULL(fieldId);
+        loggerObject = (*env)->GetStaticObjectField(env, lwctClass, fieldId);
+        CHECK_NULL(loggerObject);
+        loggerObject = (*env)->NewGlobalRef(env, loggerObject);
+        jclass clazz = (*env)->GetObjectClass(env, loggerObject);
+        if (clazz == NULL) {
+            NSLog(@"lwc_plog: can't find PlatformLogger class");
+            return;
+        }
+        GET_METHOD(midWarn, clazz, "warning", "(Ljava/lang/String;)V");
+    }
+
+    va_list args;
+    va_start(args, formatMsg);
+    const int bufSize = 512;
+    char buf[bufSize];
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wformat-nonliteral"
+    vsnprintf(buf, bufSize, formatMsg, args);
+    #pragma clang diagnostic pop
+    va_end(args);
+
+    jstring jstr = (*env)->NewStringUTF(env, buf);
+
+    (*env)->CallVoidMethod(env, loggerObject, midWarn, jstr);
+    (*env)->DeleteLocalRef(env, jstr);
+}
+#endif
