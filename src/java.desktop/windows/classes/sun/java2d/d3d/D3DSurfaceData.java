@@ -34,6 +34,8 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.Transparency;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.ColorModel;
 import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
@@ -67,6 +69,8 @@ import java.awt.BufferCapabilities.FlipContents;
 import java.awt.Dimension;
 import java.awt.Window;
 import java.awt.geom.AffineTransform;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import sun.awt.SunToolkit;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.windows.WWindowPeer;
@@ -74,6 +78,8 @@ import sun.java2d.ScreenUpdateManager;
 import sun.java2d.StateTracker;
 import sun.java2d.SurfaceDataProxy;
 import sun.java2d.pipe.hw.ExtendedBufferCapabilities;
+
+import javax.swing.*;
 
 /**
  * This class describes a D3D "surface", that is, a region of pixels
@@ -752,7 +758,10 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
         }
     }
 
-    static void swapBuffers(D3DSurfaceData sd,
+    static private AtomicInteger fps = new AtomicInteger(0);
+    static Timer timer = null;
+
+    public static void swapBuffers(D3DSurfaceData sd,
                             final int x1, final int y1,
                             final int x2, final int y2)
     {
@@ -760,7 +769,7 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
         D3DRenderQueue rq = D3DRenderQueue.getInstance();
         // swapBuffers can be called from the toolkit thread by swing, we
         // should detect this and prevent the deadlocks
-        if (D3DRenderQueue.isRenderQueueThread()) {
+        if (D3DRenderQueue.isQueueFlusherThread()) {
             if (!rq.tryLock()) {
                 // if we could not obtain the lock, repaint the area
                 // that was supposed to be swapped, and no-op this swap
@@ -786,12 +795,28 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
             rq.lock();
         }
         try {
+            if (timer == null) {
+                timer = new Timer(1000, new ActionListener() {
+
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        System.err.println("FPS = " + fps.get());
+                        fps.set(0);
+                    }
+                });
+                timer.setRepeats(true);
+                timer.start();
+            }
+            fps.addAndGet(1);
+
             RenderBuffer buf = rq.getBuffer();
             rq.ensureCapacityAndAlignment(28, 4);
             buf.putInt(SWAP_BUFFERS);
             buf.putLong(pData);
             buf.putInt(x1);
             buf.putInt(y1);
+//            buf.putInt(x1 + (x2 - x1) / 2);
+//            buf.putInt(y1 + (y2 - y1) / 2);
             buf.putInt(x2);
             buf.putInt(y2);
             rq.flushNow();

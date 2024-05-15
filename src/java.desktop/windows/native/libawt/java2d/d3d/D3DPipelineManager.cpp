@@ -44,8 +44,7 @@ D3DPipelineManager *D3DPipelineManager::pMgr = NULL;
 D3DPipelineManager * D3DPipelineManager::CreateInstance(void)
 {
     if (!IsD3DEnabled() ||
-        FAILED((D3DPipelineManager::CheckOSVersion())) ||
-        FAILED((D3DPipelineManager::GDICheckForBadHardware())))
+        FAILED((D3DPipelineManager::CheckOSVersion())))
     {
         return NULL;
     }

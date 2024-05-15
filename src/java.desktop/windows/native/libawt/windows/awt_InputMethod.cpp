@@ -421,21 +421,33 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WInputMethod_openCandidateWindow
 
     // it'd be better to replace the static_cast with a placement new, but it's broken
     //   in debug builds because the "new" expression is redefined as a macro
-    ::RECT* const caretRect = static_cast<::RECT*>( safe_Malloc(sizeof(::RECT)) );
+    ::RECT* caretRect = static_cast<::RECT*>( safe_Malloc(sizeof(::RECT)) );
     // safe_Malloc throws an std::bad_alloc if fails, so we don't need to add a nullptr check here
     *caretRect = ::RECT{ caretLeftX, caretTopY, caretRightX, caretBottomY };
 
     // use a special message to open a candidate window in main thread.
     static_assert( sizeof(peerGlobalRef) <= sizeof(WPARAM), "peerGlobalRef may not fit into WPARAM type" );
     static_assert( sizeof(caretRect) <= sizeof(LPARAM), "caretRect may not fit into LPARAM type" );
-    AwtToolkit::GetInstance().InvokeInputMethodFunction(
-        WM_AWT_OPENCANDIDATEWINDOW,
-        reinterpret_cast<WPARAM>(peerGlobalRef),
-        reinterpret_cast<LPARAM>(caretRect)
-    );
 
-    // peerGlobalRef and caretRect are deleted in the message handler (AwtToolkit::WndProc)
+    jobject peerObject = reinterpret_cast<jobject>(peerGlobalRef);
+    AwtComponent* p = reinterpret_cast<AwtComponent*>( JNI_GET_PDATA(peerObject) );
+    DASSERT( !IsBadReadPtr(p, sizeof(AwtObject)));
 
+    if ( (p != nullptr) && (caretRect != nullptr) ) {
+        p->OpenCandidateWindow(caretRect->left, caretRect->top, caretRect->right, caretRect->bottom);
+    }
+
+    // Cleaning up
+    if (caretRect != nullptr) {
+        free(caretRect);
+        caretRect = nullptr;
+    }
+    if (peerObject != nullptr) {
+        env->DeleteGlobalRef(peerObject);
+        peerObject = nullptr;
+    }
+    p = nullptr;
+    
     CATCH_BAD_ALLOC;
 }
 

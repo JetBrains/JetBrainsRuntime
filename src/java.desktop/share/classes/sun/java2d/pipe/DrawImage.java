@@ -25,11 +25,7 @@
 
 package sun.java2d.pipe;
 
-import java.awt.AlphaComposite;
-import java.awt.Color;
-import java.awt.Image;
-import java.awt.Rectangle;
-import java.awt.Transparency;
+import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.image.AffineTransformOp;
@@ -1045,7 +1041,12 @@ public class DrawImage implements DrawImagePipe
                              Color bgColor,
                              ImageObserver observer) {
         if (!(img instanceof ToolkitImage)) {
-            return copyImage(sg, img, x, y, bgColor);
+            if (observer instanceof Component cmp) {
+                return copyImage(sg, img, x, y,
+                        0, 0, cmp.getWidth(), cmp.getHeight(), bgColor);
+            } else {
+                return copyImage(sg, img, x, y, bgColor);
+            }
         } else {
             ToolkitImage sunimg = (ToolkitImage)img;
             if (!imageReady(sunimg, observer)) {
