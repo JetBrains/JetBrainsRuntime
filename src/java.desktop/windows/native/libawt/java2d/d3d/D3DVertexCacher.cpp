@@ -477,7 +477,7 @@ HRESULT D3DVertexCacher::FillParallelogram(float fx11, float fy11,
                                            float dx12, float dy12)
 {
     HRESULT res;
-    if (SUCCEEDED(res = EnsureCapacity(D3DPT_TRIANGLELIST, 2*3))) {
+    if (pCtx != NULL && SUCCEEDED(res = EnsureCapacity(D3DPT_TRIANGLELIST, 2*3))) {
         // correct texel to pixel mapping; see D3DContext::SetTransform()
         // for non-id tx case
         if (pCtx->IsIdentityTx()) {
@@ -646,7 +646,7 @@ D3DVertexCacher::DrawTexture(float x1, float y1, float x2, float y2,
                              float u1, float v1, float u2, float v2)
 {
     HRESULT res;
-    if (SUCCEEDED(res = EnsureCapacity(D3DPT_TRIANGLELIST, 2*3))) {
+    if (pCtx != NULL && SUCCEEDED(res = EnsureCapacity(D3DPT_TRIANGLELIST, 2*3))) {
         // correct texel to pixel mapping; see D3DContext::SetTransform()
         // for non-id tx case
         if (pCtx->IsIdentityTx()) {
@@ -672,7 +672,7 @@ D3DVertexCacher::DrawTexture(float  x1, float  y1, float  x2, float  y2,
                              float u21, float v21, float u22, float v22)
 {
     HRESULT res;
-    if (SUCCEEDED(res = EnsureCapacity(D3DPT_TRIANGLELIST, 2*3))) {
+    if (pCtx != NULL && SUCCEEDED(res = EnsureCapacity(D3DPT_TRIANGLELIST, 2*3))) {
         // correct texel to pixel mapping; see D3DContext::SetTransform()
         // for non-id tx case
         if (pCtx->IsIdentityTx()) {
@@ -696,13 +696,13 @@ D3DVertexCacher::DrawTexture(float  x1, float  y1, float  x2, float  y2,
 
 HRESULT D3DVertexCacher::Render(int actionType)
 {
-    J2DLVERTEX *lpVert;
+    J2DLVERTEX *lpVert = NULL;
     HRESULT res;
     DWORD dwLockFlags;
     UINT pendingVertices = firstUnusedVertex - firstPendingVertex;
 
     // nothing to render
-    if (pendingVertices == 0) {
+    if (pendingVertices == 0 || lpD3DVertexBuffer == NULL || lpD3DDevice == NULL) {
         if (actionType == RESET_ACTION) {
             firstPendingBatch = 0;
             firstPendingVertex = 0;
@@ -724,7 +724,7 @@ HRESULT D3DVertexCacher::Render(int actionType)
     if (SUCCEEDED(res =
         lpD3DVertexBuffer->Lock((UINT)firstPendingVertex*sizeof(J2DLVERTEX),
                                 (UINT)pendingVertices*sizeof(J2DLVERTEX),
-                                (void**)&lpVert, dwLockFlags)))
+                                (void**)&lpVert, dwLockFlags)) && lpVert != NULL)
     {
         // copy only new vertices
         memcpy((void *)lpVert,
