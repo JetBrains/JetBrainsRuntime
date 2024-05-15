@@ -36,6 +36,121 @@ extern jobject CreateDisplayMode(JNIEnv* env, jint width, jint height,
 extern void addDisplayMode(JNIEnv* env, jobject arrayList, jint width,
                            jint height, jint bitDepth, jint refreshRate);
 
+struct FullScreenData {
+    jint gdiScreen;
+    jlong window;
+    jboolean res;
+};
+
+void D3DGraphicsDevice_enterFullScreenExclusiveNative(void *param)
+{
+    HRESULT res;
+    D3DPipelineManager *pMgr;
+    D3DContext *pCtx;
+    HWND hWnd;
+    AwtWindow *w;
+    D3DPRESENT_PARAMETERS newParams, *pCurParams;
+    D3DDISPLAYMODE dm;
+    UINT adapter;
+    FullScreenData* fullScreenDataParam = (FullScreenData*)(param);
+
+    J2dTraceLn(J2D_TRACE_INFO, "D3DGD_enterFullScreenExclusiveNative");
+
+    if ((pMgr = D3DPipelineManager::GetInstance()) == NULL) {
+        fullScreenDataParam->res = JNI_FALSE;
+        return;
+    }
+    adapter = pMgr->GetAdapterOrdinalForScreen(fullScreenDataParam->gdiScreen);
+
+    if (FAILED(res = pMgr->GetD3DContext(adapter, &pCtx))) {
+        D3DRQ_MarkLostIfNeeded(res, D3DRQ_GetCurrentDestination());
+        fullScreenDataParam->res = JNI_FALSE;
+        return;
+    }
+
+    w = (AwtWindow *)AwtComponent::GetComponent((HWND)(fullScreenDataParam->window));
+    if (w == NULL || !::IsWindow(hWnd = w->GetTopLevelHWnd())) {
+        J2dTraceLn(J2D_TRACE_WARNING,
+                   "D3DGD_enterFullScreenExclusiveNative: disposed window");
+        fullScreenDataParam->res = JNI_FALSE;
+        return;
+    }
+
+    // REMIND: should we also move the non-topleve window from
+    // being on top here (it's moved to front in GraphicsDevice.setFSW())?
+
+    pCtx->Get3DObject()->GetAdapterDisplayMode(adapter, &dm);
+    pCurParams = pCtx->GetPresentationParams();
+
+    // let the manager know that we're entering the fs mode, it will
+    // set the proper current focus window for us, which ConfigureContext will
+    // use when creating the device
+    pMgr->SetFSFocusWindow(adapter, hWnd);
+
+    newParams = *pCurParams;
+    newParams.hDeviceWindow = hWnd;
+    newParams.Windowed = FALSE;
+    newParams.BackBufferCount = 1;
+    newParams.BackBufferFormat = dm.Format;
+    newParams.FullScreen_RefreshRateInHz = dm.RefreshRate;
+    newParams.BackBufferWidth = dm.Width;
+    newParams.BackBufferHeight = dm.Height;
+    newParams.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
+    newParams.SwapEffect = D3DSWAPEFFECT_DISCARD;
+
+    res = pCtx->ConfigureContext(&newParams);
+    D3DRQ_MarkLostIfNeeded(res, D3DRQ_GetCurrentDestination());
+    fullScreenDataParam->res =  (res == S_OK) ? JNI_TRUE : JNI_FALSE;
+}
+
+void D3DGraphicsDevice_exitFullScreenExclusiveNative(void *param)
+{
+    HRESULT res;
+    D3DPipelineManager *pMgr;
+    D3DContext *pCtx;
+    D3DPRESENT_PARAMETERS newParams, *pCurParams;
+    UINT adapter;
+    FullScreenData* fullScreenDataParam = (FullScreenData*)(param);
+
+    J2dTraceLn(J2D_TRACE_INFO, "D3DGD_exitFullScreenExclusiveNative");
+
+    if ((pMgr = D3DPipelineManager::GetInstance()) == NULL) {
+        fullScreenDataParam->res = JNI_FALSE;
+        return;
+    }
+    adapter = pMgr->GetAdapterOrdinalForScreen(fullScreenDataParam->gdiScreen);
+
+    if (FAILED(res = pMgr->GetD3DContext(adapter, &pCtx))) {
+        D3DRQ_MarkLostIfNeeded(res, D3DRQ_GetCurrentDestination());
+        fullScreenDataParam->res = JNI_FALSE;
+        return;
+    }
+
+    pCurParams = pCtx->GetPresentationParams();
+
+    newParams = *pCurParams;
+    // we're exiting fs, the device window can be 0
+    newParams.hDeviceWindow = 0;
+    newParams.Windowed = TRUE;
+    newParams.BackBufferFormat = D3DFMT_UNKNOWN;
+    newParams.BackBufferCount = 1;
+    newParams.FullScreen_RefreshRateInHz = 0;
+    newParams.BackBufferWidth = 0;
+    newParams.BackBufferHeight = 0;
+    newParams.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+    newParams.SwapEffect = D3DSWAPEFFECT_COPY;
+
+    res = pCtx->ConfigureContext(&newParams);
+    D3DRQ_MarkLostIfNeeded(res, D3DRQ_GetCurrentDestination());
+
+    // exited fs, update current focus window
+    // note that we call this after this adapter exited fs mode so that
+    // the rest of the adapters can be reset
+    pMgr->SetFSFocusWindow(adapter, 0);
+
+    fullScreenDataParam->res =  (res == S_OK) ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" {
 /*
  * Class:     sun_java2d_d3d_D3DGraphicsDevice
@@ -137,59 +252,10 @@ Java_sun_java2d_d3d_D3DGraphicsDevice_getDeviceCapsNative
  */
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_d3d_D3DGraphicsDevice_enterFullScreenExclusiveNative
-  (JNIEnv *env, jclass gdc, jint gdiScreen, jlong window)
-{
-    HRESULT res;
-    D3DPipelineManager *pMgr;
-    D3DContext *pCtx;
-    HWND hWnd;
-    AwtWindow *w;
-    D3DPRESENT_PARAMETERS newParams, *pCurParams;
-    D3DDISPLAYMODE dm;
-    UINT adapter;
-
-    J2dTraceLn(J2D_TRACE_INFO, "D3DGD_enterFullScreenExclusiveNative");
-
-    RETURN_STATUS_IF_NULL(pMgr = D3DPipelineManager::GetInstance(), JNI_FALSE);
-    adapter = pMgr->GetAdapterOrdinalForScreen(gdiScreen);
-
-    if (FAILED(res = pMgr->GetD3DContext(adapter, &pCtx))) {
-        D3DRQ_MarkLostIfNeeded(res, D3DRQ_GetCurrentDestination());
-        return JNI_FALSE;
-    }
-
-    w = (AwtWindow *)AwtComponent::GetComponent((HWND)window);
-    if (w == NULL || !::IsWindow(hWnd = w->GetTopLevelHWnd())) {
-        J2dTraceLn(J2D_TRACE_WARNING,
-                   "D3DGD_enterFullScreenExclusiveNative: disposed window");
-        return JNI_FALSE;
-    }
-
-    // REMIND: should we also move the non-topleve window from
-    // being on top here (it's moved to front in GraphicsDevice.setFSW())?
-
-    pCtx->Get3DObject()->GetAdapterDisplayMode(adapter, &dm);
-    pCurParams = pCtx->GetPresentationParams();
-
-    // let the manager know that we're entering the fs mode, it will
-    // set the proper current focus window for us, which ConfigureContext will
-    // use when creating the device
-    pMgr->SetFSFocusWindow(adapter, hWnd);
-
-    newParams = *pCurParams;
-    newParams.hDeviceWindow = hWnd;
-    newParams.Windowed = FALSE;
-    newParams.BackBufferCount = 1;
-    newParams.BackBufferFormat = dm.Format;
-    newParams.FullScreen_RefreshRateInHz = dm.RefreshRate;
-    newParams.BackBufferWidth = dm.Width;
-    newParams.BackBufferHeight = dm.Height;
-    newParams.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
-    newParams.SwapEffect = D3DSWAPEFFECT_DISCARD;
-
-    res = pCtx->ConfigureContext(&newParams);
-    D3DRQ_MarkLostIfNeeded(res, D3DRQ_GetCurrentDestination());
-    return SUCCEEDED(res);
+        (JNIEnv *env, jclass gdc, jint gdiScreen, jlong window) {
+    FullScreenData data = {gdiScreen, window, 0};
+    AwtToolkit::GetInstance().InvokeFunction(D3DGraphicsDevice_enterFullScreenExclusiveNative, (void*)&data);
+    return data.res;
 }
 
 /*
@@ -199,48 +265,12 @@ Java_sun_java2d_d3d_D3DGraphicsDevice_enterFullScreenExclusiveNative
  */
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_d3d_D3DGraphicsDevice_exitFullScreenExclusiveNative
-  (JNIEnv *env, jclass gdc, jint gdiScreen)
-{
-    HRESULT res;
-    D3DPipelineManager *pMgr;
-    D3DContext *pCtx;
-    D3DPRESENT_PARAMETERS newParams, *pCurParams;
-    UINT adapter;
-
-    J2dTraceLn(J2D_TRACE_INFO, "D3DGD_exitFullScreenExclusiveNative");
-
-    RETURN_STATUS_IF_NULL(pMgr = D3DPipelineManager::GetInstance(), JNI_FALSE);
-    adapter = pMgr->GetAdapterOrdinalForScreen(gdiScreen);
-
-    if (FAILED(res = pMgr->GetD3DContext(adapter, &pCtx))) {
-        D3DRQ_MarkLostIfNeeded(res, D3DRQ_GetCurrentDestination());
-        return JNI_FALSE;
-    }
-
-    pCurParams = pCtx->GetPresentationParams();
-
-    newParams = *pCurParams;
-    // we're exiting fs, the device window can be 0
-    newParams.hDeviceWindow = 0;
-    newParams.Windowed = TRUE;
-    newParams.BackBufferFormat = D3DFMT_UNKNOWN;
-    newParams.BackBufferCount = 1;
-    newParams.FullScreen_RefreshRateInHz = 0;
-    newParams.BackBufferWidth = 0;
-    newParams.BackBufferHeight = 0;
-    newParams.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
-    newParams.SwapEffect = D3DSWAPEFFECT_COPY;
-
-    res = pCtx->ConfigureContext(&newParams);
-    D3DRQ_MarkLostIfNeeded(res, D3DRQ_GetCurrentDestination());
-
-    // exited fs, update current focus window
-    // note that we call this after this adapter exited fs mode so that
-    // the rest of the adapters can be reset
-    pMgr->SetFSFocusWindow(adapter, 0);
-
-    return SUCCEEDED(res);
+        (JNIEnv *env, jclass gdc, jint gdiScreen) {
+    FullScreenData data = {gdiScreen, NULL, 0};
+    AwtToolkit::GetInstance().InvokeFunction(D3DGraphicsDevice_exitFullScreenExclusiveNative, (void*)&data);
+    return data.res;
 }
+
 
 /*
  * Class:     sun_java2d_d3d_D3DGraphicsDevice
