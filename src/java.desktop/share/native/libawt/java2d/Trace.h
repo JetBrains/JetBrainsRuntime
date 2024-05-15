@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2008, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -154,6 +154,15 @@ J2dTraceImpl(int level, jboolean cr, const char *string, ...);
 #define J2dRlsTrace5(level, string, arg1, arg2, arg3, arg4, arg5) { \
             J2dTraceImpl(level, JNI_FALSE, string, arg1, arg2, arg3, arg4, arg5); \
         }
+#define J2dRlsTrace6(level, string, arg1, arg2, arg3, arg4, arg5, arg6) { \
+            J2dTraceImpl(level, JNI_FALSE, string, arg1, arg2, arg3, arg4, arg5, arg6); \
+        }
+#define J2dRlsTrace7(level, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7) { \
+            J2dTraceImpl(level, JNI_FALSE, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7); \
+        }
+#define J2dRlsTrace8(level, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) { \
+            J2dTraceImpl(level, JNI_FALSE, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8); \
+        }
 #define J2dRlsTraceLn(level, string) { \
             J2dTraceImpl(level, JNI_TRUE, string); \
         }
@@ -171,6 +180,15 @@ J2dTraceImpl(int level, jboolean cr, const char *string, ...);
         }
 #define J2dRlsTraceLn5(level, string, arg1, arg2, arg3, arg4, arg5) { \
             J2dTraceImpl(level, JNI_TRUE, string, arg1, arg2, arg3, arg4, arg5); \
+        }
+#define J2dRlsTraceLn6(level, string, arg1, arg2, arg3, arg4, arg5, arg6) { \
+            J2dTraceImpl(level, JNI_TRUE, string, arg1, arg2, arg3, arg4, arg5, arg6); \
+        }
+#define J2dRlsTraceLn7(level, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7) { \
+            J2dTraceImpl(level, JNI_TRUE, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7); \
+        }
+#define J2dRlsTraceLn8(level, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) { \
+            J2dTraceImpl(level, JNI_TRUE, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8); \
         }
 
 #ifdef __cplusplus
