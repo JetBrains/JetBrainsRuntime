@@ -31,6 +31,7 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.VolatileImage;
 import java.awt.peer.WindowPeer;
+import java.io.PrintWriter;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -285,7 +286,7 @@ public class RepaintManager
     static RepaintManager currentManager(AppContext appContext) {
         RepaintManager rm = (RepaintManager)appContext.get(repaintManagerKey);
         if (rm == null) {
-            rm = new RepaintManager(BUFFER_STRATEGY_TYPE);
+            rm = new RepaintManager(BUFFER_STRATEGY_SPECIFIED_ON);
             appContext.put(repaintManagerKey, rm);
         }
         return rm;
