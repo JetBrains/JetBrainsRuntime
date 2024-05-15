@@ -760,7 +760,7 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
         D3DRenderQueue rq = D3DRenderQueue.getInstance();
         // swapBuffers can be called from the toolkit thread by swing, we
         // should detect this and prevent the deadlocks
-        if (D3DRenderQueue.isRenderQueueThread()) {
+        if (D3DRenderQueue.isQueueFlusherThread()) {
             if (!rq.tryLock()) {
                 // if we could not obtain the lock, repaint the area
                 // that was supposed to be swapped, and no-op this swap

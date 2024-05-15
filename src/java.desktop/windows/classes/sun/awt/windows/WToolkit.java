@@ -135,7 +135,9 @@ import sun.awt.Win32GraphicsEnvironment;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.util.PerformanceLogger;
 import sun.awt.util.ThreadGroupUtils;
+import sun.java2d.ScreenUpdateManager;
 import sun.java2d.d3d.D3DRenderQueue;
+import sun.java2d.d3d.D3DScreenUpdateManager;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.print.PrintJob2D;
 import sun.util.logging.PlatformLogger;
@@ -1235,5 +1237,19 @@ public final class WToolkit extends SunToolkit implements Runnable {
     @Override
     public Component getLastMouseEventComponent() {
         return WGlobalCursorManager.getInstance().getMouseEventComponent();
+    }
+
+    /**
+     * Displays the buffer within the specified region of the screen.
+     *
+     * @param dx1 the x-coordinate of the top-left corner of the region
+     * @param dy1 the y-coordinate of the top-left corner of the region
+     * @param dx2 the x-coordinate of the bottom-right corner of the region
+     * @param dy2 the y-coordinate of the bottom-right corner of the region
+     */
+    public void displayBuffer(int dx1, int dy1, int dx2, int dy2) {
+        if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
+            mgr.swapBuffers(dx1, dy1, dx2, dy2);
+        }
     }
 }

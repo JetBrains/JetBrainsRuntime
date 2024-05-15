@@ -61,7 +61,6 @@ import sun.java2d.windows.WindowsFlags;
  * @see #createScreenSurface
  */
 public class D3DScreenUpdateManager extends ScreenUpdateManager
-    implements Runnable
 {
     /**
      * A window must be at least MIN_WIN_SIZE in one or both dimensions
@@ -70,13 +69,7 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
     private static final int MIN_WIN_SIZE = 150;
 
     private volatile boolean done;
-    private volatile Thread screenUpdater;
-    private boolean needsUpdateNow;
 
-    /**
-     * Object used by the screen updater thread for waiting
-     */
-    private Object runLock = new Object();
     /**
      * List of D3DWindowSurfaceData surfaces. Surfaces are added to the
      * list when a graphics object is created, and removed when the surface
@@ -97,7 +90,9 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
         AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
             Runnable shutdownRunnable = () -> {
                 done = true;
-                wakeUpUpdateThread();
+                if (d3dwSurfaces != null) {
+                    swapBuffers();
+                }
             };
             Thread shutdown = new Thread(
                     ThreadGroupUtils.getRootThreadGroup(), shutdownRunnable,
@@ -223,7 +218,6 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
             WindowsFlags.isD3DOnScreenEnabled() &&
             d3dgd.isD3DEnabledOnDevice() &&
             peer.isAccelCapable() &&
-            (r.width > MIN_WIN_SIZE || r.height > MIN_WIN_SIZE) &&
             bbNum == 0 &&
             (fsw == null || (fsw == target && !hasHWChildren(target))) &&
             (peerName.equals("sun.awt.windows.WCanvasPeer") ||
@@ -300,7 +294,6 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
                     d3dwSurfaces.add(d3dw);
                 }
             }
-            startUpdateThread();
         }
     }
 
@@ -342,128 +335,58 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
     }
 
     /**
-     * If the update thread hasn't yet been created, it will be;
-     * otherwise it is awaken
+     * Swaps the buffers of the D3D window surfaces within the specified region.
+     * If a D3D window surface is dirty or marked as lost, it will be swapped.
+     *
      */
-    @SuppressWarnings("removal")
-    private synchronized void startUpdateThread() {
-        if (screenUpdater == null) {
-            screenUpdater = AccessController.doPrivileged((PrivilegedAction<Thread>) () -> {
-                String name = "D3D Screen Updater";
-                Thread t = new Thread(
-                        ThreadGroupUtils.getRootThreadGroup(), this, name,
-                        0, false);
-                // REMIND: should it be higher?
-                t.setPriority(Thread.NORM_PRIORITY + 2);
-                t.setDaemon(true);
-                return t;
-            });
-            screenUpdater.start();
-        } else {
-            wakeUpUpdateThread();
-        }
+    public void swapBuffers() {
+        swapBuffers(0, 0, 0, 0);
     }
 
     /**
-     * Wakes up the screen updater thread.
+     * Swaps the buffers of the D3D window surfaces within the specified region.
+     * If a D3D window surface is dirty or marked as lost, it will be swapped.
      *
-     * This method is not synchronous, it doesn't wait
-     * for the updater thread to complete the updates.
-     *
-     * It should be used when it is not necessary to wait for the
-     * completion, for example, when a new surface had been added
-     * to the list of tracked surfaces (which means that it's about
-     * to be rendered to).
+     * @param dx1 the x-coordinate of the starting point of the region
+     * @param dy1 the y-coordinate of the starting point of the region
+     * @param dx2 the x-coordinate of the ending point of the region
+     * @param dy2 the y-coordinate of the ending point of the region
      */
-    public void wakeUpUpdateThread() {
-        synchronized (runLock) {
-            runLock.notifyAll();
+    public void swapBuffers(int dx1, int dy1, int dx2, int dy2) {
+        if (d3dwSurfaces == null) {
+            return;
         }
-    }
-
-    /**
-     * Wakes up the screen updater thread and waits for the completion
-     * of the update.
-     *
-     * This method is called from Toolkit.sync() or
-     * when there was a copy from a VI to the screen
-     * so that swing applications would not appear to be
-     * sluggish.
-     */
-    public void runUpdateNow() {
-        synchronized (this) {
-            // nothing to do if the updater thread hadn't been started or if
-            // there are no tracked surfaces
-            if (done || screenUpdater == null ||
-                d3dwSurfaces  == null || d3dwSurfaces.size() == 0)
-            {
-                return;
-            }
-        }
-        synchronized (runLock) {
-            needsUpdateNow = true;
-            runLock.notifyAll();
-            while (needsUpdateNow) {
-                try {
-                    runLock.wait();
-                } catch (InterruptedException e) {}
-            }
-        }
-    }
-
-    public void run() {
-        while (!done) {
-            synchronized (runLock) {
-                // If the list is empty, suspend the thread until a
-                // new surface is added. Note that we have to check before
-                // wait() (and inside the runLock), otherwise we could miss a
-                // notify() when a new surface is added and sleep forever.
-                long timeout = d3dwSurfaces.size() > 0 ? 100 : 0;
-
-                // don't go to sleep if there's a thread waiting for an update
-                if (!needsUpdateNow) {
-                    try { runLock.wait(timeout); }
-                        catch (InterruptedException e) {}
-                }
-                // if we were woken up, there are probably surfaces in the list,
-                // no need to check if the list is empty
-            }
-
-            // make a copy to avoid synchronization during the loop
-            D3DWindowSurfaceData[] surfaces = new D3DWindowSurfaceData[] {};
-            synchronized (this) {
-                surfaces = d3dwSurfaces.toArray(surfaces);
-            }
-            for (D3DWindowSurfaceData sd : surfaces) {
-                // skip invalid surfaces (they could have become invalid
-                // after we made a copy of the list) - just a precaution
-                if (sd.isValid() && (sd.isDirty() || sd.isSurfaceLost())) {
-                    if (!sd.isSurfaceLost()) {
-                        // the flip and the clearing of the dirty state
-                        // must be done under the lock, otherwise it's
-                        // possible to miss an update to the surface
-                        D3DRenderQueue rq = D3DRenderQueue.getInstance();
-                        rq.lock();
-                        try {
-                            Rectangle r = sd.getBounds();
+        
+        // make a copy to avoid synchronization during the loop
+        for (D3DWindowSurfaceData sd : d3dwSurfaces) {
+            // skip invalid surfaces (they could have become invalid
+            // after we made a copy of the list) - just a precaution
+            if (sd.isValid() && (sd.isDirty() || sd.isSurfaceLost())) {
+                if (!sd.isSurfaceLost()) {
+                    // the flip and the clearing of the dirty state
+                    // must be done under the lock, otherwise it's
+                    // possible to miss an update to the surface
+                    D3DRenderQueue rq = D3DRenderQueue.getInstance();
+                    rq.lock();
+                    try {
+                        Rectangle r = sd.getBounds();
+                        if (dx1 == 0 && dy1 == 0 && dx2 == 0 && dy2 == 0) {
                             D3DSurfaceData.swapBuffers(sd, 0, 0,
-                                                       r.width, r.height);
-                            sd.markClean();
-                        } finally {
-                            rq.unlock();
+                                    r.width, r.height);
+                        } else {
+                            D3DSurfaceData.swapBuffers(sd, dx1, dy1, dx2, dy2);
                         }
-                    } else if (!validate(sd)) {
-                        // it is possible that the validation may never
-                        // succeed, we need to detect this and replace
-                        // the d3dw surface with gdi; the replacement of
-                        // the surface will also trigger a repaint
-                        sd.getPeer().replaceSurfaceDataLater();
+                        sd.markClean();
+                    } finally {
+                        rq.unlock();
                     }
+                } else if (!validate(sd)) {
+                    // it is possible that the validation may never
+                    // succeed, we need to detect this and replace
+                    // the d3dw surface with gdi; the replacement of
+                    // the surface will also trigger a repaint
+                    sd.getPeer().replaceSurfaceDataLater();
                 }
-            }
-            synchronized (runLock) {
-                needsUpdateNow = false;
-                runLock.notifyAll();
             }
         }
     }

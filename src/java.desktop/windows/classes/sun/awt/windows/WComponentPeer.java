@@ -69,6 +69,8 @@ import sun.awt.image.SunVolatileImage;
 import sun.java2d.InvalidPipeException;
 import sun.java2d.ScreenUpdateManager;
 import sun.java2d.SurfaceData;
+import sun.java2d.d3d.D3DRenderQueue;
+import sun.java2d.d3d.D3DScreenUpdateManager;
 import sun.java2d.d3d.D3DSurfaceData;
 import sun.java2d.opengl.OGLSurfaceData;
 import sun.java2d.pipe.Region;
@@ -376,6 +378,9 @@ public abstract class WComponentPeer extends WObjectPeer
                 // while waiting for native paint
                 if (!isLayouting && ! paintPending) {
                     paintArea.paint(target,shouldClearRectBeforePaint());
+                }
+                if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
+                    mgr.swapBuffers();
                 }
                 return;
             case FocusEvent.FOCUS_LOST:
@@ -712,7 +717,7 @@ public abstract class WComponentPeer extends WObjectPeer
         _setFont(f);
     }
     synchronized native void _setFont(Font f);
-    
+
     @Override
     public void updateCursorImmediately() {
         WGlobalCursorManager.getInstance().updateCursor();
