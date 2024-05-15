@@ -39,8 +39,8 @@
  */
 #define D3DTR_CACHE_WIDTH       512
 #define D3DTR_CACHE_HEIGHT      512
-#define D3DTR_CACHE_CELL_WIDTH  16
-#define D3DTR_CACHE_CELL_HEIGHT 16
+#define D3DTR_CACHE_CELL_WIDTH  32
+#define D3DTR_CACHE_CELL_HEIGHT 32
 
 /**
  * This constant defines the size of the tile to use in the
@@ -69,7 +69,7 @@
  *     (D3DTR_CACHED_DEST_HEIGHT >= D3DTR_NOCACHE_TILE_SIZE)
  */
 #define D3DTR_CACHED_DEST_WIDTH  512
-#define D3DTR_CACHED_DEST_HEIGHT 32
+#define D3DTR_CACHED_DEST_HEIGHT 512
 
 #define BYTES_PER_GLYPH_IMAGE \
     sun_java2d_pipe_BufferedTextPipe_BYTES_PER_GLYPH_IMAGE
