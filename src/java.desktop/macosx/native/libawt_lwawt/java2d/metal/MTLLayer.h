@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@
 @property (readwrite, atomic) int redrawCount;
 @property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
 @property (readwrite, atomic) BOOL perfCountersEnabled;
+@property (readwrite, atomic) CFTimeInterval lastPresentedTime;
 
 - (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled;
 
