@@ -167,15 +167,15 @@ public final class WindowsFlags {
 
     private static void initJavaFlags() {
         magPresent = getBooleanProp(
-                "javax.accessibility.screen_magnifier_present", false);
+            "javax.accessibility.screen_magnifier_present", false);
         boolean ddEnabled =
-                !getBooleanProp("sun.java2d.noddraw", magPresent);
+            !getBooleanProp("sun.java2d.noddraw", magPresent);
         boolean ddOffscreenEnabled =
-                getBooleanProp("sun.java2d.ddoffscreen", ddEnabled);
+            getBooleanProp("sun.java2d.ddoffscreen", ddEnabled);
         d3dEnabled = getBooleanProp("sun.java2d.d3d",
-                ddEnabled && ddOffscreenEnabled);
+            false);
         d3dOnScreenEnabled =
-                getBooleanProp("sun.java2d.d3d.onscreen", d3dEnabled);
+            getBooleanProp("sun.java2d.d3d.onscreen", d3dEnabled);
         oglEnabled = getBooleanProp("sun.java2d.opengl", false);
         if (oglEnabled) {
             oglVerbose = isBooleanPropTrueVerbose("sun.java2d.opengl");
@@ -184,8 +184,8 @@ public final class WindowsFlags {
             } else {
                 if (oglVerbose) {
                     System.out.println(
-                            "Could not enable OpenGL pipeline " +
-                                    "(WGL not available)");
+                        "Could not enable OpenGL pipeline " +
+                        "(WGL not available)");
                 }
                 oglEnabled = false;
             }
@@ -200,20 +200,20 @@ public final class WindowsFlags {
             setHighDPIAware = dpiOverride.equalsIgnoreCase("true");
         } else {
             String sunLauncherProperty =
-                    System.getProperty("sun.java.launcher", "unknown");
+                System.getProperty("sun.java.launcher", "unknown");
             setHighDPIAware =
-                    sunLauncherProperty.equalsIgnoreCase("SUN_STANDARD");
+                sunLauncherProperty.equalsIgnoreCase("SUN_STANDARD");
         }
-                /*
-                // Output info based on some non-default flags:
-                if (offscreenSharingEnabled) {
-                    System.out.println(
-                        "Warning: offscreenSharing has been enabled. " +
-                        "The use of this capability will change in future " +
-                        "releases and applications that depend on it " +
-                        "may not work correctly");
-                }
-                */
+        /*
+        // Output info based on some non-default flags:
+        if (offscreenSharingEnabled) {
+            System.out.println(
+                "Warning: offscreenSharing has been enabled. " +
+                "The use of this capability will change in future " +
+                "releases and applications that depend on it " +
+                "may not work correctly");
+        }
+        */
         /*
         System.out.println("WindowsFlags (Java):");
         System.out.println("  ddEnabled: " + ddEnabled + "\n" +
