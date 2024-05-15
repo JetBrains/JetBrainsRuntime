@@ -2316,6 +2316,7 @@ public class Container extends Component {
               case ComponentEvent.COMPONENT_MOVED:
                 createChildHierarchyEvents(HierarchyEvent.ANCESTOR_MOVED, 0,
                                        Toolkit.enabledOnToolkit(AWTEvent.HIERARCHY_BOUNDS_EVENT_MASK));
+                component.forEach(component -> updateLocationOnScreen());
                 break;
               default:
                 break;

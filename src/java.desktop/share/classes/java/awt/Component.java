@@ -2102,6 +2102,19 @@ public abstract class Component implements ImageObserver, MenuContainer,
         return location();
     }
 
+    private Point locationOnScreen = null;
+
+    /**
+     * Update the location of this component in the form of a point
+     * specifying the component's top-left corner in the screen's
+     * coordinate space.
+     */
+    public void updateLocationOnScreen() {
+        synchronized (getTreeLock()) {
+            locationOnScreen = getLocationOnScreen_NoTreeLock();
+        }
+    }
+
     /**
      * Gets the location of this component in the form of a point
      * specifying the component's top-left corner in the screen's
@@ -2115,9 +2128,10 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @see #getLocation
      */
     public Point getLocationOnScreen() {
-        synchronized (getTreeLock()) {
-            return getLocationOnScreen_NoTreeLock();
+        if (locationOnScreen == null) {
+            updateLocationOnScreen();
         }
+        return locationOnScreen;
     }
 
     /*
