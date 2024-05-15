@@ -132,7 +132,9 @@ import sun.awt.Win32GraphicsEnvironment;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.util.PerformanceLogger;
 import sun.awt.util.ThreadGroupUtils;
+import sun.java2d.ScreenUpdateManager;
 import sun.java2d.d3d.D3DRenderQueue;
+import sun.java2d.d3d.D3DScreenUpdateManager;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.print.PrintJob2D;
 import sun.util.logging.PlatformLogger;
@@ -245,12 +247,20 @@ public final class WToolkit extends SunToolkit implements Runnable {
     }
 
     private void registerShutdownHook() {
-        Thread shutdown = new Thread(
-                ThreadGroupUtils.getRootThreadGroup(), this::shutdown,
-                "ToolkitShutdown", 0, false);
+        Thread shutdown = new Thread(ThreadGroupUtils.getRootThreadGroup(), () -> {
+            // D3D's Java2D Queue Flusher thread needs to be syncronized with shutdown logic
+            if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager) {
+                D3DRenderQueue.getInstance().flushAndInvokeNow(() -> {
+                    shutdown();
+                });
+            } else {
+                shutdown();
+            }
+        }, "ToolkitShutdown", 0, false);
+
         shutdown.setContextClassLoader(null);
         Runtime.getRuntime().addShutdownHook(shutdown);
-    }
+     }
 
     @Override
     public void run() {
