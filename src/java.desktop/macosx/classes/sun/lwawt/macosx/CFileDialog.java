@@ -286,15 +286,7 @@ class CFileDialog implements FileDialogPeer {
     }
 
     @Override
-    public void beginValidate() {
-    }
-
-    @Override
     public void endLayout() {
-    }
-
-    @Override
-    public void endValidate() {
     }
 
     @Override

@@ -169,10 +169,6 @@ class WPrintDialogPeer extends WWindowPeer implements DialogPeer {
     public void updateFocusableWindowState() {}
     @Override
     void start() {}
-    @Override
-    public void beginValidate() {}
-    @Override
-    public void endValidate() {}
     void invalidate(int x, int y, int width, int height) {}
     @Override
     public void addDropTarget(DropTarget dt) {}
