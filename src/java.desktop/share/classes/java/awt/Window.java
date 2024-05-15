@@ -4440,7 +4440,9 @@ public class Window extends Container implements Accessible {
     }
 
     static {
-        String counters = System.getProperty("awt.window.counters");
+        @SuppressWarnings("removal")
+        String counters = AccessController.doPrivileged(
+                new GetPropertyAction("awt.window.counters"));
 
         AWTAccessor.setWindowAccessor(new AWTAccessor.WindowAccessor() {
             public void updateWindow(Window window) {
