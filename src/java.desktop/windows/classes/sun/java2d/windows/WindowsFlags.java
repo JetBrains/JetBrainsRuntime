@@ -189,7 +189,7 @@ public class WindowsFlags {
                 boolean ddOffscreenEnabled =
                     getBooleanProp("sun.java2d.ddoffscreen", ddEnabled);
                 d3dEnabled = getBooleanProp("sun.java2d.d3d",
-                    ddEnabled && ddOffscreenEnabled);
+                    false);
                 d3dOnScreenEnabled =
                     getBooleanProp("sun.java2d.d3d.onscreen", d3dEnabled);
                 oglEnabled = getBooleanProp("sun.java2d.opengl", false);
