@@ -489,8 +489,7 @@ D3DPipelineManager::CheckForBadHardware(DWORD vId, DWORD dId, LONGLONG version)
             // - hardware is bad for all driver versions (NO_VERSION), or
             //   we have a driver version which is older than the
             //   minimum required for this OS
-            if (D3DPPLM_OsVersionMatches(osInfo) &&
-                (goodVersion == NO_VERSION || version < goodVersion))
+            if (!D3DPPLM_OsVersionMatches(osInfo))
             {
                 J2dRlsTraceLn2(J2D_TRACE_ERROR,
                     "D3DPPLM::CheckForBadHardware: found matching "\
