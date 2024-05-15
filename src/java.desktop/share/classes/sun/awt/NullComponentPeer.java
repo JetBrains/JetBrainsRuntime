@@ -200,12 +200,6 @@ public class NullComponentPeer implements LightweightPeer,
         return insets();
     }
 
-    public void beginValidate() {
-    }
-
-    public void endValidate() {
-    }
-
     public Insets insets() {
         return new Insets(0, 0, 0, 0);
     }
