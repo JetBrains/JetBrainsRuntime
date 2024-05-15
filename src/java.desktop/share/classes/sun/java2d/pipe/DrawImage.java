@@ -27,6 +27,7 @@ package sun.java2d.pipe;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.Transparency;
@@ -42,13 +43,16 @@ import java.awt.image.IndexColorModel;
 import java.awt.image.Raster;
 import java.awt.image.VolatileImage;
 
+import jdk.internal.util.OperatingSystem;
 import sun.awt.SunHints;
 import sun.awt.image.ImageRepresentation;
 import sun.awt.image.SurfaceManager;
 import sun.awt.image.ToolkitImage;
 import sun.java2d.InvalidPipeException;
+import sun.java2d.ScreenUpdateManager;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
+import sun.java2d.d3d.D3DScreenUpdateManager;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.BlitBg;
 import sun.java2d.loops.CompositeType;
@@ -1045,7 +1049,16 @@ public class DrawImage implements DrawImagePipe
                              Color bgColor,
                              ImageObserver observer) {
         if (!(img instanceof ToolkitImage)) {
-            return copyImage(sg, img, x, y, bgColor);
+            if (OperatingSystem.isWindows()) {
+                if (sun.java2d.windows.WindowsFlags.isD3DEnabled() && observer instanceof Component cmp) {
+                    return copyImage(sg, img, x, y,
+                            0, 0, img.getWidth(observer), img.getHeight(observer), bgColor);
+                } else {
+                    return copyImage(sg, img, x, y, bgColor);
+                }
+            } else {
+                return copyImage(sg, img, x, y, bgColor);
+            }
         } else {
             ToolkitImage sunimg = (ToolkitImage)img;
             if (!imageReady(sunimg, observer)) {

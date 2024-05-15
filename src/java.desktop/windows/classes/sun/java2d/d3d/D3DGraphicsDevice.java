@@ -182,23 +182,8 @@ public final class D3DGraphicsDevice extends Win32GraphicsDevice {
     {
         final WWindowPeer wpeer = AWTAccessor.getComponentAccessor()
                                              .getPeer(realFSWindow);
-        D3DRenderQueue rq = D3DRenderQueue.getInstance();
-        rq.lock();
-        try {
-            rq.flushAndInvokeNow(new Runnable() {
-                public void run() {
-                    long hwnd = wpeer.getHWnd();
-                    if (hwnd == 0l) {
-                        // window is disposed
-                        fsStatus = false;
-                        return;
-                    }
-                    fsStatus = enterFullScreenExclusiveNative(screen, hwnd);
-                }
-            });
-        } finally {
-            rq.unlock();
-        }
+        long hwnd = wpeer.getHWnd();
+        fsStatus = enterFullScreenExclusiveNative(screen, hwnd);
         if (!fsStatus) {
             super.enterFullScreenExclusive(screen, wp);
         }
@@ -208,17 +193,7 @@ public final class D3DGraphicsDevice extends Win32GraphicsDevice {
     @Override
     protected void exitFullScreenExclusive(final int screen, WindowPeer w) {
         if (fsStatus) {
-            D3DRenderQueue rq = D3DRenderQueue.getInstance();
-            rq.lock();
-            try {
-                rq.flushAndInvokeNow(new Runnable() {
-                    public void run() {
-                        exitFullScreenExclusiveNative(screen);
-                    }
-                });
-            } finally {
-                rq.unlock();
-            }
+            exitFullScreenExclusiveNative(screen);
         } else {
             super.exitFullScreenExclusive(screen, w);
         }

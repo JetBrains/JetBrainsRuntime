@@ -91,6 +91,7 @@ import javax.swing.event.AncestorListener;
 import javax.swing.event.EventListenerList;
 import javax.swing.plaf.ComponentUI;
 
+import jdk.internal.util.OperatingSystem;
 import sun.awt.AWTAccessor;
 import sun.awt.SunToolkit;
 import sun.swing.SwingAccessor;
@@ -1110,7 +1111,13 @@ public abstract class JComponent extends Container implements Serializable,
                     repaintManager.paint(this, this, co, clipX, clipY, clipW,
                                          clipH);
                 } finally {
-                    repaintManager.endPaint();
+                    if (OperatingSystem.isWindows()) {
+                        if (!sun.java2d.windows.WindowsFlags.isD3DEnabled() || isDisplayable()) {
+                            repaintManager.endPaint();
+                        }
+                    } else {
+                        repaintManager.endPaint();
+                    }
                 }
             }
             else {
