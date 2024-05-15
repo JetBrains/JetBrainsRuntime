@@ -4586,7 +4586,11 @@ public abstract class Component implements ImageObserver, MenuContainer,
         }
 
         public void show(int x1, int y1, int x2, int y2) {
-            showSubRegion(x1, y1, x2, y2);
+            try {
+                showSubRegion(x1, y1, x2, y2);
+            } catch (IllegalComponentStateException exception) {
+                return;
+            }
         }
 
         // This is invoked by Swing on the toolkit thread.
