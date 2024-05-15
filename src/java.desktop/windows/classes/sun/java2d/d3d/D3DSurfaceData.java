@@ -34,6 +34,8 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.Transparency;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.ColorModel;
 import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
@@ -74,6 +76,8 @@ import sun.java2d.ScreenUpdateManager;
 import sun.java2d.StateTracker;
 import sun.java2d.SurfaceDataProxy;
 import sun.java2d.pipe.hw.ExtendedBufferCapabilities;
+
+import javax.swing.*;
 
 /**
  * This class describes a D3D "surface", that is, a region of pixels
@@ -178,6 +182,7 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
     private int swapEffect;
     private VSyncType syncType;
     private int backBuffersNum;
+    private Timer resizeTimer = null;
 
     private WritableRasterNative wrn;
 
@@ -752,6 +757,17 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
         }
     }
 
+    /**
+     * Swaps the buffers of the D3D window surfaces within all region.
+     * If a D3D window surface is dirty or marked as lost, it will be swapped.
+     *
+     */
+    public static void displayAllBuffersContent() {
+        if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
+            mgr.swapFullBuffers();
+        }
+    }
+
     static void swapBuffers(D3DSurfaceData sd,
                             final int x1, final int y1,
                             final int x2, final int y2)
@@ -760,7 +776,7 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
         D3DRenderQueue rq = D3DRenderQueue.getInstance();
         // swapBuffers can be called from the toolkit thread by swing, we
         // should detect this and prevent the deadlocks
-        if (D3DRenderQueue.isRenderQueueThread()) {
+        if (D3DRenderQueue.isQueueFlusherThread()) {
             if (!rq.tryLock()) {
                 // if we could not obtain the lock, repaint the area
                 // that was supposed to be swapped, and no-op this swap
@@ -799,6 +815,22 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
             rq.unlock();
         }
     }
+
+    private void replaceSurfaceDataDelayed() {
+        if (resizeTimer == null || resizeTimer.getDelay() < 0) {
+            resizeTimer = new Timer(50, new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    getPeer().replaceSurfaceDataLater();
+                }
+            });
+            resizeTimer.setRepeats(false);
+            resizeTimer.start();
+        } else {
+            resizeTimer.restart();
+        }
+    }
+
 
     /**
      * Returns destination Image associated with this SurfaceData.
@@ -1009,6 +1041,17 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
 
         public void markClean() {
             dirtyTracker = getStateTracker();
+        }
+
+        /**
+         * Swaps the buffers of the D3D window surfaces within the specified region.
+         * If a D3D window surface is dirty or marked as lost, it will be swapped.
+         *
+         */
+        public void displayContent(int dx1, int dy1, int dx2, int dy2) {
+            if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
+                mgr.swapBuffers(this, dx1, dy1, dx2, dy2);
+            }
         }
     }
 
