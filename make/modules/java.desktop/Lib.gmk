@@ -94,6 +94,7 @@ ifeq ($(call isTargetOs, macosx), true)
           format-nonliteral, \
       DISABLED_WARNINGS_clang_QueuingApplicationDelegate.m := \
           objc-method-access, \
+      DISABLED_WARNINGS_clang_ThreadUtilities.m := format-nonliteral, \
       JDK_LIBS := java.base:libjava, \
       LIBS_macosx := \
           -framework Accelerate \
