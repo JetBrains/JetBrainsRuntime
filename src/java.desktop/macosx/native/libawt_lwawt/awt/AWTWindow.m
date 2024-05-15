@@ -2538,8 +2538,8 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetNSWindowTi
 JNI_COCOA_ENTER(env);
 
     NSWindow *nsWindow = OBJC(windowPtr);
-    [nsWindow performSelectorOnMainThread:@selector(setTitle:)
-                              withObject:JavaStringToNSString(env, jtitle)
+    [ThreadUtilities performOnMainThread:@selector(setTitle:) on:nsWindow
+                             withObject:JavaStringToNSString(env, jtitle)
                            waitUntilDone:NO];
 
 JNI_COCOA_EXIT(env);
