@@ -34,6 +34,8 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.Transparency;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.ColorModel;
 import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
@@ -74,6 +76,8 @@ import sun.java2d.ScreenUpdateManager;
 import sun.java2d.StateTracker;
 import sun.java2d.SurfaceDataProxy;
 import sun.java2d.pipe.hw.ExtendedBufferCapabilities;
+
+import javax.swing.*;
 
 /**
  * This class describes a D3D "surface", that is, a region of pixels
@@ -178,6 +182,7 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
     private int swapEffect;
     private VSyncType syncType;
     private int backBuffersNum;
+    private Timer resizeTimer = null;
 
     private WritableRasterNative wrn;
 
@@ -760,7 +765,7 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
         D3DRenderQueue rq = D3DRenderQueue.getInstance();
         // swapBuffers can be called from the toolkit thread by swing, we
         // should detect this and prevent the deadlocks
-        if (D3DRenderQueue.isRenderQueueThread()) {
+        if (D3DRenderQueue.isQueueFlusherThread()) {
             if (!rq.tryLock()) {
                 // if we could not obtain the lock, repaint the area
                 // that was supposed to be swapped, and no-op this swap
@@ -799,6 +804,22 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
             rq.unlock();
         }
     }
+
+    private void replaceSurfaceDataDelayed() {
+        if (resizeTimer == null || resizeTimer.getDelay() < 0) {
+            resizeTimer = new Timer(50, new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    getPeer().replaceSurfaceDataLater();
+                }
+            });
+            resizeTimer.setRepeats(false);
+            resizeTimer.start();
+        } else {
+            resizeTimer.restart();
+        }
+    }
+
 
     /**
      * Returns destination Image associated with this SurfaceData.

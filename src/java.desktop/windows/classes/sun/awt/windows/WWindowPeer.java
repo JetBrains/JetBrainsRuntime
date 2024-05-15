@@ -72,6 +72,7 @@ import sun.awt.Win32GraphicsEnvironment;
 import sun.java2d.pipe.Region;
 
 import sun.java2d.SunGraphics2D;
+import sun.java2d.windows.WindowsFlags;
 import sun.util.logging.PlatformLogger;
 
 import static sun.java2d.SunGraphicsEnvironment.toUserSpace;
@@ -588,7 +589,21 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     }
 
     public void updateGC() {
-        int scrn = getScreenImOn();
+        int scrn = -1;
+        if (WindowsFlags.isD3DEnabled()) {
+            synchronized (((Component) getTarget()).getTreeLock()) {
+                if (pData == 0) {
+                    return;
+                }
+                scrn = getScreenImOn();
+            }
+        } else {
+            scrn = getScreenImOn();
+        }
+        if (scrn == -1) {
+            return;
+        }
+
         if (screenLog.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer("Screen number: " + scrn);
         }
