@@ -612,17 +612,17 @@ final class WInputMethod extends InputMethodAdapter
                     }
                 }
 
-                if (caretRect == null) {
-                    openCandidateWindow(awtFocussedComponentPeer, 0, 0, 0, 0);
-                } else {
-                    openCandidateWindow(
-                        awtFocussedComponentPeer,
-                        caretRect.x,
-                        caretRect.y,
-                        caretRect.x + caretRect.width - ( (caretRect.width > 0) ? 1 : 0),
-                        caretRect.y + caretRect.height - ( (caretRect.height > 0) ? 1 : 0)
-                    );
-                }
+//                if (caretRect == null) {
+//                    openCandidateWindow(awtFocussedComponentPeer, 0, 0, 0, 0);
+//                } else {
+//                    openCandidateWindow(
+//                        awtFocussedComponentPeer,
+//                        caretRect.x,
+//                        caretRect.y,
+//                        caretRect.x + caretRect.width - ( (caretRect.width > 0) ? 1 : 0),
+//                        caretRect.y + caretRect.height - ( (caretRect.height > 0) ? 1 : 0)
+//                    );
+//                }
             }
         };
         WToolkit.postEvent(WToolkit.targetToAppContext(source),

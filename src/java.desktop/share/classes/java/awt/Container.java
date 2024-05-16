@@ -1651,7 +1651,7 @@ public class Container extends Component {
             {
                 validateTree();
                 if (!descendUnconditionallyWhenValidating && isVisible()) {
-                    updateCursorImmediately();
+//                    updateCursorImmediately();
                 }
             }
         }
