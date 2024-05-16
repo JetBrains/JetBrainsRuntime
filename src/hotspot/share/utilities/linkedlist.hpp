@@ -82,7 +82,7 @@ template <class E> class LinkedListNode : public ResourceObj {
 template <class E> class LinkedList : public ResourceObj {
  protected:
   LinkedListNode<E>*    _head;
-  NONCOPYABLE(LinkedList<E>);
+  NONCOPYABLE(LinkedList);
 
  public:
   LinkedList() : _head(NULL) { }
