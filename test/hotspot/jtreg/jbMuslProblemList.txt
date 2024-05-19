@@ -11,6 +11,8 @@ runtime/8176717/TestInheritFD.java JBR-6974 linux-all
 serviceability/dcmd/framework/HelpTest.java JBR-6974 linux-all
 serviceability/dcmd/framework/InvalidCommandTest.java JBR-6974 linux-all
 serviceability/dcmd/framework/VMVersionTest.java JBR-6974 linux-all
+serviceability/sa/TestJmapCore.java JBR-7173 linux-x64
+serviceability/sa/TestJmapCoreMetaspace.java JBR-7173 linux-x64
 serviceability/tmtools/jstat/GcCapacityTest.java JBR-6974 linux-all
 serviceability/tmtools/jstat/GcCauseTest01.java JBR-6974 linux-all
 serviceability/tmtools/jstat/GcCauseTest02.java JBR-6974 linux-all

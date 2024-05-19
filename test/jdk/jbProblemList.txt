@@ -1358,7 +1358,7 @@ jb/javax/swing/JPopupMenu/JPopupMenuOutOfWindowTest.java JBR-5746 windows-all,li
 jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984 macosx-all
 jb/java/awt/Window/ZOrderOnModalDialogActivation.java JBR-5714 windows-all
-jb/java/api/frontend/CustomTitleBarDoubleClick.java JBR-4912 windows-all
+jb/java/api/frontend/CustomTitleBarDoubleClick.java JBR-4912 windows-all,macosx-x64
 
 jb/java/jcef/MouseEventTest.java JBR-4908 linux-all
 
