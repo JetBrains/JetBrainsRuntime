@@ -102,7 +102,7 @@ public class WLFrameDecoration {
     public Rectangle getBounds() {
         return isUndecorated
                 ? new Rectangle(0, 0, 0, 0)
-                : new Rectangle(0, 0, peer.getWidth(), HEIGHT);
+                : new Rectangle(0, 0, peer.getJavaWidth(), HEIGHT);
     }
 
     public Dimension getMinimumSize() {
@@ -120,19 +120,19 @@ public class WLFrameDecoration {
     }
 
     private Point getCloseButtonCenter() {
-        int width = peer.getWidth();
+        int width = peer.getJavaWidth();
         return width >= HEIGHT ? new Point(width - HEIGHT / 2, HEIGHT / 2) : null;
     }
 
     private Point getMaximizeButtonCenter() {
         if (!hasMaximizeButton()) return null;
-        int width = peer.getWidth();
+        int width = peer.getJavaWidth();
         return width >= 2 * HEIGHT ? new Point(width - HEIGHT * 3 / 2, HEIGHT / 2) : null;
     }
 
     private Point getMinimizeButtonCenter() {
         if (!hasMinimizeButton()) return null;
-        int width = peer.getWidth();
+        int width = peer.getJavaWidth();
         int buttonSpaceWidth = getButtonSpaceWidth();
         return width >= buttonSpaceWidth ? new Point(width - buttonSpaceWidth + HEIGHT / 2, HEIGHT / 2) : null;
     }
@@ -147,8 +147,8 @@ public class WLFrameDecoration {
     public void paint(final Graphics g) {
         if (isUndecorated) return;
 
-        int width = peer.getWidth();
-        int height = peer.getHeight();
+        int width = peer.getJavaWidth();
+        int height = peer.getJavaHeight();
         if (width <= 0 || height <= 0) return;
         Graphics2D g2d = (Graphics2D) g.create(0, 0, width, HEIGHT);
         try {
@@ -160,7 +160,7 @@ public class WLFrameDecoration {
     }
 
     private void doPaint(Graphics2D g) {
-        int width = peer.getWidth();
+        int width = peer.getJavaWidth();
         String title = peer.getTitle();
         Color foregroundColor = active ? ACTIVE_FOREGROUND : INACTIVE_FOREGROUND;
 
@@ -265,7 +265,7 @@ public class WLFrameDecoration {
                 pressedLocation.y >= 0 &&
                 pressedLocation.y < HEIGHT &&
                 pressedLocation.x >= 0 &&
-                pressedLocation.x < peer.getWidth() - getButtonSpaceWidth();
+                pressedLocation.x < peer.getJavaWidth() - getButtonSpaceWidth();
     }
 
     boolean processMouseEvent(MouseEvent e) {
@@ -334,12 +334,12 @@ public class WLFrameDecoration {
         int edges = 0;
         if (x < RESIZE_EDGE_THICKNESS) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
-        } else if (x > peer.getWidth() - RESIZE_EDGE_THICKNESS) {
+        } else if (x > peer.getJavaWidth() - RESIZE_EDGE_THICKNESS) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
         }
         if (y < RESIZE_EDGE_THICKNESS) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_TOP;
-        } else if (y > peer.getHeight() - RESIZE_EDGE_THICKNESS) {
+        } else if (y > peer.getJavaHeight() - RESIZE_EDGE_THICKNESS) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
         }
         return edges;

@@ -89,27 +89,27 @@ public class WLGraphicsDevice extends GraphicsDevice {
         return wlID;
     }
 
-    void updateConfiguration(String name, int width, int height, int scale) {
+    void updateConfiguration(String name, int width, int height, long scale120) {
         this.name = name;
 
         WLGraphicsConfig config = defaultConfig;
         // Note that all configs are of equal size and scale
-        if (config == null || config.differsFrom(width, height, scale)) {
+        if (config == null || config.differsFrom(width, height, scale120)) {
             GraphicsConfiguration[] newConfigs;
             WLGraphicsConfig newDefaultConfig;
             // It is necessary to create a new object whenever config changes as its
             // identity is used to detect changes in scale, among other things.
             if (WLGraphicsEnvironment.isVulkanEnabled()) {
-                newDefaultConfig = WLVKGraphicsConfig.getConfig(this, width, height, scale);
+                newDefaultConfig = WLVKGraphicsConfig.getConfig(this, width, height, scale120);
                 newConfigs = new GraphicsConfiguration[1];
                 newConfigs[0] = newDefaultConfig;
             } else {
                 // TODO: Actually, Wayland may support a lot more shared memory buffer configurations, need to
                 //   subscribe to the wl_shm:format event and get the list from there.
-                newDefaultConfig = WLSMGraphicsConfig.getConfig(this, width, height, scale, false);
+                newDefaultConfig = WLSMGraphicsConfig.getConfig(this, width, height, scale120, false);
                 newConfigs = new GraphicsConfiguration[2];
                 newConfigs[0] = newDefaultConfig;
-                newConfigs[1] = WLSMGraphicsConfig.getConfig(this, width, height, scale, true);
+                newConfigs[1] = WLSMGraphicsConfig.getConfig(this, width, height, scale120, true);
             }
 
             configs = newConfigs;
@@ -145,18 +145,18 @@ public class WLGraphicsDevice extends GraphicsDevice {
         this.x = similarDevice.x;
         this.y = similarDevice.y;
 
-        int newScale = similarDevice.getWlScale();
+        long newScale120 = similarDevice.getWlScale120();
         Rectangle newBounds = similarDevice.defaultConfig.getBounds();
-        updateConfiguration(similarDevice.name, newBounds.width, newBounds.height, newScale);
+        updateConfiguration(similarDevice.name, newBounds.width, newBounds.height, newScale120);
     }
 
     public static WLGraphicsDevice createWithConfiguration(int id, String name,
                                                            int x, int y,
                                                            int width, int height,
                                                            int widthMm, int heightMm,
-                                                           int scale) {
+                                                           long scale120) {
         WLGraphicsDevice device = new WLGraphicsDevice(id, x, y, widthMm, heightMm);
-        device.updateConfiguration(name, width, height, scale);
+        device.updateConfiguration(name, width, height, scale120);
         return device;
     }
 
@@ -207,8 +207,8 @@ public class WLGraphicsDevice extends GraphicsDevice {
         return defaultConfig;
     }
 
-    int getWlScale() {
-        return defaultConfig.getWlScale();
+    long getWlScale120() {
+        return defaultConfig.getWlScale120();
     }
 
     int getResolution() {
