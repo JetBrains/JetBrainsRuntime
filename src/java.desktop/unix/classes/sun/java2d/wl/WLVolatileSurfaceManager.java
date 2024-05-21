@@ -31,19 +31,20 @@ import java.awt.GraphicsConfiguration;
 import java.awt.ImageCapabilities;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.lang.ref.Cleaner;
+import java.lang.ref.WeakReference;
 
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.SurfaceData;
 
-public class WLVolatileSurfaceManager extends VolatileSurfaceManager implements PropertyChangeListener {
-    private static final String SCALE_PROPERTY_NAME = "graphicsContextScaleTransform";
-
+public class WLVolatileSurfaceManager extends VolatileSurfaceManager {
     public WLVolatileSurfaceManager(SunVolatileImage vImg, Object context) {
         super(vImg, context);
+
         Component component = vImg.getComponent();
         if (component != null) {
-            component.addPropertyChangeListener(SCALE_PROPERTY_NAME, this);
+            ChangeListener.register(component, this);
         }
     }
 
@@ -62,10 +63,30 @@ public class WLVolatileSurfaceManager extends VolatileSurfaceManager implements 
         return new ImageCapabilities(false);
     }
 
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        assert SCALE_PROPERTY_NAME.equals(evt.getPropertyName());
+    private static class ChangeListener implements PropertyChangeListener {
+        private static final String SCALE_PROPERTY_NAME = "graphicsContextScaleTransform";
+        private static final Cleaner cleaner = Cleaner.create();
 
-        displayChanged();
+        private final WeakReference<WLVolatileSurfaceManager> manager;
+
+        private ChangeListener(WLVolatileSurfaceManager manager) {
+            this.manager = new WeakReference<>(manager);
+        }
+
+        static void register(Component component, WLVolatileSurfaceManager manager) {
+            ChangeListener listener = new ChangeListener(manager);
+            component.addPropertyChangeListener(SCALE_PROPERTY_NAME, listener);
+            cleaner.register(manager, () -> component.removePropertyChangeListener(SCALE_PROPERTY_NAME, listener));
+        }
+
+        @Override
+        public void propertyChange(PropertyChangeEvent evt) {
+            assert SCALE_PROPERTY_NAME.equals(evt.getPropertyName());
+
+            WLVolatileSurfaceManager manager = this.manager.get();
+            if (manager != null) {
+                manager.displayChanged();
+            }
+        }
     }
 }
