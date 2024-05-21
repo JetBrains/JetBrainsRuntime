@@ -1112,6 +1112,7 @@ public abstract class JComponent extends Container implements Serializable,
                 } finally {
                     repaintManager.endPaint();
                 }
+                repaintManager.afterPaint(this);
             }
             else {
                 // Will occasionally happen in 1.2, especially when printing.
@@ -1162,6 +1163,7 @@ public abstract class JComponent extends Container implements Serializable,
             rm.endPaint();
             setFlag(IS_REPAINTING, false);
         }
+        rm.afterPaint(this);
     }
 
     /**
@@ -5272,6 +5274,7 @@ public abstract class JComponent extends Container implements Serializable,
                         } finally {
                             rm.endPaint();
                         }
+                        rm.afterPaint(this);
                     } else {
                         g.setClip(paintImmediatelyClip.x, paintImmediatelyClip.y,
                                 paintImmediatelyClip.width, paintImmediatelyClip.height);
