@@ -67,7 +67,7 @@ public class JBRApiModule {
                 .clientProxy("java.awt.Font$Features", "com.jetbrains.FontExtensions$Features")
                 .service("com.jetbrains.FontMetricsAccessor", "sun.font.FontDesignMetrics$Accessor")
                 .clientProxy("sun.font.FontDesignMetrics$Overrider", "com.jetbrains.FontMetricsAccessor$Overrider")
-                .service("com.jetbrains.TextInput", "sun.lwawt.macosx.JBRTextInputMacOS", "com.jetbrains.desktop.JBRTextInput")
+                .service("com.jetbrains.TextInput", "sun.lwawt.macosx.JBRTextInputMacOS")
                 .clientProxy("com.jetbrains.desktop.JBRTextInput$EventListener", "com.jetbrains.TextInput$EventListener")
                 .proxy("com.jetbrains.TextInput$SelectTextRangeEvent", "com.jetbrains.desktop.JBRTextInput$SelectTextRangeEvent");
     }
