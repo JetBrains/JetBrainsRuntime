@@ -128,11 +128,11 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
 
     private void notifyOutputConfigured(String name, String make, String model, int wlID,
                                         int x, int y, int width, int height, int widthMm, int heightMm,
-                                        int subpixel, int transform, int scale) {
+                                        int subpixel, int transform, long scale120) {
         // Called from native code whenever a new output appears or an existing one changes its properties
         // NB: initially called during WLToolkit.initIDs() on the main thread; later on EDT.
         if (log.isLoggable(Level.FINE)) {
-            log.fine(String.format("Output configured id=%d at (%d, %d) %dx%d %dx scale", wlID, x, y, width, height, scale));
+            log.fine(String.format("Output configured id=%d at (%d, %d) %dx%d %fx scale", wlID, x, y, width, height, scale120 / 120.0));
         }
 
         String humanID =
@@ -147,10 +147,10 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
                     newOutput = false;
                     if (gd.isSameDeviceAs(wlID, x, y)) {
                         // These coordinates and the size are not scaled.
-                        gd.updateConfiguration(humanID, width, height, scale);
+                        gd.updateConfiguration(humanID, width, height, scale120);
                     } else {
                         final WLGraphicsDevice updatedDevice = WLGraphicsDevice.createWithConfiguration(wlID, humanID,
-                                x, y, width, height, widthMm, heightMm, scale);
+                                x, y, width, height, widthMm, heightMm, scale120);
                         devices.set(i, updatedDevice);
                         gd.invalidate(updatedDevice);
                     }
@@ -159,7 +159,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
             }
             if (newOutput) {
                 final WLGraphicsDevice gd = WLGraphicsDevice.createWithConfiguration(wlID, humanID, x, y,
-                        width, height, widthMm, heightMm, scale);
+                        width, height, widthMm, heightMm, scale120);
                 devices.add(gd);
             }
         }
@@ -253,7 +253,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
         }
     }
 
-    static double effectiveScaleFrom(int displayScale) {
+    static double effectiveScaleFrom(double displayScale) {
         return debugScaleEnabled ? SunGraphicsEnvironment.getDebugScale() : displayScale;
     }
 

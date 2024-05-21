@@ -152,8 +152,8 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
 
     @Override
     void notifyConfigured(int newXNative, int newYNative, int newWidthNative, int newHeightNative, boolean active, boolean maximized) {
-        int widthBefore = getWidth();
-        int heightBefore = getHeight();
+        int widthBefore = getJavaWidth();
+        int heightBefore = getJavaHeight();
 
         super.notifyConfigured(newXNative, newYNative, newWidthNative, newHeightNative, active, maximized);
 

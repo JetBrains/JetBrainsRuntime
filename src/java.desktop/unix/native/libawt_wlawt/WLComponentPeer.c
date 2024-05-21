@@ -44,6 +44,7 @@ static jmethodID notifyConfiguredMID;
 static jmethodID notifyEnteredOutputMID;
 static jmethodID notifyLeftOutputMID;
 static jmethodID notifyPopupDoneMID;
+static jmethodID notifyPreferredScaleMID;
 
 struct activation_token_list_item {
     struct xdg_activation_token_v1 *token;
@@ -91,6 +92,7 @@ struct WLFrame {
     jobject nativeFramePeer; // weak reference
     struct wl_surface *wl_surface;
     struct wp_viewport *wp_viewport;
+    struct wp_fractional_scale_v1 *wp_fractional_scale;
     struct xdg_surface *xdg_surface;
     struct gtk_surface1 *gtk_surface;
     struct WLFrame *parent;
@@ -308,6 +310,28 @@ static const struct xdg_activation_token_v1_listener xdg_activation_token_v1_lis
         .done = xdg_activation_token_v1_done,
 };
 
+static void wp_fractional_scale_preferred_scale(void *data,
+                                                struct wp_fractional_scale_v1 *wp_fractional_scale_v1,
+                                                uint32_t scale) {
+    J2dTrace2(J2D_TRACE_INFO, "WLComponentPeer: wp_fractional_scale_preferred_scale(%p, %u)\n",
+              wp_fractional_scale_v1, scale);
+
+    struct WLFrame *wlFrame = data;
+    assert(wlFrame);
+
+    JNIEnv *env = getEnv();
+    const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);
+    if (nativeFramePeer) {
+        (*env)->CallVoidMethod(env, nativeFramePeer, notifyPreferredScaleMID, (int64_t)scale);
+        (*env)->DeleteLocalRef(env, nativeFramePeer);
+        JNU_CHECK_EXCEPTION(env);
+    }
+}
+
+static const struct wp_fractional_scale_v1_listener wp_fractional_scale_listener = {
+    .preferred_scale = wp_fractional_scale_preferred_scale,
+};
+
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_initIDs
         (JNIEnv *env, jclass clazz)
@@ -324,6 +348,9 @@ Java_sun_awt_wl_WLComponentPeer_initIDs
     CHECK_NULL_THROW_IE(env,
                         notifyPopupDoneMID = (*env)->GetMethodID(env, clazz, "notifyPopupDone", "()V"),
                         "Failed to find method WLComponentPeer.notifyPopupDone");
+    CHECK_NULL_THROW_IE(env,
+                        notifyPreferredScaleMID = (*env)->GetMethodID(env, clazz, "notifyPreferredScale", "(J)V"),
+                        "Failed to find method WLComponentPeer.notifyPreferredScale");
 }
 
 JNIEXPORT void JNICALL
@@ -454,6 +481,11 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
     CHECK_NULL(frame->wl_surface);
     frame->wp_viewport = wp_viewporter_get_viewport(wp_viewporter, frame->wl_surface);
     CHECK_NULL(frame->wp_viewport);
+    if (wp_fractional_scale_manager) {
+        frame->wp_fractional_scale = wp_fractional_scale_manager_v1_get_fractional_scale(wp_fractional_scale_manager, frame->wl_surface);
+        CHECK_NULL(frame->wp_fractional_scale);
+        wp_fractional_scale_v1_add_listener(frame->wp_fractional_scale, &wp_fractional_scale_listener, frame);
+    }
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
     CHECK_NULL(frame->xdg_surface);
     if (gtk_shell1 != NULL) {
@@ -534,6 +566,11 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
     CHECK_NULL(frame->wl_surface);
     frame->wp_viewport = wp_viewporter_get_viewport(wp_viewporter, frame->wl_surface);
     CHECK_NULL(frame->wp_viewport);
+    if (wp_fractional_scale_manager) {
+        frame->wp_fractional_scale = wp_fractional_scale_manager_v1_get_fractional_scale(wp_fractional_scale_manager, frame->wl_surface);
+        CHECK_NULL(frame->wp_fractional_scale);
+        wp_fractional_scale_v1_add_listener(frame->wp_fractional_scale, &wp_fractional_scale_listener, frame);
+    }
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
     CHECK_NULL(frame->xdg_surface);
 
@@ -590,6 +627,9 @@ DoHide(JNIEnv *env, struct WLFrame *frame)
             gtk_surface1_destroy(frame->gtk_surface);
         }
         wp_viewport_destroy(frame->wp_viewport);
+        if (frame->wp_fractional_scale) {
+            wp_fractional_scale_v1_destroy(frame->wp_fractional_scale);
+        }
         xdg_surface_destroy(frame->xdg_surface);
         wl_surface_destroy(frame->wl_surface);
         delete_all_tokens(frame->activation_token_list);
@@ -601,6 +641,7 @@ DoHide(JNIEnv *env, struct WLFrame *frame)
         frame->xdg_toplevel = NULL;
         frame->xdg_popup = NULL;
         frame->wp_viewport = NULL;
+        frame->wp_fractional_scale = NULL;
         frame->toplevel = JNI_FALSE;
     }
 }

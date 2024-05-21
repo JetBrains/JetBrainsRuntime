@@ -74,8 +74,8 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
 
     private static native long getVKConfigInfo();
 
-    public WLVKGraphicsConfig(WLGraphicsDevice device, int width, int height, int scale, ContextCapabilities vkCaps) {
-        super(device, width, height, scale);
+    public WLVKGraphicsConfig(WLGraphicsDevice device, int width, int height, long scale120, ContextCapabilities vkCaps) {
+        super(device, width, height, scale120);
         this.vkCaps = vkCaps;
         context = new VKContext(VKRenderQueue.getInstance());
     }
@@ -85,13 +85,13 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
         return this;
     }
 
-    public static WLVKGraphicsConfig getConfig(WLGraphicsDevice device, int width, int height, int scale)
+    public static WLVKGraphicsConfig getConfig(WLGraphicsDevice device, int width, int height, long scale120)
     {
         ContextCapabilities caps = new VKContext.VKContextCaps(
             CAPS_PS30 | CAPS_PS20 | CAPS_RT_TEXTURE_ALPHA |
             CAPS_RT_TEXTURE_OPAQUE | CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 |
             CAPS_TEXNONSQUARE, null);
-        return new WLVKGraphicsConfig(device, width, height, scale, caps);
+        return new WLVKGraphicsConfig(device, width, height, scale120, caps);
     }
 
     /**
@@ -210,6 +210,11 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
     @Override
     public SurfaceData createSurfaceData(WLComponentPeer peer) {
         return WLVKSurfaceData.createData(peer);
+    }
+
+    @Override
+    public WLGraphicsConfig withScale120(long scale120) {
+        return new WLVKGraphicsConfig(device, width, height, scale120, vkCaps);
     }
 
     /**

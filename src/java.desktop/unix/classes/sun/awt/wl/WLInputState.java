@@ -266,9 +266,9 @@ record WLInputState(WLPointerEvent eventWithSurface,
             WLComponentPeer peer = getPeer();
             if (peer != null) {
                 return x >= 0
-                        && x < peer.getWidth()
+                        && x < peer.getJavaWidth()
                         && y >= 0
-                        && y < peer.getHeight();
+                        && y < peer.getJavaHeight();
             }
         }
         return true;
