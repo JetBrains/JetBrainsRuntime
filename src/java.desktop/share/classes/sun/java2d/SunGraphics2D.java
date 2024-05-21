@@ -3469,6 +3469,13 @@ public final class SunGraphics2D
             return true;
         }
 
+        boolean blitImageDrawn = drawImageBlit(img, dx1, dy1, dx2, dy2,
+                                               sx1, sy1, sx2, sy2,
+                                               bgcolor, observer);
+        if (blitImageDrawn) {
+            return true;
+        }
+
         Boolean hidpiImageDrawn = drawHiDPIImage(img, dx1, dy1, dx2, dy2,
                                                  sx1, sy1, sx2, sy2,
                                                  bgcolor, observer, null);
@@ -3523,6 +3530,52 @@ public final class SunGraphics2D
         } finally {
             surfaceData.markDirty();
         }
+    }
+
+    /**
+     * Tries to draw the image via copyImage if the image is compatible with
+     * the current transformation. That is, the scaling of the image is the
+     * same as the scaling of the transformation and the transformation does
+     * not contain any rotation. This leads to better results when the scaling
+     * is fractional.
+     */
+    private boolean drawImageBlit(Image img,
+                                  int dx1, int dy1, int dx2, int dy2,
+                                  int sx1, int sy1, int sx2, int sy2,
+                                  Color bgcolor, ImageObserver observer) {
+        if (dx2 - dx1 == sx2 - sx1 &&
+                dy2 - dy1 == sy2 - sy1 &&
+                sx1 <= sx2 &&
+                sy1 <= sy2 &&
+                dx1 <= dx2 &&
+                dy1 <= dy2 &&
+                transformState <= TRANSFORM_TRANSLATESCALE
+        ) {
+            final SurfaceData sd;
+            try {
+                sd = SurfaceManager.getManager(img).getPrimarySurfaceData();
+            } catch (InvalidPipeException e) {
+                return false;
+            }
+            if (sd.getDefaultScaleX() == transform.getScaleX() && sd.getDefaultScaleY() == transform.getScaleY()) {
+                dx1 = Region.clipRound(transform.getScaleX() * dx1);
+                dx2 = Region.clipRound(transform.getScaleX() * dx2);
+                dy1 = Region.clipRound(transform.getScaleY() * dy1);
+                dy2 = Region.clipRound(transform.getScaleY() * dy2);
+                sx1 = Region.clipRound(transform.getScaleX() * sx1);
+                sy1 = Region.clipRound(transform.getScaleY() * sy1);
+                int width = dx2 - dx1;
+                int height = dy2 - dy1;
+                AffineTransform old = new AffineTransform(transform);
+                setTransform(AffineTransform.getTranslateInstance(transform.getTranslateX(), transform.getTranslateY()));
+                try {
+                    return copyImage(img, dx1, dy1, sx1, sy1, width, height, bgcolor, observer);
+                } finally {
+                    setTransform(old);
+                }
+            }
+        }
+        return false;
     }
 
     /**
