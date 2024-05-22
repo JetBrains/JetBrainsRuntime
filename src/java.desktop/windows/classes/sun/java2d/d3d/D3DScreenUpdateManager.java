@@ -422,7 +422,7 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
 
                 // don't go to sleep if there's a thread waiting for an update
                 if (!needsUpdateNow) {
-                    try { runLock.wait(timeout); }
+                    try { runLock.wait(0); }
                         catch (InterruptedException e) {}
                 }
                 // if we were woken up, there are probably surfaces in the list,
