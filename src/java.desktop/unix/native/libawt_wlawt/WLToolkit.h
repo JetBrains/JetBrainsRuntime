@@ -28,6 +28,7 @@
 #include "xdg-shell-client-protocol.h"
 #include "xdg-activation-v1-client-protocol.h"
 #include "primary-selection-client-protocol.h"
+#include "xdg-decoration-unstable-v1-client-protocol.h"
 #include "jvm_md.h"
 #include "jni_util.h"
 
@@ -56,6 +57,7 @@ extern struct wl_compositor *wl_compositor;
 extern struct xdg_wm_base *xdg_wm_base;
 extern struct xdg_activation_v1 *xdg_activation_v1;
 extern struct gtk_shell1* gtk_shell1; // optional, check for NULL before use
+extern struct zxdg_decoration_manager_v1* zxdg_decoration_manager_v1; // optional, check for NULL before use
 
 extern struct wl_cursor_theme *wl_cursor_theme;
 extern struct wl_data_device_manager *wl_ddm;

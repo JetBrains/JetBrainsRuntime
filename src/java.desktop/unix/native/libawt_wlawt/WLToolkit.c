@@ -67,6 +67,7 @@ struct xdg_wm_base *xdg_wm_base = NULL;
 struct xdg_activation_v1 *xdg_activation_v1 = NULL;
 struct gtk_shell1* gtk_shell1 = NULL;
 struct wl_seat     *wl_seat = NULL;
+struct zxdg_decoration_manager_v1 *zxdg_decoration_manager_v1 = NULL;
 
 struct wl_keyboard *wl_keyboard;
 struct wl_pointer  *wl_pointer;
@@ -524,6 +525,8 @@ registry_global(void *data, struct wl_registry *wl_registry,
       wl_ddm = wl_registry_bind(wl_registry, name,&wl_data_device_manager_interface, 3);
     } else if (strcmp(interface, zwp_primary_selection_device_manager_v1_interface.name) == 0) {
         zwp_selection_dm = wl_registry_bind(wl_registry, name, &zwp_primary_selection_device_manager_v1_interface, 1);
+    } else if (strcmp(interface, zxdg_decoration_manager_v1_interface.name) == 0) {
+        zxdg_decoration_manager_v1 = wl_registry_bind(wl_registry, name, &zxdg_decoration_manager_v1_interface, 1);
     }
 
 #ifdef WAKEFIELD_ROBOT

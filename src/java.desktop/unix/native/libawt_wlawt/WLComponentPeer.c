@@ -95,6 +95,7 @@ struct WLFrame {
     struct WLFrame *parent;
     struct xdg_positioner *xdg_positioner;
     struct activation_token_list_item *activation_token_list;
+    struct zxdg_toplevel_decoration_v1 *zxdg_toplevel_decoration;
     jboolean toplevel;
     union {
         struct xdg_toplevel *xdg_toplevel;
@@ -107,6 +108,7 @@ struct WLFrame {
     int32_t configuredHeight;
     jboolean configuredActive;
     jboolean configuredMaximized;
+    jboolean configuredServerSideDecoration;
 };
 
 static void
@@ -128,7 +130,8 @@ xdg_surface_configure(void *data,
             (*env)->CallVoidMethod(env, nativeFramePeer, notifyConfiguredMID,
                                    wlFrame->configuredX, wlFrame->configuredY,
                                    wlFrame->configuredWidth, wlFrame->configuredHeight,
-                                   wlFrame->configuredActive, wlFrame->configuredMaximized);
+                                   wlFrame->configuredActive, wlFrame->configuredMaximized,
+                                   wlFrame->configuredServerSideDecoration);
             (*env)->DeleteLocalRef(env, nativeFramePeer);
             JNU_CHECK_EXCEPTION(env);
         }
@@ -307,12 +310,30 @@ static const struct xdg_activation_token_v1_listener xdg_activation_token_v1_lis
         .done = xdg_activation_token_v1_done,
 };
 
+static void
+zxdg_toplevel_decoration_v1_configure(void *data,
+                                      struct zxdg_toplevel_decoration_v1 *zxdg_toplevel_decoration_v1,
+                                      uint32_t mode)
+{
+    J2dTrace2(J2D_TRACE_INFO, "WLComponentPeer: zxdg_toplevel_decoration_v1_configure(%p, %u)\n",
+              zxdg_toplevel_decoration_v1, mode);
+
+    struct WLFrame *wlFrame = (struct WLFrame*)data;
+    assert(wlFrame);
+
+    wlFrame->configuredServerSideDecoration = mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
+}
+
+static const struct zxdg_toplevel_decoration_v1_listener zxdg_toplevel_decoration_v1_listener = {
+    .configure = zxdg_toplevel_decoration_v1_configure,
+};
+
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_initIDs
         (JNIEnv *env, jclass clazz)
 {
     CHECK_NULL_THROW_IE(env,
-                        notifyConfiguredMID = (*env)->GetMethodID(env, clazz, "notifyConfigured", "(IIIIZZ)V"),
+                        notifyConfiguredMID = (*env)->GetMethodID(env, clazz, "notifyConfigured", "(IIIIZZZ)V"),
                         "Failed to find method WLComponentPeer.notifyConfigured");
     CHECK_NULL_THROW_IE(env,
                         notifyEnteredOutputMID = (*env)->GetMethodID(env, clazz, "notifyEnteredOutput", "(I)V"),
@@ -444,7 +465,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
       (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr,
        jint x, jint y,
        jboolean isModal, jboolean isMaximized, jboolean isMinimized,
-       jstring title, jstring appid)
+       jstring title, jstring appid, jboolean isUndecorated)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     struct WLFrame *parentFrame = jlong_to_ptr(parentPtr);
@@ -478,6 +499,16 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
     }
     if (parentFrame && parentFrame->toplevel) {
         xdg_toplevel_set_parent(frame->xdg_toplevel, parentFrame->xdg_toplevel);
+    }
+    if (zxdg_decoration_manager_v1 != NULL) {
+        frame->zxdg_toplevel_decoration = zxdg_decoration_manager_v1_get_toplevel_decoration(zxdg_decoration_manager_v1, frame->xdg_toplevel);
+        CHECK_NULL(frame->zxdg_toplevel_decoration);
+        zxdg_toplevel_decoration_v1_add_listener(frame->zxdg_toplevel_decoration, &zxdg_toplevel_decoration_v1_listener, frame);
+        uint32_t mode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE;
+        if (isUndecorated) {
+            mode = ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
+        }
+        zxdg_toplevel_decoration_v1_set_mode(frame->zxdg_toplevel_decoration, mode);
     }
 
     if (isModal && frame->gtk_surface != NULL) {
@@ -576,6 +607,9 @@ DoHide(JNIEnv *env, struct WLFrame *frame)
 {
     if (frame->wl_surface) {
         if(frame->toplevel) {
+            if (frame->zxdg_toplevel_decoration != NULL) {
+                zxdg_toplevel_decoration_v1_destroy(frame->zxdg_toplevel_decoration);
+            }
             xdg_toplevel_destroy(frame->xdg_toplevel);
         } else {
             xdg_popup_destroy(frame->xdg_popup);
@@ -591,6 +625,7 @@ DoHide(JNIEnv *env, struct WLFrame *frame)
         delete_all_tokens(frame->activation_token_list);
         wlFlushToServer(env);
 
+        frame->zxdg_toplevel_decoration = NULL;
         frame->activation_token_list = NULL;
         frame->wl_surface = NULL;
         frame->xdg_surface = NULL;
