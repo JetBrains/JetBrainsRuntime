@@ -94,24 +94,24 @@ public class TestMetaSpaceLog {
     // Propagate test.src for the jar file.
     String testSrc= "-Dtest.src=" + System.getProperty("test.src", ".");
 
-    ProcessBuilder pb =
-      ProcessTools.createTestJavaProcessBuilder(
-          "-Xlog:gc*",
-          "-Xbootclasspath/a:.",
-          "-XX:+UnlockDiagnosticVMOptions",
-          "-XX:+WhiteBoxAPI",
-          "-Xmx1000M",
-          "-Xms1000M",
-          testSrc, StressMetaSpace.class.getName());
-
     OutputAnalyzer output = null;
     try {
-      output = new OutputAnalyzer(pb.start());
+      output = ProcessTools.executeTestJava(
+            "-Xlog:gc*",
+            "-Xbootclasspath/a:.",
+            "-XX:+UnlockDiagnosticVMOptions",
+            "-XX:+WhiteBoxAPI",
+            "-Xmx1000M",
+            "-Xms1000M",
+            testSrc, StressMetaSpace.class.getName());
+
       verifyContainsMetaSpaceUpdate(output);
     } catch (Exception e) {
       // For error diagnosis: print and throw.
       e.printStackTrace();
-      output.reportDiagnosticSummary();
+      if (output != null) {
+          output.reportDiagnosticSummary();
+      }
       throw e;
     }
   }
