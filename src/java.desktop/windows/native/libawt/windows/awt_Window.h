@@ -133,6 +133,7 @@ public:
     virtual int  GetScreenImOn();
     virtual BOOL CheckIfOnNewScreen(BOOL force);
     virtual BOOL CheckIfOnNewScreenWithDifferentScale();
+    virtual UINT GetCurrentWmSizeType();
     virtual void Grab();
     virtual void Ungrab();
     virtual void Ungrab(BOOL doPost);
