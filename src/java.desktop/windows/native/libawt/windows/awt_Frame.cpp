@@ -2080,6 +2080,11 @@ void AwtFrame::_UpdateCustomTitleBar(void* p) {
 
 // {end} Custom title bar support
 
+UINT AwtFrame::GetCurrentWmSizeType()
+{
+    return isZoomed() ? SIZE_MAXIMIZED : SIZENORMAL;
+}
+
 /************************************************************************
  * WFramePeer native methods
  */
