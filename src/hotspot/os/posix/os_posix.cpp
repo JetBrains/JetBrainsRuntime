@@ -800,10 +800,6 @@ int os::connect(int fd, struct sockaddr* him, socklen_t len) {
   RESTARTABLE_RETURN_INT(::connect(fd, him, len));
 }
 
-struct hostent* os::get_host_by_name(char* name) {
-  return ::gethostbyname(name);
-}
-
 void os::exit(int num) {
   ::exit(num);
 }
