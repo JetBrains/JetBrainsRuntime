@@ -242,6 +242,8 @@ private:
     RECT GetSysInsets();
     LRESULT HitTestNCA(int x, int y);
 
+    virtual UINT GetCurrentWmSizeType();
+
     /*
      * Hashtable<Thread, BlockedThreadStruct> - a table that contains all the
      * information about non-toolkit threads with modal blocked embedded
