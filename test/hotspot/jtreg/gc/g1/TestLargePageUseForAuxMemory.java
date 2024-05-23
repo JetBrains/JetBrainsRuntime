@@ -120,12 +120,8 @@ public class TestLargePageUseForAuxMemory {
     static void testVM(String what, long heapsize, boolean cardsShouldUseLargePages, boolean bitmapShouldUseLargePages) throws Exception {
         System.out.println(what + " heapsize " + heapsize + " card table should use large pages " + cardsShouldUseLargePages + " " +
                            "bitmaps should use large pages " + bitmapShouldUseLargePages);
-        ProcessBuilder pb;
+        OutputAnalyzer output = ProcessTools.executeLimitedTestJava(getOpts(heapsize, true));
 
-        // Test with large page enabled.
-        pb = ProcessTools.createLimitedTestJavaProcessBuilder(getOpts(heapsize, true));
-
-        OutputAnalyzer output = new OutputAnalyzer(pb.start());
         // Only expect large page size if large pages are enabled.
         if (largePagesEnabled(output)) {
             checkSmallTables(output, (cardsShouldUseLargePages ? largePageSize : smallPageSize));
@@ -137,9 +133,8 @@ public class TestLargePageUseForAuxMemory {
         output.shouldHaveExitValue(0);
 
         // Test with large page disabled.
-        pb = ProcessTools.createLimitedTestJavaProcessBuilder(getOpts(heapsize, false));
+        output = ProcessTools.executeLimitedTestJava(getOpts(heapsize, false));
 
-        output = new OutputAnalyzer(pb.start());
         checkSmallTables(output, smallPageSize);
         checkBitmap(output, smallPageSize);
         output.shouldHaveExitValue(0);
