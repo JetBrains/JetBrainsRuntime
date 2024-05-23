@@ -1315,7 +1315,7 @@ void AwtWindow::WmDPIChanged(const LPARAM &lParam) {
     RECT *r = (RECT *) lParam;
     ReshapeNoScale(r->left, r->top, r->right - r->left, r->bottom - r->top);
     CheckIfOnNewScreen(true);
-    WmSize(SIZENORMAL, r->right - r->left, r->bottom - r->top);
+    WmSize(GetCurrentWmSizeType(), r->right - r->left, r->bottom - r->top);
 }
 
 MsgRouting AwtWindow::WmEraseBkgnd(HDC hDC, BOOL& didErase)
@@ -1735,6 +1735,10 @@ BOOL AwtWindow::CheckIfOnNewScreenWithDifferentScale() {
         }
     }
     return FALSE;
+}
+
+UINT AwtWindow::GetCurrentWmSizeType() {
+    return SIZENORMAL;
 }
 
 /*
