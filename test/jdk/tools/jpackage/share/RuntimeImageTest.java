@@ -47,7 +47,7 @@ import jdk.jpackage.test.Executor;
  * @build jdk.jpackage.test.*
  * @modules jdk.incubator.jpackage/jdk.incubator.jpackage.internal
  * @compile RuntimeImageTest.java
- * @run main/othervm/timeout=1400 -Xmx512m jdk.jpackage.test.Main
+ * @run main/othervm/timeout=1400 jdk.jpackage.test.Main
  *  --jpt-run=RuntimeImageTest
  */
 
