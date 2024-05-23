@@ -60,7 +60,7 @@ public class TestSmallInitialHeapWithLargePageAndNUMA {
     long initHeap = heapAlignment;
     long maxHeap = heapAlignment * 2;
 
-    ProcessBuilder pb_enabled = GCArguments.createLimitedTestJavaProcessBuilder(
+    OutputAnalyzer analyzer = GCArguments.executeLimitedTestJava(
         "-XX:+UseParallelGC",
         "-Xms" + String.valueOf(initHeap),
         "-Xmx" + String.valueOf(maxHeap),
@@ -68,7 +68,6 @@ public class TestSmallInitialHeapWithLargePageAndNUMA {
         "-XX:+UseHugeTLBFS",
         "-XX:+PrintFlagsFinal",
         "-version");
-    OutputAnalyzer analyzer = new OutputAnalyzer(pb_enabled.start());
 
     if (largePageOrNumaEnabled(analyzer)) {
       // We reach here, if both NUMA and HugeTLB are supported.
