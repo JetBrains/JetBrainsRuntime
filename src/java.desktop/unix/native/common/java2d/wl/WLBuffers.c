@@ -283,8 +283,9 @@ struct WLSurfaceBufferManager {
     WLDrawBuffer        bufferForDraw; // only accessed under drawLock
 
     jobject              surfaceDataWeakRef;
-    FrameCounterCallback frameSentCallback;
-    FrameCounterCallback frameDroppedCallback;
+    BufferEventCallback frameSentCallback;
+    BufferEventCallback frameDroppedCallback;
+    BufferEventCallback bufferAttachedCallback;
 };
 
 static inline void
@@ -771,6 +772,7 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
     // wl_buffer_listener will release bufferForShow when Wayland's done with it
     wl_surface_attach(manager->wlSurface, buffer->wlBuffer, 0, 0);
     //NB: do not specify scale for the buffer; we scale with wp_viewporter
+    manager->bufferAttachedCallback(manager->surfaceDataWeakRef);
 
     // Better wait for the frame event so as not to overwhelm Wayland with
     // frequent surface updates that it cannot deliver to the screen anyway.
@@ -950,9 +952,13 @@ WLSBM_Create(jint width,
              jint bgPixel,
              jint wlShmFormat,
              jobject surfaceDataWeakRef,
-             FrameCounterCallback frameSentCallback,
-             FrameCounterCallback frameDroppedCallback)
+             BufferEventCallback frameSentCallback,
+             BufferEventCallback frameDroppedCallback,
+             BufferEventCallback bufferAttachedCallback)
 {
+    assert (surfaceDataWeakRef != NULL);
+    assert (bufferAttachedCallback != NULL);
+
     traceEnabled = getenv("J2D_STATS");
 
     if (!HaveEnoughMemoryForWindow(width, height)) {
@@ -971,6 +977,7 @@ WLSBM_Create(jint width,
     manager->surfaceDataWeakRef = surfaceDataWeakRef;
     manager->frameSentCallback = frameSentCallback;
     manager->frameDroppedCallback = frameDroppedCallback;
+    manager->bufferAttachedCallback = bufferAttachedCallback;
 
     pthread_mutex_init(&manager->showLock, NULL);
 
