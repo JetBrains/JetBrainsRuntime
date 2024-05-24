@@ -25,19 +25,23 @@
 
 package sun.java2d.metal;
 
+import sun.awt.AWTAccessor;
 import sun.java2d.NullSurfaceData;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.macosx.CFLayer;
 import sun.util.logging.PlatformLogger;
 
+import java.awt.Component;
 import java.awt.GraphicsConfiguration;
 import java.awt.Insets;
+import java.awt.Window;
+
 
 public final class MTLLayer extends CFLayer {
     private static final PlatformLogger logger = PlatformLogger.getLogger(MTLLayer.class.getName());
 
-    private native long nativeCreateLayer();
+    private native long nativeCreateLayer(boolean perfCountersEnabled);
     private static native void nativeSetScale(long layerPtr, double scale);
 
     // Pass the insets to native code to make adjustments in blitTexture
@@ -51,7 +55,10 @@ public final class MTLLayer extends CFLayer {
     public MTLLayer(LWWindowPeer peer) {
         super(0, true);
 
-        setPtr(nativeCreateLayer());
+        Window target = peer.getTarget();
+        boolean perfCountersEnabled = target != null && AWTAccessor.getWindowAccessor().countersEnabled(target);
+
+        setPtr(nativeCreateLayer(perfCountersEnabled));
         this.peer = peer;
 
         MTLGraphicsConfig gc = (MTLGraphicsConfig)getGraphicsConfiguration();
@@ -141,6 +148,24 @@ public final class MTLLayer extends CFLayer {
             execute(ptr -> blitTexture(ptr));
         } finally {
             rq.unlock();
+        }
+    }
+
+    private void countNewFrame() {
+        // Called from the native code when this layer has been presented on screen
+        Component target = peer.getTarget();
+        if (target instanceof Window window) {
+            AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.frames");
+        }
+    }
+
+    private void countDroppedFrame() {
+        // Called from the native code when an attempt was made to present this layer
+        // on screen, but that attempt was not successful. This can happen, for example,
+        // when those attempts are too frequent.
+        Component target = peer.getTarget();
+        if (target instanceof Window window) {
+            AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.framesDropped");
         }
     }
 }
