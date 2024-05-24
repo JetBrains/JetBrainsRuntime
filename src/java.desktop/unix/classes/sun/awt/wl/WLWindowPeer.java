@@ -91,13 +91,6 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     }
 
     @Override
-    void configureWLSurface() {
-        super.configureWLSurface();
-        updateMinimumSize();
-        updateMaximumSize();
-    }
-
-    @Override
     public Insets getInsets() {
         return new Insets(0, 0, 0, 0);
     }
@@ -139,21 +132,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
 
     @Override
     public void updateMinimumSize() {
-        final Dimension minSize = getMinimumSize();
-        super.setMinimumSizeTo(minSize);
-    }
-
-    public void updateMaximumSize() {
-        // TODO: make sure this is called when our target's maximum size changes
-        final Dimension maxSize = target.isMaximumSizeSet() ? target.getMaximumSize() : null;
-        if (maxSize != null) super.setMaximumSizeTo(maxSize);
-    }
-
-    @Override
-    void updateSurfaceData() {
-        updateMinimumSize();
-        updateMaximumSize();
-        super.updateSurfaceData();
+        // No op, it gets updated at each resize
     }
 
     @Override
