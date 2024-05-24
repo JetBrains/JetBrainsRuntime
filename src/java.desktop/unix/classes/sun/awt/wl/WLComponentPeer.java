@@ -29,6 +29,7 @@ package sun.awt.wl;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.PaintEventDispatcher;
+import sun.awt.SunToolkit;
 import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
 import sun.java2d.SunGraphics2D;
@@ -300,7 +301,6 @@ public class WLComponentPeer implements ComponentPeer {
                     nativeCreateWLPopup(nativePtr, getParentNativePtr(target),
                             thisWidth, thisHeight,
                             parentX + offsetX, parentY + offsetY);
-                    nativeSetSurfaceSize(nativePtr, thisWidth, thisHeight);
                 } else {
                     int xNative = javaUnitsToSurfaceUnits(target.getX());
                     int yNative = javaUnitsToSurfaceUnits(target.getY());
@@ -309,7 +309,6 @@ public class WLComponentPeer implements ComponentPeer {
                             xNative, yNative,
                             isModal, isMaximized, isMinimized,
                             title, WLToolkit.getApplicationID());
-                    nativeSetSurfaceSize(nativePtr, thisWidth, thisHeight);
                 }
                 final long wlSurfacePtr = getWLSurface(nativePtr);
                 WLToolkit.registerWLSurface(wlSurfacePtr, this);
@@ -350,7 +349,47 @@ public class WLComponentPeer implements ComponentPeer {
     void updateSurfaceData() {
         SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
                 getBufferWidth(), getBufferHeight(), getBufferScale());
-        updateWindowGeometry();
+    }
+
+    public void updateSurfaceSize() {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        // Note: must be called after a buffer of proper size has been attached to the surface,
+        // but the surface has not yet been committed. Otherwise, the sizes may get out of sync,
+        // which may result in visual artifacts.
+
+        int thisWidth = javaUnitsToSurfaceUnits(getWidth());
+        int thisHeight = javaUnitsToSurfaceUnits(getHeight());
+        Rectangle nativeVisibleBounds = getVisibleBounds();
+        nativeVisibleBounds.x = javaUnitsToSurfaceUnits(nativeVisibleBounds.x);
+        nativeVisibleBounds.y = javaUnitsToSurfaceUnits(nativeVisibleBounds.y);
+        nativeVisibleBounds.width = javaUnitsToSurfaceUnits(nativeVisibleBounds.width);
+        nativeVisibleBounds.height = javaUnitsToSurfaceUnits(nativeVisibleBounds.height);
+
+        Dimension nativeMinSize = constrainSize(getMinimumSize());
+        nativeMinSize.width = javaUnitsToSurfaceUnits(nativeMinSize.width);
+        nativeMinSize.height = javaUnitsToSurfaceUnits(nativeMinSize.height);
+
+        Dimension maxSize = target.isMaximumSizeSet() ? target.getMaximumSize() : null;
+        Dimension nativeMaxSize = maxSize != null ? constrainSize(maxSize) : null;
+        if (nativeMaxSize != null) {
+            nativeMaxSize.width = javaUnitsToSurfaceUnits(nativeMaxSize.width);
+            nativeMaxSize.height = javaUnitsToSurfaceUnits(nativeMaxSize.height);
+        }
+
+        nativeSetSurfaceSize(nativePtr, thisWidth, thisHeight);
+        if (!surfaceData.getColorModel().hasAlpha()) {
+            nativeSetOpaqueRegion(nativePtr,
+                    nativeVisibleBounds.x, nativeVisibleBounds.y,
+                    nativeVisibleBounds.width, nativeVisibleBounds.height);
+        }
+
+        nativeSetWindowGeometry(nativePtr,
+                nativeVisibleBounds.x, nativeVisibleBounds.y,
+                nativeVisibleBounds.width, nativeVisibleBounds.height);
+        nativeSetMinimumSize(nativePtr, nativeMinSize.width, nativeMinSize.height);
+        if (nativeMaxSize != null) {
+            nativeSetMaximumSize(nativePtr, nativeMaxSize.width, nativeMaxSize.height);
+        }
     }
 
     void configureWLSurface() {
@@ -479,9 +518,6 @@ public class WLComponentPeer implements ComponentPeer {
 
     private void setSizeTo(int newWidth, int newHeight) {
         Dimension newSize = constrainSize(newWidth, newHeight);
-        performLocked(() -> {
-            nativeSetSurfaceSize(nativePtr, javaUnitsToSurfaceUnits(newSize.width), javaUnitsToSurfaceUnits(newSize.height));
-        });
         synchronized (dataLock) {
             this.width = newSize.width;
             this.height = newSize.height;
@@ -525,7 +561,7 @@ public class WLComponentPeer implements ComponentPeer {
      * Represents the scale ratio of Wayland's backing buffer in pixel units
      * to surface units. Wayland events are generated in surface units, while
      * painting should be performed in pixel units.
-     * The ratio is enforced with nativeSetSize().
+     * The ratio is enforced with nativeSetSurfaceSize().
      */
     int getBufferScale() {
         synchronized(dataLock) {
@@ -549,22 +585,6 @@ public class WLComponentPeer implements ComponentPeer {
         synchronized (dataLock) {
             return new Rectangle(getBufferWidth(), getBufferHeight());
         }
-    }
-
-    private void updateWindowGeometry() {
-        // From xdg-shell.xml:
-        // "The window geometry of a surface is its "visible bounds" from the
-        //	user's perspective. Client-side decorations often have invisible
-        //	portions like drop-shadows which should be ignored for the
-        //	purposes of aligning, placing and constraining windows"
-        Rectangle nativeVisibleBounds = getVisibleBounds();
-        nativeVisibleBounds.x = javaUnitsToSurfaceUnits(nativeVisibleBounds.x);
-        nativeVisibleBounds.y = javaUnitsToSurfaceUnits(nativeVisibleBounds.y);
-        nativeVisibleBounds.width = javaUnitsToSurfaceUnits(nativeVisibleBounds.width);
-        nativeVisibleBounds.height = javaUnitsToSurfaceUnits(nativeVisibleBounds.height);
-        performLocked(() -> nativeSetWindowGeometry(nativePtr,
-                nativeVisibleBounds.x, nativeVisibleBounds.y,
-                nativeVisibleBounds.width, nativeVisibleBounds.height));
     }
 
     public void coalescePaintEvent(PaintEvent e) {
@@ -725,20 +745,6 @@ public class WLComponentPeer implements ComponentPeer {
 
     public Dimension getMinimumSize() {
         return target.getSize();
-    }
-    
-    void setMinimumSizeTo(Dimension minSize) {
-        Dimension nativeSize = constrainSize(minSize);
-        nativeSize.width = javaUnitsToSurfaceUnits(nativeSize.width);
-        nativeSize.height = javaUnitsToSurfaceUnits(nativeSize.height);
-        performLocked(() -> nativeSetMinimumSize(nativePtr, nativeSize.width, nativeSize.height));
-    }
-
-    void setMaximumSizeTo(Dimension maxSize) {
-        Dimension nativeSize = constrainSize(maxSize);
-        nativeSize.width = javaUnitsToSurfaceUnits(nativeSize.width);
-        nativeSize.height = javaUnitsToSurfaceUnits(nativeSize.height);
-        performLocked(() -> nativeSetMaximumSize(nativePtr, nativeSize.width, nativeSize.height));
     }
 
     void showWindowMenu(int x, int y) {
@@ -1022,6 +1028,7 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeRequestUnsetFullScreen(long ptr);
 
     private native void nativeSetSurfaceSize(long ptr, int width, int height);
+    private native void nativeSetOpaqueRegion(long ptr, int x, int y, int width, int height);
     private native void nativeSetWindowGeometry(long ptr, int x, int y, int width, int height);
     private native void nativeSetMinimumSize(long ptr, int width, int height);
     private native void nativeSetMaximumSize(long ptr, int width, int height);
