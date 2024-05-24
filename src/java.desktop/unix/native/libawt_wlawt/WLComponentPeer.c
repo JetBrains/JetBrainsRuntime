@@ -648,6 +648,22 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetSurfaceSize
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->wp_viewport != NULL) {
         wp_viewport_set_destination(frame->wp_viewport, width, height);
+        // Do not flush here as this update needs to be committed together with the change
+        // of the buffer's size and scale, if any.
+    }
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetOpaqueRegion
+        (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y, jint width, jint height)
+{
+    struct WLFrame *frame = jlong_to_ptr(ptr);
+    if (frame->wl_surface != NULL) {
+        struct wl_region* region = wl_compositor_create_region(wl_compositor);
+        wl_region_add(region, x, y, width, height);
+        wl_surface_set_opaque_region(frame->wl_surface, region);
+        wl_region_destroy(region);
+        // Do not flush here as this update needs to be committed together with the change
+        // of the buffer's size and scale, if any.
     }
 }
 
