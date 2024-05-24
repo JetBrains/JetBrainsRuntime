@@ -70,7 +70,6 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine(String.format("Shared memory surface data %dx%d, format %d", width, height, wlShmFormat));
         }
-
         initOps(width, height, backgroundPixel, wlShmFormat, perfCountersEnabled);
     }
 
@@ -149,6 +148,12 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
             }
         }
         return pixels;
+    }
+
+    private void bufferAttached() {
+        // Called from the native code when a buffer has just been attached to this surface
+        // but the surface has not been committed yet.
+        peer.updateSurfaceSize();
     }
 
     private void countNewFrame() {
