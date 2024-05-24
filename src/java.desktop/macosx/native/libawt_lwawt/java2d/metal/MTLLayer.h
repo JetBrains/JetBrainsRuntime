@@ -41,8 +41,9 @@
 @property (readwrite, assign) int leftInset;
 @property (readwrite, atomic) int redrawCount;
 @property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
+@property (readwrite, atomic) BOOL perfCountersEnabled;
 
-- (id) initWithJavaLayer:(jobject)layer;
+- (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled;
 
 - (void) blitTexture;
 - (void) fillParallelogramCtxX:(jfloat)x
@@ -58,6 +59,8 @@
 - (void) stopRedraw:(BOOL)force;
 - (void) flushBuffer;
 - (void) commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
+- (void) countFramePresentedCallback;
+- (void) countFrameDroppedCallback;
 @end
 
 #endif /* MTLLayer_h_Included */

@@ -35,6 +35,10 @@
 #define MAX_DRAWABLE    3
 #define LAST_DRAWABLE   (MAX_DRAWABLE - 1)
 
+static jclass jc_JavaLayer = NULL;
+#define GET_MTL_LAYER_CLASS() \
+    GET_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
+
 const NSTimeInterval DF_BLIT_FRAME_TIME=1.0/120.0;
 
 BOOL isDisplaySyncEnabled() {
@@ -115,7 +119,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
 @implementation MTLLayer
 
-- (id) initWithJavaLayer:(jobject)layer
+- (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled
 {
     AWT_ASSERT_APPKIT_THREAD;
     // Initialize ourselves
@@ -157,6 +161,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     }
     self.presentsWithTransaction = NO;
     self.avgBlitFrameTime = DF_BLIT_FRAME_TIME;
+    self.perfCountersEnabled = perfCountersEnabled ? YES : NO;
     return self;
 }
 
@@ -209,6 +214,24 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         }
         // increment used drawables:
         self.nextDrawableCount++;
+
+        MTLDrawablePresentedHandler presentedHandler = nil;
+        if (@available(macOS 10.15.4, *)) {
+            if (self.perfCountersEnabled) {
+                [self retain];
+                presentedHandler = ^(id <MTLDrawable> drawable) {
+                    // note: called anyway even if drawable.present() not called!
+                    const CFTimeInterval presentedTime = drawable.presentedTime;
+                    if (presentedTime != 0.0) {
+                        [self countFramePresentedCallback];
+                    } else {
+                        [self countFrameDroppedCallback];
+                    }
+                    [self release];
+                };
+            }
+        }
+
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
         [blitEncoder
@@ -220,6 +243,9 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 destinationOrigin:MTLOriginMake(0, 0, 0)];
         [blitEncoder endEncoding];
 
+         if (presentedHandler != nil) {
+            [mtlDrawable addPresentedHandler:presentedHandler];
+        }
         if (isDisplaySyncEnabled()) {
             [commandBuf presentDrawable:mtlDrawable];
         } else {
@@ -262,11 +288,11 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 - (void) blitCallback {
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    DECLARE_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
+    GET_MTL_LAYER_CLASS();
     DECLARE_METHOD(jm_drawInMTLContext, jc_JavaLayer, "drawInMTLContext", "()V");
 
     jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
-    if ((*env)->IsSameObject(env, javaLayerLocalRef, NULL)) {
+    if (javaLayerLocalRef == NULL) {
         return;
     }
 
@@ -365,6 +391,34 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         [self startRedraw];
     }
 }
+
+- (void) countFramePresentedCallback {
+    // attach the current thread to the JVM if necessary, and get an env
+    JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
+    GET_MTL_LAYER_CLASS();
+    DECLARE_METHOD(jm_countNewFrame, jc_JavaLayer, "countNewFrame", "()V");
+
+    jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
+    if (javaLayerLocalRef != NULL) {
+        (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_countNewFrame);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, javaLayerLocalRef);
+    }
+}
+
+- (void) countFrameDroppedCallback {
+    // attach the current thread to the JVM if necessary, and get an env
+    JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
+    GET_MTL_LAYER_CLASS();
+    DECLARE_METHOD(jm_countDroppedFrame, jc_JavaLayer, "countDroppedFrame", "()V");
+
+    jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
+    if (javaLayerLocalRef != NULL) {
+        (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_countDroppedFrame);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, javaLayerLocalRef);
+    }
+}
 @end
 
 /*
@@ -374,7 +428,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
  */
 JNIEXPORT jlong JNICALL
 Java_sun_java2d_metal_MTLLayer_nativeCreateLayer
-(JNIEnv *env, jobject obj)
+(JNIEnv *env, jobject obj, jboolean perfCountersEnabled)
 {
     __block MTLLayer *layer = nil;
 
@@ -385,7 +439,7 @@ JNI_COCOA_ENTER(env);
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
             AWT_ASSERT_APPKIT_THREAD;
 
-            layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer];
+            layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer usePerfCounters: perfCountersEnabled];
     }];
 
 JNI_COCOA_EXIT(env);
