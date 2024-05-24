@@ -66,6 +66,7 @@ typedef struct WLSDPrivate {
 
 static jmethodID countNewFrameMID;
 static jmethodID countDroppedFrameMID;
+static jmethodID bufferAttachedMID;
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_wl_WLSMSurfaceData_initIDs
@@ -74,6 +75,10 @@ Java_sun_java2d_wl_WLSMSurfaceData_initIDs
     // NB: don't care if those "count" methods are found.
     countNewFrameMID = (*env)->GetMethodID(env, clazz, "countNewFrame", "()V");
     countDroppedFrameMID = (*env)->GetMethodID(env, clazz, "countDroppedFrame", "()V");
+    CHECK_NULL_THROW_IE(env,
+                        bufferAttachedMID = (*env)->GetMethodID(env, clazz, "bufferAttached", "()V"),
+                        "Failed to find method WLSMSurfaceData.bufferAttached"
+    );
 }
 
 JNIEXPORT WLSDOps * JNICALL
@@ -328,11 +333,23 @@ WLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
 }
 
 static void
+BufferAttachedHandler(jobject surfaceDataWeakRef)
+{
+    JNIEnv *env = getEnv();
+    jobject surfaceData = (*env)->NewLocalRef(env, surfaceDataWeakRef);
+    if (surfaceData != NULL) {
+        (*env)->CallVoidMethod(env, surfaceData, bufferAttachedMID);
+        (*env)->DeleteLocalRef(env, surfaceData);
+        JNU_CHECK_EXCEPTION(env);
+    }
+}
+
+static void
 CountFrameSent(jobject surfaceDataWeakRef)
 {
     if (countNewFrameMID != NULL) {
         JNIEnv *env = getEnv();
-        const jobject surfaceData = (*env)->NewLocalRef(env, surfaceDataWeakRef);
+        jobject surfaceData = (*env)->NewLocalRef(env, surfaceDataWeakRef);
         if (surfaceData != NULL) {
             (*env)->CallVoidMethod(env, surfaceData, countNewFrameMID);
             (*env)->DeleteLocalRef(env, surfaceData);
@@ -346,7 +363,7 @@ CountFrameDropped(jobject surfaceDataWeakRef)
 {
     if (countDroppedFrameMID != NULL) {
         JNIEnv *env = getEnv();
-        const jobject surfaceData = (*env)->NewLocalRef(env, surfaceDataWeakRef);
+        jobject surfaceData = (*env)->NewLocalRef(env, surfaceDataWeakRef);
         if (surfaceData != NULL) {
             (*env)->CallVoidMethod(env, surfaceData, countDroppedFrameMID);
             (*env)->DeleteLocalRef(env, surfaceData);
@@ -395,7 +412,8 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
     wsdo->bufferManager = WLSBM_Create(width, height, backgroundRGB, wlShmFormat,
                                        surfaceDataWeakRef,
                                        perfCountersEnabled ? CountFrameSent : NULL,
-                                       perfCountersEnabled ? CountFrameDropped : NULL);
+                                       perfCountersEnabled ? CountFrameDropped : NULL,
+                                       BufferAttachedHandler);
     if (wsdo->bufferManager == NULL) {
         JNU_ThrowOutOfMemoryError(env, "Failed to create Wayland surface buffer manager");
         return;
