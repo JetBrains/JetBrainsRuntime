@@ -140,6 +140,7 @@ java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java JBR-5915 
 java/awt/event/MouseEvent/EnterAsGrabbedEvent/EnterAsGrabbedEvent.java JBR-809 windows-all,linux-all
 java/awt/event/MouseEvent/MouseButtonsTest/MouseButtonsTest.java JBR-810 windows-all,linux-all
 java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java 8168389,JBR-52 windows-all,macosx-all,linux-all
+java/awt/event/MouseEvent/MouseEnterExitTest.java JBR-7113 linux-all
 java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568,JBR-810 macosx-all,windows-all,linux-all
 java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568,JBR-5583 macosx-all,windows-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java 8204200 windows-all,macosx-all,linux-all
