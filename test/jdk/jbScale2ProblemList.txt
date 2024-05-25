@@ -10,7 +10,6 @@ java/awt/dnd/ImageTransferTest/ImageTransferTest.java  JBR-6442 linux-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-6442 linux-all
 java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-all
-java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-all,windows-aarch64,macosx-all
 java/awt/Focus/6378278/InputVerifierTest.java JBR-5799 windows-all
 java/awt/Focus/6382144/EndlessLoopTest.java JBR-6090 windows-all
 java/awt/Focus/8282640/ScrollPaneFocusBugTest.java JBR-6090 windows-all
@@ -58,6 +57,7 @@ javax/swing/JComponent/7154030/bug7154030.java 8297454,JBR-5510,JBR-6134 macosx-
 javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510,JBR-6283 windows-all,linux-all,macosx-all
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      7124313,JBR-5071 macosx-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6090 linux-all,windows-all
+javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945,JBR-6726 macosx-all,linux-all
 
 jb/java/awt/Focus/ComplexFocusSequence.java JBR-6856 windows-x64
 jb/java/awt/Focus/FrameAfterPopup.java JBR-6856 windows-x64

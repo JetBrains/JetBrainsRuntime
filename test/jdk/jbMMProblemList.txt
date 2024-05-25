@@ -29,7 +29,6 @@ javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-4379 windo
 
 jb/java/awt/dnd/DnDScalingWithHIDPI/DnDScalingWithHIDPITest.java JBR-5442 linux-all
 
-java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 linux-x64,windows-aarch64,macosx-all
 java/awt/Choice/PopdownGeneratesMouseEvents/PopdownGeneratesMouseEvents.java JBR-5510 linux-all
 java/awt/ColorClass/AlphaColorTest.java 8277816,JBR-5510 macosx-aarch64,linux-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java JBR-5210,JBR-5510 windows-all,linux-all
@@ -85,6 +84,7 @@ java/awt/MouseInfo/MultiscreenPointerInfo.java nobug linux-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java 8253184 windows-all,linux-all
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java nobug linux-all
 java/awt/Paint/PaintNativeOnUpdate.java 8253184,JBR-5510 windows-all,linux-all
+java/awt/PopupMenu/PopupMenuLocation.java JBR-7079 linux-x64
 java/awt/PopupMenu/PopupMenuStayOpen.java JBR-6286 linux-all
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8277816,8253184,JBR-5510 macosx-aarch64,windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java  8277816,8253184 macosx-aarch64,windows-all,linux-all
@@ -118,7 +118,7 @@ javax/swing/JTable/7124218/SelectEditTableCell.java nobug linux-all
 javax/swing/JTextPane/TestJTextPaneBackgroundColor.java nobug linux-all
 javax/swing/JToolTip/TestTooltipBackgroundColor.java nobug linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-5510 windows-all,linux-all
-javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945,JBR-6572 macosx-all,linux-all
+javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945,JBR-6572,JBR-6726 macosx-all,linux-all
 javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8277816,8253184,JBR-5510 macosx-aarch64,windows-all,linux-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-all
