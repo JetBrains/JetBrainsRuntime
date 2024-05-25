@@ -33,18 +33,27 @@ import java.util.function.Supplier;
 
 public class WLFrameDecoration {
     private static final int HEIGHT = 30;
-    private static final int BUTTON_ICON_SIZE = 3;
-    private static final int BUTTON_CIRCLE_SIZE = 9;
-    private static final int BUTTON_MAXIMIZED_LINE_GAP = 2;
+    private static final int BUTTON_ICON_SIZE = 4;
+    private static final int BUTTON_CIRCLE_SIZE = 10;
     private static final Font FONT = new Font(Font.DIALOG, Font.BOLD, 12);
-    private static final Color BACKGROUND = Color.white;
-    private static final Color ICON_BACKGROUND = new Color(0xe8e8e8);
-    private static final Color ICON_HOVERED_BACKGROUND = new Color(0xe0e0e0);
-    private static final Color ICON_PRESSED_BACKGROUND = Color.lightGray;
+    private static final Color ACTIVE_BACKGROUND = new Color(0xebebeb);
+    private static final Color ACTIVE_BACKGROUND_DARK = new Color(0x222222);
+    private static final Color INACTIVE_BACKGROUND = new Color(0xfafafa);
+    private static final Color INACTIVE_BACKGROUND_DARK = new Color(0x2c2c2c);
+    private static final Color ICON_BACKGROUND = ACTIVE_BACKGROUND;
+    private static final Color ICON_BACKGROUND_DARK = ACTIVE_BACKGROUND_DARK;
+    private static final Color ICON_HOVERED_BACKGROUND = new Color(0xd1d1d1);
+    private static final Color ICON_HOVERED_BACKGROUND_DARK = new Color(0x373737);
+    private static final Color ICON_PRESSED_BACKGROUND = new Color(0xc0c0c0);
+    private static final Color ICON_PRESSED_BACKGROUND_DARK = new Color(0x565656);
     private static final Color ACTIVE_FOREGROUND = Color.darkGray;
+    private static final Color ACTIVE_FOREGROUND_DARK = new Color(0xf7f7f7);
     private static final Color INACTIVE_FOREGROUND = Color.gray;
+    private static final Color INACTIVE_FOREGROUND_DARK = new Color(0xb5b5b5);
     private static final int SIGNIFICANT_DRAG_DISTANCE = 4;
     private static final int RESIZE_EDGE_THICKNESS = 5;
+
+    private static volatile boolean isDarkTheme = false;
 
     private static final int XDG_TOPLEVEL_RESIZE_EDGE_TOP = 1;
     private static final int XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM = 2;
@@ -144,6 +153,43 @@ public class WLFrameDecoration {
         return numButtons * HEIGHT;
     }
 
+    private static boolean isDarkTheme() {
+        return isDarkTheme;
+    }
+
+    private static void updateTheme() {
+        Boolean isDark = (Boolean) Toolkit.getDefaultToolkit().getDesktopProperty("awt.os.theme.isDark");
+        isDarkTheme = isDark != null && isDark;
+    }
+
+    private static Color getBackgroundColor(boolean isActive) {
+        if (isActive) {
+            return isDarkTheme() ? ACTIVE_BACKGROUND_DARK : ACTIVE_BACKGROUND;
+        } else {
+            return isDarkTheme() ? INACTIVE_BACKGROUND_DARK : INACTIVE_BACKGROUND;
+        }
+    }
+
+    private static Color getIconBackground() {
+        return isDarkTheme() ? ICON_BACKGROUND_DARK : ICON_BACKGROUND;
+    }
+
+    private static Color getIconHoveredBackground() {
+        return isDarkTheme() ? ICON_HOVERED_BACKGROUND_DARK : ICON_HOVERED_BACKGROUND;
+    }
+
+    private static Color getIconPressedBackground() {
+        return isDarkTheme() ? ICON_PRESSED_BACKGROUND_DARK : ICON_PRESSED_BACKGROUND;
+    }
+
+    private static Color getForeground(boolean isActive) {
+        if (isActive) {
+            return isDarkTheme() ? ACTIVE_FOREGROUND_DARK : ACTIVE_FOREGROUND;
+        } else {
+            return isDarkTheme() ? INACTIVE_FOREGROUND_DARK : INACTIVE_FOREGROUND;
+        }
+    }
+
     public void paint(final Graphics g) {
         if (isUndecorated) return;
 
@@ -152,6 +198,7 @@ public class WLFrameDecoration {
         if (width <= 0 || height <= 0) return;
         Graphics2D g2d = (Graphics2D) g.create(0, 0, width, HEIGHT);
         try {
+            updateTheme();
             doPaint(g2d);
         } finally {
             g2d.dispose();
@@ -162,12 +209,12 @@ public class WLFrameDecoration {
     private void doPaint(Graphics2D g) {
         int width = peer.getWidth();
         String title = peer.getTitle();
-        Color foregroundColor = active ? ACTIVE_FOREGROUND : INACTIVE_FOREGROUND;
+        Color foregroundColor = getForeground(active);
 
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        g.setColor(BACKGROUND);
+        g.setColor(getBackgroundColor(active));
         g.fillRect(0, 0, width, HEIGHT);
 
         paintTitle(g, title, foregroundColor, width);
@@ -204,8 +251,8 @@ public class WLFrameDecoration {
 
     private void paintButtonBackground(Graphics2D g, Point center, ButtonState state) {
         if (active) {
-            g.setColor(state.pressed ? ICON_PRESSED_BACKGROUND :
-                    state.hovered ? ICON_HOVERED_BACKGROUND : ICON_BACKGROUND);
+            g.setColor(state.pressed ? getIconPressedBackground() :
+                    state.hovered ? getIconHoveredBackground() : getIconBackground());
             g.fill(new Ellipse2D.Float(center.x - BUTTON_CIRCLE_SIZE + .5f,
                     center.y - BUTTON_CIRCLE_SIZE + .5f,
                     2 * BUTTON_CIRCLE_SIZE, 2 * BUTTON_CIRCLE_SIZE));
@@ -223,22 +270,28 @@ public class WLFrameDecoration {
     private void paintMaximizeButton(Graphics2D g, Point center, Color foregroundColor) {
         g.setColor(foregroundColor);
         if (peer.getState() == Frame.MAXIMIZED_BOTH) {
-            g.drawRect(center.x - BUTTON_ICON_SIZE, center.y - BUTTON_ICON_SIZE + BUTTON_MAXIMIZED_LINE_GAP,
-                    2 * BUTTON_ICON_SIZE - BUTTON_MAXIMIZED_LINE_GAP, 2 * BUTTON_ICON_SIZE - BUTTON_MAXIMIZED_LINE_GAP);
-            g.drawLine(center.x - BUTTON_ICON_SIZE + BUTTON_MAXIMIZED_LINE_GAP, center.y - BUTTON_ICON_SIZE,
-                    center.x + BUTTON_ICON_SIZE, center.y - BUTTON_ICON_SIZE);
-            g.drawLine(center.x + BUTTON_ICON_SIZE, center.y - BUTTON_ICON_SIZE,
-                    center.x + BUTTON_ICON_SIZE, center.y + BUTTON_ICON_SIZE - BUTTON_MAXIMIZED_LINE_GAP);
+            g.drawLine(center.x - BUTTON_ICON_SIZE, center.y,
+                    center.x, center.y - BUTTON_ICON_SIZE);
+            g.drawLine(center.x, center.y - BUTTON_ICON_SIZE,
+                    center.x + BUTTON_ICON_SIZE, center.y);
+            g.drawLine(center.x - BUTTON_ICON_SIZE, center.y,
+                    center.x, center.y + BUTTON_ICON_SIZE);
+            g.drawLine(center.x, center.y + BUTTON_ICON_SIZE,
+                    center.x + BUTTON_ICON_SIZE, center.y);
         } else {
-            g.drawRect(center.x - BUTTON_ICON_SIZE, center.y - BUTTON_ICON_SIZE,
-                    2 * BUTTON_ICON_SIZE, 2 * BUTTON_ICON_SIZE);
+            g.drawLine(center.x - BUTTON_ICON_SIZE, center.y + BUTTON_ICON_SIZE / 2,
+                    center.x, center.y - BUTTON_ICON_SIZE / 2);
+            g.drawLine(center.x, center.y - BUTTON_ICON_SIZE / 2,
+                    center.x + BUTTON_ICON_SIZE, center.y + BUTTON_ICON_SIZE / 2);
         }
     }
 
     private void paintMinimizeButton(Graphics2D g, Point center, Color foregroundColor) {
         g.setColor(foregroundColor);
-        g.drawLine(center.x - BUTTON_ICON_SIZE, center.y + BUTTON_ICON_SIZE,
-                center.x + BUTTON_ICON_SIZE, center.y + BUTTON_ICON_SIZE);
+        g.drawLine(center.x - BUTTON_ICON_SIZE, center.y - BUTTON_ICON_SIZE / 2,
+                center.x, center.y + BUTTON_ICON_SIZE / 2);
+        g.drawLine(center.x, center.y + BUTTON_ICON_SIZE / 2,
+                center.x + BUTTON_ICON_SIZE, center.y -  BUTTON_ICON_SIZE / 2);
     }
 
     @SuppressWarnings("deprecation")
