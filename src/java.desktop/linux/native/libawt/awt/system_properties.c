@@ -192,7 +192,10 @@ JNIEXPORT jint JNICALL Java_sun_awt_UNIXToolkit_isSystemDarkColorScheme() {
         if (!sendDBusMessageWithReply(msg_freedesktop_appearance, &res, DBUS_TYPE_UINT32)) {
             return UNKNOWN_RESULT;
         }
-        return res;
+        /* From org.freedesktop.portal color-scheme specs:
+         * 0: No preference, 1: Prefer dark appearance, 2: Prefer light appearance
+         */
+        return res == 1;
     } else {
         char *res = NULL;
         if (!sendDBusMessageWithReply(msg_gnome_desktop, &res, DBUS_TYPE_STRING)) {
