@@ -4242,25 +4242,6 @@ char* os::pd_attempt_reserve_memory_at(char* requested_addr, size_t bytes, bool 
   return nullptr;
 }
 
-// Used to convert frequent JVM_Yield() to nops
-bool os::dont_yield() {
-  return DontYieldALot;
-}
-
-// Linux CFS scheduler (since 2.6.23) does not guarantee sched_yield(2) will
-// actually give up the CPU. Since skip buddy (v2.6.28):
-//
-// * Sets the yielding task as skip buddy for current CPU's run queue.
-// * Picks next from run queue, if empty, picks a skip buddy (can be the yielding task).
-// * Clears skip buddies for this run queue (yielding task no longer a skip buddy).
-//
-// An alternative is calling os::naked_short_nanosleep with a small number to avoid
-// getting re-scheduled immediately.
-//
-void os::naked_yield() {
-  sched_yield();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // thread priority support
 
