@@ -25,55 +25,64 @@
  * @test
  * @summary Regression test for JBR-6704 Extra IME event fired when pressing a keystroke containing Ctrl and focus moving to a different window
  * @modules java.desktop/sun.lwawt.macosx
- * @run main InputMethodTest CtrlShortcutNewWindowTest
- * @requires (jdk.version.major >= 8 & os.family == "mac")
+ * @run main CtrlShortcutNewWindowTest
+ * @requires (jdk.version.major >= 17 & os.family == "mac")
  */
 
 import javax.swing.*;
 
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
 import static java.awt.event.KeyEvent.*;
 
-public class CtrlShortcutNewWindowTest implements Runnable {
+public class CtrlShortcutNewWindowTest extends TestFixture {
     @Override
-    public void run() {
-        var frame = new JFrame();
-        frame.setSize(300, 300);
-        frame.setLocation(100, 100);
-        JTextField textField = new JTextField();
-        frame.add(textField);
-        textField.requestFocusInWindow();
-
+    public void test() throws Exception {
+        final JFrame[] frame = {null};
+        final JTextField[] textField = {null};
         final boolean[] keyPressed = {false};
 
-        InputMethodTest.textArea.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == VK_BACK_QUOTE && (e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0) {
-                    keyPressed[0] = true;
-                    frame.setVisible(true);
+        SwingUtilities.invokeAndWait(() -> {
+            frame[0] = new JFrame("frame 2");
+            frame[0].setSize(300, 300);
+            frame[0].setLocation(100, 100);
+            textField[0] = new JTextField();
+            frame[0].add(textField[0]);
+            textField[0].requestFocusInWindow();
+
+            inputArea.addKeyListener(new KeyAdapter() {
+                @Override
+                public void keyPressed(KeyEvent e) {
+                    if (e.getKeyCode() == VK_BACK_QUOTE && (e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0) {
+                        keyPressed[0] = true;
+                        frame[0].setVisible(true);
+                    }
                 }
-            }
+            });
         });
 
-        InputMethodTest.section("Ctrl+Backtick");
-        InputMethodTest.layout("com.apple.keylayout.ABC");
-        InputMethodTest.type(VK_BACK_QUOTE, CTRL_DOWN_MASK);
-        InputMethodTest.delay(500);
+        section("Ctrl+Backtick");
+        layout("com.apple.keylayout.ABC");
+        press(VK_BACK_QUOTE, CTRL_DOWN_MASK);
+        delay(500);
 
-        if (!keyPressed[0]) {
-            InputMethodTest.fail("Ctrl+Backtick key combination not detected");
-        }
+        expect(keyPressed[0], "Ctrl+Backtick pressed");
 
-        if (!textField.getText().isEmpty()) {
-            InputMethodTest.fail("Extra characters in the text field");
-        }
+        String[] text = {null};
+        SwingUtilities.invokeAndWait(() -> {
+            text[0] = textField[0].getText();
+        });
 
-        frame.setVisible(false);
-        frame.dispose();
+        expect(text[0].isEmpty(), "Second text field empty");
+
+        SwingUtilities.invokeAndWait(() -> {
+            frame[0].setVisible(false);
+            frame[0].dispose();
+        });
+    }
+
+    public static void main(String[] args) {
+        new CtrlShortcutNewWindowTest().run();
     }
 }
