@@ -25,15 +25,15 @@
  * @test
  * @summary Regression test for JBR-5173 macOS keyboard support rewrite
  * @modules java.desktop/sun.lwawt.macosx
- * @run main/othervm -Dcom.sun.awt.reportDeadKeysAsNormal=false InputMethodTest KeyCodesTest
- * @requires (jdk.version.major >= 8 & os.family == "mac")
+ * @run main/othervm -Dcom.sun.awt.reportDeadKeysAsNormal=false KeyCodesTest
+ * @requires (jdk.version.major >= 17 & os.family == "mac")
  */
 
 import sun.lwawt.macosx.LWCToolkit;
 
 import static java.awt.event.KeyEvent.*;
 
-public class KeyCodesTest implements Runnable {
+public class KeyCodesTest extends TestFixture {
     static private final int ROBOT_KEYCODE_BACK_QUOTE_ISO = 0x2000132;
     static private final int ROBOT_KEYCODE_RIGHT_COMMAND = 0x2000036;
     static private final int ROBOT_KEYCODE_RIGHT_SHIFT = 0x200003C;
@@ -44,8 +44,9 @@ public class KeyCodesTest implements Runnable {
     static private final int ROBOT_KEYCODE_NUMPAD_ENTER = 0x200004C;
     static private final int ROBOT_KEYCODE_NUMPAD_EQUALS = 0x2000051;
     static private final int VK_SECTION = 0x01000000+0x00A7;
+
     @Override
-    public void run() {
+    public void test() throws Exception {
         // ordinary non-letter character with VK_ key codes
         verify("!", VK_EXCLAMATION_MARK, "com.apple.keylayout.French-PC", VK_SLASH);
         verify("\"", VK_QUOTEDBL, "com.apple.keylayout.French-PC", VK_3);
@@ -76,7 +77,6 @@ public class KeyCodesTest implements Runnable {
         verify("{", VK_BRACELEFT, "com.apple.keylayout.LatinAmerican", VK_QUOTE);
         verify("}", VK_BRACERIGHT, "com.apple.keylayout.LatinAmerican", VK_BACK_SLASH);
         verify("\u00a1", VK_INVERTED_EXCLAMATION_MARK, "com.apple.keylayout.Spanish-ISO", VK_EQUALS);
-        // TODO: figure out which keyboard layout has VK_EURO_SIGN as a key on the primary layer
         verify(" ", VK_SPACE, "com.apple.keylayout.ABC", VK_SPACE);
 
         // control characters
@@ -131,15 +131,6 @@ public class KeyCodesTest implements Runnable {
         verify("", VK_CONTROL, "com.apple.keylayout.ABC", ROBOT_KEYCODE_RIGHT_CONTROL, VK_UNDEFINED, KEY_LOCATION_RIGHT, CTRL_DOWN_MASK);
         verify("", VK_SHIFT, "com.apple.keylayout.ABC", VK_SHIFT, VK_UNDEFINED, KEY_LOCATION_LEFT, SHIFT_DOWN_MASK);
         verify("", VK_SHIFT, "com.apple.keylayout.ABC", ROBOT_KEYCODE_RIGHT_SHIFT, VK_UNDEFINED, KEY_LOCATION_RIGHT, SHIFT_DOWN_MASK);
-
-        // TODO: disabled the test because it was flapping and isn't very useful anyways
-//        // duplicate key codes: Vietnamese ANSI_6 / ANSI_9
-//        verify(" \u0309", 0x1000000+0x0309, "com.apple.keylayout.Vietnamese", VK_6);
-//        verify(" \u0323", 0x1000000+0x0323, "com.apple.keylayout.Vietnamese", VK_9);
-//
-//        // duplicated key codes (dead): Apache ANSI_LeftBracket / ANSI_RightBracket
-//        verify("\u02db", VK_DEAD_OGONEK, "com.apple.keylayout.Apache", VK_OPEN_BRACKET, 0x1000000+0x02DB, KEY_LOCATION_STANDARD, 0);
-//        verify("\u02db\u0301", 0x1000000+0x0301, "com.apple.keylayout.Apache", VK_CLOSE_BRACKET);
     }
 
     private void verify(String typed, int vk, String layout, int key, int charKeyCode, int location, int modifiers) {
@@ -148,19 +139,23 @@ public class KeyCodesTest implements Runnable {
             return;
         }
         char ch = (typed.length() == 1) ? typed.charAt(0) : 0;
-        InputMethodTest.section("Key code test: " + vk + ", layout: " + layout + ", char: " + String.format("U+%04X", (int)ch));
-        InputMethodTest.layout(layout);
-        InputMethodTest.type(key, 0);
-        InputMethodTest.expectText(typed);
+        section("Key code test: " + vk + ", layout: " + layout + ", char: " + String.format("U+%04X", (int)ch));
+        layout(layout);
+        press(key);
+        expectText(typed);
 
         if (ch != 0) {
-            InputMethodTest.expectTrue(getExtendedKeyCodeForChar(ch) == charKeyCode, "getExtendedKeyCodeForChar");
+            expectEquals(getExtendedKeyCodeForChar(ch), charKeyCode);
         }
 
-        InputMethodTest.expectKeyPress(vk, location, modifiers, true);
+        expectKeyPressed(vk, modifiers);
     }
 
     private void verify(String typed, int vk, String layout, int key) {
         verify(typed, vk, layout, key, vk, KEY_LOCATION_STANDARD, 0);
+    }
+
+    public static void main(String[] args) {
+        new KeyCodesTest().run();
     }
 }
