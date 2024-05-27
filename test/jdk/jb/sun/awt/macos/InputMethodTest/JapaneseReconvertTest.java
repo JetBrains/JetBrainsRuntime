@@ -27,27 +27,39 @@ import static java.awt.event.KeyEvent.*;
  * @test
  * @summary Regression test for JBR-7119 Converting to Hanja/Kanji on macOS doesn't replace the converted Hangul/Kana symbols
  * @modules java.desktop/sun.lwawt.macosx
- * @run main InputMethodTest JapaneseReconvertTest
- * @requires (jdk.version.major >= 8 & os.family == "mac")
+ * @run main JapaneseReconvertTest
+ * @requires (jdk.version.major >= 17 & os.family == "mac")
  */
 
-public class JapaneseReconvertTest implements Runnable {
+public class JapaneseReconvertTest extends TestFixture {
     @Override
-    public void run() {
-        InputMethodTest.layout("com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese");
-        InputMethodTest.type(VK_N, 0);
-        InputMethodTest.type(VK_I, 0);
-        InputMethodTest.type(VK_H, 0);
-        InputMethodTest.type(VK_O, 0);
-        InputMethodTest.type(VK_N, 0);
-        InputMethodTest.type(VK_G, 0);
-        InputMethodTest.type(VK_O, 0);
-        InputMethodTest.type(VK_ENTER, 0);
-        InputMethodTest.expectText("日本語");
+    public void test() throws Exception {
+        layout("com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese");
+        press(VK_N);
+        press(VK_I);
+        press(VK_H);
+        press(VK_O);
+        press(VK_N);
+        press(VK_G);
+        press(VK_O);
+        press(VK_ENTER);
 
-        InputMethodTest.type(VK_R, CTRL_DOWN_MASK | SHIFT_DOWN_MASK);
-        InputMethodTest.type(VK_ENTER, 0);
-        InputMethodTest.type(VK_ENTER, 0);
-        InputMethodTest.expectText("日本語");
+        var text = getText();
+
+        press(VK_R, CTRL_DOWN_MASK | SHIFT_DOWN_MASK);
+        press(VK_ENTER);
+        press(VK_ENTER);
+
+        expectText(text);
+
+        press(VK_R, CTRL_DOWN_MASK | SHIFT_DOWN_MASK);
+        press(VK_UP);
+        press(VK_ENTER);
+        press(VK_ENTER);
+        expectNotEquals(getText(), text);
+    }
+
+    public static void main(String[] args) {
+        new JapaneseReconvertTest().run();
     }
 }
