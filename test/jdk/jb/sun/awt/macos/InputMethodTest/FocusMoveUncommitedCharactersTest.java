@@ -25,8 +25,8 @@
  * @test
  * @summary Regression test for JBR-5379 Last character from Korean input gets inserted once again on click
  * @modules java.desktop/sun.lwawt.macosx
- * @run main InputMethodTest FocusMoveUncommitedCharactersTest
- * @requires (jdk.version.major >= 8 & os.family == "mac")
+ * @run main FocusMoveUncommitedCharactersTest
+ * @requires (jdk.version.major >= 17 & os.family == "mac")
  */
 
 import javax.swing.*;
@@ -35,30 +35,34 @@ import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.util.List;
 
 import static java.awt.event.KeyEvent.*;
 
-public class FocusMoveUncommitedCharactersTest implements Runnable {
+public class FocusMoveUncommitedCharactersTest extends TestFixture {
+    private JTextArea textArea2;
+    private boolean typedEventReceived = false;
+
     @Override
-    public void run() {
-        var textArea2 = new JTextArea();
-        final boolean[] typedEventReceived = {false};
+    protected List<JComponent> getExtraComponents() {
+        textArea2 = new JTextArea();
 
         textArea2.addKeyListener(new KeyAdapter() {
             @Override
             public void keyTyped(KeyEvent e) {
-                typedEventReceived[0] = true;
+                typedEventReceived = true;
             }
         });
 
-        InputMethodTest.frame.getContentPane().add(textArea2, BorderLayout.SOUTH);
-        textArea2.setVisible(true);
+        return List.of(textArea2);
+    }
 
-        InputMethodTest.layout("com.apple.inputmethod.Korean.2SetKorean");
-        InputMethodTest.type(VK_A, 0);
-        InputMethodTest.type(VK_K, 0);
+    @Override
+    public void test() throws Exception {
+        layout("com.apple.inputmethod.Korean.2SetKorean");
+        press(VK_A);
+        press(VK_K);
 
-        var robot = InputMethodTest.robot;
         var point = new Point(textArea2.getWidth() / 2, textArea2.getHeight() / 2);
         SwingUtilities.convertPointToScreen(point, textArea2);
 
@@ -68,7 +72,11 @@ public class FocusMoveUncommitedCharactersTest implements Runnable {
 
         robot.delay(1000);
 
-        InputMethodTest.expectTrue(!typedEventReceived[0], "Expected no KeyTyped events on the second text area");
-        InputMethodTest.expectTrue(textArea2.getText().isEmpty(), "Expected second text area to be empty");
+        expect(!typedEventReceived, "no KeyTyped events on the second text area");
+        expect(textArea2.getText().isEmpty(), "second text area is empty");
+    }
+
+    public static void main(String[] args) {
+        new FocusMoveUncommitedCharactersTest().run();
     }
 }
