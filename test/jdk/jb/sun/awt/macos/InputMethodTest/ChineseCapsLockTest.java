@@ -25,8 +25,8 @@
  * @test
  * @summary Regression test for JBR-5254: CapsLock and Chinese IMs don't work properly
  * @modules java.desktop/sun.lwawt.macosx
- * @run main InputMethodTest PinyinCapsLockTest
- * @requires (jdk.version.major >= 8 & os.family == "mac")
+ * @run main ChineseCapsLockTest
+ * @requires (jdk.version.major >= 17 & os.family == "mac")
  */
 
 import java.util.ArrayList;
@@ -35,7 +35,7 @@ import java.util.List;
 
 import static java.awt.event.KeyEvent.*;
 
-public class PinyinCapsLockTest implements Runnable {
+public class ChineseCapsLockTest extends TestFixture {
     private static final List<String> expectLowercase = new ArrayList<>(Arrays.asList(
             "com.apple.inputmethod.SCIM.ITABC",
             "com.apple.inputmethod.SCIM.Shuangpin",
@@ -58,7 +58,7 @@ public class PinyinCapsLockTest implements Runnable {
     ));
 
     @Override
-    public void run() {
+    public void test() throws Exception {
         for (String layout : expectLowercase) {
             testLatinTyping(layout, false);
         }
@@ -69,13 +69,17 @@ public class PinyinCapsLockTest implements Runnable {
     }
 
     private void testLatinTyping(String layout, boolean expectUppercase) {
-        InputMethodTest.section(layout);
-        InputMethodTest.layout(layout);
-        InputMethodTest.setCapsLockState(true);
-        InputMethodTest.type(VK_A, 0);
-        InputMethodTest.type(VK_B, 0);
-        InputMethodTest.type(VK_C, 0);
-        InputMethodTest.expectText(expectUppercase ? "ABC" : "abc");
-        InputMethodTest.type(VK_ESCAPE, 0);
+        section(layout);
+        layout(layout);
+        setCapsLockState(true);
+        press(VK_A);
+        press(VK_B);
+        press(VK_C);
+        expectText(expectUppercase ? "ABC" : "abc");
+        press(VK_ESCAPE);
+    }
+
+    public static void main(String[] args) {
+        new ChineseCapsLockTest().run();
     }
 }
