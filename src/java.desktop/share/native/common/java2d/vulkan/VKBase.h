@@ -137,7 +137,6 @@ typedef struct {
 } VKGraphicsEnvironment;
 
 
-jboolean VK_Init(jboolean verbose, jint requestedDevice);
 jboolean VK_FindDevices();
 jboolean VK_CreateLogicalDevice(jint requestedDeviceNumber);
 jboolean VK_CreateLogicalDeviceRenderers();
