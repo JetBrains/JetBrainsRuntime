@@ -25,9 +25,9 @@
  * @test
  * @summary Regression test for JBR-5469 Something weird going on with Cmd+Backtick / Cmd+Dead Grave
  * @modules java.desktop/sun.lwawt.macosx
- * @run main/othervm -Dapple.awt.captureNextAppWinKey=true -Dcom.sun.awt.reportDeadKeysAsNormal=false InputMethodTest NextAppWinKeyTestDead
- * @run main/othervm -Dapple.awt.captureNextAppWinKey=true -Dcom.sun.awt.reportDeadKeysAsNormal=true InputMethodTest NextAppWinKeyTestNormal
- * @requires (jdk.version.major >= 8 & os.family == "mac")
+ * @run main/othervm -Dapple.awt.captureNextAppWinKey=true -Dcom.sun.awt.reportDeadKeysAsNormal=false NextAppWinKeyTest dead
+ * @run main/othervm -Dapple.awt.captureNextAppWinKey=true -Dcom.sun.awt.reportDeadKeysAsNormal=true NextAppWinKeyTest normal
+ * @requires (jdk.version.major >= 17 & os.family == "mac")
  */
 
 import javax.swing.*;
@@ -37,7 +37,7 @@ import java.awt.event.FocusListener;
 
 import static java.awt.event.KeyEvent.*;
 
-public class NextAppWinKeyTest implements Runnable {
+public class NextAppWinKeyTest extends TestFixture {
     private final boolean deadKeys;
 
     public NextAppWinKeyTest(boolean deadKeys) {
@@ -45,38 +45,48 @@ public class NextAppWinKeyTest implements Runnable {
     }
 
     @Override
-    public void run() {
-        var extraFrame = new JFrame();
-        extraFrame.setAutoRequestFocus(false);
-        extraFrame.setSize(300, 300);
-        extraFrame.setLocation(100, 100);
-        extraFrame.setVisible(true);
-        extraFrame.addFocusListener(new FocusListener() {
-            @Override
-            public void focusGained(FocusEvent focusEvent) {
-                InputMethodTest.fail("Focus switched to the other window");
-            }
+    public void test() throws Exception {
+        final JFrame[] extraFrame = new JFrame[1];
+        SwingUtilities.invokeAndWait(() -> {
+            extraFrame[0] = new JFrame();
+            extraFrame[0].setAutoRequestFocus(false);
+            extraFrame[0].setSize(300, 300);
+            extraFrame[0].setLocation(100, 100);
+            extraFrame[0].setVisible(true);
+            extraFrame[0].addFocusListener(new FocusListener() {
+                @Override
+                public void focusGained(FocusEvent focusEvent) {
+                    expect(false, "Focus switched to the other window");
+                }
 
-            @Override
-            public void focusLost(FocusEvent focusEvent) {}
+                @Override
+                public void focusLost(FocusEvent focusEvent) {}
+            });
         });
 
-        InputMethodTest.section("ABC");
-        InputMethodTest.layout("com.apple.keylayout.ABC");
-        InputMethodTest.type(VK_BACK_QUOTE, META_DOWN_MASK);
-        InputMethodTest.expectKeyPress(VK_BACK_QUOTE, KEY_LOCATION_STANDARD, META_DOWN_MASK, false);
+        section("ABC");
+        layout("com.apple.keylayout.ABC");
+        press(VK_BACK_QUOTE, META_DOWN_MASK);
+        expectKeyPressed(VK_BACK_QUOTE, META_DOWN_MASK);
 
-        InputMethodTest.section("US-Intl");
-        InputMethodTest.layout("com.apple.keylayout.USInternational-PC");
-        InputMethodTest.type(VK_BACK_QUOTE, META_DOWN_MASK);
-        InputMethodTest.expectKeyPress(deadKeys ? VK_DEAD_GRAVE : VK_BACK_QUOTE, KEY_LOCATION_STANDARD, META_DOWN_MASK, false);
+        section("US-Intl");
+        layout("com.apple.keylayout.USInternational-PC");
+        press(VK_BACK_QUOTE, META_DOWN_MASK);
+        expectKeyPressed(deadKeys ? VK_DEAD_GRAVE : VK_BACK_QUOTE, META_DOWN_MASK);
 
-        InputMethodTest.section("French");
-        InputMethodTest.layout("com.apple.keylayout.French");
-        InputMethodTest.type(VK_BACK_SLASH, META_DOWN_MASK);
-        InputMethodTest.expectKeyPress(deadKeys ? VK_DEAD_GRAVE : VK_BACK_QUOTE, KEY_LOCATION_STANDARD, META_DOWN_MASK, false);
+        section("French");
+        layout("com.apple.keylayout.French");
+        press(VK_BACK_SLASH, META_DOWN_MASK);
+        expectKeyPressed(deadKeys ? VK_DEAD_GRAVE : VK_BACK_QUOTE, META_DOWN_MASK);
 
-        extraFrame.setVisible(false);
-        extraFrame.dispose();
+        SwingUtilities.invokeAndWait(() -> {
+            extraFrame[0].setVisible(false);
+            extraFrame[0].dispose();
+        });
+    }
+
+    public static void main(String[] args) {
+        assert args.length == 1;
+        new NextAppWinKeyTest(args[0].equals("dead")).run();
     }
 }
