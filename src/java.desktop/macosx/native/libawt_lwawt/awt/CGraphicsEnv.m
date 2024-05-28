@@ -122,9 +122,9 @@ static void displaycb_handle
         if (graphicsEnv == NULL) return; // ref already GC'd
         DECLARE_CLASS(jc_CGraphicsEnvironment, "sun/awt/CGraphicsEnvironment");
         DECLARE_METHOD(jm_displayReconfiguration,
-                jc_CGraphicsEnvironment, "_displayReconfiguration","(IZ)V");
+                jc_CGraphicsEnvironment, "_displayReconfiguration","(II)V");
         (*env)->CallVoidMethod(env, graphicsEnv, jm_displayReconfiguration,
-                (jint) display, (jboolean) flags & kCGDisplayRemoveFlag);
+                (jint) display, (jint) flags);
         (*env)->DeleteLocalRef(env, graphicsEnv);
         CHECK_EXCEPTION();
     }];
