@@ -486,11 +486,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
 
                     VKRenderer_BeginRendering();
 
-                    VKRenderer_ColorRender(
-                            winDstOps->vksdOps.image,
-                            winDstOps->vksdOps.fillVertexBuffer->buffer, 4
-                    );
-
+                    VKRenderer_ColorRenderMaxRect(winDstOps->vksdOps.image, winDstOps->vksdOps.bgColor);
                     VKRenderer_EndRendering(VK_FALSE, VK_FALSE);
                 }
             }

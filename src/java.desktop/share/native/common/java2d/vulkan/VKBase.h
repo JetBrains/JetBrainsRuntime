@@ -47,6 +47,7 @@ typedef struct {
     VkPhysicalDevice    physicalDevice;
     VKRenderer*         fillTexturePoly;
     VKRenderer*         fillColorPoly;
+    VKRenderer*         fillMaxColorPoly;
     char*               name;
     uint32_t            queueFamily;
     pchar*              enabledLayers;
@@ -134,6 +135,7 @@ typedef struct {
     PFN_vkDestroyImage vkDestroyImage;
     PFN_vkDestroyFramebuffer vkDestroyFramebuffer;
     PFN_vkFlushMappedMemoryRanges vkFlushMappedMemoryRanges;
+    PFN_vkCmdPushConstants vkCmdPushConstants;
 } VKGraphicsEnvironment;
 
 

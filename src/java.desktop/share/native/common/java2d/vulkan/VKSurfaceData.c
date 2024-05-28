@@ -46,19 +46,6 @@ void VKSD_InitImageSurface(VKSDOps *vksdo) {
         J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create image\n");
         return;
     }
-    
-    VKCVertex* cVertices = ARRAY_ALLOC(VKCVertex, 4);
-    ARRAY_PUSH_BACK(&cVertices, ((VKCVertex){-1.0f, -1.0f, RGBA_TO_L4(vksdo->bgColor)}));
-    ARRAY_PUSH_BACK(&cVertices, ((VKCVertex){1.0f, -1.0f, RGBA_TO_L4(vksdo->bgColor)}));
-    ARRAY_PUSH_BACK(&cVertices, ((VKCVertex){-1.0f, 1.0f, RGBA_TO_L4(vksdo->bgColor)}));
-    ARRAY_PUSH_BACK(&cVertices, ((VKCVertex){1.0f, 1.0f, RGBA_TO_L4(vksdo->bgColor)}));
-
-    vksdo->fillVertexBuffer = ARRAY_TO_VERTEX_BUF(cVertices);
-    if (!vksdo->fillVertexBuffer) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create vertex buffer\n")
-        return;
-    }
-    ARRAY_FREE(cVertices);
 }
 
 void VKSD_InitWindowSurface(VKWinSDOps *vkwinsdo) {

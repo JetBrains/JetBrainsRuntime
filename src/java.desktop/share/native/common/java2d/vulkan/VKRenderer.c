@@ -466,6 +466,157 @@ VKRenderer* VKRenderer_CreateFillColorPoly() {
     return fillColorPoly;
 }
 
+VKRenderer* VKRenderer_CreateFillMaxColorPoly() {
+    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
+    VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
+    VKRenderer* fillColorPoly = malloc(sizeof (VKRenderer ));
+
+    VkDevice device = logicalDevice->device;
+
+    if (ge->vkCreateRenderPass(logicalDevice->device, VKRenderer_GetGenericRenderPassInfo(),
+                               NULL, &fillColorPoly->renderPass) != VK_SUCCESS)
+    {
+        J2dRlsTrace(J2D_TRACE_INFO, "Cannot create render pass for device")
+        return JNI_FALSE;
+    }
+
+    // Create graphics pipeline
+    VkShaderModule vertShaderModule = createShaderModule(device, color_max_rect_vert_data, sizeof (color_max_rect_vert_data));
+    VkShaderModule fragShaderModule = createShaderModule(device, color_max_rect_frag_data, sizeof (color_max_rect_frag_data));
+
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_VERTEX_BIT,
+            .module = vertShaderModule,
+            .pName = "main"
+    };
+
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = fragShaderModule,
+            .pName = "main"
+    };
+
+    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+            .vertexBindingDescriptionCount = 0,
+            .vertexAttributeDescriptionCount = 0,
+    };
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+            .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+            .primitiveRestartEnable = VK_FALSE
+    };
+
+    VkPipelineViewportStateCreateInfo viewportState = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+            .viewportCount = 1,
+            .scissorCount = 1
+    };
+
+    VkPipelineRasterizationStateCreateInfo rasterizer = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+            .depthClampEnable = VK_FALSE,
+            .rasterizerDiscardEnable = VK_FALSE,
+            .polygonMode = VK_POLYGON_MODE_FILL,
+            .lineWidth = 1.0f,
+            .cullMode = VK_CULL_MODE_NONE,
+            .depthBiasEnable = VK_FALSE,
+            .depthBiasConstantFactor = 0.0f,
+            .depthBiasClamp = 0.0f,
+            .depthBiasSlopeFactor = 0.0f
+    };
+
+    VkPipelineMultisampleStateCreateInfo multisampling = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+            .sampleShadingEnable = VK_FALSE,
+            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
+    };
+
+    VkPipelineColorBlendAttachmentState colorBlendAttachment = {
+            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+                              VK_COLOR_COMPONENT_G_BIT |
+                              VK_COLOR_COMPONENT_B_BIT |
+                              VK_COLOR_COMPONENT_A_BIT,
+            .blendEnable = VK_FALSE
+    };
+
+    VkPipelineColorBlendStateCreateInfo colorBlending = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+            .logicOpEnable = VK_FALSE,
+            .logicOp = VK_LOGIC_OP_COPY,
+            .attachmentCount = 1,
+            .pAttachments = &colorBlendAttachment,
+            .blendConstants[0] = 0.0f,
+            .blendConstants[1] = 0.0f,
+            .blendConstants[2] = 0.0f,
+            .blendConstants[3] = 0.0f
+    };
+
+    VkDynamicState dynamicStates[] = {
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR
+    };
+
+    VkPipelineDynamicStateCreateInfo dynamicState = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+            .dynamicStateCount = 2,
+            .pDynamicStates = dynamicStates
+    };
+
+    VkPushConstantRange pushConstantRange = {
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = 0,
+            .size = sizeof(float) * 4
+    };
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 0,
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges = &pushConstantRange
+    };
+
+    if (ge->vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL,
+                                   &fillColorPoly->pipelineLayout) != VK_SUCCESS)
+    {
+        J2dRlsTrace(J2D_TRACE_INFO, "failed to create pipeline layout!\n")
+        return JNI_FALSE;
+    }
+
+    VkGraphicsPipelineCreateInfo pipelineInfo = {
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount = 2,
+            .pStages = shaderStages,
+            .pVertexInputState = &vertexInputInfo,
+            .pInputAssemblyState = &inputAssembly,
+            .pViewportState = &viewportState,
+            .pRasterizationState = &rasterizer,
+            .pMultisampleState = &multisampling,
+            .pColorBlendState = &colorBlending,
+            .pDynamicState = &dynamicState,
+            .layout = fillColorPoly->pipelineLayout,
+            .renderPass = fillColorPoly->renderPass,
+            .subpass = 0,
+            .basePipelineHandle = VK_NULL_HANDLE,
+            .basePipelineIndex = -1
+    };
+
+    if (ge->vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
+                                      &fillColorPoly->graphicsPipeline) != VK_SUCCESS)
+    {
+        J2dRlsTrace(J2D_TRACE_INFO, "failed to create graphics pipeline!\n")
+        return JNI_FALSE;
+    }
+    ge->vkDestroyShaderModule(device, fragShaderModule, NULL);
+    ge->vkDestroyShaderModule(device, vertShaderModule, NULL);
+
+    return fillColorPoly;
+}
+
 void VKRenderer_BeginRendering() {
     VKGraphicsEnvironment* ge = VKGE_graphics_environment();
     VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
@@ -623,6 +774,63 @@ void VKRenderer_ColorRender(VKImage *destImage, VkBuffer vertexBuffer, uint32_t 
 
 }
 
+void VKRenderer_ColorRenderMaxRect(VKImage *destImage, uint32_t rgba) {
+    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
+    VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
+
+
+    VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    VkRenderPassBeginInfo renderPassInfo = {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .renderPass = logicalDevice->fillMaxColorPoly->renderPass,
+            .framebuffer = destImage->framebuffer,
+            .renderArea.offset = (VkOffset2D){0, 0},
+            .renderArea.extent = destImage->extent,
+            .clearValueCount = 1,
+            .pClearValues = &clearColor
+    };
+
+    ge->vkCmdBeginRenderPass(logicalDevice->commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    ge->vkCmdBindPipeline(logicalDevice->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          logicalDevice->fillMaxColorPoly->graphicsPipeline);
+
+    struct PushConstants {
+        float r, g, b, a;
+    } pushConstants;
+
+    pushConstants = (struct PushConstants){RGBA_TO_L4(rgba)};
+
+    ge->vkCmdPushConstants(
+            logicalDevice->commandBuffer,
+            logicalDevice->fillMaxColorPoly->pipelineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            0,
+            sizeof(struct PushConstants),
+            &pushConstants
+    );
+
+    VkViewport viewport = {
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = destImage->extent.width,
+            .height = destImage->extent.height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f
+    };
+
+    ge->vkCmdSetViewport(logicalDevice->commandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor = {
+            .offset = (VkOffset2D){0, 0},
+            .extent = destImage->extent,
+    };
+
+    ge->vkCmdSetScissor(logicalDevice->commandBuffer, 0, 1, &scissor);
+    ge->vkCmdDraw(logicalDevice->commandBuffer, 4, 1, 0, 0);
+
+    ge->vkCmdEndRenderPass(logicalDevice->commandBuffer);
+}
+
 void
 VKRenderer_FillRect(jint x, jint y, jint w, jint h)
 {
@@ -638,7 +846,8 @@ jboolean VK_CreateLogicalDeviceRenderers() {
     VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
     logicalDevice->fillTexturePoly = VKRenderer_CreateFillTexturePoly();
     logicalDevice->fillColorPoly = VKRenderer_CreateFillColorPoly();
-    if (!logicalDevice->fillTexturePoly || !logicalDevice->fillColorPoly) {
+    logicalDevice->fillMaxColorPoly = VKRenderer_CreateFillMaxColorPoly();
+    if (!logicalDevice->fillTexturePoly || !logicalDevice->fillColorPoly || !logicalDevice->fillMaxColorPoly) {
         return JNI_FALSE;
     }
     return JNI_TRUE;

@@ -441,6 +441,7 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
         VKGE_INIT_VK_PROC_RET_NULL_IF_ERR(geInstance, vkDestroyImage);
         VKGE_INIT_VK_PROC_RET_NULL_IF_ERR(geInstance, vkDestroyFramebuffer);
         VKGE_INIT_VK_PROC_RET_NULL_IF_ERR(geInstance, vkFlushMappedMemoryRanges);
+        VKGE_INIT_VK_PROC_RET_NULL_IF_ERR(geInstance, vkCmdPushConstants);
 
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
         VKGE_INIT_VK_PROC_RET_NULL_IF_ERR(geInstance, vkGetPhysicalDeviceWaylandPresentationSupportKHR);
@@ -743,7 +744,7 @@ jboolean VK_CreateLogicalDevice(jint requestedDevice) {
     J2dRlsTrace1(J2D_TRACE_INFO, "Logical device (%s) created\n", logicalDevice->name)
 
 
-    // Create command pull
+    // Create command pool
     VkCommandPoolCreateInfo poolInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
