@@ -54,6 +54,7 @@ import sun.awt.DisplayParametersChangedListener;
 import sun.awt.SunDisplayChanger;
 import sun.font.*;
 import sun.java2d.pipe.Region;
+import sun.security.action.GetBooleanAction;
 import sun.security.action.GetPropertyAction;
 
 /**
@@ -91,6 +92,21 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
             });
         }
         debugScale = uiScaleEnabled ? getScaleFactor("sun.java2d.uiScale") : -1;
+    }
+
+    protected enum LogDisplay {
+        ADDED,
+        REMOVED,
+        CHANGED;
+
+        @SuppressWarnings("removal")
+        public static final boolean ENABLED = AccessController.doPrivileged(new GetBooleanAction("sun.java2d.logDisplays"));
+
+        public void log(int id, Object bounds, double scale) {
+            if (!ENABLED) return;
+            System.out.println("DISPLAY " + this + ": #" + id +
+                    ", " + bounds + ", scale=" + scale);
+        }
     }
 
     protected GraphicsDevice[] screens;
