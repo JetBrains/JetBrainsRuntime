@@ -92,12 +92,12 @@ public final class X11GraphicsDevice extends GraphicsDevice
 
     public X11GraphicsDevice(int screennum) {
         this.screen = screennum;
-        this.bounds = getBoundsImpl();
         int scaleFactor = initScaleFactor(-1);
         synchronized (isScaleFactorDefault) {
             isScaleFactorDefault.set(scaleFactor == -1);
             this.scale = isScaleFactorDefault.get() ? 1 : scaleFactor;
         }
+        this.bounds = getBoundsImpl();
     }
 
     static {
