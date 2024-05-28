@@ -244,11 +244,19 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
         updateWaylandMonitorScaling();
 
         for (int id = 0; id < numScreens; ++id) {
-            devices.put(id, old.containsKey(id) ? old.remove(id) :
-                                                  new X11GraphicsDevice(id));
+            X11GraphicsDevice reused = old.remove(id);
+            X11GraphicsDevice gd = reused != null ? reused : new X11GraphicsDevice(id);
+            devices.put(id, gd);
+            if (LogDisplay.ENABLED) {
+                LogDisplay log = reused != null ? LogDisplay.CHANGED : LogDisplay.ADDED;
+                log.log(id, gd.getBounds(), gd.getScaleFactor());
+            }
         }
         // if a device was not reused it should be invalidated
         for (X11GraphicsDevice gd : old.values()) {
+            if (LogDisplay.ENABLED) {
+                LogDisplay.REMOVED.log(gd.getScreen(), gd.getBounds(), gd.getScaleFactor());
+            }
             oldDevices.add(new WeakReference<>(gd));
         }
         // Need to notify old devices, in case the user hold the reference to it
