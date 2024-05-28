@@ -157,6 +157,12 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         /* Populate the device table */
         rebuildDevices();
 
+        if (LogDisplay.ENABLED) {
+            for (CGraphicsDevice gd : devices.values()) {
+                LogDisplay.ADDED.log(gd.getDisplayID(), gd.getBounds(), gd.getScaleFactor());
+            }
+        }
+
         /* Register our display reconfiguration listener */
         displayReconfigContext = registerDisplayReconfiguration();
         if (displayReconfigContext == 0L) {
@@ -184,13 +190,25 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      * @param displayId CoreGraphics displayId
      * @param removed   true if displayId was removed, false otherwise.
      */
-    void _displayReconfiguration(int displayId, boolean removed) {
+    void _displayReconfiguration(int displayId, int flags) {
+        // See CGDisplayChangeSummaryFlags
+        LogDisplay log = !LogDisplay.ENABLED ? null :
+                (flags & (1 << 4)) != 0 ? LogDisplay.ADDED :
+                (flags & (1 << 5)) != 0 ? LogDisplay.REMOVED : LogDisplay.CHANGED;
+        if (log == LogDisplay.REMOVED) {
+            CGraphicsDevice gd = devices.get(displayId);
+            log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+        }
         // we ignore the passed parameters and check removed devices ourself
         // Note that it is possible that this callback is called when the
         // monitors are not added nor removed, but when the video card is
         // switched to/from the discrete video card, so we should try to map the
         // old to the new devices.
         rebuildDevices();
+        if (log != null && log != LogDisplay.REMOVED) {
+            CGraphicsDevice gd = devices.get(displayId);
+            log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+        }
     }
 
     private static class CGEDisposerRecord implements DisposerRecord {
