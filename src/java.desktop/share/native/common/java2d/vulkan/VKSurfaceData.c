@@ -46,6 +46,14 @@ void VKSD_InitImageSurface(VKSDOps *vksdo) {
         J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create image\n");
         return;
     }
+
+    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
+    VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
+
+    if (!VKImage_CreateFramebuffer(vksdo->image, logicalDevice->fillTexturePoly->renderPass)) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create framebuffer for window surface")
+        return;
+    }
 }
 
 void VKSD_InitWindowSurface(VKWinSDOps *vkwinsdo) {
@@ -116,11 +124,6 @@ void VKSD_InitWindowSurface(VKWinSDOps *vkwinsdo) {
         if (!vkwinsdo->swapChainImages) {
           J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot get swapchain images");
           return;
-        }
-
-        if (!VKImage_CreateFramebuffer(vkwinsdo->vksdOps.image, logicalDevice->fillTexturePoly->renderPass)) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create framebuffer for window surface")
-            return;
         }
     }
 }
