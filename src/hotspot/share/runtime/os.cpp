@@ -1361,6 +1361,14 @@ bool os::set_boot_path(char fileSep, char pathSep) {
   return false;
 }
 
+bool os::file_exists(const char* filename) {
+  struct stat statbuf;
+  if (filename == NULL || strlen(filename) == 0) {
+    return false;
+  }
+  return os::stat(filename, &statbuf) == 0;
+}
+
 /*
  * Splits a path, based on its separator, the number of
  * elements is returned back in n.
