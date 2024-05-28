@@ -53,6 +53,7 @@ import sun.font.FontManagerFactory;
 import sun.font.FontManagerForSGE;
 import sun.font.FontUtilities;
 import sun.java2d.pipe.Region;
+import sun.security.action.GetBooleanAction;
 import sun.security.action.GetPropertyAction;
 
 /**
@@ -86,6 +87,21 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
             System.setProperty("swing.bufferPerWindow", "false"); // todo: until JRE-489 is fixed
         }
         debugScale = uiScaleEnabled ? getScaleFactor("sun.java2d.uiScale") : -1;
+    }
+
+    protected enum LogDisplay {
+        ADDED,
+        REMOVED,
+        CHANGED;
+
+        @SuppressWarnings("removal")
+        public static final boolean ENABLED = AccessController.doPrivileged(new GetBooleanAction("sun.java2d.logDisplays"));
+
+        public void log(int id, Object bounds, double scale) {
+            if (!ENABLED) return;
+            System.out.println("DISPLAY " + this + ": #" + id +
+                    ", " + bounds + ", scale=" + scale);
+        }
     }
 
     protected GraphicsDevice[] screens;
