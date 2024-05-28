@@ -143,6 +143,9 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
             }
             for (int i = 0; i < screens.length; i++) {
                 if (screens[i] instanceof Win32GraphicsDevice gd) {
+                    if (LogDisplay.ENABLED) {
+                        LogDisplay.REMOVED.log(i, "UNKNOWN", Double.NaN);
+                    }
                     oldDevices.add(new WeakReference<>(gd));
                 } else {
                     // REMIND: can we ever have anything other than Win32GD?
@@ -195,12 +198,15 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
 
     @Override
     protected GraphicsDevice makeScreenDevice(int screennum) {
-        GraphicsDevice device = null;
+        Win32GraphicsDevice device = null;
         if (WindowsFlags.isD3DEnabled()) {
             device = D3DGraphicsDevice.createDevice(screennum);
         }
         if (device == null) {
             device = new Win32GraphicsDevice(screennum);
+        }
+        if (LogDisplay.ENABLED) {
+            LogDisplay.ADDED.log(device.getScreen(), device.getBounds(), device.getDefaultScaleX());
         }
         return device;
     }
