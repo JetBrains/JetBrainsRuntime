@@ -101,7 +101,7 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
         }
 
         public SurfaceData getReplacement() {
-            throw new UnsupportedOperationException("Not supported yet");
+            return null;
         }
 
         @Override
