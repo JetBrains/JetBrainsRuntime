@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,41 @@
  * questions.
  */
 
-#include "VKShader.h"
+#ifndef VKVertex_h_Included
+#define VKVertex_h_Included
 
-// Inline bytecode of all shaders
-#define INCLUDE_BYTECODE
-#define SHADER_ENTRY(NAME, TYPE) static uint32_t NAME ## _ ## TYPE ## _data[] = {
-#define BYTECODE_END };
-#include "vulkan/shader_list.h"
-#undef INCLUDE_BYTECODE
-#undef SHADER_ENTRY
-#undef BYTECODE_END
+#include <vulkan/vulkan.h>
+#include "VKBuffer.h"
 
-void VKShaders::init(const vk::raii::Device& device) {
-    // Declare file extensions as stage flags
-    auto vert = vk::ShaderStageFlagBits::eVertex;
-    auto frag = vk::ShaderStageFlagBits::eFragment;
-    // Init all shader modules
-#   define SHADER_ENTRY(NAME, TYPE) \
-    NAME ## _ ## TYPE.init(device, sizeof NAME ## _ ## TYPE ## _data, NAME ## _ ## TYPE ## _data, TYPE);
-#   include "vulkan/shader_list.h"
-#   undef SHADER_ENTRY
-}
+#define RGBA_TO_L4(c)              \
+    (((c) >> 16) & (0xFF))/255.0f, \
+    (((c) >> 8) & 0xFF)/255.0f,    \
+    ((c) & 0xFF)/255.0f,           \
+    (((c) >> 24) & 0xFF)/255.0f
+
+#define ARRAY_TO_VERTEX_BUF(vertices)                                           \
+    VKBuffer_CreateFromData(vertices, ARRAY_SIZE(vertices)*sizeof (vertices[0]))
+
+typedef struct {
+    VkVertexInputAttributeDescription *attributeDescriptions;
+    uint32_t attributeDescriptionCount;
+    VkVertexInputBindingDescription* bindingDescriptions;
+    uint32_t bindingDescriptionCount;
+} VKVertexDescr;
+
+typedef struct {
+    float px, py;
+    float u, v;
+} VKTxVertex;
+
+typedef struct {
+    float px, py;
+    float r, g, b, a;
+} VKCVertex;
+
+VKVertexDescr VKVertex_GetTxVertexDescr();
+VKVertexDescr VKVertex_GetCVertexDescr();
+
+
+
+#endif //VKVertex_h_Included
