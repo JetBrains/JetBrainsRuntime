@@ -106,9 +106,6 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     AC_ARG_WITH(vulkan-include, [AS_HELP_STRING([--with-vulkan-include],
       [specify directory for the vulkan include files ({with-vulkan-include}/vulkan/vulkan.h)])])
 
-    AC_ARG_WITH(vulkan-hpp, [AS_HELP_STRING([--with-vulkan-hpp],
-      [specify directory for the vulkan-hpp include files ({with-vulkan-hpp}/vulkan/vulkan_raii.hpp)])])
-
     AC_ARG_WITH(vulkan-shader-compiler, [AS_HELP_STRING([--with-vulkan-shader-compiler],
       [specify which shader compiler to use: glslc/glslangValidator])])
 
@@ -139,27 +136,11 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
             AC_MSG_RESULT([no])
             AC_MSG_ERROR([Can't find 'vulkan/vulkan.h' under '${with_vulkan_include}'])
           fi
-          AC_MSG_CHECKING([for vulkan_raii.hpp])
-          if test "x${with_vulkan_hpp}" != x; then
-            VULKAN_FLAGS="-I${with_vulkan_hpp} ${VULKAN_FLAGS}"
-            VULKAN_HPP_DIR=${with_vulkan_hpp}
-          else
-            VULKAN_HPP_DIR=${with_vulkan_include}
-          fi
-          if test -s "$VULKAN_HPP_DIR/vulkan/vulkan_raii.hpp"; then
-            VULKAN_FOUND=yes
-            AC_MSG_RESULT([yes])
-          else
-            VULKAN_FOUND=no
-            AC_MSG_RESULT([no])
-            AC_MSG_ERROR([Can't find 'vulkan/vulkan_raii.hpp' under '$VULKAN_HPP_DIR'])
-          fi
         fi
 
-        AC_LANG_PUSH([C++])
         if test "x$VULKAN_FOUND" = xno; then
           # Check vulkan sdk location
-          AC_CHECK_HEADERS([$VULKAN_SDK/include/vulkan/vulkan.h $VULKAN_SDK/include/vulkan/vulkan_raii.hpp],
+          AC_CHECK_HEADERS([$VULKAN_SDK/include/vulkan/vulkan.h],
             [ VULKAN_FOUND=yes
               VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${VULKAN_SDK}/include -DVULKAN_ENABLED"
             ],
@@ -169,14 +150,13 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
 
         if test "x$VULKAN_FOUND" = xno; then
           # Check default /usr/include location
-          AC_CHECK_HEADERS([vulkan/vulkan.h vulkan/vulkan_raii.hpp],
+          AC_CHECK_HEADERS([vulkan/vulkan.h],
             [ VULKAN_FOUND=yes
               VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -DVULKAN_ENABLED"
             ],
             [ VULKAN_FOUND=no; break ]
           )
         fi
-        AC_LANG_POP([C++])
 
         if test "x$VULKAN_FOUND" = xno; then
           HELP_MSG_MISSING_DEPENDENCY([vulkan])
