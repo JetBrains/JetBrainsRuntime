@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,23 @@
  * questions.
  */
 
-#include "jni.h"
-#include "VKBase.h"
+#ifndef VKBuffer_h_Included
+#define VKBuffer_h_Included
+#include <vulkan/vulkan.h>
 
-// TODO ?
+typedef struct {
+    VkBuffer buffer;
+    VkDeviceMemory memory;
+    VkDeviceSize size;
+} VKBuffer;
+
+VkResult VKBuffer_FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
+                                 VkMemoryPropertyFlags properties, uint32_t* pMemoryType);
+
+VKBuffer* VKBuffer_Create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+
+VKBuffer* VKBuffer_CreateFromData(void* vertices, VkDeviceSize bufferSize);
+
+void VKBuffer_free(VKBuffer* buffer);
+
+#endif // VKBuffer_h_Included
