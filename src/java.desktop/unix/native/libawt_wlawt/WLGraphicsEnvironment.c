@@ -31,7 +31,7 @@
 
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
-#include "VKBase.h"
+#include "VKInit.h"
 
 typedef struct WLOutput {
     struct WLOutput *  next;
