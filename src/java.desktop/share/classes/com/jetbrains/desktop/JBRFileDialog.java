@@ -1,5 +1,7 @@
 package com.jetbrains.desktop;
 
+import com.jetbrains.exported.JBRApi;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.lang.annotation.Native;
@@ -8,7 +10,8 @@ import java.lang.invoke.VarHandle;
 import java.awt.*;
 import java.util.Objects;
 
-public class JBRFileDialog implements Serializable {
+@JBRApi.Provides("JBRFileDialog")
+public final class JBRFileDialog implements Serializable {
 
     @Serial
     private static final long serialVersionUID = -9154712118353824660L;
@@ -22,6 +25,8 @@ public class JBRFileDialog implements Serializable {
             throw new Error(e);
         }
     }
+
+    @JBRApi.Provides("JBRFileDialogService#getFileDialog")
     public static JBRFileDialog get(FileDialog dialog) {
         return (JBRFileDialog) getter.get(dialog);
     }
