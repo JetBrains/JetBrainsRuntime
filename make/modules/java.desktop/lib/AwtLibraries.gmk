@@ -426,6 +426,7 @@ ifeq ($(call isTargetOs, macosx), true)
           -framework OpenGL \
           -framework QuartzCore \
           -framework Security, \
+          -framework UniformTypeIdentifiers, \
       STATIC_LIB_EXCLUDE_OBJS := $(LIBAWT_LWAWT_STATIC_EXCLUDE_OBJS), \
   ))
 
