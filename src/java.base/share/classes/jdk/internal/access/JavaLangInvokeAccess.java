@@ -29,6 +29,7 @@ import jdk.internal.foreign.abi.NativeEntryPoint;
 
 import java.lang.foreign.MemoryLayout;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Constructor;
@@ -170,4 +171,11 @@ public interface JavaLangInvokeAccess {
      * This method should only be used by ReflectionFactory::newConstructorForSerialization.
      */
     MethodHandle serializableConstructor(Class<?> decl, Constructor<?> ctorToCall) throws IllegalAccessException;
+
+    /**
+     * Returns a lookup object corresponding to given class with full access privileges.
+     * @param lookupClass lookup class
+     * @return full-privileged lookup object
+     */
+    Lookup lookupIn(Class<?> lookupClass);
 }

@@ -80,7 +80,7 @@ $(eval $(call SetupJavaCompilation, COMPILE_DEPEND, \
     TARGET_RELEASE := $(TARGET_RELEASE_BOOTJDK), \
     SRC := $(TOPDIR)/make/jdk/src/classes, \
     INCLUDES := build/tools/depend, \
-    BIN := $(BUILDTOOLS_OUTPUTDIR)/depend, \
+    BIN := $(BUILDTOOLS_OUTPUTDIR)/plugins, \
     DISABLED_WARNINGS := options, \
     JAVAC_FLAGS := \
         --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \
@@ -93,13 +93,21 @@ $(eval $(call SetupJavaCompilation, COMPILE_DEPEND, \
         --add-exports jdk.internal.opt/jdk.internal.opt=jdk.javadoc.interim, \
 ))
 
-DEPEND_SERVICE_PROVIDER := $(BUILDTOOLS_OUTPUTDIR)/depend/META-INF/services/com.sun.source.util.Plugin
+$(eval $(call SetupJavaCompilation, COMPILE_JBR_API_PLUGIN, \
+    TARGET_RELEASE := $(TARGET_RELEASE_BOOTJDK), \
+    SRC := $(TOPDIR)/make/jdk/src/classes, \
+    INCLUDES := build/tools/jbrapi, \
+    BIN := $(BUILDTOOLS_OUTPUTDIR)/plugins, \
+))
 
-$(DEPEND_SERVICE_PROVIDER):
-	$(call MakeDir, $(BUILDTOOLS_OUTPUTDIR)/depend/META-INF/services)
+PLUGINS_SERVICE_PROVIDER := $(BUILDTOOLS_OUTPUTDIR)/plugins/META-INF/services/com.sun.source.util.Plugin
+
+$(PLUGINS_SERVICE_PROVIDER):
+	$(call MakeDir, $(BUILDTOOLS_OUTPUTDIR)/plugins/META-INF/services)
 	$(ECHO) build.tools.depend.Depend > $@
+	$(ECHO) build.tools.jbrapi.JBRApiPlugin >> $@
 
-TARGETS += $(COMPILE_DEPEND) $(DEPEND_SERVICE_PROVIDER)
+TARGETS += $(COMPILE_DEPEND) $(COMPILE_JBR_API_PLUGIN) $(PLUGINS_SERVICE_PROVIDER)
 
 ################################################################################
 
