@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2023 JetBrains s.r.o.
+ * Copyright 2000-2024 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,11 @@ package com.jetbrains;
 
 import java.awt.*;
 
+/**
+ * Extensions to the AWT {@code FileDialog} that allow clients fully use a native file chooser
+ * on supported platforms (currently macOS and Windows; the latter requires setting
+ * {@code sun.awt.windows.useCommonItemDialog} property to {@code true}).
+ */
 public interface JBRFileDialog {
 
     /*CONST com.jetbrains.desktop.JBRFileDialog.*_HINT*/
@@ -37,12 +42,11 @@ public interface JBRFileDialog {
     }
 
     /**
-     * Set JBR-specific file dialog hints:
+     * Set file dialog hints:
      * <ul>
-     *     <li>SELECT_FILES_HINT, SELECT_DIRECTORIES_HINT - Whether to select files, directories or both
-     *     (used when common file dialogs are enabled on Windows, or on macOS),
-     *     both unset bits are treated as a default platform-specific behavior</li>
-     *     <li>CREATE_DIRECTORIES_HINT - Whether to allow creating directories or not (used on macOS)</li>
+     *     <li>SELECT_FILES_HINT, SELECT_DIRECTORIES_HINT - whether to select files, directories, or both;
+     *     if neither of the two is set, the behavior is platform-specific</li>
+     *     <li>CREATE_DIRECTORIES_HINT - whether to allow creating directories or not (macOS)</li>
      * </ul>
      */
     void setHints(int hints);
@@ -52,7 +56,28 @@ public interface JBRFileDialog {
      */
     int getHints();
 
+    /*CONST com.jetbrains.desktop.JBRFileDialog.*_KEY*/
+
+    /**
+     * Change text of UI elements (Windows).
+     * Supported keys:
+     * <ul>
+     *     <li>OPEN_FILE_BUTTON_KEY - "open" button when a file is selected in the list</li>
+     *     <li>OPEN_DIRECTORY_BUTTON_KEY - "open" button when a directory is selected in the list</li>
+     *     <li>ALL_FILES_COMBO_KEY - "all files" item in the file filter combo box</li>
+     * </ul>
+     */
+    void setLocalizationString(String key, String text);
+
+    /** @deprecated use {@link #setLocalizationString} */
+    @Deprecated(forRemoval = true)
     void setLocalizationStrings(String openButtonText, String selectFolderButtonText);
+
+    /**
+     * Set file filter - a set of file extensions for files to be visible (Windows)
+     * or not greyed out (macOS), and a name for the file filter combo box (Windows).
+     */
+    void setFileFilterExtensions(String fileFilterDescription, String[] fileFilterExtensions);
 }
 
 interface JBRFileDialogService {
