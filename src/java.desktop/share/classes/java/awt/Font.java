@@ -2741,6 +2741,7 @@ public class Font implements java.io.Serializable
      * Implementation of such logic goes to HarfBuzz library.
      * @return list of OpenType's features concatenated to String
      */
+    @JBRApi.Provides("FontExtensions")
     private static Set<String> getAvailableFeatures(Font font) {
         return SunLayoutEngine.getAvailableFeatures(FontUtilities.getFont2D(font));
     }
