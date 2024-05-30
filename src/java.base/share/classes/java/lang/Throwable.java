@@ -27,6 +27,8 @@ package java.lang;
 
 import java.io.*;
 import java.util.*;
+
+import com.jetbrains.exported.JBRApi;
 import jdk.internal.event.ThrowableTracer;
 
 /**
@@ -1138,7 +1140,7 @@ public class Throwable implements Serializable {
 
     private static volatile java.util.function.Supplier<String> $$jb$additionalInfoSupplier = null;
 
-    // JBR API internals
+    @JBRApi.Provides("Jstack#includeInfoFrom")
     private static void $$jb$additionalInfoForJstack(java.util.function.Supplier<String> supplier) {
         $$jb$additionalInfoSupplier = supplier;
     }
