@@ -29,457 +29,392 @@ import jdk.internal.org.objectweb.asm.*;
 import jdk.internal.org.objectweb.asm.util.CheckClassAdapter;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandleInfo;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static com.jetbrains.exported.JBRApi.ServiceNotAvailableException;
 import static com.jetbrains.internal.ASMUtils.*;
+import static com.jetbrains.internal.JBRApi.EXTENSIONS_ENABLED;
 import static java.lang.invoke.MethodHandles.Lookup;
 import static jdk.internal.org.objectweb.asm.Opcodes.*;
+import static jdk.internal.org.objectweb.asm.Type.getInternalName;
 
 /**
- * This class generates {@linkplain Proxy proxy} classes.
- * Each proxy is just a generated class implementing some interface and
- * delegating method calls to method handles.
+ * Generates {@linkplain Proxy proxy} classes.
  * <p>
- * There are 2 proxy dispatch modes:
- * <ul>
- *     <li>interface -> proxy -> {@linkplain #generateBridge bridge} -> method handle -> implementation code</li>
- *     <li>interface -> proxy -> method handle -> implementation code</li>
- * </ul>
- * Generated proxy is always located in the same package with its interface and optional bridge is located in the
- * same module with target implementation code. Bridge allows proxy to safely call hidden non-static implementation
- * methods and is only needed for {@code jetbrains.api} -> JBR calls. For JBR -> {@code jetbrains.api} calls, proxy can
- * invoke method handle directly.
+ * Proxy class always implements/extends a base interface/class. It's defined as a
+ * {@linkplain MethodHandles.Lookup#defineHiddenClass(byte[], boolean, Lookup.ClassOption...) hidden class}
+ * sharing the nest with either interface or target implementation class.
+ * Defining proxy as a nestmate of a target class is preferred,
+ * as in this case proxy can call implementation methods directly.
+ * However, this may not be possible if interface is not accessible by target
+ * (thus making it impossible for proxy to implement it), or if there is no target class at all
+ * (e.g. a service may delegate all calls exclusively to static methods).
+ * <p>
+ * Proxy invokes target methods in two ways: either directly, when accessible
+ * ({@code invokestatic}, {@code invokevirtual}, {@code invokeinterface}),
+ * or via {@code invokedynamic} in cases when target method is inaccessible
+ * (see {@link com.jetbrains.exported.JBRApiSupport#bootstrapDynamic(Lookup, String, MethodType)}).
+ * @see Proxy
  */
 class ProxyGenerator {
-    private static final String OBJECT_DESCRIPTOR = "Ljava/lang/Object;";
-    private static final String MH_NAME = "java/lang/invoke/MethodHandle";
-    private static final String MH_DESCRIPTOR = "Ljava/lang/invoke/MethodHandle;";
-    private static final String CONVERSION_DESCRIPTOR = "(Ljava/lang/Object;)Ljava/lang/Object;";
-    /**
-     * Print warnings about usage of deprecated interfaces and methods to {@link System#err}.
-     */
-    private static final boolean LOG_DEPRECATED = System.getProperty("jetbrains.api.logDeprecated", String.valueOf(JBRApi.VERBOSE)).equalsIgnoreCase("true");
-    private static final boolean VERIFY_BYTECODE = Boolean.getBoolean("jetbrains.api.verifyBytecode");
+    private static final String PROXY_INTERFACE_NAME = getInternalName(com.jetbrains.exported.JBRApiSupport.Proxy.class);
 
-    private static final AtomicInteger nameCounter = new AtomicInteger();
+    private final Proxy.Info info;
+    private final Class<?> interFace;
+    private final Lookup proxyGenLookup;
+    private final Mapping[] specialization;
+    private final Mapping.Context mappingContext;
+    private final AccessContext accessContext;
 
-    private final ProxyInfo info;
-    private final boolean generateBridge;
-    private final String proxyName, bridgeName;
-    private final ClassWriter originalProxyWriter, originalBridgeWriter;
-    private final ClassVisitor proxyWriter, bridgeWriter;
-    private final List<Supplier<MethodHandle>> handles = new ArrayList<>();
-    private final List<Supplier<Class<?>>> classReferences = new ArrayList<>();
-    private final Set<Proxy<?>> directProxyDependencies = new HashSet<>();
-    private final List<Exception> exceptions = new ArrayList<>();
-    private int bridgeMethodCounter;
-    private boolean allMethodsImplemented = true;
-    private Lookup generatedHandlesHolder, generatedProxy;
+    private final Class<?> constructorTargetParameterType;
+    private final String targetDescriptor, proxyName, superclassName;
+    private final String[] superinterfaceNames;
+    private final ClassWriter originalProxyWriter;
+    private final ClassVisitor proxyWriter;
+
+    private final Map<Enum<?>, Boolean> supportedExtensions = new HashMap<>();
+
+    private boolean supported = true;
+    private Lookup generatedProxy;
 
     /**
-     * Creates new proxy generator from given {@link ProxyInfo},
-     * looks for abstract interface methods, corresponding implementation methods
-     * and generates proxy bytecode. However, it doesn't actually load generated
-     * classes until {@link #defineClasses()} is called.
+     * Creates new proxy generator from given {@link Proxy.Info},
      */
-    ProxyGenerator(ProxyInfo info) {
-        if (JBRApi.VERBOSE) {
-            System.out.println("Generating proxy " + info.interFace.getName());
-        }
+    ProxyGenerator(ProxyRepository proxyRepository, Proxy.Info info, Mapping[] specialization) {
         this.info = info;
-        generateBridge = info.type.isPublicApi();
-        int nameId = nameCounter.getAndIncrement();
-        proxyName = Type.getInternalName(info.interFace) + "$$JBRApiProxy$" + nameId;
-        bridgeName = generateBridge ? info.apiModule.lookupClass().getPackageName().replace('.', '/') + "/" +
-                info.interFace.getSimpleName() + "$$JBRApiBridge$" + nameId : null;
+        this.interFace = info.interfaceLookup.lookupClass();
+        this.specialization = specialization;
 
-        originalProxyWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-        proxyWriter = VERIFY_BYTECODE ? new CheckClassAdapter(originalProxyWriter, true) : originalProxyWriter;
-        originalBridgeWriter = generateBridge ? new ClassWriter(ClassWriter.COMPUTE_FRAMES) : null;
-        if (generateBridge) {
-            bridgeWriter = VERIFY_BYTECODE ? new CheckClassAdapter(originalBridgeWriter, true) : originalBridgeWriter;
-        } else bridgeWriter = new ClassVisitor(Opcodes.ASM9) { // Empty visitor
+        // Placing our proxy implementation into the target's nest is preferred, as it gives us direct method calls.
+        this.proxyGenLookup = info.targetLookup != null && AccessContext.canAccess(info.targetLookup, interFace) ?
+                info.targetLookup : info.interfaceLookup;
+
+        this.mappingContext = new Mapping.Context(proxyRepository);
+        this.accessContext = new AccessContext(proxyGenLookup);
+
+        constructorTargetParameterType = info.targetLookup == null ? null :
+                accessContext.canAccess(info.targetLookup.lookupClass()) ? info.targetLookup.lookupClass() : Object.class;
+        targetDescriptor = constructorTargetParameterType == null ? "" : constructorTargetParameterType.descriptorString();
+
+        // Even though generated proxy is hidden and therefore has no qualified name,
+        // it can reference itself via internal name, which can lead to name collisions.
+        // Let's consider specialized proxy for java/util/List - if we name proxy similarly,
+        // methods calls to java/util/List will be treated by VM as calls to proxy class,
+        // not standard library interface. Therefore we append $$$ to proxy name to avoid name collision.
+        proxyName = proxyGenLookup.lookupClass().getPackageName().replace('.', '/') + "/" + interFace.getSimpleName() + "$$$";
+
+        originalProxyWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES) {
             @Override
-            public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-                return new MethodVisitor(api) {};
+            protected ClassLoader getClassLoader() {
+                return ProxyGenerator.this.proxyGenLookup.lookupClass().getClassLoader();
             }
         };
-        proxyWriter.visit(CLASSFILE_VERSION, ACC_SUPER | ACC_FINAL | ACC_SYNTHETIC, proxyName, null,
-                "java/lang/Object", new String[] {Type.getInternalName(info.interFace)});
-        bridgeWriter.visit(CLASSFILE_VERSION, ACC_SUPER | ACC_FINAL | ACC_SYNTHETIC | ACC_PUBLIC, bridgeName, null,
-                "java/lang/Object", null);
-        generateConstructor();
-        generateMethods();
-        proxyWriter.visitEnd();
-        bridgeWriter.visitEnd();
-    }
-
-    boolean areAllMethodsImplemented() {
-        return allMethodsImplemented;
-    }
-
-    Set<Proxy<?>> getDirectProxyDependencies() {
-        return directProxyDependencies;
+        proxyWriter = JBRApi.VERIFY_BYTECODE ? new CheckClassAdapter(originalProxyWriter, true) : originalProxyWriter;
+        if (interFace.isInterface()) {
+            superclassName = "java/lang/Object";
+            superinterfaceNames = new String[] {getInternalName(interFace), PROXY_INTERFACE_NAME};
+        } else {
+            superclassName = getInternalName(interFace);
+            superinterfaceNames = new String[] {PROXY_INTERFACE_NAME};
+        }
     }
 
     /**
-     * Insert all method handles and class references into static fields, so that proxy can call implementation methods.
+     * Direct (non-transitive) only. These are the proxies accessed by current one.
+     * True for required and false for optional.
+     */
+    Map<Proxy, Boolean> getDependencies() {
+        return accessContext.dependencies;
+    }
+
+    Set<Enum<?>> getSupportedExtensions() {
+        return supportedExtensions.entrySet().stream()
+                .filter(Map.Entry::getValue).map(Map.Entry::getKey).collect(Collectors.toUnmodifiableSet());
+    }
+
+    /**
+     * @return service target instance, if any
+     */
+    private Object createServiceTarget() throws Throwable {
+        Exception exception = null;
+        MethodHandle constructor = null;
+        try {
+            constructor = info.targetLookup.findStatic(
+                    info.targetLookup.lookupClass(), "create", MethodType.methodType(info.targetLookup.lookupClass()));
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            exception = e;
+        }
+        try {
+            if (constructor == null) constructor = info.targetLookup.findConstructor(
+                    info.targetLookup.lookupClass(), MethodType.methodType(void.class));
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            if (exception == null) exception = e;
+            else exception.addSuppressed(e);
+        }
+        if (constructor == null) throw new ServiceNotAvailableException("No service factory method or constructor found", exception);
+        return constructor.invoke();
+    }
+
+    /**
+     * First parameter is target object to which it would delegate method calls (if target exists).
+     * Second parameter is extensions bitfield (if extensions are enabled).
+     * @return method handle to constructor of generated proxy class, or null.
+     */
+    private MethodHandle findConstructor() throws NoSuchMethodException, IllegalAccessException {
+        MethodType constructorType = MethodType.methodType(void.class);
+        if (info.targetLookup != null) constructorType = constructorType.appendParameterTypes(constructorTargetParameterType);
+        if (EXTENSIONS_ENABLED) constructorType = constructorType.appendParameterTypes(long[].class);
+        return generatedProxy.findConstructor(generatedProxy.lookupClass(), constructorType);
+    }
+
+    /**
+     * Initialize method handles used by generated class via {@code invokedynamic}.
      */
     void init() {
-        try {
-            for (int i = 0; i < handles.size(); i++) {
-                generatedHandlesHolder
-                        .findStaticVarHandle(generatedHandlesHolder.lookupClass(), "h" + i, MethodHandle.class)
-                        .set(handles.get(i).get());
-            }
-            for (int i = 0; i < classReferences.size(); i++) {
-                generatedHandlesHolder
-                        .findStaticVarHandle(generatedHandlesHolder.lookupClass(), "c" + i, Class.class)
-                        .set(classReferences.get(i).get());
-            }
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
+        if (JBRApi.VERBOSE) {
+            System.out.println("Initializing proxy " + interFace.getName());
+        }
+        for (var t : accessContext.dynamicCallTargets) {
+            JBRApi.dynamicCallTargets.put(new JBRApi.DynamicCallTargetKey(
+                    generatedProxy.lookupClass(), t.name(), t.descriptor()
+            ), t.futureHandle());
         }
     }
 
-    Class<?> getProxyClass() {
-        return generatedProxy.lookupClass();
-    }
-
     /**
-     * @return method handle to constructor of generated proxy class.
-     * <ul>
-     *     <li>For {@linkplain ProxyInfo.Type#SERVICE services}, constructor is no-arg.</li>
-     *     <li>For non-{@linkplain ProxyInfo.Type#SERVICE services}, constructor is single-arg,
-     *     expecting target object to which it would delegate method calls.</li>
-     * </ul>
+     * Define generated class.
+     * @return method handle to constructor of generated proxy class, or null.
      */
-    MethodHandle findConstructor() {
+    MethodHandle define(boolean service) {
         try {
-            if (info.target == null) {
-                return generatedProxy.findConstructor(generatedProxy.lookupClass(), MethodType.methodType(void.class));
-            } else {
-                MethodHandle c = generatedProxy.findConstructor(generatedProxy.lookupClass(),
-                        MethodType.methodType(void.class, Object.class));
-                if (info.type.isService()) {
-                    try {
-                        return MethodHandles.foldArguments(c, info.target.findConstructor(info.target.lookupClass(),
-                                MethodType.methodType(void.class)).asType(MethodType.methodType(Object.class)));
-                    } catch (NoSuchMethodException | IllegalAccessException e) {
-                        throw new RuntimeException("Service implementation must have no-args constructor: " +
-                                info.target.lookupClass(), e);
-                    }
-                }
-                return c;
-            }
-        } catch (IllegalAccessException | NoSuchMethodException e) {
+            Object sericeTarget = service && info.targetLookup != null ? createServiceTarget() : null;
+            generatedProxy = proxyGenLookup.defineHiddenClass(
+                    originalProxyWriter.toByteArray(), false, Lookup.ClassOption.STRONG, Lookup.ClassOption.NESTMATE);
+            MethodHandle constructor = findConstructor();
+            if (sericeTarget != null) constructor = MethodHandles.insertArguments(constructor, 0, sericeTarget);
+            return constructor;
+        } catch (ServiceNotAvailableException e) {
+            if (JBRApi.VERBOSE) e.printStackTrace(System.err);
+            return null;
+        } catch (Throwable e) {
             throw new RuntimeException(e);
         }
     }
 
     /**
-     * @return method handle that receives proxy and returns its target, or null
+     * Generate bytecode for class.
+     * @return true if generated proxy is considered supported
      */
-    MethodHandle findTargetExtractor() {
-        if (info.target == null) return null;
-        try {
-            return generatedProxy.findGetter(generatedProxy.lookupClass(), "target", Object.class);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
+    boolean generate() {
+        if (!supported) return false;
+        proxyWriter.visit(CLASSFILE_VERSION, ACC_SUPER | ACC_FINAL | ACC_SYNTHETIC, proxyName, null,
+                superclassName, superinterfaceNames);
+        if (JBRApi.VERBOSE) {
+            synchronized (System.out) {
+                System.out.print("Generating proxy " + interFace.getName());
+                if (specialization != null) System.out.print(" <" +
+                        Stream.of(specialization).map(t -> t == null ? "?" : t.toString()).collect(Collectors.joining(", ")) + ">");
+                System.out.println();
+            }
         }
+        if (specialization != null) {
+            mappingContext.initTypeParameters(interFace, Stream.of(specialization));
+        }
+        mappingContext.initTypeParameters(interFace);
+        generateFields();
+        generateConstructor();
+        generateTargetGetter();
+        generateMethods(interFace);
+        if (interFace.isInterface()) generateMethods(Object.class);
+        proxyWriter.visitEnd();
+        return supported;
     }
 
-    /**
-     * Loads generated classes.
-     */
-    void defineClasses() {
-        try {
-            Lookup bridge = !generateBridge ? null : MethodHandles.privateLookupIn(
-                    info.apiModule.defineClass(originalBridgeWriter.toByteArray()), info.apiModule);
-            generatedProxy = info.interFaceLookup.defineHiddenClass(
-                    originalProxyWriter.toByteArray(), true, Lookup.ClassOption.STRONG, Lookup.ClassOption.NESTMATE);
-            generatedHandlesHolder = generateBridge ? bridge : generatedProxy;
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
+    private void generateFields() {
+        if (info.targetLookup != null) {
+            proxyWriter.visitField(ACC_PRIVATE | ACC_FINAL, "target", targetDescriptor, null, null);
+        }
+        if (EXTENSIONS_ENABLED) {
+            proxyWriter.visitField(ACC_PRIVATE | ACC_FINAL, "extensions", "[J", null, null);
         }
     }
 
     private void generateConstructor() {
-        if (info.target != null) {
-            proxyWriter.visitField(ACC_PRIVATE | ACC_FINAL, "target", OBJECT_DESCRIPTOR, null, null);
+        MethodVisitor m = proxyWriter.visitMethod(ACC_PRIVATE, "<init>", "(" + targetDescriptor +
+                (EXTENSIONS_ENABLED ? "[J" : "") + ")V", null, null);
+        m.visitCode();
+        m.visitVarInsn(ALOAD, 0);
+        if (info.targetLookup != null) {
+            m.visitInsn(DUP);
+            m.visitVarInsn(ALOAD, 1);
+            m.visitFieldInsn(PUTFIELD, proxyName, "target", targetDescriptor);
         }
-        MethodVisitor p = proxyWriter.visitMethod(ACC_PRIVATE, "<init>", "(" +
-                (info.target == null ? "" : OBJECT_DESCRIPTOR) + ")V", null, null);
-        if (LOG_DEPRECATED && info.interFace.isAnnotationPresent(Deprecated.class)) {
-            logDeprecated(p, "Warning: using deprecated JBR API interface " + info.interFace.getName());
+        if (EXTENSIONS_ENABLED) {
+            m.visitInsn(DUP);
+            m.visitVarInsn(ALOAD, info.targetLookup != null ? 2 : 1);
+            m.visitFieldInsn(PUTFIELD, proxyName, "extensions", "[J");
         }
-        p.visitCode();
-        p.visitVarInsn(ALOAD, 0);
-        if (info.target != null) {
-            p.visitInsn(DUP);
-            p.visitVarInsn(ALOAD, 1);
-            p.visitFieldInsn(PUTFIELD, proxyName, "target", OBJECT_DESCRIPTOR);
-        }
-        p.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-        p.visitInsn(RETURN);
-        p.visitMaxs(0, 0);
-        p.visitEnd();
+        m.visitMethodInsn(INVOKESPECIAL, superclassName, "<init>", "()V", false);
+        m.visitInsn(RETURN);
+        m.visitMaxs(0, 0);
+        m.visitEnd();
     }
 
-    private void generateMethods() {
-        for (Method method : info.interFace.getMethods()) {
+    private void generateTargetGetter() {
+        MethodVisitor m = proxyWriter.visitMethod(ACC_PUBLIC | ACC_FINAL, "$getProxyTarget", "()" +
+                Object.class.descriptorString(), null, null);
+        m.visitCode();
+        if (info.targetLookup != null) {
+            m.visitVarInsn(ALOAD, 0);
+            m.visitFieldInsn(GETFIELD, proxyName, "target", targetDescriptor);
+        } else m.visitInsn(ACONST_NULL);
+        m.visitInsn(ARETURN);
+        m.visitMaxs(0, 0);
+        m.visitEnd();
+    }
+
+    private void generateMethods(Class<?> interFace) {
+        for (Method method : interFace.getMethods()) {
             int mod = method.getModifiers();
+            if ((mod & (Modifier.STATIC | Modifier.FINAL)) != 0) continue;
+
+            Exception exception = null;
+            Enum<?> extension = EXTENSIONS_ENABLED && JBRApi.extensionExtractor != null ?
+                    JBRApi.extensionExtractor.apply(method) : null;
+            Mapping.Method methodMapping = mappingContext.getMapping(method);
+            MethodHandle handle;
+            boolean passInstance;
+
+            if (methodMapping.query().valid) {
+                // Try static method.
+                handle = info.getStaticMethod(method.getName(), methodMapping.type());
+                passInstance = false;
+
+                // Try target class.
+                if (handle == null && info.targetLookup != null) {
+                    try {
+                        handle = interFace.equals(info.targetLookup.lookupClass()) ?
+                                info.targetLookup.unreflect(method) : info.targetLookup.findVirtual(
+                                info.targetLookup.lookupClass(), method.getName(), methodMapping.type());
+                        passInstance = true;
+                    } catch (NoSuchMethodException | IllegalAccessException e) {
+                        exception = e;
+                    }
+                }
+
+                if (handle != null) {
+                    // Method found.
+                    generateMethod(method, handle, methodMapping, extension, passInstance);
+                    if (extension != null) supportedExtensions.putIfAbsent(extension, true);
+                    continue;
+                }
+            } else {
+                exception = new Exception("Method mapping is invalid: " + methodMapping);
+            }
+
+            // Skip if possible.
             if (!Modifier.isAbstract(mod)) continue;
-            MethodMapping methodMapping = getTargetMethodMapping(method);
 
-            Exception e1 = null;
-            if (info.target != null) {
-                try {
-                    MethodHandle handle = info.target.findVirtual(
-                            info.target.lookupClass(), method.getName(), methodMapping.type());
-                    generateMethod(method, handle, methodMapping, true);
-                    continue;
-                } catch (NoSuchMethodException | IllegalAccessException e) {
-                    e1 = e;
-                }
-            }
-
-            Exception e2 = null;
-            ProxyInfo.StaticMethodMapping mapping = info.staticMethods.get(method.getName());
-            if (mapping != null) {
-                try {
-                    MethodHandle staticHandle =
-                            mapping.lookup().findStatic(mapping.lookup().lookupClass(), mapping.methodName(), methodMapping.type());
-                    generateMethod(method, staticHandle, methodMapping, false);
-                    continue;
-                } catch (NoSuchMethodException | IllegalAccessException e) {
-                    e2 = e;
-                }
-            }
-
-            if (e1 != null) exceptions.add(e1);
-            if (e2 != null) exceptions.add(e2);
+            // Generate unsupported stub.
             generateUnsupportedMethod(proxyWriter, method);
             if (JBRApi.VERBOSE) {
-                System.err.println("Couldn't generate method " + method.getName());
-                if (e1 != null) e1.printStackTrace();
-                if (e2 != null) e2.printStackTrace();
+                synchronized (System.err) {
+                    System.err.println("Couldn't generate method " + method.getName());
+                    if (exception != null) exception.printStackTrace(System.err);
+                }
             }
-            allMethodsImplemented = false;
+            if (extension == null) supported = false;
+            else supportedExtensions.put(extension, false);
         }
     }
 
-    private void generateMethod(Method interfaceMethod, MethodHandle handle, MethodMapping mapping, boolean passInstance) {
+    private void generateMethod(Method interfaceMethod, MethodHandle handle, Mapping.Method mapping, Enum<?> extension, boolean passInstance) {
+        boolean passExtensions = mapping.query().needsExtensions;
         InternalMethodInfo methodInfo = getInternalMethodInfo(interfaceMethod);
-        String bridgeMethodDescriptor = mapping.getBridgeDescriptor(passInstance);
+        MethodHandleInfo directCall = accessContext.resolveDirect(handle);
+        Supplier<MethodHandle> futureHandle = () -> handle;
 
-        ClassVisitor handleWriter = generateBridge ? bridgeWriter : proxyWriter;
-        String bridgeOrProxyName = generateBridge ? bridgeName : proxyName;
-        String handleName = addHandle(handleWriter, () -> handle);
-        for (TypeMapping m : mapping) {
-            if (m.conversion() == TypeConversion.EXTRACT_TARGET ||
-                    m.conversion() == TypeConversion.DYNAMIC_2_WAY) {
-                Proxy<?> from = m.fromProxy();
-                m.metadata.extractTargetHandle = addHandle(handleWriter, from::getTargetExtractor);
-                directProxyDependencies.add(from);
-            }
-            if (m.conversion() == TypeConversion.WRAP_INTO_PROXY ||
-                    m.conversion() == TypeConversion.DYNAMIC_2_WAY) {
-                Proxy<?> to = m.toProxy();
-                m.metadata.proxyConstructorHandle = addHandle(handleWriter, to::getConstructor);
-                directProxyDependencies.add(to);
-            }
-            if (m.conversion() == TypeConversion.DYNAMIC_2_WAY) {
-                String classField = "c" + classReferences.size();
-                m.metadata.extractableClassField = classField;
-                classReferences.add(m.fromProxy()::getProxyClass);
-                handleWriter.visitField(ACC_PRIVATE | ACC_STATIC, classField, "Ljava/lang/Class;", null, null);
-            }
-        }
-        String bridgeMethodName = methodInfo.name() + "$bridge$" + bridgeMethodCounter;
-        bridgeMethodCounter++;
-
-        MethodVisitor p = proxyWriter.visitMethod(ACC_PUBLIC | ACC_FINAL, methodInfo.name(),
-                methodInfo.descriptor(), methodInfo.genericSignature(), methodInfo.exceptionNames());
-        MethodVisitor b = bridgeWriter.visitMethod(ACC_PUBLIC | ACC_STATIC, bridgeMethodName,
-                bridgeMethodDescriptor, null, null);
-        if (LOG_DEPRECATED && interfaceMethod.isAnnotationPresent(Deprecated.class)) {
-            logDeprecated(p, "Warning: using deprecated JBR API method " +
-                    interfaceMethod.getDeclaringClass().getName() + "#" + interfaceMethod.getName());
-        }
-        p.visitCode();
-        b.visitCode();
-        MethodVisitor bp = generateBridge ? b : p;
-        bp.visitFieldInsn(GETSTATIC, bridgeOrProxyName, handleName, MH_DESCRIPTOR);
-        if (passInstance) {
-            p.visitVarInsn(ALOAD, 0);
-            p.visitFieldInsn(GETFIELD, proxyName, "target", OBJECT_DESCRIPTOR);
-            b.visitVarInsn(ALOAD, 0);
-        }
-        int lvIndex = 1;
-        for (TypeMapping param : mapping.parameterMapping) {
-            int opcode = getLoadOpcode(param.from());
-            p.visitVarInsn(opcode, lvIndex);
-            b.visitVarInsn(opcode, lvIndex - (passInstance ? 0 : 1));
-            lvIndex += getParameterSize(param.from());
-            convertValue(bp, bridgeOrProxyName, param);
-        }
-        if (generateBridge) {
-            p.visitMethodInsn(INVOKESTATIC, bridgeName, bridgeMethodName, bridgeMethodDescriptor, false);
-        }
-        bp.visitMethodInsn(INVOKEVIRTUAL, MH_NAME, "invoke", bridgeMethodDescriptor, false);
-        convertValue(bp, bridgeOrProxyName, mapping.returnMapping());
-        int returnOpcode = getReturnOpcode(mapping.returnMapping().to());
-        p.visitInsn(returnOpcode);
-        b.visitInsn(returnOpcode);
-        p.visitMaxs(0, 0);
-        b.visitMaxs(0, 0);
-        p.visitEnd();
-        b.visitEnd();
-    }
-
-    private String addHandle(ClassVisitor classWriter, Supplier<MethodHandle> handleSupplier) {
-        String handleName = "h" + handles.size();
-        handles.add(handleSupplier);
-        classWriter.visitField(ACC_PRIVATE | ACC_STATIC, handleName, MH_DESCRIPTOR, null, null);
-        return handleName;
-    }
-
-    private static void convertValue(MethodVisitor m, String handlesHolderName, TypeMapping mapping) {
-        if (mapping.conversion() == TypeConversion.IDENTITY) return;
-        Label skipConvert = new Label();
-        m.visitInsn(DUP);
-        m.visitJumpInsn(IFNULL, skipConvert);
-        switch (mapping.conversion()) {
-            case EXTRACT_TARGET ->
-                    m.visitFieldInsn(GETSTATIC, handlesHolderName, mapping.metadata.extractTargetHandle, MH_DESCRIPTOR);
-            case WRAP_INTO_PROXY ->
-                    m.visitFieldInsn(GETSTATIC, handlesHolderName, mapping.metadata.proxyConstructorHandle, MH_DESCRIPTOR);
-            case DYNAMIC_2_WAY -> {
-                m.visitInsn(DUP);
-                m.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Object", "getClass", "()Ljava/lang/Class;", false);
-                m.visitFieldInsn(GETSTATIC, handlesHolderName, mapping.metadata.extractableClassField, "Ljava/lang/Class;");
-                Label elseBranch = new Label(), afterBranch = new Label();
-                m.visitJumpInsn(IF_ACMPNE, elseBranch);
-                m.visitFieldInsn(GETSTATIC, handlesHolderName, mapping.metadata.extractTargetHandle, MH_DESCRIPTOR);
-                m.visitJumpInsn(GOTO, afterBranch);
-                m.visitLabel(elseBranch);
-                m.visitFieldInsn(GETSTATIC, handlesHolderName, mapping.metadata.proxyConstructorHandle, MH_DESCRIPTOR);
-                m.visitLabel(afterBranch);
-            }
-        }
-        m.visitInsn(SWAP);
-        m.visitMethodInsn(INVOKEVIRTUAL, MH_NAME, "invoke", CONVERSION_DESCRIPTOR, false);
-        m.visitLabel(skipConvert);
-    }
-
-    private static MethodMapping getTargetMethodMapping(Method interfaceMethod) {
-        Class<?>[] params = interfaceMethod.getParameterTypes();
-        TypeMapping[] paramMappings = new TypeMapping[params.length];
-        for (int i = 0; i < params.length; i++) {
-            paramMappings[i] = getTargetTypeMapping(params[i]);
-            params[i] = paramMappings[i].to();
-        }
-        TypeMapping returnMapping = getTargetTypeMapping(interfaceMethod.getReturnType()).inverse();
-        return new MethodMapping(MethodType.methodType(returnMapping.from(), params), returnMapping, paramMappings);
-    }
-
-    private static <T> TypeMapping getTargetTypeMapping(Class<T> userType) {
-        TypeMappingMetadata m = new TypeMappingMetadata();
-        Proxy<T> p = JBRApi.getProxy(userType);
-        if (p != null && p.getInfo().target != null) {
-            Proxy<?> r = JBRApi.getProxy(p.getInfo().target.lookupClass());
-            if (r != null && r.getInfo().target != null) {
-                return new TypeMapping(userType, p.getInfo().target.lookupClass(), TypeConversion.DYNAMIC_2_WAY, p, r, m);
-            }
-            return new TypeMapping(userType, p.getInfo().target.lookupClass(), TypeConversion.EXTRACT_TARGET, p, null, m);
-        }
-        Class<?> interFace = JBRApi.getProxyInterfaceByTargetName(userType.getName());
-        if (interFace != null) {
-            Proxy<?> r = JBRApi.getProxy(interFace);
-            if (r != null) {
-                return new TypeMapping(userType, interFace, TypeConversion.WRAP_INTO_PROXY, null, r, m);
-            }
-        }
-        return new TypeMapping(userType, userType, TypeConversion.IDENTITY, null, null, m);
-    }
-
-    private record MethodMapping(MethodType type, TypeMapping returnMapping, TypeMapping[] parameterMapping)
-            implements Iterable<TypeMapping> {
-        @Override
-        public Iterator<TypeMapping> iterator() {
-            return new Iterator<>() {
-                private int index = -1;
-                @Override
-                public boolean hasNext() {
-                    return index < parameterMapping.length;
-                }
-                @Override
-                public TypeMapping next() {
-                    TypeMapping m = index == -1 ? returnMapping : parameterMapping[index];
-                    index++;
-                    return m;
-                }
+        // Check usage of deprecated API.
+        if (JBRApi.LOG_DEPRECATED && interfaceMethod.isAnnotationPresent(Deprecated.class)) {
+            directCall = null; // Force invokedynamic.
+            futureHandle = () -> { // Log warning when binding the call site.
+                Utils.log(Utils.BEFORE_BOOTSTRAP_DYNAMIC, System.err, "Warning: using deprecated JBR API method " +
+                        interfaceMethod.getDeclaringClass().getCanonicalName() + "." + interfaceMethod.getName());
+                return handle;
             };
         }
 
-        /**
-         * Every convertable parameter type is replaced with {@link Object} for bridge descriptor.
-         * Optional {@link Object} is added as first parameter for instance methods.
-         */
-        String getBridgeDescriptor(boolean passInstance) {
-            StringBuilder bd = new StringBuilder("(");
-            if (passInstance) bd.append(OBJECT_DESCRIPTOR);
-            for (TypeMapping m : parameterMapping) {
-                bd.append(m.getBridgeDescriptor());
+        if (JBRApi.VERBOSE) {
+            System.out.println("  " +
+                    mapping.returnMapping() + " " +
+                    interfaceMethod.getName() + "(" +
+                    Stream.of(mapping.parameterMapping()).map(Mapping::toString).collect(Collectors.joining(", ")) +
+                    ")" + (directCall != null ? " (direct)" : "")
+            );
+        }
+
+        MethodVisitor m = proxyWriter.visitMethod(ACC_PUBLIC | ACC_FINAL, methodInfo.name(),
+                methodInfo.descriptor(), methodInfo.genericSignature(), methodInfo.exceptionNames());
+        AccessContext.Method methodContext = accessContext.new Method(m, extension == null);
+        m.visitCode();
+        // Load `this`.
+        if (passInstance || passExtensions || extension != null) {
+            m.visitVarInsn(ALOAD, 0);
+            if (passInstance && (passExtensions || extension != null)) m.visitInsn(DUP);
+        }
+        // Check enabled extension.
+        if (passExtensions || extension != null) {
+            m.visitFieldInsn(GETFIELD, proxyName, "extensions", "[J");
+            if (passExtensions && extension != null) m.visitInsn(DUP);
+            if (passExtensions) {
+                // If this method converts any parameters, we need to store extensions for later use.
+                // We overwrite `this` slot, but we have it on stack, so it's ok.
+                m.visitVarInsn(ASTORE, 0);
             }
-            bd.append(')');
-            bd.append(returnMapping.getBridgeDescriptor());
-            return bd.toString();
+            if (extension != null) {
+                // Check the specific bit inside long[].
+                Label afterExtensionCheck = new Label();
+                m.visitIntInsn(extension.ordinal() < 8192 ? BIPUSH : SIPUSH, extension.ordinal() / 64);
+                m.visitInsn(LALOAD);
+                m.visitLdcInsn(1L << (extension.ordinal() % 64));
+                m.visitInsn(LAND);
+                m.visitInsn(LCONST_0);
+                m.visitInsn(LCMP);
+                m.visitJumpInsn(IFNE, afterExtensionCheck);
+                throwException(m, "java/lang/UnsupportedOperationException",
+                        interFace.getCanonicalName() + '.' + interfaceMethod.getName() +
+                                " - extension " + extension.name() + " is disabled");
+                m.visitLabel(afterExtensionCheck);
+            }
         }
-    }
-
-    private record TypeMapping(Class<?> from, Class<?> to, TypeConversion conversion,
-                               Proxy<?> fromProxy, Proxy<?> toProxy, TypeMappingMetadata metadata) {
-        TypeMapping inverse() {
-            return new TypeMapping(to, from, switch (conversion) {
-                case EXTRACT_TARGET -> TypeConversion.WRAP_INTO_PROXY;
-                case WRAP_INTO_PROXY -> TypeConversion.EXTRACT_TARGET;
-                default -> conversion;
-            }, toProxy, fromProxy, metadata);
+        // Extract target from `this`.
+        if (passInstance) {
+            // We already have `this` on stack.
+            m.visitFieldInsn(GETFIELD, proxyName, "target", targetDescriptor);
         }
-        String getBridgeDescriptor() {
-            if (conversion == TypeConversion.IDENTITY) return Type.getDescriptor(from);
-            else return "Ljava/lang/Object;";
+        // Load and convert parameters.
+        for (int lvIndex = 1, i = 0; i < mapping.parameterMapping().length; i++) {
+            Mapping param = mapping.parameterMapping()[i];
+            int opcode = getLoadOpcode(param.from);
+            m.visitVarInsn(opcode, lvIndex);
+            lvIndex += getParameterSize(param.from);
+            param.convert(methodContext);
         }
-    }
-
-    private static class TypeMappingMetadata {
-        private String extractTargetHandle, proxyConstructorHandle, extractableClassField;
-    }
-
-    private enum TypeConversion {
-        /**
-         * No conversion.
-         */
-        IDENTITY,
-        /**
-         * Take a proxy object and extract its target implementation object.
-         */
-        EXTRACT_TARGET,
-        /**
-         * Create new proxy targeting given implementation object.
-         */
-        WRAP_INTO_PROXY,
-        /**
-         * Decide between {@link #EXTRACT_TARGET} and {@link #WRAP_INTO_PROXY} at runtime, depending on actual object.
-         */
-        DYNAMIC_2_WAY
+        // Invoke target method.
+        if (directCall != null) methodContext.invokeDirect(directCall);
+        else methodContext.invokeDynamic(handle.type(), futureHandle);
+        // Convert return value.
+        mapping.returnMapping().convert(methodContext);
+        int opcode = getReturnOpcode(mapping.returnMapping().to);
+        m.visitInsn(opcode);
+        m.visitMaxs(0, 0);
+        m.visitEnd();
     }
 }
