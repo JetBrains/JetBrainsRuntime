@@ -68,8 +68,6 @@
 
 package sun.font;
 
-import com.jetbrains.desktop.FontExtensions;
-
 import java.lang.ref.SoftReference;
 import java.awt.Font;
 import java.awt.font.FontRenderContext;
@@ -176,7 +174,7 @@ public final class GlyphLayout {
          * leave pt and the gvdata unchanged.
          */
         public void layout(FontStrikeDesc sd, float[] mat, float ptSize, int gmask, int baseIndex, TextRecord text,
-                           boolean ltrDirection, Map<String, Integer> features, Point2D.Float pt, GVData data);
+                           boolean ltrDirection, String[] features, Point2D.Float pt, GVData data);
     }
 
     /**
@@ -452,7 +450,7 @@ public final class GlyphLayout {
             EngineRecord er = _erecords.get(ix);
             for (;;) {
                 try {
-                    er.layout(ltrDirection, FontExtensions.getFeatures(font));
+                    er.layout(ltrDirection, FontAccess.getFontAccess().getFeatures(font));
                     break;
                 }
                 catch (IndexOutOfBoundsException e) {
@@ -658,7 +656,7 @@ public final class GlyphLayout {
             this.engine = _lef.getEngine(key); // flags?
         }
 
-        void layout(boolean ltrDirection, Map<String, Integer> features) {
+        void layout(boolean ltrDirection, String[] features) {
             _textRecord.start = start;
             _textRecord.limit = limit;
             engine.layout(_sd, _mat, ptSize, gmask, start - _offset, _textRecord,
