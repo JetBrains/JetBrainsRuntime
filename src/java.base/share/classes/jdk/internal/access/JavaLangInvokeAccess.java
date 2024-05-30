@@ -173,4 +173,11 @@ public interface JavaLangInvokeAccess {
      * @return an array of exceptions, or {@code null}.
      */
     Class<?>[] exceptionTypes(MethodHandle handle);
+
+    /**
+     * Returns a lookup object corresponding to given class with full access privileges.
+     * @param lookupClass lookup class
+     * @return full-privileged lookup object
+     */
+    Lookup lookupIn(Class<?> lookupClass);
 }

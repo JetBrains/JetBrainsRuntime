@@ -43,6 +43,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.jetbrains.exported.JBRApi;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 
@@ -607,6 +608,8 @@ public final class FontDesignMetrics extends FontMetrics {
         return height;
     }
 
+    @JBRApi.Service
+    @JBRApi.Provides("FontMetricsAccessor")
     private static final class Accessor {
         // Keeping metrics instances here prevents them from being garbage collected
         // and being re-created by FontDesignMetrics.getMetrics method
@@ -646,6 +649,7 @@ public final class FontDesignMetrics extends FontMetrics {
         }
     }
 
+    @JBRApi.Provided("FontMetricsAccessor.Overrider")
     private interface Overrider {
         float charWidth(int codePoint);
     }

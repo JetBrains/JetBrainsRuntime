@@ -1660,6 +1660,11 @@ abstract class MethodHandleImpl {
             public Class<?>[] exceptionTypes(MethodHandle handle) {
                 return VarHandles.exceptionTypes(handle);
             }
+
+            @Override
+            public Lookup lookupIn(Class<?> lookupClass) {
+                return IMPL_LOOKUP.in(lookupClass);
+            }
         });
     }
 

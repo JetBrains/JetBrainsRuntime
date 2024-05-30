@@ -33,6 +33,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import javax.swing.plaf.FontUIResource;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.OSInfo;
 import sun.util.logging.PlatformLogger;
 
@@ -136,7 +137,8 @@ public final class FontUtilities {
         });
     }
 
-    static Dimension getSubpixelResolution() {
+    @JBRApi.Provides("FontExtensions")
+    private static Dimension getSubpixelResolution() {
         return subpixelResolution;
     }
 
