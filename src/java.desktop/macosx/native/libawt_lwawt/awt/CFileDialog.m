@@ -25,6 +25,7 @@
 
 #import <sys/stat.h>
 #import <Cocoa/Cocoa.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
@@ -40,6 +41,7 @@
 
 - (id)initWithOwner:(NSWindow*)owner
               filter:(jboolean)inHasFilter
+           fileTypes:(NSArray *)inFileTypes
           fileDialog:(jobject)inDialog
                title:(NSString *)inTitle
            directory:(NSString *)inPath
@@ -56,6 +58,8 @@ canCreateDirectories:(BOOL)inCreateDirectories
         fOwner = owner;
         [fOwner retain];
         fHasFileFilter = inHasFilter;
+        fFileTypes = inFileTypes;
+        [fFileTypes retain];
         fFileDialog = (*env)->NewGlobalRef(env, inDialog);
         fDirectory = inPath;
         [fDirectory retain];
@@ -84,6 +88,9 @@ canCreateDirectories:(BOOL)inCreateDirectories
 }
 
 -(void) dealloc {
+    [fFileTypes release];
+    fFileTypes = nil;
+
     [fDirectory release];
     fDirectory = nil;
 
@@ -122,6 +129,23 @@ canCreateDirectories:(BOOL)inCreateDirectories
 
     if (thePanel != nil) {
         [thePanel setTitle:fTitle];
+
+        if (fFileTypes != nil) {
+            if (@available(macOS 11, *)) {
+                int nTypes = (int)[fFileTypes count];
+                NSMutableArray *contentTypes = [NSMutableArray arrayWithCapacity:nTypes];
+                for (int i = 0; i < nTypes; ++i) {
+                    NSString *fileType = (NSString *)[fFileTypes objectAtIndex:i];
+                    UTType *contentType = [UTType typeWithFilenameExtension:fileType conformingToType:UTTypeData];
+                    if (contentType != nil) {
+                        [contentTypes addObject:contentType];
+                    }
+                }
+                [thePanel setAllowedContentTypes:contentTypes];
+            } else {
+                [thePanel setAllowedFileTypes:fFileTypes];
+            }
+        }
 
         if (fNavigateApps) {
             [thePanel setTreatsFilePackagesAsDirectories:YES];
@@ -304,7 +328,7 @@ JNIEXPORT jobjectArray JNICALL
 Java_sun_lwawt_macosx_CFileDialog_nativeRunFileDialog
 (JNIEnv *env, jobject peer, jlong ownerPtr, jstring title, jint mode, jboolean multipleMode,
  jboolean navigateApps, jboolean chooseDirectories, jboolean chooseFiles, jboolean createDirectories,
- jboolean hasFilter, jstring directory, jstring file)
+ jboolean hasFilter, jobjectArray allowedFileTypes, jstring directory, jstring file)
 {
     jobjectArray returnValue = NULL;
 
@@ -314,8 +338,22 @@ JNI_COCOA_ENTER(env);
         dialogTitle = @" ";
     }
 
+    NSMutableArray *fileTypes = nil;
+    if (allowedFileTypes != nil) {
+        int nTypes = (*env)->GetArrayLength(env, allowedFileTypes);
+        if (nTypes > 0) {
+            fileTypes = [NSMutableArray arrayWithCapacity:nTypes];
+            for (int i = 0; i < nTypes; i++) {
+                jstring fileType = (jstring)(*env)->GetObjectArrayElement(env, allowedFileTypes, i);
+                [fileTypes addObject:JavaStringToNSString(env, fileType)];
+                (*env)->DeleteLocalRef(env, fileType);
+            }
+        }
+    }
+
     CFileDialog *dialogDelegate = [[CFileDialog alloc] initWithOwner:(NSWindow *)jlong_to_ptr(ownerPtr)
                                                                filter:hasFilter
+                                                            fileTypes:fileTypes
                                                            fileDialog:peer
                                                                 title:dialogTitle
                                                             directory:JavaStringToNSString(env, directory)
