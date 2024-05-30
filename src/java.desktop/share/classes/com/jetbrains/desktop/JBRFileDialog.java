@@ -57,6 +57,7 @@ public class JBRFileDialog implements Serializable {
         }
     }
 
+    @Deprecated(forRemoval = true)
     public void setLocalizationStrings(String openButtonText, String selectFolderButtonText) {
         setLocalizationString(OPEN_FILE_BUTTON_KEY, openButtonText);
         setLocalizationString(OPEN_DIRECTORY_BUTTON_KEY, selectFolderButtonText);

@@ -906,7 +906,8 @@ ifeq ($(call isTargetOs, macosx), true)
           -framework ExceptionHandling \
           -framework JavaRuntimeSupport \
           -framework OpenGL \
-          -framework QuartzCore -ljava, \
+          -framework QuartzCore \
+          -framework UniformTypeIdentifiers -ljava, \
   ))
 
   TARGETS += $(BUILD_LIBAWT_LWAWT)
