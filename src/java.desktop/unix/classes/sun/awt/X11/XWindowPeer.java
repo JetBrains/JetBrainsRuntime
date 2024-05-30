@@ -37,7 +37,6 @@ import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.jetbrains.internal.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.DisplayChangedListener;
@@ -2572,43 +2571,5 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     void startMovingTogetherWithMouse(int mouseButton) {
         setGrab(false);
         XWM.getWM().startMovingWindowTogetherWithMouse(getParentTopLevel().getWindow(), getLastButtonPressAbsLocation(), mouseButton);
-    }
-
-    private static void startMovingWindowTogetherWithMouse(Window window, int mouseButton) {
-        final AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
-        ComponentPeer peer = acc.getPeer(window);
-        if (peer instanceof XWindowPeer xWindowPeer) {
-            xWindowPeer.startMovingTogetherWithMouse(mouseButton);
-        } else {
-            throw new IllegalArgumentException("AWT window must have XWindowPeer as its peer");
-        }
-    }
-
-    private static class WindowMoveService {
-        WindowMoveService() {
-            final var toolkit = Toolkit.getDefaultToolkit();
-            final var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            if (toolkit == null || ge == null
-                    || !toolkit.getClass().getName().equals("sun.awt.X11.XToolkit")
-                    || !ge.getClass().getName().equals("sun.awt.X11GraphicsEnvironment")) {
-                throw new JBRApi.ServiceNotAvailableException("Supported only with XToolkit and X11GraphicsEnvironment");
-            }
-
-            if (!((XToolkit)Toolkit.getDefaultToolkit()).isWindowMoveSupported()) {
-                throw new JBRApi.ServiceNotAvailableException("Window manager does not support _NET_WM_MOVE_RESIZE");
-            }
-        }
-
-        void startMovingTogetherWithMouse(Window window, int mouseButton) {
-            Objects.requireNonNull(window);
-
-            final AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
-            ComponentPeer peer = acc.getPeer(window);
-            if (peer instanceof XWindowPeer xWindowPeer) {
-                xWindowPeer.startMovingTogetherWithMouse(mouseButton);
-            } else {
-                throw new IllegalArgumentException("AWT window must have XWindowPeer as its peer");
-            }
-        }
     }
 }
