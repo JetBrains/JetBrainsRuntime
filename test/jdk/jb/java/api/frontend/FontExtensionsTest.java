@@ -42,9 +42,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
-import static com.jetbrains.desktop.FontExtensions.featuresToStringArray;
-import static com.jetbrains.desktop.FontExtensions.getFeatures;
-
 public class FontExtensionsTest {
     @Retention(RetentionPolicy.RUNTIME)
     private @interface JBRTest {}
@@ -96,10 +93,6 @@ public class FontExtensionsTest {
         return isImageEquals(image1, image2);
     }
 
-    private static String[] fontFeaturesAsString(Font font) {
-        return featuresToStringArray(getFeatures(font));
-    }
-
     @JBRTest
     private static Boolean testFeatureFromString() {
         return  FontExtensions.FeatureTag.getFeatureTag("frac").isPresent() &&
@@ -108,23 +101,24 @@ public class FontExtensionsTest {
                 FontExtensions.FeatureTag.getFeatureTag("tttt").isEmpty();
     }
 
-    @JBRTest
-    private static Boolean testFeaturesToString1() {
-        Font font = JBR.getFontExtensions().deriveFontWithFeatures(BASE_FONT, new FontExtensions.Features(Map.of(
-                FontExtensions.FeatureTag.ZERO, FontExtensions.FEATURE_ON,
-                FontExtensions.FeatureTag.SALT, 123,
-                FontExtensions.FeatureTag.FRAC, FontExtensions.FEATURE_OFF)));
-        String[] features = {"calt=0", "frac=0", "kern=0", "liga=0", "salt=123", "zero=1"};
-        return Arrays.equals(fontFeaturesAsString(font), features);
-    }
-
-    @JBRTest
-    private static Boolean testFeaturesToString2() {
-        Font font = BASE_FONT.deriveFont(Map.of(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON,
-                TextAttribute.KERNING, TextAttribute.KERNING_ON));
-        String[] features = {"calt=1", "kern=1", "liga=1"};
-        return Arrays.equals(fontFeaturesAsString(font), features);
-    }
+// TODO uncomment these tests when API for retrieving enabled font features is availbale
+//    @JBRTest
+//    private static Boolean testFeaturesToString1() {
+//        Font font = JBR.getFontExtensions().deriveFontWithFeatures(BASE_FONT, new FontExtensions.Features(Map.of(
+//                FontExtensions.FeatureTag.ZERO, FontExtensions.FEATURE_ON,
+//                FontExtensions.FeatureTag.SALT, 123,
+//                FontExtensions.FeatureTag.FRAC, FontExtensions.FEATURE_OFF)));
+//        String[] features = {"calt=0", "frac=0", "kern=0", "liga=0", "salt=123", "zero=1"};
+//        return Arrays.equals(fontFeaturesAsString(font), features);
+//    }
+//
+//    @JBRTest
+//    private static Boolean testFeaturesToString2() {
+//        Font font = BASE_FONT.deriveFont(Map.of(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON,
+//                TextAttribute.KERNING, TextAttribute.KERNING_ON));
+//        String[] features = {"calt=1", "kern=1", "liga=1"};
+//        return Arrays.equals(fontFeaturesAsString(font), features);
+//    }
 
     @JBRTest
     private static Boolean testDisablingLigatureByDefault() {
@@ -257,7 +251,7 @@ public class FontExtensionsTest {
                 }
             }
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException("JBR: internal error during testing");
+            throw new RuntimeException("JBR: internal error during testing", e);
         }
 
         if (!error.isEmpty()) {
