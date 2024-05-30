@@ -57,6 +57,9 @@ jfieldID AwtFileDialog::filterID;
 jfieldID AwtFileDialog::jbrDialogID;
 jfieldID AwtFileDialog::openButtonTextID;
 jfieldID AwtFileDialog::selectFolderButtonTextID;
+jfieldID AwtFileDialog::allFilesFilterDescriptionID;
+jfieldID AwtFileDialog::fileFilterDescriptionID;
+jfieldID AwtFileDialog::fileFilterExtensionsID;
 jfieldID AwtFileDialog::hintsID;
 
 class CoTaskStringHolder {
@@ -156,8 +159,6 @@ class SmartHolder<T[]> : public SmartHolderBase<T> {
 static TCHAR s_fileFilterString[MAX_FILTER_STRING];
 /* Non-localized suffix of the filter string */
 static const TCHAR s_additionalString[] = TEXT(" (*.*)\0*.*\0");
-static SmartHolder<COMDLG_FILTERSPEC> s_fileFilterSpec;
-static UINT s_fileFilterCount;
 
 // Default limit of the output buffer.
 #define SINGLE_MODE_BUFFER_LIMIT     MAX_PATH+1
@@ -174,36 +175,6 @@ _COM_SMARTPTR_TYPEDEF(IShellItemArray, __uuidof(IShellItemArray));
 _COM_SMARTPTR_TYPEDEF(IOleWindowPtr, __uuidof(IOleWindowPtr));
 
 /***********************************************************************/
-
-COMDLG_FILTERSPEC *CreateFilterSpec(UINT *count) {
-    UINT filterCount = 0;
-    for (UINT index = 0; index < MAX_FILTER_STRING - 1; index++) {
-        if (s_fileFilterString[index] == _T('\0')) {
-            filterCount++;
-            if (s_fileFilterString[index + 1] == _T('\0'))
-                break;
-        }
-    }
-    filterCount /= 2;
-    COMDLG_FILTERSPEC *filterSpec = new COMDLG_FILTERSPEC[filterCount];
-    UINT currentIndex = 0;
-    TCHAR *currentStart = s_fileFilterString;
-    for (UINT index = 0; index < MAX_FILTER_STRING - 1; index++) {
-        if (s_fileFilterString[index] == _T('\0')) {
-            if (currentIndex & 1) {
-                filterSpec[currentIndex / 2].pszSpec = currentStart;
-            } else {
-                filterSpec[currentIndex / 2].pszName = currentStart;
-            }
-            currentStart = s_fileFilterString + index + 1;
-            currentIndex++;
-            if (s_fileFilterString[index + 1] == _T('\0'))
-                break;
-        }
-    }
-    *count = filterCount;
-    return filterSpec;
-}
 
 void
 AwtFileDialog::Initialize(JNIEnv *env, jstring filterDescription)
@@ -224,7 +195,6 @@ AwtFileDialog::Initialize(JNIEnv *env, jstring filterDescription)
     }
     DASSERT(s + sizeof(s_additionalString) < s_fileFilterString + MAX_FILTER_STRING);
     memcpy(s, s_additionalString, sizeof(s_additionalString));
-    s_fileFilterSpec.Attach(CreateFilterSpec(&s_fileFilterCount));
 }
 
 LRESULT CALLBACK FileDialogWndProc(HWND hWnd, UINT message,
@@ -789,6 +759,9 @@ AwtFileDialog::Show(void *p)
     jobject parent = NULL;
     AwtComponent* awtParent = NULL;
     jboolean multipleMode = JNI_FALSE;
+    wchar_t *allFilesFilterDescrBuf = NULL;
+    wchar_t *fileFilterDescrBuf = NULL;
+    wchar_t *fileFilterSpecBuf = NULL;
 
     OLE_DECL
     OLEHolder _ole_;
@@ -941,8 +914,67 @@ AwtFileDialog::Show(void *p)
             OLE_HRT(pfd->SetTitle(titleBuffer));
 
             if (!folderPickerMode) {
-                OLE_HRT(pfd->SetFileTypes(s_fileFilterCount, s_fileFilterSpec));
+                auto allFilesDescrStr = reinterpret_cast<jstring>(env->GetObjectField(jbrDialog, allFilesFilterDescriptionID));
+                if (allFilesDescrStr != nullptr) {
+                    int descriptionLen = env->GetStringLength(allFilesDescrStr);
+                    allFilesFilterDescrBuf = new wchar_t[descriptionLen + 1];
+                    auto descriptionChars = JNU_GetStringPlatformChars(env, allFilesDescrStr, nullptr);
+                    wcsncpy(allFilesFilterDescrBuf, descriptionChars, descriptionLen);
+                    JNU_ReleaseStringPlatformChars(env, allFilesDescrStr, descriptionChars);
+                    allFilesFilterDescrBuf[descriptionLen] = L'\0';
+                }
+                auto allFilesFilterDescrPtr = allFilesFilterDescrBuf != nullptr ? allFilesFilterDescrBuf : L"All Files";
+
+                auto descriptionStr = reinterpret_cast<jstring>(env->GetObjectField(jbrDialog, fileFilterDescriptionID));
+                auto extensionArray = reinterpret_cast<jobjectArray>(env->GetObjectField(jbrDialog, fileFilterExtensionsID));
+                if (descriptionStr != nullptr && extensionArray != nullptr) {
+                    int extensionArrayLen = env->GetArrayLength(extensionArray);
+                    int filterSpecLen = extensionArrayLen * 3;
+                    for (int i = 0; i < extensionArrayLen; ++i) {
+                        auto extensionStr = reinterpret_cast<jstring>(env->GetObjectArrayElement(extensionArray, i));
+                        filterSpecLen += env->GetStringLength(extensionStr);
+                        env->DeleteLocalRef(extensionStr);
+                    }
+                    fileFilterSpecBuf = new wchar_t[filterSpecLen];
+                    for (int i = 0, fsp = 0; i < extensionArrayLen; ++i) {
+                        if (i > 0) {
+                            fileFilterSpecBuf[fsp++] = L';';
+                        }
+                        fileFilterSpecBuf[fsp++] = L'*';
+                        fileFilterSpecBuf[fsp++] = L'.';
+                        auto extensionStr = reinterpret_cast<jstring>(env->GetObjectArrayElement(extensionArray, i));
+                        auto extensionChars = JNU_GetStringPlatformChars(env, extensionStr, nullptr);
+                        int extensionStrLen = env->GetStringLength(extensionStr);
+                        wcsncpy(fileFilterSpecBuf + fsp, extensionChars, extensionStrLen);
+                        fsp += extensionStrLen;
+                        JNU_ReleaseStringPlatformChars(env, extensionStr, extensionChars);
+                        env->DeleteLocalRef(extensionStr);
+                    }
+                    fileFilterSpecBuf[filterSpecLen - 1] = L'\0';
+
+                    int descriptionLen = env->GetStringLength(descriptionStr);
+                    fileFilterDescrBuf = new wchar_t[descriptionLen + 1];
+                    auto descriptionChars = JNU_GetStringPlatformChars(env, descriptionStr, nullptr);
+                    wcsncpy(fileFilterDescrBuf, descriptionChars, descriptionLen);
+                    JNU_ReleaseStringPlatformChars(env, descriptionStr, descriptionChars);
+                    fileFilterDescrBuf[descriptionLen] = L'\0';
+
+                    COMDLG_FILTERSPEC rgSpec[] = {
+                        {fileFilterDescrBuf, fileFilterSpecBuf},
+                        {allFilesFilterDescrPtr, L"*.*"}
+                    };
+                    OLE_HRT(pfd->SetFileTypes(2, rgSpec));
+                } else {
+                    COMDLG_FILTERSPEC rgSpec[] = {
+                        {allFilesFilterDescrPtr, L"*.*"}
+                    };
+                    OLE_HRT(pfd->SetFileTypes(1, rgSpec));
+                }
                 OLE_HRT(pfd->SetFileTypeIndex(1));
+
+                env->DeleteLocalRef(allFilesDescrStr);
+                env->DeleteLocalRef(descriptionStr);
+                env->DeleteLocalRef(extensionArray);
             }
 
             {
@@ -1046,6 +1078,9 @@ AwtFileDialog::Show(void *p)
         }
         DASSERT(!safe_ExceptionOccurred(env));
     } catch (...) {
+        delete[] allFilesFilterDescrBuf;
+        delete[] fileFilterDescrBuf;
+        delete[] fileFilterSpecBuf;
 
         if (useCommonItemDialog) {
             if (pfd && dwCookie != OLE_BAD_COOKIE) {
@@ -1228,6 +1263,21 @@ Java_sun_awt_windows_WFileDialogPeer_initIDs(JNIEnv *env, jclass cls)
         env->GetFieldID(cls, "selectFolderButtonText", "Ljava/lang/String;");
     DASSERT(AwtFileDialog::selectFolderButtonTextID != NULL);
     CHECK_NULL(AwtFileDialog::selectFolderButtonTextID);
+
+    AwtFileDialog::allFilesFilterDescriptionID =
+        env->GetFieldID(cls, "allFilesFilterDescription", "Ljava/lang/String;");
+    DASSERT(AwtFileDialog::allFilesFilterDescriptionID != NULL);
+    CHECK_NULL(AwtFileDialog::allFilesFilterDescriptionID);
+
+    AwtFileDialog::fileFilterDescriptionID =
+        env->GetFieldID(cls, "fileFilterDescription", "Ljava/lang/String;");
+    DASSERT(AwtFileDialog::fileFilterDescriptionID != NULL);
+    CHECK_NULL(AwtFileDialog::fileFilterDescriptionID);
+
+    AwtFileDialog::fileFilterExtensionsID =
+        env->GetFieldID(cls, "fileFilterExtensions", "[Ljava/lang/String;");
+    DASSERT(AwtFileDialog::fileFilterExtensionsID != NULL);
+    CHECK_NULL(AwtFileDialog::fileFilterExtensionsID);
 
     AwtFileDialog::hintsID = env->GetFieldID(cls, "hints", "I");
     DASSERT(AwtFileDialog::hintsID != NULL);
