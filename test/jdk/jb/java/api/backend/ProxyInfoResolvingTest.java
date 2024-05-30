@@ -24,45 +24,35 @@
 /*
  * @test
  * @modules java.base/com.jetbrains.internal:+open
- * @build com.jetbrains.* com.jetbrains.api.ProxyInfoResolving com.jetbrains.jbr.ProxyInfoResolving
- * @run main ProxyInfoResolvingTest
+ * @build com.jetbrains.* com.jetbrains.test.api.ProxyInfoResolving com.jetbrains.test.jbr.ProxyInfoResolving
+ * @run main/othervm -Djetbrains.runtime.api.extendRegistry=true ProxyInfoResolvingTest
  */
 
-import com.jetbrains.internal.JBRApi;
-
-import java.util.Objects;
+import java.util.Map;
 
 import static com.jetbrains.Util.*;
-import static com.jetbrains.api.ProxyInfoResolving.*;
-import static com.jetbrains.jbr.ProxyInfoResolving.*;
+import static com.jetbrains.test.api.ProxyInfoResolving.*;
+import static com.jetbrains.test.jbr.ProxyInfoResolving.*;
 
 public class ProxyInfoResolvingTest {
 
     public static void main(String[] args) throws Throwable {
-        JBRApi.ModuleRegistry r = init();
-        // No mapping defined -> null
-        requireNull(getProxy(ProxyInfoResolvingTest.class));
-        // Invalid JBR-side target class -> null
-        r.proxy(InterfaceWithoutImplementation.class.getName(), "absentImpl");
-        requireNull(getProxy(InterfaceWithoutImplementation.class));
-        // Invalid JBR-side target static method mapping -> null
-        r.service(ServiceWithoutImplementation.class.getName())
-                .withStatic("someMethod", "someMethod", "NoClass");
-        requireNull(getProxy(ServiceWithoutImplementation.class));
-        // Service without target class or static method mapping -> null
-        r.service(EmptyService.class.getName());
-        requireNull(getProxy(EmptyService.class));
-        // Class passed instead of interface for client proxy -> error
-        r.clientProxy(ClientProxyClass.class.getName(), ClientProxyClassImpl.class.getName());
-        mustFail(() -> getProxy(ClientProxyClass.class), RuntimeException.class);
-        // Class passed instead of interface for proxy -> null
-        r.proxy(ProxyClass.class.getName(), ProxyClassImpl.class.getName());
-        requireNull(getProxy(ProxyClass.class));
+        init("ProxyInfoResolvingTest", Map.of());
+        // No mapping defined -> unsupported
+        requireUnsupported(getProxy(ProxyInfoResolvingTest.class));
+        // Invalid JBR-side target class -> unsupported
+        requireUnsupported(getProxy(InterfaceWithoutImplementation.class));
+        // Invalid JBR-side target static method mapping -> unsupported
+        requireUnsupported(getProxy(ServiceWithoutImplementation.class));
         // Valid proxy
-        r.proxy(ValidApi.class.getName(), ValidApiImpl.class.getName());
-        Objects.requireNonNull(getProxy(ValidApi.class));
-        // Multiple implementations
-        r.proxy(ValidApi2.class.getName(), "MissingClass", ValidApi2Impl.class.getName());
-        Objects.requireNonNull(getProxy(ValidApi2.class));
+        requireSupported(getProxy(ValidApi.class));
+        // Class instead of interface for proxy
+        requireSupported(getProxy(ProxyClass.class));
+        // Class instead of interface for client proxy
+        requireSupported(getProxy(ClientProxyClass.class));
+        // Service without annotation -> unsupported
+        requireUnsupported(getProxy(ServiceWithoutAnnotation.class));
+        // Service with extension method
+        requireSupported(getProxy(ServiceWithExtension.class));
     }
 }
