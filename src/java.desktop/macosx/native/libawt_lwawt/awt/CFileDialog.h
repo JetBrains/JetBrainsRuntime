@@ -31,6 +31,9 @@
     // Should we query back to Java for a file filter?
     jboolean fHasFileFilter;
 
+    // Allowed file types
+    NSArray *fFileTypes;
+
     // sun.awt.CFileDialog
     jobject fFileDialog;
 
@@ -68,7 +71,8 @@
 
 // Allocator
 - (id) initWithOwner:(NSWindow*) owner
-           filter:(jboolean)inHasFilter
+               filter:(jboolean)inHasFilter
+            fileTypes:(NSArray *)inFileTypes
            fileDialog:(jobject)inDialog
                 title:(NSString *)inTitle
             directory:(NSString *)inPath
