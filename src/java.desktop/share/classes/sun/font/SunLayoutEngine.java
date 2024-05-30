@@ -31,7 +31,6 @@
 
 package sun.font;
 
-import com.jetbrains.desktop.FontExtensions;
 import sun.font.GlyphLayout.*;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
@@ -39,7 +38,6 @@ import sun.java2d.DisposerRecord;
 import java.awt.geom.Point2D;
 import java.lang.foreign.MemorySegment;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Set;
 import java.util.Arrays;
 import java.util.WeakHashMap;
@@ -83,7 +81,7 @@ public final class SunLayoutEngine {
     private static final int HB_CONTEXT_LENGTH = 1024;
 
     public static void layout(Font2D font, int script, FontStrikeDesc desc, float[] mat, int slot, int slotShift,
-                       int baseIndex, TextRecord tr, boolean ltrDirection, Map<String, Integer> features,
+                       int baseIndex, TextRecord tr, boolean ltrDirection, String[] features,
                        Point2D.Float pt, GVData data) {
 
         FontStrike strike = font.getStrike(desc);
@@ -106,7 +104,7 @@ public final class SunLayoutEngine {
                 HBShaper.shape(font, strike, mat, face,
                         text, data, script,
                         start, limit, baseIndex, pt,
-                        ltrDirection, FontExtensions.featuresToString(features),
+                        ltrDirection, String.join(";", features),
                         slot, slotShift);
             }
         } else {
@@ -115,7 +113,7 @@ public final class SunLayoutEngine {
                 shape(font, strike, mat, pFace,
                         text, data, script,
                         start, limit, baseIndex, pt,
-                        ltrDirection, FontExtensions.featuresToString(features),
+                        ltrDirection, String.join(";", features),
                         slot, slotShift);
             }
         }
