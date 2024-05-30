@@ -31,3 +31,4 @@ test/benchmarks/**/target
 /src/hotspot/cmake-build-debug/
 /src/hotspot/.cache/
 /src/hotspot/.idea/
+/jbr-api/
