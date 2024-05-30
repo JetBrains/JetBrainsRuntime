@@ -22,3 +22,4 @@ NashornProfile.txt
 /.cache
 *.class
 .idea/workspace.xml
+/jbr-api/

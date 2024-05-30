@@ -50,6 +50,7 @@ import java.text.AttributedCharacterIterator.Attribute;
 import java.text.CharacterIterator;
 import java.util.*;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.ComponentFactory;
 import sun.font.AttributeMap;
 import sun.font.AttributeValues;
@@ -647,6 +648,7 @@ public class Font implements java.io.Serializable
         this.size = (int)(sizePts + 0.5);
         this.pointSize = sizePts;
         this.featureArray = features;
+        this.hasLayoutAttributes |= this.featureArray != null;
     }
 
     /* This constructor is used by deriveFont when attributes is null */
@@ -753,6 +755,7 @@ public class Font implements java.io.Serializable
             this.font2DHandle = handle;
         }
         initFromValues(values);
+        this.hasLayoutAttributes |= this.featureArray != null;
     }
 
     /**
@@ -794,6 +797,7 @@ public class Font implements java.io.Serializable
             this.size = font.size;
             this.pointSize = font.pointSize;
         }
+        this.hasLayoutAttributes |= this.featureArray != null;
         this.font2DHandle = font.font2DHandle;
         this.createdFont = font.createdFont;
         this.withFallback = font.withFallback;
@@ -846,7 +850,7 @@ public class Font implements java.io.Serializable
         if (values.getPosture() >= .2f) this.style |= ITALIC; // not  == .2f
 
         this.nonIdentityTx = values.anyNonDefault(EXTRA_MASK);
-        this.hasLayoutAttributes = this.featureArray != null || values.anyNonDefault(LAYOUT_MASK);
+        this.hasLayoutAttributes = values.anyNonDefault(LAYOUT_MASK);
     }
 
     /**
@@ -2040,13 +2044,14 @@ public class Font implements java.io.Serializable
             }
             values = getAttributeValues().merge(extras);
             this.nonIdentityTx = values.anyNonDefault(EXTRA_MASK);
-            this.hasLayoutAttributes = this.featureArray != null || values.anyNonDefault(LAYOUT_MASK);
+            this.hasLayoutAttributes = values.anyNonDefault(LAYOUT_MASK);
             } catch (Throwable t) {
                 throw new IOException(t);
             } finally {
                 fRequestedAttributes = null; // don't need it any more
             }
         }
+        this.hasLayoutAttributes |= this.featureArray != null;
     }
 
     /**
@@ -2272,10 +2277,14 @@ public class Font implements java.io.Serializable
                         font2DHandle, keepFont2DHandle, featureArray);
     }
 
+    @JBRApi.Provided("FontExtensions.Features")
+    @Deprecated(forRemoval = true)
     private interface Features {
         TreeMap<String, Integer> getAsTreeMap();
     }
 
+    @JBRApi.Provides("FontExtensions#deriveFontWithFeatures")
+    @Deprecated(forRemoval = true)
     private static Font deriveFont(Font font, Features features) {
         TreeMap<String, Integer> map = features.getAsTreeMap();
         String[] array = new String[map.size()];
@@ -2307,6 +2316,7 @@ public class Font implements java.io.Serializable
         throw new IllegalArgumentException("Invalid feature: \"" + f + "\", allowed syntax: \"kern\", or \"aalt=2\"");
     }
 
+    @JBRApi.Provides("FontExtensions#deriveFontWithFeatures")
     private static Font deriveFont(Font font, String... features) {
         if (features == null || features.length == 0) return new Font(font, null);
         for (String f : features) validateFeature(f);
@@ -2317,6 +2327,7 @@ public class Font implements java.io.Serializable
      * Returns a list of OpenType's features enabled on the current Font.
      * @return array of enabled OpenType's features
      */
+    @JBRApi.Provides("FontExtensions")
     private static String[] getEnabledFeatures(Font font) {
         return font.featureArray == null ? new String[0] : Arrays.copyOf(font.featureArray, font.featureArray.length);
     }
@@ -2777,6 +2788,7 @@ public class Font implements java.io.Serializable
      * Implementation of such logic goes to HarfBuzz library.
      * @return set of available OpenType's features
      */
+    @JBRApi.Provides("FontExtensions")
     private static Set<String> getAvailableFeatures(Font font) {
         return SunLayoutEngine.getAvailableFeatures(FontUtilities.getFont2D(font));
     }

@@ -37,7 +37,6 @@ import sun.java2d.DisposerRecord;
 import java.awt.geom.Point2D;
 import java.lang.ref.SoftReference;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;

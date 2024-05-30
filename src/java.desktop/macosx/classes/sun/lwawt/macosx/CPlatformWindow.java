@@ -63,6 +63,7 @@ import javax.swing.SwingUtilities;
 
 import com.apple.laf.ClientPropertyApplicator;
 import com.apple.laf.ClientPropertyApplicator.Property;
+import com.jetbrains.exported.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
@@ -1484,7 +1485,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         isFullScreenAnimationOn = false;
     }
 
-    // JBR API internals
+    @JBRApi.Provides("java.awt.Window.CustomTitleBarPeer#update")
     private static void updateCustomTitleBar(ComponentPeer peer) {
         if (peer instanceof LWWindowPeer lwwp &&
             lwwp.getPlatformWindow() instanceof CPlatformWindow cpw)  {
@@ -1492,7 +1493,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         }
     }
 
-    // JBR API internals
+    @JBRApi.Provides("RoundedCornersManager")
     private static void setRoundedCorners(Window window, Object params) {
         Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
         if (peer instanceof CPlatformWindow) {

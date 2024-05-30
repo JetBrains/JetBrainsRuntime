@@ -49,6 +49,7 @@ import java.util.Objects;
 
 import javax.swing.JMenuBar;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.SunToolkit;
 import sun.security.util.SecurityConstants;
 
@@ -1072,6 +1073,7 @@ public class Desktop {
         return peer.moveToTrash(file);
     }
 
+    @JBRApi.Provided("DesktopActions.Handler")
     private interface DesktopActionsHandler {
         void open(File file) throws IOException;
         void edit(File file) throws IOException;
@@ -1104,7 +1106,8 @@ public class Desktop {
     }
     private static volatile DesktopActions actions;
 
-    static void setDesktopActionsHandler(DesktopActionsHandler h) {
+    @JBRApi.Provides("DesktopActions#setHandler")
+    private static void setDesktopActionsHandler(DesktopActionsHandler h) {
         try {
             actions = new DesktopActions(h);
         } catch (Exception e) {

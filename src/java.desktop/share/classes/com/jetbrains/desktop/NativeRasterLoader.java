@@ -1,5 +1,6 @@
 package com.jetbrains.desktop;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.image.SunVolatileImage;
 
 import java.awt.image.VolatileImage;
@@ -16,6 +17,7 @@ class NativeRasterLoader {
      * Note: can be null (then whole image used)
      * @param rectsCount count of "dirty" rects (if 0 then whole image used)
      */
+    @JBRApi.Provides("NativeRasterLoader")
     static void loadNativeRaster(VolatileImage vi, long pRaster, int width, int height, long pRects, int rectsCount) {
         if (!(vi instanceof SunVolatileImage)) {
             System.err.printf("Unsupported type of VolatileImage: %s\n", vi);

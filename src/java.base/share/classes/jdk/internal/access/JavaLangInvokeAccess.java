@@ -28,6 +28,7 @@ package jdk.internal.access;
 import jdk.internal.invoke.NativeEntryPoint;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
@@ -139,4 +140,11 @@ public interface JavaLangInvokeAccess {
      * @param mh the method handle
      */
     void ensureCustomized(MethodHandle mh);
+
+    /**
+     * Returns a lookup object corresponding to given class with full access privileges.
+     * @param lookupClass lookup class
+     * @return full-privileged lookup object
+     */
+    MethodHandles.Lookup lookupIn(Class<?> lookupClass);
 }

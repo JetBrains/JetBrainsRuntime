@@ -28,6 +28,8 @@ package java.lang;
 import java.io.*;
 import java.util.*;
 
+import com.jetbrains.exported.JBRApi;
+
 /**
  * The {@code Throwable} class is the superclass of all errors and
  * exceptions in the Java language. Only objects that are instances of this
@@ -1109,7 +1111,7 @@ public class Throwable implements Serializable {
 
     private static volatile java.util.function.Supplier<String> $$jb$additionalInfoSupplier = null;
 
-    // JBR API internals
+    @JBRApi.Provides("Jstack#includeInfoFrom")
     private static void $$jb$additionalInfoForJstack(java.util.function.Supplier<String> supplier) {
         $$jb$additionalInfoSupplier = supplier;
     }

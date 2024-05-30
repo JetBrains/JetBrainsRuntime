@@ -1503,6 +1503,11 @@ abstract class MethodHandleImpl {
             public VarHandle insertCoordinates(VarHandle target, int pos, Object... values) {
                 return VarHandles.insertCoordinates(target, pos, values);
             }
+
+            @Override
+            public Lookup lookupIn(Class<?> lookupClass) {
+                return IMPL_LOOKUP.in(lookupClass);
+            }
         });
     }
 
