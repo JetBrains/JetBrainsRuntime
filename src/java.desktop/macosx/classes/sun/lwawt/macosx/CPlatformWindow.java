@@ -44,7 +44,6 @@ import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.FocusEvent;
-import java.awt.event.PaintEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowStateListener;
 import java.awt.peer.ComponentPeer;
@@ -65,11 +64,11 @@ import javax.swing.SwingUtilities;
 
 import com.apple.laf.ClientPropertyApplicator;
 import com.apple.laf.ClientPropertyApplicator.Property;
+import com.jetbrains.exported.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
 import sun.awt.AWTThreading;
-import sun.awt.PaintEventDispatcher;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWLightweightFramePeer;
@@ -1517,7 +1516,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         isFullScreenAnimationOn = false;
     }
 
-    // JBR API internals
+    @JBRApi.Provides("java.awt.Window.CustomTitleBarPeer#update")
     private static void updateCustomTitleBar(ComponentPeer peer) {
         if (peer instanceof LWWindowPeer lwwp &&
             lwwp.getPlatformWindow() instanceof CPlatformWindow cpw)  {
@@ -1525,7 +1524,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         }
     }
 
-    // JBR API internals
+    @JBRApi.Provides("RoundedCornersManager")
     private static void setRoundedCorners(Window window, Object params) {
         Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
         if (peer instanceof CPlatformWindow) {
