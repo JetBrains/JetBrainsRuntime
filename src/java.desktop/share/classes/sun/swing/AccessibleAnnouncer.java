@@ -26,6 +26,7 @@
 
 package sun.swing;
 
+import com.jetbrains.exported.JBRApi;
 import jdk.internal.misc.InnocuousThread;
 import sun.awt.AWTThreading;
 
@@ -72,7 +73,8 @@ public class AccessibleAnnouncer {
      * @param str      string for announcing
      * @param priority priority for announcing
      */
-    public static void announce(Accessible a, final String str, final int priority) throws Exception {
+    @JBRApi.Provides("AccessibleAnnouncer")
+    public static void announce(Accessible a, final String str, final int priority) {
         if (str == null ||
         priority != ANNOUNCE_WITHOUT_INTERRUPTING_CURRENT_OUTPUT &&
         priority != ANNOUNCE_WITH_INTERRUPTING_CURRENT_OUTPUT) {
