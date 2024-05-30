@@ -2294,8 +2294,8 @@ public class Font implements java.io.Serializable
                         "\"kern\" feature is not allowed here, use java.awt.font.TextAttribute.KERNING instead");
                 if (f.startsWith("liga") || f.startsWith("calt")) throw new IllegalArgumentException(
                         "\"liga\" and \"calt\" features are not allowed here, use java.awt.font.TextAttribute.LIGATURES instead");
-                return;
             }
+            return;
         }
         throw new IllegalArgumentException("Invalid feature: \"" + f + "\", allowed syntax: \"kern\", or \"aalt=2\"");
     }
