@@ -107,6 +107,7 @@ $(eval $(call SetupJavaCompilation, $(MODULE), \
     BIN := $(if $($(MODULE)_BIN), $($(MODULE)_BIN), $(JDK_OUTPUTDIR)/modules), \
     HEADERS := $(SUPPORT_OUTPUTDIR)/headers, \
     CREATE_API_DIGEST := true, \
+    PROCESS_JBR_API := true, \
     CLEAN := $(CLEAN), \
     CLEAN_FILES := $(CLEAN_FILES), \
     COPY := $(COPY), \
