@@ -23,10 +23,12 @@
 
 package com.jetbrains.desktop;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.ConstrainableGraphics;
 
 import java.awt.geom.Rectangle2D;
 
+@JBRApi.Provided("GraphicsUtils.ConstrainableGraphics2D")
 public interface ConstrainableGraphics2D extends ConstrainableGraphics {
     public void constrain(Rectangle2D region);
     public Object getDestination();
