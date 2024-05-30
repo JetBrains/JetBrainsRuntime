@@ -26,25 +26,19 @@
 
 package sun.java2d.wl;
 
-import java.awt.Component;
 import java.awt.GraphicsConfiguration;
 import java.awt.ImageCapabilities;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import java.awt.geom.AffineTransform;
+import java.awt.image.VolatileImage;
+import java.util.Objects;
 
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.SurfaceData;
 
-public class WLVolatileSurfaceManager extends VolatileSurfaceManager implements PropertyChangeListener {
-    private static final String SCALE_PROPERTY_NAME = "graphicsContextScaleTransform";
-
+public class WLVolatileSurfaceManager extends VolatileSurfaceManager {
     public WLVolatileSurfaceManager(SunVolatileImage vImg, Object context) {
         super(vImg, context);
-        Component component = vImg.getComponent();
-        if (component != null) {
-            component.addPropertyChangeListener(SCALE_PROPERTY_NAME, this);
-        }
     }
 
     protected boolean isAccelerationEnabled() {
@@ -63,9 +57,12 @@ public class WLVolatileSurfaceManager extends VolatileSurfaceManager implements 
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        assert SCALE_PROPERTY_NAME.equals(evt.getPropertyName());
-
-        displayChanged();
+    public int validate(GraphicsConfiguration gc) {
+        AffineTransform newTx = gc.getDefaultTransform();
+        if (!Objects.equals(atCurrent, newTx)) {
+            // May need a different size on another display
+            return VolatileImage.IMAGE_INCOMPATIBLE;
+        }
+        return super.validate(gc);
     }
 }
