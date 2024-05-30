@@ -68,8 +68,6 @@
 
 package sun.font;
 
-import com.jetbrains.desktop.FontExtensions;
-
 import java.lang.ref.SoftReference;
 import java.awt.Font;
 import java.awt.font.FontRenderContext;
@@ -349,7 +347,7 @@ public final class GlyphLayout {
             EngineRecord er = _erecords.get(ix);
             for (;;) {
                 try {
-                    er.layout(ltrDirection, FontExtensions.getFeatures(font));
+                    er.layout(ltrDirection, FontAccess.getFontAccess().getFeatures(font));
                     break;
                 }
                 catch (IndexOutOfBoundsException e) {
@@ -555,7 +553,7 @@ public final class GlyphLayout {
             }
         }
 
-        void layout(boolean ltrDirection, Map<String, Integer> features) {
+        void layout(boolean ltrDirection, String[] features) {
             _textRecord.start = start;
             _textRecord.limit = limit;
             SunLayoutEngine.layout(font, script, _sd, _mat, ptSize, slot, slotShift, start - _offset, _textRecord,
