@@ -25,69 +25,49 @@
 
 include $(SPEC)
 include MakeBase.gmk
-include JavaCompilation.gmk
+include Utils.gmk
 
-JBR_API_ROOT_DIR   := $(TOPDIR)/src/jetbrains.api
-JBR_API_TOOLS_DIR  := $(JBR_API_ROOT_DIR)/tools
-JBR_API_SRC_DIR    := $(JBR_API_ROOT_DIR)/src
-JBR_API_OUTPUT_DIR := $(OUTPUTDIR)/jbr-api
-JBR_API_GENSRC_DIR := $(JBR_API_OUTPUT_DIR)/gensrc
-JBR_API_BIN_DIR    := $(JBR_API_OUTPUT_DIR)/bin
-JBR_API_VERSION_PROPERTIES := $(JBR_API_ROOT_DIR)/version.properties
-JBR_API_VERSION_GENSRC     := $(JBR_API_OUTPUT_DIR)/jbr-api.version
-JBR_API_GENSRC_BATCH       := $(JBR_API_VERSION_GENSRC)
+JBR_API_ORIGIN := https://github.com/JetBrains/JetBrainsRuntimeApi.git
+JBR_API_DIR    := $(TOPDIR)/jbr-api
 
-JBR_API_SRC_FILES := $(call FindFiles, $(JBR_API_SRC_DIR))
-JBR_API_GENSRC_FILES := $(foreach f, $(call FindFiles, $(JBR_API_SRC_DIR)), \
-    $(JBR_API_GENSRC_DIR)/$(call RelativePath, $f, $(JBR_API_SRC_DIR)))
-
-ifeq ($(JBR_API_JBR_VERSION),)
-  JBR_API_JBR_VERSION := DEVELOPMENT
-  JBR_API_FAIL_ON_HASH_MISMATCH := false
+ARTIFACT_NAME := jbr-api-SNAPSHOT
+ifeq ($(call isBuildOsEnv, windows.cygwin windows.msys2), true)
+    HOME    := $$USERPROFILE
+    M2_REPO := $(shell $(PATHTOOL) $(HOME))/.m2/repository
+else ifeq ($(call isBuildOsEnv, windows.wsl1 windows.wsl2), true)
+    HOME    := `cmd.exe /C "echo %USERPROFILE%" 2> /dev/null`
+    M2_REPO := $(shell $(PATHTOOL) $(HOME))/.m2/repository
 else
-  .PHONY: $(JBR_API_VERSION_PROPERTIES)
-  JBR_API_FAIL_ON_HASH_MISMATCH := true
+    M2_REPO := $(HOME)/.m2/repository
 endif
+M2_ARTIFACT := $(M2_REPO)/com/jetbrains/jbr-api/SNAPSHOT
+M2_POM_CONTENT := \
+    <?xml version="1.0" encoding="UTF-8"?> \
+    <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" \
+        xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"> \
+      <modelVersion>4.0.0</modelVersion> \
+      <groupId>com.jetbrains</groupId> \
+      <artifactId>jbr-api</artifactId> \
+      <version>SNAPSHOT</version> \
+    </project> \
 
-ARCHIVE_BUILD_JBR_API_BIN := $(JBR_API_BIN_DIR)
-$(eval $(call SetupJavaCompilation, BUILD_JBR_API, \
-    SMALL_JAVA := true, \
-    COMPILER := bootjdk, \
-    SRC := $(JBR_API_GENSRC_DIR), \
-    EXTRA_FILES := $(JBR_API_GENSRC_FILES), \
-    BIN := $(JBR_API_BIN_DIR), \
-    JAR := $(JBR_API_OUTPUT_DIR)/jbr-api.jar, \
-))
+jbr-api:
+	if [ -d "$(JBR_API_DIR)" ]; then \
+	    $(GIT) -C "$(JBR_API_DIR)" fetch; \
+	    $(GIT) -C "$(JBR_API_DIR)" merge-base --is-ancestor origin/main HEAD || \
+	        $(ECHO) "!!! Current JBR API revision is outdated, update the branch in $(JBR_API_DIR) !!!"; \
+	else \
+	    $(ECHO) "JBR API directory does not exist. Initializing..."; \
+	    $(GIT) clone "$(JBR_API_ORIGIN)" "$(JBR_API_DIR)" --config core.autocrlf=false; \
+	fi
+	$(BASH) "$(JBR_API_DIR)/tools/build.sh" dev "$(BOOT_JDK)"
+	if [ -d "$(M2_REPO)" ]; then \
+	    $(MKDIR) -p $(M2_ARTIFACT); \
+	    $(ECHO) "$(M2_POM_CONTENT)" > $(M2_ARTIFACT)/$(ARTIFACT_NAME).pom; \
+	    $(CP) "$(JBR_API_DIR)/out/$(ARTIFACT_NAME).jar" "$(M2_ARTIFACT)"; \
+	    $(ECHO) "Installed into local Maven repository as com.jetbrains:jbr-api:SNAPSHOT"; \
+	else \
+	    $(ECHO) "No Maven repository found at $(M2_REPO) - skipping local installation"; \
+	fi
 
-$(eval $(call SetupJarArchive, BUILD_JBR_API_SOURCES_JAR, \
-    DEPENDENCIES := $(JBR_API_GENSRC_FILES), \
-    SRCS := $(JBR_API_GENSRC_DIR), \
-    JAR := $(JBR_API_OUTPUT_DIR)/jbr-api-sources.jar, \
-    SUFFIXES := .java, \
-    BIN := $(JBR_API_BIN_DIR), \
-))
-
-# Grouped targets may not be supported, so hack dependencies: sources -> version file -> generated sources
-$(JBR_API_VERSION_GENSRC): $(JBR_API_SRC_FILES) $(JBR_API_VERSION_PROPERTIES) $(JBR_API_TOOLS_DIR)/Gensrc.java
-	$(ECHO) Generating sources for JBR API
-	$(JAVA_CMD) $(JAVA_FLAGS_SMALL) "$(JBR_API_TOOLS_DIR)/Gensrc.java" \
-	    "$(TOPDIR)/src" "$(JBR_API_OUTPUT_DIR)" "$(JBR_API_JBR_VERSION)"
-$(JBR_API_GENSRC_FILES): $(JBR_API_VERSION_GENSRC)
-	$(TOUCH) $@
-
-jbr-api-check-version: $(JBR_API_GENSRC_FILES) $(JBR_API_VERSION_PROPERTIES)
-	$(JAVA_CMD) $(JAVA_FLAGS_SMALL) "$(JBR_API_TOOLS_DIR)/CheckVersion.java" \
-	    "$(JBR_API_ROOT_DIR)" "$(JBR_API_GENSRC_DIR)" "$(JBR_API_FAIL_ON_HASH_MISMATCH)"
-
-jbr-api: $(BUILD_JBR_API) $(BUILD_JBR_API_SOURCES_JAR) jbr-api-check-version
-
-.PHONY: jbr-api jbr-api-check-version
-
-ifneq ($(JBR_API_CONF_FILE),)
-  $(JBR_API_CONF_FILE): $(JBR_API_GENSRC_FILES)
-	$(ECHO) "VERSION=`$(CAT) $(JBR_API_VERSION_GENSRC)`" > $(JBR_API_CONF_FILE)
-	$(ECHO) "JAR=$(JBR_API_OUTPUT_DIR)/jbr-api.jar" >> $(JBR_API_CONF_FILE)
-	$(ECHO) "SOURCES_JAR=$(JBR_API_OUTPUT_DIR)/jbr-api-sources.jar" >> $(JBR_API_CONF_FILE)
-  jbr-api: $(JBR_API_CONF_FILE)
-  .PHONY: $(JBR_API_CONF_FILE)
-endif
+.PHONY: jbr-api
