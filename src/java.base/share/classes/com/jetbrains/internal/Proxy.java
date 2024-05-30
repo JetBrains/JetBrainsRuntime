@@ -26,203 +26,255 @@
 package com.jetbrains.internal;
 
 import java.lang.invoke.MethodHandle;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.lang.invoke.MethodType;
+import java.util.*;
+
+import static java.lang.invoke.MethodHandles.Lookup;
 
 /**
  * Proxy is needed to dynamically link JBR API interfaces and implementation at runtime.
- * It implements user-side interfaces and delegates method calls to actual implementation
- * code through {@linkplain java.lang.invoke.MethodHandle method handles}.
+ * Proxy implements or extends a base interface or class and delegates method calls to
+ * target object or static methods. Calls may be delegated even to methods inaccessible by base type.
  * <p>
- * There are 3 type of proxy objects:
- * <ol>
- *     <li>{@linkplain ProxyInfo.Type#PROXY Proxy} - implements client-side interface from
- *        {@code jetbrains.api} and delegates calls to JBR-side target object and optionally static methods.</li>
- *     <li>{@linkplain ProxyInfo.Type#SERVICE Service} - singleton {@linkplain ProxyInfo.Type#PROXY proxy},
- *        may delegate calls only to static methods, without target object.</li>
- *     <li>{@linkplain ProxyInfo.Type#CLIENT_PROXY Client proxy} - reverse proxy, implements JBR-side interface
- *        and delegates calls to client-side target object by interface defined in {@code jetbrains.api}.
- *        May be used to implement callbacks which are created by client and called by JBR.</li>
- * </ol>
+ * Mapping between interfaces and implementation code is defined using
+ * {@link com.jetbrains.exported.JBRApi.Provided} and {@link com.jetbrains.exported.JBRApi.Provides} annotations.
  * <p>
- * Method signatures of proxy interfaces and implementation are validated to ensure that proxy can
+ * When JBR API interface or imeplementation type is used as a method parameter or return type,
+ * JBR API backend performs conversions to ensure each side receives object or correct type,
+ * for example, given following types:
+ * <blockquote><pre>{@code
+ * interface A {
+ *     B foo(B b);
+ * }
+ * interface B {
+ *     void bar();
+ * }
+ * class AImpl {
+ *     BImpl foo(BImpl b) {}
+ * }
+ * class BImpl {
+ *     void bar() {}
+ * }
+ * }</pre></blockquote>
+ * {@code A#foo(B)} will be mapped to {@code AImpl#foo(BImpl)}.
+ * Conversion between {@code B} and {@code BImpl} will be done by JBR API backend.
+ * Here's what generated proxies would look like:
+ * <blockquote><pre>{@code
+ * final class AProxy implements A {
+ *     final AImpl target;
+ *     AProxy(AImpl t) {
+ *         target = t;
+ *     }
+ *     @Override
+ *     B foo(B b) {
+ *         BImpl ret = t.foo(b.target);
+ *         return new BProxy(ret);
+ *     }
+ * }
+ * final class BProxy implements B {
+ *     final BImpl target;
+ *     BProxy(BImpl t) {
+ *         target = t;
+ *     }
+ *     @Override
+ *     void bar() {
+ *         t.bar();
+ *     }
+ * }
+ * }</pre></blockquote>
+ * <p>
+ * Method signatures of base type and implementation are validated to ensure that proxy can
  * properly delegate call to the target implementation code. If there's no implementation found for some
  * interface methods, corresponding proxy is considered unsupported. Proxy is also considered unsupported
- * if any proxy used by it is unsupported, more about it at {@link ProxyDependencyManager}.
+ * if any proxy used by it is unsupported.
  * <p>
- * Mapping between interfaces and implementation code is defined in
- * {@linkplain com.jetbrains.bootstrap.JBRApiBootstrap#MODULES registry classes}.
- * @param <INTERFACE> interface type for this proxy.
+ * Extensions are an exception to this rule. Methods of base type may be marked as extension methods,
+ * which makes them optional for support checks. Moreover, extension must be explicitly enabled for a
+ * proxy instance to enable usage of corresponding methods.
  */
-class Proxy<INTERFACE> {
-    private final ProxyInfo info;
+class Proxy {
+    /**
+     * @see Proxy.Info#flags
+     */
+    static final int
+            INTERNAL = 1,
+            SERVICE = 2;
 
+    private final Proxy inverse;
+    private final Class<?> interFace, target;
+    private final int flags;
     private volatile ProxyGenerator generator;
-    private volatile Boolean allMethodsImplemented;
-
     private volatile Boolean supported;
 
-    private volatile Class<?> proxyClass;
+    private volatile Set<Proxy> directDependencies = Set.of();
+    private volatile Set<Enum<?>> supportedExtensions = Set.of();
+
     private volatile MethodHandle constructor;
-    private volatile MethodHandle targetExtractor;
 
-    private volatile boolean instanceInitialized;
-    private volatile INTERFACE instance;
-
-    Proxy(ProxyInfo info) {
-        this.info = info;
+    /**
+     * Creates empty proxy.
+     */
+    static Proxy empty(Boolean supported) {
+        return new Proxy(supported);
     }
 
     /**
-     * @return {@link ProxyInfo} structure of this proxy
+     * Creates a new proxy (and possibly an inverse one) from {@link Info}.
      */
-    ProxyInfo getInfo() {
-        return info;
+    static Proxy create(ProxyRepository repository,
+                        Info info, Mapping[] specialization,
+                        Info inverseInfo, Mapping[] inverseSpecialization) {
+        return new Proxy(repository, info, specialization, null, inverseInfo, inverseSpecialization);
     }
 
-    private synchronized void initGenerator() {
-        if (generator != null) return;
-        generator = new ProxyGenerator(info);
-        allMethodsImplemented = generator.areAllMethodsImplemented();
+    private Proxy(Boolean supported) {
+        interFace = target = null;
+        flags = 0;
+        inverse = this;
+        this.supported = supported;
     }
 
-    /**
-     * Checks if implementation is found for all abstract interface methods of this proxy.
-     */
-    boolean areAllMethodsImplemented() {
-        if (allMethodsImplemented != null) return allMethodsImplemented;
-        synchronized (this) {
-            if (allMethodsImplemented == null) initGenerator();
-            return allMethodsImplemented;
+    private Proxy(ProxyRepository repository, Info info, Mapping[] specialization,
+                  Proxy inverseProxy, Info inverseInfo, Mapping[] inverseSpecialization) {
+        if (info != null) {
+            interFace = info.interfaceLookup.lookupClass();
+            target = info.targetLookup == null ? null : info.targetLookup.lookupClass();
+            flags = info.flags;
+            generator = new ProxyGenerator(repository, info, specialization);
+        } else {
+            interFace = target = null;
+            flags = 0;
         }
+        inverse = inverseProxy == null ? new Proxy(repository, inverseInfo, inverseSpecialization, this, null, null) : inverseProxy;
+        if (inverse.getInterface() != null) directDependencies = Set.of(inverse);
     }
 
     /**
-     * Checks if all methods are {@linkplain #areAllMethodsImplemented() implemented}
-     * for this proxy and all proxies it {@linkplain ProxyDependencyManager uses}.
+     * @return inverse proxy
      */
-    boolean isSupported() {
+    Proxy inverse() {
+        return inverse;
+    }
+
+    /**
+     * @return interface class
+     */
+    Class<?> getInterface() {
+        return interFace;
+    }
+
+    /**
+     * @return target class
+     */
+    Class<?> getTarget() {
+        return target;
+    }
+
+    /**
+     * @return flags
+     */
+    int getFlags() {
+        return flags;
+    }
+
+    /**
+     * Checks if all methods are implemented for this proxy and all proxies it uses.
+     * {@code null} means not known yet.
+     */
+    Boolean supported() {
+        return supported;
+    }
+
+    private synchronized boolean generate() {
         if (supported != null) return supported;
-        synchronized (this) {
-            if (supported == null) {
-                Set<Class<?>> dependencies = ProxyDependencyManager.getProxyDependencies(info.interFace);
-                for (Class<?> d : dependencies) {
-                    Proxy<?> p = JBRApi.getProxy(d);
-                    if (p == null || !p.areAllMethodsImplemented()) {
-                        supported = false;
-                        return false;
-                    }
-                }
-                supported = true;
+        if (generator == null) return false;
+        Set<Proxy> deps = new HashSet<>(directDependencies);
+        supported = generator.generate();
+        for (Map.Entry<Proxy, Boolean> e : generator.getDependencies().entrySet()) {
+            if (e.getKey().generate()) deps.add(e.getKey());
+            else if (e.getValue()) {
+                supported = false;
+                break;
             }
-            return supported;
         }
-    }
-
-    private synchronized void defineClasses() {
-        if (constructor != null) return;
-        initGenerator();
-        generator.defineClasses();
-        proxyClass = generator.getProxyClass();
-        constructor = generator.findConstructor();
-        targetExtractor = generator.findTargetExtractor();
+        if (supported) {
+            directDependencies = deps;
+            supportedExtensions = generator.getSupportedExtensions();
+        } else generator = null; // Release for gc
+        return supported;
     }
 
     /**
-     * @return generated proxy class
+     * Checks if specified extension is implemented by this proxy.
+     * Implicitly runs bytecode generation.
      */
-    Class<?> getProxyClass() {
-        if (proxyClass != null) return proxyClass;
-        synchronized (this) {
-            if (proxyClass == null) defineClasses();
-            return proxyClass;
+    boolean isExtensionSupported(Enum<?> extension) {
+        if (supported == null) generate();
+        return supportedExtensions.contains(extension);
+    }
+
+    private synchronized boolean define() {
+        if (constructor != null) return true;
+        if (!generate()) return false;
+        constructor = generator.define((flags & SERVICE) != 0);
+        if (constructor == null) {
+            supported = false;
+            return false;
         }
+        for (Proxy p : directDependencies) {
+            if (!p.define()) return false;
+        }
+        return true;
+    }
+
+    synchronized boolean init() {
+        if (!define()) return false;
+        if (generator != null) {
+            ProxyGenerator gen = generator;
+            generator = null;
+            gen.init();
+            for (Proxy p : directDependencies) p.init();
+        }
+        return supported;
     }
 
     /**
      * @return method handle for the constructor of this proxy.
-     * <ul>
-     *     <li>For {@linkplain ProxyInfo.Type#SERVICE services}, constructor is no-arg.</li>
-     *     <li>For non-{@linkplain ProxyInfo.Type#SERVICE services}, constructor is single-arg,
-     *     expecting target object to which it would delegate method calls.</li>
-     * </ul>
+     * First parameter is target object to which it would delegate method calls.
+     * Second parameter is extensions bitfield (if extensions are enabled).
      */
-    MethodHandle getConstructor() {
-        if (constructor != null) return constructor;
-        synchronized (this) {
-            if (constructor == null) defineClasses();
-            return constructor;
+    MethodHandle getConstructor() throws NullPointerException {
+        if (JBRApi.LOG_DEPRECATED && interFace.isAnnotationPresent(Deprecated.class)) {
+            Utils.log(Utils.BEFORE_BOOTSTRAP_DYNAMIC, System.err,
+                    "Warning: using deprecated JBR API interface " + interFace.getCanonicalName());
         }
+        return constructor;
     }
 
     /**
-     * @return method handle for that extracts target object of the proxy, or null.
+     * Proxy descriptor with all classes and lookup contexts resolved.
+     * Contains all necessary information to create a {@linkplain Proxy proxy}.
      */
-    MethodHandle getTargetExtractor() {
-        // targetExtractor may be null, so check constructor instead
-        if (constructor != null) return targetExtractor;
-        synchronized (this) {
-            if (constructor == null) defineClasses();
-            return targetExtractor;
-        }
-    }
+    static class Info {
+        private record StaticMethod(String name, MethodType targetType) {}
 
-    private synchronized void initClass(Set<Proxy<?>> actualUsages) {
-        defineClasses();
-        if (generator != null) {
-            actualUsages.addAll(generator.getDirectProxyDependencies());
-            generator.init();
-            generator = null;
-        }
-    }
-    private synchronized void initDependencyGraph() {
-        defineClasses();
-        if (generator == null) return;
-        Set<Class<?>> dependencyClasses = ProxyDependencyManager.getProxyDependencies(info.interFace);
-        Set<Proxy<?>> dependencies = new HashSet<>();
-        Set<Proxy<?>> actualUsages = new HashSet<>();
-        for (Class<?> d : dependencyClasses) {
-            Proxy<?> p = JBRApi.getProxy(d);
-            if (p != null) {
-                dependencies.add(p);
-                p.initClass(actualUsages);
-            }
-        }
-        actualUsages.removeAll(dependencies);
-        if (!actualUsages.isEmpty()) {
-            // Should never happen, this is a sign of broken dependency search
-            throw new RuntimeException("Some proxies are not in dependencies of " + info.interFace.getName() +
-                    ", but are actually used by it: " +
-                    actualUsages.stream().map(p -> p.info.interFace.getName()).collect(Collectors.joining(", ")));
-        }
-    }
+        private final Map<StaticMethod, MethodHandle> staticMethods = new HashMap<>();
+        final Lookup interfaceLookup;
+        final Lookup targetLookup;
+        private final int flags;
 
-    /**
-     * @return instance for this {@linkplain ProxyInfo.Type#SERVICE service},
-     * returns {@code null} for other proxy types.
-     */
-    @SuppressWarnings("unchecked")
-    INTERFACE getInstance() {
-        if (instanceInitialized) return instance;
-        if (info.type != ProxyInfo.Type.SERVICE) return null;
-        synchronized (this) {
-            if (instance == null) {
-                initDependencyGraph();
-                try {
-                    instance = (INTERFACE) getConstructor().invoke();
-                } catch (JBRApi.ServiceNotAvailableException e) {
-                    if (JBRApi.VERBOSE) {
-                        System.err.println("Service not available: " + info.interFace.getName());
-                        e.printStackTrace();
-                    }
-                } catch (Throwable e) {
-                    throw new RuntimeException(e);
-                } finally {
-                    instanceInitialized = true;
-                }
-            }
-            return instance;
+        Info(Lookup interfaceLookup, Lookup targetLookup, int flags) {
+            this.interfaceLookup = interfaceLookup;
+            this.targetLookup = targetLookup;
+            this.flags = flags;
+        }
+
+        void addStaticMethod(String name, MethodHandle target) {
+            staticMethods.put(new StaticMethod(name, target.type()), target);
+        }
+
+        MethodHandle getStaticMethod(String name, MethodType targetType) {
+            return staticMethods.get(new StaticMethod(name, targetType));
         }
     }
 }
