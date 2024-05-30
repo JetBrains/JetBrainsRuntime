@@ -6,6 +6,7 @@ import java.lang.annotation.Native;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.awt.*;
+import java.util.Objects;
 
 public class JBRFileDialog implements Serializable {
 
@@ -25,28 +26,19 @@ public class JBRFileDialog implements Serializable {
         return (JBRFileDialog) getter.get(dialog);
     }
 
-    /**
-     * Whether to select files, directories or both (used when common file dialogs are enabled on Windows, or on macOS)
-     */
     @Native public static final int SELECT_FILES_HINT = 1, SELECT_DIRECTORIES_HINT = 2;
-    /**
-     * Whether to allow creating directories or not (used on macOS)
-     */
     @Native public static final int CREATE_DIRECTORIES_HINT = 4;
 
+    public static final String OPEN_FILE_BUTTON_KEY = "jbrFileDialogOpenFile";
+    public static final String OPEN_DIRECTORY_BUTTON_KEY = "jbrFileDialogSelectDir";
+    public static final String ALL_FILES_COMBO_KEY = "jbrFileDialogAllFiles";
+
     public int hints = CREATE_DIRECTORIES_HINT;
-
-    /**
-     * Text for "Open" button (used when common file dialogs are enabled on
-     * Windows).
-     */
     public String openButtonText;
-
-    /**
-     * Text for "Select Folder" button (used when common file dialogs are
-     * enabled on Windows).
-     */
     public String selectFolderButtonText;
+    public String allFilesFilterDescription;
+    public String fileFilterDescription;
+    public String[] fileFilterExtensions;
 
     public void setHints(int hints) {
         this.hints = hints;
@@ -55,9 +47,24 @@ public class JBRFileDialog implements Serializable {
         return hints;
     }
 
-    public void setLocalizationStrings(String openButtonText, String selectFolderButtonText) {
-        this.openButtonText = openButtonText;
-        this.selectFolderButtonText = selectFolderButtonText;
+    public void setLocalizationString(String key, String text) {
+        Objects.requireNonNull(key);
+        switch (key) {
+            case OPEN_FILE_BUTTON_KEY -> openButtonText = text;
+            case OPEN_DIRECTORY_BUTTON_KEY -> selectFolderButtonText = text;
+            case ALL_FILES_COMBO_KEY -> allFilesFilterDescription = text;
+            default -> throw new IllegalArgumentException("unrecognized key: " + key);
+        }
     }
 
+    @Deprecated(forRemoval = true)
+    public void setLocalizationStrings(String openButtonText, String selectFolderButtonText) {
+        setLocalizationString(OPEN_FILE_BUTTON_KEY, openButtonText);
+        setLocalizationString(OPEN_DIRECTORY_BUTTON_KEY, selectFolderButtonText);
+    }
+
+    public void setFileFilterExtensions(String fileFilterDescription, String[] fileFilterExtensions) {
+        this.fileFilterDescription = fileFilterDescription;
+        this.fileFilterExtensions = fileFilterExtensions;
+    }
 }
