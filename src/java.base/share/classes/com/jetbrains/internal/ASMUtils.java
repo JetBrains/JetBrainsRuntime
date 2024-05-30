@@ -58,23 +58,21 @@ class ASMUtils {
         InternalMethodInfo methodInfo = getInternalMethodInfo(interfaceMethod);
         MethodVisitor p = writer.visitMethod(ACC_PUBLIC | ACC_FINAL, methodInfo.name(),
                 methodInfo.descriptor(), methodInfo.genericSignature(), methodInfo.exceptionNames());
-        p.visitTypeInsn(NEW, "java/lang/UnsupportedOperationException");
+        p.visitCode();
+        throwException(p, "java/lang/UnsupportedOperationException", "No implementation found for this method");
+        p.visitMaxs(0, 0);
+        p.visitEnd();
+    }
+
+    public static void throwException(MethodVisitor p, String type, String message) {
+        p.visitTypeInsn(NEW, type);
         p.visitInsn(DUP);
-        p.visitLdcInsn("No implementation found for this method");
-        p.visitMethodInsn(INVOKESPECIAL, "java/lang/UnsupportedOperationException", "<init>", "(Ljava/lang/String;)V", false);
+        p.visitLdcInsn(message);
+        p.visitMethodInsn(INVOKESPECIAL, type, "<init>", "(Ljava/lang/String;)V", false);
         p.visitInsn(ATHROW);
-        p.visitMaxs(-1, -1);
     }
 
-    public static void logDeprecated(MethodVisitor writer, String message) {
-        writer.visitTypeInsn(NEW, "java/lang/Exception");
-        writer.visitInsn(DUP);
-        writer.visitLdcInsn(message);
-        writer.visitMethodInsn(INVOKESPECIAL, "java/lang/Exception", "<init>", "(Ljava/lang/String;)V", false);
-        writer.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Exception", "printStackTrace", "()V", false);
-    }
-
-    protected record InternalMethodInfo(String name, String descriptor, String genericSignature,
+    public record InternalMethodInfo(String name, String descriptor, String genericSignature,
                                         String[] exceptionNames) {}
 
     public static InternalMethodInfo getInternalMethodInfo(Method method) {
@@ -121,7 +119,7 @@ class ASMUtils {
         return IRETURN + getOpcodeOffset(c);
     }
 
-    public static int getOpcodeOffset(Class<?> c) {
+    private static int getOpcodeOffset(Class<?> c) {
         if (c.isPrimitive()) {
             if (c == Long.TYPE) {
                 return 1;
