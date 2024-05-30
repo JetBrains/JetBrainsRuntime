@@ -413,7 +413,8 @@ ifeq ($(call isTargetOs, macosx), true)
           -framework Metal \
           -framework OpenGL \
           -framework QuartzCore \
-          -framework Security, \
+          -framework Security \
+          -framework UniformTypeIdentifiers, \
   ))
 
   TARGETS += $(BUILD_LIBAWT_LWAWT)
