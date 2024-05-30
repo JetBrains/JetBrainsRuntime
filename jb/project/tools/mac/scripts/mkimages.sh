@@ -162,8 +162,7 @@ if [ $do_maketest -eq 1 ]; then
     JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-osx-test-${architecture}-b${build_number}
     echo Creating "$JBRSDK_TEST" ...
     [ $do_reset_changes -eq 1 ] && git checkout HEAD jb/project/tools/common/modules.list src/java.desktop/share/classes/module-info.java
-    make test-image jbr-api CONF=$RELEASE_NAME JBR_API_JBR_VERSION=TEST || do_exit $?
-    cp "build/${RELEASE_NAME}/jbr-api/jbr-api.jar" "${IMAGES_DIR}/test"
+    make test-image CONF=$RELEASE_NAME JBR_API_JBR_VERSION=TEST || do_exit $?
     [ -f "$JBRSDK_TEST.tar.gz" ] && rm "$JBRSDK_TEST.tar.gz"
     COPYFILE_DISABLE=1 tar -pczf "$JBRSDK_TEST".tar.gz -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
 fi
