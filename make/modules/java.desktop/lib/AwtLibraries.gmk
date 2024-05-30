@@ -443,6 +443,7 @@ ifeq ($(call isTargetOs, macosx), true)
           -framework Metal \
           -framework OpenGL \
           -framework QuartzCore \
+          -framework UniformTypeIdentifiers \
           -framework Security, \
       STATIC_LIB_EXCLUDE_OBJS := $(LIBAWT_LWAWT_STATIC_EXCLUDE_OBJS), \
   ))
