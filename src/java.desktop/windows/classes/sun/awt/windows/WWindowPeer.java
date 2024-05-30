@@ -48,7 +48,6 @@ import java.awt.event.FocusEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.DataBufferInt;
@@ -61,6 +60,7 @@ import java.util.List;
 import javax.swing.JRootPane;
 import javax.swing.RootPaneContainer;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.AppContext;
 import sun.awt.DisplayChangedListener;
@@ -832,7 +832,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         }
     }
 
-    // JBR API internals
+    @JBRApi.Provides("RoundedCornersManager")
     private static void setRoundedCorners(Window window, Object params) {
         Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
         if (peer instanceof WWindowPeer) {
