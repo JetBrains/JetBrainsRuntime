@@ -1,0 +1,11 @@
+TYPE com.jetbrains.test.jbr.MethodMapping.SimpleEmptyImpl com.jetbrains.test.api.MethodMapping.SimpleEmpty PROVIDES
+TYPE com.jetbrains.test.jbr.MethodMapping.PlainImpl com.jetbrains.test.api.MethodMapping.Plain SERVICE
+STATIC MethodMappingTest main ([Ljava/lang/String;)V com.jetbrains.test.api.MethodMapping.Plain c
+TYPE com.jetbrains.test.jbr.MethodMapping.PlainFailImpl com.jetbrains.test.api.MethodMapping.PlainFail SERVICE
+TYPE com.jetbrains.test.jbr.MethodMapping.Callback com.jetbrains.test.api.MethodMapping.ApiCallback PROVIDED
+TYPE com.jetbrains.test.jbr.MethodMapping.JBRTwoWay com.jetbrains.test.api.MethodMapping.ApiTwoWay TWO_WAY
+TYPE com.jetbrains.test.jbr.MethodMapping.ConversionImpl com.jetbrains.test.api.MethodMapping.Conversion TWO_WAY
+TYPE com.jetbrains.test.jbr.MethodMapping.ConversionSelfImpl com.jetbrains.test.api.MethodMapping.ConversionSelf PROVIDES
+TYPE com.jetbrains.test.jbr.MethodMapping.ConversionFailImpl com.jetbrains.test.api.MethodMapping.ConversionFail PROVIDES
+TYPE com.jetbrains.test.jbr.MethodMapping.ArrayConversionImpl com.jetbrains.test.api.MethodMapping.ArrayConversion PROVIDES
+TYPE com.jetbrains.test.jbr.MethodMapping.GenericConversionImpl com.jetbrains.test.api.MethodMapping.GenericConversion PROVIDES

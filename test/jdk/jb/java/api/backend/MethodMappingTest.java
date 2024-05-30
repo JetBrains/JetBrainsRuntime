@@ -24,55 +24,39 @@
 /*
  * @test
  * @modules java.base/com.jetbrains.internal:+open
- * @build com.jetbrains.* com.jetbrains.api.MethodMapping com.jetbrains.jbr.MethodMapping
- * @run main MethodMappingTest
+ * @build com.jetbrains.* com.jetbrains.test.api.MethodMapping com.jetbrains.test.jbr.MethodMapping
+ * @run main/othervm -Djetbrains.runtime.api.extendRegistry=true MethodMappingTest
  */
 
-import com.jetbrains.internal.JBRApi;
+import java.util.Map;
 
 import static com.jetbrains.Util.*;
-import static com.jetbrains.api.MethodMapping.*;
-import static com.jetbrains.jbr.MethodMapping.*;
+import static com.jetbrains.test.api.MethodMapping.*;
+import static com.jetbrains.test.jbr.MethodMapping.*;
 
 public class MethodMappingTest {
 
     public static void main(String[] args) throws Throwable {
-        JBRApi.ModuleRegistry r = init();
+        init("MethodMappingTest", Map.of());
         // Simple empty interface
-        r.proxy(SimpleEmpty.class.getName(), SimpleEmptyImpl.class.getName());
-        requireImplemented(SimpleEmpty.class);
+        requireSupported(getProxy(SimpleEmpty.class));
+        requireUnsupported(getProxy(SimpleEmptyImpl.class));
+        requireUnsupported(inverse(getProxy(SimpleEmpty.class)));
+        requireSupported(inverse(getProxy(SimpleEmptyImpl.class)));
         // Plain method mapping
-        r.proxy(PlainFail.class.getName(), PlainImpl.class.getName());
-        r.service(Plain.class.getName(), PlainImpl.class.getName())
-                .withStatic("c", "main", MethodMappingTest.class.getName());
-        requireNotImplemented(PlainFail.class);
-        requireImplemented(Plain.class);
+        requireSupported(getProxy(Plain.class));
+        requireUnsupported(getProxy(PlainFail.class));
         // Callback (client proxy)
-        r.clientProxy(Callback.class.getName(), ApiCallback.class.getName());
-        requireImplemented(Callback.class);
+        requireSupported(getProxy(Callback.class));
         // 2-way
-        r.twoWayProxy(ApiTwoWay.class.getName(), JBRTwoWay.class.getName());
-        requireImplemented(ApiTwoWay.class);
-        requireImplemented(JBRTwoWay.class);
+        requireSupported(getProxy(ApiTwoWay.class));
+        requireSupported(getProxy(JBRTwoWay.class));
         // Conversion
-        r.twoWayProxy(Conversion.class.getName(), ConversionImpl.class.getName());
-        r.proxy(ConversionSelf.class.getName(), ConversionSelfImpl.class.getName());
-        r.proxy(ConversionFail.class.getName(), ConversionFailImpl.class.getName());
-        requireImplemented(Conversion.class);
-        requireImplemented(ConversionImpl.class);
-        requireImplemented(ConversionSelf.class);
-        requireNotImplemented(ConversionFail.class);
-    }
-
-    private static final ReflectedMethod methodsImplemented = getMethod("com.jetbrains.internal.Proxy", "areAllMethodsImplemented");
-    private static void requireImplemented(Class<?> interFace) throws Throwable {
-        if (!(boolean) methodsImplemented.invoke(getProxy(interFace))) {
-            throw new Error("All methods must be implemented");
-        }
-    }
-    private static void requireNotImplemented(Class<?> interFace) throws Throwable {
-        if ((boolean) methodsImplemented.invoke(getProxy(interFace))) {
-            throw new Error("Not all methods must be implemented");
-        }
+        requireSupported(getProxy(Conversion.class));
+        requireSupported(getProxy(ConversionImpl.class));
+        requireSupported(getProxy(ConversionSelf.class));
+        requireUnsupported(getProxy(ConversionFail.class));
+        requireSupported(getProxy(ArrayConversion.class));
+        requireSupported(getProxy(GenericConversion.class));
     }
 }
