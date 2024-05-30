@@ -34,6 +34,7 @@ import java.awt.Rectangle;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.FramePeer;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.im.InputMethodManager;
 
@@ -260,7 +261,7 @@ class WFramePeer extends WWindowPeer implements FramePeer {
 
     private native void synthesizeWmActivate(boolean activate);
 
-    // JBR API internals
+    @JBRApi.Provides("java.awt.Window.CustomTitleBarPeer#update")
     private static void updateCustomTitleBar(ComponentPeer peer) {
         // In native code AwtDialog is actually a descendant of AwtFrame,
         // so we don't distinguish between WFramePeer and WDialogPeer here,
