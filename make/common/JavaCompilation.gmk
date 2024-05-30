@@ -168,6 +168,7 @@ endef
 #   CREATE_API_DIGEST Set to true to use a javac plugin to generate a public API
 #        hash which can be used for down stream dependencies to only rebuild
 #        when the API changes.
+#   PROCESS_JBR_API Set to true to use an annotation processor to generate JBR API bindings.
 #   KEEP_ALL_TRANSLATIONS Set to true to skip translation filtering
 SetupJavaCompilation = $(NamedParamsMacroTemplate)
 define SetupJavaCompilationBody
@@ -298,11 +299,20 @@ define SetupJavaCompilationBody
         "-XDLOG_LEVEL=$(LOG_LEVEL)" \
         #
 
-    $1_EXTRA_DEPS := $$(BUILDTOOLS_OUTPUTDIR)/depend/_the.COMPILE_DEPEND_batch
+    $1_EXTRA_DEPS := $$(BUILDTOOLS_OUTPUTDIR)/plugins/_the.COMPILE_DEPEND_batch
+  endif
+
+  ifeq ($$($1_PROCESS_JBR_API), true)
+    # Automatic path conversion doesn't work for two arguments, so call fixpath manually
+    $1_JBR_API_FLAGS := -Xplugin:"jbr-api $$(call FixPath, $$($1_BIN)/java.base/META-INF/jbrapi.registry) $$(call FixPath, $(TOPDIR)/jb/jbr-api.version)"
+    $1_EXTRA_DEPS := $$($1_EXTRA_DEPS) $$(BUILDTOOLS_OUTPUTDIR)/plugins/_the.COMPILE_JBR_API_PLUGIN_batch
+  endif
+
+  ifeq ($$(call Or, $$($1_CREATE_API_DIGEST) $$($1_PROCESS_JBR_API)), true)
     # including the compilation output on the classpath, so that incremental
     # compilations in unnamed module can refer to other classes from the same
     # source root, which are not being recompiled in this compilation:
-    $1_AUGMENTED_CLASSPATH += $$(BUILDTOOLS_OUTPUTDIR)/depend $$($1_BIN)
+    $1_AUGMENTED_CLASSPATH += $$(BUILDTOOLS_OUTPUTDIR)/plugins $$($1_BIN)
   endif
 
   ifneq ($$($1_AUGMENTED_CLASSPATH), )
@@ -512,7 +522,7 @@ define SetupJavaCompilationBody
 		$$(call MakeDir, $$(@D))
 		$$(call ExecuteWithLog, $$($1_BIN)$$($1_MODULE_SUBDIR)/_the.$$($1_SAFE_NAME)_batch, \
 		    $$($1_JAVAC_CMD) $$($1_FLAGS) \
-		        $$($1_API_DIGEST_FLAGS) \
+		        $$($1_API_DIGEST_FLAGS) $$($1_JBR_API_FLAGS) \
 		        -XDmodifiedInputs=$$($1_MODFILELIST_FIXED) \
 		        -d $$($1_BIN) $$($1_HEADERS_ARG) @$$($1_FILELIST)) && \
 		$(TOUCH) $$@
