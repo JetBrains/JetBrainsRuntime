@@ -170,4 +170,11 @@ public interface JavaLangInvokeAccess {
      * This method should only be used by ReflectionFactory::newConstructorForSerialization.
      */
     MethodHandle serializableConstructor(Class<?> decl, Constructor<?> ctorToCall) throws IllegalAccessException;
+
+    /**
+     * Returns a lookup object corresponding to given class with full access privileges.
+     * @param lookupClass lookup class
+     * @return full-privileged lookup object
+     */
+    Lookup lookupIn(Class<?> lookupClass);
 }
