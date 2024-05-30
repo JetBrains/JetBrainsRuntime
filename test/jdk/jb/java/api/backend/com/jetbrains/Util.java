@@ -25,81 +25,76 @@ package com.jetbrains;
 
 import com.jetbrains.internal.JBRApi;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.InvocationTargetException;
+import java.io.*;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Map;
 
 public class Util {
 
-    public static ReflectedMethod getMethod(String className, String method, Class<?>... parameterTypes) {
-        try {
-            Method m = Class.forName(className, false, JBRApi.class.getClassLoader())
-                    .getDeclaredMethod(method, parameterTypes);
-            m.setAccessible(true);
-            return (o, a) -> {
-                try {
-                    return m.invoke(o, a);
-                } catch (IllegalAccessException e) {
-                    throw new Error(e);
-                } catch (InvocationTargetException e) {
-                    throw e.getCause();
-                }
-            };
-        } catch (NoSuchMethodException | ClassNotFoundException e) {
+    /**
+     * Invoke internal {@link JBRApi#init} bypassing {@link com.jetbrains.exported.JBRApiSupport#bootstrap}.
+     */
+    public static void init(String registryName, Map<Enum<?>, Class[]> extensionClasses) {
+        try (InputStream in = new FileInputStream(new File(System.getProperty("test.src", "."), registryName + ".registry"))) {
+            JBRApi.init(in, Service.class, Provided.class, Provides.class, extensionClasses, m -> {
+                Extension e = m.getAnnotation(Extension.class);
+                return e == null ? null : e.value();
+            });
+        } catch (IOException e) {
             throw new Error(e);
         }
     }
 
-    public static JBRApi.ModuleRegistry init() {
-        return init(new String[0], new String[0]);
+    private static Object proxyRepository;
+    public static Object getProxyRepository() throws Throwable {
+        if (proxyRepository == null) {
+            Field f = JBRApi.class.getDeclaredField("proxyRepository");
+            f.setAccessible(true);
+            proxyRepository = f.get(null);
+        }
+        return proxyRepository;
     }
 
-    /**
-     * Set known services & proxies at runtime and invoke internal
-     * {@link JBRApi#init} bypassing {@link com.jetbrains.bootstrap.JBRApiBootstrap#bootstrap}
-     * in order not to init normal JBR API modules.
-     */
-    public static JBRApi.ModuleRegistry init(String[] knownServices, String[] knownProxies) {
-        JBR.Metadata.KNOWN_SERVICES = knownServices;
-        JBR.Metadata.KNOWN_PROXIES = knownProxies;
-        JBRApi.init(MethodHandles.lookup());
-        return JBRApi.registerModule(MethodHandles.lookup(), JBR.class.getModule()::addExports);
-    }
-
-    private static final ReflectedMethod getProxy = getMethod(JBRApi.class.getName(), "getProxy", Class.class);
+    private static Method getProxy;
     public static Object getProxy(Class<?> interFace) throws Throwable {
-        return getProxy.invoke(null, interFace);
+        var repo = getProxyRepository();
+        if (getProxy == null) {
+            getProxy = repo.getClass()
+                    .getDeclaredMethod("getProxy", Class.class, Class.forName("com.jetbrains.internal.Mapping").arrayType());
+            getProxy.setAccessible(true);
+        }
+        return getProxy.invoke(repo, interFace, null);
+    }
+
+    private static Method inverse;
+    public static Object inverse(Object proxy) throws Throwable {
+        if (inverse == null) {
+            inverse = proxy.getClass().getDeclaredMethod("inverse");
+            inverse.setAccessible(true);
+        }
+        return inverse.invoke(proxy);
+    }
+
+    private static Method generate;
+    public static boolean isSupported(Object proxy) throws Throwable {
+        if (generate == null) {
+            generate = proxy.getClass().getDeclaredMethod("generate");
+            generate.setAccessible(true);
+        }
+        return (boolean) generate.invoke(proxy);
+    }
+
+    public static void requireSupported(Object proxy) throws Throwable {
+        if (!isSupported(proxy)) throw new RuntimeException("Proxy must be supported");
+    }
+
+    public static void requireUnsupported(Object proxy) throws Throwable {
+        if (isSupported(proxy)) throw new RuntimeException("Proxy must be unsupported");
     }
 
     public static void requireNull(Object o) {
         if (o != null) throw new RuntimeException("Value must be null");
     }
 
-    @SafeVarargs
-    public static void mustFail(ThrowingRunnable action, Class<? extends Throwable>... exceptionTypeChain) {
-        try {
-            action.run();
-        } catch(Throwable exception) {
-            Throwable e = exception;
-            error: {
-                for (Class<? extends Throwable> c : exceptionTypeChain) {
-                    if (e == null || !c.isInstance(e)) break error;
-                    e = e.getCause();
-                }
-                if (e == null) return;
-            }
-            throw new Error("Unexpected exception", exception);
-        }
-        throw new Error("Operation must fail, but succeeded");
-    }
-
-    @FunctionalInterface
-    public interface ThrowingRunnable {
-        void run() throws Throwable;
-    }
-
-    @FunctionalInterface
-    public interface ReflectedMethod {
-        Object invoke(Object obj, Object... args) throws Throwable;
-    }
 }
