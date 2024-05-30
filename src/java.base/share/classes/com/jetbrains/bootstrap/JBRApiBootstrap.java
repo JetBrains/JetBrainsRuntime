@@ -26,45 +26,36 @@
 package com.jetbrains.bootstrap;
 
 import com.jetbrains.internal.JBRApi;
-import jdk.internal.loader.ClassLoaders;
 
 import java.lang.invoke.MethodHandles;
+import java.util.Map;
+
 
 /**
  * Bootstrap class, used to initialize {@linkplain JBRApi JBR API}.
+ * @deprecated replaced by {@link com.jetbrains.exported.JBRApiSupport}
  */
+@Deprecated
 public class JBRApiBootstrap {
     private JBRApiBootstrap() {}
 
     /**
-     * Classes that register JBR API implementation for their modules.
-     */
-    private static final String[] MODULES = {
-            "com.jetbrains.base.JBRApiModule",
-            "com.jetbrains.desktop.JBRApiModule"
-    };
-
-    /**
-     * Called from static initializer of {@link com.jetbrains.JBR}.
+     * Old version of bootstrap method without metadata parameter.
      * @param outerLookup lookup context inside {@code jetbrains.api} module
      * @return implementation for {@link com.jetbrains.JBR.ServiceApi} interface
      */
     public static synchronized Object bootstrap(MethodHandles.Lookup outerLookup) {
-        if (!System.getProperty("jetbrains.api.enabled", "true").equalsIgnoreCase("true")) return null;
-        try {
-            Class<?> apiInterface = outerLookup.findClass("com.jetbrains.JBR$ServiceApi");
-            if (!outerLookup.hasFullPrivilegeAccess() ||
-                    outerLookup.lookupClass().getPackage() != apiInterface.getPackage()) {
-                throw new IllegalArgumentException("Lookup must be full-privileged from the com.jetbrains package: " +
-                        outerLookup.lookupClass().getName());
-            }
-            JBRApi.init(outerLookup);
-            ClassLoader classLoader = ClassLoaders.platformClassLoader();
-            for (String m : MODULES) Class.forName(m, true, classLoader);
-            return JBRApi.getService(apiInterface);
-        } catch(ClassNotFoundException | IllegalAccessException e) {
-            throw new RuntimeException(e);
+        if (!JBRApi.ENABLED) return null;
+        if (JBRApi.VERBOSE) {
+            System.out.println("JBR API bootstrap in compatibility mode: Object bootstrap(MethodHandles.Lookup)");
         }
+        Class<?> apiInterface;
+        try {
+            apiInterface = outerLookup.findClass("com.jetbrains.JBR$ServiceApi");
+        } catch (ClassNotFoundException | IllegalAccessException e) {
+            throw new RuntimeException("Failed to retrieve JBR API metadata", e);
+        }
+        return com.jetbrains.exported.JBRApiSupport.bootstrap(apiInterface, null, null, null, Map.of(), m -> null);
     }
 
 }
