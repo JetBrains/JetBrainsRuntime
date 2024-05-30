@@ -61,6 +61,9 @@ public:
     /* com.jetbrains.desktop.JBRFileDialog field and method ids */
     static jfieldID openButtonTextID;
     static jfieldID selectFolderButtonTextID;
+    static jfieldID allFilesFilterDescriptionID;
+    static jfieldID fileFilterDescriptionID;
+    static jfieldID fileFilterExtensionsID;
     static jfieldID hintsID;
 
     static void Initialize(JNIEnv *env, jstring filterDescription);
