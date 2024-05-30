@@ -23,6 +23,8 @@
 
 package com.jetbrains.desktop;
 
+import com.jetbrains.exported.JBRApi;
+
 import java.awt.*;
 import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
@@ -38,6 +40,7 @@ import java.util.Map;
 
 
 public class JBRGraphicsDelegate extends Graphics2D implements ConstrainableGraphics2D {
+    @JBRApi.Provides("GraphicsUtils#createConstrainableGraphics")
     public static Graphics2D create(Graphics2D graphics2D,
                                     ConstrainableGraphics2D constrainable) {
         return new JBRGraphicsDelegate(graphics2D, constrainable);
