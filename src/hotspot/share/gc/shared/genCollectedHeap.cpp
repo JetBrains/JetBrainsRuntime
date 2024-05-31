@@ -457,7 +457,7 @@ void GenCollectedHeap::do_collection(bool           full,
   assert(my_thread->is_VM_thread(), "only VM thread");
   assert(Heap_lock->is_locked(),
          "the requesting thread should have the Heap_lock");
-  guarantee(!is_gc_active(), "collection is not reentrant");
+  guarantee(!is_stw_gc_active(), "collection is not reentrant");
 
   if (GCLocker::check_active_before_gc()) {
     return; // GC is disabled (e.g. JNI GetXXXCritical operation)
@@ -468,7 +468,7 @@ void GenCollectedHeap::do_collection(bool           full,
 
   ClearedAllSoftRefs casr(do_clear_all_soft_refs, soft_ref_policy());
 
-  AutoModifyRestore<bool> temporarily(_is_gc_active, true);
+  AutoModifyRestore<bool> temporarily(_is_stw_gc_active, true);
 
   bool complete = full && (max_generation == OldGen);
   bool old_collects_young = complete && !ScavengeBeforeFullGC;
