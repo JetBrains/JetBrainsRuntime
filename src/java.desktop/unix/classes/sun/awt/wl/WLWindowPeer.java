@@ -33,6 +33,7 @@ import java.awt.Font;
 import java.awt.Insets;
 import java.awt.SystemColor;
 import java.awt.Window;
+import java.awt.event.InvocationEvent;
 import java.awt.event.WindowEvent;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;

@@ -165,7 +165,7 @@ wl_output_done(
                            output->height_mm,
                            (jint)output->subpixel,
                            (jint)output->transform,
-                           (jint)output->scale);
+                           (jlong)output->scale * 120);
     JNU_CHECK_EXCEPTION(env);
 }
 
@@ -197,7 +197,7 @@ WLGraphicsEnvironment_initIDs
     CHECK_NULL_RETURN(
                     notifyOutputConfiguredMID = (*env)->GetMethodID(env, clazz,
                                                                     "notifyOutputConfigured",
-                                                                    "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IIIIIIIIII)V"),
+                                                                    "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IIIIIIIIIJ)V"),
                     JNI_FALSE);
     CHECK_NULL_RETURN(
                     notifyOutputDestroyedMID = (*env)->GetMethodID(env, clazz,

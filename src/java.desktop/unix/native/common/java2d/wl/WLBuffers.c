@@ -221,6 +221,7 @@ struct WLDrawBuffer {
     jint                     width;
     jint                     height;
     jboolean                 resizePending;  /// The next access to the buffer requires DrawBufferResize()
+    jboolean                 committed;      /// Whether the content of the draw buffer has been committed
     size_t                   bytesAllocated; /// the size of the memory segment pointed to by data
     pixel_t *                data;       /// Actual pixels of the buffer
     DamageList *             damageList; /// Areas of the buffer that may have been altered
@@ -657,7 +658,7 @@ static bool
 TryCopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager, bool sendNow)
 {
     MUTEX_LOCK(manager->drawLock); // So that the size doesn't change while we copy
-    sendNow = sendNow && ShowBufferIsAvailable(manager);
+    sendNow = sendNow && manager->bufferForDraw.committed && ShowBufferIsAvailable(manager);
     if (sendNow) {
         CopyDrawBufferToShowBuffer(manager);
     }
@@ -982,6 +983,7 @@ WLSBM_Create(jint width,
 
     manager->bufferForDraw.manager = manager;
     manager->bufferForDraw.resizePending = true;
+    manager->bufferForDraw.committed = false;
 
     J2dTrace3(J2D_TRACE_INFO, "WLSBM_Create: created %p for %dx%d px\n", manager, width, height);
     return manager;
@@ -1094,6 +1096,10 @@ WLSBM_SurfaceCommit(WLSurfaceBufferManager * manager)
                   manager->wlSurface,
                   frameCallbackScheduled ? "wait for frame" : "now");
 
+    MUTEX_LOCK(manager->drawLock);
+    manager->bufferForDraw.committed = true;
+    MUTEX_UNLOCK(manager->drawLock);
+
     if (manager->wlSurface && !frameCallbackScheduled) {
         // Don't always send the frame immediately so as not to overwhelm Wayland
         TrySendShowBufferToWayland(manager, manager->sendBufferASAP);
@@ -1111,6 +1117,7 @@ WLSB_Damage(WLDrawBuffer * buffer, jint x, jint y, jint width, jint height)
     assert(x + width <= buffer->manager->bufferForDraw.width);
     assert(y + height <= buffer->manager->bufferForDraw.height);
 
+    buffer->committed = false;
     buffer->damageList = DamageList_Add(buffer->damageList, x, y, width, height);
     WLBufferTrace(buffer->manager, "WLSB_Damage (at %d, %d %dx%d)", x, y, width, height);
 }
@@ -1136,6 +1143,7 @@ WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height)
         manager->bufferForDraw.width  = width;
         manager->bufferForDraw.height = height;
         manager->bufferForDraw.resizePending = true;
+        manager->bufferForDraw.committed = false;
 
         // Send the buffer at the nearest commit or else Mutter may not remember
         // the latest size of the window.

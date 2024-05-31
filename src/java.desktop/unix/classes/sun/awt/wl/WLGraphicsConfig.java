@@ -36,22 +36,24 @@ import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
 
 public abstract class WLGraphicsConfig extends GraphicsConfiguration {
-    private final WLGraphicsDevice device;
-    private final int width;
-    private final int height;
-    private final int wlScale; // as reported by Wayland
+    public final static long SCALE120 = 120;
+
+    protected final WLGraphicsDevice device;
+    protected final int width;
+    protected final int height;
+    private final long wlScale120; // as reported by Wayland
     private final double effectiveScale; // as enforced by Java
 
-    protected WLGraphicsConfig(WLGraphicsDevice device, int width, int height, int wlScale) {
+    protected WLGraphicsConfig(WLGraphicsDevice device, int width, int height, long scale120) {
         this.device = device;
         this.width = width;
         this.height = height;
-        this.wlScale = wlScale;
-        this.effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(wlScale);
+        this.wlScale120 = scale120;
+        this.effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom((double)scale120 / SCALE120);
     }
 
-    boolean differsFrom(int width, int height, int scale) {
-        return width != this.width || height != this.height || scale != this.wlScale;
+    boolean differsFrom(int width, int height, long scale120) {
+        return width != this.width || height != this.height || scale120 != this.wlScale120;
     }
 
     @Override
@@ -89,14 +91,14 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
     }
 
     /**
-     * Returns the preferred Wayland buffer scale for this display configuration.
+     * Returns the wayland scale in base 1/120.
      */
-    public int getWlScale() {
-        return wlScale;
+    public long getWlScale120() {
+        return wlScale120;
     }
 
     /**
-     * Returns the effective scale, which can differ from the buffer scale
+     * Returns the effective scale, which can differ from the wayland scale
      * if overridden with the sun.java2d.uiScale system property.
      */
     public double getEffectiveScale() {
@@ -105,9 +107,10 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
 
     public abstract SurfaceType getSurfaceType();
     public abstract SurfaceData createSurfaceData(WLComponentPeer peer);
+    public abstract WLGraphicsConfig withScale120(long scale120);
 
     @Override
     public String toString() {
-        return String.format("%dx%d %dx scale", width, height, wlScale);
+        return String.format("%dx%d %fx scale", width, height, (double) wlScale120 / SCALE120);
     }
 }
