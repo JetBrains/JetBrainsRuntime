@@ -86,7 +86,6 @@ public final class X11GraphicsDevice extends GraphicsDevice
             isScaleFactorDefault.set(scaleFactor == -1);
             this.scale = isScaleFactorDefault.get() ? 1 : scaleFactor;
         }
-        this.bounds = getBoundsImpl();
     }
 
     static {
