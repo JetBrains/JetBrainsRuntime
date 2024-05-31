@@ -58,6 +58,7 @@ requires.properties= \
     vm.gc.Epsilon \
     vm.gc.Z \
     vm.jvmci \
+    vm.jvmci.enabled \
     vm.emulatedClient \
     vm.cpu.features \
     vm.pageSize \
