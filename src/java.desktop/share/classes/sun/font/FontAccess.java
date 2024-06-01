@@ -27,7 +27,6 @@ package sun.font;
 
 import java.awt.Font;
 import java.awt.peer.FontPeer;
-import java.util.TreeMap;
 
 public abstract class FontAccess {
 
@@ -48,7 +47,4 @@ public abstract class FontAccess {
     public abstract void setWithFallback(Font f);
     public abstract boolean isCreatedFont(Font f);
     public abstract FontPeer getFontPeer(Font f);
-    public abstract String[] getFeatures(Font font);
-    public abstract boolean isComplexRendering(Font font);
-    public abstract boolean isKerning(Font font);
 }

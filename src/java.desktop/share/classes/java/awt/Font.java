@@ -48,11 +48,17 @@ import java.security.AccessController;
 import java.security.PrivilegedExceptionAction;
 import java.text.AttributedCharacterIterator.Attribute;
 import java.text.CharacterIterator;
-import java.util.*;
+import java.util.EventListener;
+import java.util.Hashtable;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 import sun.awt.ComponentFactory;
 import sun.font.AttributeMap;
 import sun.font.AttributeValues;
+import sun.font.CompositeFont;
 import sun.font.CoreMetrics;
 import sun.font.CreatedFontTracker;
 import sun.font.Font2D;
@@ -278,28 +284,6 @@ public class Font implements java.io.Serializable
         public FontPeer getFontPeer(final Font font) {
             return font.getFontPeer();
         }
-
-        @Override
-        public String[] getFeatures(Font font) {
-            int size = font.features == null ? 0 : font.features.length;
-            String[] fs = new String[size + 3];
-            if (size > 0) System.arraycopy(font.features, 0, fs, 0, size);
-            fs[size++] = KERN_FEATURE + "=" + font.getAttributeValues().getKerning();
-            fs[size++] = LIGA_FEATURE + "=" + font.getAttributeValues().getLigatures();
-            fs[size]   = CALT_FEATURE + "=" + font.getAttributeValues().getLigatures();
-            return fs;
-        }
-
-        @Override
-        public boolean isComplexRendering(Font font) {
-            return (font.values != null && (font.values.getLigatures() != 0 || font.values.getTracking() != 0 ||
-                    font.values.getBaselineTransform() != null)) || font.features != null;
-        }
-
-        @Override
-        public boolean isKerning(Font font) {
-            return font.values != null && (font.values.getKerning() != 0);
-        }
     }
 
     static {
@@ -471,9 +455,10 @@ public class Font implements java.io.Serializable
      * Ordered map choose intentionally as field's type. It allows to correctly comparing two Font objects
      *
      * @serial
+     * @see #getFeatures
      * @see #deriveFont(Font, Features)
      */
-    private String[] features;
+    private TreeMap<String, Integer> features = new TreeMap<String, Integer>();
 
     /**
      * The platform specific font information.
@@ -576,6 +561,10 @@ public class Font implements java.io.Serializable
         return font2DHandle.font2D;
     }
 
+    private boolean anyEnabledFeatures() {
+        return features.values().stream().anyMatch(x -> x != 0);
+    }
+
     /**
      * Creates a new {@code Font} from the specified name, style and
      * point size.
@@ -639,7 +628,7 @@ public class Font implements java.io.Serializable
         this.pointSize = size;
     }
 
-    private Font(String name, int style, float sizePts, String[] features) {
+    private Font(String name, int style, float sizePts, TreeMap<String, Integer> features) {
         this.name = (name != null) ? name : "Default";
         this.style = (style & ~0x03) == 0 ? style : 0;
         this.size = (int)(sizePts + 0.5);
@@ -650,7 +639,7 @@ public class Font implements java.io.Serializable
     /* This constructor is used by deriveFont when attributes is null */
     private Font(String name, int style, float sizePts,
                  boolean created, boolean withFallback,
-                 Font2DHandle handle, boolean useOldHandle, String[] features) {
+                 Font2DHandle handle, boolean useOldHandle, TreeMap<String, Integer> features) {
         this(name, style, sizePts, features);
         this.createdFont = created;
         this.withFallback = withFallback;
@@ -715,7 +704,7 @@ public class Font implements java.io.Serializable
      */
     private Font(AttributeValues values, String oldName, int oldStyle,
                  boolean created, boolean withFallback,
-                 Font2DHandle handle, boolean useOldHandle, String[] features) {
+                 Font2DHandle handle, boolean useOldHandle, TreeMap<String, Integer> features) {
 
         this.features = features;
         this.createdFont = created;
@@ -779,11 +768,6 @@ public class Font implements java.io.Serializable
      * @since 1.6
      */
     protected Font(Font font) {
-        this(font, font.features);
-    }
-
-    private Font(Font font, String[] features) {
-        this.features = features;
         if (font.values != null) {
             initFromValues(font.getAttributeValues().clone());
         } else {
@@ -795,6 +779,12 @@ public class Font implements java.io.Serializable
         this.font2DHandle = font.font2DHandle;
         this.createdFont = font.createdFont;
         this.withFallback = font.withFallback;
+        this.features = font.features;
+    }
+
+    private Font(Font font, TreeMap<String, Integer> features) {
+        this(font);
+        this.features = features;
     }
 
     /**
@@ -844,7 +834,7 @@ public class Font implements java.io.Serializable
         if (values.getPosture() >= .2f) this.style |= ITALIC; // not  == .2f
 
         this.nonIdentityTx = values.anyNonDefault(EXTRA_MASK);
-        this.hasLayoutAttributes = this.features != null || values.anyNonDefault(LAYOUT_MASK);
+        this.hasLayoutAttributes =  values.anyNonDefault(LAYOUT_MASK);
     }
 
     /**
@@ -925,7 +915,7 @@ public class Font implements java.io.Serializable
                 values.merge(attributes, SECONDARY_MASK);
                 return new Font(values, font.name, font.style,
                                 font.createdFont, font.withFallback,
-                                font.font2DHandle, false, null);
+                                font.font2DHandle, false, new TreeMap<String, Integer>());
             }
             return new Font(attributes);
         }
@@ -937,7 +927,7 @@ public class Font implements java.io.Serializable
                 values.merge(attributes, SECONDARY_MASK);
                 return new Font(values, font.name, font.style,
                                 font.createdFont, font.withFallback,
-                                font.font2DHandle, false, null);
+                                font.font2DHandle, false, new TreeMap<String, Integer>());
             }
 
             return font;
@@ -1658,7 +1648,17 @@ public class Font implements java.io.Serializable
      * @since 1.6
      */
     public boolean hasLayoutAttributes() {
-        return hasLayoutAttributes;
+        return anyEnabledFeatures() || hasLayoutAttributes;
+    }
+
+    private static TreeMap<String, Integer> getFeatures(Font font) {
+        TreeMap<String, Integer> res = new TreeMap<>();
+        res.putAll(font.features);
+        res.put(KERN_FEATURE, font.getAttributeValues().getKerning());
+        res.put(LIGA_FEATURE, font.getAttributeValues().getLigatures());
+        res.put(CALT_FEATURE, font.getAttributeValues().getLigatures());
+
+        return res;
     }
 
     /**
@@ -1866,7 +1866,7 @@ public class Font implements java.io.Serializable
      */
     public int hashCode() {
         if (hash == 0) {
-            hash = name.hashCode() ^ style ^ size ^ Arrays.hashCode(features);
+            hash = name.hashCode() ^ style ^ size ^ features.hashCode();
             /* It is possible many fonts differ only in transform.
              * So include the transform in the hash calculation.
              * nonIdentityTx is set whenever there is a transform in
@@ -1905,7 +1905,7 @@ public class Font implements java.io.Serializable
                 pointSize == font.pointSize &&
                 withFallback == font.withFallback &&
                 name.equals(font.name) &&
-                Arrays.equals(features, font.features)) {
+                features.equals(font.features)) {
 
                 /* 'values' is usually initialized lazily, except when
                  * the font is constructed from a Map, or derived using
@@ -2029,12 +2029,16 @@ public class Font implements java.io.Serializable
             }
             values = getAttributeValues().merge(extras);
             this.nonIdentityTx = values.anyNonDefault(EXTRA_MASK);
-            this.hasLayoutAttributes = this.features != null || values.anyNonDefault(LAYOUT_MASK);
+            this.hasLayoutAttributes =  values.anyNonDefault(LAYOUT_MASK);
             } catch (Throwable t) {
                 throw new IOException(t);
             } finally {
                 fRequestedAttributes = null; // don't need it any more
             }
+        }
+
+        if (features == null) {
+            features = new TreeMap<>();
         }
     }
 
@@ -2266,48 +2270,7 @@ public class Font implements java.io.Serializable
     }
 
     private static Font deriveFont(Font font, Features features) {
-        TreeMap<String, Integer> map = features.getAsTreeMap();
-        String[] array = new String[map.size()];
-        int i = 0;
-        for (Map.Entry<String, Integer> e : map.entrySet()) {
-            validateFeature(array[i++] = e.getKey() + "=" + e.getValue());
-        }
-        return new Font(font, array);
-    }
-
-    private static void validateFeature(String f) {
-        int len = f.length();
-        invalid:if ((len == 4 || len > 5) &&
-                Character.isLetterOrDigit(f.charAt(0)) &&
-                Character.isLetterOrDigit(f.charAt(1)) &&
-                Character.isLetterOrDigit(f.charAt(2)) &&
-                Character.isLetterOrDigit(f.charAt(3))) {
-            if (len > 5 && f.charAt(4) == '=') {
-                for (int i = 5; i < len; i++) {
-                    if (!Character.isDigit(f.charAt(i))) break invalid;
-                }
-                if (f.startsWith("kern")) throw new IllegalArgumentException(
-                        "\"kern\" feature is not allowed here, use java.awt.font.TextAttribute.KERNING instead");
-                if (f.startsWith("liga") || f.startsWith("calt")) throw new IllegalArgumentException(
-                        "\"liga\" and \"calt\" features are not allowed here, use java.awt.font.TextAttribute.LIGATURES instead");
-                return;
-            }
-        }
-        throw new IllegalArgumentException("Invalid feature: \"" + f + "\", allowed syntax: \"kern\", or \"aalt=2\"");
-    }
-
-    private static Font deriveFont(Font font, String... features) {
-        if (features == null || features.length == 0) return new Font(font, null);
-        for (String f : features) validateFeature(f);
-        return new Font(font, Arrays.copyOf(features, features.length));
-    }
-
-    /**
-     * Returns a list of OpenType's features enabled on the current Font.
-     * @return array of enabled OpenType's features
-     */
-    private static String[] getEnabledFeatures(Font font) {
-        return font.features == null ? new String[0] : Arrays.copyOf(font.features, font.features.length);
+        return new Font(font, features.getAsTreeMap());
     }
 
     /**
@@ -2761,10 +2724,19 @@ public class Font implements java.io.Serializable
         return metrics.charsBounds(chars, beginIndex, limit - beginIndex);
     }
 
+    private static boolean isComplexRendering(Font font) {
+        return (font.values != null && (font.values.getLigatures() != 0 || font.values.getTracking() != 0 ||
+                font.values.getBaselineTransform() != null)) || font.anyEnabledFeatures();
+    }
+
+    private static boolean isKerning(Font font) {
+        return font.values != null && (font.values.getKerning() != 0);
+    }
+
     /**
      * Returns a list of OpenType's features supported by current Font.
      * Implementation of such logic goes to HarfBuzz library.
-     * @return set of available OpenType's features
+     * @return list of OpenType's features concatenated to String
      */
     private static Set<String> getAvailableFeatures(Font font) {
         return SunLayoutEngine.getAvailableFeatures(FontUtilities.getFont2D(font));
