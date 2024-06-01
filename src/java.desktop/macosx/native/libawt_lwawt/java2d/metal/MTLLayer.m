@@ -215,23 +215,6 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         // increment used drawables:
         self.nextDrawableCount++;
 
-        MTLDrawablePresentedHandler presentedHandler = nil;
-        if (@available(macOS 10.15.4, *)) {
-            if (self.perfCountersEnabled) {
-                [self retain];
-                presentedHandler = ^(id <MTLDrawable> drawable) {
-                    // note: called anyway even if drawable.present() not called!
-                    const CFTimeInterval presentedTime = drawable.presentedTime;
-                    if (presentedTime != 0.0) {
-                        [self countFramePresentedCallback];
-                    } else {
-                        [self countFrameDroppedCallback];
-                    }
-                    [self release];
-                };
-            }
-        }
-
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
         [blitEncoder
@@ -243,8 +226,20 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 destinationOrigin:MTLOriginMake(0, 0, 0)];
         [blitEncoder endEncoding];
 
-         if (presentedHandler != nil) {
-            [mtlDrawable addPresentedHandler:presentedHandler];
+        if (@available(macOS 10.15.4, *)) {
+            if (self.perfCountersEnabled) {
+                [self retain];
+                [mtlDrawable addPresentedHandler:^(id <MTLDrawable> drawable) {
+                    // note: called anyway even if drawable.present() not called!
+                    const CFTimeInterval presentedTime = drawable.presentedTime;
+                    if (presentedTime != 0.0) {
+                        [self countFramePresentedCallback];
+                    } else {
+                        [self countFrameDroppedCallback];
+                    }
+                    [self release];
+                }];
+            }
         }
         if (isDisplaySyncEnabled()) {
             [commandBuf presentDrawable:mtlDrawable];
