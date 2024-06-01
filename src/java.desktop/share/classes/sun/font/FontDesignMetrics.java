@@ -43,6 +43,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.jetbrains.desktop.FontExtensions;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 
@@ -486,7 +487,7 @@ public final class FontDesignMetrics extends FontMetrics {
         assert (data instanceof String || data instanceof char[]);
         float width = 0;
 
-        if (overrider == null && FontAccess.getFontAccess().isComplexRendering(font) && len > 0) {
+        if (overrider == null && FontExtensions.isComplexRendering(font) && len > 0) {
             return textLayoutBounds(data, off, len);
         }
 
@@ -497,7 +498,7 @@ public final class FontDesignMetrics extends FontMetrics {
             return new Rectangle2D.Float(0f, -ascent, width, height);
         }
 
-        boolean isKerning = FontAccess.getFontAccess().isKerning(font);
+        boolean isKerning = FontExtensions.isKerning(font);
         float consecutiveDoubleCharacterWidth = 0f;
         char prev = 0;
         for (int i = off; i < off + len; i++) {
@@ -613,7 +614,7 @@ public final class FontDesignMetrics extends FontMetrics {
         return height;
     }
 
-    private static final class Accessor {
+    private static class Accessor { // used by JBR API
         // Keeping metrics instances here prevents them from being garbage collected
         // and being re-created by FontDesignMetrics.getMetrics method
         private final Set<FontDesignMetrics> PINNED_METRICS = new HashSet<>();
@@ -652,7 +653,7 @@ public final class FontDesignMetrics extends FontMetrics {
         }
     }
 
-    private interface Overrider {
+    private interface Overrider { // used by JBR API
         float charWidth(int codePoint);
     }
 }

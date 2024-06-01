@@ -30,6 +30,7 @@
 
 package sun.font;
 
+import com.jetbrains.desktop.FontExtensions;
 import sun.font.GlyphLayout.*;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
@@ -173,7 +174,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
     }
 
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int gmask,
-                       int baseIndex, TextRecord tr, boolean ltrDirection, String[] features,
+                       int baseIndex, TextRecord tr, boolean ltrDirection, Map<String, Integer> features,
                        Point2D.Float pt, GVData data) {
         Font2D font = key.font();
         FontStrike strike = font.getStrike(desc);
@@ -182,7 +183,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
             shape(font, strike, ptSize, mat, pFace,
                     tr.text, data, key.script(),
                     tr.start, tr.limit, baseIndex, pt,
-                    ltrDirection, features, gmask);
+                    ltrDirection, FontExtensions.featuresToStringArray(features), gmask);
         }
     }
 
