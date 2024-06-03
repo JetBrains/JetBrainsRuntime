@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,16 @@
 class JavaThread;
 template <typename T> class GrowableArray;
 
+class TempSymbolCleanupDelayer : AllStatic {
+  static Symbol* volatile _queue[];
+  static volatile uint _index;
+
+public:
+  static const uint QueueSize = 128;
+  static void delay_cleanup(Symbol* s);
+  static void drain_queue();
+};
+
 // TempNewSymbol acts as a handle class in a handle/body idiom and is
 // responsible for proper resource management of the body (which is a Symbol*).
 // The body is resource managed by a reference counting scheme.
@@ -54,7 +64,14 @@ public:
 
   // Conversion from a Symbol* to a TempNewSymbol.
   // Does not increment the current reference count.
-  TempNewSymbol(Symbol *s) : _temp(s) {}
+  TempNewSymbol(Symbol *s) : _temp(s) {
+    // Delay cleanup for temp symbols. Refcount is incremented while in
+    // queue. But don't requeue existing entries, or entries that are held
+    // elsewhere - it's a waste of effort.
+    if (s != nullptr && s->refcount() == 1) {
+      TempSymbolCleanupDelayer::delay_cleanup(s);
+    }
+  }
 
   // Copy constructor increments reference count.
   TempNewSymbol(const TempNewSymbol& rhs) : _temp(rhs._temp) {
