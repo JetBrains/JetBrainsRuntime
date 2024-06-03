@@ -34,6 +34,7 @@ import sun.awt.PeerEvent;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.datatransfer.DataTransferer;
+import sun.awt.wl.WLDisplay;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
@@ -135,12 +136,12 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private final WLClipboard clipboard;
     private final WLClipboard selection;
 
-    private static native void initIDs();
+    private static native void initIDs(long displayPtr);
 
     static {
         if (!GraphicsEnvironment.isHeadless()) {
             keyboard = new WLKeyboard();
-            initIDs();
+            initIDs(WLDisplay.getInstance().getDisplayPtr());
         }
         initialized = true;
     }
