@@ -50,6 +50,7 @@
 #include "JNIUtilities.h"
 #include "awt.h"
 #include "sun_awt_wl_WLToolkit.h"
+#include "sun_awt_wl_WLDisplay.h"
 #include "WLRobotPeer.h"
 #include "WLGraphicsEnvironment.h"
 #include "memory_utils.h"
@@ -737,16 +738,17 @@ finalizeInit(JNIEnv *env) {
     }
 }
 
-JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLToolkit_initIDs
-  (JNIEnv *env, jclass clazz)
+JNIEXPORT jlong JNICALL
+Java_sun_awt_wl_WLDisplay_connect(JNIEnv *env, jobject obj)
 {
-    wl_display = wl_display_connect(NULL);
-    if (!wl_display) {
-        J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Failed to connect to Wayland display\n");
-        JNU_ThrowByName(env, "java/awt/AWTError", "Can't connect to the Wayland server");
-        return;
-    }
+    return ptr_to_jlong(wl_display_connect(NULL));
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLToolkit_initIDs(JNIEnv *env, jclass clazz, jlong displayPtr)
+{
+    assert (displayPtr != 0);
+    wl_display = jlong_to_ptr(displayPtr);
 
     if (!initJavaRefs(env, clazz)) {
         JNU_ThrowInternalError(env, "Failed to find Wayland toolkit internal classes");
