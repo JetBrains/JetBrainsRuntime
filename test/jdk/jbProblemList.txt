@@ -858,6 +858,14 @@ sun/security/pkcs11/sslecc/ClientJSSEServerJSSE.java            8161536 generic-
 
 sun/security/tools/keytool/ListKeychainStore.sh                 8156889 macosx-all
 
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#globalsigneccrootcar4 8328825 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootcar1 8328825 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootcar2 8328825 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootecccar3 8328825 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootecccar4 8328825 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#microsoftecc2017 8328825 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#teliasonerarootcav1 8328825 generic-all
+
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
 sun/security/smartcardio/TestConnect.java                       8039280 generic-all
 sun/security/smartcardio/TestConnectAgain.java                  8039280 generic-all
