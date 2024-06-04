@@ -25,8 +25,6 @@
 
 package sun.lwawt.macosx;
 
-import com.jetbrains.desktop.JBRTextInput;
-
 import java.awt.*;
 import java.awt.im.spi.*;
 import java.util.*;
@@ -39,7 +37,7 @@ import java.util.List;
  */
 
 public class CInputMethodDescriptor implements InputMethodDescriptor {
-    public JBRTextInput.EventListener textInputEventListener;
+    public JBRTextInputMacOS.EventListener textInputEventListener;
 
     static {
         nativeInit();

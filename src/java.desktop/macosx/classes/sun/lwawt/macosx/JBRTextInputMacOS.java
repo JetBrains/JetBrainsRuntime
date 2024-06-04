@@ -25,20 +25,56 @@
 
 package sun.lwawt.macosx;
 
-import com.jetbrains.desktop.JBRTextInput;
 
-public class JBRTextInputMacOS extends JBRTextInput {
-    @Override
-    public void initialize() {
-        super.initialize();
+import java.util.ArrayList;
+import java.util.List;
 
+public class JBRTextInputMacOS {
+    public List<EventListener> listeners = new ArrayList<>();
+
+    JBRTextInputMacOS() {
         var desc = (CInputMethodDescriptor) LWCToolkit.getLWCToolkit().getInputMethodAdapterDescriptor();
-        desc.textInputEventListener = new JBRTextInput.EventListener() {
-            public void handleSelectTextRangeEvent(JBRTextInput.SelectTextRangeEvent event) {
-                for (var listener : listeners) {
-                    listener.handleSelectTextRangeEvent(event);
+        desc.textInputEventListener = new EventListener() {
+            public void handleSelectTextRangeEvent(SelectTextRangeEvent event) {
+                // This listener is called on the EDT
+                synchronized (this) {
+                    for (var listener : listeners) {
+                        listener.handleSelectTextRangeEvent(event);
+                    }
                 }
             }
         };
+    }
+
+    public static class SelectTextRangeEvent {
+        private final Object source;
+        private final int begin;
+        private final int length;
+
+        public SelectTextRangeEvent(Object source, int begin, int length) {
+            this.source = source;
+            this.begin = begin;
+            this.length = length;
+        }
+
+        public Object getSource() {
+            return source;
+        }
+
+        public int getBegin() {
+            return begin;
+        }
+
+        public int getLength() {
+            return length;
+        }
+    }
+
+    public interface EventListener {
+        void handleSelectTextRangeEvent(SelectTextRangeEvent event);
+    }
+
+    public synchronized void addEventListener(EventListener listener) {
+        listeners.add(listener);
     }
 }
