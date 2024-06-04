@@ -352,7 +352,7 @@ VKRenderer* VKRenderer_CreateFillColorPoly() {
     };
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-    VKVertexDescr vertexDescr = VKVertex_GetCVertexDescr();
+    VKVertexDescr vertexDescr = VKVertex_GetVertexDescr();
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
             .vertexBindingDescriptionCount = vertexDescr.bindingDescriptionCount,
@@ -423,10 +423,17 @@ VKRenderer* VKRenderer_CreateFillColorPoly() {
             .pDynamicStates = dynamicStates
     };
 
+    VkPushConstantRange pushConstantRange = {
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = 0,
+            .size = sizeof(float) * 4
+    };
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount = 0,
-            .pushConstantRangeCount = 0
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges = &pushConstantRange
     };
 
     if (ge->vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL,
@@ -727,7 +734,7 @@ void VKRenderer_TextureRender(VKImage *destImage, VKImage *srcImage, VkBuffer ve
 
 }
 
-void VKRenderer_ColorRender(VKImage *destImage, VkBuffer vertexBuffer, uint32_t vertexNum)
+void VKRenderer_ColorRender(VKImage *destImage, uint32_t rgba, VkBuffer vertexBuffer, uint32_t vertexNum)
 {
     VKGraphicsEnvironment* ge = VKGE_graphics_environment();
     VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
@@ -747,6 +754,21 @@ void VKRenderer_ColorRender(VKImage *destImage, VkBuffer vertexBuffer, uint32_t 
     ge->vkCmdBeginRenderPass(logicalDevice->commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     ge->vkCmdBindPipeline(logicalDevice->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           logicalDevice->fillColorPoly->graphicsPipeline);
+
+    struct PushConstants {
+        float r, g, b, a;
+    } pushConstants;
+
+    pushConstants = (struct PushConstants){RGBA_TO_L4(rgba)};
+
+    ge->vkCmdPushConstants(
+            logicalDevice->commandBuffer,
+            logicalDevice->fillColorPoly->pipelineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            0,
+            sizeof(struct PushConstants),
+            &pushConstants
+    );
 
     VkBuffer vertexBuffers[] = {vertexBuffer};
     VkDeviceSize offsets[] = {0};
