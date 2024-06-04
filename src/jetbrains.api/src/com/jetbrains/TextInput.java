@@ -26,7 +26,35 @@
 package com.jetbrains;
 
 /**
- * This is a JBR API for text-input related functionality
+ * This is a JBR API for text-input related functionality for applications that implement custom text components.
+ * <p>
+ * Suppose an application implements a custom text component called {@code CustomTextComponent}, that
+ * doesn't inherit from {@link java.awt.TextComponent} or {@link javax.swing.text.JTextComponent}.
+ * For this component to work correctly, the application needs to handle certain events that are missing from
+ * the Java specification.
+ * <p>
+ * To do this, the application should add an event listener for the events provided by this API.
+ * This is best done at application startup time, since the event listener is global, and not per-component.
+ * For example, this would be a proper way to implement this event handler for {@code CustomTextComponent}:
+ *
+ * <pre>
+ * {@code
+ * var textInput = JBR.getTextInput();
+ * if (textInput != null) {
+ *     textInput.setGlobalEventListener(new TextInput.EventListener() {
+ *         @Override
+ *         public void handleSelectTextRangeEvent(TextInput.SelectTextRangeEvent event) {
+ *             if (event.getSource() instanceof CustomTextComponent) {
+ *                 ((CustomTextComponent)event.getSource()).select(event.getBegin(), event.getBegin() + event.getLength());
+ *             }
+ *         }
+ *     });
+ * }
+ * }
+ * </pre>
+ * This assumes that {@code CustomTextComponent} has a method called {@code select}, that selects a text range,
+ * similar to the {@link java.awt.TextComponent#select(int, int)} and {@link javax.swing.text.JTextComponent#select(int, int)}.
+ * See {@link SelectTextRangeEvent} for more information.
  */
 public interface TextInput {
     /**
@@ -63,9 +91,12 @@ public interface TextInput {
     }
 
     /**
-     * Add global event listener for text input-related events
+     * Sets the global event listener for text input/IME related events.
+     * This should ideally be called once on the application startup.
+     * Passing null will remove the listener.
+     * The listener will only be called on the event dispatch thread (EDT).
      *
      * @param listener listener
      */
-    void addEventListener(EventListener listener);
+    void setGlobalEventListener(EventListener listener);
 }

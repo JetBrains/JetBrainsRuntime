@@ -30,15 +30,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JBRTextInputMacOS {
-    public List<EventListener> listeners = new ArrayList<>();
+    private EventListener listener;
 
     JBRTextInputMacOS() {
         var desc = (CInputMethodDescriptor) LWCToolkit.getLWCToolkit().getInputMethodAdapterDescriptor();
         desc.textInputEventListener = new EventListener() {
             public void handleSelectTextRangeEvent(SelectTextRangeEvent event) {
                 // This listener is called on the EDT
-                synchronized (this) {
-                    for (var listener : listeners) {
+                synchronized (JBRTextInputMacOS.this) {
+                    if (listener != null) {
                         listener.handleSelectTextRangeEvent(event);
                     }
                 }
@@ -74,7 +74,7 @@ public class JBRTextInputMacOS {
         void handleSelectTextRangeEvent(SelectTextRangeEvent event);
     }
 
-    public synchronized void addEventListener(EventListener listener) {
-        listeners.add(listener);
+    public synchronized void setGlobalEventListener(EventListener listener) {
+        this.listener = listener;
     }
 }
