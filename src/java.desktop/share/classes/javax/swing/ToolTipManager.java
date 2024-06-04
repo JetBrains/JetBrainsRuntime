@@ -264,20 +264,26 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
             Rectangle sBounds = null;
 
             boolean isTooltipPositionedAbsolutely = !isTooltipPositionedRelatively();
+            Point screenLocation = insideComponent.getLocationOnScreen();
             if (isTooltipPositionedAbsolutely) {
-                Point screenLocation = insideComponent.getLocationOnScreen();
                 Point toFind;
                 if (preferredLocation != null) {
                     toFind = new Point(screenLocation.x + preferredLocation.x,
                             screenLocation.y + preferredLocation.y);
                 } else {
-                    toFind = mouseEvent.getLocationOnScreen();
+                    if (mouseEvent != null) {
+                        toFind = mouseEvent.getLocationOnScreen();
+                    } else {
+                        toFind = screenLocation;
+                    }
                 }
 
                 GraphicsConfiguration gc = getDrawingGC(toFind);
                 if (gc == null) {
-                    toFind = mouseEvent.getLocationOnScreen();
-                    gc = getDrawingGC(toFind);
+                    if (mouseEvent != null) {
+                        toFind = mouseEvent.getLocationOnScreen();
+                        gc = getDrawingGC(toFind);
+                    }
                     if (gc == null) {
                         gc = insideComponent.getGraphicsConfiguration();
                     }
@@ -295,11 +301,19 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
                 if (preferredLocation != null) {
                     location = toFind;
                 } else {
-                    location = new Point(screenLocation.x + mouseEvent.getX(),
-                            screenLocation.y + mouseEvent.getY() + 20);
+                    if (mouseEvent != null) {
+                        location = new Point(screenLocation.x + mouseEvent.getX(),
+                                screenLocation.y + mouseEvent.getY() + 20);
+                    } else {
+                        location = screenLocation;
+                    }
                 }
             } else {
-                location = new Point(mouseEvent.getX(), mouseEvent.getY() + 20);
+                if (mouseEvent != null) {
+                    location = new Point(mouseEvent.getX(), mouseEvent.getY() + 20);
+                } else {
+                    location = screenLocation;
+                }
             }
             boolean leftToRight
                     = SwingUtilities.isLeftToRight(insideComponent);
