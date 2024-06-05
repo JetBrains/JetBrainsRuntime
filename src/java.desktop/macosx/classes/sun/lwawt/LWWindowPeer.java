@@ -59,6 +59,7 @@ import java.awt.peer.KeyboardFocusManagerPeer;
 import java.awt.peer.WindowPeer;
 import java.util.List;
 
+import java.util.Map;
 import java.util.Objects;
 import javax.swing.JComponent;
 
@@ -1003,7 +1004,7 @@ public class LWWindowPeer
      */
     @Override
     public void notifyKeyEvent(int id, long when, int modifiers,
-                               int keyCode, char keyChar, int keyLocation)
+                               int keyCode, char keyChar, int keyLocation, Map<String, Object> properties)
     {
         LWKeyboardFocusManagerPeer kfmPeer = LWKeyboardFocusManagerPeer.getInstance();
         Component focusOwner = kfmPeer.getCurrentFocusOwner();
@@ -1020,6 +1021,7 @@ public class LWWindowPeer
         AWTAccessor.getKeyEventAccessor().setExtendedKeyCode(keyEvent,
                 (keyChar == KeyEvent.CHAR_UNDEFINED) ? keyCode
                 : ExtendedKeyCodes.getExtendedKeyCodeForChar(keyChar));
+        AWTAccessor.getKeyEventAccessor().setJBRExtraProperties(keyEvent, properties);
         postEvent(keyEvent);
     }
 
