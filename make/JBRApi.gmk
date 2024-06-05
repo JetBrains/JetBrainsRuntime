@@ -27,7 +27,7 @@ include $(SPEC)
 include MakeBase.gmk
 include Utils.gmk
 
-JBR_API_ORIGIN := https://github.com/JetBrains/JetBrainsApiTest.git
+JBR_API_ORIGIN := https://github.com/JetBrains/JetBrainsRuntimeApi.git
 JBR_API_DIR    := $(TOPDIR)/jbr-api
 
 ARTIFACT_NAME := jbr-api-SNAPSHOT
