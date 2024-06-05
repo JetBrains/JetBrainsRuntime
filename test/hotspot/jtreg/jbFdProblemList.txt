@@ -64,8 +64,6 @@ gc/stress/TestStressRSetCoarsening.java#id1 JBR-6706 windows-x64
 
 # :hotspot_runtime
 
-runtime/cds/appcds/dynamicArchive/TestDynamicDumpAtOom.java JBR-6291 generic-all
-
 #############################################################################
 
 # :hotspot_serviceability
