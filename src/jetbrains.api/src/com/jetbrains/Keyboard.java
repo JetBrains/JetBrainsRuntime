@@ -52,6 +52,8 @@ public interface Keyboard {
      * If the key (without modifiers) is dead on the current layout (current ASCII-capable layout if
      * national keyboard layout support is active), then return the corresponding dead key code,
      * otherwise return {@link KeyEvent#VK_UNDEFINED}.
+     * The dead key code will either be a {@code VK_DEAD_} keycode, or an extended key code for dead keys
+     * that do not have the corresponding named key code.
      *
      * @param event                                 JBR-generated event to inspect.
      *                                              This must either be a {@link KeyEvent#KEY_PRESSED} or
@@ -69,7 +71,10 @@ public interface Keyboard {
     /**
      * Get the dead keystroke code for the event.
      * If the keystroke (with modifiers) is dead on the current (not necessarily ASCII-capable) keyboard layout,
+     * return the corresponding dead key code for this keystroke,
      * otherwise return {@link KeyEvent#VK_UNDEFINED}.
+     * The dead key code will either be a {@code VK_DEAD_} keycode, or an extended key code for dead keystrokes
+     * that do not have the corresponding named key code.
      *
      * @param event                                 JBR-generated event to inspect.
      *                                              This must either be a {@link KeyEvent#KEY_PRESSED} or
@@ -85,7 +90,7 @@ public interface Keyboard {
     int getKeyEventDeadKeyStroke(KeyEvent event);
 
     /**
-     * Get the characters, that this key event has produced.
+     * Get the characters that this key event has produced.
      * For {@link KeyEvent#KEY_TYPED} it's equivalent to {@link KeyEvent#getKeyChar()}.
      * For {@link KeyEvent#KEY_RELEASED} it's always an empty string.
      *
