@@ -534,6 +534,12 @@ public class CInputMethod extends InputMethodAdapter {
                         ((TextComponent) fAwtFocussedComponent).select(selectionStart, selectionEnd);
                         return;
                     }
+
+                    var desc = (CInputMethodDescriptor)LWCToolkit.getLWCToolkit().getInputMethodAdapterDescriptor();
+                    if (desc.textInputEventListener != null) {
+                        var event = new JBRTextInputMacOS.SelectTextRangeEvent(fAwtFocussedComponent, selectionStart, length);
+                        desc.textInputEventListener.handleSelectTextRangeEvent(event);
+                    }
                 }
             }, fAwtFocussedComponent);
         } catch (Exception e) {
