@@ -1196,4 +1196,14 @@ public final class WToolkit extends SunToolkit implements Runnable {
     public boolean needUpdateWindow() {
         return true;
     }
+
+    @Override
+    public void updateLastMouseEventComponent(Component component) {
+        WGlobalCursorManager.getInstance().setMouseEventComponent(component);
+    }
+
+    @Override
+    public Component getLastMouseEventComponent() {
+        return WGlobalCursorManager.getInstance().getMouseEventComponent();
+    }
 }
