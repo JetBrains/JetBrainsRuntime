@@ -4865,6 +4865,12 @@ public abstract class Component implements ImageObserver, MenuContainer,
         dispatchEventImpl(e);
     }
 
+    /**
+     * A component where the last mouse event came to. Used by cursor manager to
+     * find the component under cursor
+     */
+    public static volatile Component lastCommonMouseEventComponent;
+
     @SuppressWarnings("deprecation")
     void dispatchEventImpl(AWTEvent e) {
         int id = e.getID();
@@ -4881,6 +4887,9 @@ public abstract class Component implements ImageObserver, MenuContainer,
             eventLog.finest("{0}", e);
         }
 
+        if (id == MouseEvent.MOUSE_ENTERED) {
+            lastCommonMouseEventComponent = this;
+        }
         /*
          * 0. Set timestamp and modifiers of current event.
          */

@@ -1047,6 +1047,12 @@ public final class WToolkit extends SunToolkit implements Runnable {
         return toolkit;
     }
 
+    static WCursorManager cursorManager = new WCursorManager();
+
+    public WCursorManager getCursorManager() {
+        return cursorManager;
+    }
+
     /**
      * There are two reasons why we don't use buffer per window when
      * Vista's DWM (aka Aero) is enabled:
