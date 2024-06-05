@@ -4864,6 +4864,9 @@ public abstract class Component implements ImageObserver, MenuContainer,
             eventLog.finest("{0}", e);
         }
 
+        if (id == MouseEvent.MOUSE_ENTERED && getToolkit() instanceof SunToolkit toolkit) {
+            toolkit.updateLastMouseEventComponent(this);
+        }
         /*
          * 0. Set timestamp and modifiers of current event.
          */
@@ -7136,6 +7139,12 @@ public abstract class Component implements ImageObserver, MenuContainer,
         {
             KeyboardFocusManager.getCurrentKeyboardFocusManager().
                 setGlobalPermanentFocusOwner(null);
+        }
+
+        if (getToolkit() instanceof SunToolkit toolkit) {
+            if (toolkit.getLastMouseEventComponent() == this) {
+                toolkit.updateLastMouseEventComponent(null);
+            }
         }
 
         synchronized (getTreeLock()) {
