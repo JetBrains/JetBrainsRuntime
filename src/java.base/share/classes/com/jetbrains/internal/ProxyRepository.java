@@ -243,7 +243,7 @@ class ProxyRepository {
             this.providedAnnotation = providedAnnotation;
             this.providesAnnotation = providesAnnotation;
             annotationsModule = serviceAnnotation == null ? null : serviceAnnotation.getModule();
-            classLoader = annotationsModule != null ? annotationsModule.getClassLoader() : ClassLoaders.appClassLoader();
+            if (annotationsModule != null) classLoader = annotationsModule.getClassLoader();
             String version = null;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                 String s;
