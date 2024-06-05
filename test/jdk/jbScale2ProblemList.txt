@@ -48,7 +48,6 @@ java/awt/Mixing/Validating.java JBR-6090 windows-all
 java/awt/Modal/BlockedMouseInputTest2.java JBR-6090 windows-all
 java/awt/PopupMenu/PopupMenuLocation.java                                           8238720,JBR-5071 windows-all,macosx-all,linux-all
 java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
-javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-6100 linux-all
 javax/swing/JComponent/7154030/bug7154030.java JBR-6134 windows-x64
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      JBR-5071 linux-all
 
