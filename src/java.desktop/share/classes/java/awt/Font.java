@@ -648,6 +648,7 @@ public class Font implements java.io.Serializable
         this.size = (int)(sizePts + 0.5);
         this.pointSize = sizePts;
         this.featureArray = features;
+        this.hasLayoutAttributes |= this.featureArray != null;
     }
 
     /* This constructor is used by deriveFont when attributes is null */
@@ -754,6 +755,7 @@ public class Font implements java.io.Serializable
             this.font2DHandle = handle;
         }
         initFromValues(values);
+        this.hasLayoutAttributes |= this.featureArray != null;
     }
 
     /**
@@ -795,6 +797,7 @@ public class Font implements java.io.Serializable
             this.size = font.size;
             this.pointSize = font.pointSize;
         }
+        this.hasLayoutAttributes |= this.featureArray != null;
         this.font2DHandle = font.font2DHandle;
         this.createdFont = font.createdFont;
         this.withFallback = font.withFallback;
@@ -847,7 +850,7 @@ public class Font implements java.io.Serializable
         if (values.getPosture() >= .2f) this.style |= ITALIC; // not  == .2f
 
         this.nonIdentityTx = values.anyNonDefault(EXTRA_MASK);
-        this.hasLayoutAttributes = this.featureArray != null || values.anyNonDefault(LAYOUT_MASK);
+        this.hasLayoutAttributes = values.anyNonDefault(LAYOUT_MASK);
     }
 
     /**
@@ -2037,13 +2040,14 @@ public class Font implements java.io.Serializable
             }
             values = getAttributeValues().merge(extras);
             this.nonIdentityTx = values.anyNonDefault(EXTRA_MASK);
-            this.hasLayoutAttributes = this.featureArray != null || values.anyNonDefault(LAYOUT_MASK);
+            this.hasLayoutAttributes = values.anyNonDefault(LAYOUT_MASK);
             } catch (Throwable t) {
                 throw new IOException(t);
             } finally {
                 fRequestedAttributes = null; // don't need it any more
             }
         }
+        this.hasLayoutAttributes |= this.featureArray != null;
     }
 
     /**
