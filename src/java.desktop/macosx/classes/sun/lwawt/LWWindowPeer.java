@@ -748,7 +748,7 @@ public class LWWindowPeer
 
     @Override
     public void notifyUpdateCursor() {
-        getLWToolkit().getCursorManager().updateCursorLater(this);
+        getLWToolkit().getCursorManager().updateCursorLater(this.getTarget());
     }
 
     @Override
