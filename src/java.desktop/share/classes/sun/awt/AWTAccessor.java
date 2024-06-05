@@ -47,6 +47,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.AccessControlContext;
 
 import java.io.File;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Vector;
 import java.util.function.BooleanSupplier;
@@ -732,6 +733,16 @@ public final class AWTAccessor {
          * Gets isProxyActive field for KeyEvent
          */
         boolean isProxyActive(KeyEvent ev);
+
+        /**
+         * Returns the JBR-specific property map
+         */
+        Map<String, Object> getJBRExtraProperties(KeyEvent ev);
+
+        /**
+         * Overwrites the JBR-specific property map
+         */
+        void setJBRExtraProperties(KeyEvent ev, Map<String, Object> properties);
     }
 
     /**

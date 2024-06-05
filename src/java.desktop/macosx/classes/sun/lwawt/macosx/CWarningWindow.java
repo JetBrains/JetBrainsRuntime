@@ -39,6 +39,7 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.lang.ref.WeakReference;
+import java.util.Map;
 
 public final class CWarningWindow extends CPlatformWindow
         implements SecurityWarningWindow, PlatformEventNotifier {
@@ -245,7 +246,7 @@ public final class CWarningWindow extends CPlatformWindow
 
     @Override
     public void notifyKeyEvent(int id, long when, int modifiers, int keyCode,
-                               char keyChar, int keyLocation) {
+                               char keyChar, int keyLocation, Map<String, Object> properties) {
     }
 
     protected int getInitialStyleBits() {
