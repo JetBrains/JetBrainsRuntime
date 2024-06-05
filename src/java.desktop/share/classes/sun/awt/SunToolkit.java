@@ -236,6 +236,17 @@ public abstract class SunToolkit extends Toolkit
             AccessController.doPrivileged(new GetBooleanAction("awt.lock.fair")));
     private static final Condition AWT_LOCK_COND = AWT_LOCK.newCondition();
 
+    /*
+     * A component where the last mouse event came to. Used by cursor manager to
+     * find the component under cursor. Currently, uses only on Windows
+     */
+    public void updateLastMouseEventComponent(Component component) {
+    }
+
+    public Component getLastMouseEventComponent() {
+        return null;
+    }
+
     public interface AwtLockListener {
         void afterAwtLocked();
         void beforeAwtUnlocked();
