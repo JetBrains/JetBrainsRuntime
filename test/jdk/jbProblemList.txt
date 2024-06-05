@@ -330,7 +330,6 @@ java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux
 java/awt/FontClass/FontAccess.java JBR-5225 windows-all
 java/awt/font/FontScaling/StretchedFontTest.java JBR-6225 macosx-all
 java/awt/font/GlyphVector/NLGlyphTest.java 8273321,JBR-5355 linux-all
-java/awt/font/JNICheck/FreeTypeScalerJNICheck.java 8318854 macosx-all
 java/awt/font/JNICheck/JNICheck.sh JBR-5011 linux-all
 java/awt/font/TextLayout/TextLayoutBounds.java 8169188 generic-all
 java/awt/image/BufferedImage/ICMColorDataTest/ICMColorDataTest.java 8233028 generic-all
@@ -1096,7 +1095,7 @@ javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210 windows-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-180 windows-all
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5541 linux-all
-javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,JBR-6061 windows-all,macosx-all
+javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952 windows-all
 javax/swing/UIDefaults/6795356/TableTest.java JBR-5767 windows-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,JBR-1656 windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -1458,7 +1457,7 @@ java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java JBR-5510 linux-5.18.2-arch1-1
-java/awt/Robot/NonEmptyErrorStream.java JBR-5510,JBR-6246 linux-5.18.2-arch1-1,generic-all
+java/awt/Robot/NonEmptyErrorStream.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JMenu/TestDisabledMenuForegroundColor.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
