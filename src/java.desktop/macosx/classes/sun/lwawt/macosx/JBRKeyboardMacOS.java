@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright 2024 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,28 +23,27 @@
  * questions.
  */
 
-#ifndef __AWTEVENT_H
-#define __AWTEVENT_H
+package sun.lwawt.macosx;
 
-#import <Carbon/Carbon.h>
+import com.jetbrains.desktop.JBRKeyboard;
+import com.jetbrains.exported.JBRApi;
 
-jlong UTC(NSEvent *event);
-void DeliverJavaKeyEvent(JNIEnv *env, NSEvent *event, jobject peer);
-void DeliverJavaMouseEvent(JNIEnv *env, NSEvent *event, jobject peer);
-void SendAdditionalJavaEvents(JNIEnv *env, NSEvent *nsEvent, jobject peer);
-jint GetJavaMouseModifiers(NSUInteger modifierFlags);
-jint NsKeyModifiersToJavaModifiers(NSUInteger nsFlags, BOOL isExtMods);
-NSUInteger JavaModifiersToNsKeyModifiers(jint javaModifiers, BOOL isExtMods);
-unichar NsCharToJavaChar(unichar nsChar, NSUInteger modifiers, BOOL spaceKeyTyped);
+import java.util.List;
 
-struct KeyCodeTranslationResult {
-    unichar character;
-    BOOL isSuccess;
-    BOOL isDead;
-    BOOL isTyped;
-};
+public class JBRKeyboardMacOS extends JBRKeyboard {
+    @Override
+    public String getCurrentKeyboardLayout() {
+        // ensure LWCToolkit is initialized
+        LWCToolkit.getLWCToolkit();
 
-TISInputSourceRef GetCurrentUnderlyingLayout(BOOL useNationalLayouts);
-struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef layout, unsigned short keyCode, unsigned mods);
+        return LWCToolkit.getKeyboardLayoutId();
+    }
 
-#endif /* __AWTEVENT_H */
+    @Override
+    public List<String> getEnabledKeyboardLayouts() {
+        // ensure LWCToolkit is initialized
+        LWCToolkit.getLWCToolkit();
+
+        return LWCToolkit.getKeyboardLayoutList(false);
+    }
+}
