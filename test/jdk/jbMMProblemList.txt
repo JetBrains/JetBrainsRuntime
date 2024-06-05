@@ -30,7 +30,6 @@ java/awt/im/memoryleak/InputContextMemoryLeakTest.java JBR-6065 windows-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5442 linux-all
 
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-5442 linux-all
-javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-6100 linux-all
 javax/swing/JInternalFrame/Test6325652.java JBR-6065 windows-all
 javax/swing/JMenu/4692443/bug4692443.java JBR-6065 windows-all
 javax/swing/JMenuBar/4750590/bug4750590.java JBR-6065 windows-all
@@ -125,7 +124,7 @@ javax/swing/JSlider/TestJSliderRendering.java JBR-5510 linux-all
 javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-5510 linux-all
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-5510 linux-all
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5510 linux-all
-javax/swing/JSplitPane/4885629/bug4885629.java 8019935,JBR-5510 macosx-all,linux-all
+javax/swing/JSplitPane/4885629/bug4885629.java JBR-5510 linux-all
 javax/swing/JTextPane/TestJTextPaneBackgroundColor.java JBR-5510 linux-all
 javax/swing/JToolTip/TestTooltipBackgroundColor.java JBR-5510 linux-all
 javax/swing/JTree/TestTreeBackgroundColor.java JBR-5510 linux-all
