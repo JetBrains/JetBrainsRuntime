@@ -26,6 +26,7 @@
 package sun.lwawt;
 
 import java.awt.Rectangle;
+import java.util.Map;
 
 public interface PlatformEventNotifier {
     void notifyIconify(boolean iconify);
@@ -61,5 +62,9 @@ public interface PlatformEventNotifier {
      * Called by the delegate when a key is pressed.
      */
     void notifyKeyEvent(int id, long when, int modifiers,
-                        int keyCode, char keyChar, int keyLocation);
+                        int keyCode, char keyChar, int keyLocation, Map<String, Object> properties);
+
+    default void notifyKeyEvent(int id, long when, int modifiers, int keyCode, char keyChar, int keyLocation) {
+        notifyKeyEvent(id, when, modifiers, keyCode, keyChar, keyLocation, null);
+    }
 }
