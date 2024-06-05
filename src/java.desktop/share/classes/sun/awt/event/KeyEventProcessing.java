@@ -10,14 +10,14 @@ public class KeyEventProcessing {
     // "com.jetbrains.use.old.keyevent.processing"
     public final static String useNationalLayoutsOption = "com.sun.awt.use.national.layouts";
     @Native
-    public final static boolean useNationalLayouts = "true".equals(
+    public static volatile boolean useNationalLayouts = "true".equals(
             System.getProperty(useNationalLayoutsOption,
                 FontUtilities.isMacOSX ? "true" : "false"));
 
     // Report dead keys (such as VK_DEAD_GRAVE) as normal keys (such as VK_BACK_QUOTE)
     public final static String reportDeadKeysAsNormalOption = "com.sun.awt.reportDeadKeysAsNormal";
     @Native
-    public final static boolean reportDeadKeysAsNormal = "true".equals(
+    public static boolean reportDeadKeysAsNormal = "true".equals(
             System.getProperty(reportDeadKeysAsNormalOption,
                 FontUtilities.isMacOSX ? "true" : "false"));
 
