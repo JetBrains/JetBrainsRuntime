@@ -167,7 +167,7 @@ javax/swing/JSlider/6401380/bug6401380.java JBR-5505 windows-all
 javax/swing/JSpinner/4788637/bug4788637.java JBR-5505 windows-all
 javax/swing/JSplitPane/4615365/JSplitPaneDividerLocationTest.java JBR-5505 windows-all
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5505 windows-all
-javax/swing/JSplitPane/4885629/bug4885629.java 8019935,JBR-5505 macosx-all,windows-all
+javax/swing/JSplitPane/4885629/bug4885629.java JBR-5505 windows-all
 javax/swing/JTabbedPane/4361477/bug4361477.java JBR-5932,JBR-5505 linux-all,windows-all
 javax/swing/JTable/4275046/bug4275046.java JBR-5505 windows-all
 javax/swing/JToolTip/4846413/bug4846413.java JBR-5505 windows-all
