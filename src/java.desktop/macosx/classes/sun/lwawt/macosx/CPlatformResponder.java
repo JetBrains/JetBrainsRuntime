@@ -35,6 +35,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.KeyEvent;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -196,6 +197,9 @@ final class CPlatformResponder {
         int jkeyCode = KeyEvent.VK_UNDEFINED;
         int jkeyLocation = KeyEvent.KEY_LOCATION_UNKNOWN;
         boolean spaceKeyTyped = false;
+        HashMap<String, Object> properties = new HashMap<>();
+
+        properties.put("RAW_KEYCODE", keyCode);
 
         char testChar = KeyEvent.CHAR_UNDEFINED;
 
@@ -208,6 +212,11 @@ final class CPlatformResponder {
             jkeyCode = out[0];
             jkeyLocation = out[1];
             jeventType = out[2];
+            properties.put("US_KEYCODE", jkeyCode);
+            properties.put("DEAD_KEYCODE", KeyEvent.VK_UNDEFINED);
+            properties.put("DEAD_KEYSTROKE", KeyEvent.VK_UNDEFINED);
+            properties.put("IS_TYPED", false);
+            properties.put("CHARACTERS", "");
         } else {
             if (chars != null && chars.length() > 0) {
                 // `chars` might contain more than one character, so why are we using the last one?
@@ -224,15 +233,23 @@ final class CPlatformResponder {
                 }
             }
 
-            int[] in = new int[] {keyCode, KeyEventProcessing.useNationalLayouts ? 1 : 0, KeyEventProcessing.reportDeadKeysAsNormal ? 1 : 0};
-            int[] out = new int[2]; // [jkeyCode, jkeyLocation]
-
+            int[] in = new int[] {keyCode, modifierFlags, KeyEventProcessing.useNationalLayouts ? 1 : 0, KeyEventProcessing.reportDeadKeysAsNormal ? 1 : 0};
+            int[] out = new int[5]; // [jkeyCode, jkeyLocation, usKeyCode, deadKeyCode, deadKeyComboCode]
             NSEvent.nsToJavaKeyInfo(in, out);
 
             jkeyCode = out[0];
             jkeyLocation = out[1];
             jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(eventType) :
                                            NSEvent.nsToJavaEventType(eventType);
+
+            properties.put("US_KEYCODE", out[2]);
+            properties.put("DEAD_KEYCODE", out[3]);
+            if (chars != null && chars.isEmpty()) {
+                properties.put("DEAD_KEYSTROKE", out[4]);
+            } else {
+                properties.put("DEAD_KEYSTROKE", KeyEvent.VK_UNDEFINED);
+            }
+            properties.put("CHARACTERS", actualChars == null ? "" : actualChars);
         }
 
         char javaChar = (testChar == KeyEvent.CHAR_UNDEFINED) ? KeyEvent.CHAR_UNDEFINED :
@@ -245,7 +262,7 @@ final class CPlatformResponder {
             lastKeyPressCode = jkeyCode;
         }
         eventNotifier.notifyKeyEvent(jeventType, when, jmodifiers,
-                jkeyCode, javaChar, jkeyLocation);
+                jkeyCode, javaChar, jkeyLocation, properties);
 
         // That's the reaction on the PRESSED (not RELEASED) event as it comes to
         // appear in MacOSX.
@@ -258,7 +275,6 @@ final class CPlatformResponder {
                 // Either macOS didn't send us anything in insertText: to type,
                 // or this event was not generated in AWTView.m. Let's fall back to using javaChar
                 // since we still need to generate KEY_TYPED events, for instance for Ctrl+ combinations.
-                // javaChar is guaranteed to be a valid character, since postsTyped is true.
                 actualChars = String.valueOf(javaChar);
             }
 
