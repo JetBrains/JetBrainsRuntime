@@ -31,6 +31,8 @@ import java.awt.Toolkit;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serial;
+import java.util.HashMap;
+import java.util.Map;
 
 import sun.awt.AWTAccessor;
 
@@ -1182,6 +1184,9 @@ public non-sealed class KeyEvent extends InputEvent {
     private transient long scancode = 0; // for MS Windows only
     private transient long extendedKeyCode = 0;
 
+    // JBR-specific additional options
+    private transient Map<String, Object> jbrExtraProperties;
+
     /**
      * Use serialVersionUID from JDK 1.1 for interoperability.
      */
@@ -1218,6 +1223,16 @@ public non-sealed class KeyEvent extends InputEvent {
                 @Override
                 public boolean isProxyActive(KeyEvent ev) {
                     return ev.isProxyActive;
+                }
+
+                @Override
+                public Map<String, Object> getJBRExtraProperties(KeyEvent ev) {
+                    return ev.jbrExtraProperties;
+                }
+
+                @Override
+                public void setJBRExtraProperties(KeyEvent ev, Map<String, Object> properties) {
+                    ev.jbrExtraProperties = properties;
                 }
             });
     }
