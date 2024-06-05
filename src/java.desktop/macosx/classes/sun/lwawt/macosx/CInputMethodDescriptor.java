@@ -37,6 +37,7 @@ import java.util.List;
  */
 
 public final class CInputMethodDescriptor implements InputMethodDescriptor {
+    JBRTextInputMacOS.EventListener textInputEventListener;
 
     static {
         nativeInit();
