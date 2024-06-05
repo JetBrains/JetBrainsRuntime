@@ -56,7 +56,7 @@ final class CCursorManager extends LWCursorManager {
     private CCursorManager() { }
 
     @Override
-    protected Point getCursorPosition() {
+    public Point getCursorPosition() {
         final Point2D nativePosition = nativeGetCursorPosition();
         return new Point((int)nativePosition.getX(), (int)nativePosition.getY());
     }

@@ -25,37 +25,68 @@
 
 package sun.awt.windows;
 
-import java.awt.*;
-import sun.awt.GlobalCursorManager;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Point;
 
-final class WGlobalCursorManager extends GlobalCursorManager {
-    private static WGlobalCursorManager manager;
+import sun.awt.CachedCursorManager;
 
-    public static GlobalCursorManager getCursorManager() {
-        if (manager == null) {
-            manager = new WGlobalCursorManager();
+import static sun.awt.windows.WToolkit.getWToolkit;
+
+final class WGlobalCursorManager extends CachedCursorManager {
+    private Component lastMouseEventComponent;
+
+    private WGlobalCursorManager() {
+    }
+
+    public void setMouseEventComponent(Component component) {
+        lastMouseEventComponent = component;
+    }
+
+    public Component getMouseEventComponent() {
+        return lastMouseEventComponent;
+    }
+
+    private static final WGlobalCursorManager theInstance = new WGlobalCursorManager();
+    public static WGlobalCursorManager getInstance() {
+        return theInstance;
+    }
+
+    private native void getCursorPos(Point p);
+    private native void setCursor(Cursor cursor, boolean u);
+    @Override
+    protected native Point getLocationOnScreen(Component component);
+
+    @Override
+    protected Cursor getCursorByPosition(Point cursorPos, Component c) {
+        final Object peer = WToolkit.targetToPeer(c);
+        if (peer instanceof WComponentPeer && c.isShowing()) {
+            final WComponentPeer wpeer = (WComponentPeer) peer;
+            final Point p = getLocationOnScreen((Component) wpeer.getTarget());
+            return wpeer.getCursor(new Point(cursorPos.x - p.x,
+                    cursorPos.y - p.y));
         }
-        return manager;
+        return null;
     }
 
-    /**
-     * Should be called in response to a native mouse enter or native mouse
-     * button released message. Should not be called during a mouse drag.
-     */
-    public static void nativeUpdateCursor(Component heavy) {
-        WGlobalCursorManager.getCursorManager().updateCursorLater(heavy);
+    public static void nativeUpdateCursor(Component component) {
+        getInstance().updateCursorLater(component);
     }
 
     @Override
-    protected native void setCursor(Component comp, Cursor cursor, boolean u);
+    protected Component getComponentUnderCursor() {
+        return lastMouseEventComponent;
+    }
+
     @Override
-    protected native void getCursorPos(Point p);
-    /*
-     * two native methods to call corresponding methods in Container and
-     * Component
-     */
+    public Point getCursorPosition() {
+        Point cursorPos = new Point();
+        getCursorPos(cursorPos);
+        return cursorPos;
+    }
+
     @Override
-    protected native Component findHeavyweightUnderCursor(boolean useCache);
-    @Override
-    protected native Point getLocationOnScreen(Component com);
+    protected void setCursor(Cursor cursor) {
+        setCursor(cursor, true);
+    }
 }
