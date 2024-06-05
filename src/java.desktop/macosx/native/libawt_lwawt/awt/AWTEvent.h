@@ -45,6 +45,6 @@ struct KeyCodeTranslationResult {
 };
 
 TISInputSourceRef GetCurrentUnderlyingLayout(BOOL useNationalLayouts);
-struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef layout, unsigned short keyCode);
+struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef layout, unsigned short keyCode, unsigned mods);
 
 #endif /* __AWTEVENT_H */
