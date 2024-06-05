@@ -505,7 +505,7 @@ TISInputSourceRef GetCurrentUnderlyingLayout(BOOL useNationalLayouts) {
     return underlyingLayout;
 }
 
-struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef layout, unsigned short keyCode)
+struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef layout, unsigned short keyCode, unsigned mods)
 {
     struct KeyCodeTranslationResult result = {
         .character = (unichar)0,
@@ -548,7 +548,6 @@ struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef la
         return result;
     }
 
-    UInt32 modifierKeyState = 0;
     UInt32 deadKeyState = 0;
     const UniCharCount maxStringLength = 255;
     UniCharCount actualStringLength = 0;
@@ -556,7 +555,7 @@ struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef la
 
     // get the deadKeyState
     OSStatus status = UCKeyTranslate(keyboardLayout,
-                                     keyCode, kUCKeyActionDown, modifierKeyState,
+                                     keyCode, kUCKeyActionDown, mods,
                                      LMGetKbdType(), 0,
                                      &deadKeyState,
                                      maxStringLength,
@@ -589,7 +588,7 @@ struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef la
 
     // Extract the dead key non-combining character
     status = UCKeyTranslate(keyboardLayout,
-                            keyCode, kUCKeyActionDown, modifierKeyState,
+                            keyCode, kUCKeyActionDown, mods,
                             LMGetKbdType(), kUCKeyTranslateNoDeadKeysMask,
                             &deadKeyState,
                             maxStringLength,
@@ -609,14 +608,50 @@ struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef la
     return result;
 }
 
+static jint CharacterToDeadKeyCode(unichar ch) {
+    for (const struct CharToVKEntry *map = charToDeadVKTable; map->c != 0; ++map) {
+        if (ch == map->c) {
+            return map->javaKey;
+        }
+    }
+
+    // No builtin VK_DEAD_ constant for this dead key,
+    // nothing better to do than to fall back to the extended key code.
+    // This can happen on the following ascii-capable key layouts on the base layer:
+    //   - Apache (com.apple.keylayout.Apache)
+    //   - Chickasaw (com.apple.keylayout.Chickasaw)
+    //   - Choctaw (com.apple.keylayout.Choctaw)
+    //   - Navajo (com.apple.keylayout.Navajo)
+    //   - Vietnamese (com.apple.keylayout.Vietnamese)
+    // Vietnamese layout is unique among these in that the "dead key" is actually a self-containing symbol,
+    // that can be modified by an accent typed after it. In essence, it's like a dead key in reverse:
+    // the user should first type the letter and only then the necessary accent.
+    // This way the key code would be what the user expects.
+
+    return 0x1000000 + ch;
+}
+
+struct JavaKeyTranslationResult {
+    jint keyCode;
+    jint keyLocation;
+
+    jint usKeyCode;   // this is always the key position on the QWERTY keyboard
+
+    // if the base key is dead, then it's the corresponding dead key code, otherwise it's VK_UNDEFINED
+    jint deadKeyCode;
+
+    // if the key combo is dead, then it's the corresponding dead key code, otherwise it's VK_UNDEFINED
+    jint deadKeyComboCode;
+};
+
 /*
  * This is the function that uses the table above to take incoming
  * NSEvent keyCodes and translate to the Java virtual key code.
  */
 static void
-NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
+NsCharToJavaVirtualKeyCode(unsigned short key, unsigned mods, const BOOL useNationalLayouts,
                            const BOOL reportDeadKeysAsNormal,
-                           jint *keyCode, jint *keyLocation)
+                           struct JavaKeyTranslationResult* result)
 {
     // This is going to be a lengthy explanation about what it is that we need to achieve in this function.
     // It took me quite a while to figure out myself, so hopefully it will be useful to others as well.
@@ -699,47 +734,45 @@ NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
     // Need to take into account that the same virtual key code may correspond to
     // different keys depending on the physical layout.
 
+    // memset the result to zero
+    *result = (struct JavaKeyTranslationResult){0};
+
     const struct KeyTableEntry* usKey = GetKeyTableEntryForKeyCode(key);
 
     // Determine the underlying layout.
     // If underlyingLayout is nil then fall back to using the usKey.
 
     TISInputSourceRef underlyingLayout = GetCurrentUnderlyingLayout(useNationalLayouts);
+    TISInputSourceRef activeLayout = useNationalLayouts ? GetCurrentUnderlyingLayout(NO) : underlyingLayout;
 
     // Default to returning the US key data.
-    *keyCode = usKey->javaKeyCode;
-    *keyLocation = usKey->javaKeyLocation;
+    result->keyCode = result->usKeyCode = usKey->javaKeyCode;
+    result->keyLocation = usKey->javaKeyLocation;
+    result->deadKeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
+    result->deadKeyComboCode = java_awt_event_KeyEvent_VK_UNDEFINED;
 
-    if (underlyingLayout == nil || !usKey->variesBetweenLayouts) {
+    if (underlyingLayout == nil || activeLayout == nil || !usKey->variesBetweenLayouts) {
         return;
     }
 
+    // Translate the key + modifiers using the current key layout
+    struct KeyCodeTranslationResult translatedKeyCombo = TranslateKeyCodeUsingLayout(activeLayout, key, (mods >> 16) & 0xFF);
+
+    // If the key + modifiers produces a dead key, report it
+    if (translatedKeyCombo.isDead) {
+        result->deadKeyComboCode = CharacterToDeadKeyCode(translatedKeyCombo.character);
+    }
+
     // Translate the key using the underlying key layout.
-    struct KeyCodeTranslationResult translatedKey = TranslateKeyCodeUsingLayout(underlyingLayout, key);
+    struct KeyCodeTranslationResult translatedKey = TranslateKeyCodeUsingLayout(underlyingLayout, key, 0);
 
     // Test whether this key is dead.
-    if (translatedKey.isDead && !reportDeadKeysAsNormal) {
-        for (const struct CharToVKEntry *map = charToDeadVKTable; map->c != 0; ++map) {
-            if (translatedKey.character == map->c) {
-                *keyCode = map->javaKey;
-                return;
-            }
-        }
+    if (translatedKey.isDead) {
+        result->deadKeyCode = CharacterToDeadKeyCode(translatedKey.character);
+    }
 
-        // No builtin VK_DEAD_ constant for this dead key,
-        // nothing better to do than to fall back to the extended key code.
-        // This can happen on the following ascii-capable key layouts:
-        //   - Apache (com.apple.keylayout.Apache)
-        //   - Chickasaw (com.apple.keylayout.Chickasaw)
-        //   - Choctaw (com.apple.keylayout.Choctaw)
-        //   - Navajo (com.apple.keylayout.Navajo)
-        //   - Vietnamese (com.apple.keylayout.Vietnamese)
-        // Vietnamese layout is unique among these in that the "dead key" is actually a self-containing symbol,
-        // that can be modified by an accent typed after it. In essence, it's like a dead key in reverse:
-        // the user should first type the letter and only then the necessary accent.
-        // This way the key code would be what the user expects.
-
-        *keyCode = 0x1000000 + translatedKey.character;
+    if (!reportDeadKeysAsNormal && result->deadKeyCode) {
+        result->keyCode = result->deadKeyCode;
         return;
     }
 
@@ -755,21 +788,21 @@ NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
 
     for (const struct CharToVKEntry *map = extraCharToVKTable; map->c != 0; ++map) {
         if (map->c == ch) {
-            *keyCode = map->javaKey;
+            result->keyCode = map->javaKey;
             return;
         }
     }
 
     if (ch >= 'a' && ch <= 'z') {
         // key is a basic latin letter
-        *keyCode = java_awt_event_KeyEvent_VK_A + ch - 'a';
+        result->keyCode = java_awt_event_KeyEvent_VK_A + ch - 'a';
         return;
     }
 
     if (ch >= '0' && ch <= '9') {
         // key is a digit
         // numpad digits are already handled, since they don't vary between layouts
-        *keyCode = java_awt_event_KeyEvent_VK_0 + ch - '0';
+        result->keyCode = java_awt_event_KeyEvent_VK_0 + ch - '0';
         return;
     }
 
@@ -782,7 +815,7 @@ NsCharToJavaVirtualKeyCode(unsigned short key, const BOOL useNationalLayouts,
         // Apart from letters, this is the case for characters like the Section Sign (U+00A7)
         // on the French keyboard (key ANSI_6) or Pound Sign (U+00A3) on the Italian – QZERTY keyboard (key ANSI_8).
 
-        *keyCode = 0x01000000 + ch;
+        result->keyCode = 0x01000000 + ch;
     }
 }
 
@@ -965,20 +998,24 @@ JNI_COCOA_ENTER(env);
 
     // in  = [keyCode, useNationalLayouts]
     jshort keyCode = (jshort)data[0];
-    BOOL useNationalLayouts = (data[1] != 0);
-    BOOL reportDeadKeysAsNormal = (data[2] != 0);
+    unsigned mods = ((unsigned*)data)[1];
+    BOOL useNationalLayouts = (data[2] != 0);
+    BOOL reportDeadKeysAsNormal = (data[3] != 0);
 
-    jint jkeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
-    jint jkeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
+    struct JavaKeyTranslationResult result = {0};
 
     NsCharToJavaVirtualKeyCode((unsigned short)keyCode,
+                               mods,
                                useNationalLayouts,
                                reportDeadKeysAsNormal,
-                               &jkeyCode, &jkeyLocation);
+                               &result);
 
-    // out = [jkeyCode, jkeyLocation];
-    (*env)->SetIntArrayRegion(env, outData, 0, 1, &jkeyCode);
-    (*env)->SetIntArrayRegion(env, outData, 1, 1, &jkeyLocation);
+    // out = [jkeyCode, jkeyLocation, usKeyCode, deadKeyCode, deadKeyComboCode];
+    (*env)->SetIntArrayRegion(env, outData, 0, 1, &result.keyCode);
+    (*env)->SetIntArrayRegion(env, outData, 1, 1, &result.keyLocation);
+    (*env)->SetIntArrayRegion(env, outData, 2, 1, &result.usKeyCode);
+    (*env)->SetIntArrayRegion(env, outData, 3, 1, &result.deadKeyCode);
+    (*env)->SetIntArrayRegion(env, outData, 4, 1, &result.deadKeyComboCode);
 
     (*env)->ReleaseIntArrayElements(env, inData, data, 0);
 
