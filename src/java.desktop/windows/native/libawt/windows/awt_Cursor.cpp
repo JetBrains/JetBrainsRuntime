@@ -532,7 +532,7 @@ static void GlobalSetCursor(void* pStruct) {
  */
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WGlobalCursorManager_setCursor(JNIEnv *env, jobject,
-                            jobject, jobject cursor, jboolean u)
+                            jobject cursor, jboolean u)
 {
     TRY;
 

@@ -4876,6 +4876,9 @@ public abstract class Component implements ImageObserver, MenuContainer,
             eventLog.finest("{0}", e);
         }
 
+        if (id == MouseEvent.MOUSE_ENTERED && getToolkit() instanceof SunToolkit toolkit) {
+            toolkit.updateLastMouseEventComponent(this);
+        }
         /*
          * 0. Set timestamp and modifiers of current event.
          */
