@@ -661,7 +661,7 @@ public class HtmlConfiguration extends BaseConfiguration {
                     return true;
                 }
             },
-            new Option(resources, "--legal-notices", 1) {
+            new XOption(resources, "--legal-notices", 1) {
                 @Override
                 public boolean process(String opt,  List<String> args) {
                     legalnotices = args.get(0);
