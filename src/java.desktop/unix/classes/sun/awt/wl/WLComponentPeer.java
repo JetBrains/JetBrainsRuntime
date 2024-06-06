@@ -1447,19 +1447,6 @@ public class WLComponentPeer implements ComponentPeer {
         }
     }
 
-    private static void startMovingWindowTogetherWithMouse(Window window, int mouseButton)
-    {
-        if (isWlPopup(window)) return; // xdg_popup's do not support the necessary interface
-
-        final AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
-        ComponentPeer peer = acc.getPeer(window);
-        if (peer instanceof WLComponentPeer wlComponentPeer) {
-            wlComponentPeer.startDrag();
-        } else {
-            throw new IllegalArgumentException("AWT window must have WLComponentPeer as its peer");
-        }
-    }
-
     static Window getNativelyFocusableOwnerOrSelf(Component component) {
         Window result = component instanceof Window window ? window : SwingUtilities.getWindowAncestor(component);
         while (result != null && isWlPopup(result)) {
