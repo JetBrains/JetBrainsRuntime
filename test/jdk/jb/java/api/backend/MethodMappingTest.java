@@ -25,7 +25,7 @@
  * @test
  * @modules java.base/com.jetbrains.internal:+open
  * @build com.jetbrains.* com.jetbrains.test.api.MethodMapping com.jetbrains.test.jbr.MethodMapping
- * @run main MethodMappingTest
+ * @run main -Djetbrains.runtime.api.extendRegistry=true MethodMappingTest
  */
 
 import java.util.Map;

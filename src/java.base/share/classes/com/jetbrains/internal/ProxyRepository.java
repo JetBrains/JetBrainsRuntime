@@ -26,7 +26,7 @@
 package com.jetbrains.internal;
 
 import jdk.internal.access.SharedSecrets;
-import jdk.internal.loader.ClassLoaders;
+import jdk.internal.loader.BootLoader;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -48,14 +48,15 @@ import static java.lang.invoke.MethodHandles.Lookup;
 class ProxyRepository {
     private static final Proxy NONE = Proxy.empty(null), INVALID = Proxy.empty(false);
 
-    private final Registry registry;
+    private final Registry registry = new Registry();
     private final Map<Key, Proxy> proxies = new HashMap<>();
 
-    ProxyRepository(InputStream registryStream,
-                    Class<? extends Annotation> serviceAnnotation,
-                    Class<? extends Annotation> providedAnnotation,
-                    Class<? extends Annotation> providesAnnotation) {
-        registry = new Registry(registryStream, serviceAnnotation, providedAnnotation, providesAnnotation);
+    void init(InputStream extendedRegistryStream,
+              Class<? extends Annotation> serviceAnnotation,
+              Class<? extends Annotation> providedAnnotation,
+              Class<? extends Annotation> providesAnnotation) {
+        registry.initAnnotations(serviceAnnotation, providedAnnotation, providesAnnotation);
+        if (extendedRegistryStream != null) registry.readEntries(extendedRegistryStream);
     }
 
     String getVersion() {
@@ -229,14 +230,21 @@ class ProxyRepository {
             public String toString() { return type; }
         }
 
-        private final Class<? extends Annotation> serviceAnnotation, providedAnnotation, providesAnnotation;
-        private final Module annotationsModule;
+        private Class<? extends Annotation> serviceAnnotation, providedAnnotation, providesAnnotation;
+        private Module annotationsModule;
         private ClassLoader classLoader;
         private final Map<String, Entry> entries = new HashMap<>();
         private final String version;
 
-        private Registry(InputStream inputStream,
-                         Class<? extends Annotation> serviceAnnotation,
+        private Registry() {
+            try (InputStream registryStream = BootLoader.findResourceAsStream("java.base", "META-INF/jbrapi.registry")) {
+                version = readEntries(registryStream);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        private void initAnnotations(Class<? extends Annotation> serviceAnnotation,
                          Class<? extends Annotation> providedAnnotation,
                          Class<? extends Annotation> providesAnnotation) {
             this.serviceAnnotation = serviceAnnotation;
@@ -244,6 +252,9 @@ class ProxyRepository {
             this.providesAnnotation = providesAnnotation;
             annotationsModule = serviceAnnotation == null ? null : serviceAnnotation.getModule();
             if (annotationsModule != null) classLoader = annotationsModule.getClassLoader();
+        }
+
+        private String readEntries(InputStream inputStream) {
             String version = null;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                 String s;
@@ -298,7 +309,7 @@ class ProxyRepository {
                 entries.clear();
                 throw e;
             }
-            this.version = version;
+            return version;
         }
 
         private synchronized void updateClassLoader(ClassLoader newLoader) {

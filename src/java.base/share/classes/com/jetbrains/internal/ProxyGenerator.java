@@ -278,7 +278,8 @@ class ProxyGenerator {
             if ((mod & (Modifier.STATIC | Modifier.FINAL)) != 0) continue;
 
             Exception exception = null;
-            Enum<?> extension = EXTENSIONS_ENABLED ? JBRApi.extensionExtractor.apply(method) : null;
+            Enum<?> extension = EXTENSIONS_ENABLED && JBRApi.extensionExtractor != null ?
+                    JBRApi.extensionExtractor.apply(method) : null;
             Mapping.Method methodMapping = mappingContext.getMapping(method);
             MethodHandle handle;
             boolean passInstance;
