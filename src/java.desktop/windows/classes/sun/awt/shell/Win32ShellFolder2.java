@@ -25,7 +25,9 @@
 
 package sun.awt.shell;
 
+import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.image.AbstractMultiResolutionImage;
 import java.awt.image.BufferedImage;
@@ -1430,7 +1432,7 @@ final class Win32ShellFolder2 extends ShellFolder {
         public Image getResolutionVariant(double width, double height) {
             int dist = 0;
             Image retVal = null;
-            // We only care about width since we don't support non-rectangular icons
+            // We only care about width since we don't support non-square icons
             int w = (int) width;
             int retindex = 0;
             for (Integer i : resolutionVariants.keySet()) {
@@ -1443,6 +1445,15 @@ final class Win32ShellFolder2 extends ShellFolder {
                         break;
                     }
                 }
+            }
+            if (retVal.getWidth(null) != w) {
+                BufferedImage newVariant = new BufferedImage(w, w, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g2d = newVariant.createGraphics();
+                g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                g2d.drawImage(retVal, 0,0, w, w, null);
+                g2d.dispose();
+                resolutionVariants.put(w, newVariant);
+                retVal = newVariant;
             }
             return retVal;
         }
