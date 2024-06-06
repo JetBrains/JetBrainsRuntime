@@ -1,9 +1,5 @@
 package com.jetbrains.exported;
 
-import jdk.internal.loader.BootLoader;
-
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
@@ -37,19 +33,13 @@ public class JBRApiSupport {
                                                 Map<Enum<?>, Class[]> knownExtensions,
                                                 Function<Method, Enum<?>> extensionExtractor) {
         if (!com.jetbrains.internal.JBRApi.ENABLED) return null;
-
-        try (InputStream registryStream = BootLoader.findResourceAsStream("java.base", "META-INF/jbrapi.registry")) {
-            com.jetbrains.internal.JBRApi.init(
-                    registryStream,
-                    serviceAnnotation,
-                    providedAnnotation,
-                    providesAnnotation,
-                    knownExtensions,
-                    extensionExtractor);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
+        com.jetbrains.internal.JBRApi.init(
+                null,
+                serviceAnnotation,
+                providedAnnotation,
+                providesAnnotation,
+                knownExtensions,
+                extensionExtractor);
         return com.jetbrains.internal.JBRApi.getService(apiInterface);
     }
 

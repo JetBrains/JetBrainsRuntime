@@ -25,7 +25,7 @@
  * @test
  * @modules java.base/com.jetbrains.internal:+open
  * @build com.jetbrains.* com.jetbrains.test.api.Real com.jetbrains.test.jbr.Real
- * @run main RealTest
+ * @run main -Djetbrains.runtime.api.extendRegistry=true RealTest
  */
 
 import com.jetbrains.Extensions;
