@@ -44,7 +44,7 @@ static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 2, 0);
 #define VALIDATION_LAYER_NAME "VK_LAYER_KHRONOS_validation"
 #define COUNT_OF(x) (sizeof(x)/sizeof(x[0]))
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-static struct wl_display *wl_display;
+static struct wl_display *waylandDisplay;
 #endif
 
 static jboolean verbose;
@@ -158,7 +158,7 @@ void* vulkanLibProc(VkInstance vkInstance, char* procName) {
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_vulkan_VKInstance_initNative(JNIEnv *env, jclass wlge, jlong nativePtr, jboolean verb, jint requestedDevice) {
     #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    wl_display = (struct wl_display*) jlong_to_ptr(nativePtr);
+    waylandDisplay = (struct wl_display*) jlong_to_ptr(nativePtr);
     #endif
     verbose = verb;
     if (VKGE_graphics_environment() == NULL) {
@@ -554,7 +554,7 @@ jboolean VK_FindDevices() {
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
             VkBool32 presentationSupported =
                 geInstance->vkGetPhysicalDeviceWaylandPresentationSupportKHR(
-                    geInstance->physicalDevices[i], j, wl_display);
+                    geInstance->physicalDevices[i], j, waylandDisplay);
 #endif
             char logFlags[5] = {
                     queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT ? 'G' : '-',
