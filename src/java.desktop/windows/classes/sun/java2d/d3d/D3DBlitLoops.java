@@ -282,7 +282,7 @@ final class D3DBlitLoops {
             // responsiveness of applications using VI or BI backbuffers
             D3DScreenUpdateManager mgr =
                 (D3DScreenUpdateManager)ScreenUpdateManager.getInstance();
-            mgr.runUpdateNow();
+            mgr.swapBuffers();
         }
     }
 
@@ -353,7 +353,7 @@ final class D3DBlitLoops {
             // might appear unresponsive until the auto-flush completes
             D3DScreenUpdateManager mgr =
                 (D3DScreenUpdateManager)ScreenUpdateManager.getInstance();
-            mgr.runUpdateNow();
+            mgr.swapBuffers();
         }
     }
 }
