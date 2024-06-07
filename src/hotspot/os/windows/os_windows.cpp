@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -4842,8 +4842,19 @@ FILE* os::open(int fd, const char* mode) {
   return ::_fdopen(fd, mode);
 }
 
-size_t os::write(int fd, const void *buf, unsigned int nBytes) {
-  return ::write(fd, buf, nBytes);
+ssize_t os::pd_write(int fd, const void *buf, size_t nBytes) {
+  ssize_t original_len = (ssize_t)nBytes;
+  while (nBytes > 0) {
+    unsigned int len = nBytes > INT_MAX ? INT_MAX : (unsigned int)nBytes;
+    // On Windows, ::write takes 'unsigned int' no of bytes, so nBytes should be split if larger.
+    ssize_t written_bytes = ::write(fd, buf, len);
+    if (written_bytes < 0) {
+      return OS_ERR;
+    }
+    nBytes -= written_bytes;
+    buf = (char *)buf + written_bytes;
+  }
+  return original_len;
 }
 
 int os::close(int fd) {
