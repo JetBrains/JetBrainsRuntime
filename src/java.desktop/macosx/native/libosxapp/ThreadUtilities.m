@@ -26,6 +26,7 @@
 #import <AppKit/AppKit.h>
 #import <objc/message.h>
 
+#import "JNIUtilities.h"
 #import "PropertiesUtilities.h"
 #import "ThreadUtilities.h"
 
@@ -269,33 +270,31 @@ void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
         return;
 
     static jobject loggerObject = NULL;
-    static jclass clazz = NULL;
     static jmethodID midWarn = NULL;
 
     if (loggerObject == NULL) {
-        jclass shkClass = (*env)->FindClass(env, "sun/lwawt/macosx/LWCToolkit");
-        if (shkClass == NULL)
-            return;
-        jfieldID fieldId = (*env)->GetStaticFieldID(env, shkClass, "log", "Lsun/util/logging/PlatformLogger;");
-        if (fieldId == NULL)
-            return;
-        loggerObject = (*env)->GetStaticObjectField(env, shkClass, fieldId);
+        DECLARE_CLASS(lwctClass, "sun/lwawt/macosx/LWCToolkit");
+        jfieldID fieldId = (*env)->GetStaticFieldID(env, lwctClass, "log", "Lsun/util/logging/PlatformLogger;");
+        CHECK_NULL(fieldId);
+        loggerObject = (*env)->GetStaticObjectField(env, lwctClass, fieldId);
+        CHECK_NULL(loggerObject);
         loggerObject = (*env)->NewGlobalRef(env, loggerObject);
-
-        clazz = (*env)->GetObjectClass(env, loggerObject);
+        jclass clazz = (*env)->GetObjectClass(env, loggerObject);
         if (clazz == NULL) {
             NSLog(@"lwc_plog: can't find PlatformLogger class");
             return;
         }
-
-        midWarn = (*env)->GetMethodID(env, clazz, "warning", "(Ljava/lang/String;)V");
+        GET_METHOD(midWarn, clazz, "warning", "(Ljava/lang/String;)V");
     }
 
     va_list args;
     va_start(args, formatMsg);
     const int bufSize = 512;
     char buf[bufSize];
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wformat-nonliteral"
     vsnprintf(buf, bufSize, formatMsg, args);
+    #pragma clang diagnostic pop
     va_end(args);
 
     jstring jstr = (*env)->NewStringUTF(env, buf);
