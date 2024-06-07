@@ -55,8 +55,8 @@ public final class MTLLayer extends CFLayer {
     public MTLLayer(LWWindowPeer peer) {
         super(0, true);
 
-        Window target = peer.getTarget();
-        boolean perfCountersEnabled = target != null && AWTAccessor.getWindowAccessor().countersEnabled(target);
+        Window target = (peer != null) ? peer.getTarget() : null;
+        boolean perfCountersEnabled = (target != null) && AWTAccessor.getWindowAccessor().countersEnabled(target);
 
         setPtr(nativeCreateLayer(perfCountersEnabled));
         this.peer = peer;
