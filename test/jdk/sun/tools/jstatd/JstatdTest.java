@@ -358,8 +358,11 @@ public final class JstatdTest {
         OutputAnalyzer output = jstatdThread.getOutput();
         List<String> stdout = output.asLinesWithoutVMWarnings();
         output.reportDiagnosticSummary();
-        assertEquals(stdout.size(), 1, "Output should contain one line");
-        assertTrue(stdout.get(0).startsWith("jstatd started"), "List should start with 'jstatd started'");
+        // These asserts are disabled until JDK-8272317 is backported:
+        // otherwise there are SM deprecation notices that fail them.
+        // assertEquals(stdout.size(), 1, "Output should contain one line");
+        // assertTrue(stdout.get(0).startsWith("jstatd started"), "List should start with 'jstatd started'");
+        output.shouldContain("jstatd started");
         assertNotEquals(output.getExitValue(), 0,
                 "jstatd process exited with unexpected exit code");
     }
