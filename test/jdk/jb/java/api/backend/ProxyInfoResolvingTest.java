@@ -25,7 +25,7 @@
  * @test
  * @modules java.base/com.jetbrains.internal:+open
  * @build com.jetbrains.* com.jetbrains.test.api.ProxyInfoResolving com.jetbrains.test.jbr.ProxyInfoResolving
- * @run main -Djetbrains.runtime.api.extendRegistry=true ProxyInfoResolvingTest
+ * @run main/othervm -Djetbrains.runtime.api.extendRegistry=true ProxyInfoResolvingTest
  */
 
 import java.util.Map;
