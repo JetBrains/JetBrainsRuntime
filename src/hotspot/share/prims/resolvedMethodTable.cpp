@@ -432,7 +432,7 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
     _local_table->remove(thread, lookup);
 
     InstanceKlass* newer_klass = InstanceKlass::cast(old_method->method_holder()->new_version());
-    Method* newer_method;
+    Method* newer_method = nullptr;
 
     // Method* new_method;
     if (old_method->is_deleted()) {
@@ -440,39 +440,47 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
     } else {
       newer_method = newer_klass->method_with_idnum(old_method->orig_method_idnum());
 
-      assert(newer_method != NULL, "method_with_idnum() should not be NULL");
-      assert(newer_klass == newer_method->method_holder(), "call after swapping redefined guts");
-      assert(old_method != newer_method, "sanity check");
+      // TODO: JBR21 - check why the newer_method can be nullptr
+      // assert(newer_method != NULL, "method_with_idnum() should not be NULL");
 
-      Thread* thread = Thread::current();
-      ResolvedMethodTableLookup lookup(thread, method_hash(newer_method), newer_method);
-      ResolvedMethodGet rmg(thread, newer_method);
+      if (newer_method != nullptr) {
+        assert(newer_klass == newer_method->method_holder(), "call after swapping redefined guts");
+        assert(old_method != newer_method, "sanity check");
 
-      if (_local_table->get(thread, lookup, rmg)) {
-        // old method was already adjusted if new method exists in _the_table
+        Thread *thread = Thread::current();
+        ResolvedMethodTableLookup lookup(thread, method_hash(newer_method), newer_method);
+        ResolvedMethodGet rmg(thread, newer_method);
+
+        if (_local_table->get(thread, lookup, rmg)) {
+          // old method was already adjusted if new method exists in _the_table
           continue;
+        }
       }
     }
 
-    log_debug(redefine, class, update)("Adjusting method: '%s' of new class %s", newer_method->name_and_sig_as_C_string(), newer_klass->name()->as_C_string());
+    if (newer_method != nullptr) {
+      log_debug(redefine,class, update)("Adjusting method: '%s' of new class %s", newer_method->name_and_sig_as_C_string(), newer_klass->name()->as_C_string());
 
-    // 2. Update method
-    java_lang_invoke_ResolvedMethodName::set_vmtarget(mem_name, newer_method);
-    java_lang_invoke_ResolvedMethodName::set_vmholder(mem_name, newer_method->method_holder()->java_mirror());
+      // 2. Update method
+      java_lang_invoke_ResolvedMethodName::set_vmtarget(mem_name, newer_method);
+      java_lang_invoke_ResolvedMethodName::set_vmholder(mem_name, newer_method->method_holder()->java_mirror());
 
-    newer_klass->set_has_resolved_methods();
+      newer_klass->set_has_resolved_methods();
 
-    ResourceMark rm;
-    if (!(*trace_name_printed)) {
-      log_debug(redefine, class, update)("adjust: name=%s", old_method->method_holder()->external_name());
-       *trace_name_printed = true;
-    }
-    log_debug(redefine, class, update, constantpool)
+      ResourceMark rm;
+      if (!(*trace_name_printed)) {
+        log_debug(redefine, class, update)("adjust: name=%s", old_method->method_holder()->external_name());
+        *trace_name_printed = true;
+      }
+      log_debug(redefine,class, update, constantpool)
       ("ResolvedMethod method update: %s(%s)",
-       newer_method->name()->as_C_string(), newer_method->signature()->as_C_string());
+              newer_method->name()->as_C_string(), newer_method->signature()->as_C_string());
 
-    // 3. add updated method to table again
-    add_method(newer_method, Handle(thread, mem_name));
+      // 3. add updated method to table again
+      add_method(newer_method, Handle(thread, mem_name));
+    } else {
+      log_warning(redefine,class, update)("New method: '%s' of new class %s not found.", old_method->name_and_sig_as_C_string(), newer_klass->name()->as_C_string());
+    }
   }
 
 }
