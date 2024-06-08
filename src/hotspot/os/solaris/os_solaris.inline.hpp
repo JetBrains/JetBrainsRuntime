@@ -92,10 +92,6 @@ inline int    os::socket(int domain, int type, int protocol) {
   return ::socket(domain, type, protocol);
 }
 
-inline struct hostent* os::get_host_by_name(char* name) {
-  return ::gethostbyname(name);
-}
-
 inline bool os::supports_monotonic_clock() {
   // javaTimeNanos() is monotonic on Solaris, see getTimeNanos() comments
   return true;

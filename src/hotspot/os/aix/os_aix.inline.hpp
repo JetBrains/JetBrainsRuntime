@@ -142,10 +142,6 @@ inline int os::connect(int fd, struct sockaddr *him, socklen_t len) {
   RESTARTABLE_RETURN_INT(::connect(fd, him, len));
 }
 
-inline struct hostent* os::get_host_by_name(char* name) {
-  return ::gethostbyname(name);
-}
-
 inline bool os::supports_monotonic_clock() {
   // mread_real_time() is monotonic on AIX (see os::javaTimeNanos() comments)
   return true;
