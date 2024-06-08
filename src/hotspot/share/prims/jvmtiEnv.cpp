@@ -2865,7 +2865,7 @@ JvmtiEnv::GetMethodName(Method* method, char** name_ptr, char** signature_ptr, c
 jvmtiError
 JvmtiEnv::GetMethodDeclaringClass(Method* method, jclass* declaring_class_ptr) {
   NULL_CHECK(method, JVMTI_ERROR_INVALID_METHODID);
-  (*declaring_class_ptr) = get_jni_class_non_null(method->method_holder());
+  (*declaring_class_ptr) = get_jni_class_non_null(method->method_holder()->newest_version());
   return JVMTI_ERROR_NONE;
 } /* end GetMethodDeclaringClass */
 
