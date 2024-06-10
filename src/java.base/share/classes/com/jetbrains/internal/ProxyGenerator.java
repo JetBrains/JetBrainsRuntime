@@ -174,6 +174,9 @@ class ProxyGenerator {
      * Initialize method handles used by generated class via {@code invokedynamic}.
      */
     void init() {
+        if (JBRApi.VERBOSE) {
+            System.out.println("Initializing proxy " + interFace.getName());
+        }
         for (var t : accessContext.dynamicCallTargets) {
             JBRApi.dynamicCallTargets.put(new JBRApi.DynamicCallTargetKey(
                     generatedProxy.lookupClass(), t.name(), t.descriptor()

@@ -114,8 +114,11 @@ public class JBRApi {
     }
 
     public static MethodHandle bindDynamic(Lookup caller, String name, MethodType type) {
+        if (VERBOSE) {
+            System.out.println("Binding call site " + caller.lookupClass().getName() + "#" + name + ": " + type);
+        }
         if (!caller.hasFullPrivilegeAccess()) throw new Error("Caller lookup must have full privilege access"); // Authenticity check.
-        return dynamicCallTargets.remove(new DynamicCallTargetKey(caller.lookupClass(), name, type.descriptorString())).get().asType(type);
+        return dynamicCallTargets.get(new DynamicCallTargetKey(caller.lookupClass(), name, type.descriptorString())).get().asType(type);
     }
 
     /**
