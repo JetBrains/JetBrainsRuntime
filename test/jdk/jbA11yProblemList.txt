@@ -115,7 +115,6 @@ java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5510,8310487,JB
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java JBR-5510,JBR-5905 linux-5.18.2-arch1-1,linux-all,windows-x64
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-x64
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490,JBR-5505 windows-all,linux-all
-java/awt/dnd/DropActionChangedTest.java JBR-6757 windows-x64
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-all
 java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916,JBR-5397,JBR-7141 linux-all,macosx-all,windows-all
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,JBR-5915,JBR-5505 macosx-all,linux-all,windows-all

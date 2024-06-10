@@ -8,6 +8,7 @@ java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916,JBR-7141 linux-all,wi
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-6058,JBR-6664 windows-all,linux-all,macosx-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531 macosx-all,linux-all
 java/awt/Focus/6981400/Test1.java 8029675,JBR-5510,JBR-6702 windows-all,macosx-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Focus/TemporaryLostComponentDeadlock.java JBR-5734 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117,JBR-6509 linux-all,generic-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-4379 windows-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-4379 windows-all
