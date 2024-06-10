@@ -156,7 +156,8 @@ java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880,JBR-6683 windows-all,linux-all
 java/awt/dnd/DragTriggerEventTest.java 8320083,JBR-6548 windows-all,linux-all
-java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-6757 generic-all,windows-all
+java/awt/dnd/DropActionChangeTest.java JBR-6489 generic-all
+java/awt/dnd/DropActionChangedTest.java JBR-6757 windows-all
 java/awt/dnd/DropTargetEnterExitTest/ExtraDragEnterTest.java 8029680 generic-all
 java/awt/dnd/DropTargetEnterExitTest/MissedDragExitTest.java JBR-5730 linux-all
 java/awt/dnd/DropTargetingTest.java JBR-6729 windows-all
