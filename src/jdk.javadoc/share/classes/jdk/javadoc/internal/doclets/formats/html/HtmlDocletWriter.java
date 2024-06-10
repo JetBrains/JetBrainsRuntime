@@ -1015,6 +1015,13 @@ public class HtmlDocletWriter {
                         // @see reference label...
                         label = ref.subList(1, ref.size());
                     }
+                    case ERRONEOUS -> {
+                        messages.warning(ch.getDocTreePath(see),
+                            "doclet.tag.invalid_input",
+                            "@" + tagName,
+                            seeText);
+                        return Text.of("invalid input: '" + seeText + "'");
+                    }
                     default ->
                         throw new IllegalStateException(ref.get(0).getKind().toString());
                 }
