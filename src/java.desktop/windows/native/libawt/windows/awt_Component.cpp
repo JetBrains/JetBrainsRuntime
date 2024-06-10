@@ -3937,13 +3937,27 @@ MsgRouting AwtComponent::WmChar(UINT character, UINT repCnt, UINT flags,
     // i.e., it is the 13th bit of `flags' (which is HIWORD(lParam)).
     bool alt_is_down = (flags & (1<<13)) != 0;
 
-    // Fix for bug 4141621, corrected by fix for bug 6223726: Alt+space doesn't invoke system menu
-    // We should not pass this particular combination to Java.
-
-    if (system && alt_is_down) {
-        if (character == VK_SPACE) {
+    if (system) {
+        // Fix for bug 4141621, corrected by fix for bug 6223726: Alt+space doesn't invoke system menu
+        // We should not pass this particular combination to Java.
+        if ( alt_is_down && (character == VK_SPACE) ) {
             return mrDoDefault;
         }
+
+        // JBR-7157: Alt+Shift+Enter sends KEY_TYPED Event.
+        // Alt[+Shift]+letter generate input only as WM_SYSCHAR messages.
+        // We shouldn't treat them as real user input, according to MSDN: https://learn.microsoft.com/en-us/windows/win32/learnwin32/keyboard-input#character-messages.
+        //   > The WM_SYSCHAR message indicates a system character. As with WM_SYSKEYDOWN, you should generally pass
+        //   > this message directly to DefWindowProc. Otherwise, you may interfere with standard system commands.
+        //   > In particular, do not treat WM_SYSCHAR as text that the user has typed.
+        // In other words, we shouldn't generate KEY_TYPED events for WM_SYSCHAR messages.
+
+        // You can find below how the field is used, let's reset the state just-in-case.
+        m_PendingLeadByte = 0;
+
+        // JBR-7336 Any keyboard shortcut with Alt produces a Windows system sound.
+        // mrDoDefault here would lead to system beeps after any [Shift+]Alt+<letter/digit> keystrokes.
+        return mrConsume;
     }
 
     // If this is a WM_CHAR (non-system) message, then the Alt flag
