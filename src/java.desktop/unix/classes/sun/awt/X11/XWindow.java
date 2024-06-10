@@ -1369,22 +1369,44 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                           unicodeFromPrimaryKeysym,
                           jkeyExtended);
 
-
-        if (unicodeKey > 0 && !isDeadKey) {
-                if (keyEventLog.isLoggable(PlatformLogger.Level.FINE)) {
-                    keyEventLog.fine("fire _TYPED on "+unicodeKey);
-                }
-                postKeyEvent( java.awt.event.KeyEvent.KEY_TYPED,
-                              java.awt.event.KeyEvent.VK_UNDEFINED,
-                              unicodeKey,
-                              java.awt.event.KeyEvent.KEY_LOCATION_UNKNOWN,
-                              ev.get_state(),ev.getPData(), XKeyEvent.getSize(), (long)0,
-                              unicodeFromPrimaryKeysym,
-                              java.awt.event.KeyEvent.VK_UNDEFINED);
-
+        if (shouldPostKeyTypedAfterKeyPressed(isDeadKey ? jkeyExtended : jkeyToReturn, ev.get_state(), unicodeKey, isDeadKey)) {
+            if (keyEventLog.isLoggable(PlatformLogger.Level.FINE)) {
+                keyEventLog.fine("fire _TYPED on "+unicodeKey);
+            }
+            postKeyEvent( java.awt.event.KeyEvent.KEY_TYPED,
+                          java.awt.event.KeyEvent.VK_UNDEFINED,
+                          unicodeKey,
+                          java.awt.event.KeyEvent.KEY_LOCATION_UNKNOWN,
+                          ev.get_state(),ev.getPData(), XKeyEvent.getSize(), (long)0,
+                          unicodeFromPrimaryKeysym,
+                          java.awt.event.KeyEvent.VK_UNDEFINED);
         }
+    }
 
+    private static boolean shouldPostKeyTypedAfterKeyPressed(int jKeyCode, int xModifiers, int jKeyChar, boolean isDeadKey) {
+        /*
+         * Quoting the X11 specification (https://www.x.org/releases/X11R7.6/doc/libX11/specs/libX11/libX11.html#Manipulating_the_Keyboard_Encoding):
+         *   > A list of KeySyms is associated with each KeyCode.
+         *   > [...]
+         *   > The first four elements of the list are split into two groups of KeySyms. Group 1 contains the first and second KeySyms; Group 2 contains the third and fourth KeySyms.
+         *   > [...]
+         *   > Switching between groups is controlled by the KeySym named MODE SWITCH
+         *   > [...]
+         *   > Within a group, the choice of KeySym is determined by applying the first rule that is satisfied from the following list:
+         *   >    <Usages of the numlock, Shift, Lock>
+         * Thus I believe a key press can produce characters only if a subset of the above-mentioned modifiers has been used.
+         * Therefore, we should ignore any key presses if they have used any modifier out of this set,
+         *   but I'm too afraid to totally break some exotic input, so let's apply this filter only to Enter for now.
+         */
+        final var allLayoutLevelPossibleModifiers = XConstants.ShiftMask | XConstants.LockMask | XToolkit.modeSwitchMask | XToolkit.numLockMask;
+        // Control is historically used to enter control characters (ASCII [0x01; 0x1F])
+        final var allInputPossibleModifiers = allLayoutLevelPossibleModifiers | XConstants.ControlMask;
 
+        return (
+                !isDeadKey &&
+                (jKeyChar > 0) &&
+                !( (jKeyCode == KeyEvent.VK_ENTER) && ((xModifiers | allInputPossibleModifiers) != allInputPossibleModifiers) )
+               );
     }
 
     @Override
@@ -1679,6 +1701,8 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         int unicodeFromPrimaryKeysym, int extendedKeyCode)
 
     {
+        assert( (id != KeyEvent.KEY_TYPED) || shouldPostKeyTypedAfterKeyPressed(keyCode, state, keyChar, false) );
+
         long jWhen = System.currentTimeMillis();
         int modifiers = getModifiers(state, 0, keyCode);
 
