@@ -1851,8 +1851,14 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
                       LOWORD(lParam), HIWORD(lParam), FALSE);
           break;
       case WM_SYSCHAR:
-          mr = WmChar(static_cast<UINT>(wParam),
-                      LOWORD(lParam), HIWORD(lParam), TRUE);
+          // JBR-7157: Alt+Shift+Enter sends KEY_TYPED Event
+          // Alt[+Shift]+letter generate input only as WM_SYSCHAR messages.
+          // We shouldn't treat them as real user input, according to MSDN: https://learn.microsoft.com/en-us/windows/win32/learnwin32/keyboard-input#character-messages.
+          //   > The WM_SYSCHAR message indicates a system character. As with WM_SYSKEYDOWN, you should generally pass
+          //   > this message directly to DefWindowProc. Otherwise, you may interfere with standard system commands.
+          //   > In particular, do not treat WM_SYSCHAR as text that the user has typed.
+
+          mr = mrDoDefault;
           break;
       case WM_IME_CHAR:
           mr = WmIMEChar(static_cast<UINT>(wParam),
