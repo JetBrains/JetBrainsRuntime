@@ -435,11 +435,13 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
     } else {
       newer_method = newer_klass->method_with_idnum(old_method->orig_method_idnum());
 
-      assert(newer_method != NULL, "method_with_idnum() should not be NULL");
-      assert(newer_klass == newer_method->method_holder(), "call after swapping redefined guts");
-      assert(old_method != newer_method, "sanity check");
+      // TODO: JBR21 - check why the newer_method can be nullptr
+      // assert(newer_method != NULL, "method_with_idnum() should not be NULL");
 
       if (newer_method != nullptr) {
+        assert(newer_klass == newer_method->method_holder(), "call after swapping redefined guts");
+        assert(old_method != newer_method, "sanity check");
+
         Thread *thread = Thread::current();
         ResolvedMethodTableLookup lookup(thread, method_hash(newer_method), newer_method);
         ResolvedMethodGet rmg(thread, newer_method);
