@@ -3,12 +3,14 @@ java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java 8202931,JBR-5398 ma
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-6284 linux-all
 java/awt/Debug/X11Trace.java JBR-5442 linux-all
 java/awt/EmbeddedFrame/GraphicsConfigTest/GraphicsConfigTest.java 8305515
+java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-x64
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java 8292588,JBR-6058 macosx-all,windows-all,linux-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531 macosx-all,linux-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117,JBR-6509 linux-all,generic-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-4379 windows-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-4379 windows-all
 java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
+java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java JBR-4275,JBR-4880,JBR-7249 linux-all,windows-all,macosx-aarch64
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5442 linux-all
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
@@ -104,7 +106,7 @@ javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5510 linux-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106,JBR-5510 macosx-aarch64,linux-all
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java  8277816,JBR-5510 macosx-aarch64,linux-all
-javax/swing/JMenu/JMenuSelectedColorTest.java JBR-5510 linux-all
+javax/swing/JMenu/JMenuSelectedColorTest.java JBR-2841 linux-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java nobug linux-all
 javax/swing/JProgressBar/TestJProgressBarHighlightColor.java nobug linux-all
 javax/swing/JRadioButton/8041561/bug8041561.java JBR-5510 linux-all
