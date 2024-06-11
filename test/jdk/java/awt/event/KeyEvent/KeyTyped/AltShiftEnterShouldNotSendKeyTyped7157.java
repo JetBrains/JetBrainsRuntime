@@ -25,9 +25,10 @@
 
 /*
  * @test
- * @key headful
  * @summary Checks that Alt+Shift+Enter does not generate KEY_TYPED event(s) on Windows and Linux (X11) (JBR-7157)
  * @author Nikita Provotorov
+ * @requires (os.family == "windows" | os.family == "linux")
+ * @key headful
  * @run main/othervm AltShiftEnterShouldNotSendKeyTyped7157
  */
 
