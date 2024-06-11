@@ -51,6 +51,7 @@ import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 import sun.awt.InputMethodSupport;
 import sun.awt.SunToolkit;
+import sun.font.FontUtilities;
 
 /**
  * {@code ExecutableInputMethodManager} is the implementation of the
@@ -398,6 +399,12 @@ class ExecutableInputMethodManager extends InputMethodManager
                 return candidate.deriveLocator(locale);
             }
         }
+
+        // Workaround for JBR-6764
+        if (FontUtilities.isMacOSX) {
+            return hostAdapterLocator.deriveLocator(locale);
+        }
+
         return null;
     }
 
