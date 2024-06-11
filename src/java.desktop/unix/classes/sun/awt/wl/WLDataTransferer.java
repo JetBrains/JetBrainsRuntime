@@ -185,12 +185,9 @@ public class WLDataTransferer extends DataTransferer {
     protected String[] dragQueryFile(byte[] bytes) {
         ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
-            ArrayList<String> uriList = new ArrayList<>();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                uriList.add(line);
-            }
-            return uriList.toArray(new String[0]);
+            // NB: decodes what was encoded in convertFileListToBytes()
+            String line = reader.readLine();
+            return line.split("\0");
         } catch (IOException ignored) {
             return null;
         }
@@ -221,6 +218,7 @@ public class WLDataTransferer extends DataTransferer {
         String charset = getBestCharsetForTextFormat(format, localeTransferable);
         try (InputStreamReader isr = new InputStreamReader(stream, charset);
              BufferedReader reader = new BufferedReader(isr)) {
+            // NB: decodes what was encoded in DataTransferer.translateTransferable()
             String line;
             ArrayList<URI> uriList = new ArrayList<>();
             while ((line = reader.readLine()) != null) {
