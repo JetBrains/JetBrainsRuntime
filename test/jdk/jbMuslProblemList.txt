@@ -24,6 +24,7 @@ java/awt/image/DrawImage/SimpleUnmanagedImage.java initial_runs generic-all
 java/awt/Mixing/AWT_Mixing/JListInGlassPaneOverlapping.java initial_runs generic-all
 java/awt/Mixing/AWT_Mixing/JListOverlapping.java initial_runs generic-all
 java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java initial_runs generic-all
+java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java JBR-7076 linux-all
 java/awt/PopupMenu/PopupMenuLocation.java initial_runs generic-all
 java/awt/PopupMenu/PopupMenuStayOpen.java initial_runs generic-all
 java/awt/TextArea/AutoScrollOnSelectAndAppend/AutoScrollOnSelectAndAppend.java initial_runs generic-all
@@ -41,6 +42,7 @@ javax/swing/JFileChooser/FileSystemView/SystemIconTest.java initial_runs generic
 javax/swing/JFileChooser/FileViewNPETest.java initial_runs generic-all
 javax/swing/JFileChooser/ShellFolderQueries/ShellFolderQueriesSecurityManagerTest.java initial_runs generic-all
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java initial_runs generic-all
+javax/swing/JMenu/JMenuSelectedColorTest.java JBR-2841 linux-all
 javax/swing/JMenu/TestDisabledMenuForegroundColor.java initial_runs generic-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java initial_runs generic-all
 javax/swing/JScrollBar/bug4202954/bug4202954.java initial_runs generic-all

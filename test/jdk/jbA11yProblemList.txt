@@ -108,6 +108,7 @@ com/sun/java/accessibility/util/8051626/Bug8051626.java JBR-5505 windows-all
 java/awt/Button/DoubleActionEventTest.java JBR-6949 windows-x64
 java/awt/Choice/ChoiceConsumeMouseEvents.java JBR-6951 windows-x64
 java/awt/Choice/ChoiceFreezeTest.java JBR-6952 windows-x64
+java/awt/Choice/ChoiceHandleMouseEvent.java JBR-7288 windows-x64
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-5505 windows-all
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-6950 windows-x64
 java/awt/ColorClass/AlphaColorTest.java JBR-7253 windows-x64
