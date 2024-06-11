@@ -152,7 +152,17 @@ extern void initSamplers(id<MTLDevice> device);
         if (device == nil) {
             J2dRlsTraceLn1(J2D_TRACE_ERROR, "MTLContext.initWithDevice(): Cannot create device from displayID=%d",
                            displayID);
-            return nil;
+
+            // Fallback to the default metal device for main display
+            jint mainDisplayID = CGMainDisplayID();
+            if (displayID == mainDisplayID) {
+                 device = MTLCreateSystemDefaultDevice();
+            }
+
+            if (device == nil) {
+                J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext.initWithDevice(): Cannot fallback to default metal device");
+                return nil;
+            }
         }
 
         pipelineStateStorage = [[MTLPipelineStatesStorage alloc] initWithDevice:device shaderLibPath:shadersLib];
