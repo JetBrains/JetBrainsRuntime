@@ -24,9 +24,9 @@
 /*
  * @test
  * @summary Unit test for LingeredApp
- * @compile LingeredAppTest.java
- * @compile LingeredApp.java
- * @run main LingeredAppTest
+ * @library /test/lib
+ * @build jdk.test.lib.apps.LingeredAppTest jdk.test.lib.apps.LingeredApp
+ * @run main jdk.test.lib.apps.LingeredAppTest
  */
 
 package jdk.test.lib.apps;
