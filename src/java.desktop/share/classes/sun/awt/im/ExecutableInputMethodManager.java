@@ -401,7 +401,7 @@ class ExecutableInputMethodManager extends InputMethodManager
         }
 
         // Workaround for JBR-6764
-        if (FontUtilities.isMacOSX) {
+        if (hostAdapterLocator != null && FontUtilities.isMacOSX) {
             return hostAdapterLocator.deriveLocator(locale);
         }
 
