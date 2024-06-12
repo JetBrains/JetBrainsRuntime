@@ -88,12 +88,22 @@ public class HexPrinterTest {
     public void testBuiltins(String name, String offsetFormat, String binFormat, int colWidth,
                              String annoDelim, int annoWidth,
                              HexPrinter.Formatter mapper, String lineSep) {
-        HexPrinter f = switch (name) {
-            case "minimal" -> HexPrinter.minimal();
-            case "simple" -> HexPrinter.simple();
-            case "canonical" -> HexPrinter.canonical();
-            case "source" -> HexPrinter.source();
-            default -> throw new IllegalStateException("Unexpected value: " + name);
+        HexPrinter f;
+        switch (name) {
+            case "minimal":
+                f = HexPrinter.minimal();
+                break;
+            case "simple":
+                f = HexPrinter.simple();
+                break;
+            case "canonical":
+                f = HexPrinter.canonical();
+                break;
+            case "source":
+                f = HexPrinter.source();
+                break;
+            default:
+                throw new IllegalStateException("Unexpected value: " + name);
         };
 
         testParams(f, offsetFormat, binFormat, colWidth, annoDelim, annoWidth, mapper, lineSep);
