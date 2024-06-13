@@ -3413,7 +3413,6 @@ void IdealLoopTree::adjust_loop_exit_prob(PhaseIdealLoop *phase) {
   }
 }
 
-#ifdef ASSERT
 static CountedLoopNode* locate_pre_from_main(CountedLoopNode* main_loop) {
   assert(!main_loop->is_main_no_pre_loop(), "Does not have a pre loop");
   Node* ctrl = main_loop->skip_predicates();
@@ -3426,7 +3425,6 @@ static CountedLoopNode* locate_pre_from_main(CountedLoopNode* main_loop) {
   assert(pre_loop->is_pre_loop(), "No pre loop found");
   return pre_loop;
 }
-#endif
 
 // Remove the main and post loops and make the pre loop execute all
 // iterations. Useful when the pre loop is found empty.
@@ -3454,7 +3452,11 @@ void IdealLoopTree::remove_main_post_loops(CountedLoopNode *cl, PhaseIdealLoop *
     return;
   }
 
-  assert(locate_pre_from_main(main_head) == cl, "bad main loop");
+  // We found a main-loop after this pre-loop, but they might not belong together.
+  if (locate_pre_from_main(main_head) != cl) {
+    return;
+  }
+
   Node* main_iff = main_head->skip_predicates()->in(0);
 
   // Remove the Opaque1Node of the pre loop and make it execute all iterations
