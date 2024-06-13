@@ -29,6 +29,7 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowFocusListener;
 import java.awt.event.WindowListener;
@@ -2800,6 +2801,10 @@ public class Window extends Container implements Accessible {
         if (e.getID() == ComponentEvent.COMPONENT_RESIZED) {
             invalidate();
             validate();
+        }
+        if (e.getID() == MouseEvent.MOUSE_DRAGGED ||
+                e.getID() == ComponentEvent.COMPONENT_SHOWN || e.getID() == ComponentEvent.COMPONENT_MOVED) {
+            nullifyLocationOnScreen();
         }
         super.dispatchEventImpl(e);
     }
