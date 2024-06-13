@@ -2748,7 +2748,7 @@ bool SuperWord::output() {
         }
         vlen_in_bytes = vn->as_StoreVector()->memory_size();
       } else if (VectorNode::is_scalar_rotate(n)) {
-        Node* in1 = first->in(1);
+        Node* in1 = vector_opd(p, 1);
         Node* in2 = first->in(2);
         // If rotation count is non-constant or greater than 8bit value create a vector.
         if (!in2->is_Con() || !Matcher::supports_vector_constant_rotates(in2->get_int())) {
