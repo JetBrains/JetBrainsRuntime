@@ -39,6 +39,7 @@
 #import "NSApplicationAWT.h"
 #import "JNIUtilities.h"
 #import "PropertiesUtilities.h"
+#include "Trace.h"
 
 #define MASK(KEY) \
     (sun_lwawt_macosx_CPlatformWindow_ ## KEY)
@@ -55,6 +56,24 @@ static jclass jc_CPlatformWindow = NULL;
 
 #define GET_CPLATFORM_WINDOW_CLASS_RETURN(ret) \
     GET_CLASS_RETURN(jc_CPlatformWindow, "sun/lwawt/macosx/CPlatformWindow", ret);
+
+BOOL isColorMatchingEnabled() {
+    static int colorMatchingEnabled = -1;
+    if (colorMatchingEnabled == -1) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (env == NULL) return NO;
+        NSString *colorMatchingEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.java2d.osx.colorMatching"
+                                                                                   withEnv:env];
+        if (colorMatchingEnabledProp == nil) {
+            // fallback on the former metal property:
+            colorMatchingEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.java2d.metal.colorMatching"
+                                                                                   withEnv:env];
+        }
+        colorMatchingEnabled = [@"false" isCaseInsensitiveLike:colorMatchingEnabledProp] ? NO : YES;
+        J2dRlsTraceLn(J2D_TRACE_INFO, "AWTWindow_isColorMatchingEnabled: %d", colorMatchingEnabled);
+    }
+    return (BOOL)colorMatchingEnabled;
+}
 
 @interface NSTitlebarAccessoryViewController (Private)
 - (void)_setHidden:(BOOL)h animated:(BOOL)a;
@@ -580,6 +599,13 @@ AWT_ASSERT_APPKIT_THREAD;
 
     if (self.nsWindow == nil) return nil; // no hope either
     [self.nsWindow release]; // the property retains the object already
+
+    if (isColorMatchingEnabled()) {
+        // Supported by both OpenGL & Metal pipelines
+        // Tell the system we have an sRGB backing store
+        // to ensure colors are displayed correctly on screen with non-SRGB profile:
+        [self.nsWindow setColorSpace: [NSColorSpace sRGBColorSpace]];
+    }
 
     self.isEnabled = YES;
     self.isMinimizing = NO;
