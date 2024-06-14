@@ -27,6 +27,7 @@
 #include <malloc.h>
 #include <Trace.h>
 #include "jvm_md.h"
+#include "jni_util.h"
 #include "VKBase.h"
 #include "VKVertex.h"
 #include "CArrayUtil.h"
