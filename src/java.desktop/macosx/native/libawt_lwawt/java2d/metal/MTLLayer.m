@@ -31,6 +31,8 @@
 #import "MTLSurfaceData.h"
 #import "JNIUtilities.h"
 
+extern BOOL isColorMatchingEnabled();
+
 BOOL isDisplaySyncEnabled() {
     static int syncEnabled = -1;
     if (syncEnabled == -1) {
@@ -42,19 +44,6 @@ BOOL isDisplaySyncEnabled() {
         J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_isDisplaySyncEnabled: %d", syncEnabled);
     }
     return (BOOL)syncEnabled;
-}
-
-BOOL isColorMatchingEnabled() {
-    static int colorMatchingEnabled = -1;
-    if (colorMatchingEnabled == -1) {
-        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-        if (env == NULL) return NO;
-        NSString *colorMatchingEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.java2d.metal.colorMatching"
-                                                                                   withEnv:env];
-        colorMatchingEnabled = [@"false" isCaseInsensitiveLike:colorMatchingEnabledProp] ? NO : YES;
-        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLLayer_isColorMatchingEnabled: %d", colorMatchingEnabled);
-    }
-    return (BOOL)colorMatchingEnabled;
 }
 
 @implementation MTLLayer
@@ -301,9 +290,6 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 
         if (!isColorMatchingEnabled() && (layer.colorspace != nil)) {
-            J2dRlsTraceLn1(J2D_TRACE_VERBOSE,
-                          "Java_sun_java2d_metal_MTLLayer_validate: disable color matching (colorspace was '%s')",
-                           [(NSString *)CGColorSpaceCopyName(layer.colorspace) UTF8String]);
             // disable color matching:
             layer.colorspace = nil;
         }
