@@ -31,7 +31,6 @@
 
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
-#include "VKInit.h"
 
 typedef struct WLOutput {
     struct WLOutput *  next;
@@ -279,28 +278,5 @@ WLOutputByID(uint32_t id)
     }
 
     return NULL;
-}
-
-/*
- * Class:     sun_awt_wl_WLGraphicsEnvironment
- * Method:    initVKWL
- * Signature: ()Z
- */
-JNIEXPORT jboolean JNICALL
-Java_sun_awt_wl_WLGraphicsEnvironment_initVKWL(JNIEnv *env, jclass wlge, jboolean verbose, jint requestedDevice)
-{
-    jboolean vkwlAvailable = JNI_FALSE;
-    /* TODO: The following sequence lead to uninitialized awt lock
-       BufferedImage.getGraphics()
-       BufferedImage.createGraphics()
-       GraphicsEnvironment.getLocalGraphicsEnvironment()
-       GraphicsEnvironment$LocalGE.createGE()
-       PlatformGraphicsInfo.createGE()
-       WLGraphicsEnvironment.initVKWL()
-    */
-    //AWT_LOCK();
-    vkwlAvailable = VK_Init(verbose, requestedDevice);
-    //AWT_UNLOCK();
-    return vkwlAvailable;
 }
 #endif // #ifndef HEADLESS

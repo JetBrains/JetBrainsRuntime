@@ -27,6 +27,7 @@
 package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
+import sun.java2d.vulkan.VKInstance;
 import sun.java2d.vulkan.WLVKGraphicsConfig;
 
 import java.awt.GraphicsConfiguration;
@@ -99,7 +100,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
             WLGraphicsConfig newDefaultConfig;
             // It is necessary to create a new object whenever config changes as its
             // identity is used to detect changes in scale, among other things.
-            if (WLGraphicsEnvironment.isVulkanEnabled()) {
+            if (VKInstance.isVulkanEnabled()) {
                 newDefaultConfig = WLVKGraphicsConfig.getConfig(this, width, height, scale);
                 newConfigs = new GraphicsConfiguration[1];
                 newConfigs[0] = newDefaultConfig;
