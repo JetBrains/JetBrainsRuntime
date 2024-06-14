@@ -137,7 +137,7 @@ class CastIINode: public ConstraintCastNode {
   virtual Node* Identity(PhaseGVN* phase);
   virtual const Type* Value(PhaseGVN* phase) const;
   virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
-  const bool has_range_check() {
+  const bool has_range_check() const {
 #ifdef _LP64
     return _range_check_dependency;
 #else
@@ -145,6 +145,8 @@ class CastIINode: public ConstraintCastNode {
     return false;
 #endif
   }
+
+  CastIINode* pin_array_access_node() const;
 
 #ifndef PRODUCT
   virtual void dump_spec(outputStream* st) const;
