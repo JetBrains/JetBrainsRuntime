@@ -157,8 +157,8 @@ AWT_ASSERT_APPKIT_THREAD;
 + (NSString*)getCaller {
     const NSArray<NSString*> *symbols = NSThread.callStackSymbols;
 
-    for (NSUInteger i = 2, len = [symbols count]; i < len; i++) {
-         NSString* symbol = [symbols objectAtIndex:i];
+    for (NSUInteger i = 2, len = symbols.count; i < len; i++) {
+         NSString* symbol = symbols[i];
          if (![symbol hasPrefix: @"performOnMainThread"]) {
              return symbol;
          }
