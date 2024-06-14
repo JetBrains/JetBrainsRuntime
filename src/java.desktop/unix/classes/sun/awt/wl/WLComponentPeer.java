@@ -73,6 +73,7 @@ import java.awt.image.ColorModel;
 import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
+import java.awt.peer.KeyboardFocusManagerPeer;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -233,18 +234,37 @@ public class WLComponentPeer implements ComponentPeer {
         if (currentlyFocusedWindow == null)
             return false;
 
-        Window targetDecoratedWindow = getNativelyFocusableOwnerOrSelf(target);
-        if (currentlyFocusedWindow == targetDecoratedWindow) {
-            WLKeyboardFocusManagerPeer.deliverFocus(lightweightChild,
-                    null,
-                    true,
-                    cause,
-                    null);
-        } else {
-            return false;
+        if (WLKeyboardFocusManagerPeer.
+                processSynchronousLightweightTransfer(target, lightweightChild, temporary,
+                        focusedWindowChangeAllowed, time)) {
+            return true;
         }
 
-        return true;
+        Window nativelyFocusableWindow = getNativelyFocusableOwnerOrSelf(target);
+        int result = WLKeyboardFocusManagerPeer.
+                shouldNativelyFocusHeavyweight(nativelyFocusableWindow, lightweightChild,
+                        temporary, focusedWindowChangeAllowed,
+                        time, cause, true);
+
+        switch (result) {
+            case WLKeyboardFocusManagerPeer.SNFH_FAILURE:
+                return false;
+
+            case WLKeyboardFocusManagerPeer.SNFH_SUCCESS_PROCEED: {
+                Component focusOwner = WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusOwner();
+                return WLKeyboardFocusManagerPeer.deliverFocus(lightweightChild,
+                        target,
+                        true,
+                        cause,
+                        focusOwner);
+            }
+
+            case WLKeyboardFocusManagerPeer.SNFH_SUCCESS_HANDLED:
+                // Either lightweight or excessive request - all events are generated.
+                return true;
+        }
+
+        return false;
     }
 
     private static Window getToplevelFor(Component component) {
