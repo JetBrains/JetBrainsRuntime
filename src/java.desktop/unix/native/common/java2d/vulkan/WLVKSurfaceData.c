@@ -104,7 +104,7 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_assignSurface(JNIEnv *env, jobject wsd, j
     VKSD_InitWindowSurface(vkwinsdo);
     J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKSurfaceData_assignSurface: Created WaylandSurfaceKHR");
 
-    J2dTraceLn2(J2D_TRACE_INFO, "WLVKSurfaceData_assignSurface wl_surface(%p) wl_display(%p)", wlSurface, wl_display);
+    J2dTraceLn2(J2D_TRACE_INFO, "WLVKSurfaceData_assignSurface wl_surface(%p) wl_display(%p)", wlvksdo->wl_surface, wl_display);
 
 #endif /* !HEADLESS */
 }
