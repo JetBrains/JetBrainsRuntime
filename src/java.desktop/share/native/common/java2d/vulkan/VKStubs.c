@@ -26,10 +26,17 @@
 
 // These are stubs in case we were built with Vulkan disabled.
 #ifndef VULKAN_ENABLED
+#include "jlong_md.h"
 #include "jni.h"
 
-jboolean VK_Init(jboolean verbose, jint requestedDevice) {
-    return 0;
+/*
+ * Class:     sun_java2d_vulkan_VKInstance
+ * Method:    init
+ * Signature: (JZI)Z
+ */
+JNIEXPORT jboolean JNICALL
+Java_sun_java2d_vulkan_VKInstance_initNative(JNIEnv *env, jclass wlge, jlong nativePtr, jboolean verb, jint requestedDevice) {
+    return JNI_FALSE;
 }
 
 #endif
