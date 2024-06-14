@@ -26,6 +26,7 @@
 
 #include <malloc.h>
 #include <Trace.h>
+#include "jlong_md.h"
 #include "jvm_md.h"
 #include "VKBase.h"
 #include "VKVertex.h"
