@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -725,7 +725,7 @@ bool PhaseMacroExpand::scalar_replacement(AllocateNode *alloc, GrowableArray <Sa
 #ifdef ASSERT
                                                  alloc,
 #endif
-                                                 first_ind, nfields);
+                                                 first_ind, sfpt->jvms()->depth(), nfields);
     sobj->init_req(0, C->root());
     transform_later(sobj);
 
