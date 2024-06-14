@@ -1006,10 +1006,18 @@ WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surf
     MUTEX_LOCK(manager->showLock);
     if (manager->wlSurface == NULL || wl_surface == NULL) {
         manager->wlSurface = wl_surface;
-        manager->sendBufferASAP = true; // ...so that this new surface association is made known to Wayland
         // The "frame" callback depends on the surface; when changing the surface,
         // cancel any associated pending callbacks:
         CancelFrameCallback(manager);
+        if (wl_surface != NULL) {
+            // Must send whatever there is in the buffer right now, at a minimum
+            // in order to associate the surface with a buffer and make it appear
+            // on the screen. Normally this would happen in WLSBM_SurfaceCommit(),
+            // but the Java side may have already drawn and committed something and
+            // will not commit anything new for a while, in which case the surface
+            // may never get associated with a buffer and the window will never appear.
+            TrySendShowBufferToWayland(manager, true);
+        }
     } else {
         assert(manager->wlSurface == wl_surface);
     }
@@ -1147,8 +1155,8 @@ WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height)
         manager->bufferForDraw.height = height;
         manager->bufferForDraw.resizePending = true;
 
-        // Send the buffer at the nearest commit or else Mutter may not remember
-        // the latest size of the window.
+        // Send the buffer at the nearest commit as we want to make the change in size
+        // visible to the user.
         manager->sendBufferASAP = true;
 
         // Need to wait for WLSBM_SurfaceCommit() with the new content for
