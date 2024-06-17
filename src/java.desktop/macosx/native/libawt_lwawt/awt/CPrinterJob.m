@@ -678,14 +678,8 @@ JNI_COCOA_ENTER(env);
         jobject pageFormatArea = (*env)->CallObjectMethod(env, jthis, jm_getPageFormatArea, page); // AWT_THREADING Safe (!appKit)
         CHECK_EXCEPTION();
 
-        NSRect rect = JavaToNSRect(env, pageFormatArea);
-
-        __block PrinterView *printerView = nil;
-
-        [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
-            printerView = [[PrinterView alloc] initWithFrame:rect withEnv:env withPrinterJob:jthis];
-            [printerView setFirstPage:firstPage lastPage:lastPage];
-        }];
+        PrinterView* printerView = [[PrinterView alloc] initWithFrame:JavaToNSRect(env, pageFormatArea) withEnv:env withPrinterJob:jthis];
+        [printerView setFirstPage:firstPage lastPage:lastPage];
 
         GET_NSPRINTINFO_METHOD_RETURN(NO)
         NSPrintInfo* printInfo = (NSPrintInfo*)jlong_to_ptr((*env)->CallLongMethod(env, jthis, sjm_getNSPrintInfo)); // AWT_THREADING Safe (known object)
