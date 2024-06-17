@@ -254,9 +254,13 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             [blitEncoder endEncoding];
 
             BOOL usePresentHandler = NO;
+            NSUInteger drawableId = -1;
 
             if (@available(macOS 10.15.4, *)) {
                 usePresentHandler = YES;
+                if (TRACE_DISPLAY) {
+                    drawableId = mtlDrawable.drawableID;
+                }
                 [self retain];
                 [mtlDrawable addPresentedHandler:^(id <MTLDrawable> drawable) {
                     // note: called anyway even if drawable.present() not called!
@@ -301,7 +305,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             if (TRACE_DISPLAY) {
                 J2dRlsTraceLn(J2D_TRACE_INFO,
                               "[%.6lf] MTLLayer.blitTexture: layer[%p] present drawable(%d)",
-                              CACurrentMediaTime(), self, mtlDrawable.drawableID);
+                              CACurrentMediaTime(), self, drawableId);
             }
             if (isDisplaySyncEnabled()) {
                 [commandBuf presentDrawable:mtlDrawable];
@@ -334,7 +338,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             if (TRACE_DISPLAY) {
                 J2dRlsTraceLn(J2D_TRACE_INFO,
                               "[%.6lf] MTLLayer.blitTexture: layer[%p] commit with drawable(%d)",
-                              CACurrentMediaTime(), self, mtlDrawable.drawableID);
+                              CACurrentMediaTime(), self, drawableId);
             }
         } @finally {
             // try-finally block to ensure releasing the CPU fence:
