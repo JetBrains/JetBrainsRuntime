@@ -208,7 +208,9 @@ public class URLClassPath {
 
         this.unopenedUrls = unopenedUrls;
         this.path = path;
-        this.jarHandler = null;
+        // the application class loader uses the built-in protocol handler to avoid protocol
+        // handler lookup when opening JAR files on the class path.
+        this.jarHandler = new sun.net.www.protocol.jar.Handler();
         this.acc = null;
     }
 
