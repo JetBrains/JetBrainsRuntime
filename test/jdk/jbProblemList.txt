@@ -1230,7 +1230,6 @@ java/awt/print/PrinterJob/ScaledText/ScaledText.java 8231226 macosx-all
 java/awt/font/ComplexEmoji.java JBR-5009 linux-aarch64
 java/awt/font/OutlineTextRendererEmoji.java JBR-5009 linux-aarch64
 java/awt/font/EmojiVariation.java JBR-5009,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
-java/awt/font/TextLayout/TestJustification.html 8250791 macosx-all
 java/awt/font/TextLayout/TestSinhalaChar.java JBR-5103 generic-all
 javax/swing/JTableHeader/6884066/bug6884066.java JBR-113 windows-all,linux-aarch64
 javax/swing/JTableHeader/6889007/bug6889007.java 8310238,8253184,JBR-5387 macosx-all,windows-all,linux-all
