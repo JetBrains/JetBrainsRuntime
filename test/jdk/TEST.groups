@@ -983,7 +983,6 @@ jdk_awt_wayland = \
     -java/awt/Focus/WindowUpdateFocusabilityTest \
     -java/awt/Focus/WrongKeyTypedConsumedTest \
     -java/awt/font/TextLayout/MyanmarTextTest.java \
-    -java/awt/font/TextLayout/TestJustification.html \
     -java/awt/font/TextLayout/TestOldHangul.java \
     -java/awt/font/TextLayout/TestTibetan.java \
     -java/awt/font/TextLayout/TestVS.java \
