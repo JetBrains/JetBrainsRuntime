@@ -67,6 +67,7 @@ compiler/codecache/jmx/PoolsIndependenceTest.java 8264632 macosx-x64
 
 compiler/onSpinWait/TestOnSpinWaitAArch64DefaultFlags.java 8277503 linux-aarch64
 
+compiler/codecache/CheckLargePages.java 8319795 linux-x64
 
 #############################################################################
 
