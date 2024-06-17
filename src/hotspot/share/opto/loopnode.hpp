@@ -1743,6 +1743,8 @@ public:
   bool at_relevant_ctrl(Node* n, const Node* blk1, const Node* blk2);
 
   void update_addp_chain_base(Node* x, Node* old_base, Node* new_base);
+
+  void pin_array_access_nodes_dependent_on(Node* ctrl);
 };
 
 
