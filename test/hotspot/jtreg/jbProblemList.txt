@@ -73,6 +73,7 @@ gc/shenandoah/mxbeans/TestChurnNotifications.java#iu initial_run linux-x64
 
 compiler/ciReplay/TestSAServer.java 8029528 generic-all
 compiler/compilercontrol/jcmd/ClearDirectivesFileStackTest.java 8225370 generic-all
+compiler/gcbarriers/UnsafeIntrinsicsTest.java#ZGenerationalDebug 8334475 windows-aarch64
 compiler/jvmci/compilerToVM/GetFlagValueTest.java 8204459 generic-all
 
 compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
@@ -136,6 +137,7 @@ runtime/cds/appcds/methodHandles/MethodHandlesInvokersTest.java initial_run gene
 runtime/cds/appcds/methodHandles/MethodHandlesCastFailureTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesGeneralTest.java initial_run generic-all
 runtime/cds/CheckDefaultArchiveFile.java JBR-4227 generic-all
+runtime/cds/TestCDSVMCrash.java JBR-7316 windows-aarch64
 runtime/jni/daemonDestroy/TestDaemonDestroy.java NOBUG windows-all # Expected to get exit value of [0], exit value is: [-1073741515]
 runtime/jni/terminatedThread/TestTerminatedThread.java 8317789 aix-ppc64
 runtime/handshake/HandshakeSuspendExitTest.java 8294313 generic-all

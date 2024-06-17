@@ -67,6 +67,7 @@ javax/swing/JTree/4618767/JTreeSelectedElementTest.java JBR-5397 macosx-all
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java JBR-5397 macosx-all
 javax/swing/plaf/aqua/JInternalFrameBorderTest.java JBR-5397 macosx-all
 javax/swing/plaf/basic/BasicMenuUI/4983388/bug4983388.java 8253184,JBR-6727,JBR-5397 windows-all,linux-all,macosx-all
+javax/swing/plaf/basic/BasicRootPaneUI/HiddenDefaultButtonTest.java JBR-7310 windows-x64
 javax/swing/plaf/synth/7158712/bug7158712.java JBR-125,8322653,JBR-5397 linux-all,windows-all,macosx-all
 javax/swing/Popup/TaskbarPositionTest.java 8310689,JBR-5397 windows-all,macosx-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-5397,JBR-6465 macosx-all,windows-all,linux-aarch64
