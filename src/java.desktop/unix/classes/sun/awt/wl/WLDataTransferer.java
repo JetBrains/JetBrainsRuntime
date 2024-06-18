@@ -39,12 +39,18 @@ import javax.imageio.stream.ImageInputStream;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -177,11 +183,53 @@ public class WLDataTransferer extends DataTransferer {
 
     @Override
     protected String[] dragQueryFile(byte[] bytes) {
-        // TODO
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Unimplemented");
+        ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
+            // NB: decodes what was encoded in convertFileListToBytes()
+            String line = reader.readLine();
+            return line.split("\0");
+        } catch (IOException ignored) {
+            return null;
         }
-        return new String[0];
+    }
+
+    @Override
+    protected boolean isURIListFormat(long format) {
+        String nat = getNativeForFormat(format);
+        if (nat == null) {
+            return false;
+        }
+        try {
+            DataFlavor df = new DataFlavor(nat);
+            if (df.getPrimaryType().equals("text") && df.getSubType().equals("uri-list")) {
+                return true;
+            }
+        } catch (Exception e) {
+            // Not a MIME format.
+        }
+        return false;
+    }
+
+    @Override
+    protected URI[] dragQueryURIs(InputStream stream,
+                                  long format,
+                                  Transferable localeTransferable)
+            throws IOException {
+        String charset = getBestCharsetForTextFormat(format, localeTransferable);
+        try (InputStreamReader isr = new InputStreamReader(stream, charset);
+             BufferedReader reader = new BufferedReader(isr)) {
+            // NB: decodes what was encoded in DataTransferer.translateTransferable()
+            String line;
+            ArrayList<URI> uriList = new ArrayList<>();
+            while ((line = reader.readLine()) != null) {
+                try {
+                    uriList.add(new URI(line));
+                } catch (URISyntaxException uriSyntaxException) {
+                    throw new IOException(uriSyntaxException);
+                }
+            }
+            return uriList.toArray(new URI[0]);
+        }
     }
 
     @Override
