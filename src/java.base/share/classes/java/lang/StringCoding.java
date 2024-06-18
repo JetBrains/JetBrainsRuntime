@@ -772,9 +772,9 @@ class StringCoding {
             }
         }
         if (dp == 0) {
-            dst = new byte[len << 1];
+            dst = StringUTF16.newBytesFor(len);
         } else {
-            byte[] buf = new byte[len << 1];
+            byte[] buf = StringUTF16.newBytesFor(len);
             StringLatin1.inflate(dst, 0, buf, 0, dp);
             dst = buf;
         }
@@ -910,7 +910,7 @@ class StringCoding {
             return Arrays.copyOf(val, val.length);
 
         int dp = 0;
-        byte[] dst = new byte[val.length << 1];
+        byte[] dst = StringUTF16.newBytesFor(val.length);
         for (int sp = 0; sp < val.length; sp++) {
             byte c = val[sp];
             if (c < 0) {
