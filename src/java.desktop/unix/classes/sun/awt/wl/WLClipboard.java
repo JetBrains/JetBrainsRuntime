@@ -152,6 +152,9 @@ public final class WLClipboard extends SunClipboard {
                 String[] mime = new String[formats.length];
                 for (int i = 0; i < formats.length; i++) {
                     mime[i] = wlDataTransferer.getNativeForFormat(formats[i]);
+                    if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                        log.fine("Clipboard: formats mapping " + formats[i] + " -> " + mime[i]);
+                    }
                 }
 
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
