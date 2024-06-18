@@ -427,7 +427,7 @@
   template(yieldInfo_name,                            "yieldInfo")                                \
   template(tail_name,                                 "tail")                                     \
   template(size_name,                                 "size")                                     \
-  template(argsize_name,                              "argsize")                                  \
+  template(bottom_name,                               "bottom")                                   \
   template(mode_name,                                 "mode")                                     \
   template(numFrames_name,                            "numFrames")                                \
   template(numOops_name,                              "numOops")                                  \
