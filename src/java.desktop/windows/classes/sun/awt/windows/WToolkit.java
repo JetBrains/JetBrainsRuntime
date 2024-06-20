@@ -135,7 +135,9 @@ import sun.awt.Win32GraphicsEnvironment;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.util.PerformanceLogger;
 import sun.awt.util.ThreadGroupUtils;
+import sun.java2d.ScreenUpdateManager;
 import sun.java2d.d3d.D3DRenderQueue;
+import sun.java2d.d3d.D3DScreenUpdateManager;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.print.PrintJob2D;
 import sun.util.logging.PlatformLogger;
@@ -1231,5 +1233,12 @@ public final class WToolkit extends SunToolkit implements Runnable {
     @Override
     public boolean needUpdateWindow() {
         return true;
+    }
+
+    @Override
+    public void displayBuffer() {
+        D3DScreenUpdateManager mgr =
+                (D3DScreenUpdateManager) ScreenUpdateManager.getInstance();
+        mgr.swapBuffers();
     }
 }

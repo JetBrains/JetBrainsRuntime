@@ -1892,7 +1892,7 @@ public class RepaintManager
     private final class ProcessingRunnable implements Runnable {
         // If true, we're waiting on the EventQueue.
         private boolean pending;
-
+        static Toolkit tk = Toolkit.getDefaultToolkit();
         /**
          * Marks this processing runnable as pending. If this was not
          * already marked as pending, true is returned.
@@ -1920,6 +1920,7 @@ public class RepaintManager
             // Do the actual validation and painting.
             validateInvalidComponents();
             prePaintDirtyRegions();
+            tk.displayBuffer();
         }
     }
     private RepaintManager getDelegate(Component c) {

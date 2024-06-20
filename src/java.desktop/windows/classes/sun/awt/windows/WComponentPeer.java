@@ -378,11 +378,10 @@ public abstract class WComponentPeer extends WObjectPeer
                 // while waiting for native paint
                 if (!isLayouting && ! paintPending) {
                     paintArea.paint(target,shouldClearRectBeforePaint());
-                    if (surfaceData instanceof D3DSurfaceData d3DSurfaceData) {
-                        Rectangle r = d3DSurfaceData.getBounds();
-                        D3DSurfaceData.swapBuffers(d3DSurfaceData, 0, 0, r.width, r.height);
-                    }
                 }
+                D3DScreenUpdateManager mgr =
+                        (D3DScreenUpdateManager) ScreenUpdateManager.getInstance();
+                mgr.swapBuffers();
                 return;
             case FocusEvent.FOCUS_LOST:
             case FocusEvent.FOCUS_GAINED:

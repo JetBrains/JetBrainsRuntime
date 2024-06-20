@@ -295,7 +295,6 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
                     d3dwSurfaces.add(d3dw);
                 }
             }
-            swapBuffers();
         }
     }
 
@@ -348,6 +347,10 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
      * to be rendered to).
      */
     public void swapBuffers() {
+        if (d3dwSurfaces == null) {
+            return;
+        }
+        
         // make a copy to avoid synchronization during the loop
         for (D3DWindowSurfaceData sd : d3dwSurfaces) {
             // skip invalid surfaces (they could have become invalid

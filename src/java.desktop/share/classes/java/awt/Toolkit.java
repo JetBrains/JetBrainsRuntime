@@ -2378,4 +2378,10 @@ public abstract class Toolkit {
 
         return Toolkit.getDefaultToolkit().areExtraMouseButtonsEnabled();
     }
+
+    /**
+     * Swap buffer.
+     */
+    public void displayBuffer() {
+    }
 }

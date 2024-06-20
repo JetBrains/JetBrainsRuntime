@@ -276,14 +276,6 @@ final class D3DBlitLoops {
         } finally {
             rq.unlock();
         }
-
-        if (d3dDst.getType() == D3DSurfaceData.WINDOW) {
-            // flush immediately when copying to the screen to improve
-            // responsiveness of applications using VI or BI backbuffers
-            D3DScreenUpdateManager mgr =
-                (D3DScreenUpdateManager)ScreenUpdateManager.getInstance();
-            mgr.swapBuffers();
-        }
     }
 
     /**
@@ -345,15 +337,6 @@ final class D3DBlitLoops {
             }
         } finally {
             rq.unlock();
-        }
-
-        if (rtt && (d3dDst.getType() == D3DSurfaceData.WINDOW)) {
-            // we only have to flush immediately when copying from a
-            // (non-texture) surface to the screen; otherwise Swing apps
-            // might appear unresponsive until the auto-flush completes
-            D3DScreenUpdateManager mgr =
-                (D3DScreenUpdateManager)ScreenUpdateManager.getInstance();
-            mgr.swapBuffers();
         }
     }
 }
