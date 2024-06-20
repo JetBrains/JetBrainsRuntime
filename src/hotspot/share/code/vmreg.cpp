@@ -42,7 +42,7 @@ const char *VMRegImpl::regName[ConcreteRegisterImpl::number_of_registers];
 
 void VMRegImpl::print_on(outputStream* st) const {
   if (is_reg()) {
-    assert(VMRegImpl::regName[value()], "VMRegImpl::regName[" INTPTR_FORMAT "] returns nullptr", value());
+    assert(VMRegImpl::regName[value()], "VMRegImpl::regName[%d] returns nullptr", value());
     st->print("%s",VMRegImpl::regName[value()]);
   } else if (is_stack()) {
     int stk = reg2stack();
