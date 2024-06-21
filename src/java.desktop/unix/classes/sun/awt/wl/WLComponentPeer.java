@@ -506,7 +506,7 @@ public class WLComponentPeer implements ComponentPeer {
             // Wayland provides the ability to programmatically change the location of popups,
             // but not top-level windows.
             if (targetIsWlPopup()) {
-                repositionWlPopup(newX, newY);
+                repositionWlPopup(newX, newY, newSize.width, newSize.height);
                 // the location will be updated in notifyConfigured() following
                 // the xdg_popup::repositioned event
             } else {
@@ -544,9 +544,7 @@ public class WLComponentPeer implements ComponentPeer {
         }
     }
 
-    private void repositionWlPopup(int newX, int newY) {
-        final int thisWidth = getWidth();
-        final int thisHeight = getHeight();
+    private void repositionWlPopup(int newX, int newY, int newWidth, int newHeight) {
         performLocked(() -> {
             Window popup = (Window) target;
             final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
@@ -560,6 +558,8 @@ public class WLComponentPeer implements ComponentPeer {
             final int parentY = javaUnitsToSurfaceUnits(toplevelLocation.y);
             int newXNative = javaUnitsToSurfaceUnits(newX);
             int newYNative = javaUnitsToSurfaceUnits(newY);
+            int newWidthNative = javaUnitsToSurfaceUnits(newWidth);
+            int newHeightNative = javaUnitsToSurfaceUnits(newHeight);
             if (popupLog.isLoggable(Level.FINE)) {
                 popupLog.fine("Repositioning popup: " + popup);
                 popupLog.fine("\tparent:" + popupParent);
@@ -567,7 +567,7 @@ public class WLComponentPeer implements ComponentPeer {
                 popupLog.fine("\toffset of anchor from toplevel: " + toplevelLocation);
                 popupLog.fine("\toffset from anchor: " + newX + ", " + newY);
             }
-            nativeRepositionWLPopup(nativePtr, thisWidth, thisHeight, parentX + newXNative, parentY + newYNative);
+            nativeRepositionWLPopup(nativePtr, newWidthNative, newHeightNative, parentX + newXNative, parentY + newYNative);
         } );
     }
 
