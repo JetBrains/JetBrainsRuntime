@@ -13,6 +13,8 @@ serviceability/dcmd/framework/InvalidCommandTest.java JBR-6974 linux-all
 serviceability/dcmd/framework/VMVersionTest.java JBR-6974 linux-all
 serviceability/sa/ClhsdbCDSCore.java initial_run linux-all
 serviceability/sa/ClhsdbPstack.java#id1 initial_run linux-all
+serviceability/sa/TestJmapCore.java JBR-7173 linux-all
+serviceability/sa/TestJmapCoreMetaspace.java JBR-7173 linux-all
 serviceability/tmtools/jstat/GcCapacityTest.java JBR-6974 linux-all
 serviceability/tmtools/jstat/GcCauseTest01.java JBR-6974 linux-all
 serviceability/tmtools/jstat/GcCauseTest02.java JBR-6974 linux-all
