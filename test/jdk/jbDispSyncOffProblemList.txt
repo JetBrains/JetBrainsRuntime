@@ -1,8 +1,11 @@
 java/awt/image/multiresolution/MultiresolutionIconTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/Paint/PaintNativeOnUpdate.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
+java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
-java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-7312 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
+java/awt/Window/FullWindowContentTest/FullWindowContentRenderTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
+java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-7312 macosx-all
+java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/Window/WindowTitleVisibleTest/WindowTitleVisibleTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JButton/8151303/PressedIconTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JComponent/7154030/bug7154030.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6

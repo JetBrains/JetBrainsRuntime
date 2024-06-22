@@ -1083,7 +1083,7 @@ java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,JBR-1
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java JBR-5802 windows-all
-java/awt/Robot/MultiScreenRobotPosition/MultiScreenRobotPosition.java JBR-830 windows-x64
+java/awt/Robot/MultiScreenRobotPosition/MultiScreenRobotPosition.java JBR-830 windows-all
 
 native_sanity/simplenativelauncher/ProgramTest.java JBR-5287 windows-all
 
@@ -1176,11 +1176,9 @@ jdk/jfr/api/consumer/recordingstream/TestOnEvent.java           8255404 linux-x6
 # jdk_internal
 
 jdk/internal/platform/docker/TestDockerBasic.java          JBR-5220 linux-aarch64
-jdk/internal/platform/docker/TestDockerCpuMetrics.java     JBR-5334 linux-aarch64
 jdk/internal/platform/docker/TestDockerMemoryMetrics.java  JBR-5220 linux-aarch64
 jdk/internal/platform/docker/TestGetFreeSwapSpaceSize.java JBR-5220 linux-aarch64
-jdk/internal/platform/docker/TestPidsLimit.java            JBR-5334,8311539 linux-aarch64,5.19.0-1026-aws
-jdk/internal/platform/docker/TestUseContainerSupport.java  JBR-5334 linux-aarch64
+jdk/internal/platform/docker/TestPidsLimit.java 8311539 linux-all
 
 ############################################################################
 
