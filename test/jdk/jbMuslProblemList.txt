@@ -45,6 +45,8 @@ javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java initial_run
 javax/swing/JMenu/JMenuSelectedColorTest.java JBR-2841 linux-all
 javax/swing/JMenu/TestDisabledMenuForegroundColor.java initial_runs generic-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java initial_runs generic-all
+javax/swing/JProgressBar/TestJProgressBarHighlightColor.java JBR-7342 linux-aarch64
+javax/swing/JRadioButton/8041561/bug8041561.java JBR-7343 linux-aarch64
 javax/swing/JScrollBar/bug4202954/bug4202954.java initial_runs generic-all
 javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java initial_runs generic-all
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java initial_runs generic-all

@@ -59,6 +59,7 @@ javax/swing/JPopupMenu/6580930/bug6580930.java                                  
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6090 linux-all,windows-all
 javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945,JBR-6726 macosx-all,linux-all
 
+jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-7337 windows-x64
 jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728,JBR-6856 linux-x64,windows-x64
 jb/java/awt/Focus/FrameAfterPopup.java JBR-6856 windows-x64
 jb/java/awt/Focus/MaximizedCustomDecorationsTest.java JBR-6856 windows-x64

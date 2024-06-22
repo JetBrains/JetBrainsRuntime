@@ -4,6 +4,7 @@ java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-6284 linux-all
 java/awt/Debug/X11Trace.java JBR-5442 linux-all
 java/awt/EmbeddedFrame/GraphicsConfigTest/GraphicsConfigTest.java 8305515
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-x64
+java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916,JBR-7141 linux-all,windows-all
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java 8292588,JBR-6058 macosx-all,windows-all,linux-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531 macosx-all,linux-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117,JBR-6509 linux-all,generic-all
