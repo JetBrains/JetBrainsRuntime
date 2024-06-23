@@ -87,6 +87,7 @@ public class IPSupport {
         }
     }
 
+    @SuppressWarnings("removal")
     private static <T> T runPrivilegedAction(Callable<T> callable) {
         try {
             PrivilegedExceptionAction<T> pa = () -> callable.call();
