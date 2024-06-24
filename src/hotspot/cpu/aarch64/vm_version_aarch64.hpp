@@ -142,6 +142,10 @@ public:
   static int cpu_variant()                    { return _variant; }
   static int cpu_revision()                   { return _revision; }
 
+  static bool model_is(int cpu_model) {
+    return _model == cpu_model || _model2 == cpu_model;
+  }
+
   static bool is_zva_enabled() { return 0 <= _zva_length; }
   static int zva_length() {
     assert(is_zva_enabled(), "ZVA not available");
