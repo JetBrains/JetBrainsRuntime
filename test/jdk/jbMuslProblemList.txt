@@ -23,6 +23,7 @@ java/awt/image/DrawImage/SimpleUnmanagedImage.java initial_runs generic-all
 java/awt/Mixing/AWT_Mixing/JListInGlassPaneOverlapping.java initial_runs generic-all
 java/awt/Mixing/AWT_Mixing/JListOverlapping.java initial_runs generic-all
 java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java initial_runs generic-all
+java/awt/Mixing/HWDisappear.java JBR-6818 linux-all
 java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java JBR-7076 linux-all
 java/awt/PopupMenu/PopupMenuLocation.java initial_runs generic-all
 java/awt/PopupMenu/PopupMenuStayOpen.java initial_runs generic-all
