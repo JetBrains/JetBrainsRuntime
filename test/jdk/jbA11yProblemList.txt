@@ -80,8 +80,8 @@ java/awt/Focus/NullActiveWindowOnFocusLost/NullActiveWindowOnFocusLost.java JBR-
 java/awt/FullScreen/BufferStrategyExceptionTest/BufferStrategyExceptionTest.java JBR-5397 macosx-all
 java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java 7019055,8266245,JBR-5397 windows-all,linux-all,macosx-aarch64,macosx-all
 java/awt/List/ListMultipleSelectTest/ListMultipleSelectTest.java JBR-5555,JBR-5397 windows-all,macosx-all
-java/awt/Mouse/EnterExitEvents/DragWindowTest.java JBR-5397 macosx-all
-java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java JBR-5397 macosx-all
+java/awt/Mouse/EnterExitEvents/DragWindowTest.java 8253184,JBR-5397 macosx-all,windows-all
+java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java 8253184,JBR-5709 windows-all,linux-all
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java 8253184,JBR-6752,JBR-5397 windows-all,linux-all,macosx-all
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java JBR-5397 macosx-all
 java/awt/Paint/PaintNativeOnUpdate.java JBR-5397 macosx-all
@@ -122,6 +122,7 @@ java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,J
 java/awt/Focus/6378278/InputVerifierTest.java JBR-5505 windows-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 8169110,JBR-5505 linux-all,windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-5505 windows-all
+java/awt/Frame/DisposeStressTest/DisposeStressTest.java JBR-7331 windows-all
 java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-5505 windows-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-5505 windows-all
 java/awt/hidpi/DrawOnFrameGraphicsTest.java JBR-5505 windows-all
