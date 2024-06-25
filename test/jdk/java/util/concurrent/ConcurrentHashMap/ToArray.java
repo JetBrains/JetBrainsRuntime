@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2004, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
 
 public class ToArray {
@@ -43,63 +45,67 @@ public class ToArray {
     }
 
     static void executeTest() throws Throwable {
-        final Throwable[] throwable = new Throwable[1];
-        final ConcurrentHashMap<Integer, Integer> m = new ConcurrentHashMap<>();
+        ExecutorService executor = Executors.newCachedThreadPool();
+        try {
+            final Throwable[] throwable = new Throwable[1];
+            final ConcurrentHashMap<Integer, Integer> m = new ConcurrentHashMap<>();
 
-        // Number of workers equal to the number of processors
-        // Each worker will put globally unique keys into the map
-        final int nWorkers = Runtime.getRuntime().availableProcessors();
-        final int sizePerWorker = 1024;
-        final int maxSize = nWorkers * sizePerWorker;
+            // Number of workers equal to the number of processors
+            // Each worker will put globally unique keys into the map
+            final int nWorkers = Runtime.getRuntime().availableProcessors();
+            final int sizePerWorker = 1024;
+            final int maxSize = nWorkers * sizePerWorker;
 
-        // The foreman keeps checking that the size of the arrays
-        // obtained from the key and value sets is never less than the
-        // previously observed size and is never greater than the maximum size
-        // NOTE: these size constraints are not specific to toArray and are
-        // applicable to any form of traversal of the collection views
-        CompletableFuture<?> foreman = CompletableFuture.runAsync(new Runnable() {
-            private int prevSize = 0;
+            // The foreman keeps checking that the size of the arrays
+            // obtained from the key and value sets is never less than the
+            // previously observed size and is never greater than the maximum size
+            // NOTE: these size constraints are not specific to toArray and are
+            // applicable to any form of traversal of the collection views
+            CompletableFuture<?> foreman = CompletableFuture.runAsync(new Runnable() {
+                private int prevSize = 0;
 
-            private boolean checkProgress(Object[] a) {
-                int size = a.length;
-                if (size < prevSize) throw new RuntimeException("WRONG WAY");
-                if (size > maxSize) throw new RuntimeException("OVERSHOOT");
-                if (size == maxSize) return true;
-                prevSize = size;
-                return false;
-            }
+                private boolean checkProgress(Object[] a) {
+                    int size = a.length;
+                    if (size < prevSize) throw new RuntimeException("WRONG WAY");
+                    if (size > maxSize) throw new RuntimeException("OVERSHOOT");
+                    if (size == maxSize) return true;
+                    prevSize = size;
+                    return false;
+                }
 
-            @Override
-            public void run() {
-                try {
-                    Integer[] empty = new Integer[0];
-                    while (true) {
-                        if (checkProgress(m.values().toArray())) return;
-                        if (checkProgress(m.keySet().toArray())) return;
-                        if (checkProgress(m.values().toArray(empty))) return;
-                        if (checkProgress(m.keySet().toArray(empty))) return;
+                @Override
+                public void run() {
+                    try {
+                        Integer[] empty = new Integer[0];
+                        while (true) {
+                            if (checkProgress(m.values().toArray())) return;
+                            if (checkProgress(m.keySet().toArray())) return;
+                            if (checkProgress(m.values().toArray(empty))) return;
+                            if (checkProgress(m.keySet().toArray(empty))) return;
+                        }
+                    } catch (Throwable t) {
+                        throwable[0] = t;
                     }
                 }
-                catch (Throwable t) {
-                    throwable[0] = t;
-                }
-            }
-        });
+            }, executor);
 
-        // Create workers
-        // Each worker will put globally unique keys into the map
-        CompletableFuture<?>[] workers = IntStream.range(0, nWorkers).
-                mapToObj(w -> CompletableFuture.runAsync(() -> {
-                    for (int i = 0, o = w * sizePerWorker; i < sizePerWorker; i++)
-                        m.put(o + i, i);
-                })).
-                toArray(CompletableFuture<?>[]::new);
+            // Create workers
+            // Each worker will put globally unique keys into the map
+            CompletableFuture<?>[] workers = IntStream.range(0, nWorkers).
+                    mapToObj(w -> CompletableFuture.runAsync(() -> {
+                        for (int i = 0, o = w * sizePerWorker; i < sizePerWorker; i++)
+                            m.put(o + i, i);
+                    }, executor)).
+                    toArray(CompletableFuture<?>[]::new);
 
-        // Wait for workers and then foreman to complete
-        CompletableFuture.allOf(workers).join();
-        foreman.join();
+            // Wait for workers and then foreman to complete
+            CompletableFuture.allOf(workers).join();
+            foreman.join();
 
-        if (throwable[0] != null)
-            throw throwable[0];
+            if (throwable[0] != null)
+                throw throwable[0];
+        } finally {
+            executor.shutdownNow();
+        }
     }
 }
