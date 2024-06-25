@@ -64,7 +64,7 @@ public class JBRApi {
     /**
      * Enable extensive debugging logging. Disabled by default.
      */
-    static final boolean VERBOSE = Utils.property("jetbrains.runtime.api.verbose", false);
+    public static final boolean VERBOSE = Utils.property("jetbrains.runtime.api.verbose", false);
     /**
      * Print warnings about usage of deprecated interfaces and methods to {@link System#err}. Enabled by default.
      */
@@ -197,11 +197,15 @@ public class JBRApi {
     private static <T> T getService(Class<T> interFace, long[] extensions, boolean publicService) {
         Proxy p = proxyRepository.getProxy(interFace, null);
         if ((p.getFlags() & Proxy.SERVICE) == 0 || (publicService && (p.getFlags() & Proxy.INTERNAL) != 0)) {
-            Utils.log(Utils.BEFORE_JBR, System.err, "Warning: Not allowed as a service: " + interFace.getCanonicalName());
+            if (VERBOSE) {
+                Utils.log(Utils.BEFORE_JBR, System.err, "Warning: Not allowed as a service: " + interFace.getCanonicalName());
+            }
             return null;
         }
         if (!p.init()) {
-            Utils.log(Utils.BEFORE_JBR, System.err, "Warning: Service not supported: " + interFace.getCanonicalName());
+            if (VERBOSE) {
+                Utils.log(Utils.BEFORE_JBR, System.err, "Warning: Service not supported: " + interFace.getCanonicalName());
+            }
             return null;
         }
         try {
