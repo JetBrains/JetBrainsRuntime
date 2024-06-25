@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@
  * @library /test/lib
  * @summary Test that a New Session Ticket will be generated when a
  * SSLSessionBindingListener is set (boundValues)
- * @key intermittent
  * @run main/othervm ResumptionUpdateBoundValues
  */
 
@@ -256,7 +255,7 @@ public class ResumptionUpdateBoundValues {
         Thread t;
         while ((t = threads.take()) != Thread.currentThread()) {
             System.out.printf("  joining: %s%n", t);
-            t.join(1000L);
+            t.join(4000L);
         }
         serverReady = false;
         System.gc();
