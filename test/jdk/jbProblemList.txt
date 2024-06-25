@@ -120,10 +120,11 @@ java/awt/Debug/DumpOnKey/DumpOnKey.java JBR-5225 windows-all
 java/awt/event/KeyEvent/CorrectTime/CorrectTime.java JBR-6665 linux-all,windows-all
 java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055,JBR-5906 macosx-all,linux-all
 java/awt/event/MouseEvent/EnterAsGrabbedEvent/EnterAsGrabbedEvent.java JBR-809 windows-all,linux-all
+java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568,JBR-810 macosx-all,windows-all,linux-all
 java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java JBR-6578 windows-all,linux-all
 java/awt/event/MouseEvent/MouseButtonsTest/MouseButtonsTest.java JBR-810 windows-all,linux-all
-java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568,JBR-810 macosx-all,windows-all,linux-all
 java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java JBR-52 linux-all
+java/awt/event/MouseEvent/MouseEnterExitTest.java JBR-7113 linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java 8204200,JBR-811 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java 8204200,JBR-811 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java 8204200,JBR-811 windows-all,macosx-all,linux-all
