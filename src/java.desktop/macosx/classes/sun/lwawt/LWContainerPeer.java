@@ -92,6 +92,20 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
     }
 
     @Override
+    public final void beginValidate() {
+        // TODO: it seems that begin/endValidate() is only useful
+        // for heavyweight windows, when a batch movement for
+        // child windows  occurs. That's why no-op
+    }
+
+    @Override
+    public final void endValidate() {
+        // TODO: it seems that begin/endValidate() is only useful
+        // for heavyweight windows, when a batch movement for
+        // child windows  occurs. That's why no-op
+    }
+
+    @Override
     public final void beginLayout() {
         // Skip all painting till endLayout()
         setLayouting(true);

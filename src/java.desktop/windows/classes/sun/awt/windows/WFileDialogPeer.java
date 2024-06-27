@@ -301,6 +301,10 @@ final class WFileDialogPeer extends WWindowPeer implements FileDialogPeer {
 
     @Override
     void start() {}
+    @Override
+    public void beginValidate() {}
+    @Override
+    public void endValidate() {}
     void invalidate(int x, int y, int width, int height) {}
     @Override
     public void addDropTarget(DropTarget dt) {}

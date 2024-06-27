@@ -739,6 +739,12 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
         return new Insets(0, 0, 0, 0);
     }
 
+    public void beginValidate() {
+    }
+
+    public void endValidate() {
+    }
+
     // Returns true if we are inside begin/endLayout and
     // are waiting for native painting
     public boolean isPaintPending() {

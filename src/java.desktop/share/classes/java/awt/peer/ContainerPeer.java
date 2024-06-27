@@ -47,6 +47,21 @@ public interface ContainerPeer extends ComponentPeer {
     Insets getInsets();
 
     /**
+     * Notifies the peer that validation of the component tree is about to
+     * begin.
+     *
+     * @see Container#validate()
+     */
+    void beginValidate();
+
+    /**
+     * Notifies the peer that validation of the component tree is finished.
+     *
+     * @see Container#validate()
+     */
+    void endValidate();
+
+    /**
      * Notifies the peer that layout is about to begin. This is called
      * before the container itself and its children are laid out.
      *

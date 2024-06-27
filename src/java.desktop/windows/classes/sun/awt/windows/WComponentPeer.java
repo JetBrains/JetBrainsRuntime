@@ -935,6 +935,9 @@ public abstract class WComponentPeer extends WObjectPeer
         isLayouting = false;
     }
 
+    public native void beginValidate();
+    public native void endValidate();
+
     /**
      * register a DropTarget with this native peer
      */
