@@ -208,7 +208,7 @@ public class WindowsFlags {
                 gdiBlitEnabled = getBooleanProp("sun.java2d.gdiBlit", true);
                 d3dSet = true;
                 if (d3dSet) {
-                    d3dVerbose = true;
+                    d3dVerbose = false;
                 }
                 offscreenSharingEnabled =
                     getBooleanProp("sun.java2d.offscreenSharing", false);

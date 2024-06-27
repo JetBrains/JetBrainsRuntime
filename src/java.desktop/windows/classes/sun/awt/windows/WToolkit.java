@@ -1237,8 +1237,8 @@ public final class WToolkit extends SunToolkit implements Runnable {
 
     @Override
     public void displayBuffer() {
-        D3DScreenUpdateManager mgr =
-                (D3DScreenUpdateManager) ScreenUpdateManager.getInstance();
-        mgr.swapBuffers();
+        if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
+            mgr.swapBuffers();
+        }
     }
 }
