@@ -235,7 +235,7 @@ void AwtCursor::UpdateCursor(AwtComponent *comp) {
                 }
                 if (AwtCursor::updateCursorID == NULL) {
                     jclass cls =
-                    env->FindClass("sun/awt/windows/WCursorManager");
+                    env->FindClass("sun/awt/windows/WGlobalCursorManager");
                     if(cls != NULL){
                         AwtCursor::globalCursorManagerClass =
                             (jclass)env->NewGlobalRef(cls);
@@ -463,7 +463,7 @@ Java_sun_awt_windows_WCustomCursor_getCursorHeight(JNIEnv *, jclass)
  * Signature: (Ljava/awt/Point;)V
  */
 JNIEXPORT void JNICALL
-Java_sun_awt_windows_WCursorManager_getCursorPos(JNIEnv *env,
+Java_sun_awt_windows_WGlobalCursorManager_getCursorPos(JNIEnv *env,
                                                        jobject,
                                                        jobject point)
 {
@@ -531,7 +531,7 @@ static void GlobalSetCursor(void* pStruct) {
  * Signature: (Ljava/awt/Component;Ljava/awt/Cursor;)V
  */
 JNIEXPORT void JNICALL
-Java_sun_awt_windows_WCursorManager_setCursor(JNIEnv *env, jobject,
+Java_sun_awt_windows_WGlobalCursorManager_setCursor(JNIEnv *env, jobject,
                             jobject cursor, jboolean u)
 {
     TRY;
@@ -581,7 +581,7 @@ Java_sun_awt_windows_WGlobalCursorManager_findHeavyweightUnderCursor(
  * Signature: (L/java/awt/Component;)L/java/awt/Point
  */
 JNIEXPORT jobject JNICALL
-Java_sun_awt_windows_WCursorManager_getLocationOnScreen(
+Java_sun_awt_windows_WGlobalCursorManager_getLocationOnScreen(
     JNIEnv *env, jobject, jobject component)
 {
     TRY;

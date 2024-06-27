@@ -33,7 +33,7 @@ import sun.awt.SunToolkit;
 
 import static sun.awt.windows.WToolkit.getWToolkit;
 
-final class WCursorManager {
+final class WGlobalCursorManager {
     /**
      * A flag to indicate if the update is scheduled, so we don't process it
      * twice.

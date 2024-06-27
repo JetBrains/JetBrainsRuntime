@@ -1049,9 +1049,9 @@ public final class WToolkit extends SunToolkit implements Runnable {
         return toolkit;
     }
 
-    static WCursorManager cursorManager = new WCursorManager();
+    static WGlobalCursorManager cursorManager = new WGlobalCursorManager();
 
-    public WCursorManager getCursorManager() {
+    public WGlobalCursorManager getCursorManager() {
         return cursorManager;
     }
 
