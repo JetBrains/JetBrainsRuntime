@@ -180,9 +180,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         }
 
         static {
-            final GetPropertyAction gpa = new GetPropertyAction("sun.awt.x11.trace");
-            @SuppressWarnings("removal")
-            final String trace = AccessController.doPrivileged(gpa);
+            final String trace = System.getProperty("sun.awt.x11.trace");
             if (trace != null) {
                 int traceFlags = 0;
                 final StringTokenizer st = new StringTokenizer(trace, ",");
@@ -595,6 +593,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
+    private static final boolean checkDesktopGeometry = !"false".equals(System.getProperty("watch.desktop.geometry", "true"));
+
     void init() {
         awtLock();
         try {
@@ -618,7 +618,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 @Override
                 public void dispatchEvent(XEvent ev) {
                     if (ev.get_type() == XConstants.ConfigureNotify ||
-                        (ev.get_type() == XConstants.PropertyNotify &&
+                        (checkDesktopGeometry && ev.get_type() == XConstants.PropertyNotify &&
                          ev.get_xproperty().get_atom() == XWM.XA_NET_DESKTOP_GEOMETRY.getAtom())) // possible DPI change
                     {
                         awtUnlock();
