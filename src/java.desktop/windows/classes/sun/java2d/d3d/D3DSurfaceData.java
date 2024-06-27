@@ -300,7 +300,6 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
         } else { // flip == FlipContents.UNDEFINED || .BACKGROUND
             swapEffect = SWAP_DISCARD;
         }
-
         return new D3DSurfaceData(peer, gc, r.width, r.height,
                                   image, peer.getColorModel(),
                                   peer.getBackBuffersNum(),

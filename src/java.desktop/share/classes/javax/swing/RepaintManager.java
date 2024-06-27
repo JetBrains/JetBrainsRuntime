@@ -31,7 +31,6 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.VolatileImage;
 import java.awt.peer.WindowPeer;
-import java.io.PrintWriter;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -1892,7 +1891,7 @@ public class RepaintManager
     private final class ProcessingRunnable implements Runnable {
         // If true, we're waiting on the EventQueue.
         private boolean pending;
-        static Toolkit tk = Toolkit.getDefaultToolkit();
+        private static Toolkit tk = Toolkit.getDefaultToolkit();
         /**
          * Marks this processing runnable as pending. If this was not
          * already marked as pending, true is returned.

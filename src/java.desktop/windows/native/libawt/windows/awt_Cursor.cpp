@@ -32,7 +32,7 @@
 #include "awt_Window.h"
 #include <java_awt_Cursor.h>
 #include <sun_awt_windows_WCustomCursor.h>
-#include <sun_awt_windows_WCursorManager.h>
+#include <sun_awt_windows_WGlobalCursorManager.h>
 
 
 /************************************************************************
