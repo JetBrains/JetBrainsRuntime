@@ -379,9 +379,9 @@ public abstract class WComponentPeer extends WObjectPeer
                 if (!isLayouting && ! paintPending) {
                     paintArea.paint(target,shouldClearRectBeforePaint());
                 }
-                D3DScreenUpdateManager mgr =
-                        (D3DScreenUpdateManager) ScreenUpdateManager.getInstance();
-                mgr.swapBuffers();
+                if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
+                    mgr.swapBuffers();
+                }
                 return;
             case FocusEvent.FOCUS_LOST:
             case FocusEvent.FOCUS_GAINED:

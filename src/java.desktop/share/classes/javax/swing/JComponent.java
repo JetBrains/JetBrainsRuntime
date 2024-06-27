@@ -1110,7 +1110,9 @@ public abstract class JComponent extends Container implements Serializable,
                     repaintManager.paint(this, this, co, clipX, clipY, clipW,
                                          clipH);
                 } finally {
-                    repaintManager.endPaint();
+                    if (isDisplayable()) {
+                        repaintManager.endPaint();
+                    }
                 }
             }
             else {
