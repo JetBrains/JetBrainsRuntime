@@ -2802,10 +2802,6 @@ public class Window extends Container implements Accessible {
             invalidate();
             validate();
         }
-        if (e.getID() == MouseEvent.MOUSE_DRAGGED ||
-                e.getID() == ComponentEvent.COMPONENT_SHOWN || e.getID() == ComponentEvent.COMPONENT_MOVED) {
-            nullifyLocationOnScreen();
-        }
         super.dispatchEventImpl(e);
     }
 

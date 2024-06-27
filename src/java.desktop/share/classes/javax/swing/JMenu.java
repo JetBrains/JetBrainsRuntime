@@ -328,7 +328,6 @@ public class JMenu extends JMenuItem implements Accessible,MenuElement
         }
 
         boolean isVisible = isPopupMenuVisible();
-        nullifyLocationOnScreen();
         if (b != isVisible && (isEnabled() || !b)) {
             ensurePopupMenuCreated();
             if ((b==true) && isShowing()) {
