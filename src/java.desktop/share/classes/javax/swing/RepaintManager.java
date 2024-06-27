@@ -287,7 +287,7 @@ public class RepaintManager
     static RepaintManager currentManager(AppContext appContext) {
         RepaintManager rm = (RepaintManager)appContext.get(repaintManagerKey);
         if (rm == null) {
-            rm = new RepaintManager(BUFFER_STRATEGY_SPECIFIED_ON);
+            rm = new RepaintManager(BUFFER_STRATEGY_TYPE);
             appContext.put(repaintManagerKey, rm);
         }
         return rm;
