@@ -96,6 +96,8 @@ import sun.awt.AppContext;
 import sun.awt.ComponentFactory;
 import sun.security.action.GetBooleanAction;
 import sun.security.action.GetPropertyAction;
+import sun.awt.AppContext;
+import sun.awt.AWTAccessor;
 import sun.awt.ConstrainableGraphics;
 import sun.awt.EmbeddedFrame;
 import sun.awt.RequestFocusController;
@@ -104,9 +106,14 @@ import sun.awt.SunToolkit;
 import sun.awt.dnd.SunDropTargetEvent;
 import sun.awt.im.CompositionArea;
 import sun.awt.image.VSyncedBSManager;
+import sun.font.FontManager;
+import sun.font.FontManagerFactory;
+import sun.font.SunFontManager;
+import sun.java2d.SunGraphics2D;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.pipe.Region;
 import sun.java2d.pipe.hw.ExtendedBufferCapabilities;
+import sun.security.action.GetPropertyAction;
 import sun.swing.SwingAccessor;
 import sun.util.logging.PlatformLogger;
 
@@ -2095,17 +2102,6 @@ public abstract class Component implements ImageObserver, MenuContainer,
         return location();
     }
 
-    private Point locationOnScreen = null;
-
-    /**
-     * Drop location cache of this component in the form of a point
-     * specifying the component's top-left corner in the screen's
-     * coordinate space.
-     */
-    public void nullifyLocationOnScreen() {
-        locationOnScreen = null;
-    }
-
     /**
      * Gets the location of this component in the form of a point
      * specifying the component's top-left corner in the screen's
@@ -2119,10 +2115,9 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @see #getLocation
      */
     public Point getLocationOnScreen() {
-        if (locationOnScreen == null) {
-            locationOnScreen = getLocationOnScreen_NoTreeLock();
+        synchronized (getTreeLock()) {
+            return getLocationOnScreen_NoTreeLock();
         }
-        return locationOnScreen;
     }
 
     /*
