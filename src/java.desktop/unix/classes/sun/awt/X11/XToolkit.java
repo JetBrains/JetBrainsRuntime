@@ -616,6 +616,10 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
     }
 
     @SuppressWarnings("removal")
+    private static final boolean checkDesktopGeometry = !"false".equals(AccessController.doPrivileged(
+            new sun.security.action.GetPropertyAction("watch.desktop.geometry", "true")));
+
+    @SuppressWarnings("removal")
     void init() {
         awtLock();
         try {
@@ -642,7 +646,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 @Override
                 public void dispatchEvent(XEvent ev) {
                     if (ev.get_type() == XConstants.ConfigureNotify ||
-                        (ev.get_type() == XConstants.PropertyNotify &&
+                        (checkDesktopGeometry && ev.get_type() == XConstants.PropertyNotify &&
                          ev.get_xproperty().get_atom() == XWM.XA_NET_DESKTOP_GEOMETRY.getAtom())) // possible DPI change
                     {
                         awtUnlock();
