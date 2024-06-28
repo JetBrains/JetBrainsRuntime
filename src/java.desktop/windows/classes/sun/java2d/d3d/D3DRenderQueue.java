@@ -194,7 +194,7 @@ public class D3DRenderQueue extends RenderQueue {
 
                 // wait for flush to complete
                 try {
-                    wait(100);
+                    wait();
                 } catch (InterruptedException e) {
                 }
                 err = error;

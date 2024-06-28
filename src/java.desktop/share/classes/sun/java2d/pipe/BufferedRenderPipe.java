@@ -32,6 +32,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Arc2D;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Path2D;
+import java.awt.Toolkit;
 import java.awt.geom.IllegalPathStateException;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Rectangle2D;
@@ -428,6 +429,7 @@ public abstract class BufferedRenderPipe
         } finally {
             rq.unlock();
         }
+        Toolkit.getDefaultToolkit().displayBuffer();
     }
 
     public void drawParallelogram(SunGraphics2D sg2d,
