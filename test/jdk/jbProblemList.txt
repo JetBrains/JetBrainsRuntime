@@ -1404,7 +1404,7 @@ java/awt/Mixing/LWPopupMenu.java JBR-824 generic-all
 java/awt/Mixing/OpaqueTest.java JBR-5707 linux-all
 java/awt/Mixing/OverlappingButtons.java JBR-5707 linux-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5510 linux-5.18.2-arch1-1
-java/awt/Window/TranslucentJAppletTest/TranslucentJAppletTest.java JBR-5510 linux-5.18.2-arch1-1
+java/awt/Window/TranslucentJAppletTest/TranslucentJAppletTest.java JBR-4280 linux-all,macosx-all
 javax/swing/JComponent/7154030/bug7154030.java 8297454,JBR-5510 macosx-all,linux-5.18.2-arch1-1
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JRadioButton/8041561/bug8041561.java JBR-5510 linux-5.18.2-arch1-1
