@@ -202,7 +202,7 @@ class APITest {
             "index-all.html",
             "index.html",
             "link.svg",
-            "script-dir/jquery-3.6.1.min.js",
+            "script-dir/jquery-3.7.1.min.js",
             "script-dir/jquery-ui.min.js",
             "script-dir/jquery-ui.min.css",
             "search.html",
