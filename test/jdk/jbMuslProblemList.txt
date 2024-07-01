@@ -42,6 +42,7 @@ javax/swing/JFileChooser/FileSystemView/SystemIconTest.java initial_runs generic
 javax/swing/JFileChooser/FileViewNPETest.java initial_runs generic-all
 javax/swing/JFileChooser/ShellFolderQueries/ShellFolderQueriesSecurityManagerTest.java initial_runs generic-all
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java initial_runs generic-all
+javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java JBR-5539 windows-all,linux-all
 javax/swing/JMenu/JMenuSelectedColorTest.java JBR-2841 linux-all
 javax/swing/JMenu/TestDisabledMenuForegroundColor.java initial_runs generic-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java initial_runs generic-all
