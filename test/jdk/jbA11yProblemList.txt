@@ -66,6 +66,7 @@ javax/swing/JTree/4618767/JTreeSelectedElementTest.java JBR-5397 macosx-all
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java JBR-5397 macosx-all
 javax/swing/plaf/aqua/JInternalFrameBorderTest.java JBR-5397 macosx-all
 javax/swing/plaf/basic/BasicMenuUI/4983388/bug4983388.java 8253184,JBR-6727,JBR-5397 windows-all,linux-all,macosx-all
+javax/swing/plaf/basic/BasicRootPaneUI/HiddenDefaultButtonTest.java JBR-7310 windows-x64
 javax/swing/plaf/synth/7158712/bug7158712.java JBR-125,8322653,JBR-5397 linux-all,windows-all,macosx-all
 javax/swing/Popup/TaskbarPositionTest.java 8310689,JBR-5397 windows-all,macosx-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-5397,JBR-6465 macosx-all,windows-all,linux-aarch64
@@ -113,9 +114,12 @@ java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5510,8310487,JB
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490,JBR-5505 windows-all,linux-all
 java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916,JBR-5397,JBR-7141 linux-all,macosx-all,windows-all
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,JBR-5915,JBR-5505 macosx-all,linux-all,windows-all
+java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-all
+java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-7141 windows-all
 java/awt/Focus/6378278/InputVerifierTest.java JBR-5505 windows-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 8169110,JBR-5505 linux-all,windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-5505 windows-all
+java/awt/Frame/DisposeStressTest/DisposeStressTest.java JBR-7331 windows-all
 java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-5505 windows-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-5505 windows-all
 java/awt/hidpi/DrawOnFrameGraphicsTest.java JBR-5505 windows-all
