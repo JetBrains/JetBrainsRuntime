@@ -795,6 +795,13 @@ public class RepaintManager
     }
 
     private void updateWindows(Map<Component,Rectangle> dirtyComponents) {
+        dirtyComponents.keySet().stream()
+                .map(c -> c instanceof Window w ? w : SwingUtilities.getWindowAncestor(c))
+                .filter(Objects::nonNull)
+                .distinct()
+                .forEach(w -> AWTAccessor.getWindowAccessor()
+                        .bumpCounter(w, "swing.RepaintManager.updateWindows"));
+
         if (Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit &&
             sunToolkit.needUpdateWindow())
         {
@@ -813,14 +820,7 @@ public class RepaintManager
 
             for (Window window : windows) {
                 AWTAccessor.getWindowAccessor().updateWindow(window);
-                AWTAccessor.getWindowAccessor().bumpCounter(window, "swing.RepaintManager.updateWindows");
             }
-        } else {
-            dirtyComponents.keySet().stream()
-                    .map(c -> c instanceof Window w ? w : SwingUtilities.getWindowAncestor(c))
-                    .filter(Objects::nonNull)
-                    .forEach(w -> AWTAccessor.getWindowAccessor()
-                            .bumpCounter(w, "swing.RepaintManager.updateWindows"));
         }
     }
 
