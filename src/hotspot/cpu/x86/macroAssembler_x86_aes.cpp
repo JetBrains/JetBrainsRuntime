@@ -798,6 +798,7 @@ void MacroAssembler::aesctr_encrypt(Register src_addr, Register dest_addr, Regis
 
     const Register rounds = 0;
     const Register pos = r12;
+    const Register tail = r15;
 
     Label PRELOOP_START, EXIT_PRELOOP, REMAINDER, REMAINDER_16, LOOP, END, EXIT, END_LOOP,
     AES192, AES256, AES192_REMAINDER16, REMAINDER16_END_LOOP, AES256_REMAINDER16,
@@ -1228,29 +1229,36 @@ void MacroAssembler::aesctr_encrypt(Register src_addr, Register dest_addr, Regis
     // Save encrypted counter value in xmm0 for next invocation, before XOR operation
     movdqu(Address(saved_encCounter_start, 0), xmm0);
     // XOR encryted block cipher in xmm0 with PT to produce CT
-    evpxorq(xmm0, xmm0, Address(src_addr, pos, Address::times_1, 0), Assembler::AVX_128bit);
     // extract upto 15 bytes of CT from xmm0 as specified by length register
     testptr(len_reg, 8);
     jcc(Assembler::zero, EXTRACT_TAIL_4BYTES);
-    pextrq(Address(dest_addr, pos), xmm0, 0);
+    pextrq(tail, xmm0, 0);
+    xorq(tail, Address(src_addr, pos, Address::times_1, 0));
+    movq(Address(dest_addr, pos), tail);
     psrldq(xmm0, 8);
     addl(pos, 8);
     bind(EXTRACT_TAIL_4BYTES);
     testptr(len_reg, 4);
     jcc(Assembler::zero, EXTRACT_TAIL_2BYTES);
-    pextrd(Address(dest_addr, pos), xmm0, 0);
+    pextrd(tail, xmm0, 0);
+    xorl(tail, Address(src_addr, pos, Address::times_1, 0));
+    movl(Address(dest_addr, pos), tail);
     psrldq(xmm0, 4);
     addq(pos, 4);
     bind(EXTRACT_TAIL_2BYTES);
     testptr(len_reg, 2);
     jcc(Assembler::zero, EXTRACT_TAIL_1BYTE);
-    pextrw(Address(dest_addr, pos), xmm0, 0);
+    pextrw(tail, xmm0, 0);
+    xorw(tail, Address(src_addr, pos, Address::times_1, 0));
+    movw(Address(dest_addr, pos), tail);
     psrldq(xmm0, 2);
     addl(pos, 2);
     bind(EXTRACT_TAIL_1BYTE);
     testptr(len_reg, 1);
     jcc(Assembler::zero, END);
-    pextrb(Address(dest_addr, pos), xmm0, 0);
+    pextrb(tail, xmm0, 0);
+    xorb(tail, Address(src_addr, pos, Address::times_1, 0));
+    movb(Address(dest_addr, pos), tail);
     addl(pos, 1);
 
     bind(END);
