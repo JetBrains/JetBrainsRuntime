@@ -120,7 +120,6 @@ public class CodeBlob extends VMObject {
   }
 
   /** OopMap for frame; can return null if none available */
-
   public ImmutableOopMapSet getOopMaps() {
     Address value = oopMapsField.getValue(addr);
     if (value == null) {
