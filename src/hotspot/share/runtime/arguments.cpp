@@ -4021,7 +4021,7 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
 
   setup_hotswap_agent();
 
-  if (AllowEnhancedClassRedefinition) {
+  if (AllowEnhancedClassRedefinition && !FLAG_IS_CMDLINE(ClassUnloading)) {
     ClassUnloading = false;
     ClassUnloadingWithConcurrentMark = false;
   }
