@@ -3765,8 +3765,12 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
   setup_hotswap_agent();
 
   if (AllowEnhancedClassRedefinition) {
-    ClassUnloading = false;
-    ClassUnloadingWithConcurrentMark = false;
+    if (!FLAG_IS_CMDLINE(ClassUnloading)) {
+      ClassUnloading = false;
+      ClassUnloadingWithConcurrentMark = false;
+    } else {
+      warning("The JVM is unstable when using -XX:+AllowEnhancedClassRedefinition and -XX:+ClassUnloading together!");
+    }
   }
 
 #if !INCLUDE_CDS
