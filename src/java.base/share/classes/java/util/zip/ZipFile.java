@@ -26,18 +26,41 @@
 package java.util.zip;
 
 import java.io.Closeable;
-import java.io.InputStream;
-import java.io.IOException;
 import java.io.EOFException;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.io.UncheckedIOException;
 import java.lang.ref.Cleaner.Cleanable;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
-import java.nio.file.InvalidPathException;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
-import java.util.*;
+import java.nio.file.InvalidPathException;
+import java.nio.file.OpenOption;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.TreeSet;
+import java.util.WeakHashMap;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.jar.JarEntry;
@@ -53,6 +76,7 @@ import jdk.internal.util.OperatingSystem;
 import jdk.internal.perf.PerfCounter;
 import jdk.internal.ref.CleanerFactory;
 import jdk.internal.vm.annotation.Stable;
+import sun.nio.ch.FileChannelImpl;
 import sun.nio.cs.UTF_8;
 import sun.nio.fs.DefaultFileSystemProvider;
 import sun.security.util.SignatureFileVerifier;
@@ -92,6 +116,9 @@ public class ZipFile implements ZipConstants, Closeable {
     // b) the list of cached Inflater objects
     // c) the "native" source of this ZIP file.
     private final @Stable CleanableResource res;
+
+    private static final boolean USE_NIO_FOR_ZIP_FILE_ACCESS =
+        Boolean.parseBoolean(System.getProperty("java.util.zip.use.nio.for.zip.file.access", "false"));
 
     private static final int STORED = ZipEntry.STORED;
     private static final int DEFLATED = ZipEntry.DEFLATED;
@@ -1170,7 +1197,7 @@ public class ZipFile implements ZipConstants, Closeable {
 
         private int refs = 1;
 
-        private RandomAccessFile zfile;      // zfile of the underlying ZIP file
+        private FileAccessor zfile;          // zfile of the underlying ZIP file
         private byte[] cen;                  // CEN
         private long locpos;                 // position of first LOC header (usually 0)
         private byte[] comment;              // ZIP file comment
@@ -1180,6 +1207,88 @@ public class ZipFile implements ZipConstants, Closeable {
         private int[] signatureMetaNames;    // positions of signature related entries, if such exist
         private Map<Integer, BitSet> metaVersions; // Versions found in META-INF/versions/, by entry name hash
         private final boolean startsWithLoc; // true, if ZIP file starts with LOCSIG (usually true)
+
+        private interface FileAccessor {
+            long length() throws IOException;
+            int read(byte[] dst, int off, int len) throws IOException;
+            void readFully(byte[] dst, int off, int len) throws IOException;
+            void seek(long pos) throws IOException;
+            void close() throws IOException;
+        }
+
+        static class RandomAccessFileAccessor implements FileAccessor {
+            private final RandomAccessFile file;
+
+            RandomAccessFileAccessor(RandomAccessFile file) {
+                this.file = file;
+            }
+
+            @Override
+            public long length() throws IOException {
+                return file.length();
+            }
+
+            @Override
+            public int read(byte[] dst, int off, int len) throws IOException {
+                return file.read(dst, off, len);
+            }
+
+            @Override
+            public void readFully(byte[] dst, int off, int len) throws IOException {
+                file.readFully(dst, off, len);
+            }
+
+            @Override
+            public void seek(long pos) throws IOException {
+                file.seek(pos);
+            }
+
+            @Override
+            public void close() throws IOException {
+                file.close();
+            }
+        }
+
+        static class ChannelFileAccessor implements FileAccessor {
+            private final FileChannel channel;
+
+            ChannelFileAccessor(FileChannel file) {
+                this.channel = file;
+            }
+
+            @Override
+            public long length() throws IOException {
+                return channel.size();
+            }
+
+            @Override
+            public int read(byte[] dst, int off, int len) throws IOException {
+                ByteBuffer buf = ByteBuffer.wrap(dst, off, len);
+                return channel.read(buf);
+            }
+
+            @Override
+            public void readFully(byte[] dst, int off, int len) throws IOException {
+                // copy-pasted from java.io.RandomAccessFile.readFully(byte[], int, int)
+                int n = 0;
+                do {
+                    int count = this.read(dst, off + n, len - n);
+                    if (count < 0)
+                        throw new EOFException();
+                    n += count;
+                } while (n < len);
+            }
+
+            @Override
+            public void seek(long pos) throws IOException {
+                channel.position(pos);
+            }
+
+            @Override
+            public void close() throws IOException {
+                channel.close();
+            }
+        }
 
         // A Hashmap for all entries.
         //
@@ -1539,16 +1648,32 @@ public class ZipFile implements ZipConstants, Closeable {
 
         private Source(Key key, boolean toDelete, ZipCoder zipCoder) throws IOException {
             this.key = key;
-            if (toDelete) {
-                if (OperatingSystem.isWindows()) {
-                    this.zfile = SharedSecrets.getJavaIORandomAccessFileAccess()
-                                              .openAndDelete(key.file, "r");
+            if (USE_NIO_FOR_ZIP_FILE_ACCESS) {
+                Set<OpenOption> options;
+                if (toDelete) {
+                    options = Set.of(StandardOpenOption.READ, StandardOpenOption.DELETE_ON_CLOSE);
                 } else {
-                    this.zfile = new RandomAccessFile(key.file, "r");
-                    key.file.delete();
+                    options = Set.of(StandardOpenOption.READ);
                 }
+                FileChannel channel = FileSystems.getDefault().provider().newFileChannel(key.file.toPath(), options);
+                if (channel instanceof FileChannelImpl) {
+                    ((FileChannelImpl) channel).setUninterruptible();
+                }
+                this.zfile = new ChannelFileAccessor(channel);
             } else {
-                this.zfile = new RandomAccessFile(key.file, "r");
+                RandomAccessFile file;
+                if (toDelete) {
+                    if (OperatingSystem.isWindows()) {
+                        file = SharedSecrets.getJavaIORandomAccessFileAccess()
+                                .openAndDelete(key.file, "r");
+                    } else {
+                        file = new RandomAccessFile(key.file, "r");
+                        key.file.delete();
+                    }
+                } else {
+                    file = new RandomAccessFile(key.file, "r");
+                }
+                this.zfile = new RandomAccessFileAccessor(file);
             }
             try {
                 initCEN(-1, zipCoder);
