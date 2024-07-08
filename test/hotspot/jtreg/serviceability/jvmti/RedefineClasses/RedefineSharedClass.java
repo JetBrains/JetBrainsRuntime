@@ -109,7 +109,7 @@ public class RedefineSharedClass {
         // When run without arguments this class acts as the test. First redefining
         // a class that we expect to be in the archive if used and the triggering a
         // System.gc() to clean up.
-        RedefineClassHelper.redefineClass(java.io.RandomAccessFile.class, getClassBytes(java.io.RandomAccessFile.class));
+        RedefineClassHelper.redefineClass(java.util.zip.ZipFile.class, getClassBytes(java.util.zip.ZipFile.class));
         System.gc();
     }
 
