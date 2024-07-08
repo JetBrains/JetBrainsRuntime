@@ -28,24 +28,24 @@
  * @library /test/lib
  *
  * @summary Test: memory is properly limited using multiple buffers
- * @run main/othervm -XX:MaxDirectMemorySize=10 LimitDirectMemory true 10 1
- * @run main/othervm -XX:MaxDirectMemorySize=1k LimitDirectMemory true 1k 100
- * @run main/othervm -XX:MaxDirectMemorySize=10m LimitDirectMemory true 10m 10m
+ * @run main/othervm -Djava.util.zip.use.nio.for.zip.file.access=false -XX:MaxDirectMemorySize=10 LimitDirectMemory true 10 1
+ * @run main/othervm -Djava.util.zip.use.nio.for.zip.file.access=false -XX:MaxDirectMemorySize=1k LimitDirectMemory true 1k 100
+ * @run main/othervm -Djava.util.zip.use.nio.for.zip.file.access=false -XX:MaxDirectMemorySize=10m LimitDirectMemory true 10m 10m
  *
  * @summary Test: We can increase the amount of available memory
- * @run main/othervm -XX:MaxDirectMemorySize=65M LimitDirectMemory false 64M 65M
+ * @run main/othervm -Djava.util.zip.use.nio.for.zip.file.access=false -XX:MaxDirectMemorySize=65M LimitDirectMemory false 64M 65M
  *
  * @summary Test: Exactly the default amount of memory is available
  * @run main/othervm LimitDirectMemory false 10 1
- * @run main/othervm -Xmx64m LimitDirectMemory false 0 DEFAULT
- * @run main/othervm -Xmx64m LimitDirectMemory true 0 DEFAULT+1
+ * @run main/othervm -Djava.util.zip.use.nio.for.zip.file.access=false -Xmx64m LimitDirectMemory false 0 DEFAULT
+ * @run main/othervm -Djava.util.zip.use.nio.for.zip.file.access=false -Xmx64m LimitDirectMemory true 0 DEFAULT+1
  *
  * @summary Test: We should be able to eliminate direct memory allocation entirely
- * @run main/othervm -XX:MaxDirectMemorySize=0 LimitDirectMemory true 0 1
+ * @run main/othervm -Djava.util.zip.use.nio.for.zip.file.access=false -XX:MaxDirectMemorySize=0 LimitDirectMemory true 0 1
  *
  * @summary Test: Setting the system property should not work so we should be able
  *                to allocate the default amount
- * @run main/othervm -Dsun.nio.MaxDirectMemorySize=1K -Xmx64m
+ * @run main/othervm -Djava.util.zip.use.nio.for.zip.file.access=false -Dsun.nio.MaxDirectMemorySize=1K -Xmx64m
  *                   LimitDirectMemory false DEFAULT-1 DEFAULT/2
  */
 
