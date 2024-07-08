@@ -63,13 +63,10 @@ public class TestZipError {
         // directory into in-memory data structures.
         ZipFile zf = new ZipFile(fileName);
 
-        // Delete the file; of course this does not change the in-memory data
-        // structures that represent the central directory!
-        f.delete();
-
         // Re-create zip file, with different entries than earlier.  However,
         // recall that we have in-memory information about the central
         // directory of the file at its previous state.
+        // The actual file here is overwritten
         zos = new ZipOutputStream(new FileOutputStream(f));
         ze = new ZipEntry("uno");
         zos.putNextEntry(ze);
