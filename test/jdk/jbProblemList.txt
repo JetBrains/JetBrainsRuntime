@@ -122,8 +122,9 @@ java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055,JBR-5906 
 java/awt/event/MouseEvent/EnterAsGrabbedEvent/EnterAsGrabbedEvent.java JBR-809 windows-all,linux-all
 java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java JBR-6578 windows-all,linux-all
 java/awt/event/MouseEvent/MouseButtonsTest/MouseButtonsTest.java JBR-810 windows-all,linux-all
-java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568,JBR-810 macosx-all,windows-all,linux-all
 java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java JBR-52 linux-all
+java/awt/event/MouseEvent/MouseEnterExitTest.java JBR-7113 linux-all
+java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568,JBR-810 macosx-all,windows-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java 8204200,JBR-811 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java 8204200,JBR-811 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java 8204200,JBR-811 windows-all,macosx-all,linux-all
@@ -849,12 +850,16 @@ com/sun/nio/sctp/SctpChannel/SocketOptionTests.java             8141694 linux-al
 
 # jdk_security
 
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#actalisauthenticationrootca 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#digicerttlseccrootg5 8324583 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#digicerttlsrsarootg5 8324583 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#globalsigneccrootcar4 8328825 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootcar1 8328825 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootcar2 8328825 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootecccar3 8328825 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#gtsrootecccar4 8328825 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#microsoftecc2017 8328825 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#quovadisrootca1g3 8324583 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#sslrooteccca 8333788 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#sslrootevrsaca 8333788 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#teliasonerarootcav1 8328825 generic-all
@@ -1075,7 +1080,7 @@ javax/swing/ToolTipManager/Test6256140.java 8197552 windows-all
 javax/swing/text/DefaultEditorKit/4278839/bug4278839.java CODETOOLS-7901623 windows-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-896 windows-all
 javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-5386 windows-all,linux-all
-javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210 windows-all
+javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210,JBR-6687 windows-all,linux-5.18.2-arch1-1
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5541 linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952 windows-all
@@ -1411,7 +1416,7 @@ java/awt/Insets/DialogInsets.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Menu/OpensWithNoGrab/OpensWithNoGrab.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-5510,JBR-6160 linux-5.18.2-arch1-1,linux-5.4.0-1103-aws
 javax/swing/JMenu/JMenuSelectedColorTest.java JBR-5510 linux-5.18.2-arch1-1
-javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-5510 linux-5.18.2-arch1-1
+javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-6684 generic-all
 javax/swing/JSpinner/4788637/bug4788637.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/LookAndFeel/8145547/DemandGTK2.sh JBR-5510 linux-5.18.2-arch1-1
 javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-5510 linux-5.18.2-arch1-1

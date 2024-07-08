@@ -156,6 +156,7 @@ runtime/CompressedOops/CompressedClassPointers.java 8305765 generic-all
 runtime/StackGuardPages/TestStackGuardPagesNative.java 8303612 linux-all
 runtime/ErrorHandling/TestDwarf.java 8305489 linux-all
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315,JBR-6289 linux-ppc64le,windows-aarch64
+runtime/Thread/ThreadCountLimit.java#id0 JBR-7286 linux-x64
 
 applications/jcstress/copy.java 8229852 linux-all
 

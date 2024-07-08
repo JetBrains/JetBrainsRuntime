@@ -12,9 +12,11 @@ javax/swing/JComponent/7154030/bug7154030.java JBR-7146 macosx-12.7.4,macosx-12.
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JInternalFrame/DockIconRepaint/DockIconRepaint.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
+javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-7247 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucent.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
+javax/swing/system/6799345/TestShutdown.java JBR-6881 macosx-12.7.4
 
 jb/java/awt/Window/MacNativeTransparentTitlebarWithCustomHeight.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
