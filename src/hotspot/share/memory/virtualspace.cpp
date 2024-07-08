@@ -533,6 +533,7 @@ void ReservedHeapSpace::initialize_compressed_heap(const size_t size, size_t ali
     // address. try_reserve_heap() always returns this allocated memory, as only here
     // the criteria for a good heap are checked.
 
+#ifndef _WINDOWS
     // Attempt to allocate so that we can run without base and scale (32-Bit unscaled compressed oops).
     // Give it several tries from top of range to bottom.
     if (aligned_heap_base_min_address + size <= (char *)UnscaledOopHeapMax) {
@@ -543,6 +544,7 @@ void ReservedHeapSpace::initialize_compressed_heap(const size_t size, size_t ali
       try_reserve_range(highest_start, lowest_start, attach_point_alignment,
                         aligned_heap_base_min_address, (char *)UnscaledOopHeapMax, size, alignment, page_size);
     }
+#endif
 
     // zerobased: Attempt to allocate in the lower 32G.
     // But leave room for the compressed class pointers, which is allocated above
