@@ -127,6 +127,16 @@ Java_sun_awt_image_BufImgSurfaceData_initRaster(JNIEnv *env, jobject bisd,
     bisdo->rasbounds.y2 = height;
 }
 
+JNIEXPORT jobject JNICALL
+Java_sun_awt_image_BufImgSurfaceData_wrapNativeMem(JNIEnv* env,
+                                                   jclass clazz,
+                                                   jlong pdata,
+                                                   jint length) {
+    if (!pdata)
+        return 0;
+    return (*env)->NewDirectByteBuffer(env, (void *)jlong_to_ptr(pdata), length);
+}
+
 /*
  * Releases native structures associated with BufImgSurfaceData.ICMColorData.
  */
