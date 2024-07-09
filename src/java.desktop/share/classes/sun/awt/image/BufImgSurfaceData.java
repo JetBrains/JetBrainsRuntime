@@ -27,13 +27,10 @@ package sun.awt.image;
 
 import java.awt.Rectangle;
 import java.awt.GraphicsConfiguration;
-import java.awt.image.ColorModel;
-import java.awt.image.SampleModel;
-import java.awt.image.DirectColorModel;
-import java.awt.image.IndexColorModel;
-import java.awt.image.Raster;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBuffer;
+import java.awt.image.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.IntBuffer;
 
 import sun.java2d.SurfaceData;
 import sun.java2d.SunGraphics2D;
@@ -461,4 +458,76 @@ public class BufImgSurfaceData extends SurfaceData {
             this.pData = pData;
         }
     }
+
+    /**
+     * Loads native image raster into surface.
+     *
+     * @param pRaster native pointer image raster with 8-bit RGBA color components packed into integer pixels.
+     * Note: The color data in this image is considered to be premultiplied with alpha.
+     * @param width width of image in pixels
+     * @param height height of image in pixels
+     * @param pRects native pointer to array of "dirty" rects, each rect is a sequence of four 32-bit integers: x, y, width, heigth
+     * Note: can be null (then whole image used)
+     * @param rectsCount count of "dirty" rects (if 0 then whole image used)
+     */
+    protected void loadNativeRaster(long pRaster, int width, int height, long pRects, int rectsCount) {
+        if (bufImg == null) {
+            System.err.printf("ERROR: loadNativeRaster: bufimg can't be null\n");
+            return;
+        }
+        if (bufImg.getType() != BufferedImage.TYPE_INT_ARGB && bufImg.getType() != BufferedImage.TYPE_INT_ARGB_PRE) {
+            System.err.printf("ERROR: loadNativeRaster: unsupported bufimg type %d\n", bufImg.getType());
+            return;
+        }
+        final int bytesRaster = width*height*4;
+        ByteBuffer buffer = wrapNativeMem(pRaster, bytesRaster);
+        IntBuffer src = buffer.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
+
+        int[] dst = ((DataBufferInt)bufImg.getRaster().getDataBuffer()).getData();
+        final int dstW = bufImg.getRaster().getWidth();
+        final int dstH = bufImg.getRaster().getHeight();
+
+        Rectangle[] dirtyRects = new Rectangle[]{new Rectangle(0, 0, width, height)};
+        if (rectsCount > 0) {
+            ByteBuffer rectsMem = wrapNativeMem(pRects, rectsCount * 4 * 4);
+            IntBuffer rects = rectsMem.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
+            for (int c = 0; c < rectsCount; ++c) {
+                int pos = c*4;
+                Rectangle r = new Rectangle();
+                r.x = rects.get(pos++);
+                r.y = rects.get(pos++);
+                r.width = rects.get(pos++);
+                r.height = rects.get(pos);
+                dirtyRects[c] = r;
+            }
+        }
+
+        for (Rectangle rect : dirtyRects) {
+            if (rect.width < width || dstW != width) {
+                for (int line = rect.y; line < rect.y + rect.height; line++)
+                    copyLine(src, width, height, dst, dstW, dstH, rect.x, line, rect.x + rect.width);
+            } else {
+                // optimized for a buffer wide dirty rect
+                int offset = rect.y*width;
+                if (rect.y + rect.height <= dstH)
+                    src.position(offset).get(dst, offset, width*rect.height);
+                else
+                    src.position(offset).get(dst, offset, width*(dstH - rect.y));
+            }
+        }
+    }
+    private static void copyLine(IntBuffer src, int sw, int sh, int[] dst, int dw, int dh, int x0, int y0, int x1) {
+        if (x0 < 0 || x0 >= sw || x0 >= dw || x1 <= x0)
+            return;
+        if (y0 < 0 || y0 >= sh || y0 >= dh)
+            return;
+
+        int offsetSrc = y0*sw + x0;
+        int offsetDst = y0*dw + x0;
+        if (x1 > dw)
+            src.position(offsetSrc).get(dst, offsetDst, dw - x0);
+        else
+            src.position(offsetSrc).get(dst, offsetDst, x1 - x0);
+    }
+    private static native ByteBuffer wrapNativeMem(long pdata, int length);
 }
