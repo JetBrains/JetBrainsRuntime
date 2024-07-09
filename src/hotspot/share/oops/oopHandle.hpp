@@ -28,6 +28,8 @@
 #include "metaprogramming/primitiveConversions.hpp"
 #include "oops/oopsHierarchy.hpp"
 
+#include <type_traits>
+
 class OopStorage;
 
 // Simple classes for wrapping oop and atomically accessed oop pointers
@@ -77,7 +79,7 @@ public:
 // Convert OopHandle to oop*
 
 template<>
-struct PrimitiveConversions::Translate<OopHandle> : public TrueType {
+struct PrimitiveConversions::Translate<OopHandle> : public std::true_type {
   typedef OopHandle Value;
   typedef oop* Decayed;
 
