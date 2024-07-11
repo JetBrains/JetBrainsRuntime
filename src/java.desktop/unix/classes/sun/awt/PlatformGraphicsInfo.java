@@ -128,13 +128,20 @@ public class PlatformGraphicsInfo {
       * the application has called an API that requires headful.
       */
     public static String getDefaultHeadlessMessage() {
-        return
-            """
-
-            No X11 DISPLAY variable was set,
-            or no headful library support was found,
-            but this program performed an operation which requires it,
-            """;
+        return PlatformGraphicsInfo.getToolkitID() == PlatformGraphicsInfo.TK_WAYLAND ?
+                """
+                        
+                        Could not connect to the Wayland server (check WAYLAND_DISPLAY),
+                        or no headful library support was found,
+                        but this program performed an operation which requires it,
+                        """
+                :
+                """
+                        
+                        No X11 DISPLAY variable was set,
+                        or no headful library support was found,
+                        but this program performed an operation which requires it,
+                        """;
     }
 
     public static String getSplashScreenLib() {
