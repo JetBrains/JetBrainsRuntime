@@ -61,6 +61,8 @@
 #include "sun_awt_wl_WLRobotPeer.h"
 #endif
 
+#define CHECK_WL_INTERFACE(var, name) if (!(var)) { JNU_ThrowByName(env, "java/awt/AWTError", "Can't bind to the " name " interface"); }
+
 extern JavaVM *jvm;
 
 struct wl_display *wl_display = NULL;
@@ -738,6 +740,22 @@ finalizeInit(JNIEnv *env) {
     }
 }
 
+static void
+checkInterfacesPresent(JNIEnv *env)
+{
+    // Check that all non-optional interfaces have been bound to and throw an appropriate error otherwise
+    CHECK_WL_INTERFACE(wl_shm, "wl_shm");
+    CHECK_WL_INTERFACE(wl_seat, "wl_seat");
+    CHECK_WL_INTERFACE(wl_display, "wl_display");
+    CHECK_WL_INTERFACE(wl_pointer, "wl_pointer");
+    CHECK_WL_INTERFACE(wl_compositor, "wl_compositor");
+    CHECK_WL_INTERFACE(xdg_wm_base, "xdg_wm_base");
+    CHECK_WL_INTERFACE(wp_viewporter, "wp_viewporter");
+    CHECK_WL_INTERFACE(xdg_activation_v1, "xdg_activation_v1");
+    CHECK_WL_INTERFACE(wl_ddm, "wl_data_device_manager");
+    CHECK_WL_INTERFACE(zwp_selection_dm, "zwp_primary_selection_device_manager_v1");
+}
+
 JNIEXPORT jlong JNICALL
 Java_sun_awt_wl_WLDisplay_connect(JNIEnv *env, jobject obj)
 {
@@ -772,6 +790,8 @@ Java_sun_awt_wl_WLToolkit_initIDs(JNIEnv *env, jclass clazz, jlong displayPtr)
     J2dTrace(J2D_TRACE_INFO, "WLToolkit: Connection to display(%p) established\n", wl_display);
 
     finalizeInit(env);
+
+    checkInterfacesPresent(env);
 }
 
 JNIEXPORT void JNICALL
