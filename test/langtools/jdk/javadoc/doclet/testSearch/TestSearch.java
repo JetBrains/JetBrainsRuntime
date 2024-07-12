@@ -400,7 +400,7 @@ public class TestSearch extends JavadocTester {
                 "<!--[if IE]>\n",
                 "<script type=\"text/javascript\" src=\"jquery/jszip-utils/dist/jszip-utils-ie.min.js\"></script>\n",
                 "<![endif]-->\n",
-                "<script type=\"text/javascript\" src=\"jquery/jquery-3.6.1.min.js\"></script>\n",
+                "<script type=\"text/javascript\" src=\"jquery/jquery-3.7.1.min.js\"></script>\n",
                 "<script type=\"text/javascript\" src=\"jquery/jquery-ui.min.js\"></script>",
                 "var pathtoroot = \"./\";\n"
                 + "var useModuleDirectories = " + moduleDirectoriesVar + ";\n"
@@ -593,7 +593,7 @@ public class TestSearch extends JavadocTester {
         checkFiles(expectedOutput,
                 "search.js",
                 "jquery-ui.overrides.css",
-                "jquery/jquery-3.6.1.min.js",
+                "jquery/jquery-3.7.1.min.js",
                 "jquery/jquery-ui.min.js",
                 "jquery/jquery-ui.min.css",
                 "jquery/external/jquery/jquery.js",
