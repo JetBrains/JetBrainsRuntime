@@ -134,7 +134,7 @@ Java_sun_awt_image_BufImgSurfaceData_wrapNativeMem(JNIEnv* env,
                                                    jint length) {
     if (!pdata)
         return 0;
-    return (*env)->NewDirectByteBuffer(env, (void*)pdata, length);
+    return (*env)->NewDirectByteBuffer(env, (void *)jlong_to_ptr(pdata), length);
 }
 
 /*
