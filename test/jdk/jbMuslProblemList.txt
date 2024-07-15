@@ -71,6 +71,7 @@ javax/swing/text/StyledEditorKit/8016833/bug8016833.java initial_runs generic-al
 javax/swing/text/Utilities/bug7045593.java initial_runs generic-all
 javax/swing/tree/DefaultTreeCellEditor/bug4480602.java initial_runs generic-all
 javax/swing/UIDefaults/6302464/bug6302464.java initial_runs generic-all
+jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728 linux-aarch64
 jb/java/awt/Focus/PopupIncomingFocusTest.java initial_runs generic-all
 jb/java/awt/Window/ZOrderOnModalDialogActivation.java initial_runs generic-all
 jb/javax/swing/JLabel/JLabel/JLabel269.java initial_runs generic-all

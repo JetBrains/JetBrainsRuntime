@@ -183,6 +183,7 @@ serviceability/jvmti/vthread/GetSetLocalTest/GetSetLocalTest.java 8286836 generi
 serviceability/jvmti/RedefineClasses/RedefineSharedClassJFR.java JBR-6245 generic-all
 serviceability/jvmti/RedefineClasses/TestMultipleClasses.java initial_run windows-all
 serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java initial_run generic-aarch64
+serviceability/jvmti/stress/StackTrace/NotSuspended/GetStackTraceNotSuspendedStressTest.java JBR-7403 windows-aarch64
 
 serviceability/dcmd/gc/RunFinalizationTest.java 8227120 linux-all,windows-x64,aix-ppc64
 

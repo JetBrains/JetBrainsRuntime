@@ -4,6 +4,7 @@ java/awt/Paint/PaintNativeOnUpdate.java JBR-7146 macosx-12.7.4,macosx-12.7.5,mac
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/Window/FullWindowContentTest/FullWindowContentRenderTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
+java/awt/Window/FullWindowContentTest/FullWindowContentTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-7312 macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/Window/WindowTitleVisibleTest/WindowTitleVisibleTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
