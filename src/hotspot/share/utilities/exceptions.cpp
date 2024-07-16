@@ -41,6 +41,9 @@
 #include "utilities/events.hpp"
 #include "utilities/exceptions.hpp"
 
+// Limit exception message components to 64K (the same max as Symbols)
+#define MAX_LEN 65535
+
 // Implementation of ThreadShadow
 void check_ThreadShadow() {
   const ByteSize offset1 = byte_offset_of(ThreadShadow, _pending_exception);
@@ -135,10 +138,11 @@ void Exceptions::_throw(Thread* thread, const char* file, int line, Handle h_exc
   assert(h_exception() != NULL, "exception should not be NULL");
 
   // tracing (do this up front - so it works during boot strapping)
-  log_info(exceptions)("Exception <%s%s%s> (" INTPTR_FORMAT ") \n"
+  log_info(exceptions)("Exception <%.*s%s%.*s> (" INTPTR_FORMAT ") \n"
                        "thrown [%s, line %d]\nfor thread " INTPTR_FORMAT,
-                       h_exception->print_value_string(),
-                       message ? ": " : "", message ? message : "",
+                       MAX_LEN, h_exception->print_value_string(),
+                       message ? ": " : "",
+                       MAX_LEN, message ? message : "",
                        p2i(h_exception()), file, line, p2i(thread));
   // for AbortVMOnException flag
   Exceptions::debug_check_abort(h_exception, message);
@@ -531,13 +535,13 @@ void Exceptions::log_exception(Handle exception, const char* message) {
   ResourceMark rm;
   const char* detail_message = java_lang_Throwable::message_as_utf8(exception());
   if (detail_message != NULL) {
-    log_info(exceptions)("Exception <%s: %s>\n thrown in %s",
-                         exception->print_value_string(),
-                         detail_message,
-                         message);
+    log_info(exceptions)("Exception <%.*s: %.*s>\n thrown in %.*s",
+                         MAX_LEN, exception->print_value_string(),
+                         MAX_LEN, detail_message,
+                         MAX_LEN, message);
   } else {
-    log_info(exceptions)("Exception <%s>\n thrown in %s",
-                         exception->print_value_string(),
-                         message);
+    log_info(exceptions)("Exception <%.*s>\n thrown in %.*s",
+                         MAX_LEN, exception->print_value_string(),
+                         MAX_LEN, message);
   }
 }
