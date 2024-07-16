@@ -363,7 +363,23 @@ Symbol* SymbolTable::lookup_common(const char* name,
   return sym;
 }
 
+// Symbols should represent entities from the constant pool that are
+// limited to <64K in length, but usage errors creep in allowing Symbols
+// to be used for arbitrary strings. For debug builds we will assert if
+// a string is too long, whereas product builds will truncate it.
+static int check_length(const char* name, int len) {
+  assert(len <= Symbol::max_length(),
+         "String length %d exceeds the maximum Symbol length of %d", len, Symbol::max_length());
+  if (len > Symbol::max_length()) {
+    warning("A string \"%.80s ... %.80s\" exceeds the maximum Symbol "
+            "length of %d and has been truncated", name, (name + len - 80), Symbol::max_length());
+    len = Symbol::max_length();
+  }
+  return len;
+}
+
 Symbol* SymbolTable::new_symbol(const char* name, int len) {
+  len = check_length(name, len);
   unsigned int hash = hash_symbol(name, len, _alt_hash);
   Symbol* sym = lookup_common(name, len, hash);
   if (sym == NULL) {
@@ -497,6 +513,7 @@ void SymbolTable::new_symbols(ClassLoaderData* loader_data, const constantPoolHa
   for (int i = 0; i < names_count; i++) {
     const char *name = names[i];
     int len = lengths[i];
+    assert(len <= Symbol::max_length(), "must be - these come from the constant pool");
     unsigned int hash = hashValues[i];
     assert(lookup_shared(name, len, hash) == NULL, "must have checked already");
     Symbol* sym = do_add_if_needed(name, len, hash, c_heap);
@@ -506,6 +523,7 @@ void SymbolTable::new_symbols(ClassLoaderData* loader_data, const constantPoolHa
 }
 
 Symbol* SymbolTable::do_add_if_needed(const char* name, int len, uintx hash, bool heap) {
+  assert(len <= Symbol::max_length(), "caller should have ensured this");
   SymbolTableLookup lookup(name, len, hash);
   SymbolTableGet stg;
   bool clean_hint = false;
@@ -540,7 +558,7 @@ Symbol* SymbolTable::do_add_if_needed(const char* name, int len, uintx hash, boo
 
 Symbol* SymbolTable::new_permanent_symbol(const char* name) {
   unsigned int hash = 0;
-  int len = (int)strlen(name);
+  int len = check_length(name, (int)strlen(name));
   Symbol* sym = SymbolTable::lookup_only(name, len, hash);
   if (sym == NULL) {
     sym = do_add_if_needed(name, len, hash, false);
