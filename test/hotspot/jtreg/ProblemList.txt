@@ -162,6 +162,7 @@ runtime/jni/terminatedThread/TestTerminatedThread.java 8219652 aix-ppc64
 
 # :hotspot_serviceability
 
+serviceability/dcmd/gc/RunFinalizationTest.java 8227120 generic-all
 serviceability/sa/ClhsdbAttach.java 8193639 solaris-all
 serviceability/sa/ClhsdbCDSCore.java 8294316,8193639,8267433 solaris-all,macosx-x64
 serviceability/sa/ClhsdbCDSJstackPrintAll.java 8193639 solaris-all
