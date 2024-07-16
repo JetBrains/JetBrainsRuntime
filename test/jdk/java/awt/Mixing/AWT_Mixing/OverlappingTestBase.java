@@ -91,6 +91,8 @@ public abstract class OverlappingTestBase {
     protected static final Color AWT_BACKGROUND_COLOR = new Color(21, 244, 54);
     protected static Color AWT_VERIFY_COLOR = AWT_BACKGROUND_COLOR;
     protected static final int ROBOT_DELAY = 500;
+    protected static final int FRAME_LOCATION_X = 50;
+    protected static final int FRAME_LOCATION_Y = 50;
     private static final String[] simpleAwtControls = {"Button", "Checkbox", "Label", "TextArea"};
     /**
      * Generic strings array. To be used for population of List based controls.
@@ -171,6 +173,7 @@ public abstract class OverlappingTestBase {
                     JFrame frame = new JFrame("set back");
                     frame.getContentPane().setBackground(AWT_BACKGROUND_COLOR);
                     frame.setSize(size, size);
+                    frame.setLocation(FRAME_LOCATION_X, FRAME_LOCATION_Y);
                     frame.setUndecorated(true);
                     frame.setLocationRelativeTo(null);
                     frame.setVisible(true);
