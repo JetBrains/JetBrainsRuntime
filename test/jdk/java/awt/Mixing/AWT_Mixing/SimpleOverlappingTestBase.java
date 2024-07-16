@@ -107,6 +107,7 @@ public abstract class SimpleOverlappingTestBase extends OverlappingTestBase {
         final JFrame f = new JFrame("Mixing : Simple Overlapping test");
         f.setLayout(new SpringLayout());
         f.setSize(200, 200);
+        f.setLocation(FRAME_LOCATION_X, FRAME_LOCATION_Y);
 
         testedComponent = getSwingComponent();
 
