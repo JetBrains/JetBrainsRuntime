@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -euo pipefail
-#set -x
+set -x
 
 BASE_DIR=$(dirname "$0")
 source $BASE_DIR/run_inc.sh
