@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1994, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -198,7 +198,7 @@ Java_java_lang_System_initProperties(JNIEnv *env, jclass cla, jobject props)
     PUTPROP(props, "java.specification.version",
             VERSION_SPECIFICATION);
     PUTPROP(props, "java.specification.maintenance.version",
-            "2");
+            "3");
     PUTPROP(props, "java.specification.name",
             "Java Platform API Specification");
     PUTPROP(props, "java.specification.vendor",
