@@ -70,7 +70,7 @@
   <target name="compile" depends="init"
         description="compile the source " >
     <!-- Compile the java code from ${src} into ${build} -->
-    <javac debug="off" source="${source}" target="${target}" srcdir="${src}" destdir="${build}" fork="true" executable="${javac}"/>
+    <javac debug="off" source="${source}" target="${target}" srcdir="${src}" destdir="${build}" fork="true"/>
   </target>
 
   <target name="run" depends="dist"
