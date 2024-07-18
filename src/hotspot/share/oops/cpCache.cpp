@@ -51,6 +51,7 @@
 #include "runtime/atomic.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/mutexLocker.hpp"
+#include "runtime/synchronizer.hpp"
 #include "runtime/vm_version.hpp"
 #include "utilities/macros.hpp"
 
@@ -251,7 +252,7 @@ void ConstantPoolCacheEntry::set_direct_or_vtable_call(Bytecodes::Code invoke_co
     }
     if (invoke_code == Bytecodes::_invokestatic) {
       assert(method->method_holder()->is_initialized() ||
-             method->method_holder()->is_init_thread(JavaThread::current()),
+             method->method_holder()->is_reentrant_initialization(JavaThread::current()),
              "invalid class initialization state for invoke_static");
 
       if (!VM_Version::supports_fast_class_init_checks() && method->needs_clinit_barrier()) {
@@ -354,8 +355,16 @@ void ConstantPoolCacheEntry::set_method_handle_common(const constantPoolHandle& 
   // A losing writer waits on the lock until the winner writes f1 and leaves
   // the lock, so that when the losing writer returns, he can use the linked
   // cache entry.
+
   // Lock fields to write
-  MutexLocker ml(cpool->pool_holder()->init_monitor());
+  JavaThread* current = JavaThread::current();
+  objArrayHandle resolved_references(current, cpool->resolved_references());
+  // Use the resolved_references() lock for this cpCache entry.
+  // resolved_references are created for all classes with Invokedynamic, MethodHandle
+  // or MethodType constant pool cache entries.
+  assert(resolved_references() != nullptr,
+         "a resolved_references array should have been created for this class");
+  ObjectLocker ol(resolved_references, current);
 
   if (!is_f1_null()) {
     return;
@@ -838,7 +847,14 @@ bool ConstantPoolCache::save_and_throw_indy_exc(
   assert(PENDING_EXCEPTION->is_a(vmClasses::LinkageError_klass()),
          "No LinkageError exception");
 
-  MutexLocker ml(THREAD, cpool->pool_holder()->init_monitor());
+  // Use the resolved_references() lock for this cpCache entry.
+  // resolved_references are created for all classes with Invokedynamic, MethodHandle
+  // or MethodType constant pool cache entries.
+  JavaThread* current = THREAD;
+  objArrayHandle resolved_references(current, cpool->resolved_references());
+  assert(resolved_references() != nullptr,
+         "a resolved_references array should have been created for this class");
+  ObjectLocker ol(resolved_references, current);
 
   // if the indy_info is resolved or the indy_resolution_failed flag is set then another
   // thread either succeeded in resolving the method or got a LinkageError
@@ -862,11 +878,21 @@ bool ConstantPoolCache::save_and_throw_indy_exc(
 
 oop ConstantPoolCache::set_dynamic_call(const CallInfo &call_info, int index) {
   ResourceMark rm;
-  MutexLocker ml(constant_pool()->pool_holder()->init_monitor());
+
+  // Use the resolved_references() lock for this cpCache entry.
+  // resolved_references are created for all classes with Invokedynamic, MethodHandle
+  // or MethodType constant pool cache entries.
+  JavaThread* current = JavaThread::current();
+  constantPoolHandle cp(current, constant_pool());
+
+  objArrayHandle resolved_references(current, cp->resolved_references());
+  assert(resolved_references() != nullptr,
+         "a resolved_references array should have been created for this class");
+  ObjectLocker ol(resolved_references, current);
   assert(index >= 0, "Indy index must be positive at this point");
 
   if (resolved_indy_entry_at(index)->method() != nullptr) {
-    return constant_pool()->resolved_reference_from_indy(index);
+    return cp->resolved_reference_from_indy(index);
   }
 
   if (resolved_indy_entry_at(index)->resolution_failed()) {
@@ -875,9 +901,7 @@ oop ConstantPoolCache::set_dynamic_call(const CallInfo &call_info, int index) {
     guarantee(index >= 0, "Invalid indy index");
     int encoded_index = ResolutionErrorTable::encode_cpcache_index(
                           ConstantPool::encode_invokedynamic_index(index));
-    JavaThread* THREAD = JavaThread::current(); // For exception macros.
-    constantPoolHandle cp(THREAD, constant_pool());
-    ConstantPool::throw_resolution_error(cp, encoded_index, THREAD);
+    ConstantPool::throw_resolution_error(cp, encoded_index, current);
     return nullptr;
   }
 
@@ -901,7 +925,6 @@ oop ConstantPoolCache::set_dynamic_call(const CallInfo &call_info, int index) {
 
   if (has_appendix) {
     const int appendix_index = resolved_indy_entry_at(index)->resolved_references_index();
-    objArrayOop resolved_references = constant_pool()->resolved_references();
     assert(appendix_index >= 0 && appendix_index < resolved_references->length(), "oob");
     assert(resolved_references->obj_at(appendix_index) == nullptr, "init just once");
     resolved_references->obj_at_put(appendix_index, appendix());
