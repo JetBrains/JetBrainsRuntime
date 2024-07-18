@@ -7160,6 +7160,12 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 setGlobalPermanentFocusOwner(null);
         }
 
+        if (getToolkit() instanceof SunToolkit toolkit) {
+            if (toolkit.getLastMouseEventComponent() == this) {
+                toolkit.updateLastMouseEventComponent(null);
+            }
+        }
+
         synchronized (getTreeLock()) {
             if (isFocusOwner() && KeyboardFocusManager.isAutoFocusTransferEnabledFor(this)) {
                 transferFocus(true);

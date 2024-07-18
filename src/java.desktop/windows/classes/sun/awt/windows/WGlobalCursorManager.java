@@ -43,6 +43,10 @@ final class WGlobalCursorManager extends CachedCursorManager {
         lastMouseEventComponent = component;
     }
 
+    public Component getMouseEventComponent() {
+        return lastMouseEventComponent;
+    }
+
     private static final WGlobalCursorManager theInstance = new WGlobalCursorManager();
     public static WGlobalCursorManager getInstance() {
         return theInstance;

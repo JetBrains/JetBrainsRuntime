@@ -241,7 +241,10 @@ public abstract class SunToolkit extends Toolkit
      * find the component under cursor. Currently, uses only on Windows
      */
     public void updateLastMouseEventComponent(Component component) {
+    }
 
+    public Component getLastMouseEventComponent() {
+        return null;
     }
 
     public interface AwtLockListener {
