@@ -54,10 +54,10 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.Timer;
@@ -161,7 +161,7 @@ class ServerImpl {
             logger.log (Level.DEBUG, "MAX_REQ_TIME:  "+MAX_REQ_TIME);
             logger.log (Level.DEBUG, "MAX_RSP_TIME:  "+MAX_RSP_TIME);
         }
-        events = new LinkedList<Event>();
+        events = new ArrayList<>();
         logger.log (Level.DEBUG, "HttpServer created "+protocol+" "+ addr);
     }
 
@@ -427,8 +427,7 @@ class ServerImpl {
             }
         }
 
-        final LinkedList<HttpConnection> connsToRegister =
-                new LinkedList<HttpConnection>();
+        final ArrayList<HttpConnection> connsToRegister = new ArrayList<>();
 
         void reRegister (HttpConnection c) {
             /* re-register with selector */
@@ -453,7 +452,7 @@ class ServerImpl {
                     synchronized (lolock) {
                         if (events.size() > 0) {
                             list = events;
-                            events = new LinkedList<Event>();
+                            events = new ArrayList<>();
                         }
                     }
 
@@ -982,7 +981,7 @@ class ServerImpl {
      */
     class IdleTimeoutTask extends TimerTask {
         public void run () {
-            LinkedList<HttpConnection> toClose = new LinkedList<HttpConnection>();
+            ArrayList<HttpConnection> toClose = new ArrayList<>();
             final long currentTime = System.currentTimeMillis();
             synchronized (idleConnections) {
                 final Iterator<HttpConnection> it = idleConnections.iterator();
@@ -1023,7 +1022,7 @@ class ServerImpl {
 
         // runs every TIMER_MILLIS
         public void run () {
-            LinkedList<HttpConnection> toClose = new LinkedList<HttpConnection>();
+            ArrayList<HttpConnection> toClose = new ArrayList<>();
             final long currentTime = System.currentTimeMillis();
             synchronized (reqConnections) {
                 if (MAX_REQ_TIME != -1) {
@@ -1040,7 +1039,7 @@ class ServerImpl {
                     }
                 }
             }
-            toClose = new LinkedList<HttpConnection>();
+            toClose = new ArrayList<>();
             synchronized (rspConnections) {
                 if (MAX_RSP_TIME != -1) {
                     for (HttpConnection c : rspConnections) {
