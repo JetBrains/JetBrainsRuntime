@@ -52,6 +52,7 @@
 #include "runtime/threadSMR.inline.hpp"
 #include "runtime/vmOperations.hpp"
 #include "services/threadService.hpp"
+#include "utilities/ticks.hpp"
 #include "javaCalls.hpp"
 #include "utilities/ticks.hpp"
 
