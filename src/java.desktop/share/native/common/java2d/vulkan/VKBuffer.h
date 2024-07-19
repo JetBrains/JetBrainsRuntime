@@ -26,21 +26,23 @@
 
 #ifndef VKBuffer_h_Included
 #define VKBuffer_h_Included
-#include <vulkan/vulkan.h>
 
-typedef struct {
+#include "VKTypes.h"
+
+struct VKBuffer {
     VkBuffer buffer;
     VkDeviceMemory memory;
     VkDeviceSize size;
-} VKBuffer;
+};
 
 VkResult VKBuffer_FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
                                  VkMemoryPropertyFlags properties, uint32_t* pMemoryType);
 
-VKBuffer* VKBuffer_Create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+VKBuffer* VKBuffer_Create(VKLogicalDevice* logicalDevice, VkDeviceSize size,
+                          VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 
-VKBuffer* VKBuffer_CreateFromData(void* vertices, VkDeviceSize bufferSize);
+VKBuffer* VKBuffer_CreateFromData(VKLogicalDevice* logicalDevice, void* vertices, VkDeviceSize bufferSize);
 
-void VKBuffer_free(VKBuffer* buffer);
+void VKBuffer_free(VKLogicalDevice* logicalDevice, VKBuffer* buffer);
 
 #endif // VKBuffer_h_Included
