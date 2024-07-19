@@ -27,8 +27,7 @@
 #ifndef VKVertex_h_Included
 #define VKVertex_h_Included
 
-#include <vulkan/vulkan.h>
-#include "VKBuffer.h"
+#include "VKTypes.h"
 
 #define RGBA_TO_L4(c)              \
     (((c) >> 16) & (0xFF))/255.0f, \
@@ -36,8 +35,8 @@
     ((c) & 0xFF)/255.0f,           \
     (((c) >> 24) & 0xFF)/255.0f
 
-#define ARRAY_TO_VERTEX_BUF(vertices)                                           \
-    VKBuffer_CreateFromData(vertices, ARRAY_SIZE(vertices)*sizeof (vertices[0]))
+#define ARRAY_TO_VERTEX_BUF(logicalDevice, vertices)                                           \
+    VKBuffer_CreateFromData(logicalDevice, vertices, ARRAY_SIZE(vertices)*sizeof (vertices[0]))
 
 typedef struct {
     VkVertexInputAttributeDescription *attributeDescriptions;
