@@ -19,9 +19,9 @@ void* CARR_array_realloc(CARR_array_t* vec, size_t new_capacity);
 /**
  * Allocate array
  * @param T type of elements
- * @param SIZE size of the array
+ * @param CAPACITY capacity of the array
  */
-#define ARRAY_ALLOC(T, SIZE) (T*)CARR_array_alloc(sizeof(T), SIZE)
+#define ARRAY_ALLOC(T, CAPACITY) (T*)CARR_array_alloc(sizeof(T), CAPACITY)
 
 
 #define ARRAY_T(P) (CARR_array_t *)((char*)P - offsetof(CARR_array_t, data))
