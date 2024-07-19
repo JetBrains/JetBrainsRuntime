@@ -29,25 +29,39 @@
 
 #include "j2d_md.h"
 #include "VKBase.h"
+#include "VKBuffer.h"
+#include "VKImage.h"
 #include "VKSurfaceData.h"
 
-VKRenderer* VKRenderer_CreateFillTexturePoly();
+struct VKRenderer {
+    VkRenderPass        renderPass;
+    VkDescriptorSetLayout descriptorSetLayout;
+    VkDescriptorPool    descriptorPool;
+    VkDescriptorSet     descriptorSets;
+    VkPipelineLayout    pipelineLayout;
+    VkPipeline          graphicsPipeline;
+};
 
-VKRenderer* VKRenderer_CreateFillColorPoly();
+VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice);
 
-VKRenderer* VKRenderer_CreateFillMaxColorPoly();
+VKRenderer* VKRenderer_CreateFillColorPoly(VKLogicalDevice* logicalDevice);
 
-void VKRenderer_BeginRendering();
-void VKRenderer_EndRendering(VkBool32 notifyRenderFinish, VkBool32 waitForDisplayImage);
-void VKRenderer_TextureRender(VKImage *destImage, VKImage *srcImage, VkBuffer vertexBuffer, uint32_t vertexNum);
-void VKRenderer_ColorRender(VKImage *destImage, uint32_t rgba, VkBuffer vertexBuffer, uint32_t vertexNum);
-void VKRenderer_ColorRenderMaxRect(VKImage *destImage, uint32_t rgba);
+VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKLogicalDevice* logicalDevice);
+
+void VKRenderer_BeginRendering(VKLogicalDevice* logicalDevice);
+void VKRenderer_EndRendering(VKLogicalDevice* logicalDevice, VkBool32 notifyRenderFinish, VkBool32 waitForDisplayImage);
+void VKRenderer_TextureRender(VKLogicalDevice* logicalDevice, VKImage *destImage, VKImage *srcImage, VkBuffer vertexBuffer, uint32_t vertexNum);
+void VKRenderer_ColorRender(VKLogicalDevice* logicalDevice, VKImage *destImage, uint32_t rgba, VkBuffer vertexBuffer, uint32_t vertexNum);
+void VKRenderer_ColorRenderMaxRect(VKLogicalDevice* logicalDevice, VKImage *destImage, uint32_t rgba);
 // fill ops
-void VKRenderer_FillRect(jint x, jint y, jint w, jint h);
-void VKRenderer_FillParallelogram(jint color, VKSDOps *dstOps,
+void VKRenderer_FillRect(VKLogicalDevice* logicalDevice, jint x, jint y, jint w, jint h);
+void VKRenderer_FillParallelogram(VKLogicalDevice* logicalDevice,
+                                  jint color, VKSDOps *dstOps,
                                   jfloat x11, jfloat y11,
                                   jfloat dx21, jfloat dy21,
                                   jfloat dx12, jfloat dy12);
-void VKRenderer_FillSpans(jint color, VKSDOps *dstOps, jint spanCount, jint *spans);
+void VKRenderer_FillSpans(VKLogicalDevice* logicalDevice, jint color, VKSDOps *dstOps, jint spanCount, jint *spans);
+
+jboolean VK_CreateLogicalDeviceRenderers(VKLogicalDevice* logicalDevice);
 
 #endif //VKRenderer_h_Included
