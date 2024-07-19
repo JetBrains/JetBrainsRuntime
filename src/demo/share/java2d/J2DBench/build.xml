@@ -39,12 +39,12 @@
   <property name="dist"  location="dist"/>
   <property name="resources"  location="resources"/>
 
-  <condition property="source" value="21">
+  <condition property="source" value="7">
      <not>
         <isset property="source"/>
      </not>
   </condition>
-  <condition property="target" value="21">
+  <condition property="target" value="7">
      <not>
         <isset property="target"/>
      </not>
