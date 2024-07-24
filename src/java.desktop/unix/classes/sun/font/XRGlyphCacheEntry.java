@@ -192,7 +192,7 @@ public class XRGlyphCacheEntry {
     }
 
     public Type getType() {
-        byte format = StrikeCache.unsafe.getByte(glyphInfoPtr + StrikeCache.formatOffset);
+        byte format = StrikeCache.getGlyphFormat(glyphInfoPtr);
         if (format == StrikeCache.PIXEL_FORMAT_GREYSCALE) {
             return Type.GRAYSCALE;
         } else if (format == StrikeCache.PIXEL_FORMAT_LCD) {
