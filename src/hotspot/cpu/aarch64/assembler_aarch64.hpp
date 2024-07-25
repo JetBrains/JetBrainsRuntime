@@ -505,7 +505,7 @@ class Address {
         if (size == 0) // It's a byte
           i->f(_ext.shift() >= 0, 12);
         else {
-          assert(_ext.shift() <= 0 || _ext.shift() == (int)size, "bad shift");
+          guarantee(_ext.shift() <= 0 || _ext.shift() == (int)size, "bad shift");
           i->f(_ext.shift() > 0, 12);
         }
         i->f(0b10, 11, 10);
