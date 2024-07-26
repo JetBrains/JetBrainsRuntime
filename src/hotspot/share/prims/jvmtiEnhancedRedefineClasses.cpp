@@ -242,10 +242,10 @@ void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {
   ScavengableNMethods::register_nmethod(nm);
 }
 
-void VM_EnhancedRedefineClasses::unregister_nmethod_g1(nmethod* nm) {
-  // It should work not only for G1 but also for another GCs, but this way is safer now
-  Universe::heap()->unregister_nmethod(nm);
-}
+//void VM_EnhancedRedefineClasses::unregister_nmethod_g1(nmethod* nm) {
+//  // It should work not only for G1 but also for another GCs, but this way is safer now
+//  Universe::heap()->unregister_nmethod(nm);
+//}
 
 void VM_EnhancedRedefineClasses::register_nmethod_g1(nmethod* nm) {
   // It should work not only for G1 but also for another GCs, but this way is safer now
@@ -612,7 +612,8 @@ void VM_EnhancedRedefineClasses::doit() {
       if (UseG1GC) {
         // G1 holds references to nmethods in regions based on oops values. Since oops in nmethod can be changed in ChangePointers* closures
         // we unregister nmethods from G1 heap, then closures are processed (oops are changed) and finally we register nmethod to G1 again
-        CodeCache::nmethods_do(unregister_nmethod_g1);
+        // CodeCache::nmethods_do(unregister_nmethod_g1);
+        G1CollectedHeap::heap()->bulk_unregister_nmethods();
       } else {
 #endif
         CodeCache::nmethods_do(mark_as_scavengable);
