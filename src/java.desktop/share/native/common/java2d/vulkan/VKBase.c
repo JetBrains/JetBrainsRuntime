@@ -24,18 +24,20 @@
  * questions.
  */
 
+#include <dlfcn.h>
 #include <malloc.h>
-#include <Trace.h>
+#include <string.h>
+#include <vulkan/vulkan.h>
+
 #include "jlong_md.h"
 #include "jvm_md.h"
 #include "jni_util.h"
+#include "CArrayUtil.h"
 #include "VKBase.h"
 #include "VKVertex.h"
 #include "VKRenderer.h"
-#include "CArrayUtil.h"
-#include <vulkan/vulkan.h>
-#include <dlfcn.h>
-#include <string.h>
+#include "VKTexturePool.h"
+#include <Trace.h>
 
 #define VULKAN_DLL JNI_LIB_NAME("vulkan")
 #define VULKAN_1_DLL VERSIONED_JNI_LIB_NAME("vulkan", "1")
@@ -80,6 +82,9 @@ static void vulkanLibClose() {
                     }
                     if (geInstance->devices[i].name != NULL) {
                         free(geInstance->devices[i].name);
+                    }
+                    if (geInstance->devices[i].texturePool != NULL) {
+                        VKTexturePool_Dispose(geInstance->devices[i].texturePool);
                     }
                     if (geInstance->devices[i].vkDestroyDevice != NULL && geInstance->devices[i].device != NULL) {
                         geInstance->devices[i].vkDestroyDevice(geInstance->devices[i].device, NULL);
@@ -801,6 +806,12 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
         return JNI_FALSE;
     }
     ARRAY_FREE(vertices);
+
+    logicalDevice->texturePool = VKTexturePool_initWithDevice(logicalDevice);
+    if (!logicalDevice->texturePool) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create texture pool");
+        return JNI_FALSE;
+    }
 
     geInstance->currentDevice = logicalDevice;
 
