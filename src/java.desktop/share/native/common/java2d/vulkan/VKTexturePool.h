@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,33 +24,36 @@
  * questions.
  */
 
-#ifndef MTLTexturePool_h_Included
-#define MTLTexturePool_h_Included
+#ifndef VKTexturePool_h_Included
+#define VKTexturePool_h_Included
 
-#import <Metal/Metal.h>
+#include "AccelTexturePool.h"
+#include "jni.h"
 
-@interface MTLPooledTextureHandle : NSObject
-    @property (readonly, assign) id<MTLTexture> texture;
-    @property (readonly) NSUInteger reqWidth;
-    @property (readonly) NSUInteger reqHeight;
 
-    // used by MTLCommandBufferWrapper.onComplete() to release used textures:
-    - (void) releaseTexture;
-@end
+/* VKTexturePoolHandle API */
+typedef ATexturePoolHandle VKTexturePoolHandle;
 
-// NOTE: owns all MTLTexture objects
-@interface MTLTexturePool : NSObject
-    @property (readwrite, retain) id<MTLDevice> device;
-    @property (readwrite) uint64_t memoryAllocated;
-    @property (readwrite) uint64_t totalMemoryAllocated;
-    @property (readwrite) uint32_t allocatedCount;
-    @property (readwrite) uint32_t totalAllocatedCount;
-    @property (readwrite) uint64_t cacheHits;
-    @property (readwrite) uint64_t totalHits;
+void VKTexturePoolHandle_ReleaseTexture(VKTexturePoolHandle *handle);
 
-    - (id) initWithDevice:(id<MTLDevice>)device;
+ATexturePrivPtr* VKTexturePoolHandle_GetTexture(VKTexturePoolHandle *handle);
 
-    - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format;
-@end
+jint VKTexturePoolHandle_GetRequestedWidth(VKTexturePoolHandle *handle);
+jint VKTexturePoolHandle_GetRequestedHeight(VKTexturePoolHandle *handle);
 
-#endif /* MTLTexturePool_h_Included */
+
+/* VKTexturePool API */
+typedef ATexturePool VKTexturePool;
+
+VKTexturePool* VKTexturePool_initWithDevice(VKLogicalDevice *device) ;
+
+void VKTexturePool_Dispose(VKTexturePool *pool);
+
+ATexturePoolLockWrapper* VKTexturePool_getLockWrapper(VKTexturePool *pool);
+
+VKTexturePoolHandle* VKTexturePool_getTexture(VKTexturePool *pool,
+                                        jint width,
+                                        jint height,
+                                        jlong format);
+
+#endif /* VKTexturePool_h_Included */
