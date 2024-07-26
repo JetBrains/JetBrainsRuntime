@@ -90,6 +90,8 @@ VKImage* VKImage_Create(VKLogicalDevice* logicalDevice,
 
     image->format = format;
     image->extent = (VkExtent2D) {width, height};
+    image->framebuffer = VK_NULL_HANDLE;
+    image->noImageDealloc = VK_FALSE;
 
     VkImageCreateInfo imageInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -202,18 +204,22 @@ void VKImage_dealloc(VKLogicalDevice* logicalDevice, VKImage* image) {
 
     if (image->framebuffer != VK_NULL_HANDLE) {
         logicalDevice->vkDestroyFramebuffer(logicalDevice->device, image->framebuffer, NULL);
+        image->framebuffer = VK_NULL_HANDLE;
     }
 
     if (image->view != VK_NULL_HANDLE) {
         logicalDevice->vkDestroyImageView(logicalDevice->device, image->view, NULL);
+        image->view = VK_NULL_HANDLE;
     }
 
     if (image->memory != VK_NULL_HANDLE) {
         logicalDevice->vkFreeMemory(logicalDevice->device, image->memory, NULL);
+        image->memory = VK_NULL_HANDLE;
     }
 
     if (image->image != VK_NULL_HANDLE && !image->noImageDealloc) {
         logicalDevice->vkDestroyImage(logicalDevice->device, image->image, NULL);
+        image->image = VK_NULL_HANDLE;
     }
 }
 
