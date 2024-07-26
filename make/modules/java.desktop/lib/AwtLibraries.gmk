@@ -431,6 +431,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/awt/debug \
         common/awt/systemscale \
         common/font \
+        common/java2d \
         common/java2d/wl \
         common/java2d/vulkan \
         common/wayland \
@@ -514,6 +515,7 @@ ifeq ($(call isTargetOs, macosx), true)
       $(LIBAWT_DEFAULT_HEADER_DIRS) \
       libawt_lwawt/awt \
       libawt_lwawt/font \
+      libawt_lwawt/java2d \
       libawt_lwawt/java2d/opengl \
       libawt_lwawt/java2d/metal \
       include \
