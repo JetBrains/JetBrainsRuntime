@@ -113,15 +113,15 @@ static PFN_vkGetInstanceProcAddr vulkanLibOpen() {
             pVulkanLib = dlopen(VULKAN_1_DLL, RTLD_NOW);
         }
         if (pVulkanLib == NULL) {
-            J2dRlsTrace1(J2D_TRACE_ERROR, "Failed to load %s\n", VULKAN_DLL)
+            J2dRlsTraceLn1(J2D_TRACE_ERROR, "Failed to load %s", VULKAN_DLL)
             return NULL;
         }
     }
 
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr) dlsym(pVulkanLib, "vkGetInstanceProcAddr");
     if (vkGetInstanceProcAddr == NULL) {
-        J2dRlsTrace1(J2D_TRACE_ERROR,
-                     "Failed to get proc address of vkGetInstanceProcAddr from %s\n", VULKAN_DLL)
+        J2dRlsTraceLn1(J2D_TRACE_ERROR,
+                     "Failed to get proc address of vkGetInstanceProcAddr from %s", VULKAN_DLL)
         vulkanLibClose();
         return NULL;
     }
@@ -182,17 +182,17 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
     uint32_t apiVersion = 0;
 
     if (geInstance->vkEnumerateInstanceVersion(&apiVersion) != VK_SUCCESS) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: unable to enumerate Vulkan instance version\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: unable to enumerate Vulkan instance version")
         return JNI_FALSE;
     }
 
-    J2dRlsTrace3(J2D_TRACE_INFO, "Vulkan: Available (%d.%d.%d)\n",
+    J2dRlsTraceLn3(J2D_TRACE_INFO, "Vulkan: Available (%d.%d.%d)",
                  VK_API_VERSION_MAJOR(apiVersion),
                  VK_API_VERSION_MINOR(apiVersion),
                  VK_API_VERSION_PATCH(apiVersion))
 
     if (apiVersion < REQUIRED_VULKAN_VERSION) {
-        J2dRlsTrace3(J2D_TRACE_ERROR, "Vulkan: Unsupported version. Required at least (%d.%d.%d)\n",
+        J2dRlsTraceLn3(J2D_TRACE_ERROR, "Vulkan: Unsupported version. Required at least (%d.%d.%d)",
                      VK_API_VERSION_MAJOR(REQUIRED_VULKAN_VERSION),
                      VK_API_VERSION_MINOR(REQUIRED_VULKAN_VERSION),
                      VK_API_VERSION_PATCH(REQUIRED_VULKAN_VERSION))
@@ -203,37 +203,37 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
     // Get the number of extensions and layers
     if (geInstance->vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, NULL) != VK_SUCCESS)
     {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceExtensionProperties fails\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceExtensionProperties fails")
         return JNI_FALSE;
     }
     VkExtensionProperties extensions[extensionsCount];
     if (geInstance->vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, extensions) != VK_SUCCESS)
     {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceExtensionProperties fails\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceExtensionProperties fails")
         return JNI_FALSE;
     }
 
     uint32_t layersCount;
     if (geInstance->vkEnumerateInstanceLayerProperties(&layersCount, NULL) != VK_SUCCESS)
     {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceLayerProperties fails\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceLayerProperties fails")
         return JNI_FALSE;
     }
     VkLayerProperties layers[layersCount];
     if (geInstance->vkEnumerateInstanceLayerProperties(&layersCount, layers) != VK_SUCCESS)
     {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceLayerProperties fails\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceLayerProperties fails")
         return JNI_FALSE;
     }
 
-    J2dRlsTrace(J2D_TRACE_VERBOSE, "    Supported instance layers:\n")
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported instance layers:")
     for (uint32_t i = 0; i < layersCount; i++) {
-        J2dRlsTrace1(J2D_TRACE_VERBOSE, "        %s\n", (char *) layers[i].layerName)
+        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "        %s", (char *) layers[i].layerName)
     }
 
-    J2dRlsTrace(J2D_TRACE_VERBOSE, "    Supported instance extensions:\n")
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported instance extensions:")
     for (uint32_t i = 0; i < extensionsCount; i++) {
-        J2dRlsTrace1(J2D_TRACE_VERBOSE, "        %s\n", (char *) extensions[i].extensionName)
+        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "        %s", (char *) extensions[i].extensionName)
     }
 
     pchar* enabledLayers = ARRAY_ALLOC(pchar, MAX_ENABLED_LAYERS);
@@ -254,7 +254,7 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
             }
         }
         if (notFound) {
-            J2dRlsTrace1(J2D_TRACE_ERROR, "Vulkan: Required extension %s not found\n", enabledExtensions[i])
+            J2dRlsTraceLn1(J2D_TRACE_ERROR, "Vulkan: Required extension %s not found", enabledExtensions[i])
             ARRAY_FREE(enabledLayers);
             ARRAY_FREE(enabledExtensions);
             return JNI_FALSE;
@@ -284,7 +284,7 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
             foundDebugLayer = 1;
             break;
         }
-        J2dRlsTrace1(J2D_TRACE_VERBOSE, "        %s\n", (char *) layers[i].layerName)
+        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "        %s", (char *) layers[i].layerName)
     }
     int foundDebugExt = 0;
     for (uint32_t i = 0; i < extensionsCount; i++) {
@@ -299,7 +299,7 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
         ARRAY_PUSH_BACK(&enabledExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         pNext = &features;
     } else {
-        J2dRlsTrace2(J2D_TRACE_WARNING, "Vulkan: %s and %s are not supported\n",
+        J2dRlsTraceLn2(J2D_TRACE_WARNING, "Vulkan: %s and %s are not supported",
                    VALIDATION_LAYER_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
     }
 #endif
@@ -325,12 +325,12 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
     };
 
     if (geInstance->vkCreateInstance(&instanceCreateInfo, NULL, &geInstance->vkInstance) != VK_SUCCESS) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: Failed to create Vulkan instance\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Failed to create Vulkan instance")
         ARRAY_FREE(enabledLayers);
         ARRAY_FREE(enabledExtensions);
         return JNI_FALSE;
     } else {
-        J2dRlsTrace(J2D_TRACE_INFO, "Vulkan: Instance Created\n")
+        J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Instance Created")
     }
     ARRAY_FREE(enabledLayers);
     ARRAY_FREE(enabledExtensions);
@@ -371,7 +371,7 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
         };
         if (geInstance->vkCreateDebugUtilsMessengerEXT(geInstance->vkInstance, &debugUtilsMessengerCreateInfo,
                                                        NULL, &geInstance->debugMessenger) != VK_SUCCESS) {
-            J2dRlsTrace(J2D_TRACE_WARNING, "Vulkan: Failed to create debug messenger\n")
+            J2dRlsTraceLn(J2D_TRACE_WARNING, "Vulkan: Failed to create debug messenger")
         }
     }
 
@@ -386,20 +386,20 @@ static jboolean VK_FindDevices() {
                                                &physicalDevicesCount,
                                                NULL) != VK_SUCCESS)
     {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: vkEnumeratePhysicalDevices fails\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: vkEnumeratePhysicalDevices fails")
         return JNI_FALSE;
     }
 
     if (physicalDevicesCount == 0) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: Failed to find GPUs with Vulkan support\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Failed to find GPUs with Vulkan support")
         return JNI_FALSE;
     } else {
-        J2dRlsTrace1(J2D_TRACE_INFO, "Vulkan: Found %d physical devices:\n", physicalDevicesCount)
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "Vulkan: Found %d physical devices:", physicalDevicesCount)
     }
 
     geInstance->physicalDevices = ARRAY_ALLOC(VkPhysicalDevice, physicalDevicesCount);
     if (geInstance->physicalDevices == NULL) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VkPhysicalDevice\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VkPhysicalDevice")
         return JNI_FALSE;
     }
 
@@ -408,13 +408,13 @@ static jboolean VK_FindDevices() {
             &physicalDevicesCount,
             geInstance->physicalDevices) != VK_SUCCESS)
     {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: vkEnumeratePhysicalDevices fails\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: vkEnumeratePhysicalDevices fails")
         return JNI_FALSE;
     }
 
     geInstance->devices = ARRAY_ALLOC(VKLogicalDevice, physicalDevicesCount);
     if (geInstance->devices == NULL) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VKLogicalDevice\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VKLogicalDevice")
         return JNI_FALSE;
     }
 
@@ -441,15 +441,15 @@ static jboolean VK_FindDevices() {
                      physicalDeviceTypeString(deviceProperties2.properties.deviceType))
 
         if (!deviceFeatures2.features.logicOp) {
-            J2dRlsTrace(J2D_TRACE_INFO, " - hasLogicOp not supported, skipped \n")
+            J2dRlsTraceLn(J2D_TRACE_INFO, " - hasLogicOp not supported, skipped")
             continue;
         }
 
         if (!device12Features.timelineSemaphore) {
-            J2dRlsTrace(J2D_TRACE_INFO, " - hasTimelineSemaphore not supported, skipped \n")
+            J2dRlsTraceLn(J2D_TRACE_INFO, " - hasTimelineSemaphore not supported, skipped")
             continue;
         }
-        J2dRlsTrace(J2D_TRACE_INFO, "\n")
+        J2dRlsTraceLn(J2D_TRACE_INFO, "")
 
         uint32_t queueFamilyCount = 0;
         geInstance->vkGetPhysicalDeviceQueueFamilyProperties(
@@ -458,7 +458,7 @@ static jboolean VK_FindDevices() {
         VkQueueFamilyProperties *queueFamilies = (VkQueueFamilyProperties*)calloc(queueFamilyCount,
                                                                                   sizeof(VkQueueFamilyProperties));
         if (queueFamilies == NULL) {
-            J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VkQueueFamilyProperties\n")
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VkQueueFamilyProperties")
             return JNI_FALSE;
         }
 
@@ -482,7 +482,7 @@ static jboolean VK_FindDevices() {
                     '-'
 #endif
             };
-            J2dRlsTrace3(J2D_TRACE_INFO, "    %d queues in family (%.*s)\n", queueFamilies[j].queueCount, 5,
+            J2dRlsTraceLn3(J2D_TRACE_INFO, "    %d queues in family (%.*s)", queueFamilies[j].queueCount, 5,
                          logFlags)
 
             // TODO use compute workloads? Separate transfer-only DMA queue?
@@ -496,7 +496,7 @@ static jboolean VK_FindDevices() {
         }
         free(queueFamilies);
         if (queueFamily == -1) {
-            J2dRlsTrace(J2D_TRACE_INFO, "    --------------------- Suitable queue not found, skipped \n")
+            J2dRlsTraceLn(J2D_TRACE_INFO, "    --------------------- Suitable queue not found, skipped")
             continue;
         }
 
@@ -504,14 +504,14 @@ static jboolean VK_FindDevices() {
         geInstance->vkEnumerateDeviceLayerProperties(geInstance->physicalDevices[i], &layerCount, NULL);
         VkLayerProperties *layers = (VkLayerProperties *) calloc(layerCount, sizeof(VkLayerProperties));
         if (layers == NULL) {
-            J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VkLayerProperties\n")
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VkLayerProperties")
             return JNI_FALSE;
         }
 
         geInstance->vkEnumerateDeviceLayerProperties(geInstance->physicalDevices[i], &layerCount, layers);
-        J2dRlsTrace(J2D_TRACE_VERBOSE, "    Supported device layers:\n")
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device layers:")
         for (uint32_t j = 0; j < layerCount; j++) {
-            J2dRlsTrace1(J2D_TRACE_VERBOSE, "        %s\n", (char *) layers[j].layerName)
+            J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "        %s", (char *) layers[j].layerName)
         }
 
         uint32_t extensionCount;
@@ -519,40 +519,40 @@ static jboolean VK_FindDevices() {
         VkExtensionProperties *extensions = (VkExtensionProperties *) calloc(
                 extensionCount, sizeof(VkExtensionProperties));
         if (extensions == NULL) {
-            J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VkExtensionProperties\n")
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VkExtensionProperties")
             return JNI_FALSE;
         }
 
         geInstance->vkEnumerateDeviceExtensionProperties(
                 geInstance->physicalDevices[i], NULL, &extensionCount, extensions);
-        J2dRlsTrace(J2D_TRACE_VERBOSE, "    Supported device extensions:\n")
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device extensions:")
         VkBool32 hasSwapChain = VK_FALSE;
         for (uint32_t j = 0; j < extensionCount; j++) {
-            J2dRlsTrace1(J2D_TRACE_VERBOSE, "        %s\n", (char *) extensions[j].extensionName)
+            J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "        %s", (char *) extensions[j].extensionName)
             hasSwapChain = hasSwapChain ||
                            strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, extensions[j].extensionName) == 0;
         }
         free(extensions);
-        J2dRlsTrace(J2D_TRACE_VERBOSE, "    Found:\n")
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Found:")
         if (hasSwapChain) {
-            J2dRlsTrace(J2D_TRACE_VERBOSE, "    VK_KHR_SWAPCHAIN_EXTENSION_NAME\n")
+            J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    VK_KHR_SWAPCHAIN_EXTENSION_NAME")
         }
 
         if (!hasSwapChain) {
-            J2dRlsTrace(J2D_TRACE_INFO,
-                        "    --------------------- Required VK_KHR_SWAPCHAIN_EXTENSION_NAME not found, skipped \n")
+            J2dRlsTraceLn(J2D_TRACE_INFO,
+                        "    --------------------- Required VK_KHR_SWAPCHAIN_EXTENSION_NAME not found, skipped")
             continue;
         }
 
         pchar* deviceEnabledLayers = ARRAY_ALLOC(pchar, MAX_ENABLED_LAYERS);
         if (deviceEnabledLayers == NULL) {
-            J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: Cannot allocate deviceEnabledLayers array\n")
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate deviceEnabledLayers array")
             return JNI_FALSE;
         }
 
         pchar* deviceEnabledExtensions = ARRAY_ALLOC(pchar, MAX_ENABLED_EXTENSIONS);
         if (deviceEnabledExtensions == NULL) {
-            J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: Cannot allocate deviceEnabledExtensions array\n")
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate deviceEnabledExtensions array")
             return JNI_FALSE;
         }
 
@@ -569,13 +569,13 @@ static jboolean VK_FindDevices() {
                 }
             }
             if (validationLayerNotSupported) {
-                J2dRlsTrace1(J2D_TRACE_INFO, "    %s device layer is not supported\n", VALIDATION_LAYER_NAME)
+                J2dRlsTraceLn1(J2D_TRACE_INFO, "    %s device layer is not supported", VALIDATION_LAYER_NAME)
             }
 #endif
         free(layers);
         char* deviceName = strdup(deviceProperties2.properties.deviceName);
         if (deviceName == NULL) {
-            J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: Cannot duplicate deviceName\n")
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot duplicate deviceName")
             return JNI_FALSE;
         }
 
@@ -590,7 +590,7 @@ static jboolean VK_FindDevices() {
         }));
     }
     if (ARRAY_SIZE(geInstance->devices) == 0) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "No compatible device found\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "No compatible device found")
         return JNI_FALSE;
     }
     return JNI_TRUE;
@@ -601,7 +601,7 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
         return JNI_TRUE;
     }
     if (geInstance == NULL) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: VKGraphicsEnvironment is not initialized\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: VKGraphicsEnvironment is not initialized")
         return JNI_FALSE;
     }
     if (verbose) {
@@ -637,12 +637,12 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
 
     if (geInstance->vkCreateDevice(logicalDevice->physicalDevice, &createInfo, NULL, &logicalDevice->device) != VK_SUCCESS)
     {
-        J2dRlsTrace1(J2D_TRACE_ERROR, "Cannot create device:\n    %s\n", logicalDevice->name)
+        J2dRlsTraceLn1(J2D_TRACE_ERROR, "Cannot create device:\n    %s", logicalDevice->name)
         vulkanLibClose();
         return JNI_FALSE;
     }
     VkDevice device = logicalDevice->device;
-    J2dRlsTrace1(J2D_TRACE_INFO, "Logical device (%s) created\n", logicalDevice->name)
+    J2dRlsTraceLn1(J2D_TRACE_INFO, "Logical device (%s) created", logicalDevice->name)
 
 #define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, logicalDevice, device, NAME)
     DEVICE_PROC(vkDestroyDevice);
@@ -753,7 +753,7 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
     ARRAY_PUSH_BACK(&vertices, ((VKTxVertex){1.0f, 1.0f, 1.0f, 1.0f}));
     logicalDevice->blitVertexBuffer = ARRAY_TO_VERTEX_BUF(logicalDevice, vertices);
     if (!logicalDevice->blitVertexBuffer) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create vertex buffer\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create vertex buffer")
         return JNI_FALSE;
     }
     ARRAY_FREE(vertices);
@@ -781,7 +781,7 @@ Java_sun_java2d_vulkan_VKInstance_initNative(JNIEnv *env, jclass wlge, jlong nat
     }
     geInstance = (VKGraphicsEnvironment*)malloc(sizeof(VKGraphicsEnvironment));
     if (geInstance == NULL) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VKGraphicsEnvironment\n")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VKGraphicsEnvironment")
         vulkanLibClose();
         return JNI_FALSE;
     }

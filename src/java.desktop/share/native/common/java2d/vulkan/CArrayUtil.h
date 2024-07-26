@@ -51,12 +51,30 @@ void* CARR_array_realloc(CARR_array_t* vec, size_t new_capacity);
 #define ARRAY_FREE(P) free(ARRAY_T(P))
 
 /**
- * Apply function to the vector
+ * Apply function to the array elements
  * @param P pointer to the first data element of the array
  * @param F function to apply
  */
-#define ARRAY_APPLY(P, F) do {                            \
+#define ARRAY_APPLY(P, F) do {                                   \
     for (uint32_t _i = 0; _i < ARRAY_SIZE(P); _i++) F(&(P[_i])); \
+} while(0)
+
+/**
+ * Apply function to the array elements, passing pointer to an element as first parameter
+ * @param P pointer to the first data element of the array
+ * @param F function to apply
+ */
+#define ARRAY_APPLY_LEADING(P, F, ...) do {                                   \
+    for (uint32_t _i = 0; _i < ARRAY_SIZE(P); _i++) F(&(P[_i]), __VA_ARGS__); \
+} while(0)
+
+/**
+ * Apply function to the array elements, passing pointer to an element as last parameter
+ * @param P pointer to the first data element of the array
+ * @param F function to apply
+ */
+#define ARRAY_APPLY_TRAILING(P, F, ...) do {                                  \
+    for (uint32_t _i = 0; _i < ARRAY_SIZE(P); _i++) F(__VA_ARGS__, &(P[_i])); \
 } while(0)
 
 /**

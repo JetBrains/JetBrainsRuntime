@@ -182,13 +182,13 @@ VKImage* VKImage_CreateImageArrayFromSwapChain(VKLogicalDevice* logicalDevice,
         }));
 
         if (!VKImage_CreateView(logicalDevice, &ARRAY_LAST(images))) {
-            for (uint32_t j = 0; j < ARRAY_SIZE(images); j++) VKImage_dealloc(logicalDevice, &(images[j]));
+            ARRAY_APPLY_TRAILING(images, VKImage_dealloc, logicalDevice);
             ARRAY_FREE(images);
             return NULL;
         }
 
         if (!VKImage_CreateFramebuffer(logicalDevice, &ARRAY_LAST(images), renderPass)) {
-            for (uint32_t j = 0; j < ARRAY_SIZE(images); j++) VKImage_dealloc(logicalDevice, &(images[j]));
+            ARRAY_APPLY_TRAILING(images, VKImage_dealloc, logicalDevice);
             ARRAY_FREE(images);
             return NULL;
         }
