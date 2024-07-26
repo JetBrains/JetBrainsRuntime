@@ -27,6 +27,7 @@
 #ifndef VKBase_h_Included
 #define VKBase_h_Included
 #include "VKTypes.h"
+#include "VKTexturePool.h"
 
 struct VKLogicalDevice {
     VkDevice            device;
@@ -48,6 +49,7 @@ struct VKLogicalDevice {
     VkSampler           textureSampler;
     VKBuffer*           blitVertexBuffer;
     VkRenderPass        renderPass;
+    VKTexturePool*      texturePool;
 
     PFN_vkDestroyDevice vkDestroyDevice;
     PFN_vkCreateShaderModule vkCreateShaderModule;
