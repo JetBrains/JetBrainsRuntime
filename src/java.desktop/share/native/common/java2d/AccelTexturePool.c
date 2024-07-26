@@ -63,7 +63,7 @@
 #define TRACE_USE_API               0
 #define TRACE_REUSE                 0
 
-#define INIT_TEST                   0
+#define INIT_TEST                   1
 #define INIT_TEST_STEP              1
 #define INIT_TEST_MAX               1024
 
