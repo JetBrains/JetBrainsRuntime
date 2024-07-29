@@ -126,4 +126,14 @@ public class RawHtml extends Content {
         out.write(rawHtmlContent);
         return rawHtmlContent.endsWith(DocletConstants.NL);
     }
+
+    /**
+     * Creates HTML for the end of an element.
+     *
+     * @param name the name of the element
+     * @return the HTML
+     */
+    public static RawHtml endElement(CharSequence name) {
+        return new RawHtml("</" + name + ">");
+    }
 }
