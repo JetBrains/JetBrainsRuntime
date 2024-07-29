@@ -375,6 +375,9 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
 #ifdef LOG_KEY_EVENTS
     debugPrintNSEvent(event, "keyDown");
 #endif
+    // Check for willBeHandledByComplexInputMethod here, because interpretKeyEvents might invalidate that field
+    bool isPressAndHold = fEnablePressAndHold && [event willBeHandledByComplexInputMethod] && fInputMethodLOCKABLE;
+
     fProcessingKeystroke = YES;
     fKeyEventsNeeded = ![(NSString *)kbdLayout containsString:@KEYMAN_LAYOUT];
 
@@ -392,8 +395,7 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
         [self interpretKeyEvents:[NSArray arrayWithObject:event]];
     }
 
-    if (fEnablePressAndHold && [event willBeHandledByComplexInputMethod] &&
-        fInputMethodLOCKABLE)
+    if (isPressAndHold)
     {
         BOOL skipProcessingCancelKeys = YES;
         fProcessingKeystroke = NO;
