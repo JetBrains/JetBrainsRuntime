@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019, 2021, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -546,7 +547,7 @@ ShenandoahConcurrentNMethodIterator::ShenandoahConcurrentNMethodIterator(Shenand
 }
 
 void ShenandoahConcurrentNMethodIterator::nmethods_do_begin() {
-  assert(CodeCache_lock->owned_by_self(), "Lock must be held");
+  MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
   _table_snapshot = _table->snapshot_for_iteration();
 }
 
@@ -556,7 +557,7 @@ void ShenandoahConcurrentNMethodIterator::nmethods_do(NMethodClosure* cl) {
 }
 
 void ShenandoahConcurrentNMethodIterator::nmethods_do_end() {
-  assert(CodeCache_lock->owned_by_self(), "Lock must be held");
+  MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
   _table->finish_iteration(_table_snapshot);
   CodeCache_lock->notify_all();
 }
