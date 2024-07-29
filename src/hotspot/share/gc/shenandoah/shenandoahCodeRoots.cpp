@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2017, 2021, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -163,12 +164,10 @@ public:
     AbstractGangTask("Shenandoah Disarm NMethods"),
     _iterator(ShenandoahCodeRoots::table()) {
     assert(SafepointSynchronize::is_at_safepoint(), "Only at a safepoint");
-    MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     _iterator.nmethods_do_begin();
   }
 
   ~ShenandoahDisarmNMethodsTask() {
-    MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     _iterator.nmethods_do_end();
   }
 
@@ -270,12 +269,10 @@ public:
     _cl(unloading_occurred),
     _verifier(verifier),
     _iterator(ShenandoahCodeRoots::table()) {
-    MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     _iterator.nmethods_do_begin();
   }
 
   ~ShenandoahUnlinkTask() {
-    MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     _iterator.nmethods_do_end();
   }
 
@@ -330,12 +327,10 @@ public:
     AbstractGangTask("Shenandoah Purge NMethods"),
     _cl(),
     _iterator(ShenandoahCodeRoots::table()) {
-    MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     _iterator.nmethods_do_begin();
   }
 
   ~ShenandoahNMethodPurgeTask() {
-    MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     _iterator.nmethods_do_end();
   }
 
