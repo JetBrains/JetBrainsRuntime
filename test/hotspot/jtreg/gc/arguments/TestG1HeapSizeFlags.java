@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,10 @@ package gc.arguments;
 
 /*
  * @test TestG1HeapSizeFlags
- * @key gc
  * @bug 8006088
- * @requires vm.gc.G1
  * @summary Tests argument processing for initial and maximum heap size for the G1 collector
+ * @key gc flag-sensitive
+ * @requires vm.gc.G1 & vm.opt.x.Xmx == null & vm.opt.x.Xms == null & vm.opt.MinHeapSize == null & vm.opt.MaxHeapSize == null & vm.opt.InitialHeapSize == null
  * @library /test/lib
  * @library /
  * @modules java.base/jdk.internal.misc
