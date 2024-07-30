@@ -196,7 +196,8 @@ Specifies the location of module dependence for generating the hash.
 .RE
 .TP
 .B \f[CB]\@\f[R]\f[I]file\f[R]
-Reads \f[CB]jar\f[R] options and file names from a text file.
+Reads \f[CB]jar\f[R] options and file names from a text file as if they
+were supplied on the command line
 .RS
 .RE
 .SH OPERATION MODIFIERS VALID ONLY IN CREATE, UPDATE, AND
@@ -339,8 +340,15 @@ class files from the file \f[CB]classes.list\f[R].
 To shorten or simplify the \f[CB]jar\f[R] command, you can specify
 arguments in a separate text file and pass it to the \f[CB]jar\f[R]
 command with the at sign (\f[CB]\@\f[R]) as a prefix.
+
+To shorten or simplify the \f[CB]jar\f[R] command, you can provide an arg
+file that lists the files to include in the JAR file and pass it to the
+\f[CB]jar\f[R] command with the at sign (\f[CB]\@\f[R]) as a prefix.
 .RS
 .PP
 \f[CB]jar\ \-\-create\ \-\-file\ my.jar\ \@classes.list\f[R]
 .RE
+.PP
+If one or more entries in the arg file cannot be found then the jar
+command fails without creating the JAR file.
 .RE
