@@ -1186,7 +1186,7 @@ public class WLComponentPeer implements ComponentPeer {
 
             if (axisValueForVerticalMWE != 0) {
                 // Making sure the scroll event will be in a vertical direction
-                final var modifiersExcludingShift = newInputState.getModifiers() & ~(KeyEvent.SHIFT_DOWN_MASK);
+                final var modifiersExcludingShift = newInputState.getModifiers() & ~KeyEvent.SHIFT_DOWN_MASK;
 
                 final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
                         MouseEvent.MOUSE_WHEEL,
@@ -1203,7 +1203,7 @@ public class WLComponentPeer implements ComponentPeer {
             }
             if (axisValueForHorizontalMWE != 0) {
                 // Making sure the scroll event will be in a horizontal direction
-                final var modifiersPlusShift = newInputState.getModifiers() | (KeyEvent.SHIFT_DOWN_MASK);
+                final var modifiersPlusShift = newInputState.getModifiers() | KeyEvent.SHIFT_DOWN_MASK;
 
                 final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
                         MouseEvent.MOUSE_WHEEL,
