@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022-2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022-2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,8 +58,12 @@ class WLPointerEvent {
     private int     buttonCode; // pointer button code corresponding to PointerButtonCodes.linuxCode
     private boolean isButtonPressed; // true if button was pressed, false if released
 
-    private boolean axis_0_valid; // is vertical scroll included in this event?
-    private int     axis_0_value; // "length of vector in surface-local coordinate space" (source: wayland.xml)
+    private boolean axis_vertical_valid; // is vertical scroll included in this event?
+    private int     axis_vertical_value; // "length of vector in surface-local coordinate space" (source: wayland.xml)
+
+    private boolean axis_horizontal_valid; // is horizontal scroll included in this event?
+    private int     axis_horizontal_value; // "length of vector in surface-local coordinate space" (source: wayland.xml)
+
 
     private WLPointerEvent() {}
 
@@ -241,14 +245,24 @@ class WLPointerEvent {
         return isButtonPressed;
     }
 
-    public boolean getIsAxis0Valid() {
+    public boolean getIsVerticalAxisValid() {
         assert hasAxisEvent();
-        return axis_0_valid;
+        return axis_vertical_valid;
     }
 
-    public int getAxis0Value() {
+    public int getVerticalAxisValue() {
+        assert getIsVerticalAxisValid();
+        return axis_vertical_value;
+    }
+
+    public boolean getIsHorizontalAxisValid() {
         assert hasAxisEvent();
-        return axis_0_value;
+        return axis_horizontal_valid;
+    }
+
+    public int getHorizontalAxisValue() {
+        assert getIsHorizontalAxisValid();
+        return axis_horizontal_value;
     }
 
     @Override
@@ -283,9 +297,12 @@ class WLPointerEvent {
         }
 
         if (hasAxisEvent()) {
-            builder.append("axis");
-            if (axis_0_valid) {
-                builder.append("vertical-scroll: ").append(axis_0_value).append(" ");
+            builder.append(" axis");
+            if (getIsVerticalAxisValid()) {
+                builder.append(" vertical-scroll: ").append(getVerticalAxisValue());
+            }
+            if (getIsHorizontalAxisValid()) {
+                builder.append(" horizontal-scroll: ").append(getHorizontalAxisValue());
             }
         }
 

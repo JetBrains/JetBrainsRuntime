@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022-2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022-2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,8 +110,10 @@ static jfieldID surfaceXFID;
 static jfieldID surfaceYFID;
 static jfieldID buttonCodeFID;
 static jfieldID isButtonPressedFID;
-static jfieldID axis_0_validFID;
-static jfieldID axis_0_valueFID;
+static jfieldID axis_vertical_validFID;
+static jfieldID axis_vertical_valueFID;
+static jfieldID axis_horizontal_validFID;
+static jfieldID axis_horizontal_valueFID;
 
 static jmethodID dispatchKeyboardKeyEventMID;
 static jmethodID dispatchKeyboardModifiersEventMID;
@@ -156,6 +158,13 @@ struct pointer_event_cumulative {
     uint32_t   button;
     uint32_t   state;
 
+    /**
+     * axes[i] corresponds to a `wl_pointer::axis` event with the `axis` parameter set to i, i.e.
+     * - axes[0] corresponds to a `wl_pointer::axis` event of the
+     *   0 == `wl_pointer_axis::WL_POINTER_AXIS_VERTICAL_SCROLL` axis,
+     * - axes[1] corresponds to a `wl_pointer::axis` event of the
+     *   1 == `wl_pointer_axis::WL_POINTER_AXIS_HORIZONTAL_SCROLL` axis
+     */
     struct {
         bool       valid;
         wl_fixed_t value;
@@ -279,8 +288,15 @@ fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
     (*env)->SetBooleanField(env, pointerEventRef, isButtonPressedFID,
                             (pointer_event.state == WL_POINTER_BUTTON_STATE_PRESSED));
 
-    (*env)->SetBooleanField(env, pointerEventRef, axis_0_validFID, pointer_event.axes[0].valid);
-    (*env)->SetIntField(env, pointerEventRef, axis_0_valueFID, wl_fixed_to_int(pointer_event.axes[0].value));
+    (*env)->SetBooleanField(env, pointerEventRef, axis_vertical_validFID,
+                            pointer_event.axes[WL_POINTER_AXIS_VERTICAL_SCROLL].valid);
+    (*env)->SetIntField(env, pointerEventRef, axis_vertical_valueFID,
+                        wl_fixed_to_int(pointer_event.axes[WL_POINTER_AXIS_VERTICAL_SCROLL].value));
+
+    (*env)->SetBooleanField(env, pointerEventRef, axis_horizontal_validFID,
+                            pointer_event.axes[WL_POINTER_AXIS_HORIZONTAL_SCROLL].valid);
+    (*env)->SetIntField(env, pointerEventRef, axis_horizontal_valueFID,
+                        wl_fixed_to_int(pointer_event.axes[WL_POINTER_AXIS_HORIZONTAL_SCROLL].value));
 }
 
 static void
@@ -634,8 +650,10 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(surfaceYFID = (*env)->GetFieldID(env, pointerEventClass, "surface_y", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(buttonCodeFID = (*env)->GetFieldID(env, pointerEventClass, "buttonCode", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(isButtonPressedFID = (*env)->GetFieldID(env, pointerEventClass, "isButtonPressed", "Z"), JNI_FALSE);
-    CHECK_NULL_RETURN(axis_0_validFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_valid", "Z"), JNI_FALSE);
-    CHECK_NULL_RETURN(axis_0_valueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_value", "I"), JNI_FALSE);
+    CHECK_NULL_RETURN(axis_vertical_validFID = (*env)->GetFieldID(env, pointerEventClass, "axis_vertical_valid", "Z"), JNI_FALSE);
+    CHECK_NULL_RETURN(axis_vertical_valueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_vertical_value", "I"), JNI_FALSE);
+    CHECK_NULL_RETURN(axis_horizontal_validFID = (*env)->GetFieldID(env, pointerEventClass, "axis_horizontal_valid", "Z"), JNI_FALSE);
+    CHECK_NULL_RETURN(axis_horizontal_valueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_horizontal_value", "I"), JNI_FALSE);
 
     CHECK_NULL_RETURN(dispatchKeyboardEnterEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                 "dispatchKeyboardEnterEvent",

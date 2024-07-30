@@ -1152,19 +1152,72 @@ public class WLComponentPeer implements ComponentPeer {
             }
         }
 
-        if (e.hasAxisEvent() && e.getIsAxis0Valid()) {
-            final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
-                    MouseEvent.MOUSE_WHEEL,
-                    timestamp,
-                    newInputState.getModifiers(),
-                    x, y,
-                    xAbsolute, yAbsolute,
-                    1,
-                    isPopupTrigger,
-                    MouseWheelEvent.WHEEL_UNIT_SCROLL,
-                    1,
-                    Integer.signum(e.getAxis0Value()) * WHEEL_SCROLL_AMOUNT);
-            postMouseEvent(mouseEvent);
+        if (e.hasAxisEvent()) {
+            // macOS's and Windows' AWT implement the following logic, so do we:
+            //   Shift + a vertical scroll means a horizontal scroll.
+            // AWT/Swing components are also aware of it.
+
+            final boolean isShiftPressed = ( (newInputState.getModifiers() & KeyEvent.SHIFT_DOWN_MASK) != 0 );
+
+            final int verticalAxisValue = e.getIsVerticalAxisValid() ? e.getVerticalAxisValue() : 0;
+            final int horizontalAxisValue = e.getIsHorizontalAxisValid() ? e.getHorizontalAxisValue() : 0;
+
+            final int axisValueForVerticalMWE;
+            final int axisValueForHorizontalMWE;
+            if (isShiftPressed) {
+                // Pressing Shift makes only a horizontal scrolling MW event possible
+                axisValueForVerticalMWE = 0;
+
+                if (Integer.signum(verticalAxisValue) == Integer.signum(horizontalAxisValue)) {
+                    // Both values point to the same direction of scrolling.
+                    // Let's pick the more influencing one.
+                    axisValueForHorizontalMWE = Math.abs(verticalAxisValue) > Math.abs(horizontalAxisValue)
+                                                ? verticalAxisValue
+                                                : horizontalAxisValue;
+                } else {
+                    // The values point to the opposite directions of scrolling.
+                    // I think consistently choosing the vertical value (unless it's zero) provides the most expected behavior here.
+                    axisValueForHorizontalMWE = (verticalAxisValue == 0) ? horizontalAxisValue : verticalAxisValue;
+                }
+            } else {
+                axisValueForVerticalMWE = verticalAxisValue;
+                axisValueForHorizontalMWE = horizontalAxisValue;
+            }
+
+            if (axisValueForVerticalMWE != 0) {
+                // Making sure the scroll event will be in a vertical direction
+                final var modifiersExcludingShift = newInputState.getModifiers() & ~(KeyEvent.SHIFT_DOWN_MASK);
+
+                final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
+                        MouseEvent.MOUSE_WHEEL,
+                        timestamp,
+                        modifiersExcludingShift,
+                        x, y,
+                        xAbsolute, yAbsolute,
+                        1,
+                        isPopupTrigger,
+                        MouseWheelEvent.WHEEL_UNIT_SCROLL,
+                        1,
+                        Integer.signum(axisValueForVerticalMWE) * WHEEL_SCROLL_AMOUNT);
+                postMouseEvent(mouseEvent);
+            }
+            if (axisValueForHorizontalMWE != 0) {
+                // Making sure the scroll event will be in a horizontal direction
+                final var modifiersPlusShift = newInputState.getModifiers() | (KeyEvent.SHIFT_DOWN_MASK);
+
+                final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
+                        MouseEvent.MOUSE_WHEEL,
+                        timestamp,
+                        modifiersPlusShift,
+                        x, y,
+                        xAbsolute, yAbsolute,
+                        1,
+                        isPopupTrigger,
+                        MouseWheelEvent.WHEEL_UNIT_SCROLL,
+                        1,
+                        Integer.signum(axisValueForHorizontalMWE) * WHEEL_SCROLL_AMOUNT);
+                postMouseEvent(mouseEvent);
+            }
         }
 
         if (e.hasMotionEvent()) {
