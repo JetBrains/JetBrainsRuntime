@@ -77,4 +77,18 @@ inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
  */
 Color VKUtil_DecodeJavaColor(uint32_t color);
 
+/*
+ * The following macros allow the caller to return (or continue) if the
+ * provided value is NULL.  (The strange else clause is included below to
+ * allow for a trailing ';' after RETURN/CONTINUE_IF_NULL() invocations.)
+ */
+#define ACT_IF_NULL(ACTION, value)         \
+    if ((value) == NULL) {                 \
+        J2dTraceLn1(J2D_TRACE_ERROR,       \
+                    "%s is null", #value); \
+        ACTION;                            \
+    } else do { } while (0)
+#define RETURN_IF_NULL(value)   ACT_IF_NULL(return, value)
+#define CONTINUE_IF_NULL(value) ACT_IF_NULL(continue, value)
+
 #endif //VKUtil_h_Included

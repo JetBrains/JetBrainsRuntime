@@ -29,13 +29,97 @@
 
 #include "VKTypes.h"
 #include "VKPipelines.h"
+#include "VKBuffer.h"
 
 struct VKRenderingContext {
     VKSDOps* surface;
     Color color;
+    VKTransform transform;
 };
 
+/**
+ * Pool of resources with associated timestamps, guarding their reuse.
+ * The pool must only be manipulated via POOL_* macros.
+ */
+#define POOL(TYPE, NAME)    \
+struct PoolEntry_ ## NAME { \
+    uint64_t timestamp;     \
+    TYPE value;             \
+} *NAME
+
+
+/**
+ * Renderer attached to device.
+ */
+struct VKRenderer {
+    VKDevice*          device;
+    VKPipelineContext* pipelineContext;
+
+    POOL(VkCommandBuffer, commandBufferPool);
+    POOL(VkCommandBuffer, secondaryCommandBufferPool);
+    POOL(VkSemaphore,     semaphorePool);
+    POOL(VKBuffer,        vertexBufferPool);
+    VkDeviceMemory*       vertexBufferMemoryPages;
+
+    /**
+     * Last known timestamp hit by GPU execution. Resources with equal or less timestamp may be safely reused.
+     */
+    uint64_t readTimestamp;
+    /**
+     * Next timestamp to be recorded. This is the last checkpoint to be hit by GPU execution.
+     */
+    uint64_t writeTimestamp;
+
+    VkSemaphore     timelineSemaphore;
+    VkCommandPool   commandPool;
+    VkCommandBuffer commandBuffer;
+
+    struct Wait {
+        VkSemaphore*          semaphores;
+        VkPipelineStageFlags* stages;
+    } wait;
+
+    struct PendingPresentation {
+        VkSwapchainKHR* swapchains;
+        uint32_t*       indices;
+        VkResult*       results;
+    } pendingPresentation;
+};
+
+typedef struct {
+    // Only sequential writes and no reads from mapped memory!
+    void* data;
+    VkDeviceSize offset;
+    // Whether corresponding buffer was bound to command buffer.
+    VkBool32 bound;
+} BufferWritingState;
+
+/**
+ * Rendering-related info attached to surface.
+ */
+struct VKRenderPass {
+    VKRenderPassContext* context;
+    VKBuffer*            vertexBuffers;
+    VkFramebuffer        framebuffer;
+    VkCommandBuffer      commandBuffer;
+
+    uint32_t           firstVertex;
+    uint32_t           vertexCount;
+    BufferWritingState vertexBufferWriting;
+
+    VKPipeline currentPipeline;
+    VkBool32   pendingFlush;
+    VkBool32   pendingCommands;
+    VkBool32   pendingClear;
+    uint64_t   lastTimestamp; // When was this surface last used?
+};
+
+
+
 VKRenderer* VKRenderer_Create(VKDevice* device);
+
+VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline);
+VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
 
 void VKRenderer_Destroy(VKRenderer* renderer);
 
@@ -64,7 +148,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface);
  * Actual resize will be performed later, before starting a new frame.
  */
 void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent);
-
+void VKRenderer_FlushRenderPass(VKSDOps* surface);
 // Blit operations.
 
 void VKRenderer_TextureRender(VKRenderingContext* context,
