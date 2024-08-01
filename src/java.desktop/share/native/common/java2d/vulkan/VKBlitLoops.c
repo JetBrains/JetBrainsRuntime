@@ -37,6 +37,8 @@
 #include "VKImage.h"
 #include "VKRenderer.h"
 #include "VKImage.h"
+#include "VKVertex.h"
+#include "CArrayUtil.h"
 
 static void VKBlitSwToTextureViaPooledTexture(VKLogicalDevice* logicalDevice, VKImage* dest, const SurfaceDataRasInfo *srcInfo,
                      int dx1, int dy1, int dx2, int dy2) {
@@ -49,7 +51,37 @@ static void VKBlitSwToTextureViaPooledTexture(VKLogicalDevice* logicalDevice, VK
         J2dTraceLn4(J2D_TRACE_ERROR, "replaceTextureRegion: dest size: (%d, %d) less than source size: (%d, %d)", dw, dh, sw, sh);
         return;
     }
+    float width = dest->extent.width/2.0;
+    float height = dest->extent.height/2.0;
+    J2dRlsTraceLn2(J2D_TRACE_VERBOSE,
+                   "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(W=%f, H=%f)",
+                   width, height);
+    VKTxVertex* vertices = ARRAY_ALLOC(VKTxVertex, 4);
+    /*
+     *    (p1)---------(p2)
+     *     |             |
+     *     |             |
+     *     |             |
+     *    (p4)---------(p3)
+     */
+    float p1x = -1.0f + dx1 / width;
+    float p1y = -1.0f + dy1 / height;
+    float p2x = -1.0f + dx2 / width;
+    float p2y = -1.0f + dy1 / height;
+    float p3x = -1.0f + dx2 / width;
+    float p3y = -1.0f + dy2 / height;
+    float p4x = -1.0f + dx1 / width;
+    float p4y = -1.0f + dy2 / height;
 
+
+    ARRAY_PUSH_BACK(&vertices, ((VKTxVertex) {p1x, p1y, 0.0f, 0.0f}));
+    ARRAY_PUSH_BACK(&vertices, ((VKTxVertex) {p2x, p2y, 1.0f, 0.0f}));
+    ARRAY_PUSH_BACK(&vertices, ((VKTxVertex) {p4x, p4y, 0.0f, 1.0f}));
+    ARRAY_PUSH_BACK(&vertices, ((VKTxVertex) {p3x, p3y, 1.0f, 1.0f}));
+
+    VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(logicalDevice, vertices);
+    ARRAY_FREE(vertices);
+    VKRenderer_BeginRendering(logicalDevice);
     const char *raster = srcInfo->rasBase;
     raster += (uint32_t)srcInfo->bounds.y1 * (uint32_t)srcInfo->scanStride + (uint32_t)srcInfo->bounds.x1 * (uint32_t)srcInfo->pixelStride;
     VKImage *image = VKImage_Create(logicalDevice, sw, sh, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR,
@@ -67,7 +99,8 @@ static void VKBlitSwToTextureViaPooledTexture(VKLogicalDevice* logicalDevice, VK
     VKBuffer *buffer = VKBuffer_CreateFromData(logicalDevice, data, dataSize);
     //free(data);
     VKImage_LoadBuffer(logicalDevice, image, buffer, dx1, dy1, sw, sh);
-    VKRenderer_TextureRender(logicalDevice, dest, image, logicalDevice->blitVertexBuffer->buffer, 4);
+    VKRenderer_TextureRender(logicalDevice, dest, image, renderVertexBuffer->buffer, 4);
+    VKRenderer_EndRendering(logicalDevice, VK_FALSE, VK_FALSE);
 }
 
 
