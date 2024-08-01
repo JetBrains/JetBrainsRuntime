@@ -35,6 +35,17 @@ typedef union {
     VkClearValue vkClearValue;
 } Color;
 
+/**
+ * Transform matrix
+ * [ x']   [  m00  m01  m02  ] [ x ]   [ m00x + m01y + m02 ]
+ * [ y'] = [  m10  m11  m12  ] [ y ] = [ m10x + m11y + m12 ]
+ * [ 1 ]   [   0    0    1   ] [ 1 ]   [         1         ]
+ */
+typedef struct {
+    double m00, m01, m02;
+    double m10, m11, m12;
+} VKTransform;
+
 typedef struct VKGraphicsEnvironment VKGraphicsEnvironment;
 typedef struct VKDevice VKDevice;
 typedef struct VKRenderer VKRenderer;
