@@ -29,6 +29,7 @@
 
 #include "VKImage.h"
 #include "VKTexturePool.h"
+#include "AccelTexturePool.h"
 #include "jni.h"
 #include "jni_util.h"
 #include "Trace.h"
@@ -134,6 +135,14 @@ jint VKTexturePoolHandle_GetRequestedWidth(VKTexturePoolHandle *handle) {
 
 jint VKTexturePoolHandle_GetRequestedHeight(VKTexturePoolHandle *handle) {
     return ATexturePoolHandle_GetRequestedHeight(handle);
+}
+
+jint VKTexturePoolHandle_GetActualWidth(VKTexturePoolHandle *handle) {
+    return ATexturePoolHandle_GetActualWidth(handle);
+}
+
+jint VKTexturePoolHandle_GetActualHeight(VKTexturePoolHandle *handle) {
+    return ATexturePoolHandle_GetActualHeight(handle);
 }
 
 
