@@ -34,7 +34,6 @@
 #include "VKSurfaceData.h"
 
 struct VKRenderer {
-    VkRenderPass        renderPass;
     VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorPool    descriptorPool;
     VkDescriptorSet     descriptorSets;
