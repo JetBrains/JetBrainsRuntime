@@ -103,7 +103,7 @@ public class MimeFormatsTest implements ClipboardOwner {
         ClipboardOwner owner = new ClipboardOwner() {
                 public void lostOwnership(Clipboard clipboard,
                                           Transferable contents) {
-                    System.err.println("%d exit".formatted(
+                    System.err.println(String.format("%d exit",
                             System.currentTimeMillis()));
                     System.err.println("Exiting");
                     System.exit(0);
@@ -115,7 +115,7 @@ public class MimeFormatsTest implements ClipboardOwner {
         synchronized (lock) {
             // Wait to let the parent retrieve the contents.
             try {
-                System.err.println("%d wait".formatted(
+                System.err.println(String.format("%d wait",
                         System.currentTimeMillis()));
                 lock.wait();
             } catch (InterruptedException e) {
