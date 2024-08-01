@@ -24,30 +24,20 @@
  * questions.
  */
 
-#ifndef VKImage_h_Included
-#define VKImage_h_Included
+#ifndef VKRenderState_h_Included
+#define VKRenderState_h_Included
 
-#include "VKTypes.h"
+#include <stdint.h>
 
-struct VKImage {
-    VkImage                 image;
-    VkDeviceMemory          memory;
-    VkImageView             view;
-    VkFormat                format;
-    VkExtent2D              extent;
 
-    VkImageLayout           layout;
-    VkPipelineStageFlagBits lastStage;
-    VkAccessFlagBits        lastAccess;
+struct VKRenderState {
+    uint32_t color;
+    double m00;
+    double m10;
+    double m01;
+    double m11;
+    double m02;
+    double m12;
 };
 
-VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
-                        VkFormat format, VkImageTiling tiling,
-                        VkImageUsageFlags usage,
-                        VkMemoryPropertyFlags properties);
-
-void VKImage_LoadBuffer(VKRenderingContext* context, VKImage* image, VKBuffer* buffer,
-                        uint32_t x0, uint32_t y0, uint32_t width, uint32_t height);
-
-void VKImage_free(VKDevice* device, VKImage* image);
-#endif // VKImage_h_Included
+#endif /* VKRenderState_h_Included */
