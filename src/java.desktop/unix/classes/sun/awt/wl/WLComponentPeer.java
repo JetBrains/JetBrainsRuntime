@@ -1087,6 +1087,24 @@ public class WLComponentPeer implements ComponentPeer {
         WLToolkit.postEvent(e);
     }
 
+
+    private final class WheelRoundRotationsAccumulator {
+        public int accumulateAndGetRoundRotations(double preciseRotations) {
+            // The code assumes that the target component ({@link WLComponentPeer#target}) never changes.
+            // If it did, accumulatedPreciseRotations would have to be reset each time the target changed.
+
+            accumulatedPreciseRotations += preciseRotations;
+            final int result = (int)accumulatedPreciseRotations;
+            accumulatedPreciseRotations -= result;
+
+            return result;
+        }
+
+        private double accumulatedPreciseRotations = 0;
+    }
+
+    private final WheelRoundRotationsAccumulator wheelRoundRotationsAccumulator = new WheelRoundRotationsAccumulator();
+
     /**
      * Creates and posts mouse events based on the given WLPointerEvent received from Wayland,
      * the freshly updated WLInputState, and the previous WLInputState.
@@ -1159,16 +1177,16 @@ public class WLComponentPeer implements ComponentPeer {
 
             final boolean isShiftPressed = ( (newInputState.getModifiers() & KeyEvent.SHIFT_DOWN_MASK) != 0 );
 
-            final int verticalAxisValue = e.getIsVerticalAxisValid() ? e.getVerticalAxisValue() : 0;
-            final int horizontalAxisValue = e.getIsHorizontalAxisValid() ? e.getHorizontalAxisValue() : 0;
+            final double verticalAxisValue = e.getIsVerticalAxisValid() ? e.getVerticalAxisValue() : 0;
+            final double horizontalAxisValue = e.getIsHorizontalAxisValid() ? e.getHorizontalAxisValue() : 0;
 
-            final int axisValueForVerticalMWE;
-            final int axisValueForHorizontalMWE;
+            final double axisValueForVerticalMWE;
+            final double axisValueForHorizontalMWE;
             if (isShiftPressed) {
                 // Pressing Shift makes only a horizontal scrolling MW event possible
                 axisValueForVerticalMWE = 0;
 
-                if (Integer.signum(verticalAxisValue) == Integer.signum(horizontalAxisValue)) {
+                if (Math.signum(verticalAxisValue) == Math.signum(horizontalAxisValue)) {
                     // Both values point to the same direction of scrolling.
                     // Let's pick the more influencing one.
                     axisValueForHorizontalMWE = Math.abs(verticalAxisValue) > Math.abs(horizontalAxisValue)
@@ -1187,6 +1205,8 @@ public class WLComponentPeer implements ComponentPeer {
             if (axisValueForVerticalMWE != 0) {
                 // Making sure the scroll event will be in a vertical direction
                 final var modifiersExcludingShift = newInputState.getModifiers() & ~KeyEvent.SHIFT_DOWN_MASK;
+                final double wheelPreciseRotations = axisValueForVerticalMWE;
+                final int wheelRoundRotations = wheelRoundRotationsAccumulator.accumulateAndGetRoundRotations(wheelPreciseRotations);
 
                 final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
                         MouseEvent.MOUSE_WHEEL,
@@ -1198,12 +1218,15 @@ public class WLComponentPeer implements ComponentPeer {
                         isPopupTrigger,
                         MouseWheelEvent.WHEEL_UNIT_SCROLL,
                         1,
-                        Integer.signum(axisValueForVerticalMWE) * WHEEL_SCROLL_AMOUNT);
+                        wheelRoundRotations,
+                        wheelPreciseRotations);
                 postMouseEvent(mouseEvent);
             }
             if (axisValueForHorizontalMWE != 0) {
                 // Making sure the scroll event will be in a horizontal direction
                 final var modifiersPlusShift = newInputState.getModifiers() | KeyEvent.SHIFT_DOWN_MASK;
+                final var wheelPreciseRotations = axisValueForHorizontalMWE;
+                final int wheelRoundRotations = wheelRoundRotationsAccumulator.accumulateAndGetRoundRotations(wheelPreciseRotations);
 
                 final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
                         MouseEvent.MOUSE_WHEEL,
@@ -1215,7 +1238,8 @@ public class WLComponentPeer implements ComponentPeer {
                         isPopupTrigger,
                         MouseWheelEvent.WHEEL_UNIT_SCROLL,
                         1,
-                        Integer.signum(axisValueForHorizontalMWE) * WHEEL_SCROLL_AMOUNT);
+                        wheelRoundRotations,
+                        wheelPreciseRotations);
                 postMouseEvent(mouseEvent);
             }
         }

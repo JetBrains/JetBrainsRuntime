@@ -290,13 +290,13 @@ fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
 
     (*env)->SetBooleanField(env, pointerEventRef, axis_vertical_validFID,
                             pointer_event.axes[WL_POINTER_AXIS_VERTICAL_SCROLL].valid);
-    (*env)->SetIntField(env, pointerEventRef, axis_vertical_valueFID,
-                        wl_fixed_to_int(pointer_event.axes[WL_POINTER_AXIS_VERTICAL_SCROLL].value));
+    (*env)->SetDoubleField(env, pointerEventRef, axis_vertical_valueFID,
+                           wl_fixed_to_double(pointer_event.axes[WL_POINTER_AXIS_VERTICAL_SCROLL].value));
 
     (*env)->SetBooleanField(env, pointerEventRef, axis_horizontal_validFID,
                             pointer_event.axes[WL_POINTER_AXIS_HORIZONTAL_SCROLL].valid);
-    (*env)->SetIntField(env, pointerEventRef, axis_horizontal_valueFID,
-                        wl_fixed_to_int(pointer_event.axes[WL_POINTER_AXIS_HORIZONTAL_SCROLL].value));
+    (*env)->SetDoubleField(env, pointerEventRef, axis_horizontal_valueFID,
+                           wl_fixed_to_double(pointer_event.axes[WL_POINTER_AXIS_HORIZONTAL_SCROLL].value));
 }
 
 static void
@@ -651,9 +651,9 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(buttonCodeFID = (*env)->GetFieldID(env, pointerEventClass, "buttonCode", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(isButtonPressedFID = (*env)->GetFieldID(env, pointerEventClass, "isButtonPressed", "Z"), JNI_FALSE);
     CHECK_NULL_RETURN(axis_vertical_validFID = (*env)->GetFieldID(env, pointerEventClass, "axis_vertical_valid", "Z"), JNI_FALSE);
-    CHECK_NULL_RETURN(axis_vertical_valueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_vertical_value", "I"), JNI_FALSE);
+    CHECK_NULL_RETURN(axis_vertical_valueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_vertical_value", "D"), JNI_FALSE);
     CHECK_NULL_RETURN(axis_horizontal_validFID = (*env)->GetFieldID(env, pointerEventClass, "axis_horizontal_valid", "Z"), JNI_FALSE);
-    CHECK_NULL_RETURN(axis_horizontal_valueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_horizontal_value", "I"), JNI_FALSE);
+    CHECK_NULL_RETURN(axis_horizontal_valueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_horizontal_value", "D"), JNI_FALSE);
 
     CHECK_NULL_RETURN(dispatchKeyboardEnterEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                 "dispatchKeyboardEnterEvent",

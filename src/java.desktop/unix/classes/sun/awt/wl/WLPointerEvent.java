@@ -59,10 +59,10 @@ class WLPointerEvent {
     private boolean isButtonPressed; // true if button was pressed, false if released
 
     private boolean axis_vertical_valid; // is vertical scroll included in this event?
-    private int     axis_vertical_value; // "length of vector in surface-local coordinate space" (source: wayland.xml)
+    private double  axis_vertical_value; // "length of vector in surface-local coordinate space" (source: wayland.xml)
 
     private boolean axis_horizontal_valid; // is horizontal scroll included in this event?
-    private int     axis_horizontal_value; // "length of vector in surface-local coordinate space" (source: wayland.xml)
+    private double  axis_horizontal_value; // "length of vector in surface-local coordinate space" (source: wayland.xml)
 
 
     private WLPointerEvent() {}
@@ -250,7 +250,7 @@ class WLPointerEvent {
         return axis_vertical_valid;
     }
 
-    public int getVerticalAxisValue() {
+    public double getVerticalAxisValue() {
         assert getIsVerticalAxisValid();
         return axis_vertical_value;
     }
@@ -260,7 +260,7 @@ class WLPointerEvent {
         return axis_horizontal_valid;
     }
 
-    public int getHorizontalAxisValue() {
+    public double getHorizontalAxisValue() {
         assert getIsHorizontalAxisValid();
         return axis_horizontal_value;
     }
