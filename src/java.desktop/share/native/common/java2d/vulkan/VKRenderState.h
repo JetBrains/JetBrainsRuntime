@@ -24,37 +24,20 @@
  * questions.
  */
 
-#ifndef VKTexturePool_h_Included
-#define VKTexturePool_h_Included
+#ifndef VKRenderState_h_Included
+#define VKRenderState_h_Included
 
-#include "AccelTexturePool.h"
-#include "jni.h"
+#include <stdint.h>
 
 
-/* VKTexturePoolHandle API */
-typedef ATexturePoolHandle VKTexturePoolHandle;
+struct VKRenderState {
+    uint32_t color;
+    double m00;
+    double m10;
+    double m01;
+    double m11;
+    double m02;
+    double m12;
+};
 
-void VKTexturePoolHandle_ReleaseTexture(VKTexturePoolHandle *handle);
-
-ATexturePrivPtr* VKTexturePoolHandle_GetTexture(VKTexturePoolHandle *handle);
-
-jint VKTexturePoolHandle_GetRequestedWidth(VKTexturePoolHandle *handle);
-jint VKTexturePoolHandle_GetRequestedHeight(VKTexturePoolHandle *handle);
-jint VKTexturePoolHandle_GetActualWidth(VKTexturePoolHandle *handle);
-jint VKTexturePoolHandle_GetActualHeight(VKTexturePoolHandle *handle);
-
-/* VKTexturePool API */
-typedef ATexturePool VKTexturePool;
-
-VKTexturePool* VKTexturePool_InitWithDevice(VKDevice *device) ;
-
-void VKTexturePool_Dispose(VKTexturePool *pool);
-
-ATexturePoolLockWrapper* VKTexturePool_GetLockWrapper(VKTexturePool *pool);
-
-VKTexturePoolHandle* VKTexturePool_GetTexture(VKTexturePool *pool,
-                                        jint width,
-                                        jint height,
-                                        jlong format);
-
-#endif /* VKTexturePool_h_Included */
+#endif /* VKRenderState_h_Included */
