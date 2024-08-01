@@ -72,6 +72,9 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
     private BufferCapabilities bufferCaps;
     private ContextCapabilities vkCaps;
     private final VKContext context;
+    // TODO this is wrong caching level!
+    //      on which level should we cache surface data proxies? Single cache per GPU?
+    private final SurfaceManager.ProxyCache surfaceDataProxyCache = new SurfaceManager.ProxyCache();
 
     private static native long getVKConfigInfo();
 
@@ -83,8 +86,7 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
 
     @Override
     public SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
-        // TODO on which level should we cache surface data proxies? Single cache per GPU?
-        throw new UnsupportedOperationException("getSurfaceDataProxyCache not yet implemented");
+        return surfaceDataProxyCache;
     }
 
     public static WLVKGraphicsConfig getConfig(WLGraphicsDevice device, int x, int y, int width, int height, int scale)
