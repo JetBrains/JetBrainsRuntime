@@ -28,6 +28,7 @@
 #define VKBase_h_Included
 #include "VKTypes.h"
 #include "VKTexturePool.h"
+#include "VKRenderState.h"
 
 struct VKDevice {
     VkDevice         handle;
@@ -108,6 +109,7 @@ struct VKDevice {
     PFN_vkDestroyFramebuffer vkDestroyFramebuffer;
     PFN_vkFlushMappedMemoryRanges vkFlushMappedMemoryRanges;
     PFN_vkCmdPushConstants vkCmdPushConstants;
+    PFN_vkCmdCopyBufferToImage vkCmdCopyBufferToImage;
 };
 
 struct VKGraphicsEnvironment {
