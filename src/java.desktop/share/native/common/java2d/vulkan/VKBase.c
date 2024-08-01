@@ -741,6 +741,7 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
     DEVICE_PROC(vkDestroyFramebuffer);
     DEVICE_PROC(vkFlushMappedMemoryRanges);
     DEVICE_PROC(vkCmdPushConstants);
+    DEVICE_PROC(vkCmdCopyBufferToImage);
 
     // Create command pool
     VkCommandPoolCreateInfo poolInfo = {

@@ -101,6 +101,7 @@ struct VKLogicalDevice {
     PFN_vkDestroyFramebuffer vkDestroyFramebuffer;
     PFN_vkFlushMappedMemoryRanges vkFlushMappedMemoryRanges;
     PFN_vkCmdPushConstants vkCmdPushConstants;
+    PFN_vkCmdCopyBufferToImage vkCmdCopyBufferToImage;
 };
 
 

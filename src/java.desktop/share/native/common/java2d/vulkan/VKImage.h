@@ -54,6 +54,9 @@ VKImage* VKImage_CreateImageArrayFromSwapChain(VKLogicalDevice* logicalDevice,
 VkBool32 VKImage_CreateFramebuffer(VKLogicalDevice* logicalDevice,
                                    VKImage *image, VkRenderPass renderPass);
 
+void VKImage_LoadBuffer(VKLogicalDevice* logicalDevice, VKImage* image, VKBuffer* buffer,
+                            uint32_t x0, uint32_t y0, uint32_t width, uint32_t height);
+
 void VKImage_free(VKLogicalDevice* logicalDevice, VKImage* image);
 void VKImage_dealloc(VKLogicalDevice* logicalDevice, VKImage* image);
 #endif // VKImage_h_Included

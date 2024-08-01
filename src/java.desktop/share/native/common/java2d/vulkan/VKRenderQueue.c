@@ -29,13 +29,13 @@
 #include "sun_java2d_pipe_BufferedOpCodes.h"
 #include "sun_java2d_pipe_BufferedRenderPipe.h"
 #include "sun_java2d_pipe_BufferedTextPipe.h"
-#include "sun_java2d_vulkan_VKBlitLoops.h"
 #include "Trace.h"
 #include "jlong.h"
 #include "VKRenderQueue.h"
 #include "VKSurfaceData.h"
 #include "VKRenderer.h"
 #include "VKVertex.h"
+#include "VKBlitLoops.h"
 
 #define BYTES_PER_POLY_POINT \
     sun_java2d_pipe_BufferedRenderPipe_BYTES_PER_POLY_POINT
@@ -55,13 +55,6 @@
 #define OFFSET_RGBORDER  sun_java2d_pipe_BufferedTextPipe_OFFSET_RGBORDER
 #define OFFSET_SUBPIXPOS sun_java2d_pipe_BufferedTextPipe_OFFSET_SUBPIXPOS
 #define OFFSET_POSITIONS sun_java2d_pipe_BufferedTextPipe_OFFSET_POSITIONS
-
-#define OFFSET_SRCTYPE sun_java2d_vulkan_VKBlitLoops_OFFSET_SRCTYPE
-#define OFFSET_HINT    sun_java2d_vulkan_VKBlitLoops_OFFSET_HINT
-#define OFFSET_TEXTURE sun_java2d_vulkan_VKBlitLoops_OFFSET_TEXTURE
-#define OFFSET_RTT     sun_java2d_vulkan_VKBlitLoops_OFFSET_RTT
-#define OFFSET_XFORM   sun_java2d_vulkan_VKBlitLoops_OFFSET_XFORM
-#define OFFSET_ISOBLIT sun_java2d_vulkan_VKBlitLoops_OFFSET_ISOBLIT
 
 static VKSDOps *dstOps = NULL;
 
@@ -296,7 +289,25 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                                                     OFFSET_XFORM);
                 jboolean isoblit  = EXTRACT_BOOLEAN(packedParams,
                                                     OFFSET_ISOBLIT);
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT");
+                if (isoblit) {
+                    VKBlitLoops_IsoBlit(env, currentDevice, pSrc, pDst,
+                                         xform, hint, texture,
+                                         sx1, sy1, sx2, sy2,
+                                         dx1, dy1, dx2, dy2);
+                } else {
+                    jint srctype = EXTRACT_BYTE(packedParams, OFFSET_SRCTYPE);
+                    VKBlitLoops_Blit(env, currentDevice, pSrc, pDst,
+                                      xform, hint, srctype, texture,
+                                      sx1, sy1, sx2, sy2,
+                                      dx1, dy1, dx2, dy2);
+                }
+
+                break;
+                J2dRlsTraceLn8(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT (%d %d %d %d) -> (%f %f %f %f) ",
+                               sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)
+                J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT texture=%d rtt=%d xform=%d isoblit=%d",
+                               texture, rtt, xform, isoblit)
+
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SURFACE_TO_SW_BLIT:

@@ -197,6 +197,31 @@ VKImage* VKImage_CreateImageArrayFromSwapChain(VKLogicalDevice* logicalDevice,
     return images;
 }
 
+void VKImage_LoadBuffer(VKLogicalDevice* logicalDevice, VKImage* image, VKBuffer* buffer,
+                            uint32_t x0, uint32_t y0, uint32_t width, uint32_t height) {
+
+    VkBufferImageCopy region = (VkBufferImageCopy){
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .imageSubresource.mipLevel = 0,
+        .imageSubresource.baseArrayLayer = 0,
+        .imageSubresource.layerCount = 1,
+        .imageOffset = {x0, y0, 0},
+        .imageExtent = {
+            .width = width,
+            .height = height,
+            .depth = 1
+        }
+    };
+
+    logicalDevice->vkCmdCopyBufferToImage(logicalDevice->commandBuffer,
+                                          buffer->buffer, image->image,
+                                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                          1, &region);
+}
+
 void VKImage_dealloc(VKLogicalDevice* logicalDevice, VKImage* image) {
     if (!image) return;
 
