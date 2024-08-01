@@ -38,7 +38,9 @@
 // In debug builds it returns 1 with approximately CHANCE_PERCENT chance, on release builds it is always 0.
 // When using this macro, make sure to leave sufficient info in the log to track failing configurations.
 #ifdef DEBUG
-#define VK_DEBUG_RANDOM(CHANCE_PERCENT) ((rand() % 100) < CHANCE_PERCENT)
+//#define VK_DEBUG_RANDOM(CHANCE_PERCENT) ((rand() % 100) < CHANCE_PERCENT)
+// TODO: Disable this functionality for now. We may turn it on at the final stage of the vulkan implementation.
+#define VK_DEBUG_RANDOM(CHANCE_PERCENT) (0)
 #else
 #define VK_DEBUG_RANDOM(CHANCE_PERCENT) 0
 #endif
@@ -76,5 +78,19 @@ inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
  * color space conversions on its own, as the colors we are drawing are already in sRGB.
  */
 Color VKUtil_DecodeJavaColor(uint32_t color);
+
+/*
+ * The following macros allow the caller to return (or continue) if the
+ * provided value is NULL.  (The strange else clause is included below to
+ * allow for a trailing ';' after RETURN/CONTINUE_IF_NULL() invocations.)
+ */
+#define ACT_IF_NULL(ACTION, value)        \
+    if ((value) == NULL) {                \
+        J2dTraceLn(J2D_TRACE_ERROR,       \
+                   "%s is null", #value); \
+        ACTION;                           \
+    } else do { } while (0)
+#define RETURN_IF_NULL(value)   ACT_IF_NULL(return, value)
+#define CONTINUE_IF_NULL(value) ACT_IF_NULL(continue, value)
 
 #endif //VKUtil_h_Included
