@@ -24,37 +24,30 @@
  * questions.
  */
 
-#ifndef VKTexturePool_h_Included
-#define VKTexturePool_h_Included
+#ifndef VKBlitLoops_h_Included
+#define VKBlitLoops_h_Included
 
-#include "AccelTexturePool.h"
 #include "jni.h"
+#include "sun_java2d_vulkan_VKBlitLoops.h"
+#include "VKBase.h"
+
+void VKBlitLoops_IsoBlit(JNIEnv *env,
+                          VKRenderingContext* context, jlong pSrcOps,
+                          jboolean xform, jint hint,
+                          jboolean texture,
+                          jint sx1, jint sy1,
+                          jint sx2, jint sy2,
+                          jdouble dx1, jdouble dy1,
+                          jdouble dx2, jdouble dy2);
+
+void VKBlitLoops_Blit(JNIEnv *env,
+                       VKRenderingContext* context, jlong pSrcOps,
+                       jboolean xform, jint hint,
+                       jint srctype, jboolean texture,
+                       jint sx1, jint sy1,
+                       jint sx2, jint sy2,
+                       jdouble dx1, jdouble dy1,
+                       jdouble dx2, jdouble dy2);
 
 
-/* VKTexturePoolHandle API */
-typedef ATexturePoolHandle VKTexturePoolHandle;
-
-void VKTexturePoolHandle_ReleaseTexture(VKTexturePoolHandle *handle);
-
-ATexturePrivPtr* VKTexturePoolHandle_GetTexture(VKTexturePoolHandle *handle);
-
-jint VKTexturePoolHandle_GetRequestedWidth(VKTexturePoolHandle *handle);
-jint VKTexturePoolHandle_GetRequestedHeight(VKTexturePoolHandle *handle);
-jint VKTexturePoolHandle_GetActualWidth(VKTexturePoolHandle *handle);
-jint VKTexturePoolHandle_GetActualHeight(VKTexturePoolHandle *handle);
-
-/* VKTexturePool API */
-typedef ATexturePool VKTexturePool;
-
-VKTexturePool* VKTexturePool_InitWithDevice(VKDevice *device) ;
-
-void VKTexturePool_Dispose(VKTexturePool *pool);
-
-ATexturePoolLockWrapper* VKTexturePool_GetLockWrapper(VKTexturePool *pool);
-
-VKTexturePoolHandle* VKTexturePool_GetTexture(VKTexturePool *pool,
-                                        jint width,
-                                        jint height,
-                                        jlong format);
-
-#endif /* VKTexturePool_h_Included */
+#endif /* VKBlitLoops_h_Included */
