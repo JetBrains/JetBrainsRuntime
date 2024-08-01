@@ -40,7 +40,8 @@ ATexturePrivPtr* VKTexturePoolHandle_GetTexture(VKTexturePoolHandle *handle);
 
 jint VKTexturePoolHandle_GetRequestedWidth(VKTexturePoolHandle *handle);
 jint VKTexturePoolHandle_GetRequestedHeight(VKTexturePoolHandle *handle);
-
+jint VKTexturePoolHandle_GetActualWidth(VKTexturePoolHandle *handle);
+jint VKTexturePoolHandle_GetActualHeight(VKTexturePoolHandle *handle);
 
 /* VKTexturePool API */
 typedef ATexturePool VKTexturePool;
