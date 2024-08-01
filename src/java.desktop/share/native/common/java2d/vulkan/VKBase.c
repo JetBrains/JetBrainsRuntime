@@ -624,6 +624,7 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkDestroyFramebuffer);
     DEVICE_PROC(vkFlushMappedMemoryRanges);
     DEVICE_PROC(vkCmdPushConstants);
+    DEVICE_PROC(vkCmdCopyBufferToImage);
 
     device->vkGetDeviceQueue(device->handle, device->queueFamily, 0, &device->queue);
     if (device->queue == NULL) {
