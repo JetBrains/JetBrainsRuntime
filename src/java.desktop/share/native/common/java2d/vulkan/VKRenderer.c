@@ -34,15 +34,6 @@
 #include "VKRenderer.h"
 #include "VKSurfaceData.h"
 
-/**
- * Pool of resources with associated timestamps, guarding their reuse.
- * The pool must only be manipulated via POOL_* macros.
- */
-#define POOL(TYPE, NAME)    \
-struct PoolEntry_ ## NAME { \
-    uint64_t timestamp;     \
-    TYPE value;             \
-} *NAME
 
 /**
  * Take an available item from the pool. VAR is left unchanged if there is no available item.
@@ -81,72 +72,6 @@ struct PoolEntry_ ## NAME { \
  * Free pool memory. It doesn't destroy remaining items.
  */
 #define POOL_FREE(RENDERER, NAME) RING_BUFFER_FREE((RENDERER)->NAME)
-
-/**
- * Renderer attached to device.
- */
-struct VKRenderer {
-    VKDevice*          device;
-    VKPipelineContext* pipelineContext;
-
-    POOL(VkCommandBuffer, commandBufferPool);
-    POOL(VkCommandBuffer, secondaryCommandBufferPool);
-    POOL(VkSemaphore,     semaphorePool);
-    POOL(VKBuffer,        vertexBufferPool);
-    VkDeviceMemory*       vertexBufferMemoryPages;
-
-    /**
-     * Last known timestamp hit by GPU execution. Resources with equal or less timestamp may be safely reused.
-     */
-    uint64_t readTimestamp;
-    /**
-     * Next timestamp to be recorded. This is the last checkpoint to be hit by GPU execution.
-     */
-    uint64_t writeTimestamp;
-
-    VkSemaphore     timelineSemaphore;
-    VkCommandPool   commandPool;
-    VkCommandBuffer commandBuffer;
-
-    struct Wait {
-        VkSemaphore*          semaphores;
-        VkPipelineStageFlags* stages;
-    } wait;
-
-    struct PendingPresentation {
-        VkSwapchainKHR* swapchains;
-        uint32_t*       indices;
-        VkResult*       results;
-    } pendingPresentation;
-};
-
-typedef struct {
-    // Only sequential writes and no reads from mapped memory!
-    void* data;
-    VkDeviceSize offset;
-    // Whether corresponding buffer was bound to command buffer.
-    VkBool32 bound;
-} BufferWritingState;
-
-/**
- * Rendering-related info attached to surface.
- */
-struct VKRenderPass {
-    VKRenderPassContext* context;
-    VKBuffer*            vertexBuffers;
-    VkFramebuffer        framebuffer;
-    VkCommandBuffer      commandBuffer;
-
-    uint32_t           firstVertex;
-    uint32_t           vertexCount;
-    BufferWritingState vertexBufferWriting;
-
-    VKPipeline currentPipeline;
-    VkBool32   pendingFlush;
-    VkBool32   pendingCommands;
-    VkBool32   pendingClear;
-    uint64_t   lastTimestamp; // When was this surface last used?
-};
 
 /**
  * Helper function for POOL_TAKE macro.
@@ -309,7 +234,7 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
  * Record commands into primary command buffer (outside of a render pass).
  * Recorded commands will be sent for execution via VKRenderer_Flush.
  */
-static VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
+VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
     if (renderer->commandBuffer != VK_NULL_HANDLE) {
         return renderer->commandBuffer;
     }
@@ -651,7 +576,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
  * End render pass for the surface and record it into the primary command buffer,
  * which will be executed on the next VKRenderer_Flush.
  */
-static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
+void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     VKRenderer_FlushDraw(surface);
     VkBool32 hasCommands = surface->renderPass->pendingCommands, clear = surface->renderPass->pendingClear;
@@ -881,7 +806,7 @@ static void* VKRenderer_AllocateVertices(VKRenderingContext* context, uint32_t v
 /**
  * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
  */
-static VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
+VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
     assert(context != NULL && context->surface != NULL);
     VKSDOps* surface = context->surface;
 
