@@ -309,7 +309,7 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
  * Record commands into primary command buffer (outside of a render pass).
  * Recorded commands will be sent for execution via VKRenderer_Flush.
  */
-static VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
+VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
     if (renderer->commandBuffer != VK_NULL_HANDLE) {
         return renderer->commandBuffer;
     }
@@ -408,16 +408,12 @@ void VKRenderer_Flush(VKRenderer* renderer) {
                   renderer, submitInfo.commandBufferCount, pendingPresentations);
 }
 
-typedef struct {
-    uint32_t barrierCount;
-    VkPipelineStageFlags srcStages;
-    VkPipelineStageFlags dstStages;
-} VKBarrierBatch;
+
 
 /**
  * Prepare image barrier info to be executed in batch, if needed.
  */
-static void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
+void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
                                        VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
     assert(barriers != NULL && batch != NULL && image != NULL);
     // TODO Even if stage, access and layout didn't change, we may still need a barrier against WaW hazard.
@@ -651,7 +647,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
  * End render pass for the surface and record it into the primary command buffer,
  * which will be executed on the next VKRenderer_Flush.
  */
-static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
+void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     VKRenderer_FlushDraw(surface);
     VkBool32 hasCommands = surface->renderPass->pendingCommands, clear = surface->renderPass->pendingClear;
@@ -760,7 +756,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
                     .image = win->swapchainImages[imageIndex],
                     .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
             }};
-            VKBarrierBatch barrierBatch = {1, surface->image->lastStage, VK_PIPELINE_STAGE_TRANSFER_BIT};
+            VKBarrierBatch barrierBatch = {1, surface->image->lastStage | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
             VKRenderer_AddImageBarrier(barriers, &barrierBatch, surface->image, VK_PIPELINE_STAGE_TRANSFER_BIT,
                                        VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
             device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
@@ -881,7 +877,7 @@ static void* VKRenderer_AllocateVertices(VKRenderingContext* context, uint32_t v
 /**
  * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
  */
-static VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
+VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
     assert(context != NULL && context->surface != NULL);
     VKSDOps* surface = context->surface;
 
