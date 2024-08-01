@@ -28,7 +28,6 @@ package com.jetbrains.desktop;
 import com.jetbrains.exported.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.event.KeyEventProcessing;
-import sun.lwawt.macosx.LWCToolkit;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
