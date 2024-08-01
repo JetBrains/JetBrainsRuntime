@@ -116,7 +116,8 @@ ATexturePrivPtr* ATexturePoolHandle_GetTexture(ATexturePoolHandle *handle);
 
 jint ATexturePoolHandle_GetRequestedWidth(ATexturePoolHandle *handle);
 jint ATexturePoolHandle_GetRequestedHeight(ATexturePoolHandle *handle);
-
+jint ATexturePoolHandle_GetActualWidth(ATexturePoolHandle *handle);
+jint ATexturePoolHandle_GetActualHeight(ATexturePoolHandle *handle);
 
 /* ATexturePool API */
 ATexturePool* ATexturePool_initWithDevice(ADevicePrivPtr             *device,
