@@ -28,6 +28,8 @@
 #include "VKBase.h"
 #include "VKBuffer.h"
 #include "VKImage.h"
+#include "VKRenderer.h"
+#include "VKSurfaceData.h"
 
 
 VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
@@ -118,6 +120,31 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
     }
 
     return image;
+}
+
+void VKImage_LoadBuffer(VKDevice* device, VKImage* image, VKBuffer* buffer,
+                        uint32_t x0, uint32_t y0, uint32_t width, uint32_t height) {
+    VkCommandBuffer cb = VKRenderer_Record(device->renderer);
+    VkBufferImageCopy region = (VkBufferImageCopy){
+            .bufferOffset = 0,
+            .bufferRowLength = 0,
+            .bufferImageHeight = 0,
+            .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .imageSubresource.mipLevel = 0,
+            .imageSubresource.baseArrayLayer = 0,
+            .imageSubresource.layerCount = 1,
+            .imageOffset = {x0, y0, 0},
+            .imageExtent = {
+                    .width = width,
+                    .height = height,
+                    .depth = 1
+            }
+    };
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKImage_LoadBuffer(device=%p, commandBuffer=%p, buffer=%p, image=%p)",
+                  device, cb, buffer->handle, image->image);
+    device->vkCmdCopyBufferToImage(cb, buffer->handle, image->image,
+                                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                          1, &region);
 }
 
 void VKImage_free(VKDevice* device, VKImage* image) {
