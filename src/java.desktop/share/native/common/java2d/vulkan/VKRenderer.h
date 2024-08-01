@@ -33,9 +33,13 @@
 struct VKRenderingContext {
     VKSDOps* surface;
     Color color;
+    VKTransform transform;
 };
 
 VKRenderer* VKRenderer_Create(VKDevice* device);
+
+VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline);
+VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
 
 void VKRenderer_Destroy(VKRenderer* renderer);
 
@@ -64,7 +68,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface);
  * Actual resize will be performed later, before starting a new frame.
  */
 void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent);
-
+void VKRenderer_FlushRenderPass(VKSDOps* surface);
 // Blit operations.
 
 void VKRenderer_TextureRender(VKRenderingContext* context,

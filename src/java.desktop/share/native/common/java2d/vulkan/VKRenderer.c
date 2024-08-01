@@ -309,7 +309,7 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
  * Record commands into primary command buffer (outside of a render pass).
  * Recorded commands will be sent for execution via VKRenderer_Flush.
  */
-static VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
+VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
     if (renderer->commandBuffer != VK_NULL_HANDLE) {
         return renderer->commandBuffer;
     }
@@ -651,7 +651,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
  * End render pass for the surface and record it into the primary command buffer,
  * which will be executed on the next VKRenderer_Flush.
  */
-static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
+void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     VKRenderer_FlushDraw(surface);
     VkBool32 hasCommands = surface->renderPass->pendingCommands, clear = surface->renderPass->pendingClear;
@@ -881,7 +881,7 @@ static void* VKRenderer_AllocateVertices(VKRenderingContext* context, uint32_t v
 /**
  * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
  */
-static VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
+VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
     assert(context != NULL && context->surface != NULL);
     VKSDOps* surface = context->surface;
 
