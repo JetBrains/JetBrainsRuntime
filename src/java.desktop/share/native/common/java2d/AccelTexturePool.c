@@ -516,6 +516,19 @@ jint ATexturePoolHandle_GetRequestedHeight(ATexturePoolHandle *handle) {
     return handle->reqHeight;
  }
 
+jint ATexturePoolHandle_GetActualWidth(ATexturePoolHandle *handle) {
+    CHECK_NULL_RETURN(handle, 0);
+    CHECK_NULL_RETURN(handle->_poolItem, 0);
+    if (TRACE_USE_API) J2dRlsTraceLn(J2D_TRACE_INFO, "ATexturePoolHandle_GetActualWidth: handle = %p", handle);
+    return handle->_poolItem->width;
+}
+
+jint ATexturePoolHandle_GetActualHeight(ATexturePoolHandle *handle) {
+    CHECK_NULL_RETURN(handle, 0);
+    CHECK_NULL_RETURN(handle->_poolItem, 0);
+    if (TRACE_USE_API) J2dRlsTraceLn(J2D_TRACE_INFO, "ATexturePoolHandle_GetActualHeight: handle = %p", handle);
+    return handle->_poolItem->height;
+}
 
 /* ATexturePool API */
 static void ATexturePool_cleanIfNecessary(ATexturePool *pool, int lastUsedTimeThreshold);
