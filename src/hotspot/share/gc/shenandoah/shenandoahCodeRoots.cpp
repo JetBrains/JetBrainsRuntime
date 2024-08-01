@@ -104,11 +104,6 @@ public:
     WorkerTask("Shenandoah Disarm NMethods"),
     _iterator(ShenandoahCodeRoots::table()) {
     assert(SafepointSynchronize::is_at_safepoint(), "Only at a safepoint");
-    _iterator.nmethods_do_begin();
-  }
-
-  ~ShenandoahDisarmNMethodsTask() {
-    _iterator.nmethods_do_end();
   }
 
   virtual void work(uint worker_id) {
@@ -190,13 +185,7 @@ public:
     WorkerTask("Shenandoah Unlink NMethods"),
     _cl(unloading_occurred),
     _verifier(verifier),
-    _iterator(ShenandoahCodeRoots::table()) {
-    _iterator.nmethods_do_begin();
-  }
-
-  ~ShenandoahUnlinkTask() {
-    _iterator.nmethods_do_end();
-  }
+    _iterator(ShenandoahCodeRoots::table()) {}
 
   virtual void work(uint worker_id) {
     ICRefillVerifierMark mark(_verifier);
