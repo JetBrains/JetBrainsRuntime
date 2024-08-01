@@ -47,6 +47,7 @@ struct VKLogicalDevice {
     VkQueue             queue;
     VkSampler           textureSampler;
     VKBuffer*           blitVertexBuffer;
+    VkRenderPass        renderPass;
 
     PFN_vkDestroyDevice vkDestroyDevice;
     PFN_vkCreateShaderModule vkCreateShaderModule;
