@@ -34,5 +34,5 @@ STRUCT(VKLogicalDevice);
 STRUCT(VKRenderer);
 STRUCT(VKBuffer);
 STRUCT(VKImage);
-
+STRUCT(VKRenderState);
 #endif //VKTypes_h_Included

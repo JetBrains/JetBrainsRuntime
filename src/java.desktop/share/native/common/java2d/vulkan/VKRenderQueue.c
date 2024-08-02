@@ -36,6 +36,7 @@
 #include "VKRenderer.h"
 #include "VKVertex.h"
 #include "VKBlitLoops.h"
+#include "VKRenderState.h"
 
 #define BYTES_PER_POLY_POINT \
     sun_java2d_pipe_BufferedRenderPipe_BYTES_PER_POLY_POINT
@@ -59,9 +60,6 @@
 static VKSDOps *dstOps = NULL;
 
 static VKLogicalDevice* currentDevice;
-
-// TODO move this property to special drawing context structure
-static int color = -1;
 
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
     (JNIEnv *env, jobject oglrq, jlong buf, jint limit)
@@ -154,7 +152,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     "VKRenderQueue_flushBuffer: DRAW_PARALLELOGRAM(%f, %f, %f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12, lwr21, lwr12);
                 VKRenderer_RenderParallelogram(currentDevice, currentDevice->drawColorPoly,
-                                               color, dstOps, x11, y11, dx21, dy21, dx12, dy12);
+                                               0, dstOps, x11, y11, dx21, dy21, dx12, dy12);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_AAPARALLELOGRAM:
@@ -190,7 +188,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint count = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_SPANS");
-                VKRenderer_FillSpans(currentDevice, color, dstOps, count, (jint *)b);
+                VKRenderer_FillSpans(currentDevice, 0, dstOps, count, (jint *)b);
                 SKIP_BYTES(b, count * BYTES_PER_SPAN);
             }
             break;
@@ -206,7 +204,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(%f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12);
                 VKRenderer_RenderParallelogram(currentDevice, currentDevice->fillColorPoly,
-                                               color, dstOps, x11, y11, dx21, dy21, dx12, dy12);
+                                               0, dstOps, x11, y11, dx21, dy21, dx12, dy12);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM:
@@ -418,8 +416,18 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jdouble m11 = NEXT_DOUBLE(b);
                 jdouble m02 = NEXT_DOUBLE(b);
                 jdouble m12 = NEXT_DOUBLE(b);
+                J2dRlsTraceLn3(J2D_TRACE_VERBOSE,
+                    "VKRenderQueue_flushBuffer: SET_TRANSFORM | %.2f %.2f %.2f |", m00, m01, m02);
+                J2dRlsTraceLn3(J2D_TRACE_VERBOSE,
+                    "                                         | %.2f %.2f %.2f |", m10, m11, m12);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                    "VKRenderQueue_flushBuffer: SET_TRANSFORM");
+                    "                                         | 0.00 0.00 1.00 |");
+                currentDevice->renderState.m00 = m00;
+                currentDevice->renderState.m01 = m01;
+                currentDevice->renderState.m10 = m10;
+                currentDevice->renderState.m11 = m11;
+                currentDevice->renderState.m02 = m02;
+                currentDevice->renderState.m12 = m12;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_RESET_TRANSFORM:
@@ -528,7 +536,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_SET_COLOR:
             {
                 jint pixel = NEXT_INT(b);
-                color = pixel;
+                currentDevice->renderState.color = pixel;
                 J2dRlsTraceLn1(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_COLOR %d", pixel);
             }

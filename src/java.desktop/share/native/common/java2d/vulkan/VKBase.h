@@ -27,6 +27,7 @@
 #ifndef VKBase_h_Included
 #define VKBase_h_Included
 #include "VKTypes.h"
+#include "VKRenderState.h"
 
 struct VKLogicalDevice {
     VkDevice            device;
@@ -47,6 +48,7 @@ struct VKLogicalDevice {
     VkQueue             queue;
     VkSampler           textureSampler;
     VKBuffer*           blitVertexBuffer;
+    VKRenderState       renderState;
     VkRenderPass        renderPass;
 
     PFN_vkDestroyDevice vkDestroyDevice;

@@ -856,7 +856,7 @@ void VKRenderer_RenderParallelogram(VKLogicalDevice* logicalDevice,
     VKRenderer_ColorRender(
             logicalDevice,
             vksdOps->image, renderer,
-            color,
+            logicalDevice->renderState.color,
             renderVertexBuffer->buffer, vertexNum);
 }
 
@@ -917,7 +917,7 @@ void VKRenderer_FillSpans(VKLogicalDevice* logicalDevice, jint color, VKSDOps *d
     VKRenderer_ColorRender(
             logicalDevice,
             vksdOps->image, logicalDevice->fillColorPoly,
-            color,
+            logicalDevice->renderState.color,
             fillVertexBuffer->buffer, VERT_COUNT);
 }
 
