@@ -344,7 +344,7 @@ class Http2Connection  {
         sendConnectionPreface();
         if (!opened) {
             debug.log("ensure reset frame is sent to cancel initial stream");
-            initialStream.sendCancelStreamFrame();
+            initialStream.sendResetStreamFrame(ResetFrame.CANCEL);
         }
 
     }
