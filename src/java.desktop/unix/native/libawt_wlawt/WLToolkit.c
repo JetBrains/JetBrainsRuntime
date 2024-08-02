@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022-2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022-2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -106,7 +106,6 @@ static jfieldID hasEnterEventFID;
 static jfieldID hasLeaveEventFID;
 static jfieldID hasMotionEventFID;
 static jfieldID hasButtonEventFID;
-static jfieldID hasAxisEventFID;
 static jfieldID serialFID;
 static jfieldID surfaceFID;
 static jfieldID timestampFID;
@@ -114,8 +113,11 @@ static jfieldID surfaceXFID;
 static jfieldID surfaceYFID;
 static jfieldID buttonCodeFID;
 static jfieldID isButtonPressedFID;
-static jfieldID axis_0_validFID;
-static jfieldID axis_0_valueFID;
+static jfieldID axis_0_hasVectorValueFID;
+static jfieldID axis_0_hasStopEventFID;
+static jfieldID axis_0_hasSteps120ValueFID;
+static jfieldID axis_0_vectorValueFID;
+static jfieldID axis_0_steps120ValueFID;
 
 static jmethodID dispatchKeyboardKeyEventMID;
 static jmethodID dispatchKeyboardModifiersEventMID;
@@ -145,10 +147,7 @@ struct pointer_event_cumulative {
     bool has_leave_event         : 1;
     bool has_motion_event        : 1;
     bool has_button_event        : 1;
-    bool has_axis_event          : 1;
     bool has_axis_source_event   : 1;
-    bool has_axis_stop_event     : 1;
-    bool has_axis_discrete_event : 1;
 
     uint32_t   time;
     uint32_t   serial;
@@ -161,9 +160,19 @@ struct pointer_event_cumulative {
     uint32_t   state;
 
     struct {
-        bool       valid;
-        wl_fixed_t value;
-        int32_t    discrete;
+        // wl_pointer::axis
+        bool has_vector_value   : 1;
+        // wl_pointer::axis_stop
+        bool has_stop_event     : 1;
+        // wl_pointer::axis_discrete or wl_pointer::axis_value120
+        bool has_steps120_value : 1;
+
+        // wl_pointer::axis
+        wl_fixed_t vector_value;
+
+        // wl_pointer::axis_discrete or wl_pointer::axis_value120
+        // In the former case, the value is multiplied by 120 for compatibility with wl_pointer::axis_value120
+        int32_t    steps120_value;
     } axes[2];
     uint32_t axis_source;
 };
@@ -223,10 +232,9 @@ wl_pointer_axis(void *data, struct wl_pointer *wl_pointer, uint32_t time,
 {
     assert(axis < sizeof(pointer_event.axes)/sizeof(pointer_event.axes[0]));
 
-    pointer_event.has_axis_event   = true;
-    pointer_event.time             = time;
-    pointer_event.axes[axis].valid = true;
-    pointer_event.axes[axis].value = value;
+    pointer_event.axes[axis].has_vector_value = true;
+    pointer_event.time                        = time;
+    pointer_event.axes[axis].vector_value     = value;
 }
 
 static void
@@ -243,18 +251,35 @@ wl_pointer_axis_stop(void *data, struct wl_pointer *wl_pointer,
 {
     assert(axis < sizeof(pointer_event.axes)/sizeof(pointer_event.axes[0]));
 
-    pointer_event.has_axis_stop_event = true;
-    pointer_event.time                = time;
-    pointer_event.axes[axis].valid    = true;
+    pointer_event.axes[axis].has_stop_event = true;
+    pointer_event.time                      = time;
 }
 
 static void
 wl_pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer,
                          uint32_t axis, int32_t discrete)
 {
-    pointer_event.has_axis_discrete_event = true;
-    pointer_event.axes[axis].valid        = true;
-    pointer_event.axes[axis].discrete     = discrete;
+    assert(axis < sizeof(pointer_event.axes)/sizeof(pointer_event.axes[0]));
+
+    // wl_pointer::axis_discrete event is deprecated with wl_pointer version 8 - this event is not sent to clients
+    //   supporting version 8 or later.
+    // It's just an additional check to work around possible bugs in compositors when they send both
+    //   wl_pointer::axis_discrete and wl_pointer::axis_value120 events within the same frame.
+    // In this case wl_pointer::axis_value120 would be preferred.
+    if (!pointer_event.axes[axis].has_steps120_value) {
+        pointer_event.axes[axis].has_steps120_value = true;
+        pointer_event.axes[axis].steps120_value     = discrete * 120;
+    }
+}
+
+static void
+wl_pointer_axis_value120(void *data, struct wl_pointer *wl_pointer,
+                         uint32_t axis, int32_t value120)
+{
+    assert(axis < sizeof(pointer_event.axes)/sizeof(pointer_event.axes[0]));
+
+    pointer_event.axes[axis].has_steps120_value = true;
+    pointer_event.axes[axis].steps120_value     = value120;
 }
 
 static inline void
@@ -270,7 +295,6 @@ fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
     (*env)->SetBooleanField(env, pointerEventRef, hasLeaveEventFID, pointer_event.has_leave_event);
     (*env)->SetBooleanField(env, pointerEventRef, hasMotionEventFID, pointer_event.has_motion_event);
     (*env)->SetBooleanField(env, pointerEventRef, hasButtonEventFID, pointer_event.has_button_event);
-    (*env)->SetBooleanField(env, pointerEventRef, hasAxisEventFID, pointer_event.has_axis_event);
 
     (*env)->SetLongField(env, pointerEventRef, surfaceFID, (long)pointer_event.surface);
     (*env)->SetLongField(env, pointerEventRef, serialFID, pointer_event.serial);
@@ -283,8 +307,11 @@ fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
     (*env)->SetBooleanField(env, pointerEventRef, isButtonPressedFID,
                             (pointer_event.state == WL_POINTER_BUTTON_STATE_PRESSED));
 
-    (*env)->SetBooleanField(env, pointerEventRef, axis_0_validFID, pointer_event.axes[0].valid);
-    (*env)->SetIntField(env, pointerEventRef, axis_0_valueFID, wl_fixed_to_int(pointer_event.axes[0].value));
+    (*env)->SetBooleanField(env, pointerEventRef, axis_0_hasVectorValueFID, pointer_event.axes[0].has_vector_value);
+    (*env)->SetBooleanField(env, pointerEventRef, axis_0_hasStopEventFID, pointer_event.axes[0].has_stop_event);
+    (*env)->SetBooleanField(env, pointerEventRef, axis_0_hasSteps120ValueFID, pointer_event.axes[0].has_steps120_value);
+    (*env)->SetDoubleField(env, pointerEventRef, axis_0_vectorValueFID, wl_fixed_to_double(pointer_event.axes[0].vector_value));
+    (*env)->SetIntField(env, pointerEventRef, axis_0_steps120ValueFID, pointer_event.axes[0].steps120_value);
 }
 
 static void
@@ -317,7 +344,9 @@ static const struct wl_pointer_listener wl_pointer_listener = {
         .frame         = wl_pointer_frame,
         .axis_source   = wl_pointer_axis_source,
         .axis_stop     = wl_pointer_axis_stop,
-        .axis_discrete = wl_pointer_axis_discrete
+        .axis_discrete = wl_pointer_axis_discrete/*,
+        This is only supported if the libwayland-client supports version 8 of the wl_pointer interface
+        .axis_value120 = wl_pointer_axis_value120*/
 };
 
 
@@ -631,8 +660,6 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                       JNI_FALSE);
     CHECK_NULL_RETURN(hasButtonEventFID = (*env)->GetFieldID(env, pointerEventClass, "has_button_event", "Z"),
                       JNI_FALSE);
-    CHECK_NULL_RETURN(hasAxisEventFID = (*env)->GetFieldID(env, pointerEventClass, "has_axis_event", "Z"),
-                      JNI_FALSE);
 
     CHECK_NULL_RETURN(serialFID = (*env)->GetFieldID(env, pointerEventClass, "serial", "J"), JNI_FALSE);
     CHECK_NULL_RETURN(surfaceFID = (*env)->GetFieldID(env, pointerEventClass, "surface", "J"), JNI_FALSE);
@@ -641,8 +668,17 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(surfaceYFID = (*env)->GetFieldID(env, pointerEventClass, "surface_y", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(buttonCodeFID = (*env)->GetFieldID(env, pointerEventClass, "buttonCode", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(isButtonPressedFID = (*env)->GetFieldID(env, pointerEventClass, "isButtonPressed", "Z"), JNI_FALSE);
-    CHECK_NULL_RETURN(axis_0_validFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_valid", "Z"), JNI_FALSE);
-    CHECK_NULL_RETURN(axis_0_valueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_value", "I"), JNI_FALSE);
+
+    CHECK_NULL_RETURN(axis_0_hasVectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_hasVectorValue", "Z"),
+                      JNI_FALSE);
+    CHECK_NULL_RETURN(axis_0_hasStopEventFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_hasStopEvent", "Z"),
+                      JNI_FALSE);
+    CHECK_NULL_RETURN(axis_0_hasSteps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_hasSteps120Value", "Z"),
+                      JNI_FALSE);
+    CHECK_NULL_RETURN(axis_0_vectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_vectorValue", "D"),
+                      JNI_FALSE);
+    CHECK_NULL_RETURN(axis_0_steps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_steps120Value", "I"),
+                      JNI_FALSE);
 
     CHECK_NULL_RETURN(dispatchKeyboardEnterEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                 "dispatchKeyboardEnterEvent",
