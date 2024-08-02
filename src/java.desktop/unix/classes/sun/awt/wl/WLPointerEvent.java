@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022-2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022-2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,6 @@ class WLPointerEvent {
     private boolean has_leave_event;
     private boolean has_motion_event;
     private boolean has_button_event;
-    private boolean has_axis_event;
 
     private long    surface; /// 'struct wl_surface *' this event appertains to
     private long    serial;
@@ -58,8 +57,12 @@ class WLPointerEvent {
     private int     buttonCode; // pointer button code corresponding to PointerButtonCodes.linuxCode
     private boolean isButtonPressed; // true if button was pressed, false if released
 
-    private boolean axis_0_valid; // is vertical scroll included in this event?
-    private int     axis_0_value; // "length of vector in surface-local coordinate space" (source: wayland.xml)
+    private boolean axis_0_hasVectorValue;   // whether axis_0_vectorValue is valid
+    private boolean axis_0_hasStopEvent;     // whether wl_pointer::axis_stop event has been received for this axis
+    private boolean axis_0_hasSteps120Value; // whether axis_0_steps120Value is valid
+    private double  axis_0_vectorValue;      // "length of vector in surface-local coordinate space" (source: wayland.xml)
+    private int     axis_0_steps120Value;    // "high-resolution wheel scroll information, with each multiple of 120
+                                             //  representing one logical scroll step (a wheel detent)" (source: wayland.xml)
 
     private WLPointerEvent() {}
 
@@ -175,7 +178,7 @@ class WLPointerEvent {
     }
 
     public boolean hasAxisEvent() {
-        return has_axis_event;
+        return axis0HasEvents();
     }
 
     /**
@@ -241,14 +244,32 @@ class WLPointerEvent {
         return isButtonPressed;
     }
 
-    public boolean getIsAxis0Valid() {
-        assert hasAxisEvent();
-        return axis_0_valid;
+    public boolean axis0HasEvents() {
+        return axis0HasVectorValue() ||
+               axis0HasStopEvent()   ||
+               axis0HasSteps120Value();
     }
 
-    public int getAxis0Value() {
-        assert hasAxisEvent();
-        return axis_0_value;
+    public boolean axis0HasVectorValue() {
+        return axis_0_hasVectorValue;
+    }
+
+    public boolean axis0HasStopEvent() {
+        return axis_0_hasStopEvent;
+    }
+
+    public boolean axis0HasSteps120Value() {
+        return axis_0_hasSteps120Value;
+    }
+
+    public double getAxis0VectorValue() {
+        assert axis0HasVectorValue();
+        return axis_0_vectorValue;
+    }
+
+    public int getAxis0Steps120Value() {
+        assert axis0HasSteps120Value();
+        return axis_0_steps120Value;
     }
 
     @Override
@@ -283,9 +304,19 @@ class WLPointerEvent {
         }
 
         if (hasAxisEvent()) {
-            builder.append("axis");
-            if (axis_0_valid) {
-                builder.append("vertical-scroll: ").append(axis_0_value).append(" ");
+            builder.append(" axis");
+            if (axis0HasEvents()) {
+                builder.append(" vertical-scroll:");
+
+                if (axis0HasVectorValue()) {
+                    builder.append(" ").append(getAxis0VectorValue());
+                }
+                if (axis0HasSteps120Value()) {
+                    builder.append(" ").append(getAxis0Steps120Value()).append("/120 steps");
+                }
+                if (axis0HasStopEvent()) {
+                    builder.append(" stop");
+                }
             }
         }
 
