@@ -107,6 +107,7 @@ public:
   static THPMode thp_mode()                     { return _thp_support.mode(); }
   static bool supports_thp()                    { return thp_mode() == THPMode::madvise || thp_mode() == THPMode::always; }
   static size_t thp_pagesize()                  { return _thp_support.pagesize(); }
+  static size_t thp_pagesize_fallback();
 
   static void initialize();
   static void print_on(outputStream* os);
