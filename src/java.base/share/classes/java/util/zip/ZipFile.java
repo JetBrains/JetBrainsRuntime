@@ -114,7 +114,7 @@ public class ZipFile implements ZipConstants, Closeable {
     private final @Stable CleanableResource res;
 
     private static final boolean USE_NIO_FOR_ZIP_FILE_ACCESS =
-        Boolean.parseBoolean(System.getProperty("java.util.zip.use.nio.for.zip.file.access", "false"));
+        Boolean.parseBoolean(GetPropertyAction.privilegedGetProperty("java.util.zip.use.nio.for.zip.file.access", "false"));
 
     private static final int STORED = ZipEntry.STORED;
     private static final int DEFLATED = ZipEntry.DEFLATED;
