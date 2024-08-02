@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022-2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022-2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,7 +101,6 @@ public class WLComponentPeer implements ComponentPeer {
             {"hand"}, // HAND_CURSOR
             {"move"}, // MOVE_CURSOR
     };
-    private static final int WHEEL_SCROLL_AMOUNT = 3;
 
     private static final int MINIMUM_WIDTH = 1;
     private static final int MINIMUM_HEIGHT = 1;
@@ -1087,6 +1086,43 @@ public class WLComponentPeer implements ComponentPeer {
         WLToolkit.postEvent(e);
     }
 
+
+    /**
+     * Accumulates fractional parts of wheel rotations until their absolute sum becomes >=1.
+     * This allows implementing smoother scrolling, e.g., the sequence of wl_pointer::axis events with values
+     *   [0.2, 0.1, 0.4, 0.4] can be accumulated into 1.1=0.2+0.1+0.4+0.4, making it possible to
+     *   generate a MouseWheelEvent with wheelRotation=1
+     *   (instead of 4 tries to generate a MouseWheelEvent with wheelRotation=0 due to double->int conversion)
+     */
+    private static final class MouseWheelRoundRotationsAccumulator {
+        /**
+         * This method is intended to accumulate fractional numbers of wheel rotations.
+         *
+         * @param preciseRotations - fractional number of wheel rotations (usually got from a {@code wl_pointer::axis} event)
+         * @return The number of wheel round rotations accumulated
+         */
+        public int accumulateAndGetRoundRotations(double preciseRotations) {
+            // The code assumes that the target component ({@link WLComponentPeer#target}) never changes.
+            // If it did, {@link #accumulatedPreciseRotations} would have to be reset each time the target changed.
+
+            accumulatedPreciseRotations += preciseRotations;
+            final int result = (int)accumulatedPreciseRotations;
+            accumulatedPreciseRotations -= result;
+
+            return result;
+        }
+
+        private double accumulatedPreciseRotations = 0;
+    }
+
+    private final MouseWheelRoundRotationsAccumulator wheelRoundRotationsAccumulator = new MouseWheelRoundRotationsAccumulator();
+
+    protected double convertAxisVectorToPreciseWheelRotations(double axisVector) {
+        // 0.28 has experimentally been found as providing a good balance between
+        //   wheel scrolling sensitivity and touchpad scrolling sensitivity
+        return axisVector * 0.28;
+    }
+
     /**
      * Creates and posts mouse events based on the given WLPointerEvent received from Wayland,
      * the freshly updated WLInputState, and the previous WLInputState.
@@ -1153,18 +1189,25 @@ public class WLComponentPeer implements ComponentPeer {
         }
 
         if (e.hasAxisEvent() && e.getIsAxis0Valid()) {
-            final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
-                    MouseEvent.MOUSE_WHEEL,
-                    timestamp,
-                    newInputState.getModifiers(),
-                    x, y,
-                    xAbsolute, yAbsolute,
-                    1,
-                    isPopupTrigger,
-                    MouseWheelEvent.WHEEL_UNIT_SCROLL,
-                    1,
-                    Integer.signum(e.getAxis0Value()) * WHEEL_SCROLL_AMOUNT);
-            postMouseEvent(mouseEvent);
+            final int scrollAmount = 1;
+            final double wheelPreciseRotations = convertAxisVectorToPreciseWheelRotations(e.getAxis0Value());
+            final int wheelRoundRotations = wheelRoundRotationsAccumulator.accumulateAndGetRoundRotations(wheelPreciseRotations);
+
+            if ((wheelRoundRotations != 0) || (wheelPreciseRotations != 0)) {
+                final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
+                        MouseEvent.MOUSE_WHEEL,
+                        timestamp,
+                        newInputState.getModifiers(),
+                        x, y,
+                        xAbsolute, yAbsolute,
+                        1,
+                        isPopupTrigger,
+                        MouseWheelEvent.WHEEL_UNIT_SCROLL,
+                        scrollAmount,
+                        wheelRoundRotations,
+                        wheelPreciseRotations);
+                postMouseEvent(mouseEvent);
+            }
         }
 
         if (e.hasMotionEvent()) {

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022-2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022-2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -280,7 +280,7 @@ fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
                             (pointer_event.state == WL_POINTER_BUTTON_STATE_PRESSED));
 
     (*env)->SetBooleanField(env, pointerEventRef, axis_0_validFID, pointer_event.axes[0].valid);
-    (*env)->SetIntField(env, pointerEventRef, axis_0_valueFID, wl_fixed_to_int(pointer_event.axes[0].value));
+    (*env)->SetDoubleField(env, pointerEventRef, axis_0_valueFID, wl_fixed_to_double(pointer_event.axes[0].value));
 }
 
 static void
@@ -635,7 +635,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(buttonCodeFID = (*env)->GetFieldID(env, pointerEventClass, "buttonCode", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(isButtonPressedFID = (*env)->GetFieldID(env, pointerEventClass, "isButtonPressed", "Z"), JNI_FALSE);
     CHECK_NULL_RETURN(axis_0_validFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_valid", "Z"), JNI_FALSE);
-    CHECK_NULL_RETURN(axis_0_valueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_value", "I"), JNI_FALSE);
+    CHECK_NULL_RETURN(axis_0_valueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_value", "D"), JNI_FALSE);
 
     CHECK_NULL_RETURN(dispatchKeyboardEnterEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                 "dispatchKeyboardEnterEvent",
