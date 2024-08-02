@@ -102,6 +102,9 @@ public class WLComponentPeer implements ComponentPeer {
             {"move"}, // MOVE_CURSOR
     };
 
+    // Changing this constant may require adjustments in convertAxisVectorToPreciseWheelRotations
+    private static final int WHEEL_SCROLL_AMOUNT = 3;
+
     private static final int MINIMUM_WIDTH = 1;
     private static final int MINIMUM_HEIGHT = 1;
 
@@ -1086,43 +1089,6 @@ public class WLComponentPeer implements ComponentPeer {
         WLToolkit.postEvent(e);
     }
 
-
-    /**
-     * Accumulates fractional parts of wheel rotations until their absolute sum becomes >=1.
-     * This allows implementing smoother scrolling, e.g., the sequence of wl_pointer::axis events with values
-     *   [0.2, 0.1, 0.4, 0.4] can be accumulated into 1.1=0.2+0.1+0.4+0.4, making it possible to
-     *   generate a MouseWheelEvent with wheelRotation=1
-     *   (instead of 4 tries to generate a MouseWheelEvent with wheelRotation=0 due to double->int conversion)
-     */
-    private static final class MouseWheelRoundRotationsAccumulator {
-        /**
-         * This method is intended to accumulate fractional numbers of wheel rotations.
-         *
-         * @param preciseRotations - fractional number of wheel rotations (usually got from a {@code wl_pointer::axis} event)
-         * @return The number of wheel round rotations accumulated
-         */
-        public int accumulateAndGetRoundRotations(double preciseRotations) {
-            // The code assumes that the target component ({@link WLComponentPeer#target}) never changes.
-            // If it did, {@link #accumulatedPreciseRotations} would have to be reset each time the target changed.
-
-            accumulatedPreciseRotations += preciseRotations;
-            final int result = (int)accumulatedPreciseRotations;
-            accumulatedPreciseRotations -= result;
-
-            return result;
-        }
-
-        private double accumulatedPreciseRotations = 0;
-    }
-
-    private final MouseWheelRoundRotationsAccumulator wheelRoundRotationsAccumulator = new MouseWheelRoundRotationsAccumulator();
-
-    protected double convertAxisVectorToPreciseWheelRotations(double axisVector) {
-        // 0.28 has experimentally been found as providing a good balance between
-        //   wheel scrolling sensitivity and touchpad scrolling sensitivity
-        return axisVector * 0.28;
-    }
-
     /**
      * Creates and posts mouse events based on the given WLPointerEvent received from Wayland,
      * the freshly updated WLInputState, and the previous WLInputState.
@@ -1188,10 +1154,36 @@ public class WLComponentPeer implements ComponentPeer {
             }
         }
 
-        if (e.hasAxisEvent() && e.getIsAxis0Valid()) {
-            final int scrollAmount = 1;
-            final double wheelPreciseRotations = convertAxisVectorToPreciseWheelRotations(e.getAxis0Value());
-            final int wheelRoundRotations = wheelRoundRotationsAccumulator.accumulateAndGetRoundRotations(wheelPreciseRotations);
+        if (e.hasAxisEvent()) {
+            final int scrollAmount;
+            final double wheelPreciseRotations;
+            final int wheelRoundRotations;
+
+            // wl_pointer::axis_discrete/axis_value120 are preferred over wl_pointer::axis because
+            //   they're closer to MouseWheelEvent by their nature.
+            if (e.axis0HasSteps120Value()) {
+                final var steps120Value = e.getAxis0Steps120Value();
+                wheelPreciseRotations = steps120Value / 120.0d;
+                wheelRoundRotations = wheelRoundRotationsAccumulator.accumulateSteps120Rotations(steps120Value);
+                // TODO: It would be probably better to calculate the scrollAmount here taking getAxis0VectorValue() into
+                //       consideration, so that the wheel scrolling speed could be adjusted via some system settings.
+                //       However, neither Gnome nor KDE currently provide such a setting, making it difficult to test
+                //       how well such an approach would work. So leaving it as is for now.
+                scrollAmount = WHEEL_SCROLL_AMOUNT;
+            } else if (e.axis0HasVectorValue()) {
+                final var vectorValue = e.getAxis0VectorValue();
+                wheelPreciseRotations = convertAxisVectorToPreciseWheelRotations(vectorValue);
+                wheelRoundRotations = wheelRoundRotationsAccumulator.accumulateFractionalRotations(wheelPreciseRotations);
+                scrollAmount = 1;
+            } else {
+                wheelRoundRotations = 0;
+                wheelPreciseRotations = 0;
+                scrollAmount = 0;
+            }
+
+            if (e.axis0HasStopEvent()) {
+                wheelRoundRotationsAccumulator.reset();
+            }
 
             if ((wheelRoundRotations != 0) || (wheelPreciseRotations != 0)) {
                 final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
@@ -1237,6 +1229,72 @@ public class WLComponentPeer implements ComponentPeer {
             postMouseEvent(mouseEvent);
         }
     }
+
+    /**
+     * Accumulates fractional parts of wheel rotation steps until their absolute sum represents one or more full step(s).
+     * This allows implementing smoother scrolling, e.g., the sequence of wl_pointer::axis events with values
+     *   [0.2, 0.1, 0.4, 0.4] can be accumulated into 1.1=0.2+0.1+0.4+0.4, making it possible to
+     *   generate a MouseWheelEvent with wheelRotation=1
+     *   (instead of 4 tries to generate a MouseWheelEvent with wheelRotation=0 due to double->int conversion)
+     */
+    private static final class MouseWheelRoundRotationsAccumulator {
+        /**
+         * This method is intended to accumulate fractional numbers of wheel rotations.
+         *
+         * @param fractionalRotations - fractional number of wheel rotations (usually got from a {@code wl_pointer::axis} event)
+         * @return The number of wheel round rotations accumulated
+         * @see #accumulateSteps120Rotations
+         */
+        public int accumulateFractionalRotations(double fractionalRotations) {
+            // The code assumes that the target component ({@link WLComponentPeer#target}) never changes.
+            // If it did, all the accumulating fields would have to be reset each time the target changed.
+
+            accumulatedFractionalRotations += fractionalRotations;
+            final int result = (int)accumulatedFractionalRotations;
+            accumulatedFractionalRotations -= result;
+            return result;
+        }
+
+        /**
+         * This method is intended to accumulate 1/120 fractions of a rotation step.
+         *
+         * @param steps120Rotations - a number of 1/120 parts of a wheel step (so that, e.g.,
+         *                            30 means one quarter of a step,
+         *                            240 means two steps,
+         *                            -240 means two steps in the negative direction,
+         *                            540 means 4.5 steps).
+         *                            Usually got from a {@code wl_pointer::axis_discrete}/{@code axis_value120} event.
+         * @return The number of wheel round rotations accumulated
+         * @see #accumulateFractionalRotations
+         */
+        public int accumulateSteps120Rotations(int steps120Rotations) {
+            // The code assumes that the target component ({@link WLComponentPeer#target}) never changes.
+            // If it did, all the accumulating fields would have to be reset each time the target changed.
+
+            accumulatedSteps120Rotations += steps120Rotations;
+            final int result = accumulatedSteps120Rotations / 120;
+            accumulatedSteps120Rotations %= 120;
+            return result;
+        }
+
+        public void reset() {
+            accumulatedFractionalRotations = 0;
+            accumulatedSteps120Rotations = 0;
+        }
+
+
+        private double accumulatedFractionalRotations = 0;
+        private int accumulatedSteps120Rotations = 0;
+    }
+
+    private final MouseWheelRoundRotationsAccumulator wheelRoundRotationsAccumulator = new MouseWheelRoundRotationsAccumulator();
+
+    private double convertAxisVectorToPreciseWheelRotations(double axisVector) {
+        // 0.28 has experimentally been found as providing a good balance between
+        //   wheel scrolling sensitivity and touchpad scrolling sensitivity
+        return axisVector * 0.28;
+    }
+
 
     void startDrag() {
         performLocked(() -> nativeStartDrag(nativePtr));
