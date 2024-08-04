@@ -1152,7 +1152,7 @@ public class WLComponentPeer implements ComponentPeer {
         }
 
         if (e.hasAxisEvent()) {
-            final var mweConversionInfo = convertPointerEventToMWEParameters(e);
+            convertPointerEventToMWEParameters(e, xAxisWheelRoundRotationsAccumulator, yAxisWheelRoundRotationsAccumulator, mweConversionInfo);
 
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine("{0} -> {1}", e, mweConversionInfo);
@@ -1266,23 +1266,52 @@ public class WLComponentPeer implements ComponentPeer {
     private final MouseWheelRoundRotationsAccumulator xAxisWheelRoundRotationsAccumulator = new MouseWheelRoundRotationsAccumulator();
     private final MouseWheelRoundRotationsAccumulator yAxisWheelRoundRotationsAccumulator = new MouseWheelRoundRotationsAccumulator();
 
-    private record PointerEventToMWEConversionInfo(
-        double  xAxisVector,
-        int     xAxisSteps120,
-        int     xAxisDirectionSign,
-        double  xAxisMWEPreciseRotations,
-        int     xAxisMWERoundRotations,
-        int     xAxisMWEScrollAmount,
+    private static final class PointerEventToMWEConversionInfo {
+        public double  xAxisVector = 0;
+        public int     xAxisSteps120 = 0;
+        public int     xAxisDirectionSign = 0;
+        public double  xAxisMWEPreciseRotations = 0;
+        public int     xAxisMWERoundRotations = 0;
+        public int     xAxisMWEScrollAmount = 0;
 
-        double  yAxisVector,
-        int     yAxisSteps120,
-        int     yAxisDirectionSign,
-        double  yAxisMWEPreciseRotations,
-        int     yAxisMWERoundRotations,
-        int     yAxisMWEScrollAmount
-    ) {}
+        public double  yAxisVector = 0;
+        public int     yAxisSteps120 = 0;
+        public int     yAxisDirectionSign = 0;
+        public double  yAxisMWEPreciseRotations = 0;
+        public int     yAxisMWERoundRotations = 0;
+        public int     yAxisMWEScrollAmount = 0;
 
-    private PointerEventToMWEConversionInfo convertPointerEventToMWEParameters(WLPointerEvent dispatchingEvent) {
+        private final StringBuilder toStringBuf = new StringBuilder(1024);
+        @Override
+        public String toString() {
+            toStringBuf.setLength(0);
+
+            toStringBuf.append("PointerEventToMWEConversionInfo[")
+                       .append("xAxisVector="             ).append(xAxisVector             ).append(", ")
+                       .append("xAxisSteps120="           ).append(xAxisSteps120           ).append(", ")
+                       .append("xAxisDirectionSign="      ).append(xAxisDirectionSign      ).append(", ")
+                       .append("xAxisMWEPreciseRotations=").append(xAxisMWEPreciseRotations).append(", ")
+                       .append("xAxisMWERoundRotations="  ).append(xAxisMWERoundRotations  ).append(", ")
+                       .append("xAxisMWEScrollAmount="    ).append(xAxisMWEScrollAmount    ).append(", ")
+
+                       .append("yAxisVector="             ).append(yAxisVector             ).append(", ")
+                       .append("yAxisSteps120="           ).append(yAxisSteps120           ).append(", ")
+                       .append("yAxisDirectionSign="      ).append(yAxisDirectionSign      ).append(", ")
+                       .append("yAxisMWEPreciseRotations=").append(yAxisMWEPreciseRotations).append(", ")
+                       .append("yAxisMWERoundRotations="  ).append(yAxisMWERoundRotations  ).append(", ")
+                       .append("yAxisMWEScrollAmount="    ).append(yAxisMWEScrollAmount    )
+                       .append(']');
+
+            return toStringBuf.toString();
+        }
+    }
+    private final PointerEventToMWEConversionInfo mweConversionInfo = new PointerEventToMWEConversionInfo();
+
+    private static void convertPointerEventToMWEParameters(
+            WLPointerEvent dispatchingEvent,
+            MouseWheelRoundRotationsAccumulator xAxisWheelRoundRotationsAccumulator,
+            MouseWheelRoundRotationsAccumulator yAxisWheelRoundRotationsAccumulator,
+            PointerEventToMWEConversionInfo mweConversionInfo) {
         // WLPointerEvent -> MouseWheelEvent conversion constants.
         // Please keep in mind that they're all related, so that changing one may require adjusting the others
         //   (or altering this conversion routine).
@@ -1295,69 +1324,46 @@ public class WLComponentPeer implements ComponentPeer {
         //   wheel scrolling sensitivity and touchpad scrolling sensitivity
         final double VECTOR_LENGTH_TO_MWE_ROTATIONS_FACTOR = 0.28;
 
-        final double  xAxisVector   = dispatchingEvent.xAxisHasVectorValue()   ? dispatchingEvent.getXAxisVectorValue() : 0;
-        final int     xAxisSteps120 = dispatchingEvent.xAxisHasSteps120Value() ? dispatchingEvent.getXAxisSteps120Value() : 0;
-        final int     xAxisDirectionSign;
-        final double  xAxisMWEPreciseRotations;
-        final int     xAxisMWERoundRotations;
-        final int     xAxisMWEScrollAmount;
+        mweConversionInfo.xAxisVector   = dispatchingEvent.xAxisHasVectorValue()   ? dispatchingEvent.getXAxisVectorValue() : 0;
+        mweConversionInfo.xAxisSteps120 = dispatchingEvent.xAxisHasSteps120Value() ? dispatchingEvent.getXAxisSteps120Value() : 0;
 
         // Converting the X axis Wayland values to MouseWheelEvent parameters.
 
         // wl_pointer::axis_discrete/axis_value120 are preferred over wl_pointer::axis because
         //   they're closer to MouseWheelEvent by their nature.
-        if (xAxisSteps120 != 0) {
-            xAxisDirectionSign       = Integer.signum(xAxisSteps120);
-            xAxisMWEPreciseRotations = xAxisSteps120 / 120d;
-            xAxisMWERoundRotations   = xAxisWheelRoundRotationsAccumulator.accumulateSteps120Rotations(xAxisSteps120);
+        if (mweConversionInfo.xAxisSteps120 != 0) {
+            mweConversionInfo.xAxisDirectionSign       = Integer.signum(mweConversionInfo.xAxisSteps120);
+            mweConversionInfo.xAxisMWEPreciseRotations = mweConversionInfo.xAxisSteps120 / 120d;
+            mweConversionInfo.xAxisMWERoundRotations   = xAxisWheelRoundRotationsAccumulator.accumulateSteps120Rotations(mweConversionInfo.xAxisSteps120);
             // It would be probably better to calculate the scrollAmount taking the xAxisVector value into
             //   consideration, so that the wheel scrolling speed could be adjusted via some system settings.
             // However, neither Gnome nor KDE currently provide such a setting, making it difficult to test
             //   how well such an approach would work. So leaving it as is for now.
-            xAxisMWEScrollAmount     = STEPS120_MWE_SCROLL_AMOUNT;
+            mweConversionInfo.xAxisMWEScrollAmount     = STEPS120_MWE_SCROLL_AMOUNT;
         } else {
-            xAxisDirectionSign       = (int)Math.signum(xAxisVector);
-            xAxisMWEPreciseRotations = xAxisVector * VECTOR_LENGTH_TO_MWE_ROTATIONS_FACTOR;
-            xAxisMWERoundRotations   = xAxisWheelRoundRotationsAccumulator.accumulateFractionalRotations(xAxisMWEPreciseRotations);
-            xAxisMWEScrollAmount     = VECTOR_MWE_SCROLL_AMOUNT;
+            mweConversionInfo.xAxisDirectionSign       = (int)Math.signum(mweConversionInfo.xAxisVector);
+            mweConversionInfo.xAxisMWEPreciseRotations = mweConversionInfo.xAxisVector * VECTOR_LENGTH_TO_MWE_ROTATIONS_FACTOR;
+            mweConversionInfo.xAxisMWERoundRotations   = xAxisWheelRoundRotationsAccumulator.accumulateFractionalRotations(mweConversionInfo.xAxisMWEPreciseRotations);
+            mweConversionInfo.xAxisMWEScrollAmount     = VECTOR_MWE_SCROLL_AMOUNT;
         }
 
-        final double  yAxisVector   = dispatchingEvent.yAxisHasVectorValue()   ? dispatchingEvent.getYAxisVectorValue() : 0;
-        final int     yAxisSteps120 = dispatchingEvent.yAxisHasSteps120Value() ? dispatchingEvent.getYAxisSteps120Value() : 0;
-        final int     yAxisDirectionSign;
-        final double  yAxisMWEPreciseRotations;
-        final int     yAxisMWERoundRotations;
-        final int     yAxisMWEScrollAmount;
+        mweConversionInfo.yAxisVector   = dispatchingEvent.yAxisHasVectorValue()   ? dispatchingEvent.getYAxisVectorValue() : 0;
+        mweConversionInfo.yAxisSteps120 = dispatchingEvent.yAxisHasSteps120Value() ? dispatchingEvent.getYAxisSteps120Value() : 0;
 
         // Converting the Y axis Wayland values to MouseWheelEvent parameters.
         // (Currently, the routine is exactly like for X axis)
 
-        if (yAxisSteps120 != 0) {
-            yAxisDirectionSign       = Integer.signum(yAxisSteps120);
-            yAxisMWEPreciseRotations = yAxisSteps120 / 120d;
-            yAxisMWERoundRotations   = yAxisWheelRoundRotationsAccumulator.accumulateSteps120Rotations(yAxisSteps120);
-            yAxisMWEScrollAmount     = STEPS120_MWE_SCROLL_AMOUNT;
+        if (mweConversionInfo.yAxisSteps120 != 0) {
+            mweConversionInfo.yAxisDirectionSign       = Integer.signum(mweConversionInfo.yAxisSteps120);
+            mweConversionInfo.yAxisMWEPreciseRotations = mweConversionInfo.yAxisSteps120 / 120d;
+            mweConversionInfo.yAxisMWERoundRotations   = yAxisWheelRoundRotationsAccumulator.accumulateSteps120Rotations(mweConversionInfo.yAxisSteps120);
+            mweConversionInfo.yAxisMWEScrollAmount     = STEPS120_MWE_SCROLL_AMOUNT;
         } else {
-            yAxisDirectionSign       = (int)Math.signum(yAxisVector);
-            yAxisMWEPreciseRotations = yAxisVector * VECTOR_LENGTH_TO_MWE_ROTATIONS_FACTOR;
-            yAxisMWERoundRotations   = yAxisWheelRoundRotationsAccumulator.accumulateFractionalRotations(yAxisMWEPreciseRotations);
-            yAxisMWEScrollAmount     = VECTOR_MWE_SCROLL_AMOUNT;
+            mweConversionInfo.yAxisDirectionSign       = (int)Math.signum(mweConversionInfo.yAxisVector);
+            mweConversionInfo.yAxisMWEPreciseRotations = mweConversionInfo.yAxisVector * VECTOR_LENGTH_TO_MWE_ROTATIONS_FACTOR;
+            mweConversionInfo.yAxisMWERoundRotations   = yAxisWheelRoundRotationsAccumulator.accumulateFractionalRotations(mweConversionInfo.yAxisMWEPreciseRotations);
+            mweConversionInfo.yAxisMWEScrollAmount     = VECTOR_MWE_SCROLL_AMOUNT;
         }
-
-        return new PointerEventToMWEConversionInfo(
-                xAxisVector,
-                xAxisSteps120,
-                xAxisDirectionSign,
-                xAxisMWEPreciseRotations,
-                xAxisMWERoundRotations,
-                xAxisMWEScrollAmount,
-
-                yAxisVector,
-                yAxisSteps120,
-                yAxisDirectionSign,
-                yAxisMWEPreciseRotations,
-                yAxisMWERoundRotations,
-                yAxisMWEScrollAmount);
     }
 
 
