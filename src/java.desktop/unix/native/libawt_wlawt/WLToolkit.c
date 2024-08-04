@@ -113,11 +113,16 @@ static jfieldID surfaceXFID;
 static jfieldID surfaceYFID;
 static jfieldID buttonCodeFID;
 static jfieldID isButtonPressedFID;
-static jfieldID axis_0_hasVectorValueFID;
-static jfieldID axis_0_hasStopEventFID;
-static jfieldID axis_0_hasSteps120ValueFID;
-static jfieldID axis_0_vectorValueFID;
-static jfieldID axis_0_steps120ValueFID;
+static jfieldID xAxis_hasVectorValueFID;
+static jfieldID xAxis_hasStopEventFID;
+static jfieldID xAxis_hasSteps120ValueFID;
+static jfieldID xAxis_vectorValueFID;
+static jfieldID xAxis_steps120ValueFID;
+static jfieldID yAxis_hasVectorValueFID;
+static jfieldID yAxis_hasStopEventFID;
+static jfieldID yAxis_hasSteps120ValueFID;
+static jfieldID yAxis_vectorValueFID;
+static jfieldID yAxis_steps120ValueFID;
 
 static jmethodID dispatchKeyboardKeyEventMID;
 static jmethodID dispatchKeyboardModifiersEventMID;
@@ -307,11 +312,17 @@ fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
     (*env)->SetBooleanField(env, pointerEventRef, isButtonPressedFID,
                             (pointer_event.state == WL_POINTER_BUTTON_STATE_PRESSED));
 
-    (*env)->SetBooleanField(env, pointerEventRef, axis_0_hasVectorValueFID, pointer_event.axes[0].has_vector_value);
-    (*env)->SetBooleanField(env, pointerEventRef, axis_0_hasStopEventFID, pointer_event.axes[0].has_stop_event);
-    (*env)->SetBooleanField(env, pointerEventRef, axis_0_hasSteps120ValueFID, pointer_event.axes[0].has_steps120_value);
-    (*env)->SetDoubleField(env, pointerEventRef, axis_0_vectorValueFID, wl_fixed_to_double(pointer_event.axes[0].vector_value));
-    (*env)->SetIntField(env, pointerEventRef, axis_0_steps120ValueFID, pointer_event.axes[0].steps120_value);
+    (*env)->SetBooleanField(env, pointerEventRef, xAxis_hasVectorValueFID,   pointer_event.axes[1].has_vector_value);
+    (*env)->SetBooleanField(env, pointerEventRef, xAxis_hasStopEventFID,     pointer_event.axes[1].has_stop_event);
+    (*env)->SetBooleanField(env, pointerEventRef, xAxis_hasSteps120ValueFID, pointer_event.axes[1].has_steps120_value);
+    (*env)->SetDoubleField (env, pointerEventRef, xAxis_vectorValueFID,      wl_fixed_to_double(pointer_event.axes[1].vector_value));
+    (*env)->SetIntField    (env, pointerEventRef, xAxis_steps120ValueFID,    pointer_event.axes[1].steps120_value);
+
+    (*env)->SetBooleanField(env, pointerEventRef, yAxis_hasVectorValueFID,   pointer_event.axes[0].has_vector_value);
+    (*env)->SetBooleanField(env, pointerEventRef, yAxis_hasStopEventFID,     pointer_event.axes[0].has_stop_event);
+    (*env)->SetBooleanField(env, pointerEventRef, yAxis_hasSteps120ValueFID, pointer_event.axes[0].has_steps120_value);
+    (*env)->SetDoubleField (env, pointerEventRef, yAxis_vectorValueFID,      wl_fixed_to_double(pointer_event.axes[0].vector_value));
+    (*env)->SetIntField    (env, pointerEventRef, yAxis_steps120ValueFID,    pointer_event.axes[0].steps120_value);
 }
 
 static void
@@ -669,16 +680,17 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(buttonCodeFID = (*env)->GetFieldID(env, pointerEventClass, "buttonCode", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(isButtonPressedFID = (*env)->GetFieldID(env, pointerEventClass, "isButtonPressed", "Z"), JNI_FALSE);
 
-    CHECK_NULL_RETURN(axis_0_hasVectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_hasVectorValue", "Z"),
-                      JNI_FALSE);
-    CHECK_NULL_RETURN(axis_0_hasStopEventFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_hasStopEvent", "Z"),
-                      JNI_FALSE);
-    CHECK_NULL_RETURN(axis_0_hasSteps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_hasSteps120Value", "Z"),
-                      JNI_FALSE);
-    CHECK_NULL_RETURN(axis_0_vectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_vectorValue", "D"),
-                      JNI_FALSE);
-    CHECK_NULL_RETURN(axis_0_steps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "axis_0_steps120Value", "I"),
-                      JNI_FALSE);
+    CHECK_NULL_RETURN(xAxis_hasVectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_hasVectorValue", "Z"), JNI_FALSE);
+    CHECK_NULL_RETURN(xAxis_hasStopEventFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_hasStopEvent", "Z"), JNI_FALSE);
+    CHECK_NULL_RETURN(xAxis_hasSteps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_hasSteps120Value", "Z"), JNI_FALSE);
+    CHECK_NULL_RETURN(xAxis_vectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_vectorValue", "D"), JNI_FALSE);
+    CHECK_NULL_RETURN(xAxis_steps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_steps120Value", "I"), JNI_FALSE);
+
+    CHECK_NULL_RETURN(yAxis_hasVectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_hasVectorValue", "Z"), JNI_FALSE);
+    CHECK_NULL_RETURN(yAxis_hasStopEventFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_hasStopEvent", "Z"), JNI_FALSE);
+    CHECK_NULL_RETURN(yAxis_hasSteps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_hasSteps120Value", "Z"), JNI_FALSE);
+    CHECK_NULL_RETURN(yAxis_vectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_vectorValue", "D"), JNI_FALSE);
+    CHECK_NULL_RETURN(yAxis_steps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_steps120Value", "I"), JNI_FALSE);
 
     CHECK_NULL_RETURN(dispatchKeyboardEnterEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                 "dispatchKeyboardEnterEvent",
