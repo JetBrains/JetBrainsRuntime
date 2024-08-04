@@ -1161,8 +1161,8 @@ public class WLComponentPeer implements ComponentPeer {
 
             // wl_pointer::axis_discrete/axis_value120 are preferred over wl_pointer::axis because
             //   they're closer to MouseWheelEvent by their nature.
-            if (e.axis0HasSteps120Value()) {
-                final var steps120Value = e.getAxis0Steps120Value();
+            if (e.yAxisHasSteps120Value()) {
+                final var steps120Value = e.getYAxisSteps120Value();
                 wheelPreciseRotations = steps120Value / 120.0d;
                 wheelRoundRotations = wheelRoundRotationsAccumulator.accumulateSteps120Rotations(steps120Value);
                 // TODO: It would be probably better to calculate the scrollAmount here taking getAxis0VectorValue() into
@@ -1170,8 +1170,8 @@ public class WLComponentPeer implements ComponentPeer {
                 //       However, neither Gnome nor KDE currently provide such a setting, making it difficult to test
                 //       how well such an approach would work. So leaving it as is for now.
                 scrollAmount = WHEEL_SCROLL_AMOUNT;
-            } else if (e.axis0HasVectorValue()) {
-                final var vectorValue = e.getAxis0VectorValue();
+            } else if (e.yAxisHasVectorValue()) {
+                final var vectorValue = e.getYAxisVectorValue();
                 wheelPreciseRotations = convertAxisVectorToPreciseWheelRotations(vectorValue);
                 wheelRoundRotations = wheelRoundRotationsAccumulator.accumulateFractionalRotations(wheelPreciseRotations);
                 scrollAmount = 1;
@@ -1181,7 +1181,7 @@ public class WLComponentPeer implements ComponentPeer {
                 scrollAmount = 0;
             }
 
-            if (e.axis0HasStopEvent()) {
+            if (e.yAxisHasStopEvent()) {
                 wheelRoundRotationsAccumulator.reset();
             }
 
