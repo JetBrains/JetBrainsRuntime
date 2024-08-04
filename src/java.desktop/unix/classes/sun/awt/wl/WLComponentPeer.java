@@ -1158,23 +1158,119 @@ public class WLComponentPeer implements ComponentPeer {
                 log.fine("{0} -> {1}", e, mweConversionInfo);
             }
 
+            // macOS's and Windows' AWT implement the following logic, so do we:
+            //   Shift + a vertical scroll means a horizontal scroll.
+            // AWT/Swing components are also aware of it.
+
+            final boolean isShiftPressed = (newInputState.getModifiers() & KeyEvent.SHIFT_DOWN_MASK) != 0;
+
+            // These values decide whether a horizontal scrolling MouseWheelEvent will be created and posted
+            final int    horizontalMWEScrollAmount;
+            final double horizontalMWEPreciseRotations;
+            final int    horizontalMWERoundRotations;
+
+            // These values decide whether a vertical scrolling MouseWheelEvent will be created and posted
+            final int    verticalMWEScrollAmount;
+            final double verticalMWEPreciseRotations;
+            final int    verticalMWERoundRotations;
+
+            if (isShiftPressed) {
+                // Pressing Shift makes only a horizontal scrolling MouseWheelEvent possible
+                verticalMWEScrollAmount     = 0;
+                verticalMWEPreciseRotations = 0;
+                verticalMWERoundRotations   = 0;
+
+                // Now we're deciding values of which axis will be used to generate a horizontal MouseWheelEvent
+
+                if (mweConversionInfo.xAxisDirectionSign == mweConversionInfo.yAxisDirectionSign) {
+                    // The scrolling directions don't contradict each other.
+                    // Let's pick the more influencing axis.
+
+                    final var xAxisUnitsToScroll = mweConversionInfo.xAxisMWEScrollAmount * (
+                            Math.abs(mweConversionInfo.xAxisMWEPreciseRotations) > Math.abs(mweConversionInfo.xAxisMWERoundRotations)
+                            ? mweConversionInfo.xAxisMWEPreciseRotations
+                            : mweConversionInfo.xAxisMWERoundRotations );
+
+                    final var yAxisUnitsToScroll = mweConversionInfo.yAxisMWEScrollAmount * (
+                            Math.abs(mweConversionInfo.yAxisMWEPreciseRotations) > Math.abs(mweConversionInfo.yAxisMWERoundRotations)
+                            ? mweConversionInfo.yAxisMWEPreciseRotations
+                            : mweConversionInfo.yAxisMWERoundRotations );
+
+                    if (xAxisUnitsToScroll > yAxisUnitsToScroll) {
+                        horizontalMWEScrollAmount     = mweConversionInfo.xAxisMWEScrollAmount;
+                        horizontalMWEPreciseRotations = mweConversionInfo.xAxisMWEPreciseRotations;
+                        horizontalMWERoundRotations   = mweConversionInfo.xAxisMWERoundRotations;
+                    } else {
+                        horizontalMWEScrollAmount     = mweConversionInfo.yAxisMWEScrollAmount;
+                        horizontalMWEPreciseRotations = mweConversionInfo.yAxisMWEPreciseRotations;
+                        horizontalMWERoundRotations   = mweConversionInfo.yAxisMWERoundRotations;
+                    }
+                } else if ((mweConversionInfo.yAxisMWERoundRotations != 0) || (mweConversionInfo.yAxisMWEPreciseRotations != 0)) {
+                    // The scrolling directions contradict.
+                    // I think consistently choosing the Y axis values (unless they're zero) provides the most expected UI behavior here.
+
+                    horizontalMWEScrollAmount     = mweConversionInfo.yAxisMWEScrollAmount;
+                    horizontalMWEPreciseRotations = mweConversionInfo.yAxisMWEPreciseRotations;
+                    horizontalMWERoundRotations   = mweConversionInfo.yAxisMWERoundRotations;
+                } else {
+                    horizontalMWEScrollAmount     = mweConversionInfo.xAxisMWEScrollAmount;
+                    horizontalMWEPreciseRotations = mweConversionInfo.xAxisMWEPreciseRotations;
+                    horizontalMWERoundRotations   = mweConversionInfo.xAxisMWERoundRotations;
+                }
+            } else {
+                // Shift is not pressed, so both horizontal and vertical MouseWheelEvent s are possible.
+
+                horizontalMWEScrollAmount     = mweConversionInfo.xAxisMWEScrollAmount;
+                horizontalMWEPreciseRotations = mweConversionInfo.xAxisMWEPreciseRotations;
+                horizontalMWERoundRotations   = mweConversionInfo.xAxisMWERoundRotations;
+
+                verticalMWEScrollAmount       = mweConversionInfo.yAxisMWEScrollAmount;
+                verticalMWEPreciseRotations   = mweConversionInfo.yAxisMWEPreciseRotations;
+                verticalMWERoundRotations     = mweConversionInfo.yAxisMWERoundRotations;
+            }
+
+            if (e.xAxisHasStopEvent()) {
+                xAxisWheelRoundRotationsAccumulator.reset();
+            }
             if (e.yAxisHasStopEvent()) {
                 yAxisWheelRoundRotationsAccumulator.reset();
             }
 
-            if ((mweConversionInfo.yAxisMWERoundRotations != 0) || (mweConversionInfo.yAxisMWEPreciseRotations != 0)) {
+            if ((verticalMWERoundRotations != 0) || (verticalMWEPreciseRotations != 0)) {
+                assert(verticalMWEScrollAmount > 0);
+
                 final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
                         MouseEvent.MOUSE_WHEEL,
                         timestamp,
-                        newInputState.getModifiers(),
+                        // Making sure the event will cause scrolling along the vertical axis
+                        newInputState.getModifiers() & ~KeyEvent.SHIFT_DOWN_MASK,
                         x, y,
                         xAbsolute, yAbsolute,
                         1,
                         isPopupTrigger,
                         MouseWheelEvent.WHEEL_UNIT_SCROLL,
-                        mweConversionInfo.yAxisMWEScrollAmount,
-                        mweConversionInfo.yAxisMWERoundRotations,
-                        mweConversionInfo.yAxisMWEPreciseRotations);
+                        verticalMWEScrollAmount,
+                        verticalMWERoundRotations,
+                        verticalMWEPreciseRotations);
+                postMouseEvent(mouseEvent);
+            }
+
+            if ((horizontalMWERoundRotations != 0) || (horizontalMWEPreciseRotations != 0)) {
+                assert(horizontalMWEScrollAmount > 0);
+
+                final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
+                        MouseEvent.MOUSE_WHEEL,
+                        timestamp,
+                        // Making sure the event will cause scrolling along the horizontal axis
+                        newInputState.getModifiers() | KeyEvent.SHIFT_DOWN_MASK,
+                        x, y,
+                        xAbsolute, yAbsolute,
+                        1,
+                        isPopupTrigger,
+                        MouseWheelEvent.WHEEL_UNIT_SCROLL,
+                        horizontalMWEScrollAmount,
+                        horizontalMWERoundRotations,
+                        horizontalMWEPreciseRotations);
                 postMouseEvent(mouseEvent);
             }
         }
