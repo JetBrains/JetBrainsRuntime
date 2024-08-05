@@ -72,6 +72,7 @@ import jdk.internal.access.JavaUtilJarAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.util.DecimalDigits;
+import jdk.internal.misc.VM;
 import jdk.internal.util.OperatingSystem;
 import jdk.internal.perf.PerfCounter;
 import jdk.internal.ref.CleanerFactory;
@@ -1648,7 +1649,7 @@ public class ZipFile implements ZipConstants, Closeable {
 
         private Source(Key key, boolean toDelete, ZipCoder zipCoder) throws IOException {
             this.key = key;
-            if (USE_NIO_FOR_ZIP_FILE_ACCESS) {
+            if (USE_NIO_FOR_ZIP_FILE_ACCESS && VM.isBooted()) {
                 Set<OpenOption> options;
                 if (toDelete) {
                     options = Set.of(StandardOpenOption.READ, StandardOpenOption.DELETE_ON_CLOSE);
