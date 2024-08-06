@@ -231,6 +231,13 @@ JNU_GetStaticFieldByName(JNIEnv *env,
                          const char *name,
                          const char *sig);
 
+/*
+ * Crashes the JVM with Internal Error providing the message and
+ * source location information in the fatal error log.
+ */
+JNIEXPORT void JNICALL
+JNU_Fatal(JNIEnv *env, const char *file, int line, const char *msg);
+
 
 /************************************************************************
  * Miscellaneous utilities used by the class libraries
@@ -303,6 +310,18 @@ JNU_GetStaticFieldByName(JNIEnv *env,
         }                                       \
     } while (0)
 #endif /* __cplusplus */
+
+/*
+ * Crashes the JVM with Internal Error providing the message and
+ * source location information in the fatal error log iff
+ * 'cond' is not true.
+ */
+#define JNU_RUNTIME_ASSERT(env, cond, msg)             \
+    do {                                               \
+        if (!(cond)) {                                 \
+           JNU_Fatal((env), __FILE__, __LINE__, (msg));\
+        }                                              \
+    } while(0)
 
 /************************************************************************
  * Debugging utilities
