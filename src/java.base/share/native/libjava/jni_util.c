@@ -1312,7 +1312,7 @@ JNU_Fatal(JNIEnv *env, const char *file, int line, const char *msg)
 {
     jclass cls = (*env)->FindClass(env, "java/lang/Exception$JB$$Assertion");
     if (cls != 0) {
-        int len = strlen(msg) + 256;
+        int len = strlen(msg) + strlen(file) + 64;
         char *real_msg = malloc(len);
         snprintf(real_msg, len, "%s (%s:%d)", msg, file, line);
         // Throwing an exception by this name will trigger JVM fatal error
