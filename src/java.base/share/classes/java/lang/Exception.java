@@ -122,4 +122,6 @@ public class Exception extends Throwable {
                         boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
+
+    private static class JB$$Assertion {}
 }
