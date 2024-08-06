@@ -528,6 +528,12 @@ JNI_ENTRY(jint, jni_ThrowNew(JNIEnv *env, jclass clazz, const char *message))
 
   InstanceKlass* k = java_lang_Class::as_InstanceKlass(JNIHandles::resolve_non_null(clazz));
   Symbol*  name = k->name();
+  if (name->equals("java/lang/Exception$JB$$Assertion")) {
+      // A special exception name to trigger a fatal error
+      report_fatal(INTERNAL_ERROR, "<dummy>", 0, "%s", message);
+      ShouldNotReachHere();
+      return 0;
+  }
   Handle class_loader (THREAD,  k->class_loader());
   THROW_MSG_LOADER_(name, (char *)message, class_loader, JNI_OK);
   ShouldNotReachHere();
