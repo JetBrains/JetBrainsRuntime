@@ -64,6 +64,7 @@ BUILD_JDK_JTREG_LIBRARIES_JDK_LIBS_libstringPlatformChars := java.base:libjava
 BUILD_JDK_JTREG_LIBRARIES_JDK_LIBS_libTracePinnedThreads := java.base:libjvm
 BUILD_JDK_JTREG_LIBRARIES_JDK_LIBS_libNewDirectByteBuffer := java.base:libjava
 BUILD_JDK_JTREG_LIBRARIES_JDK_LIBS_libGetXSpace := java.base:libjava
+BUILD_JDK_JTREG_LIBRARIES_JDK_LIBS_libFatalErrorTest := java.base:libjava
 
 # Platform specific setup
 ifeq ($(call isTargetOs, windows), true)
