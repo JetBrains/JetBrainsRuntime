@@ -52,7 +52,7 @@ struct gtk_shell1;
 
 extern struct wl_seat *wl_seat;
 extern struct wl_display *wl_display;
-extern struct wl_pointer *wl_pointer;
+extern struct wl_pointer *wl_pointer; // optional, check for NULL before use
 extern struct wl_compositor *wl_compositor;
 extern struct xdg_wm_base *xdg_wm_base;
 extern struct wp_viewporter *wp_viewporter;

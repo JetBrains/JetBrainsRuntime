@@ -72,8 +72,8 @@ struct xdg_activation_v1 *xdg_activation_v1 = NULL;
 struct gtk_shell1* gtk_shell1 = NULL;
 struct wl_seat     *wl_seat = NULL;
 
-struct wl_keyboard *wl_keyboard;
-struct wl_pointer  *wl_pointer;
+struct wl_keyboard *wl_keyboard; // optional, check for NULL before use
+struct wl_pointer  *wl_pointer; // optional, check for NULL before use
 
 #define MAX_CURSOR_SCALE 100
 struct wl_cursor_theme *cursor_themes[MAX_CURSOR_SCALE] = {NULL};
@@ -441,7 +441,9 @@ wl_seat_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
 
     if (has_pointer && wl_pointer == NULL) {
         wl_pointer = wl_seat_get_pointer(wl_seat);
-        wl_pointer_add_listener(wl_pointer, &wl_pointer_listener, NULL);
+        if (wl_pointer != NULL) {
+            wl_pointer_add_listener(wl_pointer, &wl_pointer_listener, NULL);
+        }
     } else if (!has_pointer && wl_pointer != NULL) {
         wl_pointer_release(wl_pointer);
         wl_pointer = NULL;
@@ -449,7 +451,9 @@ wl_seat_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
 
     if (has_keyboard && wl_keyboard == NULL) {
         wl_keyboard = wl_seat_get_keyboard(wl_seat);
-        wl_keyboard_add_listener(wl_keyboard, &wl_keyboard_listener, NULL);
+        if (wl_keyboard != NULL) {
+            wl_keyboard_add_listener(wl_keyboard, &wl_keyboard_listener, NULL);
+        }
     } else if (!has_keyboard && wl_keyboard != NULL) {
         wl_keyboard_release(wl_keyboard);
         wl_keyboard = NULL;
@@ -746,7 +750,6 @@ checkInterfacesPresent(JNIEnv *env)
     CHECK_WL_INTERFACE(wl_shm, "wl_shm");
     CHECK_WL_INTERFACE(wl_seat, "wl_seat");
     CHECK_WL_INTERFACE(wl_display, "wl_display");
-    CHECK_WL_INTERFACE(wl_pointer, "wl_pointer");
     CHECK_WL_INTERFACE(wl_compositor, "wl_compositor");
     CHECK_WL_INTERFACE(xdg_wm_base, "xdg_wm_base");
     CHECK_WL_INTERFACE(wp_viewporter, "wp_viewporter");
