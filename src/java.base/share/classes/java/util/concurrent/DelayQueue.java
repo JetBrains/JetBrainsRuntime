@@ -169,7 +169,8 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
         lock.lock();
         try {
             q.offer(e);
-            if (q.peek() == e) {
+            E curPeek = q.peek();
+            if (curPeek == e || curPeek.getDelay(TimeUnit.NANOSECONDS) <= 0L) {
                 leader = null;
                 available.signal();
             }
