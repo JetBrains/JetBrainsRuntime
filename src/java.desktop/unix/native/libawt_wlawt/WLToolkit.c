@@ -70,19 +70,19 @@ struct wl_shm *wl_shm = NULL;
 struct wl_compositor *wl_compositor = NULL;
 struct xdg_wm_base *xdg_wm_base = NULL;
 struct wp_viewporter *wp_viewporter = NULL;
-struct xdg_activation_v1 *xdg_activation_v1 = NULL;
+struct xdg_activation_v1 *xdg_activation_v1 = NULL; // optional, check for NULL before use
 struct gtk_shell1* gtk_shell1 = NULL;
 struct wl_seat     *wl_seat = NULL;
 
-struct wl_keyboard *wl_keyboard;
-struct wl_pointer  *wl_pointer;
+struct wl_keyboard *wl_keyboard; // optional, check for NULL before use
+struct wl_pointer  *wl_pointer; // optional, check for NULL before use
 
 #define MAX_CURSOR_SCALE 100
 struct wl_cursor_theme *cursor_themes[MAX_CURSOR_SCALE] = {NULL};
 
 struct wl_surface *wl_surface_in_focus = NULL;
 struct wl_data_device_manager *wl_ddm = NULL;
-struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm = NULL;
+struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm = NULL; // optional, check for NULL before use
 
 uint32_t last_mouse_pressed_serial = 0;
 uint32_t last_pointer_enter_serial = 0;
@@ -442,7 +442,9 @@ wl_seat_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
 
     if (has_pointer && wl_pointer == NULL) {
         wl_pointer = wl_seat_get_pointer(wl_seat);
-        wl_pointer_add_listener(wl_pointer, &wl_pointer_listener, NULL);
+        if (wl_pointer != NULL) {
+            wl_pointer_add_listener(wl_pointer, &wl_pointer_listener, NULL);
+        }
     } else if (!has_pointer && wl_pointer != NULL) {
         wl_pointer_release(wl_pointer);
         wl_pointer = NULL;
@@ -450,7 +452,9 @@ wl_seat_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
 
     if (has_keyboard && wl_keyboard == NULL) {
         wl_keyboard = wl_seat_get_keyboard(wl_seat);
-        wl_keyboard_add_listener(wl_keyboard, &wl_keyboard_listener, NULL);
+        if (wl_keyboard != NULL) {
+            wl_keyboard_add_listener(wl_keyboard, &wl_keyboard_listener, NULL);
+        }
     } else if (!has_keyboard && wl_keyboard != NULL) {
         wl_keyboard_release(wl_keyboard);
         wl_keyboard = NULL;
@@ -747,13 +751,10 @@ checkInterfacesPresent(JNIEnv *env)
     CHECK_WL_INTERFACE(wl_shm, "wl_shm");
     CHECK_WL_INTERFACE(wl_seat, "wl_seat");
     CHECK_WL_INTERFACE(wl_display, "wl_display");
-    CHECK_WL_INTERFACE(wl_pointer, "wl_pointer");
     CHECK_WL_INTERFACE(wl_compositor, "wl_compositor");
     CHECK_WL_INTERFACE(xdg_wm_base, "xdg_wm_base");
     CHECK_WL_INTERFACE(wp_viewporter, "wp_viewporter");
-    CHECK_WL_INTERFACE(xdg_activation_v1, "xdg_activation_v1");
     CHECK_WL_INTERFACE(wl_ddm, "wl_data_device_manager");
-    CHECK_WL_INTERFACE(zwp_selection_dm, "zwp_primary_selection_device_manager_v1");
 }
 
 JNIEXPORT jlong JNICALL
