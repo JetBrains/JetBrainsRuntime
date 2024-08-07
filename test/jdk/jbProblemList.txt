@@ -1093,6 +1093,7 @@ java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5510 window
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java JBR-5802 windows-all
 java/awt/Robot/MultiScreenRobotPosition/MultiScreenRobotPosition.java JBR-830 windows-all
+javax/swing/SwingGraphics/TranslateTest.java JBR-7470 linux-all
 
 native_sanity/simplenativelauncher/ProgramTest.java JBR-5287 windows-all
 
