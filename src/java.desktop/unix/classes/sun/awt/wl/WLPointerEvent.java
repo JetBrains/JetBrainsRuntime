@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022-2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022-2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,6 @@ class WLPointerEvent {
     private boolean has_leave_event;
     private boolean has_motion_event;
     private boolean has_button_event;
-    private boolean has_axis_event;
 
     private long    surface; /// 'struct wl_surface *' this event appertains to
     private long    serial;
@@ -58,8 +57,19 @@ class WLPointerEvent {
     private int     buttonCode; // pointer button code corresponding to PointerButtonCodes.linuxCode
     private boolean isButtonPressed; // true if button was pressed, false if released
 
-    private boolean axis_0_valid; // is vertical scroll included in this event?
-    private int     axis_0_value; // "length of vector in surface-local coordinate space" (source: wayland.xml)
+    private boolean xAxis_hasVectorValue;   // whether xAxis_vectorValue is valid
+    private boolean xAxis_hasStopEvent;     // whether wl_pointer::axis_stop event has been received for this axis
+    private boolean xAxis_hasSteps120Value; // whether xAxis_steps120Value is valid
+    private double  xAxis_vectorValue;      // "length of vector in surface-local coordinate space" (source: wayland.xml)
+    private int     xAxis_steps120Value;    // "high-resolution wheel scroll information, with each multiple of 120
+                                            //  representing one logical scroll step (a wheel detent)" (source: wayland.xml)
+
+    private boolean yAxis_hasVectorValue;   // whether yAxis_vectorValue is valid
+    private boolean yAxis_hasStopEvent;     // whether wl_pointer::axis_stop event has been received for this axis
+    private boolean yAxis_hasSteps120Value; // whether yAxis_steps120Value is valid
+    private double  yAxis_vectorValue;      // "length of vector in surface-local coordinate space" (source: wayland.xml)
+    private int     yAxis_steps120Value;    // "high-resolution wheel scroll information, with each multiple of 120
+                                            //  representing one logical scroll step (a wheel detent)" (source: wayland.xml)
 
     private WLPointerEvent() {}
 
@@ -175,7 +185,7 @@ class WLPointerEvent {
     }
 
     public boolean hasAxisEvent() {
-        return has_axis_event;
+        return xAxisHasEvents() || yAxisHasEvents();
     }
 
     /**
@@ -241,14 +251,60 @@ class WLPointerEvent {
         return isButtonPressed;
     }
 
-    public boolean getIsAxis0Valid() {
-        assert hasAxisEvent();
-        return axis_0_valid;
+    public boolean xAxisHasEvents() {
+        return xAxisHasVectorValue() ||
+               xAxisHasStopEvent()   ||
+               xAxisHasSteps120Value();
     }
 
-    public int getAxis0Value() {
-        assert hasAxisEvent();
-        return axis_0_value;
+    public boolean xAxisHasVectorValue() {
+        return xAxis_hasVectorValue;
+    }
+
+    public boolean xAxisHasStopEvent() {
+        return xAxis_hasStopEvent;
+    }
+
+    public boolean xAxisHasSteps120Value() {
+        return xAxis_hasSteps120Value;
+    }
+
+    public double getXAxisVectorValue() {
+        assert xAxisHasVectorValue();
+        return xAxis_vectorValue;
+    }
+
+    public int getXAxisSteps120Value() {
+        assert xAxisHasSteps120Value();
+        return xAxis_steps120Value;
+    }
+
+    public boolean yAxisHasEvents() {
+        return yAxisHasVectorValue() ||
+               yAxisHasStopEvent()   ||
+               yAxisHasSteps120Value();
+    }
+
+    public boolean yAxisHasVectorValue() {
+        return yAxis_hasVectorValue;
+    }
+
+    public boolean yAxisHasStopEvent() {
+        return yAxis_hasStopEvent;
+    }
+
+    public boolean yAxisHasSteps120Value() {
+        return yAxis_hasSteps120Value;
+    }
+
+    public double getYAxisVectorValue() {
+        assert yAxisHasVectorValue();
+        return yAxis_vectorValue;
+    }
+
+    public int getYAxisSteps120Value() {
+        assert yAxisHasSteps120Value();
+        return yAxis_steps120Value;
     }
 
     @Override
@@ -283,9 +339,32 @@ class WLPointerEvent {
         }
 
         if (hasAxisEvent()) {
-            builder.append("axis");
-            if (axis_0_valid) {
-                builder.append("vertical-scroll: ").append(axis_0_value).append(" ");
+            builder.append(" axis");
+            if (yAxisHasEvents()) {
+                builder.append(" vertical-scroll:");
+
+                if (yAxisHasVectorValue()) {
+                    builder.append(" ").append(getYAxisVectorValue());
+                }
+                if (yAxisHasSteps120Value()) {
+                    builder.append(" ").append(getYAxisSteps120Value()).append("/120 steps");
+                }
+                if (yAxisHasStopEvent()) {
+                    builder.append(" stop");
+                }
+            }
+            if (xAxisHasEvents()) {
+                builder.append(" horizontal-scroll:");
+
+                if (xAxisHasVectorValue()) {
+                    builder.append(" ").append(getXAxisVectorValue());
+                }
+                if (xAxisHasSteps120Value()) {
+                    builder.append(" ").append(getXAxisSteps120Value()).append("/120 steps");
+                }
+                if (xAxisHasStopEvent()) {
+                    builder.append(" stop");
+                }
             }
         }
 
