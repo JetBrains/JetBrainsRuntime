@@ -26,11 +26,11 @@
 
 #include "time.h"
 
-#import "AccelTexturePool.c"
+#import "AccelTexturePool.h"
 #import "MTLTexturePool.h"
 #import "Trace.h"
 
-#define USE_ACCEL_TEXTURE_POOL  1
+#define USE_ACCEL_TEXTURE_POOL  0
 
 #define TRACE_LOCK              0
 #define TRACE_TEX               0
@@ -742,8 +742,8 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
             if (TRACE_MEM_API) J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "MTLTexturePool_getTexture: resize: %d -> %d",
                                               _poolCellWidth * _poolCellHeight, newCellsCount);
 
-            void **newcells = malloc(newCellsCount*sizeof(void*));
-        CHECK_NULL_LOG_RETURN(newcells, NULL, "MTLTexturePool_getTexture: could not allocate newCells");
+            void **newcells = malloc(newCellsCount * sizeof(void*));
+            CHECK_NULL_LOG_RETURN(newcells, NULL, "MTLTexturePool_getTexture: could not allocate newCells");
 
             const size_t strideBytes = _poolCellWidth * sizeof(void*);
             for (int cy = 0; cy < _poolCellHeight; ++cy) {

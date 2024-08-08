@@ -30,7 +30,6 @@
 
 #include "AccelTexturePool.h"
 #include "jni.h"
-#include "jni_util.h"
 #include "Trace.h"
 
 
@@ -74,11 +73,10 @@
 
 
 /* ATexturePoolLockWrapper API */
-
-static ATexturePoolLockWrapper* ATexturePoolLockWrapper_init(ATexturePoolLock_init     *initFunc,
-                                                             ATexturePoolLock_dispose  *disposeFunc,
-                                                             ATexturePoolLock_lock     *lockFunc,
-                                                             ATexturePoolLock_unlock   *unlockFunc)
+ATexturePoolLockWrapper* ATexturePoolLockWrapper_init(ATexturePoolLock_init     *initFunc,
+                                                      ATexturePoolLock_dispose  *disposeFunc,
+                                                      ATexturePoolLock_lock     *lockFunc,
+                                                      ATexturePoolLock_unlock   *unlockFunc)
 {
     CHECK_NULL_LOG_RETURN(initFunc, NULL, "ATexturePoolLockWrapper_init: initFunc function is null !");
     CHECK_NULL_LOG_RETURN(disposeFunc, NULL, "ATexturePoolLockWrapper_init: disposeFunc function is null !");
@@ -97,7 +95,7 @@ static ATexturePoolLockWrapper* ATexturePoolLockWrapper_init(ATexturePoolLock_in
     return lockWrapper;
 }
 
-static void ATexturePoolLockWrapper_Dispose(ATexturePoolLockWrapper *lockWrapper) {
+void ATexturePoolLockWrapper_Dispose(ATexturePoolLockWrapper *lockWrapper) {
     CHECK_NULL(lockWrapper);
     if (TRACE_MEM_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "ATexturePoolLockWrapper_Dispose: lockWrapper = %p", lockWrapper);
 
@@ -163,7 +161,6 @@ struct ATexturePool_ {
 
 
 /* ATexturePoolItem API */
-
 static ATexturePoolItem* ATexturePoolItem_initWithTexture(ATexturePool_freeTexture *freeTextureFunc,
                                                           ADevicePrivPtr *device,
                                                           ATexturePrivPtr *texture,
@@ -224,7 +221,6 @@ static void ATexturePoolItem_ReleaseItem(ATexturePoolItem *item) {
 
 
 /* ATexturePoolCell API */
-
 static ATexturePoolCell* ATexturePoolCell_init(ATexturePool *pool) {
     CHECK_NULL_RETURN(pool, NULL);
 
@@ -487,7 +483,7 @@ static ATexturePoolHandle* ATexturePoolHandle_initWithPoolItem(ATexturePoolItem 
 }
 
 /* Callback from metal pipeline => multi-thread (cell lock) */
-static void ATexturePoolHandle_ReleaseTexture(ATexturePoolHandle *handle) {
+void ATexturePoolHandle_ReleaseTexture(ATexturePoolHandle *handle) {
     CHECK_NULL(handle);
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "ATexturePoolHandle_ReleaseTexture: handle = %p", handle);
 
@@ -495,19 +491,19 @@ static void ATexturePoolHandle_ReleaseTexture(ATexturePoolHandle *handle) {
     free(handle);
 }
 
-static ATexturePrivPtr* ATexturePoolHandle_GetTexture(ATexturePoolHandle *handle) {
+ATexturePrivPtr* ATexturePoolHandle_GetTexture(ATexturePoolHandle *handle) {
     CHECK_NULL_RETURN(handle, NULL);
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "ATexturePoolHandle_GetTexture: handle = %p", handle);
     return handle->texture;
 }
 
-static jint ATexturePoolHandle_GetRequestedWidth(ATexturePoolHandle *handle) {
+jint ATexturePoolHandle_GetRequestedWidth(ATexturePoolHandle *handle) {
    CHECK_NULL_RETURN(handle, 0);
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "ATexturePoolHandle_GetRequestedWidth: handle = %p", handle);
     return handle->reqWidth;
  }
 
-static jint ATexturePoolHandle_GetRequestedHeight(ATexturePoolHandle *handle) {
+jint ATexturePoolHandle_GetRequestedHeight(ATexturePoolHandle *handle) {
    CHECK_NULL_RETURN(handle, 0);
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "ATexturePoolHandle_GetRequestedHeight: handle = %p", handle);
     return handle->reqHeight;
@@ -550,13 +546,13 @@ static void ATexturePool_autoTest(ATexturePool *pool, jlong format) {
                    pool->totalMemoryAllocated / UNIT_MB, pool->totalAllocatedCount);
 }
 
-static ATexturePool* ATexturePool_initWithDevice(ADevicePrivPtr *device,
-                                                 jlong maxDeviceMemory,
-                                                 ATexturePool_createTexture *createTextureFunc,
-                                                 ATexturePool_freeTexture   *freeTextureFunc,
-                                                 ATexturePool_bytesPerPixel *bytesPerPixelFunc,
-                                                 ATexturePoolLockWrapper    *lockWrapper,
-                                                 jlong                      autoTestFormat)
+ATexturePool* ATexturePool_initWithDevice(ADevicePrivPtr *device,
+                                          jlong maxDeviceMemory,
+                                          ATexturePool_createTexture *createTextureFunc,
+                                          ATexturePool_freeTexture   *freeTextureFunc,
+                                          ATexturePool_bytesPerPixel *bytesPerPixelFunc,
+                                          ATexturePoolLockWrapper    *lockWrapper,
+                                          jlong                      autoTestFormat)
 {
     CHECK_NULL_LOG_RETURN(device, NULL, "ATexturePool_initWithDevice: device is null !");
     CHECK_NULL_LOG_RETURN(createTextureFunc, NULL, "ATexturePool_initWithDevice: createTextureFunc function is null !");
@@ -616,7 +612,7 @@ static ATexturePool* ATexturePool_initWithDevice(ADevicePrivPtr *device,
     return pool;
 }
 
-static void ATexturePool_Dispose(ATexturePool *pool) {
+void ATexturePool_Dispose(ATexturePool *pool) {
     CHECK_NULL(pool);
     if (TRACE_MEM_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "ATexturePool_Dispose: pool = %p", pool);
 
@@ -631,7 +627,7 @@ static void ATexturePool_Dispose(ATexturePool *pool) {
     free(pool);
 }
 
-static ATexturePoolLockWrapper* ATexturePool_getLockWrapper(ATexturePool *pool) {
+ATexturePoolLockWrapper* ATexturePool_getLockWrapper(ATexturePool *pool) {
     CHECK_NULL_RETURN(pool, NULL);
     if (TRACE_MEM_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "ATexturePool_getLockWrapper: pool = %p", pool);
     return pool->lockWrapper;
@@ -667,10 +663,10 @@ static void ATexturePool_cleanIfNecessary(ATexturePool *pool, int lastUsedTimeTh
     }
 }
 
-static ATexturePoolHandle* ATexturePool_getTexture(ATexturePool* pool,
-                                                   jint width,
-                                                   jint height,
-                                                   jlong format)
+ATexturePoolHandle* ATexturePool_getTexture(ATexturePool* pool,
+                                            jint width,
+                                            jint height,
+                                            jlong format)
 {
     CHECK_NULL_RETURN(pool, NULL);
 
