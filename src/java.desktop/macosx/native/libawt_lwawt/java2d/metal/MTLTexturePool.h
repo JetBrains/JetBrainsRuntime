@@ -27,9 +27,7 @@
 #ifndef MTLTexturePool_h_Included
 #define MTLTexturePool_h_Included
 
-#import "AccelTexturePool.h"
-#include <time.h>
-#import "MTLUtils.h"
+#import <Metal/Metal.h>
 
 @interface MTLPooledTextureHandle : NSObject
 @property (readonly, assign) id<MTLTexture> texture;
@@ -49,7 +47,6 @@
 @property (readwrite) uint64_t totalHits;
 
 - (id) initWithDevice:(id<MTLDevice>)device;
-- (void) autoTest;
 - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format;
 @end
 

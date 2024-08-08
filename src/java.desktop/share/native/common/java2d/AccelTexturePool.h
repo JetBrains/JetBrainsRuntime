@@ -27,8 +27,6 @@
 #ifndef AccelTexturePool_h_Included
 #define AccelTexturePool_h_Included
 
-#include <time.h>
-
 #include "jni.h"
 
 
@@ -59,8 +57,10 @@ typedef ATexturePrivPtr* (ATexturePool_createTexture)(ADevicePrivPtr *device,
                                                       int            width,
                                                       int            height,
                                                       long           format);
+
 typedef void (ATexturePool_freeTexture)(ADevicePrivPtr  *device,
                                        ATexturePrivPtr  *texture);
+
 typedef int (ATexturePool_bytesPerPixel)(long format);
 
 
@@ -69,9 +69,13 @@ typedef int (ATexturePool_bytesPerPixel)(long format);
 typedef void ATexturePoolLockPrivPtr;
 
 typedef ATexturePoolLockPrivPtr* (ATexturePoolLock_init)();
+
 typedef void (ATexturePoolLock_dispose) (ATexturePoolLockPrivPtr *lock);
+
 typedef void (ATexturePoolLock_lock)    (ATexturePoolLockPrivPtr *lock);
+
 typedef void (ATexturePoolLock_unlock)  (ATexturePoolLockPrivPtr *lock);
+
 
 /* ATexturePoolLockWrapper API */
 typedef struct {
@@ -81,50 +85,49 @@ typedef struct {
     ATexturePoolLock_unlock     *unlockFunc;
 } ATexturePoolLockWrapper;
 
-ATexturePoolLockWrapper* ATexturePoolLockWrapper_init(ATexturePoolLock_init     *initFunc,
-                                                      ATexturePoolLock_dispose  *disposeFunc,
-                                                      ATexturePoolLock_lock     *lockFunc,
-                                                      ATexturePoolLock_unlock   *unlockFunc);
+static ATexturePoolLockWrapper* ATexturePoolLockWrapper_init(ATexturePoolLock_init     *initFunc,
+                                                             ATexturePoolLock_dispose  *disposeFunc,
+                                                             ATexturePoolLock_lock     *lockFunc,
+                                                             ATexturePoolLock_unlock   *unlockFunc);
 
-void ATexturePoolLockWrapper_Dispose(ATexturePoolLockWrapper *lockWrapper);
+static void ATexturePoolLockWrapper_Dispose(ATexturePoolLockWrapper *lockWrapper);
 
 
 /* forward-definitions */
-typedef struct _ATexturePoolCell    ATexturePoolCell;
-typedef struct _ATexturePoolItem    ATexturePoolItem;
-typedef struct _ATexturePool        ATexturePool;
+typedef struct ATexturePoolCell_        ATexturePoolCell;
+typedef struct ATexturePoolItem_        ATexturePoolItem;
+typedef struct ATexturePoolHandle_      ATexturePoolHandle;
+typedef struct ATexturePool_            ATexturePool;
 
 
 
 
-/* APooledTextureHandle API */
-typedef struct {
-    ATexturePrivPtr     *texture;
-    ATexturePoolItem    *_poolItem;
-    jint                reqWidth;
-    jint                reqHeight;
-} APooledTextureHandle;
+/* ATexturePoolHandle API */
+static void ATexturePoolHandle_ReleaseTexture(ATexturePoolHandle *handle);
 
-void APooledTextureHandle_ReleaseTexture(APooledTextureHandle *handle);
+static ATexturePrivPtr* ATexturePoolHandle_GetTexture(ATexturePoolHandle *handle);
+
+static jint ATexturePoolHandle_GetRequestedWidth(ATexturePoolHandle *handle);
+static jint ATexturePoolHandle_GetRequestedHeight(ATexturePoolHandle *handle);
 
 
 /* ATexturePool API */
 
-ATexturePool* ATexturePool_initWithDevice(ADevicePrivPtr             *device,
-                                          jlong                      maxDeviceMemory,
-                                          ATexturePool_createTexture *createTextureFunc,
-                                          ATexturePool_freeTexture   *freeTextureFunc,
-                                          ATexturePool_bytesPerPixel *bytesPerPixelFunc,
-                                          ATexturePoolLockWrapper    *lockWrapper,
-                                          jlong                      autoTestFormat);
+static ATexturePool* ATexturePool_initWithDevice(ADevicePrivPtr             *device,
+                                                 jlong                      maxDeviceMemory,
+                                                 ATexturePool_createTexture *createTextureFunc,
+                                                 ATexturePool_freeTexture   *freeTextureFunc,
+                                                 ATexturePool_bytesPerPixel *bytesPerPixelFunc,
+                                                 ATexturePoolLockWrapper    *lockWrapper,
+                                                 jlong                      autoTestFormat);
 
-void ATexturePool_Dispose(ATexturePool *pool);
+static void ATexturePool_Dispose(ATexturePool *pool);
 
-ATexturePoolLockWrapper* ATexturePool_getLockWrapper(ATexturePool *pool);
+static ATexturePoolLockWrapper* ATexturePool_getLockWrapper(ATexturePool *pool);
 
-APooledTextureHandle* ATexturePool_getTexture(ATexturePool  *pool,
-                                              jint          width,
-                                              jint          height,
-                                              jlong         format);
+static ATexturePoolHandle* ATexturePool_getTexture(ATexturePool  *pool,
+                                                   jint          width,
+                                                   jint          height,
+                                                   jlong         format);
 
 #endif /* AccelTexturePool_h_Included */

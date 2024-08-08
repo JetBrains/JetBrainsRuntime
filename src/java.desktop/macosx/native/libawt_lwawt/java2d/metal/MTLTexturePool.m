@@ -24,10 +24,13 @@
  * questions.
  */
 
+#include "time.h"
+
+#import "AccelTexturePool.c"
 #import "MTLTexturePool.h"
 #import "Trace.h"
 
-#define USE_ACCEL_TEXTURE_POOL  0
+#define USE_ACCEL_TEXTURE_POOL  1
 
 #define TRACE_LOCK              0
 #define TRACE_TEX               0
@@ -94,7 +97,7 @@ static int MTLTexturePool_bytesPerPixel(long format) {
         case MTLPixelFormatA8Unorm:
             return 1;
         default:
-            J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePool_bytesPerPixel: format=%d not supported (4 bytes by default)", format);
+            J2dRlsTraceLn1(J2D_TRACE_ERROR, "MTLTexturePool_bytesPerPixel: format=%d not supported (4 bytes by default)", format);
             return 4;
     }
 }
@@ -110,7 +113,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
  */
 
 #define USE_MAX_GPU_DEVICE_MEM      1
-#define MAX_GPU_DEVICE_MEM          (1024 * UNIT_MB)
+#define MAX_GPU_DEVICE_MEM          (512 * UNIT_MB)
 #define SCREEN_MEMORY_SIZE_5K       (5120 * 4096 * 4) // ~ 84 mb
 
 #define MAX_POOL_ITEM_LIFETIME_SEC  30
@@ -139,7 +142,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 #define TRACE_USE_API               0
 #define TRACE_REUSE                 0
 
-#define INIT_TEST                   1
+#define INIT_TEST                   0
 #define INIT_TEST_STEP              1
 #define INIT_TEST_MAX               1024
 
@@ -189,7 +192,6 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     self.isBusy = NO;
 
     if (TRACE_MEM_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLTexturePoolItem_initWithTexture: item = %p", self);
-
     return self;
 }
 
@@ -447,7 +449,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 {
     id<MTLTexture>          _texture;
     MTLTexturePoolItem *    _poolItem;
-    APooledTextureHandle*   _texHandle;
+    ATexturePoolHandle*     _texHandle;
     NSUInteger              _reqWidth;
     NSUInteger              _reqHeight;
 }
@@ -468,21 +470,25 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     return self;
 }
 
-- (id) initWithTextureHandle:(APooledTextureHandle*)texHandle {
+- (id) initWithTextureHandle:(ATexturePoolHandle*)texHandle {
     self = [super init];
     if (self == nil) return self;
 
-    if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPooledTextureHandle_initWithTextureHandle: handle = %p", self);
-    _texHandle = texHandle;
-    _texture = texHandle->texture;
+    _texture = ATexturePoolHandle_GetTexture(texHandle);
     _poolItem = nil;
+    _texHandle = texHandle;
+
+    _reqWidth = ATexturePoolHandle_GetRequestedWidth(texHandle);
+    _reqHeight = ATexturePoolHandle_GetRequestedHeight(texHandle);
+
+    if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPooledTextureHandle_initWithTextureHandle: handle = %p", self);
     return self;
 }
 
 - (void) releaseTexture {
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPooledTextureHandle_ReleaseTexture: handle = %p", self);
     if (_texHandle != nil) {
-        APooledTextureHandle_ReleaseTexture(_texHandle);
+        ATexturePoolHandle_ReleaseTexture(_texHandle);
     }
     if (_poolItem != nil) {
         [_poolItem releaseItem];
@@ -573,6 +579,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 
     const int cellsCount = _poolCellWidth * _poolCellHeight;
     _cells = (void **)malloc(cellsCount * sizeof(void*));
+    CHECK_NULL_LOG_RETURN(_cells, NULL, "MTLTexturePool_initWithDevice: could not allocate cells");
     memset(_cells, 0, cellsCount * sizeof(void*));
 
     _maxPoolMemory = maxDeviceMemory / 2;
@@ -661,11 +668,9 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format {
 
         if (USE_ACCEL_TEXTURE_POOL) {
-            APooledTextureHandle* texHandle = ATexturePool_getTexture(_accelTexturePool, width, height, format);
-            if (texHandle != NULL) {
-                return [[[MTLPooledTextureHandle alloc] initWithTextureHandle:texHandle] autorelease];
-            }
-            return NULL;
+            ATexturePoolHandle* texHandle = ATexturePool_getTexture(_accelTexturePool, width, height, format);
+            CHECK_NULL_RETURN(texHandle, NULL);
+            return [[[MTLPooledTextureHandle alloc] initWithTextureHandle:texHandle] autorelease];
         }
 
         const int reqWidth  = width;
@@ -727,6 +732,8 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
         // 2. find free item
         const int cellX1 = cellX0 + 1;
         const int cellY1 = cellY0 + 1;
+
+        // Note: this code (test + resizing) is not thread-safe:
         if (cellX1 > _poolCellWidth || cellY1 > _poolCellHeight) {
             const int newCellWidth = cellX1 <= _poolCellWidth ? _poolCellWidth : cellX1;
             const int newCellHeight = cellY1 <= _poolCellHeight ? _poolCellHeight : cellY1;
@@ -735,18 +742,19 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
             if (TRACE_MEM_API) J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "MTLTexturePool_getTexture: resize: %d -> %d",
                                               _poolCellWidth * _poolCellHeight, newCellsCount);
 
-            void ** newcells = malloc(newCellsCount*sizeof(void*));
+            void **newcells = malloc(newCellsCount*sizeof(void*));
+        CHECK_NULL_LOG_RETURN(newcells, NULL, "MTLTexturePool_getTexture: could not allocate newCells");
 
             const size_t strideBytes = _poolCellWidth * sizeof(void*);
             for (int cy = 0; cy < _poolCellHeight; ++cy) {
-                void ** dst = newcells + cy * newCellWidth;
-                void ** src = _cells + cy * _poolCellWidth;
+                void **dst = newcells + cy * newCellWidth;
+                void **src = _cells + cy * _poolCellWidth;
                 memcpy(dst, src, strideBytes);
                 if (newCellWidth > _poolCellWidth)
                     memset(dst + _poolCellWidth, 0, (newCellWidth - _poolCellWidth) * sizeof(void*));
             }
             if (newCellHeight > _poolCellHeight) {
-                void ** dst = newcells + _poolCellHeight * newCellWidth;
+                void **dst = newcells + _poolCellHeight * newCellWidth;
                 memset(dst, 0, (newCellHeight - _poolCellHeight) * newCellWidth * sizeof(void*));
             }
             free(_cells);
