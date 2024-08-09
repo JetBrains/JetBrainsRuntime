@@ -96,7 +96,6 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, i
     lastCtrlCombo = 0;
 
     fEnablePressAndHold = shouldUsePressAndHold();
-    fInPressAndHold = NO;
 
     mouseIsOver = NO;
     [self resetTrackingArea];
@@ -376,10 +375,10 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     debugPrintNSEvent(event, "keyDown");
 #endif
     // Check for willBeHandledByComplexInputMethod here, because interpretKeyEvents might invalidate that field
-    bool isPressAndHold = fEnablePressAndHold && [event willBeHandledByComplexInputMethod] && fInputMethodLOCKABLE;
+    fIsPressAndHold = fEnablePressAndHold && [event willBeHandledByComplexInputMethod] && fInputMethodLOCKABLE;
 
     fProcessingKeystroke = YES;
-    fKeyEventsNeeded = ![(NSString *)kbdLayout containsString:@KEYMAN_LAYOUT];
+    fKeyEventsNeeded = ![(NSString *)kbdLayout containsString:@KEYMAN_LAYOUT] && !fIsPressAndHold;
 
     NSString *eventCharacters = [event characters];
     unsigned mods = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
@@ -395,35 +394,39 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
         [self interpretKeyEvents:[NSArray arrayWithObject:event]];
     }
 
-    if (isPressAndHold)
+    if (fIsPressAndHold)
     {
-        BOOL skipProcessingCancelKeys = YES;
+        fIsPressAndHold = NO;
+        BOOL skipProcessingCancelKeys = NO;
         fProcessingKeystroke = NO;
-        if (!fInPressAndHold) {
-            fInPressAndHold = YES;
-        } else {
-            // Abandon input to reset IM and unblock input after canceling
-            // input accented symbols
+        // Abandon input to reset IM and unblock input after canceling
+        // input accented symbols
 
-            switch([event keyCode]) {
-                case kVK_ForwardDelete:
-                case kVK_Delete:
-                    skipProcessingCancelKeys = NO;
-                case kVK_Return:
-                case kVK_Escape:
-                case kVK_PageUp:
-                case kVK_PageDown:
-                case kVK_DownArrow:
-                case kVK_UpArrow:
-                case kVK_Home:
-                case kVK_End:
-                    // Abandon input to reset IM and unblock input after
-                    // canceling input accented symbols
-                    [self abandonInput:nil];
-                    break;
-            }
+        switch([event keyCode]) {
+            case kVK_Return:
+            case kVK_Escape:
+            case kVK_PageUp:
+            case kVK_PageDown:
+            case kVK_DownArrow:
+            case kVK_UpArrow:
+            case kVK_Home:
+            case kVK_End:
+                skipProcessingCancelKeys = YES;
+
+            case kVK_ForwardDelete:
+            case kVK_Delete:
+                // Abandon input to reset IM and unblock input after
+                // canceling input accented symbols
+#ifdef LOG_KEY_EVENTS
+                fprintf(stderr, "[AWTView.m] Abandoning input in the keyDown event\n");
+#endif
+                [self abandonInput:nil];
+                break;
         }
         if (skipProcessingCancelKeys) {
+#ifdef LOG_KEY_EVENTS
+            fprintf(stderr, "[AWTView.m] Skipping the keyDown event: isPressAndHold && skipProcessingCancelKeys\n");
+#endif
             return;
         }
     }
@@ -433,6 +436,14 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     if ((![self hasMarkedText] && fKeyEventsNeeded) || isDeadKey) {
         [self deliverJavaKeyEventHelper: event];
     }
+#ifdef LOG_KEY_EVENTS
+    else {
+        fprintf(stderr, "[AWTView.m] Skipping the keyDown event: ([self hasMarkedText] || !fKeyEventsNeeded) && !isDeadKey\n");
+        fprintf(stderr, "[AWTView.m] hasMarkedText: %s\n", [self hasMarkedText] ? "YES" : "NO");
+        fprintf(stderr, "[AWTView.m] fKeyEventsNeeded: %s\n", fKeyEventsNeeded ? "YES" : "NO");
+        fprintf(stderr, "[AWTView.m] isDeadKey: %s\n", isDeadKey ? "YES" : "NO");
+    }
+#endif
 
     if (actualCharacters != nil) {
         [actualCharacters release];
@@ -461,7 +472,7 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     debugPrintNSEvent(event, "performKeyEquivalent");
 #endif
     // if IM is active key events should be ignored
-    if (![self hasMarkedText] && !fInPressAndHold) {
+    if (![self hasMarkedText] && !fIsPressAndHold) {
         [self deliverJavaKeyEventHelper: event];
     }
 
@@ -632,6 +643,9 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     static NSEvent* sLastKeyEvent = nil;
     if (event == sLastKeyEvent) {
         // The event is repeatedly delivered by keyDown: after performKeyEquivalent:
+#ifdef LOG_KEY_EVENTS
+        fprintf(stderr, "[AWTView.m] deliverJavaKeyEventHelper: ignoring duplicate events\n");
+#endif
         return;
     }
     [sLastKeyEvent release];
@@ -1158,9 +1172,6 @@ static jclass jc_CInputMethod = NULL;
     if (fInputMethodLOCKABLE == NULL) {
         return;
     }
-
-    // Insert happens at the end of PAH
-    fInPressAndHold = NO;
 
     // insertText gets called when the user commits text generated from an input method.  It also gets
     // called during ordinary input as well.  We only need to send an input method event when we have marked
