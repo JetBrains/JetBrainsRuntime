@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,50 +26,31 @@
 
 #ifndef MTLTexturePool_h_Included
 #define MTLTexturePool_h_Included
-#include <time.h>
-#import "MTLUtils.h"
 
-@class MTLPoolCell;
-
-@interface MTLTexturePoolItem : NSObject
-@property (readwrite, retain) id<MTLTexture> texture;
-@property (readwrite) bool isBusy;
-@property (readwrite) time_t lastUsed;
-@property (readwrite) bool isMultiSample;
-@property (readwrite, assign) MTLTexturePoolItem* prev;
-@property (readwrite, retain) MTLTexturePoolItem* next;
-@property (readwrite, assign) MTLPoolCell* cell;
-
-- (id) initWithTexture:(id<MTLTexture>)tex cell:(MTLPoolCell*)cell;
-@end
+#import <Metal/Metal.h>
 
 @interface MTLPooledTextureHandle : NSObject
-@property (readonly, assign) id<MTLTexture> texture;
-@property (readonly) MTLRegion rect;
-- (void) releaseTexture;
+    @property (readonly, assign) id<MTLTexture> texture;
+    @property (readonly) NSUInteger reqWidth;
+    @property (readonly) NSUInteger reqHeight;
+
+    // used by MTLCommandBufferWrapper.onComplete() to release used textures:
+    - (void) releaseTexture;
 @end
 
 // NOTE: owns all MTLTexture objects
 @interface MTLTexturePool : NSObject
-@property (readwrite, retain) id<MTLDevice> device;
+    @property (readwrite, retain) id<MTLDevice> device;
+    @property (readwrite) uint64_t memoryAllocated;
+    @property (readwrite) uint64_t totalMemoryAllocated;
+    @property (readwrite) uint32_t allocatedCount;
+    @property (readwrite) uint32_t totalAllocatedCount;
+    @property (readwrite) uint64_t cacheHits;
+    @property (readwrite) uint64_t totalHits;
 
-- (id) initWithDevice:(id<MTLDevice>)device;
-- (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format;
-- (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format
-                          isMultiSample:(bool)isMultiSample;
-@end
+    - (id) initWithDevice:(id<MTLDevice>)device;
 
-@interface MTLPoolCell : NSObject
-@property (readwrite, retain) MTLTexturePoolItem* available;
-@property (readwrite, assign) MTLTexturePoolItem* availableTail;
-@property (readwrite, retain) MTLTexturePoolItem* occupied;
-- (MTLTexturePoolItem *)createItem:(id<MTLDevice>)dev
-                             width:(int)width
-                            height:(int)height
-                            format:(MTLPixelFormat)format
-                     isMultiSample:(bool)isMultiSample;
-- (NSUInteger)cleanIfBefore:(time_t)lastUsedTimeToRemove;
-- (void)releaseItem:(MTLTexturePoolItem *)item;
+    - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format;
 @end
 
 #endif /* MTLTexturePool_h_Included */
