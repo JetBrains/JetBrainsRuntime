@@ -50,7 +50,7 @@
 
     - (id) initWithDevice:(id<MTLDevice>)device;
 
-    - (MTLPooledTextureHandle *)getTexture:(int)width height:(int)height format:(MTLPixelFormat)format;
+    - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format;
 @end
 
 #endif /* MTLTexturePool_h_Included */

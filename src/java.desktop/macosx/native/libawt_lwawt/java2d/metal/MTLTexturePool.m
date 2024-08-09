@@ -277,20 +277,21 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 }
 @synthesize available, availableTail, occupied;
 
-- (instancetype)init:(MTLTexturePool*)pool {
+- (instancetype) init:(MTLTexturePool*)pool {
     self = [super init];
-    if (self) {
-        self.available = nil;
-        self.availableTail = nil;
-        self.occupied = nil;
-        _pool = pool;
-        _lock = [[NSLock alloc] init];
-    }
+    if (self == nil) return self;
+
+    self.available = nil;
+    self.availableTail = nil;
+    self.occupied = nil;
+    _pool = pool;
+    _lock = [[NSLock alloc] init];
+
     if (TRACE_MEM_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_init: cell = %p", self);
     return self;
 }
 
-- (void)removeAllItems {
+- (void) removeAllItems {
     if (TRACE_MEM_API) J2dRlsTraceLn(J2D_TRACE_INFO, "MTLPoolCell_removeAllItems");
 
     MTLTexturePoolItem *cur = self.available;
@@ -314,7 +315,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     self.availableTail = nil;
 }
 
-- (void)removeAvailableItem:(MTLTexturePoolItem*)item {
+- (void) removeAvailableItem:(MTLTexturePoolItem*)item {
     if (TRACE_MEM_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_removeAvailableItem: item = %p", item);
     [item retain];
     if (item.prev == nil) {
@@ -349,7 +350,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     [super dealloc];
 }
 
-- (void)occupyItem:(MTLTexturePoolItem *)item {
+- (void) occupyItem:(MTLTexturePoolItem *)item {
     if (item.isBusy) {
         return;
     }
@@ -380,7 +381,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     [item release];
 }
 
-- (void)releaseCellItem:(MTLTexturePoolItem *)item {
+- (void) releaseCellItem:(MTLTexturePoolItem *)item {
     if (!item.isBusy) return;
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_releaseCellItem: item = %p", item);
     [_lock lock];
@@ -412,7 +413,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     }
 }
 
-- (void)addOccupiedItem:(MTLTexturePoolItem *)item {
+- (void) addOccupiedItem:(MTLTexturePoolItem *)item {
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_addOccupiedItem: item = %p", item);
     [_lock lock];
     @try {
@@ -430,7 +431,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     }
 }
 
-- (void)cleanIfBefore:(time_t)lastUsedTimeToRemove {
+- (void) cleanIfBefore:(time_t)lastUsedTimeToRemove {
     [_lock lock];
     @try {
         MTLTexturePoolItem *cur = availableTail;
@@ -460,7 +461,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     }
 }
 
-- (MTLTexturePoolItem *)occupyCellItem:(int)width height:(int)height format:(MTLPixelFormat)format {
+- (MTLTexturePoolItem *) occupyCellItem:(int)width height:(int)height format:(MTLPixelFormat)format {
     int minDeltaArea = -1;
     const int requestedPixels = width*height;
     MTLTexturePoolItem *minDeltaTpi = nil;
