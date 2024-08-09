@@ -66,7 +66,7 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
         WToolkit.loadLibraries();
         // setup flags before initializing native layer
         WindowsFlags.initFlags();
-
+        if (!isUIScaleEnabled()) setProcessDPIAwareness(PROCESS_SYSTEM_DPI_AWARE);
         initDisplay();
 
         // Install correct surface manager factory.

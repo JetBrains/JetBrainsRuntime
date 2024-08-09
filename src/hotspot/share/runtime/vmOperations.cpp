@@ -54,6 +54,7 @@
 #include "services/threadService.hpp"
 #include "utilities/ticks.hpp"
 #include "javaCalls.hpp"
+#include "utilities/ticks.hpp"
 
 #define VM_OP_NAME_INITIALIZE(name) #name,
 
