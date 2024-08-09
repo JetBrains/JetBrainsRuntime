@@ -394,6 +394,7 @@ ifeq ($(call isTargetOs, macosx), true)
       libawt_lwawt/java2d/metal \
       include \
       common/awt/debug \
+      common/java2d \
       common/java2d/opengl \
       java.base:libjvm \
       #
