@@ -131,7 +131,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 // force gc (prune old textures):
 #define FORCE_GC_INTERVAL_SEC       (MAX_POOL_ITEM_LIFETIME_SEC * 10)
 
-// force young gc every 5 seconds (prune only not reused textures):
+// force young gc every 15 seconds (prune only not reused textures):
 #define YOUNG_GC_INTERVAL_SEC       15
 #define YOUNG_GC_LIFETIME_SEC       (FORCE_GC_INTERVAL_SEC * 2)
 
@@ -212,7 +212,60 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     if (self.cell != nil) {
         [self.cell releaseCellItem:self];
     } else {
-        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLTexturePoolItem_releaseItem: item = %p (detached)", self);
+        J2dRlsTraceLn1(J2D_TRACE_ERROR, "MTLTexturePoolItem_releaseItem: item = %p (detached)", self);
+    }
+}
+@end
+
+
+/* MTLPooledTextureHandle API */
+@implementation MTLPooledTextureHandle
+{
+    id<MTLTexture>          _texture;
+    MTLTexturePoolItem *    _poolItem;
+    ATexturePoolHandle*     _texHandle;
+    NSUInteger              _reqWidth;
+    NSUInteger              _reqHeight;
+}
+@synthesize texture = _texture, reqWidth = _reqWidth, reqHeight = _reqHeight;
+
+- (id) initWithPoolItem:(id<MTLTexture>)texture poolItem:(MTLTexturePoolItem *)poolItem reqWidth:(NSUInteger)w reqHeight:(NSUInteger)h {
+    self = [super init];
+    if (self == nil) return self;
+
+    _texture = texture;
+    _poolItem = poolItem;
+    _texHandle = nil;
+
+    _reqWidth = w;
+    _reqHeight = h;
+
+    if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPooledTextureHandle_initWithPoolItem: handle = %p", self);
+    return self;
+}
+
+- (id) initWithTextureHandle:(ATexturePoolHandle*)texHandle {
+    self = [super init];
+    if (self == nil) return self;
+
+    _texture = ATexturePoolHandle_GetTexture(texHandle);
+    _poolItem = nil;
+    _texHandle = texHandle;
+
+    _reqWidth = ATexturePoolHandle_GetRequestedWidth(texHandle);
+    _reqHeight = ATexturePoolHandle_GetRequestedHeight(texHandle);
+
+    if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPooledTextureHandle_initWithTextureHandle: handle = %p", self);
+    return self;
+}
+
+- (void) releaseTexture {
+    if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPooledTextureHandle_ReleaseTexture: handle = %p", self);
+    if (_texHandle != nil) {
+        ATexturePoolHandle_ReleaseTexture(_texHandle);
+    }
+    if (_poolItem != nil) {
+        [_poolItem releaseItem];
     }
 }
 @end
@@ -251,7 +304,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     next = nil;
     while (cur != nil) {
         next = cur.next;
-        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_removeAllItems: occupied item = %p", cur);
+        J2dRlsTraceLn1(J2D_TRACE_ERROR, "MTLPoolCell_removeAllItems: occupied item = %p (detached)", cur);
         // Do not dispose (may leak) until MTLTexturePoolItem_releaseItem() is called by handle:
         // mark item as detached:
         cur.cell = nil;
@@ -444,59 +497,6 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 @end
 
 
-/* MTLPooledTextureHandle API */
-@implementation MTLPooledTextureHandle
-{
-    id<MTLTexture>          _texture;
-    MTLTexturePoolItem *    _poolItem;
-    ATexturePoolHandle*     _texHandle;
-    NSUInteger              _reqWidth;
-    NSUInteger              _reqHeight;
-}
-@synthesize texture = _texture, reqWidth = _reqWidth, reqHeight = _reqHeight;
-
-- (id) initWithPoolItem:(id<MTLTexture>)texture poolItem:(MTLTexturePoolItem *)poolItem reqWidth:(NSUInteger)w reqHeight:(NSUInteger)h {
-    self = [super init];
-    if (self == nil) return self;
-
-    _texture = texture;
-    _poolItem = poolItem;
-    _texHandle = nil;
-
-    _reqWidth = w;
-    _reqHeight = h;
-
-    if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPooledTextureHandle_initWithPoolItem: handle = %p", self);
-    return self;
-}
-
-- (id) initWithTextureHandle:(ATexturePoolHandle*)texHandle {
-    self = [super init];
-    if (self == nil) return self;
-
-    _texture = ATexturePoolHandle_GetTexture(texHandle);
-    _poolItem = nil;
-    _texHandle = texHandle;
-
-    _reqWidth = ATexturePoolHandle_GetRequestedWidth(texHandle);
-    _reqHeight = ATexturePoolHandle_GetRequestedHeight(texHandle);
-
-    if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPooledTextureHandle_initWithTextureHandle: handle = %p", self);
-    return self;
-}
-
-- (void) releaseTexture {
-    if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPooledTextureHandle_ReleaseTexture: handle = %p", self);
-    if (_texHandle != nil) {
-        ATexturePoolHandle_ReleaseTexture(_texHandle);
-    }
-    if (_poolItem != nil) {
-        [_poolItem releaseItem];
-    }
-}
-@end
-
-
 /* MTLTexturePool API */
 @implementation MTLTexturePool {
     void **         _cells;
@@ -548,7 +548,6 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
                        _memoryTotalAllocated / UNIT_MB, self.totalAllocatedCount);
 }
 
-/* public API */
 - (id) initWithDevice:(id<MTLDevice>)dev {
     // recommendedMaxWorkingSetSize typically greatly exceeds SCREEN_MEMORY_SIZE_5K constant.
     // It usually corresponds to the VRAM available to the graphics card
@@ -664,9 +663,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 }
 
 // NOTE: called from RQ-thread (on blit operations)
-/* public API */
 - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format {
-
         if (USE_ACCEL_TEXTURE_POOL) {
             ATexturePoolHandle* texHandle = ATexturePool_getTexture(_accelTexturePool, width, height, format);
             CHECK_NULL_RETURN(texHandle, NULL);

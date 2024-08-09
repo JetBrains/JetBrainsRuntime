@@ -30,24 +30,27 @@
 #import <Metal/Metal.h>
 
 @interface MTLPooledTextureHandle : NSObject
-@property (readonly, assign) id<MTLTexture> texture;
-@property (readonly) NSUInteger reqWidth;
-@property (readonly) NSUInteger reqHeight;
-- (void) releaseTexture; // used by MTLCommandBufferWrapper.onComplete() to release used textures
+    @property (readonly, assign) id<MTLTexture> texture;
+    @property (readonly) NSUInteger reqWidth;
+    @property (readonly) NSUInteger reqHeight;
+
+    // used by MTLCommandBufferWrapper.onComplete() to release used textures:
+    - (void) releaseTexture;
 @end
 
 // NOTE: owns all MTLTexture objects
 @interface MTLTexturePool : NSObject
-@property (readwrite, retain) id<MTLDevice> device;
-@property (readwrite) uint64_t memoryAllocated;
-@property (readwrite) uint64_t totalMemoryAllocated;
-@property (readwrite) uint32_t allocatedCount;
-@property (readwrite) uint32_t totalAllocatedCount;
-@property (readwrite) uint64_t cacheHits;
-@property (readwrite) uint64_t totalHits;
+    @property (readwrite, retain) id<MTLDevice> device;
+    @property (readwrite) uint64_t memoryAllocated;
+    @property (readwrite) uint64_t totalMemoryAllocated;
+    @property (readwrite) uint32_t allocatedCount;
+    @property (readwrite) uint32_t totalAllocatedCount;
+    @property (readwrite) uint64_t cacheHits;
+    @property (readwrite) uint64_t totalHits;
 
-- (id) initWithDevice:(id<MTLDevice>)device;
-- (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format;
+    - (id) initWithDevice:(id<MTLDevice>)device;
+
+    - (MTLPooledTextureHandle *)getTexture:(int)width height:(int)height format:(MTLPixelFormat)format;
 @end
 
 #endif /* MTLTexturePool_h_Included */
