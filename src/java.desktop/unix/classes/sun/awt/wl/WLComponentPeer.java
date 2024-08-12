@@ -1443,8 +1443,23 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     private class WLSize {
+        /**
+         * Represents the full size of the component in "client" units as returned by Component.getSize().
+         */
         private final Dimension javaSize = new Dimension(); // in the client (Java) space, protected by dataLock
+
+        /**
+         * Represents the full size of the component in screen pixels.
+         * The SurfaceData associated with this component takes its size from this value.
+         */
         private final Dimension pixelSize = new Dimension(); // in pixels, protected by dataLock
+
+        /**
+         * Represents the full size of the component in "surface-local" units;
+         * these are the units that Wayland uses in most of its API.
+         * Unless the debug scale is used (WLGraphicsEnvironment.isDebugScaleEnabled()), it is identical
+         * to javaSize.
+         */
         private final Dimension surfaceSize = new Dimension(); // in surface units, protected by dataLock
 
         void deriveFromJavaSize(int width, int height) {
