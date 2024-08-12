@@ -60,7 +60,7 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
         final int backgroundRGB = peer.getBackground() != null
                 ? peer.getBackground().getRGB()
                 : 0;
-        int scale = ((WLGraphicsConfig)peer.getGraphicsConfiguration()).getWlScale();
+        int scale = ((WLGraphicsConfig)peer.getGraphicsConfiguration()).getDisplayScale();
         initOps(peer.getBufferWidth(), peer.getBufferHeight(), scale, backgroundRGB);
     }
 
@@ -110,10 +110,8 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
         }
 
         public Rectangle getBounds() {
-            Rectangle r = peer.getVisibleBounds();
+            Rectangle r = peer.getBufferBounds();
             r.x = r.y = 0;
-            r.width = (int) Math.ceil(r.width * scale);
-            r.height = (int) Math.ceil(r.height * scale);
             return r;
         }
 
