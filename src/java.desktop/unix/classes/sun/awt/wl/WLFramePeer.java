@@ -151,21 +151,22 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
     }
 
     @Override
-    void notifyConfigured(int newXNative, int newYNative, int newWidthNative, int newHeightNative, boolean active, boolean maximized) {
+    void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight, boolean active, boolean maximized) {
         int widthBefore = getWidth();
         int heightBefore = getHeight();
 
-        super.notifyConfigured(newXNative, newYNative, newWidthNative, newHeightNative, active, maximized);
+        super.notifyConfigured(newSurfaceX, newSurfaceY, newSurfaceWidth, newSurfaceHeight, active, maximized);
 
         synchronized (getStateLock()) {
             int oldState = state;
             state = maximized ? Frame.MAXIMIZED_BOTH : Frame.NORMAL;
             AWTAccessor.getFrameAccessor().setExtendedState(getFrame(), state);
             if (state != oldState) {
+                boolean clientDecidesDimension = newSurfaceWidth == 0 || newSurfaceHeight == 0;
                 if (maximized) {
                     widthBeforeMaximized = widthBefore;
                     heightBeforeMaximized = heightBefore;
-                } else if (newWidthNative == 0 && newHeightNative == 0 && widthBeforeMaximized > 0 && heightBeforeMaximized > 0) {
+                } else if (clientDecidesDimension && widthBeforeMaximized > 0 && heightBeforeMaximized > 0) {
                     performUnlocked(() -> target.setSize(widthBeforeMaximized, heightBeforeMaximized));
                 }
                 WLToolkit.postEvent(new WindowEvent(getFrame(), WindowEvent.WINDOW_STATE_CHANGED, oldState, state));
