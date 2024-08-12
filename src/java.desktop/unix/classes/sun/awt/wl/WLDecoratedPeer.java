@@ -110,16 +110,9 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     }
 
     @Override
-    void notifyConfigured(int newX, int newY, int newWidthNative, int newHeightNative, boolean active, boolean maximized) {
-        super.notifyConfigured(newX, newY, newWidthNative, newHeightNative, active, maximized);
+    void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight, boolean active, boolean maximized) {
+        super.notifyConfigured(newSurfaceX, newSurfaceY, newSurfaceWidth, newSurfaceHeight, active, maximized);
         decoration.setActive(active);
-    }
-
-    @Override
-    public Rectangle getVisibleBounds() {
-        // TODO: modify if our decorations ever acquire special effects that
-        // do not count into "visible bounds" of the window
-        return super.getVisibleBounds();
     }
 
     @Override
