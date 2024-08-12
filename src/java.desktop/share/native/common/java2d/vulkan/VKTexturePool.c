@@ -40,37 +40,37 @@
 
 
 /* lock API */
-ATexturePoolLockPrivPtr* ATexturePoolLock_initImpl() {
+ATexturePoolLockPrivPtr* VKTexturePoolLock_initImpl(void) {
     pthread_mutex_t *l = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-    CHECK_NULL_LOG_RETURN(l, NULL, "ATexturePoolLock_initImpl: could not allocate pthread_mutex_t");
+    CHECK_NULL_LOG_RETURN(l, NULL, "VKTexturePoolLock_initImpl: could not allocate pthread_mutex_t");
 
     int status = pthread_mutex_init(l, NULL);
     if (status != 0) {
       return NULL;
     }
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "ATexturePool_initLock: lock=%p", l);
+    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_initImpl: lock=%p", l);
     return (ATexturePoolLockPrivPtr*)l;
 }
 
-void ATexturePoolLock_DisposeImpl(ATexturePoolLockPrivPtr *lock) {
+void VKTexturePoolLock_DisposeImpl(ATexturePoolLockPrivPtr *lock) {
     pthread_mutex_t* l = (pthread_mutex_t*)lock;
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "ATexturePool_DisposeLock: lock=%p", l);
+    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_DisposeImpl: lock=%p", l);
     pthread_mutex_destroy(l);
     free(l);
 }
 
-void ATexturePoolLock_lockImpl(ATexturePoolLockPrivPtr *lock) {
+void VKTexturePoolLock_lockImpl(ATexturePoolLockPrivPtr *lock) {
     pthread_mutex_t* l = (pthread_mutex_t*)lock;
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "ATexturePool_lock: lock=%p", l);
+    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_lockImpl: lock=%p", l);
     pthread_mutex_lock(l);
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "ATexturePool_lock: lock=%p - locked", l);
+    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_lockImpl: lock=%p - locked", l);
 }
 
-void ATexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
+void VKTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
     pthread_mutex_t* l = (pthread_mutex_t*)lock;
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "ATexturePool_unlock: lock=%p", l);
+    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_unlockImpl: lock=%p", l);
     pthread_mutex_unlock(l);
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "ATexturePool_unlock: lock=%p - unlocked", l);
+    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_unlockImpl: lock=%p - unlocked", l);
 }
 
 
@@ -86,8 +86,8 @@ static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
                                       VK_IMAGE_TILING_LINEAR,
                                       VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-        if IS_NULL(texture) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create VKImage\n");
+    if IS_NULL(texture) {
+        J2dRlsTrace(J2D_TRACE_ERROR, "VKTexturePool_createTexture: Cannot create VKImage");
         return NULL;
     }
     // usage   = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
@@ -144,10 +144,10 @@ VKTexturePool* VKTexturePool_initWithDevice(VKLogicalDevice *device) {
     // TODO: get vulkan device memory information (1gb fixed here):
     uint64_t maxDeviceMemory = 1024 * UNIT_MB;
 
-    ATexturePoolLockWrapper *lockWrapper = ATexturePoolLockWrapper_init(&ATexturePoolLock_initImpl,
-                                                                        &ATexturePoolLock_DisposeImpl,
-                                                                        &ATexturePoolLock_lockImpl,
-                                                                        &ATexturePoolLock_unlockImpl);
+    ATexturePoolLockWrapper *lockWrapper = ATexturePoolLockWrapper_init(&VKTexturePoolLock_initImpl,
+                                                                        &VKTexturePoolLock_DisposeImpl,
+                                                                        &VKTexturePoolLock_lockImpl,
+                                                                        &VKTexturePoolLock_unlockImpl);
 
     return ATexturePool_initWithDevice(device,
                                        (jlong)maxDeviceMemory,
@@ -168,9 +168,9 @@ ATexturePoolLockWrapper* VKTexturePool_getLockWrapper(VKTexturePool *pool) {
 }
 
 VKTexturePoolHandle* VKTexturePool_getTexture(VKTexturePool *pool,
-                                        jint width,
-                                        jint height,
-                                        jlong format)
+                                              jint width,
+                                              jint height,
+                                              jlong format)
 {
     return ATexturePool_getTexture(pool, width, height, format);
 }
