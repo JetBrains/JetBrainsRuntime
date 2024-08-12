@@ -146,7 +146,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
         this.x = similarDevice.x;
         this.y = similarDevice.y;
 
-        int newScale = similarDevice.getWlScale();
+        int newScale = similarDevice.getDisplayScale();
         Rectangle newBounds = similarDevice.defaultConfig.getBounds();
         updateConfiguration(similarDevice.name, newBounds.width, newBounds.height, newScale);
     }
@@ -208,8 +208,8 @@ public class WLGraphicsDevice extends GraphicsDevice {
         return defaultConfig;
     }
 
-    int getWlScale() {
-        return defaultConfig.getWlScale();
+    int getDisplayScale() {
+        return defaultConfig.getDisplayScale();
     }
 
     int getResolution() {
