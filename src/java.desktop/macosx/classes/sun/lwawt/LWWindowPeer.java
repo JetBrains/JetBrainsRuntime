@@ -39,7 +39,6 @@ import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Insets;
-import java.awt.KeyboardFocusManager;
 import java.awt.MenuBar;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -65,7 +64,6 @@ import javax.swing.JComponent;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
-import sun.awt.AppContext;
 import sun.awt.CGraphicsDevice;
 import sun.awt.DisplayChangedListener;
 import sun.awt.ExtendedKeyCodes;
@@ -157,6 +155,8 @@ public class LWWindowPeer
      * Synchronization: peerTreeLock.
      */
     private LWWindowPeer blocker;
+
+    Jbr7481MouseEnteredExitedFix jbr7481MouseEnteredExitedFix = null;
 
     public LWWindowPeer(Window target, PlatformComponent platformComponent,
                         PlatformWindow platformWindow, PeerType peerType)
@@ -780,6 +780,18 @@ public class LWWindowPeer
     public void notifyMouseEvent(int id, long when, int button,
                                  int x, int y, int absX, int absY,
                                  int modifiers, int clickCount, boolean popupTrigger,
+                                 byte[] bdata) {
+        if (Jbr7481MouseEnteredExitedFix.isEnabled) {
+            mouseEnteredExitedBugWorkaround().apply(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
+        }
+        else {
+            doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
+        }
+    }
+
+    void doNotifyMouseEvent(int id, long when, int button,
+                                 int x, int y, int absX, int absY,
+                                 int modifiers, int clickCount, boolean popupTrigger,
                                  byte[] bdata)
     {
         // TODO: fill "bdata" member of AWTEvent
@@ -924,6 +936,13 @@ public class LWWindowPeer
             }
         }
         notifyUpdateCursor();
+    }
+
+    private Jbr7481MouseEnteredExitedFix mouseEnteredExitedBugWorkaround() {
+        if (jbr7481MouseEnteredExitedFix == null) {
+            jbr7481MouseEnteredExitedFix = new Jbr7481MouseEnteredExitedFix(this);
+        }
+        return jbr7481MouseEnteredExitedFix;
     }
 
     private void generateMouseEnterExitEventsForComponents(long when,
@@ -1436,5 +1455,123 @@ public class LWWindowPeer
             ((CPlatformWindow)window).execute(ptr -> handle[0] = ptr);
         }
         return handle[0];
+    }
+
+    static class Jbr7481MouseEnteredExitedFix {
+        static final boolean isEnabled;
+
+        static {
+            boolean isEnabledLocal = false;
+
+            try {
+                isEnabledLocal = Boolean.parseBoolean(System.getProperty("awt.mac.enableMouseEnteredExitedWorkaround", "true"));
+            } catch (Exception ignored) {
+            }
+
+            isEnabled = isEnabledLocal;
+        }
+
+        private final LWWindowPeer peer;
+        long when;
+        int x;
+        int y;
+        int absX;
+        int absY;
+        int modifiers;
+
+        Jbr7481MouseEnteredExitedFix(LWWindowPeer peer) {
+            this.peer = peer;
+        }
+
+        void apply(
+                int id, long when, int button,
+                int x, int y, int absX, int absY,
+                int modifiers, int clickCount, boolean popupTrigger,
+                byte[] bdata
+        ) {
+            this.when = when;
+            this.x = x;
+            this.y = y;
+            this.absX = absX;
+            this.absY = absY;
+            this.modifiers = modifiers;
+            switch (id) {
+                case MouseEvent.MOUSE_ENTERED -> {
+                    var currentPeerWorkaround = getCurrentPeerWorkaroundOrNull();
+                    // First, send a "mouse exited" to the current window, if any,
+                    // to maintain a sensible "exited, entered" order.
+                    if (currentPeerWorkaround != null && currentPeerWorkaround != this) {
+                        currentPeerWorkaround.sendMouseExited();
+                    }
+                    // Then forward the "mouse entered" to this window, regardless of whether it's already current.
+                    // Repeated "mouse entered" are allowed and may be even needed somewhere deep inside this call.
+                    peer.doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
+                }
+                case MouseEvent.MOUSE_EXITED -> {
+                    var currentPeerWorkaround = getCurrentPeerWorkaroundOrNull();
+                    // An "exited" event often arrives too late. Such events may cause the current window to get lost.
+                    // And since we've already sent a "mouse exited" when entering the current window, we don't need another one.
+                    if (currentPeerWorkaround == this) {
+                        peer.doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
+                    }
+                }
+                case MouseEvent.MOUSE_MOVED -> {
+                    var currentPeerWorkaround = getCurrentPeerWorkaroundOrNull();
+                    if (currentPeerWorkaround != this) {
+                        // Inconsistency detected: either the events arrived out of order or never did.
+                        // First, send an "exited" event to the current window, if any.
+                        if (currentPeerWorkaround != null) {
+                            currentPeerWorkaround.sendMouseExited();
+                        }
+                        // Next, send a fake "mouse entered" to the new window.
+                        sendMouseEntered();
+                    }
+                    peer.doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
+                }
+                default -> {
+                    peer.doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
+                }
+            }
+        }
+
+        private static Jbr7481MouseEnteredExitedFix getCurrentPeerWorkaroundOrNull() {
+            var currentPeer = getCurrentWindowPeer();
+            return currentPeer == null ? null : currentPeer.jbr7481MouseEnteredExitedFix;
+        }
+
+        private static LWWindowPeer getCurrentWindowPeer() {
+            return LWWindowPeer.getWindowUnderCursor();
+        }
+
+        private void sendMouseEntered() {
+            peer.doNotifyMouseEvent(
+                    MouseEvent.MOUSE_ENTERED, when, MouseEvent.NOBUTTON,
+                    x, y, absX, absY,
+                    modifiers, 0, false,
+                    null
+            );
+        }
+
+        private void sendMouseExited() {
+            peer.doNotifyMouseEvent(
+                    MouseEvent.MOUSE_EXITED, when, MouseEvent.NOBUTTON,
+                    x, y, absX, absY,
+                    modifiers, 0, false,
+                    null
+            );
+        }
+
+        @Override
+        public String toString() {
+            return "Jbr7481MouseEnteredExitedFix{" +
+                    "peer=" + peer +
+                    ", when=" + when +
+                    ", x=" + x +
+                    ", y=" + y +
+                    ", absX=" + absX +
+                    ", absY=" + absY +
+                    ", modifiers=" + modifiers +
+                    '}';
+        }
     }
 }
