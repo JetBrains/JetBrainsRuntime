@@ -1205,7 +1205,7 @@ public class WLComponentPeer implements ComponentPeer {
                         horizontalMWEPreciseRotations = mweConversionInfo.yAxisMWEPreciseRotations;
                         horizontalMWERoundRotations   = mweConversionInfo.yAxisMWERoundRotations;
                     }
-                } else if ((mweConversionInfo.yAxisMWERoundRotations != 0) || (mweConversionInfo.yAxisMWEPreciseRotations != 0)) {
+                } else if (mweConversionInfo.yAxisMWERoundRotations != 0 || mweConversionInfo.yAxisMWEPreciseRotations != 0) {
                     // The scrolling directions contradict.
                     // I think consistently choosing the Y axis values (unless they're zero) provides the most expected UI behavior here.
 
@@ -1236,7 +1236,7 @@ public class WLComponentPeer implements ComponentPeer {
                 yAxisWheelRoundRotationsAccumulator.reset();
             }
 
-            if ((verticalMWERoundRotations != 0) || (verticalMWEPreciseRotations != 0)) {
+            if (verticalMWERoundRotations != 0 || verticalMWEPreciseRotations != 0) {
                 assert(verticalMWEScrollAmount > 0);
 
                 final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
@@ -1255,7 +1255,7 @@ public class WLComponentPeer implements ComponentPeer {
                 postMouseEvent(mouseEvent);
             }
 
-            if ((horizontalMWERoundRotations != 0) || (horizontalMWEPreciseRotations != 0)) {
+            if (horizontalMWERoundRotations != 0 || horizontalMWEPreciseRotations != 0) {
                 assert(horizontalMWEScrollAmount > 0);
 
                 final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
