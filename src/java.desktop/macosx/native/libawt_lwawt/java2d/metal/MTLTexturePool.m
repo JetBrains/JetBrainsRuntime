@@ -37,31 +37,31 @@
 
 
 /* lock API */
-ATexturePoolLockPrivPtr* ATexturePoolLock_initImpl() {
+ATexturePoolLockPrivPtr* MTLTexturePoolLock_initImpl(void) {
     NSLock* l = [[[NSLock alloc] init] autorelease];
     [l retain];
-    if (TRACE_LOCK) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "ATexturePool_initLock: lock=%p", l);
+    if (TRACE_LOCK) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_initImpl: lock=%p", l);
     return l;
 }
 
-void ATexturePoolLock_DisposeImpl(ATexturePoolLockPrivPtr *lock) {
+void MTLTexturePoolLock_DisposeImpl(ATexturePoolLockPrivPtr *lock) {
     NSLock* l = (NSLock*)lock;
-    if (TRACE_LOCK) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "ATexturePool_DisposeLock: lock=%p", l);
+    if (TRACE_LOCK) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_DisposeImpl: lock=%p", l);
     [l release];
 }
 
-void ATexturePoolLock_lockImpl(ATexturePoolLockPrivPtr *lock) {
+void MTLTexturePoolLock_lockImpl(ATexturePoolLockPrivPtr *lock) {
     NSLock* l = (NSLock*)lock;
-    if (TRACE_LOCK) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "ATexturePool_lock: lock=%p", l);
+    if (TRACE_LOCK) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_lockImpl: lock=%p", l);
     [l lock];
-    if (TRACE_LOCK) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "ATexturePool_lock: lock=%p - locked", l);
+    if (TRACE_LOCK) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_lockImpl: lock=%p - locked", l);
 }
 
-void ATexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
+void MTLTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
     NSLock* l = (NSLock*)lock;
-    if (TRACE_LOCK) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "ATexturePool_unlock: lock=%p", l);
+    if (TRACE_LOCK) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_unlockImpl: lock=%p", l);
     [l unlock];
-    if (TRACE_LOCK) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "ATexturePool_unlock: lock=%p - unlocked", l);
+    if (TRACE_LOCK) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_unlockImpl: lock=%p - unlocked", l);
 }
 
 
@@ -557,20 +557,20 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     self = [super init];
     if (self == nil) return self;
 
-     if (USE_ACCEL_TEXTURE_POOL) {
-        ATexturePoolLockWrapper *lockWrapper = ATexturePoolLockWrapper_init(&ATexturePoolLock_initImpl,
-                                                                            &ATexturePoolLock_DisposeImpl,
-                                                                            &ATexturePoolLock_lockImpl,
-                                                                            &ATexturePoolLock_unlockImpl);
+#if (USE_ACCEL_TEXTURE_POOL == 1)
+    ATexturePoolLockWrapper *lockWrapper = ATexturePoolLockWrapper_init(&MTLTexturePoolLock_initImpl,
+                                                                        &MTLTexturePoolLock_DisposeImpl,
+                                                                        &MTLTexturePoolLock_lockImpl,
+                                                                        &MTLTexturePoolLock_unlockImpl);
 
-        _accelTexturePool = ATexturePool_initWithDevice(dev,
-                                                        (jlong)maxDeviceMemory,
-                                                        &MTLTexturePool_createTexture,
-                                                        &MTLTexturePool_freeTexture,
-                                                        &MTLTexturePool_bytesPerPixel,
-                                                        lockWrapper,
-                                                        MTLPixelFormatBGRA8Unorm);
-    }
+    _accelTexturePool = ATexturePool_initWithDevice(dev,
+                                                    (jlong)maxDeviceMemory,
+                                                    &MTLTexturePool_createTexture,
+                                                    &MTLTexturePool_freeTexture,
+                                                    &MTLTexturePool_bytesPerPixel,
+                                                    lockWrapper,
+                                                    MTLPixelFormatBGRA8Unorm);
+#endif
     self.device = dev;
 
      // use (5K) 5120-by-2880 resolution:
@@ -617,10 +617,10 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 }
 
 - (void) dealloc {
-    if (USE_ACCEL_TEXTURE_POOL) {
-        ATexturePoolLockWrapper_Dispose(ATexturePool_getLockWrapper(_accelTexturePool));
-        ATexturePool_Dispose(_accelTexturePool);
-    }
+#if (USE_ACCEL_TEXTURE_POOL == 1)
+    ATexturePoolLockWrapper_Dispose(ATexturePool_getLockWrapper(_accelTexturePool));
+    ATexturePool_Dispose(_accelTexturePool);
+#endif
 
     if (TRACE_MEM_API) J2dRlsTraceLn(J2D_TRACE_INFO, "MTLTexturePool_dealloc: pool = %p", self);
 
@@ -665,12 +665,11 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 
 // NOTE: called from RQ-thread (on blit operations)
 - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format {
-        if (USE_ACCEL_TEXTURE_POOL) {
-            ATexturePoolHandle* texHandle = ATexturePool_getTexture(_accelTexturePool, width, height, format);
-            CHECK_NULL_RETURN(texHandle, NULL);
-            return [[[MTLPooledTextureHandle alloc] initWithTextureHandle:texHandle] autorelease];
-        }
-
+#if (USE_ACCEL_TEXTURE_POOL == 1)
+        ATexturePoolHandle* texHandle = ATexturePool_getTexture(_accelTexturePool, width, height, format);
+        CHECK_NULL_RETURN(texHandle, NULL);
+        return [[[MTLPooledTextureHandle alloc] initWithTextureHandle:texHandle] autorelease];
+#else
         const int reqWidth  = width;
         const int reqHeight = height;
 
@@ -819,5 +818,6 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
         minDeltaTpi.lastUsed = time(NULL);
         return [[[MTLPooledTextureHandle alloc] initWithPoolItem:minDeltaTpi.texture
                                                         poolItem:minDeltaTpi reqWidth:reqWidth reqHeight:reqHeight] autorelease];
+#endif
 }
 @end
