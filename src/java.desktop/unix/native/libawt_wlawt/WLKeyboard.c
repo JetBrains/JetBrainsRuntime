@@ -1091,7 +1091,7 @@ convertKeysymToJavaCode(xkb_keysym_t keysym, int *javaKeyCode, int *javaKeyLocat
             // since this doesn't deal with lowercase/uppercase characters.
             // It later needs to be passed to KeyEvent.getExtendedKeyCodeForChar().
             // This is done in WLToolkit.java
-            *javaKeyCode = 0x1000000 + codepoint;
+            *javaKeyCode = (int)(0x1000000 + codepoint);
         }
 
         if (javaKeyLocation) {
@@ -1102,12 +1102,13 @@ convertKeysymToJavaCode(xkb_keysym_t keysym, int *javaKeyCode, int *javaKeyLocat
 
 // Posts one UTF-16 code unit as a KEY_TYPED event
 static void
-postKeyTypedJavaChar(uint16_t javaChar) {
+postKeyTypedJavaChar(long timestamp, uint16_t javaChar) {
 #ifdef WL_KEYBOARD_DEBUG
     fprintf(stderr, "postKeyTypedJavaChar(0x%04x)\n", (int) javaChar);
 #endif
 
     struct WLKeyEvent event = {
+            .timestamp = timestamp,
             .id = java_awt_event_KeyEvent_KEY_TYPED,
             .keyCode = java_awt_event_KeyEvent_VK_UNDEFINED,
             .keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN,
@@ -1121,7 +1122,7 @@ postKeyTypedJavaChar(uint16_t javaChar) {
 
 // Posts one Unicode code point as KEY_TYPED events
 static void
-postKeyTypedCodepoint(uint32_t codePoint) {
+postKeyTypedCodepoint(long timestamp, uint32_t codePoint) {
     if (codePoint >= 0x10000) {
         // break the codepoint into surrogates
 
@@ -1130,16 +1131,16 @@ postKeyTypedCodepoint(uint32_t codePoint) {
         uint16_t highSurrogate = (uint16_t) (0xD800 + ((codePoint >> 10) & 0x3ff));
         uint16_t lowSurrogate = (uint16_t) (0xDC00 + (codePoint & 0x3ff));
 
-        postKeyTypedJavaChar(highSurrogate);
-        postKeyTypedJavaChar(lowSurrogate);
+        postKeyTypedJavaChar(timestamp, highSurrogate);
+        postKeyTypedJavaChar(timestamp, lowSurrogate);
     } else {
-        postKeyTypedJavaChar((uint16_t) codePoint);
+        postKeyTypedJavaChar(timestamp, (uint16_t) codePoint);
     }
 }
 
 // Posts a UTF-8 encoded string as KEY_TYPED events
 static void
-postKeyTypedEvents(const char *string) {
+postKeyTypedEvents(long timestamp, const char *string) {
 #ifdef WL_KEYBOARD_DEBUG
     fprintf(stderr, "postKeyTypedEvents(b\"");
     for (const char *c = string; *c; ++c) {
@@ -1175,13 +1176,13 @@ postKeyTypedEvents(const char *string) {
             // a single codepoint in range U+0000 to U+007F
             remaining = 0;
             curCodePoint = 0;
-            postKeyTypedCodepoint(*ptr & 0x7f);
+            postKeyTypedCodepoint(timestamp, *ptr & 0x7f);
         } else if ((*ptr & 0xc0) == 0x80) {
             // continuation byte
             curCodePoint = (curCodePoint << 6u) | (uint32_t) (*ptr & 0x3f);
             --remaining;
             if (remaining == 0) {
-                postKeyTypedCodepoint(curCodePoint);
+                postKeyTypedCodepoint(timestamp, curCodePoint);
                 curCodePoint = 0;
             }
         } else {
@@ -1202,35 +1203,35 @@ getJavaKeyCharForKeycode(xkb_keycode_t xkbKeycode) {
 
 // Posts an XKB keysym as KEY_TYPED events, without consulting the current compose state.
 static void
-handleKeyTypeNoCompose(xkb_keycode_t xkbKeycode) {
+handleKeyTypeNoCompose(long timestamp, xkb_keycode_t xkbKeycode) {
     int bufSize = xkb.state_key_get_utf8(keyboard.state, xkbKeycode, NULL, 0) + 1;
     char buf[bufSize];
     xkb.state_key_get_utf8(keyboard.state, xkbKeycode, buf, bufSize);
-    postKeyTypedEvents(buf);
+    postKeyTypedEvents(timestamp, buf);
 }
 
 // Handles generating KEY_TYPED events for an XKB keysym, translating it using the active compose state
 static void
-handleKeyType(xkb_keycode_t xkbKeycode) {
+handleKeyType(long timestamp, xkb_keycode_t xkbKeycode) {
     xkb_keysym_t keysym = xkb.state_key_get_one_sym(keyboard.state, xkbKeycode);
 
     if (!keyboard.composeState ||
         (xkb.compose_state_feed(keyboard.composeState, keysym) == XKB_COMPOSE_FEED_IGNORED)) {
-        handleKeyTypeNoCompose(xkbKeycode);
+        handleKeyTypeNoCompose(timestamp, xkbKeycode);
         return;
     }
 
     switch (xkb.compose_state_get_status(keyboard.composeState)) {
         case XKB_COMPOSE_NOTHING:
             xkb.compose_state_reset(keyboard.composeState);
-            handleKeyTypeNoCompose(xkbKeycode);
+            handleKeyTypeNoCompose(timestamp, xkbKeycode);
             break;
         case XKB_COMPOSE_COMPOSING:
             break;
         case XKB_COMPOSE_COMPOSED: {
             char buf[MAX_COMPOSE_UTF8_LENGTH];
             xkb.compose_state_get_utf8(keyboard.composeState, buf, sizeof buf);
-            postKeyTypedEvents(buf);
+            postKeyTypedEvents(timestamp, buf);
             xkb.compose_state_reset(keyboard.composeState);
             break;
         }
@@ -1292,7 +1293,7 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
             .id = isPressed ? java_awt_event_KeyEvent_KEY_PRESSED : java_awt_event_KeyEvent_KEY_RELEASED,
             .keyCode = javaKeyCode,
             .keyLocation = javaKeyLocation,
-            .rawCode = keycode,
+            .rawCode = (int)xkbKeycode,
             .extendedKeyCode = javaExtendedKeyCode,
             .keyChar = getJavaKeyCharForKeycode(xkbKeycode),
     };
@@ -1300,7 +1301,7 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
     wlPostKeyEvent(&event);
 
     if (isPressed) {
-        handleKeyType(xkbKeycode);
+        handleKeyType(timestamp, xkbKeycode);
 
         if (!isRepeat && xkb.keymap_key_repeats(keyboard.keymap, xkbKeycode)) {
             (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, startRepeatMID, timestamp, keycode);
