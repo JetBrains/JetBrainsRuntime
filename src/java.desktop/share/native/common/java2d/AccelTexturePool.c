@@ -67,9 +67,9 @@
 #define INIT_TEST_STEP              1
 #define INIT_TEST_MAX               1024
 
-#define LOCK_WRAPPER(cell)          (cell->pool->lockWrapper)
-#define LOCK_WRAPPER_LOCK(cell)     (LOCK_WRAPPER(cell)->lockFunc(cell->lock))
-#define LOCK_WRAPPER_UNLOCK(cell)   (LOCK_WRAPPER(cell)->unlockFunc(cell->lock))
+#define LOCK_WRAPPER(cell)          ((cell)->pool->lockWrapper)
+#define LOCK_WRAPPER_LOCK(cell)     (LOCK_WRAPPER(cell)->lockFunc((cell)->lock))
+#define LOCK_WRAPPER_UNLOCK(cell)   (LOCK_WRAPPER(cell)->unlockFunc((cell)->lock))
 
 
 /* Private definitions */
