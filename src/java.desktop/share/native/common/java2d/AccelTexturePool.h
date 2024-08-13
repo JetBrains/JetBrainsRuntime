@@ -83,7 +83,7 @@ typedef int (ATexturePool_bytesPerPixel)(long format);
 /* Generic native-specific lock (platform specific) */
 typedef void ATexturePoolLockPrivPtr;
 
-typedef ATexturePoolLockPrivPtr* (ATexturePoolLock_init)();
+typedef ATexturePoolLockPrivPtr* (ATexturePoolLock_init)(void);
 
 typedef void (ATexturePoolLock_dispose) (ATexturePoolLockPrivPtr *lock);
 
