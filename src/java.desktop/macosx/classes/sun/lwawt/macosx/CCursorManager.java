@@ -25,6 +25,7 @@
 
 package sun.lwawt.macosx;
 
+import com.jetbrains.exported.JBRApi;
 import sun.lwawt.LWCursorManager;
 
 import java.awt.Cursor;
@@ -63,7 +64,7 @@ final class CCursorManager extends LWCursorManager {
 
     @Override
     protected void setCursor(final Cursor cursor) {
-        if (cursor == currentCursor) {
+        if (cursorEqualityCheckEnabled && cursor == currentCursor) {
             return;
         }
         currentCursor = cursor;
@@ -97,5 +98,12 @@ final class CCursorManager extends LWCursorManager {
 
         // do something special
         throw new RuntimeException("Unimplemented");
+    }
+
+    private static volatile boolean cursorEqualityCheckEnabled = true;
+
+    @JBRApi.Provides("CursorEqualityCheck#setEnabled")
+    private static void setCursorEqualityCheckEnabled(boolean enabled) {
+        cursorEqualityCheckEnabled = enabled;
     }
 }
