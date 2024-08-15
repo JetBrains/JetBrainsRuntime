@@ -143,5 +143,10 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
         public boolean isOnScreen() {
             return true;
         }
+
+        @Override
+        public void commit() {
+
+        }
     }
 }
