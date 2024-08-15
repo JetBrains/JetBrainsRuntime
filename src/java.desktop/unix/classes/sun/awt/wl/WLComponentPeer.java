@@ -458,7 +458,7 @@ public class WLComponentPeer implements ComponentPeer {
     public void commitToServer() {
         performLocked(() -> {
             if (getWLSurface(nativePtr) != 0) {
-                surfaceData.flush();
+                SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).commit();
             }
         });
         Toolkit.getDefaultToolkit().sync();
