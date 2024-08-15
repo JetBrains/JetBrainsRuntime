@@ -111,10 +111,10 @@ Java_sun_java2d_wl_WLSMSurfaceData_assignSurface(JNIEnv *env, jobject wsd,
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_wl_WLSMSurfaceData_flush(JNIEnv *env, jobject wsd)
+Java_sun_java2d_wl_WLSMSurfaceData_commit(JNIEnv *env, jobject wsd)
 {
 #ifndef HEADLESS
-    J2dTrace(J2D_TRACE_INFO, "WLSMSurfaceData_flush\n");
+    J2dTrace(J2D_TRACE_INFO, "WLSMSurfaceData_commit\n");
     WLSDOps *wsdo = (WLSDOps*)SurfaceData_GetOps(env, wsd);
     if (wsdo == NULL) {
         return;
