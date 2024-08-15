@@ -1003,7 +1003,7 @@ javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all
 javax/swing/JTree/4330357/bug4330357.java 8253184,JBR-6466 windows-all,linux-all
 javax/swing/JTree/4633594/JTreeFocusTest.java 7105441,8173125,JBR-5210 macosx-all,windows-all
 javax/swing/JTree/4908142/bug4908142.java 8197552,JBR-151 windows-all
-javax/swing/AbstractButton/6711682/bug6711682.java 8060765 windows-all,macosx-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-5.19.0-1025-aws
+javax/swing/AbstractButton/6711682/bug6711682.java 8060765 windows-all,macosx-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-5.19.0-1025-aws,linux-6.5.0-1024-aws
 javax/swing/Action/8133039/bug8133039.java JBR-5210 windows-all
 javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java JBR-5210 windows-all
 javax/swing/event/RightAltKeyTest.java JBR-5210 windows-all
@@ -1065,6 +1065,7 @@ javax/swing/JRadioButton/4314194/bug4314194.java 8298153 linux-all
 javax/swing/JRootPane/4670486/bug4670486.java 8197552 windows-all
 javax/swing/JRootPane/DefaultButtonTest.java JBR-5739 windows-all,linux-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java JBR-5210 windows-all
+javax/swing/text/html/StyleSheet/bug4476002.java JBR-7498 linux-5.18.2-arch1-1
 javax/swing/text/html/StyleSheet/bug4936917.java JBR-899,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id0 JBR-5799 windows-all
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-5779 linux-all

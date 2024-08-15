@@ -1,4 +1,5 @@
 java/awt/Choice/ChoiceHandleMouseEvent_2.java JBR-7174 windows-all
+java/awt/Graphics/XORPaint.java#id0 JBR-7499 windows-x64
 java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java   nobug macosx-all,linux-all,windows-all
 java/awt/Toolkit/AWTThreadingTest.java              nobug macosx-all,linux-all,windows-all
 java/awt/Toolkit/AWTThreadingCMenuTest.java         nobug macosx-all,linux-all,windows-all
@@ -8,6 +9,7 @@ java/awt/List/NofocusListDblClickTest/NofocusListDblClickTest.java nobug macosx-
 java/awt/Paint/PaintNativeOnUpdate.java JBR-5397,JBR-7415 macosx-all,windows-x64
 java/awt/PopupMenu/PopupMenuLocation.java JBR-5397,JBR-7375 macosx-all,windows-x64
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java JBR-5397,JBR-6092 macosx-all,windows-x64
+java/awt/Robot/NonEmptyErrorStream.java JBR-5510,JBR-7375 linux-5.18.2-arch1-1,windows-x64
 java/awt/Robot/RobotWheelTest/RobotWheelTest.java JBR-5397,JBR-7377 macosx-all,windows-x64
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5397,JBR-7378 macosx-all,windows-x64
 
