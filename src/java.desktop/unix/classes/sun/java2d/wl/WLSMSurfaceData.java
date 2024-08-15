@@ -129,7 +129,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
     public native void revalidate(int width, int height, int scale);
 
     @Override
-    public native void flush();
+    public native void commit();
 
     public int getRGBPixelAt(int x, int y) {
         int pixel = pixelAt(x, y);
