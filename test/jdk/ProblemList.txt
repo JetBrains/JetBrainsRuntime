@@ -564,9 +564,10 @@ com/sun/management/OperatingSystemMXBean/GetSystemCpuLoad.java  8030957 aix-all
 
 java/lang/management/ThreadMXBean/ThreadMXBeanStateTest.java    8247426 generic-all
 
-sun/management/jdp/JdpDefaultsTest.java                         8241865 linux-aarch64,macosx-all
-sun/management/jdp/JdpJmxRemoteDynamicPortTest.java             8241865 macosx-all
-sun/management/jdp/JdpSpecificAddressTest.java                  8241865 macosx-all
+sun/management/jdp/JdpDefaultsTest.java                         8241865,8308807 linux-aarch64,macosx-all,aix-ppc64
+sun/management/jdp/JdpJmxRemoteDynamicPortTest.java             8241865,8308807 macosx-all,aix-ppc64
+sun/management/jdp/JdpSpecificAddressTest.java                  8241865,8308807 macosx-all,aix-ppc64
+sun/management/jdp/JdpOffTest.java                              8308807 aix-ppc64
 
 ############################################################################
 
@@ -587,15 +588,18 @@ java/net/MulticastSocket/B6427403.java                          8308807 aix-ppc6
 java/net/MulticastSocket/IPMulticastIF.java                     8308807 aix-ppc64
 java/net/MulticastSocket/JoinLeave.java                         8308807 aix-ppc64
 java/net/MulticastSocket/MulticastAddresses.java                8308807 aix-ppc64
-java/net/MulticastSocket/NoLoopbackPackets.java                 7122846 macosx-all
+java/net/MulticastSocket/NoLoopbackPackets.java                 7122846,8308807 macosx-all,aix-ppc64
 java/net/MulticastSocket/NoSetNetworkInterface.java             8308807 aix-ppc64
 java/net/MulticastSocket/Promiscuous.java                       8308807 aix-ppc64
 java/net/MulticastSocket/SetGetNetworkInterfaceTest.java        8219083,8308807 windows-all,aix-ppc64
-java/net/MulticastSocket/SetLoopbackMode.java                   7122846 macosx-all
+java/net/MulticastSocket/SetLoopbackMode.java                   7122846,8308807 macosx-all,aix-ppc64
 java/net/MulticastSocket/SetOutgoingIf.java                     8308807 aix-ppc64
-java/net/MulticastSocket/Test.java                              7145658 macosx-all
+java/net/MulticastSocket/Test.java                              7145658,8308807 macosx-all,aix-ppc64
 
 java/net/ServerSocket/AcceptInheritHandle.java                  8211854 aix-ppc64
+java/net/MulticastSocket/B6427403.java                          8308807 aix-ppc64
+java/net/MulticastSocket/SetOutgoingIf.java                     8308807 aix-ppc64
+
 ############################################################################
 
 # jdk_nio
@@ -608,6 +612,8 @@ java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-
 java/nio/channels/AsynchronousSocketChannel/StressLoopback.java 8211851 aix-ppc64
 
 java/nio/file/Files/probeContentType/Basic.java                 8320943 windows-all
+
+java/nio/channels/DatagramChannel/AfterDisconnect.java          8308807 aix-ppc64
 
 ############################################################################
 
