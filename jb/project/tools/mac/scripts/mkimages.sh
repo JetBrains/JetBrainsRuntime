@@ -53,7 +53,7 @@ function create_image_bundle {
 
   fastdebug_infix=''
   __cds_opt=''
-  if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then __cds_opt="--generate-cds-archive"; fi
+  __cds_opt="--generate-cds-archive"
 
   tmp=.bundle.$$.tmp
   mkdir "$tmp" || do_exit $?
