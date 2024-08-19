@@ -11,6 +11,7 @@ java/awt/PopupMenu/PopupMenuLocation.java JBR-5397,JBR-7375 macosx-all,windows-x
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java JBR-5397,JBR-6092 macosx-all,windows-x64
 java/awt/Robot/NonEmptyErrorStream.java JBR-5510,JBR-7375 linux-5.18.2-arch1-1,windows-x64
 java/awt/Robot/RobotWheelTest/RobotWheelTest.java JBR-5397,JBR-7377 macosx-all,windows-x64
+java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java JBR-5397,JBR-7531 macosx-all,windows-x64
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5397,JBR-7378 macosx-all,windows-x64
 
 javax/accessibility/JFileChooserAccessibleDescriptionTest.java JBR-5397,JBR-7379 macosx-all,windows-x64
@@ -105,7 +106,6 @@ java/awt/Mouse/EnterExitEvents/DragWindowTest.java 8253184,JBR-5397 macosx-all,w
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java 8253184,JBR-5709 windows-all,linux-all
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java 8253184,JBR-6752,JBR-5397 windows-all,linux-all,macosx-all
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java JBR-5397 macosx-all
-java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java JBR-5397 macosx-all
 java/awt/Window/WindowOwnedByEmbeddedFrameTest/WindowOwnedByEmbeddedFrameTest.java JBR-5397 macosx-all
 javax/accessibility/JSlider/AccessibleAction/JSliderAccessibleAction.java JBR-5397 macosx-all
 javax/swing/JComboBox/6236162/bug6236162.java JBR-5210,JBR-5397 windows-all,macosx-all
