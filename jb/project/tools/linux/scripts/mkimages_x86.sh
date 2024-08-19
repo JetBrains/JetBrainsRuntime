@@ -51,7 +51,7 @@ function create_image_bundle {
   __cds_opt=''
 
   if is_musl; then libc_type_suffix='musl-' ; fi
-  if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then __cds_opt="--generate-cds-archive"; fi
+  __cds_opt="--generate-cds-archive"
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-linux-${libc_type_suffix}x86-${fastdebug_infix}b${build_number}
