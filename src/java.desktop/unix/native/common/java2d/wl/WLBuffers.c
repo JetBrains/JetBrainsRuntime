@@ -152,12 +152,13 @@ DamageList_Add(DamageList* list, jint x, jint y, jint width, jint height)
 static DamageList*
 DamageList_AddList(DamageList* list, DamageList* add)
 {
-    assert(list != add);
+    if (add != NULL) {
+        assert(list != add);
 
-    for (DamageList* l = add; l != NULL; l = l->next) {
-        list = DamageList_Add(list, l->x, l->y, l->width, l->height);
+        for (DamageList *l = add; l != NULL; l = l->next) {
+            list = DamageList_Add(list, l->x, l->y, l->width, l->height);
+        }
     }
-
     return list;
 }
 
@@ -931,6 +932,27 @@ DrawBufferResize(WLSurfaceBufferManager * manager)
     }
 }
 
+static void ResetBuffers(WLSurfaceBufferManager * manager) {
+    ASSERT_SHOW_LOCK_IS_HELD(manager);
+
+    // Make sure the draw buffer is not copied from and re-set before drawn upon again
+    MUTEX_LOCK(manager->drawLock);
+    manager->bufferForDraw.resizePending = true;
+    MUTEX_UNLOCK(manager->drawLock);
+
+    // All the damage refers to a surface that doesn't exist anymore; clean the lists
+    // in case these buffers will be re-used for a new surface
+    for (WLSurfaceBuffer* buffer = manager->buffersFree; buffer != NULL; buffer = buffer->next) {
+        DamageList_FreeAll(buffer->damageList);
+        buffer->damageList = NULL;
+    }
+
+    for (WLSurfaceBuffer* buffer = manager->buffersInUse; buffer != NULL; buffer = buffer->next) {
+        DamageList_FreeAll(buffer->damageList);
+        buffer->damageList = NULL;
+    }
+}
+
 static bool
 HaveEnoughMemoryForWindow(jint width, jint height)
 {
@@ -1017,6 +1039,8 @@ WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surf
             // will not commit anything new for a while, in which case the surface
             // may never get associated with a buffer and the window will never appear.
             TrySendShowBufferToWayland(manager, true);
+        } else {
+            ResetBuffers(manager);
         }
     } else {
         assert(manager->wlSurface == wl_surface);
