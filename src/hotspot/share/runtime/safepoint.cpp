@@ -39,6 +39,7 @@
 #include "gc/shared/workerThread.hpp"
 #include "gc/shared/workerUtils.hpp"
 #include "interpreter/interpreter.hpp"
+#include "interpreter/oopMapCache.hpp"
 #include "jfr/jfrEvents.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
@@ -608,6 +609,13 @@ public:
       // Don't bother reporting event or time for this very short operation.
       // To have any utility we'd also want to report whether needed.
       OopStorage::trigger_cleanup_if_needed();
+    }
+
+    if (_subtasks.try_claim_task(SafepointSynchronize::SAFEPOINT_CLEANUP_REQUEST_OOPMAPCACHE_CLEANUP)) {
+      if (OopMapCache::has_cleanup_work()) {
+        Tracer t("triggering oopmap cache cleanup");
+        OopMapCache::try_trigger_cleanup();
+      }
     }
 
     _subtasks.all_tasks_claimed();
