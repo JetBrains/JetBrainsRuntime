@@ -1082,6 +1082,7 @@ jdk_swing_wayland= \
     -com/sun/java/swing/plaf/gtk/TestBackSpaceAction.java \
     -com/sun/java/swing/plaf/gtk/TestFileChooserCtrlASelection.java \
     -com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java \
+    -javax/swing/AbstractButton/6711682/bug6711682.java \
     -javax/swing/Action/8133039/bug8133039.java \
     -javax/swing/Box/TestBoxFiller.java \
     -javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java \
