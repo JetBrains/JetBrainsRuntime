@@ -292,7 +292,7 @@ public class ReplToolTesting {
 
     private void testRaw(Locale locale, String[] args, ReplTest... tests) {
         testRawInit(tests);
-        testRawRun(locale, args);
+        testRawRun(locale, Presets.addExecutionIfMissing(args));
         testRawCheck(locale);
     }
 
