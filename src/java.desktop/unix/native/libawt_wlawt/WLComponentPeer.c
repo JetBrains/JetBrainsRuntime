@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <jni.h>
+#include <jni_util.h>
 #include <Trace.h>
 #include <assert.h>
 #include <gtk-shell1-client-protocol.h>
@@ -532,6 +533,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
     assert(parentFrame);
     struct xdg_positioner *xdg_positioner = newPositioner(width, height, offsetX, offsetY);
     CHECK_NULL(xdg_positioner);
+    JNU_RUNTIME_ASSERT(env, parentFrame->toplevel, "Popup's parent surface must be a toplevel");
     frame->xdg_popup = xdg_surface_get_popup(frame->xdg_surface, parentFrame->xdg_surface, xdg_positioner);
     CHECK_NULL(frame->xdg_popup);
     xdg_popup_add_listener(frame->xdg_popup, &xdg_popup_listener, frame);
