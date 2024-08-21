@@ -1,4 +1,26 @@
-import java.util.Comparator;
+/*
+ * Copyright (c) 2024,  JetBrains s.r.o.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 import java.util.Random;
 import java.util.random.RandomGenerator;
 import java.util.random.RandomGeneratorFactory;
@@ -16,39 +38,45 @@ import java.util.random.RandomGeneratorFactory;
  * @run main/othervm RandomGeneratorTest
  */
 
-public static void main(final String[] args) throws Exception {
+public class RandomGeneratorTest {
 
-    System.out.println("testing all available RandomGenerator factories:");
-    RandomGeneratorFactory.all()
-            .forEach(RandomGeneratorTest::testRandomGenerator);
+    static boolean isFailed = false;
+    static boolean wasDefaultTested = false;
+    static String errMsg;
 
-    System.out.println();
+    public static void main(final String[] args) throws Exception {
 
-    if (isFailed)
-        throw new RuntimeException(errMsg);
+        System.out.println("testing all available RandomGenerator factories:");
+        RandomGeneratorFactory.all()
+                .forEach(RandomGeneratorTest::testRandomGenerator);
 
-    if (!wasDefaultTested)
-        throw new RuntimeException("the default RandomGenerator factory is not available");
-}
+        System.out.println();
 
-static void testRandomGenerator(RandomGeneratorFactory<RandomGenerator> factory) {
-    try {
-        if (!wasDefaultTested) {
-            RandomGeneratorFactory<RandomGenerator> defaultFactory = RandomGeneratorFactory.getDefault();
-            wasDefaultTested = (defaultFactory.group().compareTo(factory.group()) == 0)
-                    && (defaultFactory.name().compareTo(factory.name()) == 0);
-        }
+        if (isFailed)
+            throw new RuntimeException(errMsg);
 
-        RandomGenerator randomGenerator = factory.create();System.out.printf("%s %s - ",
-                factory.group(),
-                factory.name());
-
-        Random.from(randomGenerator);
-        System.out.println("passed");
-
-    } catch (IllegalArgumentException e) {
-        errMsg = e.getMessage();
-        isFailed = true;
+        if (!wasDefaultTested)
+            throw new RuntimeException("the default RandomGenerator factory is not available");
     }
-}
+
+    static void testRandomGenerator(RandomGeneratorFactory<RandomGenerator> factory) {
+        try {
+            if (!wasDefaultTested) {
+                RandomGeneratorFactory<RandomGenerator> defaultFactory = RandomGeneratorFactory.getDefault();
+                wasDefaultTested = (defaultFactory.group().compareTo(factory.group()) == 0)
+                        && (defaultFactory.name().compareTo(factory.name()) == 0);
+            }
+
+            RandomGenerator randomGenerator = factory.create();System.out.printf("%s %s - ",
+                    factory.group(),
+                    factory.name());
+
+            Random.from(randomGenerator);
+            System.out.println("passed");
+
+        } catch (IllegalArgumentException e) {
+            errMsg = e.getMessage();
+            isFailed = true;
+        }
+    }
 }
