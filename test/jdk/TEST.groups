@@ -1075,6 +1075,7 @@ jdk_awt_wayland = \
 
 jdk_swing_wayland= \
     :jdk_swing \
+    jb/javax/swing/Popup/WLPopupAsParent.java \
     -com/sun/java/swing/plaf/gtk/TestBackSpaceAction.java \
     -com/sun/java/swing/plaf/gtk/TestFileChooserCtrlASelection.java \
     -com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java \
