@@ -269,12 +269,40 @@ public class WLComponentPeer implements ComponentPeer {
     private static Window getToplevelFor(Component component) {
         Container container = component instanceof Container c ? c : component.getParent();
         for(Container p = container; p != null; p = p.getParent()) {
-            if (p instanceof Window) {
-                return (Window)p;
+            if (p instanceof Window window && !isWlPopup(window)) {
+                return window;
             }
         }
 
         return null;
+    }
+
+    static Point getRelativeLocation(Component c, Window toplevel) {
+        Objects.requireNonNull(c);
+
+        if (toplevel == null) {
+            return c.getLocation();
+        }
+
+        int x = 0, y = 0;
+        while (c != null) {
+            if (c instanceof Window window) {
+                // The location of non-popup windows has no relevance since
+                // there are no absolute coordinates in Wayland.
+                // The popup windows position, on the other hand, is set relative to their
+                // parent toplevel.
+                if (isWlPopup(window)) {
+                    x += c.getX();
+                    y += c.getY();
+                }
+                break;
+            }
+            x += c.getX();
+            y += c.getY();
+            c = c.getParent();
+        }
+
+        return new Point(x, y);
     }
 
     protected void wlSetVisible(boolean v) {
@@ -298,9 +326,7 @@ public class WLComponentPeer implements ComponentPeer {
                     final Window toplevel = getToplevelFor(popupParent);
                     // We need to provide popup "parent" location relative to
                     // the surface it is painted upon:
-                    final Point toplevelLocation = toplevel == null
-                            ? new Point(popupParent.getX(), popupParent.getY())
-                            : SwingUtilities.convertPoint(popupParent, 0, 0, toplevel);
+                    final Point toplevelLocation = getRelativeLocation(popupParent, toplevel);
                     final int parentX = javaUnitsToSurfaceUnits(toplevelLocation.x);
                     final int parentY = javaUnitsToSurfaceUnits(toplevelLocation.y);
 
@@ -317,7 +343,7 @@ public class WLComponentPeer implements ComponentPeer {
                         popupLog.fine("\toffset from anchor: " + offsetFromParent);
                     }
 
-                    nativeCreateWLPopup(nativePtr, getParentNativePtr(target),
+                    nativeCreateWLPopup(nativePtr, getNativePtrFor(toplevel),
                             thisWidth, thisHeight,
                             parentX + offsetX, parentY + offsetY);
                 } else {
@@ -548,9 +574,7 @@ public class WLComponentPeer implements ComponentPeer {
             final Window toplevel = getToplevelFor(popupParent);
             // We need to provide popup "parent" location relative to
             // the surface it is painted upon:
-            final Point toplevelLocation = toplevel == null
-                    ? new Point(popupParent.getX(), popupParent.getY())
-                    : SwingUtilities.convertPoint(popupParent, 0, 0, toplevel);
+            final Point toplevelLocation = getRelativeLocation(popupParent, toplevel);
             final int parentX = javaUnitsToSurfaceUnits(toplevelLocation.x);
             final int parentY = javaUnitsToSurfaceUnits(toplevelLocation.y);
             int newXNative = javaUnitsToSurfaceUnits(newX);
@@ -1034,14 +1058,16 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeShowWindowMenu(long ptr, int x, int y);
     private native void nativeActivate(long ptr);
 
-    static long getParentNativePtr(Component target) {
-        Component parent = target.getParent();
-        if (parent == null) return 0;
-
+    static long getNativePtrFor(Component component) {
         final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
-        ComponentPeer peer = acc.getPeer(parent);
+        ComponentPeer peer = acc.getPeer(component);
 
         return ((WLComponentPeer)peer).nativePtr;
+    }
+
+    static long getParentNativePtr(Component target) {
+        Component parent = target.getParent();
+        return parent ==  null ? 0 : getNativePtrFor(parent);
     }
 
     private final Object state_lock = new Object();
