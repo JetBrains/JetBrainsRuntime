@@ -516,7 +516,7 @@ public class WLComponentPeer implements ComponentPeer {
         postPaintEvent();
     }
 
-    private boolean isSizeBeingConfigured() {
+    boolean isSizeBeingConfigured() {
         synchronized (dataLock) {
             return sizeIsBeingConfigured;
         }
@@ -1208,12 +1208,6 @@ public class WLComponentPeer implements ComponentPeer {
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight, boolean active, boolean maximized) {
         // NB: The width and height, as well as X and Y arguments specify the size and the location
         //     of the window in surface-local coordinates.
-        final long wlSurfacePtr = getWLSurface(nativePtr);
-        if (!surfaceAssigned) {
-            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(wlSurfacePtr);
-            surfaceAssigned = true;
-        }
-
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine(String.format("%s configured to %dx%d surface units", this, newSurfaceWidth, newSurfaceHeight));
         }
@@ -1231,6 +1225,12 @@ public class WLComponentPeer implements ComponentPeer {
         boolean clientDecidesDimension = newSurfaceWidth == 0 || newSurfaceHeight == 0;
         if (!clientDecidesDimension) {
             changeSizeToConfigured(newSurfaceWidth, newSurfaceHeight);
+        }
+
+        if (!surfaceAssigned) {
+            long wlSurfacePtr = getWLSurface(nativePtr);
+            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(wlSurfacePtr);
+            surfaceAssigned = true;
         }
 
         if (clientDecidesDimension || isWlPopup) {
