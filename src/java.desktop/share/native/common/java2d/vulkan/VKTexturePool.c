@@ -27,7 +27,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#include "VKBase.h"
 #include "VKImage.h"
 #include "VKTexturePool.h"
 #include "jni.h"
@@ -81,7 +80,7 @@ static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
                                                     long format)
 {
     CHECK_NULL_RETURN(device, NULL);
-    VKImage* texture = VKImage_Create((VKDevice*)device, width, height,
+    VKImage* texture = VKImage_Create((VKDevice*)device, (VkExtent2D) {width, height},
                                       (VkFormat)format,
                                       VK_IMAGE_TILING_LINEAR,
                                       VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -163,11 +162,11 @@ void VKTexturePool_Dispose(VKTexturePool *pool) {
     ATexturePool_Dispose(pool);
 }
 
-ATexturePoolLockWrapper* VKTexturePool_GetLockWrapper(VKTexturePool *pool) {
+ATexturePoolLockWrapper* VKTexturePool_getLockWrapper(VKTexturePool *pool) {
     return ATexturePool_getLockWrapper(pool);
 }
 
-VKTexturePoolHandle* VKTexturePool_GetTexture(VKTexturePool *pool,
+VKTexturePoolHandle* VKTexturePool_getTexture(VKTexturePool *pool,
                                               jint width,
                                               jint height,
                                               jlong format)
