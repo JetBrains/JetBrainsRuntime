@@ -472,7 +472,7 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     debugPrintNSEvent(event, "performKeyEquivalent");
 #endif
     // if IM is active key events should be ignored
-    if (![self hasMarkedText] && !fIsPressAndHold) {
+    if (![self hasMarkedText] && !fIsPressAndHold && ![event willBeHandledByComplexInputMethod]) {
         [self deliverJavaKeyEventHelper: event];
     }
 
