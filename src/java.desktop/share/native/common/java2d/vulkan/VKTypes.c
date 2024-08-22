@@ -21,46 +21,21 @@
 // or visit www.oracle.com if you need additional information or have any
 // questions.
 
-#ifndef VKTypes_h_Included
-#define VKTypes_h_Included
-#include <vulkan/vulkan.h>
+#include <math.h>
+#include "VKTypes.h"
 
-/**
- * Floating-point RGBA color with LINEAR encoding.
- */
-typedef union {
-    struct {
-        float r, g, b, a;
+Color Color_DecodeFromJava(unsigned int srgb) {
+    // Just map [0, 255] integer colors into [0, 1] floating-point range, it remains in SRGB color space.
+    Color c = {
+            .r = (float)((srgb >> 16) & 0xFF) / 255.0F,
+            .g = (float)((srgb >>  8) & 0xFF) / 255.0F,
+            .b = (float)( srgb        & 0xFF) / 255.0F,
+            .a = (float)((srgb >> 24) & 0xFF) / 255.0F
     };
-    VkClearValue vkClearValue;
-} Color;
-
-/**
- * In Vulkan we always work with floating-point LINEAR colors.
- * Java colors are 32-bit SRGB encoded colors,
- * so we need to convert them to linear colors first.
- *
- * Read more about presenting SRGB content in VKSD_ConfigureWindowSurface
- */
-Color Color_DecodeFromJava(unsigned int color);
-
-#define STRUCT(NAME) typedef struct NAME NAME
-
-typedef char* pchar;
-
-STRUCT(VKGraphicsEnvironment);
-STRUCT(VKLogicalDevice);
-STRUCT(VKAllocator);
-STRUCT(VKRenderer);
-STRUCT(VKRenderPass);
-STRUCT(VKRenderingContext);
-STRUCT(VKPipelines);
-STRUCT(VKShaders);
-STRUCT(VKBuffer);
-STRUCT(VKImage);
-STRUCT(VKSDOps);
-STRUCT(VKWinSDOps);
-
-#undef STRUCT
-
-#endif //VKTypes_h_Included
+    // This SRGB -> LINEAR conversion implementation is taken from Khronos Data Format Specification:
+    // https://registry.khronos.org/DataFormat/specs/1.3/dataformat.1.3.html#TRANSFER_SRGB_EOTF
+    c.r = (float) (c.r <= 0.04045 ? c.r / 12.92 : pow((c.r + 0.055) / 1.055, 2.4));
+    c.g = (float) (c.g <= 0.04045 ? c.g / 12.92 : pow((c.g + 0.055) / 1.055, 2.4));
+    c.b = (float) (c.b <= 0.04045 ? c.b / 12.92 : pow((c.b + 0.055) / 1.055, 2.4));
+    return c;
+}

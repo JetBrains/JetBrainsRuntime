@@ -26,798 +26,826 @@
 
 #ifndef HEADLESS
 
-#include <jlong.h>
-#include "Trace.h"
+#include <assert.h>
+#include <Trace.h>
 #include "CArrayUtil.h"
-#include "VKVertex.h"
+#include "VKBase.h"
+#include "VKBuffer.h"
+#include "VKImage.h"
 #include "VKRenderer.h"
+#include "VKSurfaceData.h"
 
-#define INCLUDE_BYTECODE
-#define SHADER_ENTRY(NAME, TYPE) static uint32_t NAME ## _ ## TYPE ## _data[] = {
-#define BYTECODE_END };
-#include "vulkan/shader_list.h"
-#undef INCLUDE_BYTECODE
-#undef SHADER_ENTRY
-#undef BYTECODE_END
+#define TRACKED_RESOURCE(NAME) \
+typedef struct {               \
+    uint64_t timestamp;        \
+    NAME value;                \
+} Tracked ## NAME
 
-VkShaderModule createShaderModule(VKLogicalDevice* logicalDevice, uint32_t* shader, uint32_t sz) {
-    VkShaderModuleCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = sz;
-    createInfo.pCode = (uint32_t*)shader;
-    VkShaderModule shaderModule;
-    if (logicalDevice->vkCreateShaderModule(logicalDevice->device, &createInfo, NULL, &shaderModule) != VK_SUCCESS) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "failed to create shader module\n")
+TRACKED_RESOURCE(VkCommandBuffer);
+TRACKED_RESOURCE(VkSemaphore);
+
+/**
+ * Renderer attached to device.
+ */
+struct VKRenderer {
+    VKLogicalDevice* device;
+
+    TrackedVkCommandBuffer* pendingCommandBuffers;
+    TrackedVkCommandBuffer* pendingSecondaryCommandBuffers;
+    TrackedVkSemaphore* pendingSemaphores;
+
+    /**
+     * Last known timestamp hit by GPU execution. Resources with equal or less timestamp may be safely reused.
+     */
+    uint64_t readTimestamp;
+    /**
+     * Next timestamp to be recorded. This is the last checkpoint to be hit by GPU execution.
+     */
+    uint64_t writeTimestamp;
+
+    VkSemaphore   timelineSemaphore;
+    VKPipelines** pipelines;
+    VKShaders*    shaders;
+    VkCommandPool commandPool;
+
+    VkCommandBuffer commandBuffer;
+
+    struct Wait {
+        VkSemaphore*          semaphores;
+        VkPipelineStageFlags* stages;
+    } wait;
+
+    struct PendingPresentation {
+        VkSwapchainKHR* swapchains;
+        uint32_t*       indices;
+        VkResult*       results;
+    } pendingPresentation;
+};
+
+/**
+ * Rendering-related info attached to surface.
+ */
+struct VKRenderPass {
+    VKPipelines*    pipelines;
+    VkFramebuffer   framebuffer; // Only when dynamic rendering = off
+    VkCommandBuffer commandBuffer;
+    VkBool32        pendingFlush;
+    VkBool32        pendingCommands;
+    VkBool32        pendingClear;
+
+    VkImageLayout           layout;
+    VkPipelineStageFlagBits lastStage;
+    VkAccessFlagBits        lastAccess;
+    uint64_t                lastTimestamp; // When was this surface last used?
+};
+
+#define POP_PENDING(RENDERER, BUFFER, VAR) do {                                                             \
+    size_t head = 0, tail = 0;                                                                              \
+    if (BUFFER != NULL) { head = RING_BUFFER_T(BUFFER)->head; tail = RING_BUFFER_T(BUFFER)->tail; }         \
+    uint64_t timestamp = (head == tail ? 0 : BUFFER[head].timestamp);                                       \
+    if (timestamp != 0 && (RENDERER->readTimestamp >= timestamp || (                                        \
+        RENDERER->device->vkGetSemaphoreCounterValue(RENDERER->device->device, RENDERER->timelineSemaphore, \
+        &RENDERER->readTimestamp) == VK_SUCCESS && RENDERER->readTimestamp >= timestamp))) {                \
+        VAR = BUFFER[head].value;                                                                           \
+        RING_BUFFER_POP(BUFFER);                                                                            \
+    } else VAR = VK_NULL_HANDLE;                                                                            \
+} while(0)
+
+
+#define PUSH_PENDING(RENDERER, BUFFER, T) RING_BUFFER_PUSH_CUSTOM(BUFFER, BUFFER[tail].timestamp = RENDERER->writeTimestamp; BUFFER[tail].value = T;)
+
+static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
+    VKLogicalDevice* device = renderer->device;
+    VkSemaphore semaphore;
+    POP_PENDING(renderer, renderer->pendingSemaphores, semaphore);
+    if (semaphore == VK_NULL_HANDLE) {
+        VkSemaphoreCreateInfo createInfo = {
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+                .flags = 0
+        };
+        VK_CHECK(device->vkCreateSemaphore(device->device, &createInfo, NULL, &semaphore)) return VK_NULL_HANDLE;
+    }
+    PUSH_PENDING(renderer, renderer->pendingSemaphores, semaphore);
+    return semaphore;
+}
+
+static void VKRenderer_Wait(VKRenderer* renderer, uint64_t timestamp) {
+    if (renderer->readTimestamp >= timestamp) return;
+    VKLogicalDevice* device = renderer->device;
+    VkSemaphoreWaitInfo semaphoreWaitInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+            .flags = 0,
+            .semaphoreCount = 1,
+            .pSemaphores = &renderer->timelineSemaphore,
+            .pValues = &timestamp
+    };
+    VK_CHECK(device->vkWaitSemaphores(device->device, &semaphoreWaitInfo, -1)) {
+    } else {
+        // On success, update last known timestamp.
+        renderer->readTimestamp = timestamp;
+    }
+}
+
+void VKRenderer_Sync(VKRenderer* renderer) {
+    // Wait for latest checkpoint to be hit by GPU.
+    // This only affects commands performed by this renderer, unlike vkDeviceWaitIdle.
+    VKRenderer_Wait(renderer, renderer->writeTimestamp - 1);
+}
+
+VKRenderer* VKRenderer_Create(VKLogicalDevice* device) {
+    VKRenderer* renderer = calloc(1, sizeof(VKRenderer));
+
+    renderer->shaders = VKPipelines_CreateShaders(device);
+    if (renderer->shaders == NULL) {
+        VKRenderer_Destroy(renderer);
+        return NULL;
+    }
+
+    // Create command pool
+    // TODO we currently have single command pool with VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
+    //      we may need to consider having multiple pools to avoid resetting buffers one-by-one
+    VkCommandPoolCreateInfo poolInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+            .queueFamilyIndex = device->queueFamily
+    };
+    VK_CHECK(device->vkCreateCommandPool(device->device, &poolInfo, NULL, &renderer->commandPool)) {
+        VKRenderer_Destroy(renderer);
+        return NULL;
+    }
+
+    // Create timeline semaphore
+    VkSemaphoreTypeCreateInfo semaphoreTypeCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+            .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+            .initialValue = 0
+    };
+    VkSemaphoreCreateInfo semaphoreCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = &semaphoreTypeCreateInfo,
+            .flags = 0
+    };
+    VK_CHECK(device->vkCreateSemaphore(device->device, &semaphoreCreateInfo, NULL, &renderer->timelineSemaphore)) {
+        VKRenderer_Destroy(renderer);
+        return NULL;
+    }
+
+    renderer->readTimestamp = 0;
+    renderer->writeTimestamp = 1;
+    renderer->device = device;
+
+    J2dRlsTraceLn2(J2D_TRACE_INFO, "VKRenderer_Create: renderer=%p, dynamicRendering=%d", renderer, device->dynamicRendering);
+    return renderer;
+}
+
+void VKRenderer_Destroy(VKRenderer* renderer) {
+    if (renderer == NULL) return;
+    VKRenderer_Sync(renderer);
+    for (uint32_t i = 0; i < ARRAY_SIZE(renderer->pipelines); i++) {
+        VKPipelines_Destroy(renderer->device, renderer->pipelines[i]);
+    }
+    VKPipelines_DestroyShaders(renderer->device, renderer->shaders);
+    ARRAY_FREE(renderer->pipelines);
+    // No need to destroy command buffers one by one, we will destroy the pool anyway.
+    RING_BUFFER_FREE(renderer->pendingCommandBuffers);
+    RING_BUFFER_FREE(renderer->pendingSecondaryCommandBuffers);
+    for (;;) {
+        VkSemaphore semaphore;
+        POP_PENDING(renderer, renderer->pendingSemaphores, semaphore);
+        if (semaphore == VK_NULL_HANDLE) break;
+        renderer->device->vkDestroySemaphore(renderer->device->device, semaphore, NULL);
+    }
+    RING_BUFFER_FREE(renderer->pendingSemaphores);
+    if (renderer->timelineSemaphore != VK_NULL_HANDLE) {
+        renderer->device->vkDestroySemaphore(renderer->device->device, renderer->timelineSemaphore, NULL);
+    }
+    if (renderer->commandPool != VK_NULL_HANDLE) {
+        renderer->device->vkDestroyCommandPool(renderer->device->device, renderer->commandPool, NULL);
+    }
+    ARRAY_FREE(renderer->wait.semaphores);
+    ARRAY_FREE(renderer->wait.stages);
+    ARRAY_FREE(renderer->pendingPresentation.swapchains);
+    ARRAY_FREE(renderer->pendingPresentation.indices);
+    ARRAY_FREE(renderer->pendingPresentation.results);
+    J2dRlsTraceLn1(J2D_TRACE_INFO, "VKRenderer_Destroy(%p)", renderer);
+    free(renderer);
+}
+
+/**
+ * Record commands into primary command buffer (outside of a render pass).
+ * Recorded commands will be sent for execution via VKRenderer_Flush.
+ */
+static VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
+    if (renderer->commandBuffer != VK_NULL_HANDLE) {
+        return renderer->commandBuffer;
+    }
+    VKLogicalDevice* device = renderer->device;
+    VkCommandBuffer commandBuffer;
+    POP_PENDING(renderer, renderer->pendingCommandBuffers, commandBuffer);
+    if (commandBuffer == VK_NULL_HANDLE) {
+        VkCommandBufferAllocateInfo allocInfo = {
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                .commandPool = renderer->commandPool,
+                .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                .commandBufferCount = 1
+        };
+        VK_CHECK(renderer->device->vkAllocateCommandBuffers(renderer->device->device, &allocInfo, &commandBuffer)) {
+            return VK_NULL_HANDLE;
+        }
+    }
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+    VK_CHECK(device->vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo)) {
+        renderer->device->vkFreeCommandBuffers(renderer->device->device, renderer->commandPool, 1, &commandBuffer);
         return VK_NULL_HANDLE;
     }
-    return shaderModule;
+    renderer->commandBuffer = commandBuffer;
+    J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_Record(%p): started", renderer);
+    return commandBuffer;
 }
 
-VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice) {
-    VKRenderer* fillTexturePoly = malloc(sizeof (VKRenderer ));
-
-    VkDevice device = logicalDevice->device;
-
-    // Create graphics pipeline
-    VkShaderModule vertShaderModule = createShaderModule(logicalDevice, blit_vert_data, sizeof (blit_vert_data));
-    VkShaderModule fragShaderModule = createShaderModule(logicalDevice, blit_frag_data, sizeof (blit_frag_data));
-
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_VERTEX_BIT,
-            .module = vertShaderModule,
-            .pName = "main"
-    };
-
-    VkPipelineShaderStageCreateInfo fragShaderStageInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .module = fragShaderModule,
-            .pName = "main"
-    };
-
-    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-    VKVertexDescr vertexDescr = VKVertex_GetTxVertexDescr();
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-            .vertexBindingDescriptionCount = vertexDescr.bindingDescriptionCount,
-            .vertexAttributeDescriptionCount = vertexDescr.attributeDescriptionCount,
-            .pVertexBindingDescriptions = vertexDescr.bindingDescriptions,
-            .pVertexAttributeDescriptions = vertexDescr.attributeDescriptions
-    };
-
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-            .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-            .primitiveRestartEnable = VK_FALSE
-    };
-
-    VkPipelineViewportStateCreateInfo viewportState = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-            .viewportCount = 1,
-            .scissorCount = 1
-    };
-
-    VkPipelineRasterizationStateCreateInfo rasterizer = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-            .depthClampEnable = VK_FALSE,
-            .rasterizerDiscardEnable = VK_FALSE,
-            .polygonMode = VK_POLYGON_MODE_FILL,
-            .lineWidth = 1.0f,
-            .cullMode = VK_CULL_MODE_NONE,
-            .depthBiasEnable = VK_FALSE,
-            .depthBiasConstantFactor = 0.0f,
-            .depthBiasClamp = 0.0f,
-            .depthBiasSlopeFactor = 0.0f
-    };
-
-    VkPipelineMultisampleStateCreateInfo multisampling = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-            .sampleShadingEnable = VK_FALSE,
-            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
-    };
-
-    VkPipelineColorBlendAttachmentState colorBlendAttachment = {
-            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                              VK_COLOR_COMPONENT_G_BIT |
-                              VK_COLOR_COMPONENT_B_BIT |
-                              VK_COLOR_COMPONENT_A_BIT,
-            .blendEnable = VK_FALSE
-    };
-
-    VkPipelineColorBlendStateCreateInfo colorBlending = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-            .logicOpEnable = VK_FALSE,
-            .logicOp = VK_LOGIC_OP_COPY,
-            .attachmentCount = 1,
-            .pAttachments = &colorBlendAttachment,
-            .blendConstants[0] = 0.0f,
-            .blendConstants[1] = 0.0f,
-            .blendConstants[2] = 0.0f,
-            .blendConstants[3] = 0.0f
-    };
-
-    VkDynamicState dynamicStates[] = {
-            VK_DYNAMIC_STATE_VIEWPORT,
-            VK_DYNAMIC_STATE_SCISSOR
-    };
-
-    VkPipelineDynamicStateCreateInfo dynamicState = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-            .dynamicStateCount = 2,
-            .pDynamicStates = dynamicStates
-    };
-
-    VkDescriptorSetLayoutBinding samplerLayoutBinding = {
-            .binding = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .pImmutableSamplers = NULL,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
-    };
-
-    VkDescriptorSetLayoutCreateInfo layoutInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .bindingCount = 1,
-            .pBindings = &samplerLayoutBinding
-    };
-
-    if (logicalDevice->vkCreateDescriptorSetLayout(device, &layoutInfo, NULL, &fillTexturePoly->descriptorSetLayout) != VK_SUCCESS) {
-        J2dRlsTrace(J2D_TRACE_INFO,  "failed to create descriptor set layout!");
-        return JNI_FALSE;
-    }
-
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = 1,
-            .pSetLayouts = &fillTexturePoly->descriptorSetLayout,
-            .pushConstantRangeCount = 0
-    };
-
-    if (logicalDevice->vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL,
-                                   &fillTexturePoly->pipelineLayout) != VK_SUCCESS)
-    {
-        J2dRlsTrace(J2D_TRACE_INFO, "failed to create pipeline layout!\n")
-        return JNI_FALSE;
-    }
-
-    VkGraphicsPipelineCreateInfo pipelineInfo = {
-            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-            .stageCount = 2,
-            .pStages = shaderStages,
-            .pVertexInputState = &vertexInputInfo,
-            .pInputAssemblyState = &inputAssembly,
-            .pViewportState = &viewportState,
-            .pRasterizationState = &rasterizer,
-            .pMultisampleState = &multisampling,
-            .pColorBlendState = &colorBlending,
-            .pDynamicState = &dynamicState,
-            .layout = fillTexturePoly->pipelineLayout,
-            .renderPass = logicalDevice->renderPass,
-            .subpass = 0,
-            .basePipelineHandle = VK_NULL_HANDLE,
-            .basePipelineIndex = -1
-    };
-
-    if (logicalDevice->vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
-                                              &fillTexturePoly->graphicsPipeline) != VK_SUCCESS)
-    {
-        J2dRlsTrace(J2D_TRACE_INFO, "failed to create graphics pipeline!\n")
-        return JNI_FALSE;
-    }
-    logicalDevice->vkDestroyShaderModule(device, fragShaderModule, NULL);
-    logicalDevice->vkDestroyShaderModule(device, vertShaderModule, NULL);
-
-    VkSamplerCreateInfo samplerInfo = {
-            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-            .magFilter = VK_FILTER_LINEAR,
-            .minFilter = VK_FILTER_LINEAR,
-
-            .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-
-            .anisotropyEnable = VK_FALSE,
-            .maxAnisotropy = 1.0f,
-
-            .compareEnable = VK_FALSE,
-            .compareOp = VK_COMPARE_OP_ALWAYS,
-            .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-            .mipLodBias = 0.0f,
-            .minLod = 0.0f,
-            .maxLod = 0.0f
-    };
-
-    if (logicalDevice->vkCreateSampler(device, &samplerInfo, NULL, &logicalDevice->textureSampler) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, "failed to create texture sampler!");
-        return JNI_FALSE;
-    }
-
-    VkDescriptorPoolSize poolSize = {
-            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 1
-    };
-
-    VkDescriptorPoolCreateInfo descrPoolInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-            .poolSizeCount = 1,
-            .pPoolSizes = &poolSize,
-            .maxSets = 1
-    };
-
-    if (logicalDevice->vkCreateDescriptorPool(device, &descrPoolInfo, NULL, &fillTexturePoly->descriptorPool) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, "failed to create descriptor pool!")
-        return JNI_FALSE;
-    }
-
-    VkDescriptorSetAllocateInfo descrAllocInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = fillTexturePoly->descriptorPool,
-            .descriptorSetCount = 1,
-            .pSetLayouts = &fillTexturePoly->descriptorSetLayout
-    };
-
-    if (logicalDevice->vkAllocateDescriptorSets(device, &descrAllocInfo, &fillTexturePoly->descriptorSets) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to allocate descriptor sets!");
-        return JNI_FALSE;
-    }
-    fillTexturePoly->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-    return fillTexturePoly;
-}
-
-VKRenderer *VKRenderer_CreateRenderColorPoly(VKLogicalDevice* logicalDevice,
-                                             VkPrimitiveTopology primitiveTopology,
-                                             VkPolygonMode polygonMode)
-{
-    VKRenderer* renderColorPoly = malloc(sizeof (VKRenderer ));
-
-    VkDevice device = logicalDevice->device;
-
-    // Create graphics pipeline
-    VkShaderModule vertShaderModule = createShaderModule(logicalDevice, color_vert_data, sizeof (color_vert_data));
-    VkShaderModule fragShaderModule = createShaderModule(logicalDevice, color_frag_data, sizeof (color_frag_data));
-
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_VERTEX_BIT,
-            .module = vertShaderModule,
-            .pName = "main"
-    };
-
-    VkPipelineShaderStageCreateInfo fragShaderStageInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .module = fragShaderModule,
-            .pName = "main"
-    };
-
-    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-    VKVertexDescr vertexDescr = VKVertex_GetVertexDescr();
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-            .vertexBindingDescriptionCount = vertexDescr.bindingDescriptionCount,
-            .vertexAttributeDescriptionCount = vertexDescr.attributeDescriptionCount,
-            .pVertexBindingDescriptions = vertexDescr.bindingDescriptions,
-            .pVertexAttributeDescriptions = vertexDescr.attributeDescriptions
-    };
-
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-            .topology = primitiveTopology,
-            .primitiveRestartEnable = VK_FALSE
-    };
-
-    VkPipelineViewportStateCreateInfo viewportState = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-            .viewportCount = 1,
-            .scissorCount = 1
-    };
-
-    VkPipelineRasterizationStateCreateInfo rasterizer = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-            .depthClampEnable = VK_FALSE,
-            .rasterizerDiscardEnable = VK_FALSE,
-            .polygonMode = polygonMode,
-            .lineWidth = 1.0f,
-            .cullMode = VK_CULL_MODE_NONE,
-            .depthBiasEnable = VK_FALSE,
-            .depthBiasConstantFactor = 0.0f,
-            .depthBiasClamp = 0.0f,
-            .depthBiasSlopeFactor = 0.0f
-    };
-
-    VkPipelineMultisampleStateCreateInfo multisampling = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-            .sampleShadingEnable = VK_FALSE,
-            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
-    };
-
-    VkPipelineColorBlendAttachmentState colorBlendAttachment = {
-            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                              VK_COLOR_COMPONENT_G_BIT |
-                              VK_COLOR_COMPONENT_B_BIT |
-                              VK_COLOR_COMPONENT_A_BIT,
-            .blendEnable = VK_FALSE
-    };
-
-    VkPipelineColorBlendStateCreateInfo colorBlending = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-            .logicOpEnable = VK_FALSE,
-            .logicOp = VK_LOGIC_OP_COPY,
-            .attachmentCount = 1,
-            .pAttachments = &colorBlendAttachment,
-            .blendConstants[0] = 0.0f,
-            .blendConstants[1] = 0.0f,
-            .blendConstants[2] = 0.0f,
-            .blendConstants[3] = 0.0f
-    };
-
-    VkDynamicState dynamicStates[] = {
-            VK_DYNAMIC_STATE_VIEWPORT,
-            VK_DYNAMIC_STATE_SCISSOR
-    };
-
-    VkPipelineDynamicStateCreateInfo dynamicState = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-            .dynamicStateCount = 2,
-            .pDynamicStates = dynamicStates
-    };
-
-    VkPushConstantRange pushConstantRange = {
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-            .offset = 0,
-            .size = sizeof(float) * 4
-    };
-
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = 0,
-            .pushConstantRangeCount = 1,
-            .pPushConstantRanges = &pushConstantRange
-    };
-
-    if (logicalDevice->vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL,
-                                   &renderColorPoly->pipelineLayout) != VK_SUCCESS)
-    {
-        J2dRlsTrace(J2D_TRACE_INFO, "failed to create pipeline layout!\n")
-        return JNI_FALSE;
-    }
-
-    VkGraphicsPipelineCreateInfo pipelineInfo = {
-            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-            .stageCount = 2,
-            .pStages = shaderStages,
-            .pVertexInputState = &vertexInputInfo,
-            .pInputAssemblyState = &inputAssembly,
-            .pViewportState = &viewportState,
-            .pRasterizationState = &rasterizer,
-            .pMultisampleState = &multisampling,
-            .pColorBlendState = &colorBlending,
-            .pDynamicState = &dynamicState,
-            .layout = renderColorPoly->pipelineLayout,
-            .renderPass = logicalDevice->renderPass,
-            .subpass = 0,
-            .basePipelineHandle = VK_NULL_HANDLE,
-            .basePipelineIndex = -1
-    };
-
-    if (logicalDevice->vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
-                                      &renderColorPoly->graphicsPipeline) != VK_SUCCESS)
-    {
-        J2dRlsTrace(J2D_TRACE_INFO, "failed to create graphics pipeline!\n")
-        return JNI_FALSE;
-    }
-    logicalDevice->vkDestroyShaderModule(device, fragShaderModule, NULL);
-    logicalDevice->vkDestroyShaderModule(device, vertShaderModule, NULL);
-    renderColorPoly->primitiveTopology = primitiveTopology;
-    return renderColorPoly;
-}
-
-VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKLogicalDevice* logicalDevice) {
-    VKRenderer* fillColorPoly = malloc(sizeof (VKRenderer ));
-
-    VkDevice device = logicalDevice->device;
-
-    // Create graphics pipeline
-    VkShaderModule vertShaderModule = createShaderModule(logicalDevice, color_max_rect_vert_data, sizeof (color_max_rect_vert_data));
-    VkShaderModule fragShaderModule = createShaderModule(logicalDevice, color_max_rect_frag_data, sizeof (color_max_rect_frag_data));
-
-    VkPipelineShaderStageCreateInfo vertShaderStageInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_VERTEX_BIT,
-            .module = vertShaderModule,
-            .pName = "main"
-    };
-
-    VkPipelineShaderStageCreateInfo fragShaderStageInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .module = fragShaderModule,
-            .pName = "main"
-    };
-
-    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-            .vertexBindingDescriptionCount = 0,
-            .vertexAttributeDescriptionCount = 0,
-    };
-
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-            .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-            .primitiveRestartEnable = VK_FALSE
-    };
-
-    VkPipelineViewportStateCreateInfo viewportState = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-            .viewportCount = 1,
-            .scissorCount = 1
-    };
-
-    VkPipelineRasterizationStateCreateInfo rasterizer = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-            .depthClampEnable = VK_FALSE,
-            .rasterizerDiscardEnable = VK_FALSE,
-            .polygonMode = VK_POLYGON_MODE_FILL,
-            .lineWidth = 1.0f,
-            .cullMode = VK_CULL_MODE_NONE,
-            .depthBiasEnable = VK_FALSE,
-            .depthBiasConstantFactor = 0.0f,
-            .depthBiasClamp = 0.0f,
-            .depthBiasSlopeFactor = 0.0f
-    };
-
-    VkPipelineMultisampleStateCreateInfo multisampling = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-            .sampleShadingEnable = VK_FALSE,
-            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
-    };
-
-    VkPipelineColorBlendAttachmentState colorBlendAttachment = {
-            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                              VK_COLOR_COMPONENT_G_BIT |
-                              VK_COLOR_COMPONENT_B_BIT |
-                              VK_COLOR_COMPONENT_A_BIT,
-            .blendEnable = VK_FALSE
-    };
-
-    VkPipelineColorBlendStateCreateInfo colorBlending = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-            .logicOpEnable = VK_FALSE,
-            .logicOp = VK_LOGIC_OP_COPY,
-            .attachmentCount = 1,
-            .pAttachments = &colorBlendAttachment,
-            .blendConstants[0] = 0.0f,
-            .blendConstants[1] = 0.0f,
-            .blendConstants[2] = 0.0f,
-            .blendConstants[3] = 0.0f
-    };
-
-    VkDynamicState dynamicStates[] = {
-            VK_DYNAMIC_STATE_VIEWPORT,
-            VK_DYNAMIC_STATE_SCISSOR
-    };
-
-    VkPipelineDynamicStateCreateInfo dynamicState = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-            .dynamicStateCount = 2,
-            .pDynamicStates = dynamicStates
-    };
-
-    VkPushConstantRange pushConstantRange = {
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-            .offset = 0,
-            .size = sizeof(float) * 4
-    };
-
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = 0,
-            .pushConstantRangeCount = 1,
-            .pPushConstantRanges = &pushConstantRange
-    };
-
-    if (logicalDevice->vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL,
-                                   &fillColorPoly->pipelineLayout) != VK_SUCCESS)
-    {
-        J2dRlsTrace(J2D_TRACE_INFO, "failed to create pipeline layout!\n")
-        return JNI_FALSE;
-    }
-
-    VkGraphicsPipelineCreateInfo pipelineInfo = {
-            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-            .stageCount = 2,
-            .pStages = shaderStages,
-            .pVertexInputState = &vertexInputInfo,
-            .pInputAssemblyState = &inputAssembly,
-            .pViewportState = &viewportState,
-            .pRasterizationState = &rasterizer,
-            .pMultisampleState = &multisampling,
-            .pColorBlendState = &colorBlending,
-            .pDynamicState = &dynamicState,
-            .layout = fillColorPoly->pipelineLayout,
-            .renderPass = logicalDevice->renderPass,
-            .subpass = 0,
-            .basePipelineHandle = VK_NULL_HANDLE,
-            .basePipelineIndex = -1
-    };
-
-    if (logicalDevice->vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
-                                      &fillColorPoly->graphicsPipeline) != VK_SUCCESS)
-    {
-        J2dRlsTrace(J2D_TRACE_INFO, "failed to create graphics pipeline!\n")
-        return JNI_FALSE;
-    }
-    logicalDevice->vkDestroyShaderModule(device, fragShaderModule, NULL);
-    logicalDevice->vkDestroyShaderModule(device, vertShaderModule, NULL);
-    fillColorPoly->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-    return fillColorPoly;
-}
-
-void VKRenderer_BeginRendering(VKLogicalDevice* logicalDevice) {
-    VkCommandBufferBeginInfo beginInfo = {};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-    if (logicalDevice->vkBeginCommandBuffer(logicalDevice->commandBuffer, &beginInfo) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to begin recording command buffer!");
+void VKRenderer_Flush(VKRenderer* renderer) {
+    if (renderer == NULL) return;
+    VKLogicalDevice* device = renderer->device;
+    size_t pendingPresentations = ARRAY_SIZE(renderer->pendingPresentation.swapchains);
+
+    // Submit pending command buffer and semaphores.
+    // Even if there are no commands to be sent, we can submit pending semaphores for presentation synchronization.
+    if (renderer->commandBuffer != VK_NULL_HANDLE) {
+        VK_CHECK(device->vkEndCommandBuffer(renderer->commandBuffer)) {
+            VK_UNHANDLED_ERROR();
+            return; // TODO what to do?
+        }
+        PUSH_PENDING(renderer, renderer->pendingCommandBuffers, renderer->commandBuffer);
+    } else if (pendingPresentations == 0) {
         return;
     }
-}
-
-void VKRenderer_EndRendering(VKLogicalDevice* logicalDevice, VkBool32 notifyRenderFinish, VkBool32 waitForDisplayImage) {
-    if (logicalDevice->vkEndCommandBuffer(logicalDevice->commandBuffer) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to record command buffer!")
-        return;
-    }
-
-    VkSemaphore waitSemaphores[] = {logicalDevice->imageAvailableSemaphore};
-    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    VkSemaphore signalSemaphores[] = {logicalDevice->renderFinishedSemaphore};
-
+    uint64_t signalSemaphoreValues[] = {renderer->writeTimestamp, 0};
+    renderer->writeTimestamp++;
+    VkSemaphore semaphores[] = {
+            renderer->timelineSemaphore,
+            // We add a presentation semaphore after timestamp increment, so it will be released one step later
+            pendingPresentations > 0 ? VKRenderer_AddPendingSemaphore(renderer) : VK_NULL_HANDLE
+    };
+    VkTimelineSemaphoreSubmitInfo timelineSemaphoreSubmitInfo = {
+            .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
+            .waitSemaphoreValueCount = 0,
+            .pWaitSemaphoreValues = NULL,
+            .signalSemaphoreValueCount = pendingPresentations > 0 ? 2 : 1,
+            .pSignalSemaphoreValues = signalSemaphoreValues
+    };
     VkSubmitInfo submitInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .waitSemaphoreCount = (waitForDisplayImage ? 1 : 0),
-            .pWaitSemaphores = waitSemaphores,
-            .pWaitDstStageMask = waitStages,
-            .commandBufferCount = 1,
-            .pCommandBuffers = &logicalDevice->commandBuffer,
-            .signalSemaphoreCount = (notifyRenderFinish ? 1 : 0),
-            .pSignalSemaphores = signalSemaphores
+            .pNext = &timelineSemaphoreSubmitInfo,
+            .waitSemaphoreCount = ARRAY_SIZE(renderer->wait.semaphores),
+            .pWaitSemaphores = renderer->wait.semaphores,
+            .pWaitDstStageMask = renderer->wait.stages,
+            .commandBufferCount = renderer->commandBuffer != VK_NULL_HANDLE ? 1 : 0,
+            .pCommandBuffers = &renderer->commandBuffer,
+            .signalSemaphoreCount = pendingPresentations > 0 ? 2 : 1,
+            .pSignalSemaphores = semaphores
     };
+    VK_CHECK(device->vkQueueSubmit(device->queue, 1, &submitInfo, VK_NULL_HANDLE)) {
+        VK_UNHANDLED_ERROR();
+        return; // TODO what to do?
+    }
+    renderer->commandBuffer = VK_NULL_HANDLE;
+    ARRAY_RESIZE(renderer->wait.semaphores, 0);
+    ARRAY_RESIZE(renderer->wait.stages, 0);
 
-    if (logicalDevice->vkQueueSubmit(logicalDevice->queue, 1, &submitInfo, logicalDevice->inFlightFence) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,"failed to submit draw command buffer!")
-        return;
+    // Present pending swapchains
+    if (pendingPresentations > 0) {
+        ARRAY_RESIZE(renderer->pendingPresentation.results, pendingPresentations);
+        VkPresentInfoKHR presentInfo = {
+                .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+                .waitSemaphoreCount = 1,
+                .pWaitSemaphores = &semaphores[1],
+                .swapchainCount = pendingPresentations,
+                .pSwapchains = renderer->pendingPresentation.swapchains,
+                .pImageIndices = renderer->pendingPresentation.indices,
+                .pResults = renderer->pendingPresentation.results
+        };
+        VkResult presentResult = device->vkQueuePresentKHR(device->queue, &presentInfo);
+        if (presentResult != VK_SUCCESS) {
+            // TODO check individual result codes in renderer->pendingPresentation.results
+            // TODO possible suboptimal conditions
+            VK_CHECK(presentResult) {}
+        }
+        ARRAY_RESIZE(renderer->pendingPresentation.swapchains, 0);
+        ARRAY_RESIZE(renderer->pendingPresentation.indices, 0);
+    }
+    J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "VKRenderer_Flush(%p): buffers=%d, presentations=%d",
+                   renderer, submitInfo.commandBufferCount, pendingPresentations);
+}
+
+/**
+ * Prepare barrier info to be executed in batch, if needed.
+ */
+static void VKRenderer_AddSurfaceBarrier(VkImageMemoryBarrier* barriers, uint32_t* numBarriers,
+                                         VkPipelineStageFlags* srcStages, VkPipelineStageFlags* dstStages,
+                                         VKSDOps* surface, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
+    assert(surface->image != NULL);
+    // TODO Even if stage, access and layout didn't change, we may still need a barrier against WaW hazard.
+    if (stage != surface->renderPass->lastStage || access != surface->renderPass->lastAccess || layout != surface->renderPass->layout) {
+        barriers[*numBarriers] = (VkImageMemoryBarrier) {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .srcAccessMask = surface->renderPass->lastAccess,
+                .dstAccessMask = access,
+                .oldLayout = surface->renderPass->layout,
+                .newLayout = layout,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = surface->image->image,
+                .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+        };
+        (*numBarriers)++;
+        (*srcStages) |= surface->renderPass->lastStage;
+        (*dstStages) |= stage;
+        surface->renderPass->lastStage = stage;
+        surface->renderPass->lastAccess = access;
+        surface->renderPass->layout = layout;
     }
 }
 
-void VKRenderer_TextureRender(VKLogicalDevice* logicalDevice, VKImage *destImage, VKImage *srcImage,
-                              VkBuffer vertexBuffer, uint32_t vertexNum)
-{
-    VkDescriptorImageInfo imageInfo = {
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            .imageView = srcImage->view,
-            .sampler = logicalDevice->textureSampler
-    };
-
-    VkWriteDescriptorSet descriptorWrites = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = logicalDevice->fillTexturePoly->descriptorSets,
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 1,
-            .pImageInfo = &imageInfo
-    };
-
-    logicalDevice->vkUpdateDescriptorSets(logicalDevice->device, 1, &descriptorWrites, 0, NULL);
-
-
-    VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-    VkRenderPassBeginInfo renderPassInfo = {
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = logicalDevice->renderPass,
-            .framebuffer = destImage->framebuffer,
-            .renderArea.offset = (VkOffset2D){0, 0},
-            .renderArea.extent = destImage->extent,
-            .clearValueCount = 1,
-            .pClearValues = &clearColor
-    };
-
-    logicalDevice->vkCmdBeginRenderPass(logicalDevice->commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    logicalDevice->vkCmdBindPipeline(logicalDevice->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          logicalDevice->fillTexturePoly->graphicsPipeline);
-
-    VkBuffer vertexBuffers[] = {vertexBuffer};
-    VkDeviceSize offsets[] = {0};
-    logicalDevice->vkCmdBindVertexBuffers(logicalDevice->commandBuffer, 0, 1, vertexBuffers, offsets);
-    VkViewport viewport = {
-            .x = 0.0f,
-            .y = 0.0f,
-            .width = destImage->extent.width,
-            .height = destImage->extent.height,
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f
-    };
-
-    logicalDevice->vkCmdSetViewport(logicalDevice->commandBuffer, 0, 1, &viewport);
-
-    VkRect2D scissor = {
-            .offset = (VkOffset2D){0, 0},
-            .extent = destImage->extent,
-    };
-
-    logicalDevice->vkCmdSetScissor(logicalDevice->commandBuffer, 0, 1, &scissor);
-    logicalDevice->vkCmdBindDescriptorSets(logicalDevice->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                logicalDevice->fillTexturePoly->pipelineLayout, 0, 1, &logicalDevice->fillTexturePoly->descriptorSets, 0, NULL);
-    logicalDevice->vkCmdDraw(logicalDevice->commandBuffer, vertexNum, 1, 0, 0);
-
-    logicalDevice->vkCmdEndRenderPass(logicalDevice->commandBuffer);
-
-
+/**
+ * Execute single barrier, if needed.
+ */
+static void VKRenderer_SurfaceBarrier(VKSDOps* surface, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
+    VkImageMemoryBarrier barrier;
+    uint32_t numBarriers = 0;
+    VkPipelineStageFlags srcStages = 0, dstStages = 0;
+    VKRenderer_AddSurfaceBarrier(&barrier, &numBarriers, &srcStages, &dstStages, surface, stage, access, layout);
+    if (numBarriers == 1) {
+        VKLogicalDevice* device = surface->device;
+        VKRenderer* renderer = device->renderer;
+        VkCommandBuffer cb = VKRenderer_Record(renderer);
+        device->vkCmdPipelineBarrier(cb, srcStages, dstStages, 0, 0, NULL, 0, NULL, 1, &barrier);
+    }
 }
 
-void VKRenderer_ColorRender(VKLogicalDevice* logicalDevice, VKImage *destImage, VKRenderer *renderer, uint32_t rgba,
-                            VkBuffer vertexBuffer,
-                            uint32_t vertexNum)
-{
-    if (!vertexBuffer) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "VKRenderer_ColorRender: vertex buffer is NULL\n")
+/**
+ * Discard all recorded commands for the render pass.
+ */
+static void VKRenderer_DiscardRenderPass(VKSDOps* surface) {
+    assert(surface != NULL && surface->renderPass != NULL);
+    if (surface->renderPass->pendingCommands) {
+        assert(surface->device != NULL);
+        VK_CHECK(surface->device->vkResetCommandBuffer(surface->renderPass->commandBuffer, 0)) {
+            VK_UNHANDLED_ERROR(); // TODO what to do?
+        }
+        surface->renderPass->pendingCommands = VK_FALSE;
+        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_DiscardRenderPass(%p)", surface);
+    }
+}
+
+void VKRenderer_ReleaseRenderPass(VKSDOps* surface) {
+    assert(surface != NULL);
+    if (surface->renderPass == NULL) return;
+    VKLogicalDevice* device = surface->device;
+    if (device != NULL && device->renderer != NULL) {
+        // Wait while surface resources are being used by the device.
+        VKRenderer_Wait(device->renderer, surface->renderPass->lastTimestamp);
+        VKRenderer_DiscardRenderPass(surface);
+        // Release resources.
+        if (surface->renderPass->framebuffer != VK_NULL_HANDLE) {
+            device->vkDestroyFramebuffer(device->device, surface->renderPass->framebuffer, NULL);
+        }
+        if (surface->renderPass->commandBuffer != VK_NULL_HANDLE) {
+            PUSH_PENDING(device->renderer, device->renderer->pendingSecondaryCommandBuffers, surface->renderPass->commandBuffer);
+
+        }
+    }
+    free(surface->renderPass);
+    surface->renderPass = NULL;
+    J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_ReleaseRenderPass(%p)", surface);
+}
+
+/**
+ * Initialize surface and render pass state.
+ * It may execute pending resize request and re-initialize surface resources,
+ * so it must only be called between frames.
+ */
+static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
+    assert(surface != NULL && (surface->renderPass == NULL || !surface->renderPass->pendingCommands));
+
+    // Initialize surface image.
+    // Technically, in case of dynamicRendering=ON, this could be postponed right until VKRenderer_FlushSurface,
+    // but we cannot change image extent in the middle of render pass anyway, so there is no point in delaying it.
+    if (!VKSD_ConfigureImageSurface(surface)) return VK_FALSE;
+
+    if (surface->renderPass != NULL) return VK_TRUE;
+
+    VKLogicalDevice* device = surface->device;
+    VKRenderer* renderer = device->renderer;
+    VKRenderPass* renderPass = surface->renderPass = malloc(sizeof(VKRenderPass));
+    (*renderPass) = (VKRenderPass) {
+            .pendingCommands = VK_FALSE,
+            .pendingClear = VK_TRUE, // Clear the surface by default
+            .layout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .lastStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            .lastAccess = 0,
+            .lastTimestamp = 0
+    };
+
+    // Initialize pipelines. They are cached until surface format changes.
+    if (renderPass->pipelines == NULL) {
+        for (uint32_t i = 0; i < ARRAY_SIZE(renderer->pipelines); i++) {
+            if (renderer->pipelines[i]->format == surface->image->format) {
+                renderPass->pipelines = renderer->pipelines[i];
+                break;
+            }
+        }
+        // Pipelines not found, create.
+        if (renderPass->pipelines == NULL) {
+            renderPass->pipelines = VKPipelines_Create(device, renderer->shaders, surface->image->format);
+            ARRAY_PUSH_BACK(renderer->pipelines, renderPass->pipelines);
+        }
+    }
+
+    // Initialize framebuffer. It is only needed when dynamicRendering=OFF.
+    if (!device->dynamicRendering && renderPass->framebuffer == VK_NULL_HANDLE) {
+        VkFramebufferCreateInfo framebufferCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                .renderPass = renderPass->pipelines->renderPass,
+                .attachmentCount = 1,
+                .pAttachments = &surface->image->view,
+                .width = surface->image->extent.width,
+                .height = surface->image->extent.height,
+                .layers = 1
+        };
+        VK_CHECK(device->vkCreateFramebuffer(device->device, &framebufferCreateInfo, NULL,
+                                             &renderPass->framebuffer)) VK_UNHANDLED_ERROR();
+    }
+
+    J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_InitRenderPass(%p)", surface);
+    return VK_TRUE;
+}
+
+/**
+ * Begin render pass for the surface.
+ */
+static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
+    assert(surface != NULL && surface->renderPass != NULL && !surface->renderPass->pendingCommands);
+    // We may have a pending flush, which is already obsolete.
+    surface->renderPass->pendingFlush = VK_FALSE;
+    VKLogicalDevice* device = surface->device;
+    VKRenderer* renderer = device->renderer;
+
+    // Initialize command buffer.
+    VkCommandBuffer commandBuffer = surface->renderPass->commandBuffer;
+    if (commandBuffer == VK_NULL_HANDLE) {
+        POP_PENDING(renderer, renderer->pendingSecondaryCommandBuffers, commandBuffer);
+        if (commandBuffer == VK_NULL_HANDLE) {
+            VkCommandBufferAllocateInfo allocInfo = {
+                    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                    .commandPool = renderer->commandPool,
+                    .level = VK_COMMAND_BUFFER_LEVEL_SECONDARY,
+                    .commandBufferCount = 1
+            };
+            VK_CHECK(renderer->device->vkAllocateCommandBuffers(renderer->device->device, &allocInfo, &commandBuffer)) {
+                VK_UNHANDLED_ERROR();
+                return;
+            }
+        }
+        surface->renderPass->commandBuffer = commandBuffer;
+    }
+
+    // Begin recording render pass commands.
+    VkCommandBufferInheritanceRenderingInfoKHR inheritanceRenderingInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR,
+            .flags = VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT,
+            .viewMask = 0,
+            .colorAttachmentCount = 1,
+            .pColorAttachmentFormats = &surface->image->format,
+            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
+    };
+    VkCommandBufferInheritanceInfo inheritanceInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO
+    };
+    if (device->dynamicRendering) {
+        inheritanceInfo.pNext = &inheritanceRenderingInfo;
+    } else {
+        inheritanceInfo.renderPass = surface->renderPass->pipelines->renderPass;
+        inheritanceInfo.subpass = 0;
+        inheritanceInfo.framebuffer = surface->renderPass->framebuffer;
+    }
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
+            .pInheritanceInfo = &inheritanceInfo
+    };
+    VK_CHECK(device->vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo)) {
+        renderer->device->vkFreeCommandBuffers(renderer->device->device, renderer->commandPool, 1, &commandBuffer);
+        VK_UNHANDLED_ERROR();
         return;
     }
-    logicalDevice->vkWaitForFences(logicalDevice->device, 1, &logicalDevice->inFlightFence, VK_TRUE, UINT64_MAX);
-    logicalDevice->vkResetFences(logicalDevice->device, 1, &logicalDevice->inFlightFence);
 
-    logicalDevice->vkResetCommandBuffer(logicalDevice->commandBuffer, 0);
+    // When dynamicRendering=ON, we specify that we want to clear the attachment instead of
+    // loading its content at the beginning of rendering, see VKRenderer_FlushSurface.
+    // But with dynamicRendering=OFF we need to clear the attachment manually at the beginning of render pass.
+    if (!device->dynamicRendering && surface->renderPass->pendingClear) {
+        VkClearAttachment clearAttachment = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .colorAttachment = 0,
+                .clearValue = surface->background.vkClearValue
+        };
+        VkClearRect clearRect = {
+                .rect = {{0, 0}, surface->image->extent},
+                .baseArrayLayer = 0,
+                .layerCount = 1
+        };
+        device->vkCmdClearAttachments(commandBuffer, 1, &clearAttachment, 1, &clearRect);
+        surface->renderPass->pendingClear = VK_FALSE;
+    }
 
-    VKRenderer_BeginRendering(logicalDevice);
-
-    VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-    VkRenderPassBeginInfo renderPassInfo = {
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = logicalDevice->renderPass,
-            .framebuffer = destImage->framebuffer,
-            .renderArea.offset = (VkOffset2D){0, 0},
-            .renderArea.extent = destImage->extent,
-            .clearValueCount = 1,
-            .pClearValues = &clearColor
-    };
-
-    logicalDevice->vkCmdBeginRenderPass(logicalDevice->commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    logicalDevice->vkCmdBindPipeline(logicalDevice->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          renderer->graphicsPipeline);
-    struct PushConstants {
-        float r, g, b, a;
-    } pushConstants;
-
-    pushConstants = (struct PushConstants){RGBA_TO_L4(rgba)};
-
-    logicalDevice->vkCmdPushConstants(
-            logicalDevice->commandBuffer,
-            renderer->pipelineLayout,
-            VK_SHADER_STAGE_VERTEX_BIT,
-            0,
-            sizeof(struct PushConstants),
-            &pushConstants
-    );
-
-    VkBuffer vertexBuffers[] = {vertexBuffer};
-    VkDeviceSize offsets[] = {0};
-    logicalDevice->vkCmdBindVertexBuffers(logicalDevice->commandBuffer, 0, 1, vertexBuffers, offsets);
+    // Set viewport and scissor.
     VkViewport viewport = {
             .x = 0.0f,
             .y = 0.0f,
-            .width = destImage->extent.width,
-            .height = destImage->extent.height,
+            .width = (float) surface->image->extent.width,
+            .height = (float) surface->image->extent.height,
             .minDepth = 0.0f,
             .maxDepth = 1.0f
     };
+    VkRect2D scissor = {{0, 0}, surface->image->extent};
+    device->vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    device->vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    logicalDevice->vkCmdSetViewport(logicalDevice->commandBuffer, 0, 1, &viewport);
-
-    VkRect2D scissor = {
-            .offset = (VkOffset2D){0, 0},
-            .extent = destImage->extent,
-    };
-
-    logicalDevice->vkCmdSetScissor(logicalDevice->commandBuffer, 0, 1, &scissor);
-    logicalDevice->vkCmdDraw(logicalDevice->commandBuffer, vertexNum, 1, 0, 0);
-
-    logicalDevice->vkCmdEndRenderPass(logicalDevice->commandBuffer);
-    VKRenderer_EndRendering(logicalDevice, VK_FALSE, VK_FALSE);
+    surface->renderPass->pendingCommands = VK_TRUE;
+    J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_BeginRenderPass(%p)", surface);
 }
 
-void VKRenderer_ColorRenderMaxRect(VKLogicalDevice* logicalDevice, VKImage *destImage, uint32_t rgba) {
-    VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-    VkRenderPassBeginInfo renderPassInfo = {
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = logicalDevice->renderPass,
-            .framebuffer = destImage->framebuffer,
-            .renderArea.offset = (VkOffset2D){0, 0},
-            .renderArea.extent = destImage->extent,
-            .clearValueCount = 1,
-            .pClearValues = &clearColor
-    };
+/**
+ * End render pass for the surface and record it into the primary command buffer,
+ * which will be executed on the next VKRenderer_Flush.
+ */
+static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
+    assert(surface != NULL && surface->renderPass != NULL);
+    VkBool32 hasCommands = surface->renderPass->pendingCommands, clear = surface->renderPass->pendingClear;
+    if(!hasCommands && !clear) return;
+    VKLogicalDevice* device = surface->device;
+    VKRenderer* renderer = device->renderer;
+    surface->renderPass->lastTimestamp = renderer->writeTimestamp;
+    VkCommandBuffer cb = VKRenderer_Record(renderer);
 
-    logicalDevice->vkCmdBeginRenderPass(logicalDevice->commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    logicalDevice->vkCmdBindPipeline(logicalDevice->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          logicalDevice->fillMaxColorPoly->graphicsPipeline);
+    // Insert barrier to prepare surface for rendering.
+    VKRenderer_SurfaceBarrier(surface, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                              VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    // Begin render pass.
+    if (device->dynamicRendering) {
+        VkRenderingAttachmentInfoKHR colorAttachmentInfo = {
+                .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+                .imageView = surface->image->view,
+                .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .resolveMode = VK_RESOLVE_MODE_NONE_KHR,
+                .resolveImageView = VK_NULL_HANDLE,
+                .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .loadOp = clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+                .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                .clearValue = surface->background.vkClearValue
+        };
+        surface->renderPass->pendingClear = VK_FALSE;
+        VkRect2D renderArea = {{0, 0}, surface->image->extent};
+        VkRenderingInfoKHR renderingInfo = {
+                .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+                .flags = VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT,
+                .renderArea = renderArea,
+                .layerCount = 1,
+                .viewMask = 0,
+                .colorAttachmentCount = 1,
+                .pColorAttachments = &colorAttachmentInfo,
+                .pDepthAttachment = NULL,
+                .pStencilAttachment = NULL
+        };
+        device->vkCmdBeginRenderingKHR(cb, &renderingInfo);
+    } else {
+        VkRenderPassBeginInfo renderPassInfo = {
+                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                .renderPass = surface->renderPass->pipelines->renderPass,
+                .framebuffer = surface->renderPass->framebuffer,
+                .renderArea.offset = (VkOffset2D){0, 0},
+                .renderArea.extent = surface->image->extent,
+                .clearValueCount = 0,
+                .pClearValues = NULL
+        };
+        device->vkCmdBeginRenderPass(cb, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+        // If there is a pending clear, record it into render pass.
+        if (clear) VKRenderer_BeginRenderPass(surface);
+    }
 
-    struct PushConstants {
-        float r, g, b, a;
-    } pushConstants;
+    // Execute render pass commands.
+    if (surface->renderPass->pendingCommands) {
+        surface->renderPass->pendingCommands = VK_FALSE;
+        VK_CHECK(device->vkEndCommandBuffer(surface->renderPass->commandBuffer)) {
+            VK_UNHANDLED_ERROR();
+            return; // TODO what to do?
+        }
+        device->vkCmdExecuteCommands(cb, 1, &surface->renderPass->commandBuffer);
+        PUSH_PENDING(renderer, renderer->pendingSecondaryCommandBuffers, surface->renderPass->commandBuffer);
+        surface->renderPass->commandBuffer = VK_NULL_HANDLE;
+    }
 
-    pushConstants = (struct PushConstants){RGBA_TO_L4(rgba)};
+    if (device->dynamicRendering) {
+        device->vkCmdEndRenderingKHR(cb);
+    } else {
+        device->vkCmdEndRenderPass(cb);
+    }
+    J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "VKRenderer_FlushRenderPass(%p): hasCommands=%d, clear=%d", surface, hasCommands, clear);
+}
 
-    logicalDevice->vkCmdPushConstants(
-            logicalDevice->commandBuffer,
-            logicalDevice->fillMaxColorPoly->pipelineLayout,
+void VKRenderer_FlushSurface(VKSDOps* surface) {
+    assert(surface != NULL);
+    // TODO this logic should be incorporated into per-surface state tracking object, managing rendering mode changes.
+    if (surface->renderPass == NULL || (!surface->renderPass->pendingCommands && !surface->renderPass->pendingFlush)) {
+        // We must only [re]init render pass between frames.
+        // Now this is correct, but in future we may have frames consisting of multiple render passes,
+        // so we must be careful to NOT call VKRenderer_InitRenderPass between render passes within single frame.
+        if (!VKRenderer_InitRenderPass(surface)) return;
+        // Check for pendingClear after VKRenderer_InitRenderPass, it may be set after reconfiguration.
+        if (!surface->renderPass->pendingClear) return;
+    }
+
+    surface->renderPass->pendingFlush = VK_FALSE;
+    VKRenderer_FlushRenderPass(surface);
+
+    // If this is a swapchain surface, we need to blit the content onto it and queue it for presentation.
+    if (surface->drawableType == VKSD_WINDOW) {
+        VKWinSDOps* win = (VKWinSDOps*) surface;
+
+        // Configure window surface.
+        if (!VKSD_ConfigureWindowSurface(win)) {
+            // Surface is not ready, try again later.
+            surface->renderPass->pendingFlush = VK_TRUE;
+            return;
+        }
+
+        VKLogicalDevice* device = surface->device;
+        VKRenderer* renderer = device->renderer;
+        surface->renderPass->lastTimestamp = renderer->writeTimestamp;
+        VkCommandBuffer cb = VKRenderer_Record(renderer);
+
+        // Acquire swapchain image.
+        VkSemaphore acquireSemaphore = VKRenderer_AddPendingSemaphore(renderer);
+        ARRAY_PUSH_BACK(renderer->wait.semaphores, acquireSemaphore);
+        ARRAY_PUSH_BACK(renderer->wait.stages, VK_PIPELINE_STAGE_TRANSFER_BIT); // Acquire image before blitting content onto swapchain
+
+        uint32_t imageIndex;
+        VkResult acquireImageResult = device->vkAcquireNextImageKHR(device->device, win->swapchain, UINT64_MAX,
+                                                                    acquireSemaphore, VK_NULL_HANDLE, &imageIndex);
+        if (acquireImageResult != VK_SUCCESS) {
+            // TODO possible suboptimal conditions
+            VK_CHECK(acquireImageResult) {}
+        }
+
+        // Insert barriers to prepare both main (src) and swapchain (dst) images for blit.
+        {
+            VkImageMemoryBarrier barriers[2] =
+                    {{
+                             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                             .srcAccessMask = 0,
+                             .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                             .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                             .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                             .image = win->swapchainImages[imageIndex],
+                             .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+                     }};
+            uint32_t numBarriers = 1;
+            VkPipelineStageFlags srcStages = surface->renderPass->lastStage, dstStages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            VKRenderer_AddSurfaceBarrier(barriers, &numBarriers, &srcStages, &dstStages, surface,
+                                         VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                         VK_ACCESS_TRANSFER_READ_BIT,
+                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+            device->vkCmdPipelineBarrier(cb, srcStages, dstStages, 0, 0, NULL, 0, NULL, numBarriers, barriers);
+        }
+
+        // Do blit.
+        VkImageBlit blit = {
+                .srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+                .srcOffsets[0] = {0, 0, 0},
+                .srcOffsets[1] = {surface->image->extent.width, surface->image->extent.height, 1},
+                .dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+                .dstOffsets[0] = {0, 0, 0},
+                .dstOffsets[1] = {surface->image->extent.width, surface->image->extent.height, 1},
+        };
+        device->vkCmdBlitImage(cb,
+                               surface->image->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               win->swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                               1, &blit, VK_FILTER_NEAREST);
+
+        // Insert barrier to prepare swapchain image for presentation.
+        {
+            VkImageMemoryBarrier barrier = {
+                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                    .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                    .dstAccessMask = 0,
+                    .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = win->swapchainImages[imageIndex],
+                    .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+            };
+            device->vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
+        }
+
+        // Add pending presentation request.
+        ARRAY_PUSH_BACK(renderer->pendingPresentation.swapchains, win->swapchain);
+        ARRAY_PUSH_BACK(renderer->pendingPresentation.indices, imageIndex);
+        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_FlushSurface(%p): queued for presentation", surface);
+    }
+}
+
+void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent) {
+    assert(surface != NULL);
+    surface->requestedExtent = extent;
+    // TODO this logic should be incorporated into per-surface state tracking object, managing rendering mode changes.
+    //      this means, we must only really do *pending* flush, if we are between frames.
+    if (surface->renderPass != NULL && surface->renderPass->pendingFlush)  {
+        if (surface->renderPass->pendingCommands) surface->renderPass->pendingFlush = VK_FALSE;
+        else {
+            J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_ConfigureSurface(%p): pending flush", surface);
+            VKRenderer_FlushSurface(surface);
+        }
+    }
+}
+
+/**
+ * Record rendering commands for the surface. This will cause surface initialization.
+ * Returns VK_NULL_HANDLE if surface is not ready for rendering.
+ */
+static VkCommandBuffer VKRenderer_Render(VKSDOps* surface) {
+    assert(surface != NULL);
+    // TODO following logic should be incorporated into per-surface state tracking object, managing rendering mode changes.
+    if (surface->renderPass == NULL || !surface->renderPass->pendingCommands) {
+        // We must only [re]init render pass between frames.
+        // Now this is correct, but in future we may have frames consisting of multiple render passes,
+        // so we must be careful to NOT call VKRenderer_InitRenderPass between render passes within single frame.
+        if (!VKRenderer_InitRenderPass(surface)) return VK_NULL_HANDLE;
+        VKRenderer_BeginRenderPass(surface);
+    }
+    return surface->renderPass->commandBuffer;
+}
+
+// TODO refactor following part =======================================================================================>
+
+#define ARRAY_TO_VERTEX_BUF(logicalDevice, vertices)                                           \
+    VKBuffer_CreateFromData(logicalDevice, vertices, ARRAY_SIZE(vertices)*sizeof ((vertices)[0]))
+
+static void VKRenderer_ColorRender(VKRenderingContext* context, VKPipeline pipeline, VkBuffer vertexBuffer, uint32_t vertexNum) {
+    assert(context != NULL && context->surface != NULL);
+    VKSDOps* surface = context->surface;
+    VkCommandBuffer cb = VKRenderer_Render(surface);
+    VKLogicalDevice* device = surface->device;
+
+    device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, surface->renderPass->pipelines->pipelines[pipeline]);
+    device->vkCmdPushConstants(
+            cb,
+            surface->renderPass->pipelines->pipelineLayout,
             VK_SHADER_STAGE_VERTEX_BIT,
             0,
-            sizeof(struct PushConstants),
-            &pushConstants
+            sizeof(Color),
+            &context->color
     );
-
-    VkViewport viewport = {
-            .x = 0.0f,
-            .y = 0.0f,
-            .width = destImage->extent.width,
-            .height = destImage->extent.height,
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f
-    };
-
-    logicalDevice->vkCmdSetViewport(logicalDevice->commandBuffer, 0, 1, &viewport);
-
-    VkRect2D scissor = {
-            .offset = (VkOffset2D){0, 0},
-            .extent = destImage->extent,
-    };
-
-    logicalDevice->vkCmdSetScissor(logicalDevice->commandBuffer, 0, 1, &scissor);
-    logicalDevice->vkCmdDraw(logicalDevice->commandBuffer, 4, 1, 0, 0);
-
-    logicalDevice->vkCmdEndRenderPass(logicalDevice->commandBuffer);
+    VkDeviceSize offsets[] = {0};
+    device->vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, offsets);
+    device->vkCmdDraw(cb, vertexNum, 1, 0, 0);
 }
 
 void
-VKRenderer_FillRect(VKLogicalDevice* logicalDevice, jint x, jint y, jint w, jint h)
+VKRenderer_FillRect(VKRenderingContext* context, jint x, jint y, jint w, jint h)
 {
     J2dTraceLn4(J2D_TRACE_INFO, "VKRenderer_FillRect %d %d %d %d", x, y, w, h);
 
     if (w <= 0 || h <= 0) {
         return;
     }
+
+    VKRenderer_RenderParallelogram(context, PIPELINE_FILL_COLOR, x, y, w, 0, 0, h);
 }
 
-void VKRenderer_RenderParallelogram(VKLogicalDevice* logicalDevice,
-                                  VKRenderer* renderer,
-                                  jint color, VKSDOps *dstOps,
+void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipeline,
                                   jfloat x11, jfloat y11,
                                   jfloat dx21, jfloat dy21,
                                   jfloat dx12, jfloat dy12)
 {
-    if (dstOps == NULL) {
+    if (context->surface == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_RenderParallelogram: current dest is null")
         return;
     }
 
-    if (renderer->primitiveTopology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST &&
-        renderer->primitiveTopology != VK_PRIMITIVE_TOPOLOGY_LINE_STRIP)
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_RenderParallelogram: primitive topology should be either "
-                                       "VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST or VK_PRIMITIVE_TOPOLOGY_LINE_STRIP")
-        return;
-    }
-
-    VKSDOps *vksdOps = (VKSDOps *)dstOps;
-    float width = vksdOps->width;
-    float height = vksdOps->height;
+    VKSDOps *vksdOps = (VKSDOps *)context->surface;
+    VKRenderer_Render(vksdOps); // Init rendering state
+    float width = vksdOps->image->extent.width;
+    float height = vksdOps->image->extent.height;
     J2dRlsTraceLn2(J2D_TRACE_VERBOSE,
                    "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(W=%f, H=%f)",
                    width, height);
-    VKVertex* vertices = ARRAY_ALLOC(VKVertex, 6);
+    VKVertex* vertices = NULL;
     /*                   dx21
      *    (p1)---------(p2) |          (p1)------
      *     |\            \  |            |  \    dy21
@@ -828,6 +856,7 @@ void VKRenderer_RenderParallelogram(VKLogicalDevice* logicalDevice,
      *                              dy21    \ |
      *                                  -----(p3)
      */
+    // TODO coordinate remapping is wrong and covers only quarter of the viewport
     float p1x = -1.0f + x11 / width;
     float p1y = -1.0f + y11 / height;
     float p2x = -1.0f + (x11 + dx21) / width;
@@ -837,32 +866,26 @@ void VKRenderer_RenderParallelogram(VKLogicalDevice* logicalDevice,
     float p4x = -1.0f + (x11 + dx12) / width;
     float p4y = -1.0f + (y11 + dy12) / height;
 
-    ARRAY_PUSH_BACK(&vertices, ((VKVertex) {p1x, p1y}));
-    ARRAY_PUSH_BACK(&vertices, ((VKVertex) {p2x, p2y}));
-    ARRAY_PUSH_BACK(&vertices, ((VKVertex) {p3x, p3y}));
-
-    if (renderer->primitiveTopology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) {
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex) {p3x, p3y}));
-    }
-
-    ARRAY_PUSH_BACK(&vertices, ((VKVertex) {p4x, p4y}));
-    ARRAY_PUSH_BACK(&vertices, ((VKVertex) {p1x, p1y}));
+    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p1x, p1y}));
+    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p2x, p2y}));
+    if (pipeline == PIPELINE_DRAW_COLOR) ARRAY_PUSH_BACK(vertices, ((VKVertex) {p2x, p2y}));
+    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p3x, p3y}));
+    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p3x, p3y}));
+    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p4x, p4y}));
+    if (pipeline == PIPELINE_DRAW_COLOR) ARRAY_PUSH_BACK(vertices, ((VKVertex) {p4x, p4y}));
+    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p1x, p1y}));
 
     int vertexNum = ARRAY_SIZE(vertices);
 
-    VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(logicalDevice, vertices);
+    VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(context->surface->device, vertices);
     ARRAY_FREE(vertices);
 
-    VKRenderer_ColorRender(
-            logicalDevice,
-            vksdOps->image, renderer,
-            color,
-            renderVertexBuffer->buffer, vertexNum);
+    VKRenderer_ColorRender(context, pipeline, renderVertexBuffer->buffer, vertexNum);
 }
 
-void VKRenderer_FillSpans(VKLogicalDevice* logicalDevice, jint color, VKSDOps *dstOps, jint spanCount, jint *spans)
+void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spans)
 {
-    if (dstOps == NULL) {
+    if (context->surface == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_FillSpans: current dest is null");
         return;
     }
@@ -871,9 +894,10 @@ void VKRenderer_FillSpans(VKLogicalDevice* logicalDevice, jint color, VKSDOps *d
         return;
     }
 
-    VKSDOps *vksdOps = (VKSDOps *)dstOps;
-    float width = vksdOps->width;
-    float height = vksdOps->height;
+    VKSDOps *vksdOps = (VKSDOps *)context->surface;
+    VKRenderer_Render(vksdOps); // Init rendering state
+    float width = vksdOps->image->extent.width;
+    float height = vksdOps->image->extent.height;
     J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "VKRenderer_FillSpans(W=%f, H=%f, COUNT=%d)",
                    width, height, spanCount)
 
@@ -885,6 +909,7 @@ void VKRenderer_FillSpans(VKLogicalDevice* logicalDevice, jint color, VKSDOps *d
         jfloat x2 = *(spans++);
         jfloat y2 = *(spans++);
 
+        // TODO coordinate remapping is wrong and covers only quarter of the viewport
         float p1x = -1.0f + x1 / width;
         float p1y = -1.0f + y1 / height;
         float p2x = -1.0f + x2 / width;
@@ -894,45 +919,27 @@ void VKRenderer_FillSpans(VKLogicalDevice* logicalDevice, jint color, VKSDOps *d
         float p4x = p1x;
         float p4y = p3y;
 
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p1x,p1y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex){p1x,p1y}));
 
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p2x,p2y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex){p2x,p2y}));
 
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p3x,p3y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex){p3x,p3y}));
 
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p3x,p3y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex){p3x,p3y}));
 
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p4x,p4y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex){p4x,p4y}));
 
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p1x,p1y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex){p1x,p1y}));
     }
 
-    VKBuffer *fillVertexBuffer = ARRAY_TO_VERTEX_BUF(logicalDevice, vertices);
+    VKBuffer *fillVertexBuffer = ARRAY_TO_VERTEX_BUF(context->surface->device, vertices);
     if (!fillVertexBuffer) {
         J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create vertex buffer\n")
         return;
     }
     ARRAY_FREE(vertices);
 
-    VKRenderer_ColorRender(
-            logicalDevice,
-            vksdOps->image, logicalDevice->fillColorPoly,
-            color,
-            fillVertexBuffer->buffer, VERT_COUNT);
+    VKRenderer_ColorRender(context, PIPELINE_FILL_COLOR, fillVertexBuffer->buffer, VERT_COUNT);
 }
 
-jboolean VK_CreateLogicalDeviceRenderers(VKLogicalDevice* logicalDevice) {
-    logicalDevice->fillTexturePoly = VKRenderer_CreateFillTexturePoly(logicalDevice);
-    logicalDevice->fillColorPoly = VKRenderer_CreateRenderColorPoly(logicalDevice, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                                                    VK_POLYGON_MODE_FILL);
-    logicalDevice->drawColorPoly = VKRenderer_CreateRenderColorPoly(logicalDevice, VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
-                                                                    VK_POLYGON_MODE_LINE);
-    logicalDevice->fillMaxColorPoly = VKRenderer_CreateFillMaxColorPoly(logicalDevice);
-    if (!logicalDevice->fillTexturePoly || !logicalDevice->fillColorPoly || !logicalDevice->drawColorPoly ||
-        !logicalDevice->fillMaxColorPoly)
-    {
-        return JNI_FALSE;
-    }
-    return JNI_TRUE;
-}
 #endif /* !HEADLESS */

@@ -81,7 +81,7 @@ static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
                                                     long format)
 {
     CHECK_NULL_RETURN(device, NULL);
-    VKImage* texture = VKImage_Create((VKLogicalDevice*)device, width, height,
+    VKImage* texture = VKImage_Create((VKLogicalDevice*)device, (VkExtent2D) {width, height},
                                       (VkFormat)format,
                                       VK_IMAGE_TILING_LINEAR,
                                       VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,

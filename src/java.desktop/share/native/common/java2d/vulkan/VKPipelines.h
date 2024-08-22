@@ -21,46 +21,41 @@
 // or visit www.oracle.com if you need additional information or have any
 // questions.
 
-#ifndef VKTypes_h_Included
-#define VKTypes_h_Included
-#include <vulkan/vulkan.h>
+#ifndef VKPipelines_h_Included
+#define VKPipelines_h_Included
+
+#include "VKTypes.h"
 
 /**
- * Floating-point RGBA color with LINEAR encoding.
+ * All pipeline types, use these to index into VKPipelines.pipelines.
  */
-typedef union {
-    struct {
-        float r, g, b, a;
-    };
-    VkClearValue vkClearValue;
-} Color;
+typedef enum {
+    PIPELINE_FILL_COLOR = 0,
+    PIPELINE_DRAW_COLOR = 1,
+    NUM_PIPELINES = 2
+} VKPipeline;
 
-/**
- * In Vulkan we always work with floating-point LINEAR colors.
- * Java colors are 32-bit SRGB encoded colors,
- * so we need to convert them to linear colors first.
- *
- * Read more about presenting SRGB content in VKSD_ConfigureWindowSurface
- */
-Color Color_DecodeFromJava(unsigned int color);
+struct VKPipelines {
+    VkFormat         format;
+    VkRenderPass     renderPass;
+    VkPipelineLayout pipelineLayout;
+    VkPipeline       pipelines[NUM_PIPELINES];
+};
 
-#define STRUCT(NAME) typedef struct NAME NAME
+typedef struct {
+    float x, y;
+} VKVertex;
 
-typedef char* pchar;
+struct VKShaders {
+#   define SHADER_ENTRY(NAME, TYPE) VkPipelineShaderStageCreateInfo NAME ## _ ## TYPE;
+#   include "vulkan/shader_list.h"
+#   undef SHADER_ENTRY
+};
 
-STRUCT(VKGraphicsEnvironment);
-STRUCT(VKLogicalDevice);
-STRUCT(VKAllocator);
-STRUCT(VKRenderer);
-STRUCT(VKRenderPass);
-STRUCT(VKRenderingContext);
-STRUCT(VKPipelines);
-STRUCT(VKShaders);
-STRUCT(VKBuffer);
-STRUCT(VKImage);
-STRUCT(VKSDOps);
-STRUCT(VKWinSDOps);
+VKPipelines* VKPipelines_Create(VKLogicalDevice* device, VKShaders* shaders, VkFormat format);
+void VKPipelines_Destroy(VKLogicalDevice* device, VKPipelines* pipelines);
 
-#undef STRUCT
+VKShaders* VKPipelines_CreateShaders(VKLogicalDevice* device);
+void VKPipelines_DestroyShaders(VKLogicalDevice* device, VKShaders* shaders);
 
-#endif //VKTypes_h_Included
+#endif //VKPipelines_h_Included

@@ -44,44 +44,19 @@ VkBool32 VKImage_CreateView(VKLogicalDevice* logicalDevice, VKImage* image) {
             .subresourceRange.layerCount = 1,
     };
 
-    if (logicalDevice->vkCreateImageView(logicalDevice->device, &viewInfo, NULL, &image->view) != VK_SUCCESS) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Cannot surface image view\n");
-        return VK_FALSE;
-    }
-    return VK_TRUE;
-}
-
-VkBool32 VKImage_CreateFramebuffer(VKLogicalDevice* logicalDevice, VKImage *image, VkRenderPass renderPass) {
-    VkImageView attachments[] = {
-            image->view
-    };
-
-    VkFramebufferCreateInfo framebufferInfo = {
-            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-            .renderPass = renderPass,
-            .attachmentCount = 1,
-            .pAttachments = attachments,
-            .width = image->extent.width,
-            .height = image->extent.height,
-            .layers = 1
-    };
-
-    if (logicalDevice->vkCreateFramebuffer(logicalDevice->device, &framebufferInfo, NULL,
-                                &image->framebuffer) != VK_SUCCESS)
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to create framebuffer!")
+    VK_CHECK(logicalDevice->vkCreateImageView(logicalDevice->device, &viewInfo, NULL, &image->view)) {
         return VK_FALSE;
     }
     return VK_TRUE;
 }
 
 VKImage* VKImage_Create(VKLogicalDevice* logicalDevice,
-                        uint32_t width, uint32_t height,
+                        VkExtent2D extent,
                         VkFormat format, VkImageTiling tiling,
                         VkImageUsageFlags usage,
                         VkMemoryPropertyFlags properties)
 {
-    VKImage* image = malloc(sizeof (VKImage));
+    VKImage* image = calloc(1, sizeof(VKImage));
 
     if (!image) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot allocate data for image")
@@ -89,15 +64,13 @@ VKImage* VKImage_Create(VKLogicalDevice* logicalDevice,
     }
 
     image->format = format;
-    image->extent = (VkExtent2D) {width, height};
-    image->framebuffer = VK_NULL_HANDLE;
-    image->noImageDealloc = VK_FALSE;
+    image->extent = extent;
 
     VkImageCreateInfo imageInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .imageType = VK_IMAGE_TYPE_2D,
-            .extent.width = width,
-            .extent.height = height,
+            .extent.width = extent.width,
+            .extent.height = extent.height,
             .extent.depth = 1,
             .mipLevels = 1,
             .arrayLayers = 1,
@@ -109,8 +82,7 @@ VKImage* VKImage_Create(VKLogicalDevice* logicalDevice,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
 
-    if (logicalDevice->vkCreateImage(logicalDevice->device, &imageInfo, NULL, &image->image) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create surface image")
+    VK_CHECK(logicalDevice->vkCreateImage(logicalDevice->device, &imageInfo, NULL, &image->image)) {
         VKImage_free(logicalDevice, image);
         return NULL;
     }
@@ -119,11 +91,10 @@ VKImage* VKImage_Create(VKLogicalDevice* logicalDevice,
     logicalDevice->vkGetImageMemoryRequirements(logicalDevice->device, image->image, &memRequirements);
 
     uint32_t memoryType;
-    if (VKBuffer_FindMemoryType(logicalDevice->physicalDevice,
+    VK_CHECK(VKBuffer_FindMemoryType(logicalDevice->physicalDevice,
                                 memRequirements.memoryTypeBits,
-                                properties, &memoryType) != VK_SUCCESS)
+                                properties, &memoryType))
     {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Failed to find memory")
         VKImage_free(logicalDevice, image);
         return NULL;
     }
@@ -134,13 +105,15 @@ VKImage* VKImage_Create(VKLogicalDevice* logicalDevice,
             .memoryTypeIndex = memoryType
     };
 
-    if (logicalDevice->vkAllocateMemory(logicalDevice->device, &allocInfo, NULL, &image->memory) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Failed to allocate image memory");
+    VK_CHECK(logicalDevice->vkAllocateMemory(logicalDevice->device, &allocInfo, NULL, &image->memory)) {
         VKImage_free(logicalDevice, image);
         return NULL;
     }
 
-    logicalDevice->vkBindImageMemory(logicalDevice->device, image->image, image->memory, 0);
+    VK_CHECK(logicalDevice->vkBindImageMemory(logicalDevice->device, image->image, image->memory, 0)) {
+        VKImage_free(logicalDevice, image);
+        return NULL;
+    }
 
     if (!VKImage_CreateView(logicalDevice, image)) {
         VKImage_free(logicalDevice, image);
@@ -150,62 +123,8 @@ VKImage* VKImage_Create(VKLogicalDevice* logicalDevice,
     return image;
 }
 
-VKImage* VKImage_CreateImageArrayFromSwapChain(VKLogicalDevice* logicalDevice,
-                                               VkSwapchainKHR swapchainKhr, VkRenderPass renderPass,
-                                               VkFormat format, VkExtent2D extent)
-{
-    uint32_t swapChainImagesCount;
-    if (logicalDevice->vkGetSwapchainImagesKHR(logicalDevice->device, swapchainKhr, &swapChainImagesCount,
-                                    NULL) != VK_SUCCESS) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Cannot get swapchain images\n");
-        return NULL;
-    }
-
-    if (swapChainImagesCount == 0) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "No swapchain images found\n");
-        return NULL;
-    }
-    VkImage swapChainImages[swapChainImagesCount];
-
-    if (logicalDevice->vkGetSwapchainImagesKHR(logicalDevice->device, swapchainKhr, &swapChainImagesCount,
-                                    swapChainImages) != VK_SUCCESS) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Cannot get swapchain images\n");
-        return NULL;
-    }
-
-    VKImage* images = ARRAY_ALLOC(VKImage, swapChainImagesCount);
-    for (uint32_t i = 0; i < swapChainImagesCount; i++) {
-        ARRAY_PUSH_BACK(&images, ((VKImage){
-                .image = swapChainImages[i],
-                .memory = VK_NULL_HANDLE,
-                .format = format,
-                .extent = extent,
-                .noImageDealloc = VK_TRUE
-        }));
-
-        if (!VKImage_CreateView(logicalDevice, &ARRAY_LAST(images))) {
-            ARRAY_APPLY_TRAILING(images, VKImage_dealloc, logicalDevice);
-            ARRAY_FREE(images);
-            return NULL;
-        }
-
-        if (!VKImage_CreateFramebuffer(logicalDevice, &ARRAY_LAST(images), renderPass)) {
-            ARRAY_APPLY_TRAILING(images, VKImage_dealloc, logicalDevice);
-            ARRAY_FREE(images);
-            return NULL;
-        }
-    }
-
-    return images;
-}
-
-void VKImage_dealloc(VKLogicalDevice* logicalDevice, VKImage* image) {
+void VKImage_free(VKLogicalDevice* logicalDevice, VKImage* image) {
     if (!image) return;
-
-    if (image->framebuffer != VK_NULL_HANDLE) {
-        logicalDevice->vkDestroyFramebuffer(logicalDevice->device, image->framebuffer, NULL);
-        image->framebuffer = VK_NULL_HANDLE;
-    }
 
     if (image->view != VK_NULL_HANDLE) {
         logicalDevice->vkDestroyImageView(logicalDevice->device, image->view, NULL);
@@ -217,13 +136,10 @@ void VKImage_dealloc(VKLogicalDevice* logicalDevice, VKImage* image) {
         image->memory = VK_NULL_HANDLE;
     }
 
-    if (image->image != VK_NULL_HANDLE && !image->noImageDealloc) {
+    if (image->image != VK_NULL_HANDLE) {
         logicalDevice->vkDestroyImage(logicalDevice->device, image->image, NULL);
         image->image = VK_NULL_HANDLE;
     }
-}
 
-void VKImage_free(VKLogicalDevice* logicalDevice, VKImage* image) {
-    VKImage_dealloc(logicalDevice, image);
     free(image);
 }

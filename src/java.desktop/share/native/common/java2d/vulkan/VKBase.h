@@ -29,40 +29,56 @@
 #include "VKTypes.h"
 #include "VKTexturePool.h"
 
+// Useful logging & result checking macros
+VkBool32 logVulkanResultError(const char* string, VkResult result);
+void unhandledVulkanError(const char* message);
+inline VkBool32 checkVulkanError(VkResult result, const char* errorMessage) {
+    if (result != VK_SUCCESS) {
+        logVulkanResultError(errorMessage, result);
+        return VK_TRUE;
+    } else return VK_FALSE;
+}
+// Hack for converting __LINE__ to string taken from here: https://stackoverflow.com/a/19343239
+#define TO_STRING_HACK(T) #T
+#define TO_STRING(T) TO_STRING_HACK(T)
+#define LOCATION __FILE__ ": " TO_STRING(__LINE__)
+
+#define VK_CHECK(EXPR) if (checkVulkanError(EXPR, #EXPR " == %s\n    at " LOCATION))
+#define VK_UNHANDLED_ERROR() unhandledVulkanError("Unhandled Vulkan error\n    at " LOCATION)
+
+
 struct VKLogicalDevice {
-    VkDevice            device;
-    VkPhysicalDevice    physicalDevice;
-    VKRenderer*         fillTexturePoly;
-    VKRenderer*         fillColorPoly;
-    VKRenderer*         drawColorPoly;
-    VKRenderer*         fillMaxColorPoly;
-    char*               name;
-    uint32_t            queueFamily;
-    pchar*              enabledLayers;
-    pchar*              enabledExtensions;
-    VkCommandPool       commandPool;
-    VkCommandBuffer     commandBuffer;
-    VkSemaphore         imageAvailableSemaphore;
-    VkSemaphore         renderFinishedSemaphore;
-    VkFence             inFlightFence;
-    VkQueue             queue;
-    VkSampler           textureSampler;
-    VKBuffer*           blitVertexBuffer;
-    VkRenderPass        renderPass;
-    VKTexturePool*      texturePool;
+    VkDevice         device;
+    VkPhysicalDevice physicalDevice;
+    char*            name;
+    uint32_t         queueFamily;
+    pchar*           enabledLayers;
+    pchar*           enabledExtensions;
+    VkQueue          queue;
+    VkBool32         dynamicRendering;
+
+    VKRenderer*      renderer;
+    VKTexturePool*   texturePool;
 
     PFN_vkDestroyDevice vkDestroyDevice;
     PFN_vkCreateShaderModule vkCreateShaderModule;
-    PFN_vkCreatePipelineLayout vkCreatePipelineLayout;
-    PFN_vkCreateGraphicsPipelines vkCreateGraphicsPipelines;
     PFN_vkDestroyShaderModule vkDestroyShaderModule;
+    PFN_vkCreatePipelineLayout vkCreatePipelineLayout;
+    PFN_vkDestroyPipelineLayout vkDestroyPipelineLayout;
+    PFN_vkCreateGraphicsPipelines vkCreateGraphicsPipelines;
     PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR;
+    PFN_vkDestroySwapchainKHR vkDestroySwapchainKHR;
     PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR;
     PFN_vkCreateImageView vkCreateImageView;
     PFN_vkCreateFramebuffer vkCreateFramebuffer;
     PFN_vkCreateCommandPool vkCreateCommandPool;
+    PFN_vkDestroyCommandPool vkDestroyCommandPool;
     PFN_vkAllocateCommandBuffers vkAllocateCommandBuffers;
+    PFN_vkFreeCommandBuffers vkFreeCommandBuffers;
     PFN_vkCreateSemaphore vkCreateSemaphore;
+    PFN_vkDestroySemaphore vkDestroySemaphore;
+    PFN_vkWaitSemaphores vkWaitSemaphores;
+    PFN_vkGetSemaphoreCounterValue vkGetSemaphoreCounterValue;
     PFN_vkCreateFence vkCreateFence;
     PFN_vkGetDeviceQueue vkGetDeviceQueue;
     PFN_vkWaitForFences vkWaitForFences;
@@ -72,7 +88,13 @@ struct VKLogicalDevice {
     PFN_vkQueueSubmit vkQueueSubmit;
     PFN_vkQueuePresentKHR vkQueuePresentKHR;
     PFN_vkBeginCommandBuffer vkBeginCommandBuffer;
+    PFN_vkCmdBlitImage vkCmdBlitImage;
+    PFN_vkCmdPipelineBarrier vkCmdPipelineBarrier;
+    PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR;
+    PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR;
     PFN_vkCmdBeginRenderPass vkCmdBeginRenderPass;
+    PFN_vkCmdExecuteCommands vkCmdExecuteCommands;
+    PFN_vkCmdClearAttachments vkCmdClearAttachments;
     PFN_vkCmdBindPipeline vkCmdBindPipeline;
     PFN_vkCmdSetViewport vkCmdSetViewport;
     PFN_vkCmdSetScissor vkCmdSetScissor;
@@ -96,6 +118,7 @@ struct VKLogicalDevice {
     PFN_vkUnmapMemory vkUnmapMemory;
     PFN_vkCmdBindVertexBuffers vkCmdBindVertexBuffers;
     PFN_vkCreateRenderPass vkCreateRenderPass;
+    PFN_vkDestroyRenderPass vkDestroyRenderPass;
     PFN_vkDestroyBuffer vkDestroyBuffer;
     PFN_vkFreeMemory vkFreeMemory;
     PFN_vkDestroyImageView vkDestroyImageView;
@@ -105,12 +128,11 @@ struct VKLogicalDevice {
     PFN_vkCmdPushConstants vkCmdPushConstants;
 };
 
-
 struct VKGraphicsEnvironment {
-    VkInstance              vkInstance;
-    VkPhysicalDevice*       physicalDevices;
-    VKLogicalDevice*        devices;
-    VKLogicalDevice*        currentDevice;
+    VkInstance        vkInstance;
+    VkPhysicalDevice* physicalDevices;
+    VKLogicalDevice*  devices;
+    VKLogicalDevice*  currentDevice;
 
 #if defined(DEBUG)
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -142,6 +164,7 @@ struct VKGraphicsEnvironment {
     PFN_vkEnumerateDeviceLayerProperties vkEnumerateDeviceLayerProperties;
     PFN_vkEnumerateDeviceExtensionProperties vkEnumerateDeviceExtensionProperties;
     PFN_vkCreateDevice vkCreateDevice;
+    PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR;
     PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr;
 };
 
