@@ -85,7 +85,7 @@ public class WLComponentPeer implements ComponentPeer {
     // mapping of AWT cursor types to X cursor names
     // multiple variants can be specified, that will be tried in order
     private static final String[][] CURSOR_NAMES = {
-            {"default", "arrow"}, // DEFAULT_CURSOR
+            {"default", "arrow", "left_ptr", "left_arrow"}, // DEFAULT_CURSOR
             {"crosshair"}, // CROSSHAIR_CURSOR
             {"text", "xterm"}, // TEXT_CURSOR
             {"wait", "watch"}, // WAIT_CURSOR
