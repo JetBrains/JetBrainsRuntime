@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024,  JetBrains s.r.o.
+ * Copyright (c) 2024 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,8 @@ public class RandomGeneratorTest {
                         && (defaultFactory.name().compareTo(factory.name()) == 0);
             }
 
-            RandomGenerator randomGenerator = factory.create();System.out.printf("%s %s - ",
+            RandomGenerator randomGenerator = factory.create();
+            System.out.printf("%s %s - ",
                     factory.group(),
                     factory.name());
 
