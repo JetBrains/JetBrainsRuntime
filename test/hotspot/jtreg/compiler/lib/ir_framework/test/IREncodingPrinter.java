@@ -78,7 +78,9 @@ public class IREncodingPrinter {
         // AArch64
         "sha3",
         "asimd",
-        "sve"
+        "sve",
+        // Riscv64
+        "rvv"
     ));
 
     public IREncodingPrinter() {
