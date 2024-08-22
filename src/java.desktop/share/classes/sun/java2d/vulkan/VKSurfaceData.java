@@ -110,6 +110,8 @@ public abstract class VKSurfaceData extends SurfaceData
         }
     }
 
+    // TODO We don't really want to have scale there.
+    //      We need to get rid of it after WLVKSurfaceData.configure() is fixed.
     protected int scale;
     protected int width;
     protected int height;

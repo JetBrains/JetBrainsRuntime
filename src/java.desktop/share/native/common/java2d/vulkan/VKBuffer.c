@@ -25,7 +25,7 @@
  */
 
 #include <string.h>
-#include "CArrayUtil.h"
+#include "VKUtil.h"
 #include "VKBase.h"
 #include "VKBuffer.h"
 
@@ -49,6 +49,7 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
                           VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
 {
     VKBuffer* buffer = calloc(1, sizeof(VKBuffer));
+    VK_RUNTIME_ASSERT(buffer);
 
     VkBufferCreateInfo bufferInfo = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -57,7 +58,7 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
 
-    VK_CHECK(device->vkCreateBuffer(device->device, &bufferInfo, NULL, &buffer->buffer)) {
+    VK_IF_ERROR(device->vkCreateBuffer(device->device, &bufferInfo, NULL, &buffer->buffer)) {
         VKBuffer_free(device, buffer);
         return NULL;
     }
@@ -69,7 +70,7 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
 
     uint32_t memoryType;
 
-    VK_CHECK(VKBuffer_FindMemoryType(device->physicalDevice,
+    VK_IF_ERROR(VKBuffer_FindMemoryType(device->physicalDevice,
                                      memRequirements.memoryTypeBits,
                                      properties, &memoryType)) {
         VKBuffer_free(device, buffer);
@@ -82,12 +83,12 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
             .memoryTypeIndex = memoryType
     };
 
-    VK_CHECK(device->vkAllocateMemory(device->device, &allocInfo, NULL, &buffer->memory)) {
+    VK_IF_ERROR(device->vkAllocateMemory(device->device, &allocInfo, NULL, &buffer->memory)) {
         VKBuffer_free(device, buffer);
         return NULL;
     }
 
-    VK_CHECK(device->vkBindBufferMemory(device->device, buffer->buffer, buffer->memory, 0)) {
+    VK_IF_ERROR(device->vkBindBufferMemory(device->device, buffer->buffer, buffer->memory, 0)) {
         VKBuffer_free(device, buffer);
         return NULL;
     }
@@ -102,7 +103,7 @@ VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize
                                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     void* data;
-    VK_CHECK(device->vkMapMemory(device->device, buffer->memory, 0, VK_WHOLE_SIZE, 0, &data)) {
+    VK_IF_ERROR(device->vkMapMemory(device->device, buffer->memory, 0, VK_WHOLE_SIZE, 0, &data)) {
         VKBuffer_free(device, buffer);
         return NULL;
     }
@@ -117,7 +118,7 @@ VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize
     };
 
 
-    VK_CHECK(device->vkFlushMappedMemoryRanges(device->device, 1, &memoryRange)) {
+    VK_IF_ERROR(device->vkFlushMappedMemoryRanges(device->device, 1, &memoryRange)) {
         VKBuffer_free(device, buffer);
         return NULL;
     }

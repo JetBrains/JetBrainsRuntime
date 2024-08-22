@@ -22,6 +22,7 @@
 // questions.
 
 #include "CArrayUtil.h"
+#include "VKUtil.h"
 #include "VKBase.h"
 #include "VKPipelines.h"
 
@@ -38,6 +39,7 @@ VKShaders* VKPipelines_CreateShaders(VKDevice* device) {
     const VkShaderStageFlagBits frag = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     VKShaders* shaders = (VKShaders*) calloc(1, sizeof(VKShaders));
+    VK_RUNTIME_ASSERT(shaders);
     VkShaderModuleCreateInfo createInfo = { .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
 #   define SHADER_ENTRY(NAME, TYPE)                                   \
     shaders->NAME ## _ ## TYPE = (VkPipelineShaderStageCreateInfo) {  \
@@ -47,7 +49,7 @@ VKShaders* VKPipelines_CreateShaders(VKDevice* device) {
     };                                                                \
     createInfo.codeSize = sizeof(NAME ## _ ## TYPE ## _data);         \
     createInfo.pCode = NAME ## _ ## TYPE ## _data;                    \
-    VK_CHECK(device->vkCreateShaderModule(device->device, &createInfo, NULL, &shaders->NAME##_##TYPE.module)) goto fail;
+    VK_IF_ERROR(device->vkCreateShaderModule(device->device, &createInfo, NULL, &shaders->NAME##_##TYPE.module)) goto fail;
 #   include "vulkan/shader_list.h"
 #   undef SHADER_ENTRY
     return shaders;
@@ -184,12 +186,13 @@ static VkGraphicsPipelineCreateInfo VKPipelines_DefaultPipeline() {
 
 VKPipelines* VKPipelines_Create(VKDevice* device, VKShaders* shaders, VkFormat format) {
     VKPipelines* pipelines = calloc(1, sizeof(VKPipelines));
+    VK_RUNTIME_ASSERT(pipelines);
     pipelines->format = format;
 
     if (!device->dynamicRendering) {
-        VK_CHECK(VKPipelines_CreateRenderPass(device, pipelines)) goto fail;
+        VK_IF_ERROR(VKPipelines_CreateRenderPass(device, pipelines)) goto fail;
     }
-    VK_CHECK(VKPipelines_CreatePipelineLayout(device, pipelines)) goto fail;
+    VK_IF_ERROR(VKPipelines_CreatePipelineLayout(device, pipelines)) goto fail;
 
     // Setup default pipeline parameters.
     VkPipelineRenderingCreateInfoKHR renderingCreateInfo = {
@@ -248,7 +251,7 @@ VKPipelines* VKPipelines_Create(VKDevice* device, VKShaders* shaders, VkFormat f
 
     // Create pipelines.
     // TODO pipeline cache
-    VK_CHECK(device->vkCreateGraphicsPipelines(device->device, VK_NULL_HANDLE, NUM_PIPELINES,
+    VK_IF_ERROR(device->vkCreateGraphicsPipelines(device->device, VK_NULL_HANDLE, NUM_PIPELINES,
                                                createInfos, NULL, pipelines->pipelines)) goto fail;
 
     return pipelines;

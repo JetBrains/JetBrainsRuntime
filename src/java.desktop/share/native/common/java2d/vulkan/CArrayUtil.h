@@ -2,6 +2,7 @@
 #define C_ARRAY_UTIL_H
 
 #include <malloc.h>
+#include "VKUtil.h"
 
 #define ARRAY_CAPACITY_MULT 2
 #define ARRAY_DEFAULT_CAPACITY 10
@@ -24,7 +25,7 @@ typedef struct {
 void* CARR_ring_buffer_realloc(CARR_ring_buffer_t* buf, size_t elem_size, size_t new_capacity);
 
 /**
- * Allocate array
+ * Allocate array. Returns NULL on allocation failure.
  * @param T type of elements
  * @param CAPACITY capacity of the array
  */
@@ -66,8 +67,8 @@ if ((P) != NULL) {         \
  * @param P pointer to the first data element of the array
  * @param F function to apply
  */
-#define ARRAY_APPLY(P, F) do {                                     \
-    for (uint32_t _i = 0; _i < ARRAY_SIZE(P); _i++) F(&((P)[_i])); \
+#define ARRAY_APPLY(P, F) do {                                   \
+    for (size_t _i = 0; _i < ARRAY_SIZE(P); _i++) F(&((P)[_i])); \
 } while(0)
 
 /**
@@ -75,8 +76,8 @@ if ((P) != NULL) {         \
  * @param P pointer to the first data element of the array
  * @param F function to apply
  */
-#define ARRAY_APPLY_LEADING(P, F, ...) do {                                     \
-    for (uint32_t _i = 0; _i < ARRAY_SIZE(P); _i++) F(&((P)[_i]), __VA_ARGS__); \
+#define ARRAY_APPLY_LEADING(P, F, ...) do {                                   \
+    for (size_t _i = 0; _i < ARRAY_SIZE(P); _i++) F(&((P)[_i]), __VA_ARGS__); \
 } while(0)
 
 /**
@@ -84,16 +85,17 @@ if ((P) != NULL) {         \
  * @param P pointer to the first data element of the array
  * @param F function to apply
  */
-#define ARRAY_APPLY_TRAILING(P, F, ...) do {                                    \
-    for (uint32_t _i = 0; _i < ARRAY_SIZE(P); _i++) F(__VA_ARGS__, &((P)[_i])); \
+#define ARRAY_APPLY_TRAILING(P, F, ...) do {                                  \
+    for (size_t _i = 0; _i < ARRAY_SIZE(P); _i++) F(__VA_ARGS__, &((P)[_i])); \
 } while(0)
 
 /**
- * Ensure array capacity. Implicitly initializes when array is null
+ * Ensure array capacity. Implicitly initializes when array is NULL.
+ * On allocation failure, array is unchanged.
  * @param P pointer to the first data element of the array
  * @param CAPACITY required capacity of the array
  */
-#define ARRAY_ENSURE_CAPACITY(P, CAPACITY) do {                                \
+#define ARRAY_TRY_ENSURE_CAPACITY(P, CAPACITY) do {                            \
     if ((P) == NULL) {                                                         \
          if ((CAPACITY) > 0) (P) = CARR_array_alloc(sizeof((P)[0]), CAPACITY); \
     } else if (ARRAY_CAPACITY(P) < (CAPACITY)) {                               \
@@ -102,7 +104,19 @@ if ((P) != NULL) {         \
 } while(0)
 
 /**
- * Shrink capacity of the array to its size
+ * Ensure array capacity. Implicitly initializes when array is NULL.
+ * On allocation failure, VK_UNHANDLED_ERROR is called.
+ * @param P pointer to the first data element of the array
+ * @param CAPACITY required capacity of the array
+ */
+#define ARRAY_ENSURE_CAPACITY(P, CAPACITY) do {               \
+    ARRAY_TRY_ENSURE_CAPACITY(P, CAPACITY);                   \
+    if (ARRAY_CAPACITY(P) < (CAPACITY)) VK_UNHANDLED_ERROR(); \
+} while(0)
+
+/**
+ * Shrink capacity of the array to its size.
+ * On allocation failure, array is unchanged.
  * @param P pointer to the first data element of the array
  */
 #define ARRAY_SHRINK_TO_FIT(P) do {                                          \
@@ -111,20 +125,34 @@ if ((P) != NULL) {         \
     }                                                                        \
 } while(0)
 
-/**
- * Resize an array. Implicitly initializes when array is null
- * @param P pointer to the first data element of the array
- * @param SIZE required size of the array
- */
-#define ARRAY_RESIZE(P, SIZE) do {      \
-    if ((P) != NULL || (SIZE) > 0) {    \
-        ARRAY_ENSURE_CAPACITY(P, SIZE); \
-        (ARRAY_T(P))->size = SIZE;      \
-    }                                   \
+#define ARRAY_RESIZE_IMPL(P, SIZE, ...) do {                   \
+    if ((P) != NULL || (SIZE) > 0) {                           \
+        ARRAY_ENSURE_CAPACITY(P, SIZE);                        \
+        if ((P) != NULL && (ARRAY_T(P))->capacity >= (SIZE)) { \
+            (ARRAY_T(P))->size = (SIZE);                       \
+        } __VA_ARGS__                                          \
+    }                                                          \
 } while(0)
 
 /**
- * Add element to the end of the array. Implicitly initializes when array is null
+ * Resize an array. Implicitly initializes when array is NULL.
+ * On allocation failure, array is unchanged.
+ * @param P pointer to the first data element of the array
+ * @param SIZE required size of the array
+ */
+#define ARRAY_TRY_RESIZE(P, SIZE) ARRAY_RESIZE_IMPL(P, SIZE, )
+
+/**
+ * Resize an array. Implicitly initializes when array is NULL.
+ * On allocation failure, VK_UNHANDLED_ERROR is called.
+ * @param P pointer to the first data element of the array
+ * @param SIZE required size of the array
+ */
+#define ARRAY_RESIZE(P, SIZE) ARRAY_RESIZE_IMPL(P, SIZE, else if ((SIZE) > 0) VK_UNHANDLED_ERROR();)
+
+/**
+ * Add element to the end of the array. Implicitly initializes when array is NULL.
+ * On allocation failure, VK_UNHANDLED_ERROR is called.
  * @param P pointer to the first data element of the array
  */
 #define ARRAY_PUSH_BACK(P, D) do {                                                                \
@@ -133,6 +161,7 @@ if ((P) != NULL) {         \
     } else if (ARRAY_SIZE(P) >= ARRAY_CAPACITY(P)) {                                              \
          (P) = CARR_array_realloc(ARRAY_T(P), sizeof((P)[0]), ARRAY_SIZE(P)*ARRAY_CAPACITY_MULT); \
     }                                                                                             \
+    if (ARRAY_SIZE(P) >= ARRAY_CAPACITY(P)) VK_UNHANDLED_ERROR();                                 \
     *((P) + ARRAY_SIZE(P)) = (D);                                                                 \
     (ARRAY_T(P))->size++;                                                                         \
 } while(0)
@@ -142,7 +171,8 @@ if ((P) != NULL) {         \
 #define RING_BUFFER_T(P) ((CARR_ring_buffer_t *)((P) == NULL ? NULL : (char*)(P) - offsetof(CARR_ring_buffer_t, data)))
 
 /**
- * Add element to the end of the ring buffer. Implicitly initializes when buffer is null
+ * Add element to the end of the ring buffer. Implicitly initializes when buffer is NULL.
+ * On allocation failure, VK_UNHANDLED_ERROR is called.
  * @param P pointer to the first data element of the buffer
  */
 #define RING_BUFFER_PUSH(P, D) RING_BUFFER_PUSH_CUSTOM(P, (P)[tail] = (D);)
@@ -150,6 +180,7 @@ if ((P) != NULL) {         \
     size_t head, tail, new_tail;                                                                                            \
     if ((P) == NULL) {                                                                                                      \
         (P) = CARR_ring_buffer_realloc(NULL, sizeof((P)[0]), ARRAY_DEFAULT_CAPACITY);                                       \
+        if ((P) == NULL) VK_UNHANDLED_ERROR();                                                                              \
         head = tail = 0;                                                                                                    \
         new_tail = 1;                                                                                                       \
     } else {                                                                                                                \
@@ -158,6 +189,7 @@ if ((P) != NULL) {         \
         new_tail = (tail + 1) % RING_BUFFER_T(P)->capacity;                                                                 \
         if (new_tail == head) {                                                                                             \
             (P) = CARR_ring_buffer_realloc(RING_BUFFER_T(P), sizeof(P[0]), RING_BUFFER_T(P)->capacity*ARRAY_CAPACITY_MULT); \
+            if ((P) == NULL) VK_UNHANDLED_ERROR();                                                                          \
             head = 0;                                                                                                       \
             tail = RING_BUFFER_T(P)->tail;                                                                                  \
             new_tail = RING_BUFFER_T(P)->tail + 1;                                                                          \

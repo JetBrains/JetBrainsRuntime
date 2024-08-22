@@ -27,6 +27,7 @@
 #include <jni_util.h>
 #include <Trace.h>
 #include "VKBase.h"
+#include "VKUtil.h"
 #include "VKSurfaceData.h"
 
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_initOps(JNIEnv *env, jobject vksd, jint backgroundRGB) {
@@ -47,7 +48,6 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_assignWlSurface(JN
     if (sd == NULL) {
         J2dRlsTraceLn1(J2D_TRACE_ERROR, "WLVKSurfaceData_assignWlSurface(%p): VKWinSDOps is NULL", vksd);
         VK_UNHANDLED_ERROR();
-        return;
     }
 
     if (sd->surface != VK_NULL_HANDLE) {
@@ -64,9 +64,8 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_assignWlSurface(JN
                 .display = ge->waylandDisplay,
                 .surface = wl_surface
         };
-        VK_CHECK(ge->vkCreateWaylandSurfaceKHR(ge->vkInstance, &surfaceCreateInfo, NULL, &sd->surface)) {
+        VK_IF_ERROR(ge->vkCreateWaylandSurfaceKHR(ge->vkInstance, &surfaceCreateInfo, NULL, &sd->surface)) {
             VK_UNHANDLED_ERROR();
-            return;
         }
         J2dRlsTraceLn1(J2D_TRACE_INFO, "WLVKSurfaceData_assignWlSurface(%p): surface created", vksd);
         // Swapchain will be created later after CONFIGURE_SURFACE.

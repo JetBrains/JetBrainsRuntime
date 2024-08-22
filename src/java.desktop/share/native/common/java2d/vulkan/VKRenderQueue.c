@@ -53,7 +53,7 @@
 /*
  * Increments a pointer (buf) by the given number of bytes.
  */
-#define SKIP_BYTES(buf, numbytes) (buf) = ((unsigned char*)buf) + (numbytes)
+#define SKIP_BYTES(buf, numbytes) (buf) = ((unsigned char*)(buf)) + (numbytes)
 
 /*
  * Extracts a value at the given offset from the provided packed value.
@@ -91,6 +91,8 @@
 #define OFFSET_XFORM   sun_java2d_vulkan_VKBlitLoops_OFFSET_XFORM
 #define OFFSET_ISOBLIT sun_java2d_vulkan_VKBlitLoops_OFFSET_ISOBLIT
 
+// Rendering context is only accessed from VKRenderQueue_flushBuffer,
+// which is only called from queue flusher thread, no need for synchronization.
 static VKRenderingContext context = {};
 
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer

@@ -26,8 +26,8 @@
 
 #ifndef HEADLESS
 
-#include <Trace.h>
 #include "CArrayUtil.h"
+#include "VKUtil.h"
 #include "VKBase.h"
 #include "VKSurfaceData.h"
 #include "VKImage.h"
@@ -115,16 +115,16 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     VkPhysicalDevice physicalDevice = device->physicalDevice;
 
     VkSurfaceCapabilitiesKHR capabilities;
-    VK_CHECK(ge->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, vkwinsdo->surface, &capabilities)) {
+    VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, vkwinsdo->surface, &capabilities)) {
         return VK_FALSE;
     }
 
     uint32_t formatCount;
-    VK_CHECK(ge->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, NULL)) {
+    VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, NULL)) {
         return VK_FALSE;
     }
     VkSurfaceFormatKHR formats[formatCount];
-    VK_CHECK(ge->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, formats)) {
+    VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, formats)) {
         return VK_FALSE;
     }
 
@@ -155,11 +155,11 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
 
     // TODO inspect and choose present mode
     uint32_t presentModeCount;
-    VK_CHECK(ge->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, NULL)) {
+    VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, NULL)) {
         return VK_FALSE;
     }
     VkPresentModeKHR presentModes[presentModeCount];
-    VK_CHECK(ge->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, presentModes)) {
+    VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, presentModes)) {
         VK_UNHANDLED_ERROR();
     }
 
@@ -188,7 +188,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
             .oldSwapchain = vkwinsdo->swapchain
     };
 
-    VK_CHECK(device->vkCreateSwapchainKHR(device->device, &createInfoKhr, NULL, &swapchain)) {
+    VK_IF_ERROR(device->vkCreateSwapchainKHR(device->device, &createInfoKhr, NULL, &swapchain)) {
         return VK_FALSE;
     }
     J2dRlsTraceLn1(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): swapchain created", vkwinsdo);
@@ -204,11 +204,11 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     vkwinsdo->swapchainExtent = vkwinsdo->vksdOps.image->extent;
 
     uint32_t swapchainImageCount;
-    VK_CHECK(device->vkGetSwapchainImagesKHR(device->device, vkwinsdo->swapchain, &swapchainImageCount, NULL)) {
+    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->device, vkwinsdo->swapchain, &swapchainImageCount, NULL)) {
         return VK_FALSE;
     }
     ARRAY_RESIZE(vkwinsdo->swapchainImages, swapchainImageCount);
-    VK_CHECK(device->vkGetSwapchainImagesKHR(device->device, vkwinsdo->swapchain,
+    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->device, vkwinsdo->swapchain,
                                              &swapchainImageCount, vkwinsdo->swapchainImages)) {
         return VK_FALSE;
     }

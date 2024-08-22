@@ -27,8 +27,8 @@
 #ifndef HEADLESS
 
 #include <assert.h>
-#include <Trace.h>
 #include "CArrayUtil.h"
+#include "VKUtil.h"
 #include "VKBase.h"
 #include "VKBuffer.h"
 #include "VKImage.h"
@@ -123,7 +123,7 @@ static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
                 .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
                 .flags = 0
         };
-        VK_CHECK(device->vkCreateSemaphore(device->device, &createInfo, NULL, &semaphore)) return VK_NULL_HANDLE;
+        VK_IF_ERROR(device->vkCreateSemaphore(device->device, &createInfo, NULL, &semaphore)) return VK_NULL_HANDLE;
     }
     PUSH_PENDING(renderer, renderer->pendingSemaphores, semaphore);
     return semaphore;
@@ -139,7 +139,7 @@ static void VKRenderer_Wait(VKRenderer* renderer, uint64_t timestamp) {
             .pSemaphores = &renderer->timelineSemaphore,
             .pValues = &timestamp
     };
-    VK_CHECK(device->vkWaitSemaphores(device->device, &semaphoreWaitInfo, -1)) {
+    VK_IF_ERROR(device->vkWaitSemaphores(device->device, &semaphoreWaitInfo, -1)) {
     } else {
         // On success, update last known timestamp.
         renderer->readTimestamp = timestamp;
@@ -154,6 +154,7 @@ void VKRenderer_Sync(VKRenderer* renderer) {
 
 VKRenderer* VKRenderer_Create(VKDevice* device) {
     VKRenderer* renderer = calloc(1, sizeof(VKRenderer));
+    VK_RUNTIME_ASSERT(renderer);
 
     renderer->shaders = VKPipelines_CreateShaders(device);
     if (renderer->shaders == NULL) {
@@ -169,7 +170,7 @@ VKRenderer* VKRenderer_Create(VKDevice* device) {
             .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
             .queueFamilyIndex = device->queueFamily
     };
-    VK_CHECK(device->vkCreateCommandPool(device->device, &poolInfo, NULL, &renderer->commandPool)) {
+    VK_IF_ERROR(device->vkCreateCommandPool(device->device, &poolInfo, NULL, &renderer->commandPool)) {
         VKRenderer_Destroy(renderer);
         return NULL;
     }
@@ -185,7 +186,7 @@ VKRenderer* VKRenderer_Create(VKDevice* device) {
             .pNext = &semaphoreTypeCreateInfo,
             .flags = 0
     };
-    VK_CHECK(device->vkCreateSemaphore(device->device, &semaphoreCreateInfo, NULL, &renderer->timelineSemaphore)) {
+    VK_IF_ERROR(device->vkCreateSemaphore(device->device, &semaphoreCreateInfo, NULL, &renderer->timelineSemaphore)) {
         VKRenderer_Destroy(renderer);
         return NULL;
     }
@@ -249,7 +250,7 @@ static VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
                 .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                 .commandBufferCount = 1
         };
-        VK_CHECK(renderer->device->vkAllocateCommandBuffers(renderer->device->device, &allocInfo, &commandBuffer)) {
+        VK_IF_ERROR(renderer->device->vkAllocateCommandBuffers(renderer->device->device, &allocInfo, &commandBuffer)) {
             return VK_NULL_HANDLE;
         }
     }
@@ -257,7 +258,7 @@ static VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
     };
-    VK_CHECK(device->vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo)) {
+    VK_IF_ERROR(device->vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo)) {
         renderer->device->vkFreeCommandBuffers(renderer->device->device, renderer->commandPool, 1, &commandBuffer);
         return VK_NULL_HANDLE;
     }
@@ -274,7 +275,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
     // Submit pending command buffer and semaphores.
     // Even if there are no commands to be sent, we can submit pending semaphores for presentation synchronization.
     if (renderer->commandBuffer != VK_NULL_HANDLE) {
-        VK_CHECK(device->vkEndCommandBuffer(renderer->commandBuffer)) {
+        VK_IF_ERROR(device->vkEndCommandBuffer(renderer->commandBuffer)) {
             VK_UNHANDLED_ERROR();
             return; // TODO what to do?
         }
@@ -307,7 +308,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
             .signalSemaphoreCount = pendingPresentations > 0 ? 2 : 1,
             .pSignalSemaphores = semaphores
     };
-    VK_CHECK(device->vkQueueSubmit(device->queue, 1, &submitInfo, VK_NULL_HANDLE)) {
+    VK_IF_ERROR(device->vkQueueSubmit(device->queue, 1, &submitInfo, VK_NULL_HANDLE)) {
         VK_UNHANDLED_ERROR();
         return; // TODO what to do?
     }
@@ -331,7 +332,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
         if (presentResult != VK_SUCCESS) {
             // TODO check individual result codes in renderer->pendingPresentation.results
             // TODO possible suboptimal conditions
-            VK_CHECK(presentResult) {}
+            VK_IF_ERROR(presentResult) {}
         }
         ARRAY_RESIZE(renderer->pendingPresentation.swapchains, 0);
         ARRAY_RESIZE(renderer->pendingPresentation.indices, 0);
@@ -392,7 +393,7 @@ static void VKRenderer_DiscardRenderPass(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     if (surface->renderPass->pendingCommands) {
         assert(surface->device != NULL);
-        VK_CHECK(surface->device->vkResetCommandBuffer(surface->renderPass->commandBuffer, 0)) {
+        VK_IF_ERROR(surface->device->vkResetCommandBuffer(surface->renderPass->commandBuffer, 0)) {
             VK_UNHANDLED_ERROR(); // TODO what to do?
         }
         surface->renderPass->pendingCommands = VK_FALSE;
@@ -440,6 +441,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
     VKDevice* device = surface->device;
     VKRenderer* renderer = device->renderer;
     VKRenderPass* renderPass = surface->renderPass = malloc(sizeof(VKRenderPass));
+    VK_RUNTIME_ASSERT(renderPass);
     (*renderPass) = (VKRenderPass) {
             .pendingCommands = VK_FALSE,
             .pendingClear = VK_TRUE, // Clear the surface by default
@@ -475,7 +477,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
                 .height = surface->image->extent.height,
                 .layers = 1
         };
-        VK_CHECK(device->vkCreateFramebuffer(device->device, &framebufferCreateInfo, NULL,
+        VK_IF_ERROR(device->vkCreateFramebuffer(device->device, &framebufferCreateInfo, NULL,
                                              &renderPass->framebuffer)) VK_UNHANDLED_ERROR();
     }
 
@@ -504,7 +506,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
                     .level = VK_COMMAND_BUFFER_LEVEL_SECONDARY,
                     .commandBufferCount = 1
             };
-            VK_CHECK(renderer->device->vkAllocateCommandBuffers(renderer->device->device, &allocInfo, &commandBuffer)) {
+            VK_IF_ERROR(renderer->device->vkAllocateCommandBuffers(renderer->device->device, &allocInfo, &commandBuffer)) {
                 VK_UNHANDLED_ERROR();
                 return;
             }
@@ -536,7 +538,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
             .pInheritanceInfo = &inheritanceInfo
     };
-    VK_CHECK(device->vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo)) {
+    VK_IF_ERROR(device->vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo)) {
         renderer->device->vkFreeCommandBuffers(renderer->device->device, renderer->commandPool, 1, &commandBuffer);
         VK_UNHANDLED_ERROR();
         return;
@@ -639,7 +641,7 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     // Execute render pass commands.
     if (surface->renderPass->pendingCommands) {
         surface->renderPass->pendingCommands = VK_FALSE;
-        VK_CHECK(device->vkEndCommandBuffer(surface->renderPass->commandBuffer)) {
+        VK_IF_ERROR(device->vkEndCommandBuffer(surface->renderPass->commandBuffer)) {
             VK_UNHANDLED_ERROR();
             return; // TODO what to do?
         }
@@ -697,7 +699,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
                                                                     acquireSemaphore, VK_NULL_HANDLE, &imageIndex);
         if (acquireImageResult != VK_SUCCESS) {
             // TODO possible suboptimal conditions
-            VK_CHECK(acquireImageResult) {}
+            VK_IF_ERROR(acquireImageResult) {}
         }
 
         // Insert barriers to prepare both main (src) and swapchain (dst) images for blit.

@@ -29,24 +29,6 @@
 #include "VKTypes.h"
 #include "VKTexturePool.h"
 
-// Useful logging & result checking macros
-VkBool32 logVulkanResultError(const char* string, VkResult result);
-void unhandledVulkanError(const char* message);
-inline VkBool32 checkVulkanError(VkResult result, const char* errorMessage) {
-    if (result != VK_SUCCESS) {
-        logVulkanResultError(errorMessage, result);
-        return VK_TRUE;
-    } else return VK_FALSE;
-}
-// Hack for converting __LINE__ to string taken from here: https://stackoverflow.com/a/19343239
-#define TO_STRING_HACK(T) #T
-#define TO_STRING(T) TO_STRING_HACK(T)
-#define LOCATION __FILE__ ": " TO_STRING(__LINE__)
-
-#define VK_CHECK(EXPR) if (checkVulkanError(EXPR, #EXPR " == %s\n    at " LOCATION))
-#define VK_UNHANDLED_ERROR() unhandledVulkanError("Unhandled Vulkan error\n    at " LOCATION)
-
-
 struct VKDevice {
     VkDevice         device;
     VkPhysicalDevice physicalDevice;

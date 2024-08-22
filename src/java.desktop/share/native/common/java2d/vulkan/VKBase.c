@@ -25,13 +25,8 @@
  */
 
 #include <dlfcn.h>
-#include <signal.h>
-#include <string.h>
-#include <Trace.h>
-
-#include "jlong_md.h"
-#include "jvm_md.h"
 #include "CArrayUtil.h"
+#include "VKUtil.h"
 #include "VKBase.h"
 #include "VKRenderer.h"
 #include "VKTexturePool.h"
@@ -53,67 +48,6 @@ static void* pVulkanLib = NULL;
         return JNI_FALSE;                                                                      \
     }                                                                                          \
 } while (0)
-
-VkBool32 logVulkanResultError(const char* string, VkResult result) {
-    const char* r;
-    switch (result) {
-        case VK_SUCCESS: r = "VK_SUCCESS"; break;
-        case VK_NOT_READY: r = "VK_NOT_READY"; break;
-        case VK_TIMEOUT: r = "VK_TIMEOUT"; break;
-        case VK_EVENT_SET: r = "VK_EVENT_SET"; break;
-        case VK_EVENT_RESET: r = "VK_EVENT_RESET"; break;
-        case VK_INCOMPLETE: r = "VK_INCOMPLETE"; break;
-        case VK_ERROR_OUT_OF_HOST_MEMORY: r = "VK_ERROR_OUT_OF_HOST_MEMORY"; break;
-        case VK_ERROR_OUT_OF_DEVICE_MEMORY: r = "VK_ERROR_OUT_OF_DEVICE_MEMORY"; break;
-        case VK_ERROR_INITIALIZATION_FAILED: r = "VK_ERROR_INITIALIZATION_FAILED"; break;
-        case VK_ERROR_DEVICE_LOST: r = "VK_ERROR_DEVICE_LOST"; break;
-        case VK_ERROR_MEMORY_MAP_FAILED: r = "VK_ERROR_MEMORY_MAP_FAILED"; break;
-        case VK_ERROR_LAYER_NOT_PRESENT: r = "VK_ERROR_LAYER_NOT_PRESENT"; break;
-        case VK_ERROR_EXTENSION_NOT_PRESENT: r = "VK_ERROR_EXTENSION_NOT_PRESENT"; break;
-        case VK_ERROR_FEATURE_NOT_PRESENT: r = "VK_ERROR_FEATURE_NOT_PRESENT"; break;
-        case VK_ERROR_INCOMPATIBLE_DRIVER: r = "VK_ERROR_INCOMPATIBLE_DRIVER"; break;
-        case VK_ERROR_TOO_MANY_OBJECTS: r = "VK_ERROR_TOO_MANY_OBJECTS"; break;
-        case VK_ERROR_FORMAT_NOT_SUPPORTED: r = "VK_ERROR_FORMAT_NOT_SUPPORTED"; break;
-        case VK_ERROR_FRAGMENTED_POOL: r = "VK_ERROR_FRAGMENTED_POOL"; break;
-        case VK_ERROR_UNKNOWN: r = "VK_ERROR_UNKNOWN"; break;
-        case VK_ERROR_OUT_OF_POOL_MEMORY: r = "VK_ERROR_OUT_OF_POOL_MEMORY"; break;
-        case VK_ERROR_INVALID_EXTERNAL_HANDLE: r = "VK_ERROR_INVALID_EXTERNAL_HANDLE"; break;
-        case VK_ERROR_FRAGMENTATION: r = "VK_ERROR_FRAGMENTATION"; break;
-        case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS: r = "VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS"; break;
-        case VK_PIPELINE_COMPILE_REQUIRED: r = "VK_PIPELINE_COMPILE_REQUIRED"; break;
-        case VK_ERROR_SURFACE_LOST_KHR: r = "VK_ERROR_SURFACE_LOST_KHR"; break;
-        case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR: r = "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR"; break;
-        case VK_SUBOPTIMAL_KHR: r = "VK_SUBOPTIMAL_KHR"; break;
-        case VK_ERROR_OUT_OF_DATE_KHR: r = "VK_ERROR_OUT_OF_DATE_KHR"; break;
-        case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR: r = "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR"; break;
-        case VK_ERROR_VALIDATION_FAILED_EXT: r = "VK_ERROR_VALIDATION_FAILED_EXT"; break;
-        case VK_ERROR_INVALID_SHADER_NV: r = "VK_ERROR_INVALID_SHADER_NV"; break;
-        case VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR: r = "VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR"; break;
-        case VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR: r = "VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR"; break;
-        case VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR: r = "VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR"; break;
-        case VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR: r = "VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR"; break;
-        case VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR: r = "VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR"; break;
-        case VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR: r = "VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR"; break;
-        case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: r = "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT"; break;
-        case VK_ERROR_NOT_PERMITTED_KHR: r = "VK_ERROR_NOT_PERMITTED_KHR"; break;
-        case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT: r = "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT"; break;
-        case VK_THREAD_IDLE_KHR: r = "VK_THREAD_IDLE_KHR"; break;
-        case VK_THREAD_DONE_KHR: r = "VK_THREAD_DONE_KHR"; break;
-        case VK_OPERATION_DEFERRED_KHR: r = "VK_OPERATION_DEFERRED_KHR"; break;
-        case VK_OPERATION_NOT_DEFERRED_KHR: r = "VK_OPERATION_NOT_DEFERRED_KHR"; break;
-        case VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR: r = "VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR"; break;
-        case VK_ERROR_COMPRESSION_EXHAUSTED_EXT: r = "VK_ERROR_COMPRESSION_EXHAUSTED_EXT"; break;
-        case VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT: r = "VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT"; break;
-        default: r = "<UNKNOWN>"; break;
-    }
-    J2dRlsTraceLn1(J2D_TRACE_ERROR, string, r)
-    return VK_TRUE;
-}
-
-void unhandledVulkanError(const char* message) {
-    J2dRlsTraceLn(J2D_TRACE_ERROR, message)
-    raise(SIGABRT);
-}
 
 static void vulkanLibClose() {
     if (pVulkanLib != NULL) {
@@ -212,7 +146,7 @@ static VkBool32 debugCallback(
     J2dRlsTraceLn(level, pCallbackData->pMessage);
 
     if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-        raise(SIGABRT);
+        VK_FATAL_ERROR("Unhandled Vulkan validation error");
     }
     return VK_FALSE;
 }
@@ -230,7 +164,7 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
 
     uint32_t apiVersion = 0;
 
-    VK_CHECK(geInstance->vkEnumerateInstanceVersion(&apiVersion)) return JNI_FALSE;
+    VK_IF_ERROR(geInstance->vkEnumerateInstanceVersion(&apiVersion)) return JNI_FALSE;
 
     J2dRlsTraceLn3(J2D_TRACE_INFO, "Vulkan: Available (%d.%d.%d)",
                  VK_API_VERSION_MAJOR(apiVersion),
@@ -247,14 +181,14 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
 
     uint32_t extensionsCount;
     // Get the number of extensions and layers
-    VK_CHECK(geInstance->vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, NULL)) return JNI_FALSE;
+    VK_IF_ERROR(geInstance->vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, NULL)) return JNI_FALSE;
     VkExtensionProperties extensions[extensionsCount];
-    VK_CHECK(geInstance->vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, extensions)) return JNI_FALSE;
+    VK_IF_ERROR(geInstance->vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, extensions)) return JNI_FALSE;
 
     uint32_t layersCount;
-    VK_CHECK(geInstance->vkEnumerateInstanceLayerProperties(&layersCount, NULL)) return JNI_FALSE;
+    VK_IF_ERROR(geInstance->vkEnumerateInstanceLayerProperties(&layersCount, NULL)) return JNI_FALSE;
     VkLayerProperties layers[layersCount];
-    VK_CHECK(geInstance->vkEnumerateInstanceLayerProperties(&layersCount, layers)) return JNI_FALSE;
+    VK_IF_ERROR(geInstance->vkEnumerateInstanceLayerProperties(&layersCount, layers)) return JNI_FALSE;
 
     J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported instance layers:")
     for (uint32_t i = 0; i < layersCount; i++) {
@@ -354,7 +288,7 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
             .ppEnabledExtensionNames = (const char *const *) enabledExtensions
     };
 
-    VK_CHECK(geInstance->vkCreateInstance(&instanceCreateInfo, NULL, &geInstance->vkInstance)) {
+    VK_IF_ERROR(geInstance->vkCreateInstance(&instanceCreateInfo, NULL, &geInstance->vkInstance)) {
         ARRAY_FREE(enabledLayers);
         ARRAY_FREE(enabledExtensions);
         return JNI_FALSE;
@@ -398,7 +332,7 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
                                    VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
                 .pfnUserCallback = &debugCallback
         };
-        VK_CHECK(geInstance->vkCreateDebugUtilsMessengerEXT(geInstance->vkInstance, &debugUtilsMessengerCreateInfo,
+        VK_IF_ERROR(geInstance->vkCreateDebugUtilsMessengerEXT(geInstance->vkInstance, &debugUtilsMessengerCreateInfo,
                                                             NULL, &geInstance->debugMessenger)) {}
     }
 
@@ -409,7 +343,7 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
 
 static jboolean VK_FindDevices() {
     uint32_t physicalDevicesCount;
-    VK_CHECK(geInstance->vkEnumeratePhysicalDevices(geInstance->vkInstance,
+    VK_IF_ERROR(geInstance->vkEnumeratePhysicalDevices(geInstance->vkInstance,
                                                     &physicalDevicesCount, NULL)) return JNI_FALSE;
 
     if (physicalDevicesCount == 0) {
@@ -421,7 +355,7 @@ static jboolean VK_FindDevices() {
 
     ARRAY_RESIZE(geInstance->physicalDevices, physicalDevicesCount);
 
-    VK_CHECK(geInstance->vkEnumeratePhysicalDevices(geInstance->vkInstance, &physicalDevicesCount,
+    VK_IF_ERROR(geInstance->vkEnumeratePhysicalDevices(geInstance->vkInstance, &physicalDevicesCount,
                                                     geInstance->physicalDevices)) return JNI_FALSE;
 
     ARRAY_ENSURE_CAPACITY(geInstance->devices, physicalDevicesCount);
@@ -501,10 +435,10 @@ static jboolean VK_FindDevices() {
         }
 
         uint32_t layerCount;
-        VK_CHECK(geInstance->vkEnumerateDeviceLayerProperties(geInstance->physicalDevices[i],
+        VK_IF_ERROR(geInstance->vkEnumerateDeviceLayerProperties(geInstance->physicalDevices[i],
                                                               &layerCount, NULL)) continue;
         VkLayerProperties layers[layerCount];
-        VK_CHECK(geInstance->vkEnumerateDeviceLayerProperties(geInstance->physicalDevices[i],
+        VK_IF_ERROR(geInstance->vkEnumerateDeviceLayerProperties(geInstance->physicalDevices[i],
                                                               &layerCount, layers)) continue;
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device layers:")
         for (uint32_t j = 0; j < layerCount; j++) {
@@ -512,10 +446,10 @@ static jboolean VK_FindDevices() {
         }
 
         uint32_t extensionCount;
-        VK_CHECK(geInstance->vkEnumerateDeviceExtensionProperties(geInstance->physicalDevices[i],
+        VK_IF_ERROR(geInstance->vkEnumerateDeviceExtensionProperties(geInstance->physicalDevices[i],
                                                                   NULL, &extensionCount, NULL)) continue;
         VkExtensionProperties extensions[extensionCount];
-        VK_CHECK(geInstance->vkEnumerateDeviceExtensionProperties(geInstance->physicalDevices[i],
+        VK_IF_ERROR(geInstance->vkEnumerateDeviceExtensionProperties(geInstance->physicalDevices[i],
                                                                   NULL, &extensionCount, extensions)) continue;
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device extensions:")
         VkBool32 hasSwapChain = VK_FALSE, hasDynamicRendering = VK_FALSE;
@@ -630,7 +564,7 @@ static jboolean VK_InitDevice(VKDevice* device) {
         .pEnabledFeatures = &features10
     };
 
-    VK_CHECK(geInstance->vkCreateDevice(device->physicalDevice, &createInfo, NULL, &device->device)) {
+    VK_IF_ERROR(geInstance->vkCreateDevice(device->physicalDevice, &createInfo, NULL, &device->device)) {
         J2dRlsTraceLn1(J2D_TRACE_ERROR, "Vulkan: Cannot create device: %s", device->name)
         return JNI_FALSE;
     }

@@ -24,8 +24,7 @@
  * questions.
  */
 
-#include <Trace.h>
-#include "CArrayUtil.h"
+#include "VKUtil.h"
 #include "VKBase.h"
 #include "VKBuffer.h"
 #include "VKImage.h"
@@ -44,7 +43,7 @@ VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
             .subresourceRange.layerCount = 1,
     };
 
-    VK_CHECK(device->vkCreateImageView(device->device, &viewInfo, NULL, &image->view)) {
+    VK_IF_ERROR(device->vkCreateImageView(device->device, &viewInfo, NULL, &image->view)) {
         return VK_FALSE;
     }
     return VK_TRUE;
@@ -57,11 +56,7 @@ VKImage* VKImage_Create(VKDevice* device,
                         VkMemoryPropertyFlags properties)
 {
     VKImage* image = calloc(1, sizeof(VKImage));
-
-    if (!image) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot allocate data for image")
-        return NULL;
-    }
+    VK_RUNTIME_ASSERT(image);
 
     image->format = format;
     image->extent = extent;
@@ -82,7 +77,7 @@ VKImage* VKImage_Create(VKDevice* device,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
 
-    VK_CHECK(device->vkCreateImage(device->device, &imageInfo, NULL, &image->image)) {
+    VK_IF_ERROR(device->vkCreateImage(device->device, &imageInfo, NULL, &image->image)) {
         VKImage_free(device, image);
         return NULL;
     }
@@ -91,7 +86,7 @@ VKImage* VKImage_Create(VKDevice* device,
     device->vkGetImageMemoryRequirements(device->device, image->image, &memRequirements);
 
     uint32_t memoryType;
-    VK_CHECK(VKBuffer_FindMemoryType(device->physicalDevice,
+    VK_IF_ERROR(VKBuffer_FindMemoryType(device->physicalDevice,
                                 memRequirements.memoryTypeBits,
                                 properties, &memoryType))
     {
@@ -105,12 +100,12 @@ VKImage* VKImage_Create(VKDevice* device,
             .memoryTypeIndex = memoryType
     };
 
-    VK_CHECK(device->vkAllocateMemory(device->device, &allocInfo, NULL, &image->memory)) {
+    VK_IF_ERROR(device->vkAllocateMemory(device->device, &allocInfo, NULL, &image->memory)) {
         VKImage_free(device, image);
         return NULL;
     }
 
-    VK_CHECK(device->vkBindImageMemory(device->device, image->image, image->memory, 0)) {
+    VK_IF_ERROR(device->vkBindImageMemory(device->device, image->image, image->memory, 0)) {
         VKImage_free(device, image);
         return NULL;
     }
