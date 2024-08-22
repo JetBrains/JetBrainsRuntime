@@ -32,7 +32,8 @@
 typedef enum {
     PIPELINE_FILL_COLOR = 0,
     PIPELINE_DRAW_COLOR = 1,
-    NUM_PIPELINES = 2
+    NUM_PIPELINES = 2,
+    NO_PIPELINE = NUM_PIPELINES
 } VKPipeline;
 
 struct VKPipelines {
@@ -44,7 +45,8 @@ struct VKPipelines {
 
 typedef struct {
     float x, y;
-} VKVertex;
+    Color color;
+} VKColorVertex;
 
 struct VKShaders {
 #   define SHADER_ENTRY(NAME, TYPE) VkPipelineShaderStageCreateInfo NAME ## _ ## TYPE;

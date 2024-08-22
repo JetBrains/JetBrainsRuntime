@@ -21,46 +21,26 @@
 // or visit www.oracle.com if you need additional information or have any
 // questions.
 
-#ifndef VKTypes_h_Included
-#define VKTypes_h_Included
-#include <vulkan/vulkan.h>
+#ifndef VKAllocator_h_Included
+#define VKAllocator_h_Included
+
+#include "VKTypes.h"
+
+#define VK_NO_MEMORY_TYPE (~0U)
+#define VK_ALL_MEMORY_PROPERTIES ((VkMemoryPropertyFlags) (~0U))
+
+VKAllocator* VKAllocator_Create(VKDevice* device);
+
+void VKAllocator_Destroy(VKAllocator* allocator);
 
 /**
- * Floating-point RGBA color with LINEAR encoding.
+ * Find memory type with properties not less than requiredProperties and not more than allowedProperties.
+ * @param typeFilter         bitmask type filter, only memory types passing the filter can be returned
+ * @param requiredProperties minimal required set of properties
+ * @param allowedProperties  maximal allowed set of properties, implicitly includes requiredProperties, can be 0
+ * @return memory type index, or VK_NO_MEMORY_TYPE
  */
-typedef union {
-    struct {
-        float r, g, b, a;
-    };
-    VkClearValue vkClearValue;
-} Color;
+uint32_t VKAllocator_FindMemoryType(VKAllocator* allocator, uint32_t typeFilter,
+                                    VkMemoryPropertyFlags requiredProperties, VkMemoryPropertyFlags allowedProperties);
 
-/**
- * In Vulkan we always work with floating-point LINEAR colors.
- * Java colors are 32-bit SRGB encoded colors,
- * so we need to convert them to linear colors first.
- *
- * Read more about presenting SRGB content in VKSD_ConfigureWindowSurface
- */
-Color Color_DecodeFromJava(unsigned int color);
-
-#define STRUCT(NAME) typedef struct NAME NAME
-
-typedef char* pchar;
-
-STRUCT(VKGraphicsEnvironment);
-STRUCT(VKDevice);
-STRUCT(VKAllocator);
-STRUCT(VKRenderer);
-STRUCT(VKRenderPass);
-STRUCT(VKRenderingContext);
-STRUCT(VKPipelines);
-STRUCT(VKShaders);
-STRUCT(VKBuffer);
-STRUCT(VKImage);
-STRUCT(VKSDOps);
-STRUCT(VKWinSDOps);
-
-#undef STRUCT
-
-#endif //VKTypes_h_Included
+#endif //VKAllocator_h_Included

@@ -30,10 +30,25 @@
 #include "CArrayUtil.h"
 #include "VKUtil.h"
 #include "VKBase.h"
-#include "VKBuffer.h"
+#include "VKAllocator.h"
 #include "VKImage.h"
 #include "VKRenderer.h"
 #include "VKSurfaceData.h"
+
+// Vertex buffers are allocated in pages of fixed size with fixed number of buffers.
+// How to choose good buffer size?
+// 1. Multiple of 6 - triangle and line modes have x3 and x2 vertices per primitive.
+// 2. Multiple of 6 - most common vertex format VKColorVertex has 6 components.
+// 3. Some nice power of 2 multiplier, for good alignment and adequate capacity.
+#define VERTEX_BUFFER_SIZE (6 * 6 * 256) // 9KiB = 384 * sizeof(VKColorVertex)
+#define VERTEX_BUFFERS_PER_PAGE (455)   // 4MiB - 1KiB total
+typedef struct {
+    VkBuffer       buffer;
+    VkDeviceMemory memory;
+    VkDeviceSize   offset;
+    VkDeviceSize   size;
+    void*          data; // Only sequential writes!
+} VKVertexBuffer;
 
 #define TRACKED_RESOURCE(NAME) \
 typedef struct {               \
@@ -41,8 +56,18 @@ typedef struct {               \
     NAME value;                \
 } Tracked ## NAME
 
+TRACKED_RESOURCE(VKVertexBuffer);
 TRACKED_RESOURCE(VkCommandBuffer);
 TRACKED_RESOURCE(VkSemaphore);
+
+// Delay reusing of resources in debug mode.
+// It will be delayed by 3 timestamps randomly in ~20% cases.
+// This is needed to catch potential problems related to resource reuse.
+#ifdef DEBUG
+#define DEBUG_REUSE_DELAY ((rand() % 5) == 0 ? 3 : 0)
+#else
+#define DEBUG_REUSE_DELAY 0
+#endif
 
 /**
  * Renderer attached to device.
@@ -52,7 +77,11 @@ struct VKRenderer {
 
     TrackedVkCommandBuffer* pendingCommandBuffers;
     TrackedVkCommandBuffer* pendingSecondaryCommandBuffers;
-    TrackedVkSemaphore* pendingSemaphores;
+    TrackedVkSemaphore*     pendingSemaphores;
+    struct VertexBufferPool {
+        VkDeviceMemory*        memoryPages;
+        TrackedVKVertexBuffer* pendingBuffers;
+    } vertexBufferPool;
 
     /**
      * Last known timestamp hit by GPU execution. Resources with equal or less timestamp may be safely reused.
@@ -87,8 +116,16 @@ struct VKRenderer {
  */
 struct VKRenderPass {
     VKPipelines*    pipelines;
+    VKVertexBuffer* vertexBuffers;
     VkFramebuffer   framebuffer; // Only when dynamic rendering = off
     VkCommandBuffer commandBuffer;
+
+    void*           vertexBufferData;
+    VkDeviceSize    vertexBufferOffset;
+    uint32_t        firstVertex;
+    uint32_t        vertexCount;
+
+    VKPipeline      currentPipeline;
     VkBool32        pendingFlush;
     VkBool32        pendingCommands;
     VkBool32        pendingClear;
@@ -99,24 +136,107 @@ struct VKRenderPass {
     uint64_t                lastTimestamp; // When was this surface last used?
 };
 
-#define POP_PENDING(RENDERER, BUFFER, VAR) do {                                                             \
-    size_t head = 0, tail = 0;                                                                              \
-    if (BUFFER != NULL) { head = RING_BUFFER_T(BUFFER)->head; tail = RING_BUFFER_T(BUFFER)->tail; }         \
-    uint64_t timestamp = (head == tail ? 0 : BUFFER[head].timestamp);                                       \
-    if (timestamp != 0 && (RENDERER->readTimestamp >= timestamp || (                                        \
-        RENDERER->device->vkGetSemaphoreCounterValue(RENDERER->device->device, RENDERER->timelineSemaphore, \
-        &RENDERER->readTimestamp) == VK_SUCCESS && RENDERER->readTimestamp >= timestamp))) {                \
-        VAR = BUFFER[head].value;                                                                           \
-        RING_BUFFER_POP(BUFFER);                                                                            \
-    } else VAR = VK_NULL_HANDLE;                                                                            \
+#define POP_PENDING(RENDERER, BUFFER, VAR) do {                                                                   \
+    if ((BUFFER) == NULL) break;                                                                                  \
+    size_t head = RING_BUFFER_T(BUFFER)->head, tail = RING_BUFFER_T(BUFFER)->tail;                                \
+    uint64_t timestamp;                                                                                           \
+    if (head != tail && ((RENDERER)->readTimestamp >= (timestamp = (BUFFER)[head].timestamp) || (                 \
+        (RENDERER)->device->vkGetSemaphoreCounterValue((RENDERER)->device->device, (RENDERER)->timelineSemaphore, \
+        &(RENDERER)->readTimestamp) == VK_SUCCESS && (RENDERER)->readTimestamp >= timestamp))) {                  \
+        (VAR) = (BUFFER)[head].value;                                                                             \
+        RING_BUFFER_POP(BUFFER);                                                                                  \
+    }                                                                                                             \
 } while(0)
 
 
-#define PUSH_PENDING(RENDERER, BUFFER, T) RING_BUFFER_PUSH_CUSTOM(BUFFER, BUFFER[tail].timestamp = RENDERER->writeTimestamp; BUFFER[tail].value = T;)
+#define PUSH_PENDING(RENDERER, BUFFER, T) RING_BUFFER_PUSH_CUSTOM(BUFFER, \
+(BUFFER)[tail].timestamp = (RENDERER)->writeTimestamp + DEBUG_REUSE_DELAY; (BUFFER)[tail].value = T;)
+
+static VKVertexBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
+    // Reuse from pending.
+    VKVertexBuffer buffer = { .buffer = VK_NULL_HANDLE };
+    POP_PENDING(renderer, renderer->vertexBufferPool.pendingBuffers, buffer);
+    if (buffer.buffer != VK_NULL_HANDLE) return buffer;
+
+    VKDevice* device = renderer->device;
+    VKAllocator* alloc = device->allocator;
+    // Allocate new ring buffer. Ring buffer grows when size reaches capacity, so leave one more slot to fit all buffers.
+    TrackedVKVertexBuffer* newRing =
+            CARR_ring_buffer_realloc(NULL, sizeof(TrackedVKVertexBuffer),
+                                     (ARRAY_SIZE(renderer->vertexBufferPool.memoryPages) + 1) * VERTEX_BUFFERS_PER_PAGE + 1);
+    VK_RUNTIME_ASSERT(newRing);
+
+    // Create more vertex buffers.
+    VkBufferCreateInfo bufferInfo = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = VERTEX_BUFFER_SIZE,
+            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+    TrackedVKVertexBuffer tempBuffer = {
+            .timestamp = 0,
+            .value.buffer = VK_NULL_HANDLE
+    };
+    for (uint32_t i = 0; i < VERTEX_BUFFERS_PER_PAGE; i++) {
+        VK_IF_ERROR(device->vkCreateBuffer(device->device, &bufferInfo, NULL, &tempBuffer.value.buffer)) VK_UNHANDLED_ERROR();
+        RING_BUFFER_PUSH(newRing, tempBuffer);
+    }
+
+    // Determine memory requirements.
+    VkMemoryRequirements memRequirements;
+    device->vkGetBufferMemoryRequirements(device->device, tempBuffer.value.buffer, &memRequirements);
+    assert(memRequirements.size % memRequirements.alignment == 0);
+
+    // Find memory type.
+    uint32_t memoryType = VKAllocator_FindMemoryType(alloc, memRequirements.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (memoryType == VK_NO_MEMORY_TYPE) memoryType = VKAllocator_FindMemoryType(alloc, memRequirements.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
+    if (memoryType == VK_NO_MEMORY_TYPE) VK_UNHANDLED_ERROR();
+
+    // Allocate new memory page.
+    VkMemoryAllocateInfo allocateInfo = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = memRequirements.size * VERTEX_BUFFERS_PER_PAGE,
+            .memoryTypeIndex = memoryType
+    };
+    VkDeviceMemory page;
+    VK_IF_ERROR(device->vkAllocateMemory(device->device, &allocateInfo, NULL, &page)) VK_UNHANDLED_ERROR();
+    void* data;
+    VK_IF_ERROR(device->vkMapMemory(device->device, page, 0, VK_WHOLE_SIZE, 0, &data)) VK_UNHANDLED_ERROR();
+
+    // Bind memory.
+    for (uint32_t i = 0; i < VERTEX_BUFFERS_PER_PAGE; i++) {
+        VKVertexBuffer* b = &newRing[i].value;
+        b->memory = page;
+        b->offset = memRequirements.size * i;
+        b->size = memRequirements.size;
+        b->data = (void*) (((uint8_t*) data) + b->offset);
+        VK_IF_ERROR(device->vkBindBufferMemory(device->device, b->buffer, b->memory, b->offset)) VK_UNHANDLED_ERROR();
+    }
+
+    // Move existing pending buffers into new ring and update vertex pool state.
+    for (;;) {
+        TrackedVKVertexBuffer* t = RING_BUFFER_PEEK(renderer->vertexBufferPool.pendingBuffers);
+        if (t == NULL) break;
+        RING_BUFFER_PUSH(newRing, *t);
+        RING_BUFFER_POP(renderer->vertexBufferPool.pendingBuffers);
+    }
+    RING_BUFFER_FREE(renderer->vertexBufferPool.pendingBuffers);
+    renderer->vertexBufferPool.pendingBuffers = newRing;
+    ARRAY_PUSH_BACK(renderer->vertexBufferPool.memoryPages, page);
+    J2dRlsTraceLn1(J2D_TRACE_INFO, "VKRenderer_GetVertexBuffer: allocated new page, total pages: %d",
+                   ARRAY_SIZE(renderer->vertexBufferPool.memoryPages));
+
+    // Take first.
+    tempBuffer = *RING_BUFFER_PEEK(renderer->vertexBufferPool.pendingBuffers);
+    RING_BUFFER_POP(renderer->vertexBufferPool.pendingBuffers);
+    return tempBuffer.value;
+}
 
 static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
     VKDevice* device = renderer->device;
-    VkSemaphore semaphore;
+    VkSemaphore semaphore = VK_NULL_HANDLE;
     POP_PENDING(renderer, renderer->pendingSemaphores, semaphore);
     if (semaphore == VK_NULL_HANDLE) {
         VkSemaphoreCreateInfo createInfo = {
@@ -201,27 +321,48 @@ VKRenderer* VKRenderer_Create(VKDevice* device) {
 
 void VKRenderer_Destroy(VKRenderer* renderer) {
     if (renderer == NULL) return;
+    VKDevice* device = renderer->device;
     VKRenderer_Sync(renderer);
+    // TODO Ensure all surface render passes are released, so that no resources got stuck there.
+    //      We can just form a linked list from all render passes to have access to them from the renderer.
+
+    // Release shaders & pipelines.
+    VKPipelines_DestroyShaders(device, renderer->shaders);
     for (uint32_t i = 0; i < ARRAY_SIZE(renderer->pipelines); i++) {
-        VKPipelines_Destroy(renderer->device, renderer->pipelines[i]);
+        VKPipelines_Destroy(device, renderer->pipelines[i]);
     }
-    VKPipelines_DestroyShaders(renderer->device, renderer->shaders);
     ARRAY_FREE(renderer->pipelines);
+
+    // Release tracked resources.
     // No need to destroy command buffers one by one, we will destroy the pool anyway.
     RING_BUFFER_FREE(renderer->pendingCommandBuffers);
     RING_BUFFER_FREE(renderer->pendingSecondaryCommandBuffers);
     for (;;) {
-        VkSemaphore semaphore;
+        VkSemaphore semaphore = VK_NULL_HANDLE;
         POP_PENDING(renderer, renderer->pendingSemaphores, semaphore);
         if (semaphore == VK_NULL_HANDLE) break;
-        renderer->device->vkDestroySemaphore(renderer->device->device, semaphore, NULL);
+        device->vkDestroySemaphore(device->device, semaphore, NULL);
     }
     RING_BUFFER_FREE(renderer->pendingSemaphores);
+
+    // Release vertex pool.
+    for (;;) {
+        VKVertexBuffer buffer = { .buffer = VK_NULL_HANDLE };
+        POP_PENDING(renderer, renderer->vertexBufferPool.pendingBuffers, buffer);
+        if (buffer.buffer == VK_NULL_HANDLE) break;
+        device->vkDestroyBuffer(device->device, buffer.buffer, NULL);
+    }
+    RING_BUFFER_FREE(renderer->vertexBufferPool.pendingBuffers);
+    for (uint32_t i = 0; i < ARRAY_SIZE(renderer->vertexBufferPool.memoryPages); i++) {
+        device->vkFreeMemory(device->device, renderer->vertexBufferPool.memoryPages[i], NULL); // Implicitly unmapped.
+    }
+    ARRAY_FREE(renderer->vertexBufferPool.memoryPages);
+
     if (renderer->timelineSemaphore != VK_NULL_HANDLE) {
-        renderer->device->vkDestroySemaphore(renderer->device->device, renderer->timelineSemaphore, NULL);
+        device->vkDestroySemaphore(device->device, renderer->timelineSemaphore, NULL);
     }
     if (renderer->commandPool != VK_NULL_HANDLE) {
-        renderer->device->vkDestroyCommandPool(renderer->device->device, renderer->commandPool, NULL);
+        device->vkDestroyCommandPool(device->device, renderer->commandPool, NULL);
     }
     ARRAY_FREE(renderer->wait.semaphores);
     ARRAY_FREE(renderer->wait.stages);
@@ -241,7 +382,7 @@ static VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
         return renderer->commandBuffer;
     }
     VKDevice* device = renderer->device;
-    VkCommandBuffer commandBuffer;
+    VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
     POP_PENDING(renderer, renderer->pendingCommandBuffers, commandBuffer);
     if (commandBuffer == VK_NULL_HANDLE) {
         VkCommandBufferAllocateInfo allocInfo = {
@@ -275,10 +416,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
     // Submit pending command buffer and semaphores.
     // Even if there are no commands to be sent, we can submit pending semaphores for presentation synchronization.
     if (renderer->commandBuffer != VK_NULL_HANDLE) {
-        VK_IF_ERROR(device->vkEndCommandBuffer(renderer->commandBuffer)) {
-            VK_UNHANDLED_ERROR();
-            return; // TODO what to do?
-        }
+        VK_IF_ERROR(device->vkEndCommandBuffer(renderer->commandBuffer)) VK_UNHANDLED_ERROR();
         PUSH_PENDING(renderer, renderer->pendingCommandBuffers, renderer->commandBuffer);
     } else if (pendingPresentations == 0) {
         return;
@@ -308,10 +446,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
             .signalSemaphoreCount = pendingPresentations > 0 ? 2 : 1,
             .pSignalSemaphores = semaphores
     };
-    VK_IF_ERROR(device->vkQueueSubmit(device->queue, 1, &submitInfo, VK_NULL_HANDLE)) {
-        VK_UNHANDLED_ERROR();
-        return; // TODO what to do?
-    }
+    VK_IF_ERROR(device->vkQueueSubmit(device->queue, 1, &submitInfo, VK_NULL_HANDLE)) VK_UNHANDLED_ERROR();
     renderer->commandBuffer = VK_NULL_HANDLE;
     ARRAY_RESIZE(renderer->wait.semaphores, 0);
     ARRAY_RESIZE(renderer->wait.stages, 0);
@@ -387,21 +522,59 @@ static void VKRenderer_SurfaceBarrier(VKSDOps* surface, VkPipelineStageFlags sta
 }
 
 /**
+ * Record draw command, if there are any pending vertices in the vertex buffer
+ */
+static void VKRenderer_FlushDraw(VKSDOps* surface) {
+    assert(surface != NULL && surface->renderPass != NULL);
+    if (surface->renderPass->vertexCount > 0) {
+        assert(surface->renderPass->pendingCommands);
+        surface->device->vkCmdDraw(surface->renderPass->commandBuffer, surface->renderPass->vertexCount, 1, surface->renderPass->firstVertex, 0);
+        surface->renderPass->firstVertex += surface->renderPass->vertexCount;
+        surface->renderPass->vertexCount = 0;
+    }
+}
+
+/**
+ * Flush vertex buffer writes, push vertex buffers to the pending queue, reset drawing state for the surface.
+ */
+static void VKRenderer_ResetDrawing(VKSDOps* surface) {
+    assert(surface != NULL && surface->renderPass != NULL);
+    surface->renderPass->currentPipeline = NO_PIPELINE;
+    surface->renderPass->vertexBufferData = NULL;
+    surface->renderPass->vertexBufferOffset = VERTEX_BUFFER_SIZE;
+    surface->renderPass->firstVertex = surface->renderPass->vertexCount = 0;
+    size_t vertexBufferCount = ARRAY_SIZE(surface->renderPass->vertexBuffers);
+    if (vertexBufferCount == 0) return;
+    VkMappedMemoryRange memoryRanges[vertexBufferCount];
+    for (uint32_t i = 0; i < vertexBufferCount; i++) {
+        VKVertexBuffer* vb = &surface->renderPass->vertexBuffers[i];
+        memoryRanges[i] = (VkMappedMemoryRange) {
+                .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+                .memory = vb->memory,
+                .offset = vb->offset,
+                .size   = vb->size
+        };
+        PUSH_PENDING(surface->device->renderer, surface->device->renderer->vertexBufferPool.pendingBuffers, *vb);
+    }
+    ARRAY_RESIZE(surface->renderPass->vertexBuffers, 0);
+    VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->device, vertexBufferCount, memoryRanges)) {}
+}
+
+/**
  * Discard all recorded commands for the render pass.
  */
 static void VKRenderer_DiscardRenderPass(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     if (surface->renderPass->pendingCommands) {
         assert(surface->device != NULL);
-        VK_IF_ERROR(surface->device->vkResetCommandBuffer(surface->renderPass->commandBuffer, 0)) {
-            VK_UNHANDLED_ERROR(); // TODO what to do?
-        }
+        VK_IF_ERROR(surface->device->vkResetCommandBuffer(surface->renderPass->commandBuffer, 0)) VK_UNHANDLED_ERROR();
         surface->renderPass->pendingCommands = VK_FALSE;
+        VKRenderer_ResetDrawing(surface);
         J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_DiscardRenderPass(%p)", surface);
     }
 }
 
-void VKRenderer_ReleaseRenderPass(VKSDOps* surface) {
+void VKRenderer_DestroyRenderPass(VKSDOps* surface) {
     assert(surface != NULL);
     if (surface->renderPass == NULL) return;
     VKDevice* device = surface->device;
@@ -415,12 +588,12 @@ void VKRenderer_ReleaseRenderPass(VKSDOps* surface) {
         }
         if (surface->renderPass->commandBuffer != VK_NULL_HANDLE) {
             PUSH_PENDING(device->renderer, device->renderer->pendingSecondaryCommandBuffers, surface->renderPass->commandBuffer);
-
         }
+        ARRAY_FREE(surface->renderPass->vertexBuffers);
     }
     free(surface->renderPass);
     surface->renderPass = NULL;
-    J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_ReleaseRenderPass(%p)", surface);
+    J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_DestroyRenderPass(%p)", surface);
 }
 
 /**
@@ -445,6 +618,8 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
     (*renderPass) = (VKRenderPass) {
             .pendingCommands = VK_FALSE,
             .pendingClear = VK_TRUE, // Clear the surface by default
+            .vertexBufferOffset = VERTEX_BUFFER_SIZE,
+            .currentPipeline = NO_PIPELINE,
             .layout = VK_IMAGE_LAYOUT_UNDEFINED,
             .lastStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
             .lastAccess = 0,
@@ -508,7 +683,6 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
             };
             VK_IF_ERROR(renderer->device->vkAllocateCommandBuffers(renderer->device->device, &allocInfo, &commandBuffer)) {
                 VK_UNHANDLED_ERROR();
-                return;
             }
         }
         surface->renderPass->commandBuffer = commandBuffer;
@@ -541,7 +715,6 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     VK_IF_ERROR(device->vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo)) {
         renderer->device->vkFreeCommandBuffers(renderer->device->device, renderer->commandPool, 1, &commandBuffer);
         VK_UNHANDLED_ERROR();
-        return;
     }
 
     // When dynamicRendering=ON, we specify that we want to clear the attachment instead of
@@ -574,6 +747,17 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     VkRect2D scissor = {{0, 0}, surface->image->extent};
     device->vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     device->vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    // Calculate inverse viewport for vertex shader.
+    viewport.width = 2.0f / viewport.width;
+    viewport.height = 2.0f / viewport.height;
+    device->vkCmdPushConstants(
+            commandBuffer,
+            surface->renderPass->pipelines->pipelineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            0,
+            sizeof(float) * 2,
+            &viewport.width
+    );
 
     surface->renderPass->pendingCommands = VK_TRUE;
     J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_BeginRenderPass(%p)", surface);
@@ -585,6 +769,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
  */
 static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
+    VKRenderer_FlushDraw(surface);
     VkBool32 hasCommands = surface->renderPass->pendingCommands, clear = surface->renderPass->pendingClear;
     if(!hasCommands && !clear) return;
     VKDevice* device = surface->device;
@@ -641,10 +826,7 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     // Execute render pass commands.
     if (surface->renderPass->pendingCommands) {
         surface->renderPass->pendingCommands = VK_FALSE;
-        VK_IF_ERROR(device->vkEndCommandBuffer(surface->renderPass->commandBuffer)) {
-            VK_UNHANDLED_ERROR();
-            return; // TODO what to do?
-        }
+        VK_IF_ERROR(device->vkEndCommandBuffer(surface->renderPass->commandBuffer)) VK_UNHANDLED_ERROR();
         device->vkCmdExecuteCommands(cb, 1, &surface->renderPass->commandBuffer);
         PUSH_PENDING(renderer, renderer->pendingSecondaryCommandBuffers, surface->renderPass->commandBuffer);
         surface->renderPass->commandBuffer = VK_NULL_HANDLE;
@@ -655,16 +837,19 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     } else {
         device->vkCmdEndRenderPass(cb);
     }
+    VKRenderer_ResetDrawing(surface);
     J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "VKRenderer_FlushRenderPass(%p): hasCommands=%d, clear=%d", surface, hasCommands, clear);
 }
 
 void VKRenderer_FlushSurface(VKSDOps* surface) {
     assert(surface != NULL);
-    // TODO this logic should be incorporated into per-surface state tracking object, managing rendering mode changes.
+    // If pendingFlush is TRUE, pendingCommands must be FALSE
+    assert(!surface->renderPass->pendingFlush || !surface->renderPass->pendingCommands);
+    // Note that we skip render pass initialization, if we have pending flush,
+    // which means that we missed the last flush, but didn't start a new render pass yet.
+    // So now we are going to catch up the last frame, and don't need reconfiguration.
+    // We also skip initialization if we have pending commands, because that means we are in the middle of frame.
     if (surface->renderPass == NULL || (!surface->renderPass->pendingCommands && !surface->renderPass->pendingFlush)) {
-        // We must only [re]init render pass between frames.
-        // Now this is correct, but in future we may have frames consisting of multiple render passes,
-        // so we must be careful to NOT call VKRenderer_InitRenderPass between render passes within single frame.
         if (!VKRenderer_InitRenderPass(surface)) return;
         // Check for pendingClear after VKRenderer_InitRenderPass, it may be set after reconfiguration.
         if (!surface->renderPass->pendingClear) return;
@@ -729,10 +914,10 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
         VkImageBlit blit = {
                 .srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
                 .srcOffsets[0] = {0, 0, 0},
-                .srcOffsets[1] = {surface->image->extent.width, surface->image->extent.height, 1},
+                .srcOffsets[1] = {(int)surface->image->extent.width, (int)surface->image->extent.height, 1},
                 .dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
                 .dstOffsets[0] = {0, 0, 0},
-                .dstOffsets[1] = {surface->image->extent.width, surface->image->extent.height, 1},
+                .dstOffsets[1] = {(int)surface->image->extent.width, (int)surface->image->extent.height, 1},
         };
         device->vkCmdBlitImage(cb,
                                surface->image->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -765,11 +950,13 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
 void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent) {
     assert(surface != NULL);
     surface->requestedExtent = extent;
-    // TODO this logic should be incorporated into per-surface state tracking object, managing rendering mode changes.
-    //      this means, we must only really do *pending* flush, if we are between frames.
+    // We must only do pending flush between frames.
     if (surface->renderPass != NULL && surface->renderPass->pendingFlush)  {
-        if (surface->renderPass->pendingCommands) surface->renderPass->pendingFlush = VK_FALSE;
-        else {
+        if (surface->renderPass->pendingCommands) {
+            // New frame has already started, reset flag.
+            surface->renderPass->pendingFlush = VK_FALSE;
+        } else {
+            // New frame has not begun yet, flush.
             J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_ConfigureSurface(%p): pending flush", surface);
             VKRenderer_FlushSurface(surface);
         }
@@ -777,77 +964,101 @@ void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent) {
 }
 
 /**
- * Record rendering commands for the surface. This will cause surface initialization.
- * Returns VK_NULL_HANDLE if surface is not ready for rendering.
+ * Allocate vertices from vertex buffer.
+ * This function skips pipeline state checks and must only be called after
+ * VKRenderer_Draw have been called within the same drawing operation.
  */
-static VkCommandBuffer VKRenderer_Render(VKSDOps* surface) {
-    assert(surface != NULL);
-    // TODO following logic should be incorporated into per-surface state tracking object, managing rendering mode changes.
+static void* VKRenderer_FastDraw(VKSDOps* surface, uint32_t vertices, size_t vertexSize) {
+    assert(surface != NULL && surface->renderPass != NULL);
+    assert(vertices > 0 && vertexSize > 0);
+    assert(vertexSize * vertices <= VERTEX_BUFFER_SIZE);
+    VkDeviceSize offset = surface->renderPass->vertexBufferOffset;
+    surface->renderPass->vertexBufferOffset += (VkDeviceSize) (vertexSize * vertices);
+    // Overflow, need to take another vertex buffer
+    if (surface->renderPass->vertexBufferOffset > VERTEX_BUFFER_SIZE) {
+        VKRenderer_FlushDraw(surface);
+        offset = 0;
+        surface->renderPass->vertexBufferOffset = (VkDeviceSize) (vertexSize * vertices);
+        surface->renderPass->firstVertex = surface->renderPass->vertexCount = 0;
+        VKVertexBuffer buffer = VKRenderer_GetVertexBuffer(surface->device->renderer);
+        ARRAY_PUSH_BACK(surface->renderPass->vertexBuffers, buffer);
+        surface->renderPass->vertexBufferData = buffer.data;
+        const VkDeviceSize zero = 0;
+        surface->device->vkCmdBindVertexBuffers(surface->renderPass->commandBuffer, 0, 1, &buffer.buffer, &zero);
+    }
+    surface->renderPass->vertexCount += vertices;
+    return (void*) (((uint8_t*) surface->renderPass->vertexBufferData) + offset);
+}
+
+/**
+ * Setup pipeline for drawing and allocate vertices from vertex buffer.
+ * Can return NULL if surface is not yet ready for drawing.
+ * It is responsibility of the caller to pass correct vertexSize, matching provided pipeline.
+ * This function cannot draw more vertices than fits into single vertex buffer at once.
+ */
+static void* VKRenderer_Draw(VKRenderingContext* context, VKPipeline pipeline, uint32_t vertices, size_t vertexSize) {
+    assert(context != NULL && context->surface != NULL);
+    assert(vertices > 0 && vertexSize > 0);
+    assert(vertexSize * vertices <= VERTEX_BUFFER_SIZE);
+    VKSDOps* surface = context->surface;
+
+    // Validate render pass state.
     if (surface->renderPass == NULL || !surface->renderPass->pendingCommands) {
         // We must only [re]init render pass between frames.
         // Now this is correct, but in future we may have frames consisting of multiple render passes,
         // so we must be careful to NOT call VKRenderer_InitRenderPass between render passes within single frame.
-        if (!VKRenderer_InitRenderPass(surface)) return VK_NULL_HANDLE;
+        if (!VKRenderer_InitRenderPass(surface)) return NULL;
+        // In the future, we may need to restart the render pass within single frame,
+        // for example when switching between blended and XOR drawing modes.
+        // So, generally, this should depend on VKRenderingContext, but now we just start the render pass once.
         VKRenderer_BeginRenderPass(surface);
     }
-    return surface->renderPass->commandBuffer;
+
+    // Validate current pipeline.
+    if (surface->renderPass->currentPipeline != pipeline) {
+        VKRenderer_FlushDraw(surface);
+        VkCommandBuffer cb = surface->renderPass->commandBuffer;
+        surface->renderPass->currentPipeline = pipeline;
+        surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, surface->renderPass->pipelines->pipelines[pipeline]);
+
+        VkDeviceSize offset = surface->renderPass->vertexBufferOffset;
+        void* oldData = surface->renderPass->vertexBufferData;
+        void* ptr = VKRenderer_FastDraw(surface, vertices, vertexSize);
+        // If vertex buffer was not bound by VKRenderer_FastDraw, do it here.
+        if (oldData == surface->renderPass->vertexBufferData) {
+            assert(ARRAY_SIZE(surface->renderPass->vertexBuffers) > 0);
+            surface->device->vkCmdBindVertexBuffers(surface->renderPass->commandBuffer, 0, 1,
+                                                    &(ARRAY_LAST(surface->renderPass->vertexBuffers).buffer), &offset);
+            surface->renderPass->firstVertex = 0;
+            surface->renderPass->vertexCount = vertices;
+        }
+        return ptr;
+    } else return VKRenderer_FastDraw(surface, vertices, vertexSize);
 }
 
-// TODO refactor following part =======================================================================================>
+/**
+ * Convenience wrapper for VKRenderer_Draw, providing pointer to vertices of requested type.
+ */
+#define VK_DRAW(VERTEX_TYPE, CONTEXT, PIPELINE, VERTICES) \
+VERTEX_TYPE* vs = (VERTEX_TYPE*) VKRenderer_Draw((CONTEXT), (PIPELINE), (VERTICES), sizeof(VERTEX_TYPE))
 
-#define ARRAY_TO_VERTEX_BUF(device, vertices)                                           \
-    VKBuffer_CreateFromData(device, vertices, ARRAY_SIZE(vertices)*sizeof ((vertices)[0]))
+/**
+ * Convenience wrapper for VKRenderer_FastDraw, updating pointer to vertices.
+ */
+#define VK_FAST_DRAW(CONTEXT, PIPELINE, VERTICES) \
+vs = VKRenderer_Draw((CONTEXT), (PIPELINE), (VERTICES), sizeof(vs[0]))
 
-static void VKRenderer_ColorRender(VKRenderingContext* context, VKPipeline pipeline, VkBuffer vertexBuffer, uint32_t vertexNum) {
-    assert(context != NULL && context->surface != NULL);
-    VKSDOps* surface = context->surface;
-    VkCommandBuffer cb = VKRenderer_Render(surface);
-    VKDevice* device = surface->device;
+// Drawing operations.
 
-    device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, surface->renderPass->pipelines->pipelines[pipeline]);
-    device->vkCmdPushConstants(
-            cb,
-            surface->renderPass->pipelines->pipelineLayout,
-            VK_SHADER_STAGE_VERTEX_BIT,
-            0,
-            sizeof(Color),
-            &context->color
-    );
-    VkDeviceSize offsets[] = {0};
-    device->vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, offsets);
-    device->vkCmdDraw(cb, vertexNum, 1, 0, 0);
-}
-
-void
-VKRenderer_FillRect(VKRenderingContext* context, jint x, jint y, jint w, jint h)
-{
-    J2dTraceLn4(J2D_TRACE_INFO, "VKRenderer_FillRect %d %d %d %d", x, y, w, h);
-
-    if (w <= 0 || h <= 0) {
-        return;
-    }
-
-    VKRenderer_RenderParallelogram(context, PIPELINE_FILL_COLOR, x, y, w, 0, 0, h);
+void VKRenderer_RenderRect(VKRenderingContext* context, VKPipeline pipeline, jint x, jint y, jint w, jint h) {
+    VKRenderer_RenderParallelogram(context, pipeline, (float) x, (float) y, (float) w, 0, 0, (float) h);
 }
 
 void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipeline,
-                                  jfloat x11, jfloat y11,
-                                  jfloat dx21, jfloat dy21,
-                                  jfloat dx12, jfloat dy12)
-{
-    if (context->surface == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_RenderParallelogram: current dest is null")
-        return;
-    }
-
-    VKSDOps *vksdOps = (VKSDOps *)context->surface;
-    VKRenderer_Render(vksdOps); // Init rendering state
-    float width = vksdOps->image->extent.width;
-    float height = vksdOps->image->extent.height;
-    J2dRlsTraceLn2(J2D_TRACE_VERBOSE,
-                   "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(W=%f, H=%f)",
-                   width, height);
-    VKVertex* vertices = NULL;
+                                    jfloat x11, jfloat y11,
+                                    jfloat dx21, jfloat dy21,
+                                    jfloat dx12, jfloat dy12) {
+    Color c = context->color;
     /*                   dx21
      *    (p1)---------(p2) |          (p1)------
      *     |\            \  |            |  \    dy21
@@ -858,90 +1069,52 @@ void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipe
      *                              dy21    \ |
      *                                  -----(p3)
      */
-    // TODO coordinate remapping is wrong and covers only quarter of the viewport
-    float p1x = -1.0f + x11 / width;
-    float p1y = -1.0f + y11 / height;
-    float p2x = -1.0f + (x11 + dx21) / width;
-    float p2y = -1.0f + (y11 + dy21) / height;
-    float p3x = -1.0f + (x11 + dx21 + dx12) / width;
-    float p3y = -1.0f + (y11 + dy21 + dy12) / height;
-    float p4x = -1.0f + (x11 + dx12) / width;
-    float p4y = -1.0f + (y11 + dy12) / height;
+    VKColorVertex p1 = {x11, y11, c};
+    VKColorVertex p2 = {x11 + dx21, y11 + dy21, c};
+    VKColorVertex p3 = {x11 + dx21 + dx12, y11 + dy21 + dy12, c};
+    VKColorVertex p4 = {x11 + dx12, y11 + dy12, c};
 
-    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p1x, p1y}));
-    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p2x, p2y}));
-    if (pipeline == PIPELINE_DRAW_COLOR) ARRAY_PUSH_BACK(vertices, ((VKVertex) {p2x, p2y}));
-    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p3x, p3y}));
-    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p3x, p3y}));
-    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p4x, p4y}));
-    if (pipeline == PIPELINE_DRAW_COLOR) ARRAY_PUSH_BACK(vertices, ((VKVertex) {p4x, p4y}));
-    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p1x, p1y}));
-
-    int vertexNum = ARRAY_SIZE(vertices);
-
-    VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(context->surface->device, vertices);
-    ARRAY_FREE(vertices);
-
-    VKRenderer_ColorRender(context, pipeline, renderVertexBuffer->buffer, vertexNum);
+    VK_DRAW(VKColorVertex, context, pipeline, pipeline == PIPELINE_DRAW_COLOR ? 8 : 6);
+    if (vs == NULL) return; // Not ready.
+    uint32_t i = 0;
+    vs[i++] = p1;
+    vs[i++] = p2;
+    vs[i++] = p3;
+    vs[i++] = p4;
+    vs[i++] = p1;
+    if (pipeline == PIPELINE_DRAW_COLOR) {
+        vs[i++] = p4;
+        vs[i++] = p2;
+    }
+    vs[i++] = p3;
 }
 
-void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spans)
-{
-    if (context->surface == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_FillSpans: current dest is null");
-        return;
+void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spans) {
+    if (spanCount == 0) return;
+    Color c = context->color;
+
+    jfloat x1 = (float)*(spans++);
+    jfloat y1 = (float)*(spans++);
+    jfloat x2 = (float)*(spans++);
+    jfloat y2 = (float)*(spans++);
+    VKColorVertex p1 = {x1, y1, c};
+    VKColorVertex p2 = {x2, y1, c};
+    VKColorVertex p3 = {x2, y2, c};
+    VKColorVertex p4 = {x1, y2, c};
+
+    VK_DRAW(VKColorVertex, context, PIPELINE_FILL_COLOR, 6);
+    if (vs == NULL) return; // Not ready.
+    vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
+
+    for (int i = 1; i < spanCount; i++) {
+        p1.x = p4.x = (float)*(spans++);
+        p1.y = p2.y = (float)*(spans++);
+        p2.x = p3.x = (float)*(spans++);
+        p3.y = p4.y = (float)*(spans++);
+
+        VK_FAST_DRAW(context, PIPELINE_FILL_COLOR, 6);
+        vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
     }
-
-    if (spanCount == 0) {
-        return;
-    }
-
-    VKSDOps *vksdOps = (VKSDOps *)context->surface;
-    VKRenderer_Render(vksdOps); // Init rendering state
-    float width = vksdOps->image->extent.width;
-    float height = vksdOps->image->extent.height;
-    J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "VKRenderer_FillSpans(W=%f, H=%f, COUNT=%d)",
-                   width, height, spanCount)
-
-    const int VERT_COUNT = spanCount * 6;
-    VKVertex* vertices = ARRAY_ALLOC(VKVertex, VERT_COUNT);
-    for (int i = 0; i < spanCount; i++) {
-        jfloat x1 = *(spans++);
-        jfloat y1 = *(spans++);
-        jfloat x2 = *(spans++);
-        jfloat y2 = *(spans++);
-
-        // TODO coordinate remapping is wrong and covers only quarter of the viewport
-        float p1x = -1.0f + x1 / width;
-        float p1y = -1.0f + y1 / height;
-        float p2x = -1.0f + x2 / width;
-        float p2y = p1y;
-        float p3x = p2x;
-        float p3y = -1.0f + y2 / height;
-        float p4x = p1x;
-        float p4y = p3y;
-
-        ARRAY_PUSH_BACK(vertices, ((VKVertex){p1x,p1y}));
-
-        ARRAY_PUSH_BACK(vertices, ((VKVertex){p2x,p2y}));
-
-        ARRAY_PUSH_BACK(vertices, ((VKVertex){p3x,p3y}));
-
-        ARRAY_PUSH_BACK(vertices, ((VKVertex){p3x,p3y}));
-
-        ARRAY_PUSH_BACK(vertices, ((VKVertex){p4x,p4y}));
-
-        ARRAY_PUSH_BACK(vertices, ((VKVertex){p1x,p1y}));
-    }
-
-    VKBuffer *fillVertexBuffer = ARRAY_TO_VERTEX_BUF(context->surface->device, vertices);
-    if (!fillVertexBuffer) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create vertex buffer\n")
-        return;
-    }
-    ARRAY_FREE(vertices);
-
-    VKRenderer_ColorRender(context, PIPELINE_FILL_COLOR, fillVertexBuffer->buffer, VERT_COUNT);
 }
 
 #endif /* !HEADLESS */

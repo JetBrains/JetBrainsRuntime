@@ -4,7 +4,7 @@
 #include <malloc.h>
 #include "VKUtil.h"
 
-#define ARRAY_CAPACITY_MULT 2
+#define ARRAY_CAPACITY_GROW(C) (((C) * 3 + 1) / 2) // 1.5 multiplier
 #define ARRAY_DEFAULT_CAPACITY 10
 typedef struct {
     size_t size;
@@ -159,7 +159,7 @@ if ((P) != NULL) {         \
     if ((P) == NULL) {                                                                            \
          (P) = CARR_array_alloc(sizeof((P)[0]), ARRAY_DEFAULT_CAPACITY);                          \
     } else if (ARRAY_SIZE(P) >= ARRAY_CAPACITY(P)) {                                              \
-         (P) = CARR_array_realloc(ARRAY_T(P), sizeof((P)[0]), ARRAY_SIZE(P)*ARRAY_CAPACITY_MULT); \
+         (P) = CARR_array_realloc(ARRAY_T(P), sizeof((P)[0]), ARRAY_CAPACITY_GROW(ARRAY_SIZE(P))); \
     }                                                                                             \
     if (ARRAY_SIZE(P) >= ARRAY_CAPACITY(P)) VK_UNHANDLED_ERROR();                                 \
     *((P) + ARRAY_SIZE(P)) = (D);                                                                 \
@@ -188,7 +188,7 @@ if ((P) != NULL) {         \
         tail = RING_BUFFER_T(P)->tail;                                                                                      \
         new_tail = (tail + 1) % RING_BUFFER_T(P)->capacity;                                                                 \
         if (new_tail == head) {                                                                                             \
-            (P) = CARR_ring_buffer_realloc(RING_BUFFER_T(P), sizeof(P[0]), RING_BUFFER_T(P)->capacity*ARRAY_CAPACITY_MULT); \
+            (P) = CARR_ring_buffer_realloc(RING_BUFFER_T(P), sizeof(P[0]), ARRAY_CAPACITY_GROW(RING_BUFFER_T(P)->capacity)); \
             if ((P) == NULL) VK_UNHANDLED_ERROR();                                                                          \
             head = 0;                                                                                                       \
             tail = RING_BUFFER_T(P)->tail;                                                                                  \
@@ -212,9 +212,13 @@ if ((P) != NULL) {         \
 #define RING_BUFFER_POP(P) RING_BUFFER_T(P)->head = (RING_BUFFER_T(P)->head + 1) % RING_BUFFER_T(P)->capacity
 
 /**
- * Deallocate the ring buffer
+ * Deallocate the ring buffer and reset pointer to NULL.
  * @param P pointer to the first data element of the buffer
  */
-#define RING_BUFFER_FREE(P) free(RING_BUFFER_T(P))
+#define RING_BUFFER_FREE(P) do { \
+if ((P) != NULL) {               \
+    free(RING_BUFFER_T(P));      \
+    (P) = NULL;                  \
+}} while(0)
 
 #endif // CARRAYUTILS_H

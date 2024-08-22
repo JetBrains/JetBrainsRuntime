@@ -39,6 +39,7 @@ struct VKDevice {
     VkQueue          queue;
     VkBool32         dynamicRendering;
 
+    VKAllocator*     allocator;
     VKRenderer*      renderer;
     VKTexturePool*   texturePool;
 

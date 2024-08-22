@@ -28,6 +28,7 @@
 #include "CArrayUtil.h"
 #include "VKUtil.h"
 #include "VKBase.h"
+#include "VKAllocator.h"
 #include "VKRenderer.h"
 #include "VKTexturePool.h"
 
@@ -36,6 +37,14 @@
 static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 2, 0);
 
 #define VALIDATION_LAYER_NAME "VK_LAYER_KHRONOS_validation"
+
+// Randomly turn off dynamic rendering in debug mode.
+// This is needed to catch potential problems related to dynamic rendering.
+#ifdef DEBUG
+#define DEBUG_ALLOW_DYNAMIC_RENDERING ((rand() & 1) == 0)
+#else
+#define DEBUG_ALLOW_DYNAMIC_RENDERING 1
+#endif
 
 static jboolean verbose;
 static VKGraphicsEnvironment* geInstance = NULL;
@@ -61,6 +70,7 @@ static void vulkanLibClose() {
                         VKTexturePool_Dispose(device->texturePool);
                     }
                     VKRenderer_Destroy(device->renderer);
+                    VKAllocator_Destroy(device->allocator);
                     ARRAY_FREE(device->enabledExtensions);
                     ARRAY_FREE(device->enabledLayers);
                     free(device->name);
@@ -460,6 +470,7 @@ static jboolean VK_FindDevices() {
             hasDynamicRendering = hasDynamicRendering ||
                            strcmp(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME, extensions[j].extensionName) == 0;
         }
+        hasDynamicRendering &= DEBUG_ALLOW_DYNAMIC_RENDERING;
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Vulkan: Found device extensions:")
         J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "    " VK_KHR_SWAPCHAIN_EXTENSION_NAME " = %s", hasSwapChain ? "true" : "false")
         J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "    " VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME " = %s", hasDynamicRendering ? "true" : "false")
@@ -601,8 +612,10 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkBeginCommandBuffer);
     DEVICE_PROC(vkCmdBlitImage);
     DEVICE_PROC(vkCmdPipelineBarrier);
-    DEVICE_PROC(vkCmdBeginRenderingKHR);
-    DEVICE_PROC(vkCmdEndRenderingKHR);
+    if (device->dynamicRendering) {
+        DEVICE_PROC(vkCmdBeginRenderingKHR);
+        DEVICE_PROC(vkCmdEndRenderingKHR);
+    }
     DEVICE_PROC(vkCmdBeginRenderPass);
     DEVICE_PROC(vkCmdExecuteCommands);
     DEVICE_PROC(vkCmdClearAttachments);
@@ -645,6 +658,13 @@ static jboolean VK_InitDevice(VKDevice* device) {
         return JNI_FALSE;
     }
 
+    device->allocator = VKAllocator_Create(device);
+    if (!device->allocator) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot create allocator")
+        VK_UNHANDLED_ERROR();
+        return JNI_FALSE;
+    }
+
     device->renderer = VKRenderer_Create(device);
     if (!device->renderer) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot create renderer")
@@ -675,6 +695,10 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
  */
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_vulkan_VKInstance_initNative(JNIEnv *env, jclass wlge, jlong nativePtr, jboolean verb, jint requestedDevice) {
+#ifdef DEBUG
+    // Init random for debug-related validation tricks.
+    srand(nativePtr);
+#endif
     verbose = verb;
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = vulkanLibOpen();
     if (vkGetInstanceProcAddr == NULL) {
