@@ -31,7 +31,7 @@
 #include "VKImage.h"
 
 
-VkBool32 VKImage_CreateView(VKLogicalDevice* logicalDevice, VKImage* image) {
+VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
     VkImageViewCreateInfo viewInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = image->image,
@@ -44,13 +44,13 @@ VkBool32 VKImage_CreateView(VKLogicalDevice* logicalDevice, VKImage* image) {
             .subresourceRange.layerCount = 1,
     };
 
-    VK_CHECK(logicalDevice->vkCreateImageView(logicalDevice->device, &viewInfo, NULL, &image->view)) {
+    VK_CHECK(device->vkCreateImageView(device->device, &viewInfo, NULL, &image->view)) {
         return VK_FALSE;
     }
     return VK_TRUE;
 }
 
-VKImage* VKImage_Create(VKLogicalDevice* logicalDevice,
+VKImage* VKImage_Create(VKDevice* device,
                         VkExtent2D extent,
                         VkFormat format, VkImageTiling tiling,
                         VkImageUsageFlags usage,
@@ -82,20 +82,20 @@ VKImage* VKImage_Create(VKLogicalDevice* logicalDevice,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
 
-    VK_CHECK(logicalDevice->vkCreateImage(logicalDevice->device, &imageInfo, NULL, &image->image)) {
-        VKImage_free(logicalDevice, image);
+    VK_CHECK(device->vkCreateImage(device->device, &imageInfo, NULL, &image->image)) {
+        VKImage_free(device, image);
         return NULL;
     }
 
     VkMemoryRequirements memRequirements;
-    logicalDevice->vkGetImageMemoryRequirements(logicalDevice->device, image->image, &memRequirements);
+    device->vkGetImageMemoryRequirements(device->device, image->image, &memRequirements);
 
     uint32_t memoryType;
-    VK_CHECK(VKBuffer_FindMemoryType(logicalDevice->physicalDevice,
+    VK_CHECK(VKBuffer_FindMemoryType(device->physicalDevice,
                                 memRequirements.memoryTypeBits,
                                 properties, &memoryType))
     {
-        VKImage_free(logicalDevice, image);
+        VKImage_free(device, image);
         return NULL;
     }
 
@@ -105,39 +105,39 @@ VKImage* VKImage_Create(VKLogicalDevice* logicalDevice,
             .memoryTypeIndex = memoryType
     };
 
-    VK_CHECK(logicalDevice->vkAllocateMemory(logicalDevice->device, &allocInfo, NULL, &image->memory)) {
-        VKImage_free(logicalDevice, image);
+    VK_CHECK(device->vkAllocateMemory(device->device, &allocInfo, NULL, &image->memory)) {
+        VKImage_free(device, image);
         return NULL;
     }
 
-    VK_CHECK(logicalDevice->vkBindImageMemory(logicalDevice->device, image->image, image->memory, 0)) {
-        VKImage_free(logicalDevice, image);
+    VK_CHECK(device->vkBindImageMemory(device->device, image->image, image->memory, 0)) {
+        VKImage_free(device, image);
         return NULL;
     }
 
-    if (!VKImage_CreateView(logicalDevice, image)) {
-        VKImage_free(logicalDevice, image);
+    if (!VKImage_CreateView(device, image)) {
+        VKImage_free(device, image);
         return NULL;
     }
 
     return image;
 }
 
-void VKImage_free(VKLogicalDevice* logicalDevice, VKImage* image) {
+void VKImage_free(VKDevice* device, VKImage* image) {
     if (!image) return;
 
     if (image->view != VK_NULL_HANDLE) {
-        logicalDevice->vkDestroyImageView(logicalDevice->device, image->view, NULL);
+        device->vkDestroyImageView(device->device, image->view, NULL);
         image->view = VK_NULL_HANDLE;
     }
 
     if (image->memory != VK_NULL_HANDLE) {
-        logicalDevice->vkFreeMemory(logicalDevice->device, image->memory, NULL);
+        device->vkFreeMemory(device->device, image->memory, NULL);
         image->memory = VK_NULL_HANDLE;
     }
 
     if (image->image != VK_NULL_HANDLE) {
-        logicalDevice->vkDestroyImage(logicalDevice->device, image->image, NULL);
+        device->vkDestroyImage(device->device, image->image, NULL);
         image->image = VK_NULL_HANDLE;
     }
 

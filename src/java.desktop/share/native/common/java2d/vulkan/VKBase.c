@@ -567,7 +567,7 @@ static jboolean VK_FindDevices() {
         }
 
         ARRAY_PUSH_BACK(geInstance->devices,
-                ((VKLogicalDevice) {
+                ((VKDevice) {
                 .name = deviceName,
                 .device = VK_NULL_HANDLE,
                 .physicalDevice = geInstance->physicalDevices[i],
@@ -584,8 +584,8 @@ static jboolean VK_FindDevices() {
     return JNI_TRUE;
 }
 
-static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
-    if (logicalDevice->device != VK_NULL_HANDLE) {
+static jboolean VK_InitDevice(VKDevice* device) {
+    if (device->device != VK_NULL_HANDLE) {
         return JNI_TRUE;
     }
     if (geInstance == NULL) {
@@ -594,7 +594,7 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
     }
     if (verbose) {
         for (uint32_t i = 0; i < ARRAY_SIZE(geInstance->devices); i++) {
-            fprintf(stderr, " %c%d: %s\n", &geInstance->devices[i] == logicalDevice ? '*' : ' ',
+            fprintf(stderr, " %c%d: %s\n", &geInstance->devices[i] == device ? '*' : ' ',
                     i, geInstance->devices[i].name);
         }
         fprintf(stderr, "\n");
@@ -603,7 +603,7 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
     float queuePriority = 1.0f;
     VkDeviceQueueCreateInfo queueCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = logicalDevice->queueFamily,  // obtained separately
+            .queueFamilyIndex = device->queueFamily,  // obtained separately
             .queueCount = 1,
             .pQueuePriorities = &queuePriority
     };
@@ -620,7 +620,7 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
             .pNext = pNext,
             .dynamicRendering = VK_TRUE
     };
-    if (logicalDevice->dynamicRendering) pNext = &dynamicRenderingFeatures;
+    if (device->dynamicRendering) pNext = &dynamicRenderingFeatures;
 
     VkDeviceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -628,21 +628,20 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
         .flags = 0,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueCreateInfo,
-        .enabledLayerCount = ARRAY_SIZE(logicalDevice->enabledLayers),
-        .ppEnabledLayerNames = (const char *const *) logicalDevice->enabledLayers,
-        .enabledExtensionCount = ARRAY_SIZE(logicalDevice->enabledExtensions),
-        .ppEnabledExtensionNames = (const char *const *) logicalDevice->enabledExtensions,
+        .enabledLayerCount = ARRAY_SIZE(device->enabledLayers),
+        .ppEnabledLayerNames = (const char *const *) device->enabledLayers,
+        .enabledExtensionCount = ARRAY_SIZE(device->enabledExtensions),
+        .ppEnabledExtensionNames = (const char *const *) device->enabledExtensions,
         .pEnabledFeatures = &features10
     };
 
-    VK_CHECK(geInstance->vkCreateDevice(logicalDevice->physicalDevice, &createInfo, NULL, &logicalDevice->device)) {
-        J2dRlsTraceLn1(J2D_TRACE_ERROR, "Cannot create device: %s", logicalDevice->name)
+    VK_CHECK(geInstance->vkCreateDevice(device->physicalDevice, &createInfo, NULL, &device->device)) {
+        J2dRlsTraceLn1(J2D_TRACE_ERROR, "Cannot create device: %s", device->name)
         return JNI_FALSE;
     }
-    VkDevice device = logicalDevice->device;
-    J2dRlsTraceLn1(J2D_TRACE_INFO, "Logical device (%s) created", logicalDevice->name)
+    J2dRlsTraceLn1(J2D_TRACE_INFO, "Logical device (%s) created", device->name)
 
-#define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, logicalDevice, device, NAME)
+#define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, device, device->device, NAME)
     DEVICE_PROC(vkDestroyDevice);
     DEVICE_PROC(vkCreateShaderModule);
     DEVICE_PROC(vkDestroyShaderModule);
@@ -710,23 +709,23 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
     DEVICE_PROC(vkFlushMappedMemoryRanges);
     DEVICE_PROC(vkCmdPushConstants);
 
-    logicalDevice->vkGetDeviceQueue(device, logicalDevice->queueFamily, 0, &logicalDevice->queue);
-    if (logicalDevice->queue == NULL) {
+    device->vkGetDeviceQueue(device->device, device->queueFamily, 0, &device->queue);
+    if (device->queue == NULL) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to get device queue!");
         VK_UNHANDLED_ERROR();
         return JNI_FALSE;
     }
 
-    logicalDevice->renderer = VKRenderer_Create(logicalDevice);
+    device->renderer = VKRenderer_Create(device);
 
-    logicalDevice->texturePool = VKTexturePool_initWithDevice(logicalDevice);
-    if (!logicalDevice->texturePool) {
+    device->texturePool = VKTexturePool_initWithDevice(device);
+    if (!device->texturePool) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create texture pool")
         VK_UNHANDLED_ERROR();
         return JNI_FALSE;
     }
 
-    geInstance->currentDevice = logicalDevice;
+    geInstance->currentDevice = device;
 
     return JNI_TRUE;
 }
@@ -768,7 +767,7 @@ Java_sun_java2d_vulkan_VKInstance_initNative(JNIEnv *env, jclass wlge, jlong nat
     if (requestedDevice < 0 || (uint32_t)requestedDevice >= ARRAY_SIZE(geInstance->devices)) {
         requestedDevice = 0;
     }
-    if (!VK_InitLogicalDevice(&geInstance->devices[requestedDevice])) {
+    if (!VK_InitDevice(&geInstance->devices[requestedDevice])) {
         vulkanLibClose();
         return JNI_FALSE;
     }

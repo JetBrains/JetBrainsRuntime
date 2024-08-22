@@ -52,10 +52,10 @@ struct VKShaders {
 #   undef SHADER_ENTRY
 };
 
-VKPipelines* VKPipelines_Create(VKLogicalDevice* device, VKShaders* shaders, VkFormat format);
-void VKPipelines_Destroy(VKLogicalDevice* device, VKPipelines* pipelines);
+VKPipelines* VKPipelines_Create(VKDevice* device, VKShaders* shaders, VkFormat format);
+void VKPipelines_Destroy(VKDevice* device, VKPipelines* pipelines);
 
-VKShaders* VKPipelines_CreateShaders(VKLogicalDevice* device);
-void VKPipelines_DestroyShaders(VKLogicalDevice* device, VKShaders* shaders);
+VKShaders* VKPipelines_CreateShaders(VKDevice* device);
+void VKPipelines_DestroyShaders(VKDevice* device, VKShaders* shaders);
 
 #endif //VKPipelines_h_Included

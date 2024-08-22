@@ -69,7 +69,7 @@ void VKSD_ResetSurface(VKSDOps* vksdo) {
 
 VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
     // Initialize the device. currentDevice can be changed on the fly, and we must reconfigure surfaces accordingly.
-    VKLogicalDevice* device = VKGE_graphics_environment()->currentDevice;
+    VKDevice* device = VKGE_graphics_environment()->currentDevice;
     if (device != vksdo->device) {
         VKSD_ResetImageSurface(vksdo);
         vksdo->device = device;
@@ -111,7 +111,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     }
 
     VKGraphicsEnvironment* ge = VKGE_graphics_environment();
-    VKLogicalDevice* device = vkwinsdo->vksdOps.device;
+    VKDevice* device = vkwinsdo->vksdOps.device;
     VkPhysicalDevice physicalDevice = device->physicalDevice;
 
     VkSurfaceCapabilitiesKHR capabilities;

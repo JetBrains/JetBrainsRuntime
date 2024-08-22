@@ -37,11 +37,11 @@ struct VKImage {
     VkExtent2D              extent;
 };
 
-VKImage* VKImage_Create(VKLogicalDevice* logicalDevice,
+VKImage* VKImage_Create(VKDevice* device,
                         VkExtent2D extent,
                         VkFormat format, VkImageTiling tiling,
                         VkImageUsageFlags usage,
                         VkMemoryPropertyFlags properties);
 
-void VKImage_free(VKLogicalDevice* logicalDevice, VKImage* image);
+void VKImage_free(VKDevice* device, VKImage* image);
 #endif // VKImage_h_Included

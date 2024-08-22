@@ -48,7 +48,7 @@ TRACKED_RESOURCE(VkSemaphore);
  * Renderer attached to device.
  */
 struct VKRenderer {
-    VKLogicalDevice* device;
+    VKDevice* device;
 
     TrackedVkCommandBuffer* pendingCommandBuffers;
     TrackedVkCommandBuffer* pendingSecondaryCommandBuffers;
@@ -115,7 +115,7 @@ struct VKRenderPass {
 #define PUSH_PENDING(RENDERER, BUFFER, T) RING_BUFFER_PUSH_CUSTOM(BUFFER, BUFFER[tail].timestamp = RENDERER->writeTimestamp; BUFFER[tail].value = T;)
 
 static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
-    VKLogicalDevice* device = renderer->device;
+    VKDevice* device = renderer->device;
     VkSemaphore semaphore;
     POP_PENDING(renderer, renderer->pendingSemaphores, semaphore);
     if (semaphore == VK_NULL_HANDLE) {
@@ -131,7 +131,7 @@ static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
 
 static void VKRenderer_Wait(VKRenderer* renderer, uint64_t timestamp) {
     if (renderer->readTimestamp >= timestamp) return;
-    VKLogicalDevice* device = renderer->device;
+    VKDevice* device = renderer->device;
     VkSemaphoreWaitInfo semaphoreWaitInfo = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
             .flags = 0,
@@ -152,7 +152,7 @@ void VKRenderer_Sync(VKRenderer* renderer) {
     VKRenderer_Wait(renderer, renderer->writeTimestamp - 1);
 }
 
-VKRenderer* VKRenderer_Create(VKLogicalDevice* device) {
+VKRenderer* VKRenderer_Create(VKDevice* device) {
     VKRenderer* renderer = calloc(1, sizeof(VKRenderer));
 
     renderer->shaders = VKPipelines_CreateShaders(device);
@@ -239,7 +239,7 @@ static VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
     if (renderer->commandBuffer != VK_NULL_HANDLE) {
         return renderer->commandBuffer;
     }
-    VKLogicalDevice* device = renderer->device;
+    VKDevice* device = renderer->device;
     VkCommandBuffer commandBuffer;
     POP_PENDING(renderer, renderer->pendingCommandBuffers, commandBuffer);
     if (commandBuffer == VK_NULL_HANDLE) {
@@ -268,7 +268,7 @@ static VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
 
 void VKRenderer_Flush(VKRenderer* renderer) {
     if (renderer == NULL) return;
-    VKLogicalDevice* device = renderer->device;
+    VKDevice* device = renderer->device;
     size_t pendingPresentations = ARRAY_SIZE(renderer->pendingPresentation.swapchains);
 
     // Submit pending command buffer and semaphores.
@@ -378,7 +378,7 @@ static void VKRenderer_SurfaceBarrier(VKSDOps* surface, VkPipelineStageFlags sta
     VkPipelineStageFlags srcStages = 0, dstStages = 0;
     VKRenderer_AddSurfaceBarrier(&barrier, &numBarriers, &srcStages, &dstStages, surface, stage, access, layout);
     if (numBarriers == 1) {
-        VKLogicalDevice* device = surface->device;
+        VKDevice* device = surface->device;
         VKRenderer* renderer = device->renderer;
         VkCommandBuffer cb = VKRenderer_Record(renderer);
         device->vkCmdPipelineBarrier(cb, srcStages, dstStages, 0, 0, NULL, 0, NULL, 1, &barrier);
@@ -403,7 +403,7 @@ static void VKRenderer_DiscardRenderPass(VKSDOps* surface) {
 void VKRenderer_ReleaseRenderPass(VKSDOps* surface) {
     assert(surface != NULL);
     if (surface->renderPass == NULL) return;
-    VKLogicalDevice* device = surface->device;
+    VKDevice* device = surface->device;
     if (device != NULL && device->renderer != NULL) {
         // Wait while surface resources are being used by the device.
         VKRenderer_Wait(device->renderer, surface->renderPass->lastTimestamp);
@@ -437,7 +437,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
 
     if (surface->renderPass != NULL) return VK_TRUE;
 
-    VKLogicalDevice* device = surface->device;
+    VKDevice* device = surface->device;
     VKRenderer* renderer = device->renderer;
     VKRenderPass* renderPass = surface->renderPass = malloc(sizeof(VKRenderPass));
     (*renderPass) = (VKRenderPass) {
@@ -490,7 +490,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL && !surface->renderPass->pendingCommands);
     // We may have a pending flush, which is already obsolete.
     surface->renderPass->pendingFlush = VK_FALSE;
-    VKLogicalDevice* device = surface->device;
+    VKDevice* device = surface->device;
     VKRenderer* renderer = device->renderer;
 
     // Initialize command buffer.
@@ -585,7 +585,7 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     VkBool32 hasCommands = surface->renderPass->pendingCommands, clear = surface->renderPass->pendingClear;
     if(!hasCommands && !clear) return;
-    VKLogicalDevice* device = surface->device;
+    VKDevice* device = surface->device;
     VKRenderer* renderer = device->renderer;
     surface->renderPass->lastTimestamp = renderer->writeTimestamp;
     VkCommandBuffer cb = VKRenderer_Record(renderer);
@@ -682,7 +682,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
             return;
         }
 
-        VKLogicalDevice* device = surface->device;
+        VKDevice* device = surface->device;
         VKRenderer* renderer = device->renderer;
         surface->renderPass->lastTimestamp = renderer->writeTimestamp;
         VkCommandBuffer cb = VKRenderer_Record(renderer);
@@ -793,14 +793,14 @@ static VkCommandBuffer VKRenderer_Render(VKSDOps* surface) {
 
 // TODO refactor following part =======================================================================================>
 
-#define ARRAY_TO_VERTEX_BUF(logicalDevice, vertices)                                           \
-    VKBuffer_CreateFromData(logicalDevice, vertices, ARRAY_SIZE(vertices)*sizeof ((vertices)[0]))
+#define ARRAY_TO_VERTEX_BUF(device, vertices)                                           \
+    VKBuffer_CreateFromData(device, vertices, ARRAY_SIZE(vertices)*sizeof ((vertices)[0]))
 
 static void VKRenderer_ColorRender(VKRenderingContext* context, VKPipeline pipeline, VkBuffer vertexBuffer, uint32_t vertexNum) {
     assert(context != NULL && context->surface != NULL);
     VKSDOps* surface = context->surface;
     VkCommandBuffer cb = VKRenderer_Render(surface);
-    VKLogicalDevice* device = surface->device;
+    VKDevice* device = surface->device;
 
     device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, surface->renderPass->pipelines->pipelines[pipeline]);
     device->vkCmdPushConstants(

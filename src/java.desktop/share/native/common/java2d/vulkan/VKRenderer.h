@@ -35,7 +35,7 @@ struct VKRenderingContext {
     Color color;
 };
 
-VKRenderer* VKRenderer_Create(VKLogicalDevice* logicalDevice);
+VKRenderer* VKRenderer_Create(VKDevice* device);
 
 void VKRenderer_Destroy(VKRenderer* renderer);
 

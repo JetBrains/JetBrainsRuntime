@@ -45,7 +45,7 @@ VkResult VKBuffer_FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeF
     return VK_ERROR_UNKNOWN;
 }
 
-VKBuffer* VKBuffer_Create(VKLogicalDevice* logicalDevice, VkDeviceSize size,
+VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
                           VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
 {
     VKBuffer* buffer = calloc(1, sizeof(VKBuffer));
@@ -57,22 +57,22 @@ VKBuffer* VKBuffer_Create(VKLogicalDevice* logicalDevice, VkDeviceSize size,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
 
-    VK_CHECK(logicalDevice->vkCreateBuffer(logicalDevice->device, &bufferInfo, NULL, &buffer->buffer)) {
-        VKBuffer_free(logicalDevice, buffer);
+    VK_CHECK(device->vkCreateBuffer(device->device, &bufferInfo, NULL, &buffer->buffer)) {
+        VKBuffer_free(device, buffer);
         return NULL;
     }
 
     buffer->size = size;
 
     VkMemoryRequirements memRequirements;
-    logicalDevice->vkGetBufferMemoryRequirements(logicalDevice->device, buffer->buffer, &memRequirements);
+    device->vkGetBufferMemoryRequirements(device->device, buffer->buffer, &memRequirements);
 
     uint32_t memoryType;
 
-    VK_CHECK(VKBuffer_FindMemoryType(logicalDevice->physicalDevice,
+    VK_CHECK(VKBuffer_FindMemoryType(device->physicalDevice,
                                      memRequirements.memoryTypeBits,
                                      properties, &memoryType)) {
-        VKBuffer_free(logicalDevice, buffer);
+        VKBuffer_free(device, buffer);
         return NULL;
     }
 
@@ -82,28 +82,28 @@ VKBuffer* VKBuffer_Create(VKLogicalDevice* logicalDevice, VkDeviceSize size,
             .memoryTypeIndex = memoryType
     };
 
-    VK_CHECK(logicalDevice->vkAllocateMemory(logicalDevice->device, &allocInfo, NULL, &buffer->memory)) {
-        VKBuffer_free(logicalDevice, buffer);
+    VK_CHECK(device->vkAllocateMemory(device->device, &allocInfo, NULL, &buffer->memory)) {
+        VKBuffer_free(device, buffer);
         return NULL;
     }
 
-    VK_CHECK(logicalDevice->vkBindBufferMemory(logicalDevice->device, buffer->buffer, buffer->memory, 0)) {
-        VKBuffer_free(logicalDevice, buffer);
+    VK_CHECK(device->vkBindBufferMemory(device->device, buffer->buffer, buffer->memory, 0)) {
+        VKBuffer_free(device, buffer);
         return NULL;
     }
     return buffer;
 }
 
-VKBuffer* VKBuffer_CreateFromData(VKLogicalDevice* logicalDevice, void* vertices, VkDeviceSize bufferSize)
+VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize bufferSize)
 {
-    VKBuffer* buffer = VKBuffer_Create(logicalDevice, bufferSize,
+    VKBuffer* buffer = VKBuffer_Create(device, bufferSize,
                                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     void* data;
-    VK_CHECK(logicalDevice->vkMapMemory(logicalDevice->device, buffer->memory, 0, VK_WHOLE_SIZE, 0, &data)) {
-        VKBuffer_free(logicalDevice, buffer);
+    VK_CHECK(device->vkMapMemory(device->device, buffer->memory, 0, VK_WHOLE_SIZE, 0, &data)) {
+        VKBuffer_free(device, buffer);
         return NULL;
     }
     memcpy(data, vertices, bufferSize);
@@ -117,23 +117,23 @@ VKBuffer* VKBuffer_CreateFromData(VKLogicalDevice* logicalDevice, void* vertices
     };
 
 
-    VK_CHECK(logicalDevice->vkFlushMappedMemoryRanges(logicalDevice->device, 1, &memoryRange)) {
-        VKBuffer_free(logicalDevice, buffer);
+    VK_CHECK(device->vkFlushMappedMemoryRanges(device->device, 1, &memoryRange)) {
+        VKBuffer_free(device, buffer);
         return NULL;
     }
-    logicalDevice->vkUnmapMemory(logicalDevice->device, buffer->memory);
+    device->vkUnmapMemory(device->device, buffer->memory);
     buffer->size = bufferSize;
 
     return buffer;
 }
 
-void VKBuffer_free(VKLogicalDevice* logicalDevice, VKBuffer* buffer) {
+void VKBuffer_free(VKDevice* device, VKBuffer* buffer) {
     if (buffer != NULL) {
         if (buffer->buffer != VK_NULL_HANDLE) {
-            logicalDevice->vkDestroyBuffer(logicalDevice->device, buffer->buffer, NULL);
+            device->vkDestroyBuffer(device->device, buffer->buffer, NULL);
         }
         if (buffer->memory != VK_NULL_HANDLE) {
-            logicalDevice->vkFreeMemory(logicalDevice->device, buffer->memory, NULL);
+            device->vkFreeMemory(device->device, buffer->memory, NULL);
         }
         free(buffer);
     }

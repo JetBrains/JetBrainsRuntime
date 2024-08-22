@@ -33,7 +33,7 @@
 #undef SHADER_ENTRY
 #undef BYTECODE_END
 
-VKShaders* VKPipelines_CreateShaders(VKLogicalDevice* device) {
+VKShaders* VKPipelines_CreateShaders(VKDevice* device) {
     const VkShaderStageFlagBits vert = VK_SHADER_STAGE_VERTEX_BIT;
     const VkShaderStageFlagBits frag = VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -57,7 +57,7 @@ VKShaders* VKPipelines_CreateShaders(VKLogicalDevice* device) {
     return NULL;
 }
 
-void VKPipelines_DestroyShaders(VKLogicalDevice* device, VKShaders* shaders) {
+void VKPipelines_DestroyShaders(VKDevice* device, VKShaders* shaders) {
     if (shaders == NULL) return;
 #   define SHADER_ENTRY(NAME, TYPE) if (shaders->NAME##_##TYPE.module != VK_NULL_HANDLE) \
     device->vkDestroyShaderModule(device->device, shaders->NAME##_##TYPE.module, NULL);
@@ -66,7 +66,7 @@ void VKPipelines_DestroyShaders(VKLogicalDevice* device, VKShaders* shaders) {
     free(shaders);
 }
 
-static VkResult VKPipelines_CreateRenderPass(VKLogicalDevice* device, VKPipelines* pipelines) {
+static VkResult VKPipelines_CreateRenderPass(VKDevice* device, VKPipelines* pipelines) {
     VkAttachmentDescription colorAttachment = {
             .format = pipelines->format,
             .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -108,7 +108,7 @@ static VkResult VKPipelines_CreateRenderPass(VKLogicalDevice* device, VKPipeline
     return device->vkCreateRenderPass(device->device, &createInfo, NULL, &pipelines->renderPass);
 }
 
-static VkResult VKPipelines_CreatePipelineLayout(VKLogicalDevice* device, VKPipelines* pipelines) {
+static VkResult VKPipelines_CreatePipelineLayout(VKDevice* device, VKPipelines* pipelines) {
     VkPushConstantRange pushConstantRange = {
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
             .offset = 0,
@@ -182,7 +182,7 @@ static VkGraphicsPipelineCreateInfo VKPipelines_DefaultPipeline() {
     };
 }
 
-VKPipelines* VKPipelines_Create(VKLogicalDevice* device, VKShaders* shaders, VkFormat format) {
+VKPipelines* VKPipelines_Create(VKDevice* device, VKShaders* shaders, VkFormat format) {
     VKPipelines* pipelines = calloc(1, sizeof(VKPipelines));
     pipelines->format = format;
 
@@ -258,7 +258,7 @@ VKPipelines* VKPipelines_Create(VKLogicalDevice* device, VKShaders* shaders, VkF
     return NULL;
 }
 
-void VKPipelines_Destroy(VKLogicalDevice* device, VKPipelines* pipelines) {
+void VKPipelines_Destroy(VKDevice* device, VKPipelines* pipelines) {
     if (pipelines == NULL) return;
     if (pipelines->pipelineLayout != VK_NULL_HANDLE) {
         device->vkDestroyPipelineLayout(device->device, pipelines->pipelineLayout, NULL);

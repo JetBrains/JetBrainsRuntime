@@ -47,7 +47,7 @@ inline VkBool32 checkVulkanError(VkResult result, const char* errorMessage) {
 #define VK_UNHANDLED_ERROR() unhandledVulkanError("Unhandled Vulkan error\n    at " LOCATION)
 
 
-struct VKLogicalDevice {
+struct VKDevice {
     VkDevice         device;
     VkPhysicalDevice physicalDevice;
     char*            name;
@@ -131,8 +131,8 @@ struct VKLogicalDevice {
 struct VKGraphicsEnvironment {
     VkInstance        vkInstance;
     VkPhysicalDevice* physicalDevices;
-    VKLogicalDevice*  devices;
-    VKLogicalDevice*  currentDevice;
+    VKDevice*         devices;
+    VKDevice*         currentDevice;
 
 #if defined(DEBUG)
     VkDebugUtilsMessengerEXT debugMessenger;

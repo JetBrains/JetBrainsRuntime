@@ -45,7 +45,7 @@ jint VKTexturePoolHandle_GetRequestedHeight(VKTexturePoolHandle *handle);
 /* VKTexturePool API */
 typedef ATexturePool VKTexturePool;
 
-VKTexturePool* VKTexturePool_initWithDevice(VKLogicalDevice *device) ;
+VKTexturePool* VKTexturePool_initWithDevice(VKDevice *device) ;
 
 void VKTexturePool_Dispose(VKTexturePool *pool);
 
