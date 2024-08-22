@@ -50,7 +50,6 @@ typedef char* pchar;
 
 STRUCT(VKGraphicsEnvironment);
 STRUCT(VKDevice);
-STRUCT(VKAllocator);
 STRUCT(VKRenderer);
 STRUCT(VKRenderPass);
 STRUCT(VKRenderingContext);

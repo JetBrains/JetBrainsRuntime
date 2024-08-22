@@ -52,10 +52,14 @@ void* CARR_ring_buffer_realloc(CARR_ring_buffer_t* buf, size_t elem_size, size_t
 #define ARRAY_LAST(P) ((P)[ARRAY_SIZE(P) - 1])
 
 /**
- * Deallocate the vector
+ * Deallocate the array and reset pointer to NULL.
  * @param P pointer to the first data element of the array
  */
-#define ARRAY_FREE(P) free(ARRAY_T(P))
+#define ARRAY_FREE(P) do { \
+if ((P) != NULL) {         \
+    free(ARRAY_T(P));      \
+    (P) = NULL;            \
+}} while(0)
 
 /**
  * Apply function to the array elements

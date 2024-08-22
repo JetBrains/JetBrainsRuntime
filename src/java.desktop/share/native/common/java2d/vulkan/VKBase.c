@@ -121,22 +121,17 @@ static void vulkanLibClose() {
             ARRAY_FREE(geInstance->physicalDevices);
             if (geInstance->devices != NULL) {
                 for (uint32_t i = 0; i < ARRAY_SIZE(geInstance->devices); i++) {
-                    VKTexturePool_Dispose(geInstance->devices[i].texturePool);
-                    VKRenderer_Destroy(geInstance->devices[i].renderer);
-                    if (geInstance->devices[i].enabledExtensions != NULL) {
-                        ARRAY_FREE(geInstance->devices[i].enabledExtensions);
+                    VKDevice* device = &geInstance->devices[i];
+                    if (device->texturePool != NULL) {
+                        // TODO make VKTexturePool_Dispose null-safe?
+                        VKTexturePool_Dispose(device->texturePool);
                     }
-                    if (geInstance->devices[i].enabledLayers != NULL) {
-                        ARRAY_FREE(geInstance->devices[i].enabledLayers);
-                    }
-                    if (geInstance->devices[i].name != NULL) {
-                        free(geInstance->devices[i].name);
-                    }
-                    if (geInstance->devices[i].texturePool != NULL) {
-                        VKTexturePool_Dispose(geInstance->devices[i].texturePool);
-                    }
-                    if (geInstance->devices[i].vkDestroyDevice != NULL && geInstance->devices[i].device != NULL) {
-                        geInstance->devices[i].vkDestroyDevice(geInstance->devices[i].device, NULL);
+                    VKRenderer_Destroy(device->renderer);
+                    ARRAY_FREE(device->enabledExtensions);
+                    ARRAY_FREE(device->enabledLayers);
+                    free(device->name);
+                    if (device->vkDestroyDevice != NULL && device->device != NULL) {
+                        device->vkDestroyDevice(device->device, NULL);
                     }
                 }
                 ARRAY_FREE(geInstance->devices);
@@ -167,7 +162,7 @@ static PFN_vkGetInstanceProcAddr vulkanLibOpen() {
             pVulkanLib = dlopen(VULKAN_1_DLL, RTLD_NOW);
         }
         if (pVulkanLib == NULL) {
-            J2dRlsTraceLn1(J2D_TRACE_ERROR, "Failed to load %s", VULKAN_DLL)
+            J2dRlsTraceLn1(J2D_TRACE_ERROR, "Vulkan: Failed to load %s", VULKAN_DLL)
             return NULL;
         }
     }
@@ -175,7 +170,7 @@ static PFN_vkGetInstanceProcAddr vulkanLibOpen() {
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr) dlsym(pVulkanLib, "vkGetInstanceProcAddr");
     if (vkGetInstanceProcAddr == NULL) {
         J2dRlsTraceLn1(J2D_TRACE_ERROR,
-                     "Failed to get proc address of vkGetInstanceProcAddr from %s", VULKAN_DLL)
+                     "Vulkan: Failed to get proc address of vkGetInstanceProcAddr from %s", VULKAN_DLL)
         vulkanLibClose();
         return NULL;
     }
@@ -531,7 +526,7 @@ static jboolean VK_FindDevices() {
             hasDynamicRendering = hasDynamicRendering ||
                            strcmp(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME, extensions[j].extensionName) == 0;
         }
-        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Found device extensions:")
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Vulkan: Found device extensions:")
         J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "    " VK_KHR_SWAPCHAIN_EXTENSION_NAME " = %s", hasSwapChain ? "true" : "false")
         J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "    " VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME " = %s", hasDynamicRendering ? "true" : "false")
 
@@ -578,7 +573,7 @@ static jboolean VK_FindDevices() {
         }));
     }
     if (ARRAY_SIZE(geInstance->devices) == 0) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "No compatible device found")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: No compatible device found")
         return JNI_FALSE;
     }
     return JNI_TRUE;
@@ -636,10 +631,10 @@ static jboolean VK_InitDevice(VKDevice* device) {
     };
 
     VK_CHECK(geInstance->vkCreateDevice(device->physicalDevice, &createInfo, NULL, &device->device)) {
-        J2dRlsTraceLn1(J2D_TRACE_ERROR, "Cannot create device: %s", device->name)
+        J2dRlsTraceLn1(J2D_TRACE_ERROR, "Vulkan: Cannot create device: %s", device->name)
         return JNI_FALSE;
     }
-    J2dRlsTraceLn1(J2D_TRACE_INFO, "Logical device (%s) created", device->name)
+    J2dRlsTraceLn1(J2D_TRACE_INFO, "Vulkan: Device created (%s)", device->name)
 
 #define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, device, device->device, NAME)
     DEVICE_PROC(vkDestroyDevice);
@@ -711,16 +706,21 @@ static jboolean VK_InitDevice(VKDevice* device) {
 
     device->vkGetDeviceQueue(device->device, device->queueFamily, 0, &device->queue);
     if (device->queue == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, "failed to get device queue!");
+        J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Failed to get device queue");
         VK_UNHANDLED_ERROR();
         return JNI_FALSE;
     }
 
     device->renderer = VKRenderer_Create(device);
+    if (!device->renderer) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot create renderer")
+        VK_UNHANDLED_ERROR();
+        return JNI_FALSE;
+    }
 
     device->texturePool = VKTexturePool_initWithDevice(device);
     if (!device->texturePool) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create texture pool")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot create texture pool")
         VK_UNHANDLED_ERROR();
         return JNI_FALSE;
     }
