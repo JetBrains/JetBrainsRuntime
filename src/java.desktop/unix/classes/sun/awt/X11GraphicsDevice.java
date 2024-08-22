@@ -634,6 +634,7 @@ public final class X11GraphicsDevice extends GraphicsDevice
                 if (x11gd.isScaleFactorDefault.get() || !uiScaleEnabled) {
                     x11gd.scale = (int)Math.round(xftDpiScale * (uiScaleEnabled ? GDK_SCALE_MULTIPLIER : 1));
                     x11gd.isScaleFactorDefault.set(false);
+                    x11gd.bounds = x11gd.getBoundsImpl();
                 }
             }
         }
