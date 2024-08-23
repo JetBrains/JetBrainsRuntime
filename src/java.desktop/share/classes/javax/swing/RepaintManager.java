@@ -845,11 +845,6 @@ public class RepaintManager
         paintDirtyRegions(tmpDirtyComponents);
     }
 
-    static Thread thread = null;
-
-    static private AtomicInteger fps = new AtomicInteger(0);
-    static Timer timer = null;
-
     private void paintDirtyRegions(
         final Map<Component,Rectangle> tmpDirtyComponents)
     {
@@ -890,44 +885,6 @@ public class RepaintManager
                                                            localBoundsW,
                                                            localBoundsH,
                                                            rect);
-
-                        if (dirtyComponent.getHeight() > 1000 && dirtyComponent.getWidth() > 1000) {
-                            if (thread == null) {
-                                System.err.println("CREATED THREAD STARTED PAINT");
-                                thread = new Thread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        System.err.println("THREAD STARTED PAINT");
-                                        Component dirtyComponentTmp = dirtyComponent;
-                                        while (true) {
-                                            try {
-                                                dirtyComponentTmp.repaint();
-                                            } catch (Exception ex) {
-                                            }
-                                        }
-                                    }
-                                });
-                                thread.setName("MyThread");
-                                thread.start();
-                            }
-                        }
-
-                        if (timer == null) {
-                            timer = new Timer(1000, new ActionListener() {
-
-                                @Override
-                                public void actionPerformed(ActionEvent e) {
-                                    System.err.println("FPS RM = " + fps.get());
-                                    fps.set(0);
-                                }
-                            });
-                            timer.setRepeats(true);
-                            timer.start();
-                        }
-                        if (dirtyComponent.getHeight() > 1000 && dirtyComponent.getWidth() > 1000) {
-                            fps.addAndGet(1);
-                        }
-
                         if (dirtyComponent instanceof JComponent) {
                             ((JComponent)dirtyComponent).paintImmediately(
                                 rect.x,rect.y,rect.width, rect.height);
@@ -1935,7 +1892,7 @@ public class RepaintManager
     private final class ProcessingRunnable implements Runnable {
         // If true, we're waiting on the EventQueue.
         private boolean pending;
-        private static Toolkit tk = Toolkit.getDefaultToolkit();
+
         /**
          * Marks this processing runnable as pending. If this was not
          * already marked as pending, true is returned.
@@ -1963,7 +1920,6 @@ public class RepaintManager
             // Do the actual validation and painting.
             validateInvalidComponents();
             prePaintDirtyRegions();
-//            tk.displayBuffer(0,0,0,0);
         }
     }
     private RepaintManager getDelegate(Component c) {

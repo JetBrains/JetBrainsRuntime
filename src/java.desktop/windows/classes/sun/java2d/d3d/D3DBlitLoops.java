@@ -25,14 +25,15 @@
 
 package sun.java2d.d3d;
 
-import java.awt.*;
+import java.awt.Composite;
+import java.awt.Transparency;
+import java.awt.Toolkit;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.awt.image.BufferedImageOp;
 import java.lang.ref.WeakReference;
 import java.lang.annotation.Native;
-import sun.java2d.ScreenUpdateManager;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
@@ -272,10 +273,14 @@ final class D3DBlitLoops {
             // always flush immediately, since we (currently) have no means
             // of tracking changes to the system memory surface
             rq.flushNow();
-
-            Toolkit.getDefaultToolkit().displayBuffer((int) dx1, (int) dy1, (int) dx2, (int) dy2);
         } finally {
             rq.unlock();
+        }
+
+        if (d3dDst.getType() == D3DSurfaceData.WINDOW) {
+            // flush immediately when copying to the screen to improve
+            // responsiveness of applications using VI or BI backbuffers
+            Toolkit.getDefaultToolkit().displayBuffer((int) dx1, (int) dy1, (int) dx2, (int) dy2);
         }
     }
 
@@ -336,10 +341,15 @@ final class D3DBlitLoops {
             if (biop != null) {
                 D3DBufImgOps.disableBufImgOp(rq, biop);
             }
-
-            Toolkit.getDefaultToolkit().displayBuffer((int) dx1, (int) dy1, (int) dx2, (int) dy2);
         } finally {
             rq.unlock();
+        }
+
+        if (rtt && (d3dDst.getType() == D3DSurfaceData.WINDOW)) {
+            // we only have to flush immediately when copying from a
+            // (non-texture) surface to the screen; otherwise Swing apps
+            // might appear unresponsive until the auto-flush completes
+            Toolkit.getDefaultToolkit().displayBuffer((int) dx1, (int) dy1, (int) dx2, (int) dy2);
         }
     }
 }

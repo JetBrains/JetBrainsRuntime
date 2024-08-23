@@ -758,9 +758,6 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
         }
     }
 
-    static private AtomicInteger fps = new AtomicInteger(0);
-    static Timer timer = null;
-
     public static void swapBuffers(D3DSurfaceData sd,
                             final int x1, final int y1,
                             final int x2, final int y2)
@@ -795,28 +792,12 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
             rq.lock();
         }
         try {
-            if (timer == null) {
-                timer = new Timer(1000, new ActionListener() {
-
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        System.err.println("FPS = " + fps.get());
-                        fps.set(0);
-                    }
-                });
-                timer.setRepeats(true);
-                timer.start();
-            }
-            fps.addAndGet(1);
-
             RenderBuffer buf = rq.getBuffer();
             rq.ensureCapacityAndAlignment(28, 4);
             buf.putInt(SWAP_BUFFERS);
             buf.putLong(pData);
             buf.putInt(x1);
             buf.putInt(y1);
-//            buf.putInt(x1 + (x2 - x1) / 2);
-//            buf.putInt(y1 + (y2 - y1) / 2);
             buf.putInt(x2);
             buf.putInt(y2);
             rq.flushNow();

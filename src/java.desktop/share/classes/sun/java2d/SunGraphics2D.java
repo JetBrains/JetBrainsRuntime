@@ -74,7 +74,6 @@ import java.util.Map;
 import sun.awt.ConstrainableGraphics;
 import sun.awt.SunHints;
 import sun.awt.image.MultiResolutionToolkitImage;
-import sun.awt.image.SunVolatileImage;
 import sun.awt.image.SurfaceManager;
 import sun.awt.image.ToolkitImage;
 import sun.awt.util.PerformanceLogger;
