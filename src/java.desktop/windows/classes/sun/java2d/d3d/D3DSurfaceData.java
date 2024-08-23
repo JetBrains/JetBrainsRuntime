@@ -34,8 +34,6 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.Transparency;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.image.ColorModel;
 import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
@@ -69,8 +67,6 @@ import java.awt.BufferCapabilities.FlipContents;
 import java.awt.Dimension;
 import java.awt.Window;
 import java.awt.geom.AffineTransform;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import sun.awt.SunToolkit;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.windows.WWindowPeer;
@@ -78,8 +74,6 @@ import sun.java2d.ScreenUpdateManager;
 import sun.java2d.StateTracker;
 import sun.java2d.SurfaceDataProxy;
 import sun.java2d.pipe.hw.ExtendedBufferCapabilities;
-
-import javax.swing.*;
 
 /**
  * This class describes a D3D "surface", that is, a region of pixels
