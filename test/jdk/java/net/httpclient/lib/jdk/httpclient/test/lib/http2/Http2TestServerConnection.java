@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
 package jdk.httpclient.test.lib.http2;
 
 import jdk.internal.net.http.common.HttpHeadersBuilder;
+import jdk.internal.net.http.common.Log;
+import jdk.internal.net.http.frame.ContinuationFrame;
 import jdk.internal.net.http.frame.DataFrame;
 import jdk.internal.net.http.frame.ErrorFrame;
 import jdk.internal.net.http.frame.FramesDecoder;
@@ -78,10 +80,13 @@ import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static jdk.internal.net.http.frame.SettingsFrame.DEFAULT_MAX_FRAME_SIZE;
 import static jdk.internal.net.http.frame.SettingsFrame.HEADER_TABLE_SIZE;
 
 /**
@@ -100,7 +105,7 @@ public class Http2TestServerConnection {
     final Http2TestExchangeSupplier exchangeSupplier;
     final InputStream is;
     final OutputStream os;
-    volatile Encoder hpackOut;
+    volatile HpackTestEncoder hpackOut;
     volatile Decoder hpackIn;
     volatile SettingsFrame clientSettings;
     final SettingsFrame serverSettings;
@@ -393,7 +398,9 @@ public class Http2TestServerConnection {
     }
 
     public int getMaxFrameSize() {
-        return clientSettings.getParameter(SettingsFrame.MAX_FRAME_SIZE);
+        var max = clientSettings.getParameter(SettingsFrame.MAX_FRAME_SIZE);
+        if (max <= 0) max = DEFAULT_MAX_FRAME_SIZE;
+        return max;
     }
 
     /** Sends a pre-canned HTTP/1.1 response. */
@@ -454,7 +461,7 @@ public class Http2TestServerConnection {
         //System.out.println("ServerSettings: " + serverSettings);
         //System.out.println("ClientSettings: " + clientSettings);
 
-        hpackOut = new Encoder(serverSettings.getParameter(HEADER_TABLE_SIZE));
+        hpackOut = new HpackTestEncoder(serverSettings.getParameter(HEADER_TABLE_SIZE));
         hpackIn = new Decoder(clientSettings.getParameter(HEADER_TABLE_SIZE));
 
         if (!secure) {
@@ -745,6 +752,14 @@ public class Http2TestServerConnection {
         }
     }
 
+    public void sendFrames(List<Http2Frame> frames) throws IOException {
+        synchronized (outputQ) {
+            for (var frame : frames) {
+                outputQ.put(frame);
+            }
+        }
+    }
+
     protected HttpHeadersBuilder createNewHeadersBuilder() {
         return new HttpHeadersBuilder();
     }
@@ -858,26 +873,38 @@ public class Http2TestServerConnection {
         return (streamid & 0x01) == 0x00;
     }
 
+    final ReentrantLock headersLock = new ReentrantLock();
+
     /** Encodes an group of headers, without any ordering guarantees. */
     public List<ByteBuffer> encodeHeaders(HttpHeaders headers) {
+        return encodeHeaders(headers, (n,v) -> false);
+    }
+
+    public List<ByteBuffer> encodeHeaders(HttpHeaders headers,
+                                          BiPredicate<CharSequence, CharSequence> insertionPolicy) {
         List<ByteBuffer> buffers = new LinkedList<>();
 
         ByteBuffer buf = getBuffer();
         boolean encoded;
-        for (Map.Entry<String, List<String>> entry : headers.map().entrySet()) {
-            List<String> values = entry.getValue();
-            String key = entry.getKey().toLowerCase();
-            for (String value : values) {
-                do {
-                    hpackOut.header(key, value);
-                    encoded = hpackOut.encode(buf);
-                    if (!encoded) {
-                        buf.flip();
-                        buffers.add(buf);
-                        buf = getBuffer();
-                    }
-                } while (!encoded);
+        headersLock.lock();
+        try {
+            for (Map.Entry<String, List<String>> entry : headers.map().entrySet()) {
+                List<String> values = entry.getValue();
+                String key = entry.getKey().toLowerCase();
+                for (String value : values) {
+                    hpackOut.header(key, value, insertionPolicy);
+                    do {
+                        encoded = hpackOut.encode(buf);
+                        if (!encoded && !buf.hasRemaining()) {
+                            buf.flip();
+                            buffers.add(buf);
+                            buf = getBuffer();
+                        }
+                    } while (!encoded);
+                }
             }
+        } finally {
+            headersLock.unlock();
         }
         buf.flip();
         buffers.add(buf);
@@ -890,18 +917,23 @@ public class Http2TestServerConnection {
 
         ByteBuffer buf = getBuffer();
         boolean encoded;
-        for (Map.Entry<String, String> entry : headers) {
-            String value = entry.getValue();
-            String key = entry.getKey().toLowerCase();
-            do {
+        headersLock.lock();
+        try {
+            for (Map.Entry<String, String> entry : headers) {
+                String value = entry.getValue();
+                String key = entry.getKey().toLowerCase();
                 hpackOut.header(key, value);
-                encoded = hpackOut.encode(buf);
-                if (!encoded) {
-                    buf.flip();
-                    buffers.add(buf);
-                    buf = getBuffer();
-                }
-            } while (!encoded);
+                do {
+                    encoded = hpackOut.encode(buf);
+                    if (!encoded && !buf.hasRemaining()) {
+                        buf.flip();
+                        buffers.add(buf);
+                        buf = getBuffer();
+                    }
+                } while (!encoded);
+            }
+        } finally {
+            headersLock.unlock();
         }
         buf.flip();
         buffers.add(buf);
@@ -928,10 +960,50 @@ public class Http2TestServerConnection {
                         break;
                     } else throw x;
                 }
-                if (frame instanceof ResponseHeaders) {
-                    ResponseHeaders rh = (ResponseHeaders)frame;
-                    HeadersFrame hf = new HeadersFrame(rh.streamid(), rh.getFlags(), encodeHeaders(rh.headers));
-                    writeFrame(hf);
+                if (frame instanceof ResponseHeaders rh) {
+                    var buffers = encodeHeaders(rh.headers, rh.insertionPolicy);
+                    int maxFrameSize = Math.min(rh.getMaxFrameSize(), getMaxFrameSize() - 64);
+                    int next = 0;
+                    int cont = 0;
+                    do {
+                        // If the total size of headers exceeds the max frame
+                        // size we need to split the headers into one
+                        // HeadersFrame + N x ContinuationFrames
+                        int remaining = maxFrameSize;
+                        var list = new ArrayList<ByteBuffer>(buffers.size());
+                        for (; next < buffers.size(); next++) {
+                            var b = buffers.get(next);
+                            var len = b.remaining();
+                            if (!b.hasRemaining()) continue;
+                            if (len <= remaining) {
+                                remaining -= len;
+                                list.add(b);
+                            } else {
+                                if (next == 0) {
+                                    list.add(b.slice(b.position(), remaining));
+                                    b.position(b.position() + remaining);
+                                    remaining = 0;
+                                }
+                                break;
+                            }
+                        }
+                        int flags = rh.getFlags();
+                        if (next != buffers.size()) {
+                            flags = flags & ~HeadersFrame.END_HEADERS;
+                        }
+                        if (cont > 0)  {
+                            flags = flags & ~HeadersFrame.END_STREAM;
+                        }
+                        HeaderFrame hf = cont == 0
+                                ? new HeadersFrame(rh.streamid(), flags, list)
+                                : new ContinuationFrame(rh.streamid(), flags, list);
+                        if (Log.headers()) {
+                            // avoid too much chatter: log only if Log.headers() is enabled
+                            System.err.println("TestServer writing " + hf);
+                        }
+                        writeFrame(hf);
+                        cont++;
+                    } while (next < buffers.size());
                 } else if (frame instanceof OutgoingPushPromise) {
                     handlePush((OutgoingPushPromise)frame);
                 } else
@@ -1242,11 +1314,29 @@ public class Http2TestServerConnection {
     // for the hashmap.
 
     static class ResponseHeaders extends Http2Frame {
-        HttpHeaders headers;
+        final HttpHeaders headers;
+        final BiPredicate<CharSequence, CharSequence> insertionPolicy;
 
-        ResponseHeaders(HttpHeaders headers) {
+        final int maxFrameSize;
+
+        public ResponseHeaders(HttpHeaders headers) {
+            this(headers, (n,v) -> false);
+        }
+        public ResponseHeaders(HttpHeaders headers, BiPredicate<CharSequence, CharSequence> insertionPolicy) {
+            this(headers, insertionPolicy, Integer.MAX_VALUE);
+        }
+
+        public ResponseHeaders(HttpHeaders headers,
+                               BiPredicate<CharSequence, CharSequence> insertionPolicy,
+                               int maxFrameSize) {
             super(0, 0);
             this.headers = headers;
+            this.insertionPolicy = insertionPolicy;
+            this.maxFrameSize = maxFrameSize;
+        }
+
+        public int getMaxFrameSize() {
+            return maxFrameSize;
         }
 
     }
