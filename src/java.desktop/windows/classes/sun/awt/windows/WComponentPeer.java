@@ -380,7 +380,7 @@ public abstract class WComponentPeer extends WObjectPeer
                     paintArea.paint(target,shouldClearRectBeforePaint());
                 }
                 if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
-                    mgr.swapBuffers(0, 0, 0, 0);
+                    mgr.swapBuffers();
                 }
                 return;
             case FocusEvent.FOCUS_LOST:

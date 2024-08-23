@@ -190,9 +190,6 @@ public class WindowsFlags {
                     getBooleanProp("sun.java2d.ddoffscreen", ddEnabled);
                 d3dEnabled = getBooleanProp("sun.java2d.d3d",
                     ddEnabled && ddOffscreenEnabled);
-                if (d3dEnabled) {
-                    System.setProperty("swing.bufferPerWindow", "true");
-                }
                 d3dOnScreenEnabled =
                     getBooleanProp("sun.java2d.d3d.onscreen", d3dEnabled);
                 oglEnabled = getBooleanProp("sun.java2d.opengl", false);
@@ -212,7 +209,7 @@ public class WindowsFlags {
                 gdiBlitEnabled = getBooleanProp("sun.java2d.gdiBlit", true);
                 d3dSet = getPropertySet("sun.java2d.d3d");
                 if (d3dSet) {
-                    d3dVerbose = false;
+                    d3dVerbose = isBooleanPropTrueVerbose("sun.java2d.d3d");
                 }
                 offscreenSharingEnabled =
                     getBooleanProp("sun.java2d.offscreenSharing", false);

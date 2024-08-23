@@ -91,7 +91,7 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
             Runnable shutdownRunnable = () -> {
                 done = true;
                 if (d3dwSurfaces != null) {
-                    swapBuffers(0,0,0,0);
+                    swapBuffers();
                 }
             };
             Thread shutdown = new Thread(
@@ -332,6 +332,15 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
                 gdiSurfaces.remove(d3dw);
             }
         }
+    }
+
+    /**
+     * Swaps the buffers of the D3D window surfaces within the specified region.
+     * If a D3D window surface is dirty or marked as lost, it will be swapped.
+     *
+     */
+    public void swapBuffers() {
+        swapBuffers(0, 0, 0, 0);
     }
 
     /**
