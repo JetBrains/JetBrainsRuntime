@@ -29,18 +29,49 @@
 #define VK_NO_MEMORY_TYPE (~0U)
 #define VK_ALL_MEMORY_PROPERTIES ((VkMemoryPropertyFlags) (~0U))
 
+typedef struct {
+    VKAllocator* allocator;
+    VkMemoryRequirements2 requirements;
+    VkMemoryDedicatedRequirements dedicatedRequirements;
+    uint32_t memoryType;
+} VKMemoryRequirements;
+
 VKAllocator* VKAllocator_Create(VKDevice* device);
 
 void VKAllocator_Destroy(VKAllocator* allocator);
 
+VKMemoryRequirements VKAllocator_NoRequirements(VKAllocator* allocator);
+VKMemoryRequirements VKAllocator_BufferRequirements(VKAllocator* allocator, VkBuffer buffer);
+VKMemoryRequirements VKAllocator_ImageRequirements(VKAllocator* allocator, VkImage image);
+
 /**
- * Find memory type with properties not less than requiredProperties and not more than allowedProperties.
- * @param typeFilter         bitmask type filter, only memory types passing the filter can be returned
+ * Find memory type with properties not less than requiredProperties and not more than allowedProperties,
+ * allowed by given memory requirements.
+ * Found memory type is set in requirements->memoryType, if it is not set already.
+ * If requirements->memoryType is already set, this function does nothing.
  * @param requiredProperties minimal required set of properties
  * @param allowedProperties  maximal allowed set of properties, implicitly includes requiredProperties, can be 0
- * @return memory type index, or VK_NO_MEMORY_TYPE
  */
-uint32_t VKAllocator_FindMemoryType(VKAllocator* allocator, uint32_t typeFilter,
-                                    VkMemoryPropertyFlags requiredProperties, VkMemoryPropertyFlags allowedProperties);
+void VKAllocator_FindMemoryType(VKMemoryRequirements* requirements,
+                                VkMemoryPropertyFlags requiredProperties, VkMemoryPropertyFlags allowedProperties);
+
+VKMemory VKAllocator_Allocate(VKMemoryRequirements* requirements);
+/**
+ * This also binds memory for the image.
+ */
+VKMemory VKAllocator_AllocateForImage(VKMemoryRequirements* requirements, VkImage image);
+/**
+ * This also binds memory for the buffer.
+ */
+VKMemory VKAllocator_AllocateForBuffer(VKMemoryRequirements* requirements, VkBuffer buffer);
+
+void VKAllocator_Free(VKAllocator* allocator, VKMemory memory);
+
+VkMappedMemoryRange VKAllocator_GetMemoryRange(VKAllocator* allocator, VKMemory memory);
+
+void* VKAllocator_Map(VKAllocator* allocator, VKMemory memory);
+void VKAllocator_Unmap(VKAllocator* allocator, VKMemory memory);
+void VKAllocator_Flush(VKAllocator* allocator, VKMemory memory);
+void VKAllocator_Invalidate(VKAllocator* allocator, VKMemory memory);
 
 #endif //VKAllocator_h_Included

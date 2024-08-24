@@ -634,9 +634,9 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkCreateDescriptorPool);
     DEVICE_PROC(vkAllocateDescriptorSets);
     DEVICE_PROC(vkCmdBindDescriptorSets);
-    DEVICE_PROC(vkGetImageMemoryRequirements);
+    DEVICE_PROC(vkGetImageMemoryRequirements2);
     DEVICE_PROC(vkCreateBuffer);
-    DEVICE_PROC(vkGetBufferMemoryRequirements);
+    DEVICE_PROC(vkGetBufferMemoryRequirements2);
     DEVICE_PROC(vkBindBufferMemory);
     DEVICE_PROC(vkMapMemory);
     DEVICE_PROC(vkUnmapMemory);
@@ -649,6 +649,7 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkDestroyImage);
     DEVICE_PROC(vkDestroyFramebuffer);
     DEVICE_PROC(vkFlushMappedMemoryRanges);
+    DEVICE_PROC(vkInvalidateMappedMemoryRanges);
     DEVICE_PROC(vkCmdPushConstants);
 
     device->vkGetDeviceQueue(device->device, device->queueFamily, 0, &device->queue);

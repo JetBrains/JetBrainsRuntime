@@ -42,11 +42,13 @@ typedef union {
  *
  * Read more about presenting SRGB content in VKSD_ConfigureWindowSurface
  */
-Color Color_DecodeFromJava(unsigned int color);
+Color Color_DecodeFromJava(uint32_t color);
 
 #define STRUCT(NAME) typedef struct NAME NAME
 
 typedef char* pchar;
+
+VK_DEFINE_NON_DISPATCHABLE_HANDLE(VKMemory);
 
 STRUCT(VKGraphicsEnvironment);
 STRUCT(VKDevice);

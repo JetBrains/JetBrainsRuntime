@@ -155,15 +155,15 @@ if ((P) != NULL) {         \
  * On allocation failure, VK_UNHANDLED_ERROR is called.
  * @param P pointer to the first data element of the array
  */
-#define ARRAY_PUSH_BACK(P, D) do {                                                                \
-    if ((P) == NULL) {                                                                            \
-         (P) = CARR_array_alloc(sizeof((P)[0]), ARRAY_DEFAULT_CAPACITY);                          \
-    } else if (ARRAY_SIZE(P) >= ARRAY_CAPACITY(P)) {                                              \
+#define ARRAY_PUSH_BACK(P, ...) do {                                                               \
+    if ((P) == NULL) {                                                                             \
+         (P) = CARR_array_alloc(sizeof((P)[0]), ARRAY_DEFAULT_CAPACITY);                           \
+    } else if (ARRAY_SIZE(P) >= ARRAY_CAPACITY(P)) {                                               \
          (P) = CARR_array_realloc(ARRAY_T(P), sizeof((P)[0]), ARRAY_CAPACITY_GROW(ARRAY_SIZE(P))); \
-    }                                                                                             \
-    if (ARRAY_SIZE(P) >= ARRAY_CAPACITY(P)) VK_UNHANDLED_ERROR();                                 \
-    *((P) + ARRAY_SIZE(P)) = (D);                                                                 \
-    (ARRAY_T(P))->size++;                                                                         \
+    }                                                                                              \
+    if (ARRAY_SIZE(P) >= ARRAY_CAPACITY(P)) VK_UNHANDLED_ERROR();                                  \
+    *((P) + ARRAY_SIZE(P)) = (__VA_ARGS__);                                                        \
+    (ARRAY_T(P))->size++;                                                                          \
 } while(0)
 
 #define SARRAY_COUNT_OF(STATIC_ARRAY) (sizeof(STATIC_ARRAY)/sizeof((STATIC_ARRAY)[0]))
@@ -175,7 +175,7 @@ if ((P) != NULL) {         \
  * On allocation failure, VK_UNHANDLED_ERROR is called.
  * @param P pointer to the first data element of the buffer
  */
-#define RING_BUFFER_PUSH(P, D) RING_BUFFER_PUSH_CUSTOM(P, (P)[tail] = (D);)
+#define RING_BUFFER_PUSH(P, ...) RING_BUFFER_PUSH_CUSTOM(P, (P)[tail] = (__VA_ARGS__);)
 #define RING_BUFFER_PUSH_CUSTOM(P, ...) do {                                                                                \
     size_t head, tail, new_tail;                                                                                            \
     if ((P) == NULL) {                                                                                                      \

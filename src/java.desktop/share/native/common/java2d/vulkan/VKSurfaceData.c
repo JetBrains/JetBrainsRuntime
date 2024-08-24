@@ -28,6 +28,7 @@
 
 #include "CArrayUtil.h"
 #include "VKUtil.h"
+#include "VKAllocator.h"
 #include "VKBase.h"
 #include "VKSurfaceData.h"
 #include "VKImage.h"
@@ -42,7 +43,7 @@ static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
     VKRenderer_DestroyRenderPass(vksdo);
 
     if (vksdo->device != NULL && vksdo->image != NULL) {
-        VKImage_free(vksdo->device, vksdo->image);
+        VKImage_Destroy(vksdo->device, vksdo->image);
         vksdo->image = NULL;
     }
 }
@@ -67,6 +68,10 @@ void VKSD_ResetSurface(VKSDOps* vksdo) {
     }
 }
 
+static void VKSD_FindImageSurfaceMemoryType(VKMemoryRequirements* requirements) {
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_ALL_MEMORY_PROPERTIES);
+}
+
 VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
     // Initialize the device. currentDevice can be changed on the fly, and we must reconfigure surfaces accordingly.
     VKDevice* device = VKGE_graphics_environment()->currentDevice;
@@ -82,7 +87,7 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
         // VK_FORMAT_B8G8R8A8_SRGB is the most widely-supported format for our use.
         VKImage* image = VKImage_Create(device, vksdo->requestedExtent, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
                                         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                                        VKSD_FindImageSurfaceMemoryType);
         if (image == NULL) {
             J2dRlsTraceLn1(J2D_TRACE_ERROR, "VKSD_ConfigureImageSurface(%p): cannot create image", vksdo);
             VK_UNHANDLED_ERROR();

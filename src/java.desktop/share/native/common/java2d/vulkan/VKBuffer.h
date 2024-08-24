@@ -31,18 +31,14 @@
 
 struct VKBuffer {
     VkBuffer buffer;
-    VkDeviceMemory memory;
-    VkDeviceSize size;
+    VKMemory memory;
 };
 
-VkResult VKBuffer_FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
-                                 VkMemoryPropertyFlags properties, uint32_t* pMemoryType);
+typedef void (*VKBuffer_FindMemoryTypeCallback)(VKMemoryRequirements* requirements);
 
-VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
-                          VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size, VkBufferUsageFlags usage,
+                          VKBuffer_FindMemoryTypeCallback findMemoryTypeCallback);
 
-VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize bufferSize);
-
-void VKBuffer_free(VKDevice* device, VKBuffer* buffer);
+void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer);
 
 #endif // VKBuffer_h_Included

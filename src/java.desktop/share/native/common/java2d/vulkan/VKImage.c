@@ -26,11 +26,11 @@
 
 #include "VKUtil.h"
 #include "VKBase.h"
-#include "VKBuffer.h"
+#include "VKAllocator.h"
 #include "VKImage.h"
 
 
-VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
+static VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
     VkImageViewCreateInfo viewInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = image->image,
@@ -49,18 +49,13 @@ VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
     return VK_TRUE;
 }
 
-VKImage* VKImage_Create(VKDevice* device,
-                        VkExtent2D extent,
-                        VkFormat format, VkImageTiling tiling,
-                        VkImageUsageFlags usage,
-                        VkMemoryPropertyFlags properties)
-{
+VKImage* VKImage_Create(VKDevice* device, VkExtent2D extent, VkFormat format, VkImageTiling tiling,
+                        VkImageUsageFlags usage, VKImage_FindMemoryTypeCallback findMemoryTypeCallback) {
     VKImage* image = calloc(1, sizeof(VKImage));
     VK_RUNTIME_ASSERT(image);
 
     image->format = format;
     image->extent = extent;
-
     VkImageCreateInfo imageInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .imageType = VK_IMAGE_TYPE_2D,
@@ -76,65 +71,36 @@ VKImage* VKImage_Create(VKDevice* device,
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
-
     VK_IF_ERROR(device->vkCreateImage(device->device, &imageInfo, NULL, &image->image)) {
-        VKImage_free(device, image);
+        VKImage_Destroy(device, image);
         return NULL;
     }
 
-    VkMemoryRequirements memRequirements;
-    device->vkGetImageMemoryRequirements(device->device, image->image, &memRequirements);
-
-    uint32_t memoryType;
-    VK_IF_ERROR(VKBuffer_FindMemoryType(device->physicalDevice,
-                                memRequirements.memoryTypeBits,
-                                properties, &memoryType))
-    {
-        VKImage_free(device, image);
+    VKMemoryRequirements requirements = VKAllocator_ImageRequirements(device->allocator, image->image);
+    findMemoryTypeCallback(&requirements);
+    if (requirements.memoryType == VK_NO_MEMORY_TYPE) {
+        VKImage_Destroy(device, image);
         return NULL;
     }
+    image->memory = VKAllocator_AllocateForImage(&requirements, image->image);
 
-    VkMemoryAllocateInfo allocInfo = {
-            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .allocationSize = memRequirements.size,
-            .memoryTypeIndex = memoryType
-    };
-
-    VK_IF_ERROR(device->vkAllocateMemory(device->device, &allocInfo, NULL, &image->memory)) {
-        VKImage_free(device, image);
+    if (image->memory == VK_NULL_HANDLE || !VKImage_CreateView(device, image)) {
+        VKImage_Destroy(device, image);
         return NULL;
     }
-
-    VK_IF_ERROR(device->vkBindImageMemory(device->device, image->image, image->memory, 0)) {
-        VKImage_free(device, image);
-        return NULL;
-    }
-
-    if (!VKImage_CreateView(device, image)) {
-        VKImage_free(device, image);
-        return NULL;
-    }
-
     return image;
 }
 
-void VKImage_free(VKDevice* device, VKImage* image) {
-    if (!image) return;
-
+void VKImage_Destroy(VKDevice* device, VKImage* image) {
+    if (image == NULL) return;
     if (image->view != VK_NULL_HANDLE) {
         device->vkDestroyImageView(device->device, image->view, NULL);
         image->view = VK_NULL_HANDLE;
     }
-
-    if (image->memory != VK_NULL_HANDLE) {
-        device->vkFreeMemory(device->device, image->memory, NULL);
-        image->memory = VK_NULL_HANDLE;
-    }
-
     if (image->image != VK_NULL_HANDLE) {
         device->vkDestroyImage(device->device, image->image, NULL);
         image->image = VK_NULL_HANDLE;
     }
-
+    VKAllocator_Free(device->allocator, image->memory);
     free(image);
 }

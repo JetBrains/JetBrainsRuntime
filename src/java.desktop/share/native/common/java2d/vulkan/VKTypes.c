@@ -24,7 +24,7 @@
 #include <math.h>
 #include "VKTypes.h"
 
-Color Color_DecodeFromJava(unsigned int srgb) {
+Color Color_DecodeFromJava(uint32_t srgb) {
     // Just map [0, 255] integer colors into [0, 1] floating-point range, it remains in SRGB color space.
     Color c = {
             .r = (float)((srgb >> 16) & 0xFF) / 255.0F,

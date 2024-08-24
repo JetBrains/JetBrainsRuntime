@@ -182,23 +182,18 @@ static VKVertexBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
         RING_BUFFER_PUSH(newRing, tempBuffer);
     }
 
-    // Determine memory requirements.
-    VkMemoryRequirements memRequirements;
-    device->vkGetBufferMemoryRequirements(device->device, tempBuffer.value.buffer, &memRequirements);
-    assert(memRequirements.size % memRequirements.alignment == 0);
-
+    VKMemoryRequirements memoryRequirements = VKAllocator_BufferRequirements(alloc, tempBuffer.value.buffer);
     // Find memory type.
-    uint32_t memoryType = VKAllocator_FindMemoryType(alloc, memRequirements.memoryTypeBits,
+    VKAllocator_FindMemoryType(&memoryRequirements,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    if (memoryType == VK_NO_MEMORY_TYPE) memoryType = VKAllocator_FindMemoryType(alloc, memRequirements.memoryTypeBits,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
-    if (memoryType == VK_NO_MEMORY_TYPE) VK_UNHANDLED_ERROR();
+    VKAllocator_FindMemoryType(&memoryRequirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
+    if (memoryRequirements.memoryType == VK_NO_MEMORY_TYPE) VK_UNHANDLED_ERROR();
 
     // Allocate new memory page.
     VkMemoryAllocateInfo allocateInfo = {
             .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .allocationSize = memRequirements.size * VERTEX_BUFFERS_PER_PAGE,
-            .memoryTypeIndex = memoryType
+            .allocationSize = memoryRequirements.requirements.memoryRequirements.size * VERTEX_BUFFERS_PER_PAGE,
+            .memoryTypeIndex = memoryRequirements.memoryType
     };
     VkDeviceMemory page;
     VK_IF_ERROR(device->vkAllocateMemory(device->device, &allocateInfo, NULL, &page)) VK_UNHANDLED_ERROR();
@@ -209,8 +204,8 @@ static VKVertexBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
     for (uint32_t i = 0; i < VERTEX_BUFFERS_PER_PAGE; i++) {
         VKVertexBuffer* b = &newRing[i].value;
         b->memory = page;
-        b->offset = memRequirements.size * i;
-        b->size = memRequirements.size;
+        b->offset = memoryRequirements.requirements.memoryRequirements.size * i;
+        b->size = memoryRequirements.requirements.memoryRequirements.size;
         b->data = (void*) (((uint8_t*) data) + b->offset);
         VK_IF_ERROR(device->vkBindBufferMemory(device->device, b->buffer, b->memory, b->offset)) VK_UNHANDLED_ERROR();
     }

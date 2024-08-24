@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+#include "VKAllocator.h"
 #include "VKImage.h"
 #include "VKTexturePool.h"
 #include "jni.h"
@@ -72,6 +73,10 @@ void VKTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
     if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_unlockImpl: lock=%p - unlocked", l);
 }
 
+static void VKTexturePool_FindImageMemoryType(VKMemoryRequirements* requirements) {
+    // TODO both DEVICE_LOCAL and HOST_VISIBLE memory is very precious, we may need to use just DEVICE_LOCAL instead.
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
+}
 
 /* Texture allocate/free API */
 static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
@@ -84,7 +89,7 @@ static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
                                       (VkFormat)format,
                                       VK_IMAGE_TILING_LINEAR,
                                       VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+                                      VKTexturePool_FindImageMemoryType);
     if IS_NULL(texture) {
         J2dRlsTrace(J2D_TRACE_ERROR, "VKTexturePool_createTexture: Cannot create VKImage");
         return NULL;
@@ -116,7 +121,7 @@ static void VKTexturePool_freeTexture(ADevicePrivPtr *device, ATexturePrivPtr *t
     if (TRACE_TEX) J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "VKTexturePool_freeTexture: free texture: tex=%p, w=%d h=%d, pf=%d",
                                   tex, tex->extent.width, tex->extent.height, tex->format);
 
-    VKImage_free((VKDevice*)device, tex);
+    VKImage_Destroy((VKDevice*)device, tex);
 }
 
 /* VKTexturePoolHandle API */

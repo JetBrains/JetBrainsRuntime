@@ -30,18 +30,17 @@
 #include "VKTypes.h"
 
 struct VKImage {
-    VkImage                 image;
-    VkDeviceMemory          memory;
-    VkImageView             view;
-    VkFormat                format;
-    VkExtent2D              extent;
+    VkImage     image;
+    VKMemory    memory;
+    VkImageView view;
+    VkFormat    format;
+    VkExtent2D  extent;
 };
 
-VKImage* VKImage_Create(VKDevice* device,
-                        VkExtent2D extent,
-                        VkFormat format, VkImageTiling tiling,
-                        VkImageUsageFlags usage,
-                        VkMemoryPropertyFlags properties);
+typedef void (*VKImage_FindMemoryTypeCallback)(VKMemoryRequirements* requirements);
 
-void VKImage_free(VKDevice* device, VKImage* image);
+VKImage* VKImage_Create(VKDevice* device, VkExtent2D extent, VkFormat format, VkImageTiling tiling,
+                        VkImageUsageFlags usage, VKImage_FindMemoryTypeCallback findMemoryTypeCallback);
+
+void VKImage_Destroy(VKDevice* device, VKImage* image);
 #endif // VKImage_h_Included
