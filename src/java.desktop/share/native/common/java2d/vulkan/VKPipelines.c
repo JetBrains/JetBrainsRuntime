@@ -49,7 +49,7 @@ VKShaders* VKPipelines_CreateShaders(VKDevice* device) {
     };                                                                \
     createInfo.codeSize = sizeof(NAME ## _ ## TYPE ## _data);         \
     createInfo.pCode = NAME ## _ ## TYPE ## _data;                    \
-    VK_IF_ERROR(device->vkCreateShaderModule(device->device, &createInfo, NULL, &shaders->NAME##_##TYPE.module)) goto fail;
+    VK_IF_ERROR(device->vkCreateShaderModule(device->handle, &createInfo, NULL, &shaders->NAME##_##TYPE.module)) goto fail;
 #   include "vulkan/shader_list.h"
 #   undef SHADER_ENTRY
     return shaders;
@@ -62,7 +62,7 @@ VKShaders* VKPipelines_CreateShaders(VKDevice* device) {
 void VKPipelines_DestroyShaders(VKDevice* device, VKShaders* shaders) {
     if (shaders == NULL) return;
 #   define SHADER_ENTRY(NAME, TYPE) if (shaders->NAME##_##TYPE.module != VK_NULL_HANDLE) \
-    device->vkDestroyShaderModule(device->device, shaders->NAME##_##TYPE.module, NULL);
+    device->vkDestroyShaderModule(device->handle, shaders->NAME##_##TYPE.module, NULL);
 #   include "vulkan/shader_list.h"
 #   undef SHADER_ENTRY
     free(shaders);
@@ -107,7 +107,7 @@ static VkResult VKPipelines_CreateRenderPass(VKDevice* device, VKPipelines* pipe
             .dependencyCount = 0,
             .pDependencies = NULL
     };
-    return device->vkCreateRenderPass(device->device, &createInfo, NULL, &pipelines->renderPass);
+    return device->vkCreateRenderPass(device->handle, &createInfo, NULL, &pipelines->renderPass);
 }
 
 static VkResult VKPipelines_CreatePipelineLayout(VKDevice* device, VKPipelines* pipelines) {
@@ -122,7 +122,7 @@ static VkResult VKPipelines_CreatePipelineLayout(VKDevice* device, VKPipelines* 
             .pushConstantRangeCount = 1,
             .pPushConstantRanges = &pushConstantRange
     };
-    return device->vkCreatePipelineLayout(device->device, &createInfo, NULL, &pipelines->pipelineLayout);
+    return device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->pipelineLayout);
 }
 
 static VkGraphicsPipelineCreateInfo VKPipelines_DefaultPipeline() {
@@ -257,8 +257,8 @@ VKPipelines* VKPipelines_Create(VKDevice* device, VKShaders* shaders, VkFormat f
 
     // Create pipelines.
     // TODO pipeline cache
-    VK_IF_ERROR(device->vkCreateGraphicsPipelines(device->device, VK_NULL_HANDLE, NUM_PIPELINES,
-                                               createInfos, NULL, pipelines->pipelines)) goto fail;
+    VK_IF_ERROR(device->vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, NUM_PIPELINES,
+                                                  createInfos, NULL, pipelines->pipelines)) goto fail;
 
     return pipelines;
 
@@ -270,10 +270,10 @@ VKPipelines* VKPipelines_Create(VKDevice* device, VKShaders* shaders, VkFormat f
 void VKPipelines_Destroy(VKDevice* device, VKPipelines* pipelines) {
     if (pipelines == NULL) return;
     if (pipelines->pipelineLayout != VK_NULL_HANDLE) {
-        device->vkDestroyPipelineLayout(device->device, pipelines->pipelineLayout, NULL);
+        device->vkDestroyPipelineLayout(device->handle, pipelines->pipelineLayout, NULL);
     }
     if (pipelines->renderPass != VK_NULL_HANDLE) {
-        device->vkDestroyRenderPass(device->device, pipelines->renderPass, NULL);
+        device->vkDestroyRenderPass(device->handle, pipelines->renderPass, NULL);
     }
     free(pipelines);
 }

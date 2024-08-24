@@ -74,8 +74,8 @@ static void vulkanLibClose() {
                     ARRAY_FREE(device->enabledExtensions);
                     ARRAY_FREE(device->enabledLayers);
                     free(device->name);
-                    if (device->vkDestroyDevice != NULL && device->device != NULL) {
-                        device->vkDestroyDevice(device->device, NULL);
+                    if (device->vkDestroyDevice != NULL && device->handle != NULL) {
+                        device->vkDestroyDevice(device->handle, NULL);
                     }
                 }
                 ARRAY_FREE(geInstance->devices);
@@ -509,7 +509,7 @@ static jboolean VK_FindDevices() {
         ARRAY_PUSH_BACK(geInstance->devices,
                 ((VKDevice) {
                 .name = deviceName,
-                .device = VK_NULL_HANDLE,
+                .handle = VK_NULL_HANDLE,
                 .physicalDevice = geInstance->physicalDevices[i],
                 .queueFamily = queueFamily,
                 .enabledLayers = deviceEnabledLayers,
@@ -525,7 +525,7 @@ static jboolean VK_FindDevices() {
 }
 
 static jboolean VK_InitDevice(VKDevice* device) {
-    if (device->device != VK_NULL_HANDLE) {
+    if (device->handle != VK_NULL_HANDLE) {
         return JNI_TRUE;
     }
     if (geInstance == NULL) {
@@ -575,13 +575,13 @@ static jboolean VK_InitDevice(VKDevice* device) {
         .pEnabledFeatures = &features10
     };
 
-    VK_IF_ERROR(geInstance->vkCreateDevice(device->physicalDevice, &createInfo, NULL, &device->device)) {
+    VK_IF_ERROR(geInstance->vkCreateDevice(device->physicalDevice, &createInfo, NULL, &device->handle)) {
         J2dRlsTraceLn1(J2D_TRACE_ERROR, "Vulkan: Cannot create device: %s", device->name)
         return JNI_FALSE;
     }
     J2dRlsTraceLn1(J2D_TRACE_INFO, "Vulkan: Device created (%s)", device->name)
 
-#define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, device, device->device, NAME)
+#define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, device, device->handle, NAME)
     DEVICE_PROC(vkDestroyDevice);
     DEVICE_PROC(vkCreateShaderModule);
     DEVICE_PROC(vkDestroyShaderModule);
@@ -652,7 +652,7 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkInvalidateMappedMemoryRanges);
     DEVICE_PROC(vkCmdPushConstants);
 
-    device->vkGetDeviceQueue(device->device, device->queueFamily, 0, &device->queue);
+    device->vkGetDeviceQueue(device->handle, device->queueFamily, 0, &device->queue);
     if (device->queue == NULL) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Failed to get device queue");
         VK_UNHANDLED_ERROR();

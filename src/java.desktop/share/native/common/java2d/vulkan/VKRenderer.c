@@ -146,7 +146,7 @@ struct VKRenderPass {
     size_t head = RING_BUFFER_T(BUFFER)->head, tail = RING_BUFFER_T(BUFFER)->tail;                                \
     uint64_t timestamp;                                                                                           \
     if (head != tail && ((RENDERER)->readTimestamp >= (timestamp = (BUFFER)[head].timestamp) || (                 \
-        (RENDERER)->device->vkGetSemaphoreCounterValue((RENDERER)->device->device, (RENDERER)->timelineSemaphore, \
+        (RENDERER)->device->vkGetSemaphoreCounterValue((RENDERER)->device->handle, (RENDERER)->timelineSemaphore, \
         &(RENDERER)->readTimestamp) == VK_SUCCESS && (RENDERER)->readTimestamp >= timestamp))) {                  \
         (VAR) = (BUFFER)[head].value;                                                                             \
         RING_BUFFER_POP(BUFFER);                                                                                  \
@@ -182,7 +182,7 @@ static VKVertexBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
             .timestamp = 0,
             .value.buffer = VK_NULL_HANDLE
     };
-    VK_IF_ERROR(device->vkCreateBuffer(device->device, &bufferInfo, NULL, &tempBuffer.value.buffer)) VK_UNHANDLED_ERROR();
+    VK_IF_ERROR(device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &tempBuffer.value.buffer)) VK_UNHANDLED_ERROR();
     RING_BUFFER_PUSH(newRing, tempBuffer);
 
     // Check memory requirements. We aim to create MAX_VERTEX_BUFFERS_PER_PAGE buffers,
@@ -209,9 +209,9 @@ static VKVertexBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
         b->memory = range.memory;
         b->offset = range.offset + bufferSize * i;
         b->data = (void*) (((uint8_t*) data) + bufferSize * i);
-        VK_IF_ERROR(device->vkBindBufferMemory(device->device, b->buffer, b->memory, b->offset)) VK_UNHANDLED_ERROR();
+        VK_IF_ERROR(device->vkBindBufferMemory(device->handle, b->buffer, b->memory, b->offset)) VK_UNHANDLED_ERROR();
         if ((++i) >= bufferCount) break;
-        VK_IF_ERROR(device->vkCreateBuffer(device->device, &bufferInfo, NULL, &tempBuffer.value.buffer)) VK_UNHANDLED_ERROR();
+        VK_IF_ERROR(device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &tempBuffer.value.buffer)) VK_UNHANDLED_ERROR();
         RING_BUFFER_PUSH(newRing, tempBuffer);
     }
 
@@ -243,7 +243,7 @@ static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
                 .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
                 .flags = 0
         };
-        VK_IF_ERROR(device->vkCreateSemaphore(device->device, &createInfo, NULL, &semaphore)) return VK_NULL_HANDLE;
+        VK_IF_ERROR(device->vkCreateSemaphore(device->handle, &createInfo, NULL, &semaphore)) return VK_NULL_HANDLE;
     }
     PUSH_PENDING(renderer, renderer->pendingSemaphores, semaphore);
     return semaphore;
@@ -259,7 +259,7 @@ static void VKRenderer_Wait(VKRenderer* renderer, uint64_t timestamp) {
             .pSemaphores = &renderer->timelineSemaphore,
             .pValues = &timestamp
     };
-    VK_IF_ERROR(device->vkWaitSemaphores(device->device, &semaphoreWaitInfo, -1)) {
+    VK_IF_ERROR(device->vkWaitSemaphores(device->handle, &semaphoreWaitInfo, -1)) {
     } else {
         // On success, update last known timestamp.
         renderer->readTimestamp = timestamp;
@@ -290,7 +290,7 @@ VKRenderer* VKRenderer_Create(VKDevice* device) {
             .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
             .queueFamilyIndex = device->queueFamily
     };
-    VK_IF_ERROR(device->vkCreateCommandPool(device->device, &poolInfo, NULL, &renderer->commandPool)) {
+    VK_IF_ERROR(device->vkCreateCommandPool(device->handle, &poolInfo, NULL, &renderer->commandPool)) {
         VKRenderer_Destroy(renderer);
         return NULL;
     }
@@ -306,7 +306,7 @@ VKRenderer* VKRenderer_Create(VKDevice* device) {
             .pNext = &semaphoreTypeCreateInfo,
             .flags = 0
     };
-    VK_IF_ERROR(device->vkCreateSemaphore(device->device, &semaphoreCreateInfo, NULL, &renderer->timelineSemaphore)) {
+    VK_IF_ERROR(device->vkCreateSemaphore(device->handle, &semaphoreCreateInfo, NULL, &renderer->timelineSemaphore)) {
         VKRenderer_Destroy(renderer);
         return NULL;
     }
@@ -341,7 +341,7 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
         VkSemaphore semaphore = VK_NULL_HANDLE;
         POP_PENDING(renderer, renderer->pendingSemaphores, semaphore);
         if (semaphore == VK_NULL_HANDLE) break;
-        device->vkDestroySemaphore(device->device, semaphore, NULL);
+        device->vkDestroySemaphore(device->handle, semaphore, NULL);
     }
     RING_BUFFER_FREE(renderer->pendingSemaphores);
 
@@ -350,7 +350,7 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
         VKVertexBuffer buffer = { .buffer = VK_NULL_HANDLE };
         POP_PENDING(renderer, renderer->vertexBufferPool.pendingBuffers, buffer);
         if (buffer.buffer == VK_NULL_HANDLE) break;
-        device->vkDestroyBuffer(device->device, buffer.buffer, NULL);
+        device->vkDestroyBuffer(device->handle, buffer.buffer, NULL);
     }
     RING_BUFFER_FREE(renderer->vertexBufferPool.pendingBuffers);
     for (uint32_t i = 0; i < ARRAY_SIZE(renderer->vertexBufferPool.memoryPages); i++) {
@@ -359,10 +359,10 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
     ARRAY_FREE(renderer->vertexBufferPool.memoryPages);
 
     if (renderer->timelineSemaphore != VK_NULL_HANDLE) {
-        device->vkDestroySemaphore(device->device, renderer->timelineSemaphore, NULL);
+        device->vkDestroySemaphore(device->handle, renderer->timelineSemaphore, NULL);
     }
     if (renderer->commandPool != VK_NULL_HANDLE) {
-        device->vkDestroyCommandPool(device->device, renderer->commandPool, NULL);
+        device->vkDestroyCommandPool(device->handle, renderer->commandPool, NULL);
     }
     ARRAY_FREE(renderer->wait.semaphores);
     ARRAY_FREE(renderer->wait.stages);
@@ -391,7 +391,7 @@ static VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
                 .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                 .commandBufferCount = 1
         };
-        VK_IF_ERROR(renderer->device->vkAllocateCommandBuffers(renderer->device->device, &allocInfo, &commandBuffer)) {
+        VK_IF_ERROR(renderer->device->vkAllocateCommandBuffers(renderer->device->handle, &allocInfo, &commandBuffer)) {
             return VK_NULL_HANDLE;
         }
     }
@@ -400,7 +400,7 @@ static VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
     };
     VK_IF_ERROR(device->vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo)) {
-        renderer->device->vkFreeCommandBuffers(renderer->device->device, renderer->commandPool, 1, &commandBuffer);
+        renderer->device->vkFreeCommandBuffers(renderer->device->handle, renderer->commandPool, 1, &commandBuffer);
         return VK_NULL_HANDLE;
     }
     renderer->commandBuffer = commandBuffer;
@@ -557,7 +557,7 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
         PUSH_PENDING(surface->device->renderer, surface->device->renderer->vertexBufferPool.pendingBuffers, *vb);
     }
     ARRAY_RESIZE(surface->renderPass->vertexBuffers, 0);
-    VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->device, vertexBufferCount, memoryRanges)) {}
+    VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle, vertexBufferCount, memoryRanges)) {}
 }
 
 /**
@@ -584,7 +584,7 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface) {
         VKRenderer_DiscardRenderPass(surface);
         // Release resources.
         if (surface->renderPass->framebuffer != VK_NULL_HANDLE) {
-            device->vkDestroyFramebuffer(device->device, surface->renderPass->framebuffer, NULL);
+            device->vkDestroyFramebuffer(device->handle, surface->renderPass->framebuffer, NULL);
         }
         if (surface->renderPass->commandBuffer != VK_NULL_HANDLE) {
             PUSH_PENDING(device->renderer, device->renderer->pendingSecondaryCommandBuffers, surface->renderPass->commandBuffer);
@@ -652,8 +652,8 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
                 .height = surface->extent.height,
                 .layers = 1
         };
-        VK_IF_ERROR(device->vkCreateFramebuffer(device->device, &framebufferCreateInfo, NULL,
-                                             &renderPass->framebuffer)) VK_UNHANDLED_ERROR();
+        VK_IF_ERROR(device->vkCreateFramebuffer(device->handle, &framebufferCreateInfo, NULL,
+                                                &renderPass->framebuffer)) VK_UNHANDLED_ERROR();
     }
 
     J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_InitRenderPass(%p)", surface);
@@ -681,7 +681,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
                     .level = VK_COMMAND_BUFFER_LEVEL_SECONDARY,
                     .commandBufferCount = 1
             };
-            VK_IF_ERROR(renderer->device->vkAllocateCommandBuffers(renderer->device->device, &allocInfo, &commandBuffer)) {
+            VK_IF_ERROR(renderer->device->vkAllocateCommandBuffers(renderer->device->handle, &allocInfo, &commandBuffer)) {
                 VK_UNHANDLED_ERROR();
             }
         }
@@ -713,7 +713,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
             .pInheritanceInfo = &inheritanceInfo
     };
     VK_IF_ERROR(device->vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo)) {
-        renderer->device->vkFreeCommandBuffers(renderer->device->device, renderer->commandPool, 1, &commandBuffer);
+        renderer->device->vkFreeCommandBuffers(renderer->device->handle, renderer->commandPool, 1, &commandBuffer);
         VK_UNHANDLED_ERROR();
     }
 
@@ -880,7 +880,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
         ARRAY_PUSH_BACK(renderer->wait.stages, VK_PIPELINE_STAGE_TRANSFER_BIT); // Acquire image before blitting content onto swapchain
 
         uint32_t imageIndex;
-        VkResult acquireImageResult = device->vkAcquireNextImageKHR(device->device, win->swapchain, UINT64_MAX,
+        VkResult acquireImageResult = device->vkAcquireNextImageKHR(device->handle, win->swapchain, UINT64_MAX,
                                                                     acquireSemaphore, VK_NULL_HANDLE, &imageIndex);
         if (acquireImageResult != VK_SUCCESS) {
             // TODO possible suboptimal conditions

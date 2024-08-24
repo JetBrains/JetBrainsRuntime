@@ -43,7 +43,7 @@ static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
 
     if (vksdo->view != VK_NULL_HANDLE) {
         assert(vksdo->device != NULL);
-        vksdo->device->vkDestroyImageView(vksdo->device->device, vksdo->view, NULL);
+        vksdo->device->vkDestroyImageView(vksdo->device->handle, vksdo->view, NULL);
         vksdo->view = VK_NULL_HANDLE;
     }
 
@@ -62,7 +62,7 @@ void VKSD_ResetSurface(VKSDOps* vksdo) {
         VKWinSDOps* vkwinsdo = (VKWinSDOps*) vksdo;
         ARRAY_FREE(vkwinsdo->swapchainImages);
         if (vkwinsdo->vksdOps.device != NULL && vkwinsdo->swapchain != VK_NULL_HANDLE) {
-            vkwinsdo->vksdOps.device->vkDestroySwapchainKHR(vkwinsdo->vksdOps.device->device, vkwinsdo->swapchain, NULL);
+            vkwinsdo->vksdOps.device->vkDestroySwapchainKHR(vkwinsdo->vksdOps.device->handle, vkwinsdo->swapchain, NULL);
         }
         if (vkwinsdo->surface != VK_NULL_HANDLE) {
             VKGraphicsEnvironment* ge = VKGE_graphics_environment();
@@ -111,7 +111,7 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
                 .subresourceRange.baseArrayLayer = 0,
                 .subresourceRange.layerCount = 1,
         };
-        VK_IF_ERROR(device->vkCreateImageView(device->device, &viewInfo, NULL, &view)) VK_UNHANDLED_ERROR();
+        VK_IF_ERROR(device->vkCreateImageView(device->handle, &viewInfo, NULL, &view)) VK_UNHANDLED_ERROR();
 
         VKSD_ResetImageSurface(vksdo);
         vksdo->image = image;
@@ -217,7 +217,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
             .oldSwapchain = vkwinsdo->swapchain
     };
 
-    VK_IF_ERROR(device->vkCreateSwapchainKHR(device->device, &createInfoKhr, NULL, &swapchain)) {
+    VK_IF_ERROR(device->vkCreateSwapchainKHR(device->handle, &createInfoKhr, NULL, &swapchain)) {
         return VK_FALSE;
     }
     J2dRlsTraceLn1(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): swapchain created", vkwinsdo);
@@ -225,7 +225,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     if (vkwinsdo->swapchain != VK_NULL_HANDLE) {
         // Destroy old swapchain.
         // TODO is it possible that old swapchain is still being presented, can we destroy it right now?
-        device->vkDestroySwapchainKHR(device->device, vkwinsdo->swapchain, NULL);
+        device->vkDestroySwapchainKHR(device->handle, vkwinsdo->swapchain, NULL);
         J2dRlsTraceLn1(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): old swapchain destroyed", vkwinsdo);
     }
     vkwinsdo->swapchain = swapchain;
@@ -233,12 +233,12 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     vkwinsdo->swapchainExtent = vkwinsdo->vksdOps.extent;
 
     uint32_t swapchainImageCount;
-    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->device, vkwinsdo->swapchain, &swapchainImageCount, NULL)) {
+    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, vkwinsdo->swapchain, &swapchainImageCount, NULL)) {
         return VK_FALSE;
     }
     ARRAY_RESIZE(vkwinsdo->swapchainImages, swapchainImageCount);
-    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->device, vkwinsdo->swapchain,
-                                             &swapchainImageCount, vkwinsdo->swapchainImages)) {
+    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, vkwinsdo->swapchain,
+                                                &swapchainImageCount, vkwinsdo->swapchainImages)) {
         return VK_FALSE;
     }
     return VK_TRUE;

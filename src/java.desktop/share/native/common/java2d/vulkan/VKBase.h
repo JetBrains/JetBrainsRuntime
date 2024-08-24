@@ -30,7 +30,7 @@
 #include "VKTexturePool.h"
 
 struct VKDevice {
-    VkDevice         device;
+    VkDevice         handle;
     VkPhysicalDevice physicalDevice;
     char*            name;
     uint32_t         queueFamily;

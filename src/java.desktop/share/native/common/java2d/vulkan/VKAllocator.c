@@ -145,7 +145,7 @@ VKMemoryRequirements VKAllocator_BufferRequirements(VKAllocator* allocator, VkBu
             .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
             .buffer = buffer
     };
-    allocator->device->vkGetBufferMemoryRequirements2(allocator->device->device, &bufferRequirementsInfo, &r.requirements);
+    allocator->device->vkGetBufferMemoryRequirements2(allocator->device->handle, &bufferRequirementsInfo, &r.requirements);
     return r;
 }
 VKMemoryRequirements VKAllocator_ImageRequirements(VKAllocator* allocator, VkImage image) {
@@ -156,7 +156,7 @@ VKMemoryRequirements VKAllocator_ImageRequirements(VKAllocator* allocator, VkIma
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
             .image = image
     };
-    allocator->device->vkGetImageMemoryRequirements2(allocator->device->device, &imageRequirementsInfo, &r.requirements);
+    allocator->device->vkGetImageMemoryRequirements2(allocator->device->handle, &imageRequirementsInfo, &r.requirements);
     return r;
 }
 
@@ -202,7 +202,7 @@ static uint32_t VKAllocator_AllocatePage(VKAllocator* alloc, uint32_t memoryType
             .memoryTypeIndex = memoryType
     };
     VkDeviceMemory memory;
-    VK_IF_ERROR(device->vkAllocateMemory(device->device, &allocateInfo, NULL, &memory)) {
+    VK_IF_ERROR(device->vkAllocateMemory(device->handle, &allocateInfo, NULL, &memory)) {
         J2dRlsTraceLn3(J2D_TRACE_ERROR, "VKAllocator_AllocatePage: FAILED memoryType=%d, size=%d, dedicated=%d", memoryType, size, dedicated);
         return NO_PAGE_INDEX;
     }
@@ -235,7 +235,7 @@ static uint32_t VKAllocator_AllocatePage(VKAllocator* alloc, uint32_t memoryType
 static void VKAllocator_FreePage(VKAllocator* alloc, Page* page, uint32_t pageIndex) {
     assert(alloc != NULL);
     VKDevice* device = alloc->device;
-    device->vkFreeMemory(device->device, page->memory, NULL);
+    device->vkFreeMemory(device->handle, page->memory, NULL);
     page->memory = VK_NULL_HANDLE;
     page->nextFreePage = alloc->freePageIndex;
     alloc->freePageIndex = pageIndex;
@@ -447,7 +447,7 @@ VKMemory VKAllocator_AllocateForImage(VKMemoryRequirements* requirements, VkImag
     if (result.handle.value == 0) return VK_NULL_HANDLE;
     assert(result.memory != VK_NULL_HANDLE);
     VKDevice* device = requirements->allocator->device;
-    VK_IF_ERROR(device->vkBindImageMemory(device->device, image, result.memory, result.handle.offset << BLOCK_POWER)) {
+    VK_IF_ERROR(device->vkBindImageMemory(device->handle, image, result.memory, result.handle.offset << BLOCK_POWER)) {
         // TODO free memory
         return VK_NULL_HANDLE;
     }
@@ -458,7 +458,7 @@ VKMemory VKAllocator_AllocateForBuffer(VKMemoryRequirements* requirements, VkBuf
     if (result.handle.value == 0) return VK_NULL_HANDLE;
     assert(result.memory != VK_NULL_HANDLE);
     VKDevice* device = requirements->allocator->device;
-    VK_IF_ERROR(device->vkBindBufferMemory(device->device, buffer, result.memory, result.handle.offset << BLOCK_POWER)) {
+    VK_IF_ERROR(device->vkBindBufferMemory(device->handle, buffer, result.memory, result.handle.offset << BLOCK_POWER)) {
         // TODO free memory
         return VK_NULL_HANDLE;
     }
@@ -522,13 +522,13 @@ void* VKAllocator_Map(VKAllocator* allocator, VKMemory memory) {
     void *p;
     if (handle.pair != 0) {
         if (page->sharedPageData->mappedData == NULL) {
-            VK_IF_ERROR(allocator->device->vkMapMemory(allocator->device->device, page->memory,
+            VK_IF_ERROR(allocator->device->vkMapMemory(allocator->device->handle, page->memory,
                                                        0, VK_WHOLE_SIZE, 0, &p)) VK_UNHANDLED_ERROR();
             page->sharedPageData->mappedData = p;
         }
         p = (void*) (((uint8_t*) page->sharedPageData->mappedData) + (handle.offset * BLOCK_SIZE));
     } else {
-        VK_IF_ERROR(allocator->device->vkMapMemory(allocator->device->device, page->memory,
+        VK_IF_ERROR(allocator->device->vkMapMemory(allocator->device->handle, page->memory,
                                                    0, VK_WHOLE_SIZE, 0, &p)) VK_UNHANDLED_ERROR();
     }
     return p;
@@ -537,21 +537,21 @@ void VKAllocator_Unmap(VKAllocator* allocator, VKMemory memory) {
     assert(allocator != NULL && memory != VK_NULL_HANDLE);
     MemoryHandle handle = { .value = (uint64_t) memory };
     Page* page = &allocator->pages[handle.page];
-    if (handle.pair == 0) allocator->device->vkUnmapMemory(allocator->device->device, page->memory);
+    if (handle.pair == 0) allocator->device->vkUnmapMemory(allocator->device->handle, page->memory);
 }
 void VKAllocator_Flush(VKAllocator* allocator, VKMemory memory, VkDeviceSize offset, VkDeviceSize size) {
     VkMappedMemoryRange range = VKAllocator_GetMemoryRange(allocator, memory);
     assert((size == VK_WHOLE_SIZE && offset <= range.size) || offset + size <= range.size);
     range.offset += offset;
     range.size = size == VK_WHOLE_SIZE ? range.size - offset : size;
-    VK_IF_ERROR(allocator->device->vkFlushMappedMemoryRanges(allocator->device->device, 1, &range)) VK_UNHANDLED_ERROR();
+    VK_IF_ERROR(allocator->device->vkFlushMappedMemoryRanges(allocator->device->handle, 1, &range)) VK_UNHANDLED_ERROR();
 }
 void VKAllocator_Invalidate(VKAllocator* allocator, VKMemory memory, VkDeviceSize offset, VkDeviceSize size) {
     VkMappedMemoryRange range = VKAllocator_GetMemoryRange(allocator, memory);
     assert((size == VK_WHOLE_SIZE && offset <= range.size) || offset + size <= range.size);
     range.offset += offset;
     range.size = size == VK_WHOLE_SIZE ? range.size - offset : size;
-    VK_IF_ERROR(allocator->device->vkInvalidateMappedMemoryRanges(allocator->device->device, 1, &range)) VK_UNHANDLED_ERROR();
+    VK_IF_ERROR(allocator->device->vkInvalidateMappedMemoryRanges(allocator->device->handle, 1, &range)) VK_UNHANDLED_ERROR();
 }
 
 VKAllocator* VKAllocator_Create(VKDevice* device) {
@@ -629,7 +629,7 @@ VKImage VKAllocator_CreateImage(VKAllocator* allocator, VkExtent2D extent, VkFor
             .samples = samples,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
-    VK_IF_ERROR(device->vkCreateImage(device->device, &createInfo, NULL, &result.handle)) return VK_NULL_IMAGE;
+    VK_IF_ERROR(device->vkCreateImage(device->handle, &createInfo, NULL, &result.handle)) return VK_NULL_IMAGE;
 
     VKMemoryRequirements requirements = VKAllocator_ImageRequirements(device->allocator, result.handle);
     findMemoryTypeCallback(&requirements);
@@ -649,7 +649,7 @@ VKImage VKAllocator_CreateImage(VKAllocator* allocator, VkExtent2D extent, VkFor
 void VKAllocator_DestroyImage(VKAllocator* allocator, VKImage image) {
     assert(allocator != NULL);
     if (image.handle != VK_NULL_HANDLE) {
-        allocator->device->vkDestroyImage(allocator->device->device, image.handle, NULL);
+        allocator->device->vkDestroyImage(allocator->device->handle, image.handle, NULL);
     }
     VKAllocator_Free(allocator, image.memory);
 }
@@ -665,7 +665,7 @@ VKBuffer VKAllocator_CreateBuffer(VKAllocator* allocator, VkDeviceSize size, VkB
             .usage = usage,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
-    VK_IF_ERROR(device->vkCreateBuffer(device->device, &bufferInfo, NULL, &result.handle)) return VK_NULL_BUFFER;
+    VK_IF_ERROR(device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &result.handle)) return VK_NULL_BUFFER;
 
     VKMemoryRequirements requirements = VKAllocator_BufferRequirements(device->allocator, result.handle);
     findMemoryTypeCallback(&requirements);
@@ -685,7 +685,7 @@ VKBuffer VKAllocator_CreateBuffer(VKAllocator* allocator, VkDeviceSize size, VkB
 void VKAllocator_DestroyBuffer(VKAllocator* allocator, VKBuffer buffer) {
     assert(allocator != NULL);
     if (buffer.handle != VK_NULL_HANDLE) {
-        allocator->device->vkDestroyBuffer(allocator->device->device, buffer.handle, NULL);
+        allocator->device->vkDestroyBuffer(allocator->device->handle, buffer.handle, NULL);
     }
     VKAllocator_Free(allocator, buffer.memory);
 }
