@@ -27,8 +27,9 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+#include "VKBase.h"
 #include "VKAllocator.h"
-#include "VKImage.h"
+#include "VKUtil.h"
 #include "VKTexturePool.h"
 #include "jni.h"
 #include "jni_util.h"
@@ -79,19 +80,26 @@ static void VKTexturePool_FindImageMemoryType(VKMemoryRequirements* requirements
 }
 
 /* Texture allocate/free API */
+typedef struct {
+    VKImage image;
+} Texture;
+
 static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
                                                     int width,
                                                     int height,
                                                     long format)
 {
     CHECK_NULL_RETURN(device, NULL);
-    VKImage* texture = VKImage_Create((VKDevice*)device, (VkExtent2D) {width, height},
-                                      (VkFormat)format,
-                                      VK_IMAGE_TILING_LINEAR,
-                                      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                                      VKTexturePool_FindImageMemoryType);
-    if IS_NULL(texture) {
+    Texture* texture = malloc(sizeof(Texture));
+    VK_RUNTIME_ASSERT(texture);
+    texture->image = VKAllocator_CreateImage(((VKDevice*)device)->allocator, (VkExtent2D) {width, height},
+                                             (VkFormat)format,
+                                             VK_IMAGE_TILING_LINEAR,
+                                             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                                             VK_SAMPLE_COUNT_1_BIT, VKTexturePool_FindImageMemoryType);
+    if IS_NULL(texture->image.handle) {
         J2dRlsTrace(J2D_TRACE_ERROR, "VKTexturePool_createTexture: Cannot create VKImage");
+        free(texture);
         return NULL;
     }
     // usage   = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
@@ -117,11 +125,11 @@ static int VKTexturePool_bytesPerPixel(long format) {
 static void VKTexturePool_freeTexture(ADevicePrivPtr *device, ATexturePrivPtr *texture) {
     CHECK_NULL(device);
     CHECK_NULL(texture);
-    VKImage* tex = (VKImage*)texture;
-    if (TRACE_TEX) J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "VKTexturePool_freeTexture: free texture: tex=%p, w=%d h=%d, pf=%d",
-                                  tex, tex->extent.width, tex->extent.height, tex->format);
+    Texture* tex = (Texture*)texture;
+    if (TRACE_TEX) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePool_freeTexture: free texture: tex=%p", tex);
 
-    VKImage_Destroy((VKDevice*)device, tex);
+    VKAllocator_DestroyImage(((VKDevice*)device)->allocator, tex->image);
+    free(tex);
 }
 
 /* VKTexturePoolHandle API */

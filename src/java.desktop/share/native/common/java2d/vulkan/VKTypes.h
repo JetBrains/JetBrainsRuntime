@@ -44,11 +44,21 @@ typedef union {
  */
 Color Color_DecodeFromJava(uint32_t color);
 
+VK_DEFINE_NON_DISPATCHABLE_HANDLE(VKMemory);
+
+typedef struct {
+    VkImage  handle;
+    VKMemory memory;
+} VKImage;
+
+typedef struct {
+    VkBuffer handle;
+    VKMemory memory;
+} VKBuffer;
+
 #define STRUCT(NAME) typedef struct NAME NAME
 
 typedef char* pchar;
-
-VK_DEFINE_NON_DISPATCHABLE_HANDLE(VKMemory);
 
 STRUCT(VKGraphicsEnvironment);
 STRUCT(VKDevice);
@@ -58,8 +68,6 @@ STRUCT(VKRenderPass);
 STRUCT(VKRenderingContext);
 STRUCT(VKPipelines);
 STRUCT(VKShaders);
-STRUCT(VKBuffer);
-STRUCT(VKImage);
 STRUCT(VKSDOps);
 STRUCT(VKWinSDOps);
 

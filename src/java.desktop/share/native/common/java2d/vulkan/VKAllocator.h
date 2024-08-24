@@ -40,9 +40,26 @@ VKAllocator* VKAllocator_Create(VKDevice* device);
 
 void VKAllocator_Destroy(VKAllocator* allocator);
 
+/**
+ * Get generic, most permissive memory requirements with size=0, alignment=1.
+ */
 VKMemoryRequirements VKAllocator_NoRequirements(VKAllocator* allocator);
+/**
+ * Get buffer memory requirements. Required size may not be multiple of alignment, see VKAllocator_PadToAlignment.
+ */
 VKMemoryRequirements VKAllocator_BufferRequirements(VKAllocator* allocator, VkBuffer buffer);
+/**
+ * Get image memory requirements. Required size may not be multiple of alignment, see VKAllocator_PadToAlignment.
+ */
 VKMemoryRequirements VKAllocator_ImageRequirements(VKAllocator* allocator, VkImage image);
+
+/**
+ * Buffer and image memory requirements doesn't enforce size to be multiple of alignment.
+ * This needs to be enforced manually if resources are going to be sub-allocated in array manner.
+ * This also resets dedicated requirement flags, as for dedicated allocations size must
+ * be strictly equal to the one returned by resource memory requirements.
+ */
+void VKAllocator_PadToAlignment(VKMemoryRequirements* requirements);
 
 /**
  * Find memory type with properties not less than requiredProperties and not more than allowedProperties,
@@ -55,23 +72,93 @@ VKMemoryRequirements VKAllocator_ImageRequirements(VKAllocator* allocator, VkIma
 void VKAllocator_FindMemoryType(VKMemoryRequirements* requirements,
                                 VkMemoryPropertyFlags requiredProperties, VkMemoryPropertyFlags allowedProperties);
 
-VKMemory VKAllocator_Allocate(VKMemoryRequirements* requirements);
 /**
- * This also binds memory for the image.
+ * Allocate memory within given requirements.
+ * Requirements must have been initialized with VKAllocator_*Requirements
+ * and memory type found with VKAllocator_FindMemoryType.
+ */
+VKMemory VKAllocator_Allocate(VKMemoryRequirements* requirements);
+
+/**
+ * Allocate memory within given requirements and bind it to the image.
+ * Requirements must have been initialized with VKAllocator_*Requirements
+ * and memory type found with VKAllocator_FindMemoryType.
  */
 VKMemory VKAllocator_AllocateForImage(VKMemoryRequirements* requirements, VkImage image);
+
 /**
- * This also binds memory for the buffer.
+ * Allocate memory within given requirements and bind it to the buffer.
+ * Requirements must have been initialized with VKAllocator_*Requirements
+ * and memory type found with VKAllocator_FindMemoryType.
  */
 VKMemory VKAllocator_AllocateForBuffer(VKMemoryRequirements* requirements, VkBuffer buffer);
 
+/**
+ * Release allocated memory.
+ */
 void VKAllocator_Free(VKAllocator* allocator, VKMemory memory);
 
+/**
+ * Get underlying memory range for the memory handle.
+ * - VkMappedMemoryRange.memory is a raw VkDeviceMemory given memory was allocated from.
+ * - VkMappedMemoryRange.offset is the starting offset of the given memory within VkMappedMemoryRange.memory.
+ * - VkMappedMemoryRange.size is the size of the given memory block, or VK_WHOLE_SIZE.
+ *   VK_WHOLE_SIZE is returned in cases, when exact memory block size is not known,
+ *   but it is guaranteed, that in such cases memory block covers the entire VkMappedMemoryRange.memory.
+ */
 VkMappedMemoryRange VKAllocator_GetMemoryRange(VKAllocator* allocator, VKMemory memory);
 
+/**
+ * Map allocated memory. Returns pointer to the beginning of mapped memory block.
+ */
 void* VKAllocator_Map(VKAllocator* allocator, VKMemory memory);
+
+/**
+ * Unmap allocated memory.
+ */
 void VKAllocator_Unmap(VKAllocator* allocator, VKMemory memory);
-void VKAllocator_Flush(VKAllocator* allocator, VKMemory memory);
-void VKAllocator_Invalidate(VKAllocator* allocator, VKMemory memory);
+
+/**
+ * Flush mapped memory range. size may be VK_WHOLE_SIZE. See vkFlushMappedMemoryRanges.
+ */
+void VKAllocator_Flush(VKAllocator* allocator, VKMemory memory, VkDeviceSize offset, VkDeviceSize size);
+
+/**
+ * Invalidate mapped memory range. size may be VK_WHOLE_SIZE. See vkInvalidateMappedMemoryRanges.
+ */
+void VKAllocator_Invalidate(VKAllocator* allocator, VKMemory memory, VkDeviceSize offset, VkDeviceSize size);
+
+
+// Image and buffer utilities.
+
+#define VK_NULL_IMAGE  ((VKImage)  { VK_NULL_HANDLE, VK_NULL_HANDLE })
+#define VK_NULL_BUFFER ((VKBuffer) { VK_NULL_HANDLE, VK_NULL_HANDLE })
+
+typedef void (*VKAllocator_FindMemoryTypeCallback)(VKMemoryRequirements* requirements);
+
+/**
+ * Create image with given parameters, allocate appropriate memory and bind them together.
+ * Memory type is selected by calling findMemoryTypeCallback. VK_NULL_IMAGE is returned on failure.
+ */
+VKImage VKAllocator_CreateImage(VKAllocator* allocator, VkExtent2D extent, VkFormat format, VkImageTiling tiling,
+                                VkImageUsageFlags usage, VkSampleCountFlagBits samples,
+                                VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback);
+
+/**
+ * Destroy image and free associated memory. Given image may be VK_NULL_IMAGE, or incomplete.
+ */
+void VKAllocator_DestroyImage(VKAllocator* allocator, VKImage image);
+
+/**
+ * Create buffer with given parameters, allocate appropriate memory and bind them together.
+ * Memory type is selected by calling findMemoryTypeCallback. VK_NULL_BUFFER is returned on failure.
+ */
+VKBuffer VKAllocator_CreateBuffer(VKAllocator* allocator, VkDeviceSize size, VkBufferUsageFlags usage,
+                                  VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback);
+
+/**
+ * Destroy buffer and free associated memory. Given buffer may be VK_NULL_BUFFER, or incomplete.
+ */
+void VKAllocator_DestroyBuffer(VKAllocator* allocator, VKBuffer buffer);
 
 #endif //VKAllocator_h_Included

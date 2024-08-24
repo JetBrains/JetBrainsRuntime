@@ -31,7 +31,6 @@
 #include "VKAllocator.h"
 #include "VKBase.h"
 #include "VKSurfaceData.h"
-#include "VKImage.h"
 
 /**
  * Release VKSDOps resources & reset to initial state.
@@ -42,9 +41,16 @@ static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
     // ReleaseRenderPass also waits while the surface resources are being used by device.
     VKRenderer_DestroyRenderPass(vksdo);
 
-    if (vksdo->device != NULL && vksdo->image != NULL) {
-        VKImage_Destroy(vksdo->device, vksdo->image);
-        vksdo->image = NULL;
+    if (vksdo->view != VK_NULL_HANDLE) {
+        assert(vksdo->device != NULL);
+        vksdo->device->vkDestroyImageView(vksdo->device->device, vksdo->view, NULL);
+        vksdo->view = VK_NULL_HANDLE;
+    }
+
+    if (vksdo->image.handle != VK_NULL_HANDLE) {
+        assert(vksdo->device != NULL && vksdo->device->allocator != NULL);
+        VKAllocator_DestroyImage(vksdo->device->allocator, vksdo->image);
+        vksdo->image = VK_NULL_IMAGE;
     }
 }
 
@@ -81,34 +87,52 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
         J2dRlsTraceLn1(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): device updated", vksdo);
     }
     // Initialize image.
-    if (vksdo->requestedExtent.width > 0 && vksdo->requestedExtent.height > 0 && (vksdo->image == NULL ||
-            vksdo->requestedExtent.width != vksdo->image->extent.width ||
-            vksdo->requestedExtent.height != vksdo->image->extent.height)) {
+    if (vksdo->requestedExtent.width > 0 && vksdo->requestedExtent.height > 0 &&
+            (vksdo->requestedExtent.width != vksdo->extent.width ||
+             vksdo->requestedExtent.height != vksdo->extent.height)) {
         // VK_FORMAT_B8G8R8A8_SRGB is the most widely-supported format for our use.
-        VKImage* image = VKImage_Create(device, vksdo->requestedExtent, VK_FORMAT_B8G8R8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
-                                        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                                        VKSD_FindImageSurfaceMemoryType);
-        if (image == NULL) {
-            J2dRlsTraceLn1(J2D_TRACE_ERROR, "VKSD_ConfigureImageSurface(%p): cannot create image", vksdo);
-            VK_UNHANDLED_ERROR();
-        }
+        VkFormat format = VK_FORMAT_B8G8R8A8_SRGB;
+        VKImage image = VKAllocator_CreateImage(device->allocator, vksdo->requestedExtent,
+                                                format, VK_IMAGE_TILING_OPTIMAL,
+                                                VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                                                VK_SAMPLE_COUNT_1_BIT, VKSD_FindImageSurfaceMemoryType);
+        VK_RUNTIME_ASSERT(image.handle);
+
+        // Create image view. We may also need integer format view, e.g. for XOR painting mode.
+        VkImageView view;
+        VkImageViewCreateInfo viewInfo = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = image.handle,
+                .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                .format = format,
+                .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .subresourceRange.baseMipLevel = 0,
+                .subresourceRange.levelCount = 1,
+                .subresourceRange.baseArrayLayer = 0,
+                .subresourceRange.layerCount = 1,
+        };
+        VK_IF_ERROR(device->vkCreateImageView(device->device, &viewInfo, NULL, &view)) VK_UNHANDLED_ERROR();
+
         VKSD_ResetImageSurface(vksdo);
         vksdo->image = image;
-        J2dRlsTraceLn3(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): image updated %dx%d", vksdo, image->extent.width, image->extent.height);
+        vksdo->view = view;
+        vksdo->extent = vksdo->requestedExtent;
+        vksdo->format = format;
+        J2dRlsTraceLn3(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): image updated %dx%d", vksdo, vksdo->extent.width, vksdo->extent.height);
     }
-    return vksdo->image != NULL;
+    return vksdo->image.handle != VK_NULL_HANDLE;
 }
 
 VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     // Check that image is ready.
-    if (vkwinsdo->vksdOps.image == NULL) {
+    if (vkwinsdo->vksdOps.image.handle == VK_NULL_HANDLE) {
         J2dRlsTraceLn1(J2D_TRACE_WARNING, "VKSD_ConfigureWindowSurface(%p): image is not ready", vkwinsdo);
         return VK_FALSE;
     }
     // Check for changes.
     if (vkwinsdo->swapchain != VK_NULL_HANDLE && vkwinsdo->swapchainDevice == vkwinsdo->vksdOps.device &&
-            vkwinsdo->swapchainExtent.width == vkwinsdo->vksdOps.image->extent.width &&
-            vkwinsdo->swapchainExtent.height == vkwinsdo->vksdOps.image->extent.height) return VK_TRUE;
+            vkwinsdo->swapchainExtent.width == vkwinsdo->vksdOps.extent.width &&
+            vkwinsdo->swapchainExtent.height == vkwinsdo->vksdOps.extent.height) return VK_TRUE;
     // Check that surface is ready.
     if (vkwinsdo->surface == VK_NULL_HANDLE) {
         J2dRlsTraceLn1(J2D_TRACE_WARNING, "VKSD_ConfigureWindowSurface(%p): surface is not ready", vkwinsdo);
@@ -180,7 +204,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
             .minImageCount = imageCount,
             .imageFormat = format->format,
             .imageColorSpace = format->colorSpace,
-            .imageExtent = vkwinsdo->vksdOps.image->extent, // TODO consider capabilities.currentExtent, capabilities.minImageExtent and capabilities.maxImageExtent
+            .imageExtent = vkwinsdo->vksdOps.extent, // TODO consider capabilities.currentExtent, capabilities.minImageExtent and capabilities.maxImageExtent
             .imageArrayLayers = 1,
             .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -206,7 +230,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     }
     vkwinsdo->swapchain = swapchain;
     vkwinsdo->swapchainDevice = device;
-    vkwinsdo->swapchainExtent = vkwinsdo->vksdOps.image->extent;
+    vkwinsdo->swapchainExtent = vkwinsdo->vksdOps.extent;
 
     uint32_t swapchainImageCount;
     VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->device, vkwinsdo->swapchain, &swapchainImageCount, NULL)) {

@@ -99,20 +99,27 @@ typedef struct {
         SharedPageData* sharedPageData; // If this is a shared page.
         uint32_t        nextFreePage;   // If this struct is unused.
     };
+#ifdef DEBUG
+    VkDeviceSize debugPageSize;
+    uint32_t debugMemoryType;
+#endif
 } Page;
 
 typedef struct {
     uint32_t sharedPagesIndex;
     uint32_t allocationLevelTracker; // Used to manage page growth. Each new page size = (allocationLevelTracker++) / 2
+#ifdef DEBUG
+    VkDeviceSize debugTotalPagesSize;
+#endif
 } Pool;
 
 struct VKAllocator {
     VKDevice* device;
     VkPhysicalDeviceMemoryProperties memoryProperties;
 
-    Page*           pages;
-    uint32_t        freePageIndex;
-    Pool            pools[VK_MAX_MEMORY_TYPES];
+    Page*    pages;
+    uint32_t freePageIndex;
+    Pool     pools[VK_MAX_MEMORY_TYPES];
 };
 
 #define NO_PAGE_INDEX (~0U)
@@ -124,7 +131,7 @@ VKMemoryRequirements VKAllocator_NoRequirements(VKAllocator* allocator) {
         .requirements.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
         .requirements.memoryRequirements = {
                 .size = 0,
-                .alignment = 0,
+                .alignment = 1,
                 .memoryTypeBits = VK_NO_MEMORY_TYPE
         },
         .memoryType = VK_NO_MEMORY_TYPE
@@ -139,7 +146,6 @@ VKMemoryRequirements VKAllocator_BufferRequirements(VKAllocator* allocator, VkBu
             .buffer = buffer
     };
     allocator->device->vkGetBufferMemoryRequirements2(allocator->device->device, &bufferRequirementsInfo, &r.requirements);
-    // Size may not be multiple of alignment, be careful!
     return r;
 }
 VKMemoryRequirements VKAllocator_ImageRequirements(VKAllocator* allocator, VkImage image) {
@@ -151,8 +157,15 @@ VKMemoryRequirements VKAllocator_ImageRequirements(VKAllocator* allocator, VkIma
             .image = image
     };
     allocator->device->vkGetImageMemoryRequirements2(allocator->device->device, &imageRequirementsInfo, &r.requirements);
-    // Size may not be multiple of alignment, be careful!
     return r;
+}
+
+void VKAllocator_PadToAlignment(VKMemoryRequirements* requirements) {
+    assert(requirements != NULL);
+    VkMemoryRequirements* t = &requirements->requirements.memoryRequirements;
+    t->size = ((t->size + t->alignment - 1) / t->alignment) * t->alignment;
+    requirements->dedicatedRequirements.requiresDedicatedAllocation = VK_FALSE;
+    requirements->dedicatedRequirements.prefersDedicatedAllocation = VK_FALSE;
 }
 
 void VKAllocator_FindMemoryType(VKMemoryRequirements* requirements,
@@ -210,6 +223,12 @@ static uint32_t VKAllocator_AllocatePage(VKAllocator* alloc, uint32_t memoryType
     *page = (Page) { .memory = memory };
 
     J2dRlsTraceLn4(J2D_TRACE_INFO, "VKAllocator_AllocatePage: #%d memoryType=%d, size=%d, dedicated=%d", index, memoryType, size, dedicated);
+#ifdef DEBUG
+    page->debugPageSize = size;
+    page->debugMemoryType = memoryType;
+    alloc->pools[memoryType].debugTotalPagesSize += size;
+    J2dTraceLn2(J2D_TRACE_INFO, "VKAllocator_AllocatePage: memoryType=%d, debugTotalPagesSize=%d", memoryType, alloc->pools[memoryType].debugTotalPagesSize);
+#endif
     return index;
 }
 
@@ -221,6 +240,11 @@ static void VKAllocator_FreePage(VKAllocator* alloc, Page* page, uint32_t pageIn
     page->nextFreePage = alloc->freePageIndex;
     alloc->freePageIndex = pageIndex;
     J2dRlsTraceLn1(J2D_TRACE_INFO, "VKAllocator_FreePage: #%d", pageIndex);
+#ifdef DEBUG
+    alloc->pools[page->debugMemoryType].debugTotalPagesSize -= page->debugPageSize;
+    J2dTraceLn2(J2D_TRACE_INFO, "VKAllocator_FreePage: memoryType=%d, debugTotalPagesSize=%d",
+                page->debugMemoryType, alloc->pools[page->debugMemoryType].debugTotalPagesSize);
+#endif
 }
 
 /**
@@ -332,14 +356,16 @@ static AllocationResult VKAllocator_AllocateForResource(VKMemoryRequirements* re
                               requirements->dedicatedRequirements.prefersDedicatedAllocation;
     assert(memoryType != VK_NO_MEMORY_TYPE);
     assert(size > 0);
+    assert(alignment > 0 && (alignment & (alignment - 1)) == 0); // Alignment must be power of 2.
 
     uint32_t level = size <= BLOCK_SIZE ? 0 : VKUtil_Log2(size - 1) + 1 - BLOCK_POWER;
+    uint32_t blockSize = BLOCK_SIZE << level;
+    // Adjust level to ensure proper alignment. Not very optimal, but this is a very rare case.
+    while (blockSize % alignment != 0) { level++; blockSize <<= 1; }
+
     J2dRlsTraceLn6(J2D_TRACE_VERBOSE,
                    "VKAllocator_Allocate: level=%d, blockSize=%d, size=%d, alignment=%d, memoryType=%d, dedicated=%d",
-                   level, BLOCK_SIZE << level, size, alignment, memoryType, dedicated);
-
-    // Size may not be multiple of alignment, fix this.
-    size = ((size + alignment - 1) / alignment) * alignment;
+                   level, blockSize, size, alignment, memoryType, dedicated);
 
     if (!dedicated && level <= MAX_BLOCK_LEVEL) {
         // Try to sub-allocate.
@@ -513,12 +539,18 @@ void VKAllocator_Unmap(VKAllocator* allocator, VKMemory memory) {
     Page* page = &allocator->pages[handle.page];
     if (handle.pair == 0) allocator->device->vkUnmapMemory(allocator->device->device, page->memory);
 }
-void VKAllocator_Flush(VKAllocator* allocator, VKMemory memory) {
+void VKAllocator_Flush(VKAllocator* allocator, VKMemory memory, VkDeviceSize offset, VkDeviceSize size) {
     VkMappedMemoryRange range = VKAllocator_GetMemoryRange(allocator, memory);
+    assert((size == VK_WHOLE_SIZE && offset <= range.size) || offset + size <= range.size);
+    range.offset += offset;
+    range.size = size == VK_WHOLE_SIZE ? range.size - offset : size;
     VK_IF_ERROR(allocator->device->vkFlushMappedMemoryRanges(allocator->device->device, 1, &range)) VK_UNHANDLED_ERROR();
 }
-void VKAllocator_Invalidate(VKAllocator* allocator, VKMemory memory) {
+void VKAllocator_Invalidate(VKAllocator* allocator, VKMemory memory, VkDeviceSize offset, VkDeviceSize size) {
     VkMappedMemoryRange range = VKAllocator_GetMemoryRange(allocator, memory);
+    assert((size == VK_WHOLE_SIZE && offset <= range.size) || offset + size <= range.size);
+    range.offset += offset;
+    range.size = size == VK_WHOLE_SIZE ? range.size - offset : size;
     VK_IF_ERROR(allocator->device->vkInvalidateMappedMemoryRanges(allocator->device->device, 1, &range)) VK_UNHANDLED_ERROR();
 }
 
@@ -533,7 +565,6 @@ VKAllocator* VKAllocator_Create(VKDevice* device) {
                 .allocationLevelTracker = MIN_PAGE_LEVEL * 2
         };
     }
-
     ge->vkGetPhysicalDeviceMemoryProperties(device->physicalDevice, &allocator->memoryProperties);
 
     J2dRlsTraceLn1(J2D_TRACE_INFO, "VKAllocator_Create: allocator=%p", allocator);
@@ -547,14 +578,114 @@ void VKAllocator_Destroy(VKAllocator* allocator) {
         uint32_t pageIndex;
         while ((pageIndex = allocator->pools[i].sharedPagesIndex) != NO_PAGE_INDEX) {
             Page* page = &allocator->pages[pageIndex];
-            ARRAY_FREE(page->sharedPageData->blockPairs);
-            allocator->pools[i].sharedPagesIndex = page->sharedPageData->nextPageIndex;
-            free(page->sharedPageData);
+            SharedPageData* data = page->sharedPageData;
+#ifdef DEBUG
+            // Check that all shared allocations were freed.
+            for (uint32_t j = MAX_BLOCK_LEVEL;; j--) {
+                if (data->freeLevelIndices[j] != 0) {
+                    BlockPair* pair = &data->blockPairs[data->freeLevelIndices[j]-1];
+                    if (pair->parent == 0) break;
+                    else VK_FATAL_ERROR("VKAllocator_Destroy: leaked memory in shared page");
+                }
+                assert(j > 0);
+            }
+#endif
+            ARRAY_FREE(data->blockPairs);
+            allocator->pools[i].sharedPagesIndex = data->nextPageIndex;
+            free(data);
             VKAllocator_FreePage(allocator, page, pageIndex);
         }
+#ifdef DEBUG
+        // Check that all dedicated allocations were freed.
+        if (allocator->pools[i].debugTotalPagesSize > 0) VK_FATAL_ERROR("VKAllocator_Destroy: leaked memory in dedicated page");
+#endif
     }
     ARRAY_FREE(allocator->pages);
 
     J2dRlsTraceLn1(J2D_TRACE_INFO, "VKAllocator_Destroy(%p)", allocator);
     free(allocator);
+}
+
+// Image and buffer utilities.
+
+VKImage VKAllocator_CreateImage(VKAllocator* allocator, VkExtent2D extent, VkFormat format, VkImageTiling tiling,
+                                VkImageUsageFlags usage, VkSampleCountFlagBits samples,
+                                VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback) {
+    assert(allocator != NULL && allocator->device != NULL);
+    VKDevice* device = allocator->device;
+    VKImage result = VK_NULL_IMAGE;
+    VkImageCreateInfo createInfo = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .extent.width = extent.width,
+            .extent.height = extent.height,
+            .extent.depth = 1,
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .format = format,
+            .tiling = tiling,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .usage = usage,
+            .samples = samples,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+    VK_IF_ERROR(device->vkCreateImage(device->device, &createInfo, NULL, &result.handle)) return VK_NULL_IMAGE;
+
+    VKMemoryRequirements requirements = VKAllocator_ImageRequirements(device->allocator, result.handle);
+    findMemoryTypeCallback(&requirements);
+    if (requirements.memoryType == VK_NO_MEMORY_TYPE) {
+        VKAllocator_DestroyImage(allocator, result);
+        return VK_NULL_IMAGE;
+    }
+
+    result.memory = VKAllocator_AllocateForImage(&requirements, result.handle);
+    if (result.memory == VK_NULL_HANDLE) {
+        VKAllocator_DestroyImage(allocator, result);
+        return VK_NULL_IMAGE;
+    }
+    return result;
+}
+
+void VKAllocator_DestroyImage(VKAllocator* allocator, VKImage image) {
+    assert(allocator != NULL);
+    if (image.handle != VK_NULL_HANDLE) {
+        allocator->device->vkDestroyImage(allocator->device->device, image.handle, NULL);
+    }
+    VKAllocator_Free(allocator, image.memory);
+}
+
+VKBuffer VKAllocator_CreateBuffer(VKAllocator* allocator, VkDeviceSize size, VkBufferUsageFlags usage,
+                                  VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback) {
+    assert(allocator != NULL && allocator->device != NULL);
+    VKDevice* device = allocator->device;
+    VKBuffer result = VK_NULL_BUFFER;
+    VkBufferCreateInfo bufferInfo = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = size,
+            .usage = usage,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+    VK_IF_ERROR(device->vkCreateBuffer(device->device, &bufferInfo, NULL, &result.handle)) return VK_NULL_BUFFER;
+
+    VKMemoryRequirements requirements = VKAllocator_BufferRequirements(device->allocator, result.handle);
+    findMemoryTypeCallback(&requirements);
+    if (requirements.memoryType == VK_NO_MEMORY_TYPE) {
+        VKAllocator_DestroyBuffer(allocator, result);
+        return VK_NULL_BUFFER;
+    }
+
+    result.memory = VKAllocator_AllocateForBuffer(&requirements, result.handle);
+    if (result.memory == VK_NULL_HANDLE) {
+        VKAllocator_DestroyBuffer(allocator, result);
+        return VK_NULL_BUFFER;
+    }
+    return result;
+}
+
+void VKAllocator_DestroyBuffer(VKAllocator* allocator, VKBuffer buffer) {
+    assert(allocator != NULL);
+    if (buffer.handle != VK_NULL_HANDLE) {
+        allocator->device->vkDestroyBuffer(allocator->device->device, buffer.handle, NULL);
+    }
+    VKAllocator_Free(allocator, buffer.memory);
 }

@@ -31,22 +31,27 @@
 #include "VKUtil.h"
 #include "VKBase.h"
 #include "VKAllocator.h"
-#include "VKImage.h"
 #include "VKRenderer.h"
 #include "VKSurfaceData.h"
 
-// Vertex buffers are allocated in pages of fixed size with fixed number of buffers.
-// How to choose good buffer size?
+// Vertex buffers have fixed size. How to choose a good one?
 // 1. Multiple of 6 - triangle and line modes have x3 and x2 vertices per primitive.
 // 2. Multiple of 6 - most common vertex format VKColorVertex has 6 components.
 // 3. Some nice power of 2 multiplier, for good alignment and adequate capacity.
 #define VERTEX_BUFFER_SIZE (6 * 6 * 256) // 9KiB = 384 * sizeof(VKColorVertex)
-#define VERTEX_BUFFERS_PER_PAGE (455)   // 4MiB - 1KiB total
+
+// Vertex buffers are allocated in pages of fixed size.
+#define VERTEX_BUFFER_PAGE_SIZE (4 * 1024 * 1024) // 4MiB - fits 455 buffers and leaves 1KiB unused
+
+#define MAX_VERTEX_BUFFERS_PER_PAGE (VERTEX_BUFFER_PAGE_SIZE / VERTEX_BUFFER_SIZE)
+
 typedef struct {
-    VkBuffer       buffer;
+    VkBuffer buffer;
+    // Vertex buffer has no ownership over its memory.
+    // Provided memory and offset must only be used to flush memory writes.
+    // Allocation and freeing is done in pages using VKAllocator.
     VkDeviceMemory memory;
     VkDeviceSize   offset;
-    VkDeviceSize   size;
     void*          data; // Only sequential writes!
 } VKVertexBuffer;
 
@@ -79,7 +84,7 @@ struct VKRenderer {
     TrackedVkCommandBuffer* pendingSecondaryCommandBuffers;
     TrackedVkSemaphore*     pendingSemaphores;
     struct VertexBufferPool {
-        VkDeviceMemory*        memoryPages;
+        VKMemory*              memoryPages;
         TrackedVKVertexBuffer* pendingBuffers;
     } vertexBufferPool;
 
@@ -163,10 +168,10 @@ static VKVertexBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
     // Allocate new ring buffer. Ring buffer grows when size reaches capacity, so leave one more slot to fit all buffers.
     TrackedVKVertexBuffer* newRing =
             CARR_ring_buffer_realloc(NULL, sizeof(TrackedVKVertexBuffer),
-                                     (ARRAY_SIZE(renderer->vertexBufferPool.memoryPages) + 1) * VERTEX_BUFFERS_PER_PAGE + 1);
+                                     (ARRAY_SIZE(renderer->vertexBufferPool.memoryPages) + 1) * MAX_VERTEX_BUFFERS_PER_PAGE + 1);
     VK_RUNTIME_ASSERT(newRing);
 
-    // Create more vertex buffers.
+    // Create single vertex buffer.
     VkBufferCreateInfo bufferInfo = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .size = VERTEX_BUFFER_SIZE,
@@ -177,37 +182,37 @@ static VKVertexBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
             .timestamp = 0,
             .value.buffer = VK_NULL_HANDLE
     };
-    for (uint32_t i = 0; i < VERTEX_BUFFERS_PER_PAGE; i++) {
-        VK_IF_ERROR(device->vkCreateBuffer(device->device, &bufferInfo, NULL, &tempBuffer.value.buffer)) VK_UNHANDLED_ERROR();
-        RING_BUFFER_PUSH(newRing, tempBuffer);
-    }
+    VK_IF_ERROR(device->vkCreateBuffer(device->device, &bufferInfo, NULL, &tempBuffer.value.buffer)) VK_UNHANDLED_ERROR();
+    RING_BUFFER_PUSH(newRing, tempBuffer);
 
-    VKMemoryRequirements memoryRequirements = VKAllocator_BufferRequirements(alloc, tempBuffer.value.buffer);
+    // Check memory requirements. We aim to create MAX_VERTEX_BUFFERS_PER_PAGE buffers,
+    // but due to implementation-specific alignment requirements this number can be lower (unlikely though).
+    VKMemoryRequirements requirements = VKAllocator_BufferRequirements(alloc, tempBuffer.value.buffer);
+    VKAllocator_PadToAlignment(&requirements); // Align for array-like allocation.
+    VkDeviceSize bufferSize = requirements.requirements.memoryRequirements.size;
+    uint32_t bufferCount = VERTEX_BUFFER_PAGE_SIZE / bufferSize;
+    requirements.requirements.memoryRequirements.size = VERTEX_BUFFER_PAGE_SIZE;
     // Find memory type.
-    VKAllocator_FindMemoryType(&memoryRequirements,
+    VKAllocator_FindMemoryType(&requirements,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    VKAllocator_FindMemoryType(&memoryRequirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
-    if (memoryRequirements.memoryType == VK_NO_MEMORY_TYPE) VK_UNHANDLED_ERROR();
+    VKAllocator_FindMemoryType(&requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
+    if (requirements.memoryType == VK_NO_MEMORY_TYPE) VK_UNHANDLED_ERROR();
 
     // Allocate new memory page.
-    VkMemoryAllocateInfo allocateInfo = {
-            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .allocationSize = memoryRequirements.requirements.memoryRequirements.size * VERTEX_BUFFERS_PER_PAGE,
-            .memoryTypeIndex = memoryRequirements.memoryType
-    };
-    VkDeviceMemory page;
-    VK_IF_ERROR(device->vkAllocateMemory(device->device, &allocateInfo, NULL, &page)) VK_UNHANDLED_ERROR();
-    void* data;
-    VK_IF_ERROR(device->vkMapMemory(device->device, page, 0, VK_WHOLE_SIZE, 0, &data)) VK_UNHANDLED_ERROR();
+    VKMemory page = VKAllocator_Allocate(&requirements);
+    void* data = VKAllocator_Map(alloc, page);
+    VkMappedMemoryRange range = VKAllocator_GetMemoryRange(alloc, page);
 
-    // Bind memory.
-    for (uint32_t i = 0; i < VERTEX_BUFFERS_PER_PAGE; i++) {
+    // Create remaining buffers and bind memory.
+    for (uint32_t i = 0;;) {
         VKVertexBuffer* b = &newRing[i].value;
-        b->memory = page;
-        b->offset = memoryRequirements.requirements.memoryRequirements.size * i;
-        b->size = memoryRequirements.requirements.memoryRequirements.size;
-        b->data = (void*) (((uint8_t*) data) + b->offset);
+        b->memory = range.memory;
+        b->offset = range.offset + bufferSize * i;
+        b->data = (void*) (((uint8_t*) data) + bufferSize * i);
         VK_IF_ERROR(device->vkBindBufferMemory(device->device, b->buffer, b->memory, b->offset)) VK_UNHANDLED_ERROR();
+        if ((++i) >= bufferCount) break;
+        VK_IF_ERROR(device->vkCreateBuffer(device->device, &bufferInfo, NULL, &tempBuffer.value.buffer)) VK_UNHANDLED_ERROR();
+        RING_BUFFER_PUSH(newRing, tempBuffer);
     }
 
     // Move existing pending buffers into new ring and update vertex pool state.
@@ -220,8 +225,8 @@ static VKVertexBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
     RING_BUFFER_FREE(renderer->vertexBufferPool.pendingBuffers);
     renderer->vertexBufferPool.pendingBuffers = newRing;
     ARRAY_PUSH_BACK(renderer->vertexBufferPool.memoryPages, page);
-    J2dRlsTraceLn1(J2D_TRACE_INFO, "VKRenderer_GetVertexBuffer: allocated new page, total pages: %d",
-                   ARRAY_SIZE(renderer->vertexBufferPool.memoryPages));
+    J2dRlsTraceLn3(J2D_TRACE_INFO, "VKRenderer_GetVertexBuffer: allocated new page, bufferCount=%d, unusedSpace=%d, totalPages=%d",
+                   bufferCount, VERTEX_BUFFER_PAGE_SIZE - bufferCount * bufferSize, ARRAY_SIZE(renderer->vertexBufferPool.memoryPages));
 
     // Take first.
     tempBuffer = *RING_BUFFER_PEEK(renderer->vertexBufferPool.pendingBuffers);
@@ -349,7 +354,7 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
     }
     RING_BUFFER_FREE(renderer->vertexBufferPool.pendingBuffers);
     for (uint32_t i = 0; i < ARRAY_SIZE(renderer->vertexBufferPool.memoryPages); i++) {
-        device->vkFreeMemory(device->device, renderer->vertexBufferPool.memoryPages[i], NULL); // Implicitly unmapped.
+        VKAllocator_Free(renderer->device->allocator, renderer->vertexBufferPool.memoryPages[i]);
     }
     ARRAY_FREE(renderer->vertexBufferPool.memoryPages);
 
@@ -477,7 +482,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
 static void VKRenderer_AddSurfaceBarrier(VkImageMemoryBarrier* barriers, uint32_t* numBarriers,
                                          VkPipelineStageFlags* srcStages, VkPipelineStageFlags* dstStages,
                                          VKSDOps* surface, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
-    assert(surface->image != NULL);
+    assert(surface->image.handle != VK_NULL_HANDLE);
     // TODO Even if stage, access and layout didn't change, we may still need a barrier against WaW hazard.
     if (stage != surface->renderPass->lastStage || access != surface->renderPass->lastAccess || layout != surface->renderPass->layout) {
         barriers[*numBarriers] = (VkImageMemoryBarrier) {
@@ -488,7 +493,7 @@ static void VKRenderer_AddSurfaceBarrier(VkImageMemoryBarrier* barriers, uint32_
                 .newLayout = layout,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = surface->image->image,
+                .image = surface->image.handle,
                 .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
         };
         (*numBarriers)++;
@@ -547,7 +552,7 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
                 .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
                 .memory = vb->memory,
                 .offset = vb->offset,
-                .size   = vb->size
+                .size   = VERTEX_BUFFER_SIZE
         };
         PUSH_PENDING(surface->device->renderer, surface->device->renderer->vertexBufferPool.pendingBuffers, *vb);
     }
@@ -624,14 +629,14 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
     // Initialize pipelines. They are cached until surface format changes.
     if (renderPass->pipelines == NULL) {
         for (uint32_t i = 0; i < ARRAY_SIZE(renderer->pipelines); i++) {
-            if (renderer->pipelines[i]->format == surface->image->format) {
+            if (renderer->pipelines[i]->format == surface->format) {
                 renderPass->pipelines = renderer->pipelines[i];
                 break;
             }
         }
         // Pipelines not found, create.
         if (renderPass->pipelines == NULL) {
-            renderPass->pipelines = VKPipelines_Create(device, renderer->shaders, surface->image->format);
+            renderPass->pipelines = VKPipelines_Create(device, renderer->shaders, surface->format);
             ARRAY_PUSH_BACK(renderer->pipelines, renderPass->pipelines);
         }
     }
@@ -642,9 +647,9 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .renderPass = renderPass->pipelines->renderPass,
                 .attachmentCount = 1,
-                .pAttachments = &surface->image->view,
-                .width = surface->image->extent.width,
-                .height = surface->image->extent.height,
+                .pAttachments = &surface->view,
+                .width = surface->extent.width,
+                .height = surface->extent.height,
                 .layers = 1
         };
         VK_IF_ERROR(device->vkCreateFramebuffer(device->device, &framebufferCreateInfo, NULL,
@@ -689,7 +694,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
             .flags = VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT,
             .viewMask = 0,
             .colorAttachmentCount = 1,
-            .pColorAttachmentFormats = &surface->image->format,
+            .pColorAttachmentFormats = &surface->format,
             .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
     };
     VkCommandBufferInheritanceInfo inheritanceInfo = {
@@ -722,7 +727,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
                 .clearValue = surface->background.vkClearValue
         };
         VkClearRect clearRect = {
-                .rect = {{0, 0}, surface->image->extent},
+                .rect = {{0, 0}, surface->extent},
                 .baseArrayLayer = 0,
                 .layerCount = 1
         };
@@ -734,12 +739,12 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     VkViewport viewport = {
             .x = 0.0f,
             .y = 0.0f,
-            .width = (float) surface->image->extent.width,
-            .height = (float) surface->image->extent.height,
+            .width = (float) surface->extent.width,
+            .height = (float) surface->extent.height,
             .minDepth = 0.0f,
             .maxDepth = 1.0f
     };
-    VkRect2D scissor = {{0, 0}, surface->image->extent};
+    VkRect2D scissor = {{0, 0}, surface->extent};
     device->vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     device->vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     // Calculate inverse viewport for vertex shader.
@@ -780,7 +785,7 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     if (device->dynamicRendering) {
         VkRenderingAttachmentInfoKHR colorAttachmentInfo = {
                 .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-                .imageView = surface->image->view,
+                .imageView = surface->view,
                 .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .resolveMode = VK_RESOLVE_MODE_NONE_KHR,
                 .resolveImageView = VK_NULL_HANDLE,
@@ -790,7 +795,7 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
                 .clearValue = surface->background.vkClearValue
         };
         surface->renderPass->pendingClear = VK_FALSE;
-        VkRect2D renderArea = {{0, 0}, surface->image->extent};
+        VkRect2D renderArea = {{0, 0}, surface->extent};
         VkRenderingInfoKHR renderingInfo = {
                 .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
                 .flags = VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT,
@@ -809,7 +814,7 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
                 .renderPass = surface->renderPass->pipelines->renderPass,
                 .framebuffer = surface->renderPass->framebuffer,
                 .renderArea.offset = (VkOffset2D){0, 0},
-                .renderArea.extent = surface->image->extent,
+                .renderArea.extent = surface->extent,
                 .clearValueCount = 0,
                 .pClearValues = NULL
         };
@@ -909,13 +914,13 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
         VkImageBlit blit = {
                 .srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
                 .srcOffsets[0] = {0, 0, 0},
-                .srcOffsets[1] = {(int)surface->image->extent.width, (int)surface->image->extent.height, 1},
+                .srcOffsets[1] = {(int)surface->extent.width, (int)surface->extent.height, 1},
                 .dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
                 .dstOffsets[0] = {0, 0, 0},
-                .dstOffsets[1] = {(int)surface->image->extent.width, (int)surface->image->extent.height, 1},
+                .dstOffsets[1] = {(int)surface->extent.width, (int)surface->extent.height, 1},
         };
         device->vkCmdBlitImage(cb,
-                               surface->image->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               surface->image.handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                win->swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                1, &blit, VK_FILTER_NEAREST);
 
