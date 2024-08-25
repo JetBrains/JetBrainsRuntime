@@ -184,7 +184,7 @@ serviceability/jvmti/vthread/GetSetLocalTest/GetSetLocalTest.java 8286836 generi
 serviceability/jvmti/RedefineClasses/RedefineSharedClassJFR.java JBR-6245 generic-all
 serviceability/jvmti/RedefineClasses/TestMultipleClasses.java initial_run windows-all
 serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java initial_run generic-aarch64
-serviceability/jvmti/stress/StackTrace/NotSuspended/GetStackTraceNotSuspendedStressTest.java JBR-7403 windows-aarch64
+serviceability/jvmti/stress/StackTrace/NotSuspended/GetStackTraceNotSuspendedStressTest.java 8315980,JBR-7403 linux-aarch64,windows-aarch64
 
 serviceability/dcmd/gc/RunFinalizationTest.java 8227120 linux-all,windows-x64,aix-ppc64
 
@@ -242,6 +242,7 @@ vmTestbase/nsk/jdi/LaunchingConnector/launchnosuspend/launchnosuspend001/TestDes
 
 vmTestbase/nsk/jdi/ThreadReference/stop/stop001/TestDescription.java 7034630 generic-all
 vmTestbase/nsk/jdi/ReferenceType/instances/instances002/instances002.java initial_run linux-all
+vmTestbase/nsk/jdi/Value/type/type002/type002.java JBR-7553 macosx-x64
 vmTestbase/nsk/jdi/Value/type/type003/TestDescription.java time_out_intermittent macosx-all
 vmTestbase/nsk/jdi/VirtualMachine/allClasses/allclasses002/TestDescription.java JBR-6715 macosx-all
 vmTestbase/nsk/jdi/VirtualMachine/allThreads/allthreads001/TestDescription.java JBR-6530 macosx-all
