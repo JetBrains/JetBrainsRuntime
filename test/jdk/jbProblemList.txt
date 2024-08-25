@@ -1350,6 +1350,7 @@ jb/java/awt/Window/ZOrderOnModalDialogActivation.java JBR-5714 windows-all
 jb/java/jcef/MouseEventTest.java JBR-4908 linux-all
 
 jb/java/lang/System/SetEnv394.java JBR-2988 generic-aarch64
+jb/build/CDSArchivesTest.sh JBR-6616 windows-aarch64
 
 # TBD
 javax/sound/sampled/Lines/ChangingBuffer.java JBR-4455 linux-aarch64
