@@ -28,6 +28,17 @@
 #include <Trace.h>
 #include "awt.h"
 #include "jni_util.h"
+#include "VKTypes.h"
+
+// VK_DEBUG_RANDOM may be used to randomly tune some parameters and turn off some features,
+// which would allow to cover wider range of scenarios and catch configuration-specific errors early.
+// In debug builds it returns 1 with approximately CHANCE_PERCENT chance, on release builds it is always 0.
+// When using this macro, make sure to leave sufficient info in the log to track failing configurations.
+#ifdef DEBUG
+#define VK_DEBUG_RANDOM(CHANCE_PERCENT) ((rand() & 100) < CHANCE_PERCENT)
+#else
+#define VK_DEBUG_RANDOM(CHANCE_PERCENT) 0
+#endif
 
 // Useful logging & result checking macros
 void VKUtil_LogResultError(const char* string, VkResult result);
@@ -52,6 +63,39 @@ inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
 } while(0)
 #define VK_UNHANDLED_ERROR() VK_FATAL_ERROR("Unhandled Vulkan error")
 #define VK_RUNTIME_ASSERT(...) if (!(__VA_ARGS__)) VK_FATAL_ERROR("Vulkan assertion failed: " #__VA_ARGS__)
+
+typedef struct {
+    VkFormat unorm;
+    VkFormat snorm;
+    VkFormat uscaled;
+    VkFormat sscaled;
+    VkFormat uint;
+    VkFormat sint;
+    VkFormat srgb;
+    VkFormat sfloat;
+    uint     bytes;
+} FormatGroup;
+
+/**
+ * Convert 32-bit sRGB encoded straight-alpha Java color to [0, 1] normalized
+ * floating-point representation with pre-multiplied alpha in both linear and sRGB color space.
+ *
+ * Vulkan always works with LINEAR colors, so great care must be taken to use the right encoding.
+ * If you ever need to use sRGB encoded color, leave the detailed comment explaining this decision.
+ *
+ * Read more about presenting sRGB content in VKSD_ConfigureWindowSurface.
+ *
+ * Note: we receive colors from Java with straight (non-premultiplied) alpha, which is unusual.
+ * This is controlled by PixelConverter parameter of SurfaceType, see VKSurfaceData.java.
+ * This is done to prevent precision loss and redundant conversions,
+ * as we need straight alpha to convert from sRGB to liner color space anyway.
+ */
+Color VKUtil_DecodeJavaColor(uint32_t color);
+
+/**
+ * Get group of formats with the same component layout.
+ */
+FormatGroup VKUtil_GetFormatGroup(VkFormat format);
 
 /**
  * Integer log2, the same as index of highest set bit.

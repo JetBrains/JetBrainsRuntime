@@ -33,6 +33,13 @@
 #include "VKRenderer.h"
 
 /**
+ * Check whether underlying surface format is sRGB.
+ * Currently, we only support *_SRGB and *_UNORM formats (see VKSD_ConfigureImageSurface),
+ * so this check basically means "is not UNORM".
+ */
+#define IS_SRGB_SURFACE(SURFACE) ((SURFACE)->format[FORMAT_ALIAS_REAL] != (SURFACE)->format[FORMAT_ALIAS_UNORM])
+
+/**
  * These are shorthand names for the surface type constants defined in
  * VKSurfaceData.java.
  * TODO which constants?
@@ -49,8 +56,8 @@ struct VKSDOps {
     jint           drawableType;
     VKDevice*      device;
     VKImage        image;
-    VkImageView    view;
-    VkFormat       format;
+    VkImageView    view[FORMAT_ALIAS_COUNT];
+    VkFormat       format[FORMAT_ALIAS_COUNT];
     VkExtent2D     extent;
 
     Color          background;

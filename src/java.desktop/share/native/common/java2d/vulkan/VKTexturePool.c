@@ -92,9 +92,8 @@ static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
     CHECK_NULL_RETURN(device, NULL);
     Texture* texture = malloc(sizeof(Texture));
     VK_RUNTIME_ASSERT(texture);
-    texture->image = VKAllocator_CreateImage(((VKDevice*)device)->allocator, (VkExtent2D) {width, height},
-                                             (VkFormat)format,
-                                             VK_IMAGE_TILING_LINEAR,
+    texture->image = VKAllocator_CreateImage(((VKDevice*)device)->allocator, 0, (VkExtent2D) {width, height},
+                                             (VkFormat)format, VK_IMAGE_TILING_OPTIMAL,
                                              VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                                              VK_SAMPLE_COUNT_1_BIT, VKTexturePool_FindImageMemoryType);
     if IS_NULL(texture->image.handle) {
@@ -111,15 +110,11 @@ static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
 }
 
 static int VKTexturePool_bytesPerPixel(long format) {
-    switch ((VkFormat)format) {
-        case VK_FORMAT_R8G8B8A8_UNORM:
-            return 4;
-        case VK_FORMAT_R8_UNORM:
-            return 1;
-        default:
-            J2dRlsTraceLn1(J2D_TRACE_ERROR, "VKTexturePool_bytesPerPixel: format=%d not supported (4 bytes by default)", format);
-            return 4;
-    }
+    FormatGroup group = VKUtil_GetFormatGroup((VkFormat)format);
+    if (group.bytes == 0) {
+        J2dRlsTraceLn1(J2D_TRACE_ERROR, "VKTexturePool_bytesPerPixel: format=%d not supported (4 bytes by default)", format);
+        return 4;
+    } else return (int) group.bytes;
 }
 
 static void VKTexturePool_freeTexture(ADevicePrivPtr *device, ATexturePrivPtr *texture) {

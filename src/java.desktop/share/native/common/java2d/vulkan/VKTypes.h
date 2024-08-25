@@ -26,23 +26,29 @@
 #include <vulkan/vulkan.h>
 
 /**
- * Floating-point RGBA color with LINEAR encoding.
+ * Floating-point RGBA color components with pre-multiplied alpha.
+ * May be encoded as either linear, or sRGB depending on the context (see Color.linear, Color.nonlinearSrgb).
  */
 typedef union {
     struct {
         float r, g, b, a;
     };
     VkClearValue vkClearValue;
-} Color;
+} RGBAColorComponents;
 
 /**
- * In Vulkan we always work with floating-point LINEAR colors.
- * Java colors are 32-bit SRGB encoded colors,
- * so we need to convert them to linear colors first.
+ * Floating-point RGBA color with pre-multiplied alpha in both linear and sRGB encoding.
  *
- * Read more about presenting SRGB content in VKSD_ConfigureWindowSurface
+ * Vulkan always works with LINEAR colors, so great care must be taken to use the right encoding.
+ * If you ever need to use sRGB encoded color, leave the detailed comment explaining this decision.
+ *
+ * Read more about presenting sRGB content in VKSD_ConfigureWindowSurface.
+ * Read more about conversion from Java colors in VKUtil_DecodeJavaColor.
  */
-Color Color_DecodeFromJava(uint32_t color);
+typedef struct {
+    RGBAColorComponents linear;
+    RGBAColorComponents nonlinearSrgb;
+} Color;
 
 VK_DEFINE_NON_DISPATCHABLE_HANDLE(VKMemory);
 

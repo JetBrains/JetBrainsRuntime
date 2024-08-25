@@ -140,8 +140,8 @@ typedef void (*VKAllocator_FindMemoryTypeCallback)(VKMemoryRequirements* require
  * Create image with given parameters, allocate appropriate memory and bind them together.
  * Memory type is selected by calling findMemoryTypeCallback. VK_NULL_IMAGE is returned on failure.
  */
-VKImage VKAllocator_CreateImage(VKAllocator* allocator, VkExtent2D extent, VkFormat format, VkImageTiling tiling,
-                                VkImageUsageFlags usage, VkSampleCountFlagBits samples,
+VKImage VKAllocator_CreateImage(VKAllocator* allocator, VkImageCreateFlags flags, VkExtent2D extent, VkFormat format,
+                                VkImageTiling tiling, VkImageUsageFlags usage, VkSampleCountFlagBits samples,
                                 VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback);
 
 /**

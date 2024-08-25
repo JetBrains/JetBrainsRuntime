@@ -33,6 +33,10 @@
 struct VKRenderingContext {
     VKSDOps* surface;
     Color color;
+    CompositeMode composite;
+    // Extra alpha is not used when painting with plain color,
+    // in this case color.a already includes it.
+    float extraAlpha;
 };
 
 VKRenderer* VKRenderer_Create(VKDevice* device);
@@ -67,9 +71,9 @@ void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent);
 
 // Drawing operations.
 
-void VKRenderer_RenderRect(VKRenderingContext* context, VKPipeline pipeline, jint x, jint y, jint w, jint h);
+void VKRenderer_RenderRect(VKRenderingContext* context, PipelineType pipeline, jint x, jint y, jint w, jint h);
 
-void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipeline,
+void VKRenderer_RenderParallelogram(VKRenderingContext* context, PipelineType pipeline,
                                     jfloat x11, jfloat y11,
                                     jfloat dx21, jfloat dy21,
                                     jfloat dx12, jfloat dy12);

@@ -608,14 +608,15 @@ void VKAllocator_Destroy(VKAllocator* allocator) {
 
 // Image and buffer utilities.
 
-VKImage VKAllocator_CreateImage(VKAllocator* allocator, VkExtent2D extent, VkFormat format, VkImageTiling tiling,
-                                VkImageUsageFlags usage, VkSampleCountFlagBits samples,
+VKImage VKAllocator_CreateImage(VKAllocator* allocator, VkImageCreateFlags flags, VkExtent2D extent, VkFormat format,
+                                VkImageTiling tiling, VkImageUsageFlags usage, VkSampleCountFlagBits samples,
                                 VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback) {
     assert(allocator != NULL && allocator->device != NULL);
     VKDevice* device = allocator->device;
     VKImage result = VK_NULL_IMAGE;
     VkImageCreateInfo createInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .flags = flags,
             .imageType = VK_IMAGE_TYPE_2D,
             .extent.width = extent.width,
             .extent.height = extent.height,
@@ -648,9 +649,7 @@ VKImage VKAllocator_CreateImage(VKAllocator* allocator, VkExtent2D extent, VkFor
 
 void VKAllocator_DestroyImage(VKAllocator* allocator, VKImage image) {
     assert(allocator != NULL);
-    if (image.handle != VK_NULL_HANDLE) {
-        allocator->device->vkDestroyImage(allocator->device->handle, image.handle, NULL);
-    }
+    allocator->device->vkDestroyImage(allocator->device->handle, image.handle, NULL);
     VKAllocator_Free(allocator, image.memory);
 }
 
@@ -684,8 +683,6 @@ VKBuffer VKAllocator_CreateBuffer(VKAllocator* allocator, VkDeviceSize size, VkB
 
 void VKAllocator_DestroyBuffer(VKAllocator* allocator, VKBuffer buffer) {
     assert(allocator != NULL);
-    if (buffer.handle != VK_NULL_HANDLE) {
-        allocator->device->vkDestroyBuffer(allocator->device->handle, buffer.handle, NULL);
-    }
+    allocator->device->vkDestroyBuffer(allocator->device->handle, buffer.handle, NULL);
     VKAllocator_Free(allocator, buffer.memory);
 }
