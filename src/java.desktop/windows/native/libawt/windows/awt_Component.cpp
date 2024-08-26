@@ -1820,10 +1820,6 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           mr = WmImeSetContext(static_cast<BOOL>(wParam), &lParam);
           CallProxyDefWindowProc(message, wParam, lParam, retValue, mr);
           break;
-      case WM_IME_NOTIFY:
-          mr = WmImeNotify(wParam, lParam);
-          CallProxyDefWindowProc(message, wParam, lParam, retValue, mr);
-          break;
       case WM_IME_STARTCOMPOSITION:
           mr = WmImeStartComposition();
           CallProxyDefWindowProc(message, wParam, lParam, retValue, mr);
