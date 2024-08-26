@@ -511,7 +511,7 @@ VkMappedMemoryRange VKAllocator_GetMemoryRange(VKAllocator* allocator, VKMemory 
     return (VkMappedMemoryRange) {
             .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
             .memory = allocator->pages[handle.page].memory,
-            .offset = handle.offset,
+            .offset = handle.offset * BLOCK_SIZE,
             .size   = handle.level == 31 ? VK_WHOLE_SIZE : BLOCK_SIZE << handle.level
     };
 }
