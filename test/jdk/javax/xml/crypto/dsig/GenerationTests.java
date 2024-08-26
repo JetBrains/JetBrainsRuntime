@@ -352,7 +352,7 @@ public class GenerationTests {
         try (Http server = Http.startServer()) {
             server.start();
 
-            // tests for XML documents
+            System.out.println("\ntests for XML documents");
             Arrays.stream(canonicalizationMethods).forEach(c ->
                 Arrays.stream(allSignatureMethods).forEach(s ->
                     Arrays.stream(allDigestMethods).forEach(d ->
@@ -366,7 +366,7 @@ public class GenerationTests {
                                 }
                         })))));
 
-            // tests for text data with no transform
+            System.out.println("\ntests for text data with no transform");
             Arrays.stream(canonicalizationMethods).forEach(c ->
                 Arrays.stream(allSignatureMethods).forEach(s ->
                     Arrays.stream(allDigestMethods).forEach(d ->
@@ -379,7 +379,7 @@ public class GenerationTests {
                             }
                         }))));
 
-            // tests for base64 data
+            System.out.println("\ntests for base64 data");
             Arrays.stream(canonicalizationMethods).forEach(c ->
                 Arrays.stream(allSignatureMethods).forEach(s ->
                     Arrays.stream(allDigestMethods).forEach(d ->
@@ -396,7 +396,7 @@ public class GenerationTests {
 
             // negative tests
 
-            // unknown CanonicalizationMethod
+            System.out.println("\nunknown CanonicalizationMethod");
             test_create_detached_signature(
                     CanonicalizationMethod.EXCLUSIVE + BOGUS,
                     SignatureMethod.DSA_SHA1,
@@ -408,7 +408,7 @@ public class GenerationTests {
                     true,
                     NoSuchAlgorithmException.class);
 
-            // unknown SignatureMethod
+            System.out.println("\nunknown SignatureMethod");
             test_create_detached_signature(
                     CanonicalizationMethod.EXCLUSIVE,
                     SignatureMethod.DSA_SHA1 + BOGUS,
@@ -419,7 +419,7 @@ public class GenerationTests {
                     true,
                     NoSuchAlgorithmException.class);
 
-            // unknown DigestMethod
+            System.out.println("\nunknown DigestMethod");
             test_create_detached_signature(
                     CanonicalizationMethod.EXCLUSIVE,
                     SignatureMethod.DSA_SHA1,
@@ -430,7 +430,7 @@ public class GenerationTests {
                     true,
                     NoSuchAlgorithmException.class);
 
-            // unknown Transform
+            System.out.println("\nunknown Transform");
             test_create_detached_signature(
                     CanonicalizationMethod.EXCLUSIVE,
                     SignatureMethod.DSA_SHA1,
@@ -441,7 +441,7 @@ public class GenerationTests {
                     true,
                     NoSuchAlgorithmException.class);
 
-            // no source document
+            System.out.println("\nno source document");
             test_create_detached_signature(
                     CanonicalizationMethod.EXCLUSIVE,
                     SignatureMethod.DSA_SHA1,
@@ -453,7 +453,7 @@ public class GenerationTests {
                     true,
                     XMLSignatureException.class);
 
-            // wrong transform for text data
+            System.out.println("\nwrong transform for text data");
             test_create_detached_signature(
                     CanonicalizationMethod.EXCLUSIVE,
                     SignatureMethod.DSA_SHA1,
@@ -1823,6 +1823,7 @@ public class GenerationTests {
             throws Exception {
 
         System.out.print("-S");
+        System.out.flush();
 
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         dbf.setNamespaceAware(true);
@@ -1907,6 +1908,7 @@ public class GenerationTests {
         }
 
         System.out.print("V");
+        System.out.flush();
         try (ByteArrayInputStream bis = new ByteArrayInputStream(
                 signatureString.getBytes())) {
             doc = dbf.newDocumentBuilder().parse(bis);
@@ -1930,12 +1932,14 @@ public class GenerationTests {
         boolean success = signature.validate(vc);
         if (!success) {
             System.out.print("x");
+            System.out.flush();
             return false;
         }
 
         success = signature.getSignatureValue().validate(vc);
         if (!success) {
             System.out.print("X");
+            System.out.flush();
             return false;
         }
 
