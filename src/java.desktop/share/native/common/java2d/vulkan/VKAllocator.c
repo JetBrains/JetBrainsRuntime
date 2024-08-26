@@ -249,7 +249,7 @@ static void VKAllocator_FreePage(VKAllocator* alloc, Page* page, uint32_t pageIn
 
 /**
  * Pop free block pair of the specified level from the free list.
- * Subdivides upper level blocks if there no existing matching blocks.
+ * Subdivides upper level blocks if there are no existing matching blocks.
  */
 static uint32_t VKAllocator_PopFreeBlockPair(SharedPageData* data, uint32_t level) {
     assert(data != NULL && level <= MAX_BLOCK_LEVEL);
