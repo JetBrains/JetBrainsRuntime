@@ -46,7 +46,6 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.WLVKSurfaceData");
 
     protected WLComponentPeer peer;
-    protected WLVKGraphicsConfig graphicsConfig;
 
     private native void initOps(int backgroundRGB);
 
@@ -57,11 +56,16 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
     {
         super(gc, cm, type, 0, 0);
         this.peer = peer;
-        this.graphicsConfig = gc;
         final int backgroundRGB = peer.getBackground() != null
                 ? peer.getBackground().getRGB()
                 : 0;
         initOps(backgroundRGB);
+    }
+
+    private void bufferAttached() {
+        // Called from the native code when a buffer has just been attached to this surface
+        // but the surface has not been committed yet.
+        peer.updateSurfaceSize();
     }
 
     @Override
@@ -85,8 +89,8 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
             rq.ensureCapacityAndAlignment(20, 4);
             buf.putInt(CONFIGURE_SURFACE);
             buf.putLong(getNativeOps());
-            buf.putInt(width / scale); // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
-            buf.putInt(height / scale); // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
+            buf.putInt(width);
+            buf.putInt(height);
 
             rq.flushNow();
         } finally {
@@ -115,8 +119,9 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
         return false;
     }
 
+    @Override
     public GraphicsConfiguration getDeviceConfiguration() {
-        return graphicsConfig;
+        return peer.getGraphicsConfiguration();
     }
 
     /**
@@ -180,7 +185,7 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
 
         @Override
         public BufferedContext getContext() {
-            return graphicsConfig.getContext();
+            return ((WLVKGraphicsConfig) getDeviceConfiguration()).getContext();
         }
 
         @Override
