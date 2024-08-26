@@ -388,7 +388,7 @@ final class CertificateMessage {
                         ClientAuthType.CLIENT_AUTH_REQUESTED) {
                     // unexpected or require client authentication
                     throw shc.conContext.fatal(Alert.BAD_CERTIFICATE,
-                        "Empty server certificate chain");
+                        "Empty client certificate chain");
                 } else {
                     return;
                 }
@@ -405,7 +405,7 @@ final class CertificateMessage {
                 }
             } catch (CertificateException ce) {
                 throw shc.conContext.fatal(Alert.BAD_CERTIFICATE,
-                    "Failed to parse server certificates", ce);
+                    "Failed to parse client certificates", ce);
             }
 
             checkClientCerts(shc, x509Certs);
@@ -1253,7 +1253,7 @@ final class CertificateMessage {
                 }
             } catch (CertificateException ce) {
                 throw shc.conContext.fatal(Alert.BAD_CERTIFICATE,
-                    "Failed to parse server certificates", ce);
+                    "Failed to parse client certificates", ce);
             }
 
             // find out the types of client authentication used
