@@ -29,6 +29,7 @@
  *          getThreadUserTime(long[]).
  * @author  Paul Hohensee
  * @requires vm.compMode != "Xcomp"
+ * @run main/othervm ThreadCpuTimeArray
  */
 
 import java.lang.management.*;
