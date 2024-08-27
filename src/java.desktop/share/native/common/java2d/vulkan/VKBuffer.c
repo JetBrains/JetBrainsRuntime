@@ -106,6 +106,77 @@ VKMemory VKBuffer_CreateBuffers(VKDevice* device, VkBufferUsageFlags usageFlags,
     return page;
 }
 
+static VkDescriptorPool VKBuffer_DestroyTexelBuffersOnFailure(VKDevice* device, VkDescriptorPool pool, uint32_t bufferCount, VKTexelBuffer* texelBuffers) {
+    assert(device != NULL);
+    for (uint32_t i = 0; i < bufferCount; i++) {
+        device->vkDestroyBufferView(device->handle, texelBuffers[i].view, NULL);
+    }
+    device->vkDestroyDescriptorPool(device->handle, pool, NULL);
+    return VK_NULL_HANDLE;
+}
+
+VkDescriptorPool VKBuffer_CreateTexelBuffers(VKDevice* device, VkFormat format,
+                                             VkDescriptorType descriptorType, VkDescriptorSetLayout descriptorSetLayout,
+                                             uint32_t bufferCount, VKBuffer* buffers, VKTexelBuffer* texelBuffers) {
+    assert(device != NULL);
+
+    // Create descriptor pool.
+    VkDescriptorPoolSize poolSize = { .type = descriptorType, .descriptorCount = bufferCount };
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .flags = 0,
+            .maxSets = bufferCount,
+            .poolSizeCount = 1,
+            .pPoolSizes = &poolSize
+    };
+    VkDescriptorPool pool;
+    VK_IF_ERROR(device->vkCreateDescriptorPool(device->handle, &descriptorPoolCreateInfo, NULL, &pool)) return VK_NULL_HANDLE;
+
+    // Allocate descriptor sets.
+    VkDescriptorSetLayout layouts[bufferCount];
+    for (uint32_t i = 0; i < bufferCount; i++) layouts[i] = descriptorSetLayout;
+    VkDescriptorSetAllocateInfo allocateInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = pool,
+            .descriptorSetCount = bufferCount,
+            .pSetLayouts = layouts
+    };
+    VkDescriptorSet descriptorSets[bufferCount];
+    VK_IF_ERROR(device->vkAllocateDescriptorSets(device->handle, &allocateInfo, descriptorSets)) {
+        return VKBuffer_DestroyTexelBuffersOnFailure(device, pool, 0, texelBuffers);
+    }
+
+    // Create buffer views and record them into descriptors.
+    VkBufferViewCreateInfo bufferViewCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+            .format = format,
+            .offset = 0,
+            .range = VK_WHOLE_SIZE
+    };
+    VkWriteDescriptorSet writeDescriptorSets[bufferCount];
+    for (uint32_t i = 0; i < bufferCount; i++) {
+        texelBuffers[i] = (VKTexelBuffer) {
+            .buffer = buffers[i],
+            .descriptorSet = descriptorSets[i]
+        };
+        bufferViewCreateInfo.buffer = buffers[i].handle;
+        VK_IF_ERROR(device->vkCreateBufferView(device->handle, &bufferViewCreateInfo, NULL, &texelBuffers[i].view)) {
+            return VKBuffer_DestroyTexelBuffersOnFailure(device, pool, i, texelBuffers);
+        }
+        writeDescriptorSets[i] = (VkWriteDescriptorSet) {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = descriptorSets[i],
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = descriptorType,
+                .pTexelBufferView = &texelBuffers[i].view
+        };
+    }
+    device->vkUpdateDescriptorSets(device->handle, bufferCount, writeDescriptorSets, 0, NULL);
+    return pool;
+}
+
 VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
                           VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
 {
