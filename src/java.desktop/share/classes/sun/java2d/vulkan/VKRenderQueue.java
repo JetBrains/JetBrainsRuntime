@@ -85,21 +85,11 @@ public class VKRenderQueue extends RenderQueue {
         }
     }
 
-    public void flush() {
-        // assert lock.isHeldByCurrentThread();
-        try {
-            flusher.flush(false);
-        } catch (Exception e) {
-            System.err.println("exception in flush:");
-            e.printStackTrace();
-        }
-    }
-
     @Override
     public void flushNow() {
         // assert lock.isHeldByCurrentThread();
         try {
-            flusher.flush(true);
+            flusher.flushNow();
         } catch (Exception e) {
             System.err.println("exception in flushNow:");
             e.printStackTrace();
@@ -144,30 +134,28 @@ public class VKRenderQueue extends RenderQueue {
             thread.start();
         }
 
-        public synchronized void flush(boolean waitForCompletion) {
+        public synchronized void flushNow() {
             // wake up the flusher
             needsFlush = true;
             notify();
 
-            if (waitForCompletion) {
-                // wait for flush to complete
-                while (needsFlush) {
-                    try {
-                        wait();
-                    } catch (InterruptedException e) {
-                    }
+            // wait for flush to complete
+            while (needsFlush) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
                 }
+            }
 
-                // re-throw any error that may have occurred during the flush
-                if (error != null) {
-                    throw error;
-                }
+            // re-throw any error that may have occurred during the flush
+            if (error != null) {
+                throw error;
             }
         }
 
         public synchronized void flushAndInvokeNow(Runnable task) {
             this.task = task;
-            flush(true);
+            flushNow();
         }
 
         public synchronized void run() {

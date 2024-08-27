@@ -88,7 +88,7 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
             buf.putInt(width / scale); // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
             buf.putInt(height / scale); // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
 
-            rq.flush();
+            rq.flushNow();
         } finally {
             rq.unlock();
         }
@@ -104,7 +104,7 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
             buf.putInt(FLUSH_BUFFER);
             buf.putLong(getNativeOps());
 
-            rq.flush();
+            rq.flushNow();
         } finally {
             rq.unlock();
         }
