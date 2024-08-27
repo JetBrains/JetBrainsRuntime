@@ -56,11 +56,7 @@ void* CARR_ring_buffer_realloc(CARR_ring_buffer_t* buf, size_t elem_size, size_t
  * Deallocate the array and reset pointer to NULL.
  * @param P pointer to the first data element of the array
  */
-#define ARRAY_FREE(P) do { \
-if ((P) != NULL) {         \
-    free(ARRAY_T(P));      \
-    (P) = NULL;            \
-}} while(0)
+#define ARRAY_FREE(P) free(ARRAY_T(P))
 
 /**
  * Apply function to the array elements
@@ -215,10 +211,6 @@ if ((P) != NULL) {         \
  * Deallocate the ring buffer and reset pointer to NULL.
  * @param P pointer to the first data element of the buffer
  */
-#define RING_BUFFER_FREE(P) do { \
-if ((P) != NULL) {               \
-    free(RING_BUFFER_T(P));      \
-    (P) = NULL;                  \
-}} while(0)
+#define RING_BUFFER_FREE(P) free(RING_BUFFER_T(P))
 
 #endif // CARRAYUTILS_H
