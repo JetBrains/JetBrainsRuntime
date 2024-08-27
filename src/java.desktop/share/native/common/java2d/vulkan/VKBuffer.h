@@ -39,6 +39,12 @@ struct VKBuffer {
     void* data;
 };
 
+struct VKTexelBuffer {
+    VKBuffer buffer;
+    VkBufferView view;
+    VkDescriptorSet descriptorSet;
+};
+
 /**
  * Create buffers, allocate a memory page and bind them together.
  * 'pageSize' can be 0, meaning that page size is calculated based on buffer memory requirements.
@@ -50,5 +56,15 @@ VKMemory VKBuffer_CreateBuffers(VKDevice* device, VkBufferUsageFlags usageFlags,
                                 VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback,
                                 VkDeviceSize bufferSize, VkDeviceSize pageSize,
                                 uint32_t* bufferCount, VKBuffer* buffers);
+
+/**
+ * Create texel buffers from existing array of buffers.
+ * It returns created descriptor pool, or VK_NULL_HANDLE on failure.
+ * Created texel buffers are written in 'texelBuffers',
+ * original buffers are taken from 'buffers'.
+ */
+VkDescriptorPool VKBuffer_CreateTexelBuffers(VKDevice* device, VkFormat format,
+                                             VkDescriptorType descriptorType, VkDescriptorSetLayout descriptorSetLayout,
+                                             uint32_t bufferCount, VKBuffer* buffers, VKTexelBuffer* texelBuffers);
 
 #endif // VKBuffer_h_Included
