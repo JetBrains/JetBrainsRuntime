@@ -80,20 +80,29 @@ static VKShaders* VKPipelines_CreateShaders(VKDevice* device) {
     return shaders;
 }
 
-#define MAKE_INPUT_STATE(NAME, TYPE, ...)                                                         \
-static const VkVertexInputAttributeDescription INPUT_STATE_ATTRIBUTES_##NAME[] = { __VA_ARGS__ }; \
-static const VkVertexInputBindingDescription INPUT_STATE_BINDING_##NAME = {                       \
-        .binding = 0,                                                                             \
-        .stride = sizeof(TYPE),                                                                   \
-        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX                                                  \
-};                                                                                                \
-static const VkPipelineVertexInputStateCreateInfo INPUT_STATE_##NAME = {                          \
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,                       \
-        .vertexBindingDescriptionCount = 1,                                                       \
-        .pVertexBindingDescriptions = &INPUT_STATE_BINDING_##NAME,                                \
-        .vertexAttributeDescriptionCount = SARRAY_COUNT_OF(INPUT_STATE_ATTRIBUTES_##NAME),        \
-        .pVertexAttributeDescriptions = INPUT_STATE_ATTRIBUTES_##NAME                             \
-}
+#define MAKE_INPUT_STATE(NAME, TYPE, ...)                                                  \
+const VkFormat INPUT_STATE_ATTRIBUTE_FORMATS_##NAME[] = { __VA_ARGS__ };                   \
+VkVertexInputAttributeDescription                                                          \
+    INPUT_STATE_ATTRIBUTES_##NAME[SARRAY_COUNT_OF(INPUT_STATE_ATTRIBUTE_FORMATS_##NAME)];  \
+const VkVertexInputBindingDescription INPUT_STATE_BINDING_##NAME = {                       \
+        .binding = 0,                                                                      \
+        .stride = sizeof(TYPE),                                                            \
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX                                           \
+};                                                                                         \
+const VkPipelineVertexInputStateCreateInfo INPUT_STATE_##NAME = {                          \
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,                \
+        .vertexBindingDescriptionCount = 1,                                                \
+        .pVertexBindingDescriptions = &INPUT_STATE_BINDING_##NAME,                         \
+        .vertexAttributeDescriptionCount = SARRAY_COUNT_OF(INPUT_STATE_ATTRIBUTES_##NAME), \
+        .pVertexAttributeDescriptions = INPUT_STATE_ATTRIBUTES_##NAME                      \
+};                                                                                         \
+uint32_t INPUT_STATE_BINDING_SIZE_##NAME = 0;                                              \
+for (uint32_t i = 0; i < SARRAY_COUNT_OF(INPUT_STATE_ATTRIBUTES_##NAME); i++) {            \
+    INPUT_STATE_ATTRIBUTES_##NAME[i] = (VkVertexInputAttributeDescription) {               \
+        i, 0, INPUT_STATE_ATTRIBUTE_FORMATS_##NAME[i], INPUT_STATE_BINDING_SIZE_##NAME};   \
+    INPUT_STATE_BINDING_SIZE_##NAME +=                                                     \
+        VKUtil_GetFormatGroup(INPUT_STATE_ATTRIBUTE_FORMATS_##NAME[i]).bytes;              \
+} if (sizeof(TYPE) != INPUT_STATE_BINDING_SIZE_##NAME) VK_FATAL_ERROR("Vertex size mismatch for input state " #NAME)
 
 typedef struct {
     VkGraphicsPipelineCreateInfo createInfo;
@@ -210,28 +219,6 @@ DEF_BLEND(|  DST_ATOP |, ONE_MINUS_DST_ALPHA  , SRC_ALPHA            , ONE      
 DEF_BLEND(|       XOR |, ONE_MINUS_DST_ALPHA  , ONE_MINUS_SRC_ALPHA  , ONE_MINUS_DST_ALPHA  , ONE_MINUS_SRC_ALPHA  ),
 };
 
-static const VkVertexInputAttributeDescription INPUT_ATTRIBUTE_POSITION = {
-        .location = 0,
-        .binding = 0,
-        .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = 0
-};
-static const VkVertexInputAttributeDescription INPUT_ATTRIBUTE_COLOR = {
-        .location = 1,
-        .binding = 0,
-        .format = VK_FORMAT_R32G32B32A32_SFLOAT,
-        .offset = sizeof(float) * 2
-};
-static const VkVertexInputAttributeDescription INPUT_ATTRIBUTE_TEXCOORD = {
-        .location = 1,
-        .binding = 0,
-        .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = sizeof(float) * 2
-};
-
-MAKE_INPUT_STATE(COLOR_VERTEX, VKColorVertex, INPUT_ATTRIBUTE_POSITION, INPUT_ATTRIBUTE_COLOR);
-MAKE_INPUT_STATE(TEXCOORD_VERTEX, VKTxVertex, INPUT_ATTRIBUTE_POSITION, INPUT_ATTRIBUTE_TEXCOORD);
-
 static void VKPipelines_DestroyPipelineSet(VKDevice* device, VKPipelineSet* set) {
     assert(device != NULL);
     if (set == NULL) return;
@@ -267,19 +254,26 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
         createInfos[i].pStages = stages[i].createInfos;
     }
 
-    { // Setup plain color pipelines.
-        createInfos[PIPELINE_DRAW_COLOR].pVertexInputState = createInfos[PIPELINE_FILL_COLOR].pVertexInputState = &INPUT_STATE_COLOR_VERTEX;
-        createInfos[PIPELINE_FILL_COLOR].pInputAssemblyState = &INPUT_ASSEMBLY_STATE_TRIANGLE_LIST;
-        createInfos[PIPELINE_DRAW_COLOR].pInputAssemblyState = &INPUT_ASSEMBLY_STATE_LINE_LIST;
-        stages[PIPELINE_DRAW_COLOR] = stages[PIPELINE_FILL_COLOR] = (ShaderStages) {{ shaders->color_vert, shaders->color_frag }};
-    }
+    // Setup plain color pipelines.
+    MAKE_INPUT_STATE(COLOR, VKColorVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT);
+    createInfos[PIPELINE_DRAW_COLOR].pVertexInputState = createInfos[PIPELINE_FILL_COLOR].pVertexInputState = &INPUT_STATE_COLOR;
+    createInfos[PIPELINE_FILL_COLOR].pInputAssemblyState = &INPUT_ASSEMBLY_STATE_TRIANGLE_LIST;
+    createInfos[PIPELINE_DRAW_COLOR].pInputAssemblyState = &INPUT_ASSEMBLY_STATE_LINE_LIST;
+    stages[PIPELINE_DRAW_COLOR] = stages[PIPELINE_FILL_COLOR] = (ShaderStages) {{ shaders->color_vert, shaders->color_frag }};
 
-    { // Setup texture pipeline.
-        createInfos[PIPELINE_BLIT].pVertexInputState = &INPUT_STATE_TEXCOORD_VERTEX;
-        createInfos[PIPELINE_BLIT].pInputAssemblyState = &INPUT_ASSEMBLY_STATE_TRIANGLE_STRIP;
-        createInfos[PIPELINE_BLIT].layout = pipelineContext->texturePipelineLayout;
-        stages[PIPELINE_BLIT] = (ShaderStages) {{ shaders->blit_vert, shaders->blit_frag }};
-    }
+    // Setup blit pipeline.
+    MAKE_INPUT_STATE(BLIT, VKTxVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32_SFLOAT);
+    createInfos[PIPELINE_BLIT].pVertexInputState = &INPUT_STATE_BLIT;
+    createInfos[PIPELINE_BLIT].pInputAssemblyState = &INPUT_ASSEMBLY_STATE_TRIANGLE_STRIP;
+    createInfos[PIPELINE_BLIT].layout = pipelineContext->texturePipelineLayout;
+    stages[PIPELINE_BLIT] = (ShaderStages) {{ shaders->blit_vert, shaders->blit_frag }};
+
+    // Setup plain color mask fill pipeline.
+    MAKE_INPUT_STATE(MASK_FILL_COLOR, VKMaskFillColorVertex, VK_FORMAT_R32G32B32A32_SINT, VK_FORMAT_R32G32B32A32_SFLOAT);
+    createInfos[PIPELINE_MASK_FILL_COLOR].pVertexInputState = &INPUT_STATE_MASK_FILL_COLOR;
+    createInfos[PIPELINE_MASK_FILL_COLOR].pInputAssemblyState = &INPUT_ASSEMBLY_STATE_TRIANGLE_LIST;
+    createInfos[PIPELINE_MASK_FILL_COLOR].layout = pipelineContext->maskFillPipelineLayout;
+    stages[PIPELINE_MASK_FILL_COLOR] = (ShaderStages) {{ shaders->mask_fill_color_vert, shaders->mask_fill_color_frag }};
 
     // Create pipelines.
     // TODO pipeline cache
@@ -399,6 +393,26 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
     createInfo.setLayoutCount = 1;
     createInfo.pSetLayouts = &pipelines->textureDescriptorSetLayout;
     result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->texturePipelineLayout);
+    VK_IF_ERROR(result) return result;
+
+    VkDescriptorSetLayoutBinding maskBufferLayoutBinding = {
+            .binding = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .pImmutableSamplers = NULL
+    };
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = 1,
+            .pBindings = &maskBufferLayoutBinding
+    };
+    result = device->vkCreateDescriptorSetLayout(device->handle, &descriptorSetLayoutCreateInfo, NULL, &pipelines->maskFillDescriptorSetLayout);
+    VK_IF_ERROR(result) return result;
+
+    createInfo.setLayoutCount = 1;
+    createInfo.pSetLayouts = &pipelines->maskFillDescriptorSetLayout;
+    result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->maskFillPipelineLayout);
     VK_IF_ERROR(result) return result;
 
     return VK_SUCCESS;
