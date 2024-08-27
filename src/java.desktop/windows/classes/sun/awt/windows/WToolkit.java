@@ -1239,7 +1239,14 @@ public final class WToolkit extends SunToolkit implements Runnable {
         return WGlobalCursorManager.getInstance().getMouseEventComponent();
     }
 
-    @Override
+    /**
+     * Displays the buffer within the specified region of the screen.
+     *
+     * @param dx1 the x-coordinate of the top-left corner of the region
+     * @param dy1 the y-coordinate of the top-left corner of the region
+     * @param dx2 the x-coordinate of the bottom-right corner of the region
+     * @param dy2 the y-coordinate of the bottom-right corner of the region
+     */
     public void displayBuffer(int dx1, int dy1, int dx2, int dy2) {
         if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
             mgr.swapBuffers(dx1, dy1, dx2, dy2);

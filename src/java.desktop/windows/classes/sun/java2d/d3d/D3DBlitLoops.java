@@ -34,6 +34,8 @@ import java.awt.image.BufferedImage;
 import java.awt.image.BufferedImageOp;
 import java.lang.ref.WeakReference;
 import java.lang.annotation.Native;
+
+import sun.awt.windows.WToolkit;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
@@ -277,10 +279,10 @@ final class D3DBlitLoops {
             rq.unlock();
         }
 
-        if (d3dDst.getType() == D3DSurfaceData.WINDOW) {
+        if (d3dDst.getType() == D3DSurfaceData.WINDOW && Toolkit.getDefaultToolkit() instanceof WToolkit toolkit) {
             // flush immediately when copying to the screen to improve
             // responsiveness of applications using VI or BI backbuffers
-            Toolkit.getDefaultToolkit().displayBuffer((int) dx1, (int) dy1, (int) dx2, (int) dy2);
+            toolkit.displayBuffer((int) dx1, (int) dy1, (int) dx2, (int) dy2);
         }
     }
 
@@ -345,11 +347,12 @@ final class D3DBlitLoops {
             rq.unlock();
         }
 
-        if (rtt && (d3dDst.getType() == D3DSurfaceData.WINDOW)) {
+        if (rtt && (d3dDst.getType() == D3DSurfaceData.WINDOW &&
+                Toolkit.getDefaultToolkit() instanceof WToolkit toolkit)) {
             // we only have to flush immediately when copying from a
             // (non-texture) surface to the screen; otherwise Swing apps
             // might appear unresponsive until the auto-flush completes
-            Toolkit.getDefaultToolkit().displayBuffer((int) dx1, (int) dy1, (int) dx2, (int) dy2);
+            toolkit.displayBuffer((int) dx1, (int) dy1, (int) dx2, (int) dy2);
         }
     }
 }
