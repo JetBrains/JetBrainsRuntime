@@ -26,9 +26,11 @@
 
 #ifndef HEADLESS
 
+#include "sun_font_StrikeCache.h"
 #include "sun_java2d_pipe_BufferedOpCodes.h"
 #include "sun_java2d_pipe_BufferedRenderPipe.h"
 #include "sun_java2d_pipe_BufferedTextPipe.h"
+#include "fontscalerdefs.h"
 #include "Trace.h"
 #include "jlong.h"
 #include "VKBase.h"
@@ -263,6 +265,8 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_AAPARALLELOGRAM(%f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12);
+                // TODO this is not AA!
+                VKRenderer_RenderParallelogram(&context, PIPELINE_FILL_COLOR, x11, y11, dx21, dy21, dx12, dy12);
             }
             break;
 
@@ -292,6 +296,25 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     bytesPerGlyph = BYTES_PER_GLYPH_IMAGE;
                 }
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: DRAW_GLYPH_LIST");
+                // TODO this is a quick and dirty implementation of greyscale-AA text rendering over MASK_FILL. Need to do better.
+                jfloat glyphx, glyphy;
+                for (int i = 0; i < numGlyphs; i++) {
+                    GlyphInfo *ginfo = (GlyphInfo *)jlong_to_ptr(NEXT_LONG(images));
+                    if (usePositions) {
+                        jfloat posx = NEXT_FLOAT(positions);
+                        jfloat posy = NEXT_FLOAT(positions);
+                        glyphx = glyphListOrigX + posx + ginfo->topLeftX;
+                        glyphy = glyphListOrigY + posy + ginfo->topLeftY;
+                    } else {
+                        glyphx = glyphListOrigX + ginfo->topLeftX;
+                        glyphy = glyphListOrigY + ginfo->topLeftY;
+                        glyphListOrigX += ginfo->advanceX;
+                        glyphListOrigY += ginfo->advanceY;
+                    }
+                    if (ginfo->format != sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) continue;
+                    if (ginfo->height*ginfo->rowBytes == 0) continue;
+                    VKRenderer_MaskFill(&context, (int) glyphx, (int) glyphy, ginfo->width, ginfo->height, 0, ginfo->rowBytes, ginfo->height*ginfo->rowBytes, ginfo->image);
+                }
                 SKIP_BYTES(b, numGlyphs * bytesPerGlyph);
             }
             break;
@@ -380,7 +403,10 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint maskscan = NEXT_INT(b);
                 jint masklen  = NEXT_INT(b);
                 unsigned char *pMask = (masklen > 0) ? b : NULL;
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: MASK_FILL");
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                              "VKRenderQueue_flushBuffer: MASK_FILL(%d, %d, %dx%d, maskoff=%d, maskscan=%d, masklen=%d)",
+                              x, y, w, h, maskoff, maskscan, masklen);
+                VKRenderer_MaskFill(&context, x, y, w, h, maskoff, maskscan, masklen, pMask);
                 SKIP_BYTES(b, masklen);
             }
             break;
