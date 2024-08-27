@@ -27,32 +27,31 @@
 #ifndef HEADLESS
 
 #include <assert.h>
+#include <string.h>
 #include "VKUtil.h"
 #include "VKBase.h"
 #include "VKAllocator.h"
 #include "VKRenderer.h"
 #include "VKSurfaceData.h"
 
-// Vertex buffers have fixed size. How to choose a good one?
-// 1. Multiple of 6 - triangle and line modes have x3 and x2 vertices per primitive.
-// 2. Multiple of 6 - most common vertex format VKColorVertex has 6 components.
-// 3. Some nice power of 2 multiplier, for good alignment and adequate capacity.
-#define VERTEX_BUFFER_SIZE (6 * 6 * 256) // 9KiB = 384 * sizeof(VKColorVertex)
-
-// Vertex buffers are allocated in pages of fixed size.
-#define VERTEX_BUFFER_PAGE_SIZE (4 * 1024 * 1024) // 4MiB - fits 455 buffers and leaves 1KiB unused
-
-#define MAX_VERTEX_BUFFERS_PER_PAGE (VERTEX_BUFFER_PAGE_SIZE / VERTEX_BUFFER_SIZE)
-
+/**
+ * Drawing buffer is an any buffer, used for drawing, e.g. vertex buffer, texel storage buffer
+ */
 typedef struct {
     VkBuffer buffer;
-    // Vertex buffer has no ownership over its memory.
+    // Drawing buffer has no ownership over its memory.
     // Provided memory and offset must only be used to flush memory writes.
     // Allocation and freeing is done in pages using VKAllocator.
     VkDeviceMemory memory;
     VkDeviceSize   offset;
     void*          data; // Only sequential writes!
-} VKVertexBuffer;
+} DrawingBuffer;
+
+typedef struct {
+    void*        data;
+    VkDeviceSize offset;
+    VkBool32     bound; // Whether corresponding buffer was bound to command buffer after last pipeline update.
+} DrawingBufferWritingState;
 
 #define TRACKED_RESOURCE(NAME) \
 typedef struct {               \
@@ -60,9 +59,14 @@ typedef struct {               \
     NAME value;                \
 } Tracked ## NAME
 
-TRACKED_RESOURCE(VKVertexBuffer);
+TRACKED_RESOURCE(DrawingBuffer);
 TRACKED_RESOURCE(VkCommandBuffer);
 TRACKED_RESOURCE(VkSemaphore);
+
+typedef struct {
+    VKMemory*             memoryPages;
+    TrackedDrawingBuffer* pendingBuffers;
+} DrawingBufferPool;
 
 /**
  * Renderer attached to device.
@@ -74,10 +78,11 @@ struct VKRenderer {
     TrackedVkCommandBuffer* pendingCommandBuffers;
     TrackedVkCommandBuffer* pendingSecondaryCommandBuffers;
     TrackedVkSemaphore*     pendingSemaphores;
-    struct VertexBufferPool {
-        VKMemory*              memoryPages;
-        TrackedVKVertexBuffer* pendingBuffers;
-    } vertexBufferPool;
+    DrawingBufferPool       vertexBufferPool;
+    DrawingBufferPool       maskFillBufferPool;
+    VkBufferView*           maskFillBufferViews; // Ring buffer must be in sync with maskFillBufferPool.pendingBuffers.
+    VkDescriptorSet*        maskFillBufferDescriptorSets; // Ring buffer must be in sync with maskFillBufferPool.pendingBuffers.
+    VkDescriptorPool*       maskFillDescriptorPools;
 
     /**
      * Last known timestamp hit by GPU execution. Resources with equal or less timestamp may be safely reused.
@@ -109,14 +114,17 @@ struct VKRenderer {
  */
 struct VKRenderPass {
     VKRenderPassContext* context;
-    VKVertexBuffer*      vertexBuffers;
+    DrawingBuffer*       vertexBuffers;
+    DrawingBuffer*       maskFillBuffers;
+    VkBufferView*        maskFillBufferViews; // Array must be in sync with maskFillBuffers.
+    VkDescriptorSet*     maskFillBufferDescriptorSets; // Array must be in sync with maskFillBuffers.
     VkFramebuffer        framebuffer[FORMAT_ALIAS_COUNT];
     VkCommandBuffer      commandBuffer;
 
-    void*        vertexBufferData;
-    VkDeviceSize vertexBufferOffset;
-    uint32_t     firstVertex;
-    uint32_t     vertexCount;
+    uint32_t                  firstVertex;
+    uint32_t                  vertexCount;
+    DrawingBufferWritingState vertexBufferWriting;
+    DrawingBufferWritingState maskFillBufferWriting;
 
     CompositeMode currentComposite;
     PipelineType  currentPipeline;
@@ -142,50 +150,72 @@ struct VKRenderPass {
     }                                                                                                             \
 } while(0)
 
-
 // In debug mode resource reuse will be randomly delayed by 3 timestamps in ~20% cases.
 #define PUSH_PENDING(RENDERER, BUFFER, T) RING_BUFFER_PUSH_CUSTOM(BUFFER, \
 (BUFFER)[tail].timestamp = (RENDERER)->writeTimestamp + (VK_DEBUG_RANDOM(20)*3); (BUFFER)[tail].value = T;)
 
-static VKVertexBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
+/**
+ * Move remaining elements (pop) from CURRENT to (push) NEW.
+ * Then free CURRENT buffer and replace it with NEW.
+ */
+#define REPLACE_PENDING_BUFFER(CURRENT, NEW) do {          \
+    uint32_t size = (uint32_t) RING_BUFFER_SIZE(CURRENT);  \
+    for (uint32_t i = 0; i < size; i++) {                  \
+        RING_BUFFER_PUSH(NEW, *RING_BUFFER_PEEK(CURRENT)); \
+        RING_BUFFER_POP(CURRENT);                          \
+    }                                                      \
+    RING_BUFFER_FREE(CURRENT);                             \
+    (CURRENT) = (NEW);                                     \
+} while(0)
+
+typedef void VKRenderer_AllocateDrawingBufferPageCallback(VKRenderer* renderer, TrackedDrawingBuffer* newRing);
+
+/**
+ * Retrieves a buffer from the pool, if it is available.
+ * Otherwise allocates a new page and creates a set of buffers there.
+ * bufferSize, pageSize, usageFlags and findMemoryTypeCallback are assumed to be compile time constants,
+ * they are not used, if no allocation takes place.
+ */
+static DrawingBuffer VKRenderer_GetDrawingBuffer(VKRenderer* renderer, DrawingBufferPool* pool,
+                                                 VkDeviceSize bufferSize, VkDeviceSize pageSize,
+                                                 VkBufferUsageFlags usageFlags,
+                                                 VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback,
+                                                 VKRenderer_AllocateDrawingBufferPageCallback allocatePageCallback) {
     // Reuse from pending.
-    VKVertexBuffer buffer = { .buffer = VK_NULL_HANDLE };
-    POP_PENDING(renderer, renderer->vertexBufferPool.pendingBuffers, buffer);
+    DrawingBuffer buffer = { .buffer = VK_NULL_HANDLE };
+    POP_PENDING(renderer, pool->pendingBuffers, buffer);
     if (buffer.buffer != VK_NULL_HANDLE) return buffer;
 
     VKDevice* device = renderer->device;
     VKAllocator* alloc = device->allocator;
     // Allocate new ring buffer. Ring buffer grows when size reaches capacity, so leave one more slot to fit all buffers.
-    TrackedVKVertexBuffer* newRing =
-            CARR_ring_buffer_realloc(NULL, sizeof(TrackedVKVertexBuffer),
-                                     (ARRAY_SIZE(renderer->vertexBufferPool.memoryPages) + 1) * MAX_VERTEX_BUFFERS_PER_PAGE + 1);
+    TrackedDrawingBuffer* newRing = CARR_ring_buffer_realloc(NULL, sizeof(TrackedDrawingBuffer),
+                                                             RING_BUFFER_SIZE(pool->pendingBuffers) + (pageSize / bufferSize) + 1);
     VK_RUNTIME_ASSERT(newRing);
 
     // Create single vertex buffer.
     VkBufferCreateInfo bufferInfo = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = VERTEX_BUFFER_SIZE,
-            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            .size = bufferSize,
+            .usage = usageFlags,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
-    TrackedVKVertexBuffer tempBuffer = {
+    TrackedDrawingBuffer tempBuffer = {
             .timestamp = 0,
             .value.buffer = VK_NULL_HANDLE
     };
     VK_IF_ERROR(device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &tempBuffer.value.buffer)) VK_UNHANDLED_ERROR();
     RING_BUFFER_PUSH(newRing, tempBuffer);
 
-    // Check memory requirements. We aim to create MAX_VERTEX_BUFFERS_PER_PAGE buffers,
+    // Check memory requirements. We aim to create pageSize / bufferSize buffers,
     // but due to implementation-specific alignment requirements this number can be lower (unlikely though).
     VKMemoryRequirements requirements = VKAllocator_BufferRequirements(alloc, tempBuffer.value.buffer);
     VKAllocator_PadToAlignment(&requirements); // Align for array-like allocation.
-    VkDeviceSize bufferSize = requirements.requirements.memoryRequirements.size;
-    uint32_t bufferCount = VERTEX_BUFFER_PAGE_SIZE / bufferSize;
-    requirements.requirements.memoryRequirements.size = VERTEX_BUFFER_PAGE_SIZE;
+    VkDeviceSize realBufferSize = requirements.requirements.memoryRequirements.size;
+    uint32_t bufferCount = pageSize / realBufferSize;
+    requirements.requirements.memoryRequirements.size = pageSize;
     // Find memory type.
-    VKAllocator_FindMemoryType(&requirements,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    VKAllocator_FindMemoryType(&requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
+    findMemoryTypeCallback(&requirements);
     if (requirements.memoryType == VK_NO_MEMORY_TYPE) VK_UNHANDLED_ERROR();
 
     // Allocate new memory page.
@@ -195,33 +225,155 @@ static VKVertexBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
 
     // Create remaining buffers and bind memory.
     for (uint32_t i = 0;;) {
-        VKVertexBuffer* b = &newRing[i].value;
+        DrawingBuffer* b = &newRing[i].value;
         b->memory = range.memory;
-        b->offset = range.offset + bufferSize * i;
-        b->data = (void*) (((uint8_t*) data) + bufferSize * i);
+        b->offset = range.offset + realBufferSize * i;
+        b->data = (void*) (((uint8_t*) data) + realBufferSize * i);
         VK_IF_ERROR(device->vkBindBufferMemory(device->handle, b->buffer, b->memory, b->offset)) VK_UNHANDLED_ERROR();
         if ((++i) >= bufferCount) break;
         VK_IF_ERROR(device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &tempBuffer.value.buffer)) VK_UNHANDLED_ERROR();
         RING_BUFFER_PUSH(newRing, tempBuffer);
     }
 
+    if (allocatePageCallback != NULL) allocatePageCallback(renderer, newRing);
+
     // Move existing pending buffers into new ring and update vertex pool state.
-    for (;;) {
-        TrackedVKVertexBuffer* t = RING_BUFFER_PEEK(renderer->vertexBufferPool.pendingBuffers);
-        if (t == NULL) break;
-        RING_BUFFER_PUSH(newRing, *t);
-        RING_BUFFER_POP(renderer->vertexBufferPool.pendingBuffers);
-    }
-    RING_BUFFER_FREE(renderer->vertexBufferPool.pendingBuffers);
-    renderer->vertexBufferPool.pendingBuffers = newRing;
-    ARRAY_PUSH_BACK(renderer->vertexBufferPool.memoryPages, page);
-    J2dRlsTraceLn3(J2D_TRACE_INFO, "VKRenderer_GetVertexBuffer: allocated new page, bufferCount=%d, unusedSpace=%d, totalPages=%d",
-                   bufferCount, VERTEX_BUFFER_PAGE_SIZE - bufferCount * bufferSize, ARRAY_SIZE(renderer->vertexBufferPool.memoryPages));
+    REPLACE_PENDING_BUFFER(pool->pendingBuffers, newRing);
+    ARRAY_PUSH_BACK(pool->memoryPages, page);
+    J2dRlsTraceLn3(J2D_TRACE_INFO, "VKRenderer_GetDrawingBuffer: allocated new page, bufferCount=%d, unusedSpace=%d, totalPages=%d",
+                   bufferCount, pageSize - bufferCount * realBufferSize, ARRAY_SIZE(pool->memoryPages));
 
     // Take first.
-    tempBuffer = *RING_BUFFER_PEEK(renderer->vertexBufferPool.pendingBuffers);
-    RING_BUFFER_POP(renderer->vertexBufferPool.pendingBuffers);
+    tempBuffer = *RING_BUFFER_PEEK(pool->pendingBuffers);
+    RING_BUFFER_POP(pool->pendingBuffers);
     return tempBuffer.value;
+}
+
+static void VKRenderer_ReleaseDrawingBufferPool(VKRenderer* renderer, DrawingBufferPool* pool) {
+    for (;;) {
+        DrawingBuffer buffer = { .buffer = VK_NULL_HANDLE };
+        POP_PENDING(renderer, pool->pendingBuffers, buffer);
+        if (buffer.buffer == VK_NULL_HANDLE) break;
+        renderer->device->vkDestroyBuffer(renderer->device->handle, buffer.buffer, NULL);
+    }
+    RING_BUFFER_FREE(pool->pendingBuffers);
+    pool->pendingBuffers = NULL;
+    for (uint32_t i = 0; i < ARRAY_SIZE(pool->memoryPages); i++) {
+        VKAllocator_Free(renderer->device->allocator, pool->memoryPages[i]);
+    }
+    ARRAY_FREE(pool->memoryPages);
+    pool->memoryPages = NULL;
+}
+
+// Vertex buffers have fixed size. How to choose a good one?
+// 1. Multiple of 6 - triangle and line modes have x3 and x2 vertices per primitive.
+// 2. Multiple of 6 - most common vertex format VKColorVertex has 6 components.
+// 3. Some nice power of 2 multiplier, for good alignment and adequate capacity.
+#define VERTEX_BUFFER_SIZE (6 * 6 * 256) // 9KiB = 384 * sizeof(VKColorVertex)
+#define VERTEX_BUFFER_PAGE_SIZE (4 * 1024 * 1024) // 4MiB - fits 455 buffers and leaves 1KiB unused
+static void VKRenderer_FindVertexBufferMemoryType(VKMemoryRequirements* requirements) {
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+                                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
+}
+static DrawingBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
+    return VKRenderer_GetDrawingBuffer(renderer, &renderer->vertexBufferPool, VERTEX_BUFFER_SIZE, VERTEX_BUFFER_PAGE_SIZE,
+                                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VKRenderer_FindVertexBufferMemoryType, NULL);
+}
+
+#define MASK_FILL_BUFFER_SIZE (256 * 1024) // 256KiB = 256 typical MASK_FILL tiles
+#define MASK_FILL_BUFFER_PAGE_SIZE (4 * 1024 * 1024) // 4MiB - fits 16 buffers
+static void VKRenderer_FindMaskFillBufferMemoryType(VKMemoryRequirements* requirements) {
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                               VK_ALL_MEMORY_PROPERTIES);
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
+}
+static void VKRenderer_AllocateMaskFillBufferViewsPage(VKRenderer* renderer, TrackedDrawingBuffer* newRing) {
+    assert(renderer != NULL && newRing != NULL);
+    VKDevice* device = renderer->device;
+    uint32_t bufferCount = (uint32_t) RING_BUFFER_SIZE(newRing);
+    uint32_t capacity = (uint32_t) RING_BUFFER_CAPACITY(newRing);
+    VkBufferView* newViewRing = CARR_ring_buffer_realloc(NULL, sizeof(VkBufferView), capacity);
+    VkDescriptorSet* newDescriptorSetRing = CARR_ring_buffer_realloc(NULL, sizeof(VkDescriptorSet), capacity);
+    VK_RUNTIME_ASSERT(newViewRing && newDescriptorSetRing);
+
+    // Create descriptor pool.
+    VkDescriptorPoolSize poolSize = {
+            .type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+            .descriptorCount = bufferCount
+    };
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .flags = 0,
+            .maxSets = bufferCount,
+            .poolSizeCount = 1,
+            .pPoolSizes = &poolSize
+    };
+    VkDescriptorPool pool;
+    VK_IF_ERROR(device->vkCreateDescriptorPool(device->handle, &descriptorPoolCreateInfo, NULL, &pool)) VK_UNHANDLED_ERROR();
+    ARRAY_PUSH_BACK(renderer->maskFillDescriptorPools, pool);
+
+    // Allocate descriptor sets.
+    VkDescriptorSetLayout layouts[bufferCount];
+    for (uint32_t i = 0; i < bufferCount; i++) layouts[i] = renderer->pipelineContext->maskFillDescriptorSetLayout;
+    VkDescriptorSetAllocateInfo allocateInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = pool,
+            .descriptorSetCount = bufferCount,
+            .pSetLayouts = layouts
+    };
+    VK_IF_ERROR(device->vkAllocateDescriptorSets(device->handle, &allocateInfo, newDescriptorSetRing)) VK_UNHANDLED_ERROR();
+    RING_BUFFER_T(newDescriptorSetRing)->tail = bufferCount;
+
+    // Create buffer views and record them into descriptors.
+    VkWriteDescriptorSet writeDescriptorSets[bufferCount];
+    for (uint32_t i = 0; i < bufferCount; i++) {
+        VkBufferViewCreateInfo bufferViewCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
+                .buffer = newRing[i].value.buffer,
+                .format = VK_FORMAT_R8_UNORM,
+                .offset = 0,
+                .range = VK_WHOLE_SIZE
+        };
+        VkBufferView bufferView;
+        VK_IF_ERROR(device->vkCreateBufferView(device->handle, &bufferViewCreateInfo, NULL, &bufferView)) VK_UNHANDLED_ERROR();
+        RING_BUFFER_PUSH(newViewRing, bufferView);
+
+        writeDescriptorSets[i] = (VkWriteDescriptorSet) {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = newDescriptorSetRing[i],
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+                .pTexelBufferView = &newViewRing[i]
+        };
+    }
+    device->vkUpdateDescriptorSets(device->handle, bufferCount, writeDescriptorSets, 0, NULL);
+
+    REPLACE_PENDING_BUFFER(renderer->maskFillBufferViews, newViewRing);
+    REPLACE_PENDING_BUFFER(renderer->maskFillBufferDescriptorSets, newDescriptorSetRing);
+}
+typedef struct {
+    DrawingBuffer   buffer;
+    VkBufferView    view;
+    VkDescriptorSet descriptorSet;
+} MaskFillBuffer;
+static MaskFillBuffer VKRenderer_GetMaskFillBuffer(VKRenderer* renderer) {
+    MaskFillBuffer result;
+    result.buffer = VKRenderer_GetDrawingBuffer(renderer, &renderer->maskFillBufferPool,
+                                                MASK_FILL_BUFFER_SIZE, MASK_FILL_BUFFER_PAGE_SIZE,
+                                                VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
+                                                VKRenderer_FindMaskFillBufferMemoryType,
+                                                VKRenderer_AllocateMaskFillBufferViewsPage);
+    result.view = *RING_BUFFER_PEEK(renderer->maskFillBufferViews);
+    result.descriptorSet = *RING_BUFFER_PEEK(renderer->maskFillBufferDescriptorSets);
+    RING_BUFFER_POP(renderer->maskFillBufferViews);
+    RING_BUFFER_POP(renderer->maskFillBufferDescriptorSets);
+    // maskFillBufferPool.pendingBuffers, maskFillBufferViews and maskFillBufferDescriptorSets must be in sync.
+    assert(RING_BUFFER_SIZE(renderer->maskFillBufferPool.pendingBuffers) == RING_BUFFER_SIZE(renderer->maskFillBufferViews));
+    assert(RING_BUFFER_SIZE(renderer->maskFillBufferPool.pendingBuffers) == RING_BUFFER_SIZE(renderer->maskFillBufferDescriptorSets));
+    return result;
 }
 
 static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
@@ -328,20 +480,21 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
         device->vkDestroySemaphore(device->handle, semaphore, NULL);
     }
     RING_BUFFER_FREE(renderer->pendingSemaphores);
-
-    // Release vertex pool.
+    // No need to destroy descriptor sets one by one, we will destroy the pool anyway.
+    RING_BUFFER_FREE(renderer->maskFillBufferDescriptorSets);
+    for (uint32_t i = 0; i < ARRAY_SIZE(renderer->maskFillDescriptorPools); i++) {
+        device->vkDestroyDescriptorPool(device->handle, renderer->maskFillDescriptorPools[i], NULL);
+    }
+    ARRAY_FREE(renderer->maskFillDescriptorPools);
     for (;;) {
-        VKVertexBuffer buffer = { .buffer = VK_NULL_HANDLE };
-        POP_PENDING(renderer, renderer->vertexBufferPool.pendingBuffers, buffer);
-        if (buffer.buffer == VK_NULL_HANDLE) break;
-        device->vkDestroyBuffer(device->handle, buffer.buffer, NULL);
+        VkBufferView* view = RING_BUFFER_PEEK(renderer->maskFillBufferViews);
+        if (view == NULL) break;
+        RING_BUFFER_POP(renderer->maskFillBufferViews);
+        renderer->device->vkDestroyBufferView(device->handle, *view, NULL);
     }
-    RING_BUFFER_FREE(renderer->vertexBufferPool.pendingBuffers);
-    for (uint32_t i = 0; i < ARRAY_SIZE(renderer->vertexBufferPool.memoryPages); i++) {
-        VKAllocator_Free(renderer->device->allocator, renderer->vertexBufferPool.memoryPages[i]);
-    }
-    ARRAY_FREE(renderer->vertexBufferPool.memoryPages);
-
+    RING_BUFFER_FREE(renderer->maskFillBufferViews);
+    VKRenderer_ReleaseDrawingBufferPool(renderer, &renderer->maskFillBufferPool);
+    VKRenderer_ReleaseDrawingBufferPool(renderer, &renderer->vertexBufferPool);
     device->vkDestroySemaphore(device->handle, renderer->timelineSemaphore, NULL);
     device->vkDestroyCommandPool(device->handle, renderer->commandPool, NULL);
     ARRAY_FREE(renderer->wait.semaphores);
@@ -504,7 +657,7 @@ static void VKRenderer_SurfaceBarrier(VKSDOps* surface, VkPipelineStageFlags sta
 /**
  * Record draw command, if there are any pending vertices in the vertex buffer
  */
-static void VKRenderer_FlushDraw(VKSDOps* surface) {
+inline void VKRenderer_FlushDraw(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     if (surface->renderPass->vertexCount > 0) {
         assert(surface->renderPass->pendingCommands);
@@ -515,30 +668,53 @@ static void VKRenderer_FlushDraw(VKSDOps* surface) {
 }
 
 /**
+ * Push all buffers in a given array into pending queue and updates their corresponding VkMappedMemoryRange structs.
+ */
+static void VKRenderer_FlushDrawingBuffers(VKRenderer* renderer, DrawingBufferPool* pool, DrawingBuffer** buffers, VkMappedMemoryRange* ranges) {
+    uint32_t count = (uint32_t) ARRAY_SIZE(*buffers);
+    for (uint32_t i = 0; i < count; i++) {
+        DrawingBuffer* vb = &(*buffers)[i];
+        ranges[i] = (VkMappedMemoryRange) {
+                .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+                .memory = vb->memory,
+                .offset = vb->offset,
+                .size   = VERTEX_BUFFER_SIZE
+        };
+        PUSH_PENDING(renderer, pool->pendingBuffers, *vb);
+    }
+    ARRAY_RESIZE(*buffers, 0);
+}
+
+/**
  * Flush vertex buffer writes, push vertex buffers to the pending queue, reset drawing state for the surface.
  */
 static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     surface->renderPass->currentComposite = NO_COMPOSITE;
     surface->renderPass->currentPipeline = NO_PIPELINE;
-    surface->renderPass->vertexBufferData = NULL;
-    surface->renderPass->vertexBufferOffset = VERTEX_BUFFER_SIZE;
-    surface->renderPass->firstVertex = surface->renderPass->vertexCount = 0;
+    surface->renderPass->firstVertex = 0;
+    surface->renderPass->vertexCount = 0;
+    surface->renderPass->vertexBufferWriting = (DrawingBufferWritingState) {NULL, 0, VK_FALSE};
+    surface->renderPass->maskFillBufferWriting = (DrawingBufferWritingState) {NULL, 0, VK_FALSE};
     size_t vertexBufferCount = ARRAY_SIZE(surface->renderPass->vertexBuffers);
-    if (vertexBufferCount == 0) return;
-    VkMappedMemoryRange memoryRanges[vertexBufferCount];
-    for (uint32_t i = 0; i < vertexBufferCount; i++) {
-        VKVertexBuffer* vb = &surface->renderPass->vertexBuffers[i];
-        memoryRanges[i] = (VkMappedMemoryRange) {
-                .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-                .memory = vb->memory,
-                .offset = vb->offset,
-                .size   = VERTEX_BUFFER_SIZE
-        };
-        PUSH_PENDING(surface->device->renderer, surface->device->renderer->vertexBufferPool.pendingBuffers, *vb);
+    size_t maskFillBufferCount = ARRAY_SIZE(surface->renderPass->maskFillBuffers);
+    // maskFillBuffers, maskFillBufferViews and maskFillBufferDescriptorSets must be in sync.
+    assert(maskFillBufferCount == ARRAY_SIZE(surface->renderPass->maskFillBufferViews));
+    assert(maskFillBufferCount == ARRAY_SIZE(surface->renderPass->maskFillBufferDescriptorSets));
+    if (vertexBufferCount == 0 && maskFillBufferCount == 0) return;
+    VkMappedMemoryRange memoryRanges[vertexBufferCount + maskFillBufferCount];
+    VKRenderer_FlushDrawingBuffers(surface->device->renderer, &surface->device->renderer->vertexBufferPool,
+                            &surface->renderPass->vertexBuffers, memoryRanges);
+    VKRenderer_FlushDrawingBuffers(surface->device->renderer, &surface->device->renderer->maskFillBufferPool,
+                            &surface->renderPass->maskFillBuffers, memoryRanges + vertexBufferCount);
+    for (uint32_t i = 0; i < maskFillBufferCount; i++) {
+        RING_BUFFER_PUSH(surface->device->renderer->maskFillBufferViews, surface->renderPass->maskFillBufferViews[i]);
+        RING_BUFFER_PUSH(surface->device->renderer->maskFillBufferDescriptorSets, surface->renderPass->maskFillBufferDescriptorSets[i]);
     }
-    ARRAY_RESIZE(surface->renderPass->vertexBuffers, 0);
-    VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle, vertexBufferCount, memoryRanges)) {}
+    ARRAY_RESIZE(surface->renderPass->maskFillBufferViews, 0);
+    ARRAY_RESIZE(surface->renderPass->maskFillBufferDescriptorSets, 0);
+    VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle,
+                                                           vertexBufferCount + maskFillBufferCount, memoryRanges)) {}
 }
 
 /**
@@ -571,6 +747,9 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface) {
             PUSH_PENDING(device->renderer, device->renderer->pendingSecondaryCommandBuffers, surface->renderPass->commandBuffer);
         }
         ARRAY_FREE(surface->renderPass->vertexBuffers);
+        ARRAY_FREE(surface->renderPass->maskFillBuffers);
+        ARRAY_FREE(surface->renderPass->maskFillBufferViews);
+        ARRAY_FREE(surface->renderPass->maskFillBufferDescriptorSets);
     }
     free(surface->renderPass);
     surface->renderPass = NULL;
@@ -597,7 +776,6 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
     (*renderPass) = (VKRenderPass) {
             .pendingCommands = VK_FALSE,
             .pendingClear = VK_TRUE, // Clear the surface by default
-            .vertexBufferOffset = VERTEX_BUFFER_SIZE,
             .currentComposite = NO_COMPOSITE,
             .currentPipeline = NO_PIPELINE,
             .layout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -891,57 +1069,26 @@ void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent) {
 }
 
 /**
- * Allocate vertices from vertex buffer.
- * This function skips pipeline state checks and must only be called after
- * VKRenderer_Draw have been called within the same drawing operation.
+ * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
  */
-static void* VKRenderer_FastDraw(VKSDOps* surface, uint32_t vertices, size_t vertexSize) {
-    assert(surface != NULL && surface->renderPass != NULL);
-    assert(vertices > 0 && vertexSize > 0);
-    assert(vertexSize * vertices <= VERTEX_BUFFER_SIZE);
-    VkDeviceSize offset = surface->renderPass->vertexBufferOffset;
-    surface->renderPass->vertexBufferOffset += (VkDeviceSize) (vertexSize * vertices);
-    // Overflow, need to take another vertex buffer
-    if (surface->renderPass->vertexBufferOffset > VERTEX_BUFFER_SIZE) {
-        VKRenderer_FlushDraw(surface);
-        offset = 0;
-        surface->renderPass->vertexBufferOffset = (VkDeviceSize) (vertexSize * vertices);
-        surface->renderPass->firstVertex = surface->renderPass->vertexCount = 0;
-        VKVertexBuffer buffer = VKRenderer_GetVertexBuffer(surface->device->renderer);
-        ARRAY_PUSH_BACK(surface->renderPass->vertexBuffers, buffer);
-        surface->renderPass->vertexBufferData = buffer.data;
-        const VkDeviceSize zero = 0;
-        surface->device->vkCmdBindVertexBuffers(surface->renderPass->commandBuffer, 0, 1, &buffer.buffer, &zero);
-    }
-    surface->renderPass->vertexCount += vertices;
-    return (void*) (((uint8_t*) surface->renderPass->vertexBufferData) + offset);
-}
-
-/**
- * Setup pipeline for drawing and allocate vertices from vertex buffer.
- * Can return NULL if surface is not yet ready for drawing.
- * It is responsibility of the caller to pass correct vertexSize, matching provided pipeline.
- * This function cannot draw more vertices than fits into single vertex buffer at once.
- */
-static void* VKRenderer_Draw(VKRenderingContext* context, PipelineType pipeline, uint32_t vertices, size_t vertexSize) {
+static VkBool32 VKRenderer_Validate(VKRenderingContext* context, PipelineType pipeline) {
     assert(context != NULL && context->surface != NULL);
-    assert(vertices > 0 && vertexSize > 0);
-    assert(vertexSize * vertices <= VERTEX_BUFFER_SIZE);
     VKSDOps* surface = context->surface;
 
     // Validate render pass state.
     if (surface->renderPass == NULL || !surface->renderPass->pendingCommands) {
         // We must only [re]init render pass between frames.
         // Be careful to NOT call VKRenderer_InitRenderPass between render passes within single frame.
-        if (!VKRenderer_InitRenderPass(surface)) return NULL;
+        if (!VKRenderer_InitRenderPass(surface)) return VK_FALSE;
     }
     VKRenderPass* renderPass = surface->renderPass;
 
     // Validate current composite.
     if (renderPass->currentComposite != context->composite) {
         // ALPHA_COMPOSITE_DST keeps destination intact, so don't even bother to change the state.
-        if (context->composite == ALPHA_COMPOSITE_DST) return NULL;
-        J2dTraceLn2(J2D_TRACE_VERBOSE, "VKRenderer_Draw: updating composite, old=%d, new=%d", surface->renderPass->currentComposite, context->composite);
+        if (context->composite == ALPHA_COMPOSITE_DST) return VK_FALSE;
+        J2dTraceLn2(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating composite, old=%d, new=%d",
+                    surface->renderPass->currentComposite, context->composite);
         VKRenderer_FlushDraw(surface);
         if (renderPass->currentComposite != NO_COMPOSITE) {
             // When required view format changes, we need to restart the render pass.
@@ -975,39 +1122,108 @@ static void* VKRenderer_Draw(VKRenderingContext* context, PipelineType pipeline,
 
     // Validate current pipeline.
     if (renderPass->currentPipeline != pipeline) {
-        J2dTraceLn2(J2D_TRACE_VERBOSE, "VKRenderer_Draw: updating pipeline, old=%d, new=%d", surface->renderPass->currentPipeline, pipeline);
+        J2dTraceLn2(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating pipeline, old=%d, new=%d",
+                    surface->renderPass->currentPipeline, pipeline);
         VKRenderer_FlushDraw(surface);
         VkCommandBuffer cb = renderPass->commandBuffer;
         renderPass->currentPipeline = pipeline;
         surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                            VKPipelines_GetPipeline(renderPass->context, context->composite, pipeline));
+        surface->renderPass->vertexBufferWriting.bound = VK_FALSE;
+        surface->renderPass->maskFillBufferWriting.bound = VK_FALSE;
+    }
+    return VK_TRUE;
+}
 
-        VkDeviceSize offset = renderPass->vertexBufferOffset;
-        void* oldData = renderPass->vertexBufferData;
-        void* ptr = VKRenderer_FastDraw(surface, vertices, vertexSize);
-        // If vertex buffer was not bound by VKRenderer_FastDraw, do it here.
-        if (oldData == renderPass->vertexBufferData) {
-            assert(ARRAY_SIZE(surface->renderPass->vertexBuffers) > 0);
-            surface->device->vkCmdBindVertexBuffers(renderPass->commandBuffer, 0, 1,
-                                                    &(ARRAY_LAST(renderPass->vertexBuffers).buffer), &offset);
-            renderPass->firstVertex = 0;
-            renderPass->vertexCount = vertices;
+/**
+ * Allocate bytes for writing into buffer. Returned state contains:
+ * - data   - pointer to the beginning of buffer, or NULL, if there is no buffer yet.
+ * - offset - writing offset into the buffer data, or 0, if there is no buffer yet.
+ * - bound  - whether corresponding buffer is bound to the command buffer,
+ *            caller is responsible for checking this value and setting up & binding the buffer.
+ */
+inline DrawingBufferWritingState VKRenderer_AllocateDrawingBufferData(VKSDOps* surface,
+                                                                      DrawingBufferWritingState* writingState,
+                                                                      VkDeviceSize size, VkDeviceSize maxBufferSize) {
+    assert(surface != NULL && surface->renderPass != NULL && writingState != NULL);
+    assert(size <= maxBufferSize);
+    DrawingBufferWritingState result = *writingState;
+    writingState->offset += size;
+    // Overflow, flush drawing commands and take another buffer.
+    if (writingState->offset > maxBufferSize) {
+        VKRenderer_FlushDraw(surface);
+        writingState->offset = size;
+        result.offset = 0;
+        result.bound = VK_FALSE;
+        result.data = NULL;
+    }
+    writingState->bound = VK_TRUE; // We assume caller will check the result and bind the buffer right away!
+    return result;
+}
+
+/**
+ * Allocate vertices from vertex buffer. VKRenderer_Validate must have been called before.
+ * It is responsibility of the caller to pass correct vertexSize, matching current pipeline.
+ * This function cannot draw more vertices than fits into single vertex buffer at once.
+ */
+static void* VKRenderer_Draw(VKRenderingContext* context, uint32_t vertices, size_t vertexSize) {
+    assert(vertices > 0 && vertexSize > 0);
+    assert(vertexSize * vertices <= VERTEX_BUFFER_SIZE);
+    VKSDOps* surface = context->surface;
+    DrawingBufferWritingState state = VKRenderer_AllocateDrawingBufferData(
+            surface, &surface->renderPass->vertexBufferWriting, (VkDeviceSize) (vertexSize * vertices), VERTEX_BUFFER_SIZE);
+    if (!state.bound) {
+        if (state.data == NULL) {
+            DrawingBuffer buffer = VKRenderer_GetVertexBuffer(surface->device->renderer);
+            ARRAY_PUSH_BACK(surface->renderPass->vertexBuffers, buffer);
+            surface->renderPass->vertexBufferWriting.data = state.data = buffer.data;
         }
-        return ptr;
-    } else return VKRenderer_FastDraw(surface, vertices, vertexSize);
+        assert(ARRAY_SIZE(surface->renderPass->vertexBuffers) > 0);
+        surface->renderPass->firstVertex = surface->renderPass->vertexCount = 0;
+        surface->device->vkCmdBindVertexBuffers(surface->renderPass->commandBuffer, 0, 1,
+                                                &(ARRAY_LAST(surface->renderPass->vertexBuffers).buffer), &state.offset);
+    }
+    surface->renderPass->vertexCount += vertices;
+    return (void*) ((uint8_t*) state.data + state.offset);
 }
 
 /**
  * Convenience wrapper for VKRenderer_Draw, providing pointer to vertices of requested type.
  */
-#define VK_DRAW(VERTEX_TYPE, CONTEXT, PIPELINE, VERTICES) \
-VERTEX_TYPE* vs = (VERTEX_TYPE*) VKRenderer_Draw((CONTEXT), (PIPELINE), (VERTICES), sizeof(VERTEX_TYPE))
+#define VK_DRAW(VERTICES, CONTEXT, VERTEX_COUNT) \
+    (VERTICES) = VKRenderer_Draw((CONTEXT), (VERTEX_COUNT), sizeof((VERTICES)[0]))
 
 /**
- * Convenience wrapper for VKRenderer_FastDraw, updating pointer to vertices.
+ * Allocate bytes from mask fill buffer. VKRenderer_Validate must have been called before.
+ * This function cannot take more bytes than fits into single mask fill buffer at once.
+ * Caller must write data at the returned pointer DrawingBufferWritingState.data
+ * and take into account DrawingBufferWritingState.offset from the beginning of the bound buffer.
  */
-#define VK_FAST_DRAW(CONTEXT, PIPELINE, VERTICES) \
-vs = VKRenderer_Draw((CONTEXT), (PIPELINE), (VERTICES), sizeof(vs[0]))
+static DrawingBufferWritingState VKRenderer_AllocateMaskFillBytes(VKRenderingContext* context, uint32_t size) {
+    assert(size > 0);
+    assert(size <= MASK_FILL_BUFFER_SIZE);
+    VKSDOps* surface = context->surface;
+    DrawingBufferWritingState state = VKRenderer_AllocateDrawingBufferData(
+            surface, &surface->renderPass->maskFillBufferWriting, size, MASK_FILL_BUFFER_SIZE);
+    if (!state.bound) {
+        if (state.data == NULL) {
+            MaskFillBuffer buffer = VKRenderer_GetMaskFillBuffer(surface->device->renderer);
+            ARRAY_PUSH_BACK(surface->renderPass->maskFillBuffers, buffer.buffer);
+            ARRAY_PUSH_BACK(surface->renderPass->maskFillBufferViews, buffer.view);
+            ARRAY_PUSH_BACK(surface->renderPass->maskFillBufferDescriptorSets, buffer.descriptorSet);
+            surface->renderPass->maskFillBufferWriting.data = state.data = buffer.buffer.data;
+        }
+        // maskFillBuffers, maskFillBufferViews and maskFillBufferDescriptorSets must be in sync.
+        assert(ARRAY_SIZE(surface->renderPass->maskFillBuffers) == ARRAY_SIZE(surface->renderPass->maskFillBufferViews));
+        assert(ARRAY_SIZE(surface->renderPass->maskFillBuffers) == ARRAY_SIZE(surface->renderPass->maskFillBufferDescriptorSets));
+        assert(ARRAY_SIZE(surface->renderPass->maskFillBuffers) > 0);
+        surface->device->vkCmdBindDescriptorSets(context->surface->renderPass->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                                 surface->device->renderer->pipelineContext->maskFillPipelineLayout,
+                                                 0, 1, &ARRAY_LAST(surface->renderPass->maskFillBufferDescriptorSets), 0, NULL);
+    }
+    state.data = (void*) ((uint8_t*) state.data + state.offset);
+    return state;
+}
 
 // Drawing operations.
 
@@ -1019,8 +1235,7 @@ void VKRenderer_RenderParallelogram(VKRenderingContext* context, PipelineType pi
                                     jfloat x11, jfloat y11,
                                     jfloat dx21, jfloat dy21,
                                     jfloat dx12, jfloat dy12) {
-    VK_DRAW(VKColorVertex, context, pipeline, pipeline == PIPELINE_DRAW_COLOR ? 8 : 6);
-    if (vs == NULL) return; // Not ready.
+    if (!VKRenderer_Validate(context, pipeline)) return; // Not ready.
     Color c = context->color;
     /*                   dx21
      *    (p1)---------(p2) |          (p1)------
@@ -1037,6 +1252,8 @@ void VKRenderer_RenderParallelogram(VKRenderingContext* context, PipelineType pi
     VKColorVertex p3 = {x11 + dx21 + dx12, y11 + dy21 + dy12, c};
     VKColorVertex p4 = {x11 + dx12, y11 + dy12, c};
 
+    VKColorVertex* vs;
+    VK_DRAW(vs, context, pipeline == PIPELINE_DRAW_COLOR ? 8 : 6);
     uint32_t i = 0;
     vs[i++] = p1;
     vs[i++] = p2;
@@ -1052,8 +1269,7 @@ void VKRenderer_RenderParallelogram(VKRenderingContext* context, PipelineType pi
 
 void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spans) {
     if (spanCount == 0) return;
-    VK_DRAW(VKColorVertex, context, PIPELINE_FILL_COLOR, 6);
-    if (vs == NULL) return; // Not ready.
+    if (!VKRenderer_Validate(context, PIPELINE_FILL_COLOR)) return; // Not ready.
     Color c = context->color;
 
     jfloat x1 = (float)*(spans++);
@@ -1065,6 +1281,8 @@ void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spa
     VKColorVertex p3 = {x2, y2, c};
     VKColorVertex p4 = {x1, y2, c};
 
+    VKColorVertex* vs;
+    VK_DRAW(vs, context, 6);
     vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
 
     for (int i = 1; i < spanCount; i++) {
@@ -1073,7 +1291,7 @@ void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spa
         p2.x = p3.x = (float)*(spans++);
         p3.y = p4.y = (float)*(spans++);
 
-        VK_FAST_DRAW(context, PIPELINE_FILL_COLOR, 6);
+        VK_DRAW(vs, context, 6);
         vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
     }
 }
@@ -1136,6 +1354,31 @@ void VKRenderer_TextureRender(VKRenderingContext* context, VKImage *destImage, V
 //    device->vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
 //                                    device->renderer->pipelineContext->texturePipelineLayout, 0, 1, &descriptorSet, 0, NULL);
 //    device->vkCmdDraw(cb, vertexNum, 1, 0, 0);
+}
+
+void VKRenderer_MaskFill(VKRenderingContext* context, jint x, jint y, jint w, jint h,
+                         jint maskoff, jint maskscan, jint masklen, uint8_t* mask) {
+    if (!VKRenderer_Validate(context, PIPELINE_MASK_FILL_COLOR)) return; // Not ready.
+    // maskoff is the offset from the beginning of mask,
+    // it's the same as x and y offset within a tile (maskoff % maskscan, maskoff / maskscan).
+    // maskscan is the number of bytes in a row/
+    // masklen is the size of the whole mask tile, it may be way bigger, than number of actually needed bytes.
+    VKMaskFillColorVertex* vs;
+    VK_DRAW(vs, context, 6);
+    Color c = context->color;
+
+    uint32_t byteCount = maskscan * h;
+    DrawingBufferWritingState maskState = VKRenderer_AllocateMaskFillBytes(context, byteCount);
+    memcpy(maskState.data, mask + maskoff, byteCount);
+
+    int offset = (int) maskState.offset;
+    VKMaskFillColorVertex p1 = {x, y, offset, maskscan, c};
+    VKMaskFillColorVertex p2 = {x + w, y, offset, maskscan, c};
+    VKMaskFillColorVertex p3 = {x + w, y + h, offset, maskscan, c};
+    VKMaskFillColorVertex p4 = {x, y + h, offset, maskscan, c};
+    // Always keep p1 as provoking vertex for correct origin calculation in vertex shader.
+    vs[0] = p1; vs[1] = p3; vs[2] = p2;
+    vs[3] = p1; vs[4] = p3; vs[5] = p4;
 }
 
 #endif /* !HEADLESS */
