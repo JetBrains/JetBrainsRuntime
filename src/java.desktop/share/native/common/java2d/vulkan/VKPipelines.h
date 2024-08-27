@@ -31,11 +31,12 @@
  * All pipeline types.
  */
 typedef enum {
-    PIPELINE_FILL_COLOR = 0,
-    PIPELINE_DRAW_COLOR = 1,
-    PIPELINE_BLIT       = 2,
-    PIPELINE_COUNT      = 3,
-    NO_PIPELINE         = 0x7FFFFFFF
+    PIPELINE_FILL_COLOR      = 0,
+    PIPELINE_DRAW_COLOR      = 1,
+    PIPELINE_BLIT            = 2,
+    PIPELINE_MASK_FILL_COLOR = 3,
+    PIPELINE_COUNT           = 4,
+    NO_PIPELINE              = 0x7FFFFFFF
 } VKPipeline;
 
 /**
@@ -75,8 +76,10 @@ extern const VkPipelineColorBlendAttachmentState COMPOSITE_BLEND_STATES[COMPOSIT
 struct VKPipelineContext {
     VKDevice*             device;
     VkPipelineLayout      pipelineLayout;
-    VkPipelineLayout      texturePipelineLayout;
     VkDescriptorSetLayout textureDescriptorSetLayout;
+    VkPipelineLayout      texturePipelineLayout;
+    VkDescriptorSetLayout maskFillDescriptorSetLayout;
+    VkPipelineLayout      maskFillPipelineLayout;
 
     VkSampler             linearRepeatSampler;
 
@@ -103,6 +106,11 @@ typedef struct {
     float px, py;
     float u, v;
 } VKTxVertex;
+
+typedef struct {
+    int x, y, maskOffset, maskScanline;
+    Color color;
+} VKMaskFillColorVertex;
 
 VKPipelineContext* VKPipelines_CreateContext(VKDevice* device);
 void VKPipelines_DestroyContext(VKPipelineContext* pipelines);
