@@ -752,7 +752,7 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
         }
     }
 
-    public static void swapBuffers(D3DSurfaceData sd,
+    static void swapBuffers(D3DSurfaceData sd,
                             final int x1, final int y1,
                             final int x2, final int y2)
     {
