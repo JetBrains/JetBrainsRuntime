@@ -119,4 +119,6 @@ void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipe
 
 void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spans);
 
+void VKRenderer_MaskFill(VKRenderingContext* context, jint x, jint y, jint w, jint h, jint maskoff, jint maskscan, jint masklen, uint8_t* mask);
+
 #endif //VKRenderer_h_Included
