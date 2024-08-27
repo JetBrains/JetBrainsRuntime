@@ -39,7 +39,7 @@
  * Starting page level for small allocations.
  * With block size of 256 bytes and page level of 12, smallest pages will be 1MiB in size.
  */
-#define MIN_PAGE_LEVEL 12
+#define MIN_SHARED_PAGE_LEVEL 12
 
 /**
  * Pair of memory blocks - "buddies".
@@ -81,7 +81,7 @@ typedef union MemoryHandle {
 #define MAX_PAGES (1ULL << 17)
 // These are hard constants and not meant to be adjusted:
 #define MAX_BLOCK_LEVEL (21U)
-#define MAX_PAGE_SIZE ((1ULL << MAX_BLOCK_LEVEL) * BLOCK_SIZE)
+#define MAX_SHARED_PAGE_SIZE ((1ULL << MAX_BLOCK_LEVEL) * BLOCK_SIZE)
 
 typedef struct {
     BlockPair* blockPairs;
@@ -216,6 +216,7 @@ static uint32_t VKAllocator_AllocatePage(VKAllocator* alloc, uint32_t memoryType
         alloc->freePageIndex = page->nextFreePage;
     } else {
         index = ARRAY_SIZE(alloc->pages);
+        VK_RUNTIME_ASSERT(index < MAX_PAGES);
         ARRAY_PUSH_BACK(alloc->pages, (Page) {});
         page = &ARRAY_LAST(alloc->pages);
     }
@@ -388,12 +389,13 @@ static AllocationResult VKAllocator_AllocateForResource(VKMemoryRequirements* re
         if (pageIndex == NO_PAGE_INDEX) {
             uint32_t pageLevel = (pool->allocationLevelTracker++) / 2;
             if (pageLevel < level) pool->allocationLevelTracker = (pageLevel = level) * 2 + 1;
+            else if (pageLevel > MAX_BLOCK_LEVEL) pool->allocationLevelTracker = (pageLevel = MAX_BLOCK_LEVEL) * 2 + 1;
             pageIndex = VKAllocator_AllocatePage(alloc, memoryType, BLOCK_SIZE << pageLevel, VK_NULL_HANDLE, VK_NULL_HANDLE);
             if (pageIndex == NO_PAGE_INDEX) return (AllocationResult) {{0}, VK_NULL_HANDLE};
             page = &alloc->pages[pageIndex];
             data = page->sharedPageData = (SharedPageData*) calloc(1, sizeof(SharedPageData));
-            data->memoryType = memoryType;
             VK_RUNTIME_ASSERT(page->sharedPageData);
+            data->memoryType = memoryType;
             ARRAY_PUSH_BACK(data->blockPairs, (BlockPair) {
                     .offset     = 0,
                     .parent     = 0,
@@ -562,7 +564,7 @@ VKAllocator* VKAllocator_Create(VKDevice* device) {
     for (uint32_t i = 0; i < VK_MAX_MEMORY_TYPES; i++) {
         allocator->pools[i] = (Pool) {
                 .sharedPagesIndex = NO_PAGE_INDEX,
-                .allocationLevelTracker = MIN_PAGE_LEVEL * 2
+                .allocationLevelTracker = MIN_SHARED_PAGE_LEVEL * 2
         };
     }
     ge->vkGetPhysicalDeviceMemoryProperties(device->physicalDevice, &allocator->memoryProperties);
