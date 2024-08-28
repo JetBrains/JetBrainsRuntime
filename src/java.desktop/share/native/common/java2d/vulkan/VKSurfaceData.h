@@ -45,27 +45,27 @@
  * information pertaining to the native surface.
  */
 struct VKSDOps {
-    SurfaceDataOps   sdOps;
-    jint             drawableType;
-    VKDevice* device;
-    VKImage*         image;
+    SurfaceDataOps sdOps;
+    jint           drawableType;
+    VKDevice*      device;
+    VKImage*       image;
 
-    Color            background;
-    VkExtent2D       requestedExtent;
+    Color          background;
+    VkExtent2D     requestedExtent;
 
-    VKRenderPass*    renderPass;
+    VKRenderPass*  renderPass;
 };
 
 /**
  * The VKWinSDOps structure describes a native Vulkan surface connected with a window.
  */
 struct VKWinSDOps {
-    VKSDOps          vksdOps;
-    VkSurfaceKHR     surface;
-    VkSwapchainKHR   swapchain;
-    VkImage*         swapchainImages;
-    VKDevice* swapchainDevice;
-    VkExtent2D       swapchainExtent;
+    VKSDOps        vksdOps;
+    VkSurfaceKHR   surface;
+    VkSwapchainKHR swapchain;
+    VkImage*       swapchainImages;
+    VKDevice*      swapchainDevice;
+    VkExtent2D     swapchainExtent;
 };
 
 /**
