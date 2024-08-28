@@ -20,7 +20,7 @@ void* CARR_array_realloc(CARR_array_t* vec, size_t elem_size, size_t new_capacit
     CARR_array_t* new_vec =
             (CARR_array_t*)((char*)CARR_array_alloc(elem_size, new_capacity) - offsetof(CARR_array_t, data));
     if (new_vec == NULL) {
-        return NULL;
+        return vec == NULL ? NULL : vec->data;
     }
     new_vec->capacity = new_capacity;
     new_vec->size = MIN(vec->size, new_capacity);
