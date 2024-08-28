@@ -110,7 +110,7 @@ struct VKRenderer {
 struct VKRenderPass {
     VKRenderPassContext* context;
     VKVertexBuffer*      vertexBuffers;
-    VkFramebuffer        framebuffer;
+    VkFramebuffer        framebuffer[FORMAT_ALIAS_COUNT];
     VkCommandBuffer      commandBuffer;
 
     void*        vertexBufferData;
@@ -118,10 +118,11 @@ struct VKRenderPass {
     uint32_t     firstVertex;
     uint32_t     vertexCount;
 
-    VKPipeline currentPipeline;
-    VkBool32   pendingFlush;
-    VkBool32   pendingCommands;
-    VkBool32   pendingClear;
+    CompositeMode currentComposite;
+    PipelineType  currentPipeline;
+    VkBool32      pendingFlush;
+    VkBool32      pendingCommands;
+    VkBool32      pendingClear;
 
     VkImageLayout           layout;
     VkPipelineStageFlagBits lastStage;
@@ -341,12 +342,8 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
     }
     ARRAY_FREE(renderer->vertexBufferPool.memoryPages);
 
-    if (renderer->timelineSemaphore != VK_NULL_HANDLE) {
-        device->vkDestroySemaphore(device->handle, renderer->timelineSemaphore, NULL);
-    }
-    if (renderer->commandPool != VK_NULL_HANDLE) {
-        device->vkDestroyCommandPool(device->handle, renderer->commandPool, NULL);
-    }
+    device->vkDestroySemaphore(device->handle, renderer->timelineSemaphore, NULL);
+    device->vkDestroyCommandPool(device->handle, renderer->commandPool, NULL);
     ARRAY_FREE(renderer->wait.semaphores);
     ARRAY_FREE(renderer->wait.stages);
     ARRAY_FREE(renderer->pendingPresentation.swapchains);
@@ -522,6 +519,7 @@ static void VKRenderer_FlushDraw(VKSDOps* surface) {
  */
 static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
+    surface->renderPass->currentComposite = NO_COMPOSITE;
     surface->renderPass->currentPipeline = NO_PIPELINE;
     surface->renderPass->vertexBufferData = NULL;
     surface->renderPass->vertexBufferOffset = VERTEX_BUFFER_SIZE;
@@ -566,8 +564,8 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface) {
         VKRenderer_Wait(device->renderer, surface->renderPass->lastTimestamp);
         VKRenderer_DiscardRenderPass(surface);
         // Release resources.
-        if (surface->renderPass->framebuffer != VK_NULL_HANDLE) {
-            device->vkDestroyFramebuffer(device->handle, surface->renderPass->framebuffer, NULL);
+        DESTROY_FORMAT_ALIASED_HANDLE(surface->renderPass->framebuffer, i) {
+            device->vkDestroyFramebuffer(device->handle, surface->renderPass->framebuffer[i], NULL);
         }
         if (surface->renderPass->commandBuffer != VK_NULL_HANDLE) {
             PUSH_PENDING(device->renderer, device->renderer->pendingSecondaryCommandBuffers, surface->renderPass->commandBuffer);
@@ -600,6 +598,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
             .pendingCommands = VK_FALSE,
             .pendingClear = VK_TRUE, // Clear the surface by default
             .vertexBufferOffset = VERTEX_BUFFER_SIZE,
+            .currentComposite = NO_COMPOSITE,
             .currentPipeline = NO_PIPELINE,
             .layout = VK_IMAGE_LAYOUT_UNDEFINED,
             .lastStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -609,22 +608,24 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
 
     // Initialize pipelines. They are cached until surface format changes.
     if (renderPass->context == NULL) {
-        renderPass->context = VKPipelines_GetRenderPassContext(renderer->pipelineContext, surface->format);
+        renderPass->context = VKPipelines_GetRenderPassContext(renderer->pipelineContext, surface->format[FORMAT_ALIAS_REAL]);
     }
 
     // Initialize framebuffer.
-    if (renderPass->framebuffer == VK_NULL_HANDLE) {
+    if (renderPass->framebuffer[FORMAT_ALIAS_REAL] == VK_NULL_HANDLE) {
         VkFramebufferCreateInfo framebufferCreateInfo = {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-                .renderPass = renderPass->context->renderPass,
                 .attachmentCount = 1,
-                .pAttachments = &surface->view,
                 .width = surface->extent.width,
                 .height = surface->extent.height,
                 .layers = 1
         };
-        VK_IF_ERROR(device->vkCreateFramebuffer(device->handle, &framebufferCreateInfo, NULL,
-                                             &renderPass->framebuffer)) VK_UNHANDLED_ERROR();
+        INIT_FORMAT_ALIASED_HANDLE(renderPass->framebuffer, surface->view, i) {
+            framebufferCreateInfo.renderPass = renderPass->context->renderPass[i];
+            framebufferCreateInfo.pAttachments = &surface->view[i];
+            VK_IF_ERROR(device->vkCreateFramebuffer(device->handle, &framebufferCreateInfo, NULL,
+                                                    &renderPass->framebuffer[i])) VK_UNHANDLED_ERROR();
+        }
     }
 
     J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_InitRenderPass(%p)", surface);
@@ -660,11 +661,12 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     }
 
     // Begin recording render pass commands.
+    FormatAlias formatAlias = COMPOSITE_TO_FORMAT_ALIAS(surface->renderPass->currentComposite);
     VkCommandBufferInheritanceInfo inheritanceInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-            .renderPass = surface->renderPass->context->renderPass,
+            .renderPass = surface->renderPass->context->renderPass[formatAlias],
             .subpass = 0,
-            .framebuffer = surface->renderPass->framebuffer
+            .framebuffer = surface->renderPass->framebuffer[formatAlias]
     };
     VkCommandBufferBeginInfo commandBufferBeginInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -738,10 +740,11 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
                               VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     // Begin render pass.
+    FormatAlias formatAlias = COMPOSITE_TO_FORMAT_ALIAS(surface->renderPass->currentComposite);
     VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = surface->renderPass->context->renderPass,
-            .framebuffer = surface->renderPass->framebuffer,
+            .renderPass = surface->renderPass->context->renderPass[formatAlias],
+            .framebuffer = surface->renderPass->framebuffer[formatAlias],
             .renderArea.offset = (VkOffset2D){0, 0},
             .renderArea.extent = surface->extent,
             .clearValueCount = 0,
@@ -920,7 +923,7 @@ static void* VKRenderer_FastDraw(VKSDOps* surface, uint32_t vertices, size_t ver
  * It is responsibility of the caller to pass correct vertexSize, matching provided pipeline.
  * This function cannot draw more vertices than fits into single vertex buffer at once.
  */
-static void* VKRenderer_Draw(VKRenderingContext* context, VKPipeline pipeline, uint32_t vertices, size_t vertexSize) {
+static void* VKRenderer_Draw(VKRenderingContext* context, PipelineType pipeline, uint32_t vertices, size_t vertexSize) {
     assert(context != NULL && context->surface != NULL);
     assert(vertices > 0 && vertexSize > 0);
     assert(vertexSize * vertices <= VERTEX_BUFFER_SIZE);
@@ -929,33 +932,66 @@ static void* VKRenderer_Draw(VKRenderingContext* context, VKPipeline pipeline, u
     // Validate render pass state.
     if (surface->renderPass == NULL || !surface->renderPass->pendingCommands) {
         // We must only [re]init render pass between frames.
-        // Now this is correct, but in future we may have frames consisting of multiple render passes,
-        // so we must be careful to NOT call VKRenderer_InitRenderPass between render passes within single frame.
+        // Be careful to NOT call VKRenderer_InitRenderPass between render passes within single frame.
         if (!VKRenderer_InitRenderPass(surface)) return NULL;
-        // In the future, we may need to restart the render pass within single frame,
-        // for example when switching between blended and XOR drawing modes.
-        // So, generally, this should depend on VKRenderingContext, but now we just start the render pass once.
-        VKRenderer_BeginRenderPass(surface);
+    }
+    VKRenderPass* renderPass = surface->renderPass;
+
+    // Validate current composite.
+    if (renderPass->currentComposite != context->composite) {
+        // ALPHA_COMPOSITE_DST keeps destination intact, so don't even bother to change the state.
+        if (context->composite == ALPHA_COMPOSITE_DST) return NULL;
+        J2dTraceLn2(J2D_TRACE_VERBOSE, "VKRenderer_Draw: updating composite, old=%d, new=%d", surface->renderPass->currentComposite, context->composite);
+        VKRenderer_FlushDraw(surface);
+        if (renderPass->currentComposite != NO_COMPOSITE) {
+            // When required view format changes, we need to restart the render pass.
+            // Or, if the format alias changes, but actual view format does not,
+            // we need to reset the pipeline at the very least.
+            // Formally this has nothing to do with format alias, but changed format alias
+            // means that composite group was changed between logic and alpha, which in turn means
+            // that we must reset the pipeline, as we don't support dynamic logicOp changing.
+            // This could change if we added more logic composites, so be careful.
+            FormatAlias oldFormatAlias = COMPOSITE_TO_FORMAT_ALIAS(renderPass->currentComposite);
+            FormatAlias newFormatAlias = COMPOSITE_TO_FORMAT_ALIAS(context->composite);
+            if (oldFormatAlias != newFormatAlias) {
+                if (surface->view[oldFormatAlias] != surface->view[newFormatAlias]) {
+                    VKRenderer_FlushRenderPass(surface);
+                    assert(surface->renderPass->currentComposite == NO_COMPOSITE); // currentComposite must have been reset.
+                    assert(surface->renderPass->currentPipeline == NO_PIPELINE); // currentPipeline must have been reset.
+                } else renderPass->currentPipeline = NO_PIPELINE;
+            }
+        }
+        // If composite is not set, start render pass.
+        if (renderPass->currentComposite == NO_COMPOSITE) {
+            renderPass->currentComposite = context->composite;
+            VKRenderer_BeginRenderPass(surface);
+            assert(surface->renderPass->currentPipeline == NO_PIPELINE);
+        } else renderPass->currentComposite = context->composite;
+        VKDevice* device = surface->device;
+        VkCommandBuffer cb = renderPass->commandBuffer;
+        // Reset the pipeline.
+        renderPass->currentPipeline = NO_PIPELINE;
     }
 
     // Validate current pipeline.
-    if (surface->renderPass->currentPipeline != pipeline) {
+    if (renderPass->currentPipeline != pipeline) {
+        J2dTraceLn2(J2D_TRACE_VERBOSE, "VKRenderer_Draw: updating pipeline, old=%d, new=%d", surface->renderPass->currentPipeline, pipeline);
         VKRenderer_FlushDraw(surface);
-        VkCommandBuffer cb = surface->renderPass->commandBuffer;
-        surface->renderPass->currentPipeline = pipeline;
+        VkCommandBuffer cb = renderPass->commandBuffer;
+        renderPass->currentPipeline = pipeline;
         surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           VKPipelines_GetPipeline(surface->renderPass->context, pipeline));
+                                           VKPipelines_GetPipeline(renderPass->context, context->composite, pipeline));
 
-        VkDeviceSize offset = surface->renderPass->vertexBufferOffset;
-        void* oldData = surface->renderPass->vertexBufferData;
+        VkDeviceSize offset = renderPass->vertexBufferOffset;
+        void* oldData = renderPass->vertexBufferData;
         void* ptr = VKRenderer_FastDraw(surface, vertices, vertexSize);
         // If vertex buffer was not bound by VKRenderer_FastDraw, do it here.
-        if (oldData == surface->renderPass->vertexBufferData) {
+        if (oldData == renderPass->vertexBufferData) {
             assert(ARRAY_SIZE(surface->renderPass->vertexBuffers) > 0);
-            surface->device->vkCmdBindVertexBuffers(surface->renderPass->commandBuffer, 0, 1,
-                                                    &(ARRAY_LAST(surface->renderPass->vertexBuffers).buffer), &offset);
-            surface->renderPass->firstVertex = 0;
-            surface->renderPass->vertexCount = vertices;
+            surface->device->vkCmdBindVertexBuffers(renderPass->commandBuffer, 0, 1,
+                                                    &(ARRAY_LAST(renderPass->vertexBuffers).buffer), &offset);
+            renderPass->firstVertex = 0;
+            renderPass->vertexCount = vertices;
         }
         return ptr;
     } else return VKRenderer_FastDraw(surface, vertices, vertexSize);
@@ -975,14 +1011,16 @@ vs = VKRenderer_Draw((CONTEXT), (PIPELINE), (VERTICES), sizeof(vs[0]))
 
 // Drawing operations.
 
-void VKRenderer_RenderRect(VKRenderingContext* context, VKPipeline pipeline, jint x, jint y, jint w, jint h) {
+void VKRenderer_RenderRect(VKRenderingContext* context, PipelineType pipeline, jint x, jint y, jint w, jint h) {
     VKRenderer_RenderParallelogram(context, pipeline, (float) x, (float) y, (float) w, 0, 0, (float) h);
 }
 
-void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipeline,
+void VKRenderer_RenderParallelogram(VKRenderingContext* context, PipelineType pipeline,
                                     jfloat x11, jfloat y11,
                                     jfloat dx21, jfloat dy21,
                                     jfloat dx12, jfloat dy12) {
+    VK_DRAW(VKColorVertex, context, pipeline, pipeline == PIPELINE_DRAW_COLOR ? 8 : 6);
+    if (vs == NULL) return; // Not ready.
     Color c = context->color;
     /*                   dx21
      *    (p1)---------(p2) |          (p1)------
@@ -999,8 +1037,6 @@ void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipe
     VKColorVertex p3 = {x11 + dx21 + dx12, y11 + dy21 + dy12, c};
     VKColorVertex p4 = {x11 + dx12, y11 + dy12, c};
 
-    VK_DRAW(VKColorVertex, context, pipeline, pipeline == PIPELINE_DRAW_COLOR ? 8 : 6);
-    if (vs == NULL) return; // Not ready.
     uint32_t i = 0;
     vs[i++] = p1;
     vs[i++] = p2;
@@ -1016,6 +1052,8 @@ void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipe
 
 void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spans) {
     if (spanCount == 0) return;
+    VK_DRAW(VKColorVertex, context, PIPELINE_FILL_COLOR, 6);
+    if (vs == NULL) return; // Not ready.
     Color c = context->color;
 
     jfloat x1 = (float)*(spans++);
@@ -1027,8 +1065,6 @@ void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spa
     VKColorVertex p3 = {x2, y2, c};
     VKColorVertex p4 = {x1, y2, c};
 
-    VK_DRAW(VKColorVertex, context, PIPELINE_FILL_COLOR, 6);
-    if (vs == NULL) return; // Not ready.
     vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
 
     for (int i = 1; i < spanCount; i++) {

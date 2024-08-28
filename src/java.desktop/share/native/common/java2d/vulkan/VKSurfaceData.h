@@ -49,8 +49,8 @@ struct VKSDOps {
     jint           drawableType;
     VKDevice*      device;
     VKImage        image;
-    VkImageView    view;
-    VkFormat       format;
+    VkImageView    view[FORMAT_ALIAS_COUNT];
+    VkFormat       format[FORMAT_ALIAS_COUNT];
     VkExtent2D     extent;
 
     Color          background;

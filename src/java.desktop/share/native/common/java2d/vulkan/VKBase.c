@@ -63,23 +63,18 @@ static void vulkanLibClose() {
                     ARRAY_FREE(device->enabledExtensions);
                     ARRAY_FREE(device->enabledLayers);
                     free(device->name);
-                    if (device->vkDestroyDevice != NULL && device->handle != NULL) {
-                        device->vkDestroyDevice(device->handle, NULL);
-                    }
+                    if (device->vkDestroyDevice != NULL) device->vkDestroyDevice(device->handle, NULL);
                 }
                 ARRAY_FREE(geInstance->devices);
             }
 
 #if defined(DEBUG)
-            if (geInstance->vkDestroyDebugUtilsMessengerEXT != NULL &&
-                geInstance->debugMessenger != NULL && geInstance->vkInstance != NULL) {
+            if (geInstance->vkDestroyDebugUtilsMessengerEXT != NULL && geInstance->vkInstance != VK_NULL_HANDLE) {
                 geInstance->vkDestroyDebugUtilsMessengerEXT(geInstance->vkInstance, geInstance->debugMessenger, NULL);
             }
 #endif
 
-            if (geInstance->vkDestroyInstance != NULL && geInstance->vkInstance != NULL) {
-                geInstance->vkDestroyInstance(geInstance->vkInstance, NULL);
-            }
+            if (geInstance->vkDestroyInstance != NULL) geInstance->vkDestroyInstance(geInstance->vkInstance, NULL);
             free(geInstance);
             geInstance = NULL;
         }
@@ -373,7 +368,7 @@ static jboolean VK_FindDevices() {
 
         geInstance->vkGetPhysicalDeviceFeatures2(geInstance->physicalDevices[i], &deviceFeatures2);
 
-        VkPhysicalDeviceProperties2 deviceProperties2 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+        VkPhysicalDeviceProperties2 deviceProperties2 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
         geInstance->vkGetPhysicalDeviceProperties2(geInstance->physicalDevices[i], &deviceProperties2);
         J2dRlsTrace5(J2D_TRACE_INFO, "\t- %s (%d.%d.%d, %s) ",
                      (const char *) deviceProperties2.properties.deviceName,
@@ -556,7 +551,7 @@ static jboolean VK_InitDevice(VKDevice* device) {
         J2dRlsTraceLn1(J2D_TRACE_ERROR, "Vulkan: Cannot create device: %s", device->name)
         return JNI_FALSE;
     }
-    J2dRlsTraceLn1(J2D_TRACE_INFO, "Vulkan: Device created (%s)", device->name)
+    J2dRlsTraceLn1(J2D_TRACE_INFO, "VK_InitDevice(%s)", device->name);
 
 #define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, device, device->handle, NAME)
     DEVICE_PROC(vkDestroyDevice);

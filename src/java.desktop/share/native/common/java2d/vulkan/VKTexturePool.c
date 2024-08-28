@@ -110,15 +110,11 @@ static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
 }
 
 static int VKTexturePool_bytesPerPixel(long format) {
-    switch ((VkFormat)format) {
-        case VK_FORMAT_R8G8B8A8_UNORM:
-            return 4;
-        case VK_FORMAT_R8_UNORM:
-            return 1;
-        default:
-            J2dRlsTraceLn1(J2D_TRACE_ERROR, "VKTexturePool_bytesPerPixel: format=%d not supported (4 bytes by default)", format);
-            return 4;
-    }
+    FormatGroup group = VKUtil_GetFormatGroup((VkFormat)format);
+    if (group.bytes == 0) {
+        J2dRlsTraceLn1(J2D_TRACE_ERROR, "VKTexturePool_bytesPerPixel: format=%d not supported (4 bytes by default)", format);
+        return 4;
+    } else return (int) group.bytes;
 }
 
 static void VKTexturePool_freeTexture(ADevicePrivPtr *device, ATexturePrivPtr *texture) {
