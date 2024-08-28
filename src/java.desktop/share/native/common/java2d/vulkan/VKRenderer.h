@@ -42,35 +42,35 @@ struct VKRenderer {
     VkPrimitiveTopology primitiveTopology;
 };
 
-VKRenderer *VKRenderer_CreateRenderColorPoly(VKLogicalDevice* logicalDevice, VkPrimitiveTopology primitiveTopology, VkPolygonMode polygonMode);
+VKRenderer *VKRenderer_CreateRenderColorPoly(VKDevice* device, VkPrimitiveTopology primitiveTopology, VkPolygonMode polygonMode);
 
-VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice);
+VKRenderer* VKRenderer_CreateFillTexturePoly(VKDevice* device);
 
-VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKLogicalDevice* logicalDevice);
+VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKDevice* device);
 
-void VKRenderer_BeginRendering(VKLogicalDevice* logicalDevice);
+void VKRenderer_BeginRendering(VKDevice* device);
 
-void VKRenderer_EndRendering(VKLogicalDevice* logicalDevice,
+void VKRenderer_EndRendering(VKDevice* device,
                              VkBool32 notifyRenderFinish, VkBool32 waitForDisplayImage);
 
-void VKRenderer_TextureRender(VKLogicalDevice* logicalDevice,
+void VKRenderer_TextureRender(VKDevice* device,
                               VKImage *destImage, VKImage *srcImage,
                               VkBuffer vertexBuffer, uint32_t vertexNum);
 
-void VKRenderer_ColorRender(VKLogicalDevice* logicalDevice,
+void VKRenderer_ColorRender(VKDevice* device,
                             VKImage *destImage,
                             VKRenderer *renderer, uint32_t rgba, VkBuffer vertexBuffer, uint32_t vertexNum);
 
-void VKRenderer_ColorRenderMaxRect(VKLogicalDevice* logicalDevice, VKImage *destImage, uint32_t rgba);
+void VKRenderer_ColorRenderMaxRect(VKDevice* device, VKImage *destImage, uint32_t rgba);
 // fill ops
-void VKRenderer_FillRect(VKLogicalDevice* logicalDevice, jint x, jint y, jint w, jint h);
-void VKRenderer_RenderParallelogram(VKLogicalDevice* logicalDevice,
+void VKRenderer_FillRect(VKDevice* device, jint x, jint y, jint w, jint h);
+void VKRenderer_RenderParallelogram(VKDevice* device,
                                     VKRenderer* renderer, jint color, VKSDOps *dstOps,
                                     jfloat x11, jfloat y11,
                                     jfloat dx21, jfloat dy21,
                                     jfloat dx12, jfloat dy12);
 
-void VKRenderer_FillSpans(VKLogicalDevice* logicalDevice, jint color, VKSDOps *dstOps, jint spanCount, jint *spans);
+void VKRenderer_FillSpans(VKDevice* device, jint color, VKSDOps *dstOps, jint spanCount, jint *spans);
 
-jboolean VK_CreateLogicalDeviceRenderers(VKLogicalDevice* logicalDevice);
+jboolean VK_CreateLogicalDeviceRenderers(VKDevice* device);
 #endif //VKRenderer_h_Included
