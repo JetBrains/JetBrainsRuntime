@@ -44,7 +44,7 @@ VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
             .subresourceRange.layerCount = 1,
     };
 
-    if (device->vkCreateImageView(device->device, &viewInfo, NULL, &image->view) != VK_SUCCESS) {
+    if (device->vkCreateImageView(device->handle, &viewInfo, NULL, &image->view) != VK_SUCCESS) {
         J2dRlsTrace(J2D_TRACE_ERROR, "Cannot surface image view\n");
         return VK_FALSE;
     }
@@ -66,7 +66,7 @@ VkBool32 VKImage_CreateFramebuffer(VKDevice* device, VKImage *image, VkRenderPas
             .layers = 1
     };
 
-    if (device->vkCreateFramebuffer(device->device, &framebufferInfo, NULL,
+    if (device->vkCreateFramebuffer(device->handle, &framebufferInfo, NULL,
                                 &image->framebuffer) != VK_SUCCESS)
     {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to create framebuffer!")
@@ -109,14 +109,14 @@ VKImage* VKImage_Create(VKDevice* device,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
 
-    if (device->vkCreateImage(device->device, &imageInfo, NULL, &image->image) != VK_SUCCESS) {
+    if (device->vkCreateImage(device->handle, &imageInfo, NULL, &image->image) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create surface image")
         VKImage_free(device, image);
         return NULL;
     }
 
     VkMemoryRequirements memRequirements;
-    device->vkGetImageMemoryRequirements(device->device, image->image, &memRequirements);
+    device->vkGetImageMemoryRequirements(device->handle, image->image, &memRequirements);
 
     uint32_t memoryType;
     if (VKBuffer_FindMemoryType(device->physicalDevice,
@@ -134,13 +134,13 @@ VKImage* VKImage_Create(VKDevice* device,
             .memoryTypeIndex = memoryType
     };
 
-    if (device->vkAllocateMemory(device->device, &allocInfo, NULL, &image->memory) != VK_SUCCESS) {
+    if (device->vkAllocateMemory(device->handle, &allocInfo, NULL, &image->memory) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Failed to allocate image memory");
         VKImage_free(device, image);
         return NULL;
     }
 
-    device->vkBindImageMemory(device->device, image->image, image->memory, 0);
+    device->vkBindImageMemory(device->handle, image->image, image->memory, 0);
 
     if (!VKImage_CreateView(device, image)) {
         VKImage_free(device, image);
@@ -155,7 +155,7 @@ VKImage* VKImage_CreateImageArrayFromSwapChain(VKDevice* device,
                                                VkFormat format, VkExtent2D extent)
 {
     uint32_t swapChainImagesCount;
-    if (device->vkGetSwapchainImagesKHR(device->device, swapchainKhr, &swapChainImagesCount,
+    if (device->vkGetSwapchainImagesKHR(device->handle, swapchainKhr, &swapChainImagesCount,
                                     NULL) != VK_SUCCESS) {
         J2dRlsTrace(J2D_TRACE_ERROR, "Cannot get swapchain images\n");
         return NULL;
@@ -167,7 +167,7 @@ VKImage* VKImage_CreateImageArrayFromSwapChain(VKDevice* device,
     }
     VkImage swapChainImages[swapChainImagesCount];
 
-    if (device->vkGetSwapchainImagesKHR(device->device, swapchainKhr, &swapChainImagesCount,
+    if (device->vkGetSwapchainImagesKHR(device->handle, swapchainKhr, &swapChainImagesCount,
                                     swapChainImages) != VK_SUCCESS) {
         J2dRlsTrace(J2D_TRACE_ERROR, "Cannot get swapchain images\n");
         return NULL;
@@ -203,22 +203,22 @@ void VKImage_dealloc(VKDevice* device, VKImage* image) {
     if (!image) return;
 
     if (image->framebuffer != VK_NULL_HANDLE) {
-        device->vkDestroyFramebuffer(device->device, image->framebuffer, NULL);
+        device->vkDestroyFramebuffer(device->handle, image->framebuffer, NULL);
         image->framebuffer = VK_NULL_HANDLE;
     }
 
     if (image->view != VK_NULL_HANDLE) {
-        device->vkDestroyImageView(device->device, image->view, NULL);
+        device->vkDestroyImageView(device->handle, image->view, NULL);
         image->view = VK_NULL_HANDLE;
     }
 
     if (image->memory != VK_NULL_HANDLE) {
-        device->vkFreeMemory(device->device, image->memory, NULL);
+        device->vkFreeMemory(device->handle, image->memory, NULL);
         image->memory = VK_NULL_HANDLE;
     }
 
     if (image->image != VK_NULL_HANDLE && !image->noImageDealloc) {
-        device->vkDestroyImage(device->device, image->image, NULL);
+        device->vkDestroyImage(device->handle, image->image, NULL);
         image->image = VK_NULL_HANDLE;
     }
 }

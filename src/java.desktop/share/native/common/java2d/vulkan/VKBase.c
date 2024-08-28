@@ -86,8 +86,8 @@ static void vulkanLibClose() {
                     if (geInstance->devices[i].texturePool != NULL) {
                         VKTexturePool_Dispose(geInstance->devices[i].texturePool);
                     }
-                    if (geInstance->devices[i].vkDestroyDevice != NULL && geInstance->devices[i].device != NULL) {
-                        geInstance->devices[i].vkDestroyDevice(geInstance->devices[i].device, NULL);
+                    if (geInstance->devices[i].vkDestroyDevice != NULL && geInstance->devices[i].handle != VK_NULL_HANDLE) {
+                        geInstance->devices[i].vkDestroyDevice(geInstance->devices[i].handle, NULL);
                     }
                 }
                 free(geInstance->devices);
@@ -587,7 +587,7 @@ static jboolean VK_FindDevices() {
         ARRAY_PUSH_BACK(&geInstance->devices,
                 ((VKDevice) {
                 .name = deviceName,
-                .device = VK_NULL_HANDLE,
+                .handle = VK_NULL_HANDLE,
                 .physicalDevice = geInstance->physicalDevices[i],
                 .queueFamily = queueFamily,
                 .enabledLayers = deviceEnabledLayers,
@@ -646,7 +646,7 @@ static VkRenderPassCreateInfo* VK_GetGenericRenderPassInfo() {
 }
 
 static jboolean VK_InitLogicalDevice(VKDevice* device) {
-    if (device->device != VK_NULL_HANDLE) {
+    if (device->handle != VK_NULL_HANDLE) {
         return JNI_TRUE;
     }
     if (geInstance == NULL) {
@@ -684,16 +684,15 @@ static jboolean VK_InitLogicalDevice(VKDevice* device) {
         .pEnabledFeatures = &features10
     };
 
-    if (geInstance->vkCreateDevice(device->physicalDevice, &createInfo, NULL, &device->device) != VK_SUCCESS)
+    if (geInstance->vkCreateDevice(device->physicalDevice, &createInfo, NULL, &device->handle) != VK_SUCCESS)
     {
         J2dRlsTraceLn1(J2D_TRACE_ERROR, "Cannot create device:\n    %s", device->name)
         vulkanLibClose();
         return JNI_FALSE;
     }
-    VkDevice device = device->device;
     J2dRlsTraceLn1(J2D_TRACE_INFO, "Logical device (%s) created", device->name)
 
-#define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, device, device, NAME)
+#define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, device, device->handle, NAME)
     DEVICE_PROC(vkDestroyDevice);
     DEVICE_PROC(vkCreateShaderModule);
     DEVICE_PROC(vkCreatePipelineLayout);
@@ -753,7 +752,7 @@ static jboolean VK_InitLogicalDevice(VKDevice* device) {
             .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
             .queueFamilyIndex = device->queueFamily
     };
-    if (device->vkCreateCommandPool(device, &poolInfo, NULL, &device->commandPool) != VK_SUCCESS) {
+    if (device->vkCreateCommandPool(device->handle, &poolInfo, NULL, &device->commandPool) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to create command pool!")
         return JNI_FALSE;
     }
@@ -766,7 +765,7 @@ static jboolean VK_InitLogicalDevice(VKDevice* device) {
             .commandBufferCount = 1
     };
 
-    if (device->vkAllocateCommandBuffers(device, &allocInfo, &device->commandBuffer) != VK_SUCCESS) {
+    if (device->vkAllocateCommandBuffers(device->handle, &allocInfo, &device->commandBuffer) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to allocate command buffers!");
         return JNI_FALSE;
     }
@@ -781,15 +780,15 @@ static jboolean VK_InitLogicalDevice(VKDevice* device) {
             .flags = VK_FENCE_CREATE_SIGNALED_BIT
     };
 
-    if (device->vkCreateSemaphore(device, &semaphoreInfo, NULL, &device->imageAvailableSemaphore) != VK_SUCCESS ||
-        device->vkCreateSemaphore(device, &semaphoreInfo, NULL, &device->renderFinishedSemaphore) != VK_SUCCESS ||
-        device->vkCreateFence(device, &fenceInfo, NULL, &device->inFlightFence) != VK_SUCCESS)
+    if (device->vkCreateSemaphore(device->handle, &semaphoreInfo, NULL, &device->imageAvailableSemaphore) != VK_SUCCESS ||
+        device->vkCreateSemaphore(device->handle, &semaphoreInfo, NULL, &device->renderFinishedSemaphore) != VK_SUCCESS ||
+        device->vkCreateFence(device->handle, &fenceInfo, NULL, &device->inFlightFence) != VK_SUCCESS)
     {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to create semaphores!");
         return JNI_FALSE;
     }
 
-    device->vkGetDeviceQueue(device, device->queueFamily, 0, &device->queue);
+    device->vkGetDeviceQueue(device->handle, device->queueFamily, 0, &device->queue);
     if (device->queue == NULL) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to get device queue!");
         return JNI_FALSE;
@@ -861,7 +860,7 @@ Java_sun_java2d_vulkan_VKInstance_initNative(JNIEnv *env, jclass wlge, jlong nat
     }
 
     if (geInstance->currentDevice->vkCreateRenderPass(
-            geInstance->currentDevice->device, VK_GetGenericRenderPassInfo(),
+            geInstance->currentDevice->handle, VK_GetGenericRenderPassInfo(),
             NULL, &geInstance->currentDevice->renderPass) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "Cannot create render pass for device")

@@ -58,7 +58,7 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
 
-    if (device->vkCreateBuffer(device->device, &bufferInfo, NULL, &buffer->buffer) != VK_SUCCESS) {
+    if (device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &buffer->buffer) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to allocate descriptor sets!")
         return NULL;
     }
@@ -66,7 +66,7 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
     buffer->size = size;
 
     VkMemoryRequirements memRequirements;
-    device->vkGetBufferMemoryRequirements(device->device, buffer->buffer, &memRequirements);
+    device->vkGetBufferMemoryRequirements(device->handle, buffer->buffer, &memRequirements);
 
     uint32_t memoryType;
 
@@ -84,12 +84,12 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
             .memoryTypeIndex = memoryType
     };
 
-    if (device->vkAllocateMemory(device->device, &allocInfo, NULL, &buffer->memory) != VK_SUCCESS) {
+    if (device->vkAllocateMemory(device->handle, &allocInfo, NULL, &buffer->memory) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to allocate buffer memory!");
         return NULL;
     }
 
-    if (device->vkBindBufferMemory(device->device, buffer->buffer, buffer->memory, 0) != VK_SUCCESS) {
+    if (device->vkBindBufferMemory(device->handle, buffer->buffer, buffer->memory, 0) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to bind buffer memory!");
         return NULL;
     }
@@ -104,7 +104,7 @@ VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize
                                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     void* data;
-    if (device->vkMapMemory(device->device, buffer->memory, 0, bufferSize, 0, &data) != VK_SUCCESS) {
+    if (device->vkMapMemory(device->handle, buffer->memory, 0, bufferSize, 0, &data) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to map memory!");
         return NULL;
     }
@@ -119,11 +119,11 @@ VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize
     };
 
 
-    if (device->vkFlushMappedMemoryRanges(device->device, 1, &memoryRange) != VK_SUCCESS) {
+    if (device->vkFlushMappedMemoryRanges(device->handle, 1, &memoryRange) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to flush memory!");
         return NULL;
     }
-    device->vkUnmapMemory(device->device, buffer->memory);
+    device->vkUnmapMemory(device->handle, buffer->memory);
     buffer->size = bufferSize;
 
     return buffer;
@@ -132,10 +132,10 @@ VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize
 void VKBuffer_free(VKDevice* device, VKBuffer* buffer) {
     if (buffer != NULL) {
         if (buffer->buffer != VK_NULL_HANDLE) {
-            device->vkDestroyBuffer(device->device, buffer->buffer, NULL);
+            device->vkDestroyBuffer(device->handle, buffer->buffer, NULL);
         }
         if (buffer->memory != VK_NULL_HANDLE) {
-            device->vkFreeMemory(device->device, buffer->memory, NULL);
+            device->vkFreeMemory(device->handle, buffer->memory, NULL);
         }
         free(buffer);
     }

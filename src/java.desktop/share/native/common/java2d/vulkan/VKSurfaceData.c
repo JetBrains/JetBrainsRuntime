@@ -109,7 +109,7 @@ void VKSD_InitWindowSurface(VKDevice* device, VKWinSDOps *vkwinsdo) {
                 .clipped = VK_TRUE
         };
 
-        if (device->vkCreateSwapchainKHR(device->device, &createInfoKhr, NULL, &vkwinsdo->swapchainKhr) != VK_SUCCESS) {
+        if (device->vkCreateSwapchainKHR(device->handle, &createInfoKhr, NULL, &vkwinsdo->swapchainKhr) != VK_SUCCESS) {
             J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create swapchain\n");
             return;
         }

@@ -46,7 +46,7 @@ VkShaderModule createShaderModule(VKDevice* device, uint32_t* shader, uint32_t s
     createInfo.codeSize = sz;
     createInfo.pCode = (uint32_t*)shader;
     VkShaderModule shaderModule;
-    if (device->vkCreateShaderModule(device->device, &createInfo, NULL, &shaderModule) != VK_SUCCESS) {
+    if (device->vkCreateShaderModule(device->handle, &createInfo, NULL, &shaderModule) != VK_SUCCESS) {
         J2dRlsTrace(J2D_TRACE_ERROR, "failed to create shader module\n")
         return VK_NULL_HANDLE;
     }
@@ -55,8 +55,6 @@ VkShaderModule createShaderModule(VKDevice* device, uint32_t* shader, uint32_t s
 
 VKRenderer* VKRenderer_CreateFillTexturePoly(VKDevice* device) {
     VKRenderer* fillTexturePoly = malloc(sizeof (VKRenderer ));
-
-    VkDevice device = device->device;
 
     // Create graphics pipeline
     VkShaderModule vertShaderModule = createShaderModule(device, blit_vert_data, sizeof (blit_vert_data));
@@ -162,7 +160,7 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKDevice* device) {
             .pBindings = &samplerLayoutBinding
     };
 
-    if (device->vkCreateDescriptorSetLayout(device, &layoutInfo, NULL, &fillTexturePoly->descriptorSetLayout) != VK_SUCCESS) {
+    if (device->vkCreateDescriptorSetLayout(device->handle, &layoutInfo, NULL, &fillTexturePoly->descriptorSetLayout) != VK_SUCCESS) {
         J2dRlsTrace(J2D_TRACE_INFO,  "failed to create descriptor set layout!");
         return JNI_FALSE;
     }
@@ -174,7 +172,7 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKDevice* device) {
             .pushConstantRangeCount = 0
     };
 
-    if (device->vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL,
+    if (device->vkCreatePipelineLayout(device->handle, &pipelineLayoutInfo, NULL,
                                    &fillTexturePoly->pipelineLayout) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "failed to create pipeline layout!\n")
@@ -199,14 +197,14 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKDevice* device) {
             .basePipelineIndex = -1
     };
 
-    if (device->vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
+    if (device->vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
                                               &fillTexturePoly->graphicsPipeline) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "failed to create graphics pipeline!\n")
         return JNI_FALSE;
     }
-    device->vkDestroyShaderModule(device, fragShaderModule, NULL);
-    device->vkDestroyShaderModule(device, vertShaderModule, NULL);
+    device->vkDestroyShaderModule(device->handle, fragShaderModule, NULL);
+    device->vkDestroyShaderModule(device->handle, vertShaderModule, NULL);
 
     VkSamplerCreateInfo samplerInfo = {
             .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -228,7 +226,7 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKDevice* device) {
             .maxLod = 0.0f
     };
 
-    if (device->vkCreateSampler(device, &samplerInfo, NULL, &device->textureSampler) != VK_SUCCESS) {
+    if (device->vkCreateSampler(device->handle, &samplerInfo, NULL, &device->textureSampler) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to create texture sampler!");
         return JNI_FALSE;
     }
@@ -245,7 +243,7 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKDevice* device) {
             .maxSets = 1
     };
 
-    if (device->vkCreateDescriptorPool(device, &descrPoolInfo, NULL, &fillTexturePoly->descriptorPool) != VK_SUCCESS) {
+    if (device->vkCreateDescriptorPool(device->handle, &descrPoolInfo, NULL, &fillTexturePoly->descriptorPool) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to create descriptor pool!")
         return JNI_FALSE;
     }
@@ -257,7 +255,7 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKDevice* device) {
             .pSetLayouts = &fillTexturePoly->descriptorSetLayout
     };
 
-    if (device->vkAllocateDescriptorSets(device, &descrAllocInfo, &fillTexturePoly->descriptorSets) != VK_SUCCESS) {
+    if (device->vkAllocateDescriptorSets(device->handle, &descrAllocInfo, &fillTexturePoly->descriptorSets) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to allocate descriptor sets!");
         return JNI_FALSE;
     }
@@ -270,8 +268,6 @@ VKRenderer *VKRenderer_CreateRenderColorPoly(VKDevice* device,
                                              VkPolygonMode polygonMode)
 {
     VKRenderer* renderColorPoly = malloc(sizeof (VKRenderer ));
-
-    VkDevice device = device->device;
 
     // Create graphics pipeline
     VkShaderModule vertShaderModule = createShaderModule(device, color_vert_data, sizeof (color_vert_data));
@@ -376,7 +372,7 @@ VKRenderer *VKRenderer_CreateRenderColorPoly(VKDevice* device,
             .pPushConstantRanges = &pushConstantRange
     };
 
-    if (device->vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL,
+    if (device->vkCreatePipelineLayout(device->handle, &pipelineLayoutInfo, NULL,
                                    &renderColorPoly->pipelineLayout) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "failed to create pipeline layout!\n")
@@ -401,22 +397,20 @@ VKRenderer *VKRenderer_CreateRenderColorPoly(VKDevice* device,
             .basePipelineIndex = -1
     };
 
-    if (device->vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
+    if (device->vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
                                       &renderColorPoly->graphicsPipeline) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "failed to create graphics pipeline!\n")
         return JNI_FALSE;
     }
-    device->vkDestroyShaderModule(device, fragShaderModule, NULL);
-    device->vkDestroyShaderModule(device, vertShaderModule, NULL);
+    device->vkDestroyShaderModule(device->handle, fragShaderModule, NULL);
+    device->vkDestroyShaderModule(device->handle, vertShaderModule, NULL);
     renderColorPoly->primitiveTopology = primitiveTopology;
     return renderColorPoly;
 }
 
 VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKDevice* device) {
     VKRenderer* fillColorPoly = malloc(sizeof (VKRenderer ));
-
-    VkDevice device = device->device;
 
     // Create graphics pipeline
     VkShaderModule vertShaderModule = createShaderModule(device, color_max_rect_vert_data, sizeof (color_max_rect_vert_data));
@@ -518,7 +512,7 @@ VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKDevice* device) {
             .pPushConstantRanges = &pushConstantRange
     };
 
-    if (device->vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL,
+    if (device->vkCreatePipelineLayout(device->handle, &pipelineLayoutInfo, NULL,
                                    &fillColorPoly->pipelineLayout) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "failed to create pipeline layout!\n")
@@ -543,14 +537,14 @@ VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKDevice* device) {
             .basePipelineIndex = -1
     };
 
-    if (device->vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
+    if (device->vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
                                       &fillColorPoly->graphicsPipeline) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "failed to create graphics pipeline!\n")
         return JNI_FALSE;
     }
-    device->vkDestroyShaderModule(device, fragShaderModule, NULL);
-    device->vkDestroyShaderModule(device, vertShaderModule, NULL);
+    device->vkDestroyShaderModule(device->handle, fragShaderModule, NULL);
+    device->vkDestroyShaderModule(device->handle, vertShaderModule, NULL);
     fillColorPoly->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
     return fillColorPoly;
 }
@@ -611,7 +605,7 @@ void VKRenderer_TextureRender(VKDevice* device, VKImage *destImage, VKImage *src
             .pImageInfo = &imageInfo
     };
 
-    device->vkUpdateDescriptorSets(device->device, 1, &descriptorWrites, 0, NULL);
+    device->vkUpdateDescriptorSets(device->handle, 1, &descriptorWrites, 0, NULL);
 
 
     VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
@@ -666,8 +660,8 @@ void VKRenderer_ColorRender(VKDevice* device, VKImage *destImage, VKRenderer *re
         J2dRlsTrace(J2D_TRACE_ERROR, "VKRenderer_ColorRender: vertex buffer is NULL\n")
         return;
     }
-    device->vkWaitForFences(device->device, 1, &device->inFlightFence, VK_TRUE, UINT64_MAX);
-    device->vkResetFences(device->device, 1, &device->inFlightFence);
+    device->vkWaitForFences(device->handle, 1, &device->inFlightFence, VK_TRUE, UINT64_MAX);
+    device->vkResetFences(device->handle, 1, &device->inFlightFence);
 
     device->vkResetCommandBuffer(device->commandBuffer, 0);
 
