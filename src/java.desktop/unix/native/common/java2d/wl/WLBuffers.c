@@ -314,7 +314,7 @@ GetJavaTimeNanos(void) {
     if (traceEnabled) {
         struct timespec tp;
         const jlong NANOSECS_PER_SEC = 1000000000L;
-        int status = clock_gettime(CLOCK_MONOTONIC, &tp);
+        clock_gettime(CLOCK_MONOTONIC, &tp);
         result = (jlong)(tp.tv_sec) * NANOSECS_PER_SEC + (jlong)(tp.tv_nsec);
     }
     return result;
