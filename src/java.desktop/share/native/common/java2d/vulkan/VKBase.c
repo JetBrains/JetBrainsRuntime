@@ -417,9 +417,9 @@ static jboolean VK_FindDevices() {
         return JNI_FALSE;
     }
 
-    geInstance->devices = ARRAY_ALLOC(VKLogicalDevice, physicalDevicesCount);
+    geInstance->devices = ARRAY_ALLOC(VKDevice, physicalDevicesCount);
     if (geInstance->devices == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VKLogicalDevice")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VKDevice")
         return JNI_FALSE;
     }
 
@@ -585,7 +585,7 @@ static jboolean VK_FindDevices() {
         }
 
         ARRAY_PUSH_BACK(&geInstance->devices,
-                ((VKLogicalDevice) {
+                ((VKDevice) {
                 .name = deviceName,
                 .device = VK_NULL_HANDLE,
                 .physicalDevice = geInstance->physicalDevices[i],
@@ -645,8 +645,8 @@ static VkRenderPassCreateInfo* VK_GetGenericRenderPassInfo() {
     return &renderPassInfo;
 }
 
-static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
-    if (logicalDevice->device != VK_NULL_HANDLE) {
+static jboolean VK_InitLogicalDevice(VKDevice* device) {
+    if (device->device != VK_NULL_HANDLE) {
         return JNI_TRUE;
     }
     if (geInstance == NULL) {
@@ -655,7 +655,7 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
     }
     if (verbose) {
         for (uint32_t i = 0; i < ARRAY_SIZE(geInstance->devices); i++) {
-            fprintf(stderr, " %c%d: %s\n", &geInstance->devices[i] == logicalDevice ? '*' : ' ',
+            fprintf(stderr, " %c%d: %s\n", &geInstance->devices[i] == device ? '*' : ' ',
                     i, geInstance->devices[i].name);
         }
         fprintf(stderr, "\n");
@@ -664,7 +664,7 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
     float queuePriority = 1.0f;
     VkDeviceQueueCreateInfo queueCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = logicalDevice->queueFamily,  // obtained separately
+            .queueFamilyIndex = device->queueFamily,  // obtained separately
             .queueCount = 1,
             .pQueuePriorities = &queuePriority
     };
@@ -677,23 +677,23 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
         .flags = 0,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueCreateInfo,
-        .enabledLayerCount = ARRAY_SIZE(logicalDevice->enabledLayers),
-        .ppEnabledLayerNames = (const char *const *) logicalDevice->enabledLayers,
-        .enabledExtensionCount = ARRAY_SIZE(logicalDevice->enabledExtensions),
-        .ppEnabledExtensionNames = (const char *const *) logicalDevice->enabledExtensions,
+        .enabledLayerCount = ARRAY_SIZE(device->enabledLayers),
+        .ppEnabledLayerNames = (const char *const *) device->enabledLayers,
+        .enabledExtensionCount = ARRAY_SIZE(device->enabledExtensions),
+        .ppEnabledExtensionNames = (const char *const *) device->enabledExtensions,
         .pEnabledFeatures = &features10
     };
 
-    if (geInstance->vkCreateDevice(logicalDevice->physicalDevice, &createInfo, NULL, &logicalDevice->device) != VK_SUCCESS)
+    if (geInstance->vkCreateDevice(device->physicalDevice, &createInfo, NULL, &device->device) != VK_SUCCESS)
     {
-        J2dRlsTraceLn1(J2D_TRACE_ERROR, "Cannot create device:\n    %s", logicalDevice->name)
+        J2dRlsTraceLn1(J2D_TRACE_ERROR, "Cannot create device:\n    %s", device->name)
         vulkanLibClose();
         return JNI_FALSE;
     }
-    VkDevice device = logicalDevice->device;
-    J2dRlsTraceLn1(J2D_TRACE_INFO, "Logical device (%s) created", logicalDevice->name)
+    VkDevice device = device->device;
+    J2dRlsTraceLn1(J2D_TRACE_INFO, "Logical device (%s) created", device->name)
 
-#define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, logicalDevice, device, NAME)
+#define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, device, device, NAME)
     DEVICE_PROC(vkDestroyDevice);
     DEVICE_PROC(vkCreateShaderModule);
     DEVICE_PROC(vkCreatePipelineLayout);
@@ -751,9 +751,9 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
     VkCommandPoolCreateInfo poolInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-            .queueFamilyIndex = logicalDevice->queueFamily
+            .queueFamilyIndex = device->queueFamily
     };
-    if (logicalDevice->vkCreateCommandPool(device, &poolInfo, NULL, &logicalDevice->commandPool) != VK_SUCCESS) {
+    if (device->vkCreateCommandPool(device, &poolInfo, NULL, &device->commandPool) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to create command pool!")
         return JNI_FALSE;
     }
@@ -761,12 +761,12 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
     // Create command buffer
     VkCommandBufferAllocateInfo allocInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = logicalDevice->commandPool,
+            .commandPool = device->commandPool,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1
     };
 
-    if (logicalDevice->vkAllocateCommandBuffers(device, &allocInfo, &logicalDevice->commandBuffer) != VK_SUCCESS) {
+    if (device->vkAllocateCommandBuffers(device, &allocInfo, &device->commandBuffer) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to allocate command buffers!");
         return JNI_FALSE;
     }
@@ -781,16 +781,16 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
             .flags = VK_FENCE_CREATE_SIGNALED_BIT
     };
 
-    if (logicalDevice->vkCreateSemaphore(device, &semaphoreInfo, NULL, &logicalDevice->imageAvailableSemaphore) != VK_SUCCESS ||
-        logicalDevice->vkCreateSemaphore(device, &semaphoreInfo, NULL, &logicalDevice->renderFinishedSemaphore) != VK_SUCCESS ||
-        logicalDevice->vkCreateFence(device, &fenceInfo, NULL, &logicalDevice->inFlightFence) != VK_SUCCESS)
+    if (device->vkCreateSemaphore(device, &semaphoreInfo, NULL, &device->imageAvailableSemaphore) != VK_SUCCESS ||
+        device->vkCreateSemaphore(device, &semaphoreInfo, NULL, &device->renderFinishedSemaphore) != VK_SUCCESS ||
+        device->vkCreateFence(device, &fenceInfo, NULL, &device->inFlightFence) != VK_SUCCESS)
     {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to create semaphores!");
         return JNI_FALSE;
     }
 
-    logicalDevice->vkGetDeviceQueue(device, logicalDevice->queueFamily, 0, &logicalDevice->queue);
-    if (logicalDevice->queue == NULL) {
+    device->vkGetDeviceQueue(device, device->queueFamily, 0, &device->queue);
+    if (device->queue == NULL) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to get device queue!");
         return JNI_FALSE;
     }
@@ -800,20 +800,20 @@ static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
     ARRAY_PUSH_BACK(&vertices, ((VKTxVertex){1.0f, -1.0f, 1.0f, 0.0f}));
     ARRAY_PUSH_BACK(&vertices, ((VKTxVertex){-1.0f, 1.0f, 0.0f, 1.0f}));
     ARRAY_PUSH_BACK(&vertices, ((VKTxVertex){1.0f, 1.0f, 1.0f, 1.0f}));
-    logicalDevice->blitVertexBuffer = ARRAY_TO_VERTEX_BUF(logicalDevice, vertices);
-    if (!logicalDevice->blitVertexBuffer) {
+    device->blitVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
+    if (!device->blitVertexBuffer) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create vertex buffer")
         return JNI_FALSE;
     }
     ARRAY_FREE(vertices);
 
-    logicalDevice->texturePool = VKTexturePool_initWithDevice(logicalDevice);
-    if (!logicalDevice->texturePool) {
+    device->texturePool = VKTexturePool_initWithDevice(device);
+    if (!device->texturePool) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create texture pool")
         return JNI_FALSE;
     }
 
-    geInstance->currentDevice = logicalDevice;
+    geInstance->currentDevice = device;
 
     return JNI_TRUE;
 }

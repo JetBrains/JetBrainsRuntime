@@ -65,7 +65,7 @@
 
 static VKSDOps *dstOps = NULL;
 
-static VKLogicalDevice* currentDevice;
+static VKDevice* currentDevice;
 
 // TODO move this property to special drawing context structure
 static int color = -1;

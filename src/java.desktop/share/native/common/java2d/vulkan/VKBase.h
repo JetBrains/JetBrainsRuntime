@@ -29,7 +29,7 @@
 #include "VKTypes.h"
 #include "VKTexturePool.h"
 
-struct VKLogicalDevice {
+struct VKDevice {
     VkDevice            device;
     VkPhysicalDevice    physicalDevice;
     VKRenderer*         fillTexturePoly;
@@ -107,10 +107,10 @@ struct VKLogicalDevice {
 
 
 struct VKGraphicsEnvironment {
-    VkInstance              vkInstance;
-    VkPhysicalDevice*       physicalDevices;
-    VKLogicalDevice*        devices;
-    VKLogicalDevice*        currentDevice;
+    VkInstance        vkInstance;
+    VkPhysicalDevice* physicalDevices;
+    VKDevice*         devices;
+    VKDevice*         currentDevice;
 
 #if defined(DEBUG)
     VkDebugUtilsMessengerEXT debugMessenger;
