@@ -241,13 +241,13 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "        %s", (char *) extensions[i].extensionName);
     }
 
-    pchar* enabledLayers = ARRAY_ALLOC(pchar, MAX_ENABLED_LAYERS);
-    pchar* enabledExtensions = ARRAY_ALLOC(pchar, MAX_ENABLED_EXTENSIONS);
+    pchar* enabledLayers = NULL;
+    pchar* enabledExtensions = NULL;
     void *pNext = NULL;
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    ARRAY_PUSH_BACK(&enabledExtensions, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+    ARRAY_PUSH_BACK(enabledExtensions, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
 #endif
-    ARRAY_PUSH_BACK(&enabledExtensions, VK_KHR_SURFACE_EXTENSION_NAME);
+    ARRAY_PUSH_BACK(enabledExtensions, VK_KHR_SURFACE_EXTENSION_NAME);
 
     // Check required layers & extensions.
     for (uint32_t i = 0; i < ARRAY_SIZE(enabledExtensions); i++) {
@@ -300,8 +300,8 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
     }
 
     if (foundDebugLayer && foundDebugExt) {
-        ARRAY_PUSH_BACK(&enabledLayers, VALIDATION_LAYER_NAME);
-        ARRAY_PUSH_BACK(&enabledExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        ARRAY_PUSH_BACK(enabledLayers, VALIDATION_LAYER_NAME);
+        ARRAY_PUSH_BACK(enabledExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         pNext = &features;
     } else {
         J2dRlsTraceLn(J2D_TRACE_WARNING, "Vulkan: %s and %s are not supported",
@@ -561,7 +561,7 @@ static jboolean VK_FindDevices() {
             return JNI_FALSE;
         }
 
-        ARRAY_PUSH_BACK(&deviceEnabledExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        ARRAY_PUSH_BACK(deviceEnabledExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
         // Validation layer
 #ifdef DEBUG
@@ -569,7 +569,7 @@ static jboolean VK_FindDevices() {
             for (uint32_t j = 0; j < layerCount; j++) {
                 if (strcmp(VALIDATION_LAYER_NAME, layers[j].layerName) == 0) {
                     validationLayerNotSupported = 0;
-                    ARRAY_PUSH_BACK(&deviceEnabledLayers, VALIDATION_LAYER_NAME);
+                    ARRAY_PUSH_BACK(deviceEnabledLayers, VALIDATION_LAYER_NAME);
                     break;
                 }
             }
@@ -584,7 +584,7 @@ static jboolean VK_FindDevices() {
             return JNI_FALSE;
         }
 
-        ARRAY_PUSH_BACK(&geInstance->devices,
+        ARRAY_PUSH_BACK(geInstance->devices,
                 ((VKDevice) {
                 .name = deviceName,
                 .handle = VK_NULL_HANDLE,
@@ -795,10 +795,10 @@ static jboolean VK_InitDevice(VKDevice* device) {
     }
 
     VKTxVertex* vertices = ARRAY_ALLOC(VKTxVertex, 4);
-    ARRAY_PUSH_BACK(&vertices, ((VKTxVertex){-1.0f, -1.0f, 0.0f, 0.0f}));
-    ARRAY_PUSH_BACK(&vertices, ((VKTxVertex){1.0f, -1.0f, 1.0f, 0.0f}));
-    ARRAY_PUSH_BACK(&vertices, ((VKTxVertex){-1.0f, 1.0f, 0.0f, 1.0f}));
-    ARRAY_PUSH_BACK(&vertices, ((VKTxVertex){1.0f, 1.0f, 1.0f, 1.0f}));
+    ARRAY_PUSH_BACK(vertices, ((VKTxVertex){-1.0f, -1.0f, 0.0f, 0.0f}));
+    ARRAY_PUSH_BACK(vertices, ((VKTxVertex){1.0f, -1.0f, 1.0f, 0.0f}));
+    ARRAY_PUSH_BACK(vertices, ((VKTxVertex){-1.0f, 1.0f, 0.0f, 1.0f}));
+    ARRAY_PUSH_BACK(vertices, ((VKTxVertex){1.0f, 1.0f, 1.0f, 1.0f}));
     device->blitVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
     if (!device->blitVertexBuffer) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create vertex buffer");
