@@ -162,11 +162,11 @@ void VKTexturePool_Dispose(VKTexturePool *pool) {
     ATexturePool_Dispose(pool);
 }
 
-ATexturePoolLockWrapper* VKTexturePool_getLockWrapper(VKTexturePool *pool) {
+ATexturePoolLockWrapper* VKTexturePool_GetLockWrapper(VKTexturePool *pool) {
     return ATexturePool_getLockWrapper(pool);
 }
 
-VKTexturePoolHandle* VKTexturePool_getTexture(VKTexturePool *pool,
+VKTexturePoolHandle* VKTexturePool_GetTexture(VKTexturePool *pool,
                                               jint width,
                                               jint height,
                                               jlong format)
