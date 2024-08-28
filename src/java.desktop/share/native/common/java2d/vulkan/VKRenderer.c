@@ -137,6 +137,19 @@ struct VKRenderPass {
     uint64_t                lastTimestamp; // When was this surface last used?
 };
 
+/**
+ * Get either linear, or sRGB color, depending on surface and render pass composite state.
+ * It uses the render pass state, so must be called AFTER render pass was initialized, e.g. VKRenderer_Validate.
+ * Vulkan always expects linear colors, but there is one exception when we want to use sRGB colors.
+ * logicOp operations are not supported on sRGB attachments and in such cases we alias our surface
+ * as *_UNORM attachment (see FormatAlias). That means that by rendering into *_UNORM attachment,
+ * Vulkan will write src colors as is, without converting them to sRGB. But given that real image texel
+ * data is encoded as sRGB, we need to draw with sRGB instead of linear colors to achieve correct result.
+ */
+#define GET_COLOR_FOR_RENDER_PASS(SURFACE, CORRECTED_COLOR)                                      \
+    (COMPOSITE_TO_FORMAT_ALIAS((SURFACE)->renderPass->currentComposite) != FORMAT_ALIAS_UNORM || \
+        !IS_SRGB_SURFACE(SURFACE) ? (CORRECTED_COLOR).linear : (CORRECTED_COLOR).nonlinearSrgb)
+
 #define POP_PENDING(RENDERER, BUFFER, VAR) do {                                                                   \
     if ((BUFFER) == NULL) break;                                                                                  \
     size_t head = RING_BUFFER_T(BUFFER)->head, tail = RING_BUFFER_T(BUFFER)->tail;                                \
@@ -877,7 +890,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
         VkClearAttachment clearAttachment = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .colorAttachment = 0,
-                .clearValue = surface->background.vkClearValue
+                .clearValue = GET_COLOR_FOR_RENDER_PASS(surface, surface->background).vkClearValue
         };
         VkClearRect clearRect = {
                 .rect = {{0, 0}, surface->extent},
@@ -946,7 +959,7 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
                 .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
                 .loadOp = clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
                 .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                .clearValue = surface->background.vkClearValue
+                .clearValue = GET_COLOR_FOR_RENDER_PASS(surface, surface->background).vkClearValue
         };
         surface->renderPass->pendingClear = VK_FALSE;
         VkRect2D renderArea = {{0, 0}, surface->extent};
@@ -1299,7 +1312,7 @@ void VKRenderer_RenderParallelogram(VKRenderingContext* context, PipelineType pi
                                     jfloat dx21, jfloat dy21,
                                     jfloat dx12, jfloat dy12) {
     if (!VKRenderer_Validate(context, pipeline)) return; // Not ready.
-    Color c = context->color;
+    Color c = GET_COLOR_FOR_RENDER_PASS(context->surface, context->color);
     /*                   dx21
      *    (p1)---------(p2) |          (p1)------
      *     |\            \  |            |  \    dy21
@@ -1333,7 +1346,7 @@ void VKRenderer_RenderParallelogram(VKRenderingContext* context, PipelineType pi
 void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spans) {
     if (spanCount == 0) return;
     if (!VKRenderer_Validate(context, PIPELINE_FILL_COLOR)) return; // Not ready.
-    Color c = context->color;
+    Color c = GET_COLOR_FOR_RENDER_PASS(context->surface, context->color);
 
     jfloat x1 = (float)*(spans++);
     jfloat y1 = (float)*(spans++);
@@ -1428,7 +1441,7 @@ void VKRenderer_MaskFill(VKRenderingContext* context, jint x, jint y, jint w, ji
     // masklen is the size of the whole mask tile, it may be way bigger, than number of actually needed bytes.
     VKMaskFillColorVertex* vs;
     VK_DRAW(vs, context, 6);
-    Color c = context->color;
+    Color c = GET_COLOR_FOR_RENDER_PASS(context->surface, context->color);
 
     uint32_t byteCount = maskscan * h;
     DrawingBufferWritingState maskState = VKRenderer_AllocateMaskFillBytes(context, byteCount);

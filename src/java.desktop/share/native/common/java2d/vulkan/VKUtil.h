@@ -80,17 +80,21 @@ typedef struct {
 } FormatGroup;
 
 /**
- * Vulkan expects linear colors.
- * However Java2D expects legacy behavior, as if colors were blended in sRGB color space.
- * Therefore this function converts straight-alpha Java color in range [0, 255]
- * to pre-multiplied alpha normalized [0, 1] color, still representing sRGB color.
- * This is also accounted for in VKSD_ConfigureWindowSurface, so that Vulkan doesn't do any
- * color space conversions on its own, as the colors we are drawing are already in sRGB.
+ * Convert 32-bit sRGB encoded straight-alpha Java color to [0, 1] normalized
+ * floating-point representation with pre-multiplied alpha in both linear and sRGB color space.
+ * You never need to use linear or sRGB variants directly, use GET_COLOR_FOR_RENDER_PASS instead.
  *
- * Note: we receive colors from Java with straight (non-premultiplied) alpha, which is done to prevent precision loss.
+ * Vulkan always works with LINEAR colors, so great care must be taken to use the right encoding.
+ * If you ever need to use sRGB encoded color, leave the detailed comment explaining this decision.
+ *
+ * Read more about presenting sRGB content in VKSD_ConfigureWindowSurface.
+ *
+ * Note: we receive colors from Java with straight (non-premultiplied) alpha, which is unusual.
  * This is controlled by PixelConverter parameter of SurfaceType, see VKSurfaceData.java.
+ * This is done to prevent precision loss and redundant conversions,
+ * as we need straight alpha to convert from sRGB to liner color space anyway.
  */
-Color VKUtil_DecodeJavaColor(uint32_t color);
+CorrectedColor VKUtil_DecodeJavaColor(uint32_t color);
 
 /**
  * Get group of formats with the same component layout.

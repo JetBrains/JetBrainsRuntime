@@ -61,7 +61,7 @@ struct VKSDOps {
     VkFormat       format[FORMAT_ALIAS_COUNT];
     VkExtent2D     extent;
 
-    Color          background;
+    CorrectedColor background;
     VkExtent2D     requestedExtent;
 
     VKRenderPass*  renderPass;

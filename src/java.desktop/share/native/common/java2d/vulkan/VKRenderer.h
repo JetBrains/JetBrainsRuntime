@@ -32,7 +32,7 @@
 
 struct VKRenderingContext {
     VKSDOps*       surface;
-    Color          color;
+    CorrectedColor color;
     CompositeMode  composite;
     // Extra alpha is not used when painting with plain color,
     // in this case color.a already includes it.
