@@ -352,12 +352,14 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       DISABLED_WARNINGS_gcc_XRBackendNative.c := maybe-uninitialized, \
       DISABLED_WARNINGS_gcc_XToolkit.c := unused-result, \
       DISABLED_WARNINGS_gcc_XWindow.c := unused-function, \
+      DISABLED_WARNINGS_gcc_awt_InputMethod.c := unused-label, \
       DISABLED_WARNINGS_clang_awt_Taskbar.c := parentheses, \
       DISABLED_WARNINGS_clang_gtk3_interface.c := parentheses, \
       DISABLED_WARNINGS_clang_OGLBufImgOps.c := format-nonliteral, \
       DISABLED_WARNINGS_clang_OGLPaints.c := format-nonliteral, \
       DISABLED_WARNINGS_clang_screencast_pipewire.c := format-nonliteral, \
       DISABLED_WARNINGS_clang_sun_awt_X11_GtkFileDialogPeer.c := parentheses, \
+      DISABLED_WARNINGS_clang_awt_InputMethod.c := unused-label, \
       DISABLED_WARNINGS_clang_aix := deprecated-non-prototype, \
       DISABLED_WARNINGS_clang_aix_awt_Taskbar.c := parentheses, \
       DISABLED_WARNINGS_clang_aix_OGLPaints.c := format-nonliteral, \
@@ -451,12 +453,16 @@ ifeq ($(call isTargetOs, windows macosx), false)
         DISABLED_WARNINGS_CXX_gcc := undef, \
         DISABLED_WARNINGS_clang := parentheses format undef \
             logical-op-parentheses format-nonliteral int-conversion, \
-        DISABLED_WARNINGS_gcc_VKMemory.cpp := missing-field-initializers implicit-fallthrough parentheses, \
-        DISABLED_WARNINGS_clang_VKMemory.cpp := missing-field-initializers implicit-fallthrough parentheses, \
+        DISABLED_WARNINGS_gcc_awt_InputMethod.c := unused-label, \
+        DISABLED_WARNINGS_gcc_CUPSfuncs.c := unused-variable, \
+        DISABLED_WARNINGS_gcc_VKRenderQueue.c := unused-variable unused-but-set-variable, \
+        DISABLED_WARNINGS_clang_awt_InputMethod.c := unused-label, \
+        DISABLED_WARNINGS_clang_CUPSfuncs.c := unused-variable, \
+        DISABLED_WARNINGS_clang_VKRenderQueue.c := unused-variable unused-but-set-variable, \
         JDK_LIBS := libawt java.base:libjava java.base:libjvm, \
         LIBS := $(WAYLAND_LIBS), \
         LIBS_unix := $(LIBDL) $(LIBM), \
-        LIBS_linux := -lpthread, \
+        LIBS_linux := -lpthread -lrt, \
     ))
 
     $(BUILD_LIBAWT_WLAWT): $(call FindLib, java.base, java)
@@ -494,7 +500,7 @@ ifeq ($(call isTargetOs, macosx), true)
       #
 
   LIBAWT_LWAWT_EXCLUDE_FILES := fontpath.c awt_Font.c X11Color.c
-  LIBAWT_LWAWT_EXCLUDES := $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib \
+  LIBAWT_LWAWT_EXCLUDES := \
         $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/vulkan \
         $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib \
         #
