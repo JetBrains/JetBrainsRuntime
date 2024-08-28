@@ -356,9 +356,14 @@ static jboolean VK_FindDevices() {
     ARRAY_ENSURE_CAPACITY(geInstance->devices, physicalDevicesCount);
 
     for (uint32_t i = 0; i < physicalDevicesCount; i++) {
+        VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicState3Features = {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT,
+                .pNext = NULL
+        };
+
         VkPhysicalDeviceVulkan12Features device12Features = {
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-                .pNext = NULL
+                .pNext = &extendedDynamicState3Features
         };
 
         VkPhysicalDeviceFeatures2 deviceFeatures2 = {
@@ -447,17 +452,20 @@ static jboolean VK_FindDevices() {
         VK_IF_ERROR(geInstance->vkEnumerateDeviceExtensionProperties(geInstance->physicalDevices[i],
                                                                   NULL, &extensionCount, extensions)) continue;
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device extensions:")
-        VkBool32 hasSwapChain = VK_FALSE, hasDynamicRendering = VK_FALSE;
+        VkBool32 hasSwapChain = VK_FALSE, hasDynamicRendering = VK_FALSE, hasExtendedDynamicState = VK_FALSE;
         for (uint32_t j = 0; j < extensionCount; j++) {
             J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "        %s", (char *) extensions[j].extensionName)
             hasSwapChain = hasSwapChain ||
                     strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, extensions[j].extensionName) == 0;
             hasDynamicRendering = hasDynamicRendering ||
                     strcmp(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME, extensions[j].extensionName) == 0;
+            hasExtendedDynamicState = hasExtendedDynamicState ||
+                    strcmp(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME, extensions[j].extensionName) == 0;
         }
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Vulkan: Found device extensions:")
         J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "    " VK_KHR_SWAPCHAIN_EXTENSION_NAME " = %s", hasSwapChain ? "true" : "false")
         J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "    " VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME " = %s", hasDynamicRendering ? "true" : "false")
+        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "    " VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME " = %s", hasExtendedDynamicState ? "true" : "false")
 
         if (!hasSwapChain) {
             J2dRlsTraceLn(J2D_TRACE_INFO,
@@ -467,11 +475,13 @@ static jboolean VK_FindDevices() {
 
         // Randomly turn off optional features in debug mode.
         if (VK_DEBUG_RANDOM(50)) hasDynamicRendering = VK_FALSE;
+        if (VK_DEBUG_RANDOM(50)) hasExtendedDynamicState = VK_FALSE;
 
         pchar* deviceEnabledLayers = NULL;
         pchar* deviceEnabledExtensions = NULL;
         ARRAY_PUSH_BACK(deviceEnabledExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
         if (hasDynamicRendering) ARRAY_PUSH_BACK(deviceEnabledExtensions, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+        if (hasExtendedDynamicState) ARRAY_PUSH_BACK(deviceEnabledExtensions, VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME);
 
         // Validation layer
 #ifdef DEBUG
@@ -501,7 +511,8 @@ static jboolean VK_FindDevices() {
                 .queueFamily = queueFamily,
                 .enabledLayers = deviceEnabledLayers,
                 .enabledExtensions = deviceEnabledExtensions,
-                .dynamicRendering = hasDynamicRendering
+                .dynamicRendering = hasDynamicRendering,
+                .dynamicBlending = hasExtendedDynamicState && extendedDynamicState3Features.extendedDynamicState3ColorBlendEquation
         }));
     }
     if (ARRAY_SIZE(geInstance->devices) == 0) {
@@ -549,6 +560,13 @@ static jboolean VK_InitDevice(VKDevice* device) {
     };
     if (device->dynamicRendering) pNext = &dynamicRenderingFeatures;
 
+    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT dynamicState3Features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT,
+            .pNext = pNext,
+            .extendedDynamicState3ColorBlendEquation = device->dynamicBlending
+    };
+    if (device->dynamicBlending) pNext = &dynamicState3Features;
+
     VkDeviceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = pNext,
@@ -566,8 +584,8 @@ static jboolean VK_InitDevice(VKDevice* device) {
         J2dRlsTraceLn1(J2D_TRACE_ERROR, "Vulkan: Cannot create device: %s", device->name)
         return JNI_FALSE;
     }
-    J2dRlsTraceLn2(J2D_TRACE_INFO, "VK_InitDevice(%s): dynamicRendering=%d",
-                   device->name, device->dynamicRendering);
+    J2dRlsTraceLn3(J2D_TRACE_INFO, "VK_InitDevice(%s): dynamicRendering=%d, dynamicBlending=%d",
+                   device->name, device->dynamicRendering, device->dynamicBlending);
 
 #define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, device, device->handle, NAME)
     DEVICE_PROC(vkDestroyDevice);
@@ -611,6 +629,7 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkCmdBindPipeline);
     DEVICE_PROC(vkCmdSetViewport);
     DEVICE_PROC(vkCmdSetScissor);
+    if (device->dynamicBlending) DEVICE_PROC(vkCmdSetColorBlendEquationEXT);
     DEVICE_PROC(vkCmdDraw);
     DEVICE_PROC(vkCmdEndRenderPass);
     DEVICE_PROC(vkEndCommandBuffer);
