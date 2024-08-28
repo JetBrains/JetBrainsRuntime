@@ -1165,8 +1165,22 @@ static VkBool32 VKRenderer_Validate(VKRenderingContext* context, PipelineType pi
         } else renderPass->currentComposite = context->composite;
         VKDevice* device = surface->device;
         VkCommandBuffer cb = renderPass->commandBuffer;
-        // Reset the pipeline.
-        renderPass->currentPipeline = NO_PIPELINE;
+        // Update blending equation dynamically, or reset pipeline.
+        if (device->dynamicBlending) {
+            if (IS_ALPHA_COMPOSITE(context->composite)) {
+                assert(context->composite < COMPOSITE_COUNT);
+                const VkPipelineColorBlendAttachmentState* state = &COMPOSITE_BLEND_STATES[context->composite];
+                VkColorBlendEquationEXT blendEquation = {
+                        .srcColorBlendFactor = state->srcColorBlendFactor,
+                        .dstColorBlendFactor = state->dstColorBlendFactor,
+                        .colorBlendOp =        state->colorBlendOp,
+                        .srcAlphaBlendFactor = state->srcAlphaBlendFactor,
+                        .dstAlphaBlendFactor = state->dstAlphaBlendFactor,
+                        .alphaBlendOp =        state->alphaBlendOp,
+                };
+                device->vkCmdSetColorBlendEquationEXT(cb, 0, 1, &blendEquation);
+            }
+        } else renderPass->currentPipeline = NO_PIPELINE;
     }
 
     // Validate current pipeline.

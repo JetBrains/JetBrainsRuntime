@@ -108,7 +108,7 @@ typedef struct {
     VkPipelineMultisampleStateCreateInfo multisampleState;
     VkPipelineColorBlendStateCreateInfo colorBlendState;
     VkPipelineDynamicStateCreateInfo dynamicState;
-    VkDynamicState dynamicStates[2];
+    VkDynamicState dynamicStates[3];
 } PipelineCreateState;
 
 typedef struct {
@@ -245,6 +245,9 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
     base.createInfo.renderPass = renderPassContext->renderPass[formatAlias];
     base.colorBlendState.pAttachments = &COMPOSITE_BLEND_STATES[composite];
     if (IS_LOGIC_COMPOSITE(composite)) base.colorBlendState.logicOpEnable = VK_TRUE;
+    else if (device->dynamicBlending) {
+        base.dynamicStates[base.dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT;
+    }
     VkPipelineRenderingCreateInfoKHR renderingCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
             .viewMask = 0,
@@ -504,8 +507,18 @@ VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, Compo
     assert(renderPassContext != NULL);
     assert(composite < COMPOSITE_COUNT); // We could append custom composites after that index.
     assert(pipeline < PIPELINE_COUNT); // We could append custom pipelines after that index.
-    // Currently, our pipelines map to composite modes 1-to-1, but this may change in future when we'll add more states.
-    uint32_t setIndex = (uint32_t) composite;
+    // Depending on availability of dynamic blend equation feature, alpha composites may not need dedicated pipelines.
+    // Here w take a composite mode and compact it into index of corresponding PipelineSet.
+    // We could use vkCmdSetLogicOpEXT to combine all logic ops into one pipeline set as well,
+    // but currently there is only one XOR logic composite anyway, so don't bother.
+    // We could also use vkCmdSetLogicOpEnableEXT to combine logic and alpha composites into one pipeline set,
+    // but this added complexity would be impractical, as most of the time we would need to restart
+    // the whole render pass anyway because of sRGB color attachment (see FormatAlias).
+    uint32_t setIndex = renderPassContext->pipelineContext->device->dynamicBlending ?
+        // Dynamic blending: all alpha composites are combined into one pipeline.
+        (uint32_t) (IS_ALPHA_COMPOSITE(composite) ? LOGIC_COMPOSITE_COUNT : composite) :
+        // No dynamic blending: dedicated pipelines for each composite.
+        (uint32_t) composite;
 
     while (ARRAY_SIZE(renderPassContext->pipelineSets) <= setIndex) ARRAY_PUSH_BACK(renderPassContext->pipelineSets, NULL);
     if (renderPassContext->pipelineSets[setIndex] == NULL) {
