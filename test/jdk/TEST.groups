@@ -836,7 +836,7 @@ jdk_awt_wayland = \
     -java/awt/Component/SetComponentsBounds \
     -java/awt/Component/SetEnabledPerformance \
     -java/awt/Component/TreeLockDeadlock \
-    -java/awt/Component/UpdatingBootTime \
+    -java/awt/Component/UpdatingBootTime.java \
     -java/awt/Component/Validate \
     -java/awt/ComponentOrientation \
     -java/awt/Container \
@@ -847,7 +847,6 @@ jdk_awt_wayland = \
     -java/awt/datatransfer/CustomClassLoaderTransferTest/CustomClassLoaderTransferTest.java \
     -java/awt/datatransfer/DataFlavor/DataFlavorRemoteTest.java \
     -java/awt/datatransfer/DragImage/MultiResolutionDragImageTest.java \
-    -java/awt/datatransfer/HTMLDataFlavors/ManualHTMLDataFlavorTest.html \
     -java/awt/datatransfer/ImageTransfer/ImageTransferTest.java \
     -java/awt/datatransfer/Independence/IndependenceAWTTest.java \
     -java/awt/datatransfer/Independence/IndependenceSwingTest.java \
@@ -877,6 +876,7 @@ jdk_awt_wayland = \
     -java/awt/Focus/8073453 \
     -java/awt/Focus/8282640 \
     -java/awt/Focus/ActualFocusedWindowTest \
+    -java/awt/Focus/ActivateOnProperAppContextTest.java \
     -java/awt/Focus/AppletInitialFocusTest \
     -java/awt/Focus/AsyncUpFocusCycleTest.java \
     -java/awt/Focus/AutoRequestFocusTest \
@@ -914,6 +914,7 @@ jdk_awt_wayland = \
     -java/awt/Focus/ModalDialogInitialFocusTest \
     -java/awt/Focus/ModalExcludedWindowClickTest \
     -java/awt/Focus/MouseClickRequestFocusRaceTest \
+    -java/awt/Focus/NextFocusHelperTest.java \
     -java/awt/Focus/NoAutotransferToDisabledCompTest \
     -java/awt/Focus/NoFocusOwnerAWTTest.java \
     -java/awt/Focus/NoFocusOwnerSwingTest.java \
@@ -939,10 +940,13 @@ jdk_awt_wayland = \
     -java/awt/Focus/SimpleWindowActivationTest \
     -java/awt/Focus/SortingFPT \
     -java/awt/Focus/TemporaryLostComponentDeadlock.java \
+    -java/awt/Focus/TestDisabledAutoTransfer.java \
+    -java/awt/Focus/TestDisabledAutoTransferSwing.java \
     -java/awt/Focus/ToFrontFocusTest \
     -java/awt/Focus/TranserFocusToWindow \
     -java/awt/Focus/TraversalKeysPropertyNamesTest.java \
     -java/awt/Focus/TypeAhead \
+    -java/awt/Focus/TestWindowsLFFocus.java \
     -java/awt/Focus/UnaccessibleChoice \
     -java/awt/Focus/UpFocusCycleTest.java \
     -java/awt/Focus/VetoableChangeListenerLoopTest.java \
@@ -951,7 +955,6 @@ jdk_awt_wayland = \
     -java/awt/Focus/WindowUpdateFocusabilityTest \
     -java/awt/Focus/WrongKeyTypedConsumedTest \
     -java/awt/font/TextLayout/MyanmarTextTest.java \
-    -java/awt/font/TextLayout/TestJustification.html \
     -java/awt/font/TextLayout/TestOldHangul.java \
     -java/awt/font/TextLayout/TestTibetan.java \
     -java/awt/font/TextLayout/TestVS.java \
@@ -986,7 +989,6 @@ jdk_awt_wayland = \
     -java/awt/image/VolatileImage/TransparentVImage.java \
     -java/awt/image/mlib/MlibOpsTest.java \
     -java/awt/image/multiresolution/MenuMultiresolutionIconTest.java \
-    -java/awt/image/multiresolution/MultiDisplayTest/MultiDisplayTest.java \
     -java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java \
     -java/awt/image/multiresolution/MultiresolutionIconTest.java \
     -java/awt/Insets/CombinedTestApp1.java \
@@ -1021,6 +1023,7 @@ jdk_awt_wayland = \
     -java/awt/Paint/LabelRepaint.java \
     -java/awt/Paint/ListRepaint.java \
     -java/awt/Paint/PaintNativeOnUpdate.java \
+    -java/awt/Paint/PaintSetEnabledDeadlock/PaintSetEnabledDeadlock.java \
     -java/awt/Panel \
     -java/awt/PopupMenu \
     -java/awt/print \
@@ -1064,6 +1067,9 @@ jdk_swing_wayland= \
     -javax/swing/event/FocusEventCauseTest.java \
     -javax/swing/JButton/4368790/bug4368790.java \
     -javax/swing/JButton/8151303/PressedIconTest.java \
+    -javax/swing/JButton/bug4234034.java \
+    -javax/swing/JButton/bug4323121.java \
+    -javax/swing/JButton/bug4490179.java \
     -javax/swing/JButton/PressedButtonRightClickTest.java \
     -javax/swing/JColorChooser/Test6541987.java \
     -javax/swing/JColorChooser/Test6707406.java \
@@ -1096,10 +1102,13 @@ jdk_swing_wayland= \
     -javax/swing/JComboBox/TestComboBoxComponentRendering.java \
     -javax/swing/JComponent/7154030/bug7154030.java \
     -javax/swing/JComponent/JComponentSetRequestFocusEnabledTest.java \
+    -javax/swing/JDesktopPane/bug4773378.java \
     -javax/swing/JEditorPane/4666101/JEditorPaneNavigationTest.java \
     -javax/swing/JEditorPane/6917744/bug6917744.java \
     -javax/swing/JEditorPane/8195095/ImageViewTest.java \
+    -javax/swing/JEditorPane/bug4694598.java \
     -javax/swing/JEditorPane/TestBrowserBGColor.java \
+    -javax/swing/JFileChooser/4150029/bug4150029.java \
     -javax/swing/JFileChooser/4524490/bug4524490.java \
     -javax/swing/JFileChooser/6570445/bug6570445.java \
     -javax/swing/JFileChooser/6738668/bug6738668.java \
@@ -1110,7 +1119,10 @@ jdk_swing_wayland= \
     -javax/swing/JFileChooser/8021253/bug8021253.java \
     -javax/swing/JFileChooser/8041694/bug8041694.java \
     -javax/swing/JFileChooser/ShellFolderQueries/ShellFolderQueriesSecurityManagerTest.java \
+    -javax/swing/JFileChooser/FileChooserDisableTest.java \
     -javax/swing/JFileChooser/JFileChooserFontReset.java \
+    -javax/swing/JFileChooser/JFileChooserSetLocationTest.java \
+    -javax/swing/JFileChooser/TABTestONFCExit.java \
     -javax/swing/JFormattedTextField/bug4863121.java \
     -javax/swing/JFrame/4962534/bug4962534.java \
     -javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java \
@@ -1119,12 +1131,15 @@ jdk_swing_wayland= \
     -javax/swing/JInternalFrame/4202966/IntFrameCoord.java \
     -javax/swing/JInternalFrame/4769772/TestJInternalFrameIconify.java \
     -javax/swing/JInternalFrame/5066752/bug5066752.java \
+    -javax/swing/JInternalFrame/8020708/bug8020708.java \
+    -javax/swing/JInternalFrame/8069348/bug8069348.java \
     -javax/swing/JInternalFrame/8075314/bug8075314.java \
     -javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java \
     -javax/swing/JInternalFrame/8146321/JInternalFrameIconTest.java \
     -javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java \
     -javax/swing/JInternalFrame/bug4309079.java \
     -javax/swing/JInternalFrame/bug4732229.java \
+    -javax/swing/JInternalFrame/Ctrli.java \
     -javax/swing/JInternalFrame/JInternalFrameTest.java \
     -javax/swing/JInternalFrame/NormalBoundsTest.java \
     -javax/swing/JInternalFrame/Test6325652.java \
@@ -1147,11 +1162,13 @@ jdk_swing_wayland= \
     -javax/swing/JMenu/bug5013739.java \
     -javax/swing/JMenu/PopupReferenceMemoryLeak.java \
     -javax/swing/JMenu/TestDisabledMenuForegroundColor.java \
+    -javax/swing/JMenu/TestUngrab.java \
     -javax/swing/JMenuBar/4750590/bug4750590.java \
     -javax/swing/JMenuBar/bug4403749.java \
     -javax/swing/JMenuBar/bug4802656.java \
     -javax/swing/JMenuBar/MisplacedBorder/MisplacedBorder.java \
     -javax/swing/JMenuBar/MenuBarRTLBug.java \
+    -javax/swing/JMenuBar/TestMenuMnemonicLinuxAndMac.java \
     -javax/swing/JMenuItem/4171437/bug4171437.java \
     -javax/swing/JMenuItem/6209975/bug6209975.java \
     -javax/swing/JMenuItem/6249972/bug6249972.java \
@@ -1167,7 +1184,17 @@ jdk_swing_wayland= \
     -javax/swing/JPopupMenu/6675802/bug6675802.java \
     -javax/swing/JPopupMenu/8147521/PopupMenuTest.java \
     -javax/swing/JPopupMenu/8173739/TestPopupMenu.java \
+    -javax/swing/JMenuItem/JActionCommandTest.java \
+    -javax/swing/JPasswordField/TestDisabledPasswordFieldForegroundColor.java \
+    -javax/swing/JPopupMenu/6827786/bug6827786.java \
+    -javax/swing/JPopupMenu/6987844/bug6987844.java \
+    -javax/swing/JPopupMenu/8075063/ContextMenuScrollTest.java \
+    -javax/swing/JPopupMenu/bug4711693.java \
+    -javax/swing/JPopupMenu/bug4966109.java \
+    -javax/swing/JPopupMenu/bug5091257.java \
     -javax/swing/JPopupMenu/JPopupMenuFocusStealTest.java \
+    -javax/swing/JPopupMenu/MouseDragPopupTest.java \
+    -javax/swing/JPopupMenu/SetInvokerJPopupMenuTest.java \
     -javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java \
     -javax/swing/JRadioButton/8033699/bug8033699.java \
     -javax/swing/JRadioButton/8041561/bug8041561.java \
@@ -1180,6 +1207,7 @@ jdk_swing_wayland= \
     -javax/swing/JScrollBar/6542335/bug6542335.java \
     -javax/swing/JScrollBar/7163696/Test7163696.java \
     -javax/swing/JScrollBar/bug4202954/bug4202954.java \
+    -javax/swing/JScrollBar/DisableFrameFromScrollBar.java \
     -javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java \
     -javax/swing/JScrollPane/TestMouseWheelScroll.java \
     -javax/swing/JSlider/6401380/bug6401380.java \
@@ -1200,16 +1228,24 @@ jdk_swing_wayland= \
     -javax/swing/JSplitPane/4615365/JSplitPaneDividerLocationTest.java \
     -javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java \
     -javax/swing/JSplitPane/4885629/bug4885629.java \
+    -javax/swing/JSplitPane/bug4870674.java \
     -javax/swing/JTabbedPane/7024235/Test7024235.java \
     -javax/swing/JTabbedPane/7161568/bug7161568.java \
+    -javax/swing/JTabbedPane/bug4703690.java \
     -javax/swing/JTabbedPane/TabbedPaneBug.java \
     -javax/swing/JTabbedPane/TabProb.java \
+    -javax/swing/JTable/BugCellEditorListener.java \
+    -javax/swing/JTable/JLayerTableTest.java \
     -javax/swing/JTable/4220171/bug4220171.java \
+    -javax/swing/JTable/bug4222153.java \
     -javax/swing/JTable/4275046/bug4275046.java \
     -javax/swing/JTable/6263446/bug6263446.java \
     -javax/swing/JTable/6777378/bug6777378.java \
     -javax/swing/JTable/7055065/bug7055065.java \
+    -javax/swing/JTable/7068740/bug7068740.java \
+    -javax/swing/JTable/7124218/SelectEditTableCell.java \
     -javax/swing/JTable/8236907/LastVisibleRow.java \
+    -javax/swing/JTable/Tab.java \
     -javax/swing/JTable/TestJTableGridReset.java \
     -javax/swing/JTableHeader/4473075/bug4473075.java \
     -javax/swing/JTableHeader/6884066/bug6884066.java \
@@ -1218,6 +1254,7 @@ jdk_swing_wayland= \
     -javax/swing/JTextArea/4697612/bug4697612.java \
     -javax/swing/JTextArea/8149849/DNDTextToScaledArea.java \
     -javax/swing/JTextArea/bug4265784.java \
+    -javax/swing/JTextArea/bug4849868.java \
     -javax/swing/JTextField/4532513/DefaultCaretRequestsFocusTest.java \
     -javax/swing/JTextField/8036819/bug8036819.java \
     -javax/swing/JToggleButton/TestSelectedKey.java \
@@ -1239,12 +1276,18 @@ jdk_swing_wayland= \
     -javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java \
     -javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java \
     -javax/swing/KeyboardManager/8013370/Test8013370.java \
+    -javax/swing/KeyboardManager/bug4345798.java \
+    -javax/swing/InputVerifier/bug4774166.java \
     -javax/swing/LookAndFeel/8145547/DemandGTK.java \
     -javax/swing/LookAndFeel/8146276/NimbusGlueTest.java \
     -javax/swing/LookAndFeel/SystemLookAndFeel/SystemLookAndFeelTest.java \
+    -javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java \
     -javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java \
+    -javax/swing/plaf/basic/BasicMenuUI/4983388/bug4983388.java \
     -javax/swing/plaf/basic/BasicRootPaneUI/HiddenDefaultButtonTest.java \
     -javax/swing/plaf/basic/BasicTableHeaderUI/6394566/bug6394566.java \
+    -javax/swing/plaf/basic/BasicMenuUI/4983388/bug4983388.java \
+    -javax/swing/plaf/synth/7158712/bug7158712.java \
     -javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java \
     -javax/swing/plaf/nimbus/8041642/bug8041642.java \
     -javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java \
@@ -1254,6 +1297,7 @@ jdk_swing_wayland= \
     -javax/swing/plaf/synth/SynthToolBarUI/8136363/ComponentSetNameTest.java \
     -javax/swing/plaf/synth/RepaintNPE.java \
     -javax/swing/plaf/synth/Test8043627.java \
+    -javax/swing/plaf/gtk/JTableCtrlShiftRightLeftKeyTest.java \
     -javax/swing/Popup/TaskbarPositionTest.java \
     -javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java \
     -javax/swing/reliability/TaskUndJFrameProperties.java \
@@ -1286,6 +1330,7 @@ jdk_swing_wayland= \
     -javax/swing/text/StyledEditorKit/4506788/bug4506788.java \
     -javax/swing/text/StyledEditorKit/bug4329418.java \
     -javax/swing/text/Utilities/8142966/SwingFontMetricsTest.java \
+    -javax/swing/text/View/8014863/bug8014863.java \
     -javax/swing/ToolTipManager/7123767/bug7123767.java \
     -javax/swing/ToolTipManager/Test6256140.java \
     -javax/swing/UIDefaults/6795356/bug6795356.java
