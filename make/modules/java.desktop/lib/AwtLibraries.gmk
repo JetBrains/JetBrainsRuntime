@@ -356,6 +356,7 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       DISABLED_WARNINGS_gcc_XRBackendNative.c := maybe-uninitialized, \
       DISABLED_WARNINGS_gcc_XToolkit.c := unused-result, \
       DISABLED_WARNINGS_gcc_XWindow.c := unused-function, \
+      DISABLED_WARNINGS_gcc_awt_InputMethod.c := unused-label, \
       DISABLED_WARNINGS_clang_awt_Taskbar.c := parentheses, \
       DISABLED_WARNINGS_clang_gtk3_interface.c := unused-function parentheses, \
       DISABLED_WARNINGS_clang_GLXSurfaceData.c := unused-function, \
@@ -363,6 +364,7 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       DISABLED_WARNINGS_clang_OGLPaints.c := format-nonliteral, \
       DISABLED_WARNINGS_clang_screencast_pipewire.c := format-nonliteral, \
       DISABLED_WARNINGS_clang_sun_awt_X11_GtkFileDialogPeer.c := parentheses, \
+      DISABLED_WARNINGS_clang_awt_InputMethod.c := unused-label, \
       DISABLED_WARNINGS_clang_XWindow.c := unused-function, \
       DISABLED_WARNINGS_clang_aix := deprecated-non-prototype, \
       DISABLED_WARNINGS_clang_aix_awt_Taskbar.c := parentheses, \
@@ -451,18 +453,22 @@ ifeq ($(call isTargetOs, windows macosx), false)
         CXXFLAGS := $(CXXFLAGS_JDKLIB) $(LIBAWT_WLAWT_CXXFLAGS), \
         WARNINGS_AS_ERRORS_xlc := false, \
         DISABLED_WARNINGS_C_gcc := type-limits pointer-to-int-cast \
-            unused-result maybe-uninitialized format \
+            unused-result maybe-uninitialized format unused-variable \
             format-security int-to-pointer-cast parentheses \
             implicit-fallthrough undef unused-function, \
         DISABLED_WARNINGS_CXX_gcc := undef, \
         DISABLED_WARNINGS_clang := parentheses format undef \
             logical-op-parentheses format-nonliteral int-conversion, \
-        DISABLED_WARNINGS_gcc_VKMemory.cpp := missing-field-initializers implicit-fallthrough parentheses, \
-        DISABLED_WARNINGS_clang_VKMemory.cpp := missing-field-initializers implicit-fallthrough parentheses, \
+        DISABLED_WARNINGS_gcc_awt_InputMethod.c := unused-label, \
+        DISABLED_WARNINGS_gcc_CUPSfuncs.c := unused-variable, \
+        DISABLED_WARNINGS_gcc_VKRenderQueue.c := unused-variable unused-but-set-variable, \
+        DISABLED_WARNINGS_clang_awt_InputMethod.c := unused-label, \
+        DISABLED_WARNINGS_clang_CUPSfuncs.c := unused-variable, \
+        DISABLED_WARNINGS_clang_VKRenderQueue.c := unused-variable unused-but-set-variable, \
         JDK_LIBS := libawt java.base:libjava java.base:libjvm, \
         LIBS := $(WAYLAND_LIBS), \
         LIBS_unix := $(LIBDL) $(LIBM), \
-        LIBS_linux := -lpthread, \
+        LIBS_linux := -lpthread -lrt, \
     ))
 
     $(BUILD_LIBAWT_WLAWT): $(call FindLib, java.base, java)
@@ -500,7 +506,7 @@ ifeq ($(call isTargetOs, macosx), true)
       #
 
   LIBAWT_LWAWT_EXCLUDE_FILES := fontpath.c awt_Font.c X11Color.c
-  LIBAWT_LWAWT_EXCLUDES := $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib \
+  LIBAWT_LWAWT_EXCLUDES := \
         $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/vulkan \
         $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib \
         #

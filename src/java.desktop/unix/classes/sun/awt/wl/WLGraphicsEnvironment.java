@@ -46,8 +46,13 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     private static final boolean debugScaleEnabled;
     private final Dimension totalDisplayBounds = new Dimension();
 
-    static {
+    @SuppressWarnings("restricted")
+    private static void loadAwt() {
         System.loadLibrary("awt");
+    }
+
+    static {
+        loadAwt();
         SurfaceManagerFactory.setInstance(new UnixSurfaceManagerFactory());
 
         debugScaleEnabled = SunGraphicsEnvironment.isUIScaleEnabled() && SunGraphicsEnvironment.getDebugScale() >= 1;
