@@ -265,6 +265,15 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
     base.colorBlendState.pAttachments = &COMPOSITE_BLEND_STATES[descriptor.composite];
     if (COMPOSITE_GROUP(descriptor.composite) == LOGIC_COMPOSITE_GROUP) base.colorBlendState.logicOpEnable = VK_TRUE;
     if (descriptor.stencilMode == STENCIL_MODE_ON) base.depthStencilState.stencilTestEnable = VK_TRUE;
+    VkPipelineRenderingCreateInfoKHR renderingCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+            .viewMask = 0,
+            .colorAttachmentCount = 1,
+            .pColorAttachmentFormats = &renderPassContext->format,
+            .stencilAttachmentFormat = descriptor.stencilMode == STENCIL_MODE_NONE ?
+                    VK_FORMAT_UNDEFINED : VK_FORMAT_S8_UINT
+    };
+    if (device->dynamicRendering) base.createInfo.pNext = &renderingCreateInfo;
     assert(base.dynamicState.dynamicStateCount <= SARRAY_COUNT_OF(base.dynamicStates));
 
     ShaderStages stages[PIPELINE_COUNT];
@@ -306,6 +315,7 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
 
 static VkResult VKPipelines_InitRenderPasses(VKDevice* device, VKRenderPassContext* renderPassContext) {
     assert(device != NULL && renderPassContext != NULL);
+    if (device->dynamicRendering) return VK_SUCCESS;
     VkAttachmentDescription attachments[] = {{
             .format = renderPassContext->format,
             .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -403,6 +413,14 @@ static VKRenderPassContext* VKPipelines_CreateRenderPassContext(VKPipelineContex
     base.createInfo.renderPass = renderPassContext->renderPass[1];
     base.colorBlendState.pAttachments = &NO_COLOR_ATTACHMENT;
     base.depthStencilState.stencilTestEnable = VK_TRUE;
+    VkPipelineRenderingCreateInfoKHR renderingCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+            .viewMask = 0,
+            .colorAttachmentCount = 1,
+            .pColorAttachmentFormats = &renderPassContext->format,
+            .stencilAttachmentFormat = VK_FORMAT_S8_UINT
+    };
+    if (pipelineContext->device->dynamicRendering) base.createInfo.pNext = &renderingCreateInfo;
     assert(base.dynamicState.dynamicStateCount <= SARRAY_COUNT_OF(base.dynamicStates));
 
     // Setup clip pipeline.
