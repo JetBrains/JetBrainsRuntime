@@ -645,7 +645,7 @@ static VkRenderPassCreateInfo* VK_GetGenericRenderPassInfo() {
     return &renderPassInfo;
 }
 
-static jboolean VK_InitLogicalDevice(VKDevice* device) {
+static jboolean VK_InitDevice(VKDevice* device) {
     if (device->handle != VK_NULL_HANDLE) {
         return JNI_TRUE;
     }
@@ -806,7 +806,7 @@ static jboolean VK_InitLogicalDevice(VKDevice* device) {
     }
     ARRAY_FREE(vertices);
 
-    device->texturePool = VKTexturePool_initWithDevice(device);
+    device->texturePool = VKTexturePool_InitWithDevice(device);
     if (!device->texturePool) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create texture pool")
         return JNI_FALSE;
@@ -854,7 +854,7 @@ Java_sun_java2d_vulkan_VKInstance_initNative(JNIEnv *env, jclass wlge, jlong nat
     if (requestedDevice < 0 || (uint32_t)requestedDevice >= ARRAY_SIZE(geInstance->devices)) {
         requestedDevice = 0;
     }
-    if (!VK_InitLogicalDevice(&geInstance->devices[requestedDevice])) {
+    if (!VK_InitDevice(&geInstance->devices[requestedDevice])) {
         vulkanLibClose();
         return JNI_FALSE;
     }

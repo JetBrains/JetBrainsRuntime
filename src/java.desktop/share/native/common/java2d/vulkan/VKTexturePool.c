@@ -139,7 +139,7 @@ jint VKTexturePoolHandle_GetRequestedHeight(VKTexturePoolHandle *handle) {
 
 
 /* VKTexturePool API */
-VKTexturePool* VKTexturePool_initWithDevice(VKDevice *device) {
+VKTexturePool* VKTexturePool_InitWithDevice(VKDevice *device) {
     CHECK_NULL_RETURN(device, NULL);
     // TODO: get vulkan device memory information (1gb fixed here):
     uint64_t maxDeviceMemory = 1024 * UNIT_MB;
@@ -163,11 +163,11 @@ void VKTexturePool_Dispose(VKTexturePool *pool) {
     ATexturePool_Dispose(pool);
 }
 
-ATexturePoolLockWrapper* VKTexturePool_getLockWrapper(VKTexturePool *pool) {
+ATexturePoolLockWrapper* VKTexturePool_GetLockWrapper(VKTexturePool *pool) {
     return ATexturePool_getLockWrapper(pool);
 }
 
-VKTexturePoolHandle* VKTexturePool_getTexture(VKTexturePool *pool,
+VKTexturePoolHandle* VKTexturePool_GetTexture(VKTexturePool *pool,
                                               jint width,
                                               jint height,
                                               jlong format)
