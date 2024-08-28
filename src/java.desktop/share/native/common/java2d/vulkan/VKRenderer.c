@@ -831,16 +831,16 @@ void VKRenderer_RenderParallelogram(VKDevice* device,
     float p4x = -1.0f + (x11 + dx12) / width;
     float p4y = -1.0f + (y11 + dy12) / height;
 
-    ARRAY_PUSH_BACK(&vertices, ((VKVertex) {p1x, p1y}));
-    ARRAY_PUSH_BACK(&vertices, ((VKVertex) {p2x, p2y}));
-    ARRAY_PUSH_BACK(&vertices, ((VKVertex) {p3x, p3y}));
+    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p1x, p1y}));
+    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p2x, p2y}));
+    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p3x, p3y}));
 
     if (renderer->primitiveTopology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) {
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex) {p3x, p3y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex) {p3x, p3y}));
     }
 
-    ARRAY_PUSH_BACK(&vertices, ((VKVertex) {p4x, p4y}));
-    ARRAY_PUSH_BACK(&vertices, ((VKVertex) {p1x, p1y}));
+    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p4x, p4y}));
+    ARRAY_PUSH_BACK(vertices, ((VKVertex) {p1x, p1y}));
 
     int vertexNum = ARRAY_SIZE(vertices);
 
@@ -888,17 +888,17 @@ void VKRenderer_FillSpans(VKDevice* device, jint color, VKSDOps *dstOps, jint sp
         float p4x = p1x;
         float p4y = p3y;
 
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p1x,p1y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex){p1x,p1y}));
 
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p2x,p2y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex){p2x,p2y}));
 
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p3x,p3y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex){p3x,p3y}));
 
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p3x,p3y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex){p3x,p3y}));
 
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p4x,p4y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex){p4x,p4y}));
 
-        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p1x,p1y}));
+        ARRAY_PUSH_BACK(vertices, ((VKVertex){p1x,p1y}));
     }
 
     VKBuffer *fillVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
