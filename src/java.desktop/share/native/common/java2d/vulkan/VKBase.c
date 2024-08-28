@@ -447,14 +447,17 @@ static jboolean VK_FindDevices() {
         VK_IF_ERROR(geInstance->vkEnumerateDeviceExtensionProperties(geInstance->physicalDevices[i],
                                                                   NULL, &extensionCount, extensions)) continue;
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device extensions:")
-        VkBool32 hasSwapChain = VK_FALSE;
+        VkBool32 hasSwapChain = VK_FALSE, hasDynamicRendering = VK_FALSE;
         for (uint32_t j = 0; j < extensionCount; j++) {
             J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "        %s", (char *) extensions[j].extensionName)
             hasSwapChain = hasSwapChain ||
-                           strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, extensions[j].extensionName) == 0;
+                    strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, extensions[j].extensionName) == 0;
+            hasDynamicRendering = hasDynamicRendering ||
+                    strcmp(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME, extensions[j].extensionName) == 0;
         }
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Vulkan: Found device extensions:")
         J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "    " VK_KHR_SWAPCHAIN_EXTENSION_NAME " = %s", hasSwapChain ? "true" : "false")
+        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "    " VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME " = %s", hasDynamicRendering ? "true" : "false")
 
         if (!hasSwapChain) {
             J2dRlsTraceLn(J2D_TRACE_INFO,
@@ -462,9 +465,13 @@ static jboolean VK_FindDevices() {
             continue;
         }
 
+        // Randomly turn off optional features in debug mode.
+        if (VK_DEBUG_RANDOM(50)) hasDynamicRendering = VK_FALSE;
+
         pchar* deviceEnabledLayers = NULL;
         pchar* deviceEnabledExtensions = NULL;
         ARRAY_PUSH_BACK(deviceEnabledExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        if (hasDynamicRendering) ARRAY_PUSH_BACK(deviceEnabledExtensions, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
 
         // Validation layer
 #ifdef DEBUG
@@ -493,7 +500,8 @@ static jboolean VK_FindDevices() {
                 .physicalDevice = geInstance->physicalDevices[i],
                 .queueFamily = queueFamily,
                 .enabledLayers = deviceEnabledLayers,
-                .enabledExtensions = deviceEnabledExtensions
+                .enabledExtensions = deviceEnabledExtensions,
+                .dynamicRendering = hasDynamicRendering
         }));
     }
     if (ARRAY_SIZE(geInstance->devices) == 0) {
@@ -534,6 +542,13 @@ static jboolean VK_InitDevice(VKDevice* device) {
     };
     void *pNext = &features12;
 
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
+            .pNext = pNext,
+            .dynamicRendering = VK_TRUE
+    };
+    if (device->dynamicRendering) pNext = &dynamicRenderingFeatures;
+
     VkDeviceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = pNext,
@@ -551,7 +566,8 @@ static jboolean VK_InitDevice(VKDevice* device) {
         J2dRlsTraceLn1(J2D_TRACE_ERROR, "Vulkan: Cannot create device: %s", device->name)
         return JNI_FALSE;
     }
-    J2dRlsTraceLn1(J2D_TRACE_INFO, "VK_InitDevice(%s)", device->name);
+    J2dRlsTraceLn2(J2D_TRACE_INFO, "VK_InitDevice(%s): dynamicRendering=%d",
+                   device->name, device->dynamicRendering);
 
 #define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, device, device->handle, NAME)
     DEVICE_PROC(vkDestroyDevice);
@@ -586,6 +602,10 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkCmdBlitImage);
     DEVICE_PROC(vkCmdPipelineBarrier);
     DEVICE_PROC(vkCmdBeginRenderPass);
+    if (device->dynamicRendering) {
+        DEVICE_PROC(vkCmdBeginRenderingKHR);
+        DEVICE_PROC(vkCmdEndRenderingKHR);
+    }
     DEVICE_PROC(vkCmdExecuteCommands);
     DEVICE_PROC(vkCmdClearAttachments);
     DEVICE_PROC(vkCmdBindPipeline);
