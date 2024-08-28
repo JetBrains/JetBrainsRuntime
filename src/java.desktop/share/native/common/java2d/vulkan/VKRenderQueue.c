@@ -41,7 +41,7 @@
  * The following macros are used to pick values (of the specified type) off
  * the queue.
  */
-#define NEXT_VAL(buf, type) (((type *)((buf) += sizeof(type)))[-1])
+#define NEXT_VAL(buf, type) (((type *)((buf) = ((unsigned char*)(buf)) + sizeof(type)))[-1])
 #define NEXT_BYTE(buf)      NEXT_VAL(buf, unsigned char)
 #define NEXT_INT(buf)       NEXT_VAL(buf, jint)
 #define NEXT_FLOAT(buf)     NEXT_VAL(buf, jfloat)
