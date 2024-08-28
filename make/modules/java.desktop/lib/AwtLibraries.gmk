@@ -451,7 +451,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         JDK_LIBS := libawt java.base:libjava java.base:libjvm, \
         LIBS := $(WAYLAND_LIBS), \
         LIBS_unix := $(LIBDL) $(LIBM), \
-        LIBS_linux := -lpthread, \
+        LIBS_linux := -lpthread -lrt, \
     ))
 
     $(BUILD_LIBAWT_WLAWT): $(call FindLib, java.base, java)
@@ -489,7 +489,7 @@ ifeq ($(call isTargetOs, macosx), true)
       #
 
   LIBAWT_LWAWT_EXCLUDE_FILES := fontpath.c awt_Font.c X11Color.c
-  LIBAWT_LWAWT_EXCLUDES := $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib \
+  LIBAWT_LWAWT_EXCLUDES := \
         $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/vulkan \
         $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib \
         #
