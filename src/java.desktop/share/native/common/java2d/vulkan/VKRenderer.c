@@ -1127,6 +1127,8 @@ static VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipe
         // ALPHA_COMPOSITE_DST keeps destination intact, so don't even bother to change the state.
         if (context->composite == ALPHA_COMPOSITE_DST) return VK_FALSE;
         VKCompositeMode oldComposite = renderPass->currentComposite;
+        VKCompositeMode oldCompositeGroup = COMPOSITE_GROUP(oldComposite);
+        VKCompositeMode newCompositeGroup = COMPOSITE_GROUP(context->composite);
         VkBool32 clipChanged = renderPass->clipModCount != context->clipModCount;
         // Init stencil attachment, if needed.
         if (clipChanged && ARRAY_SIZE(context->clipSpanVertices) > 0 && surface->stencil == NULL) {
@@ -1150,12 +1152,41 @@ static VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipe
                     renderPass->currentStencilMode = STENCIL_MODE_ON;
                 } else renderPass->currentStencilMode = surface->stencil != NULL ? STENCIL_MODE_OFF : STENCIL_MODE_NONE;
             }
+            // Update dynamic stencil test state, or reset the pipeline.
+            if (renderPass->currentStencilMode != STENCIL_MODE_NONE) {
+                if (surface->device->dynamicStencil) {
+                    surface->device->vkCmdSetStencilTestEnableEXT(renderPass->commandBuffer,
+                                                                  renderPass->currentStencilMode == STENCIL_MODE_ON);
+                } else renderPass->currentPipeline = NO_PIPELINE;
+            }
         }
         // Validate current composite.
-        if (oldComposite != context->composite) {
+        if (oldComposite != context->composite || renderPassJustStarted) {
             J2dTraceLn2(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating composite, old=%d, new=%d", oldComposite, context->composite);
-            // Reset the pipeline.
-            renderPass->currentPipeline = NO_PIPELINE;
+            // If composite group was changed, update dynamic state, or reset the pipeline.
+            if (oldCompositeGroup != newCompositeGroup || renderPassJustStarted) {
+                if (surface->device->dynamicLogicOp) {
+                    VkBool32 blendEnable = newCompositeGroup == ALPHA_COMPOSITE_GROUP;
+                    surface->device->vkCmdSetColorBlendEnableEXT(renderPass->commandBuffer, 0, 1, &blendEnable);
+                    surface->device->vkCmdSetLogicOpEnableEXT(renderPass->commandBuffer, newCompositeGroup == LOGIC_COMPOSITE_GROUP);
+                } else renderPass->currentPipeline = NO_PIPELINE;
+            }
+            // Update dynamic blending state, or reset the pipeline.
+            if (newCompositeGroup == ALPHA_COMPOSITE_GROUP || renderPassJustStarted) {
+                if (surface->device->dynamicBlending) {
+                    assert(context->composite < COMPOSITE_COUNT);
+                    const VkPipelineColorBlendAttachmentState* state = &COMPOSITE_BLEND_STATES[context->composite];
+                    VkColorBlendEquationEXT blendEquation = {
+                            .srcColorBlendFactor = state->srcColorBlendFactor,
+                            .dstColorBlendFactor = state->dstColorBlendFactor,
+                            .colorBlendOp =        state->colorBlendOp,
+                            .srcAlphaBlendFactor = state->srcAlphaBlendFactor,
+                            .dstAlphaBlendFactor = state->dstAlphaBlendFactor,
+                            .alphaBlendOp =        state->alphaBlendOp,
+                    };
+                    surface->device->vkCmdSetColorBlendEquationEXT(renderPass->commandBuffer, 0, 1, &blendEquation);
+                } else renderPass->currentPipeline = NO_PIPELINE;
+            }
         }
     }
 

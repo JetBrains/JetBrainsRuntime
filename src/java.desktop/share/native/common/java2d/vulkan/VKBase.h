@@ -38,6 +38,9 @@ struct VKDevice {
     pchar*           enabledExtensions;
     VkQueue          queue;
     VkBool32         dynamicRendering;
+    VkBool32         dynamicBlending;
+    VkBool32         dynamicLogicOp;
+    VkBool32         dynamicStencil;
 
     VKAllocator*     allocator;
     VKRenderer*      renderer;
@@ -82,6 +85,10 @@ struct VKDevice {
     PFN_vkCmdBindPipeline vkCmdBindPipeline;
     PFN_vkCmdSetViewport vkCmdSetViewport;
     PFN_vkCmdSetScissor vkCmdSetScissor;
+    PFN_vkCmdSetStencilTestEnableEXT vkCmdSetStencilTestEnableEXT;
+    PFN_vkCmdSetColorBlendEquationEXT vkCmdSetColorBlendEquationEXT;
+    PFN_vkCmdSetColorBlendEnableEXT vkCmdSetColorBlendEnableEXT;
+    PFN_vkCmdSetLogicOpEnableEXT vkCmdSetLogicOpEnableEXT;
     PFN_vkCmdDraw vkCmdDraw;
     PFN_vkCmdEndRenderPass vkCmdEndRenderPass;
     PFN_vkEndCommandBuffer vkEndCommandBuffer;
