@@ -26,8 +26,9 @@
 #include <vulkan/vulkan.h>
 
 /**
-* Floating-point RGBA color with sRGB encoding and pre-multiplied alpha.
-*/
+ * Floating-point RGBA color components with pre-multiplied alpha.
+ * May be encoded as either linear, or sRGB depending on the context (see Color.linear, Color.nonlinearSrgb).
+ */
 typedef union {
     struct {
         float r, g, b, a;
