@@ -30,7 +30,7 @@
 typedef char* pchar;
 
 STRUCT(VKGraphicsEnvironment);
-STRUCT(VKLogicalDevice);
+STRUCT(VKDevice);
 STRUCT(VKRenderer);
 STRUCT(VKBuffer);
 STRUCT(VKImage);
