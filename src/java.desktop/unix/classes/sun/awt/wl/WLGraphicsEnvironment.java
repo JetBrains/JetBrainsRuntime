@@ -127,6 +127,11 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
                         width, height, widthMm, heightMm, scale);
                 devices.add(gd);
             }
+            if (LogDisplay.ENABLED) {
+                double effectiveScale = effectiveScaleFrom(scale);
+                LogDisplay log = newOutput ? LogDisplay.ADDED : LogDisplay.CHANGED;
+                log.log(wlID, (int) (width / effectiveScale) + "x" +  (int) (height / effectiveScale), effectiveScale);
+            }
         }
 
         updateTotalDisplayBounds();
@@ -166,6 +171,11 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
                     .findFirst();
             if (deviceOptional.isPresent()) {
                 final WLGraphicsDevice destroyedDevice = deviceOptional.get();
+                if (LogDisplay.ENABLED) {
+                    WLGraphicsConfig config = (WLGraphicsConfig) destroyedDevice.getDefaultConfiguration();
+                    Rectangle bounds = config.getBounds();
+                    LogDisplay.REMOVED.log(wlID, bounds.width + "x" +  bounds.height, config.getEffectiveScale());
+                }
                 devices.remove(destroyedDevice);
                 final WLGraphicsDevice similarDevice = getSimilarDevice(destroyedDevice);
                 if (similarDevice != null) destroyedDevice.invalidate(similarDevice);
