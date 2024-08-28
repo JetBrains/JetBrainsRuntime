@@ -30,11 +30,8 @@
 #include "VKTypes.h"
 
 struct VKImage {
-    VkImage                 image;
-    VkDeviceMemory          memory;
-    VkImageView             view;
-    VkFormat                format;
-    VkExtent2D              extent;
+    VkImage        image;
+    VkDeviceMemory memory;
 };
 
 VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,

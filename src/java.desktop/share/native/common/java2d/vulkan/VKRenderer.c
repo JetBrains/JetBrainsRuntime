@@ -614,7 +614,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
 
     // Initialize pipelines. They are cached until surface format changes.
     if (renderPass->context == NULL) {
-        renderPass->context = VKPipelines_GetRenderPassContext(renderer->pipelineContext, surface->image->format);
+        renderPass->context = VKPipelines_GetRenderPassContext(renderer->pipelineContext, surface->format);
     }
 
     // Initialize framebuffer.
@@ -623,9 +623,9 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .renderPass = renderPass->context->renderPass,
                 .attachmentCount = 1,
-                .pAttachments = &surface->image->view,
-                .width = surface->image->extent.width,
-                .height = surface->image->extent.height,
+                .pAttachments = &surface->view,
+                .width = surface->extent.width,
+                .height = surface->extent.height,
                 .layers = 1
         };
         VK_IF_ERROR(device->vkCreateFramebuffer(device->handle, &framebufferCreateInfo, NULL,
@@ -688,7 +688,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
                 .clearValue = surface->background.vkClearValue
         };
         VkClearRect clearRect = {
-                .rect = {{0, 0}, surface->image->extent},
+                .rect = {{0, 0}, surface->extent},
                 .baseArrayLayer = 0,
                 .layerCount = 1
         };
@@ -700,12 +700,12 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     VkViewport viewport = {
             .x = 0.0f,
             .y = 0.0f,
-            .width = (float) surface->image->extent.width,
-            .height = (float) surface->image->extent.height,
+            .width = (float) surface->extent.width,
+            .height = (float) surface->extent.height,
             .minDepth = 0.0f,
             .maxDepth = 1.0f
     };
-    VkRect2D scissor = {{0, 0}, surface->image->extent};
+    VkRect2D scissor = {{0, 0}, surface->extent};
     device->vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     device->vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     // Calculate inverse viewport for vertex shader.
@@ -748,7 +748,7 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
             .renderPass = surface->renderPass->context->renderPass,
             .framebuffer = surface->renderPass->framebuffer,
             .renderArea.offset = (VkOffset2D){0, 0},
-            .renderArea.extent = surface->image->extent,
+            .renderArea.extent = surface->extent,
             .clearValueCount = 0,
             .pClearValues = NULL
     };
@@ -843,10 +843,10 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
         VkImageBlit blit = {
                 .srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
                 .srcOffsets[0] = {0, 0, 0},
-                .srcOffsets[1] = {(int)surface->image->extent.width, (int)surface->image->extent.height, 1},
+                .srcOffsets[1] = {(int)surface->extent.width, (int)surface->extent.height, 1},
                 .dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
                 .dstOffsets[0] = {0, 0, 0},
-                .dstOffsets[1] = {(int)surface->image->extent.width, (int)surface->image->extent.height, 1},
+                .dstOffsets[1] = {(int)surface->extent.width, (int)surface->extent.height, 1},
         };
         device->vkCmdBlitImage(cb,
                                surface->image->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

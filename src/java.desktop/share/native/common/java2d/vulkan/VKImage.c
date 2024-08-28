@@ -29,26 +29,6 @@
 #include "VKBuffer.h"
 #include "VKImage.h"
 
-
-VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
-    VkImageViewCreateInfo viewInfo = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = image->image,
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = image->format,
-            .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .subresourceRange.baseMipLevel = 0,
-            .subresourceRange.levelCount = 1,
-            .subresourceRange.baseArrayLayer = 0,
-            .subresourceRange.layerCount = 1,
-    };
-
-    VK_IF_ERROR(device->vkCreateImageView(device->handle, &viewInfo, NULL, &image->view)) {
-        return VK_FALSE;
-    }
-    return VK_TRUE;
-}
-
 VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
                         VkFormat format, VkImageTiling tiling,
                         VkImageUsageFlags usage,
@@ -56,9 +36,6 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
 {
     VKImage* image = calloc(1, sizeof(VKImage));
     VK_RUNTIME_ASSERT(image);
-
-    image->format = format;
-    image->extent = (VkExtent2D) {width, height};
 
     VkImageCreateInfo imageInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -109,21 +86,11 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
         return NULL;
     }
 
-    if (!VKImage_CreateView(device, image)) {
-        VKImage_free(device, image);
-        return NULL;
-    }
-
     return image;
 }
 
 void VKImage_free(VKDevice* device, VKImage* image) {
     if (!image) return;
-
-    if (image->view != VK_NULL_HANDLE) {
-        device->vkDestroyImageView(device->handle, image->view, NULL);
-        image->view = VK_NULL_HANDLE;
-    }
 
     if (image->memory != VK_NULL_HANDLE) {
         device->vkFreeMemory(device->handle, image->memory, NULL);

@@ -113,8 +113,7 @@ static void VKTexturePool_freeTexture(ADevicePrivPtr *device, ATexturePrivPtr *t
     CHECK_NULL(device);
     CHECK_NULL(texture);
     VKImage* tex = (VKImage*)texture;
-    if (TRACE_TEX) J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "VKTexturePool_freeTexture: free texture: tex=%p, w=%d h=%d, pf=%d",
-                                  tex, tex->extent.width, tex->extent.height, tex->format);
+    if (TRACE_TEX) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePool_freeTexture: free texture: tex=%p", tex);
 
     VKImage_free((VKDevice*)device, tex);
 }
