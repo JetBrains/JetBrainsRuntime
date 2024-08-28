@@ -26,14 +26,29 @@
 #include <vulkan/vulkan.h>
 
 /**
- * Floating-point RGBA color with sRGB encoding.
- */
+* Floating-point RGBA color with sRGB encoding and pre-multiplied alpha.
+*/
 typedef union {
     struct {
         float r, g, b, a;
     };
     VkClearValue vkClearValue;
 } Color;
+
+/**
+ * Floating-point RGBA color with pre-multiplied alpha in both linear and sRGB encoding.
+ * You never need to use linear or sRGB variants directly, use GET_COLOR_FOR_RENDER_PASS instead.
+ *
+ * Vulkan always works with LINEAR colors, so great care must be taken to use the right encoding.
+ * If you ever need to use sRGB encoded color, leave the detailed comment explaining this decision.
+ *
+ * Read more about presenting sRGB content in VKSD_ConfigureWindowSurface.
+ * Read more about conversion from Java colors in VKUtil_DecodeJavaColor.
+ */
+typedef struct {
+    Color linear;
+    Color nonlinearSrgb;
+} CorrectedColor;
 
 VK_DEFINE_NON_DISPATCHABLE_HANDLE(VKMemory);
 
@@ -55,7 +70,6 @@ typedef struct VKRenderPass VKRenderPass;
 typedef struct VKRenderingContext VKRenderingContext;
 typedef struct VKPipelineContext VKPipelineContext;
 typedef struct VKRenderPassContext VKRenderPassContext;
-typedef struct VKShaders VKShaders;
 typedef struct VKSDOps VKSDOps;
 typedef struct VKWinSDOps VKWinSDOps;
 

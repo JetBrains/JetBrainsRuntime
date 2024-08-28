@@ -40,10 +40,10 @@ static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
     // ReleaseRenderPass also waits while the surface resources are being used by device.
     VKRenderer_DestroyRenderPass(vksdo);
 
-    if (vksdo->view != VK_NULL_HANDLE) {
+    DESTROY_FORMAT_ALIASED_HANDLE(vksdo->view, i) {
         assert(vksdo->device != NULL);
-        vksdo->device->vkDestroyImageView(vksdo->device->handle, vksdo->view, NULL);
-        vksdo->view = VK_NULL_HANDLE;
+        vksdo->device->vkDestroyImageView(vksdo->device->handle, vksdo->view[i], NULL);
+        vksdo->view[i] = VK_NULL_HANDLE;
     }
 
     if (vksdo->image.handle != VK_NULL_HANDLE) {
@@ -90,35 +90,49 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
     if (vksdo->requestedExtent.width > 0 && vksdo->requestedExtent.height > 0 &&
             (vksdo->requestedExtent.width != vksdo->extent.width ||
              vksdo->requestedExtent.height != vksdo->extent.height)) {
+
         // VK_FORMAT_B8G8R8A8_UNORM is the most widely-supported format for our use.
-        VkFormat format = VK_FORMAT_B8G8R8A8_UNORM;
+        // We can also use high-bit-count formats, like R10G10B10A2_UNORM, or R16G16B16A16_UNORM.
+        // Currently, we only support *_SRGB and *_UNORM formats,
+        // as other types may not be trivial to alias for logicOp rendering.
+        VkFormat requestedFormat = VK_FORMAT_B8G8R8A8_UNORM;
+        if (VK_DEBUG_RANDOM(50)) requestedFormat = VK_FORMAT_R16G16B16A16_UNORM;
+
+        VkFormat format[FORMAT_ALIAS_COUNT];
+        SET_ALIASED_FORMAT_FROM_REAL(format, requestedFormat);
         VKImage image = VKAllocator_CreateImage(device->allocator, vksdo->requestedExtent.width, vksdo->requestedExtent.height,
-                                                0, format, VK_IMAGE_TILING_OPTIMAL,
+                                                format[FORMAT_ALIAS_REAL] != format[FORMAT_ALIAS_UNORM] ?
+                                                VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT : 0,
+                                                format[FORMAT_ALIAS_REAL], VK_IMAGE_TILING_OPTIMAL,
                                                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                                                 VK_SAMPLE_COUNT_1_BIT, VKSD_FindImageSurfaceMemoryType);
         VK_RUNTIME_ASSERT(image.handle);
 
-        // Create image view. We may also need integer format view, e.g. for XOR painting mode.
-        VkImageView view;
+        VkImageView view[FORMAT_ALIAS_COUNT];
         VkImageViewCreateInfo viewInfo = {
                 .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                 .image = image.handle,
                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                .format = format,
                 .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .subresourceRange.baseMipLevel = 0,
                 .subresourceRange.levelCount = 1,
                 .subresourceRange.baseArrayLayer = 0,
                 .subresourceRange.layerCount = 1,
         };
-        VK_IF_ERROR(device->vkCreateImageView(device->handle, &viewInfo, NULL, &view)) VK_UNHANDLED_ERROR();
+        INIT_FORMAT_ALIASED_HANDLE(view, format, i) {
+            viewInfo.format = format[i];
+            VK_IF_ERROR(device->vkCreateImageView(device->handle, &viewInfo, NULL, &view[i])) VK_UNHANDLED_ERROR();
+        }
 
         VKSD_ResetImageSurface(vksdo);
         vksdo->image = image;
-        vksdo->view = view;
         vksdo->extent = vksdo->requestedExtent;
-        vksdo->format = format;
-        J2dRlsTraceLn3(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): image updated %dx%d", vksdo, vksdo->extent.width, vksdo->extent.height);
+        FOR_EACH_FORMAT_ALIAS(i) {
+            vksdo->view[i] = view[i];
+            vksdo->format[i] = format[i];
+        }
+        J2dRlsTraceLn4(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): image updated %dx%d, format=%d",
+                       vksdo, vksdo->extent.width, vksdo->extent.height, requestedFormat);
     }
     return vksdo->image.handle != VK_NULL_HANDLE;
 }
@@ -208,7 +222,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices = NULL,
             .preTransform = capabilities.currentTransform,
-            .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, // TODO changing this will allow us to show semi-transparent windows!
             .presentMode = VK_PRESENT_MODE_FIFO_KHR, // TODO need more flexibility
             .clipped = VK_TRUE,
             .oldSwapchain = vkwinsdo->swapchain
@@ -217,7 +231,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     VK_IF_ERROR(device->vkCreateSwapchainKHR(device->handle, &createInfoKhr, NULL, &swapchain)) {
         return VK_FALSE;
     }
-    J2dRlsTraceLn1(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): swapchain created", vkwinsdo);
+    J2dRlsTraceLn2(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): swapchain created, format=%d", vkwinsdo, format->format);
 
     if (vkwinsdo->swapchain != VK_NULL_HANDLE) {
         // Destroy old swapchain.
