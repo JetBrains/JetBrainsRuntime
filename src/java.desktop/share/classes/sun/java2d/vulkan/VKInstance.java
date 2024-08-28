@@ -38,12 +38,11 @@ public class VKInstance {
 
     private static native boolean initNative(long nativePtr, boolean verbose, int deviceNumber);
 
+    @SuppressWarnings({"removal", "restricted"})
     public static void init(long nativePtr) {
-        @SuppressWarnings("removal")
         String vulkanOption = AccessController.doPrivileged(
                         (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan", ""));
         if ("true".equalsIgnoreCase(vulkanOption)) {
-            @SuppressWarnings("removal")
             String deviceNumberOption = AccessController.doPrivileged(
                     (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.deviceNumber", "0"));
             int parsedDeviceNumber = 0;
