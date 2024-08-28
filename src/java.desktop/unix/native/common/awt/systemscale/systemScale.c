@@ -251,7 +251,6 @@ double getScaleEnvVar(const char *name, double default_value) {
 double getNativeScaleFactor(char *output_name, double default_value) {
     static int scale = -2.0;
     double native_scale = 0;
-    int gdk_scale = 0;
 
     if (scale == -2) {
         scale = (int)getScaleEnvVar("J2D_UISCALE", -1);
