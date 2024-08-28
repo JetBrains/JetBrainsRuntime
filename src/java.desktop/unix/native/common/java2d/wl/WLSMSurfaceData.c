@@ -389,7 +389,6 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
 
     WLSDOps *wsdo = (WLSDOps*)SurfaceData_InitOps(env, wsd, sizeof(WLSDOps));
     J2dTrace1(J2D_TRACE_INFO, "WLSMSurfaceData_initOps: %p\n", wsdo);
-    jboolean hasException;
     if (wsdo == NULL) {
         JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
         return;
