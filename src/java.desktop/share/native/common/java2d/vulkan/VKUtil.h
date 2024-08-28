@@ -58,11 +58,12 @@ inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
 #define VK_RUNTIME_ASSERT(...) if (!(__VA_ARGS__)) VK_FATAL_ERROR("Vulkan assertion failed: " #__VA_ARGS__)
 
 /**
- * In Vulkan we always work with floating-point LINEAR colors.
- * Java colors are 32-bit SRGB encoded colors,
- * so we need to convert them to linear colors first.
- *
- * Read more about presenting SRGB content in VKSD_ConfigureWindowSurface
+ * Vulkan expects linear colors.
+ * However Java2D expects legacy behavior, as if colors were blended in sRGB color space.
+ * Therefore this function just remaps color components from [0, 255] to [0, 1] range,
+ * they still represent sRGB color.
+ * This is also accounted for in VKSD_ConfigureWindowSurface, so that Vulkan doesn't do any
+ * color space conversions on its own, as the colors we are drawing are already in sRGB.
  */
 Color Color_DecodeFromJava(unsigned int color);
 

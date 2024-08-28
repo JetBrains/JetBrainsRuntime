@@ -21,7 +21,6 @@
 // or visit www.oracle.com if you need additional information or have any
 // questions.
 
-#include <math.h>
 #include "VKUtil.h"
 
 Color Color_DecodeFromJava(unsigned int srgb) {
@@ -32,11 +31,6 @@ Color Color_DecodeFromJava(unsigned int srgb) {
             .b = (float)( srgb        & 0xFF) / 255.0F,
             .a = (float)((srgb >> 24) & 0xFF) / 255.0F
     };
-    // This SRGB -> LINEAR conversion implementation is taken from Khronos Data Format Specification:
-    // https://registry.khronos.org/DataFormat/specs/1.3/dataformat.1.3.html#TRANSFER_SRGB_EOTF
-    c.r = (float) (c.r <= 0.04045 ? c.r / 12.92 : pow((c.r + 0.055) / 1.055, 2.4));
-    c.g = (float) (c.g <= 0.04045 ? c.g / 12.92 : pow((c.g + 0.055) / 1.055, 2.4));
-    c.b = (float) (c.b <= 0.04045 ? c.b / 12.92 : pow((c.b + 0.055) / 1.055, 2.4));
     return c;
 }
 

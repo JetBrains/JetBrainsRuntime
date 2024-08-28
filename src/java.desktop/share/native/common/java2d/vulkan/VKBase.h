@@ -37,7 +37,6 @@ struct VKDevice {
     pchar*           enabledLayers;
     pchar*           enabledExtensions;
     VkQueue          queue;
-    VkBool32         dynamicRendering;
 
     VKRenderer*      renderer;
     VKTexturePool*   texturePool;
@@ -72,8 +71,6 @@ struct VKDevice {
     PFN_vkBeginCommandBuffer vkBeginCommandBuffer;
     PFN_vkCmdBlitImage vkCmdBlitImage;
     PFN_vkCmdPipelineBarrier vkCmdPipelineBarrier;
-    PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR;
-    PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR;
     PFN_vkCmdBeginRenderPass vkCmdBeginRenderPass;
     PFN_vkCmdExecuteCommands vkCmdExecuteCommands;
     PFN_vkCmdClearAttachments vkCmdClearAttachments;

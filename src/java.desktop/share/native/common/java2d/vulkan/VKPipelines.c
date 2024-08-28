@@ -188,18 +188,10 @@ VKPipelines* VKPipelines_Create(VKDevice* device, VKShaders* shaders, VkFormat f
     VK_RUNTIME_ASSERT(pipelines);
     pipelines->format = format;
 
-    if (!device->dynamicRendering) {
-        VK_IF_ERROR(VKPipelines_CreateRenderPass(device, pipelines)) goto fail;
-    }
+    VK_IF_ERROR(VKPipelines_CreateRenderPass(device, pipelines)) goto fail;
     VK_IF_ERROR(VKPipelines_CreatePipelineLayout(device, pipelines)) goto fail;
 
     // Setup default pipeline parameters.
-    VkPipelineRenderingCreateInfoKHR renderingCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
-            .viewMask = 0,
-            .colorAttachmentCount = 1,
-            .pColorAttachmentFormats = &pipelines->format
-    };
     typedef struct {
         VkPipelineShaderStageCreateInfo createInfos[2]; // vert + frag
     } ShaderStages;
@@ -207,7 +199,6 @@ VKPipelines* VKPipelines_Create(VKDevice* device, VKShaders* shaders, VkFormat f
     VkGraphicsPipelineCreateInfo createInfos[NUM_PIPELINES];
     for (uint32_t i = 0; i < NUM_PIPELINES; i++) {
         createInfos[i] = VKPipelines_DefaultPipeline();
-        if (device->dynamicRendering) createInfos[i].pNext = &renderingCreateInfo;
         createInfos[i].stageCount = 2;
         createInfos[i].pStages = stages[i].createInfos;
         createInfos[i].layout = pipelines->pipelineLayout;

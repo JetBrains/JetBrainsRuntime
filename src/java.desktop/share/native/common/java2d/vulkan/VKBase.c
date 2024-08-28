@@ -452,17 +452,14 @@ static jboolean VK_FindDevices() {
         VK_IF_ERROR(geInstance->vkEnumerateDeviceExtensionProperties(geInstance->physicalDevices[i],
                                                                   NULL, &extensionCount, extensions)) continue;
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device extensions:")
-        VkBool32 hasSwapChain = VK_FALSE, hasDynamicRendering = VK_FALSE;
+        VkBool32 hasSwapChain = VK_FALSE;
         for (uint32_t j = 0; j < extensionCount; j++) {
             J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "        %s", (char *) extensions[j].extensionName)
             hasSwapChain = hasSwapChain ||
                            strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, extensions[j].extensionName) == 0;
-            hasDynamicRendering = hasDynamicRendering ||
-                           strcmp(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME, extensions[j].extensionName) == 0;
         }
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Vulkan: Found device extensions:")
         J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "    " VK_KHR_SWAPCHAIN_EXTENSION_NAME " = %s", hasSwapChain ? "true" : "false")
-        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "    " VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME " = %s", hasDynamicRendering ? "true" : "false")
 
         if (!hasSwapChain) {
             J2dRlsTraceLn(J2D_TRACE_INFO,
@@ -473,7 +470,6 @@ static jboolean VK_FindDevices() {
         pchar* deviceEnabledLayers = NULL;
         pchar* deviceEnabledExtensions = NULL;
         ARRAY_PUSH_BACK(deviceEnabledExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-        if (hasDynamicRendering) ARRAY_PUSH_BACK(deviceEnabledExtensions, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
 
         // Validation layer
 #ifdef DEBUG
@@ -502,8 +498,7 @@ static jboolean VK_FindDevices() {
                 .physicalDevice = geInstance->physicalDevices[i],
                 .queueFamily = queueFamily,
                 .enabledLayers = deviceEnabledLayers,
-                .enabledExtensions = deviceEnabledExtensions,
-                .dynamicRendering = hasDynamicRendering
+                .enabledExtensions = deviceEnabledExtensions
         }));
     }
     if (ARRAY_SIZE(geInstance->devices) == 0) {
@@ -543,13 +538,6 @@ static jboolean VK_InitDevice(VKDevice* device) {
             .timelineSemaphore = VK_TRUE
     };
     void *pNext = &features12;
-
-    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures = {
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
-            .pNext = pNext,
-            .dynamicRendering = VK_TRUE
-    };
-    if (device->dynamicRendering) pNext = &dynamicRenderingFeatures;
 
     VkDeviceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -601,8 +589,6 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkBeginCommandBuffer);
     DEVICE_PROC(vkCmdBlitImage);
     DEVICE_PROC(vkCmdPipelineBarrier);
-    DEVICE_PROC(vkCmdBeginRenderingKHR);
-    DEVICE_PROC(vkCmdEndRenderingKHR);
     DEVICE_PROC(vkCmdBeginRenderPass);
     DEVICE_PROC(vkCmdExecuteCommands);
     DEVICE_PROC(vkCmdClearAttachments);

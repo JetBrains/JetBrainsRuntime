@@ -26,7 +26,7 @@
 #include <vulkan/vulkan.h>
 
 /**
- * Floating-point RGBA color with LINEAR encoding.
+ * Floating-point RGBA color with sRGB encoding.
  */
 typedef union {
     struct {
