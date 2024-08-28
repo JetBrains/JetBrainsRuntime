@@ -175,7 +175,7 @@ VKImage* VKImage_CreateImageArrayFromSwapChain(VKDevice* device,
 
     VKImage* images = ARRAY_ALLOC(VKImage, swapChainImagesCount);
     for (uint32_t i = 0; i < swapChainImagesCount; i++) {
-        ARRAY_PUSH_BACK(&images, ((VKImage){
+        ARRAY_PUSH_BACK(images, ((VKImage){
                 .image = swapChainImages[i],
                 .memory = VK_NULL_HANDLE,
                 .format = format,
