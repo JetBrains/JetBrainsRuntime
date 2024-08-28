@@ -362,7 +362,6 @@ static void
 wl_keyboard_key(void *data, struct wl_keyboard *wl_keyboard,
                 uint32_t serial, uint32_t time, uint32_t keycode, uint32_t state)
 {
-    JNIEnv* env = getEnv();
     wlSetKeyState(time, keycode, state ? true : false);
 }
 
