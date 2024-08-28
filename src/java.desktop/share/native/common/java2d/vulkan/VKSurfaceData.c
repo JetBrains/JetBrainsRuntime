@@ -53,6 +53,7 @@ void VKSD_ResetSurface(VKSDOps* vksdo) {
     if (vksdo->drawableType == VKSD_WINDOW) {
         VKWinSDOps* vkwinsdo = (VKWinSDOps*) vksdo;
         ARRAY_FREE(vkwinsdo->swapchainImages);
+        vkwinsdo->swapchainImages = NULL;
         if (vkwinsdo->vksdOps.device != NULL && vkwinsdo->swapchain != VK_NULL_HANDLE) {
             vkwinsdo->vksdOps.device->vkDestroySwapchainKHR(vkwinsdo->vksdOps.device->handle, vkwinsdo->swapchain, NULL);
         }
