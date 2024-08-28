@@ -65,7 +65,7 @@
 
 static VKSDOps *dstOps = NULL;
 
-static VKLogicalDevice* currentDevice;
+static VKDevice* currentDevice;
 
 // TODO move this property to special drawing context structure
 static int color = -1;
@@ -433,8 +433,8 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     if (dstOps->drawableType == VKSD_WINDOW && dstOps->bgColorUpdated) {
                         VKWinSDOps *winDstOps = (VKWinSDOps *)dstOps;
 
-                        currentDevice->vkWaitForFences(currentDevice->device, 1, &currentDevice->inFlightFence, VK_TRUE, UINT64_MAX);
-                        currentDevice->vkResetFences(currentDevice->device, 1, &currentDevice->inFlightFence);
+                        currentDevice->vkWaitForFences(currentDevice->handle, 1, &currentDevice->inFlightFence, VK_TRUE, UINT64_MAX);
+                        currentDevice->vkResetFences(currentDevice->handle, 1, &currentDevice->inFlightFence);
 
                         currentDevice->vkResetCommandBuffer(currentDevice->commandBuffer, 0);
 
@@ -655,11 +655,11 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
     if (dstOps != NULL && dstOps->drawableType == VKSD_WINDOW && currentDevice != NULL) {
         VKWinSDOps *winDstOps = (VKWinSDOps *)dstOps;
 
-        currentDevice->vkWaitForFences(currentDevice->device, 1, &currentDevice->inFlightFence, VK_TRUE, UINT64_MAX);
-        currentDevice->vkResetFences(currentDevice->device, 1, &currentDevice->inFlightFence);
+        currentDevice->vkWaitForFences(currentDevice->handle, 1, &currentDevice->inFlightFence, VK_TRUE, UINT64_MAX);
+        currentDevice->vkResetFences(currentDevice->handle, 1, &currentDevice->inFlightFence);
 
         uint32_t imageIndex;
-        currentDevice->vkAcquireNextImageKHR(currentDevice->device, winDstOps->swapchainKhr, UINT64_MAX,
+        currentDevice->vkAcquireNextImageKHR(currentDevice->handle, winDstOps->swapchainKhr, UINT64_MAX,
                                              currentDevice->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
         currentDevice->vkResetCommandBuffer(currentDevice->commandBuffer, 0);
