@@ -35,8 +35,8 @@
     ((c) & 0xFF)/255.0f,           \
     (((c) >> 24) & 0xFF)/255.0f
 
-#define ARRAY_TO_VERTEX_BUF(logicalDevice, vertices)                                           \
-    VKBuffer_CreateFromData(logicalDevice, vertices, ARRAY_SIZE(vertices)*sizeof (vertices[0]))
+#define ARRAY_TO_VERTEX_BUF(device, vertices)                                           \
+    VKBuffer_CreateFromData(device, vertices, ARRAY_SIZE(vertices)*sizeof (vertices[0]))
 
 typedef struct {
     VkVertexInputAttributeDescription *attributeDescriptions;
