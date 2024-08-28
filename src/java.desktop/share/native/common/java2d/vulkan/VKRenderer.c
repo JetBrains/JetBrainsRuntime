@@ -117,7 +117,7 @@ struct VKRenderPass {
     DrawingBuffer*       maskFillBuffers;
     VkBufferView*        maskFillBufferViews; // Array must be in sync with maskFillBuffers.
     VkDescriptorSet*     maskFillBufferDescriptorSets; // Array must be in sync with maskFillBuffers.
-    VkFramebuffer        framebuffer[FORMAT_ALIAS_COUNT];
+    VkFramebuffer        framebuffer[FORMAT_ALIAS_COUNT]; // Only when dynamicRendering=OFF.
     VkCommandBuffer      commandBuffer;
 
     uint32_t                  firstVertex;
@@ -764,6 +764,8 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
     assert(surface != NULL && (surface->renderPass == NULL || !surface->renderPass->pendingCommands));
 
     // Initialize surface image.
+    // Technically, in case of dynamicRendering=ON, this could be postponed right until VKRenderer_FlushSurface,
+    // but we cannot change image extent in the middle of render pass anyway, so there is no point in delaying it.
     if (!VKSD_ConfigureImageSurface(surface)) return VK_FALSE;
 
     if (surface->renderPass != NULL) return VK_TRUE;
@@ -788,8 +790,8 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
         renderPass->context = VKPipelines_GetRenderPassContext(renderer->pipelineContext, surface->format[FORMAT_ALIAS_REAL]);
     }
 
-    // Initialize framebuffer.
-    if (renderPass->framebuffer[FORMAT_ALIAS_REAL] == VK_NULL_HANDLE) {
+    // Initialize framebuffer. It is only needed when dynamicRendering=OFF.
+    if (!device->dynamicRendering && renderPass->framebuffer[FORMAT_ALIAS_REAL] == VK_NULL_HANDLE) {
         VkFramebufferCreateInfo framebufferCreateInfo = {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .attachmentCount = 1,
@@ -839,12 +841,25 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
 
     // Begin recording render pass commands.
     FormatAlias formatAlias = COMPOSITE_TO_FORMAT_ALIAS(surface->renderPass->currentComposite);
+    VkCommandBufferInheritanceRenderingInfoKHR inheritanceRenderingInfo;
     VkCommandBufferInheritanceInfo inheritanceInfo = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-            .renderPass = surface->renderPass->context->renderPass[formatAlias],
-            .subpass = 0,
-            .framebuffer = surface->renderPass->framebuffer[formatAlias]
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO
     };
+    if (device->dynamicRendering) {
+        inheritanceRenderingInfo = (VkCommandBufferInheritanceRenderingInfoKHR) {
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR,
+                .flags = VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT,
+                .viewMask = 0,
+                .colorAttachmentCount = 1,
+                .pColorAttachmentFormats = &surface->format[formatAlias],
+                .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
+        };
+        inheritanceInfo.pNext = &inheritanceRenderingInfo;
+    } else {
+        inheritanceInfo.renderPass = surface->renderPass->context->renderPass[formatAlias];
+        inheritanceInfo.subpass = 0;
+        inheritanceInfo.framebuffer = surface->renderPass->framebuffer[formatAlias];
+    }
     VkCommandBufferBeginInfo commandBufferBeginInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT,
@@ -855,7 +870,10 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
         VK_UNHANDLED_ERROR();
     }
 
-    if (surface->renderPass->pendingClear) {
+    // When dynamicRendering=ON, we specify that we want to clear the attachment instead of
+    // loading its content at the beginning of rendering, see VKRenderer_FlushSurface.
+    // But with dynamicRendering=OFF we need to clear the attachment manually at the beginning of render pass.
+    if (!device->dynamicRendering && surface->renderPass->pendingClear) {
         VkClearAttachment clearAttachment = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .colorAttachment = 0,
@@ -918,18 +936,46 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     // Begin render pass.
     FormatAlias formatAlias = COMPOSITE_TO_FORMAT_ALIAS(surface->renderPass->currentComposite);
-    VkRenderPassBeginInfo renderPassInfo = {
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = surface->renderPass->context->renderPass[formatAlias],
-            .framebuffer = surface->renderPass->framebuffer[formatAlias],
-            .renderArea.offset = (VkOffset2D){0, 0},
-            .renderArea.extent = surface->extent,
-            .clearValueCount = 0,
-            .pClearValues = NULL
-    };
-    device->vkCmdBeginRenderPass(cb, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-    // If there is a pending clear, record it into render pass.
-    if (clear) VKRenderer_BeginRenderPass(surface);
+    if (device->dynamicRendering) {
+        VkRenderingAttachmentInfoKHR colorAttachmentInfo = {
+                .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+                .imageView = surface->view[formatAlias],
+                .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .resolveMode = VK_RESOLVE_MODE_NONE_KHR,
+                .resolveImageView = VK_NULL_HANDLE,
+                .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .loadOp = clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+                .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                .clearValue = surface->background.vkClearValue
+        };
+        surface->renderPass->pendingClear = VK_FALSE;
+        VkRect2D renderArea = {{0, 0}, surface->extent};
+        VkRenderingInfoKHR renderingInfo = {
+                .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
+                .flags = VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT,
+                .renderArea = renderArea,
+                .layerCount = 1,
+                .viewMask = 0,
+                .colorAttachmentCount = 1,
+                .pColorAttachments = &colorAttachmentInfo,
+                .pDepthAttachment = NULL,
+                .pStencilAttachment = NULL
+        };
+        device->vkCmdBeginRenderingKHR(cb, &renderingInfo);
+    } else {
+        VkRenderPassBeginInfo renderPassInfo = {
+                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                .renderPass = surface->renderPass->context->renderPass[formatAlias],
+                .framebuffer = surface->renderPass->framebuffer[formatAlias],
+                .renderArea.offset = (VkOffset2D){0, 0},
+                .renderArea.extent = surface->extent,
+                .clearValueCount = 0,
+                .pClearValues = NULL
+        };
+        device->vkCmdBeginRenderPass(cb, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+        // If there is a pending clear, record it into render pass.
+        if (clear) VKRenderer_BeginRenderPass(surface);
+    }
 
     // Execute render pass commands.
     if (surface->renderPass->pendingCommands) {
@@ -940,7 +986,11 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
         surface->renderPass->commandBuffer = VK_NULL_HANDLE;
     }
 
-    device->vkCmdEndRenderPass(cb);
+    if (device->dynamicRendering) {
+        device->vkCmdEndRenderingKHR(cb);
+    } else {
+        device->vkCmdEndRenderPass(cb);
+    }
     VKRenderer_ResetDrawing(surface);
     J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "VKRenderer_FlushRenderPass(%p): hasCommands=%d, clear=%d", surface, hasCommands, clear);
 }

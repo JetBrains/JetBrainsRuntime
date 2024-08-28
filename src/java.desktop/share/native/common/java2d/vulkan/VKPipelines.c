@@ -245,6 +245,13 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
     base.createInfo.renderPass = renderPassContext->renderPass[formatAlias];
     base.colorBlendState.pAttachments = &COMPOSITE_BLEND_STATES[composite];
     if (IS_LOGIC_COMPOSITE(composite)) base.colorBlendState.logicOpEnable = VK_TRUE;
+    VkPipelineRenderingCreateInfoKHR renderingCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+            .viewMask = 0,
+            .colorAttachmentCount = 1,
+            .pColorAttachmentFormats = &renderPassContext->format[formatAlias]
+    };
+    if (device->dynamicRendering) base.createInfo.pNext = &renderingCreateInfo;
     assert(base.dynamicState.dynamicStateCount <= SARRAY_COUNT_OF(base.dynamicStates));
 
     ShaderStages stages[PIPELINE_COUNT];
@@ -284,6 +291,7 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
 
 static VkResult VKPipelines_InitRenderPasses(VKDevice* device, VKRenderPassContext* renderPassContext) {
     assert(device != NULL && renderPassContext != NULL);
+    if (device->dynamicRendering) return VK_SUCCESS;
     VkAttachmentDescription colorAttachment = {
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,

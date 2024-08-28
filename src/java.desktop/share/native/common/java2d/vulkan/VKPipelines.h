@@ -73,8 +73,8 @@ typedef enum {
  * - Normalized, with format reinterpreted as *_UNORM.
  * Such resources include:
  * - Surface image view.
- * - Surface framebuffer
- * - Render pass instance
+ * - Surface framebuffer  (if dynamicRendering=OFF).
+ * - Render pass instance (if dynamicRendering=OFF).
  */
 typedef enum {
     FORMAT_ALIAS_REAL  = 0,
@@ -133,7 +133,7 @@ struct VKPipelineContext {
 struct VKRenderPassContext {
     VKPipelineContext*     pipelineContext;
     VkFormat               format[FORMAT_ALIAS_COUNT];
-    VkRenderPass           renderPass[FORMAT_ALIAS_COUNT];
+    VkRenderPass           renderPass[FORMAT_ALIAS_COUNT]; // Only when dynamicRendering=OFF.
     struct VKPipelineSet** pipelineSets; // TODO we will need a real hash map for this in the future.
 };
 
