@@ -102,7 +102,7 @@ struct VKPipelineContext {
 struct VKRenderPassContext {
     VKPipelineContext*     pipelineContext;
     VkFormat               format;
-    VkRenderPass           renderPass[2]; // Color-only and color+stencil.
+    VkRenderPass           renderPass[2]; // Color-only and color+stencil. Only when dynamicRendering=OFF.
     VkPipeline             clipPipeline;
     struct VKPipelineSet** pipelineSets;
 };
