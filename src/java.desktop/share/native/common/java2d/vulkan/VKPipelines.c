@@ -112,7 +112,7 @@ typedef struct {
     VkPipelineDepthStencilStateCreateInfo depthStencilState;;
     VkPipelineColorBlendStateCreateInfo colorBlendState;
     VkPipelineDynamicStateCreateInfo dynamicState;
-    VkDynamicState dynamicStates[2];
+    VkDynamicState dynamicStates[6];
 } PipelineCreateState;
 
 typedef struct {
@@ -264,6 +264,14 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
     base.createInfo.renderPass = renderPassContext->renderPass[descriptor.stencilMode != STENCIL_MODE_NONE];
     base.colorBlendState.pAttachments = &COMPOSITE_BLEND_STATES[descriptor.composite];
     if (COMPOSITE_GROUP(descriptor.composite) == LOGIC_COMPOSITE_GROUP) base.colorBlendState.logicOpEnable = VK_TRUE;
+    if (device->dynamicBlending)
+        base.dynamicStates[base.dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT;
+    if (device->dynamicLogicOp) {
+        base.dynamicStates[base.dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_COLOR_BLEND_ENABLE_EXT;
+        base.dynamicStates[base.dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_LOGIC_OP_ENABLE_EXT;
+    }
+    if (descriptor.stencilMode != STENCIL_MODE_NONE && device->dynamicStencil)
+        base.dynamicStates[base.dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT;
     if (descriptor.stencilMode == STENCIL_MODE_ON) base.depthStencilState.stencilTestEnable = VK_TRUE;
     VkPipelineRenderingCreateInfoKHR renderingCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
@@ -603,8 +611,20 @@ inline VkBool32 pipelineSetDescriptorEquals(VKPipelineSetDescriptor* a, VKPipeli
 }
 
 VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKPipelineSetDescriptor descriptor, VKPipeline pipeline) {
-    assert(renderPassContext != NULL);
+    assert(renderPassContext != NULL && renderPassContext->pipelineContext != NULL);
     assert(pipeline < PIPELINE_COUNT); // We could append custom pipelines after that index.
+
+    // Depending on availability of certain dynamic states, we can reduce number of pipeline permutations.
+    // We do this by amending the pipeline set descriptor here.
+    VKDevice* device = renderPassContext->pipelineContext->device;
+    assert(device != NULL);
+    VKCompositeMode compositeGroup = COMPOSITE_GROUP(descriptor.composite);
+    if (device->dynamicBlending && compositeGroup == ALPHA_COMPOSITE_GROUP)
+        descriptor.composite = ALPHA_COMPOSITE_SRC_OVER; // Dynamic blending: all alpha composites are combined.
+    if (device->dynamicLogicOp && compositeGroup == LOGIC_COMPOSITE_GROUP)
+        descriptor.composite = ALPHA_COMPOSITE_SRC_OVER; // Dynamic logicOp: all composites are combined.
+    if (device->dynamicStencil && descriptor.stencilMode != STENCIL_MODE_NONE)
+        descriptor.stencilMode = STENCIL_MODE_ON; // Dynamic stencil: stencil test on/off combined.
 
     // Find pipeline set in hash table.
     VKPipelineSet* set = NULL;
