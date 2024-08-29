@@ -7,8 +7,7 @@ BASE_DIR=$(dirname "$0")
 source $BASE_DIR/run_inc.sh
 
 if [ -z "$DACAPOTEST_DIR" ]; then
-  $DACAPOTEST_DIR="./"
-
+  DACAPOTEST_DIR="./"
 fi
 
 DACAPOTEST=${DACAPOTEST:='dacapo-9.12-bach.jar'}
