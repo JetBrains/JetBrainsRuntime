@@ -35,16 +35,27 @@ typedef union {
     VkClearValue vkClearValue;
 } Color;
 
+VK_DEFINE_NON_DISPATCHABLE_HANDLE(VKMemory);
+
+typedef struct {
+    VkImage  handle;
+    VKMemory memory;
+} VKImage;
+
+typedef struct {
+    VkBuffer handle;
+    VKMemory memory;
+} VKBuffer;
+
 typedef struct VKGraphicsEnvironment VKGraphicsEnvironment;
 typedef struct VKDevice VKDevice;
+typedef struct VKAllocator VKAllocator;
 typedef struct VKRenderer VKRenderer;
 typedef struct VKRenderPass VKRenderPass;
 typedef struct VKRenderingContext VKRenderingContext;
 typedef struct VKPipelineContext VKPipelineContext;
 typedef struct VKRenderPassContext VKRenderPassContext;
 typedef struct VKShaders VKShaders;
-typedef struct VKBuffer VKBuffer;
-typedef struct VKImage VKImage;
 typedef struct VKSDOps VKSDOps;
 typedef struct VKWinSDOps VKWinSDOps;
 

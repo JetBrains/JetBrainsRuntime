@@ -28,9 +28,9 @@
 
 #include <assert.h>
 #include "VKUtil.h"
+#include "VKAllocator.h"
 #include "VKBase.h"
 #include "VKSurfaceData.h"
-#include "VKImage.h"
 
 /**
  * Release VKSDOps resources & reset to initial state.
@@ -47,9 +47,10 @@ static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
         vksdo->view = VK_NULL_HANDLE;
     }
 
-    if (vksdo->device != NULL && vksdo->image != NULL) {
-        VKImage_free(vksdo->device, vksdo->image);
-        vksdo->image = NULL;
+    if (vksdo->image.handle != VK_NULL_HANDLE) {
+        assert(vksdo->device != NULL && vksdo->device->allocator != NULL);
+        VKAllocator_DestroyImage(vksdo->device->allocator, vksdo->image);
+        vksdo->image = VK_NULL_IMAGE;
     }
 }
 
@@ -74,6 +75,10 @@ void VKSD_ResetSurface(VKSDOps* vksdo) {
     }
 }
 
+static void VKSD_FindImageSurfaceMemoryType(VKMemoryRequirements* requirements) {
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_ALL_MEMORY_PROPERTIES);
+}
+
 VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
     // Initialize the device. currentDevice can be changed on the fly, and we must reconfigure surfaces accordingly.
     VKDevice* device = VKGE_graphics_environment()->currentDevice;
@@ -88,17 +93,17 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
              vksdo->requestedExtent.height != vksdo->extent.height)) {
         // VK_FORMAT_B8G8R8A8_UNORM is the most widely-supported format for our use.
         VkFormat format = VK_FORMAT_B8G8R8A8_UNORM;
-        VKImage* image = VKImage_Create(device, vksdo->requestedExtent.width, vksdo->requestedExtent.height,
-                                        format, VK_IMAGE_TILING_OPTIMAL,
-                                        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        VK_RUNTIME_ASSERT(image);
+        VKImage image = VKAllocator_CreateImage(device->allocator, vksdo->requestedExtent.width, vksdo->requestedExtent.height,
+                                                0, format, VK_IMAGE_TILING_OPTIMAL,
+                                                VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                                                VK_SAMPLE_COUNT_1_BIT, VKSD_FindImageSurfaceMemoryType);
+        VK_RUNTIME_ASSERT(image.handle);
 
-        // Create image view.
+        // Create image view. We may also need integer format view, e.g. for XOR painting mode.
         VkImageView view;
         VkImageViewCreateInfo viewInfo = {
                 .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                .image = image->image,
+                .image = image.handle,
                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
                 .format = format,
                 .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -116,12 +121,12 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
         vksdo->format = format;
         J2dRlsTraceLn3(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): image updated %dx%d", vksdo, vksdo->extent.width, vksdo->extent.height);
     }
-    return vksdo->image != NULL;
+    return vksdo->image.handle != VK_NULL_HANDLE;
 }
 
 VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     // Check that image is ready.
-    if (vkwinsdo->vksdOps.image == NULL) {
+    if (vkwinsdo->vksdOps.image.handle == VK_NULL_HANDLE) {
         J2dRlsTraceLn1(J2D_TRACE_WARNING, "VKSD_ConfigureWindowSurface(%p): image is not ready", vkwinsdo);
         return VK_FALSE;
     }

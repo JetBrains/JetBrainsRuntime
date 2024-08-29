@@ -48,7 +48,7 @@ struct VKSDOps {
     SurfaceDataOps sdOps;
     jint           drawableType;
     VKDevice*      device;
-    VKImage*       image;
+    VKImage        image;
     VkImageView    view;
     VkFormat       format;
     VkExtent2D     extent;

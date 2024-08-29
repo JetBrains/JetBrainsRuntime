@@ -27,7 +27,9 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#include "VKImage.h"
+#include "VKBase.h"
+#include "VKAllocator.h"
+#include "VKUtil.h"
 #include "VKTexturePool.h"
 #include "jni.h"
 #include "jni_util.h"
@@ -72,21 +74,31 @@ void VKTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
     if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_unlockImpl: lock=%p - unlocked", l);
 }
 
+static void VKTexturePool_FindImageMemoryType(VKMemoryRequirements* requirements) {
+    // TODO both DEVICE_LOCAL and HOST_VISIBLE memory is very precious, we may need to use just DEVICE_LOCAL instead.
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
+}
 
 /* Texture allocate/free API */
+typedef struct {
+    VKImage image;
+} Texture;
+
 static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
                                                     int width,
                                                     int height,
                                                     long format)
 {
     CHECK_NULL_RETURN(device, NULL);
-    VKImage* texture = VKImage_Create((VKDevice*)device, width, height,
-                                      (VkFormat)format,
-                                      VK_IMAGE_TILING_LINEAR,
-                                      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    if IS_NULL(texture) {
+    Texture* texture = malloc(sizeof(Texture));
+    VK_RUNTIME_ASSERT(texture);
+    texture->image = VKAllocator_CreateImage(((VKDevice*)device)->allocator, width, height,
+                                             0, (VkFormat)format, VK_IMAGE_TILING_OPTIMAL,
+                                             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                                             VK_SAMPLE_COUNT_1_BIT, VKTexturePool_FindImageMemoryType);
+    if IS_NULL(texture->image.handle) {
         J2dRlsTrace(J2D_TRACE_ERROR, "VKTexturePool_createTexture: Cannot create VKImage");
+        free(texture);
         return NULL;
     }
     // usage   = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
@@ -112,10 +124,11 @@ static int VKTexturePool_bytesPerPixel(long format) {
 static void VKTexturePool_freeTexture(ADevicePrivPtr *device, ATexturePrivPtr *texture) {
     CHECK_NULL(device);
     CHECK_NULL(texture);
-    VKImage* tex = (VKImage*)texture;
+    Texture* tex = (Texture*)texture;
     if (TRACE_TEX) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePool_freeTexture: free texture: tex=%p", tex);
 
-    VKImage_free((VKDevice*)device, tex);
+    VKAllocator_DestroyImage(((VKDevice*)device)->allocator, tex->image);
+    free(tex);
 }
 
 /* VKTexturePoolHandle API */
