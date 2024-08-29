@@ -168,6 +168,9 @@ public final class D3DRenderQueue extends RenderQueue {
         refSet.clear();
     }
 
+    public static native int getFramePresentedStatus();
+    public static native int setPresentStatistic(int status);
+
     private class QueueFlusher implements Runnable {
         private static volatile boolean needsFlush;
 
