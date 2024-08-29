@@ -29,8 +29,7 @@
 #include <assert.h>
 #include "VKUtil.h"
 #include "VKBase.h"
-#include "VKBuffer.h"
-#include "VKImage.h"
+#include "VKAllocator.h"
 #include "VKRenderer.h"
 #include "VKSurfaceData.h"
 
@@ -46,7 +45,10 @@
 #define MAX_VERTEX_BUFFERS_PER_PAGE (VERTEX_BUFFER_PAGE_SIZE / VERTEX_BUFFER_SIZE)
 
 typedef struct {
-    VkBuffer       buffer;
+    VkBuffer buffer;
+    // Vertex buffer has no ownership over its memory.
+    // Provided memory and offset must only be used to flush memory writes.
+    // Allocation and freeing is done in pages using VKAllocator.
     VkDeviceMemory memory;
     VkDeviceSize   offset;
     void*          data; // Only sequential writes!
@@ -73,7 +75,7 @@ struct VKRenderer {
     TrackedVkCommandBuffer* pendingSecondaryCommandBuffers;
     TrackedVkSemaphore*     pendingSemaphores;
     struct VertexBufferPool {
-        VkDeviceMemory*        memoryPages;
+        VKMemory*              memoryPages;
         TrackedVKVertexBuffer* pendingBuffers;
     } vertexBufferPool;
 
@@ -151,6 +153,7 @@ static VKVertexBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
     if (buffer.buffer != VK_NULL_HANDLE) return buffer;
 
     VKDevice* device = renderer->device;
+    VKAllocator* alloc = device->allocator;
     // Allocate new ring buffer. Ring buffer grows when size reaches capacity, so leave one more slot to fit all buffers.
     TrackedVKVertexBuffer* newRing =
             CARR_ring_buffer_realloc(NULL, sizeof(TrackedVKVertexBuffer),
@@ -173,36 +176,28 @@ static VKVertexBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
 
     // Check memory requirements. We aim to create MAX_VERTEX_BUFFERS_PER_PAGE buffers,
     // but due to implementation-specific alignment requirements this number can be lower (unlikely though).
-    VkMemoryRequirements memRequirements;
-    device->vkGetBufferMemoryRequirements(device->handle, tempBuffer.value.buffer, &memRequirements);
-    // Required size may not be multiple of alignment, fix.
-    memRequirements.size = ((memRequirements.size + memRequirements.alignment - 1) /
-            memRequirements.alignment) * memRequirements.alignment;
-    VkDeviceSize bufferSize = memRequirements.size;
+    VKMemoryRequirements requirements = VKAllocator_BufferRequirements(alloc, tempBuffer.value.buffer);
+    VKAllocator_PadToAlignment(&requirements); // Align for array-like allocation.
+    VkDeviceSize bufferSize = requirements.requirements.memoryRequirements.size;
     uint32_t bufferCount = VERTEX_BUFFER_PAGE_SIZE / bufferSize;
-
+    requirements.requirements.memoryRequirements.size = VERTEX_BUFFER_PAGE_SIZE;
     // Find memory type.
-    uint32_t memoryType;
-    VK_IF_ERROR(VKBuffer_FindMemoryType(device->physicalDevice, memRequirements.memoryTypeBits,
-                                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &memoryType)) VK_UNHANDLED_ERROR();
+    VKAllocator_FindMemoryType(&requirements,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VKAllocator_FindMemoryType(&requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
+    if (requirements.memoryType == VK_NO_MEMORY_TYPE) VK_UNHANDLED_ERROR();
 
     // Allocate new memory page.
-    VkMemoryAllocateInfo allocateInfo = {
-            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .allocationSize = VERTEX_BUFFER_PAGE_SIZE,
-            .memoryTypeIndex = memoryType
-    };
-    VkDeviceMemory page;
-    VK_IF_ERROR(device->vkAllocateMemory(device->handle, &allocateInfo, NULL, &page)) VK_UNHANDLED_ERROR();
-    void* data;
-    VK_IF_ERROR(device->vkMapMemory(device->handle, page, 0, VK_WHOLE_SIZE, 0, &data)) VK_UNHANDLED_ERROR();
+    VKMemory page = VKAllocator_Allocate(&requirements);
+    void* data = VKAllocator_Map(alloc, page);
+    VkMappedMemoryRange range = VKAllocator_GetMemoryRange(alloc, page);
 
     // Create remaining buffers and bind memory.
     for (uint32_t i = 0;;) {
         VKVertexBuffer* b = &newRing[i].value;
-        b->memory = page;
-        b->offset = bufferSize * i;
-        b->data = (void*) (((uint8_t*) data) + b->offset);
+        b->memory = range.memory;
+        b->offset = range.offset + bufferSize * i;
+        b->data = (void*) (((uint8_t*) data) + bufferSize * i);
         VK_IF_ERROR(device->vkBindBufferMemory(device->handle, b->buffer, b->memory, b->offset)) VK_UNHANDLED_ERROR();
         if ((++i) >= bufferCount) break;
         VK_IF_ERROR(device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &tempBuffer.value.buffer)) VK_UNHANDLED_ERROR();
@@ -342,7 +337,7 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
     }
     RING_BUFFER_FREE(renderer->vertexBufferPool.pendingBuffers);
     for (uint32_t i = 0; i < ARRAY_SIZE(renderer->vertexBufferPool.memoryPages); i++) {
-        device->vkFreeMemory(device->handle, renderer->vertexBufferPool.memoryPages[i], NULL); // Implicitly unmapped.
+        VKAllocator_Free(renderer->device->allocator, renderer->vertexBufferPool.memoryPages[i]);
     }
     ARRAY_FREE(renderer->vertexBufferPool.memoryPages);
 
@@ -470,7 +465,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
 static void VKRenderer_AddSurfaceBarrier(VkImageMemoryBarrier* barriers, uint32_t* numBarriers,
                                          VkPipelineStageFlags* srcStages, VkPipelineStageFlags* dstStages,
                                          VKSDOps* surface, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
-    assert(surface->image != NULL);
+    assert(surface->image.handle != VK_NULL_HANDLE);
     // TODO Even if stage, access and layout didn't change, we may still need a barrier against WaW hazard.
     if (stage != surface->renderPass->lastStage || access != surface->renderPass->lastAccess || layout != surface->renderPass->layout) {
         barriers[*numBarriers] = (VkImageMemoryBarrier) {
@@ -481,7 +476,7 @@ static void VKRenderer_AddSurfaceBarrier(VkImageMemoryBarrier* barriers, uint32_
                 .newLayout = layout,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = surface->image->image,
+                .image = surface->image.handle,
                 .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
         };
         (*numBarriers)++;
@@ -849,7 +844,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
                 .dstOffsets[1] = {(int)surface->extent.width, (int)surface->extent.height, 1},
         };
         device->vkCmdBlitImage(cb,
-                               surface->image->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               surface->image.handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                win->swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                1, &blit, VK_FILTER_NEAREST);
 

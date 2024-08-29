@@ -27,6 +27,7 @@
 #include <dlfcn.h>
 #include "VKUtil.h"
 #include "VKBase.h"
+#include "VKAllocator.h"
 #include "VKRenderer.h"
 #include "VKTexturePool.h"
 
@@ -57,6 +58,7 @@ static void vulkanLibClose() {
                     VKDevice* device = &geInstance->devices[i];
                     VKRenderer_Destroy(device->renderer);
                     VKTexturePool_Dispose(device->texturePool);
+                    VKAllocator_Destroy(device->allocator);
                     ARRAY_FREE(device->enabledExtensions);
                     ARRAY_FREE(device->enabledLayers);
                     free(device->name);
@@ -607,9 +609,9 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkCreateDescriptorPool);
     DEVICE_PROC(vkAllocateDescriptorSets);
     DEVICE_PROC(vkCmdBindDescriptorSets);
-    DEVICE_PROC(vkGetImageMemoryRequirements);
+    DEVICE_PROC(vkGetImageMemoryRequirements2);
     DEVICE_PROC(vkCreateBuffer);
-    DEVICE_PROC(vkGetBufferMemoryRequirements);
+    DEVICE_PROC(vkGetBufferMemoryRequirements2);
     DEVICE_PROC(vkBindBufferMemory);
     DEVICE_PROC(vkMapMemory);
     DEVICE_PROC(vkUnmapMemory);
@@ -622,11 +624,19 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkDestroyImage);
     DEVICE_PROC(vkDestroyFramebuffer);
     DEVICE_PROC(vkFlushMappedMemoryRanges);
+    DEVICE_PROC(vkInvalidateMappedMemoryRanges);
     DEVICE_PROC(vkCmdPushConstants);
 
     device->vkGetDeviceQueue(device->handle, device->queueFamily, 0, &device->queue);
     if (device->queue == NULL) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Failed to get device queue");
+        VK_UNHANDLED_ERROR();
+        return JNI_FALSE;
+    }
+
+    device->allocator = VKAllocator_Create(device);
+    if (!device->allocator) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot create allocator")
         VK_UNHANDLED_ERROR();
         return JNI_FALSE;
     }
