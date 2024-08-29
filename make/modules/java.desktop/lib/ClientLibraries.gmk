@@ -197,8 +197,6 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
     BUILD_LIBSPLASHSCREEN_splashscreen_sys.m_CFLAGS := -O0
   endif
 
-  LIBSPLASHSCREEN_CFLAGS += $(CFLAGS_JDKLIB) $(GIFLIB_CFLAGS) $(LIBJPEG_CFLAGS) $(PNG_CFLAGS) $(LIBZ_CFLAGS)
-
   ifeq ($(call isTargetOs, macosx), true)
     LIBSPLASHSCREEN_CFLAGS += -DWITH_MACOSX
   else ifeq ($(call isTargetOs, windows), true)
@@ -273,7 +271,8 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
       EXCLUDE_FILES := $(LIBSPLASHSCREEN_EXCLUDE_FILES), \
       EXCLUDES := $(LIBSPLASHSCREEN_EXCLUDES), \
       OPTIMIZATION := LOW, \
-      CFLAGS := $(LIBWLSPLASHSCREEN_CFLAGS), \
+      CFLAGS := $(LIBWLSPLASHSCREEN_CFLAGS) \
+          $(GIFLIB_CFLAGS) $(LIBJPEG_CFLAGS) $(PNG_CFLAGS) $(LIBZ_CFLAGS), \
       EXTRA_HEADER_DIRS := $(LIBSPLASHSCREEN_HEADER_DIRS) $(LIBWLSPLASHSCREEN_HEADER_DIRS) libwlsplashscreen, \
       LIBS := -lwayland-client -lwayland-cursor $(LIBSPLASHSCREEN_LIBS) -lrt, \
       LIBS_unix :=  $(LIBDL) $(LIBM) -lpthread, \
