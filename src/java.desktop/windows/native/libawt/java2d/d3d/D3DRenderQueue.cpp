@@ -50,6 +50,8 @@ BOOL DWMIsCompositionEnabled();
 static D3DContext *d3dc = NULL;
 static D3DSDOps *dstOps = NULL;
 static BOOL bLostDevices = FALSE;
+static int lastFramePresented = 0;
+static BOOL enablePresentStatistic = FALSE;
 
 typedef struct {
     byte *buffer;
@@ -165,6 +167,13 @@ D3DRQ_SwapBuffers(D3DPipelineManager *pMgr, D3DSDOps *d3dsdo,
     }
 
     res = pSwapChain->Present(pSrcRect, pDstRect, 0, NULL, 0);
+    if (enablePresentStatistic) {
+        if (FAILED(res)) {
+            lastFramePresented = 0;
+        } else {
+            lastFramePresented = 1;
+        }
+    }
     res = D3DRQ_MarkLostIfNeeded(res, d3dsdo);
 
     return res;
@@ -199,6 +208,16 @@ D3DRQ_MarkLostIfNeeded(HRESULT res, D3DSDOps *d3dops)
 }
 
 extern "C" {
+
+JNIEXPORT BOOL JNICALL
+Java_sun_java2d_d3d_D3DRenderQueue_getFramePresentedStatus(JNIEnv *env, jobject obj) {
+    return lastFramePresented;
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_d3d_D3DRenderQueue_setPresentStatistic(JNIEnv *env, jobject obj, jint enablePresentStatisticStatus) {
+    enablePresentStatistic = enablePresentStatisticStatus;
+}
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_d3d_D3DRenderQueue_flushBuffer
