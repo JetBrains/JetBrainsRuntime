@@ -27,7 +27,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#include "VKBase.h"
 #include "VKImage.h"
 #include "VKTexturePool.h"
 #include "jni.h"
