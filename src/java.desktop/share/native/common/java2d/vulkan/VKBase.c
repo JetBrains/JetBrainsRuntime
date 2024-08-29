@@ -55,11 +55,8 @@ static void vulkanLibClose() {
             if (geInstance->devices != NULL) {
                 for (uint32_t i = 0; i < ARRAY_SIZE(geInstance->devices); i++) {
                     VKDevice* device = &geInstance->devices[i];
-                    if (device->texturePool != NULL) {
-                        // TODO make VKTexturePool_Dispose null-safe?
-                        VKTexturePool_Dispose(device->texturePool);
-                    }
                     VKRenderer_Destroy(device->renderer);
+                    VKTexturePool_Dispose(device->texturePool);
                     ARRAY_FREE(device->enabledExtensions);
                     ARRAY_FREE(device->enabledLayers);
                     free(device->name);
