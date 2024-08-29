@@ -32,28 +32,15 @@
 struct VKImage {
     VkImage                 image;
     VkDeviceMemory          memory;
-    VkFramebuffer           framebuffer;
     VkImageView             view;
     VkFormat                format;
     VkExtent2D              extent;
-    VkBool32                noImageDealloc;
 };
 
-VKImage* VKImage_Create(VKDevice* device,
-                        uint32_t width, uint32_t height,
+VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
                         VkFormat format, VkImageTiling tiling,
                         VkImageUsageFlags usage,
                         VkMemoryPropertyFlags properties);
 
-VKImage* VKImage_CreateImageArrayFromSwapChain(VKDevice* device,
-                                               VkSwapchainKHR swapchainKhr,
-                                               VkRenderPass renderPass,
-                                               VkFormat format,
-                                               VkExtent2D extent);
-
-VkBool32 VKImage_CreateFramebuffer(VKDevice* device,
-                                   VKImage *image, VkRenderPass renderPass);
-
 void VKImage_free(VKDevice* device, VKImage* image);
-void VKImage_dealloc(VKDevice* device, VKImage* image);
 #endif // VKImage_h_Included
