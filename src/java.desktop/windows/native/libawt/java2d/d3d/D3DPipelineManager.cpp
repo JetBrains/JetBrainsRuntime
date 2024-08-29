@@ -114,7 +114,7 @@ HRESULT D3DPipelineManager::ReleaseD3D(void)
 // If succeeded, returns S_OK, otherwise returns the error code.
 HRESULT D3DPipelineManager::InitD3D(void)
 {
-    typedef IDirect3D9 * WINAPI FnDirect3DCreate9(UINT SDKVersion);
+    typedef IDirect3D9Ex * WINAPI FnDirect3DCreate9Ex(UINT SDKVersion, IDirect3D9Ex** g_pD3D9);
 
     hLibD3D9 = JDK_LoadSystemLibrary("d3d9.dll");
     if (hLibD3D9 == NULL) {
@@ -122,16 +122,16 @@ HRESULT D3DPipelineManager::InitD3D(void)
         return E_FAIL;
     }
 
-    FnDirect3DCreate9 *d3dcreate9 = NULL;
-    d3dcreate9 = (FnDirect3DCreate9*)
-        ::GetProcAddress(hLibD3D9, "Direct3DCreate9");
+    FnDirect3DCreate9Ex *d3dcreate9 = NULL;
+    d3dcreate9 = (FnDirect3DCreate9Ex*)
+        ::GetProcAddress(hLibD3D9, "Direct3DCreate9Ex");
     if (d3dcreate9 == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "InitD3D: no Direct3DCreate9");
         ::FreeLibrary(hLibD3D9);
         return E_FAIL;
     }
 
-    pd3d9 = d3dcreate9(D3D_SDK_VERSION);
+    d3dcreate9(D3D_SDK_VERSION, &pd3d9);
     if (pd3d9 == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
             "InitD3D: unable to create IDirect3D9 object");

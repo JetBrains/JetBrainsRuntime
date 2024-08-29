@@ -22,6 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+#define INITGUID
 
 #include "D3DPipeline.h"
 #include <malloc.h>
@@ -50,6 +51,8 @@ BOOL DWMIsCompositionEnabled();
 static D3DContext *d3dc = NULL;
 static D3DSDOps *dstOps = NULL;
 static BOOL bLostDevices = FALSE;
+static int lastFramePresented = 0;
+static BOOL enablePresentStatistic = FALSE;
 
 typedef struct {
     byte *buffer;
@@ -156,6 +159,25 @@ D3DRQ_SwapBuffers(D3DPipelineManager *pMgr, D3DSDOps *d3dsdo,
     }
 
     res = pSwapChain->Present(pSrcRect, pDstRect, 0, NULL, 0);
+
+    if (enablePresentStatistic) {
+        if (FAILED(res)) {
+            lastFramePresented = -1;
+        } else {
+            IDirect3DSwapChain9Ex *pSwapChainEx;
+            HRESULT query = pSwapChain->QueryInterface(IID_IDirect3DSwapChain9Ex, (void **) &pSwapChainEx);
+            lastFramePresented = 0;
+            if (SUCCEEDED(query)) {
+                UINT curPresentCount = 0;
+                static UINT prevPresentCount = 0;
+                HRESULT hr = pSwapChainEx->GetLastPresentCount(&curPresentCount);
+                lastFramePresented = SUCCEEDED(hr) && prevPresentCount != curPresentCount;
+                prevPresentCount = curPresentCount;
+                pSwapChainEx->Release();
+            }
+        }
+    }
+
     res = D3DRQ_MarkLostIfNeeded(res, d3dsdo);
 
     return res;
@@ -190,6 +212,16 @@ D3DRQ_MarkLostIfNeeded(HRESULT res, D3DSDOps *d3dops)
 }
 
 extern "C" {
+
+JNIEXPORT BOOL JNICALL
+Java_sun_java2d_d3d_D3DRenderQueue_getFramePresentedStatus(JNIEnv *env, jobject obj) {
+    return lastFramePresented;
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_d3d_D3DRenderQueue_setPresentStatistic(JNIEnv *env, jobject obj, jint enablePresentStatisticStatus) {
+    enablePresentStatistic = enablePresentStatisticStatus;
+}
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_d3d_D3DRenderQueue_flushBuffer

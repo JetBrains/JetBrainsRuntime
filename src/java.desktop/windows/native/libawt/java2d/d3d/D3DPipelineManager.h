@@ -120,7 +120,7 @@ private:
     // current adapter count
     UINT adapterCount;
     // Pointer to Direct3D9 Object mainained by the pipeline manager
-    LPDIRECT3D9 pd3d9;
+    IDirect3D9Ex *pd3d9;
     // d3d9.dll lib
     HINSTANCE hLibD3D9;
 

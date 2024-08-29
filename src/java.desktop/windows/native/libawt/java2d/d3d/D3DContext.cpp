@@ -595,7 +595,7 @@ D3DContext::ConfigureContext(D3DPRESENT_PARAMETERS *pNewParams)
         }
 
         // not preserving fpu control word could cause issues (4860749)
-        dwBehaviorFlags = D3DCREATE_FPU_PRESERVE;
+        dwBehaviorFlags = D3DCREATE_FPU_PRESERVE | D3DCREATE_ENABLE_PRESENTSTATS;
 
         J2dRlsTrace(J2D_TRACE_VERBOSE,
                     "[V] dwBehaviorFlags=D3DCREATE_FPU_PRESERVE|");
