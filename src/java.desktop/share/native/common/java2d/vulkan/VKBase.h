@@ -47,6 +47,7 @@ struct VKDevice {
     PFN_vkCreatePipelineLayout vkCreatePipelineLayout;
     PFN_vkDestroyPipelineLayout vkDestroyPipelineLayout;
     PFN_vkCreateGraphicsPipelines vkCreateGraphicsPipelines;
+    PFN_vkDestroyPipeline vkDestroyPipeline;
     PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR;
     PFN_vkDestroySwapchainKHR vkDestroySwapchainKHR;
     PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR;
@@ -82,9 +83,11 @@ struct VKDevice {
     PFN_vkEndCommandBuffer vkEndCommandBuffer;
     PFN_vkCreateImage vkCreateImage;
     PFN_vkCreateSampler vkCreateSampler;
+    PFN_vkDestroySampler vkDestroySampler;
     PFN_vkAllocateMemory vkAllocateMemory;
     PFN_vkBindImageMemory vkBindImageMemory;
     PFN_vkCreateDescriptorSetLayout vkCreateDescriptorSetLayout;
+    PFN_vkDestroyDescriptorSetLayout vkDestroyDescriptorSetLayout;
     PFN_vkUpdateDescriptorSets vkUpdateDescriptorSets;
     PFN_vkCreateDescriptorPool vkCreateDescriptorPool;
     PFN_vkAllocateDescriptorSets vkAllocateDescriptorSets;

@@ -65,6 +65,12 @@ void VKRenderer_FlushSurface(VKSDOps* surface);
  */
 void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent);
 
+// Blit ops.
+
+void VKRenderer_TextureRender(VKRenderingContext* context,
+                              VKImage *destImage, VKImage *srcImage,
+                              VkBuffer vertexBuffer, uint32_t vertexNum);
+
 // fill ops
 void VKRenderer_FillRect(VKRenderingContext* context, jint x, jint y, jint w, jint h);
 

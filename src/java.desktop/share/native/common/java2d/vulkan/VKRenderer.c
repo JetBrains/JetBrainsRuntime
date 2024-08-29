@@ -47,7 +47,8 @@ TRACKED_RESOURCE(VkSemaphore);
  * Renderer attached to device.
  */
 struct VKRenderer {
-    VKDevice* device;
+    VKDevice*          device;
+    VKPipelineContext* pipelineContext;
 
     TrackedVkCommandBuffer* pendingCommandBuffers;
     TrackedVkCommandBuffer* pendingSecondaryCommandBuffers;
@@ -62,11 +63,8 @@ struct VKRenderer {
      */
     uint64_t writeTimestamp;
 
-    VkSemaphore   timelineSemaphore;
-    VKPipelines** pipelines;
-    VKShaders*    shaders;
-    VkCommandPool commandPool;
-
+    VkSemaphore     timelineSemaphore;
+    VkCommandPool   commandPool;
     VkCommandBuffer commandBuffer;
 
     struct Wait {
@@ -85,12 +83,12 @@ struct VKRenderer {
  * Rendering-related info attached to surface.
  */
 struct VKRenderPass {
-    VKPipelines*    pipelines;
-    VkFramebuffer   framebuffer;
-    VkCommandBuffer commandBuffer;
-    VkBool32        pendingFlush;
-    VkBool32        pendingCommands;
-    VkBool32        pendingClear;
+    VKRenderPassContext* context;
+    VkFramebuffer        framebuffer;
+    VkCommandBuffer      commandBuffer;
+    VkBool32             pendingFlush;
+    VkBool32             pendingCommands;
+    VkBool32             pendingClear;
 
     VkImageLayout           layout;
     VkPipelineStageFlagBits lastStage;
@@ -155,8 +153,8 @@ VKRenderer* VKRenderer_Create(VKDevice* device) {
     VKRenderer* renderer = calloc(1, sizeof(VKRenderer));
     VK_RUNTIME_ASSERT(renderer);
 
-    renderer->shaders = VKPipelines_CreateShaders(device);
-    if (renderer->shaders == NULL) {
+    renderer->pipelineContext = VKPipelines_CreateContext(device);
+    if (renderer->pipelineContext == NULL) {
         VKRenderer_Destroy(renderer);
         return NULL;
     }
@@ -201,11 +199,7 @@ VKRenderer* VKRenderer_Create(VKDevice* device) {
 void VKRenderer_Destroy(VKRenderer* renderer) {
     if (renderer == NULL) return;
     VKRenderer_Sync(renderer);
-    for (uint32_t i = 0; i < ARRAY_SIZE(renderer->pipelines); i++) {
-        VKPipelines_Destroy(renderer->device, renderer->pipelines[i]);
-    }
-    VKPipelines_DestroyShaders(renderer->device, renderer->shaders);
-    ARRAY_FREE(renderer->pipelines);
+    VKPipelines_DestroyContext(renderer->pipelineContext);
     // No need to destroy command buffers one by one, we will destroy the pool anyway.
     RING_BUFFER_FREE(renderer->pendingCommandBuffers);
     RING_BUFFER_FREE(renderer->pendingSecondaryCommandBuffers);
@@ -449,25 +443,15 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
     };
 
     // Initialize pipelines. They are cached until surface format changes.
-    if (renderPass->pipelines == NULL) {
-        for (uint32_t i = 0; i < ARRAY_SIZE(renderer->pipelines); i++) {
-            if (renderer->pipelines[i]->format == surface->image->format) {
-                renderPass->pipelines = renderer->pipelines[i];
-                break;
-            }
-        }
-        // Pipelines not found, create.
-        if (renderPass->pipelines == NULL) {
-            renderPass->pipelines = VKPipelines_Create(device, renderer->shaders, surface->image->format);
-            ARRAY_PUSH_BACK(renderer->pipelines, renderPass->pipelines);
-        }
+    if (renderPass->context == NULL) {
+        renderPass->context = VKPipelines_GetRenderPassContext(renderer->pipelineContext, surface->image->format);
     }
 
     // Initialize framebuffer.
     if (renderPass->framebuffer == VK_NULL_HANDLE) {
         VkFramebufferCreateInfo framebufferCreateInfo = {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-                .renderPass = renderPass->pipelines->renderPass,
+                .renderPass = renderPass->context->renderPass,
                 .attachmentCount = 1,
                 .pAttachments = &surface->image->view,
                 .width = surface->image->extent.width,
@@ -514,7 +498,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     // Begin recording render pass commands.
     VkCommandBufferInheritanceInfo inheritanceInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-            .renderPass = surface->renderPass->pipelines->renderPass,
+            .renderPass = surface->renderPass->context->renderPass,
             .subpass = 0,
             .framebuffer = surface->renderPass->framebuffer
     };
@@ -581,7 +565,7 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     // Begin render pass.
     VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = surface->renderPass->pipelines->renderPass,
+            .renderPass = surface->renderPass->context->renderPass,
             .framebuffer = surface->renderPass->framebuffer,
             .renderArea.offset = (VkOffset2D){0, 0},
             .renderArea.extent = surface->image->extent,
@@ -748,16 +732,76 @@ static VkCommandBuffer VKRenderer_Render(VKSDOps* surface) {
 #define ARRAY_TO_VERTEX_BUF(device, vertices)                                           \
     VKBuffer_CreateFromData(device, vertices, ARRAY_SIZE(vertices)*sizeof ((vertices)[0]))
 
+void VKRenderer_TextureRender(VKRenderingContext* context, VKImage *destImage, VKImage *srcImage,
+                              VkBuffer vertexBuffer, uint32_t vertexNum)
+{
+    assert(context != NULL && context->surface != NULL);
+    VKSDOps* surface = (VKSDOps*)context->surface;
+    VkCommandBuffer cb = VKRenderer_Render(surface);
+    VKDevice* device = surface->device;
+
+    // TODO We create a new descriptor set on each command, we'll implement reusing them later.
+    VkDescriptorPoolSize poolSize = {
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1
+    };
+    VkDescriptorPoolCreateInfo descrPoolInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .poolSizeCount = 1,
+            .pPoolSizes = &poolSize,
+            .maxSets = 1
+    };
+    VkDescriptorPool descriptorPool;
+    VK_IF_ERROR(device->vkCreateDescriptorPool(device->handle, &descrPoolInfo, NULL, &descriptorPool)) VK_UNHANDLED_ERROR();
+
+    VkDescriptorSetAllocateInfo descrAllocInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = descriptorPool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &device->renderer->pipelineContext->textureDescriptorSetLayout
+    };
+    VkDescriptorSet descriptorSet;
+    VK_IF_ERROR(device->vkAllocateDescriptorSets(device->handle, &descrAllocInfo, &descriptorSet)) VK_UNHANDLED_ERROR();
+
+    VkDescriptorImageInfo imageInfo = {
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .imageView = srcImage->view,
+            .sampler = device->renderer->pipelineContext->linearRepeatSampler
+    };
+
+    VkWriteDescriptorSet descriptorWrites = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = descriptorSet,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .pImageInfo = &imageInfo
+    };
+
+    device->vkUpdateDescriptorSets(device->handle, 1, &descriptorWrites, 0, NULL);
+
+
+    device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipelines_GetPipeline(surface->renderPass->context, PIPELINE_BLIT));
+
+    VkBuffer vertexBuffers[] = {vertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    device->vkCmdBindVertexBuffers(cb, 0, 1, vertexBuffers, offsets);
+    device->vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    device->renderer->pipelineContext->texturePipelineLayout, 0, 1, &descriptorSet, 0, NULL);
+    device->vkCmdDraw(cb, vertexNum, 1, 0, 0);
+}
+
 static void VKRenderer_ColorRender(VKRenderingContext* context, VKPipeline pipeline, VkBuffer vertexBuffer, uint32_t vertexNum) {
     assert(context != NULL && context->surface != NULL);
     VKSDOps* surface = context->surface;
     VkCommandBuffer cb = VKRenderer_Render(surface);
     VKDevice* device = surface->device;
 
-    device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, surface->renderPass->pipelines->pipelines[pipeline]);
+    device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipelines_GetPipeline(surface->renderPass->context, pipeline));
     device->vkCmdPushConstants(
             cb,
-            surface->renderPass->pipelines->pipelineLayout,
+            device->renderer->pipelineContext->pipelineLayout,
             VK_SHADER_STAGE_VERTEX_BIT,
             0,
             sizeof(Color),

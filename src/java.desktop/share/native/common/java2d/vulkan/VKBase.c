@@ -565,6 +565,7 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkCreatePipelineLayout);
     DEVICE_PROC(vkDestroyPipelineLayout);
     DEVICE_PROC(vkCreateGraphicsPipelines);
+    DEVICE_PROC(vkDestroyPipeline);
     DEVICE_PROC(vkCreateSwapchainKHR);
     DEVICE_PROC(vkDestroySwapchainKHR);
     DEVICE_PROC(vkGetSwapchainImagesKHR);
@@ -600,9 +601,11 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkEndCommandBuffer);
     DEVICE_PROC(vkCreateImage);
     DEVICE_PROC(vkCreateSampler);
+    DEVICE_PROC(vkDestroySampler);
     DEVICE_PROC(vkAllocateMemory);
     DEVICE_PROC(vkBindImageMemory);
     DEVICE_PROC(vkCreateDescriptorSetLayout);
+    DEVICE_PROC(vkDestroyDescriptorSetLayout);
     DEVICE_PROC(vkUpdateDescriptorSets);
     DEVICE_PROC(vkCreateDescriptorPool);
     DEVICE_PROC(vkAllocateDescriptorSets);

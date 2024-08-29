@@ -26,36 +26,57 @@
 
 #include "VKTypes.h"
 
+typedef struct VKShaders VKShaders;
+typedef struct VKPipelineSet VKPipelineSet;
+
 /**
- * All pipeline types, use these to index into VKPipelines.pipelines.
+ * All pipeline types, use these to index into VKPipelineSet.pipelines.
  */
 typedef enum {
     PIPELINE_FILL_COLOR = 0,
     PIPELINE_DRAW_COLOR = 1,
-    NUM_PIPELINES = 2
+    PIPELINE_BLIT = 2,
+    PIPELINE_COUNT = 3
 } VKPipeline;
 
-struct VKPipelines {
-    VkFormat         format;
-    VkRenderPass     renderPass;
-    VkPipelineLayout pipelineLayout;
-    VkPipeline       pipelines[NUM_PIPELINES];
+/**
+ * Global pipeline context.
+ */
+struct VKPipelineContext {
+    VKDevice*             device;
+    VkPipelineLayout      pipelineLayout;
+    VkPipelineLayout      texturePipelineLayout;
+    VkDescriptorSetLayout textureDescriptorSetLayout;
+
+    VkSampler             linearRepeatSampler;
+
+    VKShaders*            shaders;
+    VKRenderPassContext** renderPassContexts;
+};
+
+/**
+ * Per-format context.
+ */
+struct VKRenderPassContext {
+    VKPipelineContext* pipelineContext;
+    VkFormat           format;
+    VkRenderPass       renderPass;
+    VKPipelineSet*     pipelineSet; // TODO we will need a real hash map for this in the future.
 };
 
 typedef struct {
     float x, y;
 } VKVertex;
 
-struct VKShaders {
-#   define SHADER_ENTRY(NAME, TYPE) VkPipelineShaderStageCreateInfo NAME ## _ ## TYPE;
-#   include "vulkan/shader_list.h"
-#   undef SHADER_ENTRY
-};
+typedef struct {
+    float px, py;
+    float u, v;
+} VKTxVertex;
 
-VKPipelines* VKPipelines_Create(VKDevice* device, VKShaders* shaders, VkFormat format);
-void VKPipelines_Destroy(VKDevice* device, VKPipelines* pipelines);
+VKPipelineContext* VKPipelines_CreateContext(VKDevice* device);
+void VKPipelines_DestroyContext(VKPipelineContext* pipelines);
 
-VKShaders* VKPipelines_CreateShaders(VKDevice* device);
-void VKPipelines_DestroyShaders(VKDevice* device, VKShaders* shaders);
+VKRenderPassContext* VKPipelines_GetRenderPassContext(VKPipelineContext* pipelineContext, VkFormat format);
+VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKPipeline pipeline);
 
 #endif //VKPipelines_h_Included
