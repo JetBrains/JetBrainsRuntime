@@ -42,6 +42,7 @@ import java.awt.image.DirectColorModel;
 import java.awt.image.Raster;
 import java.awt.image.SampleModel;
 import java.awt.image.SinglePixelPackedSampleModel;
+import sun.awt.AWTAccessor;
 import sun.awt.SunHints;
 import sun.awt.image.DataBufferNative;
 import sun.awt.image.PixelConverter;
@@ -183,6 +184,7 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
     private VSyncType syncType;
     private int backBuffersNum;
     private Timer resizeTimer = null;
+    private boolean frameStatisticEnabled = false;
 
     private WritableRasterNative wrn;
 
@@ -262,6 +264,9 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
             initSurface();
         }
         setBlitProxyCache(gc.getSurfaceDataProxyCache());
+
+        frameStatisticEnabled = AWTAccessor.getWindowAccessor().countersEnabled(null);
+        D3DRenderQueue.setPresentStatistic(frameStatisticEnabled ? 1 : 0);
     }
 
     @Override
@@ -820,6 +825,19 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
             rq.flushNow();
         } finally {
             rq.unlock();
+        }
+
+        if (sd.frameStatisticEnabled) {
+            if (sd.getPeer().getTarget() instanceof Window window) {
+                switch (D3DRenderQueue.getFramePresentedStatus()) {
+                    case 1:
+                        AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.framesPresentRequested");
+                        break;
+                    case 0:
+                    default:
+                        AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.framesPresentFailed");
+                }
+            }
         }
     }
 
