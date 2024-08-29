@@ -32,12 +32,15 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.image.ColorModel;
 import sun.awt.wl.WLComponentPeer;
-import sun.awt.wl.WLGraphicsConfig;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
 import sun.java2d.pipe.BufferedContext;
+import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.wl.WLSurfaceDataExt;
 import sun.util.logging.PlatformLogger;
+
+import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
+import static sun.java2d.pipe.BufferedOpCodes.CONFIGURE_SURFACE;
 
 public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurfaceDataExt {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.WLVKSurfaceData");
@@ -45,12 +48,10 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
     protected WLComponentPeer peer;
     protected WLVKGraphicsConfig graphicsConfig;
 
-    @Override
-    public native void assignSurface(long surfacePtr);
-    @Override
-    public native void revalidate(int width, int height, int scale);
+    private native void initOps(int backgroundRGB);
 
-    protected native void initOps(int width, int height, int scale, int backgroundRGB);
+    private native void assignWlSurface(long surfacePtr);
+
     protected WLVKSurfaceData(WLComponentPeer peer, WLVKGraphicsConfig gc,
                               SurfaceType sType, ColorModel cm, int type)
     {
@@ -60,8 +61,53 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
         final int backgroundRGB = peer.getBackground() != null
                 ? peer.getBackground().getRGB()
                 : 0;
-        int scale = ((WLGraphicsConfig)peer.getGraphicsConfiguration()).getDisplayScale();
-        initOps(peer.getBufferWidth(), peer.getBufferHeight(), scale, backgroundRGB);
+        initOps(backgroundRGB);
+    }
+
+    @Override
+    public void assignSurface(long surfacePtr) {
+        assignWlSurface(surfacePtr);
+        if (surfacePtr != 0) configure();
+    }
+    @Override
+    public void revalidate(int width, int height, int scale) {
+        this.width = width;
+        this.height = height;
+        this.scale = scale;
+        configure();
+    }
+
+    private synchronized void configure() {
+        VKRenderQueue rq = VKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            RenderBuffer buf = rq.getBuffer();
+            rq.ensureCapacityAndAlignment(20, 4);
+            buf.putInt(CONFIGURE_SURFACE);
+            buf.putLong(getNativeOps());
+            buf.putInt(width / scale); // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
+            buf.putInt(height / scale); // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
+
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    @Override
+    public synchronized void commit() {
+        VKRenderQueue rq = VKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            RenderBuffer buf = rq.getBuffer();
+            rq.ensureCapacityAndAlignment(12, 4);
+            buf.putInt(FLUSH_BUFFER);
+            buf.putLong(getNativeOps());
+
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
     }
 
     @Override
@@ -140,11 +186,6 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
         @Override
         public boolean isOnScreen() {
             return true;
-        }
-
-        @Override
-        public void commit() {
-
         }
     }
 }
