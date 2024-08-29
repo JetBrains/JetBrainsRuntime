@@ -154,6 +154,13 @@ public class JPopupMenu extends JComponent implements Accessible,MenuElement {
     private static final boolean VERBOSE = false; // show reuse hits/misses
     private static final boolean DEBUG =   false;  // show bad params, misc.
 
+    static {
+        Toolkit toolkit = Toolkit.getDefaultToolkit();
+        if (toolkit != null && "sun.awt.wl.WLToolkit".equals(toolkit.getClass().getName())) {
+            JPopupMenu.setDefaultLightWeightPopupEnabled(false);
+        }
+    }
+
     /**
      *  Sets the default value of the <code>lightWeightPopupEnabled</code>
      *  property.
@@ -980,7 +987,7 @@ public class JPopupMenu extends JComponent implements Accessible,MenuElement {
             }
         }
         Point invokerOrigin;
-        if (invoker != null) {
+        if (invoker != null && !PopupFactory.isPopupPositionedRelatively()) {
             invokerOrigin = invoker.getLocationOnScreen();
 
             // To avoid integer overflow
