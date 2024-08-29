@@ -49,8 +49,7 @@ VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
     return VK_TRUE;
 }
 
-VKImage* VKImage_Create(VKDevice* device,
-                        VkExtent2D extent,
+VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
                         VkFormat format, VkImageTiling tiling,
                         VkImageUsageFlags usage,
                         VkMemoryPropertyFlags properties)
@@ -59,13 +58,13 @@ VKImage* VKImage_Create(VKDevice* device,
     VK_RUNTIME_ASSERT(image);
 
     image->format = format;
-    image->extent = extent;
+    image->extent = (VkExtent2D) {width, height};
 
     VkImageCreateInfo imageInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .imageType = VK_IMAGE_TYPE_2D,
-            .extent.width = extent.width,
-            .extent.height = extent.height,
+            .extent.width = width,
+            .extent.height = height,
             .extent.depth = 1,
             .mipLevels = 1,
             .arrayLayers = 1,

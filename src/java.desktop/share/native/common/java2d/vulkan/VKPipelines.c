@@ -48,14 +48,14 @@ VKShaders* VKPipelines_CreateShaders(VKDevice* device) {
     };                                                                \
     createInfo.codeSize = sizeof(NAME ## _ ## TYPE ## _data);         \
     createInfo.pCode = NAME ## _ ## TYPE ## _data;                    \
-    VK_IF_ERROR(device->vkCreateShaderModule(device->handle, &createInfo, NULL, &shaders->NAME##_##TYPE.module)) goto fail;
+    VK_IF_ERROR(device->vkCreateShaderModule(device->handle,          \
+                &createInfo, NULL, &shaders->NAME##_##TYPE.module)) { \
+        VKPipelines_DestroyShaders(device, shaders);                  \
+        return NULL;                                                  \
+    }
 #   include "vulkan/shader_list.h"
 #   undef SHADER_ENTRY
     return shaders;
-
-    fail:
-    VKPipelines_DestroyShaders(device, shaders);
-    return NULL;
 }
 
 void VKPipelines_DestroyShaders(VKDevice* device, VKShaders* shaders) {
@@ -188,8 +188,14 @@ VKPipelines* VKPipelines_Create(VKDevice* device, VKShaders* shaders, VkFormat f
     VK_RUNTIME_ASSERT(pipelines);
     pipelines->format = format;
 
-    VK_IF_ERROR(VKPipelines_CreateRenderPass(device, pipelines)) goto fail;
-    VK_IF_ERROR(VKPipelines_CreatePipelineLayout(device, pipelines)) goto fail;
+    VK_IF_ERROR(VKPipelines_CreateRenderPass(device, pipelines)) {
+        VKPipelines_Destroy(device, pipelines);
+        return NULL;
+    }
+    VK_IF_ERROR(VKPipelines_CreatePipelineLayout(device, pipelines)) {
+        VKPipelines_Destroy(device, pipelines);
+        return NULL;
+    }
 
     // Setup default pipeline parameters.
     typedef struct {
@@ -242,13 +248,11 @@ VKPipelines* VKPipelines_Create(VKDevice* device, VKShaders* shaders, VkFormat f
     // Create pipelines.
     // TODO pipeline cache
     VK_IF_ERROR(device->vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, NUM_PIPELINES,
-                                               createInfos, NULL, pipelines->pipelines)) goto fail;
-
+                                               createInfos, NULL, pipelines->pipelines)) {
+        VKPipelines_Destroy(device, pipelines);
+        return NULL;
+    }
     return pipelines;
-
-    fail:
-    VKPipelines_Destroy(device, pipelines);
-    return NULL;
 }
 
 void VKPipelines_Destroy(VKDevice* device, VKPipelines* pipelines) {

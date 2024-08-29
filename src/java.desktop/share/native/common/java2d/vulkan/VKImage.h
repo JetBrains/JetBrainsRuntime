@@ -37,7 +37,7 @@ struct VKImage {
     VkExtent2D              extent;
 };
 
-VKImage* VKImage_Create(VKDevice* device, VkExtent2D extent,
+VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
                         VkFormat format, VkImageTiling tiling,
                         VkImageUsageFlags usage,
                         VkMemoryPropertyFlags properties);

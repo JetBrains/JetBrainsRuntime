@@ -65,6 +65,6 @@ inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
  * This is also accounted for in VKSD_ConfigureWindowSurface, so that Vulkan doesn't do any
  * color space conversions on its own, as the colors we are drawing are already in sRGB.
  */
-Color Color_DecodeFromJava(unsigned int color);
+Color VKUtil_DecodeJavaColor(uint32_t color);
 
 #endif //VKUtil_h_Included

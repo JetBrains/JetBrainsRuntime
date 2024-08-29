@@ -35,22 +35,18 @@ typedef union {
     VkClearValue vkClearValue;
 } Color;
 
-#define STRUCT(NAME) typedef struct NAME NAME
+typedef struct VKGraphicsEnvironment VKGraphicsEnvironment;
+typedef struct VKDevice VKDevice;
+typedef struct VKRenderer VKRenderer;
+typedef struct VKRenderPass VKRenderPass;
+typedef struct VKRenderingContext VKRenderingContext;
+typedef struct VKPipelines VKPipelines;
+typedef struct VKShaders VKShaders;
+typedef struct VKBuffer VKBuffer;
+typedef struct VKImage VKImage;
+typedef struct VKSDOps VKSDOps;
+typedef struct VKWinSDOps VKWinSDOps;
 
 typedef char* pchar;
-
-STRUCT(VKGraphicsEnvironment);
-STRUCT(VKDevice);
-STRUCT(VKRenderer);
-STRUCT(VKRenderPass);
-STRUCT(VKRenderingContext);
-STRUCT(VKPipelines);
-STRUCT(VKShaders);
-STRUCT(VKBuffer);
-STRUCT(VKImage);
-STRUCT(VKSDOps);
-STRUCT(VKWinSDOps);
-
-#undef STRUCT
 
 #endif //VKTypes_h_Included

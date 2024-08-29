@@ -38,7 +38,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_initOps(JNIEnv *en
         return;
     }
     sd->vksdOps.drawableType = VKSD_WINDOW;
-    sd->vksdOps.background = Color_DecodeFromJava(backgroundRGB);
+    sd->vksdOps.background = VKUtil_DecodeJavaColor(backgroundRGB);
     VKSD_ResetSurface(&sd->vksdOps);
 }
 

@@ -544,7 +544,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_SET_COLOR:
             {
                 jint javaColor = NEXT_INT(b);
-                context.color = Color_DecodeFromJava(javaColor);
+                context.color = VKUtil_DecodeJavaColor(javaColor);
                 J2dRlsTraceLn5(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_COLOR 0x%08x, linear_rgba={%.3f, %.3f, %.3f, %.3f}",
                     javaColor, context.color.r, context.color.g, context.color.b, context.color.a);

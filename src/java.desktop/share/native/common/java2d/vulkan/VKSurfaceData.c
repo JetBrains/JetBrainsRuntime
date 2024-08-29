@@ -80,7 +80,8 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
             vksdo->requestedExtent.width != vksdo->image->extent.width ||
             vksdo->requestedExtent.height != vksdo->image->extent.height)) {
         // VK_FORMAT_B8G8R8A8_UNORM is the most widely-supported format for our use.
-        VKImage* image = VKImage_Create(device, vksdo->requestedExtent, VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+        VKImage* image = VKImage_Create(device, vksdo->requestedExtent.width, vksdo->requestedExtent.height,
+                                        VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
                                         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         if (image == NULL) {
@@ -132,7 +133,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     J2dRlsTraceLn1(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): available swapchain formats:", vkwinsdo);
     for (uint32_t i = 0; i < formatCount; i++) {
         J2dRlsTraceLn2(J2D_TRACE_INFO, "    format=%d, colorSpace=%d", formats[i].format, formats[i].colorSpace);
-        // We draw with sRGB colors (see Color_DecodeFromJava()), so we don't want Vulkan to do color space
+        // We draw with sRGB colors (see VKUtil_DecodeJavaColor()), so we don't want Vulkan to do color space
         // conversions when drawing to surface. We use *_UNORM formats, so that colors are written "as is".
         // With VK_COLOR_SPACE_SRGB_NONLINEAR_KHR these colors will be interpreted by presentation engine as sRGB.
         if (formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR && (
