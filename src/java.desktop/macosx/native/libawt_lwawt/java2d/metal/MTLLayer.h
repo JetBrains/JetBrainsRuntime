@@ -34,6 +34,7 @@
 
 @property (nonatomic) jobject javaLayer;
 @property (readwrite, assign) MTLContext* ctx;
+@property (readwrite, assign) NSInteger displayID;
 @property (readwrite, assign) id<MTLTexture>* buffer;
 @property (readwrite, assign) id<MTLTexture>* outBuffer;
 @property (readwrite, atomic) int nextDrawableCount;
