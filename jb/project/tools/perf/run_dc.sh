@@ -40,14 +40,10 @@ for i in `seq $N` ; do
     echo x
   fi
 
-#  echo "[debug] " + "test run"
-#  $JAVA $J2D_OPTS -DTRACE=$TRACE \
-#  -jar $RENDERPERFTEST $OPTS 2>&1 | awk '/'$1'/{print $3 }' | tee test_run.log
-
   $JAVA \
-  -jar $DACAPOTEST $OPTS 2>&1 | tee dacapo_$1$MODE_$i.log | grep -v "^#" | tail -n 2 | \
-  awk '/'$1'/{print $3 }' 
+  -jar $DACAPOTEST $OPTS 2>&1 | tee dacapo_$1$MODE_$i.log | grep "PASSED" | awk '{print $7 }'
+
   if [ $i -ne $N ]; then
     sleep $ST
   fi
-done | $DATAMASH_CMD | expand -t12
+done | $DATAMASH_CMD | expand -t12 > dacapo_$1.log
