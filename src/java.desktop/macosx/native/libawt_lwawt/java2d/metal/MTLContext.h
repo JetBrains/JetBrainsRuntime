@@ -85,6 +85,7 @@
 @property jboolean      useMaskColor;
 
 @property (readonly, strong)   id<MTLDevice>   device;
+@property (readonly) NSString*                 shadersLib;
 @property (strong) id<MTLCommandQueue>         commandQueue;
 @property (strong) id<MTLCommandQueue>         blitCommandQueue;
 @property (strong) id<MTLBuffer>               vertexBuffer;
@@ -106,7 +107,9 @@
  */
 + (MTLContext*) setSurfacesEnv:(JNIEnv*)env src:(jlong)pSrc dst:(jlong)pDst;
 
-- (id)initWithDevice:(jint)displayID shadersLib:(NSString*)shadersLib;
++ (NSMutableDictionary*) contextStore;
++ (MTLContext*) createContextWithDevice:(jint)displayID shadersLib:(NSString*)mtlShadersLib;
+- (id)initWithDevice:(id<MTLDevice>)device display:(jint) displayID shadersLib:(NSString*)mtlShadersLib;
 - (void)dealloc;
 
 - (void)handleDisplayLink: (BOOL)enabled source:(const char*)src;
