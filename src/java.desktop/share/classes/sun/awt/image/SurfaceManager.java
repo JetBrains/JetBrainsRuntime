@@ -31,8 +31,11 @@ import java.awt.Image;
 import java.awt.ImageCapabilities;
 import java.awt.image.BufferedImage;
 import java.awt.image.VolatileImage;
+import java.lang.ref.WeakReference;
+import java.util.Collections;
 import java.util.Iterator;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import sun.java2d.InvalidPipeException;
 import sun.java2d.SurfaceData;
@@ -89,7 +92,7 @@ public abstract class SurfaceManager {
         imgaccessor.setSurfaceManager(img, mgr);
     }
 
-    private volatile ConcurrentHashMap<Object,Object> cacheMap;
+    private volatile Map<Object, WeakReference<?>> cacheMap;
 
     /**
      * Return an arbitrary cached object for an arbitrary cache key.
@@ -112,7 +115,12 @@ public abstract class SurfaceManager {
      * method is ever called.
      */
     public Object getCacheData(Object key) {
-        return (cacheMap == null) ? null : cacheMap.get(key);
+        if (cacheMap == null) return null;
+        WeakReference<?> ref = cacheMap.get(key);
+        if (ref == null) return null;
+        Object o = ref.get();
+        if (o == null) cacheMap.remove(key, ref);
+        return o;
     }
 
     /**
@@ -124,11 +132,11 @@ public abstract class SurfaceManager {
         if (cacheMap == null) {
             synchronized (this) {
                 if (cacheMap == null) {
-                    cacheMap = new ConcurrentHashMap<>(2);
+                    cacheMap = Collections.synchronizedMap(new WeakHashMap<>(2));
                 }
             }
         }
-        cacheMap.put(key, value);
+        cacheMap.put(key, new WeakReference<>(value));
     }
 
     /**
@@ -244,15 +252,14 @@ public abstract class SurfaceManager {
         flush(false);
     }
 
-    synchronized void flush(boolean deaccelerate) {
-        if (cacheMap != null) {
-            Iterator<Object> i = cacheMap.values().iterator();
+    void flush(boolean deaccelerate) {
+        if (cacheMap == null) return;
+        synchronized (cacheMap) {
+            Iterator<WeakReference<?>> i = cacheMap.values().iterator();
             while (i.hasNext()) {
-                Object o = i.next();
-                if (o instanceof FlushableCacheData) {
-                    if (((FlushableCacheData) o).flush(deaccelerate)) {
-                        i.remove();
-                    }
+                Object o = i.next().get();
+                if (o == null || (o instanceof FlushableCacheData flushable && flushable.flush(deaccelerate))) {
+                    i.remove();
                 }
             }
         }
