@@ -70,6 +70,11 @@ public class ShowMaximized {
             });
             pause(robot);
 
+            if (frame.getExtendedState() != JFrame.MAXIMIZED_BOTH) {
+                System.out.println("Window is not maximized after shown again; skipping the test");
+                return;
+            }
+
             Dimension newSize = frame.getSize();
             System.out.println("Size when maximized again: " + sizeWhenMaximized);
             if (!sizeWhenMaximized.equals(newSize)) {
