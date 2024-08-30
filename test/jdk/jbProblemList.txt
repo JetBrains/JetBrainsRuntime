@@ -258,6 +258,7 @@ java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java JBR-3636,JBR-4880 windows-all
 java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all,macosx-all
 java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java JBR-5906 linux-all
 java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java 8129778 generic-all
+java/awt/event/MouseEvent/MouseEnterExitTest.java JBR-7113 linux-all
 
 java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.java 8194947 generic-all
 java/awt/Frame/FramesGC/FramesGC.java 8079069,JBR-6057 macosx-all,windows-all,linux-all
@@ -920,6 +921,7 @@ javax/swing/JButton/PressedButtonRightClickTest.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6524757.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6827032.java JBR-5210 windows-all
 javax/swing/JComboBox/6406264/bug6406264.java JBR-5210 windows-all
+javax/swing/JComboBox/6559152/bug6559152.java 8294067 macosx-all
 javax/swing/JComboBox/bug4890345.java JBR-5799 windows-all
 javax/swing/JComboBox/bug5029504.java JBR-5799 windows-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
