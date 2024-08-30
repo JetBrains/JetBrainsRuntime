@@ -85,9 +85,12 @@
 @property jboolean      useMaskColor;
 
 @property (readonly, strong)   id<MTLDevice>   device;
+@property (readonly) NSString*                 shadersLib;
 @property (strong) id<MTLCommandQueue>         commandQueue;
 @property (strong) id<MTLCommandQueue>         blitCommandQueue;
 @property (strong) id<MTLBuffer>               vertexBuffer;
+
+@property (readonly) NSMutableDictionary<NSNumber*, NSValue*>* displayLinks;
 
 @property (readonly) EncoderManager * encoderManager;
 @property (readonly) MTLSamplerManager * samplerManager;
@@ -106,10 +109,13 @@
  */
 + (MTLContext*) setSurfacesEnv:(JNIEnv*)env src:(jlong)pSrc dst:(jlong)pDst;
 
-- (id)initWithDevice:(jint)displayID shadersLib:(NSString*)shadersLib;
++ (NSMutableDictionary*) contextStore;
++ (MTLContext*) createContextWithDeviceIfAbsent:(jint)displayID shadersLib:(NSString*)mtlShadersLib;
+- (id)initWithDevice:(id<MTLDevice>)device display:(jint) displayID shadersLib:(NSString*)mtlShadersLib;
 - (void)dealloc;
 
-- (void)handleDisplayLink: (BOOL)enabled source:(const char*)src;
+- (void)handleDisplayLink:(BOOL)enabled display:(jint)display source:(const char*)src;
+- (void)createDisplayLinkIfAbsent: (jint)displayID;
 
 /**
  * Resets the current clip state (disables both scissor and depth tests).
