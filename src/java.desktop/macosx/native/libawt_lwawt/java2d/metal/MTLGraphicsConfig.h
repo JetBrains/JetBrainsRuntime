@@ -45,6 +45,7 @@
  */
 typedef struct _MTLGraphicsConfigInfo {
     MTLContext          *context;
+    jint                displayID;
 } MTLGraphicsConfigInfo;
 
 #endif /* MTLGraphicsConfig_h_Included */
