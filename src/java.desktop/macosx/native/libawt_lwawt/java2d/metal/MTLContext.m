@@ -153,34 +153,88 @@ MTLTransform* tempTransform = nil;
 
 @synthesize textureFunction,
             vertexCacheEnabled, aaEnabled, useMaskColor,
-            device, pipelineStateStorage,
+            device, shadersLib, pipelineStateStorage,
             commandQueue, blitCommandQueue, vertexBuffer,
             texturePool, paint=_paint, encoderManager=_encoderManager,
             samplerManager=_samplerManager, stencilManager=_stencilManager;
 
 extern void initSamplers(id<MTLDevice> device);
 
-- (id)initWithDevice:(jint)displayID shadersLib:(NSString*)shadersLib {
++ (NSMutableDictionary*) contextStore {
+    static NSMutableDictionary<NSNumber*, MTLContext*> *_contextStore;
+    static dispatch_once_t oncePredicate;
+
+    dispatch_once(&oncePredicate, ^{
+        _contextStore = [[NSMutableDictionary alloc] init];
+    });
+
+    return _contextStore;
+}
+
++ (MTLContext*) createContextWithDevice:(jint)displayID shadersLib:(NSString*)mtlShadersLib {
+    // Initialization code here.
+    id<MTLDevice> device = CGDirectDisplayCopyCurrentMetalDevice(displayID);
+    if (device == nil) {
+        J2dRlsTraceLn1(J2D_TRACE_ERROR, "MTLContext.initWithDevice(): Cannot create device from displayID=%d",
+                       displayID);
+        // Fallback to the default metal device for main display
+        jint mainDisplayID = CGMainDisplayID();
+        if (displayID == mainDisplayID) {
+            device = MTLCreateSystemDefaultDevice();
+        }
+        if (device == nil) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext.createContextWithDevice(): Cannot fallback to default metal device");
+            return nil;
+        }
+    }
+
+    NSNumber* regID = [NSNumber numberWithLongLong:device.registryID];
+    MTLContext* mtlc = MTLContext.contextStore[regID];
+    if (mtlc == nil) {
+        mtlc = [[MTLContext alloc] initWithDevice:device display:displayID shadersLib:mtlShadersLib];
+        if (mtlc != nil) {
+            MTLContext.contextStore[regID] = mtlc;
+            [mtlc release];
+            J2dRlsTraceLn4(J2D_TRACE_INFO,
+                           "MTLContext_createContext: new context(%p) for display=%d device=%p retainCount=%d",
+                           mtlc, displayID, mtlc.device.registryID, mtlc.retainCount);
+        }
+    } else {
+        if (![mtlc.shadersLib isEqualToString:mtlShadersLib]) {
+            J2dRlsTraceLn3(J2D_TRACE_ERROR,
+                           "MTLContext_createContext: cannot reuse context(%p) for display=%d device=%p, "
+                           "shaders lib has been changed",
+                           mtlc, displayID, mtlc.device.registryID)
+            return nil;
+        }
+        [mtlc retain];
+        J2dRlsTraceLn4(J2D_TRACE_INFO,
+                       "MTLContext_createContext: reuse context(%p) for display=%d device=%p retainCount=%d",
+                       mtlc, displayID, mtlc.device.registryID, mtlc.retainCount);
+    }
+
+    return mtlc;
+}
+
++ (void) releaseContext:(MTLContext*) mtlc {
+    NSNumber* regID = [NSNumber numberWithLongLong:mtlc.device.registryID];
+    MTLContext* ctx = MTLContext.contextStore[regID];
+    if (mtlc == ctx) {
+        if (mtlc.retainCount > 1) {
+            [mtlc release];
+            J2dRlsTraceLn2(J2D_TRACE_INFO, "MTLContext_releaseContext: release context(%p) retainCount=%d", mtlc, mtlc.retainCount);
+        } else {
+            [MTLContext.contextStore removeObjectForKey:regID];
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLContext_releaseContext: dealloc context(%p)", mtlc);
+        }
+    }
+}
+
+- (id)initWithDevice:(id<MTLDevice>)mtlDevice display:(jint) displayID shadersLib:(NSString*)mtlShadersLib {
     self = [super init];
     if (self) {
-        // Initialization code here.
-        device = CGDirectDisplayCopyCurrentMetalDevice(displayID);
-        if (device == nil) {
-            J2dRlsTraceLn1(J2D_TRACE_ERROR, "MTLContext.initWithDevice(): Cannot create device from displayID=%d",
-                           displayID);
-
-            // Fallback to the default metal device for main display
-            jint mainDisplayID = CGMainDisplayID();
-            if (displayID == mainDisplayID) {
-                 device = MTLCreateSystemDefaultDevice();
-            }
-
-            if (device == nil) {
-                J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext.initWithDevice(): Cannot fallback to default metal device");
-                return nil;
-            }
-        }
-
+        device = mtlDevice;
+        shadersLib = [[NSString alloc] initWithString:mtlShadersLib];
         pipelineStateStorage = [[MTLPipelineStatesStorage alloc] initWithDevice:device shaderLibPath:shadersLib];
         if (pipelineStateStorage == nil) {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext.initWithDevice(): Failed to initialize MTLPipelineStatesStorage.");
@@ -273,6 +327,7 @@ extern void initSamplers(id<MTLDevice> device);
         [self haltRedraw];
     }
 
+    [shadersLib release];
     // TODO : Check that texturePool is completely released.
     // texturePool content is released in MTLCommandBufferWrapper.onComplete()
     //self.texturePool = nil;

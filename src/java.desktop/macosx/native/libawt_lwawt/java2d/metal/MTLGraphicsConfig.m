@@ -48,7 +48,7 @@ MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
     mtlinfo->context = nil;
     [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
         if (mtlc != NULL) {
-            [mtlc release];
+            [MTLContext releaseContext:mtlc];
         }
         free(mtlinfo);
     }];
@@ -76,7 +76,7 @@ JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
 
-        MTLContext* mtlc = [[MTLContext alloc] initWithDevice:displayID
+        MTLContext* mtlc = [MTLContext createContextWithDevice:displayID
                                        shadersLib:path];
         if (mtlc != 0L) {
             // create the MTLGraphicsConfigInfo record for this context
