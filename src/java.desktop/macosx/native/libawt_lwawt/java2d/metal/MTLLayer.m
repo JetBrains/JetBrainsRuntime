@@ -554,6 +554,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.buffer = &bmtlsdo->pTexture;
         layer.outBuffer = &bmtlsdo->pOutTexture;
         layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
+        layer.displayID = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->displayID;
         layer.device = layer.ctx.device;
         layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 
