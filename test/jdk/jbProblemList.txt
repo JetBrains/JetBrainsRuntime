@@ -1238,7 +1238,7 @@ java/awt/FileDialog/DefaultFocusOwner/DefaultFocusOwner.java 7187728 macosx-all,
 java/awt/FileDialog/RegexpFilterTest/RegexpFilterTest.html 7187728 macosx-all,linux-all
 java/awt/print/PageFormat/Orient.java 8016055 macosx-all
 java/awt/TextArea/OverScrollTest/OverScrollTest.java 8253184 windows-all
-java/awt/TextArea/ScrollbarIntersectionTest/ScrollbarIntersectionTest.java 8253184 windows-all
+java/awt/TextArea/ScrollbarIntersectionTest/ScrollbarIntersectionTest.java 8253184,JBR-7583 windows-all,linux-all
 java/awt/TextArea/TextAreaCaretVisibilityTest/bug7129742.java JBR-5439 linux-all
 java/awt/TextArea/TextAreaCursorTest/HoveringAndDraggingTest.java 8024986 macosx-all,linux-all
 java/awt/TextArea/TextAreaTwicePack/TextAreaTwicePack.java 8253184 windows-all
