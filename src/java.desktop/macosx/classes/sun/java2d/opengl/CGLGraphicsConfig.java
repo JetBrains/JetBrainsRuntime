@@ -47,6 +47,7 @@ import sun.awt.CGraphicsConfig;
 import sun.awt.CGraphicsDevice;
 import sun.awt.image.OffScreenImage;
 import sun.awt.image.SunVolatileImage;
+import sun.awt.image.SurfaceManager;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 import sun.java2d.Surface;
@@ -78,6 +79,7 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     private final OGLContext context;
     private final Object disposerReferent = new Object();
     private final int maxTextureSize;
+    private final SurfaceManager.ProxyCache surfaceDataProxyCache = new SurfaceManager.ProxyCache();
 
     private static native boolean initCGL();
     private static native long getCGLConfigInfo();
@@ -110,8 +112,8 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     }
 
     @Override
-    public Object getProxyKey() {
-        return this;
+    public SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
+        return surfaceDataProxyCache;
     }
 
     @Override
