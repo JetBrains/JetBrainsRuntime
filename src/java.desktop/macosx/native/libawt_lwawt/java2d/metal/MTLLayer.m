@@ -40,6 +40,7 @@ static jclass jc_JavaLayer = NULL;
     GET_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
 
 #define TRACE_DISPLAY   0
+#define TRACE_DISPOSE   1
 
 const NSTimeInterval DF_BLIT_FRAME_TIME=1.0/120.0;
 
@@ -145,7 +146,10 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     self.framebufferOnly = NO;
     self.nextDrawableCount = 0;
     self.opaque = YES;
-    self.redrawCount = 0;
+    // at layer first present calls, few frames may be dropped,
+    // so ensure 3 redraws at least:
+    // LBO: TODO: decide for JBR-7058 !
+    self.redrawCount = (0) ? 3 : 0;
     if (@available(macOS 10.13, *)) {
         self.displaySyncEnabled = isDisplaySyncEnabled();
     }
@@ -156,6 +160,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     self.avgBlitFrameTime = DF_BLIT_FRAME_TIME;
     self.perfCountersEnabled = perfCountersEnabled ? YES : NO;
     self.lastPresentedTime = 0.0;
+    self.disposed = NO;
     _lock = [[NSLock alloc] init];
     return self;
 }
@@ -189,7 +194,10 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_blitTexture: skip drawable [skip blit] nextDrawableCount = %d",
                                CACurrentMediaTime(), self.nextDrawableCount);
             }
-            [self startRedraw];
+            if (!self.disposed && (!isDisplaySyncEnabled() || (self.redrawCount == 0))) {
+                // Increment redrawCount:
+                [self startRedraw];
+            }
             return;
         }
 
@@ -274,6 +282,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                         }
                         self.lastPresentedTime = presentedTime;
                     } else {
+                        // missed frame:
                         if (self.perfCountersEnabled) {
                             [self countFrameDroppedCallback];
                         }
@@ -285,6 +294,10 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                                            " - presentedHandlerLatency = %.3lf ms",
                                            CACurrentMediaTime(), drawable.drawableID, 1000.0 * presentedHandlerLatency
                             );
+                        }
+                        if (!self.disposed && (!isDisplaySyncEnabled() || (self.redrawCount == 0))) {
+                            // Increment redrawCount:
+                            [self startRedraw];
                         }
                     }
                     [self release];
@@ -335,7 +348,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 // free drawable:
                 [self freeDrawableCount];
 
-                if (isDisplaySyncEnabled()) {
+                if (!self.disposed && (!isDisplaySyncEnabled() || (self.redrawCount == 0))) {
                     // Increment redrawCount:
                     [self startRedraw];
                 }
@@ -386,13 +399,34 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
 - (void) display {
     AWT_ASSERT_APPKIT_THREAD;
+    if (self.disposed) {
+        if (TRACE_DISPOSE) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_display: discarded (disposed=true)", CACurrentMediaTime());
+        return;
+    }
     J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_display() called");
     [self blitCallback];
     [super display];
 }
 
+/*
+ * Will properly call CALayer.setNeedsDisplay using AppKit's Main Thread
+ */
+- (void) triggerDisplay {
+    AWT_ASSERT_APPKIT_THREAD;
+    if (self.disposed) {
+        if (TRACE_DISPOSE) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_triggerDisplay: discarded (disposed=true)", CACurrentMediaTime());
+        return;
+    }
+    // Main thread will call display() soon:
+    [self setNeedsDisplay];
+}
+
 - (void)startRedrawIfNeeded {
     AWT_ASSERT_APPKIT_THREAD;
+    if (self.disposed) {
+        if (TRACE_DISPOSE) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_startRedrawIfNeeded: discarded (disposed=true)", CACurrentMediaTime());
+        return;
+    }
     if (isDisplaySyncEnabled()) {
         if (self.redrawCount == 0) {
             [self.ctx startRedraw:self];
@@ -401,6 +435,10 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 }
 
 - (void)startRedraw {
+    if (self.disposed) {
+        if (TRACE_DISPOSE) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_startRedraw: discarded (disposed=true)", CACurrentMediaTime());
+        return;
+    }
     if (isDisplaySyncEnabled()) {
         if (self.ctx != nil) {
             [ThreadUtilities performOnMainThreadNowOrLater:^(){
@@ -409,16 +447,23 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         }
     } else {
         [ThreadUtilities performOnMainThreadNowOrLater:^(){
-            [self setNeedsDisplay];
+            [self triggerDisplay];
         }];
     }
 }
 
 - (void)stopRedraw:(BOOL)force {
+    if (self.disposed) {
+        if (TRACE_DISPOSE) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_stopRedraw: discarded (disposed=true)", CACurrentMediaTime());
+        return;
+    }
+    if (force) {
+        if (TRACE_DISPOSE) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_stopRedraw(true)", CACurrentMediaTime());
+        // mark layer being disposed:
+        self.disposed = YES;
+        self.redrawCount = 0;
+    }
     if (isDisplaySyncEnabled()) {
-        if (force) {
-            self.redrawCount = 0;
-        }
         if (self.ctx != nil) {
             [ThreadUtilities performOnMainThreadNowOrLater:^(){
                 [self.ctx stopRedraw:self];
@@ -426,6 +471,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         }
     }
 }
+
 - (void) flushBuffer {
     if (self.ctx == nil || self.buffer == NULL) {
         return;
@@ -461,8 +507,9 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 if (TRACE_DISPLAY) {
                     J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_commitCommandBuffer: CompletedHandler", CACurrentMediaTime());
                 }
-                // Ensure layer will be redrawn asap to display new content:
-                [ThreadUtilities performOnMainThread:@selector(startRedrawIfNeeded) on:self withObject:nil waitUntilDone:NO];
+                [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
+                    [self startRedrawIfNeeded];
+                }];
             }
             [self release];
         }];
@@ -529,11 +576,11 @@ JNI_COCOA_ENTER(env);
     jobject javaLayer = (*env)->NewWeakGlobalRef(env, obj);
 
     // Wait and ensure main thread creates the MTLLayer instance now:
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
             AWT_ASSERT_APPKIT_THREAD;
 
-            layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer usePerfCounters: perfCountersEnabled];
-    }];
+            layer = [[MTLLayer alloc] initWithJavaLayer:javaLayer usePerfCounters:perfCountersEnabled];
+        }];
     if (TRACE_DISPLAY) {
         J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLLayer_nativeCreateLayer: created layer[%p]", layer);
     }
@@ -547,6 +594,7 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLLayer_validate
 (JNIEnv *env, jclass cls, jlong layerPtr, jobject surfaceData)
 {
+    JNI_COCOA_ENTER(env);
     MTLLayer *layer = OBJC(layerPtr);
 
     if (surfaceData != NULL) {
@@ -574,6 +622,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.ctx = NULL;
         [layer stopRedraw:YES];
     }
+    JNI_COCOA_EXIT(env);
 }
 
 JNIEXPORT void JNICALL
@@ -587,9 +636,9 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
     // in one call on appkit, otherwise we'll get window's contents blinking,
     // during screen-2-screen moving.
     // Ensure main thread changes the MTLLayer instance later:
-    [ThreadUtilities performOnMainThreadNowOrLater:^(){
-        layer.contentsScale = scale;
-    }];
+        [ThreadUtilities performOnMainThreadNowOrLater:^() {
+            layer.contentsScale = scale;
+        }];
     JNI_COCOA_EXIT(env);
 }
 
@@ -617,7 +666,10 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
         }
         return;
     }
-
+    if (layer.disposed) {
+        if (TRACE_DISPOSE) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_blitTexture: discarded (disposed=true)", CACurrentMediaTime());
+        return;
+    }
     [layer blitTexture];
     JNI_COCOA_EXIT(env);
 }
@@ -630,9 +682,9 @@ Java_sun_java2d_metal_MTLLayer_nativeSetOpaque
 
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     // Ensure main thread changes the MTLLayer instance later:
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-        [layer setOpaque:(opaque == JNI_TRUE)];
-    }];
+        [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
+            [layer setOpaque:(opaque == JNI_TRUE)];
+        }];
 
     JNI_COCOA_EXIT(env);
 }

@@ -43,6 +43,7 @@
 @property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
 @property (readwrite, atomic) BOOL perfCountersEnabled;
 @property (readwrite, atomic) CFTimeInterval lastPresentedTime;
+@property (readwrite, atomic) BOOL disposed;
 
 - (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled;
 
@@ -55,6 +56,7 @@
                            DY2:(jfloat)dy2;
 - (void) blitCallback;
 - (void) display;
+- (void) triggerDisplay;
 - (void) startRedraw;
 - (void) startRedrawIfNeeded;
 - (void) stopRedraw:(BOOL)force;

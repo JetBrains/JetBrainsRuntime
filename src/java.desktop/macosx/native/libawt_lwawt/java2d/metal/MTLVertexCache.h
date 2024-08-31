@@ -93,6 +93,7 @@
 jboolean MTLVertexCache_InitVertexCache();
 void MTLVertexCache_FlushVertexCache(MTLContext *mtlc);
 void MTLVertexCache_FlushGlyphVertexCache(MTLContext *mtlc);
+void MTLVertexCache_ReleaseMaskCache(MTLContext *mtlc);
 void MTLVertexCache_FreeVertexCache();
 
 void MTLVertexCache_EnableMaskCache(MTLContext *mtlc, BMTLSDOps *dstOps);

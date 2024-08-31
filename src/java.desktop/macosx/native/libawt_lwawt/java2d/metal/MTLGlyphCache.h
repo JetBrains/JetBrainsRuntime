@@ -33,6 +33,10 @@ extern "C" {
 #include "jni.h"
 #include "fontscalerdefs.h"
 #import <Metal/Metal.h>
+
+#include "MTLTexturePool.h"
+
+
 @class MTLContext;
 
 typedef void (MTLFlushFunc)(MTLContext* mtlc);
@@ -44,6 +48,7 @@ typedef struct {
     id<MTLRenderCommandEncoder> encoder;
     MTLCacheCellInfo *head;
     MTLCacheCellInfo *tail;
+    MTLPooledTextureHandle *texHandle;
     id<MTLTexture> texture;
     jint          width;
     jint          height;
@@ -92,7 +97,7 @@ MTLGlyphCache_RemoveCellInfo(struct GlyphInfo *glyph, MTLCacheCellInfo *cellInfo
                        func:(MTLFlushFunc*)func;
 - (MTLCacheCellInfo*) addGlyph:(GlyphInfo*)glyph;
 - (BOOL) isCacheFull:(GlyphInfo*)glyph;
-- (void) invalidate;
+- (void) flush;
 - (void) free;
 
 @property (readwrite) MTLGlyphCacheInfo *cacheInfo;

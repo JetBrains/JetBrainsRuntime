@@ -38,6 +38,9 @@
 #include "MTLGlyphCache.h"
 #include "MTLBlitLoops.h"
 
+#define TRACE_DrawGlyphList 0
+#define TRACE_FULL          1
+
 /**
  * The following constants define the inner and outer bounds of the
  * accelerated glyph cache.
@@ -105,11 +108,6 @@ static jint vertexCacheIndex = 0;
         LCD_ADD_VERTEX(TX1, TY1, DX1, DY1, 0); \
     } while (0)
 
-static void MTLTR_SyncFlushGlyphVertexCache(MTLContext *mtlc) {
-    MTLVertexCache_FlushGlyphVertexCache(mtlc);
-    [mtlc commitCommandBuffer:YES display:NO];
-}
-
 /**
  * Initializes the one glyph cache (texture and data structure).
  * If lcdCache is JNI_TRUE, the texture will contain RGB data,
@@ -127,7 +125,7 @@ MTLTR_ValidateGlyphCache(MTLContext *mtlc, BMTLSDOps *dstOps, jboolean lcdCache)
                                cellWidth:MTLTR_CACHE_CELL_WIDTH
                               cellHeight:MTLTR_CACHE_CELL_HEIGHT
                              pixelFormat:(lcdCache)?MTLPixelFormatBGRA8Unorm:MTLPixelFormatA8Unorm
-                                    func:MTLTR_SyncFlushGlyphVertexCache])
+                                    func:MTLVertexCache_FlushGlyphVertexCache])
     {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
                       "MTLTR_InitGlyphCache: could not init MTL glyph cache");
@@ -158,7 +156,6 @@ MTLTR_DisableGlyphVertexCache(MTLContext *mtlc)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DisableGlyphVertexCache");
     MTLVertexCache_FlushGlyphVertexCache(mtlc);
-    MTLVertexCache_FreeVertexCache();
 }
 
 /**
@@ -186,6 +183,8 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
     }
 
     if ([gc isCacheFull:glyph]) {
+        if (TRACE_FULL) J2dRlsTraceLn(J2D_TRACE_INFO, "MTLTR_AddToGlyphCache: cache is Full!");
+
         if (lcdCache) {
             [mtlc.glyphCacheLCD free];
             MTLTR_ValidateGlyphCache(mtlc, dstOps, lcdCache);
@@ -486,6 +485,7 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
 
     id<MTLRenderCommandEncoder> encoder = nil;
 
+    // TODO: log all texture2DDescriptorWithPixelFormat to monitor allocated memory:
     MTLTextureDescriptor *textureDescriptor =
         [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
                                                             width:w
@@ -493,6 +493,9 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
                                                             mipmapped:NO];
 
     blitTexture = [mtlc.device newTextureWithDescriptor:textureDescriptor];
+
+    if (0) J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "MTLTR_DrawLCDGlyphNoCache: created texture: tex=%p, w=%d h=%d, pf=%d",
+               blitTexture, w, h, MTLPixelFormatBGRA8Unorm);
 
     if (glyphMode != MODE_NO_CACHE_LCD) {
         if (glyphMode == MODE_NO_CACHE_GRAY) {
@@ -555,9 +558,10 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
 
     vertexCacheIndex = 0;
     [mtlc.encoderManager endEncoder];
-    [blitTexture release];
 
     [mtlc commitCommandBuffer:YES display:NO];
+    [blitTexture release];
+
     return JNI_TRUE;
 }
 
@@ -678,21 +682,21 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
             continue;
         }
 
-        J2dTraceLn2(J2D_TRACE_INFO, "Glyph width = %d height = %d", ginfo->width, ginfo->height);
+        if (TRACE_DrawGlyphList) J2dRlsTraceLn2(J2D_TRACE_INFO, "Glyph width = %d height = %d", ginfo->width, ginfo->height);
         J2dTraceLn1(J2D_TRACE_INFO, "rowBytes = %d", ginfo->rowBytes);
         if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
             // grayscale or monochrome glyph data
             if (ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
             {
-                J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList Grayscale cache");
+                if (TRACE_DrawGlyphList) J2dRlsTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList Grayscale cache");
                 ok = MTLTR_DrawGrayscaleGlyphViaCache(mtlc, ginfo, x, y, dstOps, subimage);
             } else {
-                J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList Grayscale no cache");
+                if (TRACE_DrawGlyphList) J2dRlsTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList Grayscale no cache");
                 ok = MTLTR_DrawGrayscaleGlyphNoCache(mtlc, ginfo, x, y, dstOps, subimage);
             }
         } else if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_BGRA) {
-            J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList color glyph no cache");
+            if (TRACE_DrawGlyphList) J2dRlsTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList color glyph no cache");
             ok = MTLTR_DrawColorGlyphNoCache(mtlc, ginfo, x, y, dstOps);
             flushBeforeLCD = JNI_FALSE;
         } else {
@@ -716,12 +720,12 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                 ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
             {
-                J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD cache");
+                if (TRACE_DrawGlyphList) J2dRlsTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD cache");
                 ok = MTLTR_DrawLCDGlyphViaCache(mtlc, dstOps,
                                                 ginfo, x, y,
                                                 rgbOrder, lcdContrast);
             } else {
-                J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD no cache");
+                if (TRACE_DrawGlyphList) J2dRlsTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD no cache");
                 ok = MTLTR_DrawLCDGlyphNoCache(mtlc, dstOps,
                                                ginfo, x, y,
                                                rowBytesOffset,
@@ -757,6 +761,8 @@ Java_sun_java2d_metal_MTLTextRenderer_drawGlyphList
      jfloat glyphListOrigX, jfloat glyphListOrigY,
      jlongArray imgArray, jfloatArray posArray)
 {
+    JNI_COCOA_ENTER(env);
+
     unsigned char *images;
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLTextRenderer_drawGlyphList");
@@ -794,4 +800,5 @@ Java_sun_java2d_metal_MTLTextRenderer_drawGlyphList
         (*env)->ReleasePrimitiveArrayCritical(env, imgArray,
                                               images, JNI_ABORT);
     }
+    JNI_COCOA_EXIT(env);
 }

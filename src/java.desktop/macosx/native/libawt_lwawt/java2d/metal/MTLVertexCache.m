@@ -141,6 +141,8 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache");
 
+    jint oldMaskCacheIndex = maskCacheIndex;
+
     if (vertexCacheIndex > 0) {
         [encoder setVertexBytes:vertexCache
                          length:vertexCacheIndex * MTLVC_SIZE_J2DVertex
@@ -165,10 +167,8 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
     }
 
     // register texture to be released once encoder is completed:
-    if (maskCacheTex != nil) {
-        [[mtlc getCommandBufferWrapper] registerPooledTexture:maskCacheTex];
-        [maskCacheTex release];
-        maskCacheTex = nil;
+    if (oldMaskCacheIndex > 0) {
+        MTLVertexCache_ReleaseMaskCache(mtlc);
     }
 }
 
@@ -194,6 +194,15 @@ MTLVertexCache_FlushGlyphVertexCache(MTLContext *mtlc)
     vertexCacheIndex = 0;
 }
 
+void MTLVertexCache_ReleaseMaskCache(MTLContext *mtlc) {
+    // register texture to be released once encoder is completed:
+    if (maskCacheTex != nil) {
+        [[mtlc getCommandBufferWrapper] registerPooledTexture:maskCacheTex];
+        [maskCacheTex release];
+        maskCacheTex = nil;
+    }
+}
+
 void MTLVertexCache_FreeVertexCache()
 {
     if (vertexCache != NULL) {
@@ -204,6 +213,10 @@ void MTLVertexCache_FreeVertexCache()
         free(maskColorCache);
         maskColorCache = NULL;
     }
+    vertexCacheIndex = 0;
+    maskColorCacheIndex = 0;
+    maskCacheIndex = 0;
+    maskCacheLastIndex = MTLVC_MASK_CACHE_MAX_INDEX;
 }
 
 static void MTLVertexCache_InitFullTile()
@@ -280,7 +293,6 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_DisableMaskCache");
     MTLVertexCache_FlushVertexCache(mtlc);
-    MTLVertexCache_FreeVertexCache();
 }
 
 void

@@ -63,6 +63,10 @@ extern BOOL MTLLayer_isExtraRedrawEnabled();
     }                                                                           \
 }
 
+static const char * toCString(id obj) {
+    return obj == nil ? "nil" : [NSString stringWithFormat:@"%@", obj].UTF8String;
+}
+
 static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
         {{-1.0, 1.0}, {0.0, 0.0}},
         {{1.0, 1.0}, {1.0, 0.0}},
@@ -175,7 +179,7 @@ extern void initSamplers(id<MTLDevice> device);
     // Initialization code here.
     id<MTLDevice> device = CGDirectDisplayCopyCurrentMetalDevice(displayID);
     if (device == nil) {
-        J2dRlsTraceLn1(J2D_TRACE_ERROR, "MTLContext.initWithDevice(): Cannot create device from displayID=%d",
+        J2dRlsTraceLn1(J2D_TRACE_ERROR, "MTLContext_createContextWithDevice: Cannot create device from displayID=%d",
                        displayID);
         // Fallback to the default metal device for main display
         jint mainDisplayID = CGMainDisplayID();
@@ -183,7 +187,7 @@ extern void initSamplers(id<MTLDevice> device);
             device = MTLCreateSystemDefaultDevice();
         }
         if (device == nil) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext.createContextWithDevice(): Cannot fallback to default metal device");
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext_createContextWithDevice: Cannot fallback to default metal device");
             return nil;
         }
     }
@@ -196,20 +200,20 @@ extern void initSamplers(id<MTLDevice> device);
             MTLContext.contextStore[regID] = mtlc;
             [mtlc release];
             J2dRlsTraceLn4(J2D_TRACE_INFO,
-                           "MTLContext_createContext: new context(%p) for display=%d device=%p retainCount=%d",
+                           "MTLContext_createContextWithDevice: new context(%p) for display=%d device=%llu retainCount=%d",
                            mtlc, displayID, mtlc.device.registryID, mtlc.retainCount);
         }
     } else {
         if (![mtlc.shadersLib isEqualToString:mtlShadersLib]) {
             J2dRlsTraceLn3(J2D_TRACE_ERROR,
-                           "MTLContext_createContext: cannot reuse context(%p) for display=%d device=%p, "
+                           "MTLContext_createContextWithDevice: cannot reuse context(%p) for display=%d device=%llu, "
                            "shaders lib has been changed",
-                           mtlc, displayID, mtlc.device.registryID)
+                           mtlc, displayID, mtlc.device.registryID);
             return nil;
         }
         [mtlc retain];
         J2dRlsTraceLn4(J2D_TRACE_INFO,
-                       "MTLContext_createContext: reuse context(%p) for display=%d device=%p retainCount=%d",
+                       "MTLContext_createContextWithDevice: reuse context(%p) for display=%d device=%llu retainCount=%d",
                        mtlc, displayID, mtlc.device.registryID, mtlc.retainCount);
     }
 
@@ -222,10 +226,16 @@ extern void initSamplers(id<MTLDevice> device);
     if (mtlc == ctx) {
         if (mtlc.retainCount > 1) {
             [mtlc release];
-            J2dRlsTraceLn2(J2D_TRACE_INFO, "MTLContext_releaseContext: release context(%p) retainCount=%d", mtlc, mtlc.retainCount);
+            J2dRlsTraceLn3(J2D_TRACE_INFO, "MTLContext_releaseContext: release context(%p) device=%llu retainCount=%d",
+                           mtlc, mtlc.device.registryID, mtlc.retainCount);
         } else {
+            // Release resources before dealloc (async):
+            [mtlc haltRedraw];
+            MTLVertexCache_FreeVertexCache();
+
             [MTLContext.contextStore removeObjectForKey:regID];
-            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLContext_releaseContext: dealloc context(%p)", mtlc);
+            J2dRlsTraceLn2(J2D_TRACE_INFO, "MTLContext_releaseContext: dealloc context(%p) device=%llu",
+                           mtlc, mtlc.device.registryID)
         }
     }
 }
@@ -233,6 +243,29 @@ extern void initSamplers(id<MTLDevice> device);
 - (id)initWithDevice:(id<MTLDevice>)mtlDevice display:(jint) displayID shadersLib:(NSString*)mtlShadersLib {
     self = [super init];
     if (self) {
+        J2dRlsTraceLn4(J2D_TRACE_INFO, "MTLContext_initWithDevice: ctx=%p device=(%llu: %s) displayID=%d",
+                       self, mtlDevice.registryID, toCString(mtlDevice.name), displayID);
+
+        if (0) {
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.name:             %s", toCString(mtlDevice.name));
+            if (@available(macOS 14.0, *)) {
+                J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.architecture:     %s", toCString(mtlDevice.architecture.name));
+            }
+
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.registryID:       %llu", mtlDevice.registryID);
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.location:         %lu", mtlDevice.location);
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.locationNumber :  %lu", mtlDevice.locationNumber);
+
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.headless:         %d", mtlDevice.headless);
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.lowPower:         %d", mtlDevice.lowPower);
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.hasUnifiedMemory: %d", mtlDevice.hasUnifiedMemory);
+
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.maxBufferLength:  %lu Kb",
+                           mtlDevice.maxBufferLength / 1024);
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLDevice.recommendedMaxWorkingSetSize: %llu Kb",
+                           mtlDevice.recommendedMaxWorkingSetSize / 1024);
+        }
+
         device = mtlDevice;
         shadersLib = [[NSString alloc] initWithString:mtlShadersLib];
         pipelineStateStorage = [[MTLPipelineStatesStorage alloc] initWithDevice:device shaderLibPath:shadersLib];
@@ -323,6 +356,9 @@ extern void initSamplers(id<MTLDevice> device);
 - (void)dealloc {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.dealloc");
 
+    J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLContext.dealloc: ctx=%p", self);
+
+    // Note: should have been done before (async)
     if (_displayLink != nil) {
         [self haltRedraw];
     }
@@ -331,6 +367,7 @@ extern void initSamplers(id<MTLDevice> device);
     // TODO : Check that texturePool is completely released.
     // texturePool content is released in MTLCommandBufferWrapper.onComplete()
     //self.texturePool = nil;
+    // glyph caches are already freed:
     [_glyphCacheLCD release];
     [_glyphCacheAA release];
 
@@ -697,7 +734,7 @@ extern void initSamplers(id<MTLDevice> device);
     _lastRedrawTime = now;
     // Process layers:
     for (MTLLayer *layer in _layers) {
-        [layer setNeedsDisplay];
+        [layer triggerDisplay];
     }
     if (_displayLinkCount > 0) {
         _displayLinkCount--;
@@ -709,25 +746,35 @@ extern void initSamplers(id<MTLDevice> device);
     }
 }
 
-CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext)
+CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink,
+                                const CVTimeStamp* now,
+                                const CVTimeStamp* outputTime,
+                                CVOptionFlags flagsIn,
+                                CVOptionFlags* flagsOut,
+                                void* displayLinkContext)
 {
     J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_mtlDisplayLinkCallback: ctx=%p", displayLinkContext);
     @autoreleasepool {
-        MTLContext *ctx = (__bridge MTLContext *)displayLinkContext;
-        [ThreadUtilities performOnMainThread:@selector(redraw) on:ctx withObject:nil waitUntilDone:NO];
+        MTLContext *ctx = (__bridge MTLContext *) displayLinkContext;
+        [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
+            [ctx redraw];
+        }];
     }
     return kCVReturnSuccess;
 }
 
 - (void)startRedraw:(MTLLayer*)layer {
     AWT_ASSERT_APPKIT_THREAD;
-    layer.redrawCount = REDRAW_COUNT;
+    // Handle case when layer.redrawCount is initialized in constructor > 1
+    if (layer.redrawCount == 0) {
+        layer.redrawCount = REDRAW_COUNT;
+    }
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
     _displayLinkCount = KEEP_ALIVE_COUNT;
     [_layers addObject:layer];
     if (MTLLayer_isExtraRedrawEnabled()) {
         // Request for redraw before starting display link to avoid rendering problem on M2 processor
-        [layer setNeedsDisplay];
+        [layer triggerDisplay];
     }
     [self handleDisplayLink:YES source:"startRedraw"];
 }

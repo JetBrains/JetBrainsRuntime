@@ -24,17 +24,22 @@
  */
 
 #include <stdlib.h>
+#import <JNIUtilities.h>
 #include "jni.h"
+#import "LWCToolkit.h"
 #include "MTLGlyphCache.h"
 #include "Trace.h"
 #import "MTLContext.h"
+#import "MTLVertexCache.h"
 
 /**
  * When the cache is full, we will try to reuse the cache cells that have
  * been used relatively less than the others (and we will save the cells that
  * have been rendered more than the threshold defined here).
  */
-#define TIMES_RENDERED_THRESHOLD 5
+#define TIMES_RENDERED_THRESHOLD    5
+#define USE_TEXTURE_POOL            1
+#define TRACE_TEXTURE               0
 
 @implementation MTLGlyphCache {
     MTLContext* _ctx;
@@ -99,6 +104,25 @@
     _cacheInfo->Flush = func;
     _cacheInfo->mtlc = _ctx;
     _cacheInfo->encoder = nil;
+
+    if (TRACE_TEXTURE)J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLGlyphCache.glyphCacheInitWidth: new cacheInfo=%p",
+                                     _cacheInfo);
+
+#if (USE_TEXTURE_POOL == 1)
+
+    // TODO: add special usage flags in MTLTexturePool.getTexture(..., USAGE)
+    // [V] MTLGlyphCache.glyphCacheInitWidth: usage=1 storage=1
+    // usage = MTLTextureUsageShaderRead
+    // storage = MTLStorageModeManaged
+
+    _cacheInfo->texHandle = [_ctx.texturePool getTexture:width height:height format:pixelFormat];
+    [_cacheInfo->texHandle retain]; // keep reference alive
+    _cacheInfo->texture = [_cacheInfo->texHandle texture];
+
+    if (TRACE_TEXTURE) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLGlyphCache.glyphCacheInitWidth: texHandle=%p",
+                                      _cacheInfo->texHandle);
+#else
+    _cacheInfo->texHandle = nil;
     MTLTextureDescriptor *textureDescriptor =
             [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:pixelFormat
                                                                width:width
@@ -106,6 +130,15 @@
                                                            mipmapped:NO];
     _cacheInfo->texture = [_ctx.device newTextureWithDescriptor:textureDescriptor];
 
+    // [V] MTLGlyphCache.glyphCacheInitWidth: usage=1 storage=1
+    // usage = MTLTextureUsageShaderRead
+    // storage = MTLStorageModeManaged
+#endif
+    if (TRACE_TEXTURE) J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "MTLGlyphCache.glyphCacheInitWidth: usage=%d storage=%d",
+                                      _cacheInfo->texture.usage, _cacheInfo->texture.storageMode);
+
+    if (TRACE_TEXTURE) J2dRlsTraceLn5(J2D_TRACE_VERBOSE, "[%.6lf] MTLGlyphCache.glyphCacheInitWidth: texture: tex=%p, w=%d h=%d, pf=%d",
+                                      CACurrentMediaTime(), _cacheInfo->texture, width, height, pixelFormat);
     return YES;
 }
 
@@ -216,6 +249,19 @@
     return JNI_FALSE;
 }
 
+- (void) flush
+{
+    J2dTraceLn(J2D_TRACE_INFO, "MTLGlyphCache.flush");
+    if (_cacheInfo == NULL) {
+        return;
+    }
+    // flush any pending vertices that may be depending on the current
+    // glyph cache
+    if (_cacheInfo->Flush != NULL) {
+        _cacheInfo->Flush(_cacheInfo->mtlc);
+    }
+}
+
 /**
  * Invalidates and frees all cells and the cache itself. The "cache" pointer
  * becomes invalid after this function returns.
@@ -226,13 +272,27 @@
     if (_cacheInfo == NULL) {
         return;
     }
+    [self flush];
+    // Ensure to commit before releasing texture:
+    [_cacheInfo->mtlc commitCommandBuffer:YES display:NO];
 
-    // flush any pending vertices that may be depending on the current
-    // glyph cache
-    if (_cacheInfo->Flush != NULL) {
-        _cacheInfo->Flush(_cacheInfo->mtlc);
-    }
+    if (TRACE_TEXTURE) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLGlyphCache.free: cacheInfo=%p",
+                                      _cacheInfo);
+
+#if (USE_TEXTURE_POOL == 1)
+    if (TRACE_TEXTURE) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLGlyphCache.free: release texHandle=%p",
+                                      _cacheInfo->texHandle);
+
+    [_cacheInfo->texHandle releaseTexture];
+    [_cacheInfo->texHandle release]; // free reference
+#else
+    if (TRACE_TEXTURE) J2dRlsTraceLn5(J2D_TRACE_VERBOSE, "[%.6lf] MTLGlyphCache.free: free texture: tex=%p, w=%d h=%d, pf=%d",
+               CACurrentMediaTime(), _cacheInfo->texture, [_cacheInfo->texture width], [_cacheInfo->texture height], [_cacheInfo->texture pixelFormat]);
+
     [_cacheInfo->texture release];
+#endif
+    _cacheInfo->texHandle = nil;
+    _cacheInfo->texture = nil;
 
     while (_cacheInfo->head != NULL) {
         MTLCacheCellInfo *cellinfo = _cacheInfo->head;

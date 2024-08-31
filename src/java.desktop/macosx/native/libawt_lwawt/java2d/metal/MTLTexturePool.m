@@ -654,9 +654,11 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
         }
     }
     if (TRACE_MEM_API || TRACE_GC) {
-        J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "MTLTexturePool_cleanIfNecessary:  after GC: allocated memory = %lld Kb (allocs: %d) - hits = %lld (%.3lf %% cached)",
+        J2dRlsTraceLn5(J2D_TRACE_VERBOSE, "MTLTexturePool_cleanIfNecessary:  after GC: allocated memory = %lld Kb (allocs: %d) "
+                       "- hits = %lld (%.3lf %% cached) - gpu allocated memory: %lld Kb",
                        _memoryAllocated / UNIT_KB, self.allocatedCount,
-                       self.totalHits, (self.totalHits != 0) ? (100.0 * self.cacheHits) / self.totalHits : 0.0);
+                       self.totalHits, (self.totalHits != 0) ? (100.0 * self.cacheHits) / self.totalHits : 0.0,
+                       self.device.currentAllocatedSize / UNIT_KB);
         // reset hits:
         self.cacheHits = 0;
         self.totalHits = 0;

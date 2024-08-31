@@ -475,6 +475,62 @@ public final class RenderPerfTest {
         }
     }
 
+    static class MixedTextParticleRenderer implements ParticleRenderer {
+
+        protected final ParticleRenderer renderer;
+
+        MixedTextParticleRenderer(ParticleRenderer renderer) {
+            this.renderer = renderer;
+        }
+
+        final void setup(final int idx, Graphics2D g2d, final boolean enabled) {
+            switch (idx) {
+                default:
+                case 0:
+                    if (enabled) {
+                        TextAA.configure(g2d, !enabled);
+                        TextLCD.configure(g2d, enabled);
+                    } else {
+                        TextLCD.configure(g2d, enabled);
+                    }
+                    break;
+                case 1:
+                    if (enabled) {
+                        TextLCD.configure(g2d, !enabled);
+                        TextAA.configure(g2d, enabled);
+                    } else {
+                        TextAA.configure(g2d, enabled);
+                    }
+                    break;
+            }
+            // System.out.println("RenderingHints.KEY_TEXT_ANTIALIASING(" + idx + ") = " + g2d.getRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING));
+        }
+
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            setup(id % 2, g2d, true);
+            renderer.render(g2d, id, x, y, vx, vy);
+            setup(id % 2, g2d, false);
+        }
+    }
+
+    final static class BatchedTextParticleRenderer extends MixedTextParticleRenderer {
+
+        BatchedTextParticleRenderer(ParticleRenderer renderer) {
+            super(renderer);
+        }
+
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            if (id == 0) {
+                setup(0, g2d, true);
+            } else if (id == N / 2) {
+                setup(1, g2d, true);
+            }
+            renderer.render(g2d, id, x, y, vx, vy);
+        }
+    }
+
     static class LargeTextParticleRenderer extends TextParticleRenderer {
 
         LargeTextParticleRenderer(int n, float r) {
@@ -1613,6 +1669,12 @@ public final class RenderPerfTest {
 
     private final Particles balls = new Particles(N, R, BW, BH, WIDTH, HEIGHT);
 
+    private final static Configurable AA = new ConfigurableAA();
+    private final static Configurable TextAA = new ConfigurableTextAA();
+    private final static Configurable TextLCD = new ConfigurableTextLCD();
+    private final static Configurable XORMode = new ConfigurableXORMode();
+    private final static Configurable XORModeLCDText = new ConfigurableXORModeTextLCD();
+
     private final ParticleRenderer calibRenderer = new CalibrationParticleRenderer();
     private final ParticleRenderer flatRenderer = new FlatParticleRenderer(N, R);
     private final ParticleRenderer clipFlatRenderer = new ClipFlatParticleRenderer(N, R);
@@ -1650,11 +1712,8 @@ public final class RenderPerfTest {
     private final ParticleRenderer volImgTextBatchedRenderer = new BatchedParticleRenderer(volImgRenderer, textRenderer);
     private final ParticleRenderer volImgTextMixedRenderer = new MixedParticleRenderer(volImgRenderer, textRenderer);
 
-    private final static Configurable AA = new ConfigurableAA();
-    private final static Configurable TextAA = new ConfigurableTextAA();
-    private final static Configurable TextLCD = new ConfigurableTextLCD();
-    private final static Configurable XORMode = new ConfigurableXORMode();
-    private final static Configurable XORModeLCDText = new ConfigurableXORModeTextLCD();
+    private final ParticleRenderer textBatchedRenderer = new BatchedTextParticleRenderer(textRenderer);
+    private final ParticleRenderer textMixedRenderer = new MixedTextParticleRenderer(textRenderer);
 
     RenderPerfTest(final GraphicsConfiguration gc) {
         fh = new FrameHandler(gc);
@@ -1932,6 +1991,14 @@ public final class RenderPerfTest {
 
     public void testVolImageTextNoAAMix() throws Exception {
         createPerfMeter(testName).exec(createPR(volImgTextMixedRenderer));
+    }
+
+    public void testTextBat() throws Exception {
+        createPerfMeter(testName).exec(createPR(textBatchedRenderer));
+    }
+
+    public void testTextMix() throws Exception {
+        createPerfMeter(testName).exec(createPR(textMixedRenderer));
     }
 
     private static void help() {
