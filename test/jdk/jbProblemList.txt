@@ -117,6 +117,7 @@ java/awt/AlphaComposite/WindowAlphaCompositeTest.java JBR-6553 macosx-all
 java/awt/Button/DisabledButtonPress.java JBR-5799 windows-aarch64
 java/awt/Desktop/8064934/bug8064934.java JBR-5764,JBR-5799 windows-all
 java/awt/Debug/DumpOnKey/DumpOnKey.java JBR-5225 windows-all
+java/awt/event/HierarchyEvent/SpecTest.java JBR-7589 windows-all
 java/awt/event/KeyEvent/CorrectTime/CorrectTime.java JBR-6665 linux-all,windows-all
 java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055,JBR-5906 macosx-all,linux-all
 java/awt/event/MouseEvent/EnterAsGrabbedEvent/EnterAsGrabbedEvent.java JBR-809 windows-all,linux-all
@@ -233,7 +234,7 @@ java/awt/Mixing/AWT_Mixing/JTextFieldOverlapping.java 8158801,JBR-5510 windows-a
 java/awt/Mixing/AWT_Mixing/JToggleButtonInGlassPaneOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JToggleButtonOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Mixing/HWDisappear.java 8253184 windows-all
+java/awt/Mixing/HWDisappear.java 8253184,JBR-6818 windows-all,linux-all
 java/awt/Mixing/MixingInHwPanel.java 8253184 windows-all
 java/awt/Mixing/NonOpaqueInternalFrame.java 7124549 macosx-all
 java/awt/Mixing/ValidBounds.java 8253184,JBR-5845 windows-all,linux-all
