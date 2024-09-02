@@ -701,13 +701,17 @@ MsgRouting AwtFrame::WmNcMouseUp(WPARAM hitTest, int x, int y, int button) {
 }
 
 MsgRouting AwtFrame::WmNcMouseDown(WPARAM hitTest, int x, int y, int button) {
+    BOOL customTitleBar = IsTitleBarHitTest(hitTest) && HasCustomTitleBar();
     // By Swing request, click on the Frame's decorations (even on
     // grabbed Frame) should generate UngrabEvent
-    if (m_grabbedWindow != NULL/* && !m_grabbedWindow->IsOneOfOwnersOf(this)*/) {
+    // However, if the custom bar was clicked, and there's a component that handles mouse clicks,
+    // then ungrabbing causes undesired behavior, such as a menu collapsing and reopening.
+    // So don't ungrab in that case.
+    if (m_grabbedWindow != NULL && (!customTitleBar || AreCustomTitleBarNativeActionsAllowed())) {
         m_grabbedWindow->Ungrab();
     }
     customTitleBarTouchDragPosition = (LPARAM) -1;
-    if (IsTitleBarHitTest(hitTest) && HasCustomTitleBar()) {
+    if (customTitleBar) {
         // When double-clicking title bar of native Windows apps, they respond to second mouse press, not release
         const int LEFT_DBLCLCK = LEFT_BUTTON | DBL_CLICK;
         BOOL maximize = (button & LEFT_DBLCLCK) == LEFT_DBLCLCK && IsResizable();
