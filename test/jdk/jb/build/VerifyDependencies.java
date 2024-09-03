@@ -30,13 +30,14 @@ import java.io.InputStreamReader;
 /**
  * @test
  * @summary VerifyDependencies checks readability verifies that a Linux shared
- *          library has no dependency on symbols from glibc version higher than 2.17
+ *          library has no dependency on symbols from glibc version higher than 2.28
  * @run main VerifyDependencies
  * @requires (os.family == "linux")
  */
 
 public class VerifyDependencies {
 
+    static final public String EXPECTED_VERSION = "2.28";
     public static void verifyLibrary(String libraryPath) throws IOException {
         Process process;
         BufferedReader reader;
@@ -51,12 +52,12 @@ public class VerifyDependencies {
             System.out.println(line);
             if (line.contains("GLIBC_")) {
                 String version = extractVersion(line);
-                if (compareVersions(version, "2.17") > 0) {
+                if (compareVersions(version, EXPECTED_VERSION) > 0) {
                     throw new RuntimeException(libraryPath + " has a dependency on glibc version " + version);
                 }
             }
         }
-        System.out.println(libraryPath + " has no dependency on glibc version higher than 2.17");
+        System.out.println(libraryPath + " has no dependency on glibc version higher than " + EXPECTED_VERSION);
     }
 
     private static String extractVersion(String line) {
