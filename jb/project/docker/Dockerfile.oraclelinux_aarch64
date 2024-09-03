@@ -1,0 +1,44 @@
+# NOTE: This Dockerfile is meant to be used from the mkdocker_aarch64.sh script.
+
+# Pull a concrete version of Linux that does NOT recieve updates after it's
+# been created.  This is so that the image is as stable as possible to make
+# image creation reproducible.
+# NB: this also means there may be no security-related fixes there, need to
+# move the version to the next manually.
+
+FROM arm64v8/oraclelinux:8
+
+# Install the necessary build tools
+RUN yum -y update; \
+    yum -y install gcc-toolset-10-10.1-0.el8.aarch64; \
+    yum -y install \
+        alsa-lib-devel-1.1.9-4.el8.aarch64 \
+        autoconf-2.69-29.el8_10.1.noarch \
+        automake-1.16.1-6.el8.noarch \
+        bzip2-libs-1.0.6-26.el8.aarch64 \
+        cups-devel-2.2.6-60.el8_10.aarch64 \
+        file-5.33-26.el8.aarch64 \
+        fontconfig-devel-2.13.1-4.el8.aarch64 \
+        freetype-devel-2.9.1-9.el8.aarch64 \
+        gcc-c++-8.5.0-22.0.1.el8_10.aarch64 \
+        git-2.43.5-1.el8_10.aarch64 \
+        git-core-2.43.5-1.el8_10.aarch64 \
+        libtool-2.4.6-25.el8.aarch64 \
+        libXi-devel-1.7.10-1.el8.aarch64 \
+        libXrandr-devel-1.5.2-1.el8.aarch64 \
+        libXrender-devel-0.9.10-7.el8.aarch64 \
+        libXt-devel-1.1.5-12.el8.aarch64 \
+        libXtst-devel-1.2.3-7.el8.aarch64 \
+        make-devel-4.2.1-11.el8.aarch64 \
+        rsync-3.1.3-19.el8_7.1.aarch64 \
+        unzip-6.0-46.el8.aarch64 \
+        wayland-devel-1.15.0-1.el8.aarch64; \
+    yum -y clean all
+
+RUN git config --global user.email "teamcity@jetbrains.com" && \
+    git config --global user.name "builduser"
+
+ENV PATH="/opt/rh/devtoolset-10/root/usr/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib:/opt/rh/devtoolset-10/root/usr/lib64/dyninst:/opt/rh/devtoolset-10/root/usr/lib/dyninst:/opt/rh/devtoolset-10/root/usr/lib64:/opt/rh/devtoolset-10/root/usr/lib"
+ENV PKG_CONFIG_PATH="/opt/rh/devtoolset-10/root/usr/lib64/pkgconfig"
+
