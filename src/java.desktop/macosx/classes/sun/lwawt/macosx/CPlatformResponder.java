@@ -117,6 +117,11 @@ final class CPlatformResponder {
 
         boolean jpopupTrigger = NSEvent.isPopupTrigger(jmodifiers, jeventType);
 
+        if (jeventType == MouseEvent.MOUSE_ENTERED || jeventType == MouseEvent.MOUSE_EXITED) {
+            // JBR-7484: AppKit resets the cursor we set previously on entered/exit events, so we re-set it.
+            CCursorManager.getInstance().setCurrentCursor();
+        }
+
         eventNotifier.notifyMouseEvent(jeventType, System.currentTimeMillis(), jbuttonNumber,
                 x, y, absX, absY, jmodifiers, jclickCount,
                 jpopupTrigger, null);
