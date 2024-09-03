@@ -84,7 +84,10 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
             vksdo->requestedExtent.width != vksdo->image->extent.width ||
             vksdo->requestedExtent.height != vksdo->image->extent.height)) {
         // VK_FORMAT_B8G8R8A8_UNORM is the most widely-supported format for our use.
+        // Currently, we only support *_SRGB and *_UNORM formats,
+        // as other types may not be trivial to alias for logicOp rendering.
         VkFormat format = VK_FORMAT_B8G8R8A8_UNORM;
+
         VKImage* image = VKImage_Create(device, vksdo->requestedExtent.width, vksdo->requestedExtent.height,
                                         0, format, VK_IMAGE_TILING_OPTIMAL,
                                         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
