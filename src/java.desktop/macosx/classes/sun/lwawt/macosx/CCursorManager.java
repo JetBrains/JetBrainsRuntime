@@ -67,6 +67,11 @@ final class CCursorManager extends LWCursorManager {
             return;
         }
         currentCursor = cursor;
+        setCurrentCursor();
+    }
+
+    void setCurrentCursor() {
+        Cursor cursor = currentCursor;
 
         if (cursor == null) {
             nativeSetBuiltInCursor(Cursor.DEFAULT_CURSOR, null);
