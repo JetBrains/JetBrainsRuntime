@@ -93,10 +93,13 @@ typedef struct {
 /**
  * Vulkan expects linear colors.
  * However Java2D expects legacy behavior, as if colors were blended in sRGB color space.
- * Therefore this function just remaps color components from [0, 255] to [0, 1] range,
- * they still represent sRGB color.
+ * Therefore this function converts straight-alpha Java color in range [0, 255]
+ * to pre-multiplied alpha normalized [0, 1] color, still representing sRGB color.
  * This is also accounted for in VKSD_ConfigureWindowSurface, so that Vulkan doesn't do any
  * color space conversions on its own, as the colors we are drawing are already in sRGB.
+ *
+ * Note: we receive colors from Java with straight (non-premultiplied) alpha, which is done to prevent precision loss.
+ * This is controlled by PixelConverter parameter of SurfaceType, see VKSurfaceData.java.
  */
 Color VKUtil_DecodeJavaColor(uint32_t color);
 
