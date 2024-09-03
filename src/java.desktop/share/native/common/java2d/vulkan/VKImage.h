@@ -28,13 +28,14 @@
 #define VKImage_h_Included
 
 #include "VKTypes.h"
+#include "VKAllocator.h"
 
 struct VKImage {
-    VkImage                 image;
-    VkDeviceMemory          memory;
-    VkImageView             view;
-    VkFormat                format;
-    VkExtent2D              extent;
+    VkImage     handle;
+    VKMemory    memory;
+    VkImageView view;
+    VkFormat    format;
+    VkExtent2D  extent;
 
     VkImageLayout           layout;
     VkPipelineStageFlagBits lastStage;
@@ -42,9 +43,9 @@ struct VKImage {
 };
 
 VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
-                        VkFormat format, VkImageTiling tiling,
-                        VkImageUsageFlags usage,
-                        VkMemoryPropertyFlags properties);
+                        VkImageCreateFlags flags, VkFormat format,
+                        VkImageTiling tiling, VkImageUsageFlags usage, VkSampleCountFlagBits samples,
+                        VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback);
 
-void VKImage_free(VKDevice* device, VKImage* image);
+void VKImage_Destroy(VKDevice* device, VKImage* image);
 #endif // VKImage_h_Included
