@@ -33,8 +33,8 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 |-------------|--------------------------------------------------------------------------------------------------------|---------------|
 | 2024.2      | [17.0.11-b1312.2](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.11b1312.2)   | 18-Jun-2024|
 | 2024.1      | [17.0.11-b1207.30](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.11b1207.30) | 12-Jul-2024|
-| 2023.3      | [17.0.10-b1087.23](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.10b1087.23) | 20-Mar-2024|
-| 2023.2      | [17.0.10-b1000.50](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.10b1000.50) | 20-Mar-2024|
+| 2023.3      | [17.0.12-b1087.25](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.12b1087.25) | 02-Sep-2024|
+| 2023.2      | [17.0.12-b1000.54](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.12b1000.54) | 02-Sep-2024|
 | 2023.1      | [17.0.10-b829.27](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.10b829.27) | 21-Mar-2024  |
 | 2022.3      | [17.0.6-b653.34](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b653.34) | 28-Feb-2023   |
 | 2022.2      | [17.0.6-b469.82](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-17.0.6b469.82) | 06-Mar-2023   |
