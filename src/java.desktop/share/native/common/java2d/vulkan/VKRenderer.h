@@ -31,8 +31,12 @@
 #include "VKPipelines.h"
 
 struct VKRenderingContext {
-    VKSDOps* surface;
-    Color color;
+    VKSDOps*        surface;
+    Color           color;
+    VKCompositeMode composite;
+    // Extra alpha is not used when painting with plain color,
+    // in this case color.a already includes it.
+    float extraAlpha;
 };
 
 VKRenderer* VKRenderer_Create(VKDevice* device);

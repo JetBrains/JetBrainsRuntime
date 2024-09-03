@@ -26,8 +26,8 @@
 #include <vulkan/vulkan.h>
 
 /**
- * Floating-point RGBA color with sRGB encoding.
- */
+* Floating-point RGBA color with sRGB encoding and pre-multiplied alpha.
+*/
 typedef union {
     struct {
         float r, g, b, a;
@@ -45,7 +45,6 @@ typedef struct VKRenderPass VKRenderPass;
 typedef struct VKRenderingContext VKRenderingContext;
 typedef struct VKPipelineContext VKPipelineContext;
 typedef struct VKRenderPassContext VKRenderPassContext;
-typedef struct VKShaders VKShaders;
 typedef struct VKBuffer VKBuffer;
 typedef struct VKImage VKImage;
 typedef struct VKSDOps VKSDOps;
