@@ -67,13 +67,37 @@ inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
 #define VK_UNHANDLED_ERROR() VK_FATAL_ERROR("Unhandled Vulkan error")
 #define VK_RUNTIME_ASSERT(...) if (!(__VA_ARGS__)) VK_FATAL_ERROR("Vulkan assertion failed: " #__VA_ARGS__)
 
+typedef enum {
+    FORMAT_ALIAS_ORIGINAL = 0,
+    FORMAT_ALIAS_UNORM    = 1,
+    FORMAT_ALIAS_SNORM    = 2,
+    FORMAT_ALIAS_USCALED  = 3,
+    FORMAT_ALIAS_SSCALED  = 4,
+    FORMAT_ALIAS_UINT     = 5,
+    FORMAT_ALIAS_SINT     = 6,
+    FORMAT_ALIAS_SFLOAT   = 7,
+    FORMAT_ALIAS_SRGB     = 8,
+    FORMAT_ALIAS_COUNT    = 9
+} FormatAlias;
+
+/**
+ * Group of format aliases. Use FormatAlias enum values to index into FormatGroup.aliases.
+ */
+typedef struct {
+    VkFormat aliases[FORMAT_ALIAS_COUNT];
+    uint     bytes;
+} FormatGroup;
+
 /**
  * Vulkan expects linear colors.
  * However Java2D expects legacy behavior, as if colors were blended in sRGB color space.
- * Therefore this function just remaps color components from [0, 255] to [0, 1] range,
- * they still represent sRGB color.
+ * Therefore this function converts straight-alpha Java color in range [0, 255]
+ * to pre-multiplied alpha normalized [0, 1] color, still representing sRGB color.
  * This is also accounted for in VKSD_ConfigureWindowSurface, so that Vulkan doesn't do any
  * color space conversions on its own, as the colors we are drawing are already in sRGB.
+ *
+ * Note: we receive colors from Java with straight (non-premultiplied) alpha, which is done to prevent precision loss.
+ * This is controlled by PixelConverter parameter of SurfaceType, see VKSurfaceData.java.
  */
 Color VKUtil_DecodeJavaColor(uint32_t color);
 
@@ -81,6 +105,11 @@ Color VKUtil_DecodeJavaColor(uint32_t color);
  * Integer log2, the same as index of highest set bit.
  */
 uint32_t VKUtil_Log2(uint64_t i);
+
+/**
+ * Get group of formats with the same component layout.
+ */
+FormatGroup VKUtil_GetFormatGroup(VkFormat format);
 
 /*
  * The following macros allow the caller to return (or continue) if the
