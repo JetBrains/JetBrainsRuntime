@@ -232,7 +232,7 @@ java/awt/Mixing/AWT_Mixing/JTextFieldOverlapping.java 8158801,JBR-5510 windows-a
 java/awt/Mixing/AWT_Mixing/JToggleButtonInGlassPaneOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JToggleButtonOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Mixing/HWDisappear.java 8253184 windows-all
+java/awt/Mixing/HWDisappear.java 8253184,JBR-6818 windows-all,linux-all
 java/awt/Mixing/MixingInHwPanel.java 8253184 windows-all
 java/awt/Mixing/NonOpaqueInternalFrame.java 7124549 macosx-all
 java/awt/Mixing/ValidBounds.java 8253184,JBR-5845 windows-all,linux-all

@@ -1,4 +1,5 @@
 # Fedora & ArchLinux (Wayland) & Ubuntu 21.04
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java         8279256 linux-all
+javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520 linux-all
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-7140 linux-all
 javax/swing/JInternalFrame/bug5009724.java JBR-7087 linux-all
