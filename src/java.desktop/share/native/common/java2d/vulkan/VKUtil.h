@@ -33,6 +33,16 @@
 #define C_ARRAY_UTIL_ALLOCATION_FAILED() VK_FATAL_ERROR("CArrayUtil allocation failed")
 #include "CArrayUtil.h"
 
+// VK_DEBUG_RANDOM may be used to randomly tune some parameters and turn off some features,
+// which would allow to cover wider range of scenarios and catch configuration-specific errors early.
+// In debug builds it returns 1 with approximately CHANCE_PERCENT chance, on release builds it is always 0.
+// When using this macro, make sure to leave sufficient info in the log to track failing configurations.
+#ifdef DEBUG
+#define VK_DEBUG_RANDOM(CHANCE_PERCENT) ((rand() % 100) < CHANCE_PERCENT)
+#else
+#define VK_DEBUG_RANDOM(CHANCE_PERCENT) 0
+#endif
+
 // Useful logging & result checking macros
 void VKUtil_LogResultError(const char* string, VkResult result);
 inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
