@@ -26,14 +26,42 @@
 #include <vulkan/vulkan.h>
 
 /**
-* Floating-point RGBA color with sRGB encoding and pre-multiplied alpha.
-*/
+ * Sometimes we need to reinterpret an image as UNORM instead of its original format.
+ * Therefore for any resource related to image/attachment format we need two copies:
+ * - FORMAT_ALIAS_ORIGINAL
+ * - FORMAT_ALIAS_UNORM
+ * Such resources are:
+ * - Image view.
+ * - Surface framebuffer (Only when dynamicRendering=OFF).
+ * - Render pass instance (Only when dynamicRendering=OFF).
+ *
+ * See SET_FORMAT_ALIASED_HANDLE and VKRenderer_GetFormatAliasForRenderPass for more details.
+ */
+#define FORMAT_ALIASED [2]
+
+/**
+ * Floating-point RGBA color components with pre-multiplied alpha.
+ * May be encoded as either linear, or sRGB depending on the context.
+ * See CorrectedColor.linear, CorrectedColor.nonlinearSrgb.
+ */
 typedef union {
     struct {
         float r, g, b, a;
     };
     VkClearValue vkClearValue;
 } Color;
+
+/**
+ * Floating-point RGBA color with pre-multiplied alpha in both linear and sRGB encoding.
+ * You never need to use linear or sRGB variants directly, use VKRenderer_GetColorForRenderPass instead.
+ *
+ * Read more about presenting sRGB content in VKSD_ConfigureWindowSurface.
+ * Read more about conversion from Java colors in VKUtil_DecodeJavaColor.
+ */
+typedef struct {
+    Color linear;
+    Color nonlinearSrgb;
+} CorrectedColor;
 
 VK_DEFINE_NON_DISPATCHABLE_HANDLE(VKMemory);
 

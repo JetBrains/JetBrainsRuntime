@@ -84,15 +84,23 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
     if (vksdo->requestedExtent.width > 0 && vksdo->requestedExtent.height > 0 && (vksdo->image == NULL ||
             vksdo->requestedExtent.width != vksdo->image->extent.width ||
             vksdo->requestedExtent.height != vksdo->image->extent.height)) {
-        // VK_FORMAT_B8G8R8A8_UNORM is the most widely-supported format for our use.
-        // We can also use high-bit-count formats, like R10G10B10A2_UNORM, or R16G16B16A16_UNORM.
+        // Use proper blending by default. See VKRenderer_GetFormatAliasForRenderPass for details.
+        vksdo->gammaCorrect = VK_TRUE;
+        // VK_FORMAT_B8G8R8A8_SRGB is the most widely-supported format for our use.
+        // We can also use normalized high-bit-count formats, like R10G10B10A2_UNORM, or R16G16B16A16_UNORM.
+        // The only thing to keep in mind is that we must not use 8-bits per component normalized formats, like
+        // B8G8R8A8_UNORM, because they would result in precision loss when blitting to the swapchain (explained further).
         // Currently, we only support *_SRGB and *_UNORM formats,
         // as other types may not be trivial to alias for logicOp rendering.
-        VkFormat format = VK_FORMAT_B8G8R8A8_UNORM;
+        VkFormat format = VK_FORMAT_B8G8R8A8_SRGB;
         if (VK_DEBUG_RANDOM(50)) format = VK_FORMAT_R16G16B16A16_UNORM;
+        VkFormat unormAlias = VKUtil_GetFormatGroup(format).aliases[FORMAT_ALIAS_UNORM];
+        // If we are using legacy blending, force UNORM format for surface image and swapchain.
+        if (!vksdo->gammaCorrect) format = unormAlias;
 
         VKImage* image = VKImage_Create(device, vksdo->requestedExtent.width, vksdo->requestedExtent.height,
-                                        0, format, VK_IMAGE_TILING_OPTIMAL,
+                                        format != unormAlias ? VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT : 0,
+                                        format, VK_IMAGE_TILING_OPTIMAL,
                                         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                                         VK_SAMPLE_COUNT_1_BIT, VKSD_FindImageSurfaceMemoryType);
         VK_RUNTIME_ASSERT(image);
@@ -201,17 +209,29 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     J2dRlsTraceLn1(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): available swapchain formats:", vkwinsdo);
     for (uint32_t i = 0; i < formatCount; i++) {
         J2dRlsTraceLn2(J2D_TRACE_INFO, "    format=%d, colorSpace=%d", formats[i].format, formats[i].colorSpace);
-        // We draw with sRGB colors (see VKUtil_DecodeJavaColor()), so we don't want Vulkan to do color space
-        // conversions when drawing to surface. We use *_UNORM formats, so that colors are written "as is".
-        // With VK_COLOR_SPACE_SRGB_NONLINEAR_KHR these colors will be interpreted by presentation engine as sRGB.
-        if (formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR && (
-                formats[i].format == VK_FORMAT_A8B8G8R8_UNORM_PACK32 ||
-                formats[i].format == VK_FORMAT_B8G8R8A8_UNORM ||
-                formats[i].format == VK_FORMAT_R8G8B8A8_UNORM ||
-                formats[i].format == VK_FORMAT_B8G8R8_UNORM ||
-                formats[i].format == VK_FORMAT_R8G8B8_UNORM
-            )) {
-            format = &formats[i];
+        // Currently, we only support default VK_COLOR_SPACE_SRGB_NONLINEAR_KHR color space, which means
+        // that we must use SRGB image formats, if we want proper gamma-correct colors.
+        // This only applies to the swapchain image, and we can use any format for the intermediate rendering
+        // target (VKSDOps.image). But in practice this means that for VKSDOps.image we would want to either
+        // use *_SRGB, or high-bit-count images, as even R8G8B8A8_UNORM will result in precision loss.
+
+        // We must strictly use SRGB formats for gamma-correct colors and UNORM for legacy mode.
+        if (vkwinsdo->vksdOps.gammaCorrect) {
+            if (formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR && (
+                    formats[i].format == VK_FORMAT_A8B8G8R8_SRGB_PACK32 ||
+                    formats[i].format == VK_FORMAT_B8G8R8A8_SRGB ||
+                    formats[i].format == VK_FORMAT_R8G8B8A8_SRGB ||
+                    formats[i].format == VK_FORMAT_B8G8R8_SRGB ||
+                    formats[i].format == VK_FORMAT_R8G8B8_SRGB
+            )) format = &formats[i];
+        } else {
+            if (formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR && (
+                    formats[i].format == VK_FORMAT_A8B8G8R8_UNORM_PACK32 ||
+                    formats[i].format == VK_FORMAT_B8G8R8A8_UNORM ||
+                    formats[i].format == VK_FORMAT_R8G8B8A8_UNORM ||
+                    formats[i].format == VK_FORMAT_B8G8R8_UNORM ||
+                    formats[i].format == VK_FORMAT_R8G8B8_UNORM
+            )) format = &formats[i];
         }
     }
     if (format == NULL) {

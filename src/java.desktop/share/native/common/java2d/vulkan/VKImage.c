@@ -31,21 +31,24 @@
 #include "VKImage.h"
 
 
-static VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
+static VkBool32 VKImage_CreateViews(VKDevice* device, VKImage* image) {
     VkImageViewCreateInfo viewInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = image->handle,
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = image->format,
             .subresourceRange.aspectMask = VKImage_GetAspect(image),
             .subresourceRange.baseMipLevel = 0,
             .subresourceRange.levelCount = 1,
             .subresourceRange.baseArrayLayer = 0,
             .subresourceRange.layerCount = 1,
     };
-
-    VK_IF_ERROR(device->vkCreateImageView(device->handle, &viewInfo, NULL, &image->view)) {
-        return VK_FALSE;
+    FormatGroup formatGroup = VKUtil_GetFormatGroup(image->format);
+    if (formatGroup.bytes == 0) formatGroup.aliases[FORMAT_ALIAS_UNORM] = image->format;
+    SET_FORMAT_ALIASED_HANDLE(image->view, formatGroup.aliases, alias) {
+        viewInfo.format = formatGroup.aliases[alias];
+        VK_IF_ERROR(device->vkCreateImageView(device->handle, &viewInfo, NULL, &image->view[alias])) {
+            return VK_FALSE;
+        }
     }
     return VK_TRUE;
 }
@@ -103,7 +106,7 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
         return NULL;
     }
 
-    if (!VKImage_CreateView(device, image)) {
+    if (!VKImage_CreateViews(device, image)) {
         VKImage_Destroy(device, image);
         return NULL;
     }
@@ -114,7 +117,8 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
 void VKImage_Destroy(VKDevice* device, VKImage* image) {
     assert(device != NULL && device->allocator != NULL);
     if (image == NULL) return;
-    device->vkDestroyImageView(device->handle, image->view, NULL);
+    SET_FORMAT_ALIASED_HANDLE(image->view, image->view, alias)
+        device->vkDestroyImageView(device->handle, image->view[alias], NULL);
     device->vkDestroyImage(device->handle, image->handle, NULL);
     VKAllocator_Free(device->allocator, image->memory);
     free(image);

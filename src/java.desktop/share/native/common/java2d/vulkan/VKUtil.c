@@ -22,9 +22,10 @@
 // questions.
 
 #include <assert.h>
+#include <math.h>
 #include "VKUtil.h"
 
-Color VKUtil_DecodeJavaColor(uint32_t color) {
+CorrectedColor VKUtil_DecodeJavaColor(uint32_t color) {
     assert(sizeof(Color) == sizeof(float) * 4);
     // Just map [0, 255] integer colors onto [0, 1] floating-point range, it remains in sRGB color space.
     // sRGB gamma correction remains unsupported.
@@ -40,11 +41,22 @@ Color VKUtil_DecodeJavaColor(uint32_t color) {
             .b = NormTable256[ color        & 0xFF],
             .a = NormTable256[(color >> 24) & 0xFF]
     };
+    // This SRGB -> LINEAR conversion implementation is taken from Khronos Data Format Specification:
+    // https://registry.khronos.org/DataFormat/specs/1.3/dataformat.1.3.html#TRANSFER_SRGB_EOTF
+    Color linear = {
+            .r = (float) (srgb.r <= 0.04045 ? srgb.r / 12.92 : pow((srgb.r + 0.055) / 1.055, 2.4)),
+            .g = (float) (srgb.g <= 0.04045 ? srgb.g / 12.92 : pow((srgb.g + 0.055) / 1.055, 2.4)),
+            .b = (float) (srgb.b <= 0.04045 ? srgb.b / 12.92 : pow((srgb.b + 0.055) / 1.055, 2.4)),
+            .a = srgb.a
+    };
     // Convert to pre-multiplied alpha.
     srgb.r *= srgb.a;
     srgb.g *= srgb.a;
     srgb.b *= srgb.a;
-    return srgb;
+    linear.r *= linear.a;
+    linear.g *= linear.a;
+    linear.b *= linear.a;
+    return (CorrectedColor) { .linear = linear, .nonlinearSrgb = srgb };
 }
 
 uint32_t VKUtil_Log2(uint64_t i) {

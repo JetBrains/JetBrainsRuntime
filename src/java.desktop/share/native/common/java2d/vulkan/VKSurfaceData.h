@@ -48,11 +48,18 @@
 struct VKSDOps {
     SurfaceDataOps sdOps;
     jint           drawableType;
+    /**
+     * Whether we use proper gamma-corrected colors, or not.
+     * When TRUE, linear colors are used for drawing, which results in correct blending.
+     * When FALSE, sRGB colors are used for drawing, which results in legacy blending.
+     * See VKRenderer_GetFormatAliasForRenderPass for details.
+     */
+    VkBool32       gammaCorrect;
     VKDevice*      device;
     VKImage*       image;
     VKImage*       stencil;
 
-    Color          background;
+    CorrectedColor background;
     VkExtent2D     requestedExtent;
 
     VKRenderPass*  renderPass;

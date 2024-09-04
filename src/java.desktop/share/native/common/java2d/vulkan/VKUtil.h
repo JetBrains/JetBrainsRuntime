@@ -67,6 +67,20 @@ inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
 #define VK_UNHANDLED_ERROR() VK_FATAL_ERROR("Unhandled Vulkan error")
 #define VK_RUNTIME_ASSERT(...) if (!(__VA_ARGS__)) VK_FATAL_ERROR("Vulkan assertion failed: " #__VA_ARGS__)
 
+/**
+ * Set format-aliased handle.
+ * CHECK is anything which can be used for matching handle check, usually format aliases.
+ * It executes a loop for each of two unique format aliases (FORMAT_ALIAS_ORIGINAL and FORMAT_ALIAS_UNORM).
+ * If CHECK is the same for both format aliases, only one iteration for FORMAT_ALIAS_ORIGINAL is executed,
+ * and FORMAT_ALIAS_UNORM handle alias is copied from FORMAT_ALIAS_ORIGINAL.
+ *
+ * See FORMAT_ALIASED and VKRenderer_GetFormatAliasForRenderPass for more details.
+ */
+#define SET_FORMAT_ALIASED_HANDLE(HANDLE, CHECK, ALIAS) for (FormatAlias (ALIAS) = FORMAT_ALIAS_ORIGINAL; \
+    (ALIAS) == FORMAT_ALIAS_ORIGINAL || ((ALIAS) == FORMAT_ALIAS_UNORM &&                                 \
+    ((CHECK)[FORMAT_ALIAS_UNORM] != (CHECK)[FORMAT_ALIAS_ORIGINAL] ||                                     \
+    (((HANDLE)[FORMAT_ALIAS_UNORM] = (HANDLE)[FORMAT_ALIAS_ORIGINAL]) && 0))); (ALIAS)++)
+
 typedef enum {
     FORMAT_ALIAS_ORIGINAL = 0,
     FORMAT_ALIAS_UNORM    = 1,
@@ -89,17 +103,18 @@ typedef struct {
 } FormatGroup;
 
 /**
- * Vulkan expects linear colors.
- * However Java2D expects legacy behavior, as if colors were blended in sRGB color space.
- * Therefore this function converts straight-alpha Java color in range [0, 255]
- * to pre-multiplied alpha normalized [0, 1] color, still representing sRGB color.
- * This is also accounted for in VKSD_ConfigureWindowSurface, so that Vulkan doesn't do any
- * color space conversions on its own, as the colors we are drawing are already in sRGB.
+ * Convert 32-bit sRGB encoded straight-alpha Java color to [0, 1] normalized
+ * floating-point representation with pre-multiplied alpha in both linear and sRGB color space.
+ * You never need to use linear or sRGB variants directly, use VKRenderer_GetColorForRenderPass instead.
  *
- * Note: we receive colors from Java with straight (non-premultiplied) alpha, which is done to prevent precision loss.
+ * Read more about presenting sRGB content in VKSD_ConfigureWindowSurface.
+ *
+ * Note: we receive colors from Java with straight (non-premultiplied) alpha, which is unusual.
  * This is controlled by PixelConverter parameter of SurfaceType, see VKSurfaceData.java.
+ * This is done to prevent precision loss and redundant conversions,
+ * as we need straight alpha to convert from sRGB to linear color space anyway.
  */
-Color VKUtil_DecodeJavaColor(uint32_t color);
+CorrectedColor VKUtil_DecodeJavaColor(uint32_t color);
 
 /**
  * Integer log2, the same as index of highest set bit.

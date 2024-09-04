@@ -137,8 +137,8 @@ struct VKRenderPass {
     VKRenderPassContext* context;
     VKBuffer*            vertexBuffers;
     VKTexelBuffer*       maskFillBuffers;
-    VkRenderPass         renderPass; // Non-owning. Only when dynamicRendering=OFF.
-    VkFramebuffer        framebuffer;
+    VkRenderPass*        renderPass /*FORMAT_ALIASED*/; // Non-owning. Only when dynamicRendering=OFF.
+    VkFramebuffer        framebuffer FORMAT_ALIASED;
     VkCommandBuffer      commandBuffer;
 
     uint32_t           firstVertex;
@@ -155,6 +155,58 @@ struct VKRenderPass {
     VkBool32        pendingClear;
     uint64_t        lastTimestamp; // When was this surface last used?
 };
+
+/**
+ * This function uses the render pass state, so it must be called AFTER
+ * the render pass was initialized, e.g. VKRenderer_Validate.
+ *
+ * Format alias is an image format variant, currently used by a render pass,
+ * it can be FORMAT_ALIAS_ORIGINAL, or FORMAT_ALIAS_UNORM.
+ * FORMAT_ALIAS_UNORM means that we need to forcefully reinterpret the image in a UNORM
+ * format, even if originally it was created with a different format type.
+ *
+ * There is another concept tightly tied to the format alias - color space.
+ * - With FORMAT_ALIAS_ORIGINAL we always use linear colors.
+ * - With FORMAT_ALIAS_UNORM we always use sRGB colors.
+ * FORMAT_ALIAS_UNORM implies that no color space conversions are done by Vulkan,
+ * and because our swapchain always has sRGB color space, we need to draw with sRGB colors too.
+ *
+ * In order to achieve correct blending, we must always work with linear colors, and therefore
+ * use FORMAT_ALIAS_ORIGINAL, but there are two cases, when we need to use FORMAT_ALIAS_UNORM:
+ * 1. XOR painting mode - it doesn't support sRGB attachments and therefore we need to
+ *    reinterpret the sRGB attachment as UNORM before drawing in XOR mode. This also means that
+ *    we need to switch to sRGB color space. Note that this doesn't result in wrong blending,
+ *    because blending is disabled in logicOp mode.
+ * 2. Legacy blending mode - we may just want wrong blending, so we are intentionally disabling
+ *    Vulkan-side color conversions by using UNORM formats and drawing with sRGB directly.
+ *
+ * This function must also be used for choosing the correct image view for source (sampled) images
+ * as well. But note that in order for everything to be in sync, source images must originally
+ * be created in sRGB format. Therefore with FORMAT_ALIAS_ORIGINAL sampling them will produce
+ * linear colors, and with FORMAT_ALIAS_UNORM - unchanged sRGB colors, as expected.
+ *
+ * One specific case also worth mentioning is when we want proper blending,
+ * but are currently drawing in XOR mode. In case if real surface format is already UNORM,
+ * this function will return FORMAT_ALIAS_ORIGINAL, not FORMAT_ALIAS_UNORM.
+ * It is important, because this way we indicate that we work with linear colors.
+ */
+inline FormatAlias VKRenderer_GetFormatAliasForRenderPass(VKSDOps* surface) {
+    assert(surface != NULL && surface->renderPass != NULL);
+    return surface->gammaCorrect && (COMPOSITE_GROUP(surface->renderPass->currentComposite) != LOGIC_COMPOSITE_GROUP ||
+        surface->image->view[FORMAT_ALIAS_ORIGINAL] == surface->image->view[FORMAT_ALIAS_UNORM]) ?
+        FORMAT_ALIAS_ORIGINAL : FORMAT_ALIAS_UNORM;
+}
+
+/**
+ * Get either linear, or sRGB color, depending on surface and render pass composite state.
+ * This function uses the render pass state, so it must be called AFTER
+ * the render pass was initialized, e.g. VKRenderer_Validate.
+ * See VKRenderer_GetFormatAliasForRenderPass for more details.
+ */
+inline Color VKRenderer_GetColorForRenderPass(VKSDOps* surface, CorrectedColor color) {
+    return VKRenderer_GetFormatAliasForRenderPass(surface) == FORMAT_ALIAS_ORIGINAL ?
+        color.linear : color.nonlinearSrgb;
+}
 
 /**
  * Helper function for POOL_TAKE macro.
@@ -555,7 +607,8 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface) {
         VKRenderer_Wait(device->renderer, surface->renderPass->lastTimestamp);
         VKRenderer_DiscardRenderPass(surface);
         // Release resources.
-        device->vkDestroyFramebuffer(device->handle, surface->renderPass->framebuffer, NULL);
+        SET_FORMAT_ALIASED_HANDLE(surface->renderPass->framebuffer, surface->renderPass->framebuffer, alias)
+            device->vkDestroyFramebuffer(device->handle, surface->renderPass->framebuffer[alias], NULL);
         if (surface->renderPass->commandBuffer != VK_NULL_HANDLE) {
             POOL_RETURN(device->renderer, secondaryCommandBufferPool, surface->renderPass->commandBuffer);
         }
@@ -617,31 +670,35 @@ static void VKRenderer_InitFramebuffer(VKSDOps* surface) {
 
     if (renderPass->currentStencilMode == STENCIL_MODE_NONE && surface->stencil != NULL) {
         // Destroy outdated color-only framebuffer.
-        device->vkDestroyFramebuffer(device->handle, renderPass->framebuffer, NULL);
-        renderPass->framebuffer = VK_NULL_HANDLE;
+        SET_FORMAT_ALIASED_HANDLE(renderPass->framebuffer, renderPass->framebuffer, alias)
+            device->vkDestroyFramebuffer(device->handle, renderPass->framebuffer[alias], NULL);
+        renderPass->framebuffer[FORMAT_ALIAS_ORIGINAL] = renderPass->framebuffer[FORMAT_ALIAS_UNORM] = VK_NULL_HANDLE;
         renderPass->currentStencilMode = STENCIL_MODE_OFF;
     }
     if (device->dynamicRendering) return;
 
     // Initialize framebuffer.
-    if (renderPass->framebuffer == VK_NULL_HANDLE) {
+    if (renderPass->framebuffer[FORMAT_ALIAS_ORIGINAL] == VK_NULL_HANDLE) {
         renderPass->renderPass = renderPass->context->renderPass[surface->stencil != NULL];
-        VkImageView views[] = { surface->image->view, VK_NULL_HANDLE };
+        VkImageView views[2];
         VkFramebufferCreateInfo framebufferCreateInfo = {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-                .renderPass = renderPass->renderPass,
                 .attachmentCount = 1,
                 .pAttachments = views,
                 .width = surface->image->extent.width,
                 .height = surface->image->extent.height,
                 .layers = 1
         };
-        if (surface->stencil != NULL) {
-            framebufferCreateInfo.attachmentCount = 2;
-            views[1] = surface->stencil->view;
+        SET_FORMAT_ALIASED_HANDLE(renderPass->framebuffer, surface->image->view, alias) {
+            views[0] = surface->image->view[alias];
+            if (surface->stencil != NULL) {
+                views[1] = surface->stencil->view[alias];
+                framebufferCreateInfo.attachmentCount = 2;
+                framebufferCreateInfo.renderPass = renderPass->context->renderPass[1][alias];
+            } else framebufferCreateInfo.renderPass = renderPass->context->renderPass[0][alias];
+            VK_IF_ERROR(device->vkCreateFramebuffer(device->handle, &framebufferCreateInfo, NULL,
+                                                    &renderPass->framebuffer[alias])) VK_UNHANDLED_ERROR();
         }
-        VK_IF_ERROR(device->vkCreateFramebuffer(device->handle, &framebufferCreateInfo, NULL,
-                                                &renderPass->framebuffer)) VK_UNHANDLED_ERROR();
 
         J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_InitFramebuffer(%p)", surface);
     }
@@ -677,6 +734,8 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     }
 
     // Begin recording render pass commands.
+    FormatAlias formatAlias = VKRenderer_GetFormatAliasForRenderPass(surface);
+    FormatGroup formatGroup = VKUtil_GetFormatGroup(surface->image->format);
     VkCommandBufferInheritanceRenderingInfoKHR inheritanceRenderingInfo;
     VkCommandBufferInheritanceInfo inheritanceInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO
@@ -687,16 +746,16 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
                 .flags = VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT,
                 .viewMask = 0,
                 .colorAttachmentCount = 1,
-                .pColorAttachmentFormats = &surface->image->format,
+                .pColorAttachmentFormats = &formatGroup.aliases[formatAlias],
                 .stencilAttachmentFormat = surface->renderPass->currentStencilMode == STENCIL_MODE_NONE ?
                         VK_FORMAT_UNDEFINED : VK_FORMAT_S8_UINT,
                 .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
         };
         inheritanceInfo.pNext = &inheritanceRenderingInfo;
     } else {
-        inheritanceInfo.renderPass = surface->renderPass->renderPass;
+        inheritanceInfo.renderPass = surface->renderPass->renderPass[formatAlias];
         inheritanceInfo.subpass = 0;
-        inheritanceInfo.framebuffer = surface->renderPass->framebuffer;
+        inheritanceInfo.framebuffer = surface->renderPass->framebuffer[formatAlias];
     }
     VkCommandBufferBeginInfo commandBufferBeginInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -715,7 +774,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
         VkClearAttachment clearAttachment = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .colorAttachment = 0,
-                .clearValue = surface->background.vkClearValue
+                .clearValue = VKRenderer_GetColorForRenderPass(surface, surface->background).vkClearValue
         };
         VkClearRect clearRect = {
                 .rect = {{0, 0}, surface->image->extent},
@@ -785,21 +844,22 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     }
 
     // Begin render pass.
+    FormatAlias formatAlias = VKRenderer_GetFormatAliasForRenderPass(surface);
     if (device->dynamicRendering) {
         VkRenderingAttachmentInfoKHR colorAttachmentInfo = {
                 .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-                .imageView = surface->image->view,
+                .imageView = surface->image->view[formatAlias],
                 .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 .resolveMode = VK_RESOLVE_MODE_NONE_KHR,
                 .resolveImageView = VK_NULL_HANDLE,
                 .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
                 .loadOp = clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
                 .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                .clearValue = surface->background.vkClearValue
+                .clearValue = VKRenderer_GetColorForRenderPass(surface, surface->background).vkClearValue
         };
         VkRenderingAttachmentInfoKHR stencilAttachmentInfo = {
                 .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-                .imageView = surface->stencil == NULL ? VK_NULL_HANDLE : surface->stencil->view,
+                .imageView = surface->stencil == NULL ? VK_NULL_HANDLE : surface->stencil->view[formatAlias],
                 .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 .resolveMode = VK_RESOLVE_MODE_NONE_KHR,
                 .resolveImageView = VK_NULL_HANDLE,
@@ -826,8 +886,8 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
         if (clear) VKRenderer_BeginRenderPass(surface);
         VkRenderPassBeginInfo renderPassInfo = {
                 .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                .renderPass = surface->renderPass->renderPass,
-                .framebuffer = surface->renderPass->framebuffer,
+                .renderPass = surface->renderPass->renderPass[formatAlias],
+                .framebuffer = surface->renderPass->framebuffer[formatAlias],
                 .renderArea.offset = (VkOffset2D){0, 0},
                 .renderArea.extent = surface->image->extent,
                 .clearValueCount = 0,
@@ -1085,7 +1145,8 @@ static void VKRenderer_SetupStencil(VKRenderingContext* context) {
     surface->device->vkCmdClearAttachments(cb, 1, &clearAttachment, 1, &clearRect);
 
     // Bind the clip pipeline.
-    surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, surface->renderPass->context->clipPipeline);
+    surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                       surface->renderPass->context->clipPipeline[VKRenderer_GetFormatAliasForRenderPass(surface)]);
     // Reset vertex buffer binding.
     renderPass->vertexBufferWriting.bound = VK_FALSE;
 
@@ -1134,6 +1195,12 @@ static VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipe
         if (clipChanged && ARRAY_SIZE(context->clipSpanVertices) > 0 && surface->stencil == NULL) {
             if (surface->renderPass->pendingCommands) VKRenderer_FlushRenderPass(surface);
             if (!VKSD_ConfigureImageSurfaceStencil(surface)) return VK_FALSE;
+        }
+        // When we are using gamma-correct blending and original image format is not UNORM,
+        // we also need to restart the render pass in order to switch to a different format alias.
+        if (oldCompositeGroup != newCompositeGroup && surface->renderPass->pendingCommands && surface->gammaCorrect &&
+            surface->image->view[FORMAT_ALIAS_ORIGINAL] != surface->image->view[FORMAT_ALIAS_UNORM]) {
+            VKRenderer_FlushRenderPass(surface);
         }
         // Update state.
         VKRenderer_FlushDraw(surface);
@@ -1220,7 +1287,7 @@ void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipe
                                     jfloat dx21, jfloat dy21,
                                     jfloat dx12, jfloat dy12) {
     if (!VKRenderer_Validate(context, pipeline)) return; // Not ready.
-    Color c = context->color;
+    Color c = VKRenderer_GetColorForRenderPass(context->surface, context->color);
     /*                   dx21
      *    (p1)---------(p2) |          (p1)------
      *     |\            \  |            |  \    dy21
@@ -1254,7 +1321,7 @@ void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipe
 void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spans) {
     if (spanCount == 0) return;
     if (!VKRenderer_Validate(context, PIPELINE_FILL_COLOR)) return; // Not ready.
-    Color c = context->color;
+    Color c = VKRenderer_GetColorForRenderPass(context->surface, context->color);
 
     jfloat x1 = (float)*(spans++);
     jfloat y1 = (float)*(spans++);
@@ -1313,7 +1380,7 @@ void VKRenderer_TextureRender(VKRenderingContext* context, VKImage *destImage, V
 
     VkDescriptorImageInfo imageInfo = {
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            .imageView = srcImage->view,
+            .imageView = srcImage->view[VKRenderer_GetFormatAliasForRenderPass(surface)],
             .sampler = device->renderer->pipelineContext->linearRepeatSampler
     };
 
@@ -1351,7 +1418,7 @@ void VKRenderer_MaskFill(VKRenderingContext* context, jint x, jint y, jint w, ji
     // masklen is the size of the whole mask tile, it may be way bigger, than number of actually needed bytes.
     VKMaskFillColorVertex* vs;
     VK_DRAW(vs, context, 6);
-    Color c = context->color;
+    Color c = VKRenderer_GetColorForRenderPass(context->surface, context->color);
 
     uint32_t byteCount = maskscan * h;
     BufferWritingState maskState = VKRenderer_AllocateMaskFillBytes(context, byteCount);

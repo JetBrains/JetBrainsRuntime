@@ -110,7 +110,7 @@ static VKRenderingContext context = {
 // because we need consistent state when switching between XOR and alpha composite modes.
 // This variable holds last value set by SET_COLOR, while context.color holds color,
 // currently used for drawing, which may have also been provided by SET_XOR_COMPOSITE.
-Color color;
+CorrectedColor color;
 
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
     (JNIEnv *env, jobject oglrq, jlong buf, jint limit)
@@ -483,10 +483,12 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint xorPixel = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_XOR_COMPOSITE");
-                context.color = VKUtil_DecodeJavaColor(xorPixel);
-                context.color.a = 0.0f; // Alpha is left unchanged in XOR mode.
+                context.color      = VKUtil_DecodeJavaColor(xorPixel);
                 context.composite  = LOGIC_COMPOSITE_XOR;
                 context.extraAlpha = 1.0f;
+                // Alpha is left unchanged in XOR mode.
+                context.color.linear.a = 0.0f;
+                context.color.nonlinearSrgb.a = 0.0f;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_RESET_COMPOSITE:
@@ -623,8 +625,10 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 color = VKUtil_DecodeJavaColor(javaColor);
                 if (COMPOSITE_GROUP(context.composite) == ALPHA_COMPOSITE_GROUP) context.color = color;
                 J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: SET_COLOR(0x%08x)", javaColor);
-                J2dTraceLn4(J2D_TRACE_VERBOSE, // Print color values with straight alpha for convenience.
-                    "    srgb={%.3f, %.3f, %.3f, %.3f}", color.r/color.a, color.g/color.a, color.b/color.a, color.a);
+                J2dTraceLn8(J2D_TRACE_VERBOSE, // Print color values with straight alpha for convenience.
+                    "    srgb={%.3f, %.3f, %.3f, %.3f}, linear={%.3f, %.3f, %.3f, %.3f}",
+                    color.nonlinearSrgb.r/color.linear.a, color.nonlinearSrgb.g/color.linear.a, color.nonlinearSrgb.b/color.linear.a, color.linear.a,
+                    color.linear.r/color.linear.a, color.linear.g/color.linear.a, color.linear.b/color.linear.a, color.linear.a);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_GRADIENT_PAINT:

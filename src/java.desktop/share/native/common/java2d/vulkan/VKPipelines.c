@@ -260,10 +260,16 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
     // Setup default pipeline parameters.
     PipelineCreateState base;
     VKPipelines_InitPipelineCreateState(&base);
+    FormatAlias formatAlias = FORMAT_ALIAS_ORIGINAL;
+    FormatGroup formatGroup = VKUtil_GetFormatGroup(renderPassContext->format);
+    if (COMPOSITE_GROUP(descriptor.composite) == LOGIC_COMPOSITE_GROUP) {
+        // Tweak parameters for logic composite. Make sure to draw into UNORM attachment.
+        formatAlias = FORMAT_ALIAS_UNORM;
+        base.colorBlendState.logicOpEnable = VK_TRUE;
+    }
     base.createInfo.layout = pipelineContext->pipelineLayout;
-    base.createInfo.renderPass = renderPassContext->renderPass[descriptor.stencilMode != STENCIL_MODE_NONE];
+    base.createInfo.renderPass = renderPassContext->renderPass[descriptor.stencilMode != STENCIL_MODE_NONE][formatAlias];
     base.colorBlendState.pAttachments = &COMPOSITE_BLEND_STATES[descriptor.composite];
-    if (COMPOSITE_GROUP(descriptor.composite) == LOGIC_COMPOSITE_GROUP) base.colorBlendState.logicOpEnable = VK_TRUE;
     if (device->dynamicBlending)
         base.dynamicStates[base.dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT;
     if (device->dynamicLogicOp) {
@@ -277,7 +283,7 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
             .viewMask = 0,
             .colorAttachmentCount = 1,
-            .pColorAttachmentFormats = &renderPassContext->format,
+            .pColorAttachmentFormats = &formatGroup.aliases[formatAlias],
             .stencilAttachmentFormat = descriptor.stencilMode == STENCIL_MODE_NONE ?
                     VK_FORMAT_UNDEFINED : VK_FORMAT_S8_UINT
     };
@@ -325,7 +331,6 @@ static VkResult VKPipelines_InitRenderPasses(VKDevice* device, VKRenderPassConte
     assert(device != NULL && renderPassContext != NULL);
     if (device->dynamicRendering) return VK_SUCCESS;
     VkAttachmentDescription attachments[] = {{
-            .format = renderPassContext->format,
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -365,13 +370,17 @@ static VkResult VKPipelines_InitRenderPasses(VKDevice* device, VKRenderPassConte
             .dependencyCount = 0,
             .pDependencies = NULL
     };
+    FormatGroup formatGroup = VKUtil_GetFormatGroup(renderPassContext->format);
     for (uint32_t i = 0; i < 2; i++) {
         if (i == 1) {
             createInfo.attachmentCount = 2;
             subpassDescription.pDepthStencilAttachment = &stencilReference;
         }
-        VkResult result = device->vkCreateRenderPass(device->handle, &createInfo, NULL, &renderPassContext->renderPass[i]);
-        VK_IF_ERROR(result) return result;
+        SET_FORMAT_ALIASED_HANDLE(renderPassContext->renderPass[i], formatGroup.aliases, alias) {
+            attachments[0].format = formatGroup.aliases[alias];
+            VkResult result = device->vkCreateRenderPass(device->handle, &createInfo, NULL, &renderPassContext->renderPass[i][alias]);
+            VK_IF_ERROR(result) return result;
+        }
     }
     return VK_SUCCESS;
 }
@@ -389,9 +398,11 @@ static void VKPipelines_DestroyRenderPassContext(VKRenderPassContext* renderPass
         }
     }
     ARRAY_FREE(renderPassContext->pipelineSets);
-    device->vkDestroyPipeline(device->handle, renderPassContext->clipPipeline, NULL);
+    SET_FORMAT_ALIASED_HANDLE(renderPassContext->clipPipeline, renderPassContext->clipPipeline, alias)
+        device->vkDestroyPipeline(device->handle, renderPassContext->clipPipeline[alias], NULL);
     for (uint32_t i = 0; i < 2; i++) {
-        device->vkDestroyRenderPass(device->handle, renderPassContext->renderPass[i], NULL);
+        SET_FORMAT_ALIASED_HANDLE(renderPassContext->renderPass[i], renderPassContext->renderPass[i], alias)
+            device->vkDestroyRenderPass(device->handle, renderPassContext->renderPass[i][alias], NULL);
     }
     J2dRlsTraceLn2(J2D_TRACE_INFO, "VKPipelines_DestroyRenderPassContext(%p): format=%d",
                    renderPassContext, renderPassContext->format);
@@ -418,7 +429,6 @@ static VKRenderPassContext* VKPipelines_CreateRenderPassContext(VKPipelineContex
     PipelineCreateState base;
     VKPipelines_InitPipelineCreateState(&base);
     base.createInfo.layout = pipelineContext->pipelineLayout;
-    base.createInfo.renderPass = renderPassContext->renderPass[1];
     base.colorBlendState.pAttachments = &NO_COLOR_ATTACHMENT;
     base.depthStencilState.stencilTestEnable = VK_TRUE;
     VkPipelineRenderingCreateInfoKHR renderingCreateInfo = {
@@ -453,10 +463,19 @@ static VKRenderPassContext* VKPipelines_CreateRenderPassContext(VKPipelineContex
     base.createInfo.stageCount = 1;
     base.createInfo.pStages = &pipelineContext->shaders->clip_vert;
 
+    VkGraphicsPipelineCreateInfo createInfos FORMAT_ALIASED;
+    for (FormatAlias alias = FORMAT_ALIAS_ORIGINAL; alias <= FORMAT_ALIAS_UNORM; alias++) {
+        createInfos[alias] = base.createInfo;
+        createInfos[alias].renderPass = renderPassContext->renderPass[1][alias];
+    }
+    VkBool32 hasFormatAliasing = renderPassContext->renderPass[1][FORMAT_ALIAS_ORIGINAL] != renderPassContext->renderPass[1][FORMAT_ALIAS_UNORM];
+
     // Create pipelines.
     // TODO pipeline cache
     VK_IF_ERROR(pipelineContext->device->vkCreateGraphicsPipelines(
-            pipelineContext->device->handle, VK_NULL_HANDLE, 1, &base.createInfo, NULL, &renderPassContext->clipPipeline)) VK_UNHANDLED_ERROR();
+            pipelineContext->device->handle, VK_NULL_HANDLE, hasFormatAliasing ? 2 : 1,
+            createInfos, NULL, renderPassContext->clipPipeline)) VK_UNHANDLED_ERROR();
+    if (!hasFormatAliasing) renderPassContext->clipPipeline[FORMAT_ALIAS_UNORM] = renderPassContext->clipPipeline[FORMAT_ALIAS_ORIGINAL];
     J2dRlsTraceLn2(J2D_TRACE_INFO, "VKPipelines_CreateRenderPassContext(%p): format=%d", renderPassContext, format);
     return renderPassContext;
 }
@@ -621,7 +640,8 @@ VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKPip
     VKCompositeMode compositeGroup = COMPOSITE_GROUP(descriptor.composite);
     if (device->dynamicBlending && compositeGroup == ALPHA_COMPOSITE_GROUP)
         descriptor.composite = ALPHA_COMPOSITE_SRC_OVER; // Dynamic blending: all alpha composites are combined.
-    if (device->dynamicLogicOp && compositeGroup == LOGIC_COMPOSITE_GROUP)
+    if (device->dynamicLogicOp && compositeGroup == LOGIC_COMPOSITE_GROUP &&
+        renderPassContext->renderPass[0][FORMAT_ALIAS_ORIGINAL] == renderPassContext->renderPass[0][FORMAT_ALIAS_UNORM])
         descriptor.composite = ALPHA_COMPOSITE_SRC_OVER; // Dynamic logicOp: all composites are combined.
     if (device->dynamicStencil && descriptor.stencilMode != STENCIL_MODE_NONE)
         descriptor.stencilMode = STENCIL_MODE_ON; // Dynamic stencil: stencil test on/off combined.

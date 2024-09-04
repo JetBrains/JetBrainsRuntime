@@ -33,7 +33,7 @@
 struct VKImage {
     VkImage     handle;
     VKMemory    memory;
-    VkImageView view;
+    VkImageView view FORMAT_ALIASED;
     VkFormat    format;
     VkExtent2D  extent;
 
