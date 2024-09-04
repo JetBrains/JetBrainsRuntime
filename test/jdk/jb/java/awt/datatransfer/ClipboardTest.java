@@ -31,7 +31,7 @@ import java.awt.datatransfer.DataFlavor;
  * @run main/othervm ClipboardTest
  */
 
-public class Main {
+public class ClipboardTest {
     public static void main(String[] args) {
         new Thread(new ClipboardLoader()).start();
         new Thread(new ClipboardLoader()).start();
