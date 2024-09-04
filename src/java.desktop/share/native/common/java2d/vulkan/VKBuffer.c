@@ -24,6 +24,7 @@
  * questions.
  */
 
+#include <assert.h>
 #include <string.h>
 #include "VKUtil.h"
 #include "VKBase.h"
@@ -45,97 +46,86 @@ VkResult VKBuffer_FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeF
     return VK_ERROR_UNKNOWN;
 }
 
-VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
-                          VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
-{
-    VKBuffer* buffer = calloc(1, sizeof(VKBuffer));
-    VK_RUNTIME_ASSERT(buffer);
+static VkDeviceMemory VKBuffer_DestroyBuffersOnFailure(VKDevice* device, VkDeviceMemory page, uint32_t bufferCount, VKBuffer* buffers) {
+    for (uint32_t i = 0; i < bufferCount; i++) {
+        device->vkDestroyBuffer(device->handle, buffers[i].handle, NULL);
+    }
+    device->vkFreeMemory(device->handle, page, NULL);
+    return VK_NULL_HANDLE;
+}
 
+VkDeviceMemory VKBuffer_CreateBuffers(VKDevice* device, VkBufferUsageFlags usageFlags,
+                                      VkMemoryPropertyFlags requiredMemoryProperties,
+                                      VkDeviceSize bufferSize, VkDeviceSize pageSize,
+                                      uint32_t* bufferCount, VKBuffer* buffers) {
+    assert(device != NULL);
+    assert(bufferCount != NULL && buffers != NULL);
+    assert(pageSize == 0 || pageSize >= bufferSize);
+    if (*bufferCount == 0 || bufferSize == 0) return VK_NULL_HANDLE;
+
+    // Create a single buffer.
     VkBufferCreateInfo bufferInfo = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = size,
-            .usage = usage,
+            .size = bufferSize,
+            .usage = usageFlags,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
+    VK_IF_ERROR(device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &buffers[0].handle)) return VK_NULL_HANDLE;
 
-    VK_IF_ERROR(device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &buffer->buffer)) {
-        VKBuffer_free(device, buffer);
-        return NULL;
-    }
-
-    buffer->size = size;
-
+    // Check memory requirements. We aim to create maxBufferCount buffers,
+    // but due to implementation-specific alignment requirements this number can be lower (unlikely though).
     VkMemoryRequirements memRequirements;
-    device->vkGetBufferMemoryRequirements(device->handle, buffer->buffer, &memRequirements);
+    device->vkGetBufferMemoryRequirements(device->handle, buffers[0].handle, &memRequirements);
+    // Required size may not be multiple of alignment, fix.
+    memRequirements.size = ((memRequirements.size + memRequirements.alignment - 1) /
+                            memRequirements.alignment) * memRequirements.alignment;
+    VkDeviceSize realBufferSize = memRequirements.size;
+    if (pageSize == 0) pageSize = (*bufferCount) * realBufferSize;
+    uint32_t realBufferCount = pageSize / realBufferSize;
+    if (realBufferCount > *bufferCount) realBufferCount = *bufferCount;
+    if (realBufferCount == 0) return VKBuffer_DestroyBuffersOnFailure(device, VK_NULL_HANDLE, 1, buffers);
 
+    // Find memory type.
     uint32_t memoryType;
-
-    VK_IF_ERROR(VKBuffer_FindMemoryType(device->physicalDevice,
-                                     memRequirements.memoryTypeBits,
-                                     properties, &memoryType)) {
-        VKBuffer_free(device, buffer);
-        return NULL;
+    VK_IF_ERROR(VKBuffer_FindMemoryType(device->physicalDevice, memRequirements.memoryTypeBits,
+                                        requiredMemoryProperties, &memoryType)) {
+        return VKBuffer_DestroyBuffersOnFailure(device, VK_NULL_HANDLE, 1, buffers);
     }
 
-    VkMemoryAllocateInfo allocInfo = {
+    // Allocate new memory page.
+    VkMemoryAllocateInfo allocateInfo = {
             .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .allocationSize = memRequirements.size,
+            .allocationSize = pageSize,
             .memoryTypeIndex = memoryType
     };
-
-    VK_IF_ERROR(device->vkAllocateMemory(device->handle, &allocInfo, NULL, &buffer->memory)) {
-        VKBuffer_free(device, buffer);
-        return NULL;
+    VkDeviceMemory page;
+    VK_IF_ERROR(device->vkAllocateMemory(device->handle, &allocateInfo, NULL, &page)) {
+        return VKBuffer_DestroyBuffersOnFailure(device, VK_NULL_HANDLE, 1, buffers);
     }
-
-    VK_IF_ERROR(device->vkBindBufferMemory(device->handle, buffer->buffer, buffer->memory, 0)) {
-        VKBuffer_free(device, buffer);
-        return NULL;
-    }
-    return buffer;
-}
-
-VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize bufferSize)
-{
-    VKBuffer* buffer = VKBuffer_Create(device, bufferSize,
-                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
     void* data;
-    VK_IF_ERROR(device->vkMapMemory(device->handle, buffer->memory, 0, VK_WHOLE_SIZE, 0, &data)) {
-        VKBuffer_free(device, buffer);
-        return NULL;
+    VK_IF_ERROR(device->vkMapMemory(device->handle, page, 0, VK_WHOLE_SIZE, 0, &data)) {
+        return VKBuffer_DestroyBuffersOnFailure(device, page, 1, buffers);
     }
-    memcpy(data, vertices, bufferSize);
 
-    VkMappedMemoryRange memoryRange = {
+    // Create remaining buffers and bind memory.
+    for (uint32_t i = 0;;) {
+        VKBuffer* b = &buffers[i];
+        b->range = (VkMappedMemoryRange) {
             .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            .pNext = NULL,
-            .memory = buffer->memory,
-            .offset = 0,
-            .size = VK_WHOLE_SIZE
-    };
-
-
-    VK_IF_ERROR(device->vkFlushMappedMemoryRanges(device->handle, 1, &memoryRange)) {
-        VKBuffer_free(device, buffer);
-        return NULL;
-    }
-    device->vkUnmapMemory(device->handle, buffer->memory);
-    buffer->size = bufferSize;
-
-    return buffer;
-}
-
-void VKBuffer_free(VKDevice* device, VKBuffer* buffer) {
-    if (buffer != NULL) {
-        if (buffer->buffer != VK_NULL_HANDLE) {
-            device->vkDestroyBuffer(device->handle, buffer->buffer, NULL);
+            .memory = page,
+            .offset = realBufferSize * i,
+            .size = realBufferSize
+        };
+        b->data = (void*) (((uint8_t*) data) + realBufferSize * i);
+        VK_IF_ERROR(device->vkBindBufferMemory(device->handle, b->handle, page, b->range.offset)) {
+            return VKBuffer_DestroyBuffersOnFailure(device, page, i + 1, buffers);
         }
-        if (buffer->memory != VK_NULL_HANDLE) {
-            device->vkFreeMemory(device->handle, buffer->memory, NULL);
+        if ((++i) >= realBufferCount) break;
+        VK_IF_ERROR(device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &buffers[i].handle)) {
+            return VKBuffer_DestroyBuffersOnFailure(device, page, i, buffers);
         }
-        free(buffer);
     }
+
+    *bufferCount = realBufferCount;
+    return page;
 }
