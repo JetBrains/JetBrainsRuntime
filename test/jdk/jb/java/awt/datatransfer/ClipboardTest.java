@@ -28,7 +28,7 @@ import java.awt.datatransfer.DataFlavor;
 /*
  * @test
  * @summary
- * @run main/othervm ClipboardTest
+ * @run main/timeout=1200/othervm ClipboardTest
  */
 
 public class ClipboardTest {
