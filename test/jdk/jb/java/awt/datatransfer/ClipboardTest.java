@@ -33,6 +33,11 @@ import java.awt.datatransfer.DataFlavor;
 
 public class ClipboardTest {
     public static void main(String[] args) {
+        Clipboard systemClipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        String myString = "This text will be copied into clipboard";
+        StringSelection stringSelection = new StringSelection(myString);
+        systemClipboard.setContents(stringSelection, null);
+
         new Thread(new ClipboardLoader()).start();
         new Thread(new ClipboardLoader()).start();
         while (true) {
