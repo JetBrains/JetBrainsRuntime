@@ -145,11 +145,7 @@ struct VKRenderPass {
     VkBool32   pendingFlush;
     VkBool32   pendingCommands;
     VkBool32   pendingClear;
-
-    VkImageLayout           layout;
-    VkPipelineStageFlagBits lastStage;
-    VkAccessFlagBits        lastAccess;
-    uint64_t                lastTimestamp; // When was this surface last used?
+    uint64_t   lastTimestamp; // When was this surface last used?
 };
 
 /**
@@ -412,48 +408,37 @@ void VKRenderer_Flush(VKRenderer* renderer) {
                   renderer, submitInfo.commandBufferCount, pendingPresentations);
 }
 
+typedef struct {
+    uint32_t barrierCount;
+    VkPipelineStageFlags srcStages;
+    VkPipelineStageFlags dstStages;
+} VKBarrierBatch;
+
 /**
- * Prepare barrier info to be executed in batch, if needed.
+ * Prepare image barrier info to be executed in batch, if needed.
  */
-static void VKRenderer_AddSurfaceBarrier(VkImageMemoryBarrier* barriers, uint32_t* numBarriers,
-                                         VkPipelineStageFlags* srcStages, VkPipelineStageFlags* dstStages,
-                                         VKSDOps* surface, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
-    assert(surface->image != NULL);
+static void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
+                                       VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
+    assert(barriers != NULL && batch != NULL && image != NULL);
     // TODO Even if stage, access and layout didn't change, we may still need a barrier against WaW hazard.
-    if (stage != surface->renderPass->lastStage || access != surface->renderPass->lastAccess || layout != surface->renderPass->layout) {
-        barriers[*numBarriers] = (VkImageMemoryBarrier) {
+    if (stage != image->lastStage || access != image->lastAccess || layout != image->layout) {
+        barriers[batch->barrierCount] = (VkImageMemoryBarrier) {
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .srcAccessMask = surface->renderPass->lastAccess,
+                .srcAccessMask = image->lastAccess,
                 .dstAccessMask = access,
-                .oldLayout = surface->renderPass->layout,
+                .oldLayout = image->layout,
                 .newLayout = layout,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = surface->image->image,
+                .image = image->image,
                 .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
         };
-        (*numBarriers)++;
-        (*srcStages) |= surface->renderPass->lastStage;
-        (*dstStages) |= stage;
-        surface->renderPass->lastStage = stage;
-        surface->renderPass->lastAccess = access;
-        surface->renderPass->layout = layout;
-    }
-}
-
-/**
- * Execute single barrier, if needed.
- */
-static void VKRenderer_SurfaceBarrier(VKSDOps* surface, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
-    VkImageMemoryBarrier barrier;
-    uint32_t numBarriers = 0;
-    VkPipelineStageFlags srcStages = 0, dstStages = 0;
-    VKRenderer_AddSurfaceBarrier(&barrier, &numBarriers, &srcStages, &dstStages, surface, stage, access, layout);
-    if (numBarriers == 1) {
-        VKDevice* device = surface->device;
-        VKRenderer* renderer = device->renderer;
-        VkCommandBuffer cb = VKRenderer_Record(renderer);
-        device->vkCmdPipelineBarrier(cb, srcStages, dstStages, 0, 0, NULL, 0, NULL, 1, &barrier);
+        batch->barrierCount++;
+        batch->srcStages |= image->lastStage;
+        batch->dstStages |= stage;
+        image->lastStage = stage;
+        image->lastAccess = access;
+        image->layout = layout;
     }
 }
 
@@ -547,9 +532,6 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
             .pendingCommands = VK_FALSE,
             .pendingClear = VK_TRUE, // Clear the surface by default
             .currentPipeline = NO_PIPELINE,
-            .layout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .lastStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            .lastAccess = 0,
             .lastTimestamp = 0
     };
 
@@ -680,9 +662,17 @@ static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     VkCommandBuffer cb = VKRenderer_Record(renderer);
 
     // Insert barrier to prepare surface for rendering.
-    VKRenderer_SurfaceBarrier(surface, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                              VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VkImageMemoryBarrier barriers[1];
+    VKBarrierBatch barrierBatch = {};
+    VKRenderer_AddImageBarrier(barriers, &barrierBatch, surface->image,
+                               VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                               VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    if (barrierBatch.barrierCount > 0) {
+        device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
+                                     0, 0, NULL, 0, NULL, barrierBatch.barrierCount, barriers);
+    }
+
     // Begin render pass.
     VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -759,25 +749,22 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
 
         // Insert barriers to prepare both main (src) and swapchain (dst) images for blit.
         {
-            VkImageMemoryBarrier barriers[2] =
-                    {{
-                             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                             .srcAccessMask = 0,
-                             .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                             .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                             .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                             .image = win->swapchainImages[imageIndex],
-                             .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
-                     }};
-            uint32_t numBarriers = 1;
-            VkPipelineStageFlags srcStages = surface->renderPass->lastStage, dstStages = VK_PIPELINE_STAGE_TRANSFER_BIT;
-            VKRenderer_AddSurfaceBarrier(barriers, &numBarriers, &srcStages, &dstStages, surface,
-                                         VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                         VK_ACCESS_TRANSFER_READ_BIT,
-                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-            device->vkCmdPipelineBarrier(cb, srcStages, dstStages, 0, 0, NULL, 0, NULL, numBarriers, barriers);
+            VkImageMemoryBarrier barriers[2] = {{
+                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                    .srcAccessMask = 0,
+                    .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                    .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                    .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = win->swapchainImages[imageIndex],
+                    .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+            }};
+            VKBarrierBatch barrierBatch = {1, surface->image->lastStage, VK_PIPELINE_STAGE_TRANSFER_BIT};
+            VKRenderer_AddImageBarrier(barriers, &barrierBatch, surface->image, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                       VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
+                                         0, 0, NULL, 0, NULL, barrierBatch.barrierCount, barriers);
         }
 
         // Do blit.
