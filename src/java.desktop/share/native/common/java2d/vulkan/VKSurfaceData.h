@@ -29,6 +29,7 @@
 
 #include "SurfaceData.h"
 #include "sun_java2d_pipe_hw_AccelSurface.h"
+#include "VKUtil.h"
 #include "VKTypes.h"
 #include "VKRenderer.h"
 
@@ -66,7 +67,7 @@ struct VKWinSDOps {
     VKSDOps        vksdOps;
     VkSurfaceKHR   surface;
     VkSwapchainKHR swapchain;
-    VkImage*       swapchainImages;
+    ARRAY(VkImage) swapchainImages;
     VKDevice*      swapchainDevice;
     VkExtent2D     swapchainExtent;
     VKWinSD_SurfaceResizeCallback resizeCallback;
