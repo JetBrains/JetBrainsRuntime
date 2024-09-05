@@ -94,8 +94,16 @@ struct VKRenderPassContext {
     VKPipelineContext*     pipelineContext;
     VkFormat               format;
     VkRenderPass           renderPass;
-    struct VKPipelineSet** pipelineSets; // TODO we will need a real hash map for this in the future.
+    struct VKPipelineSet** pipelineSets;
 };
+
+/**
+ * All features describing a pipeline set.
+ * When adding new fields, update hash and comparison in VKPipelines_GetPipeline.
+ */
+typedef struct {
+    VKCompositeMode composite;
+} VKPipelineSetDescriptor;
 
 typedef struct {
     float x, y;
@@ -116,6 +124,6 @@ VKPipelineContext* VKPipelines_CreateContext(VKDevice* device);
 void VKPipelines_DestroyContext(VKPipelineContext* pipelines);
 
 VKRenderPassContext* VKPipelines_GetRenderPassContext(VKPipelineContext* pipelineContext, VkFormat format);
-VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKCompositeMode composite, VKPipeline pipeline);
+VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKPipelineSetDescriptor descriptor, VKPipeline pipeline);
 
 #endif //VKPipelines_h_Included
