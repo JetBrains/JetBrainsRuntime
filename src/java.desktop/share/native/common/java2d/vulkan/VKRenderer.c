@@ -56,8 +56,9 @@ struct PoolEntry_ ## NAME { \
  * Return an item to the pool. It will only become available again
  * after the next submitted batch of work completes execution on GPU.
  */
+// In debug mode resource reuse will be randomly delayed by 3 timestamps in ~20% cases.
 #define POOL_RETURN(RENDERER, NAME, VAR) RING_BUFFER_PUSH_BACK((RENDERER)->NAME, \
-    (struct PoolEntry_ ## NAME) { .timestamp = (RENDERER)->writeTimestamp, .value = (VAR) })
+    (struct PoolEntry_ ## NAME) { .timestamp = (RENDERER)->writeTimestamp + (VK_DEBUG_RANDOM(20)*3), .value = (VAR) })
 
 /**
  * Insert an item into the pool. It is available for POOL_TAKE immediately.
