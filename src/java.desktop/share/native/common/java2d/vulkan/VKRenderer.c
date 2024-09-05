@@ -999,8 +999,11 @@ VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
         VKRenderer_FlushDraw(surface);
         VkCommandBuffer cb = renderPass->commandBuffer;
         renderPass->currentPipeline = pipeline;
+        VKPipelineSetDescriptor pipelineSetDescriptor = {
+                .composite = context->composite
+        };
         surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           VKPipelines_GetPipeline(renderPass->context, context->composite, pipeline));
+                                           VKPipelines_GetPipeline(renderPass->context, pipelineSetDescriptor, pipeline));
         renderPass->vertexBufferWriting.bound = VK_FALSE;
         renderPass->maskFillBufferWriting.bound = VK_FALSE;
     }
