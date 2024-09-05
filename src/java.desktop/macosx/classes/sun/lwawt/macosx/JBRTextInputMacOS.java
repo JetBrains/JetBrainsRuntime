@@ -27,23 +27,28 @@ package sun.lwawt.macosx;
 
 import com.jetbrains.exported.JBRApi;
 
+import java.awt.*;
+
 @JBRApi.Service
 @JBRApi.Provides("TextInput")
 public class JBRTextInputMacOS {
     private EventListener listener;
 
     JBRTextInputMacOS() {
-        var desc = (CInputMethodDescriptor) LWCToolkit.getLWCToolkit().getInputMethodAdapterDescriptor();
-        desc.textInputEventListener = new EventListener() {
-            public void handleSelectTextRangeEvent(SelectTextRangeEvent event) {
-                // This listener is called on the EDT
-                synchronized (JBRTextInputMacOS.this) {
-                    if (listener != null) {
-                        listener.handleSelectTextRangeEvent(event);
+        var toolkit = Toolkit.getDefaultToolkit();
+        if (toolkit instanceof LWCToolkit) {
+            var desc = (CInputMethodDescriptor) ((LWCToolkit) toolkit).getInputMethodAdapterDescriptor();
+            desc.textInputEventListener = new EventListener() {
+                public void handleSelectTextRangeEvent(SelectTextRangeEvent event) {
+                    // This listener is called on the EDT
+                    synchronized (JBRTextInputMacOS.this) {
+                        if (listener != null) {
+                            listener.handleSelectTextRangeEvent(event);
+                        }
                     }
                 }
-            }
-        };
+            };
+        }
     }
 
     @JBRApi.Provides("TextInput.SelectTextRangeEvent")
