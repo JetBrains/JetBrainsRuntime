@@ -36,6 +36,8 @@
 
 typedef struct VKPipelineSet {
     VkPipeline pipelines[PIPELINE_COUNT];
+    VKPipelineSetDescriptor descriptor;
+    struct VKPipelineSet*   next;
 } VKPipelineSet;
 
 typedef struct VKShaders {
@@ -228,13 +230,14 @@ static void VKPipelines_DestroyPipelineSet(VKDevice* device, VKPipelineSet* set)
     free(set);
 }
 
-static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderPassContext, VKCompositeMode composite) {
+static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderPassContext, VKPipelineSetDescriptor descriptor) {
     assert(renderPassContext != NULL && renderPassContext->pipelineContext != NULL);
-    assert(composite < COMPOSITE_COUNT);
+    assert(descriptor.composite < COMPOSITE_COUNT);
     VKPipelineContext* pipelineContext = renderPassContext->pipelineContext;
 
     VKPipelineSet* set = calloc(1, sizeof(VKPipelineSet));
     VK_RUNTIME_ASSERT(set);
+    set->descriptor = descriptor;
     VKDevice* device = pipelineContext->device;
     VKShaders* shaders = pipelineContext->shaders;
 
@@ -243,8 +246,8 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
     VKPipelines_InitPipelineCreateState(&base);
     base.createInfo.layout = pipelineContext->pipelineLayout;
     base.createInfo.renderPass = renderPassContext->renderPass;
-    base.colorBlendState.pAttachments = &COMPOSITE_BLEND_STATES[composite];
-    if (COMPOSITE_GROUP(composite) == LOGIC_COMPOSITE_GROUP) base.colorBlendState.logicOpEnable = VK_TRUE;
+    base.colorBlendState.pAttachments = &COMPOSITE_BLEND_STATES[descriptor.composite];
+    if (COMPOSITE_GROUP(descriptor.composite) == LOGIC_COMPOSITE_GROUP) base.colorBlendState.logicOpEnable = VK_TRUE;
     assert(base.dynamicState.dynamicStateCount <= SARRAY_COUNT_OF(base.dynamicStates));
 
     ShaderStages stages[PIPELINE_COUNT];
@@ -279,7 +282,7 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
     // TODO pipeline cache
     VK_IF_ERROR(device->vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, PIPELINE_COUNT,
                                                   createInfos, NULL, set->pipelines)) VK_UNHANDLED_ERROR();
-    J2dRlsTraceLn1(J2D_TRACE_INFO, "VKPipelines_CreatePipelineSet: composite=%d", composite);
+    J2dRlsTraceLn1(J2D_TRACE_INFO, "VKPipelines_CreatePipelineSet: composite=%d", descriptor.composite);
     return set;
 }
 
@@ -331,7 +334,12 @@ static void VKPipelines_DestroyRenderPassContext(VKRenderPassContext* renderPass
     VKDevice* device = renderPassContext->pipelineContext->device;
     assert(device != NULL);
     for (uint32_t i = 0; i < ARRAY_SIZE(renderPassContext->pipelineSets); i++) {
-        VKPipelines_DestroyPipelineSet(device, renderPassContext->pipelineSets[i]);
+        VKPipelineSet* set = renderPassContext->pipelineSets[i];
+        while (set != NULL) {
+            VKPipelineSet* s = set;
+            set = set->next;
+            VKPipelines_DestroyPipelineSet(device, s);
+        }
     }
     ARRAY_FREE(renderPassContext->pipelineSets);
     device->vkDestroyRenderPass(device->handle, renderPassContext->renderPass, NULL);
@@ -487,16 +495,103 @@ VKRenderPassContext* VKPipelines_GetRenderPassContext(VKPipelineContext* pipelin
     return renderPassContext;
 }
 
-VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKCompositeMode composite, VKPipeline pipeline) {
-    assert(renderPassContext != NULL);
-    assert(composite < COMPOSITE_COUNT); // We could append custom composites after that index.
-    assert(pipeline < PIPELINE_COUNT); // We could append custom pipelines after that index.
-    // Currently, our pipelines map to composite modes 1-to-1, but this may change in future when we'll add more states.
-    uint32_t setIndex = (uint32_t) composite;
+inline void hash(uint32_t* result, int i) { // Good for hashing enums.
+    uint32_t x = (uint32_t) i;
+    x = ((x >> 16U) ^ x) * 0x45d9f3bU;
+    x = ((x >> 16U) ^ x) * 0x45d9f3bU;
+    x =  (x >> 16U) ^ x;
+    *result ^= x + 0x9e3779b9U + (*result << 6U) + (*result >> 2U);
+}
+inline uint32_t pipelineSetDescriptorHash(VKPipelineSetDescriptor* d) {
+    uint32_t h = 0U;
+    hash(&h, d->composite);
+    return h;
+}
+inline VkBool32 pipelineSetDescriptorEquals(VKPipelineSetDescriptor* a, VKPipelineSetDescriptor* b) {
+    return a->composite == b->composite;
+}
 
-    while (ARRAY_SIZE(renderPassContext->pipelineSets) <= setIndex) ARRAY_PUSH_BACK(renderPassContext->pipelineSets, NULL);
-    if (renderPassContext->pipelineSets[setIndex] == NULL) {
-        renderPassContext->pipelineSets[setIndex] = VKPipelines_CreatePipelineSet(renderPassContext, composite);
+VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKPipelineSetDescriptor descriptor, VKPipeline pipeline) {
+    assert(renderPassContext != NULL);
+    assert(pipeline < PIPELINE_COUNT); // We could append custom pipelines after that index.
+
+    // Find pipeline set in hash table.
+    VKPipelineSet* set = NULL;
+    uint32_t lookupDepth = 0xFFFFFFFFU;
+    uint32_t hash = pipelineSetDescriptorHash(&descriptor);
+    if (renderPassContext->pipelineSets != NULL) {
+        VKPipelineSet* bucket = renderPassContext->pipelineSets[hash % ARRAY_SIZE(renderPassContext->pipelineSets)];
+        lookupDepth = 0;
+        while (bucket != NULL) {
+            if (pipelineSetDescriptorEquals(&descriptor, &bucket->descriptor)) {
+                set = bucket;
+                break;
+            } else {
+                bucket = bucket->next;
+                lookupDepth++;
+            }
+        }
     }
-    return renderPassContext->pipelineSets[setIndex]->pipelines[pipeline];
+
+    // If lookup was too deep, rehash.
+    const uint32_t REHASH_THRESHOLD = 5;
+    if (lookupDepth >= REHASH_THRESHOLD) {
+        static const uint32_t TABLE_SIZE_PRIMES[] = { 53U, 97U, 193U, 389U, 769U, 1543U, 3079U, 6151U, 12289U, 24593U,
+                                                      49157U, 98317U, 196613U, 393241U, 786433U, 1572869U, 3145739U,
+                                                      6291469U, 12582917U, 25165843U, 50331653U, 100663319U,
+                                                      201326611U, 402653189U, 805306457U, 1610612741U };
+        size_t size = ARRAY_SIZE(renderPassContext->pipelineSets);
+        for (uint32_t i = 0;; i++) {
+            assert(i < SARRAY_COUNT_OF(TABLE_SIZE_PRIMES));
+            if (TABLE_SIZE_PRIMES[i] > size) {
+                size = TABLE_SIZE_PRIMES[i];
+                break;
+            }
+        }
+        VKPipelineSet** t = NULL;
+        ARRAY_RESIZE(t, size);
+        for (uint32_t i = 0; i < size; i++) t[i] = NULL;
+        for (uint32_t i = 0; i < ARRAY_SIZE(renderPassContext->pipelineSets); i++) {
+            VKPipelineSet* s = renderPassContext->pipelineSets[i];
+            while (s != NULL) {
+                VKPipelineSet* next = s->next;
+                VKPipelineSet** bucket = &t[pipelineSetDescriptorHash(&s->descriptor) % size];
+                s->next = *bucket;
+                *bucket = s;
+                s = next;
+            }
+        }
+        ARRAY_FREE(renderPassContext->pipelineSets);
+        renderPassContext->pipelineSets = t;
+    }
+
+    // If pipeline set was not found, create and insert.
+    if (set == NULL) {
+        set = VKPipelines_CreatePipelineSet(renderPassContext, descriptor);
+        VKPipelineSet** bucket = &renderPassContext->pipelineSets[hash % ARRAY_SIZE(renderPassContext->pipelineSets)];
+        set->next = *bucket;
+        *bucket = set;
+#ifdef DEBUG
+        lookupDepth = REHASH_THRESHOLD;
+#endif
+    }
+
+#ifdef DEBUG
+    if (lookupDepth >= REHASH_THRESHOLD) {
+        J2dTraceLn1(J2D_TRACE_VERBOSE, "VKPipelines_GetPipeline: hash table updated, buckets=%d",
+                    ARRAY_SIZE(renderPassContext->pipelineSets));
+        uint32_t minDepth = 0xFFFFFFFFU, maxDepth = 0, totalSets = 0;
+        J2dTrace(J2D_TRACE_VERBOSE, "   ");
+        for (uint32_t i = 0; i < ARRAY_SIZE(renderPassContext->pipelineSets); i++) {
+            uint32_t depth = 0;
+            for (VKPipelineSet* s = renderPassContext->pipelineSets[i]; s != NULL; s = s ->next) depth++;
+            J2dTrace1(J2D_TRACE_VERBOSE2, " %d", depth);
+            if (minDepth > depth) minDepth = depth;
+            if (maxDepth < depth) maxDepth = depth;
+            totalSets += depth;
+        }
+        J2dTrace3(J2D_TRACE_VERBOSE, " | minDepth=%d, maxDepth=%d, totalSets=%d\n", minDepth, maxDepth, totalSets);
+    }
+#endif
+    return set->pipelines[pipeline];
 }
