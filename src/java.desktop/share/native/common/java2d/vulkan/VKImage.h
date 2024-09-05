@@ -35,6 +35,10 @@ struct VKImage {
     VkImageView             view;
     VkFormat                format;
     VkExtent2D              extent;
+
+    VkImageLayout           layout;
+    VkPipelineStageFlagBits lastStage;
+    VkAccessFlagBits        lastAccess;
 };
 
 VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
