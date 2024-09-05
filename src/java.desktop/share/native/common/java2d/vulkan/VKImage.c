@@ -59,6 +59,9 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
 
     image->format = format;
     image->extent = (VkExtent2D) {width, height};
+    image->layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    image->lastStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    image->lastAccess = 0;
 
     VkImageCreateInfo imageInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
