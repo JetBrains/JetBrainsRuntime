@@ -65,7 +65,7 @@ struct PoolEntry_ ## NAME { \
  * This is usually used for bulk insertion of newly-created resources.
  */
 #define POOL_INSERT(RENDERER, NAME, VAR) RING_BUFFER_PUSH_FRONT((RENDERER)->NAME, \
-    (struct PoolEntry_ ## NAME) { .timestamp = (RENDERER)->writeTimestamp, .value = (VAR) })
+    (struct PoolEntry_ ## NAME) { .timestamp = 0ULL, .value = (VAR) })
 
 /**
  * Destroy all remaining entries in a pool and free its memory.
