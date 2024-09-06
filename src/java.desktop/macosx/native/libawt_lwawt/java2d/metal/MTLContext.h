@@ -112,7 +112,7 @@
 - (id)initWithDevice:(id<MTLDevice>)device display:(jint) displayID shadersLib:(NSString*)mtlShadersLib;
 - (void)dealloc;
 
-- (void)handleDisplayLink: (BOOL)enabled source:(const char*)src;
+- (void)handleDisplayLink: (BOOL)enabled display:(jint) display source:(const char*)src;
 
 /**
  * Resets the current clip state (disables both scissor and depth tests).
