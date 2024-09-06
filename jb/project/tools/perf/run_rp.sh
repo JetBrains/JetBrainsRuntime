@@ -22,10 +22,6 @@ fi
 
 TRACE=false
 
-#MODE=Robot
-#MODE=Buffer
-MODE=Volatile
-
 while [ $# -ge 1 ] ; do
   case "$1" in
     -onscreen) MODE="Robot"
