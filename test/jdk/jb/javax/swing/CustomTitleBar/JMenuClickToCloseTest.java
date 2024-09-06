@@ -22,6 +22,7 @@
  */
 
 import com.jetbrains.JBR;
+import com.jetbrains.WindowDecorations;
 import test.jb.testhelpers.TitleBar.TestUtils;
 
 import java.awt.Point;
@@ -45,6 +46,7 @@ import javax.swing.SwingUtilities;
  */
 
 public class JMenuClickToCloseTest {
+    private static WindowDecorations windowDecorations;
     private static JMenu menu;
     private static JFrame jFrame;
     private static boolean passed = false;
@@ -57,6 +59,10 @@ public class JMenuClickToCloseTest {
         robot.setAutoDelay(50);
         try {
             SwingUtilities.invokeAndWait(JMenuClickToCloseTest::prepareUI);
+            if (windowDecorations == null) {
+                System.out.println("TEST SKIPPED - custom window decorations aren't supported in this environment");
+                return;
+            }
             robot.waitForIdle();
             SwingUtilities.invokeAndWait(() -> {
                 menuLocation = menu.getLocationOnScreen();
@@ -99,13 +105,16 @@ public class JMenuClickToCloseTest {
     }
 
     private static void prepareUI() {
+        windowDecorations = JBR.getWindowDecorations();
+        if (windowDecorations == null) return;
+
         var menuBar = new JMenuBar();
         menu = new JMenu("test");
         var menuItem = new JMenuItem("test");
         menu.add(menuItem);
         menuBar.add(menu);
 
-        var titleBar = JBR.getWindowDecorations().createCustomTitleBar();
+        var titleBar = windowDecorations.createCustomTitleBar();
         titleBar.setHeight(100.0f);
         jFrame = TestUtils.createJFrameWithCustomTitleBar(titleBar);
 
