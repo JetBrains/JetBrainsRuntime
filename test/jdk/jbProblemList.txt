@@ -1388,6 +1388,7 @@ java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java 8049405,JBR-5510 windows-all,linux-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JInternalFrameOverlapping.java JBR-5510 linux-5.18.2-arch1-1
+java/awt/Mixing/LWComboBox.java JBR-7595 linux-all
 java/awt/Mixing/LWPopupMenu.java JBR-824 generic-all
 java/awt/Mixing/OpaqueTest.java JBR-5707 linux-all
 java/awt/Mixing/OverlappingButtons.java JBR-5707 linux-all
