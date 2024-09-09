@@ -245,6 +245,8 @@ JNU_GetStaticFieldByName(JNIEnv *env,
 JNIEXPORT void JNICALL
 JNU_Fatal(JNIEnv *env, const char *file, int line, const char *msg);
 
+JNIEXPORT void JNICALL
+JNU_LogEvent(JNIEnv *env, const char *file, int line, const char *fmt, ...);
 
 /************************************************************************
  * Miscellaneous utilities used by the class libraries
@@ -328,6 +330,11 @@ JNU_Fatal(JNIEnv *env, const char *file, int line, const char *msg);
         if (!(cond)) {                                 \
            JNU_Fatal((env), __FILE__, __LINE__, (msg));\
         }                                              \
+    } while(0)
+
+#define JNU_LOG_EVENT(env, fmt, ...)                   \
+    do {                                               \
+       JNU_LogEvent((env), __FILE__, __LINE__, (fmt), ##__VA_ARGS__); \
     } while(0)
 
 /************************************************************************
