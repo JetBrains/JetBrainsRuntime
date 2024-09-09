@@ -79,9 +79,9 @@ for i in `seq $N` ; do
 #  -jar $RENDERPERFTEST $OPTS 2>&1 | awk '/'$1'/{print $3 }' | tee test_run.log
 
   $JAVA $J2D_OPTS -DTRACE=$TRACE \
-  -jar $RENDERPERFTEST $OPTS -v 2>&1 | tee render_$1${MODE}_$i.log | grep -v "^#" | tail -n 2 | \
+  -jar $RENDERPERFTEST $OPTS -v 2>&1 | tee render_$1_${MODE}_$i.log | grep -v "^#" | tail -n 2 | \
   awk '/'$1'/{print $3 }' 
   if [ $i -ne $N ]; then
     sleep $ST
   fi
-done | $DATAMASH_CMD | expand -t12
+done | $DATAMASH_CMD | expand -t12 > render_$1_${MODE}.log
