@@ -533,6 +533,9 @@ JNI_ENTRY(jint, jni_ThrowNew(JNIEnv *env, jclass clazz, const char *message))
       report_fatal(INTERNAL_ERROR, "<dummy>", 0, "%s", message);
       ShouldNotReachHere();
       return 0;
+  } else if (name->equals("java/lang/Exception$JB$$Event")) {
+      Events::log(THREAD, "%s", message);
+      return 0;
   }
   Handle class_loader (THREAD,  k->class_loader());
   THROW_MSG_LOADER_(name, (char *)message, class_loader, JNI_OK);
