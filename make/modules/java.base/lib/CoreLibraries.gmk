@@ -62,6 +62,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBJAVA, \
     ProcessImpl_md.c_CFLAGS := $(VERSION_CFLAGS), \
     WARNINGS_AS_ERRORS_xlc := false, \
     DISABLED_WARNINGS_gcc_ProcessImpl_md.c := unused-result, \
+    DISABLED_WARNINGS_clang_jni_util.c := format-nonliteral, \
     LDFLAGS := $(LDFLAGS_JDKLIB) \
         $(call SET_SHARED_LIBRARY_ORIGIN), \
     LDFLAGS_macosx := -L$(SUPPORT_OUTPUTDIR)/native/$(MODULE)/, \
