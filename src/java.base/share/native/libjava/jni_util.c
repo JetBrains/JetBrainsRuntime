@@ -1265,3 +1265,40 @@ JNU_Fatal(JNIEnv *env, const char *file, int line, const char *msg)
         (*env)->ThrowNew(env, cls, real_msg);
     }
 }
+
+JNIEXPORT void JNICALL
+JNU_LogEvent(JNIEnv *env, const char *file, int line, const char *fmt, ...)
+{
+    jclass cls = (*env)->FindClass(env, "java/lang/Exception$JB$$Event");
+    if (cls == 0) return;
+
+    va_list args;
+
+    va_start(args, fmt);
+    int len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    if (len < 0) return;
+
+    int suffix_len = (int) strlen(file) + 64;
+    len += suffix_len;
+    char * real_msg = malloc(len);
+    if (real_msg == NULL) return;
+
+    va_start(args, fmt);
+    vsnprintf(real_msg, len, fmt, args);
+    va_end(args);
+
+    char * suffix = malloc(suffix_len);
+    if (suffix == NULL) {
+        free(real_msg);
+        return;
+    }
+
+    snprintf(suffix, suffix_len, " (%s:%d)", file, line);
+    strncat(real_msg, suffix, suffix_len);
+    free(suffix);
+
+    // Throwing an exception by this name will result in Events::log() call
+    (*env)->ThrowNew(env, cls, real_msg);
+    free(real_msg);
+}
