@@ -1112,6 +1112,7 @@ jdk_swing_wayland= \
     -javax/swing/JFileChooser/8021253/bug8021253.java \
     -javax/swing/JFileChooser/8041694/bug8041694.java \
     -javax/swing/JFileChooser/ShellFolderQueries/ShellFolderQueriesSecurityManagerTest.java \
+    -javax/swing/JFileChooser/FileChooserDisableTest.java \
     -javax/swing/JFileChooser/JFileChooserFontReset.java \
     -javax/swing/JFileChooser/JFileChooserSetLocationTest.java \
     -javax/swing/JFileChooser/TABTestONFCExit.java \
@@ -1289,6 +1290,7 @@ jdk_swing_wayland= \
     -javax/swing/plaf/synth/SynthToolBarUI/8136363/ComponentSetNameTest.java \
     -javax/swing/plaf/synth/RepaintNPE.java \
     -javax/swing/plaf/synth/Test8043627.java \
+    -javax/swing/plaf/gtk/JTableCtrlShiftRightLeftKeyTest.java \
     -javax/swing/Popup/TaskbarPositionTest.java \
     -javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java \
     -javax/swing/reliability/TaskUndJFrameProperties.java \
