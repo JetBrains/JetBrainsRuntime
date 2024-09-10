@@ -38,7 +38,6 @@ import java.util.List;
 import jdk.internal.util.StaticProperty;
 
 import jdk.internal.misc.VM;
-import sun.security.action.GetPropertyAction;
 
 /**
  * An abstract representation of file and directory pathnames.
@@ -454,20 +453,12 @@ public class File
         this.prefixLength = FS.prefixLength(this.path);
     }
 
-    private final static String customPrefix = System.getProperty("java.io.fs.prefix", "/fsd::");
     private static FileSystem fileSystemFor(String pathname) {
-        return VM.isBooted() && System.getProperty("java.io.nio.fs.provider") != null
-                && pathname != null && pathname.startsWith(customPrefix)
-                ? ProxyFileSystem.instance("file")
-                : bootFs;
+        return bootFs;
     }
 
     private static FileSystem fileSystemFor(URI uri) {
-        final String scheme = uri.getScheme();
-        // See Path.of(URI)
-        return VM.isBooted() && System.getProperty("java.io.nio.fs.provider") != null && scheme != null
-               ? ProxyFileSystem.instance(scheme)
-               : bootFs;
+        return bootFs;
     }
     /* -- Path-component accessors -- */
 
@@ -2469,17 +2460,8 @@ public class File
         return FS;
     }
 
-    boolean isFromNonDefaultFileSystem() {
-        return FS != bootFs;
-    }
-
-    /**
-     * Dummy
-     * @param other source
-     * @return new File with the same FileSystem as source
-     */
-    public static File fromFile(File other) {
-        // TODO: make this private to pass JCK
-        return new File(other.path, other.prefixLength, other.FS);
+    boolean useNIO() {
+        // Use NIO only after the VM has been booted
+        return VM.isBooted();
     }
 }

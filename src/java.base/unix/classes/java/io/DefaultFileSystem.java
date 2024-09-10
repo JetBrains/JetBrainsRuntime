@@ -25,8 +25,6 @@
 
 package java.io;
 
-import jdk.internal.misc.VM;
-
 /**
  *
  * @since 1.8

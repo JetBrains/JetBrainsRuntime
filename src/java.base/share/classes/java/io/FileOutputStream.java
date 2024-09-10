@@ -27,6 +27,7 @@ package java.io;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.FileSystems;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Set;
@@ -34,6 +35,7 @@ import java.util.Set;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.event.FileWriteEvent;
+import jdk.internal.misc.VM;
 import sun.nio.ch.FileChannelImpl;
 
 
@@ -236,17 +238,12 @@ public class FileOutputStream extends OutputStream
             throw new FileNotFoundException("Invalid file path");
         }
 
-        if (file.isFromNonDefaultFileSystem()) {
-            fd = null;
-            path = file.getPath();
-            open(file, append);
-        } else {
-            this.fd = new FileDescriptor();
-            fd.attach(this);
-            this.path = name;
-            open(name, append);
-            FileCleanable.register(fd);   // open sets the fd, register the cleanup
-        }
+
+        this.fd = new FileDescriptor();
+        fd.attach(this);
+        this.path = name;
+        open(name, append);
+        FileCleanable.register(fd);   // open sets the fd, register the cleanup
     }
 
     /**
@@ -312,8 +309,7 @@ public class FileOutputStream extends OutputStream
                 ? Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
                 : Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         try {
-            channel = ((ProxyFileSystem)file.getTheFileSystem()).
-                    newFileChannel(file.toPath(), options);
+            channel = FileSystems.getDefault().provider().newFileChannel(file.toPath(), options);
         } catch (IOException e) {
             throw new FileNotFoundException(path + "(" + e.getMessage() + ")");
         }
@@ -357,9 +353,10 @@ public class FileOutputStream extends OutputStream
             traceWrite(b, append);
             return;
         }
-        if (fd != null) {
+        if (!VM.isBooted()) {
             write(b, FD_ACCESS.getAppend(fd));
         } else {
+            getChannel();
             final byte[] array = new byte[1];
             array[0] = (byte) b;
             final ByteBuffer buffer = ByteBuffer.wrap(array);
@@ -413,9 +410,10 @@ public class FileOutputStream extends OutputStream
             traceWriteBytes(b, 0, b.length, append);
             return;
         }
-        if (fd != null) {
+        if (!VM.isBooted()) {
             writeBytes(b, 0, b.length, FD_ACCESS.getAppend(fd));
         } else {
+            getChannel();
             writeBytesToChannel(b, 0, b.length);
         }
     }
@@ -432,14 +430,15 @@ public class FileOutputStream extends OutputStream
      */
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
-        boolean append = FD_ACCESS.getAppend(fd);
         if (jfrTracing && FileWriteEvent.enabled()) {
+            boolean append = FD_ACCESS.getAppend(fd);
             traceWriteBytes(b, off, len, append);
             return;
         }
-        if (fd != null) {
+        if (!VM.isBooted()) {
             writeBytes(b, off, len, FD_ACCESS.getAppend(fd));
         } else {
+            getChannel();
             writeBytesToChannel(b, off, len);
         }
     }
@@ -486,13 +485,11 @@ public class FileOutputStream extends OutputStream
             fc.close();
         }
 
-        if (fd != null) {
-            fd.closeAll(new Closeable() {
-                public void close() throws IOException {
-                    fd.close();
-                }
-            });
-        }
+        fd.closeAll(new Closeable() {
+            public void close() throws IOException {
+                fd.close();
+            }
+        });
     }
 
     /**
@@ -505,16 +502,9 @@ public class FileOutputStream extends OutputStream
      * @throws     IOException  if an I/O error occurs.
      * @see        java.io.FileDescriptor
      */
-     public final FileDescriptor getFD()  throws IOException {
-        if (fd != null) {
-            return fd;
-        }
-        // This is used in ProcessImpl, but as mere integers, so
-         // there's little chance in making it work with a remote
-         // filesystem...
-         if (channel != null) throw new UnsupportedOperationException("FileDescriptor not supported for files from non-default filesystems");
-         else throw new IOException();
-     }
+    public final FileDescriptor getFD() throws IOException {
+        return fd;
+    }
 
     /**
      * Returns the unique {@link java.nio.channels.FileChannel FileChannel}

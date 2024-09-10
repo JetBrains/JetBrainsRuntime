@@ -25,11 +25,9 @@
 
 package java.io;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.OpenOption;
+import java.nio.file.FileSystems;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Set;
@@ -174,17 +172,11 @@ public class FileInputStream extends InputStream
         if (file.isInvalid()) {
             throw new FileNotFoundException("Invalid file path");
         }
-        if (file.isFromNonDefaultFileSystem()) {
-            fd = null;
-            path = file.getPath();
-            open(file);
-        } else {
-            fd = new FileDescriptor();
-            fd.attach(this);
-            path = name;
-            open(name);
-            FileCleanable.register(fd);       // open set the fd, register the cleanup
-        }
+        fd = new FileDescriptor();
+        fd.attach(this);
+        path = name;
+        open(name);
+        FileCleanable.register(fd);       // open set the fd, register the cleanup
     }
 
     /**
@@ -246,15 +238,6 @@ public class FileInputStream extends InputStream
         open0(name);
     }
 
-    private void open(File file) throws FileNotFoundException {
-        try {
-            channel = ((ProxyFileSystem)file.getTheFileSystem()).
-                    newFileChannel(file.toPath(), Set.of(StandardOpenOption.READ));
-        } catch (IOException e) {
-            throw new FileNotFoundException(path + "(" + e.getMessage() + ")");
-        }
-    }
-
     /**
      * Reads a byte of data from this input stream. This method blocks
      * if no input is yet available.
@@ -268,9 +251,10 @@ public class FileInputStream extends InputStream
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceRead0();
         }
-        if (fd != null) {
+        if (!VM.isBooted()) {
             return read0();
         } else {
+            getChannel();
             final ByteBuffer buffer = ByteBuffer.allocate(1);
             final int nRead = channel.read(buffer);
             buffer.rewind();
@@ -347,9 +331,10 @@ public class FileInputStream extends InputStream
             return traceReadBytes(b, 0, b.length);
         }
 
-        if (fd != null) {
+        if (!VM.isBooted()) {
             return readBytes(b, 0, b.length);
         } else {
+            getChannel();
             final ByteBuffer buffer = ByteBuffer.wrap(b);
             final int nRead = channel.read(buffer);
             return nRead;
@@ -375,9 +360,10 @@ public class FileInputStream extends InputStream
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceReadBytes(b, off, len);
         }
-        if (fd != null) {
+        if (!VM.isBooted()) {
             return readBytes(b, off, len);
         } else {
+            getChannel();
             final ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
             return channel.read(buffer);
         }
@@ -499,9 +485,10 @@ public class FileInputStream extends InputStream
     private native long length0() throws IOException;
 
     private long position() throws IOException {
-        if (fd != null) {
+        if (!VM.isBooted()) {
             return position0();
         } else {
+            getChannel();
             return channel.position();
         }
     }
@@ -533,9 +520,10 @@ public class FileInputStream extends InputStream
      */
     @Override
     public long skip(long n) throws IOException {
-        if (fd != null) {
+        if (!VM.isBooted()) {
             return skip0(n);
         } else {
+            getChannel();
             final long startPos = channel.position();
             channel.position(startPos + n);
             return channel.position() - startPos;
@@ -562,9 +550,10 @@ public class FileInputStream extends InputStream
      *             {@code close} or an I/O error occurs.
      */
     public int available() throws IOException {
-        if (fd != null) {
+        if (!VM.isBooted()) {
             return available0();
         } else {
+            getChannel();
             // TODO: actually, the above implementation is a bit more sophisticated and
             // can handle FIFOs correctly, for instance (see handleAvailable() in io_util_md.c).
             // Then again, it's unlikely that remote FIFO are expected to work exactly the same as the local ones.
@@ -620,13 +609,11 @@ public class FileInputStream extends InputStream
             fc.close();
         }
 
-        if (fd != null) {
-            fd.closeAll(new Closeable() {
-                public void close() throws IOException {
-                    fd.close();
-                }
-            });
-        }
+        fd.closeAll(new Closeable() {
+            public void close() throws IOException {
+                fd.close();
+            }
+        });
     }
 
     /**
@@ -640,11 +627,7 @@ public class FileInputStream extends InputStream
      * @see        java.io.FileDescriptor
      */
     public final FileDescriptor getFD() throws IOException {
-        if (fd != null) {
-            return fd;
-        }
-        if (channel != null) throw new UnsupportedOperationException("FileDescriptor not supported for files from non-default filesystems");
-        else throw new IOException();
+        return fd;
     }
 
     /**
