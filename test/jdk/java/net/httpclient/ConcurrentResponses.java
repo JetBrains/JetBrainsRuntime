@@ -28,6 +28,7 @@
  *          unprocessed HTTP data
  * @library /test/lib /test/jdk/java/net/httpclient/lib
  * @build jdk.httpclient.test.lib.http2.Http2TestServer jdk.test.lib.net.SimpleSSLContext
+ *        jdk.httpclient.test.lib.common.TestServerConfigurator
  * @run testng/othervm
  *      -Djdk.httpclient.HttpClient.log=headers,errors,channel
  *      ConcurrentResponses
@@ -51,7 +52,6 @@ import javax.net.ssl.SSLContext;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -60,6 +60,8 @@ import java.net.http.HttpResponse.BodyHandler;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpResponse.BodySubscriber;
 import java.net.http.HttpResponse.BodySubscribers;
+
+import jdk.httpclient.test.lib.common.TestServerConfigurator;
 import jdk.httpclient.test.lib.common.HttpServerAdapters;
 import jdk.httpclient.test.lib.http2.Http2TestServer;
 import jdk.httpclient.test.lib.http2.Http2TestExchange;
@@ -267,7 +269,7 @@ public class ConcurrentResponses {
         httpChunkedURI = "http://" + serverAuthority(httpTestServer) + "/http1/chunked";
 
         httpsTestServer = HttpsServer.create(sa, 0);
-        httpsTestServer.setHttpsConfigurator(new HttpsConfigurator(sslContext));
+        httpsTestServer.setHttpsConfigurator(new TestServerConfigurator(sa.getAddress(), sslContext));
         httpsTestServer.createContext("/https1/fixed", new Http1FixedHandler());
         httpsFixedURI = "https://" + serverAuthority(httpsTestServer) + "/https1/fixed";
         httpsTestServer.createContext("/https1/chunked", new Http1ChunkedHandler());
