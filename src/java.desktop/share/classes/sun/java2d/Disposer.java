@@ -142,8 +142,8 @@ public class Disposer implements Runnable {
     public void run() {
         while (true) {
             try {
-                Object obj = queue.remove();
-                ((Reference)obj).clear();
+                Reference<?> obj = queue.remove();
+                obj.clear();
                 DisposerRecord rec = records.remove(obj);
                 safeDispose(rec);
                 obj = null;
@@ -202,7 +202,7 @@ public class Disposer implements Runnable {
         if (pollingQueue) {
             return;
         }
-        Object obj;
+        Reference<?> obj;
         pollingQueue = true;
         int freed = 0;
         int deferred = 0;
@@ -210,7 +210,7 @@ public class Disposer implements Runnable {
             while ( freed < 10000 && deferred < 100 &&
                     (obj = queue.poll()) != null ) {
                 freed++;
-                ((Reference)obj).clear();
+                obj.clear();
                 DisposerRecord rec = records.remove(obj);
                 if (rec instanceof PollDisposable) {
                     safeDispose(rec);
