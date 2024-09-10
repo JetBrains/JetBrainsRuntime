@@ -52,7 +52,7 @@ public class Disconnect {
         if (IPSupport.hasIPv4()) {
             // test with IPv4 only
             try (DatagramChannel dc = DatagramChannel.open(StandardProtocolFamily.INET)) {
-                InetAddress lo4 = InetAddress.ofLiteral("127.0.0.1");
+                InetAddress lo4 = InetAddress.getByName("127.0.0.1");
                 System.out.println("Testing with INET family and " + lo4);
                 test(dc, lo4);
                 test(dc, lo4);
@@ -62,7 +62,7 @@ public class Disconnect {
         if (IPSupport.hasIPv6()) {
             // test with IPv6 only
             try (DatagramChannel dc = DatagramChannel.open(StandardProtocolFamily.INET6)) {
-                InetAddress lo6 = InetAddress.ofLiteral("::1");
+                InetAddress lo6 = InetAddress.getByName("::1");
                 System.out.println("Testing with INET6 family and " + lo6);
                 test(dc, lo6);
                 test(dc, lo6);
