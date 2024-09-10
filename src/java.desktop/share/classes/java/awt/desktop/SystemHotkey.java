@@ -121,14 +121,7 @@ public class SystemHotkey extends AWTKeyStroke {
 class SystemHotkeyReader {
     private final List<SystemHotkey> myResult = new ArrayList<>();
 
-    void add(int keyCode, String keyChar, int modifiers, String desc, int uid) {
-        String id;
-        if (uid == -1) {
-            id = desc;
-        } else {
-            id = "SymbolicHotKey_" + uid;
-        }
-
+    void add(int keyCode, String keyChar, int modifiers, String id, String desc) {
         myResult.add(new SystemHotkey(
                 keyChar == null || keyChar.isEmpty() ? KeyEvent.CHAR_UNDEFINED : keyChar.charAt(0),
                 keyCode == -1 ? KeyEvent.VK_UNDEFINED : osx2java(keyCode),

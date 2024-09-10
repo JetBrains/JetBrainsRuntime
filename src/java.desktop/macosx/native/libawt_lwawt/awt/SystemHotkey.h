@@ -27,7 +27,7 @@
 #import <objc/NSObject.h>
 
 typedef bool (^SystemHotkeyVisitor)(int vkeyCode, const char *keyCharStr, int jmodifiers,
-                                    const char *descriptionStr, int hotkeyUid);
+                                    const char* idStr, const char *descriptionStr, int hotkeyUid);
 
 @interface SystemHotkey : NSObject
 + (void)addChangeListener;
