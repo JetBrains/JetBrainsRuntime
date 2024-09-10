@@ -4232,7 +4232,7 @@ public class HTMLDocument extends DefaultStyledDocument {
                 try {
                     if (offset == 0 || !getText(offset - 1, 1).equals("\n")) {
                         // Need to insert a newline.
-                        AttributeSet newAttrs = null;
+                        SimpleAttributeSet newAttrs = null;
                         boolean joinP = true;
 
                         if (offset != 0) {
@@ -4266,9 +4266,8 @@ public class HTMLDocument extends DefaultStyledDocument {
                             // sure and set the name (otherwise it will be
                             // inherited).
                             newAttrs = new SimpleAttributeSet();
-                            ((SimpleAttributeSet)newAttrs).addAttribute
-                                              (StyleConstants.NameAttribute,
-                                               HTML.Tag.CONTENT);
+                            newAttrs.addAttribute(StyleConstants.NameAttribute,
+                                                  HTML.Tag.CONTENT);
                         }
                         ElementSpec es = new ElementSpec(newAttrs,
                                      ElementSpec.ContentType, NEWLINE, 0,
