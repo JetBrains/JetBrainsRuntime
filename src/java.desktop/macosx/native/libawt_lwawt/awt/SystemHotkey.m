@@ -131,65 +131,65 @@ struct SymbolicHotKey {
 };
 
 static const struct SymbolicHotKey symbolicHotKeys[] = {
-        [7] = {7, "FocusMenuBar", "Move focus to the menu bar", YES, 65535, 120, 8650752},
-        [8] = {8, "FocusDock", "Move focus to the Dock", YES, 65535, 99, 8650752},
-        [9] = {9, "FocusActiveWindow", "Move focus to active or next window", YES, 65535, 118, 8650752},
-        [10] = {10, "FocusToolbar", "Move focus to window toolbar", YES, 65535, 96, 8650752},
-        [11] = {11, "FocusFloatingWindow", "Move focus to floating window", YES, 65535, 97, 8650752},
-        [12] = {12, "ToggleKeyboardAccess", "Turn keyboard access on or off", YES, 65535, 122, 8650752},
-        [13] = {13, "ChangeTabMode", "Change the way Tab moves focus", YES, 65535, 98, 8650752},
-        [15] = {15, "ToggleZoom", "Zoom: Turn zoom on or off", NO, 56, 28, 1572864},
-        [17] = {17, "ZoomIn", "Zoom: Zoom in", NO, 61, 24, 1572864},
-        [19] = {19, "ZoomOut", "Zoom: Zoom out", NO, 45, 27, 1572864},
-        [21] = {21, "InvertColors", "Invert colors", YES, 56, 28, 1835008},
-        [23] = {23, "ToggleZoomImageSmoothing", "Zoom: Turn image smoothing on or off", NO, 92, 42, 1572864},
-        [25] = {25, "IncreaseContrast", "Increase contrast", NO, 46, 47, 1835008},
-        [26] = {26, "DecreaseContrast", "Decrease contrast", NO, 44, 43, 1835008},
-        [27] = {27, "FocusNextApplicationWindow", "Move focus to the next window in application", YES, 96, 50, 1048576},
-        [28] = {28, "ScreenshotToFile", "Save picture of screen as a file", YES, 51, 20, 1179648},
-        [29] = {29, "ScreenshotToClipboard", "Copy picture of screen to the clipboard", YES, 51, 20, 1441792},
-        [30] = {30, "ScreenshotAreaToFile", "Save picture of selected area as a file", YES, 52, 21, 1179648},
-        [31] = {31, "ScreenshotAreaToClipboard", "Copy picture of selected area to the clipboard", YES, 52, 21,
+        {7, "FocusMenuBar", "Move focus to the menu bar", YES, 65535, 120, 8650752},
+        {8, "FocusDock", "Move focus to the Dock", YES, 65535, 99, 8650752},
+        {9, "FocusActiveWindow", "Move focus to active or next window", YES, 65535, 118, 8650752},
+        {10, "FocusToolbar", "Move focus to window toolbar", YES, 65535, 96, 8650752},
+        {11, "FocusFloatingWindow", "Move focus to floating window", YES, 65535, 97, 8650752},
+        {12, "ToggleKeyboardAccess", "Turn keyboard access on or off", YES, 65535, 122, 8650752},
+        {13, "ChangeTabMode", "Change the way Tab moves focus", YES, 65535, 98, 8650752},
+        {15, "ToggleZoom", "Zoom: Turn zoom on or off", NO, 56, 28, 1572864},
+        {17, "ZoomIn", "Zoom: Zoom in", NO, 61, 24, 1572864},
+        {19, "ZoomOut", "Zoom: Zoom out", NO, 45, 27, 1572864},
+        {21, "InvertColors", "Invert colors", YES, 56, 28, 1835008},
+        {23, "ToggleZoomImageSmoothing", "Zoom: Turn image smoothing on or off", NO, 92, 42, 1572864},
+        {25, "IncreaseContrast", "Increase contrast", NO, 46, 47, 1835008},
+        {26, "DecreaseContrast", "Decrease contrast", NO, 44, 43, 1835008},
+        {27, "FocusNextApplicationWindow", "Move focus to the next window in application", YES, 96, 50, 1048576},
+        {28, "ScreenshotToFile", "Save picture of screen as a file", YES, 51, 20, 1179648},
+        {29, "ScreenshotToClipboard", "Copy picture of screen to the clipboard", YES, 51, 20, 1441792},
+        {30, "ScreenshotAreaToFile", "Save picture of selected area as a file", YES, 52, 21, 1179648},
+        {31, "ScreenshotAreaToClipboard", "Copy picture of selected area to the clipboard", YES, 52, 21,
                 1441792},
-        [32] = {32, "ShowAllWindows", "Mission Control", YES, 65535, 126, 8650752},
-        [33] = {33, "ShowApplicationWindows", "Application windows", YES, 65535, 125, 8650752},
-        [36] = {36, "ShowDesktop", "Show desktop", YES, 65535, 103, 8388608},
-        [52] = {52, "ToggleDockHiding", "Turn Dock hiding on/off", YES, 100, 2, 1572864},
-        [53] = {53, "DecreaseBrightness", "Decrease display brightness", YES, 65535, 107, 8388608},
-        [54] = {54, "IncreaseBrightness", "Increase display brightness", YES, 65535, 113, 8388608},
-        [55] = {55, "OpenDisplaySettings1", "Open display settings", YES, 65535, 107, 8912896},
-        [56] = {56, "OpenDisplaySettings2", "Open display settings", YES, 65535, 113, 8912896},
-        [57] = {57, "FocusStatusMenu", "Move focus to the status menus", YES, 65535, 100, 8650752},
-        [59] = {59, "ToggleVoiceOver", "Turn VoiceOver on or off", YES, 65535, 96, 9437184},
-        [60] = {60, "SelectPreviousInputSource", "Select the previous input source", YES, 32, 49, 262144},
-        [61] = {61, "SelectNextInputSource", "Select next source in Input menu", YES, 32, 49, 786432},
-        [64] = {64, "ShowSpotlight", "Show Spotlight Search", YES, 32, 49, 1048576},
-        [65] = {65, "ShowFinderSearch", "Show Finder search window", YES, 32, 49, 1572864},
-        [79] = {79, "SwitchToDesktopLeft", "Move left a space", NO, 65535, 123, 8650752},
-        [81] = {81, "SwitchToDesktopRight", "Move right a space", NO, 65535, 124, 8650752},
-        [118] = {118, "SwitchToDesktop1", "Switch to Desktop 1", NO, 65535, 18, 262144},
-        [119] = {119, "SwitchToDesktop2", "Switch to Desktop 2", NO, 65535, 19, 262144},
-        [120] = {120, "SwitchToDesktop3", "Switch to Desktop 3", NO, 65535, 20, 262144},
-        [121] = {121, "SwitchToDesktop4", "Switch to Desktop 4", NO, 65535, 21, 262144},
-        [160] = {160, "ShowLaunchpad", "Show Launchpad", NO, 65535, 65535, 0},
-        [162] = {162, "ShowAccessibilityControls", "Show Accessibility controls", YES, 65535, 96, 9961472},
-        [163] = {163, "ShowNotificationCenter", "Show Notification Centre", NO, 65535, 65535, 0},
-        [175] = {175, "ToggleDoNotDisturb", "Turn Do Not Disturb on/off", YES, 65535, 65535, 0},
-        [179] = {179, "ToggleZoomFocusFollowing", "Zoom: Turn focus following on or off", NO, 65535, 65535, 0},
-        [184] = {184, "ScreenshotOptions", "Screenshot and recording options", YES, 53, 23, 1179648},
-        [190] = {190, "OpenQuickNote", "Quick note", YES, 113, 12, 8388608},
-        [222] = {222, "ToggleStageManager", "Turn Stage Manager on/off", NO, 65535, 65535, 0},
-        [223] = {223, "TogglePresenterOverlayLarge", "Turn Presenter Overlay (large) on or off", YES, 65535, 65535, 0},
-        [224] = {224, "TogglePresenterOverlaySmall", "Turn Presenter Overlay (small) on or off", YES, 65535, 65535, 0},
-        [225] = {225, "ToggleLiveSpeech", "LiveSpeech: Turn Live Speech on or off", YES, 65535, 65535, 0},
-        [226] = {226, "ToggleLiveSpeechVisibility", "LiveSpeech: Toggle visibility", YES, 65535, 65535, 0},
-        [227] = {227, "PauseOrResumeLiveSpeech", "LiveSpeech: Pause or resume speech", YES, 65535, 65535, 0},
-        [228] = {228, "CancelLiveSpeech", "LiveSpeech: Cancel speech", YES, 65535, 65535, 0},
-        [229] = {229, "ToggleLiveSpeechPhrases", "LiveSpeech: Hide or show phrases", YES, 65535, 65535, 0},
-        [230] = {230, "ToggleSpeakSelection", "Turn speak selection on or off", YES, 65535, 65535, 0},
-        [231] = {231, "ToggleSpeakItemUnderPointer", "Turn speak item under the pointer on or off", YES, 65535, 65535,
-                 0},
-        [232] = {232, "ToggleTypingFeedback", "Turn typing feedback on or off", YES, 65535, 65535, 0},
+        {32, "ShowAllWindows", "Mission Control", YES, 65535, 126, 8650752},
+        {33, "ShowApplicationWindows", "Application windows", YES, 65535, 125, 8650752},
+        {36, "ShowDesktop", "Show desktop", YES, 65535, 103, 8388608},
+        {52, "ToggleDockHiding", "Turn Dock hiding on/off", YES, 100, 2, 1572864},
+        {53, "DecreaseBrightness", "Decrease display brightness", YES, 65535, 107, 8388608},
+        {54, "IncreaseBrightness", "Increase display brightness", YES, 65535, 113, 8388608},
+        {55, "OpenDisplaySettings1", "Open display settings", YES, 65535, 107, 8912896},
+        {56, "OpenDisplaySettings2", "Open display settings", YES, 65535, 113, 8912896},
+        {57, "FocusStatusMenu", "Move focus to the status menus", YES, 65535, 100, 8650752},
+        {59, "ToggleVoiceOver", "Turn VoiceOver on or off", YES, 65535, 96, 9437184},
+        {60, "SelectPreviousInputSource", "Select the previous input source", YES, 32, 49, 262144},
+        {61, "SelectNextInputSource", "Select next source in Input menu", YES, 32, 49, 786432},
+        {64, "ShowSpotlight", "Show Spotlight Search", YES, 32, 49, 1048576},
+        {65, "ShowFinderSearch", "Show Finder search window", YES, 32, 49, 1572864},
+        {79, "SwitchToDesktopLeft", "Move left a space", NO, 65535, 123, 8650752},
+        {81, "SwitchToDesktopRight", "Move right a space", NO, 65535, 124, 8650752},
+        {118, "SwitchToDesktop1", "Switch to Desktop 1", NO, 65535, 18, 262144},
+        {119, "SwitchToDesktop2", "Switch to Desktop 2", NO, 65535, 19, 262144},
+        {120, "SwitchToDesktop3", "Switch to Desktop 3", NO, 65535, 20, 262144},
+        {121, "SwitchToDesktop4", "Switch to Desktop 4", NO, 65535, 21, 262144},
+        {160, "ShowLaunchpad", "Show Launchpad", NO, 65535, 65535, 0},
+        {162, "ShowAccessibilityControls", "Show Accessibility controls", YES, 65535, 96, 9961472},
+        {163, "ShowNotificationCenter", "Show Notification Centre", NO, 65535, 65535, 0},
+        {175, "ToggleDoNotDisturb", "Turn Do Not Disturb on/off", YES, 65535, 65535, 0},
+        {179, "ToggleZoomFocusFollowing", "Zoom: Turn focus following on or off", NO, 65535, 65535, 0},
+        {184, "ScreenshotOptions", "Screenshot and recording options", YES, 53, 23, 1179648},
+        {190, "OpenQuickNote", "Quick note", YES, 113, 12, 8388608},
+        {222, "ToggleStageManager", "Turn Stage Manager on/off", NO, 65535, 65535, 0},
+        {223, "TogglePresenterOverlayLarge", "Turn Presenter Overlay (large) on or off", YES, 65535, 65535, 0},
+        {224, "TogglePresenterOverlaySmall", "Turn Presenter Overlay (small) on or off", YES, 65535, 65535, 0},
+        {225, "ToggleLiveSpeech", "LiveSpeech: Turn Live Speech on or off", YES, 65535, 65535, 0},
+        {226, "ToggleLiveSpeechVisibility", "LiveSpeech: Toggle visibility", YES, 65535, 65535, 0},
+        {227, "PauseOrResumeLiveSpeech", "LiveSpeech: Pause or resume speech", YES, 65535, 65535, 0},
+        {228, "CancelLiveSpeech", "LiveSpeech: Cancel speech", YES, 65535, 65535, 0},
+        {229, "ToggleLiveSpeechPhrases", "LiveSpeech: Hide or show phrases", YES, 65535, 65535, 0},
+        {230, "ToggleSpeakSelection", "Turn speak selection on or off", YES, 65535, 65535, 0},
+        {231, "ToggleSpeakItemUnderPointer", "Turn speak item under the pointer on or off", YES, 65535, 65535,
+                0},
+        {232, "ToggleTypingFeedback", "Turn typing feedback on or off", YES, 65535, 65535, 0},
 };
 
 @interface DefaultParams: NSObject
@@ -359,54 +359,60 @@ static void reloadNextWindowInApplicationShortcut() {
             int key = hotkey->defaultKey;
             int mods = hotkey->defaultMods;
 
-            id hotkeyDesc = ((NSDictionary*)hotkeys)[[NSString stringWithFormat:@"%d", hotkey->uid]];
+            if (hotkeys != nil) {
+                id hotkeyDesc = ((NSDictionary *) hotkeys)[[NSString stringWithFormat:@"%d", hotkey->uid]];
 
-            if (hotkeyDesc != nil && ![hotkeyDesc isKindOfClass:[NSDictionary class]]) {
-                plog(LL_DEBUG, "hotkey descriptor '%s' isn't instance of NSDictionary (class=%s)", toCString(hotkeyDesc),
-                     [[hotkeyDesc className] UTF8String]);
-                hotkeyDesc = nil;
-            }
-
-            if (hotkeyDesc != nil) {
-                id objEnabled = ((NSDictionary*)hotkeyDesc)[@"enabled"];
-                enabled = objEnabled != nil && [objEnabled boolValue] == YES;
-
-                if (!enabled) {
-                    continue;
+                if (hotkeyDesc != nil && ![hotkeyDesc isKindOfClass:[NSDictionary class]]) {
+                    plog(LL_DEBUG, "hotkey descriptor '%s' isn't instance of NSDictionary (class=%s)",
+                         toCString(hotkeyDesc),
+                         [[hotkeyDesc className] UTF8String]);
+                    hotkeyDesc = nil;
                 }
 
-                id value = ((NSDictionary*)hotkeyDesc)[@"value"];
+                if (hotkeyDesc != nil) {
+                    id objEnabled = ((NSDictionary *) hotkeyDesc)[@"enabled"];
+                    enabled = objEnabled != nil && [objEnabled boolValue] == YES;
 
-                if (value != nil && ![value isKindOfClass:[NSDictionary class]]) {
-                    plog(LL_DEBUG, "property 'value' %s isn't instance of NSDictionary (class=%s)", toCString(value),
-                         [[value className] UTF8String]);
-                    value = nil;
-                }
-
-                if (value != nil) {
-                    id params = ((NSDictionary*)value)[@"parameters"];
-
-                    if (params != nil && ![params isKindOfClass:[NSArray class]]) {
-                        plog(LL_DEBUG, "property 'parameters' %s isn't instance of NSArray (class=%s)", toCString(params),
-                             [[params className] UTF8String]);
+                    if (!enabled) {
+                        continue;
                     }
 
-                    if (params != nil) {
-                        if ([(NSArray*)params count] >= 3) {
-                            int* intParams[3] = { &character, &key, &mods };
-                            for (int j = 0; j < 3; ++j) {
-                                id param = ((NSArray*)params)[j];
-                                if (param == nil) {
-                                    continue;
+                    id value = ((NSDictionary *) hotkeyDesc)[@"value"];
+
+                    if (value != nil && ![value isKindOfClass:[NSDictionary class]]) {
+                        plog(LL_DEBUG, "property 'value' %s isn't instance of NSDictionary (class=%s)",
+                             toCString(value),
+                             [[value className] UTF8String]);
+                        value = nil;
+                    }
+
+                    if (value != nil) {
+                        id params = ((NSDictionary *) value)[@"parameters"];
+
+                        if (params != nil && ![params isKindOfClass:[NSArray class]]) {
+                            plog(LL_DEBUG, "property 'parameters' %s isn't instance of NSArray (class=%s)",
+                                 toCString(params),
+                                 [[params className] UTF8String]);
+                        }
+
+                        if (params != nil) {
+                            if ([(NSArray *) params count] >= 3) {
+                                int *intParams[3] = {&character, &key, &mods};
+                                for (int j = 0; j < 3; ++j) {
+                                    id param = ((NSArray *) params)[j];
+                                    if (param == nil) {
+                                        continue;
+                                    }
+                                    if ([param isKindOfClass:[NSNumber class]]) {
+                                        plog(LL_DEBUG, "parameter %d is not NSNumber (%s)", j,
+                                             [[param className] UTF8String]);
+                                        break;
+                                    }
+                                    *intParams[j] = [(NSNumber *) param intValue];
                                 }
-                                if ([param isKindOfClass:[NSNumber class]]) {
-                                    plog(LL_DEBUG, "parameter %d is not NSNumber (%s)", j, [[param className] UTF8String]);
-                                    break;
-                                }
-                                *intParams[j] = [(NSNumber*)param intValue];
+                            } else {
+                                plog(LL_DEBUG, "too small length of parameters %d", [(NSArray *) params count]);
                             }
-                        } else {
-                            plog(LL_DEBUG, "too small length of parameters %d", [(NSArray*)params count]);
                         }
                     }
                 }

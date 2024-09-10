@@ -29,6 +29,7 @@ import com.jetbrains.exported.JBRApi;
 
 import java.awt.*;
 import java.awt.desktop.SystemHotkey;
+import java.awt.event.InputEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -95,6 +96,18 @@ public class JBRSystemShortcutsMacOS {
         List<Shortcut> result = new ArrayList<>();
         for (var hotkey : SystemHotkey.readSystemHotkeys()) {
             result.add(new Shortcut(hotkey, hotkey.getId(), hotkey.getDescription(), hotkey.getNativeKeyCode()));
+            if ("FocusNextApplicationWindow".equals(hotkey.getId())) {
+                if ((hotkey.getModifiers() & InputEvent.SHIFT_DOWN_MASK) == 0) {
+                    // FocusPreviousApplicationWindow is the same shortcut, but with Shift added
+                    var shiftedHotkey = new SystemHotkey(
+                            hotkey.getKeyChar(), hotkey.getKeyCode(),
+                            hotkey.getModifiers() | InputEvent.SHIFT_DOWN_MASK,
+                            "FocusPreviousApplicationWindow",
+                            "Move focus to the previous window in application",
+                            hotkey.getNativeKeyCode());
+                    result.add(new Shortcut(shiftedHotkey, shiftedHotkey.getId(), shiftedHotkey.getDescription(), shiftedHotkey.getNativeKeyCode()));
+                }
+            }
         }
         return result;
     }

@@ -29,8 +29,17 @@ public class SystemHotkey extends AWTKeyStroke {
     private final int myNativeKeyCode;
     private final String myId;
     private final String myDescription;
-    
-    SystemHotkey(char keyChar, int javaKeyCode, int javaModifiers, String id, String description, int nativeKeyCode) {
+
+    /**
+     * Construct SystemHotkey object
+     * @param keyChar The character value for a keyboard key.
+     * @param javaKeyCode The key code
+     * @param javaModifiers The bitwise-ored combination of any modifiers
+     * @param id Unique system shortcut identifier
+     * @param description Human-readable description
+     * @param nativeKeyCode Native key code
+     */
+    public SystemHotkey(char keyChar, int javaKeyCode, int javaModifiers, String id, String description, int nativeKeyCode) {
       super(keyChar, javaKeyCode, javaModifiers, true);
       this.myNativeKeyCode = nativeKeyCode;
       this.myId = id;
