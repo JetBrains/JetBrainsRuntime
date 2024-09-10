@@ -828,40 +828,6 @@ void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent) {
 }
 
 /**
- * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
- */
-static VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
-    assert(context != NULL && context->surface != NULL);
-    VKSDOps* surface = context->surface;
-
-    // Validate render pass state.
-    if (surface->renderPass == NULL || !surface->renderPass->pendingCommands) {
-        // We must only [re]init render pass between frames.
-        // Now this is correct, but in future we may have frames consisting of multiple render passes,
-        // so we must be careful to NOT call VKRenderer_InitRenderPass between render passes within single frame.
-        if (!VKRenderer_InitRenderPass(surface)) return VK_FALSE;
-        // In the future, we may need to restart the render pass within single frame,
-        // for example when switching between blended and XOR drawing modes.
-        // So, generally, this should depend on VKRenderingContext, but now we just start the render pass once.
-        VKRenderer_BeginRenderPass(surface);
-    }
-    VKRenderPass* renderPass = surface->renderPass;
-
-    // Validate current pipeline.
-    if (renderPass->currentPipeline != pipeline) {
-        J2dTraceLn2(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating pipeline, old=%d, new=%d",
-                    surface->renderPass->currentPipeline, pipeline);
-        VKRenderer_FlushDraw(surface);
-        VkCommandBuffer cb = renderPass->commandBuffer;
-        renderPass->currentPipeline = pipeline;
-        surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           VKPipelines_GetPipeline(renderPass->context, pipeline));
-        renderPass->vertexBufferWriting.bound = VK_FALSE;
-    }
-    return VK_TRUE;
-}
-
-/**
  * Allocate bytes for writing into buffer. Returned state contains:
  * - data   - pointer to the beginning of buffer, or NULL, if there is no buffer yet.
  * - offset - writing offset into the buffer data, or 0, if there is no buffer yet.
@@ -918,6 +884,40 @@ static void* VKRenderer_AllocateVertices(VKRenderingContext* context, uint32_t v
  */
 #define VK_DRAW(VERTICES, CONTEXT, VERTEX_COUNT) \
     (VERTICES) = VKRenderer_AllocateVertices((CONTEXT), (VERTEX_COUNT), sizeof((VERTICES)[0]))
+
+/**
+ * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
+ */
+static VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
+    assert(context != NULL && context->surface != NULL);
+    VKSDOps* surface = context->surface;
+
+    // Validate render pass state.
+    if (surface->renderPass == NULL || !surface->renderPass->pendingCommands) {
+        // We must only [re]init render pass between frames.
+        // Now this is correct, but in future we may have frames consisting of multiple render passes,
+        // so we must be careful to NOT call VKRenderer_InitRenderPass between render passes within single frame.
+        if (!VKRenderer_InitRenderPass(surface)) return VK_FALSE;
+        // In the future, we may need to restart the render pass within single frame,
+        // for example when switching between blended and XOR drawing modes.
+        // So, generally, this should depend on VKRenderingContext, but now we just start the render pass once.
+        VKRenderer_BeginRenderPass(surface);
+    }
+    VKRenderPass* renderPass = surface->renderPass;
+
+    // Validate current pipeline.
+    if (renderPass->currentPipeline != pipeline) {
+        J2dTraceLn2(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating pipeline, old=%d, new=%d",
+                    surface->renderPass->currentPipeline, pipeline);
+        VKRenderer_FlushDraw(surface);
+        VkCommandBuffer cb = renderPass->commandBuffer;
+        renderPass->currentPipeline = pipeline;
+        surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                           VKPipelines_GetPipeline(renderPass->context, pipeline));
+        renderPass->vertexBufferWriting.bound = VK_FALSE;
+    }
+    return VK_TRUE;
+}
 
 // Drawing operations.
 
