@@ -550,20 +550,9 @@ public class FileInputStream extends InputStream
      *             {@code close} or an I/O error occurs.
      */
     public int available() throws IOException {
-        if (!VM.isBooted()) {
+
             return available0();
-        } else {
-            getChannel();
-            // TODO: actually, the above implementation is a bit more sophisticated and
-            // can handle FIFOs correctly, for instance (see handleAvailable() in io_util_md.c).
-            // Then again, it's unlikely that remote FIFO are expected to work exactly the same as the local ones.
-            final long totalBytes = channel.size();
-            if (totalBytes > 0) {
-                final long availBytes = totalBytes - channel.position();
-                return (availBytes >= (long)Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int)availBytes;
-            }
-            return 0;
-        }
+
     }
 
     private native int available0() throws IOException;

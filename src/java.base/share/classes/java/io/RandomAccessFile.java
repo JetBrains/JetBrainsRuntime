@@ -834,12 +834,8 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @since      1.2
      */
     public void setLength(long newLength) throws IOException {
-        if (!VM.isBooted()) {
             setLength0(newLength);
-        } else {
-            getChannel();
-            channel.truncate(newLength);
-        }
+
     }
 
     private native void setLength0(long newLength) throws IOException;
