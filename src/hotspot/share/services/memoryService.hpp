@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -107,8 +107,8 @@ public:
 
   static void oops_do(OopClosure* f);
 
-  static bool get_verbose() { return log_is_enabled(Info, gc); }
   static bool set_verbose(bool verbose);
+  static bool get_verbose();
 
   // Create an instance of java/lang/management/MemoryUsage
   static Handle create_MemoryUsage_obj(MemoryUsage usage, TRAPS);
