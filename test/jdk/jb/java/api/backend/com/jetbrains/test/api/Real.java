@@ -28,6 +28,7 @@ import com.jetbrains.Extensions;
 import com.jetbrains.Provides;
 import com.jetbrains.Provided;
 
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 
@@ -47,6 +48,7 @@ public class Real {
          */
         void testMethodNameConflict(Api2Way a);
         void testMethodNameConflict(ApiLazyNumber a);
+        List<Api2Way> testList(List<Api2Way> list);
     }
 
     @Provided

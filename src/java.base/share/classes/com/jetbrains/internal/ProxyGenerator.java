@@ -103,7 +103,12 @@ class ProxyGenerator {
                 accessContext.canAccess(info.targetLookup.lookupClass()) ? info.targetLookup.lookupClass() : Object.class;
         targetDescriptor = constructorTargetParameterType == null ? "" : constructorTargetParameterType.descriptorString();
 
-        proxyName = proxyGenLookup.lookupClass().getPackageName().replace('.', '/') + "/" + interFace.getSimpleName();
+        // Even though generated proxy is hidden and therefore has no qualified name,
+        // it can reference itself via internal name, which can lead to name collisions.
+        // Let's consider specialized proxy for java/util/List - if we name proxy similarly,
+        // methods calls to java/util/List will be treated by VM as calls to proxy class,
+        // not standard library interface. Therefore we append $$$ to proxy name to avoid name collision.
+        proxyName = proxyGenLookup.lookupClass().getPackageName().replace('.', '/') + "/" + interFace.getSimpleName() + "$$$";
 
         originalProxyWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES) {
             @Override

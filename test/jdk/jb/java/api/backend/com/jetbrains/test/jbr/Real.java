@@ -26,6 +26,8 @@ package com.jetbrains.test.jbr;
 import com.jetbrains.Provided;
 import com.jetbrains.Provides;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 
@@ -54,6 +56,14 @@ public class Real {
         }
         void testMethodNameConflict(JBR2Way a) {}
         void testMethodNameConflict(JBRLazyNumber a) {}
+        List<JBR2Way> testList(List<JBR2Way> list) {
+            if (list == null) {
+                return new ArrayList<>();
+            } else {
+                list.clear();
+                return list;
+            }
+        }
     }
 
     @Provides
