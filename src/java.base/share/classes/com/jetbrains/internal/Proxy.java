@@ -145,7 +145,7 @@ class Proxy {
             interFace = target = null;
             flags = 0;
         }
-        inverse = inverseProxy == null ? new Proxy(repository, inverseInfo, specialization, this, null, null) : inverseProxy;
+        inverse = inverseProxy == null ? new Proxy(repository, inverseInfo, inverseSpecialization, this, null, null) : inverseProxy;
         if (inverse.getInterface() != null) directDependencies = Set.of(inverse);
     }
 
