@@ -236,11 +236,12 @@
  */
 #define JNI_COCOA_EXIT(env) \
  } \
- @catch (NSException *e) { \
-     NSLog(@"%@", [e callStackSymbols]); \
+ @catch (NSException *e) {  \
+     NSLog(@"Apple AWT Cocoa Exception: %@", [e description]); \
+     NSLog(@"Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]); \
  } \
  @finally { \
-    [pool drain]; \
+     [pool drain]; \
  };
 
 /* Same as above but adds a clean up action.
@@ -250,10 +251,11 @@
  } \
  @catch (NSException *e) { \
      { action; }; \
-     NSLog(@"%@", [e callStackSymbols]); \
+     NSLog(@"Apple AWT Cocoa Exception: %@", [e description]); \
+     NSLog(@"Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]); \
  } \
  @finally { \
-    [pool drain]; \
+     [pool drain]; \
  };
 
 /********        STRING CONVERSION SUPPORT    *********/
