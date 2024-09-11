@@ -76,7 +76,7 @@ JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
 
-        MTLContext* mtlc = [MTLContext createContextWithDevice:displayID
+        MTLContext* mtlc = [MTLContext createContextWithDeviceIfAbsent:displayID
                                        shadersLib:path];
         if (mtlc != 0L) {
             // create the MTLGraphicsConfigInfo record for this context
@@ -84,6 +84,7 @@ JNI_COCOA_ENTER(env);
             if (mtlinfo != NULL) {
                 memset(mtlinfo, 0, sizeof(MTLGraphicsConfigInfo));
                 mtlinfo->context = mtlc;
+                mtlinfo->displayID = displayID;
             } else {
                 J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGraphicsConfig_getMTLConfigInfo: could not allocate memory for mtlinfo");
                 [mtlc release];
