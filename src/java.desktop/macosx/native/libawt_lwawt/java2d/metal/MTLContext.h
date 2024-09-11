@@ -90,6 +90,8 @@
 @property (strong) id<MTLCommandQueue>         blitCommandQueue;
 @property (strong) id<MTLBuffer>               vertexBuffer;
 
+@property (readonly) NSMutableDictionary<NSNumber*, NSValue*>* displayLinks;
+
 @property (readonly) EncoderManager * encoderManager;
 @property (readonly) MTLSamplerManager * samplerManager;
 @property (readonly) MTLStencilManager * stencilManager;
@@ -108,11 +110,12 @@
 + (MTLContext*) setSurfacesEnv:(JNIEnv*)env src:(jlong)pSrc dst:(jlong)pDst;
 
 + (NSMutableDictionary*) contextStore;
-+ (MTLContext*) createContextWithDevice:(jint)displayID shadersLib:(NSString*)mtlShadersLib;
++ (MTLContext*) createContextWithDeviceIfAbsent:(jint)displayID shadersLib:(NSString*)mtlShadersLib;
 - (id)initWithDevice:(id<MTLDevice>)device display:(jint) displayID shadersLib:(NSString*)mtlShadersLib;
 - (void)dealloc;
 
-- (void)handleDisplayLink: (BOOL)enabled source:(const char*)src;
+- (void)handleDisplayLink:(BOOL)enabled display:(jint)display source:(const char*)src;
+- (void)createDisplayLinkIfAbsent: (jint)displayID;
 
 /**
  * Resets the current clip state (disables both scissor and depth tests).
