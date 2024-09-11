@@ -36,10 +36,10 @@
 #include "MTLRenderQueue.h"
 #include "MTLRenderer.h"
 #include "MTLTextRenderer.h"
+#include "MTLUtils.h"
+#import "ThreadUtilities.h"
 
 #define TRACE_OP    0
-
-#define DST_TYPE(dstOps)    ((dstOps != NULL) ? dstOps->drawableType : MTLSD_UNDEFINED)
 
 /**
  * References to the "current" context and destination surface.
@@ -53,7 +53,6 @@ extern void MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo);
 
 static const char* mtlOpCodeToStr(uint opcode);
 static const char* mtlOpToStr(uint op);
-static const char* mtlDstTypeToStr(uint op);
 
 /*
  * Derived from JNI_COCOA_ENTER(env):
@@ -73,17 +72,19 @@ static const char* mtlDstTypeToStr(uint op);
  */
 #define RENDER_LOOP_EXIT(env, className)                                                \
     @catch (NSException *e) {                                                           \
-        NSLog(@"%s_flushBuffer: Failed opcode=%s op=%s dstType=%s ctx=%p",              \
+        lwc_plog(env, "%s_flushBuffer: Failed opcode=%s op=%s dstType=%s ctx=%p",       \
             className, mtlOpCodeToStr(opcode), mtlOpToStr(mtlPreviousOp),               \
             mtlDstTypeToStr(DST_TYPE(dstOps)), mtlc);                                   \
-        NSLog(@"%s_flushBuffer Exception: %@", className, [e description]);             \
-        NSLog(@"%s_flushBuffer callstack: %@", className, [e callStackSymbols]);        \
+        NSString *str = [NSString stringWithFormat:@"%@", [e description]].UTF8String;  \
+        lwc_plog(env, "%s_flushBuffer Exception: %s", className, str);                  \
+        str = [NSString stringWithFormat:@"%@", [e callStackSymbols]].UTF8String;       \
+        lwc_plog(env, "%s_flushBuffer callstack: %s", className, str);                  \
         /* Finally (JetBrains Runtime only) report this message to JVM crash log: */    \
         JNU_LOG_EVENT(env, "%s_flushBuffer: Failed opcode=%s op=%s dstType=%s ctx=%p",  \
             className, mtlOpCodeToStr(opcode), mtlOpToStr(mtlPreviousOp),               \
             mtlDstTypeToStr(DST_TYPE(dstOps)), mtlc);                                   \
-        /* report failure to the UncaughtExceptionHandler to make a crash report: */    \
-        @throw e;                                                                       \
+        /* report fatal failure to make a crash report: */                              \
+        JNU_Fatal(env, __FILE__, __LINE__, "flushBuffer failed");                       \
     }                                                                                   \
     @finally {                                                                          \
         /* flush GPU state before draining pool: */                                     \
@@ -1074,22 +1075,4 @@ static const char* mtlOpCodeToStr(uint opcode) {
             return "";
     }
 #undef CASE_BUF_OP
-}
-
-static const char* mtlDstTypeToStr(uint op) {
-#undef CASE_MTLSD_OP
-#define CASE_MTLSD_OP(X) \
-    case MTLSD_##X:   \
-    return #X;
-
-    switch (op) {
-        CASE_MTLSD_OP(UNDEFINED)
-        CASE_MTLSD_OP(WINDOW)
-        CASE_MTLSD_OP(TEXTURE)
-        CASE_MTLSD_OP(FLIP_BACKBUFFER)
-        CASE_MTLSD_OP(RT_TEXTURE)
-        default:
-            return "";
-    }
-#undef CASE_MTLSD_OP
 }
