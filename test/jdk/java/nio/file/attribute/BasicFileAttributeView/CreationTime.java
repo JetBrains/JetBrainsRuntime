@@ -27,7 +27,8 @@
  *     that support it, tests using /tmp directory.
  * @library  ../.. /test/lib
  * @build jdk.test.lib.Platform
- * @run main/native CreationTime
+ * @comment We see this failing with "UnsatisfiedLinkError: Native Library ...libCreationTimeHelper.so already loaded in another classloader". Thus run as othervm
+ * @run main/othervm CreationTime
  */
 
 /* @test id=cwd
