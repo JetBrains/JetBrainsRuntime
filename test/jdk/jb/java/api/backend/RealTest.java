@@ -31,6 +31,8 @@
 import com.jetbrains.Extensions;
 import com.jetbrains.internal.JBRApi;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -103,6 +105,25 @@ public class RealTest {
         // Asking for BAR must return null, as it is not supported
         requireNull(JBRApi.getService(Service.class, Extensions.FOO, Extensions.BAR));
         requireNull(JBRApi.getService(Service.class, Extensions.BAR));
+
+        // Test specialized (implicit) List proxy
+        List<Api2Way> list = Objects.requireNonNull(service.testList(null));
+        Api2Way listItem = new TwoWayImpl();
+        list.add(listItem);
+        if (list.size() != 1) {
+            throw new Error("Unexpected List size");
+        }
+        if (list.get(0) != listItem) {
+            throw new Error("Unexpected List item");
+        }
+        service.testList(list);
+        if (!list.isEmpty()) {
+            throw new Error("Unexpected List size");
+        }
+        list = new ArrayList<>();
+        if (list != service.testList(list)) {
+            throw new Error("List passthrough mismatch");
+        }
     }
 
     private static class TwoWayImpl implements Api2Way {
