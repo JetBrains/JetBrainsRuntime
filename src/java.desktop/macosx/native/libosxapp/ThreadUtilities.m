@@ -151,7 +151,7 @@ AWT_ASSERT_APPKIT_THREAD;
     if ([NSThread isMainThread]) {
         block();
     } else {
-        [self performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block) waitUntilDone:NO];
+        [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block) waitUntilDone:NO];
     }
 }
 
@@ -159,7 +159,7 @@ AWT_ASSERT_APPKIT_THREAD;
     if ([NSThread isMainThread] && wait) {
         block();
     } else {
-        [self performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block) waitUntilDone:wait];
+        [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block) waitUntilDone:wait];
     }
 }
 
@@ -189,22 +189,19 @@ AWT_ASSERT_APPKIT_THREAD;
                     setBlockingEventDispatchThread(NO);
                 }
             });
-            [self performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:YES modes:javaModes];
+            [ThreadUtilities performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:YES modes:javaModes];
         } else {
             [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:javaModes];
         }
     } else {
         // Perform instrumentation on selector:
-        const NSString* caller = [self getCaller];
+        const NSString* caller = [ThreadUtilities getCaller];
         BOOL invokeDirect = NO;
-        BOOL blockingEDT;
+        BOOL blockingEDT = NO;
         if ([NSThread isMainThread] && wait) {
             invokeDirect = YES;
-            blockingEDT = NO;
         } else if (wait && isEventDispatchThread()) {
             blockingEDT = YES;
-        } else {
-            blockingEDT = NO;
         }
         const char* operation = (invokeDirect ? "now  " : (blockingEDT ? "block" : "later"));
 
@@ -222,7 +219,7 @@ AWT_ASSERT_APPKIT_THREAD;
                 const double elapsedMs = (CACurrentMediaTime() - start) * 1000.0;
                 if (elapsedMs > mtThreshold) {
 #if USE_LWC_LOG == 1
-                    lwc_plog([self getJNIEnv], "performOnMainThread(%s)[time: %.3lf ms]: [%s]", operation, elapsedMs, toCString(caller));
+                    lwc_plog([ThreadUtilities getJNIEnv], "performOnMainThread(%s)[time: %.3lf ms]: [%s]", operation, elapsedMs, toCString(caller));
 #else
                     NSLog(@"performOnMainThread(%s)[time: %.3lf ms]: [%@]", operation, elapsedMs, caller);
 #endif
@@ -230,9 +227,9 @@ AWT_ASSERT_APPKIT_THREAD;
             }
         });
         if (invokeDirect) {
-            [self performSelector:@selector(invokeBlockCopy:) withObject:blockCopy];
+            [ThreadUtilities performSelector:@selector(invokeBlockCopy:) withObject:blockCopy];
         } else {
-            [self performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:wait modes:javaModes];
+            [ThreadUtilities performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:wait modes:javaModes];
         }
     }
 }
