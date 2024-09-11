@@ -1350,7 +1350,7 @@ JNU_LogEvent(JNIEnv *env, const char *file, int line, const char *fmt, ...)
     }
 
     snprintf(suffix, suffix_len, " (%s:%d)", file, line);
-    strncat(real_msg, suffix, len);
+    strncat(real_msg, suffix, suffix_len);
     free(suffix);
 
     // Throwing an exception by this name will result in Events::log() call
