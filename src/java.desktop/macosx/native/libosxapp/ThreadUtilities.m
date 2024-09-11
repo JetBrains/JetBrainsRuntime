@@ -31,6 +31,12 @@
 #import "ThreadUtilities.h"
 
 
+#define USE_LWC_LOG 1
+
+#if USE_LWC_LOG == 1
+    void lwc_plog(JNIEnv* env, const char *formatMsg, ...);
+#endif
+
 /* Returns the MainThread latency threshold in milliseconds
  * used to detect slow operations that may cause high latencies or delays.
  * If <=0, the MainThread monitor is disabled */
@@ -260,7 +266,8 @@ JNIEXPORT void JNICALL Java_sun_awt_AWTThreading_notifyEventDispatchThreadStarte
     }
 }
 
-/* LWCToolkit's PlatformLogger wrapper */
+/* PlatformLogger callbacks */
+
 JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
     if ((env == NULL) || (formatMsg == NULL)) {
         return;
