@@ -432,9 +432,8 @@ public class File
             throw new IllegalArgumentException("URI is not hierarchical");
         String scheme = uri.getScheme();
         this.FS = fileSystemFor(uri);
-        /*if ((scheme == null) || !scheme.equalsIgnoreCase("file"))
+        if ((scheme == null) || !scheme.equalsIgnoreCase("file"))
             throw new IllegalArgumentException("URI scheme is not \"file\"");
-         */
         if (uri.getRawAuthority() != null)
             throw new IllegalArgumentException("URI has an authority component");
         if (uri.getRawFragment() != null)
@@ -2444,11 +2443,7 @@ public class File
             synchronized (this) {
                 result = filePath;
                 if (result == null) {
-                    if (FS instanceof ProxyFileSystem) {
-                        result = ((ProxyFileSystem)FS).getPath(path);
-                    } else {
-                        result = FileSystems.getDefault().getPath(path);
-                    }
+                    result = FileSystems.getDefault().getPath(path);
                     filePath = result;
                 }
             }

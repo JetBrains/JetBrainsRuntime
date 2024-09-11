@@ -442,7 +442,17 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceReadBytes0(b, off, len);
         }
-        return readBytes0(b, off, len);
+        if (!VM.isBooted()) {
+            return readBytes0(b, off, len);
+        } else {
+            getChannel();
+            return readBytesFromChannel(b, off, len);
+        }
+    }
+
+    private int readBytesFromChannel(byte b[], int off, int len) throws IOException {
+        final ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+        return channel.read(buffer);
     }
 
     private native int readBytes0(byte[] b, int off, int len) throws IOException;
@@ -684,10 +694,10 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         boolean attempted = Blocker.begin(sync);
         try {
             if (!VM.isBooted()) {
-                writeBytes(b, 0, b.length);
+                writeBytes0(b, off, len);
             } else {
                 getChannel();
-                writeBytesToChannel(b, 0, b.length);
+                writeBytesToChannel(b, off, len);
             }
         } finally {
             Blocker.end(attempted);
