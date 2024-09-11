@@ -27,7 +27,12 @@
 #define MTLUtils_h_Included
 
 #import <Metal/Metal.h>
+#import "MTLSurfaceDataBase.h"
 
 #define MTLAASampleCount 4
+
+#define DST_TYPE(dstOps) ((dstOps != NULL) ? dstOps->drawableType : MTLSD_UNDEFINED)
+
+const char* mtlDstTypeToStr(uint op);
 
 #endif /* MTLUtils_h_Included */
