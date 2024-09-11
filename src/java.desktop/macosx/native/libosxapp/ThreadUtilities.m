@@ -31,12 +31,6 @@
 #import "ThreadUtilities.h"
 
 
-#define USE_LWC_LOG 1
-
-#if USE_LWC_LOG == 1
-    void lwc_plog(JNIEnv* env, const char *formatMsg, ...);
-#endif
-
 /* Returns the MainThread latency threshold in milliseconds
  * used to detect slow operations that may cause high latencies or delays.
  * If <=0, the MainThread monitor is disabled */
@@ -218,11 +212,7 @@ AWT_ASSERT_APPKIT_THREAD;
                 }
                 const double elapsedMs = (CACurrentMediaTime() - start) * 1000.0;
                 if (elapsedMs > mtThreshold) {
-#if USE_LWC_LOG == 1
                     lwc_plog([ThreadUtilities getJNIEnv], "performOnMainThread(%s)[time: %.3lf ms]: [%s]", operation, elapsedMs, toCString(caller));
-#else
-                    NSLog(@"performOnMainThread(%s)[time: %.3lf ms]: [%@]", operation, elapsedMs, caller);
-#endif
                 }
             }
         });
@@ -270,11 +260,11 @@ JNIEXPORT void JNICALL Java_sun_awt_AWTThreading_notifyEventDispatchThreadStarte
     }
 }
 
-#if USE_LWC_LOG == 1
-void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
-    if (formatMsg == NULL)
+/* LWCToolkit's PlatformLogger wrapper */
+JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
+    if ((env == NULL) || (formatMsg == NULL)) {
         return;
-
+    }
     static jobject loggerObject = NULL;
     static jmethodID midWarn = NULL;
 
@@ -292,20 +282,28 @@ void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
         }
         GET_METHOD(midWarn, clazz, "warning", "(Ljava/lang/String;)V");
     }
+    if (midWarn != NULL) {
+        va_list args;
+        va_start(args, formatMsg);
+        /* formatted message can be large (stack trace ?) => 16 kb */
+        const int bufSize = 16 * 1024;
+        char buf[bufSize];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+        vsnprintf(buf, bufSize, formatMsg, args);
+#pragma clang diagnostic pop
+        va_end(args);
 
-    va_list args;
-    va_start(args, formatMsg);
-    const int bufSize = 512;
-    char buf[bufSize];
-    #pragma clang diagnostic push
-    #pragma clang diagnostic ignored "-Wformat-nonliteral"
-    vsnprintf(buf, bufSize, formatMsg, args);
-    #pragma clang diagnostic pop
-    va_end(args);
-
-    jstring jstr = (*env)->NewStringUTF(env, buf);
-
-    (*env)->CallVoidMethod(env, loggerObject, midWarn, jstr);
-    (*env)->DeleteLocalRef(env, jstr);
+        const jstring javaString = (*env)->NewStringUTF(env, buf);
+        if ((*env)->ExceptionCheck(env)) {
+            // fallback:
+            NSLog(@"%s\n", buf); \
+        } else {
+            JNU_CHECK_EXCEPTION(env);
+            (*env)->CallVoidMethod(env, loggerObject, midWarn, javaString);
+            CHECK_EXCEPTION();
+            return;
+        }
+        (*env)->DeleteLocalRef(env, javaString);
+    }
 }
-#endif
