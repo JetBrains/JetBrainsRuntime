@@ -36,7 +36,10 @@
 #include "MTLRenderQueue.h"
 #include "MTLRenderer.h"
 #include "MTLTextRenderer.h"
-#import "ThreadUtilities.h"
+
+#define TRACE_OP    0
+
+#define DST_TYPE(dstOps)    ((dstOps != NULL) ? dstOps->drawableType : MTLSD_UNDEFINED)
 
 /**
  * References to the "current" context and destination surface.
@@ -47,6 +50,63 @@ jint mtlPreviousOp = MTL_OP_INIT;
 
 extern BOOL isDisplaySyncEnabled();
 extern void MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo);
+
+static const char* mtlOpCodeToStr(uint opcode);
+static const char* mtlOpToStr(uint op);
+static const char* mtlDstTypeToStr(uint op);
+
+/*
+ * Derived from JNI_COCOA_ENTER(env):
+ * Create a pool and initiate a try block to catch any exception
+ */
+#define RENDER_LOOP_ENTER(env)                                          \
+    BOOL sync = NO;                                                     \
+    jint opcode = -1;                                                   \
+    const NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];   \
+    @try
+
+/*
+ * Derived from JNI_COCOA_EXIT(env):
+ * Don't allow NSExceptions to escape to Java.
+ * If there is a Java exception that has been thrown that should escape.
+ * And ensure we drain the auto-release pool.
+ */
+#define RENDER_LOOP_EXIT(env, className)                                                \
+    @catch (NSException *e) {                                                           \
+        NSLog(@"%s_flushBuffer: Failed opcode=%s op=%s dstType=%s ctx=%p",              \
+            className, mtlOpCodeToStr(opcode), mtlOpToStr(mtlPreviousOp),               \
+            mtlDstTypeToStr(DST_TYPE(dstOps)), mtlc);                                   \
+        NSLog(@"%s_flushBuffer Exception: %@", className, [e description]);             \
+        NSLog(@"%s_flushBuffer callstack: %@", className, [e callStackSymbols]);        \
+        /* Finally (JetBrains Runtime only) report this message to JVM crash log: */    \
+        JNU_LOG_EVENT(env, "%s_flushBuffer: Failed opcode=%s op=%s dstType=%s ctx=%p",  \
+            className, mtlOpCodeToStr(opcode), mtlOpToStr(mtlPreviousOp),               \
+            mtlDstTypeToStr(DST_TYPE(dstOps)), mtlc);                                   \
+        /* report failure to the UncaughtExceptionHandler to make a crash report: */    \
+        @throw e;                                                                       \
+    }                                                                                   \
+    @finally {                                                                          \
+        /* flush GPU state before draining pool: */                                     \
+        MTLRenderQueue_reset(mtlc, sync);                                               \
+        [pool drain];                                                                   \
+    }
+
+void MTLRenderQueue_reset(MTLContext* context, BOOL sync)
+{
+    // Ensure flushing encoder before draining the NSAutoreleasePool:
+    if (context != NULL) {
+        if (mtlPreviousOp == MTL_OP_MASK_OP) {
+            MTLVertexCache_DisableMaskCache(context);
+        }
+
+        if (isDisplaySyncEnabled()) {
+            [context commitCommandBuffer:NO display:YES];
+        } else {
+            [context commitCommandBuffer:sync display:YES];
+        }
+    }
+    RESET_PREVIOUS_OP();
+}
 
 void MTLRenderQueue_CheckPreviousOp(jint op) {
 
@@ -68,6 +128,9 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
 
     J2dTraceLn(J2D_TRACE_VERBOSE,
                "MTLRenderQueue_CheckPreviousOp: new op=%d", op);
+
+    if (TRACE_OP) J2dRlsTraceLn(J2D_TRACE_INFO, "MTLRenderQueue_CheckPreviousOp: op=%s\tnew op=%s",
+                          mtlOpToStr(mtlPreviousOp), mtlOpToStr(op));
 
     switch (mtlPreviousOp) {
         case MTL_OP_INIT :
@@ -99,7 +162,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
      jlong buf, jint limit)
 {
     unsigned char *b, *end;
-    BOOL sync = NO;
     J2dTraceLn(J2D_TRACE_INFO,
                "MTLRenderQueue_flushBuffer: limit=%d", limit);
 
@@ -111,13 +173,17 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
     }
 
     end = b + limit;
-    @autoreleasepool {
+
+    // Handle any NSException thrown:
+    RENDER_LOOP_ENTER(env)
+    {
         while (b < end) {
-            jint opcode = NEXT_INT(b);
+            opcode = NEXT_INT(b);
 
             J2dTraceLn(J2D_TRACE_VERBOSE,
-                       "MTLRenderQueue_flushBuffer: opcode=%d, rem=%d",
-                       opcode, (end-b));
+                    "MTLRenderQueue_flushBuffer: opcode=%d, rem=%d",
+                    opcode, (end-b));
+            if (TRACE_OP) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLRenderQueue_flushBuffer: opcode=%s", mtlOpCodeToStr(opcode));
 
             switch (opcode) {
 
@@ -143,7 +209,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
 
                     if ([mtlc useXORComposite]) {
-
                         [mtlc commitCommandBuffer:YES display:NO];
                         J2dTraceLn(J2D_TRACE_VERBOSE,
                                    "DRAW_RECT in XOR mode - Force commit earlier draw calls before DRAW_RECT.");
@@ -660,6 +725,20 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     break;
                 }
 
+                case sun_java2d_pipe_BufferedOpCodes_FLUSH_BUFFER:
+                {
+                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
+                    jlong pLayerPtr = NEXT_LONG(b);
+                    MTLLayer* layer = (MTLLayer*)pLayerPtr;
+                    if (layer != nil) {
+                        [layer flushBuffer];
+                    } else {
+                        J2dRlsTraceLn(J2D_TRACE_ERROR,
+                                      "MTLRenderQueue_flushBuffer(FLUSH_BUFFER): MTLLayer is nil");
+                    }
+                    break;
+                }
+
                 case sun_java2d_pipe_BufferedOpCodes_SYNC:
                 {
                     CHECK_PREVIOUS_OP(MTL_OP_SYNC);
@@ -862,41 +941,15 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     break;
                 }
 
-                case sun_java2d_pipe_BufferedOpCodes_FLUSH_BUFFER:
-                {
-                    CHECK_PREVIOUS_OP(MTL_OP_OTHER);
-                    jlong pLayerPtr = NEXT_LONG(b);
-                    MTLLayer* layer = (MTLLayer*)pLayerPtr;
-                    if (layer != nil) {
-                        [layer flushBuffer];
-                    } else {
-                        J2dRlsTraceLn(J2D_TRACE_ERROR,
-                                      "MTLRenderQueue_flushBuffer(FLUSH_BUFFER): MTLLayer is nil");
-                    }
-                    break;
-                }
-
                 default:
                     J2dRlsTraceLn(J2D_TRACE_ERROR,
                                   "MTLRenderQueue_flushBuffer: invalid opcode=%d",
                                   opcode);
                     return;
             }
-        }
-
-        if (mtlc != NULL) {
-            if (mtlPreviousOp == MTL_OP_MASK_OP) {
-                MTLVertexCache_DisableMaskCache(mtlc);
-            }
-
-            if (isDisplaySyncEnabled()) {
-                [mtlc commitCommandBuffer:NO display:YES];
-            } else {
-                [mtlc commitCommandBuffer:sync display:YES];
-            }
-        }
-        RESET_PREVIOUS_OP();
+        } // while op
     }
+    RENDER_LOOP_EXIT(env, "MTLRenderQueue");
 }
 
 /**
@@ -917,4 +970,126 @@ BMTLSDOps *
 MTLRenderQueue_GetCurrentDestination()
 {
     return dstOps;
+}
+
+/* debugging helper functions */
+static const char* mtlOpToStr(uint op) {
+#undef CASE_MTL_OP
+#define CASE_MTL_OP(X) \
+    case MTL_OP_##X:   \
+    return #X;
+
+    switch (op) {
+        CASE_MTL_OP(INIT)
+        CASE_MTL_OP(AA)
+        CASE_MTL_OP(SET_COLOR)
+        CASE_MTL_OP(RESET_PAINT)
+        CASE_MTL_OP(SYNC)
+        CASE_MTL_OP(SHAPE_CLIP_SPANS)
+        CASE_MTL_OP(MASK_OP)
+        CASE_MTL_OP(OTHER)
+        default:
+            return "";
+    }
+#undef CASE_MTL_OP
+}
+
+static const char* mtlOpCodeToStr(uint opcode) {
+#undef CASE_BUF_OP
+#define CASE_BUF_OP(X) \
+    case sun_java2d_pipe_BufferedOpCodes_##X:   \
+    return #X;
+
+    switch (opcode) {
+        // draw ops
+        CASE_BUF_OP(DRAW_LINE)
+        CASE_BUF_OP(DRAW_RECT)
+        CASE_BUF_OP(DRAW_POLY)
+        CASE_BUF_OP(DRAW_PIXEL)
+        CASE_BUF_OP(DRAW_SCANLINES)
+        CASE_BUF_OP(DRAW_PARALLELOGRAM)
+        CASE_BUF_OP(DRAW_AAPARALLELOGRAM)
+
+        // fill ops
+        CASE_BUF_OP(FILL_RECT)
+        CASE_BUF_OP(FILL_SPANS)
+        CASE_BUF_OP(FILL_PARALLELOGRAM)
+        CASE_BUF_OP(FILL_AAPARALLELOGRAM)
+
+        // copy-related ops
+        CASE_BUF_OP(COPY_AREA)
+        CASE_BUF_OP(BLIT)
+        CASE_BUF_OP(MASK_FILL)
+        CASE_BUF_OP(MASK_BLIT)
+        CASE_BUF_OP(SURFACE_TO_SW_BLIT)
+
+        // text-related ops
+        CASE_BUF_OP(DRAW_GLYPH_LIST)
+
+        // state-related ops
+        CASE_BUF_OP(SET_RECT_CLIP)
+        CASE_BUF_OP(BEGIN_SHAPE_CLIP)
+        CASE_BUF_OP(SET_SHAPE_CLIP_SPANS)
+        CASE_BUF_OP(END_SHAPE_CLIP)
+        CASE_BUF_OP(RESET_CLIP)
+        CASE_BUF_OP(SET_ALPHA_COMPOSITE)
+        CASE_BUF_OP(SET_XOR_COMPOSITE)
+        CASE_BUF_OP(RESET_COMPOSITE)
+        CASE_BUF_OP(SET_TRANSFORM)
+        CASE_BUF_OP(RESET_TRANSFORM)
+
+        // context-related ops
+        CASE_BUF_OP(SET_SURFACES)
+        CASE_BUF_OP(SET_SCRATCH_SURFACE)
+        CASE_BUF_OP(FLUSH_SURFACE)
+        CASE_BUF_OP(DISPOSE_SURFACE)
+        CASE_BUF_OP(DISPOSE_CONFIG)
+        CASE_BUF_OP(INVALIDATE_CONTEXT)
+        CASE_BUF_OP(SYNC)
+        CASE_BUF_OP(RESTORE_DEVICES)
+
+        CASE_BUF_OP(CONFIGURE_SURFACE)   /* unsupported */
+        CASE_BUF_OP(SWAP_BUFFERS)        /* unsupported */
+        CASE_BUF_OP(FLUSH_BUFFER)
+
+        // special no-op (mainly used for achieving 8-byte alignment)
+        CASE_BUF_OP(NOOP)
+
+        // paint-related ops
+        CASE_BUF_OP(RESET_PAINT)
+        CASE_BUF_OP(SET_COLOR)
+        CASE_BUF_OP(SET_GRADIENT_PAINT)
+        CASE_BUF_OP(SET_LINEAR_GRADIENT_PAINT)
+        CASE_BUF_OP(SET_RADIAL_GRADIENT_PAINT)
+        CASE_BUF_OP(SET_TEXTURE_PAINT)
+
+        // BufferedImageOp-related ops
+        CASE_BUF_OP(ENABLE_CONVOLVE_OP)
+        CASE_BUF_OP(DISABLE_CONVOLVE_OP)
+        CASE_BUF_OP(ENABLE_RESCALE_OP)
+        CASE_BUF_OP(DISABLE_RESCALE_OP)
+        CASE_BUF_OP(ENABLE_LOOKUP_OP)
+        CASE_BUF_OP(DISABLE_LOOKUP_OP)
+        default:
+            return "";
+    }
+#undef CASE_BUF_OP
+}
+
+static const char* mtlDstTypeToStr(uint op) {
+#undef CASE_MTLSD_OP
+#define CASE_MTLSD_OP(X) \
+    case MTLSD_##X:   \
+    return #X;
+
+    switch (op) {
+        CASE_MTLSD_OP(UNDEFINED)
+        CASE_MTLSD_OP(WINDOW)
+        CASE_MTLSD_OP(TEXTURE)
+        CASE_MTLSD_OP(FLIP_BACKBUFFER)
+        CASE_MTLSD_OP(RT_TEXTURE)
+        default:
+            return "";
+    }
+#undef CASE_MTLSD_OP
 }
