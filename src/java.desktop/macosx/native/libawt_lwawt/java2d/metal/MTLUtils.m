@@ -82,3 +82,22 @@ jboolean isOptionEnabled(const char * option) {
     NSString * lowerCaseProp = [optionProp localizedLowercaseString];
     return [@"true" isEqual:lowerCaseProp];
 }
+
+
+const char* mtlDstTypeToStr(uint op) {
+#undef CASE_MTLSD_OP
+#define CASE_MTLSD_OP(X) \
+    case MTLSD_##X:   \
+    return #X;
+
+    switch (op) {
+        CASE_MTLSD_OP(UNDEFINED)
+        CASE_MTLSD_OP(WINDOW)
+        CASE_MTLSD_OP(TEXTURE)
+        CASE_MTLSD_OP(FLIP_BACKBUFFER)
+        CASE_MTLSD_OP(RT_TEXTURE)
+        default:
+            return "";
+    }
+#undef CASE_MTLSD_OP
+}
