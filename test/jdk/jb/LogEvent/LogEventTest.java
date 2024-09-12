@@ -60,6 +60,7 @@ public class LogEventTest {
         ArrayList<String> opts = new ArrayList<>();
         opts.add("-XX:-CreateCoredumpOnCrash");
         opts.add("-XX:+ErrorFileToStdout");
+        opts.add("--enable-native-access=ALL-UNNAMED");
         opts.add(nativePathSetting);
         opts.add(LogEventTest.class.getName());
         opts.add("--test");
