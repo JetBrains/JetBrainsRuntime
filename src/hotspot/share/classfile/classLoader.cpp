@@ -1257,7 +1257,7 @@ char* ClassLoader::uri_to_path(const char* uri) {
 
 #ifdef _WINDOWS
     if (uri[0] == '/') {
-        // Absolute path name on Windows does not beging with a slash
+        // Absolute path name on Windows does not begin with a slash
         uri += 1;
     }
 #endif
