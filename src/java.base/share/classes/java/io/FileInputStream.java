@@ -258,7 +258,7 @@ public class FileInputStream extends InputStream
             final ByteBuffer buffer = ByteBuffer.allocate(1);
             final int nRead = channel.read(buffer);
             buffer.rewind();
-            return nRead == 1 ? buffer.get() : -1;
+            return nRead == 1 ? (buffer.get() & 0xFF) : -1;
         }
     }
 
