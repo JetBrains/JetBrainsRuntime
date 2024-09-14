@@ -814,6 +814,7 @@ class SWPointer {
   static bool try_SubI_no_overflow(int offset1, int offset2, int& result);
   static bool try_AddSubI_no_overflow(int offset1, int offset2, bool is_sub, int& result);
   static bool try_LShiftI_no_overflow(int offset1, int offset2, int& result);
+  static bool try_MulI_no_overflow(int offset1, int offset2, int& result);
 
 };
 
