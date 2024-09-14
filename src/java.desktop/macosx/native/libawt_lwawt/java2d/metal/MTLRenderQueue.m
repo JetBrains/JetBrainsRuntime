@@ -37,7 +37,7 @@
 #include "MTLRenderer.h"
 #include "MTLTextRenderer.h"
 
-#define TRACE_OP    1
+#define TRACE_OP    0
 
 #define DST_TYPE(dstOps)    ((dstOps != NULL) ? dstOps->drawableType : MTLSD_UNDEFINED)
 
