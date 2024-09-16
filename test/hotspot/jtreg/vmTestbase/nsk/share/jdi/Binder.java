@@ -128,8 +128,6 @@ public class Binder extends DebugeeBinder {
      */
     public Debugee makeLocalDebugee(Process process) {
         LocalLaunchedDebugee debugee = new LocalLaunchedDebugee(process, this);
-
-        debugee.registerCleanup();
         return debugee;
     }
 
@@ -939,9 +937,6 @@ public class Binder extends DebugeeBinder {
         }
 
         RemoteLaunchedDebugee debugee = new RemoteLaunchedDebugee(this);
-
-        debugee.registerCleanup();
-
         return debugee;
     }
 
@@ -952,9 +947,6 @@ public class Binder extends DebugeeBinder {
     protected ManualLaunchedDebugee startManualDebugee(String cmd) {
         ManualLaunchedDebugee debugee = new ManualLaunchedDebugee(this);
         debugee.launchDebugee(cmd);
-
-        debugee.registerCleanup();
-
         return debugee;
     }
 
