@@ -227,14 +227,20 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 + (void) releaseContext:(MTLContext*) mtlc {
-    NSNumber* regID = [NSNumber numberWithLongLong:mtlc.device.registryID];
-    MTLContext* ctx = MTLContext.contextStore[regID];
+    id<NSCopying> devID = nil;
+
+    if (@available(macOS 10.13, *)) {
+        devID = @(mtlc.device.registryID);
+    } else {
+        devID = mtlc.device.name;
+    }
+    MTLContext* ctx = MTLContext.contextStore[devID];
     if (mtlc == ctx) {
         if (mtlc.retainCount > 1) {
             [mtlc release];
             J2dRlsTraceLn2(J2D_TRACE_INFO, "MTLContext_releaseContext: release context(%p) retainCount=%d", mtlc, mtlc.retainCount);
         } else {
-            [MTLContext.contextStore removeObjectForKey:regID];
+            [MTLContext.contextStore removeObjectForKey:devID];
             J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLContext_releaseContext: dealloc context(%p)", mtlc);
         }
     }
