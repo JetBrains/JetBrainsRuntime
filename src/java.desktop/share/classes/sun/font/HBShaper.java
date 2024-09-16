@@ -336,6 +336,7 @@ public class HBShaper {
 
         Font2D font2D = scopedVars.get().font();
         int glyphID = font2D.charToGlyphRaw(unicode);
+        if (glyphID < 0) glyphID = 0;
         @SuppressWarnings("restricted")
         MemorySegment glyphIDPtr = glyph.reinterpret(4);
         glyphIDPtr.setAtIndex(JAVA_INT, 0, glyphID);
@@ -352,6 +353,7 @@ public class HBShaper {
     ) {
         Font2D font2D = scopedVars.get().font();
         int glyphID = font2D.charToVariationGlyphRaw(unicode, variation_selector);
+        if (glyphID < 0) glyphID = 0;
         @SuppressWarnings("restricted")
         MemorySegment glyphIDPtr = glyph.reinterpret(4);
         glyphIDPtr.setAtIndex(JAVA_INT, 0, glyphID);
