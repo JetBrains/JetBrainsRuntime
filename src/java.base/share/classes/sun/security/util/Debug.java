@@ -405,6 +405,10 @@ public class Debug {
         return HexFormat.ofDelimiter(":").formatHex(b);
     }
 
+    public static String toString(BigInteger b) {
+        return toString(b.toByteArray());
+    }
+
     // Holder class to break cyclic dependency seen during build
     private static class FormatHolder {
         private static final String PATTERN = "yyyy-MM-dd kk:mm:ss.SSS";
