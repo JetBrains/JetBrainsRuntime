@@ -695,11 +695,13 @@ Java_sun_nio_fs_UnixNativeDispatcher_stat0(JNIEnv* env, jclass this,
 
     if (my_statx_func != NULL) {
         // Prefer statx over stat64 on Linux if it's available
+        // statx is not allowed on the old Docker versions and returns EPERM,
+        // fallback to stat64 in this case
         RESTARTABLE(statx_wrapper(AT_FDCWD, path, flags, mask, &statx_buf), err);
         if (err == 0) {
             copy_statx_attributes(env, &statx_buf, attrs);
             return 0;
-        } else {
+        } else if (errno != EPERM) {
             return errno;
         }
     }
@@ -727,14 +729,16 @@ Java_sun_nio_fs_UnixNativeDispatcher_lstat0(JNIEnv* env, jclass this,
 
     if (my_statx_func != NULL) {
         // Prefer statx over stat64 on Linux if it's available
+        // statx is not allowed on the old Docker versions and returns EPERM,
+        // fallback to lstat64 in this case
         RESTARTABLE(statx_wrapper(AT_FDCWD, path, flags, mask, &statx_buf), err);
         if (err == 0) {
             copy_statx_attributes(env, &statx_buf, attrs);
-        } else {
+            return;
+        } else if (errno != EPERM) {
             throwUnixException(env, errno);
+            return;
         }
-        // statx was available, so return now
-        return;
     }
 #endif
     RESTARTABLE(lstat64(path, &buf), err);
@@ -759,14 +763,16 @@ Java_sun_nio_fs_UnixNativeDispatcher_fstat0(JNIEnv* env, jclass this, jint fd,
     if (my_statx_func != NULL) {
         // statx supports FD use via dirfd iff pathname is an empty string and the
         // AT_EMPTY_PATH flag is specified in flags
+        // statx is not allowed on the old Docker versions and returns EPERM,
+        // fallback to fstat64 in this case
         RESTARTABLE(statx_wrapper((int)fd, "", flags, mask, &statx_buf), err);
         if (err == 0) {
             copy_statx_attributes(env, &statx_buf, attrs);
-        } else {
+            return;
+        } else if (errno != EPERM) {
             throwUnixException(env, errno);
+            return;
         }
-        // statx was available, so return now
-        return;
     }
 #endif
     RESTARTABLE(fstat64((int)fd, &buf), err);
@@ -794,14 +800,16 @@ Java_sun_nio_fs_UnixNativeDispatcher_fstatat0(JNIEnv* env, jclass this, jint dfd
         if (((int)flag & AT_SYMLINK_NOFOLLOW) > 0) { // flag set in java code
             flags |= AT_SYMLINK_NOFOLLOW;
         }
+        // statx is not allowed on the old Docker versions and returns EPERM,
+        // fallback to fstatat64 in this case
         RESTARTABLE(statx_wrapper((int)dfd, path, flags, mask, &statx_buf), err);
         if (err == 0) {
             copy_statx_attributes(env, &statx_buf, attrs);
-        } else {
+            return;
+        } else if (errno != EPERM) {
             throwUnixException(env, errno);
+            return;
         }
-        // statx was available, so return now
-        return;
     }
 #endif
 
