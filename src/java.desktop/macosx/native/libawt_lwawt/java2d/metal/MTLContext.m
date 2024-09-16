@@ -192,28 +192,35 @@ extern void initSamplers(id<MTLDevice> device);
         }
     }
 
-    NSNumber* regID = @(device.registryID);
-    MTLContext* mtlc = MTLContext.contextStore[regID];
+    id<NSCopying> devID = nil;
+
+    if (@available(macOS 10.13, *)) {
+        devID = @(device.registryID);
+    } else {
+        devID = device.name;
+    }
+
+    MTLContext* mtlc = MTLContext.contextStore[devID];
     if (mtlc == nil) {
         mtlc = [[MTLContext alloc] initWithDevice:device display:displayID shadersLib:mtlShadersLib];
         if (mtlc != nil) {
-            MTLContext.contextStore[regID] = mtlc;
+            MTLContext.contextStore[devID] = mtlc;
             [mtlc release];
             J2dRlsTraceLn4(J2D_TRACE_INFO,
-                           "MTLContext_createContextWithDeviceIfAbsent: new context(%p) for display=%d device=%p "
-                           "retainCount=%d", mtlc, displayID, mtlc.device.registryID, mtlc.retainCount)
+                           "MTLContext_createContextWithDeviceIfAbsent: new context(%p) for display=%d device=\"%s\" "
+                           "retainCount=%d", mtlc, displayID, [mtlc.device.name UTF8String], mtlc.retainCount)
         }
     } else {
         if (![mtlc.shadersLib isEqualToString:mtlShadersLib]) {
             J2dRlsTraceLn3(J2D_TRACE_ERROR,
                            "MTLContext_createContextWithDeviceIfAbsent: cannot reuse context(%p) for display=%d "
-                           "device=%p, shaders lib has been changed", mtlc, displayID, mtlc.device.registryID)
+                           "device=\"%s\", shaders lib has been changed", mtlc, displayID, [mtlc.device.name UTF8String])
             return nil;
         }
         [mtlc retain];
         J2dRlsTraceLn4(J2D_TRACE_INFO,
-                       "MTLContext_createContextWithDeviceIfAbsent: reuse context(%p) for display=%d device=%p "
-                       "retainCount=%d", mtlc, displayID, mtlc.device.registryID, mtlc.retainCount)
+                       "MTLContext_createContextWithDeviceIfAbsent: reuse context(%p) for display=%d device=\"%s\" "
+                       "retainCount=%d", mtlc, displayID, [mtlc.device.name UTF8String], mtlc.retainCount)
     }
     [mtlc createDisplayLinkIfAbsent:displayID];
     return mtlc;
