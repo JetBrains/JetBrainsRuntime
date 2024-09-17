@@ -208,6 +208,7 @@ class java_lang_String : AllStatic {
   macro(java_lang_Class, protection_domain,      object_signature,  false) \
   macro(java_lang_Class, signers,                object_signature,  false) \
   macro(java_lang_Class, source_file,            object_signature,  false) \
+  macro(java_lang_Class, init_lock,              object_signature,  false)
 
 class java_lang_Class : AllStatic {
   friend class VMStructs;
