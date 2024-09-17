@@ -307,7 +307,8 @@ Klass::Klass(KlassKind kind) : _kind(kind),
                                _redefinition_flags(Klass::NoRedefinition),
                                _is_redefining(false),
                                _update_information(nullptr),
-                               _is_copying_backwards(false) {
+                               _is_copying_backwards(false),
+                               _is_rolled_back(false) {
   CDS_ONLY(_shared_class_flags = 0;)
   CDS_JAVA_HEAP_ONLY(_archived_mirror_index = -1;)
   _primary_supers[0] = this;
