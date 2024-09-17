@@ -40,11 +40,14 @@ typedef void* data_source_t;
 static jmethodID transferContentsWithTypeMID; // WLCipboard.transferContentsWithType()
 static jmethodID handleClipboardFormatMID;    // WLCipboard.handleClipboardFormat()
 static jmethodID handleNewClipboardMID;       // WLCipboard.handleNewClipboard()
+static jmethodID handleOfferCancelledMID;     // WLCipboard.handleOfferCancelled()
 static jfieldID  isPrimaryFID;                // WLClipboard.isPrimary
 
 typedef struct DataSourcePayload {
+    data_source_t source;
     jobject clipboard; // a global reference to WLClipboard
     jobject content;   // a global reference to Transferable
+    jboolean isPrimary;
 } DataSourcePayload;
 
 static DataSourcePayload *
@@ -52,6 +55,7 @@ DataSourcePayload_Create(jobject clipboard, jobject content)
 {
     DataSourcePayload * payload = malloc(sizeof(struct DataSourcePayload));
     if (payload) {
+        payload->source = NULL;
         payload->clipboard = clipboard;
         payload->content = content;
     }
@@ -273,9 +277,23 @@ CleanupClipboard(DataSourcePayload *payload)
 
         if (payload->clipboard != NULL) (*env)->DeleteGlobalRef(env, payload->clipboard);
         if (payload->content != NULL) (*env)->DeleteGlobalRef(env, payload->content);
-
+        if (payload->source != NULL) {
+            if (payload->isPrimary) {
+                zwp_primary_selection_source_v1_destroy(payload->source);
+            } else {
+                wl_data_source_destroy(payload->source);
+            }
+        }
         DataSourcePayload_Destroy(payload);
     }
+}
+
+static void
+OfferCancelled(DataSourcePayload *payload) {
+    JNIEnv *env = getEnv();
+    (*env)->CallVoidMethod(env, payload->clipboard, handleOfferCancelledMID, ptr_to_jlong(payload));
+    EXCEPTION_CLEAR(env);
+    CleanupClipboard(payload);
 }
 
 static void
@@ -302,8 +320,9 @@ wl_data_source_handle_cancelled(
         void *data,
         struct wl_data_source *source)
 {
-    CleanupClipboard(data);
-    wl_data_source_destroy(source);
+    JNU_RUNTIME_ASSERT(getEnv(), data != NULL && source == ((DataSourcePayload*)data)->source, "Unexpected data source cancelled");
+
+    OfferCancelled(data);
 }
 
 static const struct wl_data_source_listener wl_data_source_listener = {
@@ -330,8 +349,9 @@ zwp_selection_source_handle_cancelled(
         void *data,
         struct zwp_primary_selection_source_v1 *source)
 {
-    CleanupClipboard(data);
-    zwp_primary_selection_source_v1_destroy(source);
+    JNU_RUNTIME_ASSERT(getEnv(), data != NULL && source == ((DataSourcePayload*)data)->source, "Unexpected selection source cancelled");
+
+    OfferCancelled(data);
 }
 
 static const struct zwp_primary_selection_source_v1_listener zwp_selection_source_listener = {
@@ -357,6 +377,12 @@ initJavaRefs(JNIEnv* env, jclass wlClipboardClass)
     GET_METHOD_RETURN(handleNewClipboardMID,
                       wlClipboardClass,
                       "handleNewClipboard",
+                      "(J)V",
+                      JNI_FALSE);
+
+    GET_METHOD_RETURN(handleOfferCancelledMID,
+                      wlClipboardClass,
+                      "handleOfferCancelled",
                       "(J)V",
                       JNI_FALSE);
 
@@ -538,6 +564,9 @@ offerData(
                 : (data_source_t)wl_data_device_manager_create_data_source(wl_ddm);
 
     if (source != NULL) {
+        payload->source = source;
+        payload->isPrimary = isPrimary;
+
         wl_proxy_set_queue((struct wl_proxy*)source, jlong_to_ptr(dataOfferQueuePtr));
 
         if (isPrimary) {
@@ -587,7 +616,7 @@ offerData(
  * Retains the reference to clipboard content for the further use when the actual
  * clipboard data get requested.
  */
-JNIEXPORT void JNICALL
+JNIEXPORT jlong JNICALL
 Java_sun_awt_wl_WLClipboard_offerData(
         JNIEnv *env,
         jobject obj,
@@ -597,46 +626,43 @@ Java_sun_awt_wl_WLClipboard_offerData(
         jlong dataOfferQueuePtr)
 {
     jobject clipboardGlobalRef = (*env)->NewGlobalRef(env, obj); // deleted by ...source_handle_cancelled()
-    CHECK_NULL(clipboardGlobalRef);
+    CHECK_NULL_RETURN(clipboardGlobalRef, 0);
     jobject contentGlobalRef = (*env)->NewGlobalRef(env, content); // deleted by ...source_handle_cancelled()
-    CHECK_NULL(contentGlobalRef);
+    CHECK_NULL_RETURN(contentGlobalRef, 0);
 
     DataSourcePayload * payload = DataSourcePayload_Create(clipboardGlobalRef, contentGlobalRef);
     if (payload == NULL) {
         (*env)->DeleteGlobalRef(env, clipboardGlobalRef);
         (*env)->DeleteGlobalRef(env, contentGlobalRef);
     }
-    CHECK_NULL_THROW_OOME(env, payload, "failed to allocate memory for DataSourcePayload");
+    CHECK_NULL_THROW_OOME_RETURN(env, payload, "failed to allocate memory for DataSourcePayload", 0);
 
     const jboolean isPrimary = isPrimarySelectionClipboard(env, obj);
-    if (!offerData(env,payload, isPrimary, eventSerial, mimeTypes, dataOfferQueuePtr)) {
+    if (!offerData(env, payload, isPrimary, eventSerial, mimeTypes, dataOfferQueuePtr)) {
         // Failed to create a data source; give up and cleanup.
         CleanupClipboard(payload);
     }
+
+    return ptr_to_jlong(payload);
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLClipboard_cancelOffer(
         JNIEnv *env,
         jobject obj,
-        jlong eventSerial)
+        jlong payloadNativePtr)
 {
-    // This should automatically deliver the "cancelled" event where we clean up
-    // both the previous source and the global reference to the transferable object.
-    const jboolean isPrimary = isPrimarySelectionClipboard(env, obj);
-    if (isPrimary) {
-        zwp_primary_selection_device_v1_set_selection(zwp_selection_device, NULL, eventSerial);
-    } else {
-        wl_data_device_set_selection(wl_data_device, NULL, eventSerial);
-    }
-    wlFlushToServer(env);
+    JNU_RUNTIME_ASSERT(env, payloadNativePtr != 0, "NULL pointer to clipboard data source");
+
+    CleanupClipboard(jlong_to_ptr(payloadNativePtr));
+    //wlFlushToServer(env);
 }
 
 /**
  * Asks Wayland to provide the data for the clipboard in the given MIME
  * format.
  *
- * Returns the file desriptor from which the data must be read or -1
+ * Returns the file descriptor from which the data must be read or -1
  * in case of an error.
  *
  * NB: the returned file descriptor must be closed by the caller.
