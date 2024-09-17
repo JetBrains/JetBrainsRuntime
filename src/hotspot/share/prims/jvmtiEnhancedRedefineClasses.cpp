@@ -953,6 +953,8 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(TRAPS
           log_info(redefine, class, load, exceptions)("link_class exception: '%s'", ex_name->as_C_string());
         }
         CLEAR_PENDING_EXCEPTION;
+
+        the_class->set_redefinition_flags(Klass::NoRedefinition);
         if (ex_name == vmSymbols::java_lang_OutOfMemoryError()) {
           return JVMTI_ERROR_OUT_OF_MEMORY;
         } else if (ex_name == vmSymbols::java_lang_NoClassDefFoundError()) {
@@ -1614,6 +1616,7 @@ void VM_EnhancedRedefineClasses::rollback() {
     new_class->set_redefining(false);
     new_class->old_version()->set_new_version(nullptr);
     new_class->set_old_version(nullptr);
+    new_class->set_rolled_back(true);
   }
   _new_classes->clear();
 }
@@ -2239,6 +2242,10 @@ class AffectedKlassClosure : public KlassClosure {
     }
 
     if (klass->is_redefining()) {
+      return;
+    }
+
+    if (klass->is_rolled_back()) {
       return;
     }
 

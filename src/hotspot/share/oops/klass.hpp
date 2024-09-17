@@ -178,6 +178,7 @@ class Klass : public Metadata {
   bool        _is_redefining;
   int*        _update_information;
   bool        _is_copying_backwards;   // Does the class need to copy fields backwards? => possibly overwrite itself?
+  bool        _is_rolled_back;         // true if class was rolled back in redefinition
 
 private:
   // This is an index into FileMapHeader::_shared_path_table[], to
@@ -416,6 +417,8 @@ protected:
   void set_update_information(int *info) { _update_information = info; }
   bool is_copying_backwards() const      { return _is_copying_backwards; }
   void set_copying_backwards(bool b)     { _is_copying_backwards = b; }
+  bool is_rolled_back() { return _is_rolled_back; }
+  void set_rolled_back(bool b) { _is_rolled_back = b;}
 
  protected:                                // internal accessors
   void     set_subklass(Klass* s);
