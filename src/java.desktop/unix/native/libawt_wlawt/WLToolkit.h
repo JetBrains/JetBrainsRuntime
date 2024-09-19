@@ -63,12 +63,6 @@ extern struct wl_cursor_theme *wl_cursor_theme;
 extern struct wl_data_device_manager *wl_ddm;
 extern struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm; // optional, check for NULL before use
 
-extern struct wl_surface *wl_surface_in_focus;
-
-extern uint32_t last_mouse_pressed_serial;
-extern uint32_t last_pointer_enter_serial;
-extern uint32_t last_input_or_focus_serial;
-
 JNIEnv *getEnv();
 
 int wlFlushToServer(JNIEnv* env);

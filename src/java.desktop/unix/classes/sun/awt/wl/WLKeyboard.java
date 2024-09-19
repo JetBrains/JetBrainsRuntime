@@ -81,7 +81,7 @@ class WLKeyboard {
         }
 
         // called from native code
-        void startRepeat(long timestamp, int keycode) {
+        void startRepeat(long serial, long timestamp, int keycode) {
             assert EventQueue.isDispatchThread();
             cancelRepeat();
             if (keycode == 0 || !isRepeatEnabled()) {
@@ -98,7 +98,7 @@ class WLKeyboard {
                     try {
                         EventQueue.invokeAndWait(() -> {
                             if (this == currentRepeatTask) {
-                                handleKeyPress(delta + System.currentTimeMillis(), keycode, true);
+                                handleKeyRepeat(serial, delta + System.currentTimeMillis(), keycode);
                             }
                         });
                     } catch (InterruptedException ignored) {
@@ -162,7 +162,7 @@ class WLKeyboard {
         cancelCompose();
     }
 
-    private native void handleKeyPress(long timestamp, int keycode, boolean isRepeat);
+    private native void handleKeyRepeat(long serial, long timestamp, int keycode);
 
     private native void cancelCompose();
 
