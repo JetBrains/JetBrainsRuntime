@@ -297,9 +297,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         if (log.isLoggable(PlatformLogger.Level.FINE)) log.fine("dispatchPointerEvent: " + e);
 
         final WLInputState oldInputState = inputState;
-        final WLInputState newInputState = oldInputState.update(e);
+        final WLInputState newInputState = oldInputState.updatedFromPointerEvent(e);
         inputState = newInputState;
-        final WLComponentPeer peer = newInputState.getPeer();
+        final WLComponentPeer peer = newInputState.peerForPointerEvents();
         if (peer == null) {
             // We don't know whom to notify of the event; may happen when
             // the surface has recently disappeared, in which case
@@ -309,7 +309,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
-    private static void dispatchKeyboardKeyEvent(long timestamp,
+    private static void dispatchKeyboardKeyEvent(long serial,
+                                                 long timestamp,
                                                  int id,
                                                  int keyCode,
                                                  int keyLocation,
@@ -319,13 +320,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         // Invoked from the native code
         assert EventQueue.isDispatchThread();
 
+        inputState = inputState.updatedFromKeyEvent(serial);
+
         if (timestamp == 0) {
             // Happens when a surface was focused with keys already pressed.
             // Fake the timestamp by peeking at the last known event.
             timestamp = inputState.getTimestamp();
         }
 
-        final long surfacePtr = inputState.getSurfaceForKeyboardInput();
+        final long surfacePtr = inputState.surfaceForKeyboardInput();
         final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
         if (peer != null) {
             if (extendedKeyCode >= 0x1000000) {
