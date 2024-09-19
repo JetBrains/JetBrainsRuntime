@@ -32,6 +32,7 @@
 bool wlInitKeyboard(JNIEnv* env);
 
 struct WLKeyEvent {
+    long serial;
     long timestamp;
     int id;
     int keyCode;
@@ -42,7 +43,7 @@ struct WLKeyEvent {
 };
 
 void wlSetKeymap(const char* serializedKeymap);
-void wlSetKeyState(long timestamp, uint32_t keycode, bool isPressed);
+void wlSetKeyState(long serial, long timestamp, uint32_t keycode, bool isPressed);
 void wlSetRepeatInfo(int charsPerSecond, int delayMillis);
 void wlSetModifiers(uint32_t depressed, uint32_t latched, uint32_t locked, uint32_t group);
 void wlPostKeyEvent(const struct WLKeyEvent* event);
