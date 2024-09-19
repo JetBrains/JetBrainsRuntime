@@ -80,13 +80,8 @@ struct wl_pointer  *wl_pointer; // optional, check for NULL before use
 #define MAX_CURSOR_SCALE 100
 struct wl_cursor_theme *cursor_themes[MAX_CURSOR_SCALE] = {NULL};
 
-struct wl_surface *wl_surface_in_focus = NULL;
 struct wl_data_device_manager *wl_ddm = NULL;
 struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm = NULL; // optional, check for NULL before use
-
-uint32_t last_mouse_pressed_serial = 0;
-uint32_t last_pointer_enter_serial = 0;
-uint32_t last_input_or_focus_serial = 0;
 
 static uint32_t num_of_outstanding_sync = 0;
 
@@ -194,8 +189,6 @@ wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
     pointer_event.surface         = surface;
     pointer_event.surface_x       = surface_x,
     pointer_event.surface_y       = surface_y;
-
-    last_pointer_enter_serial = serial;
 }
 
 static void
@@ -226,9 +219,6 @@ wl_pointer_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
     pointer_event.serial           = serial;
     pointer_event.button           = button,
     pointer_event.state            = state;
-    if (state) {
-        last_mouse_pressed_serial = serial;
-    }
 }
 
 static void
@@ -387,9 +377,6 @@ static void
 wl_keyboard_enter(void *data, struct wl_keyboard *wl_keyboard,
                   uint32_t serial, struct wl_surface *surface, struct wl_array *keys)
 {
-    wl_surface_in_focus = surface;
-    last_input_or_focus_serial = serial;
-
     JNIEnv* env = getEnv();
     (*env)->CallStaticVoidMethod(env,
                                  tkClass,
@@ -402,15 +389,13 @@ static void
 wl_keyboard_key(void *data, struct wl_keyboard *wl_keyboard,
                 uint32_t serial, uint32_t time, uint32_t keycode, uint32_t state)
 {
-    wlSetKeyState(time, keycode, state ? true : false);
+    wlSetKeyState(serial, time, keycode, state ? true : false);
 }
 
 static void
 wl_keyboard_leave(void *data, struct wl_keyboard *wl_keyboard,
                   uint32_t serial, struct wl_surface *surface)
 {
-    wl_surface_in_focus = NULL;
-
     JNIEnv* env = getEnv();
     (*env)->CallStaticVoidMethod(env,
                                  tkClass,
@@ -452,6 +437,7 @@ wlPostKeyEvent(const struct WLKeyEvent* event)
             env,
             tkClass,
             dispatchKeyboardKeyEventMID,
+            event->serial,
             event->timestamp,
             event->id,
             event->keyCode,
@@ -700,7 +686,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                       JNI_FALSE);
     CHECK_NULL_RETURN(dispatchKeyboardKeyEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                               "dispatchKeyboardKeyEvent",
-                                                                              "(JIIIIIC)V"),
+                                                                              "(JJIIIIIC)V"),
                       JNI_FALSE);
     CHECK_NULL_RETURN(dispatchKeyboardModifiersEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                     "dispatchKeyboardModifiersEvent",
