@@ -129,3 +129,98 @@ VkDeviceMemory VKBuffer_CreateBuffers(VKDevice* device, VkBufferUsageFlags usage
     *bufferCount = realBufferCount;
     return page;
 }
+
+VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
+                          VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
+{
+    VKBuffer* buffer = calloc(1, sizeof(VKBuffer));
+    VK_RUNTIME_ASSERT(buffer);
+
+    VkBufferCreateInfo bufferInfo = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = size,
+            .usage = usage,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+
+    VK_IF_ERROR(device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &buffer->handle)) {
+        VKBuffer_Destroy(device, buffer);
+        return NULL;
+    }
+
+    buffer->range.offset = 0;
+    buffer->range.size = size;
+
+    VkMemoryRequirements memRequirements;
+    device->vkGetBufferMemoryRequirements(device->handle, buffer->handle, &memRequirements);
+
+    uint32_t memoryType;
+
+    VK_IF_ERROR(VKBuffer_FindMemoryType(device->physicalDevice,
+                                        memRequirements.memoryTypeBits,
+                                        properties, &memoryType)) {
+        VKBuffer_Destroy(device, buffer);
+        return NULL;
+    }
+
+    VkMemoryAllocateInfo allocInfo = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = memRequirements.size,
+            .memoryTypeIndex = memoryType
+    };
+
+    VK_IF_ERROR(device->vkAllocateMemory(device->handle, &allocInfo, NULL, &buffer->range.memory)) {
+        VKBuffer_Destroy(device, buffer);
+        return NULL;
+    }
+
+    VK_IF_ERROR(device->vkBindBufferMemory(device->handle, buffer->handle, buffer->range.memory, 0)) {
+        VKBuffer_Destroy(device, buffer);
+        return NULL;
+    }
+    return buffer;
+}
+
+VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize bufferSize)
+{
+    VKBuffer* buffer = VKBuffer_Create(device, bufferSize,
+                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    void* data;
+    VK_IF_ERROR(device->vkMapMemory(device->handle, buffer->range.memory, 0, VK_WHOLE_SIZE, 0, &data)) {
+        VKBuffer_Destroy(device, buffer);
+        return NULL;
+    }
+    memcpy(data, vertices, bufferSize);
+
+    VkMappedMemoryRange memoryRange = {
+            .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+            .pNext = NULL,
+            .memory = buffer->range.memory,
+            .offset = 0,
+            .size = VK_WHOLE_SIZE
+    };
+
+
+    VK_IF_ERROR(device->vkFlushMappedMemoryRanges(device->handle, 1, &memoryRange)) {
+        VKBuffer_Destroy(device, buffer);
+        return NULL;
+    }
+    device->vkUnmapMemory(device->handle, buffer->range.memory);
+
+    return buffer;
+}
+
+void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer) {
+    if (buffer != NULL) {
+        if (buffer->handle != VK_NULL_HANDLE) {
+            device->vkDestroyBuffer(device->handle, buffer->handle, NULL);
+        }
+        if (buffer->range.memory != VK_NULL_HANDLE) {
+            device->vkFreeMemory(device->handle, buffer->range.memory, NULL);
+        }
+        free(buffer);
+    }
+}
