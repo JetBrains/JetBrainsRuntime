@@ -34,67 +34,9 @@
 #include "VKRenderer.h"
 #include "VKSurfaceData.h"
 
-#define TRACKED_RESOURCE(NAME) \
-typedef struct {               \
-    uint64_t timestamp;        \
-    NAME value;                \
-} Tracked ## NAME
 
-TRACKED_RESOURCE(VkCommandBuffer);
-TRACKED_RESOURCE(VkSemaphore);
 
-/**
- * Renderer attached to device.
- */
-struct VKRenderer {
-    VKDevice*          device;
-    VKPipelineContext* pipelineContext;
 
-    TrackedVkCommandBuffer* pendingCommandBuffers;
-    TrackedVkCommandBuffer* pendingSecondaryCommandBuffers;
-    TrackedVkSemaphore* pendingSemaphores;
-
-    /**
-     * Last known timestamp hit by GPU execution. Resources with equal or less timestamp may be safely reused.
-     */
-    uint64_t readTimestamp;
-    /**
-     * Next timestamp to be recorded. This is the last checkpoint to be hit by GPU execution.
-     */
-    uint64_t writeTimestamp;
-
-    VkSemaphore     timelineSemaphore;
-    VkCommandPool   commandPool;
-    VkCommandBuffer commandBuffer;
-
-    struct Wait {
-        VkSemaphore*          semaphores;
-        VkPipelineStageFlags* stages;
-    } wait;
-
-    struct PendingPresentation {
-        VkSwapchainKHR* swapchains;
-        uint32_t*       indices;
-        VkResult*       results;
-    } pendingPresentation;
-};
-
-/**
- * Rendering-related info attached to surface.
- */
-struct VKRenderPass {
-    VKRenderPassContext* context;
-    VkFramebuffer        framebuffer;
-    VkCommandBuffer      commandBuffer;
-    VkBool32             pendingFlush;
-    VkBool32             pendingCommands;
-    VkBool32             pendingClear;
-
-    VkImageLayout           layout;
-    VkPipelineStageFlagBits lastStage;
-    VkAccessFlagBits        lastAccess;
-    uint64_t                lastTimestamp; // When was this surface last used?
-};
 
 #define POP_PENDING(RENDERER, BUFFER, VAR) do {                                                             \
     size_t head = 0, tail = 0;                                                                              \
@@ -549,7 +491,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
  * End render pass for the surface and record it into the primary command buffer,
  * which will be executed on the next VKRenderer_Flush.
  */
-static void VKRenderer_FlushRenderPass(VKSDOps* surface) {
+void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     VkBool32 hasCommands = surface->renderPass->pendingCommands, clear = surface->renderPass->pendingClear;
     if(!hasCommands && !clear) return;
@@ -714,7 +656,7 @@ void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent) {
  * Record rendering commands for the surface. This will cause surface initialization.
  * Returns VK_NULL_HANDLE if surface is not ready for rendering.
  */
-static VkCommandBuffer VKRenderer_Render(VKSDOps* surface) {
+VkCommandBuffer VKRenderer_Render(VKSDOps* surface) {
     assert(surface != NULL);
     // TODO following logic should be incorporated into per-surface state tracking object, managing rendering mode changes.
     if (surface->renderPass == NULL || !surface->renderPass->pendingCommands) {
@@ -729,15 +671,12 @@ static VkCommandBuffer VKRenderer_Render(VKSDOps* surface) {
 
 // TODO refactor following part =======================================================================================>
 
-#define ARRAY_TO_VERTEX_BUF(device, vertices)                                           \
-    VKBuffer_CreateFromData(device, vertices, ARRAY_SIZE(vertices)*sizeof ((vertices)[0]))
-
 void VKRenderer_TextureRender(VKRenderingContext* context, VKImage *destImage, VKImage *srcImage,
                               VkBuffer vertexBuffer, uint32_t vertexNum)
 {
     assert(context != NULL && context->surface != NULL);
     VKSDOps* surface = (VKSDOps*)context->surface;
-    VkCommandBuffer cb = VKRenderer_Render(surface);
+    VkCommandBuffer commandBuffer = VKRenderer_Render(surface);
     VKDevice* device = surface->device;
 
     // TODO We create a new descriptor set on each command, we'll implement reusing them later.
@@ -782,14 +721,14 @@ void VKRenderer_TextureRender(VKRenderingContext* context, VKImage *destImage, V
     device->vkUpdateDescriptorSets(device->handle, 1, &descriptorWrites, 0, NULL);
 
 
-    device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipelines_GetPipeline(surface->renderPass->context, PIPELINE_BLIT));
+    device->vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, VKPipelines_GetPipeline(surface->renderPass->context, PIPELINE_BLIT));
 
     VkBuffer vertexBuffers[] = {vertexBuffer};
     VkDeviceSize offsets[] = {0};
-    device->vkCmdBindVertexBuffers(cb, 0, 1, vertexBuffers, offsets);
-    device->vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    device->vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    device->vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     device->renderer->pipelineContext->texturePipelineLayout, 0, 1, &descriptorSet, 0, NULL);
-    device->vkCmdDraw(cb, vertexNum, 1, 0, 0);
+    device->vkCmdDraw(commandBuffer, vertexNum, 1, 0, 0);
 }
 
 static void VKRenderer_ColorRender(VKRenderingContext* context, VKPipeline pipeline, VkBuffer vertexBuffer, uint32_t vertexNum) {

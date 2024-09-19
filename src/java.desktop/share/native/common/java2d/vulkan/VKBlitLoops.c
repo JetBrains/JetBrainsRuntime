@@ -28,19 +28,20 @@
 #include <string.h>
 #include "jlong.h"
 #include "SurfaceData.h"
+#include "VKUtil.h"
 #include "VKBlitLoops.h"
 #include "VKSurfaceData.h"
-#include "VKRenderQueue.h"
+#include "VKRenderer.h"
 
 
 #include "Trace.h"
 #include "VKImage.h"
 #include "VKRenderer.h"
 #include "VKImage.h"
-#include "VKVertex.h"
+#include "VKBuffer.h"
 #include "CArrayUtil.h"
 
-static void VKBlitSwToTextureViaPooledTexture(VKDevice* logicalDevice, VKImage* dest, const SurfaceDataRasInfo *srcInfo,
+static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKImage* dest, const SurfaceDataRasInfo *srcInfo,
                      int dx1, int dy1, int dx2, int dy2) {
     const int sw = srcInfo->bounds.x2 - srcInfo->bounds.x1;
     const int sh = srcInfo->bounds.y2 - srcInfo->bounds.y1;
@@ -79,12 +80,13 @@ static void VKBlitSwToTextureViaPooledTexture(VKDevice* logicalDevice, VKImage* 
     ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p4x, p4y, 0.0f, 1.0f}));
     ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p3x, p3y, 1.0f, 1.0f}));
 
-    VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(logicalDevice, vertices);
+    VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(context->surface->device, vertices);
     ARRAY_FREE(vertices);
-    VKRenderer_BeginRendering(logicalDevice);
+    VKSDOps* surface = context->surface;
+    VKRenderer_Render(surface);
     const char *raster = srcInfo->rasBase;
     raster += (uint32_t)srcInfo->bounds.y1 * (uint32_t)srcInfo->scanStride + (uint32_t)srcInfo->bounds.x1 * (uint32_t)srcInfo->pixelStride;
-    VKImage *image = VKImage_Create(logicalDevice, sw, sh, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR,
+    VKImage *image = VKImage_Create(context->surface->device, sw, sh, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR,
                                   VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         J2dTraceLn4(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
@@ -96,16 +98,17 @@ static void VKBlitSwToTextureViaPooledTexture(VKDevice* logicalDevice, VKImage* 
         memcpy(data + (row * sw * srcInfo->pixelStride), raster, sw * srcInfo->pixelStride);
         raster += (uint32_t)srcInfo->scanStride;
     }
-    VKBuffer *buffer = VKBuffer_CreateFromData(logicalDevice, data, dataSize);
+    VKBuffer *buffer = VKBuffer_CreateFromData(context->surface->device, data, dataSize);
     //free(data);
-    VKImage_LoadBuffer(logicalDevice, image, buffer, dx1, dy1, sw, sh);
-    VKRenderer_TextureRender(logicalDevice, dest, image, renderVertexBuffer->buffer, 4);
-    VKRenderer_EndRendering(logicalDevice, VK_FALSE, VK_FALSE);
+    VKImage_LoadBuffer(context, image, buffer, dx1, dy1, sw, sh);
+    VKRenderer_TextureRender(context, dest, image, renderVertexBuffer->buffer, 4);
+    //VKRenderer_EndRendering(logicalDevice, VK_FALSE, VK_FALSE);
+    VKRenderer_FlushRenderPass(context->surface);
 }
 
 
 void VKBlitLoops_IsoBlit(JNIEnv *env,
-                         VKDevice* device, jlong pSrcOps, jlong pDstOps,
+                         VKRenderingContext* context, jlong pSrcOps, jlong pDstOps,
                          jboolean xform, jint hint,
                          jboolean texture,
                          jint sx1, jint sy1,
@@ -120,7 +123,7 @@ void VKBlitLoops_IsoBlit(JNIEnv *env,
 }
 
 void VKBlitLoops_Blit(JNIEnv *env,
-                      VKDevice* device, jlong pSrcOps, jlong pDstOps,
+                      VKRenderingContext* context, jlong pSrcOps, jlong pDstOps,
                       jboolean xform, jint hint,
                       jint srctype, jboolean texture,
                       jint sx1, jint sy1,
@@ -136,7 +139,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
     SurfaceDataOps *srcOps = (SurfaceDataOps *)jlong_to_ptr(pSrcOps);
     VKSDOps *dstOps = (VKSDOps *)jlong_to_ptr(pDstOps);
 
-    RETURN_IF_NULL(device);
+    RETURN_IF_NULL(context);
     RETURN_IF_NULL(srcOps);
     RETURN_IF_NULL(dstOps);
 
@@ -204,7 +207,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
 //            if (texture) {
 //                replaceTextureRegion(mtlc, dest, &srcInfo, &rfi, (int) dx1, (int) dy1, (int) dx2, (int) dy2);
 //            } else {
-                VKBlitSwToTextureViaPooledTexture(device, dest, &srcInfo, dx1, dy1, dx2, dy2);
+                VKBlitSwToTextureViaPooledTexture(context, dest, &srcInfo, dx1, dy1, dx2, dy2);
 //            }
         }
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);

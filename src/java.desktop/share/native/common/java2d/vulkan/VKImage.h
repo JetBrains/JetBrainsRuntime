@@ -42,5 +42,8 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
                         VkImageUsageFlags usage,
                         VkMemoryPropertyFlags properties);
 
+void VKImage_LoadBuffer(VKRenderingContext* context, VKImage* image, VKBuffer* buffer,
+                        uint32_t x0, uint32_t y0, uint32_t width, uint32_t height);
+
 void VKImage_free(VKDevice* device, VKImage* image);
 #endif // VKImage_h_Included

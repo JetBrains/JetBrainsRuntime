@@ -32,6 +32,7 @@
 #include "Trace.h"
 #include "jlong.h"
 #include "VKBase.h"
+#include "VKBlitLoops.h"
 #include "VKSurfaceData.h"
 #include "VKRenderer.h"
 #include "VKUtil.h"
@@ -319,13 +320,13 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jboolean isoblit  = EXTRACT_BOOLEAN(packedParams,
                                                     OFFSET_ISOBLIT);
                 if (isoblit) {
-                    VKBlitLoops_IsoBlit(env, currentDevice, pSrc, pDst,
+                    VKBlitLoops_IsoBlit(env, &context, pSrc, pDst,
                                          xform, hint, texture,
                                          sx1, sy1, sx2, sy2,
                                          dx1, dy1, dx2, dy2);
                 } else {
                     jint srctype = EXTRACT_BYTE(packedParams, OFFSET_SRCTYPE);
-                    VKBlitLoops_Blit(env, currentDevice, pSrc, pDst,
+                    VKBlitLoops_Blit(env, &context, pSrc, pDst,
                                       xform, hint, srctype, texture,
                                       sx1, sy1, sx2, sy2,
                                       dx1, dy1, dx2, dy2);
@@ -453,12 +454,12 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     "                                         | %.2f %.2f %.2f |", m10, m11, m12);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "                                         | 0.00 0.00 1.00 |");
-                currentDevice->renderState.m00 = m00;
-                currentDevice->renderState.m01 = m01;
-                currentDevice->renderState.m10 = m10;
-                currentDevice->renderState.m11 = m11;
-                currentDevice->renderState.m02 = m02;
-                currentDevice->renderState.m12 = m12;
+                //currentDevice->renderState.m00 = m00;
+                //currentDevice->renderState.m01 = m01;
+                //currentDevice->renderState.m10 = m10;
+                //currentDevice->renderState.m11 = m11;
+                //currentDevice->renderState.m02 = m02;
+                //currentDevice->renderState.m12 = m12;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_RESET_TRANSFORM:

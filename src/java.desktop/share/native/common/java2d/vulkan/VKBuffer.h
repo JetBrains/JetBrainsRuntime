@@ -29,6 +29,9 @@
 
 #include "VKTypes.h"
 
+#define ARRAY_TO_VERTEX_BUF(device, vertices)                                           \
+    VKBuffer_CreateFromData(device, vertices, ARRAY_SIZE(vertices)*sizeof (vertices[0]))
+
 struct VKBuffer {
     VkBuffer buffer;
     VkDeviceMemory memory;
