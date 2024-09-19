@@ -585,9 +585,6 @@ DoHide(JNIEnv *env, struct WLFrame *frame)
         } else {
             xdg_popup_destroy(frame->xdg_popup);
         }
-        if (wl_surface_in_focus == frame->wl_surface) {
-            wl_surface_in_focus = NULL;
-        }
         if (frame->gtk_surface != NULL) {
             gtk_surface1_destroy(frame->gtk_surface);
         }
@@ -632,21 +629,21 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_getWLSurface
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartDrag
-        (JNIEnv *env, jobject obj, jlong ptr)
+        (JNIEnv *env, jobject obj, jlong serial, jlong ptr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel && wl_seat) {
-        xdg_toplevel_move(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial);
+        xdg_toplevel_move(frame->xdg_toplevel, wl_seat, serial);
         wlFlushToServer(env);
     }
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
-        (JNIEnv *env, jobject obj, jlong ptr, jint edges)
+        (JNIEnv *env, jobject obj, jlong serial, jlong ptr, jint edges)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel && wl_seat && frame->xdg_toplevel != NULL) {
-        xdg_toplevel_resize(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, edges);
+        xdg_toplevel_resize(frame->xdg_toplevel, wl_seat, serial, edges);
         wlFlushToServer(env);
     }
 }
@@ -716,27 +713,28 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMaximumSize
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeShowWindowMenu
-        (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y)
+        (JNIEnv *env, jobject obj, jlong serial, jlong ptr, jint x, jint y)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
-        xdg_toplevel_show_window_menu(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, x, y);
+        xdg_toplevel_show_window_menu(frame->xdg_toplevel, wl_seat, serial, x, y);
         wlFlushToServer(env);
     }
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeActivate
-        (JNIEnv *env, jobject obj, jlong ptr)
+        (JNIEnv *env, jobject obj, jlong serial, jlong ptr, jlong activatingSurfacePtr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->wl_surface && xdg_activation_v1 && wl_seat) {
         struct xdg_activation_token_v1 *token = xdg_activation_v1_get_activation_token(xdg_activation_v1);
         CHECK_NULL(token);
         xdg_activation_token_v1_add_listener(token, &xdg_activation_token_v1_listener, frame);
-        xdg_activation_token_v1_set_serial(token, last_input_or_focus_serial, wl_seat);
-        if (wl_surface_in_focus) {
-            xdg_activation_token_v1_set_surface(token, wl_surface_in_focus);
+        xdg_activation_token_v1_set_serial(token, serial, wl_seat);
+        if (activatingSurfacePtr) {
+            struct wl_surface* surface = jlong_to_ptr(activatingSurfacePtr);
+            xdg_activation_token_v1_set_surface(token, surface);
         }
         xdg_activation_token_v1_commit(token);
         frame->activation_token_list = add_token(env, frame->activation_token_list, token);
