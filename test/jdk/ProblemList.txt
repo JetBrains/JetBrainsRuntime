@@ -512,6 +512,11 @@ java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java 8266243 macosx-
 # This test fails on macOS 14
 java/awt/Choice/SelectNewItemTest/SelectNewItemTest.java 8324782 macosx-all
 
+# Wayland related
+
+java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java 8332158 linux-x64
+java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java 8280991 linux-x64
+
 ############################################################################
 
 # jdk_beans
