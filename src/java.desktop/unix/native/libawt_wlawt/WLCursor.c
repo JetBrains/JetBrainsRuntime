@@ -141,7 +141,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
-  (JNIEnv *env, jclass cls, jlong pData, jint scale)
+  (JNIEnv *env, jclass cls, jlong pData, jint scale, jlong pointerEnterSerial)
 {
     struct wl_buffer *buffer = NULL;
     int32_t width = 0;
@@ -161,29 +161,17 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
     }
 
     static struct wl_surface *wl_cursor_surface = NULL;
-    static struct wl_buffer *last_buffer = NULL;
-    static uint32_t last_serial = 0;
-    static int32_t last_hotspot_x = 0;
-    static int32_t last_hotspot_y = 0;
 
     if (!wl_cursor_surface)
         wl_cursor_surface = wl_compositor_create_surface(wl_compositor);
 
     CHECK_NULL(wl_cursor_surface);
-    if (buffer != last_buffer) {
-        last_buffer = buffer;
-        wl_surface_attach(wl_cursor_surface, buffer, 0, 0);
-        wl_surface_set_buffer_scale(wl_cursor_surface, scale);
-        wl_surface_damage_buffer(wl_cursor_surface, 0, 0, width, height);
-        wl_surface_commit(wl_cursor_surface);
-    }
+    wl_surface_attach(wl_cursor_surface, buffer, 0, 0);
+    wl_surface_set_buffer_scale(wl_cursor_surface, scale);
+    wl_surface_damage_buffer(wl_cursor_surface, 0, 0, width, height);
+    wl_surface_commit(wl_cursor_surface);
 
-    if (last_pointer_enter_serial != last_serial || hotspot_x != last_hotspot_x || hotspot_y != last_hotspot_y) {
-        last_serial = last_pointer_enter_serial;
-        last_hotspot_x = hotspot_x;
-        last_hotspot_y = hotspot_y;
-        wl_pointer_set_cursor(wl_pointer, last_pointer_enter_serial, wl_cursor_surface,
-                              hotspot_x / scale, hotspot_y / scale);
-        wlFlushToServer(env);
-    }
+    wl_pointer_set_cursor(wl_pointer, pointerEnterSerial, wl_cursor_surface,
+                          hotspot_x / scale, hotspot_y / scale);
+    wlFlushToServer(env);
 }
