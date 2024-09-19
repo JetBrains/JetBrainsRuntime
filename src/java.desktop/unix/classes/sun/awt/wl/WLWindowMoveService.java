@@ -26,7 +26,11 @@ public class WLWindowMoveService implements WindowMoveService {
         final AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
         ComponentPeer peer = acc.getPeer(window);
         if (peer instanceof WLComponentPeer wlPeer) {
-            wlPeer.startDrag();
+            long serial = WLToolkit.getInputState().pointerButtonSerial();
+            if (serial == 0) serial = WLToolkit.getInputState().keySerial();
+            if (serial != 0) {
+                wlPeer.startDrag(serial);
+            }
         } else {
             throw new IllegalArgumentException("AWT window must have WLComponentPeer as its peer");
         }
