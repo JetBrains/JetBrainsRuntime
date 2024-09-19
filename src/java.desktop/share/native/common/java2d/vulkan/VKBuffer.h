@@ -54,4 +54,14 @@ VkDeviceMemory VKBuffer_CreateBuffers(VKDevice* device, VkBufferUsageFlags usage
                                       VkDeviceSize bufferSize, VkDeviceSize pageSize,
                                       uint32_t* bufferCount, VKBuffer* buffers);
 
+// TODO usage of this function is suboptimal, we need to avoid creating individual buffers.
+VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
+                          VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+
+// TODO usage of this function is suboptimal, we need to avoid creating one-time buffers.
+VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize bufferSize);
+
+// TODO usage of this function is suboptimal, we need to avoid destroying individual buffers.
+void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer);
+
 #endif // VKBuffer_h_Included
