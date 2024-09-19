@@ -26,6 +26,7 @@
 #endif
 
 #include "WLKeyboard.h"
+#include "WLToolkit.h"
 #include <sun_awt_wl_WLKeyboard.h>
 
 #include <stdint.h>
@@ -163,7 +164,6 @@ struct xkb_compose_state;
 typedef void
 (*xkb_keymap_key_iter_t)(struct xkb_keymap *keymap, xkb_keycode_t key, void *data);
 
-static jclass keyboardClass;         // sun.awt.wl.WLKeyboard
 static jclass keyRepeatManagerClass; // sun.awt.wl.WLKeyboard.KeyRepeatManager
 static jmethodID setRepeatInfoMID;   // sun.awt.wl.WLKeyboard.KeyRepeatManager.setRepeatInfo
 static jmethodID startRepeatMID;     // sun.awt.wl.WLKeyboard.KeyRepeatManager.startRepeat
@@ -171,11 +171,10 @@ static jmethodID stopRepeatMID;      // sun.awt.wl.WLKeyboard.KeyRepeatManager.s
 
 static bool
 initJavaRefs(JNIEnv *env) {
-    CHECK_NULL_RETURN(keyboardClass = (*env)->FindClass(env, "sun/awt/wl/WLKeyboard"), false);
     CHECK_NULL_RETURN(keyRepeatManagerClass = (*env)->FindClass(env, "sun/awt/wl/WLKeyboard$KeyRepeatManager"), false);
     CHECK_NULL_RETURN(setRepeatInfoMID = (*env)->GetMethodID(env, keyRepeatManagerClass, "setRepeatInfo", "(II)V"),
                       false);
-    CHECK_NULL_RETURN(startRepeatMID = (*env)->GetMethodID(env, keyRepeatManagerClass, "startRepeat", "(JI)V"), false);
+    CHECK_NULL_RETURN(startRepeatMID = (*env)->GetMethodID(env, keyRepeatManagerClass, "startRepeat", "(JJI)V"), false);
     CHECK_NULL_RETURN(stopRepeatMID = (*env)->GetMethodID(env, keyRepeatManagerClass, "stopRepeat", "(I)V"), false);
     return true;
 }
@@ -1102,12 +1101,13 @@ convertKeysymToJavaCode(xkb_keysym_t keysym, int *javaKeyCode, int *javaKeyLocat
 
 // Posts one UTF-16 code unit as a KEY_TYPED event
 static void
-postKeyTypedJavaChar(long timestamp, uint16_t javaChar) {
+postKeyTypedJavaChar(long serial, long timestamp, uint16_t javaChar) {
 #ifdef WL_KEYBOARD_DEBUG
     fprintf(stderr, "postKeyTypedJavaChar(0x%04x)\n", (int) javaChar);
 #endif
 
     struct WLKeyEvent event = {
+            .serial = serial,
             .timestamp = timestamp,
             .id = java_awt_event_KeyEvent_KEY_TYPED,
             .keyCode = java_awt_event_KeyEvent_VK_UNDEFINED,
@@ -1122,7 +1122,7 @@ postKeyTypedJavaChar(long timestamp, uint16_t javaChar) {
 
 // Posts one Unicode code point as KEY_TYPED events
 static void
-postKeyTypedCodepoint(long timestamp, uint32_t codePoint) {
+postKeyTypedCodepoint(long serial, long timestamp, uint32_t codePoint) {
     if (codePoint >= 0x10000) {
         // break the codepoint into surrogates
 
@@ -1131,16 +1131,16 @@ postKeyTypedCodepoint(long timestamp, uint32_t codePoint) {
         uint16_t highSurrogate = (uint16_t) (0xD800 + ((codePoint >> 10) & 0x3ff));
         uint16_t lowSurrogate = (uint16_t) (0xDC00 + (codePoint & 0x3ff));
 
-        postKeyTypedJavaChar(timestamp, highSurrogate);
-        postKeyTypedJavaChar(timestamp, lowSurrogate);
+        postKeyTypedJavaChar(serial, timestamp, highSurrogate);
+        postKeyTypedJavaChar(serial, timestamp, lowSurrogate);
     } else {
-        postKeyTypedJavaChar(timestamp, (uint16_t) codePoint);
+        postKeyTypedJavaChar(serial, timestamp, (uint16_t) codePoint);
     }
 }
 
 // Posts a UTF-8 encoded string as KEY_TYPED events
 static void
-postKeyTypedEvents(long timestamp, const char *string) {
+postKeyTypedEvents(long serial, long timestamp, const char *string) {
 #ifdef WL_KEYBOARD_DEBUG
     fprintf(stderr, "postKeyTypedEvents(b\"");
     for (const char *c = string; *c; ++c) {
@@ -1176,13 +1176,13 @@ postKeyTypedEvents(long timestamp, const char *string) {
             // a single codepoint in range U+0000 to U+007F
             remaining = 0;
             curCodePoint = 0;
-            postKeyTypedCodepoint(timestamp, *ptr & 0x7f);
+            postKeyTypedCodepoint(serial, timestamp, *ptr & 0x7f);
         } else if ((*ptr & 0xc0) == 0x80) {
             // continuation byte
             curCodePoint = (curCodePoint << 6u) | (uint32_t) (*ptr & 0x3f);
             --remaining;
             if (remaining == 0) {
-                postKeyTypedCodepoint(timestamp, curCodePoint);
+                postKeyTypedCodepoint(serial, timestamp, curCodePoint);
                 curCodePoint = 0;
             }
         } else {
@@ -1203,19 +1203,19 @@ getJavaKeyCharForKeycode(xkb_keycode_t xkbKeycode) {
 
 // Posts an XKB keysym as KEY_TYPED events, without consulting the current compose state.
 static void
-handleKeyTypeNoCompose(long timestamp, xkb_keycode_t xkbKeycode) {
+handleKeyTypeNoCompose(long serial, long timestamp, xkb_keycode_t xkbKeycode) {
 #ifdef WL_KEYBOARD_DEBUG
     fprintf(stderr, "handleKeyTypeNoCompose: xkbKeycode = %d\n", xkbKeycode);
 #endif
     int bufSize = xkb.state_key_get_utf8(keyboard.state, xkbKeycode, NULL, 0) + 1;
     char buf[bufSize];
     xkb.state_key_get_utf8(keyboard.state, xkbKeycode, buf, bufSize);
-    postKeyTypedEvents(timestamp, buf);
+    postKeyTypedEvents(serial, timestamp, buf);
 }
 
 // Handles generating KEY_TYPED events for an XKB keysym, translating it using the active compose state
 static void
-handleKeyType(long timestamp, xkb_keycode_t xkbKeycode) {
+handleKeyType(long serial, long timestamp, xkb_keycode_t xkbKeycode) {
 #ifdef WL_KEYBOARD_DEBUG
     fprintf(stderr, "handleKeyType(xkbKeycode = %d)\n", xkbKeycode);
 #endif
@@ -1229,21 +1229,21 @@ handleKeyType(long timestamp, xkb_keycode_t xkbKeycode) {
 
     if (!keyboard.composeState ||
         (xkb.compose_state_feed(keyboard.composeState, keysym) == XKB_COMPOSE_FEED_IGNORED)) {
-        handleKeyTypeNoCompose(timestamp, xkbKeycode);
+        handleKeyTypeNoCompose(serial, timestamp, xkbKeycode);
         return;
     }
 
     switch (xkb.compose_state_get_status(keyboard.composeState)) {
         case XKB_COMPOSE_NOTHING:
             xkb.compose_state_reset(keyboard.composeState);
-            handleKeyTypeNoCompose(timestamp, xkbKeycode);
+            handleKeyTypeNoCompose(serial, timestamp, xkbKeycode);
             break;
         case XKB_COMPOSE_COMPOSING:
             break;
         case XKB_COMPOSE_COMPOSED: {
             char buf[MAX_COMPOSE_UTF8_LENGTH];
             xkb.compose_state_get_utf8(keyboard.composeState, buf, sizeof buf);
-            postKeyTypedEvents(timestamp, buf);
+            postKeyTypedEvents(serial, timestamp, buf);
             xkb.compose_state_reset(keyboard.composeState);
             break;
         }
@@ -1261,7 +1261,7 @@ handleKeyType(long timestamp, xkb_keycode_t xkbKeycode) {
 //      or stopping it if isPressed = false.
 //   2. From the key repeat manager. In this case, isRepeat = true and isPressed = true.
 static void
-handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
+handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
 #ifdef WL_KEYBOARD_DEBUG
     fprintf(stderr, "handleKey(keycode = %d, isPressed = %d, isRepeat = %d)\n", keycode, isPressed, isRepeat);
 #endif
@@ -1317,6 +1317,7 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
 #endif
 
     struct WLKeyEvent event = {
+            .serial = serial,
             .timestamp = timestamp,
             .id = isPressed ? java_awt_event_KeyEvent_KEY_PRESSED : java_awt_event_KeyEvent_KEY_RELEASED,
             .keyCode = javaKeyCode,
@@ -1329,10 +1330,10 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
     wlPostKeyEvent(&event);
 
     if (isPressed) {
-        handleKeyType(timestamp, xkbKeycode);
+        handleKeyType(serial, timestamp, xkbKeycode);
 
         if (!isRepeat && keyRepeats) {
-            (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, startRepeatMID, timestamp, keycode);
+            (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, startRepeatMID, serial, timestamp, keycode);
             JNU_CHECK_EXCEPTION(env);
         }
     } else if (keyRepeats) {
@@ -1449,9 +1450,8 @@ Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv *env, jobject instance, jobject key
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLKeyboard_handleKeyPress(JNIEnv *env, jobject instance, jlong timestamp, jint keycode,
-                                          jboolean isRepeat) {
-    handleKey(timestamp, keycode, true, isRepeat);
+Java_sun_awt_wl_WLKeyboard_handleKeyRepeat(JNIEnv *env, jobject instance, jlong serial, jlong timestamp, jint keycode) {
+    handleKey(serial, timestamp, keycode, true, true);
 }
 
 JNIEXPORT void JNICALL
@@ -1495,8 +1495,8 @@ wlSetKeymap(const char *serializedKeymap) {
 }
 
 void
-wlSetKeyState(long timestamp, uint32_t keycode, bool isPressed) {
-    handleKey(timestamp, keycode, isPressed, false);
+wlSetKeyState(long serial, long timestamp, uint32_t keycode, bool isPressed) {
+    handleKey(serial, timestamp, keycode, isPressed, false);
 }
 
 void

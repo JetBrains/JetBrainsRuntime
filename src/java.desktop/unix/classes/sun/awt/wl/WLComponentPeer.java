@@ -771,10 +771,16 @@ public class WLComponentPeer implements ComponentPeer {
         return target.getSize();
     }
 
-    void showWindowMenu(int x, int y) {
+    void showWindowMenu(long serial, int x, int y) {
+        // "This request must be used in response to some sort of user action like
+        //  a button press, key press, or touch down event."
+        // So 'serial' must appertain to such an event.
+
+        assert serial != 0;
+
         int xNative = javaUnitsToSurfaceUnits(x);
         int yNative = javaUnitsToSurfaceUnits(y);
-        performLocked(() -> nativeShowWindowMenu(nativePtr, xNative, yNative));
+        performLocked(() -> nativeShowWindowMenu(serial, nativePtr, xNative, yNative));
     }
 
     @Override
@@ -852,7 +858,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     private void updateCursorImmediately(WLInputState inputState) {
-        WLComponentPeer peer = inputState.getPeer();
+        WLComponentPeer peer = inputState.peerForPointerEvents();
         if (peer == null) return;
         Cursor cursor = peer.getCursor(inputState.getPointerX(), inputState.getPointerY());
         setCursor(cursor, getGraphicsDevice() != null ? getGraphicsDevice().getDisplayScale() : 1);
@@ -870,6 +876,14 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     private static void setCursor(Cursor c, int scale) {
+        long serial = WLToolkit.getInputState().pointerEnterSerial();
+        if (serial == 0) {
+            if (log.isLoggable(Level.WARNING)) {
+                log.warning("setCursor aborted due to missing event serial");
+            }
+            return; // Wayland will ignore the request anyway
+        }
+
         Cursor cursor;
         if (c.getType() == Cursor.CUSTOM_CURSOR && !(c instanceof WLCustomCursor)) {
             cursor = Cursor.getDefaultCursor();
@@ -894,7 +908,7 @@ public class WLComponentPeer implements ComponentPeer {
                 }
                 AWTAccessor.getCursorAccessor().setPData(cursor, scale, pData);
             }
-            nativeSetCursor(pData, scale);
+            nativeSetCursor(pData, scale, serial);
         });
     }
 
@@ -1019,7 +1033,16 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     final void activate() {
-        performLocked(() -> nativeActivate(nativePtr));
+        // "The serial can come from an input or focus event."
+        long serial = WLToolkit.getInputState().keyboardEnterSerial();
+        long surface = WLToolkit.getInputState().surfaceForKeyboardInput();
+        if (serial != 0) {
+            performLocked(() -> nativeActivate(serial, nativePtr, surface));
+        } else {
+            if (log.isLoggable(Level.WARNING)) {
+                log.warning("activate() aborted due to missing keyboard enter event serial");
+            }
+        }
     }
 
     private static native void initIDs();
@@ -1042,8 +1065,8 @@ public class WLComponentPeer implements ComponentPeer {
     protected native void nativeDisposeFrame(long ptr);
 
     private native long getWLSurface(long ptr);
-    private native void nativeStartDrag(long ptr);
-    private native void nativeStartResize(long ptr, int edges);
+    private native void nativeStartDrag(long serial, long ptr);
+    private native void nativeStartResize(long serial, long ptr, int edges);
 
     private native void nativeSetTitle(long ptr, String title);
     private native void nativeRequestMinimized(long ptr);
@@ -1057,11 +1080,11 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeSetWindowGeometry(long ptr, int x, int y, int width, int height);
     private native void nativeSetMinimumSize(long ptr, int width, int height);
     private native void nativeSetMaximumSize(long ptr, int width, int height);
-    private static native void nativeSetCursor(long pData, int scale);
+    private static native void nativeSetCursor(long pData, int scale, long pointerEnterSerial);
     private static native long nativeGetPredefinedCursor(String name, int scale);
     private static native long nativeDestroyPredefinedCursor(long pData);
-    private native void nativeShowWindowMenu(long ptr, int x, int y);
-    private native void nativeActivate(long ptr);
+    private native void nativeShowWindowMenu(long serial, long ptr, int x, int y);
+    private native void nativeActivate(long serial, long ptr, long activatingSurfacePtr);
 
     static long getNativePtrFor(Component component) {
         final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
@@ -1465,12 +1488,22 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
 
-    void startDrag() {
-        performLocked(() -> nativeStartDrag(nativePtr));
+    void startDrag(long serial) {
+        // "This request must be used in response to some sort of user action like a button press,
+        //  key press, or touch down event. The passed serial is used to determine the type
+        //  of interactive move (touch, pointer, etc)."
+        assert serial != 0;
+
+        performLocked(() -> nativeStartDrag(serial, nativePtr));
     }
 
-    void startResize(int edges) {
-        performLocked(() -> nativeStartResize(nativePtr, edges));
+    void startResize(long serial, int edges) {
+        // "This request must be used in response to some sort of user action like a button press,
+        //  key press, or touch down event. The passed serial is used to determine the type
+        //  of interactive resize (touch, pointer, etc)."
+        assert serial != 0;
+
+        performLocked(() -> nativeStartResize(serial, nativePtr, edges));
     }
 
     /**
