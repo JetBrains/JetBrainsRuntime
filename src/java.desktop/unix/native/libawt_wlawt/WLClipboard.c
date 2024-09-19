@@ -655,7 +655,6 @@ Java_sun_awt_wl_WLClipboard_cancelOffer(
     JNU_RUNTIME_ASSERT(env, payloadNativePtr != 0, "NULL pointer to clipboard data source");
 
     CleanupClipboard(jlong_to_ptr(payloadNativePtr));
-    //wlFlushToServer(env);
 }
 
 /**
