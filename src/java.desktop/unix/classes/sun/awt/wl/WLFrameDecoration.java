@@ -334,7 +334,7 @@ public class WLFrameDecoration {
         if (isLMBPressed && peer.isInteractivelyResizable()) {
             int resizeSide = getResizeEdges(point.x, point.y);
             if (resizeSide != 0) {
-                peer.startResize(resizeSide);
+                peer.startResize(WLToolkit.getInputState().pointerButtonSerial(), resizeSide);
                 // workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/2523
                 WLToolkit.resetPointerInputState();
                 return true;
@@ -344,7 +344,7 @@ public class WLFrameDecoration {
         if (isUndecorated) return false;
 
         if (isRMBPressed && getBounds().contains(e.getX(), e.getY())) {
-            peer.showWindowMenu(e.getX(), e.getY());
+            peer.showWindowMenu(WLToolkit.getInputState().pointerButtonSerial(), e.getX(), e.getY());
             return true;
         }
 
@@ -371,7 +371,8 @@ public class WLFrameDecoration {
         if (e.getID() == MouseEvent.MOUSE_PRESSED) {
             pressedLocation = point;
         } else if (e.getID() == MouseEvent.MOUSE_DRAGGED && pressedInDragStartArea() && isSignificantDrag(point)) {
-            peer.startDrag();
+            peer.startDrag(WLToolkit.getInputState().pointerButtonSerial());
+
         } else if (e.getID() == MouseEvent.MOUSE_CLICKED && e.getClickCount() == 2 && pressedInDragStartArea()
                 && peer.isFrameStateSupported(Frame.MAXIMIZED_BOTH)) {
             toggleMaximizedState();
