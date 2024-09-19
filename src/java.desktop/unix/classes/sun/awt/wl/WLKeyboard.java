@@ -55,7 +55,7 @@ class WLKeyboard {
             }
         }
 
-        void startRepeat(long timestamp, int keycode) {
+        void startRepeat(long serial, long timestamp, int keycode) {
             cancelRepeat();
             if (keycode == 0) {
                 return;
@@ -67,7 +67,7 @@ class WLKeyboard {
                 public void run() {
                     try {
                         EventQueue.invokeAndWait(() -> {
-                            handleKeyPress(delta + System.currentTimeMillis(), keycode, true);
+                            imitateKeyPress(serial, delta + System.currentTimeMillis(), keycode, true);
                         });
                     } catch (InterruptedException ignored) {
                     } catch (InvocationTargetException e) {
@@ -129,7 +129,7 @@ class WLKeyboard {
         cancelCompose();
     }
 
-    private native void handleKeyPress(long timestamp, int keycode, boolean isRepeat);
+    private native void imitateKeyPress(long serial, long timestamp, int keycode, boolean isRepeat);
 
     private native void cancelCompose();
 
