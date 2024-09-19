@@ -135,8 +135,19 @@ public final class WLClipboard extends SunClipboard {
     protected void setContentsNative(Transferable contents) {
         // The server requires "serial number of the event that triggered this request"
         // as a proof of the right to copy data.
-        WLPointerEvent wlPointerEvent = WLToolkit.getInputState().eventWithSerial();
-        long eventSerial = wlPointerEvent == null ? 0 : wlPointerEvent.getSerial();
+
+        // It is not specified which event's serial number the Wayland server expects here,
+        // so the following is a speculation based on experiments.
+        // The worst case is that a "wrong" serial will be silently ignored, and our clipboard
+        // will be out of sync with the real one that Wayland maintains.
+        long eventSerial = isPrimary
+                ? WLToolkit.getInputState().pointerButtonSerial()
+                : WLToolkit.getInputState().keySerial();
+        if (!isPrimary && eventSerial == 0) {
+            // The "regular" clipboard's content can be changed with either a mouse click
+            // (like on a menu item) or with the keyboard (Ctrl-C).
+            eventSerial = WLToolkit.getInputState().pointerButtonSerial();
+        }
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("Clipboard: About to offer new contents using Wayland event serial " + eventSerial);
         }
