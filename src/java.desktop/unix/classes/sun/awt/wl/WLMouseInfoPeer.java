@@ -41,7 +41,7 @@ public class WLMouseInfoPeer implements MouseInfoPeer  {
     @Override
     public boolean isWindowUnderMouse(Window w) {
         WLInputState inputState = WLToolkit.getInputState();
-        WLComponentPeer peerUnderMouse = inputState.getPeer();
+        WLComponentPeer peerUnderMouse = inputState.peerForPointerEvents();
         return peerUnderMouse != null
                 && peerUnderMouse.getTarget() == w
                 && inputState.isPointerOverPeer();
