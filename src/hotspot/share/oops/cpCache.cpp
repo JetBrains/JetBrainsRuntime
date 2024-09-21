@@ -322,7 +322,7 @@ ResolvedMethodEntry* ConstantPoolCache::set_method_handle(int method_index, cons
   if (has_appendix) {
     const int appendix_index = method_entry->resolved_references_index();
     assert(appendix_index >= 0 && appendix_index < resolved_references->length(), "oob");
-    assert(resolved_references->obj_at(appendix_index) == nullptr, "init just once");
+    assert(AllowEnhancedClassRedefinition || resolved_references->obj_at(appendix_index) == nullptr, "init just once");
     resolved_references->obj_at_put(appendix_index, appendix());
   }
 
@@ -871,3 +871,25 @@ void ConstantPoolCache::print_resolved_indy_entries(outputStream* st) const {
     }
   }
 }
+
+void ConstantPoolCache::clear_entries() {
+  if (_resolved_indy_entries != nullptr) {
+    for (int i = 0; i < _resolved_indy_entries->length(); i++) {
+      ResolvedIndyEntry *indy_entry = resolved_indy_entry_at(i);
+      indy_entry->clear_entry();
+    }
+  }
+  if (_resolved_field_entries != nullptr) {
+    for (int i = 0; i < _resolved_field_entries->length(); i++) {
+      ResolvedFieldEntry* field_entry = resolved_field_entry_at(i);
+      field_entry->clear_entry();
+    }
+  }
+  if (_resolved_method_entries != nullptr) {
+    for (int i = 0; i < _resolved_method_entries->length(); i++) {
+      ResolvedMethodEntry *method_entry = resolved_method_entry_at(i);
+      method_entry->clear_entry();
+    }
+  }
+}
+
