@@ -382,7 +382,7 @@ public:
 
   bool operator()(WeakHandle* entry) {
     oop mem_name = entry->peek();
-    if (mem_name == NULL) {
+    if (mem_name == nullptr) {
       // Removed
       return true;
     }
@@ -426,7 +426,7 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
     ResolvedMethodTableLookup lookup(thread, method_hash(old_method), old_method);
     _local_table->remove(thread, lookup);
 
-    InstanceKlass* newer_klass = InstanceKlass::cast(old_method->method_holder()->new_version());
+    InstanceKlass* newer_klass = InstanceKlass::cast(old_method->method_holder()->newest_version());
     Method* newer_method = nullptr;
 
     // Method* new_method;
@@ -436,7 +436,7 @@ void ResolvedMethodTable::adjust_method_entries_dcevm(bool * trace_name_printed)
       newer_method = newer_klass->method_with_idnum(old_method->orig_method_idnum());
 
       // TODO: JBR21 - check why the newer_method can be nullptr
-      // assert(newer_method != NULL, "method_with_idnum() should not be NULL");
+      // assert(newer_method != nullptr, "method_with_idnum() should not be nullptr");
 
       if (newer_method != nullptr) {
         assert(newer_klass == newer_method->method_holder(), "call after swapping redefined guts");
