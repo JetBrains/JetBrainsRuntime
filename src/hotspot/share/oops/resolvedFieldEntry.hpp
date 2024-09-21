@@ -157,6 +157,9 @@ public:
   void mark_and_relocate();
 #endif
 
+  // DCEVM
+  void clear_entry();
+
   // Offsets
   static ByteSize field_holder_offset() { return byte_offset_of(ResolvedFieldEntry, _field_holder); }
   static ByteSize field_offset_offset() { return byte_offset_of(ResolvedFieldEntry, _field_offset); }

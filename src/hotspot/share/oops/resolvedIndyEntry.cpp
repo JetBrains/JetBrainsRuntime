@@ -66,3 +66,8 @@ void ResolvedIndyEntry::print_on(outputStream* st) const {
   st->print_cr(" - Has Appendix: %d", has_appendix());
   st->print_cr(" - Resolution Failed %d", resolution_failed());
 }
+
+void ResolvedIndyEntry::clear_entry() {
+  _flags |= (1 << is_not_resolved_shift);
+}
+
