@@ -71,6 +71,7 @@ public:
   enum {
     resolution_failed_shift = 0,
     has_appendix_shift      = 1,
+    is_not_resolved_shift     = 2
   };
 
   // Getters
@@ -79,7 +80,7 @@ public:
   u2 constant_pool_index()       const { return _cpool_index;                   }
   u2 num_parameters()            const { return _number_of_parameters;          }
   u1 return_type()               const { return _return_type;                   }
-  bool is_resolved()             const { return method() != nullptr;            }
+  bool is_resolved()             const { return method() != nullptr && !(_flags & (1 << is_not_resolved_shift)); }
   bool has_appendix()            const { return (_flags & (1 << has_appendix_shift)) != 0; }
   bool resolution_failed()       const { return (_flags & 1) != 0; }
   bool is_vfinal()               const { return false; }
@@ -107,7 +108,7 @@ public:
   void fill_in(Method* m, u2 num_params, u1 return_type, bool has_appendix) {
     set_num_parameters(num_params);
     _return_type = return_type;
-    set_has_appendix(has_appendix);
+    set_has_appendix(has_appendix); // DCEVM: this also clears "is_not_resolved_shift" bit
     // Set the method last since it is read lock free.
     // Resolution is indicated by whether or not the method is set.
     Atomic::release_store(&_method, m);
@@ -133,6 +134,9 @@ public:
   void remove_unshareable_info();
   void mark_and_relocate();
 #endif
+
+  // DCEVM
+  void clear_entry();
 
   // Offsets
   static ByteSize method_offset()                    { return byte_offset_of(ResolvedIndyEntry, _method);                    }
