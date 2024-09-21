@@ -54,3 +54,8 @@ void ResolvedFieldEntry::mark_and_relocate() {
   ArchiveBuilder::current()->mark_and_relocate_to_buffered_addr(&_field_holder);
 }
 #endif
+
+void ResolvedFieldEntry::clear_entry() {
+  _get_code = 0;
+  _put_code = 0;
+}
