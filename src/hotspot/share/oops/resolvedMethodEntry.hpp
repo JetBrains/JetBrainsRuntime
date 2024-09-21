@@ -254,6 +254,9 @@ class ResolvedMethodEntry {
   void mark_and_relocate(ConstantPool* src_cp);
 #endif
 
+  // DCEVM
+  void clear_entry();
+
   // Offsets
   static ByteSize klass_offset()                     { return byte_offset_of(ResolvedMethodEntry, _entry_specific._interface_klass); }
   static ByteSize method_offset()                    { return byte_offset_of(ResolvedMethodEntry, _method);       }
