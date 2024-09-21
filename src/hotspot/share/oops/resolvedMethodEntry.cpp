@@ -108,3 +108,10 @@ void ResolvedMethodEntry::print_on(outputStream* st) const {
   st->print_cr(" - Bytecode 1: %s", Bytecodes::name((Bytecodes::Code)bytecode1()));
   st->print_cr(" - Bytecode 2: %s", Bytecodes::name((Bytecodes::Code)bytecode2()));
 }
+
+void ResolvedMethodEntry::clear_entry() {
+  // Always clear for invokehandle/invokedynamic to re-resolve them
+  set_bytecode1(0);
+  set_bytecode2(0);
+}
+
