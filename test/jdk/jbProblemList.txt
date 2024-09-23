@@ -154,6 +154,7 @@ java/awt/Frame/8158918/SetExtendedState.java JBR-6408 linux-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509 generic-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-all
+java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java 8340595 macosx-15.0
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880,JBR-6683 windows-all,linux-all
@@ -257,6 +258,7 @@ java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java JBR-4275,JB
 java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java 7188711,8253184 linux-all,windows-all
 java/awt/FullScreen/UninitializedDisplayModeChangeTest/UninitializedDisplayModeChangeTest.java 7188711,8273617,JBR-4880,8253184 macosx-all,linux-all,windows-all
 java/awt/Focus/8013611/JDK8013611.java 8175366 windows-all,macosx-all
+java/awt/Focus/6401036/InputVerifierTest2.java JBR-7537 linux-aarch64
 java/awt/Focus/6981400/Test1.java 8029675,JBR-5510 windows-all,macosx-all,linux-5.18.2-arch1-1
 java/awt/Focus/6981400/Test3.java 8173264 generic-all
 java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java JBR-4997,JBR-5729 windows-all,linux-all
@@ -356,7 +358,6 @@ sun/java2d/SunGraphics2D/DrawImageBilinear.java 8297175 linux-all
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 generic-all
-java/awt/Graphics2D/DrawString/TextRenderingTest.java JBR-4260 macosx-11.7.1
 java/awt/Graphics2D/ScaledTransform/ScaledTransform.java 8277240 linux-all
 sun/java2d/SunGraphics2D/PolyVertTest.java 6986565 generic-all
 sun/java2d/SunGraphics2D/SimplePrimQuality.java 6992007 generic-all
@@ -389,6 +390,7 @@ java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
+java/awt/Robot/NonEmptyErrorStream.java 8340330,JBR-5510 macosx-15.0,linux-5.18.2-arch1-1
 java/awt/Robot/RobotExtraButton/RobotExtraButton.java JBR-6554 linux-all
 java/awt/Modal/FileDialog/FileDialogAppModal1Test.java 7186009,8253184 macosx-all,windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal2Test.java 7186009,8253184 macosx-all,windows-all
@@ -1441,7 +1443,6 @@ java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java JBR-5510 linux-5.18.2-arch1-1
-java/awt/Robot/NonEmptyErrorStream.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JMenu/TestDisabledMenuForegroundColor.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
