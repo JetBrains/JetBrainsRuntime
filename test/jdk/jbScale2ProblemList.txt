@@ -54,6 +54,7 @@ java/awt/PopupMenu/PopupMenuLocation.java 8238720,JBR-5071 windows-all,macosx-al
 java/awt/Window/AlwaysOnTop/SyncAlwaysOnTopFieldTest.java JBR-6845 linux-all
 java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5513 linux-all
+javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-6110 linux-x64
 javax/swing/JComponent/7154030/bug7154030.java JBR-6134 windows-x64
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      JBR-5071 linux-all
 javax/swing/JSlider/6848475/bug6848475.java JBR-7329,JBR-7472 windows-all
