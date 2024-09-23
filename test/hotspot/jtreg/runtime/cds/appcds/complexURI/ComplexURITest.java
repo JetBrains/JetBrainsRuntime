@@ -36,8 +36,10 @@
 
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
+import jdk.test.lib.Platform;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -56,9 +58,9 @@ public class ComplexURITest {
         jarFile = newJarFilePath.toString();
 
         File fileList = new File(listFileName);
-        Files.deleteIfExists(fileList.toPath());
+        delete(fileList.toPath());
         File fileArchive = new File(archiveName);
-        Files.deleteIfExists(fileArchive.toPath());
+        delete(fileArchive.toPath());
 
         createClassList(jarFile);
         if (!fileList.exists()) {
@@ -71,13 +73,22 @@ public class ComplexURITest {
         }
 
         useArchive(jarFile);
-        Files.deleteIfExists(fileArchive.toPath());
+        delete(fileArchive.toPath());
 
         createDynamicArchive(jarFile);
         if (!fileArchive.exists()) {
             throw new RuntimeException("No dynamic archive created at " + fileArchive);
         }
         testDynamicArchive(jarFile);
+    }
+
+    private static void delete(Path path) throws IOException {
+        if (Files.exists(path)) {
+            if (Platform.isWindows()) {
+                Files.setAttribute(path, "dos:readonly", false);
+            }
+            Files.delete(path);
+        }
     }
 
     private static void createClassList(String jarFile) throws Exception {
