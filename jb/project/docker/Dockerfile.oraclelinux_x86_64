@@ -1,4 +1,4 @@
-# NOTE: This Dockerfile is meant to be used from the mkdocker_aarch64.sh script.
+# NOTE: This Dockerfile is meant to be used from the mkdocker_x86_64.sh script.
 
 # Pull a concrete version of Linux that does NOT recieve updates after it's
 # been created.  This is so that the image is as stable as possible to make

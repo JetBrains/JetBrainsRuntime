@@ -4,7 +4,6 @@ set -euo pipefail
 set -x
 
 # This script creates a Docker image suitable for building AArch64 variant
-# of the JetBrains Runtime "dev" version.
 
 BOOT_JDK_REMOTE_FILE=https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-linux_aarch64.tar.gz
 BOOT_JDK_SHA=da3c2d7db33670bcf66532441aeb7f33dcf0d227c8dafe7ce35cee67f6829c4c
