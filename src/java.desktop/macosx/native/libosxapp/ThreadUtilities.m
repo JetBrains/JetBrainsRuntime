@@ -295,8 +295,10 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 #pragma clang diagnostic pop
         va_end(args);
 
-        const jstring jstr = (*env)->NewStringUTF(env, buf);
-        (*env)->CallVoidMethod(env, loggerObject, midWarn, jstr);
-        (*env)->DeleteLocalRef(env, jstr);
+        const jstring javaString = (*env)->NewStringUTF(env, buf);
+        JNU_CHECK_EXCEPTION(env);
+        (*env)->CallVoidMethod(env, loggerObject, midWarn, javaString);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, javaString);
     }
 }
