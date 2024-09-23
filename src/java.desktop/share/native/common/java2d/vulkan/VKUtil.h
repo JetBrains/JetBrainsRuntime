@@ -38,7 +38,7 @@
 // In debug builds it returns 1 with approximately CHANCE_PERCENT chance, on release builds it is always 0.
 // When using this macro, make sure to leave sufficient info in the log to track failing configurations.
 #ifdef DEBUG
-#define VK_DEBUG_RANDOM(CHANCE_PERCENT) ((rand() & 100) < CHANCE_PERCENT)
+#define VK_DEBUG_RANDOM(CHANCE_PERCENT) ((rand() % 100) < CHANCE_PERCENT)
 #else
 #define VK_DEBUG_RANDOM(CHANCE_PERCENT) 0
 #endif
