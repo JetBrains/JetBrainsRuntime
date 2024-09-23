@@ -296,9 +296,15 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
         va_end(args);
 
         const jstring javaString = (*env)->NewStringUTF(env, buf);
-        JNU_CHECK_EXCEPTION(env);
-        (*env)->CallVoidMethod(env, loggerObject, midWarn, javaString);
-        CHECK_EXCEPTION();
+        if ((*env)->ExceptionCheck(env)) {
+            // fallback:
+            NSLog(@"%s\n", buf); \
+        } else {
+            JNU_CHECK_EXCEPTION(env);
+            (*env)->CallVoidMethod(env, loggerObject, midWarn, javaString);
+            CHECK_EXCEPTION();
+            return;
+        }
         (*env)->DeleteLocalRef(env, javaString);
     }
 }
