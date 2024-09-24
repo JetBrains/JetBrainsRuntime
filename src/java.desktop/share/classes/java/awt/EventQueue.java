@@ -234,8 +234,8 @@ public class EventQueue {
                 }
 
                 @Override
-                public void dispatchEvent(EventQueue eventQueue) {
-                    eventQueue.dispatchNextEvent();;
+                public boolean dispatchEvent(EventQueue eventQueue) {
+                    return eventQueue.dispatchNextEvent();
                 }
             });
     }
@@ -1425,7 +1425,8 @@ public class EventQueue {
         }
     }
 
-    private void dispatchNextEvent() {
+    private boolean dispatchNextEvent() {
+        boolean result = true;
         try {
             AWTEvent event;
             pushPopLock.lock();
@@ -1433,6 +1434,7 @@ public class EventQueue {
                 event = getNextEventPrivate();
                 if (event == null || peekEvent() == null) {
                     AWTAutoShutdown.getInstance().notifyThreadFree(dispatchThread);
+                    result = false;
                 }
             } finally {
                 pushPopLock.unlock();
@@ -1444,6 +1446,7 @@ public class EventQueue {
             Thread thread = Thread.currentThread();
             thread.getUncaughtExceptionHandler().uncaughtException(thread, t);
         }
+        return result;
     }
 }
 

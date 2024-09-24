@@ -416,6 +416,7 @@ AWT_ASSERT_APPKIT_THREAD;
         block();
         [block release];
     } else if ((je = [NSApplicationAWT extractJavaEvent:event])) {
+        last_posted_event_time = 0;
         [je dispatch];
         [je release];
     } else if ([event type] == NSKeyUp && ([event modifierFlags] & NSCommandKeyMask)) {
@@ -475,19 +476,31 @@ AWT_ASSERT_APPKIT_THREAD;
     [pool drain];
 }
 
+static time_t last_posted_event_time = 0;
+
 + (void) postJavaEvent:(JavaEvent*) je {
     [je retain];
     NSInteger encode = (NSInteger) je;
-    NSEvent* e = [NSEvent otherEventWithType: NSApplicationDefined
-                                    location: NSMakePoint(0,0)
-                               modifierFlags: 0
-                                   timestamp: 0
-                                windowNumber: 0
-                                     context: nil
-                                     subtype: NativeJavaEvent
-                                       data1: encode
-                                       data2: 0];
-    [NSApp postEvent:e atStart:NO];
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        time_t current_time = time(NULL);
+        // sometimes events get removed from queue due to unknown reason, so to prevent freezes
+        // we re-post the event if the previously posted event hasn't been processed in 2 seconds
+        if (last_posted_event_time == 0 || current_time > last_posted_event_time + 2) {
+            last_posted_event_time = current_time;
+            NSEvent* e = [NSEvent otherEventWithType: NSApplicationDefined
+                                                    location: NSMakePoint(0,0)
+                                               modifierFlags: 0
+                                                   timestamp: 0
+                                                windowNumber: 0
+                                                     context: nil
+                                                     subtype: NativeJavaEvent
+                                                       data1: encode
+                                                       data2: 0];
+            [NSApp postEvent:e atStart:NO];
+        } else {
+            [((JavaEvent*)encode) release];
+        }
+    }];
 }
 
 + (JavaEvent*) extractJavaEvent:(NSEvent*) event {
