@@ -961,8 +961,8 @@ public final class LWCToolkit extends LWToolkit {
     static native void waitForNextEvent();
 
     // invoked from native code
-    private static boolean dispatch(EventQueue eventQueue) {
-        return AWTAccessor.getEventQueueAccessor().dispatchEvent(eventQueue);
+    private static void dispatch(EventQueue eventQueue) {
+        AWTAccessor.getEventQueueAccessor().dispatchEvent(eventQueue);
     }
 
 // DnD support

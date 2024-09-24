@@ -102,12 +102,9 @@ AWT_ASSERT_APPKIT_THREAD;
         [AWTToolkit eventCountPlusPlus];
         JNIEnv* env = [ThreadUtilities getJNIEnv];
         DECLARE_CLASS(sjc_LWCToolkit, "sun/lwawt/macosx/LWCToolkit");
-        DECLARE_STATIC_METHOD(jm_LWCToolkit_dispatch, sjc_LWCToolkit, "dispatch", "(Ljava/awt/EventQueue;)Z");
-        jboolean result = (*env)->CallStaticBooleanMethod(env, sjc_LWCToolkit, jm_LWCToolkit_dispatch, _eventQueue);
+        DECLARE_STATIC_METHOD(jm_LWCToolkit_dispatch, sjc_LWCToolkit, "dispatch", "(Ljava/awt/EventQueue;)V");
+        (*env)->CallStaticVoidMethod(env, sjc_LWCToolkit, jm_LWCToolkit_dispatch, _eventQueue);
         CHECK_EXCEPTION();
-        if (result) {
-            [NSApplicationAWT postJavaEvent:self];
-        }
     }
 }
 @end
