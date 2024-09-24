@@ -25,6 +25,8 @@
 
 package java.awt;
 
+import sun.awt.SunToolkit;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -531,7 +533,7 @@ public class CardLayout implements LayoutManager2,
      * @see       java.awt.CardLayout#addLayoutComponent(java.awt.Component, java.lang.Object)
      */
     public void show(Container parent, String name) {
-        synchronized (parent.getTreeLock()) {
+        SunToolkit.performWithTreeLock(() -> {
             checkLayout(parent);
             Component next = null;
             int ncomponents = vector.size();
@@ -555,7 +557,7 @@ public class CardLayout implements LayoutManager2,
                 next.setVisible(true);
                 parent.validate();
             }
-        }
+        });
     }
 
     /**

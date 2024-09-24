@@ -706,6 +706,7 @@ JNI_COCOA_ENTER(env);
                                               dequeue:YES];
         JavaEvent *e = [NSApplicationAWT extractJavaEvent:event];
         if (e) {
+            [e release];
             return;
         }
         [NSApp sendEvent:event];

@@ -361,6 +361,10 @@ public class EventQueue {
                     AWTThreading.getInstance(dispatchThread).notifyEventDispatchThreadBusy();
                 }
                 pushPopCond.signalAll();
+
+                if (fwDispatcher != null) {
+                    fwDispatcher.scheduleNativeEvent(this);
+                }
             } else if (notifyID) {
                 pushPopCond.signalAll();
             }
@@ -372,10 +376,6 @@ public class EventQueue {
             if (notifyID) {
                 pushPopCond.signalAll();
             }
-        }
-
-        if (fwDispatcher != null) {
-            fwDispatcher.scheduleNativeEvent(this);
         }
     }
 
@@ -577,6 +577,9 @@ public class EventQueue {
             try {
                 AWTEvent event = getNextEventPrivate();
                 if (event != null) {
+                    if (fwDispatcher != null && !noEvents()) {
+                        fwDispatcher.scheduleNativeEvent(this);
+                    }
                     return event;
                 }
                 AWTAutoShutdown.getInstance().notifyThreadFree(dispatchThread);
@@ -1433,6 +1436,8 @@ public class EventQueue {
                 event = getNextEventPrivate();
                 if (event == null || peekEvent() == null) {
                     AWTAutoShutdown.getInstance().notifyThreadFree(dispatchThread);
+                } else if (fwDispatcher != null) {
+                    fwDispatcher.scheduleNativeEvent(this);
                 }
             } finally {
                 pushPopLock.unlock();
