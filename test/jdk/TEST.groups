@@ -1137,9 +1137,11 @@ jdk_swing_wayland= \
     -javax/swing/JFileChooser/8041694/bug8041694.java \
     -javax/swing/JFileChooser/ShellFolderQueries/ShellFolderQueriesSecurityManagerTest.java \
     -javax/swing/JFileChooser/JFileChooserFontReset.java \
+    -javax/swing/JFormattedTextField/bug4863121.java \
     -javax/swing/JFrame/4962534/bug4962534.java \
     -javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java \
     -javax/swing/JFrame/8255880/RepaintOnFrameIconifiedStateChangeTest.java \
+    -javax/swing/JFrame/JFrameBackgroundRefreshTest.java \
     -javax/swing/JInternalFrame/4202966/IntFrameCoord.java \
     -javax/swing/JInternalFrame/4769772/TestJInternalFrameIconify.java \
     -javax/swing/JInternalFrame/5066752/bug5066752.java \
@@ -1154,6 +1156,8 @@ jdk_swing_wayland= \
     -javax/swing/JInternalFrame/Test6325652.java \
     -javax/swing/JInternalFrame/Test6802868.java \
     -javax/swing/JLabel/6596966/bug6596966.java \
+    -javax/swing/JLabel/bug4768127.java \
+    -javax/swing/JLabel/bug4822331.java \
     -javax/swing/JLightweightFrame/ResizedMovedEvents.java \
     -javax/swing/JList/4618767/JListSelectedElementTest.java \
     -javax/swing/JList/6462008/bug6462008.java \
@@ -1165,10 +1169,12 @@ jdk_swing_wayland= \
     -javax/swing/JMenu/4515762/bug4515762.java \
     -javax/swing/JMenu/4692443/bug4692443.java \
     -javax/swing/JMenu/6359669/bug6359669.java \
+    -javax/swing/JMenu/bug4767393.java \
     -javax/swing/JMenu/bug5013739.java \
     -javax/swing/JMenu/PopupReferenceMemoryLeak.java \
     -javax/swing/JMenu/TestDisabledMenuForegroundColor.java \
     -javax/swing/JMenuBar/4750590/bug4750590.java \
+    -javax/swing/JMenuBar/bug4403749.java \
     -javax/swing/JMenuBar/bug4802656.java \
     -javax/swing/JMenuBar/MisplacedBorder/MisplacedBorder.java \
     -javax/swing/JMenuBar/MenuBarRTLBug.java \
@@ -1237,6 +1243,7 @@ jdk_swing_wayland= \
     -javax/swing/JTextArea/4514331/TabShiftsFocusToNextComponent.java \
     -javax/swing/JTextArea/4697612/bug4697612.java \
     -javax/swing/JTextArea/8149849/DNDTextToScaledArea.java \
+    -javax/swing/JTextArea/bug4265784.java \
     -javax/swing/JTextField/4532513/DefaultCaretRequestsFocusTest.java \
     -javax/swing/JTextField/8036819/bug8036819.java \
     -javax/swing/JToggleButton/TestSelectedKey.java \
@@ -1294,13 +1301,16 @@ jdk_swing_wayland= \
     -javax/swing/text/DefaultStyledDocument/6636983/bug6636983.java \
     -javax/swing/text/FlowView/LayoutTest.java \
     -javax/swing/text/GlyphPainter2/6427244/bug6427244.java \
+    -javax/swing/text/html/bug4839739.java \
     -javax/swing/text/html/CSS/4530474/bug4530474.java \
     -javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java \
+    -javax/swing/text/html/Map/bug4322891.java \
     -javax/swing/text/html/StyleSheet/bug4936917.java \
     -javax/swing/text/html/TestFormViewNPE.java \
     -javax/swing/text/rtf/bug4178276.java \
     -javax/swing/text/JTextComponent/6361367/bug6361367.java \
     -javax/swing/text/StyledEditorKit/4506788/bug4506788.java \
+    -javax/swing/text/StyledEditorKit/bug4329418.java \
     -javax/swing/text/Utilities/8142966/SwingFontMetricsTest.java \
     -javax/swing/ToolTipManager/7123767/bug7123767.java \
     -javax/swing/ToolTipManager/Test6256140.java \
