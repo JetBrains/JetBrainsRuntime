@@ -215,6 +215,10 @@ public class Http2TestServerConnection {
         return pings.poll();
     }
 
+    public void addToOutputQ(final Http2Frame frame) throws IOException {
+        outputQ.put(frame);
+    }
+
     /**
      * Handles incoming Ping, which could be an ack
      * or a client originated Ping
@@ -918,13 +922,25 @@ public class Http2TestServerConnection {
         final BodyOutputStream oo = new BodyOutputStream(
                 promisedStreamid,
                 clientSettings.getParameter(
-                        SettingsFrame.INITIAL_WINDOW_SIZE), this);
+                        SettingsFrame.INITIAL_WINDOW_SIZE), this) {
+
+            @Override
+            protected void sendEndStream() throws IOException {
+                if (properties.getProperty("sendTrailingHeadersAfterPushPromise", "0").equals("1")) {
+                    conn.outputQ.put(getTrailingHeadersFrame(promisedStreamid, List.of()));
+                } else {
+                    super.sendEndStream();
+                }
+            }
+        };
+
         outStreams.put(promisedStreamid, oo);
         oo.goodToGo();
         exec.submit(() -> {
             try {
                 ResponseHeaders oh = getPushResponse(promisedStreamid);
                 outputQ.put(oh);
+
                 ii.transferTo(oo);
             } catch (Throwable ex) {
                 System.err.printf("TestServer: pushing response error: %s\n",
@@ -935,6 +951,11 @@ public class Http2TestServerConnection {
             }
         });
 
+    }
+
+    private HeadersFrame getTrailingHeadersFrame(int promisedStreamid, List<ByteBuffer> headerBlocks) {
+        // TODO: see if there is a safe way to encode headers without interrupting connection thread
+        return new HeadersFrame(promisedStreamid, (HeaderFrame.END_HEADERS | HeaderFrame.END_STREAM), headerBlocks);
     }
 
     // returns a minimal response with status 200
