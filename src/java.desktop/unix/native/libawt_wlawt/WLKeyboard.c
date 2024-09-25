@@ -1204,6 +1204,9 @@ getJavaKeyCharForKeycode(xkb_keycode_t xkbKeycode) {
 // Posts an XKB keysym as KEY_TYPED events, without consulting the current compose state.
 static void
 handleKeyTypeNoCompose(long timestamp, xkb_keycode_t xkbKeycode) {
+#ifdef WL_KEYBOARD_DEBUG
+    fprintf(stderr, "handleKeyTypeNoCompose: xkbKeycode = %d\n", xkbKeycode);
+#endif
     int bufSize = xkb.state_key_get_utf8(keyboard.state, xkbKeycode, NULL, 0) + 1;
     char buf[bufSize];
     xkb.state_key_get_utf8(keyboard.state, xkbKeycode, buf, bufSize);
@@ -1213,7 +1216,16 @@ handleKeyTypeNoCompose(long timestamp, xkb_keycode_t xkbKeycode) {
 // Handles generating KEY_TYPED events for an XKB keysym, translating it using the active compose state
 static void
 handleKeyType(long timestamp, xkb_keycode_t xkbKeycode) {
+#ifdef WL_KEYBOARD_DEBUG
+    fprintf(stderr, "handleKeyType(xkbKeycode = %d)\n", xkbKeycode);
+#endif
     xkb_keysym_t keysym = xkb.state_key_get_one_sym(keyboard.state, xkbKeycode);
+
+#ifdef WL_KEYBOARD_DEBUG
+    char buf[256];
+    xkb.keysym_get_name(keysym, buf, sizeof buf);
+    fprintf(stderr, "handleKeyType: keysym = %d (%s)\n", keysym, buf);
+#endif
 
     if (!keyboard.composeState ||
         (xkb.compose_state_feed(keyboard.composeState, keysym) == XKB_COMPOSE_FEED_IGNORED)) {
@@ -1250,11 +1262,23 @@ handleKeyType(long timestamp, xkb_keycode_t xkbKeycode) {
 //   2. From the key repeat manager. In this case, isRepeat = true and isPressed = true.
 static void
 handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
+#ifdef WL_KEYBOARD_DEBUG
+    fprintf(stderr, "handleKey(keycode = %d, isPressed = %d, isRepeat = %d)\n", keycode, isPressed, isRepeat);
+#endif
     JNIEnv *env = getEnv();
 
     xkb_keycode_t xkbKeycode = keycode + 8;
+    bool keyRepeats = xkb.keymap_key_repeats(keyboard.keymap, xkbKeycode);
     xkb_keysym_t keysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_ACTIVE_LAYOUT);
     xkb_keysym_t qwertyKeysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_QWERTY);
+
+#ifdef WL_KEYBOARD_DEBUG
+    char buf[256];
+    xkb.keysym_get_name(keysym, buf, sizeof buf);
+    fprintf(stderr, "handleKey: keysym = %d (%s)\n", keysym, buf);
+    xkb.keysym_get_name(qwertyKeysym, buf, sizeof buf);
+    fprintf(stderr, "handleKey: qwertyKeysym = %d (%s)\n", qwertyKeysym, buf);
+#endif
 
     int javaKeyCode, javaExtendedKeyCode, javaKeyLocation;
 
@@ -1288,6 +1312,10 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
         }
     }
 
+#ifdef WL_KEYBOARD_DEBUG
+    fprintf(stderr, "handleKey: javaKeyCode = %d\n", javaKeyCode);
+#endif
+
     struct WLKeyEvent event = {
             .timestamp = timestamp,
             .id = isPressed ? java_awt_event_KeyEvent_KEY_PRESSED : java_awt_event_KeyEvent_KEY_RELEASED,
@@ -1303,11 +1331,11 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
     if (isPressed) {
         handleKeyType(timestamp, xkbKeycode);
 
-        if (!isRepeat && xkb.keymap_key_repeats(keyboard.keymap, xkbKeycode)) {
+        if (!isRepeat && keyRepeats) {
             (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, startRepeatMID, timestamp, keycode);
             JNU_CHECK_EXCEPTION(env);
         }
-    } else {
+    } else if (keyRepeats) {
         (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, cancelRepeatMID);
         JNU_CHECK_EXCEPTION(env);
     }
