@@ -40,6 +40,7 @@ class WLKeyboard {
     private class KeyRepeatManager {
         private final Timer timer = new Timer("WLKeyboard.KeyRepeatManager", true);
         private TimerTask currentRepeatTask;
+        private boolean[] currentRepeatCancelFlag;
         private int delayBeforeRepeatMillis = 500;
         private int delayBetweenRepeatMillis = 50;
 
@@ -50,6 +51,10 @@ class WLKeyboard {
 
         void cancelRepeat() {
             if (currentRepeatTask != null) {
+                if (currentRepeatCancelFlag != null) {
+                    currentRepeatCancelFlag[0] = true;
+                    currentRepeatCancelFlag = null;
+                }
                 currentRepeatTask.cancel();
                 currentRepeatTask = null;
             }
@@ -62,12 +67,16 @@ class WLKeyboard {
             }
 
             long delta = timestamp - System.currentTimeMillis();
+            boolean[] cancelFlag = new boolean[]{false};
+            currentRepeatCancelFlag = cancelFlag;
             currentRepeatTask = new TimerTask() {
                 @Override
                 public void run() {
                     try {
                         EventQueue.invokeAndWait(() -> {
-                            handleKeyPress(delta + System.currentTimeMillis(), keycode, true);
+                            if (!cancelFlag[0]) {
+                                handleKeyPress(delta + System.currentTimeMillis(), keycode, true);
+                            }
                         });
                     } catch (InterruptedException ignored) {
                     } catch (InvocationTargetException e) {
