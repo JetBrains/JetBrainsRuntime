@@ -23,19 +23,20 @@
 
 package jdk.httpclient.test.lib.http2;
 
+import jdk.internal.net.http.common.HttpHeadersBuilder;
+import jdk.internal.net.http.frame.HeaderFrame;
+import jdk.internal.net.http.frame.HeadersFrame;
+
+import javax.net.ssl.SSLSession;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.IOException;
-import java.net.URI;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.net.http.HttpHeaders;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import javax.net.ssl.SSLSession;
-import jdk.internal.net.http.common.HttpHeadersBuilder;
-import jdk.internal.net.http.frame.HeaderFrame;
-import jdk.internal.net.http.frame.HeadersFrame;
 
 public class Http2TestExchangeImpl implements Http2TestExchange {
 
@@ -193,6 +194,7 @@ public class Http2TestExchangeImpl implements Http2TestExchange {
         }
         HttpHeaders combinedHeaders = headersBuilder.build();
         OutgoingPushPromise pp = new OutgoingPushPromise(streamid, uri, combinedHeaders, content);
+        pp.setFlag(HeaderFrame.END_HEADERS);
 
         try {
             conn.outputQ.put(pp);
