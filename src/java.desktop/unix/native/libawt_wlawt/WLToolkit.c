@@ -441,9 +441,7 @@ static void
 wl_keyboard_repeat_info(void *data, struct wl_keyboard *wl_keyboard,
                         int32_t rate, int32_t delay)
 {
-    if (rate > 0 && delay > 0) {
-        wlSetRepeatInfo(rate, delay);
-    }
+    wlSetRepeatInfo(rate, delay);
 }
 
 void
