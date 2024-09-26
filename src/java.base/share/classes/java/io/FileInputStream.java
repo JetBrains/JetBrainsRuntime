@@ -25,11 +25,15 @@
 
 package java.io;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
+
+import jdk.internal.misc.VM;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.event.FileReadEvent;
 import sun.nio.ch.FileChannelImpl;
+import sun.security.action.GetPropertyAction;
 
 /**
  * A {@code FileInputStream} obtains input bytes
@@ -65,6 +69,8 @@ public class FileInputStream extends InputStream
      * file reads should be traced by JFR.
      */
     private static boolean jfrTracing;
+
+    private static final boolean useNIO = GetPropertyAction.privilegedGetBooleanProp("jbr.java.io.use.nio", true, null);
 
     /* File Descriptor - handle to the open file */
     private final FileDescriptor fd;
@@ -233,7 +239,18 @@ public class FileInputStream extends InputStream
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceRead0();
         }
-        return read0();
+        return implRead();
+    }
+
+    private int implRead() throws IOException {
+        if (!VM.isBooted() || !useNIO) {
+            return read0();
+        } else {
+            ByteBuffer buffer = ByteBuffer.allocate(1);
+            int nRead = getChannel().read(buffer);
+            buffer.rewind();
+            return nRead == 1 ? (buffer.get() & 0xFF) : -1;
+        }
     }
 
     private native int read0() throws IOException;
@@ -245,7 +262,7 @@ public class FileInputStream extends InputStream
         long start = 0;
         try {
             start = FileReadEvent.timestamp();
-            result = read0();
+            result = implRead();
             if (result < 0) {
                 endOfFile = true;
             } else {
@@ -274,7 +291,7 @@ public class FileInputStream extends InputStream
         long start = 0;
         try {
             start = FileReadEvent.timestamp();
-            bytesRead = readBytes(b, off, len);
+            bytesRead = implRead(b, off, len);
         } finally {
             long duration = FileReadEvent.timestamp() - start;
             if (FileReadEvent.shouldCommit(duration)) {
@@ -304,7 +321,22 @@ public class FileInputStream extends InputStream
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceReadBytes(b, 0, b.length);
         }
-        return readBytes(b, 0, b.length);
+
+        return implRead(b);
+    }
+
+    private int implRead(byte[] b) throws IOException {
+        if (!VM.isBooted() || !useNIO) {
+            return readBytes(b, 0, b.length);
+        } else {
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b);
+                return getChannel().read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes(b, 0, b.length);
+            }
+        }
     }
 
     /**
@@ -326,7 +358,21 @@ public class FileInputStream extends InputStream
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceReadBytes(b, off, len);
         }
-        return readBytes(b, off, len);
+        return implRead(b, off, len);
+    }
+
+    private int implRead(byte[] b, int off, int len) throws IOException {
+        if (!VM.isBooted() || !useNIO) {
+            return readBytes(b, off, len);
+        } else {
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+                return getChannel().read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes(b, off, len);
+            }
+        }
     }
 
     @Override
@@ -436,12 +482,21 @@ public class FileInputStream extends InputStream
     }
 
     private long length() throws IOException {
-        return length0();
+        if (fd != null || !useNIO || path == null) {
+            return length0();
+        } else {
+            return getChannel().size();
+        }
     }
+
     private native long length0() throws IOException;
 
     private long position() throws IOException {
-        return position0();
+        if (!VM.isBooted() || !useNIO) {
+            return position0();
+        } else {
+            return getChannel().position();
+        }
     }
     private native long position0() throws IOException;
 
@@ -471,7 +526,14 @@ public class FileInputStream extends InputStream
      */
     @Override
     public long skip(long n) throws IOException {
-        return skip0(n);
+        if (!VM.isBooted() || !useNIO) {
+            return skip0(n);
+        } else {
+            getChannel();
+            long startPos = channel.position();
+            channel.position(startPos + n);
+            return channel.position() - startPos;
+        }
     }
 
     private native long skip0(long n) throws IOException;
@@ -495,7 +557,15 @@ public class FileInputStream extends InputStream
      */
     @Override
     public int available() throws IOException {
-        return available0();
+        if (!VM.isBooted() || !useNIO || path == null) {
+            return available0();
+        } else {
+            getChannel();
+            long size = channel.size();
+            long pos = channel.position();
+            long avail = size > pos ? (size - pos) : 0;
+            return avail > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)avail;
+        }
     }
 
     private native int available0() throws IOException;
