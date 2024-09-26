@@ -25,11 +25,13 @@
 
 package java.io;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
 import jdk.internal.access.JavaIORandomAccessFileAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Blocker;
+import jdk.internal.misc.VM;
 import jdk.internal.util.ByteArray;
 import jdk.internal.event.FileReadEvent;
 import jdk.internal.event.FileWriteEvent;
@@ -69,6 +71,8 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     private static final int O_SYNC =   4;
     private static final int O_DSYNC =  8;
     private static final int O_TEMPORARY =  16;
+
+    private static final boolean useNIO = Boolean.parseBoolean(System.getProperty("jbr.java.io.use.nio", "true"));
 
     /**
      * Flag set by jdk.internal.event.JFRTracing to indicate if
@@ -359,7 +363,19 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceRead0();
         }
-        return read0();
+        return implRead();
+    }
+
+    private int implRead() throws IOException {
+        if (!VM.isBooted() || !useNIO) {
+            return read0();
+        } else {
+            // Really same to FileInputStream.read()
+            ByteBuffer buffer = ByteBuffer.allocate(1);
+            int nRead = getChannel().read(buffer);
+            buffer.rewind();
+            return nRead == 1 ? (buffer.get() & 0xFF) : -1;
+        }
     }
 
     private native int read0() throws IOException;
@@ -369,7 +385,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         long bytesRead = 0;
         long start = FileReadEvent.timestamp();
         try {
-            result = read0();
+            result = implRead();
             if (result < 0) {
                 bytesRead = -1;
             } else {
@@ -392,7 +408,21 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceReadBytes0(b, off, len);
         }
-        return readBytes0(b, off, len);
+        return implReadBytes(b, off, len);
+    }
+
+    private int implReadBytes(byte[] b, int off, int len) throws IOException {
+        if (!VM.isBooted() || !useNIO) {
+            return readBytes0(b, off, len);
+        } else {
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+                return getChannel().read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes0(b, off, len);
+            }
+        }
     }
 
     private native int readBytes0(byte[] b, int off, int len) throws IOException;
@@ -401,7 +431,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         int bytesRead = 0;
         long start = FileReadEvent.timestamp();
         try {
-            bytesRead = readBytes0(b, off, len);
+            bytesRead = implReadBytes(b, off, len);
         } finally {
             FileReadEvent.offer(start, path, bytesRead);
         }
@@ -434,7 +464,17 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      *             {@code b.length - off}
      */
     public int read(byte[] b, int off, int len) throws IOException {
-        return readBytes(b, off, len);
+        if (!VM.isBooted() || !useNIO) {
+            return readBytes(b, off, len);
+        } else {
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+                return getChannel().read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes(b, off, len);
+            }
+        }
     }
 
     /**
@@ -457,7 +497,17 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     NullPointerException If {@code b} is {@code null}.
      */
     public int read(byte[] b) throws IOException {
-        return readBytes(b, 0, b.length);
+        if (!VM.isBooted() || !useNIO) {
+            return readBytes(b, 0, b.length);
+        } else {
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b);
+                return getChannel().read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes(b, 0, b.length);
+            }
+        }
     }
 
     /**
@@ -561,7 +611,14 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     private void implWrite(int b) throws IOException {
         boolean attempted = Blocker.begin(sync);
         try {
-            write0(b);
+            if (!VM.isBooted() || !useNIO) {
+                write0(b);
+            } else {
+                byte[] array = new byte[1];
+                array[0] = (byte) b;
+                ByteBuffer buffer = ByteBuffer.wrap(array);
+                getChannel().write(buffer);
+            }
         } finally {
             Blocker.end(attempted);
         }
@@ -599,7 +656,17 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     private void implWriteBytes(byte[] b, int off, int len) throws IOException {
         boolean attempted = Blocker.begin(sync);
         try {
-            writeBytes0(b, off, len);
+            if (!VM.isBooted() || !useNIO) {
+                writeBytes0(b, off, len);
+            } else {
+                try {
+                    ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+                    getChannel().write(buffer);
+                } catch (OutOfMemoryError e) {
+                    // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                    writeBytes0(b, off, len);
+                }
+            }
         } finally {
             Blocker.end(attempted);
         }
@@ -652,7 +719,15 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      *             at which the next read or write occurs.
      * @throws     IOException  if an I/O error occurs.
      */
-    public native long getFilePointer() throws IOException;
+    public long getFilePointer() throws IOException {
+        if (!VM.isBooted() || !useNIO) {
+            return getFilePointer0();
+        } else {
+            return getChannel().position();
+        }
+    }
+
+    private native long getFilePointer0() throws IOException;
 
     /**
      * Sets the file-pointer offset, measured from the beginning of this
@@ -671,8 +746,13 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     public void seek(long pos) throws IOException {
         if (pos < 0) {
             throw new IOException("Negative seek offset");
+        } else {
+            if (!VM.isBooted() || !useNIO) {
+                seek0(pos);
+            } else {
+                getChannel().position(pos);
+            }
         }
-        seek0(pos);
     }
 
     private native void seek0(long pos) throws IOException;
@@ -684,7 +764,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     IOException  if an I/O error occurs.
      */
     public long length() throws IOException {
-        return length0();
+        if (!VM.isBooted() || !useNIO) {
+            return length0();
+        } else {
+            return getChannel().size();
+        }
     }
 
     private native long length0() throws IOException;
