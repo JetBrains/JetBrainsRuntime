@@ -460,7 +460,7 @@ class Stream<T> extends ExchangeImpl<T> {
     // The Hpack decoder decodes into one of these consumers of name,value pairs
 
     DecodingCallback rspHeadersConsumer() {
-        return rspHeadersConsumer;
+        return rspHeadersConsumer::onDecoded;
     }
 
     protected void handleResponse() throws IOException {
@@ -1504,9 +1504,10 @@ class Stream<T> extends ExchangeImpl<T> {
         return connection.dbgString() + "/Stream("+streamid+")";
     }
 
-    private class HeadersConsumer extends Http2Connection.ValidatingHeadersConsumer {
+    private class HeadersConsumer extends ValidatingHeadersConsumer {
 
-        void reset() {
+        @Override
+        public void reset() {
             super.reset();
             responseHeadersBuilder.clear();
             debug.log("Response builder cleared, ready to receive new headers.");
@@ -1516,14 +1517,27 @@ class Stream<T> extends ExchangeImpl<T> {
         public void onDecoded(CharSequence name, CharSequence value)
             throws UncheckedIOException
         {
-            String n = name.toString();
-            String v = value.toString();
-            super.onDecoded(n, v);
-            responseHeadersBuilder.addHeader(n, v);
-            if (Log.headers() && Log.trace()) {
-                Log.logTrace("RECEIVED HEADER (streamid={0}): {1}: {2}",
-                             streamid, n, v);
+            try {
+                String n = name.toString();
+                String v = value.toString();
+                super.onDecoded(n, v);
+                responseHeadersBuilder.addHeader(n, v);
+                if (Log.headers() && Log.trace()) {
+                    Log.logTrace("RECEIVED HEADER (streamid={0}): {1}: {2}",
+                            streamid, n, v);
+                }
+            } catch (UncheckedIOException uio) {
+                // reset stream: From RFC 9113, section 8.1
+                // Malformed requests or responses that are detected MUST be
+                // treated as a stream error (Section 5.4.2) of type
+                // PROTOCOL_ERROR.
+                onProtocolError(uio.getCause());
             }
+        }
+
+        @Override
+        protected String formatMessage(String message, String header) {
+            return "malformed response: " + super.formatMessage(message, header);
         }
     }
 
