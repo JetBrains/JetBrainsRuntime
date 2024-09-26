@@ -90,7 +90,7 @@ Java_java_io_RandomAccessFile_writeBytes0(JNIEnv *env,
 }
 
 JNIEXPORT jlong JNICALL
-Java_java_io_RandomAccessFile_getFilePointer(JNIEnv *env, jobject this) {
+Java_java_io_RandomAccessFile_getFilePointer0(JNIEnv *env, jobject this) {
     FD fd;
     jlong ret;
 
