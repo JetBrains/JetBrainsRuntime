@@ -40,12 +40,23 @@ class WLKeyboard {
     private class KeyRepeatManager {
         private final Timer timer = new Timer("WLKeyboard.KeyRepeatManager", true);
         private TimerTask currentRepeatTask;
-        private int delayBeforeRepeatMillis = 500;
-        private int delayBetweenRepeatMillis = 50;
+        private int delayBeforeRepeatMillis;
+        private int delayBetweenRepeatMillis;
 
         void setRepeatInfo(int charsPerSecond, int delayMillis) {
+            // this function receives (0, 0) when key repeat is disabled
             this.delayBeforeRepeatMillis = delayMillis;
-            this.delayBetweenRepeatMillis = (int) (1000.0 / charsPerSecond);
+            if (charsPerSecond > 0) {
+                this.delayBetweenRepeatMillis = (int) (1000.0 / charsPerSecond);
+            } else {
+                this.delayBetweenRepeatMillis = 0;
+            }
+
+            cancelRepeat();
+        }
+
+        boolean isRepeatEnabled() {
+            return this.delayBeforeRepeatMillis > 0 || this.delayBetweenRepeatMillis > 0;
         }
 
         void cancelRepeat() {
@@ -57,7 +68,7 @@ class WLKeyboard {
 
         void startRepeat(long timestamp, int keycode) {
             cancelRepeat();
-            if (keycode == 0) {
+            if (keycode == 0 || !isRepeatEnabled()) {
                 return;
             }
 
