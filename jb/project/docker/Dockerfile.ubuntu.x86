@@ -35,6 +35,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
         libfreetype6 \
         libfontconfig1-dev \
         libasound2-dev \
+        libwayland-dev \
         rsync \
         unzip \
         zip
@@ -45,11 +46,6 @@ RUN linux32 \
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10 && \
     apt-get clean -qy && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Set up boot JDK for building
-COPY boot_jdk_x86.tar.gz /jdk17/
-RUN cd /jdk17 && tar --strip-components=1 -xzf boot_jdk_x86.tar.gz && rm /jdk17/boot_jdk_x86.tar.gz
-ENV BOOT_JDK=/jdk17
 
 RUN git config --global user.email "teamcity@jetbrains.com" && \
     git config --global user.name "builduser"
