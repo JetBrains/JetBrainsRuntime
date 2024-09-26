@@ -25,11 +25,13 @@
 
 package java.io;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
 import jdk.internal.access.JavaIORandomAccessFileAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Blocker;
+import jdk.internal.misc.VM;
 import jdk.internal.util.ByteArray;
 import jdk.internal.event.FileReadEvent;
 import jdk.internal.event.FileWriteEvent;
@@ -396,7 +398,20 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceRead0();
         }
-        return read0();
+        return implRead();
+    }
+
+    private int implRead() throws IOException {
+        if (!VM.isBooted()) {
+            return read0();
+        } else {
+            getChannel();
+            // Really same to FileInputStream.read()
+            ByteBuffer buffer = ByteBuffer.allocate(1);
+            int nRead = channel.read(buffer);
+            buffer.rewind();
+            return nRead == 1 ? (buffer.get() & 0xFF) : -1;
+        }
     }
 
     private native int read0() throws IOException;
@@ -408,7 +423,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         long start = 0;
         try {
             start = FileReadEvent.timestamp();
-            result = read0();
+            result = implRead();
             if (result < 0) {
                 endOfFile = true;
             } else {
@@ -434,7 +449,21 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceReadBytes0(b, off, len);
         }
-        return readBytes0(b, off, len);
+        return implReadBytes(b, off, len);
+    }
+
+    private int implReadBytes(byte[] b, int off, int len) throws IOException {
+        if (!VM.isBooted()) {
+            return readBytes0(b, off, len);
+        } else {
+            getChannel();
+            return readBytesFromChannel(b, off, len);
+        }
+    }
+
+    private int readBytesFromChannel(byte b[], int off, int len) throws IOException {
+        final ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+        return channel.read(buffer);
     }
 
     private native int readBytes0(byte[] b, int off, int len) throws IOException;
@@ -444,7 +473,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         long start = 0;
         try {
             start = FileReadEvent.timestamp();
-            bytesRead = readBytes0(b, off, len);
+            bytesRead = implReadBytes(b, off, len);
         } finally {
             long duration = FileReadEvent.timestamp() - start;
             if (FileReadEvent.shouldCommit(duration)) {
@@ -484,7 +513,14 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      *             {@code b.length - off}
      */
     public int read(byte[] b, int off, int len) throws IOException {
-        return readBytes(b, off, len);
+        if (!VM.isBooted()) {
+            return readBytes(b, off, len);
+        } else {
+            getChannel();
+            ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+            int nRead = channel.read(buffer);
+            return nRead;
+        }
     }
 
     /**
@@ -507,7 +543,14 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     NullPointerException If {@code b} is {@code null}.
      */
     public int read(byte[] b) throws IOException {
-        return readBytes(b, 0, b.length);
+        if (!VM.isBooted()) {
+            return readBytes(b, 0, b.length);
+        } else {
+            getChannel();
+            ByteBuffer buffer = ByteBuffer.wrap(b);
+            int nRead = channel.read(buffer);
+            return nRead;
+        }
     }
 
     /**
@@ -611,7 +654,15 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     private void implWrite(int b) throws IOException {
         boolean attempted = Blocker.begin(sync);
         try {
-            write0(b);
+            if (!VM.isBooted()) {
+                write0(b);
+            } else {
+                getChannel();
+                byte[] array = new byte[1];
+                array[0] = (byte) b;
+                ByteBuffer buffer = ByteBuffer.wrap(array);
+                channel.write(buffer);
+            }
         } finally {
             Blocker.end(attempted);
         }
@@ -653,7 +704,12 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     private void implWriteBytes(byte[] b, int off, int len) throws IOException {
         boolean attempted = Blocker.begin(sync);
         try {
-            writeBytes0(b, off, len);
+            if (!VM.isBooted()) {
+                writeBytes0(b, off, len);
+            } else {
+                getChannel();
+                writeBytesToChannel(b, off, len);
+            }
         } finally {
             Blocker.end(attempted);
         }
@@ -676,6 +732,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
 
     private native void writeBytes0(byte[] b, int off, int len) throws IOException;
 
+    private void writeBytesToChannel(byte b[], int off, int len) throws IOException {
+        final ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+        channel.write(buffer);
+    }
+
     /**
      * Writes {@code b.length} bytes from the specified byte array
      * to this file, starting at the current file pointer.
@@ -683,7 +744,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @param      b   the data.
      * @throws     IOException  if an I/O error occurs.
      */
-    public void write(byte[] b) throws IOException {
+    public void write(byte b[]) throws IOException {
         writeBytes(b, 0, b.length);
     }
 
@@ -710,7 +771,16 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      *             at which the next read or write occurs.
      * @throws     IOException  if an I/O error occurs.
      */
-    public native long getFilePointer() throws IOException;
+    public long getFilePointer() throws IOException {
+        if (!VM.isBooted()) {
+            return getFilePointer0();
+        } else {
+            getChannel();
+            return channel.position();
+        }
+    }
+
+    private native long getFilePointer0() throws IOException;
 
     /**
      * Sets the file-pointer offset, measured from the beginning of this
@@ -729,8 +799,14 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     public void seek(long pos) throws IOException {
         if (pos < 0) {
             throw new IOException("Negative seek offset");
+        } else {
+            if (!VM.isBooted()) {
+                seek0(pos);
+            } else {
+                getChannel();
+                channel.position(pos);
+            }
         }
-        seek0(pos);
     }
 
     private native void seek0(long pos) throws IOException;
@@ -742,7 +818,12 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     IOException  if an I/O error occurs.
      */
     public long length() throws IOException {
-        return length0();
+        if (!VM.isBooted()) {
+            return length0();
+        } else {
+            getChannel();
+            return channel.size();
+        }
     }
 
     private native long length0() throws IOException;
@@ -774,7 +855,8 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @since      1.2
      */
     public void setLength(long newLength) throws IOException {
-        setLength0(newLength);
+            setLength0(newLength);
+
     }
 
     private native void setLength0(long newLength) throws IOException;

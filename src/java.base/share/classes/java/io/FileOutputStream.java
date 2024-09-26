@@ -25,10 +25,17 @@
 
 package java.io;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.FileSystems;
+import java.nio.file.OpenOption;
+import java.nio.file.StandardOpenOption;
+import java.util.Set;
+
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.event.FileWriteEvent;
+import jdk.internal.misc.VM;
 import sun.nio.ch.FileChannelImpl;
 
 
@@ -322,7 +329,7 @@ public class FileOutputStream extends OutputStream
         long start = 0;
         try {
             start = FileWriteEvent.timestamp();
-            write(b, append);
+            implWrite(b, append);
             bytesWritten = 1;
         } finally {
             long duration = FileWriteEvent.timestamp() - start;
@@ -346,7 +353,20 @@ public class FileOutputStream extends OutputStream
             traceWrite(b, append);
             return;
         }
-        write(b, append);
+        implWrite(b, append);
+    }
+
+    private void implWrite(int b, boolean append) throws IOException {
+        if (!VM.isBooted()) {
+            write(b, append);
+        } else {
+            // 'append' is ignored; the channel is supposed to obey the mode in which the file was opened
+            getChannel();
+            byte[] array = new byte[1];
+            array[0] = (byte) b;
+            ByteBuffer buffer = ByteBuffer.wrap(array);
+            channel.write(buffer);
+        }
     }
 
     /**
@@ -366,7 +386,7 @@ public class FileOutputStream extends OutputStream
         long start = 0;
         try {
             start = FileWriteEvent.timestamp();
-            writeBytes(b, off, len, append);
+            implWriteBytes(b, off, len, append);
             bytesWritten = len;
         } finally {
             long duration = FileWriteEvent.timestamp() - start;
@@ -390,7 +410,8 @@ public class FileOutputStream extends OutputStream
             traceWriteBytes(b, 0, b.length, append);
             return;
         }
-        writeBytes(b, 0, b.length, append);
+
+        implWriteBytes(b, 0, b.length, append);
     }
 
     /**
@@ -410,7 +431,18 @@ public class FileOutputStream extends OutputStream
             traceWriteBytes(b, off, len, append);
             return;
         }
-        writeBytes(b, off, len, append);
+        implWriteBytes(b, off, len, append);
+    }
+
+    private void implWriteBytes(byte[] b, int off, int len, boolean append) throws IOException {
+        if (!VM.isBooted()) {
+            writeBytes(b, off, len, append);
+        } else {
+            // 'append' is ignored; the channel is supposed to obey the mode in which the file was opened
+            getChannel();
+            ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+            channel.write(buffer);
+        }
     }
 
     /**
