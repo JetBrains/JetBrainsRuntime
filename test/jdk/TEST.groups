@@ -875,6 +875,7 @@ jdk_awt_wayland = \
     -java/awt/Focus/8073453 \
     -java/awt/Focus/8282640 \
     -java/awt/Focus/ActualFocusedWindowTest \
+    -java/awt/Focus/ActivateOnProperAppContextTest.java \
     -java/awt/Focus/AppletInitialFocusTest \
     -java/awt/Focus/AsyncUpFocusCycleTest.java \
     -java/awt/Focus/AutoRequestFocusTest \
@@ -912,6 +913,7 @@ jdk_awt_wayland = \
     -java/awt/Focus/ModalDialogInitialFocusTest \
     -java/awt/Focus/ModalExcludedWindowClickTest \
     -java/awt/Focus/MouseClickRequestFocusRaceTest \
+    -java/awt/Focus/NextFocusHelperTest.java \
     -java/awt/Focus/NoAutotransferToDisabledCompTest \
     -java/awt/Focus/NoFocusOwnerAWTTest.java \
     -java/awt/Focus/NoFocusOwnerSwingTest.java \
@@ -937,6 +939,8 @@ jdk_awt_wayland = \
     -java/awt/Focus/SimpleWindowActivationTest \
     -java/awt/Focus/SortingFPT \
     -java/awt/Focus/TemporaryLostComponentDeadlock.java \
+    -java/awt/Focus/TestDisabledAutoTransfer.java \
+    -java/awt/Focus/TestDisabledAutoTransferSwing.java \
     -java/awt/Focus/ToFrontFocusTest \
     -java/awt/Focus/TranserFocusToWindow \
     -java/awt/Focus/TraversalKeysPropertyNamesTest.java \
