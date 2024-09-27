@@ -105,8 +105,6 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
     //free(data);
     VKImage_LoadBuffer(context, image, buffer, dx1, dy1, sw, sh);
     VKRenderer_TextureRender(context, dest, image, renderVertexBuffer->handle, 4);
-    //VKRenderer_EndRendering(logicalDevice, VK_FALSE, VK_FALSE);
-    VKRenderer_FlushRenderPass(context->surface);
 }
 
 
