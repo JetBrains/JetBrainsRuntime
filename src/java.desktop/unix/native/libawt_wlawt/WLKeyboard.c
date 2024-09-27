@@ -1422,9 +1422,8 @@ Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv *env, jobject instance, jobject key
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLKeyboard_imitateKeyPress(JNIEnv *env, jobject instance, jlong serial, jlong timestamp, jint keycode,
-                                          jboolean isRepeat) {
-    handleKey(serial, timestamp, keycode, true, isRepeat);
+Java_sun_awt_wl_WLKeyboard_handleKeyRepeat(JNIEnv *env, jobject instance, jlong serial, jlong timestamp, jint keycode) {
+    handleKey(serial, timestamp, keycode, true, true);
 }
 
 JNIEXPORT void JNICALL

@@ -67,7 +67,7 @@ class WLKeyboard {
                 public void run() {
                     try {
                         EventQueue.invokeAndWait(() -> {
-                            imitateKeyPress(serial, delta + System.currentTimeMillis(), keycode, true);
+                            handleKeyRepeat(serial, delta + System.currentTimeMillis(), keycode);
                         });
                     } catch (InterruptedException ignored) {
                     } catch (InvocationTargetException e) {
@@ -129,7 +129,7 @@ class WLKeyboard {
         cancelCompose();
     }
 
-    private native void imitateKeyPress(long serial, long timestamp, int keycode, boolean isRepeat);
+    private native void handleKeyRepeat(long serial, long timestamp, int keycode);
 
     private native void cancelCompose();
 
