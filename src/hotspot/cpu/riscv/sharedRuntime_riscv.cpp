@@ -758,15 +758,21 @@ int SharedRuntime::c_calling_convention(const BasicType *sig_bt,
   return stk_args;
 }
 
-// On 64 bit we will store integer like items to the stack as
-// 64 bits items (riscv64 abi) even though java would only store
-// 32bits for a parameter. On 32bit it will simply be 32 bits
-// So this routine will do 32->32 on 32bit and 32->64 on 64bit
+// The C ABI specifies:
+// "integer scalars narrower than XLEN bits are widened according to the sign
+// of their type up to 32 bits, then sign-extended to XLEN bits."
+// Applies for both passed in register and stack.
+//
+// Java uses 32-bit stack slots; jint, jshort, jchar, jbyte uses one slot.
+// Native uses 64-bit stack slots for all integer scalar types.
+//
+// lw loads the Java stack slot, sign-extends and
+// sd store this widened integer into a 64 bit native stack slot.
 static void move32_64(MacroAssembler* masm, VMRegPair src, VMRegPair dst) {
   if (src.first()->is_stack()) {
     if (dst.first()->is_stack()) {
       // stack to stack
-      __ ld(t0, Address(fp, reg2offset_in(src.first())));
+      __ lw(t0, Address(fp, reg2offset_in(src.first())));
       __ sd(t0, Address(sp, reg2offset_out(dst.first())));
     } else {
       // stack to reg
