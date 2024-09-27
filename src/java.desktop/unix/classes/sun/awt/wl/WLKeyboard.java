@@ -38,24 +38,31 @@ class WLKeyboard {
     }
 
     private class KeyRepeatManager {
+        // Methods and fields should only be accessed from the EDT
         private final Timer timer = new Timer("WLKeyboard.KeyRepeatManager", true);
         private TimerTask currentRepeatTask;
         private int delayBeforeRepeatMillis = 500;
         private int delayBetweenRepeatMillis = 50;
 
+        // called from native code
         void setRepeatInfo(int charsPerSecond, int delayMillis) {
+            assert EventQueue.isDispatchThread();
             this.delayBeforeRepeatMillis = delayMillis;
             this.delayBetweenRepeatMillis = (int) (1000.0 / charsPerSecond);
         }
 
+        // called from native code
         void cancelRepeat() {
+            assert EventQueue.isDispatchThread();
             if (currentRepeatTask != null) {
                 currentRepeatTask.cancel();
                 currentRepeatTask = null;
             }
         }
 
+        // called from native code
         void startRepeat(long timestamp, int keycode) {
+            assert EventQueue.isDispatchThread();
             cancelRepeat();
             if (keycode == 0) {
                 return;
@@ -128,6 +135,7 @@ class WLKeyboard {
     }
 
     public void onLostFocus() {
+        assert EventQueue.isDispatchThread();
         keyRepeatManager.cancelRepeat();
         cancelCompose();
     }
