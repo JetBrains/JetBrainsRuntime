@@ -75,7 +75,7 @@ static const char* mtlOpToStr(uint op);
         lwc_plog(env, "%s_flushBuffer: Failed opcode=%s op=%s dstType=%s ctx=%p",       \
             className, mtlOpCodeToStr(opcode), mtlOpToStr(mtlPreviousOp),               \
             mtlDstTypeToStr(DST_TYPE(dstOps)), mtlc);                                   \
-        NSString *str = [NSString stringWithFormat:@"%@", [e description]].UTF8String;  \
+        char* str = [NSString stringWithFormat:@"%@", [e description]].UTF8String;  \
         lwc_plog(env, "%s_flushBuffer Exception: %s", className, str);                  \
         str = [NSString stringWithFormat:@"%@", [e callStackSymbols]].UTF8String;       \
         lwc_plog(env, "%s_flushBuffer callstack: %s", className, str);                  \
