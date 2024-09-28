@@ -358,7 +358,8 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
         }
         
         // make a copy to avoid synchronization during the loop
-        for (D3DWindowSurfaceData sd : d3dwSurfaces) {
+        for (int i = 0; i < d3dwSurfaces.size(); i++) {
+            D3DWindowSurfaceData sd = d3dwSurfaces.get(i);
             // skip invalid surfaces (they could have become invalid
             // after we made a copy of the list) - just a precaution
             if (sd.isValid() && (sd.isDirty() || sd.isSurfaceLost())) {

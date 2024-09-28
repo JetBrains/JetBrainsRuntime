@@ -638,25 +638,27 @@ public abstract class WComponentPeer extends WObjectPeer
             }
         }
 
-        SurfaceData surfaceData = this.surfaceData;
-        if (surfaceData != null) {
-            /* Fix for bug 4746122. Color and Font shouldn't be null */
-            Color bgColor = background;
-            if (bgColor == null) {
-                bgColor = SystemColor.window;
+        synchronized (window.getTreeLock()) {
+            SurfaceData surfaceData = this.surfaceData;
+            if (surfaceData != null) {
+                /* Fix for bug 4746122. Color and Font shouldn't be null */
+                Color bgColor = background;
+                if (bgColor == null) {
+                    bgColor = SystemColor.window;
+                }
+                Color fgColor = foreground;
+                if (fgColor == null) {
+                    fgColor = SystemColor.windowText;
+                }
+                Font font = this.font;
+                if (font == null) {
+                    font = defaultFont;
+                }
+                ScreenUpdateManager mgr =
+                        ScreenUpdateManager.getInstance();
+                return mgr.createGraphics(surfaceData, this, fgColor,
+                        bgColor, font);
             }
-            Color fgColor = foreground;
-            if (fgColor == null) {
-                fgColor = SystemColor.windowText;
-            }
-            Font font = this.font;
-            if (font == null) {
-                font = defaultFont;
-            }
-            ScreenUpdateManager mgr =
-                ScreenUpdateManager.getInstance();
-            return mgr.createGraphics(surfaceData, this, fgColor,
-                                      bgColor, font);
         }
         return null;
     }
