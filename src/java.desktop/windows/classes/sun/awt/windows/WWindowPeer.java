@@ -588,56 +588,62 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     }
 
     public void updateGC() {
-        int scrn = getScreenImOn();
-        if (screenLog.isLoggable(PlatformLogger.Level.FINER)) {
-            log.finer("Screen number: " + scrn);
-        }
-
-        // get current GD
-        Win32GraphicsDevice oldDev = winGraphicsConfig.getDevice();
-
-        Win32GraphicsDevice newDev;
-        GraphicsDevice[] devs = GraphicsEnvironment
-            .getLocalGraphicsEnvironment()
-            .getScreenDevices();
-        // Occasionally during device addition/removal getScreenImOn can return
-        // a non-existing screen number. Use the default device in this case.
-        if (scrn >= devs.length) {
-            newDev = (Win32GraphicsDevice)GraphicsEnvironment
-                .getLocalGraphicsEnvironment().getDefaultScreenDevice();
-        } else {
-            newDev = (Win32GraphicsDevice)devs[scrn];
-        }
-
-        // Set winGraphicsConfig to the default GC for the monitor this Window
-        // is now mostly on.
-        winGraphicsConfig = (Win32GraphicsConfig)newDev
-                            .getDefaultConfiguration();
-        if (screenLog.isLoggable(PlatformLogger.Level.FINE)) {
-            if (winGraphicsConfig == null) {
-                screenLog.fine("Assertion (winGraphicsConfig != null) failed");
+        synchronized (((Window)(target)).getTreeLock()) {
+            if (pData == 0) {
+                return;
             }
-        }
 
-        // if on a different display, take off old GD and put on new GD
-        if (oldDev != newDev) {
-            oldDev.removeDisplayChangedListener(this);
-            newDev.addDisplayChangedListener(this);
-        }
+            int scrn = getScreenImOn();
+            if (screenLog.isLoggable(PlatformLogger.Level.FINER)) {
+                log.finer("Screen number: " + scrn);
+            }
 
-        if (((Window)target).isVisible()) {
-            updateIconImages();
-        }
+            // get current GD
+            Win32GraphicsDevice oldDev = winGraphicsConfig.getDevice();
 
-        AWTAccessor.getComponentAccessor().
-            setGraphicsConfiguration((Component)target, winGraphicsConfig);
+            Win32GraphicsDevice newDev;
+            GraphicsDevice[] devs = GraphicsEnvironment
+                    .getLocalGraphicsEnvironment()
+                    .getScreenDevices();
+            // Occasionally during device addition/removal getScreenImOn can return
+            // a non-existing screen number. Use the default device in this case.
+            if (scrn >= devs.length) {
+                newDev = (Win32GraphicsDevice) GraphicsEnvironment
+                        .getLocalGraphicsEnvironment().getDefaultScreenDevice();
+            } else {
+                newDev = (Win32GraphicsDevice) devs[scrn];
+            }
 
-        // Windows may have already sent us WM_PAINT,
-        // which we have processed before updating the GC,
-        // so force full repaint just to be sure we don't leave damaged content.
-        if (oldDev != newDev) {
-            Rectangle b = getBounds();
-            handlePaint(0, 0, b.width, b.height);
+            // Set winGraphicsConfig to the default GC for the monitor this Window
+            // is now mostly on.
+            winGraphicsConfig = (Win32GraphicsConfig) newDev
+                    .getDefaultConfiguration();
+            if (screenLog.isLoggable(PlatformLogger.Level.FINE)) {
+                if (winGraphicsConfig == null) {
+                    screenLog.fine("Assertion (winGraphicsConfig != null) failed");
+                }
+            }
+
+            // if on a different display, take off old GD and put on new GD
+            if (oldDev != newDev) {
+                oldDev.removeDisplayChangedListener(this);
+                newDev.addDisplayChangedListener(this);
+            }
+
+            if (((Window) target).isVisible()) {
+                updateIconImages();
+            }
+
+            AWTAccessor.getComponentAccessor().
+                    setGraphicsConfiguration((Component) target, winGraphicsConfig);
+
+            // Windows may have already sent us WM_PAINT,
+            // which we have processed before updating the GC,
+            // so force full repaint just to be sure we don't leave damaged content.
+            if (oldDev != newDev) {
+                Rectangle b = getBounds();
+                handlePaint(0, 0, b.width, b.height);
+            }
         }
     }
 
