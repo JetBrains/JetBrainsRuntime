@@ -25,6 +25,7 @@
 
 package jdk.internal.net.http;
 
+import java.io.IOException;
 import java.net.ProtocolException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.net.http.HttpHeaders;
+import jdk.internal.net.http.common.Utils;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static jdk.internal.net.http.common.Utils.ACCEPT_ALL;
@@ -49,6 +51,12 @@ class Http1HeaderParser {
     private int responseCode;
     private HttpHeaders headers;
     private Map<String,List<String>> privateMap = new HashMap<>();
+    private long size;
+
+    private static final int K = 1024;
+    private static  final int MAX_HTTP_HEADER_SIZE = Utils.getIntegerNetProperty(
+            "jdk.http.maxHeaderSize",
+                Integer.MIN_VALUE, Integer.MAX_VALUE, 384 * K, true);
 
     enum State { INITIAL,
                  STATUS_LINE,
@@ -166,11 +174,16 @@ class Http1HeaderParser {
         }
     }
 
-    private void readResumeStatusLine(ByteBuffer input) {
+    private void readResumeStatusLine(ByteBuffer input) throws ProtocolException {
+        final long max = MAX_HTTP_HEADER_SIZE - size - 32 - sb.length();
+        int count = 0;
         char c = 0;
         while (input.hasRemaining() && (c =(char)input.get()) != CR) {
             if (c == LF) break;
             sb.append(c);
+            if (++count > max) {
+                checkMaxHeaderSize(sb.length());
+            }
         }
         if (c == CR) {
             state = State.STATUS_LINE_FOUND_CR;
@@ -187,6 +200,7 @@ class Http1HeaderParser {
         }
 
         statusLine = sb.toString();
+        size = size + 32 + statusLine.length();
         sb = new StringBuilder();
         if (!statusLine.startsWith("HTTP/1.")) {
             throw protocolException("Invalid status line: \"%s\"", statusLine);
@@ -199,7 +213,23 @@ class Http1HeaderParser {
         state = State.STATUS_LINE_END;
     }
 
-    private void maybeStartHeaders(ByteBuffer input) {
+    private void checkMaxHeaderSize(int sz) throws ProtocolException {
+        long s = size + sz + 32;
+        if (MAX_HTTP_HEADER_SIZE > 0 && s > MAX_HTTP_HEADER_SIZE) {
+            throw new ProtocolException(String.format("Header size too big: %s > %s",
+                    s, MAX_HTTP_HEADER_SIZE));
+        }
+    }
+    static private long newSize(long size, int name, int value) throws ProtocolException {
+        long newSize = size + name + value + 32;
+        if (MAX_HTTP_HEADER_SIZE > 0 && newSize > MAX_HTTP_HEADER_SIZE) {
+            throw new ProtocolException(String.format("Header size too big: %s > %s",
+                    newSize, MAX_HTTP_HEADER_SIZE));
+        }
+        return newSize;
+    }
+
+    private void maybeStartHeaders(ByteBuffer input) throws ProtocolException {
         assert state == State.STATUS_LINE_END;
         assert sb.length() == 0;
         char c = (char)input.get();
@@ -209,6 +239,7 @@ class Http1HeaderParser {
             state = State.STATUS_LINE_END_LF;
         } else {
             sb.append(c);
+            checkMaxHeaderSize(sb.length());
             state = State.HEADER;
         }
     }
@@ -226,9 +257,11 @@ class Http1HeaderParser {
         }
     }
 
-    private void readResumeHeader(ByteBuffer input) {
+    private void readResumeHeader(ByteBuffer input) throws ProtocolException {
         assert state == State.HEADER;
         assert input.hasRemaining();
+        final long max = MAX_HTTP_HEADER_SIZE - size - 32 - sb.length();
+        int count = 0;
         while (input.hasRemaining()) {
             char c = (char)input.get();
             if (c == CR) {
@@ -242,10 +275,13 @@ class Http1HeaderParser {
             if (c == HT)
                 c = SP;
             sb.append(c);
+            if (++count > max) {
+                checkMaxHeaderSize(sb.length());
+            }
         }
     }
 
-    private void addHeaderFromString(String headerString) {
+    private void addHeaderFromString(String headerString) throws ProtocolException {
         assert sb.length() == 0;
         int idx = headerString.indexOf(':');
         if (idx == -1)
@@ -254,12 +290,12 @@ class Http1HeaderParser {
         if (name.isEmpty())
             return;
         String value = headerString.substring(idx + 1, headerString.length()).trim();
-
+        size = newSize(size, name.length(), value.length());
         privateMap.computeIfAbsent(name.toLowerCase(Locale.US),
                                    k -> new ArrayList<>()).add(value);
     }
 
-    private void resumeOrLF(ByteBuffer input) {
+    private void resumeOrLF(ByteBuffer input) throws ProtocolException {
         assert state == State.HEADER_FOUND_CR || state == State.HEADER_FOUND_LF;
         char c = state == State.HEADER_FOUND_LF ? LF : (char)input.get();
         if (c == LF) {
@@ -269,15 +305,17 @@ class Http1HeaderParser {
             state = State.HEADER_FOUND_CR_LF;
         } else if (c == SP || c == HT) {
             sb.append(SP); // parity with MessageHeaders
+            checkMaxHeaderSize(sb.length());
             state = State.HEADER;
         } else {
             sb = new StringBuilder();
             sb.append(c);
+            checkMaxHeaderSize(1);
             state = State.HEADER;
         }
     }
 
-    private void resumeOrSecondCR(ByteBuffer input) {
+    private void resumeOrSecondCR(ByteBuffer input) throws ProtocolException {
         assert state == State.HEADER_FOUND_CR_LF;
         char c = (char)input.get();
         if (c == CR || c == LF) {
@@ -298,6 +336,7 @@ class Http1HeaderParser {
         } else if (c == SP || c == HT) {
             assert sb.length() != 0;
             sb.append(SP); // continuation line
+            checkMaxHeaderSize(sb.length());
             state = State.HEADER;
         } else {
             if (sb.length() > 0) {
@@ -308,6 +347,7 @@ class Http1HeaderParser {
                 addHeaderFromString(headerString);
             }
             sb.append(c);
+            checkMaxHeaderSize(sb.length());
             state = State.HEADER;
         }
     }
