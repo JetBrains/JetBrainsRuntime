@@ -41,7 +41,9 @@ RUN yum -y update; \
     yum -y clean all
 
 RUN git config --global user.email "teamcity@jetbrains.com" && \
-    git config --global user.name "builduser"
+    git config --global user.name "builduser" && \
+    git config --global --add safe.directory '*' && \
+    git config --global http.postBuffer 524288000
 
 # Build GLSLC
 RUN git clone https://github.com/google/shaderc --branch v2023.6 \

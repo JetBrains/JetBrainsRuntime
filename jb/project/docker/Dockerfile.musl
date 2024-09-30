@@ -38,4 +38,5 @@ RUN apk --no-cache add --update \
 
 RUN git config --global user.email "teamcity@jetbrains.com" && \
     git config --global user.name "builduser" && \
-    git config --global --add safe.directory '*'
+    git config --global --add safe.directory '*' && \
+    git config --global http.postBuffer 524288000
