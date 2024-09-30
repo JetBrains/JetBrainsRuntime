@@ -38,13 +38,16 @@ class WLKeyboard {
     }
 
     private class KeyRepeatManager {
+        // Methods and fields should only be accessed from the EDT
         private final Timer timer = new Timer("WLKeyboard.KeyRepeatManager", true);
         private TimerTask currentRepeatTask;
         private int delayBeforeRepeatMillis;
         private int delayBetweenRepeatMillis;
 
+        // called from native code
         void setRepeatInfo(int charsPerSecond, int delayMillis) {
             // this function receives (0, 0) when key repeat is disabled
+            assert EventQueue.isDispatchThread();
             this.delayBeforeRepeatMillis = delayMillis;
             if (charsPerSecond > 0) {
                 this.delayBetweenRepeatMillis = (int) (1000.0 / charsPerSecond);
@@ -59,26 +62,33 @@ class WLKeyboard {
             return this.delayBeforeRepeatMillis > 0 || this.delayBetweenRepeatMillis > 0;
         }
 
+        // called from native code
         void cancelRepeat() {
+            assert EventQueue.isDispatchThread();
             if (currentRepeatTask != null) {
                 currentRepeatTask.cancel();
                 currentRepeatTask = null;
             }
         }
 
+        // called from native code
         void startRepeat(long timestamp, int keycode) {
+            assert EventQueue.isDispatchThread();
             cancelRepeat();
             if (keycode == 0 || !isRepeatEnabled()) {
                 return;
             }
 
             long delta = timestamp - System.currentTimeMillis();
+
             currentRepeatTask = new TimerTask() {
                 @Override
                 public void run() {
                     try {
                         EventQueue.invokeAndWait(() -> {
-                            handleKeyPress(delta + System.currentTimeMillis(), keycode, true);
+                            if (this == currentRepeatTask) {
+                                handleKeyPress(delta + System.currentTimeMillis(), keycode, true);
+                            }
                         });
                     } catch (InterruptedException ignored) {
                     } catch (InvocationTargetException e) {
@@ -136,6 +146,7 @@ class WLKeyboard {
     }
 
     public void onLostFocus() {
+        assert EventQueue.isDispatchThread();
         keyRepeatManager.cancelRepeat();
         cancelCompose();
     }
