@@ -1,3 +1,4 @@
+java/awt/Choice/ChoiceHandleMouseEvent.java
 java/awt/Choice/ChoiceHandleMouseEvent_2.java JBR-7174 windows-all
 java/awt/Graphics/XORPaint.java#id0 JBR-7499 windows-x64
 java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java   nobug macosx-all,linux-all,windows-all
@@ -140,6 +141,7 @@ java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-5505 wi
 java/awt/hidpi/DrawOnFrameGraphicsTest.java JBR-5505 windows-all
 java/awt/im/4959409/bug4959409.java JBR-5505 windows-all
 java/awt/im/memoryleak/InputContextMemoryLeakTest.java JBR-5505 windows-all
+java/awt/image/VolatileImage/DrawBufImgOp.java
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-5505 windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711,JBR-5505 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5510,JBR-5505 macosx-all,linux-5.18.2-arch1-1,windows-all

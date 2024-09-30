@@ -131,6 +131,7 @@ gc/TestAllocHumongousFragment.java#iu-aggressive 8298781 generic-all
 
 # :hotspot_runtime
 
+runtime/cds/appcds/complexURI/ComplexURITest.java JBR-6616 window-aarch64
 runtime/cds/appcds/TestDumpClassListSource.java JBR-6099 generic-all
 runtime/cds/appcds/dynamicArchive/CDSStreamTestDriver.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesInvokersTest.java initial_run generic-all
