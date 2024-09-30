@@ -167,7 +167,7 @@ static jclass keyboardClass;         // sun.awt.wl.WLKeyboard
 static jclass keyRepeatManagerClass; // sun.awt.wl.WLKeyboard.KeyRepeatManager
 static jmethodID setRepeatInfoMID;   // sun.awt.wl.WLKeyboard.KeyRepeatManager.setRepeatInfo
 static jmethodID startRepeatMID;     // sun.awt.wl.WLKeyboard.KeyRepeatManager.startRepeat
-static jmethodID cancelRepeatMID;    // sun.awt.wl.WLKeyboard.KeyRepeatManager.cancelRepeat
+static jmethodID stopRepeatMID;      // sun.awt.wl.WLKeyboard.KeyRepeatManager.stopRepeat
 
 static bool
 initJavaRefs(JNIEnv *env) {
@@ -176,7 +176,7 @@ initJavaRefs(JNIEnv *env) {
     CHECK_NULL_RETURN(setRepeatInfoMID = (*env)->GetMethodID(env, keyRepeatManagerClass, "setRepeatInfo", "(II)V"),
                       false);
     CHECK_NULL_RETURN(startRepeatMID = (*env)->GetMethodID(env, keyRepeatManagerClass, "startRepeat", "(JI)V"), false);
-    CHECK_NULL_RETURN(cancelRepeatMID = (*env)->GetMethodID(env, keyRepeatManagerClass, "cancelRepeat", "()V"), false);
+    CHECK_NULL_RETURN(stopRepeatMID = (*env)->GetMethodID(env, keyRepeatManagerClass, "stopRepeat", "(I)V"), false);
     return true;
 }
 
@@ -1336,7 +1336,7 @@ handleKey(long timestamp, uint32_t keycode, bool isPressed, bool isRepeat) {
             JNU_CHECK_EXCEPTION(env);
         }
     } else if (keyRepeats) {
-        (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, cancelRepeatMID);
+        (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, stopRepeatMID, keycode);
         JNU_CHECK_EXCEPTION(env);
     }
 }
