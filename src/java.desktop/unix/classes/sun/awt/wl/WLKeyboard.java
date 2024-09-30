@@ -41,6 +41,7 @@ class WLKeyboard {
         // Methods and fields should only be accessed from the EDT
         private final Timer timer = new Timer("WLKeyboard.KeyRepeatManager", true);
         private TimerTask currentRepeatTask;
+        private int currentRepeatKeycode;
         private int delayBeforeRepeatMillis;
         private int delayBetweenRepeatMillis;
 
@@ -62,12 +63,20 @@ class WLKeyboard {
             return this.delayBeforeRepeatMillis > 0 || this.delayBetweenRepeatMillis > 0;
         }
 
-        // called from native code
         void cancelRepeat() {
             assert EventQueue.isDispatchThread();
             if (currentRepeatTask != null) {
                 currentRepeatTask.cancel();
                 currentRepeatTask = null;
+                currentRepeatKeycode = 0;
+            }
+        }
+
+        // called from native code
+        void stopRepeat(int keycode) {
+            assert EventQueue.isDispatchThread();
+            if (currentRepeatKeycode == keycode) {
+                cancelRepeat();
             }
         }
 
@@ -78,6 +87,8 @@ class WLKeyboard {
             if (keycode == 0 || !isRepeatEnabled()) {
                 return;
             }
+
+            currentRepeatKeycode = keycode;
 
             long delta = timestamp - System.currentTimeMillis();
 
