@@ -457,13 +457,14 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             return readBytes0(b, off, len);
         } else {
             getChannel();
-            return readBytesFromChannel(b, off, len);
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+                return channel.read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes0(b, off, len);
+            }
         }
-    }
-
-    private int readBytesFromChannel(byte b[], int off, int len) throws IOException {
-        final ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-        return channel.read(buffer);
     }
 
     private native int readBytes0(byte[] b, int off, int len) throws IOException;
@@ -517,9 +518,13 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             return readBytes(b, off, len);
         } else {
             getChannel();
-            ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-            int nRead = channel.read(buffer);
-            return nRead;
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+                return channel.read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes(b, off, len);
+            }
         }
     }
 
@@ -547,9 +552,13 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             return readBytes(b, 0, b.length);
         } else {
             getChannel();
-            ByteBuffer buffer = ByteBuffer.wrap(b);
-            int nRead = channel.read(buffer);
-            return nRead;
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b);
+                return channel.read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes(b, 0, b.length);
+            }
         }
     }
 
@@ -708,7 +717,13 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 writeBytes0(b, off, len);
             } else {
                 getChannel();
-                writeBytesToChannel(b, off, len);
+                try {
+                    ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+                    channel.write(buffer);
+                } catch (OutOfMemoryError e) {
+                    // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                    writeBytes0(b, off, len);
+                }
             }
         } finally {
             Blocker.end(attempted);
@@ -732,11 +747,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
 
     private native void writeBytes0(byte[] b, int off, int len) throws IOException;
 
-    private void writeBytesToChannel(byte b[], int off, int len) throws IOException {
-        final ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-        channel.write(buffer);
-    }
-
     /**
      * Writes {@code b.length} bytes from the specified byte array
      * to this file, starting at the current file pointer.
@@ -744,7 +754,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @param      b   the data.
      * @throws     IOException  if an I/O error occurs.
      */
-    public void write(byte b[]) throws IOException {
+    public void write(byte[] b) throws IOException {
         writeBytes(b, 0, b.length);
     }
 
@@ -855,8 +865,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @since      1.2
      */
     public void setLength(long newLength) throws IOException {
-            setLength0(newLength);
-
+        setLength0(newLength);
     }
 
     private native void setLength0(long newLength) throws IOException;

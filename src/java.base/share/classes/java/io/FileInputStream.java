@@ -331,9 +331,13 @@ public class FileInputStream extends InputStream
             return readBytes(b, 0, b.length);
         } else {
             getChannel();
-            final ByteBuffer buffer = ByteBuffer.wrap(b);
-            final int nRead = channel.read(buffer);
-            return nRead;
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b);
+                return channel.read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes(b, 0, b.length);
+            }
         }
     }
 
@@ -364,8 +368,13 @@ public class FileInputStream extends InputStream
             return readBytes(b, off, len);
         } else {
             getChannel();
-            ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-            return channel.read(buffer);
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+                return channel.read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes(b, off, len);
+            }
         }
     }
 
@@ -476,12 +485,17 @@ public class FileInputStream extends InputStream
     }
 
     private long length() throws IOException {
+        return length0();
+        // NB: FileChannel.size() cannot handle pipes, so the following implementation
+        // is not used
+        /*
         if (fd != null) {
             return length0();
         } else {
             getChannel();
             return channel.size();
         }
+         */
     }
     private native long length0() throws IOException;
 
