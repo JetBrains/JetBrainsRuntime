@@ -1,3 +1,4 @@
+java/awt/Choice/ChoiceHandleMouseEvent.java
 java/awt/Choice/ChoiceHandleMouseEvent_2.java JBR-7174 windows-all
 java/awt/Graphics/XORPaint.java#id0 JBR-7499 windows-x64
 java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java   nobug macosx-all,linux-all,windows-all
@@ -122,9 +123,11 @@ javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-5397 macosx-all
 java/awt/Button/DoubleActionEventTest.java JBR-6949 windows-x64
 java/awt/Choice/ChoiceConsumeMouseEvents.java JBR-6951 windows-x64
 java/awt/Choice/ChoiceFreezeTest.java JBR-6952 windows-x64
+java/awt/Choice/ChoiceMouseEventOutbounds.java TBD windows-x64
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857,JBR-5505 macosx-all,windows-all
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5510,8310487,JBR-6950 linux-5.18.2-arch1-1,linux-all,windows-x64
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java JBR-5510,JBR-5905 linux-5.18.2-arch1-1,linux-all,windows-x64
+java/awt/Component/NativeInLightShow/NativeInLightShow.java JBR-7715 window-x64
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-x64
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490,JBR-5505 windows-all,linux-all
 java/awt/dnd/DropActionChangedTest.java JBR-6757 windows-x64
@@ -140,6 +143,7 @@ java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-5505 wi
 java/awt/hidpi/DrawOnFrameGraphicsTest.java JBR-5505 windows-all
 java/awt/im/4959409/bug4959409.java JBR-5505 windows-all
 java/awt/im/memoryleak/InputContextMemoryLeakTest.java JBR-5505 windows-all
+java/awt/image/VolatileImage/DrawBufImgOp.java
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-5505 windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711,JBR-5505 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5510,JBR-5505 macosx-all,linux-5.18.2-arch1-1,windows-all
