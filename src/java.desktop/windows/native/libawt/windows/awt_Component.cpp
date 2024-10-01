@@ -1493,7 +1493,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
               windowMoveLockHeld = FALSE;
               windowMoveLock.Leave();
           }
-          mr = WmWindowPosChanged(lParam);
+          mr = mrConsume;
           break;
       }
       case WM_MOVE: {
