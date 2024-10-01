@@ -32,6 +32,7 @@
 #import "LWCToolkit.h"
 
 @class AWTView;
+@class AWTWindowZoomButtonMouseResponder;
 
 @interface AWTWindow : NSObject <NSWindowDelegate> {
 @private
@@ -78,6 +79,7 @@
 @property (nonatomic, retain) NSLayoutConstraint *customTitleBarHeightConstraint;
 @property (nonatomic, retain) NSMutableArray *customTitleBarButtonCenterXConstraints;
 @property (nonatomic) BOOL hideTabController;
+@property (nonatomic, retain) AWTWindowZoomButtonMouseResponder* zoomButtonMouseResponder;
 
 - (id) initWithPlatformWindow:(jobject)javaPlatformWindow
                   ownerWindow:owner
@@ -127,8 +129,14 @@
              NSColor* _color;
 }
 
+
 - (void)configureColors;
 
 @end
+
+@interface AWTWindowZoomButtonMouseResponder : NSResponder
+- (id) initWithWindow:(NSWindow*)window;
+@end
+
 
 #endif _AWTWINDOW_H
