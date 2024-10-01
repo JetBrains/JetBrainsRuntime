@@ -82,6 +82,7 @@ BOOL isColorMatchingEnabled() {
 @interface NSWindow (Private)
 - (void)_setTabBarAccessoryViewController:(id)controller;
 - (void)setIgnoreMove:(BOOL)value;
+- (BOOL)isIgnoreMove;
 - (void)_adjustWindowToScreen;
 @end
 
@@ -401,6 +402,10 @@ AWT_NS_WINDOW_IMPLEMENTATION
 - (void)setIgnoreMove:(BOOL)value {
     _ignoreMove = value;
     self.movable = !value;
+}
+
+- (BOOL)isIgnoreMove {
+    return _ignoreMove;
 }
 
 - (void)_adjustWindowToScreen {
@@ -808,6 +813,7 @@ AWT_ASSERT_APPKIT_THREAD;
     self.customTitleBarConstraints = nil;
     self.customTitleBarHeightConstraint = nil;
     self.customTitleBarButtonCenterXConstraints = nil;
+    self.zoomButtonMouseResponder = nil;
     [super dealloc];
 }
 
@@ -1661,6 +1667,9 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     ]];
 
     [self.nsWindow setIgnoreMove:YES];
+
+    self.zoomButtonMouseResponder = [[AWTWindowZoomButtonMouseResponder alloc] initWithWindow:self.nsWindow];
+    [self.zoomButtonMouseResponder release]; // property retains the object
     
     AWTWindowDragView* windowDragView = [[AWTWindowDragView alloc] initWithPlatformWindow:self.javaPlatformWindow];
     [titlebar addSubview:windowDragView positioned:NSWindowBelow relativeTo:closeButtonView];
@@ -1907,6 +1916,62 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 }
 
 @end // AWTWindow
+
+@implementation AWTWindowZoomButtonMouseResponder {
+    NSWindow* _window;
+    NSTrackingArea* _trackingArea;
+}
+
+- (id) initWithWindow:(NSWindow*)window {
+    self = [super init];
+    if (self == nil) {
+        return nil;
+    }
+
+    if (![window isKindOfClass: [AWTWindow_Normal class]]) {
+        [self release];
+        return nil;
+    }
+
+    NSView* zoomButtonView = [window standardWindowButton:NSWindowZoomButton];
+    if (zoomButtonView == nil) {
+        [self release];
+        return nil;
+    }
+
+    _window = [window retain];
+    _trackingArea = [[NSTrackingArea alloc]
+                    initWithRect:zoomButtonView.bounds
+                         options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow
+                           owner:self
+                        userInfo:nil
+                    ];
+    [zoomButtonView addTrackingArea:_trackingArea];
+
+    return self;
+}
+
+- (void)mouseEntered:(NSEvent*)event {
+    if ([_window isIgnoreMove]) {
+        // Enable moving the window while we're mousing over the "maximize" button so that
+        // macOS 15 window tiling actions can properly appear
+        _window.movable = YES;
+    }
+}
+
+- (void)mouseExited:(NSEvent*)event {
+    if ([_window isIgnoreMove]) {
+        _window.movable = NO;
+    }
+}
+
+- (void)dealloc {
+    [_window release];
+    [_trackingArea release];
+    [super dealloc];
+}
+
+@end
 
 @implementation AWTWindowDragView {
     BOOL _dragging;
