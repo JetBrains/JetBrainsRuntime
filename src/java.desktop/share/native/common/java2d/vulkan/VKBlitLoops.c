@@ -105,9 +105,11 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
 
     const char *raster = srcInfo->rasBase;
     raster += (uint32_t)srcInfo->bounds.y1 * (uint32_t)srcInfo->scanStride + (uint32_t)srcInfo->bounds.x1 * (uint32_t)srcInfo->pixelStride;
-    VKImage *image = VKImage_Create(device, sw, sh, surface->image->format, VK_IMAGE_TILING_LINEAR,
-                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+//  Direct allocation for debug purpose
+//  VKImage *image = VKImage_Create(device, sw, sh, surface->image->format, VK_IMAGE_TILING_LINEAR,
+//                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+//                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    VKTexturePoolHandle* hnd = VKTexturePool_GetTexture(device->texturePool, sw, sh, surface->image->format);
     J2dTraceLn4(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
                 dw, dh, dx1, dy1);
     uint32_t dataSize = sw * sh * srcInfo->pixelStride;
@@ -119,8 +121,11 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
     }
     VKBuffer *buffer = VKBuffer_CreateFromData(device, data, dataSize);
     free(data);
-    VKImage_LoadBuffer(context, image, buffer, dx1, dy1, sw, sh);
-    VKRenderer_TextureRender(context, dest, image, renderVertexBuffer->handle, 4);
+//  VKImage_LoadBuffer(context, img, buffer, dx1, dy1, sw, sh);
+    VKImage_LoadBuffer(context, VKTexturePoolHandle_GetTexture(hnd), buffer, dx1, dy1, sw, sh);
+//  VKRenderer_TextureRender(context, dest, img, renderVertexBuffer->handle, 4);
+    VKRenderer_TextureRender(context, dest, VKTexturePoolHandle_GetTexture(hnd), renderVertexBuffer->handle, 4);
+    VKTexturePoolHandle_ReleaseTexture(hnd);
 }
 
 
