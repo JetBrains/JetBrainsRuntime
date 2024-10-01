@@ -1125,7 +1125,6 @@ public final class Main {
             }
         }
 
-        KeyStore cakstore = buildTrustedCerts();
         // -trustcacerts can be specified on -importcert, -printcert or -printcrl.
         // Reset it so that warnings on CA cert will remain for other command.
         if (command != IMPORTCERT && command != PRINTCERT
@@ -1134,6 +1133,7 @@ public final class Main {
         }
 
         if (trustcacerts) {
+            KeyStore cakstore = buildTrustedCerts();
             if (cakstore != null) {
                 caks = cakstore;
             } else {
