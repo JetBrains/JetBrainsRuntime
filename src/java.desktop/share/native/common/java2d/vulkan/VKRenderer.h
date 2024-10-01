@@ -34,6 +34,7 @@
 struct VKRenderingContext {
     VKSDOps* surface;
     Color color;
+    VKTransform transform;
 };
 
 /**

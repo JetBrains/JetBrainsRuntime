@@ -93,7 +93,9 @@
 
 // Rendering context is only accessed from VKRenderQueue_flushBuffer,
 // which is only called from queue flusher thread, no need for synchronization.
-static VKRenderingContext context = {};
+static VKRenderingContext context = {
+        NULL, {},
+        {1.0, 0.0, 0.0,0.0, 1.0, 0.0}};
 
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
     (JNIEnv *env, jobject oglrq, jlong buf, jint limit)
@@ -455,12 +457,12 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     "                                         | %.2f %.2f %.2f |", m10, m11, m12);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "                                         | 0.00 0.00 1.00 |");
-                //currentDevice->renderState.m00 = m00;
-                //currentDevice->renderState.m01 = m01;
-                //currentDevice->renderState.m10 = m10;
-                //currentDevice->renderState.m11 = m11;
-                //currentDevice->renderState.m02 = m02;
-                //currentDevice->renderState.m12 = m12;
+                context.transform.m00 = m00;
+                context.transform.m10 = m10;
+                context.transform.m01 = m01;
+                context.transform.m11 = m11;
+                context.transform.m02 = m02;
+                context.transform.m12 = m12;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_RESET_TRANSFORM:

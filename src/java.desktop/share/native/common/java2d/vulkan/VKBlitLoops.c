@@ -52,11 +52,24 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
         J2dTraceLn4(J2D_TRACE_ERROR, "replaceTextureRegion: dest size: (%d, %d) less than source size: (%d, %d)", dw, dh, sw, sh);
         return;
     }
-    float width = dest->extent.width/2.0;
-    float height = dest->extent.height/2.0;
+    double width = dest->extent.width/2.0;
+    double height = dest->extent.height/2.0;
     J2dRlsTraceLn2(J2D_TRACE_VERBOSE,
                    "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(W=%f, H=%f)",
                    width, height);
+
+    double p1ux = dx1;
+    double p1uy = dy1;
+    double p2ux = dx2;
+    double p2uy = dy2;
+
+    VKTransform *t = &context->transform;
+
+    double p1tux = t->m00*p1ux + t->m01*p1uy + t->m02;
+    double p1tuy = t->m10*p1ux + t->m11*p1uy + t->m12;
+    double p2tux = t->m00*p2ux + t->m01*p2uy + t->m02;
+    double p2tuy = t->m10*p2ux + t->m11*p2uy + t->m12;
+
     VKTxVertex* vertices = ARRAY_ALLOC(VKTxVertex, 4);
     /*
      *    (p1)---------(p2)
@@ -65,14 +78,14 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
      *     |             |
      *    (p4)---------(p3)
      */
-    float p1x = -1.0f + dx1 / width;
-    float p1y = -1.0f + dy1 / height;
-    float p2x = -1.0f + dx2 / width;
-    float p2y = -1.0f + dy1 / height;
-    float p3x = -1.0f + dx2 / width;
-    float p3y = -1.0f + dy2 / height;
-    float p4x = -1.0f + dx1 / width;
-    float p4y = -1.0f + dy2 / height;
+    float p1x = (float)(-1.0 + p1tux / width);
+    float p1y = (float)(-1.0 + p1tuy / height);
+    float p2x = (float)(-1.0 + p2tux / width);
+    float p2y = p1y;
+    float p3x = p2x;
+    float p3y = (float)(-1.0 + p2tuy / height);
+    float p4x = p1x;
+    float p4y = p3y;
 
 
     ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p1x, p1y, 0.0f, 0.0f}));
@@ -80,20 +93,22 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
     ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p4x, p4y, 0.0f, 1.0f}));
     ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p3x, p3y, 1.0f, 1.0f}));
 
-    VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(context->surface->device, vertices);
-    ARRAY_FREE(vertices);
     VKSDOps* surface = context->surface;
+    VKDevice* device = surface->device;
+    VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
+    ARRAY_FREE(vertices);
+
     if (!VKRenderer_Validate(context, PIPELINE_BLIT)) {
         J2dRlsTrace(J2D_TRACE_ERROR, "replaceTextureRegion: cannot validate renderer");
         return;
     }
     const char *raster = srcInfo->rasBase;
     raster += (uint32_t)srcInfo->bounds.y1 * (uint32_t)srcInfo->scanStride + (uint32_t)srcInfo->bounds.x1 * (uint32_t)srcInfo->pixelStride;
-    VKImage *image = VKImage_Create(context->surface->device, sw, sh, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR,
+    VKImage *image = VKImage_Create(device, sw, sh, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR,
                                   VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        J2dTraceLn4(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
-                    dw, dh, dx1, dy1);
+    J2dTraceLn4(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
+                dw, dh, dx1, dy1);
     uint32_t dataSize = sw * sh * srcInfo->pixelStride;
     char* data = malloc(dataSize);
     // copy src pixels inside src bounds to buff
@@ -101,8 +116,8 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
         memcpy(data + (row * sw * srcInfo->pixelStride), raster, sw * srcInfo->pixelStride);
         raster += (uint32_t)srcInfo->scanStride;
     }
-    VKBuffer *buffer = VKBuffer_CreateFromData(context->surface->device, data, dataSize);
-    //free(data);
+    VKBuffer *buffer = VKBuffer_CreateFromData(device, data, dataSize);
+    free(data);
     VKImage_LoadBuffer(context, image, buffer, dx1, dy1, sw, sh);
     VKRenderer_TextureRender(context, dest, image, renderVertexBuffer->handle, 4);
 }
@@ -146,7 +161,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
 
     VKImage *dest = dstOps->image;
     if (dest == NULL) {
-        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: dest is null");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_Blit: dest is null")
         return;
     }
 //    if (srctype < 0 || srctype >= sizeof(RasterFormatInfos)/ sizeof(MTLRasterFormatInfo)) {
@@ -179,7 +194,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
 
     // NOTE: This function will modify the contents of the bounds field to represent the maximum available raster data.
     if (srcOps->Lock(env, srcOps, &srcInfo, SD_LOCK_READ) != SD_SUCCESS) {
-        J2dTraceLn(J2D_TRACE_WARNING, "MTLBlitLoops_Blit: could not acquire lock");
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "VKBlitLoops_Blit: could not acquire lock");
         return;
     }
 
