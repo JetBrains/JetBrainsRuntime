@@ -122,10 +122,9 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
     return image;
 }
 
-void VKImage_LoadBuffer(VKRenderingContext* context, VKImage* image, VKBuffer* buffer,
+void VKImage_LoadBuffer(VKDevice* device, VKImage* image, VKBuffer* buffer,
                         uint32_t x0, uint32_t y0, uint32_t width, uint32_t height) {
-    VkCommandBuffer cb = VKRenderer_Record(context->surface->device->renderer);
-    VKDevice *device = context->surface->device;
+    VkCommandBuffer cb = VKRenderer_Record(device->renderer);
     VkBufferImageCopy region = (VkBufferImageCopy){
             .bufferOffset = 0,
             .bufferRowLength = 0,
