@@ -31,12 +31,6 @@
 #import "ThreadUtilities.h"
 
 
-#define USE_LWC_LOG 1
-
-#if USE_LWC_LOG == 1
-    void lwc_plog(JNIEnv* env, const char *formatMsg, ...);
-#endif
-
 /* Returns the MainThread latency threshold in milliseconds
  * used to detect slow operations that may cause high latencies or delays.
  * If <=0, the MainThread monitor is disabled */
@@ -218,7 +212,8 @@ AWT_ASSERT_APPKIT_THREAD;
                 }
                 const double elapsedMs = (CACurrentMediaTime() - start) * 1000.0;
                 if (elapsedMs > mtThreshold) {
-                    lwc_plog([ThreadUtilities getJNIEnv], "performOnMainThread(%s)[time: %.3lf ms]: [%s]", operation, elapsedMs, toCString(caller));
+                    J2DTrace_plog([ThreadUtilities getJNIEnv], "performOnMainThread(%s)[time: %.3lf ms]: [%s]",
+                                  operation, elapsedMs, toCString(caller));
                 }
             }
         });
@@ -268,7 +263,7 @@ JNIEXPORT void JNICALL Java_sun_awt_AWTThreading_notifyEventDispatchThreadStarte
 
 /* PlatformLogger callbacks */
 
-JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
+JNIEXPORT void J2DTrace_plog(JNIEnv* env, const char *formatMsg, ...) {
     if ((env == NULL) || (formatMsg == NULL)) {
         return;
     }
@@ -276,15 +271,15 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
     static jmethodID midWarn = NULL;
 
     if (loggerObject == NULL) {
-        DECLARE_CLASS(lwctClass, "sun/lwawt/macosx/LWCToolkit");
-        jfieldID fieldId = (*env)->GetStaticFieldID(env, lwctClass, "log", "Lsun/util/logging/PlatformLogger;");
+        DECLARE_CLASS(tracerClass, "sun/java2d/Java2DNativeTracer");
+        jfieldID fieldId = (*env)->GetStaticFieldID(env, tracerClass, "log", "Lsun/util/logging/PlatformLogger;");
         CHECK_NULL(fieldId);
-        loggerObject = (*env)->GetStaticObjectField(env, lwctClass, fieldId);
+        loggerObject = (*env)->GetStaticObjectField(env, tracerClass, fieldId);
         CHECK_NULL(loggerObject);
         loggerObject = (*env)->NewGlobalRef(env, loggerObject);
         jclass clazz = (*env)->GetObjectClass(env, loggerObject);
         if (clazz == NULL) {
-            NSLog(@"lwc_plog: can't find PlatformLogger class");
+            NSLog(@"J2DTrace_plog: can't find PlatformLogger class");
             return;
         }
         GET_METHOD(midWarn, clazz, "warning", "(Ljava/lang/String;)V");
@@ -301,15 +296,23 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 #pragma clang diagnostic pop
         va_end(args);
 
+        BOOL fallback = YES;
         const jstring javaString = (*env)->NewStringUTF(env, buf);
-        if ((*env)->ExceptionCheck(env)) {
-            // fallback:
-            NSLog(@"%s\n", buf); \
-        } else {
-            JNU_CHECK_EXCEPTION(env);
+
+        if (!(*env)->ExceptionCheck(env)) {
             (*env)->CallVoidMethod(env, loggerObject, midWarn, javaString);
-            CHECK_EXCEPTION();
-            return;
+
+            if ((*env)->ExceptionCheck(env)) {
+                NSLog(@"PlatformLogger callback failed:\n");
+                (*(env))->ExceptionDescribe(env);
+                NSLog(@"PlatformLogger callstack: %@\n", [NSThread callStackSymbols]);
+                (*(env))->ExceptionClear(env);
+            } else {
+                fallback = NO;
+            }
+        }
+        if (fallback) {
+            NSLog(@"J2DTrace_plog: %s\n", buf);
         }
         (*env)->DeleteLocalRef(env, javaString);
     }

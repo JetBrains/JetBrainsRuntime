@@ -112,7 +112,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     NSLock* _lock;
 }
 
-- (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled
+- (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled env:(JNIEnv*)env
 {
     AWT_ASSERT_APPKIT_THREAD;
     // Initialize ourselves
@@ -157,6 +157,10 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     self.perfCountersEnabled = perfCountersEnabled ? YES : NO;
     self.lastPresentedTime = 0.0;
     _lock = [[NSLock alloc] init];
+
+    J2DTrace_plog(env, "MTLLayer.initWithJavaLayer: created layer[%p] on MTLDevice[%s] from MTLContext[%p]",
+                  self, [self.device.name UTF8String], self.ctx);
+
     return self;
 }
 
@@ -356,9 +360,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
 - (void) dealloc {
     if (TRACE_DISPLAY) {
-        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLLayer.dealloc: layer[%p]", self);
+        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLLayer.dealloc: free layer[%p]", self);
     }
-    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    const JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    J2DTrace_plog(env, "MTLLayer.dealloc: layer[%p] on MTLDevice[%s] from MTLContext[%p]",
+                  [self.device.name UTF8String], self.ctx);
+
     (*env)->DeleteWeakGlobalRef(env, self.javaLayer);
     self.javaLayer = nil;
     [self stopRedraw:YES];
@@ -530,9 +537,9 @@ JNI_COCOA_ENTER(env);
 
     // Wait and ensure main thread creates the MTLLayer instance now:
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
-            AWT_ASSERT_APPKIT_THREAD;
-
-            layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer usePerfCounters: perfCountersEnabled];
+        AWT_ASSERT_APPKIT_THREAD;
+        JNIEnv* envMain = [ThreadUtilities getJNIEnv];
+        layer = [[MTLLayer alloc] initWithJavaLayer:javaLayer usePerfCounters:perfCountersEnabled env:envMain];
     }];
     if (TRACE_DISPLAY) {
         J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLLayer_nativeCreateLayer: created layer[%p]", layer);
@@ -566,6 +573,12 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.drawableSize =
             CGSizeMake((*layer.buffer).width,
                        (*layer.buffer).height);
+
+        J2DTrace_plog(env,
+                      "MTLLayer_validate: layer[%p] (bmtlsdo=%p, tex=%p, sfType=%s) on MTLDevice[%s] from MTLContext[%p]",
+                      layer, bmtlsdo, (bmtlsdo)->pTexture, mtlDstTypeToStr(DST_TYPE(bmtlsdo)),
+                      [layer.device.name UTF8String], layer.ctx);
+
         if (isDisplaySyncEnabled()) {
             [layer startRedraw];
         } else {

@@ -149,7 +149,7 @@ __attribute__((visibility("default")))
 
 JNIEXPORT void OSXAPP_SetJavaVM(JavaVM *vm);
 
-/** LWCToolkit's PlatformLogger.info() wrapper */
-JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...);
+/** Java2DNativeTracer's PlatformLogger wrapper */
+JNIEXPORT void J2DTrace_plog(JNIEnv* env, const char *formatMsg, ...);
 
 #endif /* __THREADUTILITIES_H */

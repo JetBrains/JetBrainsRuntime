@@ -34,7 +34,7 @@
  * MTLGraphicsConfigInfo (including its native MTLContext data).
  */
 void
-MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
+MTLGC_DestroyMTLGraphicsConfig(JNIEnv* env, jlong pConfigInfo)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLGC_DestroyMTLGraphicsConfig");
     JNI_COCOA_ENTER(env);
@@ -48,6 +48,10 @@ MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
     mtlinfo->context = nil;
     [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
         if (mtlc != NULL) {
+            JNIEnv* envMain = [ThreadUtilities getJNIEnv];
+            J2DTrace_plog(envMain, "MTLGC_getMTLConfigInfo: free configInfo=%p on context[%p] on MTLDevice[%s]",
+                          mtlinfo, mtlc, [mtlc.device.name UTF8String]);
+
             [MTLContext releaseContext:mtlc];
         }
         free(mtlinfo);
@@ -75,9 +79,9 @@ JNI_COCOA_ENTER(env);
     __block NSString* path = NormalizedPathNSStringFromJavaString(env, mtlShadersLib);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
-
+        JNIEnv* envMain = [ThreadUtilities getJNIEnv];
         MTLContext* mtlc = [MTLContext createContextWithDeviceIfAbsent:displayID
-                                       shadersLib:path];
+                                       shadersLib:path env:envMain];
         if (mtlc != 0L) {
             // create the MTLGraphicsConfigInfo record for this context
             mtlinfo = (MTLGraphicsConfigInfo *)malloc(sizeof(MTLGraphicsConfigInfo));
@@ -85,13 +89,16 @@ JNI_COCOA_ENTER(env);
                 memset(mtlinfo, 0, sizeof(MTLGraphicsConfigInfo));
                 mtlinfo->context = mtlc;
                 mtlinfo->displayID = displayID;
+
+                J2DTrace_plog(envMain, "MTLGC_getMTLConfigInfo: created configInfo=%p on context[%p] on MTLDevice[%s]",
+                              mtlinfo, mtlc, [mtlc.device.name UTF8String]);
             } else {
-                J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGraphicsConfig_getMTLConfigInfo: could not allocate memory for mtlinfo");
+                J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGC_getMTLConfigInfo: could not allocate memory for mtlinfo");
                 [mtlc release];
                 mtlc = nil;
             }
         } else {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGraphicsConfig_getMTLConfigInfo: could not initialize MTLContext.");
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGC_getMTLConfigInfo: could not initialize MTLContext.");
         }
     }];
 
@@ -104,7 +111,7 @@ JNIEXPORT jint JNICALL
 Java_sun_java2d_metal_MTLGraphicsConfig_nativeGetMaxTextureSize
     (JNIEnv *env, jclass mtlgc)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "MTLGraphicsConfig_nativeGetMaxTextureSize");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLGC_nativeGetMaxTextureSize");
 
     return (jint)MTL_GPU_FAMILY_MAC_TXT_SIZE;
 }

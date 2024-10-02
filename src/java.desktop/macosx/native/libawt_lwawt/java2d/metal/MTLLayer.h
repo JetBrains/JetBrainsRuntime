@@ -45,7 +45,7 @@
 @property (readwrite, atomic) BOOL perfCountersEnabled;
 @property (readwrite, atomic) CFTimeInterval lastPresentedTime;
 
-- (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled;
+- (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled env:(JNIEnv*)env;
 
 - (void) blitTexture;
 - (void) fillParallelogramCtxX:(jfloat)x
