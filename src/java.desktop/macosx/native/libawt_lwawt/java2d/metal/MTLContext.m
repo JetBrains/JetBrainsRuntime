@@ -174,7 +174,7 @@ extern void initSamplers(id<MTLDevice> device);
     return _contextStore;
 }
 
-+ (MTLContext*) createContextWithDeviceIfAbsent:(jint)displayID shadersLib:(NSString*)mtlShadersLib {
++ (MTLContext*) createContextWithDeviceIfAbsent:(jint)displayID shadersLib:(NSString*)mtlShadersLib env:(JNIEnv*)env {
     // Initialization code here.
     id<MTLDevice> device = CGDirectDisplayCopyCurrentMetalDevice(displayID);
     if (device == nil) {
@@ -202,7 +202,7 @@ extern void initSamplers(id<MTLDevice> device);
 
     MTLContext* mtlc = MTLContext.contextStore[devID];
     if (mtlc == nil) {
-        mtlc = [[MTLContext alloc] initWithDevice:device display:displayID shadersLib:mtlShadersLib];
+        mtlc = [[MTLContext alloc] initWithDevice:device display:displayID shadersLib:mtlShadersLib env:env];
         if (mtlc != nil) {
             MTLContext.contextStore[devID] = mtlc;
             [mtlc release];
@@ -246,7 +246,7 @@ extern void initSamplers(id<MTLDevice> device);
     }
 }
 
-- (id)initWithDevice:(id<MTLDevice>)mtlDevice display:(jint) displayID shadersLib:(NSString*)mtlShadersLib {
+- (id)initWithDevice:(id<MTLDevice>)mtlDevice display:(jint) displayID shadersLib:(NSString*)mtlShadersLib env:(JNIEnv*)env {
     self = [super init];
     if (self) {
         device = mtlDevice;
@@ -288,6 +288,9 @@ extern void initSamplers(id<MTLDevice> device);
         }
         _glyphCacheLCD = [[MTLGlyphCache alloc] initWithContext:self];
         _glyphCacheAA = [[MTLGlyphCache alloc] initWithContext:self];
+
+        J2DTrace_plog(env, "MTLContext.initWithDevice: created context[%p] on MTLDevice[%s]",
+                      self, [device.name UTF8String]);
     }
     return self;
 }
@@ -355,6 +358,10 @@ extern void initSamplers(id<MTLDevice> device);
 
 - (void)dealloc {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.dealloc");
+
+    const JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    J2DTrace_plog(env, "MTLContext.dealloc: free context[%p] on MTLDevice[%s]",
+                  self, [device.name UTF8String]);
 
     if (_displayLinks != nil) {
         [self haltRedraw];
@@ -451,7 +458,9 @@ extern void initSamplers(id<MTLDevice> device);
         return NULL;
     }
 
-    J2dTraceLn6(J2D_TRACE_VERBOSE, "MTLContext_SetSurfaces: bsrc=%p (tex=%p type=%d), bdst=%p (tex=%p type=%d)", srcOps, srcOps->pTexture, srcOps->drawableType, dstOps, dstOps->pTexture, dstOps->drawableType);
+    J2dTraceLn6(J2D_TRACE_VERBOSE, "MTLContext_SetSurfaces: bsrc=%p (tex=%p type=%d), bdst=%p (tex=%p type=%d)",
+                srcOps, srcOps->pTexture, srcOps->drawableType,
+                dstOps, dstOps->pTexture, dstOps->drawableType);
 
     if (dstOps->drawableType == MTLSD_TEXTURE) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
@@ -472,6 +481,14 @@ extern void initSamplers(id<MTLDevice> device);
     MTLSDOps *dstMTLOps = (MTLSDOps *)dstOps->privOps;
     mtlc = dstMTLOps->configInfo->context;
 
+    if (0) {
+        J2DTrace_plog(env,
+                      "MTLContext_setSurfacesEnv: SRC (bmtlsdo=%p, tex=%p, sfType=%s) to DST (bmtlsdo=%p, tex=%p, sfType=%s)"
+                      " on MTLDevice[%s] from MTLContext[%p]",
+                      srcOps, srcOps->pTexture, mtlDstTypeToStr(DST_TYPE(srcOps)),
+                      dstOps, dstOps->pTexture, mtlDstTypeToStr(DST_TYPE(dstOps)),
+                      [mtlc.device.name UTF8String], mtlc);
+    }
     if (mtlc == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
                       "MTLContext_SetSurfaces: could not make context current");

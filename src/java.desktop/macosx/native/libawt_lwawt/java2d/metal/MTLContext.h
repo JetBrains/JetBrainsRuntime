@@ -110,8 +110,8 @@
 + (MTLContext*) setSurfacesEnv:(JNIEnv*)env src:(jlong)pSrc dst:(jlong)pDst;
 
 + (NSMutableDictionary*) contextStore;
-+ (MTLContext*) createContextWithDeviceIfAbsent:(jint)displayID shadersLib:(NSString*)mtlShadersLib;
-- (id)initWithDevice:(id<MTLDevice>)device display:(jint) displayID shadersLib:(NSString*)mtlShadersLib;
++ (MTLContext*) createContextWithDeviceIfAbsent:(jint)displayID shadersLib:(NSString*)mtlShadersLib env:(JNIEnv*)env;
+- (id)initWithDevice:(id<MTLDevice>)device display:(jint) displayID shadersLib:(NSString*)mtlShadersLib env:(JNIEnv*)env;
 - (void)dealloc;
 
 - (void)handleDisplayLink:(BOOL)enabled display:(jint)display source:(const char*)src;

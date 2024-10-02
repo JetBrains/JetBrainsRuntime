@@ -49,7 +49,7 @@ static BMTLSDOps *dstOps = NULL;
 jint mtlPreviousOp = MTL_OP_INIT;
 
 extern BOOL isDisplaySyncEnabled();
-extern void MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo);
+extern void MTLGC_DestroyMTLGraphicsConfig(JNIEnv* env, jlong pConfigInfo);
 
 static const char* mtlOpCodeToStr(uint opcode);
 static const char* mtlOpToStr(uint op);
@@ -72,13 +72,13 @@ static const char* mtlOpToStr(uint op);
  */
 #define RENDER_LOOP_EXIT(env, className)                                                \
     @catch (NSException *e) {                                                           \
-        lwc_plog(env, "%s_flushBuffer: Failed opcode=%s op=%s dstType=%s ctx=%p",       \
+        J2DTrace_plog(env, "%s_flushBuffer: Failed opcode=%s op=%s dstType=%s ctx=%p",  \
             className, mtlOpCodeToStr(opcode), mtlOpToStr(mtlPreviousOp),               \
             mtlDstTypeToStr(DST_TYPE(dstOps)), mtlc);                                   \
-        char* str = [NSString stringWithFormat:@"%@", [e description]].UTF8String;  \
-        lwc_plog(env, "%s_flushBuffer Exception: %s", className, str);                  \
+        char* str = [NSString stringWithFormat:@"%@", [e description]].UTF8String;      \
+        J2DTrace_plog(env, "%s_flushBuffer Exception: %s", className, str);             \
         str = [NSString stringWithFormat:@"%@", [e callStackSymbols]].UTF8String;       \
-        lwc_plog(env, "%s_flushBuffer callstack: %s", className, str);                  \
+        J2DTrace_plog(env, "%s_flushBuffer callstack: %s", className, str);             \
         /* Finally (JetBrains Runtime only) report this message to JVM crash log: */    \
         JNU_LOG_EVENT(env, "%s_flushBuffer: Failed opcode=%s op=%s dstType=%s ctx=%p",  \
             className, mtlOpCodeToStr(opcode), mtlOpToStr(mtlPreviousOp),               \
@@ -185,6 +185,15 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     "MTLRenderQueue_flushBuffer: opcode=%d, rem=%d",
                     opcode, (end-b));
             if (TRACE_OP) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLRenderQueue_flushBuffer: opcode=%s", mtlOpCodeToStr(opcode));
+
+            // Java2D  traceability:
+            if ((opcode > sun_java2d_pipe_BufferedOpCodes_SET_SURFACES)
+                    && (opcode < sun_java2d_pipe_BufferedOpCodes_NOOP))
+            {
+                // log context-related ops:
+                J2DTrace_plog(env, "MTLRenderQueue_flushBuffer: opcode=%s on context[%p] on MTLDevice[%s]",
+                              mtlOpCodeToStr(opcode), mtlc, [mtlc.device.name UTF8String]);
+            }
 
             switch (opcode) {
 
@@ -721,7 +730,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     [mtlc.glyphCacheAA free];
                     [mtlc.glyphCacheLCD free];
                     [mtlc commitCommandBuffer:YES display:NO];
-                    MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
+                    MTLGC_DestroyMTLGraphicsConfig(env, pConfigInfo);
                     mtlc = NULL;
                     break;
                 }
