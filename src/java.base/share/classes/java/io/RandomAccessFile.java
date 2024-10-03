@@ -36,6 +36,7 @@ import jdk.internal.util.ByteArray;
 import jdk.internal.event.FileReadEvent;
 import jdk.internal.event.FileWriteEvent;
 import sun.nio.ch.FileChannelImpl;
+import sun.security.action.GetPropertyAction;
 
 
 /**
@@ -71,6 +72,8 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     private static final int O_SYNC =   4;
     private static final int O_DSYNC =  8;
     private static final int O_TEMPORARY =  16;
+
+    private static final boolean useNIO = GetPropertyAction.privilegedGetBooleanProp("jbr.java.io.use.nio", true, null);
 
     /**
      * Flag set by jdk.internal.event.JFRTracing to indicate if
@@ -402,7 +405,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     }
 
     private int implRead() throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             return read0();
         } else {
             getChannel();
@@ -453,7 +456,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     }
 
     private int implReadBytes(byte[] b, int off, int len) throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             return readBytes0(b, off, len);
         } else {
             getChannel();
@@ -514,7 +517,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      *             {@code b.length - off}
      */
     public int read(byte[] b, int off, int len) throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             return readBytes(b, off, len);
         } else {
             getChannel();
@@ -548,7 +551,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     NullPointerException If {@code b} is {@code null}.
      */
     public int read(byte[] b) throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             return readBytes(b, 0, b.length);
         } else {
             getChannel();
@@ -663,7 +666,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     private void implWrite(int b) throws IOException {
         boolean attempted = Blocker.begin(sync);
         try {
-            if (!VM.isBooted()) {
+            if (!VM.isBooted() || !useNIO) {
                 write0(b);
             } else {
                 getChannel();
@@ -713,7 +716,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     private void implWriteBytes(byte[] b, int off, int len) throws IOException {
         boolean attempted = Blocker.begin(sync);
         try {
-            if (!VM.isBooted()) {
+            if (!VM.isBooted() || !useNIO) {
                 writeBytes0(b, off, len);
             } else {
                 getChannel();
@@ -782,7 +785,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     IOException  if an I/O error occurs.
      */
     public long getFilePointer() throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             return getFilePointer0();
         } else {
             getChannel();
@@ -810,7 +813,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (pos < 0) {
             throw new IOException("Negative seek offset");
         } else {
-            if (!VM.isBooted()) {
+            if (!VM.isBooted() || !useNIO) {
                 seek0(pos);
             } else {
                 getChannel();
@@ -828,7 +831,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     IOException  if an I/O error occurs.
      */
     public long length() throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             return length0();
         } else {
             getChannel();

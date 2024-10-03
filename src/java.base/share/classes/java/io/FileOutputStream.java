@@ -37,6 +37,7 @@ import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.event.FileWriteEvent;
 import jdk.internal.misc.VM;
 import sun.nio.ch.FileChannelImpl;
+import sun.security.action.GetPropertyAction;
 
 
 /**
@@ -81,6 +82,8 @@ public class FileOutputStream extends OutputStream
      * file writes should be traced by JFR.
      */
     private static boolean jfrTracing;
+
+    private static final boolean useNIO = GetPropertyAction.privilegedGetBooleanProp("jbr.java.io.use.nio", true, null);
 
     /**
      * The system dependent file descriptor.
@@ -357,7 +360,7 @@ public class FileOutputStream extends OutputStream
     }
 
     private void implWrite(int b, boolean append) throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             write(b, append);
         } else {
             // 'append' is ignored; the channel is supposed to obey the mode in which the file was opened
@@ -435,7 +438,7 @@ public class FileOutputStream extends OutputStream
     }
 
     private void implWriteBytes(byte[] b, int off, int len, boolean append) throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             writeBytes(b, off, len, append);
         } else {
             // 'append' is ignored; the channel is supposed to obey the mode in which the file was opened

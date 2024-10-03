@@ -33,6 +33,7 @@ import jdk.internal.misc.VM;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.event.FileReadEvent;
 import sun.nio.ch.FileChannelImpl;
+import sun.security.action.GetPropertyAction;
 
 /**
  * A {@code FileInputStream} obtains input bytes
@@ -68,6 +69,8 @@ public class FileInputStream extends InputStream
      * file reads should be traced by JFR.
      */
     private static boolean jfrTracing;
+
+    private static final boolean useNIO = GetPropertyAction.privilegedGetBooleanProp("jbr.java.io.use.nio", true, null);
 
     /* File Descriptor - handle to the open file */
     private final FileDescriptor fd;
@@ -243,7 +246,7 @@ public class FileInputStream extends InputStream
     }
 
     private int implRead() throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             return read0();
         } else {
             getChannel();
@@ -327,7 +330,7 @@ public class FileInputStream extends InputStream
     }
 
     private int implRead(byte[] b) throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             return readBytes(b, 0, b.length);
         } else {
             getChannel();
@@ -364,7 +367,7 @@ public class FileInputStream extends InputStream
     }
 
     private int implRead(byte[] b, int off, int len) throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             return readBytes(b, off, len);
         } else {
             getChannel();
@@ -485,22 +488,18 @@ public class FileInputStream extends InputStream
     }
 
     private long length() throws IOException {
-        return length0();
-        // NB: FileChannel.size() cannot handle pipes, so the following implementation
-        // is not used
-        /*
-        if (fd != null) {
+        if (fd != null || !useNIO) {
             return length0();
         } else {
             getChannel();
             return channel.size();
         }
-         */
     }
+
     private native long length0() throws IOException;
 
     private long position() throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             return position0();
         } else {
             getChannel();
@@ -535,7 +534,7 @@ public class FileInputStream extends InputStream
      */
     @Override
     public long skip(long n) throws IOException {
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             return skip0(n);
         } else {
             getChannel();
@@ -566,17 +565,12 @@ public class FileInputStream extends InputStream
      */
     @Override
     public int available() throws IOException {
-        return available0();
-        // NB: FileChannel.size() cannot handle pipes, so the following implementation
-        // does not pass tests (java/io/FileOutputStream/UnreferencedFOSClosesFd.java)
-        /*
-        if (!VM.isBooted()) {
+        if (!VM.isBooted() || !useNIO) {
             return available0();
         } else {
             getChannel();
             return (int) (channel.size() - channel.position());
         }
-         */
     }
 
     private native int available0() throws IOException;
