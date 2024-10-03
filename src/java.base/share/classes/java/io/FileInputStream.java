@@ -249,9 +249,8 @@ public class FileInputStream extends InputStream
         if (!VM.isBooted() || !useNIO) {
             return read0();
         } else {
-            getChannel();
             ByteBuffer buffer = ByteBuffer.allocate(1);
-            int nRead = channel.read(buffer);
+            int nRead = getChannel().read(buffer);
             buffer.rewind();
             return nRead == 1 ? (buffer.get() & 0xFF) : -1;
         }
@@ -333,10 +332,9 @@ public class FileInputStream extends InputStream
         if (!VM.isBooted() || !useNIO) {
             return readBytes(b, 0, b.length);
         } else {
-            getChannel();
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b);
-                return channel.read(buffer);
+                return getChannel().read(buffer);
             } catch (OutOfMemoryError e) {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes(b, 0, b.length);
@@ -370,10 +368,9 @@ public class FileInputStream extends InputStream
         if (!VM.isBooted() || !useNIO) {
             return readBytes(b, off, len);
         } else {
-            getChannel();
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                return channel.read(buffer);
+                return getChannel().read(buffer);
             } catch (OutOfMemoryError e) {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes(b, off, len);
@@ -491,8 +488,7 @@ public class FileInputStream extends InputStream
         if (fd != null || !useNIO || path == null) {
             return length0();
         } else {
-            getChannel();
-            return channel.size();
+            return getChannel().size();
         }
     }
 
@@ -502,8 +498,7 @@ public class FileInputStream extends InputStream
         if (!VM.isBooted() || !useNIO) {
             return position0();
         } else {
-            getChannel();
-            return channel.position();
+            return getChannel().position();
         }
     }
     private native long position0() throws IOException;

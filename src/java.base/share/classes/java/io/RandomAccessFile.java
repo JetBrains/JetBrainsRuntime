@@ -408,10 +408,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (!VM.isBooted() || !useNIO) {
             return read0();
         } else {
-            getChannel();
             // Really same to FileInputStream.read()
             ByteBuffer buffer = ByteBuffer.allocate(1);
-            int nRead = channel.read(buffer);
+            int nRead = getChannel().read(buffer);
             buffer.rewind();
             return nRead == 1 ? (buffer.get() & 0xFF) : -1;
         }
@@ -459,10 +458,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (!VM.isBooted() || !useNIO) {
             return readBytes0(b, off, len);
         } else {
-            getChannel();
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                return channel.read(buffer);
+                return getChannel().read(buffer);
             } catch (OutOfMemoryError e) {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes0(b, off, len);
@@ -520,10 +518,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (!VM.isBooted() || !useNIO) {
             return readBytes(b, off, len);
         } else {
-            getChannel();
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                return channel.read(buffer);
+                return getChannel().read(buffer);
             } catch (OutOfMemoryError e) {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes(b, off, len);
@@ -554,10 +551,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (!VM.isBooted() || !useNIO) {
             return readBytes(b, 0, b.length);
         } else {
-            getChannel();
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b);
-                return channel.read(buffer);
+                return getChannel().read(buffer);
             } catch (OutOfMemoryError e) {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes(b, 0, b.length);
@@ -669,11 +665,10 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             if (!VM.isBooted() || !useNIO) {
                 write0(b);
             } else {
-                getChannel();
                 byte[] array = new byte[1];
                 array[0] = (byte) b;
                 ByteBuffer buffer = ByteBuffer.wrap(array);
-                channel.write(buffer);
+                getChannel().write(buffer);
             }
         } finally {
             Blocker.end(attempted);
@@ -719,10 +714,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             if (!VM.isBooted() || !useNIO) {
                 writeBytes0(b, off, len);
             } else {
-                getChannel();
                 try {
                     ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                    channel.write(buffer);
+                    getChannel().write(buffer);
                 } catch (OutOfMemoryError e) {
                     // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                     writeBytes0(b, off, len);
@@ -788,8 +782,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (!VM.isBooted() || !useNIO) {
             return getFilePointer0();
         } else {
-            getChannel();
-            return channel.position();
+            return getChannel().position();
         }
     }
 
@@ -816,8 +809,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             if (!VM.isBooted() || !useNIO) {
                 seek0(pos);
             } else {
-                getChannel();
-                channel.position(pos);
+                getChannel().position(pos);
             }
         }
     }
@@ -834,8 +826,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (!VM.isBooted() || !useNIO) {
             return length0();
         } else {
-            getChannel();
-            return channel.size();
+            return getChannel().size();
         }
     }
 

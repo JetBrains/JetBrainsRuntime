@@ -364,11 +364,10 @@ public class FileOutputStream extends OutputStream
             write(b, append);
         } else {
             // 'append' is ignored; the channel is supposed to obey the mode in which the file was opened
-            getChannel();
             byte[] array = new byte[1];
             array[0] = (byte) b;
             ByteBuffer buffer = ByteBuffer.wrap(array);
-            channel.write(buffer);
+            getChannel().write(buffer);
         }
     }
 
@@ -442,10 +441,9 @@ public class FileOutputStream extends OutputStream
             writeBytes(b, off, len, append);
         } else {
             // 'append' is ignored; the channel is supposed to obey the mode in which the file was opened
-            getChannel();
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                channel.write(buffer);
+                getChannel().write(buffer);
             } catch (OutOfMemoryError e) {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 writeBytes(b, off, len, append);
