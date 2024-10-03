@@ -488,7 +488,7 @@ public class FileInputStream extends InputStream
     }
 
     private long length() throws IOException {
-        if (fd != null || !useNIO) {
+        if (fd != null || !useNIO || path == null) {
             return length0();
         } else {
             getChannel();
@@ -565,11 +565,14 @@ public class FileInputStream extends InputStream
      */
     @Override
     public int available() throws IOException {
-        if (!VM.isBooted() || !useNIO) {
+        if (!VM.isBooted() || !useNIO || path == null) {
             return available0();
         } else {
             getChannel();
-            return (int) (channel.size() - channel.position());
+            long size = channel.size();
+            long pos = channel.position();
+            long avail = size > pos ? (size - pos) : 0;
+            return avail > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)avail;
         }
     }
 
