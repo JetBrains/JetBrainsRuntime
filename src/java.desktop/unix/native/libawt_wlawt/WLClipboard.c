@@ -279,9 +279,9 @@ CleanupClipboard(DataSourcePayload *payload)
         if (payload->content != NULL) (*env)->DeleteGlobalRef(env, payload->content);
         if (payload->source != NULL) {
             if (payload->isPrimary) {
-                wl_data_source_destroy(payload->source);
-            } else {
                 zwp_primary_selection_source_v1_destroy(payload->source);
+            } else {
+                wl_data_source_destroy(payload->source);
             }
         }
         DataSourcePayload_Destroy(payload);
