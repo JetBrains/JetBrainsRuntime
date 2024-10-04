@@ -29,6 +29,7 @@
 #include "VKImage.h"
 #include "VKUtil.h"
 #include "VKTexturePool.h"
+#include "AccelTexturePool.h"
 #include "jni.h"
 #include "Trace.h"
 
@@ -86,7 +87,7 @@ static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
     VKImage* texture = VKImage_Create((VKDevice*)device, width, height,
                                       0, (VkFormat)format,
                                       VK_IMAGE_TILING_OPTIMAL,
-                                      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                                      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                                       VK_SAMPLE_COUNT_1_BIT, VKTexturePool_FindImageMemoryType);
     if IS_NULL(texture) {
         J2dRlsTrace(J2D_TRACE_ERROR, "VKTexturePool_createTexture: Cannot create VKImage");
@@ -101,11 +102,15 @@ static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
 }
 
 static int VKTexturePool_bytesPerPixel(long format) {
-    FormatGroup group = VKUtil_GetFormatGroup((VkFormat)format);
-    if (group.bytes == 0) {
-        J2dRlsTraceLn1(J2D_TRACE_ERROR, "VKTexturePool_bytesPerPixel: format=%d not supported (4 bytes by default)", format);
-        return 4;
-    } else return (int) group.bytes;
+    switch ((VkFormat)format) {
+        case VK_FORMAT_R8G8B8A8_UNORM:
+            return 4;
+        case VK_FORMAT_R8_UNORM:
+            return 1;
+        default:
+            J2dRlsTraceLn1(J2D_TRACE_ERROR, "VKTexturePool_bytesPerPixel: format=%d not supported (4 bytes by default)", format);
+            return 4;
+    }
 }
 
 static void VKTexturePool_freeTexture(ADevicePrivPtr *device, ATexturePrivPtr *texture) {
@@ -133,6 +138,14 @@ jint VKTexturePoolHandle_GetRequestedWidth(VKTexturePoolHandle *handle) {
 
 jint VKTexturePoolHandle_GetRequestedHeight(VKTexturePoolHandle *handle) {
     return ATexturePoolHandle_GetRequestedHeight(handle);
+}
+
+jint VKTexturePoolHandle_GetActualWidth(VKTexturePoolHandle *handle) {
+    return ATexturePoolHandle_GetActualWidth(handle);
+}
+
+jint VKTexturePoolHandle_GetActualHeight(VKTexturePoolHandle *handle) {
+    return ATexturePoolHandle_GetActualHeight(handle);
 }
 
 

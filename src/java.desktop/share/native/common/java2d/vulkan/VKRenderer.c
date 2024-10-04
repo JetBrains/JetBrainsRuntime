@@ -856,7 +856,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
                     .image = win->swapchainImages[imageIndex],
                     .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
             }};
-            VKBarrierBatch barrierBatch = {1, surface->image->lastStage, VK_PIPELINE_STAGE_TRANSFER_BIT};
+            VKBarrierBatch barrierBatch = {1, surface->image->lastStage | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
             VKRenderer_AddImageBarrier(barriers, &barrierBatch, surface->image, VK_PIPELINE_STAGE_TRANSFER_BIT,
                                        VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
             device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
