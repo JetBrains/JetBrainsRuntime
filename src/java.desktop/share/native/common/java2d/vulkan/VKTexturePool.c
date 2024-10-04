@@ -29,6 +29,7 @@
 
 #include "VKImage.h"
 #include "VKTexturePool.h"
+#include "AccelTexturePool.h"
 #include "jni.h"
 #include "jni_util.h"
 #include "Trace.h"
@@ -104,6 +105,7 @@ static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
 static int VKTexturePool_bytesPerPixel(long format) {
     switch ((VkFormat)format) {
         case VK_FORMAT_R8G8B8A8_UNORM:
+        case VK_FORMAT_B8G8R8A8_UNORM:
             return 4;
         case VK_FORMAT_R8_UNORM:
             return 1;
@@ -138,6 +140,14 @@ jint VKTexturePoolHandle_GetRequestedWidth(VKTexturePoolHandle *handle) {
 
 jint VKTexturePoolHandle_GetRequestedHeight(VKTexturePoolHandle *handle) {
     return ATexturePoolHandle_GetRequestedHeight(handle);
+}
+
+jint VKTexturePoolHandle_GetActualWidth(VKTexturePoolHandle *handle) {
+    return ATexturePoolHandle_GetActualWidth(handle);
+}
+
+jint VKTexturePoolHandle_GetActualHeight(VKTexturePoolHandle *handle) {
+    return ATexturePoolHandle_GetActualHeight(handle);
 }
 
 

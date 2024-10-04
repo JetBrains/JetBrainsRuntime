@@ -37,13 +37,14 @@
 
 #include "Trace.h"
 #include "VKImage.h"
-#include "VKRenderer.h"
-#include "VKImage.h"
 #include "VKBuffer.h"
 #include "CArrayUtil.h"
 
 static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKImage* dest, const SurfaceDataRasInfo *srcInfo,
                      int dx1, int dy1, int dx2, int dy2) {
+    VKSDOps* surface = context->surface;
+    VKDevice* device = surface->device;
+
     const int sw = srcInfo->bounds.x2 - srcInfo->bounds.x1;
     const int sh = srcInfo->bounds.y2 - srcInfo->bounds.y1;
     const int dw = dx2 - dx1;
@@ -53,8 +54,6 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
         J2dTraceLn4(J2D_TRACE_ERROR, "replaceTextureRegion: dest size: (%d, %d) less than source size: (%d, %d)", dw, dh, sw, sh);
         return;
     }
-
-
 
     double width = dest->extent.width/2.0;
     double height = dest->extent.height/2.0;
@@ -69,10 +68,6 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
 
     VKTransform *t = &context->transform;
 
-    double p1tux = t->m00*p1ux + t->m01*p1uy + t->m02;
-    double p1tuy = t->m10*p1ux + t->m11*p1uy + t->m12;
-    double p2tux = t->m00*p2ux + t->m01*p2uy + t->m02;
-    double p2tuy = t->m10*p2ux + t->m11*p2uy + t->m12;
 
     VKTxVertex* vertices = ARRAY_ALLOC(VKTxVertex, 4);
     /*
@@ -82,33 +77,33 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
      *     |             |
      *    (p4)---------(p3)
      */
-    float p1x = (float)(-1.0 + p1tux / width);
-    float p1y = (float)(-1.0 + p1tuy / height);
-    float p2x = (float)(-1.0 + p2tux / width);
+    float p1x = (float)(-1.0 + p1ux / width);
+    float p1y = (float)(-1.0 + p1uy / height);
+    float p2x = (float)(-1.0 + p2ux / width);
     float p2y = p1y;
     float p3x = p2x;
-    float p3y = (float)(-1.0 + p2tuy / height);
+    float p3y = (float)(-1.0 + p2uy / height);
     float p4x = p1x;
     float p4y = p3y;
 
+    //  Direct allocation for debug purpose
+//  VKImage *image = VKImage_Create(device, sw, sh, surface->image->format, VK_IMAGE_TILING_LINEAR,
+//                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+//                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    VKTexturePoolHandle* hnd = VKTexturePool_GetTexture(device->texturePool, sw, sh, surface->image->format);
+    double u = (double)sw / VKTexturePoolHandle_GetActualWidth(hnd);
+    double v = (double)sh / VKTexturePoolHandle_GetActualHeight(hnd);
 
     ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p1x, p1y, 0.0f, 0.0f}));
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p2x, p2y, 1.0f, 0.0f}));
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p4x, p4y, 0.0f, 1.0f}));
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p3x, p3y, 1.0f, 1.0f}));
+    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p2x, p2y, u, 0.0f}));
+    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p4x, p4y, 0.0f, v}));
+    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p3x, p3y, u, v}));
 
-    VKSDOps* surface = context->surface;
-    VKDevice* device = surface->device;
     VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
     ARRAY_FREE(vertices);
 
     const char *raster = srcInfo->rasBase;
     raster += (uint32_t)srcInfo->bounds.y1 * (uint32_t)srcInfo->scanStride + (uint32_t)srcInfo->bounds.x1 * (uint32_t)srcInfo->pixelStride;
-//  Direct allocation for debug purpose
-//  VKImage *image = VKImage_Create(device, sw, sh, surface->image->format, VK_IMAGE_TILING_LINEAR,
-//                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-//                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    VKTexturePoolHandle* hnd = VKTexturePool_GetTexture(device->texturePool, sw, sh, surface->image->format);
     J2dTraceLn4(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
                 dw, dh, dx1, dy1);
     uint32_t dataSize = sw * sh * srcInfo->pixelStride;
@@ -120,10 +115,10 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
     }
     VKBuffer *buffer = VKBuffer_CreateFromData(device, data, dataSize);
     free(data);
-//  VKImage_LoadBuffer(context->surface->device, img, buffer, 0, 0, sw, sh);
+//  VKImage_LoadBuffer(context->surface->device, image, buffer, 0, 0, sw, sh);
     VKImage_LoadBuffer(context->surface->device,
                        VKTexturePoolHandle_GetTexture(hnd), buffer, 0, 0, sw, sh);
-//  VKRenderer_TextureRender(context, dest, img, renderVertexBuffer->handle, 4);
+//  VKRenderer_TextureRender(context, dest, image, renderVertexBuffer->handle, 4);
     VKRenderer_TextureRender(context, dest, VKTexturePoolHandle_GetTexture(hnd),
                              renderVertexBuffer->handle, 4);
     VKTexturePoolHandle_ReleaseTexture(hnd);
