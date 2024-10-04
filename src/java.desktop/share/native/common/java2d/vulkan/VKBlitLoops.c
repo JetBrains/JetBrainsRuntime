@@ -24,9 +24,7 @@
  * questions.
  */
 
-#include <malloc.h>
 #include <string.h>
-#include <setjmp.h>
 #include "jlong.h"
 #include "SurfaceData.h"
 #include "VKUtil.h"
@@ -37,42 +35,23 @@
 
 #include "Trace.h"
 #include "VKImage.h"
-#include "VKRenderer.h"
-#include "VKImage.h"
 #include "VKBuffer.h"
 #include "CArrayUtil.h"
 
 static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKImage* dest, const SurfaceDataRasInfo *srcInfo,
                      int dx1, int dy1, int dx2, int dy2) {
+    VKSDOps* surface = context->surface;
+    VKDevice* device = surface->device;
+
     const int sw = srcInfo->bounds.x2 - srcInfo->bounds.x1;
     const int sh = srcInfo->bounds.y2 - srcInfo->bounds.y1;
     const int dw = dx2 - dx1;
     const int dh = dy2 - dy1;
 
     if (dw < sw || dh < sh) {
-        J2dTraceLn4(J2D_TRACE_ERROR, "replaceTextureRegion: dest size: (%d, %d) less than source size: (%d, %d)", dw, dh, sw, sh);
+        J2dTraceLn4(J2D_TRACE_ERROR, "VKBlitSwToTextureViaPooledTexture: dest size: (%d, %d) less than source size: (%d, %d)", dw, dh, sw, sh);
         return;
     }
-
-
-
-    double width = dest->extent.width/2.0;
-    double height = dest->extent.height/2.0;
-    J2dRlsTraceLn2(J2D_TRACE_VERBOSE,
-                   "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(W=%f, H=%f)",
-                   width, height);
-
-    double p1ux = dx1;
-    double p1uy = dy1;
-    double p2ux = dx2;
-    double p2uy = dy2;
-
-    VKTransform *t = &context->transform;
-
-    double p1tux = t->m00*p1ux + t->m01*p1uy + t->m02;
-    double p1tuy = t->m10*p1ux + t->m11*p1uy + t->m12;
-    double p2tux = t->m00*p2ux + t->m01*p2uy + t->m02;
-    double p2tuy = t->m10*p2ux + t->m11*p2uy + t->m12;
 
     VKTxVertex* vertices = ARRAY_ALLOC(VKTxVertex, 4);
     /*
@@ -82,33 +61,25 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
      *     |             |
      *    (p4)---------(p3)
      */
-    float p1x = (float)(-1.0 + p1tux / width);
-    float p1y = (float)(-1.0 + p1tuy / height);
-    float p2x = (float)(-1.0 + p2tux / width);
-    float p2y = p1y;
-    float p3x = p2x;
-    float p3y = (float)(-1.0 + p2tuy / height);
-    float p4x = p1x;
-    float p4y = p3y;
 
+    //  Direct allocation for debug purpose
+//  VKImage *image = VKImage_Create(device, sw, sh, surface->image->format, VK_IMAGE_TILING_LINEAR,
+//                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+//                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    VKTexturePoolHandle* hnd = VKTexturePool_GetTexture(device->texturePool, sw, sh, surface->image->format);
+    double u = (double)sw / VKTexturePoolHandle_GetActualWidth(hnd);
+    double v = (double)sh / VKTexturePoolHandle_GetActualHeight(hnd);
 
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p1x, p1y, 0.0f, 0.0f}));
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p2x, p2y, 1.0f, 0.0f}));
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p4x, p4y, 0.0f, 1.0f}));
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {p3x, p3y, 1.0f, 1.0f}));
+    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {dx1, dy1, 0.0f, 0.0f}));
+    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {dx2, dy1, u, 0.0f}));
+    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {dx1, dy2, 0.0f, v}));
+    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {dx2, dy2, u, v}));
 
-    VKSDOps* surface = context->surface;
-    VKDevice* device = surface->device;
     VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
     ARRAY_FREE(vertices);
 
     const char *raster = srcInfo->rasBase;
     raster += (uint32_t)srcInfo->bounds.y1 * (uint32_t)srcInfo->scanStride + (uint32_t)srcInfo->bounds.x1 * (uint32_t)srcInfo->pixelStride;
-//  Direct allocation for debug purpose
-//  VKImage *image = VKImage_Create(device, sw, sh, surface->image->format, VK_IMAGE_TILING_LINEAR,
-//                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-//                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    VKTexturePoolHandle* hnd = VKTexturePool_GetTexture(device->texturePool, sw, sh, surface->image->format);
     J2dTraceLn4(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
                 dw, dh, dx1, dy1);
     uint32_t dataSize = sw * sh * srcInfo->pixelStride;
@@ -120,10 +91,42 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
     }
     VKBuffer *buffer = VKBuffer_CreateFromData(device, data, dataSize);
     free(data);
-//  VKImage_LoadBuffer(context->surface->device, img, buffer, 0, 0, sw, sh);
+
+    VkCommandBuffer cb = VKRenderer_Record(device->renderer);
+    {
+        VkImageMemoryBarrier barrier = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = 0,
+            .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = ((VKImage *)VKTexturePoolHandle_GetTexture(hnd))->handle,
+            .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}};
+        device->vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                     VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL,
+                                     0, NULL, 1, &barrier);
+    }
+    //  VKImage_LoadBuffer(context->surface->device, image, buffer, 0, 0, sw, sh);
     VKImage_LoadBuffer(context->surface->device,
                        VKTexturePoolHandle_GetTexture(hnd), buffer, 0, 0, sw, sh);
-//  VKRenderer_TextureRender(context, dest, img, renderVertexBuffer->handle, 4);
+    {
+      VkImageMemoryBarrier barrier = {
+          .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+          .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+          .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+          .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+          .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+          .image = ((VKImage*)VKTexturePoolHandle_GetTexture(hnd))->handle,
+          .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+      };
+      device->vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                   0, 0, NULL, 0, NULL, 1, &barrier);
+    }
+//  VKRenderer_TextureRender(context, dest, image, renderVertexBuffer->handle, 4);
     VKRenderer_TextureRender(context, dest, VKTexturePoolHandle_GetTexture(hnd),
                              renderVertexBuffer->handle, 4);
     VKTexturePoolHandle_ReleaseTexture(hnd);
@@ -131,7 +134,7 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
 
 
 void VKBlitLoops_IsoBlit(JNIEnv *env,
-                         VKRenderingContext* context, jlong pSrcOps, jlong pDstOps,
+                         VKRenderingContext* context, jlong pSrcOps,
                          jboolean xform, jint hint,
                          jboolean texture,
                          jint sx1, jint sy1,
@@ -144,9 +147,72 @@ void VKBlitLoops_IsoBlit(JNIEnv *env,
     J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT_IsoBlit texture=%d xform=%d",
                                    texture, xform)
 }
+static jboolean clipDestCoords(
+        VKRenderingContext* context,
+        jdouble *dx1, jdouble *dy1, jdouble *dx2, jdouble *dy2,
+        jint *sx1, jint *sy1, jint *sx2, jint *sy2,
+        jint destW, jint destH) {
+  // Trim destination rect by clip-rect (or dest.bounds)
+  const jint sw    = *sx2 - *sx1;
+  const jint sh    = *sy2 - *sy1;
+  const jdouble dw = *dx2 - *dx1;
+  const jdouble dh = *dy2 - *dy1;
+  VkRect2D* clipRect = &context->clipRect;
+  jdouble dcx1 = 0;
+  jdouble dcx2 = destW;
+  jdouble dcy1 = 0;
+  jdouble dcy2 = destH;
+    if (clipRect->offset.x > dcx1)
+      dcx1 = clipRect->offset.x;
+    const int maxX = clipRect->offset.x + clipRect->extent.width;
+    if (dcx2 > maxX)
+      dcx2 = maxX;
+    if (clipRect->offset.y > dcy1)
+      dcy1 = clipRect->offset.y;
+    const int maxY = clipRect->offset.y + clipRect->extent.height;
+    if (dcy2 > maxY)
+      dcy2 = maxY;
+
+    if (dcx1 >= dcx2) {
+      J2dTraceLn2(J2D_TRACE_ERROR, "\tclipDestCoords: dcx1=%1.2f, dcx2=%1.2f", dcx1, dcx2);
+      dcx1 = dcx2;
+    }
+    if (dcy1 >= dcy2) {
+      J2dTraceLn2(J2D_TRACE_ERROR, "\tclipDestCoords: dcy1=%1.2f, dcy2=%1.2f", dcy1, dcy2);
+      dcy1 = dcy2;
+    }
+  if (*dx2 <= dcx1 || *dx1 >= dcx2 || *dy2 <= dcy1 || *dy1 >= dcy2) {
+    J2dTraceLn(J2D_TRACE_INFO, "\tclipDestCoords: dest rect doesn't intersect clip area");
+    J2dTraceLn4(J2D_TRACE_INFO, "\tdx2=%1.4f <= dcx1=%1.4f || *dx1=%1.4f >= dcx2=%1.4f", *dx2, dcx1, *dx1, dcx2);
+    J2dTraceLn4(J2D_TRACE_INFO, "\t*dy2=%1.4f <= dcy1=%1.4f || *dy1=%1.4f >= dcy2=%1.4f", *dy2, dcy1, *dy1, dcy2);
+    return JNI_FALSE;
+  }
+  if (*dx1 < dcx1) {
+    J2dTraceLn3(J2D_TRACE_VERBOSE, "\t\tdx1=%1.2f, will be clipped to %1.2f | sx1+=%d", *dx1, dcx1, (jint)((dcx1 - *dx1) * (sw/dw)));
+    *sx1 += (jint)((dcx1 - *dx1) * (sw/dw));
+    *dx1 = dcx1;
+  }
+  if (*dx2 > dcx2) {
+    J2dTraceLn3(J2D_TRACE_VERBOSE, "\t\tdx2=%1.2f, will be clipped to %1.2f | sx2-=%d", *dx2, dcx2, (jint)((*dx2 - dcx2) * (sw/dw)));
+    *sx2 -= (jint)((*dx2 - dcx2) * (sw/dw));
+    *dx2 = dcx2;
+  }
+  if (*dy1 < dcy1) {
+    J2dTraceLn3(J2D_TRACE_VERBOSE, "\t\tdy1=%1.2f, will be clipped to %1.2f | sy1+=%d", *dy1, dcy1, (jint)((dcy1 - *dy1) * (sh/dh)));
+    *sy1 += (jint)((dcy1 - *dy1) * (sh/dh));
+    *dy1 = dcy1;
+  }
+  if (*dy2 > dcy2) {
+    J2dTraceLn3(J2D_TRACE_VERBOSE, "\t\tdy2=%1.2f, will be clipped to %1.2f | sy2-=%d", *dy2, dcy2, (jint)((*dy2 - dcy2) * (sh/dh)));
+    *sy2 -= (jint)((*dy2 - dcy2) * (sh/dh));
+    *dy2 = dcy2;
+  }
+  return JNI_TRUE;
+}
+
 
 void VKBlitLoops_Blit(JNIEnv *env,
-                      VKRenderingContext* context, jlong pSrcOps, jlong pDstOps,
+                      VKRenderingContext* context, jlong pSrcOps,
                       jboolean xform, jint hint,
                       jint srctype, jboolean texture,
                       jint sx1, jint sy1,
@@ -154,34 +220,26 @@ void VKBlitLoops_Blit(JNIEnv *env,
                       jdouble dx1, jdouble dy1,
                       jdouble dx2, jdouble dy2)
 {
-    jmp_buf cleanup_jmpbuf;
     J2dRlsTraceLn8(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT_Blit (%d %d %d %d) -> (%f %f %f %f) ",
                                    sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)
     J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT_Blit texture=%d xform=%d srctype=%d",
                                    texture, xform, srctype)
 
     SurfaceDataOps *srcOps = (SurfaceDataOps *)jlong_to_ptr(pSrcOps);
-    VKSDOps *dstOps = (VKSDOps *)jlong_to_ptr(pDstOps);
 
 
-    if (context == NULL || srcOps == NULL || dstOps == NULL) {
-        J2dRlsTraceLn3(J2D_TRACE_ERROR, "VKBlitLoops_Blit: context(%p) or srcOps(%p) or dstOps(%p) is null",
-                       context, srcOps, dstOps)
+    if (context == NULL || srcOps == NULL) {
+        J2dRlsTraceLn2(J2D_TRACE_ERROR, "VKBlitLoops_Blit: context(%p) or srcOps(%p) is null",
+                       context, srcOps)
         return;
     }
 
-    VKSDOps *oldSurface = context->surface;
-    context->surface = dstOps;
-
-    if (setjmp(cleanup_jmpbuf)) {
-        context->surface = oldSurface;
-        return;
-    }
 
     if (!VKRenderer_Validate(context, PIPELINE_BLIT)) {
         J2dRlsTrace(J2D_TRACE_ERROR, "replaceTextureRegion: cannot validate renderer");
-        longjmp(cleanup_jmpbuf, 1);
+        return;
     }
+    VKSDOps *dstOps = context->surface;
     VKImage *dest = context->surface->image;
 //    if (srctype < 0 || srctype >= sizeof(RasterFormatInfos)/ sizeof(MTLRasterFormatInfo)) {
 //        J2dTraceLn1(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: source pixel format %d isn't supported", srctype);
@@ -194,16 +252,16 @@ void VKBlitLoops_Blit(JNIEnv *env,
 
     if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) {
         J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: invalid dimensions");
-        longjmp(cleanup_jmpbuf, 1);
+        return;
     }
 
-//    if (!xform) {
-//        clipDestCoords(
-//                &dx1, &dy1, &dx2, &dy2,
-//                &sx1, &sy1, &sx2, &sy2,
-//                dest.width, dest.height, texture ? NULL : [mtlc.clip getRect]
-//        );
-//    }
+    if (!xform) {
+        clipDestCoords(context,
+                &dx1, &dy1, &dx2, &dy2,
+                &sx1, &sy1, &sx2, &sy2,
+                dstOps->image->extent.width,dstOps->image->extent.height
+        );
+    }
 
     SurfaceDataRasInfo srcInfo;
     srcInfo.bounds.x1 = sx1;
@@ -214,7 +272,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
     // NOTE: This function will modify the contents of the bounds field to represent the maximum available raster data.
     if (srcOps->Lock(env, srcOps, &srcInfo, SD_LOCK_READ) != SD_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_WARNING, "VKBlitLoops_Blit: could not acquire lock");
-        longjmp(cleanup_jmpbuf, 1);
+        return;
     }
 
     if (srcInfo.bounds.x2 > srcInfo.bounds.x1 && srcInfo.bounds.y2 > srcInfo.bounds.y1) {
@@ -254,5 +312,4 @@ void VKBlitLoops_Blit(JNIEnv *env,
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);
     }
     SurfaceData_InvokeUnlock(env, srcOps, &srcInfo);
-    longjmp(cleanup_jmpbuf, 1);
 }

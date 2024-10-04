@@ -39,7 +39,7 @@
 #define OFFSET_ISOBLIT sun_java2d_vulkan_VKBlitLoops_OFFSET_ISOBLIT
 
 void VKBlitLoops_IsoBlit(JNIEnv *env,
-                          VKRenderingContext* context, jlong pSrcOps, jlong pDstOps,
+                          VKRenderingContext* context, jlong pSrcOps,
                           jboolean xform, jint hint,
                           jboolean texture,
                           jint sx1, jint sy1,
@@ -48,7 +48,7 @@ void VKBlitLoops_IsoBlit(JNIEnv *env,
                           jdouble dx2, jdouble dy2);
 
 void VKBlitLoops_Blit(JNIEnv *env,
-                       VKRenderingContext* context, jlong pSrcOps, jlong pDstOps,
+                       VKRenderingContext* context, jlong pSrcOps,
                        jboolean xform, jint hint,
                        jint srctype, jboolean texture,
                        jint sx1, jint sy1,
