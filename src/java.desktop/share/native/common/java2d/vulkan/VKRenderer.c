@@ -70,9 +70,11 @@ struct PoolEntry_ ## NAME { \
 /**
  * Destroy all remaining entries in a pool and free its memory.
  * Intended usage:
- *  POOL_DRAIN(renderer, poolName, entry) destroyEntry(entry->value);
+ *  POOL_DRAIN_FOR(renderer, poolName, entry) {
+ *      destroyEntry(entry->value);
+ *  }
  */
-#define POOL_DRAIN(RENDERER, NAME, ENTRY) for (struct PoolEntry_ ## NAME *(ENTRY); VKRenderer_CheckPoolDrain( \
+#define POOL_DRAIN_FOR(RENDERER, NAME, ENTRY) for (struct PoolEntry_ ## NAME *(ENTRY); VKRenderer_CheckPoolDrain( \
     (RENDERER)->NAME, (ENTRY) = RING_BUFFER_FRONT((RENDERER)->NAME)); RING_BUFFER_POP_FRONT((RENDERER)->NAME))
 
 /**
@@ -159,7 +161,7 @@ inline VkBool32 VKRenderer_CheckPoolEntryAvailable(VKRenderer* renderer, void* e
 }
 
 /**
- * Helper function for POOL_DRAIN macro.
+ * Helper function for POOL_DRAIN_FOR macro.
  */
 static VkBool32 VKRenderer_CheckPoolDrain(void* pool, void* entry) {
     if (entry != NULL) return VK_TRUE;
@@ -279,10 +281,14 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
     // No need to destroy command buffers one by one, we will destroy the pool anyway.
     POOL_FREE(renderer, commandBufferPool);
     POOL_FREE(renderer, secondaryCommandBufferPool);
-    POOL_DRAIN(renderer, semaphorePool, entry) device->vkDestroySemaphore(device->handle, entry->value, NULL);
+    POOL_DRAIN_FOR(renderer, semaphorePool, entry) {
+        device->vkDestroySemaphore(device->handle, entry->value, NULL);
+    }
 
     // Destroy vertex buffer pool.
-    POOL_DRAIN(renderer, vertexBufferPool, entry) device->vkDestroyBuffer(device->handle, entry->value.handle, NULL);
+    POOL_DRAIN_FOR(renderer, vertexBufferPool, entry) {
+        device->vkDestroyBuffer(device->handle, entry->value.handle, NULL);
+    }
     for (uint32_t i = 0; i < ARRAY_SIZE(renderer->vertexBufferMemoryPages); i++) {
         device->vkFreeMemory(device->handle, renderer->vertexBufferMemoryPages[i], NULL);
     }

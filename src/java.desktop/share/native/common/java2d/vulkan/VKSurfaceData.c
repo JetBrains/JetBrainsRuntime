@@ -37,7 +37,7 @@
 static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
     if (vksdo == NULL) return;
 
-    // ReleaseRenderPass also waits while the surface resources are being used by device.
+    // DestroyRenderPass also waits while the surface resources are being used by device.
     VKRenderer_DestroyRenderPass(vksdo);
 
     if (vksdo->device != NULL && vksdo->image != NULL) {
