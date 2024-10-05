@@ -264,56 +264,60 @@ JNIEXPORT void JNICALL Java_sun_awt_AWTThreading_notifyEventDispatchThreadStarte
 /* PlatformLogger callbacks */
 
 JNIEXPORT void J2DTrace_plog(JNIEnv* env, const char *formatMsg, ...) {
-    if ((env == NULL) || (formatMsg == NULL)) {
+    if (formatMsg == NULL) {
         return;
     }
-    static jobject loggerObject = NULL;
-    static jmethodID midWarn = NULL;
+    BOOL fallback = YES;
 
-    if (loggerObject == NULL) {
-        DECLARE_CLASS(tracerClass, "sun/java2d/Java2DNativeTracer");
-        jfieldID fieldId = (*env)->GetStaticFieldID(env, tracerClass, "log", "Lsun/util/logging/PlatformLogger;");
-        CHECK_NULL(fieldId);
-        loggerObject = (*env)->GetStaticObjectField(env, tracerClass, fieldId);
-        CHECK_NULL(loggerObject);
-        loggerObject = (*env)->NewGlobalRef(env, loggerObject);
-        jclass clazz = (*env)->GetObjectClass(env, loggerObject);
-        if (clazz == NULL) {
-            NSLog(@"J2DTrace_plog: can't find PlatformLogger class");
-            return;
-        }
-        GET_METHOD(midWarn, clazz, "warning", "(Ljava/lang/String;)V");
-    }
-    if (midWarn != NULL) {
-        va_list args;
-        va_start(args, formatMsg);
-        /* formatted message can be large (stack trace ?) => 16 kb */
-        const int bufSize = 16 * 1024;
-        char buf[bufSize];
+    va_list args;
+    va_start(args, formatMsg);
+    /* formatted message can be large (stack trace ?) => 16 kb */
+    const int bufSize = 16 * 1024;
+    char buf[bufSize];
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
-        vsnprintf(buf, bufSize, formatMsg, args);
+    vsnprintf(buf, bufSize, formatMsg, args);
 #pragma clang diagnostic pop
-        va_end(args);
+    va_end(args);
 
-        BOOL fallback = YES;
-        const jstring javaString = (*env)->NewStringUTF(env, buf);
+    if (env != NULL) {
+        static jobject loggerObject = NULL;
+        static jmethodID midWarn = NULL;
 
-        if (!(*env)->ExceptionCheck(env)) {
-            (*env)->CallVoidMethod(env, loggerObject, midWarn, javaString);
-
-            if ((*env)->ExceptionCheck(env)) {
-                NSLog(@"PlatformLogger callback failed:\n");
-                (*(env))->ExceptionDescribe(env);
-                NSLog(@"PlatformLogger callstack: %@\n", [NSThread callStackSymbols]);
-                (*(env))->ExceptionClear(env);
-            } else {
-                fallback = NO;
+        if (loggerObject == NULL) {
+            DECLARE_CLASS(tracerClass, "sun/java2d/Java2DNativeTracer");
+            jfieldID fieldId = (*env)->GetStaticFieldID(env, tracerClass, "log", "Lsun/util/logging/PlatformLogger;");
+            CHECK_NULL(fieldId);
+            loggerObject = (*env)->GetStaticObjectField(env, tracerClass, fieldId);
+            CHECK_NULL(loggerObject);
+            loggerObject = (*env)->NewGlobalRef(env, loggerObject);
+            jclass clazz = (*env)->GetObjectClass(env, loggerObject);
+            if (clazz == NULL) {
+                NSLog(@"J2DTrace_plog: can't find PlatformLogger class");
+                return;
             }
+            GET_METHOD(midWarn, clazz, "warning", "(Ljava/lang/String;)V");
         }
-        if (fallback) {
-            NSLog(@"J2DTrace_plog: %s\n", buf);
+
+        if (midWarn != NULL) {
+            const jstring javaString = (*env)->NewStringUTF(env, buf);
+
+            if (!(*env)->ExceptionCheck(env)) {
+                (*env)->CallVoidMethod(env, loggerObject, midWarn, javaString);
+
+                if ((*env)->ExceptionCheck(env)) {
+                    NSLog(@"PlatformLogger callback failed:\n");
+                    (*(env))->ExceptionDescribe(env);
+                    NSLog(@"PlatformLogger callstack: %@\n", [NSThread callStackSymbols]);
+                    (*(env))->ExceptionClear(env);
+                } else {
+                    fallback = NO;
+                }
+            }
+            (*env)->DeleteLocalRef(env, javaString);
         }
-        (*env)->DeleteLocalRef(env, javaString);
+    }
+    if (fallback) {
+        NSLog(@"J2DTrace_plog: %s\n", buf);
     }
 }

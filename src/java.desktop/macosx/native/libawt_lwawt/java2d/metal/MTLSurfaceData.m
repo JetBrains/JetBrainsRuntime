@@ -51,13 +51,7 @@ static BOOL DO_LOG_SF_TYPE(BMTLSDOps *bmtlsdo) {
     return mtlLogSurfaceType[op];
 }
 
-static jboolean MTLSurfaceData_initTexture(JNIEnv *env,
-                                           BMTLSDOps *bmtlsdo,
-                                           jboolean isOpaque,
-                                           jint sfType,
-                                           jint width,
-                                           jint height
-) {
+static jboolean MTLSurfaceData_initTexture(JNIEnv *env, BMTLSDOps *bmtlsdo, jboolean isOpaque, jint sfType, jint width, jint height) {
     @autoreleasepool {
         if (bmtlsdo == NULL) {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: ops are null");
@@ -106,7 +100,7 @@ static jboolean MTLSurfaceData_initTexture(JNIEnv *env,
                           width, height, [ctx.device.name UTF8String], ctx);
         }
 
-        if (sfType == MTLSD_FLIP_BACKBUFFER /* && !isDisplaySyncEnabled() */) {
+        if (sfType == MTLSD_FLIP_BACKBUFFER && !isDisplaySyncEnabled()) {
             bmtlsdo->pOutTexture = [ctx.device newTextureWithDescriptor: textureDescriptor];
         } else {
             bmtlsdo->pOutTexture = NULL;
@@ -143,11 +137,10 @@ Java_sun_java2d_metal_MTLSurfaceData_initTexture(
     jlong pData, jboolean isOpaque,
     jint width, jint height
 ) {
-    const BMTLSDOps *bmtlsdo = (BMTLSDOps *)pData;
-    if (!MTLSurfaceData_initTexture(env, bmtlsdo, isOpaque, MTLSD_TEXTURE, width, height)) {
+    if (!MTLSurfaceData_initTexture(env, (BMTLSDOps *)pData, isOpaque, MTLSD_TEXTURE, width, height)) {
         return JNI_FALSE;
     }
-    MTLSD_SetNativeDimensions(env, bmtlsdo, width, height);
+    MTLSD_SetNativeDimensions(env, (BMTLSDOps *)pData, width, height);
     return JNI_TRUE;
 }
 
@@ -162,23 +155,20 @@ Java_sun_java2d_metal_MTLSurfaceData_initRTexture
      jlong pData, jboolean isOpaque,
      jint width, jint height)
 {
-    const BMTLSDOps *bmtlsdo = (BMTLSDOps *)pData;
-    if (!MTLSurfaceData_initTexture(env, bmtlsdo, isOpaque, MTLSD_RT_TEXTURE, width, height)) {
+    if (!MTLSurfaceData_initTexture(env, (BMTLSDOps *)pData, isOpaque, MTLSD_RT_TEXTURE, width, height)) {
         return JNI_FALSE;
     }
-    MTLSD_SetNativeDimensions(env, bmtlsdo, width, height);
+    MTLSD_SetNativeDimensions(env, (BMTLSDOps *)pData, width, height);
     return JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_metal_MTLSurfaceData_initFlipBackbuffer
-    (JNIEnv *env, jobject mtlsd, jlong pData, jboolean isOpaque, jint width, jint height)
-{
-    const BMTLSDOps *bmtlsdo = (BMTLSDOps *)pData;
-    if (!MTLSurfaceData_initTexture(env, bmtlsdo, isOpaque, MTLSD_FLIP_BACKBUFFER, width, height)) {
+    (JNIEnv *env, jobject mtlsd, jlong pData, jboolean isOpaque, jint width, jint height) {
+    if (!MTLSurfaceData_initTexture(env, (BMTLSDOps *)pData, isOpaque, MTLSD_FLIP_BACKBUFFER, width, height)) {
         return JNI_FALSE;
     }
-    MTLSD_SetNativeDimensions(env, bmtlsdo, width, height);
+    MTLSD_SetNativeDimensions(env, (BMTLSDOps *)pData, width, height);
     return JNI_TRUE;
 }
 
@@ -240,8 +230,14 @@ MTLSD_Delete(JNIEnv *env, BMTLSDOps *bmtlsdo)
             [(NSObject *)bmtlsdo->pOutTexture release];
             bmtlsdo->pOutTexture = NULL;
         }
-        [(NSObject *)bmtlsdo->pStencilTexture release];
-        [(NSObject *)bmtlsdo->pStencilData release];
+        if (bmtlsdo->pStencilTexture != NULL) {
+            [(NSObject *)bmtlsdo->pStencilTexture release];
+            bmtlsdo->pStencilTexture = NULL;
+        }
+        if (bmtlsdo->pStencilData != NULL) {
+            [(NSObject *) bmtlsdo->pStencilData release];
+            bmtlsdo->pStencilData = NULL;
+        }
         bmtlsdo->drawableType = MTLSD_UNDEFINED;
     }
 }
