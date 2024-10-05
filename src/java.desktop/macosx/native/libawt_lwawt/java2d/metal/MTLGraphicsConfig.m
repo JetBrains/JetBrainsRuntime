@@ -34,7 +34,7 @@
  * MTLGraphicsConfigInfo (including its native MTLContext data).
  */
 void
-MTLGC_DestroyMTLGraphicsConfig(JNIEnv* env, jlong pConfigInfo)
+MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLGC_DestroyMTLGraphicsConfig");
     JNI_COCOA_ENTER(env);
@@ -48,8 +48,8 @@ MTLGC_DestroyMTLGraphicsConfig(JNIEnv* env, jlong pConfigInfo)
     mtlinfo->context = nil;
     [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
         if (mtlc != NULL) {
-            JNIEnv* envMain = [ThreadUtilities getJNIEnv];
-            J2DTrace_plog(envMain, "MTLGC_getMTLConfigInfo: free configInfo=%p on context[%p] on MTLDevice[%s]",
+            J2DTrace_plog([ThreadUtilities getJNIEnv],
+                          "MTLGC_getMTLConfigInfo: free configInfo=%p on context[%p] on MTLDevice[%s]",
                           mtlinfo, mtlc, [mtlc.device.name UTF8String]);
 
             [MTLContext releaseContext:mtlc];
@@ -79,9 +79,7 @@ JNI_COCOA_ENTER(env);
     __block NSString* path = NormalizedPathNSStringFromJavaString(env, mtlShadersLib);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
-        JNIEnv* envMain = [ThreadUtilities getJNIEnv];
-        MTLContext* mtlc = [MTLContext createContextWithDeviceIfAbsent:displayID
-                                       shadersLib:path env:envMain];
+        MTLContext* mtlc = [MTLContext createContextWithDeviceIfAbsent:displayID shadersLib:path];
         if (mtlc != 0L) {
             // create the MTLGraphicsConfigInfo record for this context
             mtlinfo = (MTLGraphicsConfigInfo *)malloc(sizeof(MTLGraphicsConfigInfo));
@@ -90,7 +88,8 @@ JNI_COCOA_ENTER(env);
                 mtlinfo->context = mtlc;
                 mtlinfo->displayID = displayID;
 
-                J2DTrace_plog(envMain, "MTLGC_getMTLConfigInfo: created configInfo=%p on context[%p] on MTLDevice[%s]",
+                J2DTrace_plog([ThreadUtilities getJNIEnv],
+                              "MTLGC_getMTLConfigInfo: created configInfo=%p on context[%p] on MTLDevice[%s]",
                               mtlinfo, mtlc, [mtlc.device.name UTF8String]);
             } else {
                 J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGC_getMTLConfigInfo: could not allocate memory for mtlinfo");

@@ -49,7 +49,7 @@ static BMTLSDOps *dstOps = NULL;
 jint mtlPreviousOp = MTL_OP_INIT;
 
 extern BOOL isDisplaySyncEnabled();
-extern void MTLGC_DestroyMTLGraphicsConfig(JNIEnv* env, jlong pConfigInfo);
+extern void MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo);
 
 static const char* mtlOpCodeToStr(uint opcode);
 static const char* mtlOpToStr(uint op);
@@ -730,7 +730,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     [mtlc.glyphCacheAA free];
                     [mtlc.glyphCacheLCD free];
                     [mtlc commitCommandBuffer:YES display:NO];
-                    MTLGC_DestroyMTLGraphicsConfig(env, pConfigInfo);
+                    MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
                     mtlc = NULL;
                     break;
                 }

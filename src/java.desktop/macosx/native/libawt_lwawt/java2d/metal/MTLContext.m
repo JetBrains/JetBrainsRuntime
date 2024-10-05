@@ -174,7 +174,7 @@ extern void initSamplers(id<MTLDevice> device);
     return _contextStore;
 }
 
-+ (MTLContext*) createContextWithDeviceIfAbsent:(jint)displayID shadersLib:(NSString*)mtlShadersLib env:(JNIEnv*)env {
++ (MTLContext*) createContextWithDeviceIfAbsent:(jint)displayID shadersLib:(NSString*)mtlShadersLib {
     // Initialization code here.
     id<MTLDevice> device = CGDirectDisplayCopyCurrentMetalDevice(displayID);
     if (device == nil) {
@@ -202,7 +202,7 @@ extern void initSamplers(id<MTLDevice> device);
 
     MTLContext* mtlc = MTLContext.contextStore[devID];
     if (mtlc == nil) {
-        mtlc = [[MTLContext alloc] initWithDevice:device display:displayID shadersLib:mtlShadersLib env:env];
+        mtlc = [[MTLContext alloc] initWithDevice:device display:displayID shadersLib:mtlShadersLib];
         if (mtlc != nil) {
             MTLContext.contextStore[devID] = mtlc;
             [mtlc release];
@@ -246,7 +246,7 @@ extern void initSamplers(id<MTLDevice> device);
     }
 }
 
-- (id)initWithDevice:(id<MTLDevice>)mtlDevice display:(jint) displayID shadersLib:(NSString*)mtlShadersLib env:(JNIEnv*)env {
+- (id)initWithDevice:(id<MTLDevice>)mtlDevice display:(jint) displayID shadersLib:(NSString*)mtlShadersLib {
     self = [super init];
     if (self) {
         device = mtlDevice;
@@ -289,7 +289,8 @@ extern void initSamplers(id<MTLDevice> device);
         _glyphCacheLCD = [[MTLGlyphCache alloc] initWithContext:self];
         _glyphCacheAA = [[MTLGlyphCache alloc] initWithContext:self];
 
-        J2DTrace_plog(env, "MTLContext.initWithDevice: created context[%p] on MTLDevice[%s]",
+        J2DTrace_plog([ThreadUtilities getJNIEnv],
+                      "MTLContext.initWithDevice: created context[%p] on MTLDevice[%s]",
                       self, [device.name UTF8String]);
     }
     return self;
@@ -359,8 +360,8 @@ extern void initSamplers(id<MTLDevice> device);
 - (void)dealloc {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.dealloc");
 
-    const JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-    J2DTrace_plog(env, "MTLContext.dealloc: free context[%p] on MTLDevice[%s]",
+    J2DTrace_plog([ThreadUtilities getJNIEnvUncached],
+                  "MTLContext.dealloc: free context[%p] on MTLDevice[%s]",
                   self, [device.name UTF8String]);
 
     if (_displayLinks != nil) {

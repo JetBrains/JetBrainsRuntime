@@ -112,7 +112,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     NSLock* _lock;
 }
 
-- (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled env:(JNIEnv*)env
+- (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled
 {
     AWT_ASSERT_APPKIT_THREAD;
     // Initialize ourselves
@@ -158,7 +158,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     self.lastPresentedTime = 0.0;
     _lock = [[NSLock alloc] init];
 
-    J2DTrace_plog(env, "MTLLayer.initWithJavaLayer: created layer[%p] on MTLDevice[%s] from MTLContext[%p]",
+    J2DTrace_plog([ThreadUtilities getJNIEnv],
+                  "MTLLayer.initWithJavaLayer: created layer[%p] on MTLDevice[%s] from MTLContext[%p]",
                   self, [self.device.name UTF8String], self.ctx);
 
     return self;
@@ -538,8 +539,7 @@ JNI_COCOA_ENTER(env);
     // Wait and ensure main thread creates the MTLLayer instance now:
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         AWT_ASSERT_APPKIT_THREAD;
-        JNIEnv* envMain = [ThreadUtilities getJNIEnv];
-        layer = [[MTLLayer alloc] initWithJavaLayer:javaLayer usePerfCounters:perfCountersEnabled env:envMain];
+        layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer usePerfCounters: perfCountersEnabled];
     }];
     if (TRACE_DISPLAY) {
         J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLLayer_nativeCreateLayer: created layer[%p]", layer);
