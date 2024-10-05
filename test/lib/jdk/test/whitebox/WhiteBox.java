@@ -138,6 +138,12 @@ public class WhiteBox {
     return getConstantPoolCacheLength0(aClass);
   }
 
+  private native Object[] getResolvedReferences0(Class<?> aClass);
+  public         Object[] getResolvedReferences(Class<?> aClass) {
+    Objects.requireNonNull(aClass);
+    return getResolvedReferences0(aClass);
+  }
+
   private native int remapInstructionOperandFromCPCache0(Class<?> aClass, int index);
   public         int remapInstructionOperandFromCPCache(Class<?> aClass, int index) {
     Objects.requireNonNull(aClass);
@@ -603,7 +609,6 @@ public class WhiteBox {
   public native boolean isJFRIncluded();
   public native boolean isDTraceIncluded();
   public native boolean canWriteJavaHeapArchive();
-  public native Object  getResolvedReferences(Class<?> c);
   public native void    linkClass(Class<?> c);
   public native boolean areOpenArchiveHeapObjectsMapped();
 
