@@ -34,6 +34,7 @@ struct VKRenderingContext {
     VKSDOps* surface;
     Color color;
     VKTransform transform;
+    VkRect2D clipRect;
 };
 
 VKRenderer* VKRenderer_Create(VKDevice* device);
