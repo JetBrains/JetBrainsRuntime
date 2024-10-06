@@ -95,7 +95,8 @@
 // which is only called from queue flusher thread, no need for synchronization.
 static VKRenderingContext context = {
         NULL, {},
-        {1.0, 0.0, 0.0,0.0, 1.0, 0.0}};
+        {1.0, 0.0, 0.0,0.0, 1.0, 0.0},
+    {{0, 0},{INT_MAX, INT_MAX}}};
 
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
     (JNIEnv *env, jobject oglrq, jlong buf, jint limit)
@@ -322,19 +323,22 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                                                     OFFSET_XFORM);
                 jboolean isoblit  = EXTRACT_BOOLEAN(packedParams,
                                                     OFFSET_ISOBLIT);
+                VKSDOps *dstOps = (VKSDOps *)jlong_to_ptr(pDst);
+                VKSDOps *oldSurface = context.surface;
+                context.surface = dstOps;
                 if (isoblit) {
-                    VKBlitLoops_IsoBlit(env, &context, pSrc, pDst,
+                    VKBlitLoops_IsoBlit(env, &context, pSrc,
                                          xform, hint, texture,
                                          sx1, sy1, sx2, sy2,
                                          dx1, dy1, dx2, dy2);
                 } else {
                     jint srctype = EXTRACT_BYTE(packedParams, OFFSET_SRCTYPE);
-                    VKBlitLoops_Blit(env, &context, pSrc, pDst,
+                    VKBlitLoops_Blit(env, &context, pSrc,
                                       xform, hint, srctype, texture,
                                       sx1, sy1, sx2, sy2,
                                       dx1, dy1, dx2, dy2);
                 }
-
+                context.surface = oldSurface;
                 break;
                 J2dRlsTraceLn8(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT (%d %d %d %d) -> (%f %f %f %f) ",
                                sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)
@@ -390,6 +394,9 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint y1 = NEXT_INT(b);
                 jint x2 = NEXT_INT(b);
                 jint y2 = NEXT_INT(b);
+                context.clipRect = (VkRect2D){
+                    {x1, y1},
+                    {x2-x1, y2 - y1}};
                 J2dRlsTraceLn4(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_RECT_CLIP(%d, %d, %d, %d)",
                     x1, y1, x2, y2);
