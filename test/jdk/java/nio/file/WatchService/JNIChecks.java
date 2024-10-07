@@ -38,25 +38,25 @@ public class JNIChecks {
     public static void main(String[] args) throws Exception {
         {
             System.out.println("Test 1: UpdateInterference");
-            final OutputAnalyzer oa = ProcessTools.executeTestJvm("-Xcheck:jni", UpdateInterference.class.getName());
+            final OutputAnalyzer oa = ProcessTools.executeTestJava("-Xcheck:jni", UpdateInterference.class.getName());
             oa.shouldNotContain("WARNING").shouldHaveExitValue(0);
         }
 
         {
             System.out.println("Test 2: DeleteInterference");
-            final OutputAnalyzer oa = ProcessTools.executeTestJvm("-Xcheck:jni", DeleteInterference.class.getName());
+            final OutputAnalyzer oa = ProcessTools.executeTestJava("-Xcheck:jni", DeleteInterference.class.getName());
             oa.shouldNotContain("WARNING").shouldHaveExitValue(0);
         }
 
         {
             System.out.println("Test 3: LotsOfCancels");
-            final OutputAnalyzer oa = ProcessTools.executeTestJvm("-Xcheck:jni", LotsOfCancels.class.getName());
+            final OutputAnalyzer oa = ProcessTools.executeTestJava("-Xcheck:jni", LotsOfCancels.class.getName());
             oa.shouldNotContain("WARNING").shouldHaveExitValue(0);
         }
 
         {
             System.out.println("Test 4: LotsOfCloses");
-            final OutputAnalyzer oa = ProcessTools.executeTestJvm("-Xcheck:jni", LotsOfCloses.class.getName());
+            final OutputAnalyzer oa = ProcessTools.executeTestJava("-Xcheck:jni", LotsOfCloses.class.getName());
             oa.shouldNotContain("WARNING").shouldHaveExitValue(0);
         }
     }
