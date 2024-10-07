@@ -33,7 +33,7 @@
 #define USE_ACCEL_TEXTURE_POOL  0
 
 #define TRACE_LOCK              0
-#define TRACE_TEX               0
+#define TRACE_TEX               1
 
 
 /* lock API */
@@ -64,37 +64,17 @@ void MTLTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
     if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_unlockImpl: lock=%p - unlocked", l);
 }
 
-
-/* Texture allocate/free API */
-static id<MTLTexture> MTLTexturePool_createTexture(id<MTLDevice> device,
-                                                   int width,
-                                                   int height,
-                                                   long format)
-{
-    MTLTextureDescriptor *textureDescriptor =
-            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:(MTLPixelFormat)format
-                                                               width:(NSUInteger) width
-                                                              height:(NSUInteger) height
-                                                           mipmapped:NO];
-    // By default:
-    // usage = MTLTextureUsageShaderRead
-    // storage = MTLStorageModeManaged
-    textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
-
-    // Use auto-release => MTLTexturePoolItem.dealloc to free texture !
-    id <MTLTexture> texture = (id <MTLTexture>) [[device newTextureWithDescriptor:textureDescriptor] autorelease];
-    [texture retain];
-
-    if (TRACE_TEX) J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "MTLTexturePool_createTexture: created texture: tex=%p, w=%d h=%d, pf=%d",
-                                  texture, [texture width], [texture height], [texture pixelFormat]);
-    return texture;
-}
+/* Texture create/free statistics */
+static uint64_t textureMemoryAllocated = 0L;
+static uint64_t textureTotalMemoryAllocated = 0L;
 
 static int MTLTexturePool_bytesPerPixel(long format) {
     switch ((MTLPixelFormat)format) {
         case MTLPixelFormatBGRA8Unorm:
             return 4;
         case MTLPixelFormatA8Unorm:
+        case MTLPixelFormatR8Uint:
+        case MTLPixelFormatStencil8:
             return 1;
         default:
             J2dRlsTraceLn1(J2D_TRACE_ERROR, "MTLTexturePool_bytesPerPixel: format=%d not supported (4 bytes by default)", format);
@@ -102,9 +82,68 @@ static int MTLTexturePool_bytesPerPixel(long format) {
     }
 }
 
-static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> texture) {
+/* Texture allocate/free API */
+id<MTLTexture> MTLTexturePool_createTexture(id<MTLDevice> device,
+                                            int width,
+                                            int height,
+                                            long format,
+                                            int mtlUsageType)
+{
+    MTLTextureDescriptor *textureDescriptor =
+            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:(MTLPixelFormat)format
+                                                               width:(NSUInteger) width
+                                                              height:(NSUInteger) height
+                                                           mipmapped:NO];
+
+    // storage = MTLStorageModeManaged
+
+    switch (mtlUsageType) {
+        case MTL_USAGE_TYPE_SHADER_READ:
+            textureDescriptor.usage = MTLTextureUsageShaderRead;
+            textureDescriptor.storageMode = MTLStorageModeManaged;
+            break;
+        case MTL_USAGE_TYPE_RENDER_SHADER_READ:
+            textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+            textureDescriptor.storageMode = MTLStorageModeManaged;
+            break;
+        case MTL_USAGE_TYPE_RENDER_SHADER_READ_PRIVATE:
+            textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+            textureDescriptor.storageMode = MTLStorageModePrivate;
+            break;
+        case MTL_USAGE_TYPE_RENDER_SHADER_READ_WRITE_PRIVATE:
+            textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+            textureDescriptor.storageMode = MTLStorageModePrivate;
+            break;
+        case MTL_USAGE_ALL_TYPE_PRIVATE:
+            textureDescriptor.usage = MTLTextureUsageUnknown;
+            textureDescriptor.storageMode = MTLStorageModePrivate;
+            break;
+        case MTL_USAGE_TYPE_UNDEFINED:
+        default:
+            J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLTexturePool_createTexture: invalid usage type=%d", mtlUsageType);
+    }
+
+    // Use auto-release => MTLTexturePoolItem.dealloc to free texture !
+    id <MTLTexture> texture = (id <MTLTexture>) [[device newTextureWithDescriptor:textureDescriptor] autorelease];
+    [texture retain];
+
+    if (TRACE_TEX) J2dRlsTraceLn5(J2D_TRACE_VERBOSE, "MTLTexturePool_createTexture: created texture(usageType=%d): tex=%p, w=%d h=%d, pf=%d",
+                                  mtlUsageType, texture, [texture width], [texture height], [texture pixelFormat]);
+
+    const int requestedBytes = [texture width] * [texture height] * MTLTexturePool_bytesPerPixel([texture pixelFormat]);
+    textureMemoryAllocated += requestedBytes;
+    textureTotalMemoryAllocated += requestedBytes;
+
+    return texture;
+}
+
+void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> texture) {
     if (TRACE_TEX) J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "MTLTexturePool_freeTexture: free texture: tex=%p, w=%d h=%d, pf=%d",
                                   texture, [texture width], [texture height], [texture pixelFormat]);
+
+    const int requestedBytes = [texture width] * [texture height] * MTLTexturePool_bytesPerPixel([texture pixelFormat]);
+    textureMemoryAllocated -= requestedBytes;
+
     [texture release];
 }
 
@@ -641,8 +680,10 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
                 lastUsedTimeThreshold;
 
     if (TRACE_MEM_API || TRACE_GC) {
-        J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "MTLTexturePool_cleanIfNecessary: before GC: allocated memory = %lld Kb (allocs: %d)",
-                       _memoryAllocated / UNIT_KB, self.allocatedCount);
+        J2dRlsTraceLn5(J2D_TRACE_VERBOSE, "MTLTexturePool_cleanIfNecessary: before GC: allocated memory = %lld Kb (allocs: %d, total = %lld Mb)"
+                                          " all textures = %lld Kb (total = %lld Mb)",
+                       _memoryAllocated / UNIT_KB, self.allocatedCount, _memoryTotalAllocated / UNIT_MB,
+                       textureMemoryAllocated / UNIT_KB, textureTotalMemoryAllocated / UNIT_MB);
     }
 
     for (int cy = 0; cy < _poolCellHeight; ++cy) {
@@ -654,8 +695,10 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
         }
     }
     if (TRACE_MEM_API || TRACE_GC) {
-        J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "MTLTexturePool_cleanIfNecessary:  after GC: allocated memory = %lld Kb (allocs: %d) - hits = %lld (%.3lf %% cached)",
-                       _memoryAllocated / UNIT_KB, self.allocatedCount,
+        J2dRlsTraceLn7(J2D_TRACE_VERBOSE, "MTLTexturePool_cleanIfNecessary:  after GC: allocated memory = %lld Kb (allocs: %d, total = %lld Mb)"
+                                          " all textures = %lld Kb (total = %lld Mb) - hits = %lld (%.3lf %% cached)",
+                       _memoryAllocated / UNIT_KB, self.allocatedCount, _memoryTotalAllocated / UNIT_MB,
+                       textureMemoryAllocated / UNIT_KB, textureTotalMemoryAllocated / UNIT_MB,
                        self.totalHits, (self.totalHits != 0) ? (100.0 * self.cacheHits) / self.totalHits : 0.0);
         // reset hits:
         self.cacheHits = 0;
@@ -664,7 +707,11 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 }
 
 // NOTE: called from RQ-thread (on blit operations)
-- (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format {
+- (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format  {
+    return [self getTexture:width height:height format:format usageType:MTL_USAGE_TYPE_RENDER_SHADER_READ];
+}
+
+- (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format usageType:(int)usageType {
 #if (USE_ACCEL_TEXTURE_POOL == 1)
         ATexturePoolHandle* texHandle = ATexturePool_getTexture(_accelTexturePool, width, height, format);
         CHECK_NULL_RETURN(texHandle, NULL);
@@ -793,7 +840,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
                 _cells[cellY0 * _poolCellWidth + cellX0] = cell;
             }
             // use device to allocate NEW texture:
-            id <MTLTexture> tex = MTLTexturePool_createTexture(device, width, height, format);
+            id <MTLTexture> tex = MTLTexturePool_createTexture(device, width, height, format, usageType);
 
             minDeltaTpi = [[[MTLTexturePoolItem alloc] initWithTexture:tex cell:cell
                             width:width height:height format:format] autorelease];

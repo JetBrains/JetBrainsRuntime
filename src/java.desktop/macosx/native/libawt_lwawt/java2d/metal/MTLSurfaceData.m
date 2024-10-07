@@ -88,10 +88,8 @@ static jboolean MTLSurfaceData_initTexture(JNIEnv *env, BMTLSDOps *bmtlsdo, jboo
             return JNI_FALSE;
         }
 
-        MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatBGRA8Unorm width: width height: height mipmapped: NO];
-        textureDescriptor.usage = MTLTextureUsageUnknown;
-        textureDescriptor.storageMode = MTLStorageModePrivate;
-        bmtlsdo->pTexture = [ctx.device newTextureWithDescriptor: textureDescriptor];
+        // use device to allocate NEW texture:
+        bmtlsdo->pTexture = MTLTexturePool_createTexture(ctx.device, width, height, MTLPixelFormatBGRA8Unorm, MTL_USAGE_ALL_TYPE_PRIVATE);
 
         if (DO_LOG_SF_TYPE(bmtlsdo)) {
             J2DTrace_plog(env,
@@ -101,21 +99,15 @@ static jboolean MTLSurfaceData_initTexture(JNIEnv *env, BMTLSDOps *bmtlsdo, jboo
         }
 
         if (sfType == MTLSD_FLIP_BACKBUFFER && !isDisplaySyncEnabled()) {
-            bmtlsdo->pOutTexture = [ctx.device newTextureWithDescriptor: textureDescriptor];
+            bmtlsdo->pOutTexture = MTLTexturePool_createTexture(ctx.device, width, height, MTLPixelFormatBGRA8Unorm, MTL_USAGE_ALL_TYPE_PRIVATE);
         } else {
             bmtlsdo->pOutTexture = NULL;
         }
-        MTLTextureDescriptor *stencilDataDescriptor =
-            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Uint width:width height:height mipmapped:NO];
-        stencilDataDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
-        stencilDataDescriptor.storageMode = MTLStorageModePrivate;
-        bmtlsdo->pStencilData = [ctx.device newTextureWithDescriptor:stencilDataDescriptor];
 
-        MTLTextureDescriptor *stencilTextureDescriptor =
-            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatStencil8 width:width height:height mipmapped:NO];
-        stencilTextureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
-        stencilTextureDescriptor.storageMode = MTLStorageModePrivate;
-        bmtlsdo->pStencilTexture = [ctx.device newTextureWithDescriptor:stencilTextureDescriptor];
+        // TODO: lazy instanciate ?
+        bmtlsdo->pStencilData = MTLTexturePool_createTexture(ctx.device, width, height, MTLPixelFormatR8Uint, MTL_USAGE_TYPE_RENDER_SHADER_READ_PRIVATE);
+        bmtlsdo->pStencilTexture = MTLTexturePool_createTexture(ctx.device, width, height, MTLPixelFormatStencil8, MTL_USAGE_TYPE_RENDER_SHADER_READ_WRITE_PRIVATE);
+
         bmtlsdo->isOpaque = isOpaque;
         bmtlsdo->width = width;
         bmtlsdo->height = height;
@@ -223,19 +215,19 @@ MTLSD_Delete(JNIEnv *env, BMTLSDOps *bmtlsdo)
                               ((id <MTLTexture>) bmtlsdo->pTexture).height,
                               [((id <MTLTexture>) bmtlsdo->pTexture).device.name UTF8String]);
             }
-            [(NSObject *)bmtlsdo->pTexture release];
+            MTLTexturePool_freeTexture(nil, (id <MTLTexture>) bmtlsdo->pTexture);
             bmtlsdo->pTexture = NULL;
         }
         if (bmtlsdo->pOutTexture != NULL) {
-            [(NSObject *)bmtlsdo->pOutTexture release];
+            MTLTexturePool_freeTexture(nil, (id <MTLTexture>) bmtlsdo->pOutTexture);
             bmtlsdo->pOutTexture = NULL;
         }
         if (bmtlsdo->pStencilTexture != NULL) {
-            [(NSObject *)bmtlsdo->pStencilTexture release];
+            MTLTexturePool_freeTexture(nil, (id <MTLTexture>) bmtlsdo->pStencilTexture);
             bmtlsdo->pStencilTexture = NULL;
         }
         if (bmtlsdo->pStencilData != NULL) {
-            [(NSObject *) bmtlsdo->pStencilData release];
+            MTLTexturePool_freeTexture(nil, (id <MTLTexture>) bmtlsdo->pStencilData);
             bmtlsdo->pStencilData = NULL;
         }
         bmtlsdo->drawableType = MTLSD_UNDEFINED;

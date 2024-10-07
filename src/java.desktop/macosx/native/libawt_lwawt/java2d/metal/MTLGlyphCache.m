@@ -99,12 +99,9 @@
     _cacheInfo->Flush = func;
     _cacheInfo->mtlc = _ctx;
     _cacheInfo->encoder = nil;
-    MTLTextureDescriptor *textureDescriptor =
-            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:pixelFormat
-                                                               width:width
-                                                              height:height
-                                                           mipmapped:NO];
-    _cacheInfo->texture = [_ctx.device newTextureWithDescriptor:textureDescriptor];
+
+    // use device to allocate NEW texture:
+    _cacheInfo->texture = MTLTexturePool_createTexture(_ctx.device, width, height, pixelFormat, MTL_USAGE_TYPE_SHADER_READ);
 
     return YES;
 }
@@ -232,7 +229,7 @@
     if (_cacheInfo->Flush != NULL) {
         _cacheInfo->Flush(_cacheInfo->mtlc);
     }
-    [_cacheInfo->texture release];
+    MTLTexturePool_freeTexture(nil, _cacheInfo->texture);
 
     while (_cacheInfo->head != NULL) {
         MTLCacheCellInfo *cellinfo = _cacheInfo->head;
@@ -246,6 +243,10 @@
     }
     free(_cacheInfo);
     _cacheInfo = NULL;
+
+    if (0) {
+        [NSException raise:NSGenericException format:@"CRASH ..."];
+    }
 }
 
 - (void) dealloc {

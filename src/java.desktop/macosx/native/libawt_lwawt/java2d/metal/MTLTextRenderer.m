@@ -483,16 +483,8 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
     J2dTraceLn2(J2D_TRACE_INFO, "MTLTR_DrawLCDGlyphNoCache x %d, y%d", x, y);
     J2dTraceLn3(J2D_TRACE_INFO, "MTLTR_DrawLCDGlyphNoCache rowBytesOffset=%d, rgbOrder=%d, contrast=%d", rowBytesOffset, rgbOrder, contrast);
 
-
-    id<MTLRenderCommandEncoder> encoder = nil;
-
-    MTLTextureDescriptor *textureDescriptor =
-        [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
-                                                            width:w
-                                                            height:h
-                                                            mipmapped:NO];
-
-    blitTexture = [mtlc.device newTextureWithDescriptor:textureDescriptor];
+    // use device to allocate NEW texture:
+    blitTexture = MTLTexturePool_createTexture(mtlc.device, w, h, MTLPixelFormatBGRA8Unorm, MTL_USAGE_TYPE_SHADER_READ);
 
     if (glyphMode != MODE_NO_CACHE_LCD) {
         if (glyphMode == MODE_NO_CACHE_GRAY) {
@@ -513,7 +505,7 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
 
         glyphMode = MODE_NO_CACHE_LCD;
     }
-    encoder = [mtlc.encoderManager getLCDEncoder:dstOps->pTexture isSrcOpaque:YES isDstOpaque:YES];
+    id<MTLRenderCommandEncoder> encoder = [mtlc.encoderManager getLCDEncoder:dstOps->pTexture isSrcOpaque:YES isDstOpaque:YES];
     MTLTR_SetLCDContrast(mtlc, contrast, encoder);
 
     unsigned int imageBytes = w * h * 4;
@@ -555,9 +547,11 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
 
     vertexCacheIndex = 0;
     [mtlc.encoderManager endEncoder];
-    [blitTexture release];
 
+    // TODO: avoid wait !
     [mtlc commitCommandBuffer:YES display:NO];
+    MTLTexturePool_freeTexture(nil, blitTexture);
+
     return JNI_TRUE;
 }
 

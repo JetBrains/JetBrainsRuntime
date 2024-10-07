@@ -153,13 +153,8 @@
         _offset[2] = _offset[0];
         _offset[3] = _offset[0];
 
-        MTLTextureDescriptor *textureDescriptor =
-                [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatA8Unorm
-                                                                   width:(NSUInteger)256
-                                                                  height:(NSUInteger)4
-                                                               mipmapped:NO];
-
-        _lookupTex = [device newTextureWithDescriptor:textureDescriptor];
+        // use device to allocate NEW texture:
+        _lookupTex = MTLTexturePool_createTexture(device, 256, 4, MTLPixelFormatA8Unorm, MTL_USAGE_TYPE_SHADER_READ);
 
         void *bands[4];
         for (int i = 0; i < 4; i++) {
@@ -204,7 +199,7 @@
 }
 
 - (void) dealloc {
-    [_lookupTex release];
+    MTLTexturePool_freeTexture(nil, _lookupTex);
     [super dealloc];
 }
 
