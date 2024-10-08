@@ -29,6 +29,7 @@ read -r -d '' RENDER_OPS_DOC << EOM
 rendering_options:
   -opengl # OpenGL pipeline (windows, linux, macOS)
   -metal  # Metal pipeline (macOS)
+  -vulkan # Vulkan pipeline (WLToolkit)
   -tk tk_name # AWT toolkit (linux: WLToolkit|XToolkit)
   -scale # UI scale
 EOM
@@ -40,6 +41,9 @@ while [ $# -ge 1 ] ; do
         ;;
     -metal) J2D_OPTS=$J2D_OPTS" -Dsun.java2d.metal=true"
       shift
+        ;;
+    -vulkan) J2D_OPTS=$J2D_OPTS" -Dsun.java2d.vulkan=true"    
+      shift  
         ;;
     -tk) shift
       if [ $# -ge 1 ] ; then
