@@ -115,10 +115,10 @@ coverage of all the details.
 > It would usually have meaningful advice on how to solve the problem.
 
 ### Linux (Docker)
-Create a container:
+Create a container (use the `mkdocker...` variant for your architecture):
 ```
 $ cd jb/project/docker
-$ docker build .
+$ ./mkdocker_x86_64.sh
 ...
 Successfully built 942ea9900054
 ```
@@ -127,16 +127,17 @@ Run these commands in the new container:
 $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 # cd /JetBrainsRuntime
 # sh ./configure
-# make images CONF=linux-x86_64-normal-server-release
+# make images
 ```
 
 ### Ubuntu Linux
 Install the necessary tools, libraries, and headers with:
 ```
 $ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev \
-       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev libspeechd-dev libdbus-1-dev
+       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev libspeechd-dev libwayland-dev \
+       wayland-protocols libxkbcommon-x11-0 libdbus-1-dev
 ```
-Get Java 21 (for instance, [Azul Zulu Builds of OpenJDK 21](https://www.azul.com/downloads/?version=java-21-lts&os=linux&package=jdk#zulu)).
+Get Java 22 (for instance, [Azul Zulu Builds of OpenJDK 22](https://www.azul.com/downloads/?version=java-22&os=linux&package=jdk#zulu)).
 
 Then run the following:
 ```
