@@ -691,10 +691,13 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pData = NEXT_LONG(b);
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
-                        CONTINUE_IF_NULL(mtlc);
-                        [mtlc.glyphCacheAA free];
-                        [mtlc.glyphCacheLCD free];
-                        [mtlc commitCommandBuffer:YES display:NO];
+                        if (mtlc != NULL) {
+                            [mtlc.glyphCacheAA free];
+                            [mtlc.glyphCacheLCD free];
+                            [mtlc commitCommandBuffer:YES display:NO];
+                            mtlc = NULL;
+                        }
+                        dstOps = NULL;
                         MTLSD_Delete(env, mtlsdo);
                     }
                     break;
@@ -705,7 +708,13 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pData = NEXT_LONG(b);
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
-                        CONTINUE_IF_NULL(mtlc);
+                        if (mtlc != NULL) {
+                            [mtlc.glyphCacheAA free];
+                            [mtlc.glyphCacheLCD free];
+                            [mtlc commitCommandBuffer:YES display:NO];
+                            mtlc = NULL;
+                        }
+                        dstOps = NULL;
                         MTLSD_Delete(env, mtlsdo);
                         if (mtlsdo->privOps != NULL) {
                             free(mtlsdo->privOps);
