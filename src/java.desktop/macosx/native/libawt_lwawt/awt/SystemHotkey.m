@@ -116,72 +116,94 @@ static int symbolicHotKeysModifiers2java(int mask) {
     return result;
 }
 
-static NSString * getAppleSymbolicHotKeysDescription(int hotKeyId) {
-    static NSDictionary * hotkeyId2DescMap = nil;
-    if (hotkeyId2DescMap == nil) {
-        hotkeyId2DescMap = [NSDictionary dictionaryWithObjectsAndKeys:
-                @"Move focus to the menu bar", [NSNumber numberWithInt:7],
-                @"Move focus to the Dock", [NSNumber numberWithInt:8],
-                @"Move focus to active or next window", [NSNumber numberWithInt:9],
-                @"Move focus to window toolbar", [NSNumber numberWithInt:10],
-                @"Move focus to floating window", [NSNumber numberWithInt:11],
-                @"Change the way Tab moves focus", [NSNumber numberWithInt:13],
-                @"Turn zoom on or off", [NSNumber numberWithInt:15],
-                @"Zoom in", [NSNumber numberWithInt:17],
-                @"Zoom out", [NSNumber numberWithInt:19],
-                @"Reverse Black and White", [NSNumber numberWithInt:21],
-                @"Turn image smoothing on or off", [NSNumber numberWithInt:23],
-                @"Increase Contrast", [NSNumber numberWithInt:25],
-                @"Decrease Contrast", [NSNumber numberWithInt:26],
-                @"Move focus to the next window in application", [NSNumber numberWithInt:27],
-                @"Save picture of screen as file", [NSNumber numberWithInt:28],
-                @"Copy picture of screen to clipboard", [NSNumber numberWithInt:29],
-                @"Save picture of selected area as file", [NSNumber numberWithInt:30],
-                @"Copy picture of selected area to clipboard", [NSNumber numberWithInt:31],
-                @"All Windows", [NSNumber numberWithInt:32],
-                @"Application Windows", [NSNumber numberWithInt:33],
-                @"All Windows (Slow)", [NSNumber numberWithInt:34],
-                @"Application Windows (Slow)", [NSNumber numberWithInt:35],
-                @"Desktop", [NSNumber numberWithInt:36],
-                @"Desktop (Slow)", [NSNumber numberWithInt:37],
-                @"Move focus to the window drawer", [NSNumber numberWithInt:51],
-                @"Turn Dock Hiding On/Off", [NSNumber numberWithInt:52],
-                @"Move focus to the status menus", [NSNumber numberWithInt:57],
-                @"Turn VoiceOver on / off", [NSNumber numberWithInt:59],
-                @"Select the previous input source", [NSNumber numberWithInt:60],
-                @"Select the next source in the Input Menu", [NSNumber numberWithInt:61],
-                @"Dashboard", [NSNumber numberWithInt:62],
-                @"Dashboard (Slow)", [NSNumber numberWithInt:63],
-                @"Show Spotlight search field", [NSNumber numberWithInt:64],
-                @"Show Spotlight window", [NSNumber numberWithInt:65],
-                @"Dictionary MouseOver", [NSNumber numberWithInt:70],
-                @"Hide and show Front Row", [NSNumber numberWithInt:73],
-                @"Activate Spaces", [NSNumber numberWithInt:75],
-                @"Activate Spaces (Slow)", [NSNumber numberWithInt:76],
-                @"Spaces Left", [NSNumber numberWithInt:79],
-                @"Spaces Right", [NSNumber numberWithInt:81],
-                @"Spaces Down", [NSNumber numberWithInt:83],
-                @"Spaces Up", [NSNumber numberWithInt:85],
-                @"Show Help Menu", [NSNumber numberWithInt:91],
-                @"Show Help Menu", [NSNumber numberWithInt:92],
-                @"Show Help Menu", [NSNumber numberWithInt:98],
-                @"Switch to Space 1", [NSNumber numberWithInt:118],
-                @"Switch to Space 2", [NSNumber numberWithInt:119],
-                @"Switch to Space 3", [NSNumber numberWithInt:120],
-                @"Switch to Space 4", [NSNumber numberWithInt:121],
-                @"Show Launchpad", [NSNumber numberWithInt:160],
-                @"Show Accessibility Controls", [NSNumber numberWithInt:162],
-                @"Show Notification Center", [NSNumber numberWithInt:163],
-                @"Turn Do-Not-Disturb On/Off", [NSNumber numberWithInt:175],
-                @"Turn focus following On/Off", [NSNumber numberWithInt:179],
-                nil
-        ];
+struct SymbolicHotKey {
+    // Apple's internal hotkey ID, a small integer
+    int uid;
 
-        [hotkeyId2DescMap retain];
-    }
+    // Unique human-readable identifier for the shortcut
+    const char* id;
 
-    return [hotkeyId2DescMap objectForKey : [NSNumber numberWithInt : hotKeyId]];
-}
+    // English-language description of the shortcut
+    const char* description;
+
+    // Whether this shortcut is enabled by default.
+    // Note that a shortcut can be enabled but not have any keys assigned
+    bool enabled;
+
+    // Character for shortcuts that are triggered based on the character value of the key,
+    // instead of its physical position on a keyboard. It's set to 65535 if it's unassigned.
+    int character;
+
+    // Virtual key code for the shortcut.
+    // This key code identifies a key on a keyboard independent of the logical layout used.
+    // It's set to 65535 if it's unassigned.
+    int key;
+
+    // Modifier mask using the NSEventModifierFlag* values for this shortcut
+    int modifiers;
+
+    // The first major version of macOS that has this shortcut or -1 if unknown.
+    int macOSVersion;
+};
+
+static const struct SymbolicHotKey defaultSymbolicHotKeys[] = {
+        [7] = { 7, "FocusMenuBar", "Move focus to the menu bar", YES, 65535, 120, 0x00840000, -1 },
+        [8] = { 8, "FocusDock", "Move focus to the Dock", YES, 65535, 99, 0x00840000, -1 },
+        [9] = { 9, "FocusActiveWindow", "Move focus to active or next window", YES, 65535, 118, 0x00840000, -1 },
+        [10] = { 10, "FocusToolbar", "Move focus to window toolbar", YES, 65535, 96, 0x00840000, -1 },
+        [11] = { 11, "FocusFloatingWindow", "Move focus to floating window", YES, 65535, 97, 0x00840000, -1 },
+        [12] = { 12, "ToggleKeyboardAccess", "Turn keyboard access on or off", YES, 65535, 122, 0x00840000, -1 },
+        [13] = { 13, "ChangeTabMode", "Change the way Tab moves focus", YES, 65535, 98, 0x00840000, -1 },
+        [15] = { 15, "ToggleZoom", "Zoom: Turn zoom on or off", NO, 56, 28, 0x00180000, -1 },
+        [17] = { 17, "ZoomIn", "Zoom: Zoom in", NO, 61, 24, 0x00180000, -1 },
+        [19] = { 19, "ZoomOut", "Zoom: Zoom out", NO, 45, 27, 0x00180000, -1 },
+        [21] = { 21, "InvertColors", "Invert colors", YES, 56, 28, 0x001c0000, -1 },
+        [23] = { 23, "ToggleZoomImageSmoothing", "Zoom: Turn image smoothing on or off", NO, 92, 42, 0x00180000, -1 },
+        [25] = { 25, "IncreaseContrast", "Increase contrast", NO, 46, 47, 0x001c0000, -1 },
+        [26] = { 26, "DecreaseContrast", "Decrease contrast", NO, 44, 43, 0x001c0000, -1 },
+        [27] = { 27, "FocusNextApplicationWindow", "Move focus to the next window in application", YES, 96, 50, 0x00100000, -1 },
+        [28] = { 28, "ScreenshotToFile", "Save picture of screen as a file", YES, 51, 20, 0x00120000, -1 },
+        [29] = { 29, "ScreenshotToClipboard", "Copy picture of screen to the clipboard", YES, 51, 20, 0x00160000, -1 },
+        [30] = { 30, "ScreenshotAreaToFile", "Save picture of selected area as a file", YES, 52, 21, 0x00120000, -1 },
+        [31] = { 31, "ScreenshotAreaToClipboard", "Copy picture of selected area to the clipboard", YES, 52, 21, 0x00160000, -1 },
+        [32] = { 32, "ShowAllWindows", "Mission Control", YES, 65535, 126, 0x00840000, -1 },
+        [33] = { 33, "ShowApplicationWindows", "Application windows", YES, 65535, 125, 0x00840000, -1 },
+        [36] = { 36, "ShowDesktop", "Show desktop", YES, 65535, 103, 0x00800000, -1 },
+        [52] = { 52, "ToggleDockHiding", "Turn Dock hiding on/off", YES, 100, 2, 0x00180000, -1 },
+        [53] = { 53, "DecreaseBrightness", "Decrease display brightness", YES, 65535, 107, 0x00800000, -1 },
+        [54] = { 54, "IncreaseBrightness", "Increase display brightness", YES, 65535, 113, 0x00800000, -1 },
+        [57] = { 57, "FocusStatusMenu", "Move focus to the status menus", YES, 65535, 100, 0x00840000, -1 },
+        [59] = { 59, "ToggleVoiceOver", "Turn VoiceOver on or off", YES, 65535, 96, 0x00900000, -1 },
+        [60] = { 60, "SelectPreviousInputSource", "Select the previous input source", YES, 32, 49, 0x00040000, -1 },
+        [61] = { 61, "SelectNextInputSource", "Select next source in Input menu", YES, 32, 49, 0x000c0000, -1 },
+        [64] = { 64, "ShowSpotlight", "Show Spotlight Search", YES, 32, 49, 0x00100000, -1 },
+        [65] = { 65, "ShowFinderSearch", "Show Finder search window", YES, 32, 49, 0x00180000, -1 },
+        [79] = { 79, "SwitchToDesktopLeft", "Move left a space", NO, 65535, 123, 0x00840000, -1 },
+        [81] = { 81, "SwitchToDesktopRight", "Move right a space", NO, 65535, 124, 0x00840000, -1 },
+        [118] = { 118, "SwitchToDesktop1", "Switch to Desktop 1", NO, 65535, 18, 0x00040000, -1 },
+        [119] = { 119, "SwitchToDesktop2", "Switch to Desktop 2", NO, 65535, 19, 0x00040000, -1 },
+        [120] = { 120, "SwitchToDesktop3", "Switch to Desktop 3", NO, 65535, 20, 0x00040000, -1 },
+        [121] = { 121, "SwitchToDesktop4", "Switch to Desktop 4", NO, 65535, 21, 0x00040000, -1 },
+        [159] = { 159, "ShowContextualMenu", "Show contextual menu", YES, 65535, 36, 0x00040000, 15 },
+        [160] = { 160, "ShowLaunchpad", "Show Launchpad", NO, 65535, 65535, 0, -1 },
+        [162] = { 162, "ShowAccessibilityControls", "Show Accessibility controls", YES, 65535, 96, 0x00980000, -1 },
+        [163] = { 163, "ShowNotificationCenter", "Show Notification Center", NO, 65535, 65535, 0, -1 },
+        [175] = { 175, "ToggleDoNotDisturb", "Turn Do Not Disturb on/off", YES, 65535, 65535, 0, -1 },
+        [179] = { 179, "ToggleZoomFocusFollowing", "Zoom: Turn focus following on or off", NO, 65535, 65535, 0, -1 },
+        [184] = { 184, "ScreenshotOptions", "Screenshot and recording options", YES, 53, 23, 0x00120000, -1 },
+        [190] = { 190, "OpenQuickNote", "Quick note", YES, 113, 12, 0x00800000, -1 },
+        [222] = { 222, "ToggleStageManager", "Turn Stage Manager on/off", NO, 65535, 65535, 0, -1 },
+        [223] = { 223, "TogglePresenterOverlayLarge", "Turn Presenter Overlay (large) on or off", YES, 65535, 65535, 0, -1 },
+        [224] = { 224, "TogglePresenterOverlaySmall", "Turn Presenter Overlay (small) on or off", YES, 65535, 65535, 0, -1 },
+        [225] = { 225, "ToggleLiveSpeech", "LiveSpeech: Turn Live Speech on or off", YES, 65535, 65535, 0, 14 },
+        [226] = { 226, "ToggleLiveSpeechVisibility", "LiveSpeech: Toggle visibility", YES, 65535, 65535, 0, 14 },
+        [227] = { 227, "PauseOrResumeLiveSpeech", "LiveSpeech: Pause or resume speech", YES, 65535, 65535, 0, 14 },
+        [228] = { 228, "CancelLiveSpeech", "LiveSpeech: Cancel speech", YES, 65535, 65535, 0, 14 },
+        [229] = { 229, "ToggleLiveSpeechPhrases", "LiveSpeech: Hide or show phrases", YES, 65535, 65535, 0, 14 },
+        [230] = { 230, "ToggleSpeakSelection", "Turn speak selection on or off", YES, 65535, 65535, 0, 14 },
+        [231] = { 231, "ToggleSpeakItemUnderPointer", "Turn speak item under the pointer on or off", YES, 65535, 65535, 0, 14 },
+        [232] = { 232, "ToggleTypingFeedback", "Turn typing feedback on or off", YES, 65535, 65535, 0, 14 },
+};
 
 @interface DefaultParams: NSObject
 @property (assign) BOOL enabled;
@@ -253,13 +275,13 @@ static void visitServicesShortcut(Visitor visitorBlock, NSString * key_equivalen
     visitorBlock(-1, keyChar.UTF8String, modifiers, desc.UTF8String, -1);
 }
 
-void readSystemHotkeysImpl(Visitor visitorBlock) {
-    // 1. read from com.apple.symbolichotkeys.plist (domain with custom (user defined) shortcuts)
-    @try {
+static void readAppleSymbolicHotkeys(Visitor visitorBlock) {
+    static const int numIds = sizeof(defaultSymbolicHotKeys) / sizeof(defaultSymbolicHotKeys[0]);
+    const NSOperatingSystemVersion macOSVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
 
-    NSUserDefaults * defaults = [NSUserDefaults standardUserDefaults];
-    NSDictionary<NSString *,id> * shk = [defaults persistentDomainForName:@"com.apple.symbolichotkeys"];
-    if (shk != nil) {
+    @try {
+        NSDictionary<NSString *, id> *shk = [[NSUserDefaults standardUserDefaults] persistentDomainForName:@"com.apple.symbolichotkeys"];
+
         //        AppleSymbolicHotKeys =     {
         //                10 =         {
         //                        enabled = 1;
@@ -274,91 +296,116 @@ void readSystemHotkeysImpl(Visitor visitorBlock) {
         //                };
         //          ......
         //         }
-        id hotkeys = [shk valueForKey:@"AppleSymbolicHotKeys"];
-        if (hotkeys == nil)
-            plog(LL_DEBUG, "key AppleSymbolicHotKeys doesn't exist in domain com.apple.symbolichotkeys");
-        else if (![hotkeys isKindOfClass:[NSDictionary class]])
-            plog(LL_DEBUG, "object for key 'AppleSymbolicHotKeys' isn't NSDictionary (class=%s)", [hotkeys className].UTF8String);
-        else {
-            for (id keyObj in hotkeys) {
-                if (![keyObj isKindOfClass:[NSString class]]) {
-                    plog(LL_DEBUG, "key '%s' isn't instance of NSString (class=%s)", toCString(keyObj), [keyObj className].UTF8String);
-                    continue;
-                }
-                NSString *hkNumber = keyObj;
-                id hkDesc = hotkeys[hkNumber];
-                if (![hkDesc isKindOfClass:[NSDictionary class]]) {
-                    plog(LL_DEBUG, "hotkey descriptor '%s' isn't instance of NSDictionary (class=%s)", toCString(hkDesc), [hkDesc className].UTF8String);
-                    continue;
-                }
-                NSDictionary<id, id> *sdict = hkDesc;
-                id objValue = sdict[@"value"];
-                if (objValue == nil)
-                    continue;
-
-                if (![objValue isKindOfClass:[NSDictionary class]]) {
-                    plog(LL_DEBUG, "property 'value' %s isn't instance of NSDictionary (class=%s)", toCString(objValue), [objValue className].UTF8String);
-                    continue;
-                }
-
-                id objEnabled = sdict[@"enabled"];
-                BOOL enabled = objEnabled != nil && [objEnabled boolValue] == YES;
-
-                if (!enabled)
-                    continue;
-
-                NSDictionary * value = objValue;
-                id objParams = value[@"parameters"];
-                if (![objParams isKindOfClass:[NSArray class]]) {
-                    plog(LL_DEBUG, "property 'parameters' %s isn't instance of NSArray (class=%s)", toCString(objParams), [objParams className].UTF8String);
-                    continue;
-                }
-
-                NSArray *parameters = objParams;
-                if ([parameters count] < 3) {
-                    plog(LL_DEBUG, "too small lenght of parameters %d", [parameters count]);
-                    continue;
-                }
-
-                id p0 = parameters[0];
-                id p1 = parameters[1];
-                id p2 = parameters[2];
-
-                if (![p0 isKindOfClass:[NSNumber class]] || ![p1 isKindOfClass:[NSNumber class]] || ![p2 isKindOfClass:[NSNumber class]]) {
-                    plog(LL_DEBUG, "some of parameters isn't instance of NSNumber (%s, %s, %s)", [p0 className].UTF8String, [p1 className].UTF8String, [p2 className].UTF8String);
-                    continue;
-                }
-
-                //parameter 1: ASCII code of the character (or 65535 - hex 0xFFFF - for non-ASCII characters).
-                //parameter 2: the keyboard key code for the character.
-                //Parameter 3: the sum of the control, command, shift and option keys. these are bits 17-20 in binary: shift is bit 17, control is bit 18, option is bit 19, and command is bit 20.
-                //      0x020000 => "Shift",
-                //      0x040000 => "Control",
-                //      0x080000 => "Option",
-                //      0x100000 => "Command"
-
-                int asciiCode = p0 == nil ? 0xFFFF : [p0 intValue];
-                int vkeyCode = p1 == nil ? -1 : [p1 intValue];
-                int modifiers = p2 == nil ? 0 : [p2 intValue];
-
-                char keyCharBuf[64];
-                const char * keyCharStr = keyCharBuf;
-                if (asciiCode >= 0 && asciiCode <= 0xFF) {
-                    sprintf(keyCharBuf, "%c", asciiCode);
-                } else
-                    keyCharStr = NULL;
-                NSString * description = getAppleSymbolicHotKeysDescription([hkNumber intValue]);
-                visitorBlock(vkeyCode, keyCharStr, symbolicHotKeysModifiers2java(modifiers), description == nil ? NULL : description.UTF8String, [hkNumber intValue]);
-            }
+        id hkObj = shk ? [shk valueForKey:@"AppleSymbolicHotKeys"] : nil;
+        if (hkObj && ![hkObj isKindOfClass:[NSDictionary class]]) {
+            plog(LL_DEBUG, "object for key 'AppleSymbolicHotKeys' isn't NSDictionary (class=%s)",
+                 [[hkObj className] UTF8String]);
+            return;
         }
-    } else {
-        plog(LL_DEBUG, "domain com.apple.symbolichotkeys doesn't exist");
-    }
 
-    // 2. read from Pbs (domain with services shortcuts)
-    NSMutableDictionary * allDefParams = createDefaultParams();
-    NSDictionary<NSString *,id> * pbs = [defaults persistentDomainForName:@"pbs"];
-    if (pbs) {
+        struct SymbolicHotKey hotkeys[numIds];
+        memcpy(hotkeys, defaultSymbolicHotKeys, sizeof(hotkeys));
+
+        for (id keyObj in hkObj) {
+            if (![keyObj isKindOfClass:[NSString class]]) {
+                plog(LL_DEBUG, "key '%s' isn't instance of NSString (class=%s)", toCString(keyObj),
+                     [[keyObj className] UTF8String]);
+                continue;
+            }
+            NSString *hkNumber = keyObj;
+
+            int uid = [hkNumber intValue];
+
+            id hkDesc = hkObj[hkNumber];
+            if (![hkDesc isKindOfClass:[NSDictionary class]]) {
+                plog(LL_DEBUG, "hotkey descriptor '%s' isn't instance of NSDictionary (class=%s)", toCString(hkDesc),
+                     [[hkDesc className] UTF8String]);
+                continue;
+            }
+            NSDictionary<id, id> *sdict = hkDesc;
+
+            id objEnabled = sdict[@"enabled"];
+            BOOL enabled = objEnabled != nil && [objEnabled boolValue] == YES;
+            hotkeys[uid].enabled = enabled;
+
+            if (!enabled)
+                continue;
+
+            id objValue = sdict[@"value"];
+            if (objValue == nil)
+                continue;
+
+            if (![objValue isKindOfClass:[NSDictionary class]]) {
+                plog(LL_DEBUG, "property 'value' %s isn't instance of NSDictionary (class=%s)", toCString(objValue),
+                     [[objValue className] UTF8String]);
+                continue;
+            }
+
+            NSDictionary *value = objValue;
+            id objParams = value[@"parameters"];
+            if (![objParams isKindOfClass:[NSArray class]]) {
+                plog(LL_DEBUG, "property 'parameters' %s isn't instance of NSArray (class=%s)", toCString(objParams),
+                     [[objParams className] UTF8String]);
+                continue;
+            }
+
+            NSArray *parameters = objParams;
+            if ([parameters count] < 3) {
+                plog(LL_DEBUG, "too small length of parameters %d", [parameters count]);
+                continue;
+            }
+
+            id p0 = parameters[0];
+            id p1 = parameters[1];
+            id p2 = parameters[2];
+
+            if (![p0 isKindOfClass:[NSNumber class]] || ![p1 isKindOfClass:[NSNumber class]] ||
+                ![p2 isKindOfClass:[NSNumber class]]) {
+                plog(LL_DEBUG, "some of parameters isn't instance of NSNumber (%s, %s, %s)",
+                     [[p0 className] UTF8String],
+                     [[p1 className] UTF8String], [[p2 className] UTF8String]);
+                continue;
+            }
+
+            //parameter 1: ASCII code of the character (or 65535 - hex 0xFFFF - for non-ASCII characters).
+            //parameter 2: the keyboard key code for the character.
+            //Parameter 3: the sum of the control, command, shift and option keys. these are bits 17-20 in binary: shift is bit 17, control is bit 18, option is bit 19, and command is bit 20.
+            //      0x020000 => "Shift",
+            //      0x040000 => "Control",
+            //      0x080000 => "Option",
+            //      0x100000 => "Command"
+
+            hotkeys[uid].character = p0 == nil ? 0xFFFF : [p0 intValue];
+            hotkeys[uid].key = p1 == nil ? 0xFFFF : [p1 intValue];
+            hotkeys[uid].modifiers = p2 == nil ? 0 : [p2 intValue];
+        }
+
+        for (int uid = 0; uid < numIds; ++uid) {
+            struct SymbolicHotKey* hotkey = &hotkeys[uid];
+            if (!hotkey->enabled) continue;
+            if (hotkey->macOSVersion > macOSVersion.majorVersion) continue;
+
+            char keyCharBuf[64];
+            const char *keyCharStr = keyCharBuf;
+            if (hotkey->character >= 0 && hotkey->character <= 0xFF) {
+                sprintf(keyCharBuf, "%c", hotkey->character);
+            } else {
+                keyCharStr = NULL;
+            }
+            visitorBlock(hotkey->key, keyCharStr, symbolicHotKeysModifiers2java(hotkey->modifiers),
+                         hotkey->description, uid);
+        }
+    }
+    @catch (NSException *exception) {
+        NSLog(@"readAppleSymbolicHotkeys: catched exception, reason '%@'", exception.reason);
+    }
+}
+
+static void readPbsHotkeys(Visitor visitorBlock) {
+    @try {
+        NSMutableDictionary *allDefParams = createDefaultParams();
+        NSDictionary<NSString *, id> *pbs = [[NSUserDefaults standardUserDefaults] persistentDomainForName:@"pbs"];
+        if (pbs) {
 //        NSServicesStatus =     {
 //                "com.apple.Terminal - Open man Page in Terminal - openManPage" =         {
 //                        "key_equivalent" = "@$m";
@@ -375,101 +422,81 @@ void readSystemHotkeysImpl(Visitor visitorBlock) {
 //        };
 //    }
 
-        NSDictionary<NSString *, id> *services = [pbs valueForKey:@"NSServicesStatus"];
-        if (services) {
-            for (NSString *key in services) {
-                id value = services[key];
-                if (![value isKindOfClass:[NSDictionary class]]) {
-                    plog(LL_DEBUG, "'%s' isn't instance of NSDictionary (class=%s)", toCString(value), [value className].UTF8String);
-                    continue;
-                }
-                // NOTE: unchanged default params will not appear here, check allDefParams at the end of this loop
-                DefaultParams * defParams = [allDefParams objectForKey:key];
-                [allDefParams removeObjectForKey:key];
+            NSDictionary<NSString *, id> *services = [pbs valueForKey:@"NSServicesStatus"];
+            if (services) {
+                for (NSString *key in services) {
+                    id value = services[key];
+                    if (![value isKindOfClass:[NSDictionary class]]) {
+                        plog(LL_DEBUG, "'%s' isn't instance of NSDictionary (class=%s)", toCString(value),
+                             [[value className] UTF8String]);
+                        continue;
+                    }
+                    // NOTE: unchanged default params will not appear here, check allDefParams at the end of this loop
+                    DefaultParams *defParams = [allDefParams objectForKey:key];
+                    [allDefParams removeObjectForKey:key];
 
-                NSDictionary<NSString *, id> *sdict = value;
-                NSString *key_equivalent = sdict[@"key_equivalent"];
-                if (!key_equivalent && defParams != nil) {
-                    key_equivalent = defParams.key_equivalent;
-                }
-                if (!key_equivalent)
-                    continue;
+                    NSDictionary<NSString *, id> *sdict = value;
+                    NSString *key_equivalent = sdict[@"key_equivalent"];
+                    if (!key_equivalent && defParams != nil) {
+                        key_equivalent = defParams.key_equivalent;
+                    }
+                    if (!key_equivalent)
+                        continue;
 
-                NSString *enabled = sdict[@"enabled_services_menu"];
-                if (enabled != nil && [enabled boolValue] == NO) {
-                    continue;
-                }
-                if (enabled == nil && defParams != nil && !defParams.enabled) {
-                    continue;
-                }
+                    NSString *enabled = sdict[@"enabled_services_menu"];
+                    if (enabled != nil && [enabled boolValue] == NO) {
+                        continue;
+                    }
+                    if (enabled == nil && defParams != nil && !defParams.enabled) {
+                        continue;
+                    }
 
-                visitServicesShortcut(visitorBlock, key_equivalent, key);
+                    visitServicesShortcut(visitorBlock, key_equivalent, key);
+                }
             }
         }
-    }
 
-    // Iterate through rest of allDefParams
-    for (NSString* key in allDefParams) {
-        DefaultParams * defParams = allDefParams[key];
-        if (!defParams.enabled) {
-            continue;
-        }
-        visitServicesShortcut(visitorBlock, defParams.key_equivalent, key);
-    }
-
-#ifdef USE_CARBON_CopySymbolicHotKeys
-    // 3. read from core services
-    CFArrayRef registeredHotKeys;
-    if(CopySymbolicHotKeys(&registeredHotKeys) == noErr) {
-        CFIndex count = CFArrayGetCount(registeredHotKeys);
-        for(CFIndex i = 0; i < count; i++) {
-            CFDictionaryRef hotKeyInfo = CFArrayGetValueAtIndex(registeredHotKeys, i);
-            CFNumberRef hotKeyCode = CFDictionaryGetValue(hotKeyInfo, kHISymbolicHotKeyCode);
-            CFNumberRef hotKeyModifiers = CFDictionaryGetValue(hotKeyInfo, kHISymbolicHotKeyModifiers);
-            CFBooleanRef hotKeyEnabled = CFDictionaryGetValue(hotKeyInfo, kHISymbolicHotKeyEnabled);
-
-            int64_t vkeyCode = -1;
-            CFNumberGetValue(hotKeyCode, kCFNumberSInt64Type, &vkeyCode);
-            int64_t keyModifiers = 0;
-            CFNumberGetValue(hotKeyModifiers, kCFNumberSInt64Type, &keyModifiers);
-            Boolean enabled = CFBooleanGetValue(hotKeyEnabled);
-            if (!enabled)
+        // Iterate through rest of allDefParams
+        for (NSString *key in allDefParams) {
+            DefaultParams *defParams = allDefParams[key];
+            if (!defParams.enabled) {
                 continue;
-
-            visitorBlock(vkeyCode, NULL, NSModifiers2java(keyModifiers), NULL, -1);
+            }
+            visitServicesShortcut(visitorBlock, defParams.key_equivalent, key);
         }
-
-        CFRelease(registeredHotKeys);
-    }
-#endif // USE_CARBON_CopySymbolicHotKeys
     }
     @catch (NSException *exception) {
-        NSLog(@"readSystemHotkeys: catched exception, reason '%@'", exception.reason);
+        NSLog(@"readPbsHotkeys: catched exception, reason '%@'", exception.reason);
     }
 }
 
-bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, int keyCode, NSString * chars) {
+static void readSystemHotkeysImpl(Visitor visitorBlock) {
+    readAppleSymbolicHotkeys(visitorBlock);
+    readPbsHotkeys(visitorBlock);
+}
+
+bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, int keyCode, NSString *chars) {
     const int shortcutUid_NextWindowInApplication = 27;
     static NSString * shortcutCharacter = nil;
     static int shortcutMask = 0;
     static int shortcutKeyCode = -1;
     if (shortcutCharacter == nil && shortcutKeyCode == -1) {
         readSystemHotkeysImpl(
-            ^bool(int vkeyCode, const char * keyCharStr, int jmodifiers, const char * descriptionStr, int hotkeyUid) {
-                if (hotkeyUid != shortcutUid_NextWindowInApplication)
-                    return true;
+                ^bool(int vkeyCode, const char * keyCharStr, int jmodifiers, const char * descriptionStr, int hotkeyUid) {
+                    if (hotkeyUid != shortcutUid_NextWindowInApplication)
+                        return true;
 
-                if (keyCharStr != NULL) {
-                    shortcutCharacter = [[NSString stringWithFormat:@"%s", keyCharStr] retain];
+                    if (keyCharStr != NULL) {
+                        shortcutCharacter = [[NSString stringWithFormat:@"%s", keyCharStr] retain];
+                    }
+
+                    if (vkeyCode != -1) {
+                        shortcutKeyCode = vkeyCode;
+                    }
+
+                    shortcutMask = javaModifiers2NS(jmodifiers);
+                    return false;
                 }
-
-                if (vkeyCode != -1) {
-                    shortcutKeyCode = vkeyCode;
-                }
-
-                shortcutMask = javaModifiers2NS(jmodifiers);
-                return false;
-            }
         );
         if (shortcutCharacter == nil && shortcutKeyCode == -1) {
             shortcutCharacter = @"`";
