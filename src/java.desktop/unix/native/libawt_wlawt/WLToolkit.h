@@ -25,10 +25,10 @@
 
 #include <wayland-client.h>
 #include <wayland-cursor.h>
-#include "xdg-shell-client-protocol.h"
-#include "xdg-activation-v1-client-protocol.h"
-#include "primary-selection-client-protocol.h"
-#include "viewporter-client-protocol.h"
+#include "xdg-shell.h"
+#include "xdg-activation-v1.h"
+#include "primary-selection-unstable-v1.h"
+#include "viewporter.h"
 #include "jvm_md.h"
 #include "jni_util.h"
 
