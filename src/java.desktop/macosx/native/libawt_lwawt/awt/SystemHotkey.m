@@ -448,9 +448,17 @@ static void readAppleSymbolicHotkeys(Visitor visitorBlock) {
             } else {
                 keyCharStr = NULL;
             }
-            visitorBlock(hotkey->key, keyCharStr, symbolicHotKeysModifiers2java(hotkey->modifiers),
-                         hotkey->description, uid);
+            int modifiers = symbolicHotKeysModifiers2java(hotkey->modifiers);
+            visitorBlock(hotkey->key, keyCharStr, modifiers, hotkey->description, uid);
+
+            if (uid == Shortcut_FocusNextApplicationWindow) {
+                // Derive the "Move focus to the previous window in application" shortcut
+                if (!(modifiers & AWT_SHIFT_DOWN_MASK)) {
+                    visitorBlock(hotkey->key, keyCharStr, modifiers | AWT_SHIFT_DOWN_MASK, "Move focus to the previous window in application", -1);
+                }
+            }
         }
+
     }
     @catch (NSException *exception) {
         NSLog(@"readAppleSymbolicHotkeys: catched exception, reason '%@'", exception.reason);
