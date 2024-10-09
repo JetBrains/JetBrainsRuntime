@@ -225,7 +225,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
   LIBSPLASHSCREEN_LIBS := $(GIFLIB_LIBS) $(LIBJPEG_LIBS) $(LIBZ_LIBS) $(PNG_LIBS)
   LIBSPLASHSCREEN_DISABLED_WARNINGS_gcc := sign-compare implicit-fallthrough shift-negative-value maybe-uninitialized unused-function type-limits unused-result unused-but-set-variable
   LIBSPLASHSCREEN_DISABLED_WARNINGS_clang := deprecated-non-prototype format-nonliteral sign-compare incompatible-pointer-types deprecated-declarations
-  LIBWLSPLASHSCREEN_HEADER_DIRS := common/wayland
+  LIBWLSPLASHSCREEN_HEADER_DIRS := common/wayland $(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/wayland
   LIBWLSPLASHSCREEN_EXTRA_SRC := common/wayland
 
   $(eval $(call SetupJdkLibrary, BUILD_LIBSPLASHSCREEN, \
@@ -289,6 +289,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
   $(eval $(call SetupJdkLibrary, BUILD_LIBWLSPLASHSCREEN, \
       NAME := wlsplashscreen, \
       EXTRA_SRC := $(LIBSPLASHSCREEN_EXTRA_SRC) $(LIBWLSPLASHSCREEN_EXTRA_SRC) libwlsplashscreen libsplashscreen, \
+      EXTRA_FILES := $(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/wayland/xdg-shell.c, \
       EXCLUDE_SRC_PATTERNS := $(LIBSPLASHSCREEN_EXCLUDE_SRC_PATTERNS), \
       DISABLED_WARNINGS_gcc := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_gcc), \
       DISABLED_WARNINGS_clang := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_clang), \
