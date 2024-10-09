@@ -36,6 +36,10 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       [specify directory for the wayland include files])])
   AC_ARG_WITH(wayland-lib, [AS_HELP_STRING([--with-wayland-lib],
       [specify directory for the wayland library files])])
+  AC_ARG_WITH(wayland-scanner, [AS_HELP_STRING([--with-wayland-scanner],
+      [specify path to the wayland-scanner tool])])
+  AC_ARG_WITH(wayland-protocols, [AS_HELP_STRING([--with-wayland-protocols],
+      [specify directory for the wayland protocols xml files])])
 
 
   if test "x$NEEDS_LIB_WAYLAND" = xfalse; then
@@ -75,6 +79,18 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       else
         AC_MSG_ERROR([Can't find 'wayland-client.h' and 'wayland-cursor.h' under ${with_wayland_include} given with the --with-wayland-include option.])
       fi
+    fi
+    UTIL_REQUIRE_PROGS(WAYLAND_SCANNER, wayland-scanner)
+    if test "x${with_wayland_protocols}" != x; then
+        WAYLAND_PROTOCOLS_ROOT=${with_wayland_protocols}
+    else
+        WAYLAND_PROTOCOLS_ROOT=/usr/share/wayland-protocols/
+    fi
+    AC_MSG_CHECKING([for wayland-protocols])
+    if test -d "$WAYLAND_PROTOCOLS_ROOT"; then
+      AC_MSG_RESULT([yes])
+    else
+      AC_MSG_ERROR([Can't find 'wayland-protocols' under $WAYLAND_PROTOCOLS_ROOT.])
     fi
     if test "x${with_wayland_lib}" != x; then
       WAYLAND_LIBS="-L${with_wayland_lib} -lwayland-client -lwayland-cursor"
@@ -190,4 +206,5 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
   AC_SUBST(VULKAN_ENABLED)
   AC_SUBST(WAYLAND_CFLAGS)
   AC_SUBST(WAYLAND_LIBS)
+  AC_SUBST(WAYLAND_PROTOCOLS_ROOT)
 ])
