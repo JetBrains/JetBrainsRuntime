@@ -32,6 +32,7 @@ import sun.java2d.pipe.hw.ContextCapabilities;
 
 import java.lang.annotation.Native;
 
+import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_SURFACE;
 import static sun.java2d.pipe.BufferedOpCodes.SET_SCRATCH_SURFACE;
 
 /**
@@ -76,6 +77,20 @@ final class MTLContext extends BufferedContext {
         rq.ensureCapacityAndAlignment(12, 4);
         buf.putInt(SET_SCRATCH_SURFACE);
         buf.putLong(pConfigInfo);
+    }
+
+    public static void disposeSurface(long pData) {
+        // assert MTLRenderQueue.getInstance().lock.isHeldByCurrentThread();
+
+        // invalidate the current context
+        currentContext = null;
+
+        // set the scratch context
+        MTLRenderQueue rq = MTLRenderQueue.getInstance();
+        RenderBuffer buf = rq.getBuffer();
+        rq.ensureCapacityAndAlignment(12, 4);
+        buf.putInt(DISPOSE_SURFACE);
+        buf.putLong(pData);
     }
 
     public static final class MTLContextCaps extends ContextCapabilities {
