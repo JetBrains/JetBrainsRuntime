@@ -631,18 +631,11 @@ public abstract class MTLSurfaceData extends SurfaceData
      * the native Dispose() method from the Disposer thread when the
      * Java-level MTLSurfaceData object is about to go away.
      */
-     public static void dispose(long pData, MTLGraphicsConfig gc) {
+     public static void dispose(long pData) {
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {
-            // make sure we have a current context before
-            // disposing the native resources (e.g. texture object)
-            MTLContext.setScratchSurface(gc);
-            RenderBuffer buf = rq.getBuffer();
-            rq.ensureCapacityAndAlignment(12, 4);
-            buf.putInt(DISPOSE_SURFACE);
-            buf.putLong(pData);
-
+            MTLContext.disposeSurface(pData);
             // this call is expected to complete synchronously, so flush now
             rq.flushNow();
         } finally {
