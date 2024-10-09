@@ -1,3 +1,5 @@
+#include "SystemHotkey.h"
+
 #import <Foundation/Foundation.h>
 #import <Carbon/Carbon.h>
 #import <Cocoa/Cocoa.h>
@@ -261,6 +263,15 @@ static const struct SymbolicHotKey defaultSymbolicHotKeys[] = {
     [Shortcut_ToggleTypingFeedback] = { "ToggleTypingFeedback", "Turn typing feedback on or off", YES, 65535, 65535, 0, 14 },
 };
 
+static const int numSymbolicHotkeys = sizeof(defaultSymbolicHotKeys) / sizeof(defaultSymbolicHotKeys[0]);
+
+// Current state of system shortcuts.
+// Should only be read and written inside a @synchronized([SystemHotkey class]) block
+static struct SymbolicHotKey currentSymbolicHotkeys[numSymbolicHotkeys];
+
+// Should only be read and written inside a @synchronized([SystemHotkey class]) block
+static bool subscribedToShortcutUpdates = false;
+
 @interface DefaultParams: NSObject
 @property (assign) BOOL enabled;
 @property (strong) NSString *key_equivalent;
@@ -304,7 +315,7 @@ static int javaModifiers2NS(int jmask) {
     return result;
 }
 
-typedef bool (^ Visitor)(int, const char *, int, const char *, int);
+typedef void (^ Visitor)(int, const char *, int, const char *, int);
 
 static void visitServicesShortcut(Visitor visitorBlock, NSString * key_equivalent, NSString * desc) {
     // @ - command
@@ -331,9 +342,8 @@ static void visitServicesShortcut(Visitor visitorBlock, NSString * key_equivalen
     visitorBlock(-1, keyChar.UTF8String, modifiers, desc.UTF8String, -1);
 }
 
-static void readAppleSymbolicHotkeys(Visitor visitorBlock) {
-    static const int numIds = sizeof(defaultSymbolicHotKeys) / sizeof(defaultSymbolicHotKeys[0]);
-    const NSOperatingSystemVersion macOSVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
+static void readAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymbolicHotkeys]) {
+    // Called from the main thread
 
     @try {
         NSDictionary<NSString *, id> *shk = [[NSUserDefaults standardUserDefaults] persistentDomainForName:@"com.apple.symbolichotkeys"];
@@ -359,8 +369,7 @@ static void readAppleSymbolicHotkeys(Visitor visitorBlock) {
             return;
         }
 
-        struct SymbolicHotKey hotkeys[numIds];
-        memcpy(hotkeys, defaultSymbolicHotKeys, sizeof(hotkeys));
+        memcpy(hotkeys, defaultSymbolicHotKeys, numSymbolicHotkeys * sizeof(struct SymbolicHotKey));
 
         for (id keyObj in hkObj) {
             if (![keyObj isKindOfClass:[NSString class]]) {
@@ -435,33 +444,45 @@ static void readAppleSymbolicHotkeys(Visitor visitorBlock) {
             hotkeys[uid].key = p1 == nil ? 0xFFFF : [p1 intValue];
             hotkeys[uid].modifiers = p2 == nil ? 0 : [p2 intValue];
         }
-
-        for (int uid = 0; uid < numIds; ++uid) {
-            struct SymbolicHotKey* hotkey = &hotkeys[uid];
-            if (!hotkey->enabled) continue;
-            if (hotkey->macOSVersion > macOSVersion.majorVersion) continue;
-
-            char keyCharBuf[64];
-            const char *keyCharStr = keyCharBuf;
-            if (hotkey->character >= 0 && hotkey->character <= 0xFF) {
-                sprintf(keyCharBuf, "%c", hotkey->character);
-            } else {
-                keyCharStr = NULL;
-            }
-            int modifiers = symbolicHotKeysModifiers2java(hotkey->modifiers);
-            visitorBlock(hotkey->key, keyCharStr, modifiers, hotkey->description, uid);
-
-            if (uid == Shortcut_FocusNextApplicationWindow) {
-                // Derive the "Move focus to the previous window in application" shortcut
-                if (!(modifiers & AWT_SHIFT_DOWN_MASK)) {
-                    visitorBlock(hotkey->key, keyCharStr, modifiers | AWT_SHIFT_DOWN_MASK, "Move focus to the previous window in application", -1);
-                }
-            }
-        }
-
     }
     @catch (NSException *exception) {
-        NSLog(@"readAppleSymbolicHotkeys: catched exception, reason '%@'", exception.reason);
+        NSLog(@"readCachedAppleSymbolicHotkeys: catched exception, reason '%@'", exception.reason);
+    }
+}
+
+static void updateAppleSymbolicHotkeysCache() {
+    struct SymbolicHotKey hotkeys[numSymbolicHotkeys];
+    readAppleSymbolicHotkeys(hotkeys);
+
+    @synchronized ([SystemHotkey class]) {
+        memcpy(currentSymbolicHotkeys, hotkeys, numSymbolicHotkeys * sizeof(struct SymbolicHotKey));
+    }
+}
+
+static void iterateAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymbolicHotkeys], Visitor visitorBlock) {
+    const NSOperatingSystemVersion macOSVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
+
+    for (int uid = 0; uid < numSymbolicHotkeys; ++uid) {
+        struct SymbolicHotKey* hotkey = &hotkeys[uid];
+        if (!hotkey->enabled) continue;
+        if (hotkey->macOSVersion > macOSVersion.majorVersion) continue;
+
+        char keyCharBuf[64];
+        const char *keyCharStr = keyCharBuf;
+        if (hotkey->character >= 0 && hotkey->character <= 0xFF) {
+            sprintf(keyCharBuf, "%c", hotkey->character);
+        } else {
+            keyCharStr = NULL;
+        }
+        int modifiers = symbolicHotKeysModifiers2java(hotkey->modifiers);
+        visitorBlock(hotkey->key, keyCharStr, modifiers, hotkey->description, uid);
+
+        if (uid == Shortcut_FocusNextApplicationWindow) {
+            // Derive the "Move focus to the previous window in application" shortcut
+            if (!(modifiers & AWT_SHIFT_DOWN_MASK)) {
+                visitorBlock(hotkey->key, keyCharStr, modifiers | AWT_SHIFT_DOWN_MASK, "Move focus to the previous window in application", -1);
+            }
+        }
     }
 }
 
@@ -534,10 +555,57 @@ static void readPbsHotkeys(Visitor visitorBlock) {
     }
 }
 
+static void readAppleSymbolicHotkeysCached(struct SymbolicHotKey hotkeys[numSymbolicHotkeys]) {
+    @synchronized ([SystemHotkey class]) {
+        if (!subscribedToShortcutUpdates) {
+            [SystemHotkey setUp];
+        }
+
+        memcpy(hotkeys, currentSymbolicHotkeys, numSymbolicHotkeys * sizeof(struct SymbolicHotKey));
+    }
+}
+
 static void readSystemHotkeysImpl(Visitor visitorBlock) {
-    readAppleSymbolicHotkeys(visitorBlock);
+    // Normally, SystemHotkey would get initialized in LWCToolkit initialization.
+    // But since we can (theoretically) use this API from headless, let's check again.
+
+    struct SymbolicHotKey hotkeys[numSymbolicHotkeys];
+    readAppleSymbolicHotkeysCached(hotkeys);
+
+    iterateAppleSymbolicHotkeys(hotkeys, visitorBlock);
     readPbsHotkeys(visitorBlock);
 }
+
+@implementation SystemHotkey
++ (void)setUp {
+    // This should be called on LWCToolkit initialization.
+
+    @synchronized (self) {
+        if (subscribedToShortcutUpdates) {
+            return;
+        }
+
+        // Update cached values
+        updateAppleSymbolicHotkeysCache();
+
+        // Subscribe to changes
+        NSUserDefaults *symbolicHotKeys = [[NSUserDefaults alloc] initWithSuiteName:@"com.apple.symbolichotkeys"];
+        [symbolicHotKeys addObserver:self forKeyPath:@"AppleSymbolicHotKeys" options:NSKeyValueObservingOptionNew
+                             context:nil];
+
+        subscribedToShortcutUpdates = true;
+    }
+}
+
++ (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey, id> *)change context:(void *)context {
+    // Called when AppleSymbolicHotKeys change.
+    // This method can be called from any thread.
+
+    if ([keyPath isEqualToString:@"AppleSymbolicHotKeys"]) {
+        updateAppleSymbolicHotkeysCache();
+    }
+}
+@end
 
 bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, int keyCode, NSString *chars) {
     static NSString * shortcutCharacter = nil;
@@ -545,9 +613,8 @@ bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, int keyC
     static int shortcutKeyCode = -1;
     if (shortcutCharacter == nil && shortcutKeyCode == -1) {
         readSystemHotkeysImpl(
-                ^bool(int vkeyCode, const char * keyCharStr, int jmodifiers, const char * descriptionStr, int hotkeyUid) {
-                    if (hotkeyUid != Shortcut_FocusNextApplicationWindow)
-                        return true;
+                ^(int vkeyCode, const char * keyCharStr, int jmodifiers, const char * descriptionStr, int hotkeyUid) {
+                    if (hotkeyUid != Shortcut_FocusNextApplicationWindow) return;
 
                     if (keyCharStr != NULL) {
                         shortcutCharacter = [[NSString stringWithFormat:@"%s", keyCharStr] retain];
@@ -558,7 +625,6 @@ bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, int keyC
                     }
 
                     shortcutMask = javaModifiers2NS(jmodifiers);
-                    return false;
                 }
         );
         if (shortcutCharacter == nil && shortcutKeyCode == -1) {
@@ -584,13 +650,12 @@ JNIEXPORT void JNICALL Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkey
     jmethodID methodAdd = (*env)->GetMethodID(env, clsReader, "add", "(ILjava/lang/String;ILjava/lang/String;)V");
 
     readSystemHotkeysImpl(
-        ^bool(int vkeyCode, const char * keyCharStr, int jmodifiers, const char * descriptionStr, int hotkeyUid){
+        ^(int vkeyCode, const char * keyCharStr, int jmodifiers, const char * descriptionStr, int hotkeyUid){
             jstring jkeyChar = keyCharStr == NULL ? NULL : (*env)->NewStringUTF(env, keyCharStr);
             jstring jdesc = descriptionStr == NULL ? NULL : (*env)->NewStringUTF(env, descriptionStr);
             (*env)->CallVoidMethod(
                     env, reader, methodAdd, (jint)vkeyCode, jkeyChar, (jint)jmodifiers, jdesc
             );
-            return true;
         }
     );
 }
