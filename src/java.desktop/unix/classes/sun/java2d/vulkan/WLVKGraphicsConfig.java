@@ -48,6 +48,7 @@ import java.awt.image.DirectColorModel;
 import java.awt.image.VolatileImage;
 import java.awt.image.WritableRaster;
 import sun.awt.image.SunVolatileImage;
+import sun.awt.image.SurfaceManager;
 import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLGraphicsConfig;
 import sun.awt.wl.WLGraphicsDevice;
@@ -71,6 +72,9 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
     private BufferCapabilities bufferCaps;
     private ContextCapabilities vkCaps;
     private final VKContext context;
+    // TODO this is wrong caching level!
+    //      on which level should we cache surface data proxies? Single cache per GPU?
+    private final SurfaceManager.ProxyCache surfaceDataProxyCache = new SurfaceManager.ProxyCache();
 
     private static native long getVKConfigInfo();
 
@@ -81,8 +85,8 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
     }
 
     @Override
-    public Object getProxyKey() {
-        return this;
+    public SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
+        return surfaceDataProxyCache;
     }
 
     public static WLVKGraphicsConfig getConfig(WLGraphicsDevice device, int width, int height, int scale)
