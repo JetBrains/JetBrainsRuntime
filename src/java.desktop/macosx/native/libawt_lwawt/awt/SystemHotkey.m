@@ -608,38 +608,31 @@ static void readSystemHotkeysImpl(Visitor visitorBlock) {
 @end
 
 bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, int keyCode, NSString *chars) {
-    static NSString * shortcutCharacter = nil;
-    static int shortcutMask = 0;
-    static int shortcutKeyCode = -1;
-    if (shortcutCharacter == nil && shortcutKeyCode == -1) {
-        readSystemHotkeysImpl(
-                ^(int vkeyCode, const char * keyCharStr, int jmodifiers, const char * descriptionStr, int hotkeyUid) {
-                    if (hotkeyUid != Shortcut_FocusNextApplicationWindow) return;
-
-                    if (keyCharStr != NULL) {
-                        shortcutCharacter = [[NSString stringWithFormat:@"%s", keyCharStr] retain];
-                    }
-
-                    if (vkeyCode != -1) {
-                        shortcutKeyCode = vkeyCode;
-                    }
-
-                    shortcutMask = javaModifiers2NS(jmodifiers);
-                }
-        );
-        if (shortcutCharacter == nil && shortcutKeyCode == -1) {
-            shortcutCharacter = @"`";
-            shortcutMask = NSCommandKeyMask;
+    struct SymbolicHotKey shortcut;
+    @synchronized ([SystemHotkey class]) {
+        if (!subscribedToShortcutUpdates) {
+            [SystemHotkey setUp];
         }
+        shortcut = currentSymbolicHotkeys[Shortcut_FocusNextApplicationWindow];
     }
 
     int ignoredModifiers = NSAlphaShiftKeyMask | NSFunctionKeyMask | NSNumericPadKeyMask | NSHelpKeyMask;
     // Ignore Shift because of JBR-4899.
-    if (!(shortcutMask & NSShiftKeyMask)) {
+    if (!(shortcut.modifiers & NSShiftKeyMask)) {
         ignoredModifiers |= NSShiftKeyMask;
     }
-    if ((modifiersMask & ~ignoredModifiers) == shortcutMask) {
-        return shortcutKeyCode == keyCode || [chars isEqualToString:shortcutCharacter];
+
+    if ((modifiersMask & ~ignoredModifiers) != shortcut.modifiers) {
+        return false;
+    }
+
+    if (shortcut.key == keyCode) {
+        return true;
+    }
+
+    if (shortcut.character > 0 && shortcut.character < 0xFFFF) {
+        unichar ch = shortcut.character;
+        return [chars isEqualToString:[NSString stringWithCharacters:&ch length:1]];
     }
 
     return false;
