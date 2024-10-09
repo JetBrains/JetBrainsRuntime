@@ -37,7 +37,7 @@
 #include "sun_awt_wl_WLRobotPeer.h"
 #include "WLToolkit.h"
 
-#include "wakefield-client-protocol.h"
+#include "wakefield.h"
 
 #ifdef WAKEFIELD_ROBOT
 struct wakefield      *wakefield;
