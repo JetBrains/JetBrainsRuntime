@@ -1,0 +1,64 @@
+#
+# Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
+
+#
+# Generate C header and source files for Wayland protocols
+#
+
+WAYLAND_GENSRC_DIR = $(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/wayland
+WAYLAND_BASIC_PROTOCOL_FILES := \
+        $(WAYLAND_PROTOCOLS_ROOT)/stable/viewporter/viewporter.xml \
+        $(WAYLAND_PROTOCOLS_ROOT)/stable/xdg-shell/xdg-shell.xml \
+        $(WAYLAND_PROTOCOLS_ROOT)/staging/xdg-activation/xdg-activation-v1.xml \
+        $(WAYLAND_PROTOCOLS_ROOT)/unstable/primary-selection/primary-selection-unstable-v1.xml \
+        #
+
+# TODO: what about https://github.com/GNOME/gtk/blob/main/gdk/wayland/protocol/gtk-shell.xml
+# src/java.desktop/unix/native/libawt_wlawt/gtk-shell1-protocol.c
+# ????
+
+WAYLAND_PROTOCOL_FILES := \
+        $(WAYLAND_BASIC_PROTOCOL_FILES) \
+        $(MODULE_SRC)/share/native/libwakefield/protocol/wakefield.xml \
+        #
+
+$(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/_the.generated_wayland_protocols: $(WAYLAND_PROTOCOL_FILES)
+	$(call LogInfo, Generating Wayland protocol source and header files)
+	$(call MakeTargetDir)
+	$(call MakeDir, $(WAYLAND_GENSRC_DIR))
+	@for p in $^; do \
+	    HEADER=$$(basename "$$p" | $(SED) 's/\.[^.]*$$//').h; \
+	    $(WAYLAND_SCANNER) client-header $$p $(WAYLAND_GENSRC_DIR)/$$HEADER; \
+	done
+	@for p in $^; do \
+	    CODE=$$(basename "$$p" | $(SED) 's/\.[^.]*$$//').c; \
+	    $(WAYLAND_SCANNER) private-code $$p $(WAYLAND_GENSRC_DIR)/$$CODE; \
+	done
+	$(TOUCH) $@
+
+GENSRC_WAYLAND := $(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/_the.generated_wayland_protocols
+
+TARGETS += $(GENSRC_WAYLAND)
