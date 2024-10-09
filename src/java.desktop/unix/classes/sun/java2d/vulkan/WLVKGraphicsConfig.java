@@ -48,6 +48,7 @@ import java.awt.image.DirectColorModel;
 import java.awt.image.VolatileImage;
 import java.awt.image.WritableRaster;
 import sun.awt.image.SunVolatileImage;
+import sun.awt.image.SurfaceManager;
 import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLGraphicsConfig;
 import sun.awt.wl.WLGraphicsDevice;
@@ -81,8 +82,9 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
     }
 
     @Override
-    public Object getProxyKey() {
-        return this;
+    public SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
+        // TODO on which level should we cache surface data proxies? Single cache per GPU?
+        throw new UnsupportedOperationException("getSurfaceDataProxyCache not yet implemented");
     }
 
     public static WLVKGraphicsConfig getConfig(WLGraphicsDevice device, int width, int height, int scale)
