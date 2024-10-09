@@ -35,7 +35,7 @@
 #include <unistd.h>
 
 #include "memory_utils.h"
-#include "xdg-shell-client-protocol.h"
+#include "xdg-shell.h"
 
 struct OutputInfo {
     void *wl_output;
