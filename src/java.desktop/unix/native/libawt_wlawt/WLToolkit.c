@@ -57,7 +57,7 @@
 #include "java_awt_event_KeyEvent.h"
 
 #ifdef WAKEFIELD_ROBOT
-#include "wakefield-client-protocol.h"
+#include "wakefield.h"
 #include "sun_awt_wl_WLRobotPeer.h"
 #endif
 
