@@ -37,7 +37,7 @@
 #include "WLGraphicsEnvironment.h"
 
 #ifdef WAKEFIELD_ROBOT
-#include "wakefield-client-protocol.h"
+#include "wakefield.h"
 #endif
 
 static jmethodID postWindowClosingMID;
