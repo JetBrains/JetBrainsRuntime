@@ -413,6 +413,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/java2d \
         common/font \
         common/wayland \
+        $(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/wayland \
         #
 
     LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11
@@ -427,6 +428,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
     LIBAWT_WLAWT_EXTRA_HEADER_DIRS := \
         $(LIBAWT_DEFAULT_HEADER_DIRS) \
         libawt_wlawt/awt \
+        $(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/wayland \
         include \
         common/awt/debug \
         common/awt/systemscale \
@@ -496,7 +498,6 @@ ifeq ($(call isTargetOs, windows macosx), false)
     $(BUILD_LIBAWT_WLAWT): $(BUILD_LIBAWT)
 
     TARGETS += $(BUILD_LIBAWT_WLAWT)
-
   endif
 endif
 
