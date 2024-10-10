@@ -8,6 +8,8 @@
 #import "java_awt_event_KeyEvent.h"
 
 #include <jni.h>
+#import <ThreadUtilities.h>
+#import <JNIUtilities.h>
 #include "jni_util.h"
 
 
@@ -315,7 +317,7 @@ static int javaModifiers2NS(int jmask) {
     return result;
 }
 
-typedef void (^ Visitor)(int, const char *, int, const char *, int);
+typedef void (^ Visitor)(int, const char *, int, const char *, int, const char*);
 
 static void visitServicesShortcut(Visitor visitorBlock, NSString * key_equivalent, NSString * desc) {
     // @ - command
@@ -339,7 +341,7 @@ static void visitServicesShortcut(Visitor visitorBlock, NSString * key_equivalen
     NSCharacterSet * excludeSet = [NSCharacterSet characterSetWithCharactersInString:@"@$^~"];
     NSString * keyChar = [key_equivalent stringByTrimmingCharactersInSet:excludeSet];
 
-    visitorBlock(-1, keyChar.UTF8String, modifiers, desc.UTF8String, -1);
+    visitorBlock(-1, keyChar.UTF8String, modifiers, desc.UTF8String, -1, NULL);
 }
 
 static void readAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymbolicHotkeys]) {
@@ -475,12 +477,13 @@ static void iterateAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymboli
             keyCharStr = NULL;
         }
         int modifiers = symbolicHotKeysModifiers2java(hotkey->modifiers);
-        visitorBlock(hotkey->key, keyCharStr, modifiers, hotkey->description, uid);
+        visitorBlock(hotkey->key, keyCharStr, modifiers, hotkey->description, uid, hotkey->id);
 
         if (uid == Shortcut_FocusNextApplicationWindow) {
             // Derive the "Move focus to the previous window in application" shortcut
             if (!(modifiers & AWT_SHIFT_DOWN_MASK)) {
-                visitorBlock(hotkey->key, keyCharStr, modifiers | AWT_SHIFT_DOWN_MASK, "Move focus to the previous window in application", -1);
+                visitorBlock(hotkey->key, keyCharStr, modifiers | AWT_SHIFT_DOWN_MASK,
+                             "Move focus to the previous window in application", -1, "FocusPreviousApplicationWindow");
             }
         }
     }
@@ -593,17 +596,29 @@ static void readSystemHotkeysImpl(Visitor visitorBlock) {
         [symbolicHotKeys addObserver:self forKeyPath:@"AppleSymbolicHotKeys" options:NSKeyValueObservingOptionNew
                              context:nil];
 
+        NSUserDefaults *pbsHotKeys = [[NSUserDefaults alloc] initWithSuiteName:@"pbs"];
+        [pbsHotKeys addObserver:self forKeyPath:@"NSServicesStatus" options:NSKeyValueObservingOptionNew context:nil];
+
         subscribedToShortcutUpdates = true;
     }
 }
 
 + (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey, id> *)change context:(void *)context {
-    // Called when AppleSymbolicHotKeys change.
+    // Called after AppleSymbolicHotKeys or pbs hotkeys change.
     // This method can be called from any thread.
 
     if ([keyPath isEqualToString:@"AppleSymbolicHotKeys"]) {
         updateAppleSymbolicHotkeysCache();
     }
+
+    // Since this notification is sent *after* the configuration was updated,
+    // the user can safely re-read the hotkeys info after receiving this callback.
+    // On the Java side, this simply enqueues the change handler to run on the EDT later.
+    JNIEnv* env = [ThreadUtilities getJNIEnv];
+    DECLARE_CLASS(jc_SystemHotkey, "java/awt/desktop/SystemHotkey");
+    DECLARE_STATIC_METHOD(jsm_onChange, jc_SystemHotkey, "onChange", "()V");
+    (*env)->CallStaticVoidMethod(env, jc_SystemHotkey, jsm_onChange);
+    CHECK_EXCEPTION();
 }
 @end
 
@@ -640,14 +655,15 @@ bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, int keyC
 
 JNIEXPORT void JNICALL Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, jobject reader) {
     jclass clsReader = (*env)->GetObjectClass(env, reader);
-    jmethodID methodAdd = (*env)->GetMethodID(env, clsReader, "add", "(ILjava/lang/String;ILjava/lang/String;)V");
+    jmethodID methodAdd = (*env)->GetMethodID(env, clsReader, "add", "(ILjava/lang/String;ILjava/lang/String;Ljava/lang/String;)V");
 
     readSystemHotkeysImpl(
-        ^(int vkeyCode, const char * keyCharStr, int jmodifiers, const char * descriptionStr, int hotkeyUid){
+        ^(int vkeyCode, const char * keyCharStr, int jmodifiers, const char * descriptionStr, int hotkeyUid, const char * idStr) {
             jstring jkeyChar = keyCharStr == NULL ? NULL : (*env)->NewStringUTF(env, keyCharStr);
             jstring jdesc = descriptionStr == NULL ? NULL : (*env)->NewStringUTF(env, descriptionStr);
+            jstring jid = idStr == NULL ? NULL : (*env)->NewStringUTF(env, idStr);
             (*env)->CallVoidMethod(
-                    env, reader, methodAdd, (jint)vkeyCode, jkeyChar, (jint)jmodifiers, jdesc
+                    env, reader, methodAdd, (jint)vkeyCode, jkeyChar, (jint)jmodifiers, jdesc, jid
             );
         }
     );
