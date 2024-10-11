@@ -65,6 +65,10 @@ abstract class Mapping {
 
     abstract void convertNonNull(AccessContext.Method context);
 
+    void cast(AccessContext.Method context) {
+        if (context.access().canAccess(to)) context.writer.visitTypeInsn(CHECKCAST, getInternalName(to));
+    }
+
     abstract Mapping inverse();
 
     void query(Query q) {}
@@ -146,15 +150,22 @@ abstract class Mapping {
             else return new Array(m);
         }
         @Override
+        void convert(AccessContext.Method context) {
+            super.convert(context);
+            cast(context); // Explicitly cast to result type after non-null branch
+        }
+        @Override
         void convertNonNull(AccessContext.Method context) {
             final int TEMP_COUNTER_SLOT = 1; // Warning! We overwrite 1st local slot.
             MethodVisitor m = context.writer;
             Label loopStart = new Label(), loopEnd = new Label();
             // Stack: fromArray -> toArray, fromArray, i=length
+            if (!context.access().canAccess(from)) m.visitTypeInsn(CHECKCAST, "[Ljava/lang/Object;");
             m.visitInsn(DUP);
             m.visitInsn(ARRAYLENGTH);
-            if (context.access().canAccess(to)) m.visitTypeInsn(ANEWARRAY, getInternalName(to));
-            else context.invokeDynamic(MethodHandles.arrayConstructor(to));
+            if (context.access().canAccess(to)) {
+                m.visitTypeInsn(ANEWARRAY, getInternalName(Objects.requireNonNull(to.componentType())));
+            } else context.invokeDynamic(MethodHandles.arrayConstructor(to));
             m.visitInsn(SWAP);
             m.visitInsn(DUP);
             m.visitInsn(ARRAYLENGTH);
@@ -207,9 +218,6 @@ abstract class Mapping {
             context.addDependency(fromProxy);
             context.writer.visitMethodInsn(INVOKEINTERFACE,
                     "com/jetbrains/exported/JBRApiSupport$Proxy", "$getProxyTarget", "()Ljava/lang/Object;", true);
-        }
-        void cast(AccessContext.Method context) {
-            if (context.access().canAccess(to)) context.writer.visitTypeInsn(CHECKCAST, getInternalName(to));
         }
         @Override
         public boolean equals(Object o) {
