@@ -2,6 +2,7 @@
 
 set -euxo pipefail
 
+wget https://raw.githubusercontent.com/GNOME/gtk/refs/heads/main/gdk/wayland/protocol/gtk-shell.xml
 # This script creates a Docker image suitable for building musl AArch64 variant
 
 docker build --platform=linux/aarch64 -t jetbrains/runtime:alpine14_aarch64 -f Dockerfile.alpine .
