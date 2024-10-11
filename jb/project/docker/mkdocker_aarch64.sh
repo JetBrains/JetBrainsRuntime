@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+wget https://raw.githubusercontent.com/GNOME/gtk/refs/heads/main/gdk/wayland/protocol/gtk-shell.xml
 # This script creates a Docker image suitable for building AArch64 variant
 
 docker build \
