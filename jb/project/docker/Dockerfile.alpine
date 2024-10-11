@@ -37,6 +37,8 @@ RUN apk --no-cache add --update \
       vulkan-loader-dev=1.2.170-r1 \
       glslang=8.13.3743-r1
 
+COPY gtk-shell.xml /gtk-shell.xml
+
 RUN git config --global user.email "teamcity@jetbrains.com" && \
     git config --global user.name "builduser" && \
     git config --global --add safe.directory '*' && \
