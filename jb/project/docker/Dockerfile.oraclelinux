@@ -33,6 +33,7 @@ RUN yum -y update; \
         rsync-3.1.3-19.el8_7.1 \
         unzip-6.0-46.el8 \
         wayland-devel-1.21.0-1.el8 \
+        wayland-protocols-devel-1.25-1.el8 \
         python36-3.6.8-39.module+el8.10.0+90274+07ba55de \
         cmake-3.26.5-2.el8 \
         vulkan-headers-1.3.250.1-1.el8 \
