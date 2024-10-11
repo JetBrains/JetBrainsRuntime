@@ -84,6 +84,17 @@ public class JBRSystemShortcutsMacOS {
         public int hashCode() {
             return Objects.hash(keyCode, keyChar, modifiers, id, description);
         }
+
+        @Override
+        public String toString() {
+            return "Shortcut{" +
+                    "keyCode=" + keyCode +
+                    ", keyChar=" + (int)keyChar +
+                    ", modifiers=" + modifiers +
+                    ", id='" + id + '\'' +
+                    ", description='" + description + '\'' +
+                    '}';
+        }
     }
 
     @JBRApi.Provided("SystemShortcuts.ChangeEventListener")
@@ -100,7 +111,7 @@ public class JBRSystemShortcutsMacOS {
                     hotkey.getKeyCode(),
                     hotkey.getKeyChar(),
                     hotkey.getModifiers(),
-                    hotkey.getDescription(),
+                    hotkey.getId(),
                     hotkey.getDescription()
             );
         }
