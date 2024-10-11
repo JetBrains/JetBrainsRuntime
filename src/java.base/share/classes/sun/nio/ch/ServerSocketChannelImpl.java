@@ -653,6 +653,9 @@ class ServerSocketChannelImpl
 
     @Override
     public void kill() {
+        // wait for any accept operation to complete before trying to close
+        acceptLock.lock();
+        acceptLock.unlock();
         synchronized (stateLock) {
             if (state == ST_CLOSING) {
                 tryFinishClose();
