@@ -449,6 +449,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(WAKEFIELD_ROBOT_CFLAGS) \
         $(FONTCONFIG_CFLAGS) \
         $(VULKAN_FLAGS) \
+        $(WAYLAND_CFLAGS) \
         $(CUPS_CFLAGS)
 
     LIBAWT_WLAWT_CXXFLAGS += $(VULKAN_FLAGS)
