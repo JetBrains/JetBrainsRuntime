@@ -29,7 +29,6 @@
 #include <jni_util.h>
 #include <Trace.h>
 #include <assert.h>
-#include <gtk-shell1-client-protocol.h>
 
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
@@ -38,6 +37,10 @@
 
 #ifdef WAKEFIELD_ROBOT
 #include "wakefield.h"
+#endif
+
+#ifdef HAVE_GTK_SHELL1
+#include <gtk-shell.h>
 #endif
 
 static jmethodID postWindowClosingMID;
@@ -457,10 +460,12 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
     CHECK_NULL(frame->wp_viewport);
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
     CHECK_NULL(frame->xdg_surface);
+#ifdef HAVE_GTK_SHELL1
     if (gtk_shell1 != NULL) {
         frame->gtk_surface = gtk_shell1_get_gtk_surface(gtk_shell1, frame->wl_surface);
         CHECK_NULL(frame->gtk_surface);
     }
+#endif
     wl_surface_add_listener(frame->wl_surface, &wl_surface_listener, frame);
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
     frame->toplevel = JNI_TRUE;
@@ -483,9 +488,11 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
         xdg_toplevel_set_parent(frame->xdg_toplevel, parentFrame->xdg_toplevel);
     }
 
+#ifdef HAVE_GTK_SHELL1
     if (isModal && frame->gtk_surface != NULL) {
         gtk_surface1_set_modal(frame->gtk_surface);
     }
+#endif
 
 #ifdef WAKEFIELD_ROBOT
         if (wakefield) {
@@ -585,9 +592,11 @@ DoHide(JNIEnv *env, struct WLFrame *frame)
         } else {
             xdg_popup_destroy(frame->xdg_popup);
         }
+#ifdef HAVE_GTK_SHELL1
         if (frame->gtk_surface != NULL) {
             gtk_surface1_destroy(frame->gtk_surface);
         }
+#endif
         wp_viewport_destroy(frame->wp_viewport);
         xdg_surface_destroy(frame->xdg_surface);
         wl_surface_destroy(frame->wl_surface);
