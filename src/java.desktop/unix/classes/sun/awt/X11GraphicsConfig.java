@@ -180,8 +180,8 @@ public class X11GraphicsConfig extends GraphicsConfiguration
     }
 
     @Override
-    public SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
-        return device.getProxyCacheFor(getSurfaceType());
+    public Object getProxyKey() {
+        return device.getProxyKeyFor(getSurfaceType());
     }
 
     /**

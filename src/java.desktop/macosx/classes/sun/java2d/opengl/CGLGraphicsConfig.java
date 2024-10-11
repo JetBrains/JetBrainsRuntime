@@ -110,6 +110,11 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     }
 
     @Override
+    public Object getProxyKey() {
+        return this;
+    }
+
+    @Override
     public SurfaceData createManagedSurface(int w, int h, int transparency) {
         return CGLSurfaceData.createData(this, w, h,
                                          getColorModel(transparency),

@@ -256,7 +256,7 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
         } else {
             initSurface();
         }
-        setBlitProxyCache(gc.getSurfaceDataProxyCache());
+        setBlitProxyKey(gc.getProxyKey());
     }
 
     @Override

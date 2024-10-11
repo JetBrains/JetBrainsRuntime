@@ -31,25 +31,18 @@ import java.awt.Transparency;
 import java.awt.geom.AffineTransform;
 import java.awt.image.ColorModel;
 
-import sun.awt.image.SurfaceManager;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWGraphicsConfig;
 import sun.lwawt.macosx.CFRetainedResource;
 
 public abstract class CGraphicsConfig extends GraphicsConfiguration
-        implements LWGraphicsConfig, SurfaceManager.ProxiedGraphicsConfig {
+        implements LWGraphicsConfig {
 
     private final CGraphicsDevice device;
     private ColorModel colorModel;
-    private final SurfaceManager.ProxyCache surfaceDataProxyCache = new SurfaceManager.ProxyCache();
 
     protected CGraphicsConfig(CGraphicsDevice device) {
         this.device = device;
-    }
-
-    @Override
-    public SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
-        return surfaceDataProxyCache;
     }
 
     @Override

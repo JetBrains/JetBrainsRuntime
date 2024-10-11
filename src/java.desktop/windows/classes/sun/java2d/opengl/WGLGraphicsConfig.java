@@ -73,7 +73,6 @@ public final class WGLGraphicsConfig
     private ContextCapabilities oglCaps;
     private final OGLContext context;
     private Object disposerReferent = new Object();
-    private final SurfaceManager.ProxyCache surfaceDataProxyCache = new SurfaceManager.ProxyCache();
 
     public static native int getDefaultPixFmt(int screennum);
     private static native boolean initWGL();
@@ -100,8 +99,8 @@ public final class WGLGraphicsConfig
     }
 
     @Override
-    public SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
-        return surfaceDataProxyCache;
+    public Object getProxyKey() {
+        return this;
     }
 
     @Override

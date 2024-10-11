@@ -70,6 +70,7 @@
 typedef struct {
     SurfaceDataOps               sdOps;
     void*                        privOps;
+    jobject                      graphicsConfig;
     jint                         drawableType;
     jboolean                     isOpaque;
     jint                         width;

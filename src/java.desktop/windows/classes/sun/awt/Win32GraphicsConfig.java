@@ -113,8 +113,8 @@ public class Win32GraphicsConfig extends GraphicsConfiguration
     }
 
     @Override
-    public SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
-        return device.surfaceDataProxyCache;
+    public Object getProxyKey() {
+        return device;
     }
 
     /**

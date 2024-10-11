@@ -433,7 +433,7 @@ public abstract class X11SurfaceData extends XSurfaceData {
         this.depth = cm.getPixelSize();
         initOps(peer, graphicsConfig, depth);
         if (isAccelerationEnabled()) {
-            setBlitProxyCache(gc.getSurfaceDataProxyCache());
+            setBlitProxyKey(gc.getProxyKey());
         }
     }
 

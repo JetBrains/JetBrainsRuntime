@@ -140,7 +140,7 @@ public abstract class VKSurfaceData extends SurfaceData
         super(getCustomSurfaceType(type), cm);
         this.graphicsConfig = gc;
         this.type = type;
-        setBlitProxyCache(gc.getSurfaceDataProxyCache());
+        setBlitProxyKey(gc.getProxyKey());
 
         // TEXTURE shouldn't be scaled, it is used for managed BufferedImages.
         scale = 1;

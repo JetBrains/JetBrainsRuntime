@@ -30,6 +30,7 @@ import sun.awt.CGraphicsDevice;
 import sun.awt.CGraphicsEnvironment;
 import sun.awt.image.OffScreenImage;
 import sun.awt.image.SunVolatileImage;
+import sun.awt.image.SurfaceManager;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 import sun.java2d.Surface;
@@ -67,7 +68,7 @@ import static sun.java2d.pipe.hw.ContextCapabilities.*;
 import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_BIOP_SHADER;
 
 public final class MTLGraphicsConfig extends CGraphicsConfig
-        implements AccelGraphicsConfig
+        implements AccelGraphicsConfig, SurfaceManager.ProxiedGraphicsConfig
 {
     private static boolean mtlAvailable;
     private static ImageCapabilities imageCaps = new MTLImageCaps();
@@ -105,6 +106,11 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         // MTLGraphicsConfigInfo data when this object goes away
         Disposer.addRecord(disposerReferent,
                 new MTLGCDisposerRecord(pConfigInfo));
+    }
+
+    @Override
+    public Object getProxyKey() {
+        return this;
     }
 
     public SurfaceData createManagedSurface(int w, int h, int transparency) {
