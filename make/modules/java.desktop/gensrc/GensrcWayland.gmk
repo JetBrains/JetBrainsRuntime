@@ -34,11 +34,8 @@ WAYLAND_BASIC_PROTOCOL_FILES := \
         $(WAYLAND_PROTOCOLS_ROOT)/stable/xdg-shell/xdg-shell.xml \
         $(WAYLAND_PROTOCOLS_ROOT)/staging/xdg-activation/xdg-activation-v1.xml \
         $(WAYLAND_PROTOCOLS_ROOT)/unstable/primary-selection/primary-selection-unstable-v1.xml \
+        $(GTK_SHELL1_PROTOCOL_PATH) \
         #
-
-# TODO: what about https://github.com/GNOME/gtk/blob/main/gdk/wayland/protocol/gtk-shell.xml
-# src/java.desktop/unix/native/libawt_wlawt/gtk-shell1-protocol.c
-# ????
 
 WAYLAND_PROTOCOL_FILES := \
         $(WAYLAND_BASIC_PROTOCOL_FILES) \
