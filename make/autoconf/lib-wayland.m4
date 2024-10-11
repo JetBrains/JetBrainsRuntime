@@ -36,11 +36,10 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       [specify directory for the wayland include files])])
   AC_ARG_WITH(wayland-lib, [AS_HELP_STRING([--with-wayland-lib],
       [specify directory for the wayland library files])])
-  AC_ARG_WITH(wayland-scanner, [AS_HELP_STRING([--with-wayland-scanner],
-      [specify path to the wayland-scanner tool])])
   AC_ARG_WITH(wayland-protocols, [AS_HELP_STRING([--with-wayland-protocols],
-      [specify directory for the wayland protocols xml files])])
-
+      [specify the root directory for the wayland protocols xml files])])
+  AC_ARG_WITH(gtk-shell1-protocol, [AS_HELP_STRING([--with-gtk-shell1-protocol],
+      [specify the path to the gtk-shell1 Wayland protocol xml file])])
 
   if test "x$NEEDS_LIB_WAYLAND" = xfalse; then
     if (test "x${with_wayland}" != x && test "x${with_wayland}" != xno) || \
@@ -53,7 +52,8 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     VULKAN_ENABLED=false
   else
     WAYLAND_FOUND=no
-
+    WAYLAND_INCLUDES=
+    WAYLAND_DEFINES=
     if test "x${with_wayland}" = xno || test "x${with_wayland_include}" = xno; then
       AC_MSG_ERROR([It is not possible to disable the use of wayland. Remove the --without-wayland option.])
     fi
@@ -61,7 +61,7 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     if test "x${with_wayland}" != x; then
       AC_MSG_CHECKING([for wayland headers])
       if test -s "${with_wayland}/include/wayland-client.h" && test -s "${with_wayland}/include/wayland-cursor.h"; then
-        WAYLAND_CFLAGS="-I${with_wayland}/include"
+        WAYLAND_INCLUDES="-I${with_wayland}/include"
         WAYLAND_LIBS="-L${with_wayland}/lib -lwayland-client -lwayland-cursor"
 
         WAYLAND_FOUND=yes
@@ -73,7 +73,7 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     if test "x${with_wayland_include}" != x; then
       AC_MSG_CHECKING([for wayland headers])
       if test -s "${with_wayland_include}/wayland-client.h" && test -s "${with_wayland_include}/wayland-cursor.h"; then
-        WAYLAND_CFLAGS="-I${with_wayland_include}"
+        WAYLAND_INCLUDES="-I${with_wayland_include}"
         WAYLAND_FOUND=yes
         AC_MSG_RESULT([$WAYLAND_FOUND])
       else
@@ -92,6 +92,17 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     else
       AC_MSG_ERROR([Can't find 'wayland-protocols' under $WAYLAND_PROTOCOLS_ROOT.])
     fi
+    GTK_SHELL1_PROTOCOL_PATH=
+    if test "x${with_gtk_shell1_protocol}" != x && test "x${with_gtk_shell1_protocol}" != xno; then
+      AC_MSG_CHECKING([for the gtk-shell1 Wayland protocol])
+      if test -s "${with_gtk_shell1_protocol}"; then
+        WAYLAND_DEFINES="${WAYLAND_DEFINES} -DHAVE_GTK_SHELL1"
+        GTK_SHELL1_PROTOCOL_PATH="${with_gtk_shell1_protocol}"
+        AC_MSG_RESULT([yes])
+      else
+        AC_MSG_ERROR([Can't find gtk-shell1 protocol in ${with_gtk_shell1_protocol} given with the --with-gtk-shell1-protocol option.])
+      fi
+    fi
     if test "x${with_wayland_lib}" != x; then
       WAYLAND_LIBS="-L${with_wayland_lib} -lwayland-client -lwayland-cursor"
     fi
@@ -103,7 +114,7 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
           [ WAYLAND_FOUND=no; break ]
       )
       if test "x$WAYLAND_FOUND" = xyes; then
-          WAYLAND_CFLAGS=
+          WAYLAND_INCLUDES=
           WAYLAND_LIBS="-lwayland-client -lwayland-cursor"
           DEFAULT_WAYLAND=yes
       fi
@@ -112,7 +123,7 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       HELP_MSG_MISSING_DEPENDENCY([wayland])
       AC_MSG_ERROR([Could not find wayland! $HELP_MSG ])
     fi
-
+    WAYLAND_CFLAGS="${WAYLAND_INCLUDES} ${WAYLAND_DEFINES}"
 
     # Checking for vulkan sdk
 
@@ -207,4 +218,5 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
   AC_SUBST(WAYLAND_CFLAGS)
   AC_SUBST(WAYLAND_LIBS)
   AC_SUBST(WAYLAND_PROTOCOLS_ROOT)
+  AC_SUBST(GTK_SHELL1_PROTOCOL_PATH)
 ])
