@@ -627,11 +627,7 @@ public abstract class MTLSurfaceData extends SurfaceData
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {
-            RenderBuffer buf = rq.getBuffer();
-            rq.ensureCapacityAndAlignment(12, 4);
-            buf.putInt(DISPOSE_SURFACE);
-            buf.putLong(pData);
-
+            MTLContext.disposeSurface(pData);
             // this call is expected to complete synchronously, so flush now
             rq.flushNow();
         } finally {
