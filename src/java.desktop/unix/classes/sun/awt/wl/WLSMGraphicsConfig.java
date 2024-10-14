@@ -58,11 +58,13 @@ public class WLSMGraphicsConfig extends WLGraphicsConfig
     private final SurfaceType surfaceType;
 
     private WLSMGraphicsConfig(WLGraphicsDevice device,
+                               int x,
+                               int y,
                                int width,
                                int height,
                                int scale,
                                boolean translucencyCapable) {
-        super(device, width, height, scale);
+        super(device, x, y, width, height, scale);
         this.translucencyCapable = translucencyCapable;
         this.colorModel = colorModelFor(translucencyCapable ? Transparency.TRANSLUCENT : Transparency.OPAQUE);
         // Note: GNOME Shell definitely expects alpha values to be pre-multiplied
@@ -70,11 +72,13 @@ public class WLSMGraphicsConfig extends WLGraphicsConfig
     }
 
     public static WLSMGraphicsConfig getConfig(WLGraphicsDevice device,
+                                               int x,
+                                               int y,
                                                int width,
                                                int height,
                                                int scale,
                                                boolean translucencyCapable) {
-        var newConfig = new WLSMGraphicsConfig(device, width, height, scale, translucencyCapable);
+        var newConfig = new WLSMGraphicsConfig(device, x, y, width, height, scale, translucencyCapable);
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("New shared memory config " + newConfig);
         }
