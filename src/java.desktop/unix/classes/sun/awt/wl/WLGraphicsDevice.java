@@ -101,16 +101,16 @@ public class WLGraphicsDevice extends GraphicsDevice {
             // It is necessary to create a new object whenever config changes as its
             // identity is used to detect changes in scale, among other things.
             if (VKInstance.isVulkanEnabled()) {
-                newDefaultConfig = WLVKGraphicsConfig.getConfig(this, width, height, scale);
+                newDefaultConfig = WLVKGraphicsConfig.getConfig(this, x, y, width, height, scale);
                 newConfigs = new GraphicsConfiguration[1];
                 newConfigs[0] = newDefaultConfig;
             } else {
                 // TODO: Actually, Wayland may support a lot more shared memory buffer configurations, need to
                 //   subscribe to the wl_shm:format event and get the list from there.
-                newDefaultConfig = WLSMGraphicsConfig.getConfig(this, width, height, scale, false);
+                newDefaultConfig = WLSMGraphicsConfig.getConfig(this, x, y, width, height, scale, false);
                 newConfigs = new GraphicsConfiguration[2];
                 newConfigs[0] = newDefaultConfig;
-                newConfigs[1] = WLSMGraphicsConfig.getConfig(this, width, height, scale, true);
+                newConfigs[1] = WLSMGraphicsConfig.getConfig(this, x, y, width, height, scale, true);
             }
 
             configs = newConfigs;
