@@ -127,7 +127,8 @@ java/awt/Choice/ChoiceMouseEventOutbounds.java TBD windows-x64
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857,JBR-5505 macosx-all,windows-all
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5510,8310487,JBR-6950 linux-5.18.2-arch1-1,linux-all,windows-x64
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java JBR-5510,JBR-5905 linux-5.18.2-arch1-1,linux-all,windows-x64
-java/awt/Component/NativeInLightShow/NativeInLightShow.java JBR-7715 window-x64
+java/awt/Component/NativeInLightShow/NativeInLightShow.java JBR-7715 windows-x64
+java/awt/Component/RepaintTest.java JBR-7754 windows-x64
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-x64
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490,JBR-5505 windows-all,linux-all
 java/awt/dnd/DropActionChangedTest.java JBR-6757 windows-x64
@@ -178,6 +179,7 @@ javax/swing/JPopupMenu/4458079/bug4458079.java JBR-5505 windows-all
 javax/swing/JScrollBar/bug4202954/bug4202954.java JBR-5505 windows-all
 javax/swing/JSpinner/4515999/JSpinnerMouseAndKeyPressTest.java JBR-5505 windows-all
 javax/swing/JTable/6263446/bug6263446.java JBR-5505 windows-all
+[A11Y] javax/swing/JTable/6777378/bug6777378.java JBR-7755 windows-x64
 javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945,JBR-5505 linux-all,macosx-all,windows-all
 jdk/editpad/EditPadTest.java JBR-5505 windows-all
 javax/swing/JPopupMenu/6217905/bug6217905.java JBR-5505 windows-all

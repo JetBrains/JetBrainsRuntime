@@ -673,7 +673,7 @@ java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java 7107528,8253
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithOverlay.java 8253184 windows-all
 java/awt/Mouse/MouseDragEvent/MouseDraggedTest.java 8080676,8253184 linux-all,windows-all
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java 8157147 linux-all,windows-all
-java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java 8253184 windows-all
+java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java 8253184,JBR-7076 windows-all,linux-all
 java/awt/xembed/server/RunTestXEmbed.java 7034201 linux-all
 java/awt/Modal/ModalFocusTransferTests/FocusTransferDialogsDocModalTest.java 8164473 linux-all
 java/awt/Frame/DecoratedFrameInsets/DecoratedFrameInsetsTest.java JBR-5205 linux-5.4.0-1103-aws
