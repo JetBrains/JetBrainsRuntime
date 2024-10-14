@@ -131,7 +131,7 @@ gc/TestAllocHumongousFragment.java#iu-aggressive 8298781 generic-all
 
 # :hotspot_runtime
 
-runtime/cds/appcds/complexURI/ComplexURITest.java JBR-6616 window-aarch64
+runtime/cds/appcds/complexURI/ComplexURITest.java JBR-6616 windows-aarch64
 runtime/cds/appcds/TestDumpClassListSource.java JBR-6099 generic-all
 runtime/cds/appcds/dynamicArchive/CDSStreamTestDriver.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesInvokersTest.java initial_run generic-all
@@ -250,7 +250,7 @@ vmTestbase/nsk/jdi/VirtualMachine/allThreads/allthreads001/TestDescription.java 
 vmTestbase/nsk/jdi/VirtualMachine/canGetBytecodes/cangetbytecodes001/TestDescription.java time_out_intermittent macosx-aarch64
 vmTestbase/nsk/jdi/VirtualMachine/canGetCurrentContendedMonitor/cangccm001/TestDescription.java JBR-6994 macosx-all
 vmTestbase/nsk/jdi/VirtualMachine/canGetMonitorInfo/cangetmonitorinfo001/TestDescription.java JBR-6361 macosx-all
-vmTestbase/nsk/jdi/VirtualMachine/canGetOwnedMonitorInfo/cangetinfo001/TestDescription.java JBR-6831 macosx-aarch64
+vmTestbase/nsk/jdi/VirtualMachine/canGetOwnedMonitorInfo/cangetinfo001/TestDescription.java JBR-6831 macosx-all
 vmTestbase/nsk/jdi/stress/ClassPrepareEvents/ClassPrepareEvents001/ClassPrepareEvents001.java JBR-6470 macosx-all
 
 vmTestbase/metaspace/gc/firstGC_10m/TestDescription.java 8208250 generic-all
