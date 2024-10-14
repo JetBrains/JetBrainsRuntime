@@ -199,6 +199,9 @@ public final class D3DGraphicsDevice extends Win32GraphicsDevice {
         } finally {
             rq.unlock();
         }
+        if (!fsStatus) {
+            super.enterFullScreenExclusive(screen, wp);
+        }
     }
 
     private static native boolean exitFullScreenExclusiveNative(int screen);
