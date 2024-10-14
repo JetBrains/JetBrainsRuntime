@@ -67,7 +67,7 @@ javax/swing/plaf/nimbus/8057791/bug8057791.java initial_runs generic-all
 javax/swing/text/FlowView/6318524/bug6318524.java initial_runs generic-all
 javax/swing/text/html/CSS/4530474/bug4530474.java initial_runs generic-all
 javax/swing/text/html/CSS/8231286/HtmlFontSizeTest.java initial_runs generic-all
-javax/swing/text/html/StyleSheet/bug4476002.java JBR-7498 linux-arch64
+javax/swing/text/html/StyleSheet/bug4476002.java JBR-7498 linux-aarch64
 javax/swing/text/html/StyleSheet/bug4936917.java  initial_runs generic-aarch64 #intermittent
 javax/swing/text/ParagraphView/6364882/bug6364882.java initial_runs generic-all
 javax/swing/text/StyledEditorKit/8016833/bug8016833.java initial_runs generic-all
