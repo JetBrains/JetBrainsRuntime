@@ -37,13 +37,17 @@ import sun.java2d.loops.SurfaceType;
 
 public abstract class WLGraphicsConfig extends GraphicsConfiguration {
     private final WLGraphicsDevice device;
+    private final int x;
+    private final int y;
     private final int width;
     private final int height;
     private final int displayScale; // as reported by Wayland
     private final double effectiveScale; // as enforced by Java
 
-    protected WLGraphicsConfig(WLGraphicsDevice device, int width, int height, int displayScale) {
+    protected WLGraphicsConfig(WLGraphicsDevice device, int x, int y, int width, int height, int displayScale) {
         this.device = device;
+        this.x = x;
+        this.y = y;
         this.width = width;
         this.height = height;
         this.displayScale = displayScale;
@@ -85,7 +89,7 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
         // NB: despite the claims of GraphicsConfiguration.getBounds()'s javadoc,
         // the value returned is expected to be in user-space coordinates,
         // same as windows sizes, offsets, components' coordinates, etc.
-        return new Rectangle((int) (width / effectiveScale), (int) (height / effectiveScale));
+        return new Rectangle(x, y, (int) (width / effectiveScale), (int) (height / effectiveScale));
     }
 
     /**
@@ -108,6 +112,6 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public String toString() {
-        return String.format("%dx%d %dx scale", width, height, displayScale);
+        return String.format("%dx%d@(%d, %d) %dx scale", width, height, x, y, displayScale);
     }
 }
