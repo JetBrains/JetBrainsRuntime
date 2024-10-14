@@ -347,9 +347,6 @@ public class WLDataTransferer extends DataTransferer {
                     natives.add(baseType + ";charset=" + encoding);
                 }
             }
-
-            // Add a MIME format without specified charset.
-            natives.add(baseType);
         }
 
         return natives;
