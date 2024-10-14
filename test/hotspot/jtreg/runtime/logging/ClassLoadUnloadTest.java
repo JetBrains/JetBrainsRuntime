@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@
  * @library /test/lib
  * @library classes
  * @build test.Empty
+ * @build jdk.test.whitebox.WhiteBox
+ * @run driver jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
  * @run driver ClassLoadUnloadTest
  */
 
@@ -68,10 +70,13 @@ public class ClassLoadUnloadTest {
 
     // Use the same command-line heap size setting as ../ClassUnload/UnloadTest.java
     static OutputAnalyzer exec(String... args) throws Exception {
+        String classPath = System.getProperty("test.class.path", ".");
+
+        // Sub-process does not get all the properties automatically, so the test class path needs to be passed explicitly
         List<String> argsList = new ArrayList<>();
         Collections.addAll(argsList, args);
-        Collections.addAll(argsList, "-Xmn8m", "-Dtest.class.path=" + System.getProperty("test.class.path", "."),
-                            "-XX:+ClassUnloading", ClassUnloadTestMain.class.getName());
+        Collections.addAll(argsList, "-Xmn8m", "-Xbootclasspath/a:.", "-XX:+UnlockDiagnosticVMOptions",
+                           "-XX:+WhiteBoxAPI", "-XX:+ClassUnloading", "-Dtest.class.path=" + classPath, ClassUnloadTestMain.class.getName());
         ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(argsList);
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.shouldHaveExitValue(0);
@@ -84,7 +89,7 @@ public class ClassLoadUnloadTest {
 
         //  -Xlog:class+unload=info
         output = exec("-Xlog:class+unload=info");
-        checkFor(output, "[class,unload]", "unloading class");
+        checkFor(output, "[class,unload]", "unloading class test.Empty");
 
         //  -Xlog:class+unload=off
         output = exec("-Xlog:class+unload=off");
