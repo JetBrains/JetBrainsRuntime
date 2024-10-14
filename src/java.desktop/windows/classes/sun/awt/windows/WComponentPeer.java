@@ -660,7 +660,6 @@ public abstract class WComponentPeer extends WObjectPeer
         }
         return null;
     }
-
     @Override
     public FontMetrics getFontMetrics(Font font) {
         return WFontMetrics.getFontMetrics(font);

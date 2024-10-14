@@ -36,6 +36,11 @@ extern jobject CreateDisplayMode(JNIEnv* env, jint width, jint height,
 extern void addDisplayMode(JNIEnv* env, jobject arrayList, jint width,
                            jint height, jint bitDepth, jint refreshRate);
 
+struct FullScreenData {
+    jint gdiScreen;
+    jlong window;
+    jboolean res;
+};
 
 void D3DGraphicsDevice_enterFullScreenExclusiveNative(void *param)
 {
@@ -47,23 +52,27 @@ void D3DGraphicsDevice_enterFullScreenExclusiveNative(void *param)
     D3DPRESENT_PARAMETERS newParams, *pCurParams;
     D3DDISPLAYMODE dm;
     UINT adapter;
-    jint gdiScreen = 0;
-    jlong window = (jlong)(param);
+    FullScreenData* fullScreenDataParam = (FullScreenData*)(param);
 
     J2dTraceLn(J2D_TRACE_INFO, "D3DGD_enterFullScreenExclusiveNative");
 
-    RETURN_IF_NULL(pMgr = D3DPipelineManager::GetInstance());
-    adapter = pMgr->GetAdapterOrdinalForScreen(gdiScreen);
+    if ((pMgr = D3DPipelineManager::GetInstance()) == NULL) {
+        fullScreenDataParam->res = JNI_FALSE;
+        return;
+    }
+    adapter = pMgr->GetAdapterOrdinalForScreen(fullScreenDataParam->gdiScreen);
 
     if (FAILED(res = pMgr->GetD3DContext(adapter, &pCtx))) {
         D3DRQ_MarkLostIfNeeded(res, D3DRQ_GetCurrentDestination());
+        fullScreenDataParam->res = JNI_FALSE;
         return;
     }
 
-    w = (AwtWindow *)AwtComponent::GetComponent((HWND)window);
+    w = (AwtWindow *)AwtComponent::GetComponent((HWND)(fullScreenDataParam->window));
     if (w == NULL || !::IsWindow(hWnd = w->GetTopLevelHWnd())) {
         J2dTraceLn(J2D_TRACE_WARNING,
                    "D3DGD_enterFullScreenExclusiveNative: disposed window");
+        fullScreenDataParam->res = JNI_FALSE;
         return;
     }
 
@@ -91,24 +100,29 @@ void D3DGraphicsDevice_enterFullScreenExclusiveNative(void *param)
 
     res = pCtx->ConfigureContext(&newParams);
     D3DRQ_MarkLostIfNeeded(res, D3DRQ_GetCurrentDestination());
-    return;
+    fullScreenDataParam->res =  (res == S_OK) ? JNI_TRUE : JNI_FALSE;
 }
 
-void D3DGraphicsDevice_exitFullScreenExclusiveNative(void *param) {
+void D3DGraphicsDevice_exitFullScreenExclusiveNative(void *param)
+{
     HRESULT res;
     D3DPipelineManager *pMgr;
     D3DContext *pCtx;
     D3DPRESENT_PARAMETERS newParams, *pCurParams;
     UINT adapter;
-    jint gdiScreen = 0;
+    FullScreenData* fullScreenDataParam = (FullScreenData*)(param);
 
     J2dTraceLn(J2D_TRACE_INFO, "D3DGD_exitFullScreenExclusiveNative");
 
-    RETURN_IF_NULL(pMgr = D3DPipelineManager::GetInstance());
-    adapter = pMgr->GetAdapterOrdinalForScreen(gdiScreen);
+    if ((pMgr = D3DPipelineManager::GetInstance()) == NULL) {
+        fullScreenDataParam->res = JNI_FALSE;
+        return;
+    }
+    adapter = pMgr->GetAdapterOrdinalForScreen(fullScreenDataParam->gdiScreen);
 
     if (FAILED(res = pMgr->GetD3DContext(adapter, &pCtx))) {
         D3DRQ_MarkLostIfNeeded(res, D3DRQ_GetCurrentDestination());
+        fullScreenDataParam->res = JNI_FALSE;
         return;
     }
 
@@ -134,7 +148,7 @@ void D3DGraphicsDevice_exitFullScreenExclusiveNative(void *param) {
     // the rest of the adapters can be reset
     pMgr->SetFSFocusWindow(adapter, 0);
 
-    return;
+    fullScreenDataParam->res =  (res == S_OK) ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" {
@@ -239,8 +253,9 @@ Java_sun_java2d_d3d_D3DGraphicsDevice_getDeviceCapsNative
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_d3d_D3DGraphicsDevice_enterFullScreenExclusiveNative
         (JNIEnv *env, jclass gdc, jint gdiScreen, jlong window) {
-    AwtToolkit::GetInstance().InvokeFunction(D3DGraphicsDevice_enterFullScreenExclusiveNative, (void*)window);
-    return 1;
+    FullScreenData data = {gdiScreen, window, 0};
+    AwtToolkit::GetInstance().InvokeFunction(D3DGraphicsDevice_enterFullScreenExclusiveNative, (void*)&data);
+    return data.res;
 }
 
 /*
@@ -251,8 +266,9 @@ Java_sun_java2d_d3d_D3DGraphicsDevice_enterFullScreenExclusiveNative
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_d3d_D3DGraphicsDevice_exitFullScreenExclusiveNative
         (JNIEnv *env, jclass gdc, jint gdiScreen) {
-    AwtToolkit::GetInstance().InvokeFunction(D3DGraphicsDevice_exitFullScreenExclusiveNative, NULL);
-    return 1;
+    FullScreenData data = {gdiScreen, NULL, 0};
+    AwtToolkit::GetInstance().InvokeFunction(D3DGraphicsDevice_exitFullScreenExclusiveNative, (void*)&data);
+    return data.res;
 }
 
 
