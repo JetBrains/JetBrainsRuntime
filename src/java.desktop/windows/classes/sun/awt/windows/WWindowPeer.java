@@ -72,7 +72,6 @@ import sun.awt.Win32GraphicsEnvironment;
 import sun.java2d.pipe.Region;
 
 import sun.java2d.SunGraphics2D;
-import sun.java2d.windows.WindowsFlags;
 import sun.util.logging.PlatformLogger;
 
 import static sun.java2d.SunGraphicsEnvironment.toUserSpace;
@@ -589,8 +588,8 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     }
 
     public void updateGC() {
-        int scrn = -1;
-        if ((scrn = getScreenImOn()) == -1) {
+        int scrn = getScreenImOn();
+        if (scrn == -1) {
             return;
         }
 
