@@ -590,17 +590,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     public void updateGC() {
         int scrn = -1;
-        if (WindowsFlags.isD3DEnabled()) {
-            synchronized (((Component) getTarget()).getTreeLock()) {
-                if (pData == 0) {
-                    return;
-                }
-                scrn = getScreenImOn();
-            }
-        } else {
-            scrn = getScreenImOn();
-        }
-        if (scrn == -1) {
+        if ((scrn = getScreenImOn()) == -1) {
             return;
         }
 

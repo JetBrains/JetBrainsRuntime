@@ -79,6 +79,7 @@ import sun.awt.image.ToolkitImage;
 import sun.awt.util.PerformanceLogger;
 import sun.font.FontDesignMetrics;
 import sun.font.FontUtilities;
+import sun.java2d.d3d.D3DScreenUpdateManager;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.FontInfo;
@@ -2540,6 +2541,9 @@ public final class SunGraphics2D
                 // try again next time around.
             }
         } finally {
+            if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
+                mgr.swapBuffers();
+            }
             surfaceData.markDirty();
         }
     }
