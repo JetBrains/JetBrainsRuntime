@@ -88,6 +88,7 @@ void plog(int logLevel, const char *formatMsg, ...) {
 
     (*env)->CallVoidMethod(env, loggerObject, mid, jstr);
     (*env)->DeleteLocalRef(env, jstr);
+    CHECK_EXCEPTION();
 }
 
 static const char * toCString(id obj) {
@@ -665,6 +666,7 @@ JNIEXPORT void JNICALL Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkey
             (*env)->CallVoidMethod(
                     env, reader, methodAdd, (jint)vkeyCode, jkeyChar, (jint)jmodifiers, jdesc, jid
             );
+            CHECK_EXCEPTION();
         }
     );
 }
