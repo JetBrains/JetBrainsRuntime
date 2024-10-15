@@ -1208,15 +1208,14 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         if (np == null || !(gd instanceof X11GraphicsDevice) || !np.active()) {
             return super.getScreenInsets(gc);
         }
+        final GraphicsDevice[] devices = ((X11GraphicsEnvironment)GraphicsEnvironment.
+                getLocalGraphicsEnvironment()).getScreenDevices();
+        if (localEnv.runningXinerama() && devices.length > 1) {
+            return new Insets(0, 0, 0, 0);
+        }
         X11GraphicsDevice x11gd = (X11GraphicsDevice) gd;
         int screenNum = x11gd.getScreen();
         Rectangle screen = gc.getBounds();
-        boolean isFirstScreen = screen.x == 0 && screen.y == 0;
-        if (localEnv.runningXinerama() && !isFirstScreen) {
-            // We cannot estimate insets for non-default screen,
-            // there are often none.
-            return new Insets(0, 0, 0, 0);
-        }
 
         XToolkit.awtLock();
         try {
