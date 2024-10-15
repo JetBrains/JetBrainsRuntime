@@ -757,6 +757,22 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
         }
     }
 
+    @Override
+    public void displayContent() {
+        displayContent(0, 0, 0, 0);
+    }
+
+    /**
+     * Swaps the buffers of the D3D window surfaces within the specified region.
+     * If a D3D window surface is dirty or marked as lost, it will be swapped.
+     *
+     */
+    public void displayContent(int dx1, int dy1, int dx2, int dy2) {
+        if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
+            mgr.swapBuffers(dx1, dy1, dx2, dy2);
+        }
+    }
+
     static void swapBuffers(D3DSurfaceData sd,
                             final int x1, final int y1,
                             final int x2, final int y2)

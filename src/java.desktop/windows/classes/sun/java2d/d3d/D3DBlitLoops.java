@@ -206,12 +206,6 @@ final class D3DBlitLoops {
              ((isoblit ? 1 : 0) << OFFSET_ISOBLIT));
     }
 
-    private static void displayBuffer(int dx1, int dy1, int dx2, int dy2) {
-        if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
-            mgr.swapBuffers(dx1, dy1, dx2, dy2);
-        }
-    }
-
     /**
      * Enqueues a BLIT operation with the given parameters.  Note that the
      * RenderQueue lock must be held before calling this method.
@@ -285,10 +279,11 @@ final class D3DBlitLoops {
             rq.unlock();
         }
 
-        if (d3dDst.getType() == D3DSurfaceData.WINDOW && Toolkit.getDefaultToolkit() instanceof WToolkit toolkit) {
+        if (d3dDst instanceof D3DSurfaceData.D3DWindowSurfaceData dstD3DSurfaceData &&
+                Toolkit.getDefaultToolkit() instanceof WToolkit toolkit) {
             // flush immediately when copying to the screen to improve
             // responsiveness of applications using VI or BI backbuffers
-            displayBuffer((int) dx1, (int) dy1, (int) dx2, (int) dy2);
+            dstD3DSurfaceData.displayContent((int) dx1, (int) dy1, (int) dx2, (int) dy2);
         }
     }
 
@@ -353,12 +348,12 @@ final class D3DBlitLoops {
             rq.unlock();
         }
 
-        if (rtt && (d3dDst.getType() == D3DSurfaceData.WINDOW &&
+        if (rtt && (d3dDst instanceof D3DSurfaceData.D3DWindowSurfaceData dstD3DSurfaceData &&
                 Toolkit.getDefaultToolkit() instanceof WToolkit toolkit)) {
             // we only have to flush immediately when copying from a
             // (non-texture) surface to the screen; otherwise Swing apps
             // might appear unresponsive until the auto-flush completes
-            displayBuffer((int) dx1, (int) dy1, (int) dx2, (int) dy2);
+            dstD3DSurfaceData.displayContent((int) dx1, (int) dy1, (int) dx2, (int) dy2);
         }
     }
 }
