@@ -59,6 +59,7 @@ import java.io.PrintWriter;
 import java.io.Writer;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.ProtocolException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URI;
@@ -340,7 +341,7 @@ public class ExpectContinueTest implements HttpServerAdapters {
     private void verifyRequest(int expectedStatusCode, HttpResponse<String> resp, boolean exceptionally, Throwable testThrowable) {
         if (exceptionally && testThrowable != null) {
             err.println(testThrowable);
-            assertEquals(IOException.class, testThrowable.getClass());
+            assertEquals(testThrowable.getClass(), ProtocolException.class);
         } else if (exceptionally) {
             throw new TestException("Expected case to finish with an IOException but testException is null");
         } else if (resp != null) {
