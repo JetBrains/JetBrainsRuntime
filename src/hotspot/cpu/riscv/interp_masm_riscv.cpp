@@ -265,7 +265,6 @@ void InterpreterMacroAssembler::get_cache_and_index_and_bytecode_at_bcp(Register
   la(bytecode, Address(cache,
                        ConstantPoolCache::base_offset() +
                        ConstantPoolCacheEntry::indices_offset()));
-  membar(MacroAssembler::AnyAny);
   lwu(bytecode, bytecode);
   membar(MacroAssembler::LoadLoad | MacroAssembler::LoadStore);
   const int shift_count = (1 + byte_no) * BitsPerByte;
