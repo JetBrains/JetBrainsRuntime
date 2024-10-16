@@ -317,7 +317,6 @@ void TemplateTable::ldc(bool wide)
   // get type
   __ addi(x13, x11, tags_offset);
   __ add(x13, x10, x13);
-  __ membar(MacroAssembler::AnyAny);
   __ lbu(x13, Address(x13, 0));
   __ membar(MacroAssembler::LoadLoad | MacroAssembler::LoadStore);
 
@@ -3491,7 +3490,6 @@ void TemplateTable::_new() {
   const int tags_offset = Array<u1>::base_offset_in_bytes();
   __ add(t0, x10, x13);
   __ la(t0, Address(t0, tags_offset));
-  __ membar(MacroAssembler::AnyAny);
   __ lbu(t0, t0);
   __ membar(MacroAssembler::LoadLoad | MacroAssembler::LoadStore);
   __ sub(t1, t0, (u1)JVM_CONSTANT_Class);
@@ -3638,7 +3636,6 @@ void TemplateTable::checkcast()
   // See if bytecode has already been quicked
   __ add(t0, x13, Array<u1>::base_offset_in_bytes());
   __ add(x11, t0, x9);
-  __ membar(MacroAssembler::AnyAny);
   __ lbu(x11, x11);
   __ membar(MacroAssembler::LoadLoad | MacroAssembler::LoadStore);
   __ sub(t0, x11, (u1)JVM_CONSTANT_Class);
@@ -3694,7 +3691,6 @@ void TemplateTable::instanceof() {
   // See if bytecode has already been quicked
   __ add(t0, x13, Array<u1>::base_offset_in_bytes());
   __ add(x11, t0, x9);
-  __ membar(MacroAssembler::AnyAny);
   __ lbu(x11, x11);
   __ membar(MacroAssembler::LoadLoad | MacroAssembler::LoadStore);
   __ sub(t0, x11, (u1)JVM_CONSTANT_Class);
