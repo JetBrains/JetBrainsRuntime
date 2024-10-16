@@ -272,10 +272,10 @@ public class HttpRequestImpl extends HttpRequest implements WebSocketRequest {
 
     InetSocketAddress authority() { return authority; }
 
-    void setH2Upgrade(Http2ClientImpl h2client) {
+    void setH2Upgrade(Exchange<?> exchange) {
         systemHeadersBuilder.setHeader("Connection", "Upgrade, HTTP2-Settings");
         systemHeadersBuilder.setHeader("Upgrade", "h2c");
-        systemHeadersBuilder.setHeader("HTTP2-Settings", h2client.getSettingsString());
+        systemHeadersBuilder.setHeader("HTTP2-Settings", exchange.h2cSettingsStrings());
     }
 
     @Override

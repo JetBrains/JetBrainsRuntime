@@ -371,22 +371,37 @@ public final class Utils {
     }
 
 
+    private static final boolean[] LOWER_CASE_CHARS = new boolean[128];
+
     // ABNF primitives defined in RFC 7230
     private static final boolean[] tchar      = new boolean[256];
     private static final boolean[] fieldvchar = new boolean[256];
 
     static {
-        char[] allowedTokenChars =
-                ("!#$%&'*+-.^_`|~0123456789" +
-                 "abcdefghijklmnopqrstuvwxyz" +
-                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ").toCharArray();
-        for (char c : allowedTokenChars) {
+        char[] lcase = ("!#$%&'*+-.^_`|~0123456789" +
+                "abcdefghijklmnopqrstuvwxyz").toCharArray();
+        for (char c : lcase) {
+            tchar[c] = true;
+            LOWER_CASE_CHARS[c] = true;
+        }
+        char[] ucase = ("ABCDEFGHIJKLMNOPQRSTUVWXYZ").toCharArray();
+        for (char c : ucase) {
             tchar[c] = true;
         }
         for (char c = 0x21; c < 0xFF; c++) {
             fieldvchar[c] = true;
         }
         fieldvchar[0x7F] = false; // a little hole (DEL) in the range
+    }
+
+    public static boolean isValidLowerCaseName(String token) {
+        for (int i = 0; i < token.length(); i++) {
+            char c = token.charAt(i);
+            if (c > 255 || !LOWER_CASE_CHARS[c]) {
+                return false;
+            }
+        }
+        return !token.isEmpty();
     }
 
     /*
@@ -498,6 +513,19 @@ public final class Utils {
     public static int getIntegerProperty(String name, int defaultValue) {
         return AccessController.doPrivileged((PrivilegedAction<Integer>) () ->
                 Integer.parseInt(System.getProperty(name, String.valueOf(defaultValue))));
+    }
+
+    public static int getIntegerNetProperty(String property, int min, int max, int defaultValue, boolean log) {
+        int value =  Utils.getIntegerNetProperty(property, defaultValue);
+        // use default value if misconfigured
+        if (value < min || value > max) {
+            if (log && Log.errors()) {
+                Log.logError("Property value for {0}={1} not in [{2}..{3}]: " +
+                        "using default={4}", property, value, min, max, defaultValue);
+            }
+            value = defaultValue;
+        }
+        return value;
     }
 
     public static SSLParameters copySSLParameters(SSLParameters p) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
@@ -68,6 +69,8 @@ import static jdk.internal.net.http.common.Utils.permissionForProxy;
  */
 final class Exchange<T> {
 
+    static final int MAX_NON_FINAL_RESPONSES =
+            Utils.getIntegerNetProperty("jdk.httpclient.maxNonFinalResponses", 8);
     final Logger debug = Utils.getDebugLogger(this::dbgString, Utils.DEBUG);
 
     final HttpRequestImpl request;
@@ -89,6 +92,8 @@ final class Exchange<T> {
     // Keeps track of the underlying connection when establishing an HTTP/2
     // exchange so that it can be aborted/timed out mid setup.
     final ConnectionAborter connectionAborter = new ConnectionAborter();
+
+    final AtomicInteger nonFinalResponses = new AtomicInteger();
 
     Exchange(HttpRequestImpl request, MultiExchange<T> multi) {
         this.request = request;
@@ -281,7 +286,7 @@ final class Exchange<T> {
 
     public void h2Upgrade() {
         upgrading = true;
-        request.setH2Upgrade(client.client2());
+        request.setH2Upgrade(this);
     }
 
     synchronized IOException getCancelCause() {
@@ -379,6 +384,7 @@ final class Exchange<T> {
             Log.logResponse(r1::toString);
             int rcode = r1.statusCode();
             if (rcode == 100) {
+                nonFinalResponses.incrementAndGet();
                 Log.logTrace("Received 100-Continue: sending body");
                 if (debug.on()) debug.log("Received 100-Continue for %s", r1);
                 CompletableFuture<Response> cf =
@@ -455,12 +461,20 @@ final class Exchange<T> {
                         + rsp.statusCode());
             }
             assert exchImpl != null : "Illegal state - current exchange isn't set";
-            // ignore this Response and wait again for the subsequent response headers
-            final CompletableFuture<Response> cf = exchImpl.getResponseAsync(parentExecutor);
-            // we recompose the CF again into the ignore1xxResponse check/function because
-            // the 1xx response is allowed to be sent multiple times for a request, before
-            // a final response arrives
-            return cf.thenCompose(this::ignore1xxResponse);
+            int count = nonFinalResponses.incrementAndGet();
+            if (MAX_NON_FINAL_RESPONSES > 0 && (count < 0 || count > MAX_NON_FINAL_RESPONSES)) {
+                return MinimalFuture.failedFuture(
+                        new ProtocolException(String.format(
+                                "Too many interim responses received: %s > %s",
+                                count, MAX_NON_FINAL_RESPONSES)));
+            } else {
+                // ignore this Response and wait again for the subsequent response headers
+                final CompletableFuture<Response> cf = exchImpl.getResponseAsync(parentExecutor);
+                // we recompose the CF again into the ignore1xxResponse check/function because
+                // the 1xx response is allowed to be sent multiple times for a request, before
+                // a final response arrives
+                return cf.thenCompose(this::ignore1xxResponse);
+            }
         } else {
             // return the already completed future
             return MinimalFuture.completedFuture(rsp);
@@ -562,7 +576,7 @@ final class Exchange<T> {
                                                  this, e::drainLeftOverBytes)
                         .thenCompose((Http2Connection c) -> {
                             boolean cached = c.offerConnection();
-                            Stream<T> s = c.getStream(1);
+                            Stream<T> s = c.getInitialStream();
 
                             if (s == null) {
                                 // s can be null if an exception occurred
@@ -715,6 +729,14 @@ final class Exchange<T> {
 
     HttpClient.Version version() {
         return multi.version();
+    }
+
+    boolean pushEnabled() {
+        return pushGroup != null;
+    }
+
+    String h2cSettingsStrings() {
+        return client.client2().getSettingsString(pushEnabled());
     }
 
     String dbgString() {

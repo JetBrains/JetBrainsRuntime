@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,19 +21,22 @@
  * questions.
  */
 
+import jdk.internal.net.http.common.HttpHeadersBuilder;
+import jdk.internal.net.http.frame.HeaderFrame;
+import jdk.internal.net.http.frame.HeadersFrame;
+import jdk.internal.net.http.frame.Http2Frame;
+
+import javax.net.ssl.SSLSession;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.IOException;
-import java.net.URI;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.net.http.HttpHeaders;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import javax.net.ssl.SSLSession;
-import jdk.internal.net.http.common.HttpHeadersBuilder;
-import jdk.internal.net.http.frame.HeaderFrame;
-import jdk.internal.net.http.frame.HeadersFrame;
+import java.util.function.BiPredicate;
 
 public class Http2TestExchangeImpl implements Http2TestExchange {
 
@@ -127,8 +130,13 @@ public class Http2TestExchangeImpl implements Http2TestExchange {
         return os;
     }
 
-    @Override
     public void sendResponseHeaders(int rCode, long responseLength) throws IOException {
+        sendResponseHeaders(rCode, responseLength, (n,v) -> false);
+    }
+    @Override
+    public void sendResponseHeaders(int rCode, long responseLength,
+                                    BiPredicate<CharSequence, CharSequence> insertionPolicy)
+            throws IOException {
         this.responseLength = responseLength;
         if (responseLength !=0 && rCode != 204 && !isHeadRequest()) {
                 long clen = responseLength > 0 ? responseLength : 0;
@@ -139,7 +147,7 @@ public class Http2TestExchangeImpl implements Http2TestExchange {
         HttpHeaders headers = rspheadersBuilder.build();
 
         Http2TestServerConnection.ResponseHeaders response
-                = new Http2TestServerConnection.ResponseHeaders(headers);
+                = new Http2TestServerConnection.ResponseHeaders(headers, insertionPolicy);
         response.streamid(streamid);
         response.setFlag(HeaderFrame.END_HEADERS);
 
@@ -151,6 +159,11 @@ public class Http2TestExchangeImpl implements Http2TestExchange {
         conn.outputQ.put(response);
         os.goodToGo();
         System.err.println("Sent response headers " + rCode);
+    }
+
+    @Override
+    public void sendFrames(List<Http2Frame> frames) throws IOException {
+        conn.sendFrames(frames);
     }
 
     @Override
@@ -191,6 +204,7 @@ public class Http2TestExchangeImpl implements Http2TestExchange {
         }
         HttpHeaders combinedHeaders = headersBuilder.build();
         OutgoingPushPromise pp = new OutgoingPushPromise(streamid, uri, combinedHeaders, content);
+        pp.setFlag(HeaderFrame.END_HEADERS);
 
         try {
             conn.outputQ.put(pp);
