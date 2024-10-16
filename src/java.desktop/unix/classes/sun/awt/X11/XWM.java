@@ -1419,6 +1419,9 @@ final class XWM
               case UNITY_COMPIZ_WM:
                   res = new Insets(28, 1, 1, 1);
                   break;
+              case MUTTER_WM:
+                  res = new Insets(37, 0, 0, 0);
+                  break;
               case MOTIF_WM:
               case OPENLOOK_WM:
               default:
@@ -1430,6 +1433,7 @@ final class XWM
         }
         return res;
     }
+
     /*
      * Some buggy WMs ignore window gravity when processing
      * ConfigureRequest and position window as if the gravity is Static.

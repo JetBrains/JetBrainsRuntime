@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ package jdk.internal.net.http;
 import java.io.IOException;
 import java.lang.System.Logger.Level;
 import java.net.InetSocketAddress;
+import java.net.ProtocolException;
 import java.net.ProxySelector;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -39,6 +40,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
@@ -67,6 +69,8 @@ import static jdk.internal.net.http.common.Utils.permissionForProxy;
  */
 final class Exchange<T> {
 
+    static final int MAX_NON_FINAL_RESPONSES =
+            Utils.getIntegerNetProperty("jdk.httpclient.maxNonFinalResponses", 8);
     final Logger debug = Utils.getDebugLogger(this::dbgString, Utils.DEBUG);
 
     final HttpRequestImpl request;
@@ -90,6 +94,8 @@ final class Exchange<T> {
     // Keeps track of the underlying connection when establishing an HTTP/2
     // exchange so that it can be aborted/timed out mid setup.
     final ConnectionAborter connectionAborter = new ConnectionAborter();
+
+    final AtomicInteger nonFinalResponses = new AtomicInteger();
 
     Exchange(HttpRequestImpl request, MultiExchange<T> multi) {
         this.request = request;
@@ -314,7 +320,7 @@ final class Exchange<T> {
 
     public void h2Upgrade() {
         upgrading = true;
-        request.setH2Upgrade(client.client2());
+        request.setH2Upgrade(this);
     }
 
     synchronized IOException getCancelCause() {
@@ -415,6 +421,7 @@ final class Exchange<T> {
             Log.logResponse(r1::toString);
             int rcode = r1.statusCode();
             if (rcode == 100) {
+                nonFinalResponses.incrementAndGet();
                 Log.logTrace("Received 100-Continue: sending body");
                 if (debug.on()) debug.log("Received 100-Continue for %s", r1);
                 CompletableFuture<Response> cf =
@@ -447,8 +454,68 @@ final class Exchange<T> {
         CompletableFuture<Response> cf = ex.sendBodyAsync()
                 .thenCompose(exIm -> exIm.getResponseAsync(parentExecutor));
         cf = wrapForUpgrade(cf);
+        // after 101 is handled we check for other 1xx responses
+        cf = cf.thenCompose(this::ignore1xxResponse);
         cf = wrapForLog(cf);
         return cf;
+    }
+
+    /**
+     * Checks whether the passed Response has a status code between 102 and 199 (both inclusive).
+     * If so, then that {@code Response} is considered intermediate informational response and is
+     * ignored by the client. This method then creates a new {@link CompletableFuture} which
+     * completes when a subsequent response is sent by the server. Such newly constructed
+     * {@link CompletableFuture} will not complete till a "final" response (one which doesn't have
+     * a response code between 102 and 199 inclusive) is sent by the server. The returned
+     * {@link CompletableFuture} is thus capable of handling multiple subsequent intermediate
+     * informational responses from the server.
+     * <p>
+     * If the passed Response doesn't have a status code between 102 and 199 (both inclusive) then
+     * this method immediately returns back a completed {@link CompletableFuture} with the passed
+     * {@code Response}.
+     * </p>
+     *
+     * @param rsp The response
+     * @return A {@code CompletableFuture} with the final response from the server
+     */
+    private CompletableFuture<Response> ignore1xxResponse(final Response rsp) {
+        final int statusCode = rsp.statusCode();
+        // we ignore any response code which is 1xx.
+        // For 100 (with the request configured to expect-continue) and 101, we handle it
+        // specifically as defined in the RFC-9110, outside of this method.
+        // As noted in RFC-9110, section 15.2.1, if response code is 100 and if the request wasn't
+        // configured with expectContinue, then we ignore the 100 response and wait for the final
+        // response (just like any other 1xx response).
+        // Any other response code between 102 and 199 (both inclusive) aren't specified in the
+        // "HTTP semantics" RFC-9110. The spec states that these 1xx response codes are informational
+        // and interim and the client can choose to ignore them and continue to wait for the
+        // final response (headers)
+        if ((statusCode >= 102 && statusCode <= 199)
+                || (statusCode == 100 && !request.expectContinue)) {
+            Log.logTrace("Ignoring (1xx informational) response code {0}", rsp.statusCode());
+            if (debug.on()) {
+                debug.log("Ignoring (1xx informational) response code "
+                        + rsp.statusCode());
+            }
+            assert exchImpl != null : "Illegal state - current exchange isn't set";
+            int count = nonFinalResponses.incrementAndGet();
+            if (MAX_NON_FINAL_RESPONSES > 0 && (count < 0 || count > MAX_NON_FINAL_RESPONSES)) {
+                return MinimalFuture.failedFuture(
+                        new ProtocolException(String.format(
+                                "Too many interim responses received: %s > %s",
+                                count, MAX_NON_FINAL_RESPONSES)));
+            } else {
+                // ignore this Response and wait again for the subsequent response headers
+                final CompletableFuture<Response> cf = exchImpl.getResponseAsync(parentExecutor);
+                // we recompose the CF again into the ignore1xxResponse check/function because
+                // the 1xx response is allowed to be sent multiple times for a request, before
+                // a final response arrives
+                return cf.thenCompose(this::ignore1xxResponse);
+            }
+        } else {
+            // return the already completed future
+            return MinimalFuture.completedFuture(rsp);
+        }
     }
 
     CompletableFuture<Response> responseAsyncImpl0(HttpConnection connection) {
@@ -481,7 +548,30 @@ final class Exchange<T> {
         if (upgrading) {
             return cf.thenCompose(r -> checkForUpgradeAsync(r, exchImpl));
         }
-        return cf;
+        // websocket requests use "Connection: Upgrade" and "Upgrade: websocket" headers.
+        // however, the "upgrading" flag we maintain in this class only tracks a h2 upgrade
+        // that we internally triggered. So it will be false in the case of websocket upgrade, hence
+        // this additional check. If it's a websocket request we allow 101 responses and we don't
+        // require any additional checks when a response arrives.
+        if (request.isWebSocket()) {
+            return cf;
+        }
+        // not expecting an upgrade, but if the server sends a 101 response then we fail the
+        // request and also let the ExchangeImpl deal with it as a protocol error
+        return cf.thenCompose(r -> {
+            if (r.statusCode == 101) {
+                final ProtocolException protoEx = new ProtocolException("Unexpected 101 " +
+                        "response, when not upgrading");
+                assert exchImpl != null : "Illegal state - current exchange isn't set";
+                try {
+                    exchImpl.onProtocolError(protoEx);
+                } catch (Throwable ignore){
+                    // ignored
+                }
+                return MinimalFuture.failedFuture(protoEx);
+            }
+            return MinimalFuture.completedFuture(r);
+        });
     }
 
     private CompletableFuture<Response> wrapForLog(CompletableFuture<Response> cf) {
@@ -526,7 +616,7 @@ final class Exchange<T> {
                         .thenCompose((Http2Connection c) -> {
                             boolean cached = c.offerConnection();
                             if (cached) connectionAborter.disable();
-                            Stream<T> s = c.getStream(1);
+                            Stream<T> s = c.getInitialStream();
 
                             if (s == null) {
                                 // s can be null if an exception occurred
@@ -681,6 +771,14 @@ final class Exchange<T> {
 
     HttpClient.Version version() {
         return multi.version();
+    }
+
+    boolean pushEnabled() {
+        return pushGroup != null;
+    }
+
+    String h2cSettingsStrings() {
+        return client.client2().getSettingsString(pushEnabled());
     }
 
     String dbgString() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -182,6 +182,8 @@ int LinuxAttachListener::init() {
   char initial_path[UNIX_PATH_MAX];  // socket file during setup
   int listener;                      // listener socket (file descriptor)
 
+  static_assert(sizeof(off_t) == 8, "Expected Large File Support in this file");
+
   // register function to cleanup
   if (!_atexit_registered) {
     _atexit_registered = true;
@@ -247,7 +249,7 @@ int LinuxAttachListener::init() {
 //
 LinuxAttachOperation* LinuxAttachListener::read_request(int s) {
   char ver_str[8];
-  sprintf(ver_str, "%d", ATTACH_PROTOCOL_VER);
+  os::snprintf_checked(ver_str, sizeof(ver_str), "%d", ATTACH_PROTOCOL_VER);
 
   // The request is a sequence of strings so we first figure out the
   // expected count and the maximum possible length of the request.
@@ -290,7 +292,7 @@ LinuxAttachOperation* LinuxAttachListener::read_request(int s) {
           if ((strlen(buf) != strlen(ver_str)) ||
               (atoi(buf) != ATTACH_PROTOCOL_VER)) {
             char msg[32];
-            sprintf(msg, "%d\n", ATTACH_ERROR_BADVERSION);
+            os::snprintf_checked(msg, sizeof(msg), "%d\n", ATTACH_ERROR_BADVERSION);
             write_fully(s, msg, strlen(msg));
             return NULL;
           }
@@ -384,7 +386,7 @@ LinuxAttachOperation* LinuxAttachListener::dequeue() {
 // write the given buffer to the socket
 int LinuxAttachListener::write_fully(int s, char* buf, int len) {
   do {
-    int n = ::write(s, buf, len);
+    ssize_t n = ::write(s, buf, len);
     if (n == -1) {
       if (errno != EINTR) return -1;
     } else {
@@ -410,7 +412,7 @@ void LinuxAttachOperation::complete(jint result, bufferedStream* st) {
 
   // write operation result
   char msg[32];
-  sprintf(msg, "%d\n", result);
+  os::snprintf_checked(msg, sizeof(msg), "%d\n", result);
   int rc = LinuxAttachListener::write_fully(this->socket(), msg, strlen(msg));
 
   // write any result data
@@ -444,14 +446,14 @@ AttachOperation* AttachListener::dequeue() {
 
 void AttachListener::vm_start() {
   char fn[UNIX_PATH_MAX];
-  struct stat64 st;
+  struct stat st;
   int ret;
 
   int n = snprintf(fn, UNIX_PATH_MAX, "%s/.java_pid%d",
            os::get_temp_directory(), os::current_process_id());
   assert(n < (int)UNIX_PATH_MAX, "java_pid file name buffer overflow");
 
-  RESTARTABLE(::stat64(fn, &st), ret);
+  RESTARTABLE(::stat(fn, &st), ret);
   if (ret == 0) {
     ret = ::unlink(fn);
     if (ret == -1) {
@@ -471,8 +473,8 @@ int AttachListener::pd_init() {
 
 bool AttachListener::check_socket_file() {
   int ret;
-  struct stat64 st;
-  ret = stat64(LinuxAttachListener::path(), &st);
+  struct stat st;
+  ret = stat(LinuxAttachListener::path(), &st);
   if (ret == -1) { // need to restart attach listener.
     log_debug(attach)("Socket file %s does not exist - Restart Attach Listener",
                       LinuxAttachListener::path());
@@ -511,14 +513,14 @@ bool AttachListener::is_init_trigger() {
   }
   char fn[PATH_MAX + 1];
   int ret;
-  struct stat64 st;
-  sprintf(fn, ".attach_pid%d", os::current_process_id());
-  RESTARTABLE(::stat64(fn, &st), ret);
+  struct stat st;
+  os::snprintf_checked(fn, sizeof(fn), ".attach_pid%d", os::current_process_id());
+  RESTARTABLE(::stat(fn, &st), ret);
   if (ret == -1) {
     log_trace(attach)("Failed to find attach file: %s, trying alternate", fn);
     snprintf(fn, sizeof(fn), "%s/.attach_pid%d",
              os::get_temp_directory(), os::current_process_id());
-    RESTARTABLE(::stat64(fn, &st), ret);
+    RESTARTABLE(::stat(fn, &st), ret);
     if (ret == -1) {
       log_debug(attach)("Failed to find attach file: %s", fn);
     }

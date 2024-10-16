@@ -350,7 +350,9 @@
     <Field type="ulong" contentType="bytes" name="undoWaste" label="Undo Wasted" description="Total memory wasted due to allocation undo within PLABs" />
     <Field type="ulong" contentType="bytes" name="regionEndWaste" label="Region End Wasted" description="Total memory wasted at the end of regions due to refill" />
     <Field type="uint" name="regionsRefilled" label="Region Refills" description="Number of regions refilled" />
+    <Field type="ulong" name="numPlabsFilled" label="PLAB Fills" description="Number of PLABs filled" />
     <Field type="ulong" contentType="bytes" name="directAllocated" label="Allocated (direct)" description="Total memory allocated using direct allocation outside of PLABs" />
+    <Field type="ulong" name="numDirectAllocated" label="Direct allocations" description="Number of direct allocations" />
     <Field type="ulong" contentType="bytes" name="failureUsed" label="Used (failure)" description="Total memory occupied by objects in regions where evacuation failed" />
     <Field type="ulong" contentType="bytes" name="failureWaste" label="Wasted (failure)" description="Total memory left unused in regions where evacuation failed" />
   </Type>
@@ -658,7 +660,7 @@
     <Field type="Tickspan" name="objectAge" label="Object Age" />
     <Field type="ulong" contentType="bytes" name="lastKnownHeapUsage" label="Last Known Heap Usage" />
     <Field type="OldObject" name="object" label="Object" />
-    <Field type="int" name="arrayElements" label="Array Elements" description="If the object is an array, the number of elements, or -1 if it is not an array" />
+    <Field type="int" name="arrayElements" label="Array Elements" description="If the object is an array, the number of elements, or minimum value for the type int if it is not an array" />
     <Field type="OldObjectGcRoot" name="root" label="GC Root" />
   </Event>
 

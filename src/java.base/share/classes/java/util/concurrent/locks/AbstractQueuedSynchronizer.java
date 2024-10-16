@@ -1448,13 +1448,18 @@ public abstract class AbstractQueuedSynchronizer
         private void doSignal(ConditionNode first, boolean all) {
             while (first != null) {
                 ConditionNode next = first.nextWaiter;
+
                 if ((firstWaiter = next) == null)
                     lastWaiter = null;
+                else
+                    first.nextWaiter = null; // GC assistance
+
                 if ((first.getAndUnsetStatus(COND) & COND) != 0) {
                     enqueue(first);
                     if (!all)
                         break;
                 }
+
                 first = next;
             }
         }

@@ -1191,6 +1191,7 @@ class TypeInstPtr : public TypeOopPtr {
 
   // Speculative type helper methods.
   virtual const Type* remove_speculative() const;
+  const TypeInstPtr* with_speculative(const TypePtr* speculative) const;
   virtual const TypePtr* with_inline_depth(int depth) const;
   virtual const TypePtr* with_instance_id(int instance_id) const;
 

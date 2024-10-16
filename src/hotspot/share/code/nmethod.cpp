@@ -1550,7 +1550,7 @@ void nmethod::flush() {
   assert_locked_or_safepoint(CodeCache_lock);
 
   // completely deallocate this method
-  Events::log(JavaThread::current(), "flushing nmethod " INTPTR_FORMAT, p2i(this));
+  Events::log_nmethod_flush(Thread::current(), "flushing %s nmethod " INTPTR_FORMAT, is_osr_method() ? "osr" : "", p2i(this));
   if (PrintMethodFlushing) {
     tty->print_cr("*flushing %s nmethod %3d/" INTPTR_FORMAT ". Live blobs:" UINT32_FORMAT
                   "/Free CodeCache:" SIZE_FORMAT "Kb",

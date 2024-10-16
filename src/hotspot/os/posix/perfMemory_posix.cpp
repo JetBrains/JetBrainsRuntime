@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2012, 2021 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -89,38 +89,25 @@ static void save_memory_to_file(char* addr, size_t size) {
   const char* destfile = PerfMemory::get_perfdata_file_path();
   assert(destfile[0] != '\0', "invalid PerfData file path");
 
-  int result;
+  int fd;
 
-  RESTARTABLE(os::open(destfile, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR),
-              result);
-  if (result == OS_ERR) {
-    if (PrintMiscellaneous && Verbose) {
-      warning("Could not create Perfdata save file: %s: %s\n",
+  RESTARTABLE(os::open(destfile, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR), fd);
+  if (fd == OS_ERR) {
+    warning("Could not create Perfdata save file: %s: %s\n",
+            destfile, os::strerror(errno));
+  } else {
+    ssize_t result;
+
+    bool successful_write = os::write(fd, addr, size);
+    if (!successful_write) {
+      warning("Could not write Perfdata save file: %s: %s\n",
               destfile, os::strerror(errno));
     }
-  } else {
-    int fd = result;
 
-    for (size_t remaining = size; remaining > 0;) {
-
-      RESTARTABLE(::write(fd, addr, remaining), result);
-      if (result == OS_ERR) {
-        if (PrintMiscellaneous && Verbose) {
-          warning("Could not write Perfdata save file: %s: %s\n",
-                  destfile, os::strerror(errno));
-        }
-        break;
-      }
-
-      remaining -= (size_t)result;
-      addr += result;
-    }
 
     result = ::close(fd);
-    if (PrintMiscellaneous && Verbose) {
-      if (result == OS_ERR) {
-        warning("Could not close %s: %s\n", destfile, os::strerror(errno));
-      }
+    if (result == OS_ERR) {
+      warning("Could not close %s: %s\n", destfile, os::strerror(errno));
     }
   }
   FREE_C_HEAP_ARRAY(char, destfile);
@@ -880,9 +867,9 @@ static int create_sharedmem_file(const char* dirname, const char* filename, size
   // Open the filename in the current directory.
   // Cannot use O_TRUNC here; truncation of an existing file has to happen
   // after the is_file_secure() check below.
-  int result;
-  RESTARTABLE(os::open(filename, O_RDWR|O_CREAT|O_NOFOLLOW, S_IRUSR|S_IWUSR), result);
-  if (result == OS_ERR) {
+  int fd;
+  RESTARTABLE(os::open(filename, O_RDWR|O_CREAT|O_NOFOLLOW, S_IRUSR|S_IWUSR), fd);
+  if (fd == OS_ERR) {
     if (PrintMiscellaneous && Verbose) {
       if (errno == ELOOP) {
         warning("file %s is a symlink and is not secure\n", filename);
@@ -897,9 +884,6 @@ static int create_sharedmem_file(const char* dirname, const char* filename, size
   }
   // close the directory and reset the current working directory
   close_directory_secure_cwd(dirp, saved_cwd_fd);
-
-  // save the file descriptor
-  int fd = result;
 
   // check to see if the file is secure
   if (!is_file_secure(fd, filename)) {
@@ -933,6 +917,8 @@ static int create_sharedmem_file(const char* dirname, const char* filename, size
   }
 #endif
 
+ ssize_t result;
+
   // truncate the file to get rid of any existing data
   RESTARTABLE(::ftruncate(fd, (off_t)0), result);
   if (result == OS_ERR) {
@@ -959,11 +945,11 @@ static int create_sharedmem_file(const char* dirname, const char* filename, size
     int zero_int = 0;
     result = (int)os::seek_to_file_offset(fd, (jlong)(seekpos));
     if (result == -1 ) break;
-    RESTARTABLE(::write(fd, &zero_int, 1), result);
-    if (result != 1) {
+    if (!os::write(fd, &zero_int, 1)) {
       if (errno == ENOSPC) {
         warning("Insufficient space for shared memory file:\n   %s\nTry using the -Djava.io.tmpdir= option to select an alternate temp location.\n", filename);
       }
+      result = OS_ERR;
       break;
     }
   }
@@ -971,7 +957,7 @@ static int create_sharedmem_file(const char* dirname, const char* filename, size
   if (result != -1) {
     return fd;
   } else {
-    ::close(fd);
+    os::close(fd);
     return -1;
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@
 #define SHARE_RUNTIME_OS_HPP
 
 #include "jvm_md.h"
-#include "metaprogramming/integralConstant.hpp"
 #include "utilities/exceptions.hpp"
 #include "utilities/ostream.hpp"
 #include "utilities/macros.hpp"
@@ -169,6 +168,8 @@ class os: AllStatic {
   // Get summary strings for system information in buffer provided
   static void  get_summary_cpu_info(char* buf, size_t buflen);
   static void  get_summary_os_info(char* buf, size_t buflen);
+  // Returns number of bytes written on success, OS_ERR on failure.
+  static ssize_t pd_write(int fd, const void *buf, size_t nBytes);
 
   static void initialize_initial_active_processor_count();
 
@@ -580,7 +581,8 @@ class os: AllStatic {
 
   static ssize_t read(int fd, void *buf, unsigned int nBytes);
   static ssize_t read_at(int fd, void *buf, unsigned int nBytes, jlong offset);
-  static size_t write(int fd, const void *buf, unsigned int nBytes);
+  // Writes the bytes completely. Returns true on success, false otherwise.
+  static bool write(int fd, const void *buf, size_t nBytes);
 
   // Reading directories.
   static DIR*           opendir(const char* dirname);
@@ -680,6 +682,10 @@ class os: AllStatic {
   // of some platforms don't.
   static int vsnprintf(char* buf, size_t len, const char* fmt, va_list args) ATTRIBUTE_PRINTF(3, 0);
   static int snprintf(char* buf, size_t len, const char* fmt, ...) ATTRIBUTE_PRINTF(3, 4);
+
+  // Performs snprintf and asserts the result is non-negative (so there was not
+  // an encoding error) and that the output was not truncated.
+  static int snprintf_checked(char* buf, size_t len, const char* fmt, ...) ATTRIBUTE_PRINTF(3, 4);
 
   // Get host name in buffer provided
   static bool get_host_name(char* buf, size_t buflen);
