@@ -569,7 +569,6 @@ java/nio/channels/DatagramChannel/MulticastSendReceiveTests.java 8144003 macosx-
 java/nio/channels/DatagramChannel/Promiscuous.java              8144003 macosx-all
 java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-all
 
-java/nio/channels/DatagramChannel/AfterDisconnect.java          8308807 aix-ppc64
 java/nio/file/Files/probeContentType/Basic.java                 8320943 windows-all
 
 ############################################################################
