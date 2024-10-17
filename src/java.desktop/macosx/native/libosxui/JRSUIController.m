@@ -25,7 +25,6 @@
 
 #import "JNIUtilities.h"
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
-#import <ThreadUtilities.h>
 
 #import "apple_laf_JRSUIControl.h"
 #import "apple_laf_JRSUIConstants_DoubleValue.h"
@@ -165,8 +164,7 @@ static inline jint doPaintCGContext(CGContextRef cgRef, jlong controlPtr, jlong 
                                           block:^(){
         CGRect bounds = CGRectMake(x, y, w, h);
         JRSUIControlDraw(gRenderer, control, cgRef, bounds);
-    }];
-
+/*     }]; */
     return 0;
 }
 
@@ -276,7 +274,7 @@ JNIEXPORT jboolean JNICALL Java_apple_laf_JRSUIUtils_00024ScrollBar_shouldUseScr
     [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct mode
                                           block:^(){
         result = JRSUIControlShouldScrollToClick();
-    }];
+/*    }]; */
     return result;
 }
 
@@ -297,7 +295,7 @@ JNIEXPORT void JNICALL Java_apple_laf_JRSUIControl_getNativePartBounds
                                           block:^(){
         CGRect frame = CGRectMake(x, y, w, h);
         partBounds = JRSUIControlGetScrollBarPartBounds(control, frame, part);
-    }];
+/*    }]; */
 
     jdouble *rect = (*env)->GetPrimitiveArrayCritical(env, rectArray, NULL);
     if (rect != NULL) {
@@ -326,6 +324,6 @@ JNIEXPORT jdouble JNICALL Java_apple_laf_JRSUIControl_getNativeScrollBarOffsetCh
                                           block:^(){
         CGRect frame = CGRectMake(x, y, w, h);
         result = (jdouble)JRSUIControlGetScrollBarOffsetFor(control, frame, offset, visibleAmount, extent);
-    }];
+/*    }]; */
     return result;
 }
