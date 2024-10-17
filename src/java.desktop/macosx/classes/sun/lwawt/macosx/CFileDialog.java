@@ -99,6 +99,7 @@ final class CFileDialog implements FileDialogPeer {
                         ownerPtr,
                         title,
                         dialogMode,
+                        target.getModalityType().ordinal(),
                         target.isMultipleMode(),
                         navigateApps,
                         chooseDirectories,
@@ -196,7 +197,8 @@ final class CFileDialog implements FileDialogPeer {
         return ret;
     }
 
-    private native String[] nativeRunFileDialog(long ownerPtr, String title, int mode,
+    private native String[] nativeRunFileDialog(
+            long ownerPtr, String title, int mode, int modality,
             boolean multipleMode, boolean shouldNavigateApps,
             boolean canChooseDirectories, boolean canChooseFiles,
             boolean canCreateDirectories, boolean hasFilenameFilter, String[] allowedFileTypes,
