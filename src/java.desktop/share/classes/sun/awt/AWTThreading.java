@@ -140,6 +140,8 @@ public class AWTThreading {
                                     Thread t = factory.newThread(r);
                                     t.setDaemon(true);
                                     t.setName(AWTThreading.class.getSimpleName() + " " + t.getName());
+                                    // Always register thread:
+                                    SunToolkit.registerAwtLockThread(t);
                                     return t;
                                 }
                             })
@@ -156,6 +158,8 @@ public class AWTThreading {
                 }
             }
 
+            logger.info("AWTThreading.execute: callable " + callable);
+
             FutureTask<T> task = new FutureTask<>(callable) {
                 @Override
                 protected void done() {
@@ -170,6 +174,8 @@ public class AWTThreading {
 
             try {
                 while (!task.isDone() || !currentQueue.isEmpty()) {
+                    logger.info("AWTThreading.execute: poll event = will be WAITING for : " + timeout + " " + unit);
+
                     InvocationEvent event;
                     if (timeout >= 0 && unit != null) {
                         event = currentQueue.poll(timeout, unit);
@@ -184,6 +190,7 @@ public class AWTThreading {
                         new RuntimeException("Waiting for the invocation event timed out").printStackTrace();
                         break;
                     }
+                    logger.info("AWTThreading.execute: dispatch event: " + event);
                     event.dispatch();
                 }
                 return task.isCancelled() ? null : task.get();
@@ -291,6 +298,9 @@ public class AWTThreading {
                   catchThrowables);
 
             futureResult.whenComplete((r, ex) -> {
+
+                logger.info("TrackedInvocationEvent.whenComplete: awaiting " + (System.currentTimeMillis() - creationTime) + " ms)");
+
                 if (ex != null) {
                     String message = ex.getMessage() + " (awaiting " + (System.currentTimeMillis() - creationTime) + " ms)";
                     if (logger.isLoggable(PlatformLogger.Level.FINE)) {

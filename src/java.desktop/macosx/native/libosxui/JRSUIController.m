@@ -161,6 +161,7 @@ static inline jint doPaintCGContext(CGContextRef cgRef, jlong controlPtr, jlong 
     JRSUIControlRef control = (JRSUIControlRef)jlong_to_ptr(controlPtr);
     _SyncEncodedProperties(control, oldProperties, newProperties);
 
+    // DEADLOCK on main thread:
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         CGRect bounds = CGRectMake(x, y, w, h);
         JRSUIControlDraw(gRenderer, control, cgRef, bounds);

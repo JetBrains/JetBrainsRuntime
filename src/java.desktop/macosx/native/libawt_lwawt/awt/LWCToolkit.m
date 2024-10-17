@@ -604,6 +604,8 @@ JNI_COCOA_ENTER(env);
         isRunning = [[NSRunLoop currentRunLoop] runMode:(inAWT ? [ThreadUtilities javaRunLoopMode] : NSDefaultRunLoopMode)
                                              beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.010]];
 
+        NSLog(@"LWCToolkit_doAWTRunLoopImpl: isRunning = %d", isRunning);
+
         if (date != nil) {
             NSDate *now = [[NSDate alloc] init];
             if ([date compare:(now)] == NSOrderedAscending) result = JNI_FALSE;
@@ -612,14 +614,18 @@ JNI_COCOA_ENTER(env);
         }
 
         if (processEvents) {
+            NSLog(@"LWCToolkit_doAWTRunLoopImpl: processEvents = %d", processEvents);
+
             //We do not spin a runloop here as date is nil, so does not matter which mode to use
             // Processing all events excluding NSApplicationDefined which need to be processed
             // on the main loop only (those events are intended for disposing resources)
-            NSEvent *event;
-            if ((event = [NSApp nextEventMatchingMask:(NSAnyEventMask & ~NSApplicationDefinedMask)
-                                           untilDate:nil
-                                              inMode:NSDefaultRunLoopMode
-                                             dequeue:YES]) != nil) {
+            NSEvent *event = [NSApp nextEventMatchingMask:(NSAnyEventMask & ~NSApplicationDefinedMask)
+                                                untilDate:nil
+                                                   inMode:NSDefaultRunLoopMode
+                                                  dequeue:YES];
+            if (event != nil) {
+                NSLog(@"LWCToolkit_doAWTRunLoopImpl: send event = %@", event);
+
                 if ([event.window isKindOfClass:[AWTWindow_Normal class]]) {
                     // Filter only events from AWTWindow (to skip events from ScreenMenu)
                     // See https://youtrack.jetbrains.com/issue/IDEA-305287/Implement-non-blocking-ScreenMenu.invokeOpenLater#focus=Comments-27-6614719.0-0

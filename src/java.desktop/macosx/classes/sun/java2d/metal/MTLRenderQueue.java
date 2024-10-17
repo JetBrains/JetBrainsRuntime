@@ -25,6 +25,7 @@
 
 package sun.java2d.metal;
 
+import sun.awt.SunToolkit;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
@@ -170,6 +171,8 @@ public class MTLRenderQueue extends RenderQueue {
             thread.setDaemon(true);
             thread.setPriority(Thread.MAX_PRIORITY);
             thread.start();
+            // Always register thread:
+            SunToolkit.registerAwtLockThread(thread);
         }
 
         public synchronized void flushNow() {

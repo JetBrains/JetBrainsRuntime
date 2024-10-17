@@ -1383,7 +1383,9 @@ AWT_ASSERT_APPKIT_THREAD;
         jobject target = (*env)->GetObjectField(env, platformWindow, jf_target);
         if (target) {
             h = (CGFloat) (*env)->CallFloatMethod(env, target, jm_internalCustomTitleBarHeight);
-            self.customTitleBarControlsVisible = (BOOL) (*env)->CallBooleanMethod(env, target, jm_internalCustomTitleBarControlsVisible);
+            if (!(*env)->ExceptionCheck(env)) {
+                self.customTitleBarControlsVisible = (BOOL) (*env)->CallBooleanMethod(env, target, jm_internalCustomTitleBarControlsVisible);
+            }
             (*env)->DeleteLocalRef(env, target);
         }
         CHECK_EXCEPTION();

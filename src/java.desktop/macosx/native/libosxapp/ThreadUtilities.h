@@ -142,8 +142,9 @@ __attribute__((visibility("default")))
 + (void)performOnMainThreadNowOrLater:(void (^)())block;
 + (void)performOnMainThreadWaiting:(BOOL)wait block:(void (^)())block;
 + (void)performOnMainThread:(SEL)aSelector on:(id)target withObject:(id)arg waitUntilDone:(BOOL)wait;
-+ (NSString*)javaRunLoopMode;
++ (const char*)currentMainThreadCaller;
 
++ (NSString*)javaRunLoopMode;
 @end
 
 JNIEXPORT void OSXAPP_SetJavaVM(JavaVM *vm);

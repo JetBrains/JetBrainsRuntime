@@ -58,6 +58,9 @@ static jobject appkitThreadGroup = NULL;
 static NSString* JavaRunLoopMode = @"AWTRunLoopMode";
 static NSArray<NSString*> *javaModes = nil;
 
+static BOOL enableTracing = NO;
+static const char* currentMainCaller = nil;
+
 static inline void attachCurrentThread(void** env) {
     if ([NSThread isMainThread]) {
         JavaVMAttachArgs args;
@@ -119,6 +122,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
 + (void)setAppkitThreadGroup:(jobject)group {
     appkitThreadGroup = group;
+    enableTracing = YES;
 }
 
 /*
@@ -191,6 +195,12 @@ AWT_ASSERT_APPKIT_THREAD;
         const char* operation = (invokeDirect ? "now  " : (blockingEDT ? "block" : "later"));
 
         void (^blockCopy)(void) = Block_copy(^(){
+            // TODO: update Main thread stack:
+            // currentMainStack = callerFrame;
+
+            if (enableTracing && wait) {
+                lwc_plog([ThreadUtilities getJNIEnvUncached], "performOnMainThread(%s): calling %s", operation, aSelector);
+            }
             const CFTimeInterval start = CACurrentMediaTime();
             if (blockingEDT) {
                 setBlockingEventDispatchThread(YES);
@@ -202,17 +212,30 @@ AWT_ASSERT_APPKIT_THREAD;
                     setBlockingEventDispatchThread(NO);
                 }
                 const double elapsedMs = (CACurrentMediaTime() - start) * 1000.0;
-                if (elapsedMs > mtThreshold) {
-                    lwc_plog([ThreadUtilities getJNIEnv], "performOnMainThread(%s)[time: %.3lf ms]: [%s]", operation, elapsedMs, toCString(caller));
+                if (enableTracing && (elapsedMs > mtThreshold)) {
+                    lwc_plog([ThreadUtilities getJNIEnvUncached], "performOnMainThread(%s)[time: %.3lf ms]: [%s]", operation, elapsedMs, toCString(caller));
                 }
             }
         });
         if (invokeDirect) {
             [ThreadUtilities performSelector:@selector(invokeBlockCopy:) withObject:blockCopy];
         } else {
+            if (wait) {
+                const char *callerFrame = toCString(caller);
+                if (enableTracing) {
+                    lwc_plog([ThreadUtilities getJNIEnvUncached], "performOnMainThread(%s): Caller [%s] to performSelectorOnMainThread(%s)",
+                             operation, callerFrame, aSelector);
+                }
+                // Set current caller asking to wait on main thread:
+                currentMainCaller = callerFrame;
+            }
             [ThreadUtilities performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:wait modes:javaModes];
         }
     }
+}
+
++ (const char*)currentMainThreadCaller {
+    return currentMainCaller;
 }
 
 + (NSString*)javaRunLoopMode {

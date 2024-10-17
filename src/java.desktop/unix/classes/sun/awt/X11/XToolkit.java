@@ -454,6 +454,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 thread.setContextClassLoader(null);
                 thread.setPriority(Thread.NORM_PRIORITY + 1);
                 thread.setDaemon(true);
+                // Always register thread:
+                SunToolkit.registerAwtLockThread(thread);
                 return thread;
             });
             toolkitThread.start();

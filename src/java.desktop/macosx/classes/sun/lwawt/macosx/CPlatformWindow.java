@@ -1179,6 +1179,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     void flushBuffers() {
         if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
             try {
+// TODO: TRACE BLOCKING STATE
                 LWCToolkit.invokeAndWait(new Runnable() {
                     @Override
                     public void run() {

@@ -93,7 +93,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-
+import jdk.internal.misc.InnocuousThread;
 import sun.awt.im.InputContext;
 import sun.awt.image.ByteArrayImageSource;
 import sun.awt.image.FileImageSource;
@@ -102,7 +102,6 @@ import sun.awt.image.MultiResolutionToolkitImage;
 import sun.awt.image.ToolkitImage;
 import sun.awt.image.URLImageSource;
 import sun.awt.util.PerformanceLogger;
-import sun.awt.util.ThreadGroupUtils;
 import sun.font.FontDesignMetrics;
 import sun.java2d.marlin.stats.Histogram;
 import sun.java2d.marlin.stats.StatLong;
@@ -164,6 +163,9 @@ public abstract class SunToolkit extends Toolkit
         private static final int TRACESTATS     = 1 << 2;
         private static final int TRACEFULL      = 1 << 3;
         private static final int TRACELIVE      = 1 << 4;
+
+        public static final boolean USE_HISTOGRAM = false;
+
 
         private static void showTraceUsage() {
             System.err.println("usage: -Dsun.awt.trace=" +
@@ -256,6 +258,7 @@ public abstract class SunToolkit extends Toolkit
                 flags = traceFlags;
 
                 if ((flags & (TRACESTATS | TRACELIVE)) != 0) {
+                    //com.jetbrains.JBR.getJstack().includeInfoFrom( () -> "I am GROOT !" );
                     TraceReporter.setShutdownHook();
                 }
             }
@@ -429,6 +432,39 @@ public abstract class SunToolkit extends Toolkit
             }
 
             private static StackWalker.StackFrame getLockCallerFrame() {
+
+                // Too heavy stack:
+/*
++ 141525ms   Thread stack:
+ + 141526ms java.base/java.lang.invoke.MethodHandleNatives.expand(Native Method)
+ + 141526ms java.base/java.lang.invoke.MemberName.expandFromVM(MemberName.java:517)
+ + 141526ms java.base/java.lang.invoke.MemberName.getName(MemberName.java:103)
+ + 141526ms java.base/java.lang.invoke.MethodHandleImpl$1.getName(MethodHandleImpl.java:1553)
+ + 141526ms java.base/java.lang.StackFrameInfo.getMethodName(StackFrameInfo.java:77)
+ + 141526ms java.desktop/sun.awt.SunToolkit$Tracer$AwtLockTracer.lambda$getLockCallerFrame$0(SunToolkit.java:433)
+ + 141526ms java.base/java.util.stream.WhileOps$1Op$1OpSink.accept(WhileOps.java:376)
+ + 141526ms java.base/java.lang.StackStreamFactory$StackFrameTraverser.tryAdvance(StackStreamFactory.java:647)
+ + 141526ms java.base/java.util.stream.ReferencePipeline.forEachWithCancel(ReferencePipeline.java:129)
+ + 141526ms java.base/java.util.stream.AbstractPipeline.copyIntoWithCancel(AbstractPipeline.java:527)
+ + 141526ms java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:513)
+ + 141526ms java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
+ + 141526ms java.base/java.util.stream.FindOps$FindOp.evaluateSequential(FindOps.java:150)
+ + 141526ms java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
+ + 141526ms java.base/java.util.stream.ReferencePipeline.findFirst(ReferencePipeline.java:647)
+ + 141526ms java.desktop/sun.awt.SunToolkit$Tracer$AwtLockTracer.lambda$getLockCallerFrame$2(SunToolkit.java:435)
+ + 141526ms java.base/java.lang.StackStreamFactory$StackFrameTraverser.consumeFrames(StackStreamFactory.java:586)
+ + 141526ms java.base/java.lang.StackStreamFactory$AbstractStackWalker.doStackWalk(StackStreamFactory.java:324)
+ + 141526ms java.base/java.lang.StackStreamFactory$AbstractStackWalker.callStackWalk(Native Method)
+ + 141526ms java.base/java.lang.StackStreamFactory$AbstractStackWalker.beginStackWalk(StackStreamFactory.java:410)
+ + 141526ms java.base/java.lang.StackStreamFactory$AbstractStackWalker.walkHelper(StackStreamFactory.java:261)
+ + 141526ms java.base/java.lang.StackStreamFactory$AbstractStackWalker.walk(StackStreamFactory.java:253)
+ + 141526ms java.base/java.lang.StackWalker.walk(StackWalker.java:589)
+ + 141526ms java.desktop/sun.awt.SunToolkit$Tracer$AwtLockTracer.getLockCallerFrame(SunToolkit.java:432)
+ + 141526ms java.desktop/sun.awt.SunToolkit$Tracer$AwtLockTracer.afterAwtLocked(SunToolkit.java:394)
+ + 141526ms java.desktop/sun.awt.SunToolkit.lambda$awtTryLock$2(SunToolkit.java:813)
+ + 141526ms java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+ + 141526ms java.desktop/sun.awt.SunToolkit.awtTryLock(SunToolkit.java:813)
+*/
                 return StackWalker.getInstance().walk(
                                 s -> s.dropWhile(stackFrame -> !awtLockerMethods.contains(stackFrame.getMethodName())
                                 ).dropWhile(stackFrame -> awtLockerMethods.contains(stackFrame.getMethodName())
@@ -443,7 +479,7 @@ public abstract class SunToolkit extends Toolkit
             private long count;
             private long totalTime;
 
-            private final Histogram hist_time = new Histogram("awtLock times (ms)");
+            private final Histogram hist_time = (USE_HISTOGRAM) ? new Histogram("awtLock times (ms)") : null;
             private final StatLong stat_wait = new StatLong("awtLock wait (ms)");
 
             protected MethodStats() {
@@ -455,8 +491,9 @@ public abstract class SunToolkit extends Toolkit
                 minTime = Math.min(minTime, elapsed);
                 maxTime = Math.max(maxTime, elapsed);
                 totalTime += elapsed;
-
-                hist_time.add((TIME_GRANULARITY != 0L) ? divide(elapsed, TIME_GRANULARITY) : elapsed);
+                if (USE_HISTOGRAM) {
+                    hist_time.add((TIME_GRANULARITY != 0L) ? divide(elapsed, TIME_GRANULARITY) : elapsed);
+                }
                 if (wait > 0L) {
                     stat_wait.add(wait);
                 }
@@ -488,7 +525,7 @@ public abstract class SunToolkit extends Toolkit
             }
 
             protected String histogramToString() {
-                return hist_time.toString(SCALE_HIST);
+                return (USE_HISTOGRAM) ? hist_time.toString(SCALE_HIST) : "";
             }
         }
 
@@ -538,19 +575,16 @@ public abstract class SunToolkit extends Toolkit
 
             static void setShutdownHook() {
                 {
-                    final Thread thread = new Thread(ThreadGroupUtils.getRootThreadGroup(), REPORTER,
-                            "SunToolkit TraceReporter Hook", 0, false);
+                    final Thread thread = InnocuousThread.newSystemThread("SunToolkit TraceReporter Hook", REPORTER);
                     thread.setContextClassLoader(null);
                     Runtime.getRuntime().addShutdownHook(thread);
                 }
                 if ((flags & TRACELIVE) != 0) {
-                    final Thread thread = new Thread(ThreadGroupUtils.getRootThreadGroup(), LIVE_REPORTER,
-                            "SunToolkit TraceReporter Live", 0, false);
+                    final Thread thread = InnocuousThread.newSystemThread("SunToolkit TraceReporter Live", LIVE_REPORTER, Thread.MAX_PRIORITY);
                     thread.setContextClassLoader(null);
                     thread.setDaemon(true);
-                    thread.setPriority(Thread.MAX_PRIORITY);
                     thread.start();
-                    System.out.println("SunToolkit TraceReporter Live: started. (interval: " + (INTERVAL / 1000L) + "s)");
+                    System.out.println("[" + thread + "]: started. (interval: " + (INTERVAL / 1000L) + "s)");
                 }
             }
 
@@ -566,17 +600,39 @@ public abstract class SunToolkit extends Toolkit
                     final AwtLockerDescriptor descr = getCurrentAwtLockCaller();
                     if (descr != null) {
                         final long elapsed = getCurrentTime() - descr.startTime;
-                        traceRawLine("Current AWTLock owner: ", getThreadInfo(AWT_LOCK.getPrivateOwnerThread()),
+                        traceRawLine("Current AWT_LOCK owner: ", getThreadInfo(AWT_LOCK.getPrivateOwnerThread()),
                                 " at ", descr.frame, " for ", SCALE * elapsed, " ms");
+                    }
+                    // TODO: get appkit stack :
+                    traceRawLine("=========================");
+
+                    // Show all awt lock threads:
+                    final ArrayList<Thread> lt = copyAwtLockThreads();
+                    if (lt != null) {
+                        // Always log thread state:
+                        for (Thread t : lt) {
+                            traceRawLine("- Thread State: ", getThreadInfo(t));
+                            traceRawLine("         Stack: ");
+
+                            // TODO: filter out useless frames:
+                            for (StackTraceElement ste : t.getStackTrace()) {
+                                traceRawLine(ste.toString());
+                            }
+                            traceRawLine("---");
+                        }
+                        traceRawLine("=========================");
                     }
 
                     l.forEach(item -> traceRawLine(item.getValue(), " --- ", item.getKey()));
                     traceRawLine("Legend: <avg time> ( <times called> x [ <fastest time> - <slowest time> ] ms) --- <caller of SunToolkit.awtUnlock()>");
-
-                    // Histogram dump:
-                    traceRawLine("=====");
-                    l.forEach(item -> traceRawLine(item.getKey(), " --- ", item.getValue().histogramToString()));
                     traceRawLine("=========================");
+
+                    if (USE_HISTOGRAM) {
+                        // Histogram dump:
+                        traceRawLine("=====");
+                        l.forEach(item -> traceRawLine(item.getKey(), " --- ", item.getValue().histogramToString()));
+                        traceRawLine("=========================");
+                    }
                 }
             }
         }
@@ -716,15 +772,37 @@ public abstract class SunToolkit extends Toolkit
 
     private static java.util.List<AwtLockListener> awtLockListeners = null;
 
+    private static Map<Thread, String> awtLockThreads = null;
+
     protected static synchronized void addAwtLockListener(AwtLockListener l) {
         if (awtLockListeners == null) {
             // no synchronization needed:
             awtLockListeners = new ArrayList<>();
+            awtLockThreads = Collections.synchronizedMap(new WeakIdentityHashMap<>());
         }
         awtLockListeners.add(l);
     }
 
+    private static synchronized ArrayList<Thread> copyAwtLockThreads() {
+        if (awtLockThreads == null) {
+            return null;
+        }
+        final ArrayList<Thread> list = new ArrayList<>(awtLockThreads.keySet());
+        Collections.sort(list, (t1, t2) -> { return t1.getName().compareTo(t2.getName()); });
+        return list;
+    }
+
+    public static final void registerAwtLockThread(Thread t) {
+        if ((awtLockThreads != null) && (t != null)) {
+            awtLockThreads.putIfAbsent(t, t.getName());
+        }
+    }
+
     public static final void awtLock() {
+        if (awtLockThreads != null) {
+            // Always register thread:
+            registerAwtLockThread(Thread.currentThread());
+        }
         // fast-path:
         if (awtTryLock()) {
             return;
@@ -742,6 +820,12 @@ public abstract class SunToolkit extends Toolkit
                 }
 
                 // TODO: reentrance pattern (count transaction if within -> )
+/*
+                final Thread dispatchThread = AWTThreading.getInstance(Toolkit.getDefaultToolkit().getSystemEventQueue()).getEventDispatchThread();
+                if (owner == dispatchThread) {
+                    // will cause deadlock !
+                }
+*/
             }
         }
         // measure waiting time if needed:

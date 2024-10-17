@@ -750,11 +750,18 @@ public final class LWCToolkit extends LWToolkit {
         if (a == b) return true;
 
         final boolean[] ret = new boolean[1];
-
-        try {  invokeAndWait(new Runnable() { @Override
-                                              public void run() { synchronized(ret) {
-            ret[0] = a.equals(b);
-        }}}, c); } catch (Exception e) { e.printStackTrace(); }
+        try {
+            invokeAndWait(new Runnable() {
+                @Override
+                public void run() {
+                    synchronized(ret) {
+                        ret[0] = a.equals(b);
+                    }
+                }
+             }, c);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         synchronized(ret) { return ret[0]; }
     }
@@ -845,6 +852,8 @@ public final class LWCToolkit extends LWToolkit {
 
         long mediator = createAWTRunLoopMediator();
         invocationEvent.onDone(() -> stopAWTRunLoop(mediator));
+
+        log.info("LWCToolkit: invokeAndWait started: " + runnable);
 
         if (component != null) {
             AppContext appContext = SunToolkit.targetToAppContext(component);
@@ -1075,7 +1084,12 @@ public final class LWCToolkit extends LWToolkit {
      * Starts run-loop with the provided timeout. Use (-1) for the infinite value.
      */
     static boolean doAWTRunLoop(long mediator, boolean processEvents, int timeoutSeconds) {
-        return doAWTRunLoopImpl(mediator, processEvents, inAWT, timeoutSeconds);
+        System.out.println("doAWTRunLoop: enter: mediator: " + mediator + " processEvents: "+ processEvents + " timeoutSeconds: " + timeoutSeconds);
+        try {
+            return doAWTRunLoopImpl(mediator, processEvents, inAWT, timeoutSeconds);
+        } finally {
+            System.out.println("doAWTRunLoop: exit:  mediator: " + mediator + " processEvents: "+ processEvents + " timeoutSeconds: " + timeoutSeconds);
+        }
     }
     private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, int timeoutSeconds);
     static native void stopAWTRunLoop(long mediator);
