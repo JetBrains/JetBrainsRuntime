@@ -797,6 +797,8 @@ public final class WToolkit extends SunToolkit implements Runnable {
 
     private static ExecutorService displayChangeExecutor;
 
+    private static native void displayChangedNative();
+
     /*
      * Called from Toolkit native code when a WM_DISPLAYCHANGE occurs.
      * Have Win32GraphicsEnvironment execute the display change code on the
@@ -804,6 +806,8 @@ public final class WToolkit extends SunToolkit implements Runnable {
      */
     public static void displayChanged() {
         final Runnable runnable = () -> {
+            displayChangedNative();
+
             Object lge = GraphicsEnvironment.getLocalGraphicsEnvironment();
             if (lge instanceof DisplayChangedListener) {
                 ((DisplayChangedListener) lge).displayChanged();

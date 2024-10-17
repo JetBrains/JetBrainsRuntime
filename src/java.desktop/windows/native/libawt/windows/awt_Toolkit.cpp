@@ -1300,19 +1300,12 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           return tk.m_inputMethodData;
       }
       case WM_DISPLAYCHANGE: {
-          // Reinitialize screens
-          initScreens(env);
-          ::EnumThreadWindows(MainThread(), (WNDENUMPROC)UpdateAllThreadWindowSizes, 0);
-
           // Notify Java side - call WToolkit.displayChanged()
           jclass clazz = env->FindClass("sun/awt/windows/WToolkit");
           DASSERT(clazz != NULL);
           if (!clazz) throw std::bad_alloc();
           env->CallStaticVoidMethod(clazz, AwtToolkit::displayChangeMID);
 
-          GetInstance().m_displayChanged = TRUE;
-
-          ::PostMessage(HWND_BROADCAST, WM_PALETTEISCHANGING, NULL, NULL);
           break;
       }
       /* Session management */
@@ -2541,6 +2534,21 @@ Java_sun_awt_windows_WToolkit_init(JNIEnv *env, jobject self)
     return AwtToolkit::GetInstance().Initialize();
 
     CATCH_BAD_ALLOC_RET(FALSE);
+}
+
+/*
+ * Class:     sun_awt_windows_WToolkit
+ * Method:    displayChangedNative
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL
+        Java_sun_awt_windows_WToolkit_displayChangedNative(JNIEnv *env, jclass cls) {
+    // Reinitialize screens
+    initScreens(env);
+    ::EnumThreadWindows(AwtToolkit::MainThread(), (WNDENUMPROC)UpdateAllThreadWindowSizes, 0);
+    
+    AwtToolkit::GetInstance().SetDisplayChanged();
+    ::PostMessage(HWND_BROADCAST, WM_PALETTEISCHANGING, NULL, NULL);
 }
 
 /*
