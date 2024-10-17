@@ -50,6 +50,9 @@
     // File dialog's mode
     jint fMode;
 
+    // File dialog's modality type
+    jint fModality;
+
     // Indicates whether the user can select multiple files
     BOOL fMultipleMode;
 
@@ -67,6 +70,9 @@
 
     // Contains the absolute paths of the selected files as URLs
     NSArray *fURLs;
+
+    // Condition to signal when dialog is closed
+    NSCondition *fCondition;
 }
 
 // Allocator
@@ -78,6 +84,7 @@
             directory:(NSString *)inPath
                  file:(NSString *)inFile
                  mode:(jint)inMode
+             modality:(jint)inModality
          multipleMode:(BOOL)inMultipleMode
        shouldNavigate:(BOOL)inNavigateApps
  canChooseDirectories:(BOOL)inChooseDirectories
@@ -88,8 +95,8 @@
 // Invoked from the main thread
 - (void) safeSaveOrLoad;
 
-// Get dialog return value
-- (BOOL) userClickedOK;
+// Wait for completion and get dialog return value
+- (NSModalResponse) wait;
 
 // Returns the absolute paths of the selected files as URLs
 - (NSArray *) URLs;
