@@ -1515,8 +1515,12 @@ JvmtiEnvBase::get_object_monitor_usage(JavaThread* calling_thread, jobject objec
 
     // Number of waiters may actually be less than the waiter count.
     // So null out memory so that unused memory will be null.
-    memset(ret.waiters, 0, ret.waiter_count * sizeof(jthread *));
-    memset(ret.notify_waiters, 0, ret.notify_waiter_count * sizeof(jthread *));
+    if (ret.waiters != nullptr) {
+      memset(ret.waiters, 0, ret.waiter_count * sizeof(jthread *));
+    }
+    if (ret.notify_waiters != nullptr) {
+      memset(ret.notify_waiters, 0, ret.notify_waiter_count * sizeof(jthread *));
+    }
 
     if (ret.waiter_count > 0) {
       // we have contending and/or waiting threads

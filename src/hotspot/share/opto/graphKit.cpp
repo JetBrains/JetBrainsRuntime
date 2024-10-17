@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -3432,7 +3432,10 @@ FastLockNode* GraphKit::shared_lock(Node* obj) {
   assert(dead_locals_are_killed(), "should kill locals before sync. point");
 
   // Box the stack location
-  Node* box = _gvn.transform(new BoxLockNode(next_monitor()));
+  Node* box = new BoxLockNode(next_monitor());
+  // Check for bailout after new BoxLockNode
+  if (failing()) { return nullptr; }
+  box = _gvn.transform(box);
   Node* mem = reset_memory();
 
   FastLockNode * flock = _gvn.transform(new FastLockNode(0, obj, box) )->as_FastLock();
@@ -4217,4 +4220,15 @@ Node* GraphKit::make_constant_from_field(ciField* field, Node* obj) {
     return makecon(con_type);
   }
   return nullptr;
+}
+
+Node* GraphKit::maybe_narrow_object_type(Node* obj, ciKlass* type) {
+  const TypeOopPtr* obj_type = obj->bottom_type()->isa_oopptr();
+  const TypeOopPtr* sig_type = TypeOopPtr::make_from_klass(type);
+  if (obj_type != nullptr && sig_type->is_loaded() && !obj_type->higher_equal(sig_type)) {
+    const Type* narrow_obj_type = obj_type->filter_speculative(sig_type); // keep speculative part
+    Node* casted_obj = gvn().transform(new CheckCastPPNode(control(), obj, narrow_obj_type));
+    return casted_obj;
+  }
+  return obj;
 }

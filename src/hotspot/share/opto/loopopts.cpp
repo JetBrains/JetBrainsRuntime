@@ -48,8 +48,9 @@
 //------------------------------split_thru_phi---------------------------------
 // Split Node 'n' through merge point if there is enough win.
 Node* PhaseIdealLoop::split_thru_phi(Node* n, Node* region, int policy) {
-  if (n->Opcode() == Op_ConvI2L && n->bottom_type() != TypeLong::LONG) {
-    // ConvI2L may have type information on it which is unsafe to push up
+  if ((n->Opcode() == Op_ConvI2L && n->bottom_type() != TypeLong::LONG) ||
+      (n->Opcode() == Op_ConvL2I && n->bottom_type() != TypeInt::INT)) {
+    // ConvI2L/ConvL2I may have type information on it which is unsafe to push up
     // so disable this for now
     return nullptr;
   }
@@ -259,7 +260,7 @@ bool PhaseIdealLoop::loop_phi_backedge_type_contains_zero(const Node* phi_diviso
 // Replace the dominated test with an obvious true or false.  Place it on the
 // IGVN worklist for later cleanup.  Move control-dependent data Nodes on the
 // live path up to the dominating control.
-void PhaseIdealLoop::dominated_by(IfProjNode* prevdom, IfNode* iff, bool flip, bool exclude_loop_predicate) {
+void PhaseIdealLoop::dominated_by(IfProjNode* prevdom, IfNode* iff, bool flip, bool pin_array_access_nodes) {
   if (VerifyLoopOptimizations && PrintOpto) { tty->print_cr("dominating test"); }
 
   // prevdom is the dominating projection of the dominating test.
@@ -284,7 +285,7 @@ void PhaseIdealLoop::dominated_by(IfProjNode* prevdom, IfNode* iff, bool flip, b
   // Hack the dominated test
   _igvn.replace_input_of(iff, 1, con);
 
-  // If I dont have a reachable TRUE and FALSE path following the IfNode then
+  // If I don't have a reachable TRUE and FALSE path following the IfNode then
   // I can assume this path reaches an infinite loop.  In this case it's not
   // important to optimize the data Nodes - either the whole compilation will
   // be tossed or this path (and all data Nodes) will go dead.
@@ -295,23 +296,8 @@ void PhaseIdealLoop::dominated_by(IfProjNode* prevdom, IfNode* iff, bool flip, b
   // dominating projection.
   Node* dp = iff->proj_out_or_null(pop == Op_IfTrue);
 
-  // Loop predicates may have depending checks which should not
-  // be skipped. For example, range check predicate has two checks
-  // for lower and upper bounds.
   if (dp == nullptr)
     return;
-
-  ProjNode* dp_proj  = dp->as_Proj();
-  ProjNode* unc_proj = iff->proj_out(1 - dp_proj->_con)->as_Proj();
-  if (exclude_loop_predicate &&
-      (unc_proj->is_uncommon_trap_proj(Deoptimization::Reason_predicate) != nullptr ||
-       unc_proj->is_uncommon_trap_proj(Deoptimization::Reason_profile_predicate) != nullptr ||
-       unc_proj->is_uncommon_trap_proj(Deoptimization::Reason_range_check) != nullptr)) {
-    // If this is a range check (IfNode::is_range_check), do not
-    // reorder because Compile::allow_range_check_smearing might have
-    // changed the check.
-    return; // Let IGVN transformation change control dependence.
-  }
 
   IdealLoopTree* old_loop = get_loop(dp);
 
@@ -321,6 +307,20 @@ void PhaseIdealLoop::dominated_by(IfProjNode* prevdom, IfNode* iff, bool flip, b
     if (cd->depends_only_on_test() && _igvn.no_dependent_zero_check(cd)) {
       assert(cd->in(0) == dp, "");
       _igvn.replace_input_of(cd, 0, prevdom);
+      if (pin_array_access_nodes) {
+        // Because of Loop Predication, Loads and range check Cast nodes that are control dependent on this range
+        // check (that is about to be removed) now depend on multiple dominating Hoisted Check Predicates. After the
+        // removal of this range check, these control dependent nodes end up at the lowest/nearest dominating predicate
+        // in the graph. To ensure that these Loads/Casts do not float above any of the dominating checks (even when the
+        // lowest dominating check is later replaced by yet another dominating check), we need to pin them at the lowest
+        // dominating check.
+        Node* clone = cd->pin_array_access_node();
+        if (clone != nullptr) {
+          clone = _igvn.register_new_node_with_optimizer(clone, cd);
+          _igvn.replace_node(cd, clone);
+          cd = clone;
+        }
+      }
       set_early_ctrl(cd, false);
       IdealLoopTree* new_loop = get_loop(get_ctrl(cd));
       if (old_loop != new_loop) {
@@ -1441,7 +1441,16 @@ void PhaseIdealLoop::split_if_with_blocks_post(Node *n) {
           // Replace the dominated test with an obvious true or false.
           // Place it on the IGVN worklist for later cleanup.
           C->set_major_progress();
-          dominated_by(prevdom->as_IfProj(), n->as_If(), false, true);
+          // Split if: pin array accesses that are control dependent on a range check and moved to a regular if,
+          // to prevent an array load from floating above its range check. There are three cases:
+          // 1. Move from RangeCheck "a" to RangeCheck "b": don't need to pin. If we ever remove b, then we pin
+          //    all its array accesses at that point.
+          // 2. We move from RangeCheck "a" to regular if "b": need to pin. If we ever remove b, then its array
+          //    accesses would start to float, since we don't pin at that point.
+          // 3. If we move from regular if: don't pin. All array accesses are already assumed to be pinned.
+          bool pin_array_access_nodes =  n->Opcode() == Op_RangeCheck &&
+                                         prevdom->in(0)->Opcode() != Op_RangeCheck;
+          dominated_by(prevdom->as_IfProj(), n->as_If(), false, pin_array_access_nodes);
           DEBUG_ONLY( if (VerifyLoopOptimizations) { verify(); } );
           return;
         }
@@ -1528,10 +1537,10 @@ bool PhaseIdealLoop::try_merge_identical_ifs(Node* n) {
     // unrelated control dependency.
     for (uint i = 1; i < new_false_region->req(); i++) {
       if (is_dominator(dom_proj_true, new_false_region->in(i))) {
-        dominated_by(dom_proj_true->as_IfProj(), new_false_region->in(i)->in(0)->as_If(), false, false);
+        dominated_by(dom_proj_true->as_IfProj(), new_false_region->in(i)->in(0)->as_If());
       } else {
         assert(is_dominator(dom_proj_false, new_false_region->in(i)), "bad if");
-        dominated_by(dom_proj_false->as_IfProj(), new_false_region->in(i)->in(0)->as_If(), false, false);
+        dominated_by(dom_proj_false->as_IfProj(), new_false_region->in(i)->in(0)->as_If());
       }
     }
     return true;
@@ -1609,7 +1618,20 @@ void PhaseIdealLoop::try_sink_out_of_loop(Node* n) {
         // n has a control input inside a loop but get_ctrl() is member of an outer loop. This could happen, for example,
         // for Div nodes inside a loop (control input inside loop) without a use except for an UCT (outside the loop).
         // Rewire control of n to right outside of the loop, regardless if its input(s) are later sunk or not.
-        _igvn.replace_input_of(n, 0, place_outside_loop(n_ctrl, loop_ctrl));
+        Node* maybe_pinned_n = n;
+        Node* outside_ctrl = place_outside_loop(n_ctrl, loop_ctrl);
+        if (n->depends_only_on_test()) {
+          Node* pinned_clone = n->pin_array_access_node();
+          if (pinned_clone != nullptr) {
+            // Pin array access nodes: if this is an array load, it's going to be dependent on a condition that's not a
+            // range check for that access. If that condition is replaced by an identical dominating one, then an
+            // unpinned load would risk floating above its range check.
+            register_new_node(pinned_clone, n_ctrl);
+            maybe_pinned_n = pinned_clone;
+            _igvn.replace_node(n, pinned_clone);
+          }
+        }
+        _igvn.replace_input_of(maybe_pinned_n, 0, outside_ctrl);
       }
     }
     if (n_loop != _ltree_root && n->outcnt() > 1) {
@@ -1623,7 +1645,16 @@ void PhaseIdealLoop::try_sink_out_of_loop(Node* n) {
         for (DUIterator_Last jmin, j = n->last_outs(jmin); j >= jmin;) {
           Node* u = n->last_out(j); // Clone private computation per use
           _igvn.rehash_node_delayed(u);
-          Node* x = n->clone(); // Clone computation
+          Node* x = nullptr;
+          if (n->depends_only_on_test()) {
+            // Pin array access nodes: if this is an array load, it's going to be dependent on a condition that's not a
+            // range check for that access. If that condition is replaced by an identical dominating one, then an
+            // unpinned load would risk floating above its range check.
+            x = n->pin_array_access_node();
+          }
+          if (x == nullptr) {
+            x = n->clone();
+          }
           Node* x_ctrl = nullptr;
           if (u->is_Phi()) {
             // Replace all uses of normal nodes.  Replace Phi uses
@@ -2173,6 +2204,20 @@ void PhaseIdealLoop::clone_loop_handle_data_uses(Node* old, Node_List &old_new,
       // We notify all uses of old, including use, and the indirect uses,
       // that may now be optimized because we have replaced old with phi.
       _igvn.add_users_to_worklist(old);
+      if (idx == 0 &&
+          use->depends_only_on_test()) {
+        Node* pinned_clone = use->pin_array_access_node();
+        if (pinned_clone != nullptr) {
+          // Pin array access nodes: control is updated here to a region. If, after some transformations, only one path
+          // into the region is left, an array load could become dependent on a condition that's not a range check for
+          // that access. If that condition is replaced by an identical dominating one, then an unpinned load would risk
+          // floating above its range check.
+          pinned_clone->set_req(0, phi);
+          register_new_node(pinned_clone, get_ctrl(use));
+          _igvn.replace_node(use, pinned_clone);
+          continue;
+        }
+      }
       _igvn.replace_input_of(use, idx, phi);
       if( use->_idx >= new_counter ) { // If updating new phis
         // Not needed for correctness, but prevents a weak assert
@@ -2881,52 +2926,101 @@ RegionNode* PhaseIdealLoop::insert_region_before_proj(ProjNode* proj) {
   return reg;
 }
 
-//------------------------------ insert_cmpi_loop_exit -------------------------------------
-// Clone a signed compare loop exit from an unsigned compare and
-// insert it before the unsigned cmp on the stay-in-loop path.
-// All new nodes inserted in the dominator tree between the original
-// if and it's projections.  The original if test is replaced with
-// a constant to force the stay-in-loop path.
+// Idea
+// ----
+// Partial Peeling tries to rotate the loop in such a way that it can later be turned into a counted loop. Counted loops
+// require a signed loop exit test. When calling this method, we've only found a suitable unsigned test to partial peel
+// with. Therefore, we try to split off a signed loop exit test from the unsigned test such that it can be used as new
+// loop exit while keeping the unsigned test unchanged and preserving the same behavior as if we've used the unsigned
+// test alone instead:
 //
-// This is done to make sure that the original if and it's projections
-// still dominate the same set of control nodes, that the ctrl() relation
-// from data nodes to them is preserved, and that their loop nesting is
-// preserved.
+// Before Partial Peeling:
+//   Loop:
+//     <peeled section>
+//     Split off signed loop exit test
+//     <-- CUT HERE -->
+//     Unchanged unsigned loop exit test
+//     <rest of unpeeled section>
+//     goto Loop
 //
-// before
-//          if(i <u limit)    unsigned compare loop exit
+// After Partial Peeling:
+//   <cloned peeled section>
+//   Cloned split off signed loop exit test
+//   Loop:
+//     Unchanged unsigned loop exit test
+//     <rest of unpeeled section>
+//     <peeled section>
+//     Split off signed loop exit test
+//     goto Loop
+//
+// Details
+// -------
+// Before:
+//          if (i <u limit)    Unsigned loop exit condition
 //         /       |
 //        v        v
 //   exit-proj   stay-in-loop-proj
 //
-// after
-//          if(stay-in-loop-const)  original if
-//         /       |
-//        /        v
-//       /  if(i <  limit)    new signed test
+// Split off a signed loop exit test (i.e. with CmpI) from an unsigned loop exit test (i.e. with CmpU) and insert it
+// before the CmpU on the stay-in-loop path and keep both tests:
+//
+//          if (i <u limit)    Signed loop exit test
+//        /        |
+//       /  if (i <u limit)    Unsigned loop exit test
 //      /  /       |
-//     /  /        v
-//    /  /  if(i <u limit)    new cloned unsigned test
-//   /  /   /      |
-//   v  v  v       |
-//    region       |
-//        |        |
-//      dum-if     |
-//     /  |        |
-// ether  |        |
-//        v        v
+//     v  v        v
+//  exit-region  stay-in-loop-proj
+//
+// Implementation
+// --------------
+// We need to make sure that the new signed loop exit test is properly inserted into the graph such that the unsigned
+// loop exit test still dominates the same set of control nodes, the ctrl() relation from data nodes to both loop
+// exit tests is preserved, and their loop nesting is correct.
+//
+// To achieve that, we clone the unsigned loop exit test completely (leave it unchanged), insert the signed loop exit
+// test above it and kill the original unsigned loop exit test by setting it's condition to a constant
+// (i.e. stay-in-loop-const in graph below) such that IGVN can fold it later:
+//
+//           if (stay-in-loop-const)  Killed original unsigned loop exit test
+//          /       |
+//         /        v
+//        /  if (i <  limit)          Split off signed loop exit test
+//       /  /       |
+//      /  /        v
+//     /  /  if (i <u limit)          Cloned unsigned loop exit test
+//    /  /   /      |
+//   v  v  v        |
+//  exit-region     |
+//        |         |
+//    dummy-if      |
+//     /  |         |
+// dead   |         |
+//        v         v
 //   exit-proj   stay-in-loop-proj
 //
-IfNode* PhaseIdealLoop::insert_cmpi_loop_exit(IfNode* if_cmpu, IdealLoopTree *loop) {
+// Note: The dummy-if is inserted to create a region to merge the loop exits between the original to be killed unsigned
+//       loop exit test and its exit projection while keeping the exit projection (also see insert_region_before_proj()).
+//
+// Requirements
+// ------------
+// Note that we can only split off a signed loop exit test from the unsigned loop exit test when the behavior is exactly
+// the same as before with only a single unsigned test. This is only possible if certain requirements are met.
+// Otherwise, we need to bail out (see comments in the code below).
+IfNode* PhaseIdealLoop::insert_cmpi_loop_exit(IfNode* if_cmpu, IdealLoopTree* loop) {
   const bool Signed   = true;
   const bool Unsigned = false;
 
   BoolNode* bol = if_cmpu->in(1)->as_Bool();
-  if (bol->_test._test != BoolTest::lt) return nullptr;
+  if (bol->_test._test != BoolTest::lt) {
+    return nullptr;
+  }
   CmpNode* cmpu = bol->in(1)->as_Cmp();
-  if (cmpu->Opcode() != Op_CmpU) return nullptr;
+  assert(cmpu->Opcode() == Op_CmpU, "must be unsigned comparison");
+
   int stride = stride_of_possible_iv(if_cmpu);
-  if (stride == 0) return nullptr;
+  if (stride == 0) {
+    return nullptr;
+  }
 
   Node* lp_proj = stay_in_loop(if_cmpu, loop);
   guarantee(lp_proj != nullptr, "null loop node");
@@ -2938,14 +3032,93 @@ IfNode* PhaseIdealLoop::insert_cmpi_loop_exit(IfNode* if_cmpu, IdealLoopTree *lo
     // We therefore can't add a single exit condition.
     return nullptr;
   }
-  // The loop exit condition is !(i <u limit) ==> (i < 0 || i >= limit).
-  // Split out the exit condition (i < 0) for stride < 0 or (i >= limit) for stride > 0.
-  Node* limit = nullptr;
+  // The unsigned loop exit condition is
+  //   !(i <u  limit)
+  // =   i >=u limit
+  //
+  // First, we note that for any x for which
+  //   0 <= x <= INT_MAX
+  // we can convert x to an unsigned int and still get the same guarantee:
+  //   0 <=  (uint) x <=  INT_MAX = (uint) INT_MAX
+  //   0 <=u (uint) x <=u INT_MAX = (uint) INT_MAX   (LEMMA)
+  //
+  // With that in mind, if
+  //   limit >= 0             (COND)
+  // then the unsigned loop exit condition
+  //   i >=u limit            (ULE)
+  // is equivalent to
+  //   i < 0 || i >= limit    (SLE-full)
+  // because either i is negative and therefore always greater than MAX_INT when converting to unsigned
+  //   (uint) i >=u MAX_INT >= limit >= 0
+  // or otherwise
+  //   i >= limit >= 0
+  // holds due to (LEMMA).
+  //
+  // For completeness, a counterexample with limit < 0:
+  // Assume i = -3 and limit = -2:
+  //   i  < 0
+  //   -2 < 0
+  // is true and thus also "i < 0 || i >= limit". But
+  //   i  >=u limit
+  //   -3 >=u -2
+  // is false.
+  Node* limit = cmpu->in(2);
+  const TypeInt* type_limit = _igvn.type(limit)->is_int();
+  if (type_limit->_lo < 0) {
+    return nullptr;
+  }
+
+  // We prove below that we can extract a single signed loop exit condition from (SLE-full), depending on the stride:
+  //   stride < 0:
+  //     i < 0        (SLE = SLE-negative)
+  //   stride > 0:
+  //     i >= limit   (SLE = SLE-positive)
+  // such that we have the following graph before Partial Peeling with stride > 0 (similar for stride < 0):
+  //
+  // Loop:
+  //   <peeled section>
+  //   i >= limit    (SLE-positive)
+  //   <-- CUT HERE -->
+  //   i >=u limit   (ULE)
+  //   <rest of unpeeled section>
+  //   goto Loop
+  //
+  // We exit the loop if:
+  //   (SLE) is true OR (ULE) is true
+  // However, if (SLE) is true then (ULE) also needs to be true to ensure the exact same behavior. Otherwise, we wrongly
+  // exit a loop that should not have been exited if we did not apply Partial Peeling. More formally, we need to ensure:
+  //   (SLE) IMPLIES (ULE)
+  // This indeed holds when (COND) is given:
+  // - stride > 0:
+  //       i >=  limit             // (SLE = SLE-positive)
+  //       i >=  limit >= 0        // (COND)
+  //       i >=u limit >= 0        // (LEMMA)
+  //     which is the unsigned loop exit condition (ULE).
+  // - stride < 0:
+  //       i        <  0           // (SLE = SLE-negative)
+  //       (uint) i >u MAX_INT     // (NEG) all negative values are greater than MAX_INT when converted to unsigned
+  //       MAX_INT >= limit >= 0   // (COND)
+  //       MAX_INT >=u limit >= 0  // (LEMMA)
+  //     and thus from (NEG) and (LEMMA):
+  //       i >=u limit
+  //     which is the unsigned loop exit condition (ULE).
+  //
+  //
+  // After Partial Peeling, we have the following structure for stride > 0 (similar for stride < 0):
+  //   <cloned peeled section>
+  //   i >= limit (SLE-positive)
+  //   Loop:
+  //     i >=u limit (ULE)
+  //     <rest of unpeeled section>
+  //     <peeled section>
+  //     i >= limit (SLE-positive)
+  //     goto Loop
+  Node* rhs_cmpi;
   if (stride > 0) {
-    limit = cmpu->in(2);
+    rhs_cmpi = limit; // For i >= limit
   } else {
-    limit = _igvn.makecon(TypeInt::ZERO);
-    set_ctrl(limit, C->root());
+    rhs_cmpi = _igvn.makecon(TypeInt::ZERO); // For i < 0
+    set_ctrl(rhs_cmpi, C->root());
   }
   // Create a new region on the exit path
   RegionNode* reg = insert_region_before_proj(lp_exit);
@@ -2953,7 +3126,7 @@ IfNode* PhaseIdealLoop::insert_cmpi_loop_exit(IfNode* if_cmpu, IdealLoopTree *lo
 
   // Clone the if-cmpu-true-false using a signed compare
   BoolTest::mask rel_i = stride > 0 ? bol->_test._test : BoolTest::ge;
-  ProjNode* cmpi_exit = insert_if_before_proj(cmpu->in(1), Signed, rel_i, limit, lp_continue);
+  ProjNode* cmpi_exit = insert_if_before_proj(cmpu->in(1), Signed, rel_i, rhs_cmpi, lp_continue);
   reg->add_req(cmpi_exit);
 
   // Clone the if-cmpu-true-false
@@ -3804,6 +3977,19 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
     if (!n->is_CFG()           && n->in(0) != nullptr        &&
         not_peel.test(n->_idx) && peel.test(n->in(0)->_idx)) {
       Node* n_clone = old_new[n->_idx];
+      if (n_clone->depends_only_on_test()) {
+        // Pin array access nodes: control is updated here to the loop head. If, after some transformations, the
+        // backedge is removed, an array load could become dependent on a condition that's not a range check for that
+        // access. If that condition is replaced by an identical dominating one, then an unpinned load would risk
+        // floating above its range check.
+        Node* pinned_clone = n_clone->pin_array_access_node();
+        if (pinned_clone != nullptr) {
+          register_new_node(pinned_clone, get_ctrl(n_clone));
+          old_new.map(n->_idx, pinned_clone);
+          _igvn.replace_node(n_clone, pinned_clone);
+          n_clone = pinned_clone;
+        }
+      }
       _igvn.replace_input_of(n_clone, 0, new_head_clone);
     }
   }
