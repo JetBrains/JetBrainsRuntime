@@ -86,7 +86,7 @@ static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
     VKImage* texture = VKImage_Create((VKDevice*)device, width, height,
                                       0, (VkFormat)format,
                                       VK_IMAGE_TILING_OPTIMAL,
-                                      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                                      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                                       VK_SAMPLE_COUNT_1_BIT, VKTexturePool_FindImageMemoryType);
     if IS_NULL(texture) {
         J2dRlsTrace(J2D_TRACE_ERROR, "VKTexturePool_createTexture: Cannot create VKImage");
