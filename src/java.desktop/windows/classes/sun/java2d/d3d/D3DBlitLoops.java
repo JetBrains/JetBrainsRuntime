@@ -283,7 +283,7 @@ final class D3DBlitLoops {
                 Toolkit.getDefaultToolkit() instanceof WToolkit toolkit) {
             // flush immediately when copying to the screen to improve
             // responsiveness of applications using VI or BI backbuffers
-            dstD3DSurfaceData.displayContent((int) dx1, (int) dy1, (int) dx2, (int) dy2);
+            D3DSurfaceData.displayContent((int) dx1, (int) dy1, (int) dx2, (int) dy2);
         }
     }
 
@@ -353,7 +353,7 @@ final class D3DBlitLoops {
             // we only have to flush immediately when copying from a
             // (non-texture) surface to the screen; otherwise Swing apps
             // might appear unresponsive until the auto-flush completes
-            dstD3DSurfaceData.displayContent((int) dx1, (int) dy1, (int) dx2, (int) dy2);
+            D3DSurfaceData.displayContent((int) dx1, (int) dy1, (int) dx2, (int) dy2);
         }
     }
 }

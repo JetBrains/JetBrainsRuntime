@@ -296,13 +296,6 @@ public abstract class SurfaceData
     }
 
     /**
-     * Explicit mechanism for displaying surface content
-     */
-    public void displayContent() {
-        // No default implementation is needed because most toolkits rely on an implicit displaying mechanism
-    }
-
-    /**
      * Sets the value of the surfaceLost variable, which indicates whether
      * something has happened to the rendering surface such that it needs
      * to be restored and re-rendered.

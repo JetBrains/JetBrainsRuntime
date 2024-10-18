@@ -2540,7 +2540,6 @@ public final class SunGraphics2D
                 // try again next time around.
             }
         } finally {
-            surfaceData.displayContent();
             surfaceData.markDirty();
         }
     }

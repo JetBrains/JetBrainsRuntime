@@ -378,7 +378,7 @@ public abstract class WComponentPeer extends WObjectPeer
                     paintArea.paint(target,shouldClearRectBeforePaint());
                 }
                 if (surfaceData != null) {
-                    surfaceData.displayContent();
+                    D3DSurfaceData.displayContent();
                 }
                 return;
             case FocusEvent.FOCUS_LOST:
