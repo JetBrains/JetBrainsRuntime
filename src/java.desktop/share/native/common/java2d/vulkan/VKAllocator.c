@@ -191,6 +191,14 @@ void VKAllocator_FindMemoryType(VKMemoryRequirements* requirements,
 static uint32_t VKAllocator_AllocatePage(VKAllocator* alloc, uint32_t memoryType, VkDeviceSize size,
                                          VkImage dedicatedImage, VkBuffer dedicatedBuffer) {
     assert(alloc != NULL);
+    assert(memoryType < VK_MAX_MEMORY_TYPES);
+
+    uint32_t heapIndex = alloc->memoryProperties.memoryTypes[memoryType].heapIndex;
+    VkDeviceSize heapSize = alloc->memoryProperties.memoryHeaps[heapIndex].size;
+    if (size > heapSize) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKAllocator_AllocatePage: not enough memory in heap, heapIndex=%d, heapSize=%d, size=%d", heapIndex, heapSize, size);
+        return NO_PAGE_INDEX;
+    }
 
     // Allocate memory.
     VkBool32 dedicated = dedicatedImage != VK_NULL_HANDLE || dedicatedBuffer != VK_NULL_HANDLE;
