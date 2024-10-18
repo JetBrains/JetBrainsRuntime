@@ -1645,15 +1645,31 @@ public class Container extends Component {
      * @see #validateTree
      */
     public void validate() {
+        boolean updateCur = false;
         synchronized (getTreeLock()) {
             if ((!isValid() || descendUnconditionallyWhenValidating)
                     && peer != null)
             {
+                ContainerPeer p = null;
+                if (peer instanceof ContainerPeer) {
+                    p = (ContainerPeer) peer;
+                }
+                if (p != null) {
+                    p.beginValidate();
+                }
                 validateTree();
-                if (!descendUnconditionallyWhenValidating && isVisible()) {
-                    updateCursorImmediately();
+                if (p != null) {
+                    p.endValidate();
+                    // Avoid updating cursor if this is an internal call.
+                    // See validateUnconditionally() for details.
+                    if (!descendUnconditionallyWhenValidating) {
+                        updateCur = isVisible();
+                    }
                 }
             }
+        }
+        if (updateCur) {
+            updateCursorImmediately();
         }
     }
 
