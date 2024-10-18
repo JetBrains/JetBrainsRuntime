@@ -420,8 +420,6 @@ JavaThread::JavaThread() :
   _free_handle_block(nullptr),
   _Stalled(0),
 
-  _monitor_chunks(nullptr),
-
   _suspend_flags(0),
 
   _thread_state(_thread_new),
@@ -743,6 +741,7 @@ static void ensure_join(JavaThread* thread) {
   // Clear the native thread instance - this makes isAlive return false and allows the join()
   // to complete once we've done the notify_all below. Needs a release() to obey Java Memory Model
   // requirements.
+  assert(java_lang_Thread::thread(threadObj()) == thread, "must be alive");
   java_lang_Thread::release_set_thread(threadObj(), nullptr);
   lock.notify_all(thread);
   // Ignore pending exception, since we are exiting anyway
@@ -996,13 +995,7 @@ JavaThread* JavaThread::active() {
 
 bool JavaThread::is_lock_owned(address adr) const {
   assert(LockingMode != LM_LIGHTWEIGHT, "should not be called with new lightweight locking");
-  if (Thread::is_lock_owned(adr)) return true;
-
-  for (MonitorChunk* chunk = monitor_chunks(); chunk != nullptr; chunk = chunk->next()) {
-    if (chunk->contains(adr)) return true;
-  }
-
-  return false;
+  return is_in_full_stack(adr);
 }
 
 oop JavaThread::exception_oop() const {
@@ -1011,22 +1004,6 @@ oop JavaThread::exception_oop() const {
 
 void JavaThread::set_exception_oop(oop o) {
   Atomic::store(&_exception_oop, o);
-}
-
-void JavaThread::add_monitor_chunk(MonitorChunk* chunk) {
-  chunk->set_next(monitor_chunks());
-  set_monitor_chunks(chunk);
-}
-
-void JavaThread::remove_monitor_chunk(MonitorChunk* chunk) {
-  guarantee(monitor_chunks() != nullptr, "must be non empty");
-  if (monitor_chunks() == chunk) {
-    set_monitor_chunks(chunk->next());
-  } else {
-    MonitorChunk* prev = monitor_chunks();
-    while (prev->next() != chunk) prev = prev->next();
-    prev->set_next(chunk->next());
-  }
 }
 
 void JavaThread::handle_special_runtime_exit_condition() {
@@ -1352,13 +1329,6 @@ void JavaThread::oops_do_no_frames(OopClosure* f, CodeBlobClosure* cf) {
   }
 
   DEBUG_ONLY(verify_frame_info();)
-
-  if (has_last_Java_frame()) {
-    // Traverse the monitor chunks
-    for (MonitorChunk* chunk = monitor_chunks(); chunk != nullptr; chunk = chunk->next()) {
-      chunk->oops_do(f);
-    }
-  }
 
   assert(vframe_array_head() == nullptr, "deopt in progress at a safepoint!");
   // If we have deferred set_locals there might be oops waiting to be
@@ -2147,6 +2117,8 @@ void JavaThread::start_internal_daemon(JavaThread* current, JavaThread* target,
   // on a ThreadsList. We don't want to wait for the release when the
   // Theads_lock is dropped when the 'mu' destructor is run since the
   // JavaThread* is already visible to JVM/TI via the ThreadsList.
+
+  assert(java_lang_Thread::thread(thread_oop()) == nullptr, "must not be alive");
   java_lang_Thread::release_set_thread(thread_oop(), target); // isAlive == true now
   Thread::start(target);
 }
