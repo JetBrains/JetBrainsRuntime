@@ -470,6 +470,12 @@ sun/java2d/DirectX/OnScreenRenderingResizeTest/OnScreenRenderingResizeTest.java 
 java/awt/Window/8159168/SetShapeTest.java 8274106 macosx-aarch64
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java 8274106 macosx-aarch64
 
+# Wayland related
+
+java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java 8332158 linux-x64
+java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java 8280991 linux-x64
+java/awt/FullScreen/SetFullScreenTest.java 8332155 linux-x64
+
 ############################################################################
 
 # jdk_beans
