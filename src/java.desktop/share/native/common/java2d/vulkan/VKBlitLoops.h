@@ -31,13 +31,6 @@
 #include "sun_java2d_vulkan_VKBlitLoops.h"
 #include "VKBase.h"
 
-#define OFFSET_SRCTYPE sun_java2d_vulkan_VKBlitLoops_OFFSET_SRCTYPE
-#define OFFSET_HINT    sun_java2d_vulkan_VKBlitLoops_OFFSET_HINT
-#define OFFSET_TEXTURE sun_java2d_vulkan_VKBlitLoops_OFFSET_TEXTURE
-#define OFFSET_RTT     sun_java2d_vulkan_VKBlitLoops_OFFSET_RTT
-#define OFFSET_XFORM   sun_java2d_vulkan_VKBlitLoops_OFFSET_XFORM
-#define OFFSET_ISOBLIT sun_java2d_vulkan_VKBlitLoops_OFFSET_ISOBLIT
-
 void VKBlitLoops_IsoBlit(JNIEnv *env,
                           VKRenderingContext* context, jlong pSrcOps,
                           jboolean xform, jint hint,

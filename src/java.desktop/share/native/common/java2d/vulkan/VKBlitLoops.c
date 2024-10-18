@@ -62,10 +62,6 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
      *    (p4)---------(p3)
      */
 
-    //  Direct allocation for debug purpose
-//  VKImage *image = VKImage_Create(device, sw, sh, surface->image->format, VK_IMAGE_TILING_LINEAR,
-//                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-//                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     VKTexturePoolHandle* hnd = VKTexturePool_GetTexture(device->texturePool, sw, sh, surface->image->format);
     double u = (double)sw / VKTexturePoolHandle_GetActualWidth(hnd);
     double v = (double)sh / VKTexturePoolHandle_GetActualHeight(hnd);
@@ -94,42 +90,47 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
 
     VkCommandBuffer cb = VKRenderer_Record(device->renderer);
     {
-        VkImageMemoryBarrier barrier = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .srcAccessMask = 0,
-            .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = ((VKImage *)VKTexturePoolHandle_GetTexture(hnd))->handle,
-            .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}};
-        device->vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                     VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL,
-                                     0, NULL, 1, &barrier);
+        VkImageMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = {.srcStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
+        VKRenderer_AddImageBarrier(&barrier, &barrierBatch, ((VKImage *) VKTexturePoolHandle_GetTexture(hnd)),
+                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                   VK_ACCESS_TRANSFER_WRITE_BIT,
+                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+        if (barrierBatch.barrierCount > 0) {
+            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
+                                         0, 0, NULL,
+                                         0, NULL,
+                                         barrierBatch.barrierCount, &barrier);
+        }
     }
-    //  VKImage_LoadBuffer(context->surface->device, image, buffer, 0, 0, sw, sh);
     VKImage_LoadBuffer(context->surface->device,
                        VKTexturePoolHandle_GetTexture(hnd), buffer, 0, 0, sw, sh);
     {
-      VkImageMemoryBarrier barrier = {
-          .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-          .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-          .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-          .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-          .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-          .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-          .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-          .image = ((VKImage*)VKTexturePoolHandle_GetTexture(hnd))->handle,
-          .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
-      };
-      device->vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                   0, 0, NULL, 0, NULL, 1, &barrier);
+        VkImageMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = {};
+        VKRenderer_AddImageBarrier(&barrier, &barrierBatch, ((VKImage *) VKTexturePoolHandle_GetTexture(hnd)),
+                                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                   VK_ACCESS_SHADER_READ_BIT,
+                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        if (barrierBatch.barrierCount > 0) {
+            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
+                                         0, 0, NULL,
+                                         0, NULL,
+                                         barrierBatch.barrierCount, &barrier);
+        }
     }
-//  VKRenderer_TextureRender(context, dest, image, renderVertexBuffer->handle, 4);
+
     VKRenderer_TextureRender(context, dest, VKTexturePoolHandle_GetTexture(hnd),
                              renderVertexBuffer->handle, 4);
+
+    VKRenderer_Flush(device->renderer);
+    VKRenderer_Sync(device->renderer);
     VKTexturePoolHandle_ReleaseTexture(hnd);
+    VKBuffer_Destroy(device, buffer);
+//  TODO: Add proper sync for renderVertexBuffer
+//    VKBuffer_Destroy(device, renderVertexBuffer);
 }
 
 

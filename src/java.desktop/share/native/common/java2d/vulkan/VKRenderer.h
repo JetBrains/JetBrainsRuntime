@@ -43,10 +43,30 @@ struct VKRenderingContext {
     VKIntVertex* clipSpanVertices;
 };
 
+typedef struct {
+    uint32_t barrierCount;
+    VkPipelineStageFlags srcStages;
+    VkPipelineStageFlags dstStages;
+} VKBarrierBatch;
+
 VKRenderer* VKRenderer_Create(VKDevice* device);
 
+/**
+ * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
+ */
 VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline);
+
+/**
+ * Record commands into primary command buffer (outside of a render pass).
+ * Recorded commands will be sent for execution via VKRenderer_Flush.
+ */
 VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
+
+/**
+ * Prepare image barrier info to be executed in batch, if needed.
+ */
+void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
+                                VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout);
 
 void VKRenderer_Destroy(VKRenderer* renderer);
 

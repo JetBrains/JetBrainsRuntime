@@ -462,16 +462,12 @@ void VKRenderer_Flush(VKRenderer* renderer) {
                    renderer, submitInfo.commandBufferCount, pendingPresentations);
 }
 
-typedef struct {
-    uint32_t barrierCount;
-    VkPipelineStageFlags srcStages;
-    VkPipelineStageFlags dstStages;
-} VKBarrierBatch;
+
 
 /**
  * Prepare image barrier info to be executed in batch, if needed.
  */
-static void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
+void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
                                        VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
     assert(barriers != NULL && batch != NULL && image != NULL);
     // TODO Even if stage, access and layout didn't change, we may still need a barrier against WaW hazard.
