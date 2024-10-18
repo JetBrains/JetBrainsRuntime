@@ -62,6 +62,7 @@ public class RestoreFromFullScreen {
     private static void initUI() {
         frame = new JFrame("RestoreFromFullScreen");
         frame.setBounds(200, 200, INITIAL_WIDTH, INITIAL_HEIGHT);
+        frame.setUndecorated(true);
         frame.setVisible(true);
     }
 
