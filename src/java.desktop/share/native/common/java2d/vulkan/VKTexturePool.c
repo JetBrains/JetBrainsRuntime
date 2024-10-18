@@ -73,8 +73,7 @@ void VKTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
 }
 
 static void VKTexturePool_FindImageMemoryType(VKMemoryRequirements* requirements) {
-    // TODO both DEVICE_LOCAL and HOST_VISIBLE memory is very precious, we may need to use just DEVICE_LOCAL instead.
-    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_ALL_MEMORY_PROPERTIES);
 }
 
 /* Texture allocate/free API */
