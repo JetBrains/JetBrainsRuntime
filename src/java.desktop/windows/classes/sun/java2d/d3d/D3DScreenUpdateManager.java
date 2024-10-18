@@ -229,9 +229,10 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
     public synchronized Graphics2D createGraphics(SurfaceData sd,
             WComponentPeer peer, Color fgColor, Color bgColor, Font font)
     {
-        if (peer.getSurfaceData() == null) {
+        if (peer == null || peer.getSurfaceData() == null) {
             return null;
         }
+
         if (sd instanceof D3DWindowSurfaceData) {
             D3DWindowSurfaceData d3dw = (D3DWindowSurfaceData) sd;
             if (!d3dw.isSurfaceLost() || validate(d3dw)) {

@@ -72,11 +72,11 @@ public class D3DRenderQueue extends RenderQueue {
      * of the D3D pipeline and related classes.
      */
     public static void sync() {
-        // need to make sure any/all screen surfaces are presented prior
-        // to completing the sync operation
-        D3DSurfaceData.displayContent();
-
         if (theInstance != null) {
+            // need to make sure any/all screen surfaces are presented prior
+            // to completing the sync operation
+            D3DSurfaceData.displayContent();
+
             theInstance.lock();
             try {
                 theInstance.ensureCapacity(4);
