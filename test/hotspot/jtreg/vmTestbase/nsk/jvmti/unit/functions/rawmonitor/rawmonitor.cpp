@@ -291,7 +291,7 @@ Java_nsk_jvmti_unit_functions_rawmonitor_CreateRawMonitor(JNIEnv * env, jclass k
     jvmtiError ret;
     char sz[128];
 
-    sprintf(sz, "Rawmonitor-%d",i);
+    snprintf(sz, sizeof(sz), "Rawmonitor-%d",i);
     debug_printf("jvmti create raw monitor \n");
     ret = jvmti->CreateRawMonitor(sz, &jraw_monitor[i]);
 

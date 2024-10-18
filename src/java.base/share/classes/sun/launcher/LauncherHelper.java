@@ -167,7 +167,7 @@ public final class LauncherHelper {
                 printProperties();
                 break;
             case "locale":
-                printLocale();
+                printLocale(false);
                 break;
             case "security":
                 var opt = opts.length > 2 ? opts[2].trim() : "all";
@@ -181,7 +181,7 @@ public final class LauncherHelper {
             default:
                 printVmSettings(initialHeapSize, maxHeapSize, stackSize);
                 printProperties();
-                printLocale();
+                printLocale(true);
                 SecuritySettings.printSecuritySummarySettings(ostream);
                 if (System.getProperty("os.name").contains("Linux")) {
                     printSystemMetrics();
@@ -277,9 +277,15 @@ public final class LauncherHelper {
     /*
      * prints the locale subopt/section
      */
-    private static void printLocale() {
+    private static void printLocale(boolean summaryMode) {
         Locale locale = Locale.getDefault();
-        ostream.println(LOCALE_SETTINGS);
+        if (!summaryMode) {
+            ostream.println(LOCALE_SETTINGS);
+        } else {
+            ostream.println("Locale settings summary:");
+            ostream.println(INDENT + "Use \"-XshowSettings:locale\" " +
+                    "option for verbose locale settings options");
+        }
         ostream.println(INDENT + "default locale = " +
                 locale.getDisplayName());
         ostream.println(INDENT + "default display locale = " +
@@ -288,7 +294,9 @@ public final class LauncherHelper {
                 Locale.getDefault(Category.FORMAT).getDisplayName());
         ostream.println(INDENT + "tzdata version = " +
                 ZoneInfoFile.getVersion());
-        printLocales();
+        if (!summaryMode) {
+            printLocales();
+        }
         ostream.println();
     }
 

@@ -5811,6 +5811,14 @@ void Assembler::xorw(Register dst, Register src) {
   emit_arith(0x33, 0xC0, dst, src);
 }
 
+void Assembler::xorw(Register dst, Address src) {
+  InstructionMark im(this);
+  emit_int8(0x66);
+  prefix(src, dst);
+  emit_int8(0x33);
+  emit_operand(dst, src, 0);
+}
+
 // AVX 3-operands scalar float-point arithmetic instructions
 
 void Assembler::vaddsd(XMMRegister dst, XMMRegister nds, Address src) {
@@ -10511,17 +10519,6 @@ void Assembler::movsbq(Register dst, Address src) {
 void Assembler::movsbq(Register dst, Register src) {
   int encode = prefixq_and_encode(dst->encoding(), src->encoding());
   emit_int24(0x0F, (unsigned char)0xBE, (0xC0 | encode));
-}
-
-void Assembler::movslq(Register dst, int32_t imm32) {
-  // dbx shows movslq(rcx, 3) as movq     $0x0000000049000000,(%rbx)
-  // and movslq(r8, 3); as movl     $0x0000000048000000,(%rbx)
-  // as a result we shouldn't use until tested at runtime...
-  ShouldNotReachHere();
-  InstructionMark im(this);
-  int encode = prefixq_and_encode(dst->encoding());
-  emit_int8(0xC7 | encode);
-  emit_int32(imm32);
 }
 
 void Assembler::movslq(Address dst, int32_t imm32) {

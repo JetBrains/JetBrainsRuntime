@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
-import jdk.internal.net.http.common.Log;
 import jdk.internal.net.http.common.Logger;
 import jdk.internal.net.http.common.MinimalFuture;
 import jdk.internal.net.http.common.Utils;
@@ -48,6 +47,7 @@ import static jdk.internal.net.http.frame.SettingsFrame.ENABLE_PUSH;
 import static jdk.internal.net.http.frame.SettingsFrame.HEADER_TABLE_SIZE;
 import static jdk.internal.net.http.frame.SettingsFrame.MAX_CONCURRENT_STREAMS;
 import static jdk.internal.net.http.frame.SettingsFrame.MAX_FRAME_SIZE;
+import static jdk.internal.net.http.frame.SettingsFrame.MAX_HEADER_LIST_SIZE;
 
 /**
  *  Http2 specific aspects of HttpClientImpl
@@ -94,14 +94,19 @@ class Http2ClientImpl {
     CompletableFuture<Http2Connection> getConnectionFor(HttpRequestImpl req,
                                                         Exchange<?> exchange) {
         String key = Http2Connection.keyFor(req);
+        boolean pushEnabled = exchange.pushEnabled();
 
         synchronized (this) {
             Http2Connection connection = connections.get(key);
             if (connection != null) {
                 try {
-                    if (connection.closed || !connection.reserveStream(true)) {
+                    if (connection.closed
+                            || !connection.reserveStream(true, pushEnabled)) {
                         if (debug.on())
-                            debug.log("removing found closed or closing connection: %s", connection);
+                            debug.log("removing connection from pool since " +
+                                    "it couldn't be reserved for use%s: %s",
+                                    pushEnabled ? " with server push enabled" :
+                                            "", connection);
                         deleteConnection(connection);
                     } else {
                         // fast path if connection already exists
@@ -128,7 +133,7 @@ class Http2ClientImpl {
                     synchronized (Http2ClientImpl.this) {
                         if (conn != null) {
                             try {
-                                conn.reserveStream(true);
+                                conn.reserveStream(true, exchange.pushEnabled());
                             } catch (IOException e) {
                                 throw new UncheckedIOException(e); // shouldn't happen
                             }
@@ -161,10 +166,21 @@ class Http2ClientImpl {
         synchronized(this) {
             Http2Connection c1 = connections.putIfAbsent(key, c);
             if (c1 != null) {
-                c.setFinalStream();
-                if (debug.on())
-                    debug.log("existing entry in connection pool for %s", key);
-                return false;
+                if (c.serverPushEnabled() && !c1.serverPushEnabled()) {
+                    c1.setFinalStream();
+                    connections.remove(key, c1);
+                    connections.put(key, c);
+                    if (debug.on()) {
+                        debug.log("Replacing %s with %s in connection pool", c1, c);
+                    }
+                    if (c1.shouldClose()) c1.close();
+                    return  true;
+                } else {
+                    c.setFinalStream();
+                    if (debug.on())
+                        debug.log("existing entry in connection pool for %s", key);
+                    return false;
+                }
             }
             if (debug.on())
                 debug.log("put in the connection pool: %s", c);
@@ -204,8 +220,8 @@ class Http2ClientImpl {
     }
 
     /** Returns the client settings as a base64 (url) encoded string */
-    String getSettingsString() {
-        SettingsFrame sf = getClientSettings();
+    String getSettingsString(boolean defaultServerPush) {
+        SettingsFrame sf = getClientSettings(defaultServerPush);
         byte[] settings = sf.toByteArray(); // without the header
         Base64.Encoder encoder = Base64.getUrlEncoder()
                                        .withoutPadding();
@@ -215,14 +231,7 @@ class Http2ClientImpl {
     private static final int K = 1024;
 
     private static int getParameter(String property, int min, int max, int defaultValue) {
-        int value =  Utils.getIntegerNetProperty(property, defaultValue);
-        // use default value if misconfigured
-        if (value < min || value > max) {
-            Log.logError("Property value for {0}={1} not in [{2}..{3}]: " +
-                    "using default={4}", property, value, min, max, defaultValue);
-            value = defaultValue;
-        }
-        return value;
+        return Utils.getIntegerNetProperty(property, min, max, defaultValue, true);
     }
 
     // used for the connection window, to have a connection window size
@@ -243,7 +252,18 @@ class Http2ClientImpl {
                 streamWindow, Integer.MAX_VALUE, defaultValue);
     }
 
-    SettingsFrame getClientSettings() {
+    /**
+     * This method is used to test whether pushes are globally
+     * disabled on all connections.
+     * @return true if pushes are globally disabled on all connections
+     */
+    boolean serverPushDisabled() {
+        return getParameter(
+                "jdk.httpclient.enablepush",
+                0, 1, 1) == 0;
+    }
+
+    SettingsFrame getClientSettings(boolean defaultServerPush) {
         SettingsFrame frame = new SettingsFrame();
         // default defined for HTTP/2 is 4 K, we use 16 K.
         frame.setParameter(HEADER_TABLE_SIZE, getParameter(
@@ -252,14 +272,15 @@ class Http2ClientImpl {
         // O: does not accept push streams. 1: accepts push streams.
         frame.setParameter(ENABLE_PUSH, getParameter(
                 "jdk.httpclient.enablepush",
-                0, 1, 1));
+                0, 1, defaultServerPush ? 1 : 0));
         // HTTP/2 recommends to set the number of concurrent streams
-        // no lower than 100. We use 100. 0 means no stream would be
-        // accepted. That would render the client to be non functional,
-        // so we won't let 0 be configured for our Http2ClientImpl.
+        // no lower than 100. We use 100, unless push promises are
+        // disabled.
+        int initialServerStreams = frame.getParameter(ENABLE_PUSH) == 0
+                ? 0 : 100;
         frame.setParameter(MAX_CONCURRENT_STREAMS, getParameter(
                 "jdk.httpclient.maxstreams",
-                1, Integer.MAX_VALUE, 100));
+                0, Integer.MAX_VALUE, initialServerStreams));
         // Maximum size is 2^31-1. Don't allow window size to be less
         // than the minimum frame size as this is likely to be a
         // configuration error. HTTP/2 specify a default of 64 * K -1,
@@ -272,6 +293,14 @@ class Http2ClientImpl {
         frame.setParameter(MAX_FRAME_SIZE, getParameter(
                 "jdk.httpclient.maxframesize",
                 16 * K, 16 * K * K -1, 16 * K));
+        // Maximum field section size we're prepared to accept
+        // This is the uncompressed name + value size + 32 per field line
+        int maxHeaderSize = getParameter(
+                "jdk.http.maxHeaderSize",
+                Integer.MIN_VALUE, Integer.MAX_VALUE, 384 * K);
+        // If the property is <= 0 the value is unlimited
+        if (maxHeaderSize <= 0) maxHeaderSize = -1;
+        frame.setParameter(MAX_HEADER_LIST_SIZE, maxHeaderSize);
         return frame;
     }
 }

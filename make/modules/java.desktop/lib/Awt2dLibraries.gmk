@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -185,7 +185,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
     DISABLED_WARNINGS_gcc := sign-compare unused-result maybe-uninitialized \
         format-nonliteral parentheses unused-value unused-function, \
     DISABLED_WARNINGS_clang := logical-op-parentheses extern-initializer \
-        sign-compare format-nonliteral, \
+        sign-compare format-nonliteral deprecated-non-prototype, \
     DISABLED_WARNINGS_microsoft := 4244 4267 4996, \
     LDFLAGS := $(LDFLAGS_JDKLIB) $(call SET_SHARED_LIBRARY_ORIGIN), \
     LDFLAGS_macosx := -L$(INSTALL_LIBRARIES_HERE), \
@@ -257,6 +257,9 @@ ifeq ($(call isTargetOs, windows macosx), false)
 
     LIBAWT_XAWT_EXCLUDES := medialib debug
 
+    LIBPIPEWIRE_HEADER_DIRS := \
+        $(TOPDIR)/src/$(MODULE)/unix/native/libpipewire/include
+
     LIBAWT_XAWT_EXTRA_HEADER_DIRS := \
         $(LIBAWT_DEFAULT_HEADER_DIRS) \
         libawt_xawt/awt \
@@ -266,7 +269,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/font \
         common/java2d/opengl \
         common/java2d/x11 \
-        #
+        $(LIBPIPEWIRE_HEADER_DIRS)
 
     LIBAWT_XAWT_CFLAGS += -DXAWT -DXAWT_HACK \
         $(FONTCONFIG_CFLAGS) \
@@ -522,7 +525,10 @@ else
    endif
 
    # hb-ft.cc is not presently needed, and requires freetype 2.4.2 or later.
-   LIBFONTMANAGER_EXCLUDE_FILES += libharfbuzz/hb-ft.cc
+   # hb-subset and hb-style APIs are not needed, excluded to cut on compilation time.
+   LIBFONTMANAGER_EXCLUDE_FILES += hb-ft.cc hb-subset-cff-common.cc \
+       hb-subset-cff1.cc hb-subset-cff2.cc hb-subset-input.cc hb-subset-plan.cc \
+       hb-subset.cc hb-subset-instancer-solver.cc gsubgpos-context.cc hb-style.cc
 
    # list of disabled warnings and the compilers for which it was specifically added.
    # array-bounds         -> GCC 12 on Alpine Linux
@@ -833,7 +839,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
           maybe-uninitialized shift-negative-value implicit-fallthrough \
           unused-function, \
       DISABLED_WARNINGS_clang := incompatible-pointer-types sign-compare \
-          deprecated-declarations null-pointer-subtraction $(LIBZ_DISABLED_WARNINGS_CLANG), \
+          deprecated-declarations null-pointer-subtraction deprecated-non-prototype $(LIBZ_DISABLED_WARNINGS_CLANG), \
       DISABLED_WARNINGS_microsoft := 4018 4244 4267, \
       LDFLAGS := $(LDFLAGS_JDKLIB) \
           $(call SET_SHARED_LIBRARY_ORIGIN), \
@@ -894,6 +900,7 @@ ifeq ($(call isTargetOs, macosx), true)
           incompatible-pointer-types parentheses-equality extra-tokens \
           sign-compare semicolon-before-method-body format-nonliteral undef \
           pointer-arith, \
+      DISABLED_WARNINGS_clang_MTLRenderer.m := gnu-folding-constant, \
       LDFLAGS := $(LDFLAGS_JDKLIB) \
           $(call SET_SHARED_LIBRARY_ORIGIN) \
           -L$(INSTALL_LIBRARIES_HERE), \

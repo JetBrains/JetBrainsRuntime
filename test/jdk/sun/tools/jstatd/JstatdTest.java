@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,6 +64,8 @@ public final class JstatdTest {
     private static final int JSTAT_GCUTIL_SAMPLES = 5;
     private static final int JSTAT_GCUTIL_INTERVAL_MS = 250;
     private static final String JPS_OUTPUT_REGEX = "^\\d+\\s*.*";
+
+    private static final int MAX_JSTATD_TRIES = 10;
 
     private boolean useDefaultPort = true;
     private boolean useDefaultRmiPort = true;
@@ -288,7 +290,7 @@ public final class JstatdTest {
     private ProcessThread tryToSetupJstatdProcess() throws Throwable {
         portInUse = false;
         ProcessThread jstatdThread = new ProcessThread("Jstatd-Thread",
-                JstatdTest::isJstadReady, getJstatdCmd());
+                JstatdTest::isJstatdReady, getJstatdCmd());
         try {
             jstatdThread.start();
             // Make sure jstatd is up and running
@@ -308,8 +310,8 @@ public final class JstatdTest {
         return jstatdThread;
     }
 
-    private static boolean isJstadReady(String line) {
-        if (line.contains("Port already in use")) {
+    private static boolean isJstatdReady(String line) {
+        if (line.contains("Port already in use") || line.contains("Could not bind")) {
             portInUse = true;
             return true;
         }
@@ -328,8 +330,9 @@ public final class JstatdTest {
         }
 
         ProcessThread jstatdThread = null;
+        int tries = 0;
         try {
-            while (jstatdThread == null) {
+            while (jstatdThread == null && ++tries <= MAX_JSTATD_TRIES) {
                 if (!useDefaultPort) {
                     port = String.valueOf(Utils.getFreePort());
                 }
@@ -345,10 +348,11 @@ public final class JstatdTest {
                         continue;
                     }
                 }
-
                 jstatdThread = tryToSetupJstatdProcess();
             }
-
+            if (jstatdThread == null) {
+                throw new RuntimeException("Cannot start jstatd.");
+            }
             runToolsAndVerify();
         } finally {
             cleanUpThread(jstatdThread);
@@ -356,7 +360,13 @@ public final class JstatdTest {
 
         // Verify output from jstatd
         OutputAnalyzer output = jstatdThread.getOutput();
-        output.shouldBeEmptyIgnoreVMWarnings();
+        List<String> stdout = output.asLinesWithoutVMWarnings();
+        output.reportDiagnosticSummary();
+        // These asserts are disabled until JDK-8272317 is backported:
+        // otherwise there are SM deprecation notices that fail them.
+        // assertEquals(stdout.size(), 1, "Output should contain one line");
+        // assertTrue(stdout.get(0).startsWith("jstatd started"), "List should start with 'jstatd started'");
+        output.shouldContain("jstatd started");
         assertNotEquals(output.getExitValue(), 0,
                 "jstatd process exited with unexpected exit code");
     }

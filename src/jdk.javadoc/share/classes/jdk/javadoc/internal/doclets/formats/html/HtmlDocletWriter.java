@@ -118,6 +118,7 @@ import static com.sun.source.doctree.DocTree.Kind.COMMENT;
 import static com.sun.source.doctree.DocTree.Kind.LINK;
 import static com.sun.source.doctree.DocTree.Kind.LINK_PLAIN;
 import static com.sun.source.doctree.DocTree.Kind.SEE;
+import static com.sun.source.doctree.DocTree.Kind.START_ELEMENT;
 import static com.sun.source.doctree.DocTree.Kind.TEXT;
 import static jdk.javadoc.internal.doclets.toolkit.util.CommentHelper.SPACER;
 
@@ -1015,6 +1016,13 @@ public class HtmlDocletWriter {
                         // @see reference label...
                         label = ref.subList(1, ref.size());
                     }
+                    case ERRONEOUS -> {
+                        messages.warning(ch.getDocTreePath(see),
+                            "doclet.tag.invalid_input",
+                            "@" + tagName,
+                            seeText);
+                        return Text.of("invalid input: '" + seeText + "'");
+                    }
                     default ->
                         throw new IllegalStateException(ref.get(0).getKind().toString());
                 }
@@ -1266,21 +1274,37 @@ public class HtmlDocletWriter {
         }
     }
 
-    boolean ignoreNonInlineTag(DocTree dtree) {
+    // helper methods because jdk21 functionality is not allowed
+    private static Name getLastHelper(List<Name> l) {
+        return l.get(l.size() - 1);
+    }
+
+    private static Name removeLastHelper(List<Name> l) {
+        return l.remove(l.size() - 1);
+    }
+
+    boolean ignoreNonInlineTag(DocTree dtree, List<Name> openTags) {
         Name name = null;
-        if (dtree.getKind() == Kind.START_ELEMENT) {
-            StartElementTree setree = (StartElementTree)dtree;
-            name = setree.getName();
-        } else if (dtree.getKind() == Kind.END_ELEMENT) {
-            EndElementTree eetree = (EndElementTree)dtree;
-            name = eetree.getName();
+        Kind kind = dtree.getKind();
+        if (kind == Kind.START_ELEMENT) {
+            name = ((StartElementTree)dtree).getName();
+        } else if (kind == Kind.END_ELEMENT) {
+            name = ((EndElementTree)dtree).getName();
         }
 
         if (name != null) {
             HtmlTag htmlTag = HtmlTag.get(name);
-            if (htmlTag != null &&
-                    htmlTag.blockType != jdk.javadoc.internal.doclint.HtmlTag.BlockType.INLINE) {
-                return true;
+            if (htmlTag != null) {
+                if (htmlTag.blockType != HtmlTag.BlockType.INLINE) {
+                    return true;
+                }
+                // Keep track of open inline tags that need to be closed, see 8326332
+                if (kind == START_ELEMENT && htmlTag.endKind == HtmlTag.EndKind.REQUIRED) {
+                    openTags.add(name);
+                } else if (kind == Kind.END_ELEMENT && !openTags.isEmpty()
+                        && getLastHelper(openTags).equals(name)) {
+                    removeLastHelper(openTags);
+                }
             }
         }
         return false;
@@ -1370,6 +1394,7 @@ public class HtmlDocletWriter {
         // Array of all possible inline tags for this javadoc run
         configuration.tagletManager.checkTags(element, trees, true);
         commentRemoved = false;
+        List<Name> openTags = new ArrayList<>();
 
         for (ListIterator<? extends DocTree> iterator = trees.listIterator(); iterator.hasNext();) {
             boolean isFirstNode = !iterator.hasPrevious();
@@ -1378,14 +1403,16 @@ public class HtmlDocletWriter {
 
             if (context.isFirstSentence) {
                 // Ignore block tags
-                if (ignoreNonInlineTag(tag))
+                if (ignoreNonInlineTag(tag, openTags)) {
                     continue;
+                }
 
                 // Ignore any trailing whitespace OR whitespace after removed html comment
                 if ((isLastNode || commentRemoved)
                         && tag.getKind() == TEXT
-                        && isAllWhiteSpace(ch.getText(tag)))
+                        && isAllWhiteSpace(ch.getText(tag))) {
                     continue;
+                }
 
                 // Ignore any leading html comments
                 if ((isFirstNode || commentRemoved) && tag.getKind() == COMMENT) {
@@ -1630,6 +1657,10 @@ public class HtmlDocletWriter {
             commentRemoved = false;
             if (allDone)
                 break;
+        }
+        // Close any open inline tags
+        while (!openTags.isEmpty()) {
+            result.add(RawHtml.endElement(removeLastHelper(openTags)));
         }
         return result;
     }

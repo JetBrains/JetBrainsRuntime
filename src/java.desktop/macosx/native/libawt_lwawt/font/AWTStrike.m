@@ -115,7 +115,7 @@ subpixelResolutionY:(jint)subpixelResolutionY {
 #define AWT_FONT_CLEANUP_FINISH                                         \
     if (_fontThrowJavaException == YES) {                               \
         char s[512];                                                    \
-        sprintf(s, "%s-%s:%d", __FILE__, __FUNCTION__, __LINE__);       \
+        snprintf(s, sizeof(s), "%s-%s:%d", __FILE__, __FUNCTION__, __LINE__);       \
         JNU_ThrowByName(env, "java/lang/RuntimeException", s);          \
     }
 

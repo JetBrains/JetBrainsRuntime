@@ -35,6 +35,8 @@
 #include "utilities/numberSeq.hpp"
 #include "utilities/spinYield.hpp"
 
+#include <type_traits>
+
 // 2^30 = 1G buckets
 #define SIZE_BIG_LOG2 30
 // 2^5  = 32 buckets
@@ -499,7 +501,7 @@ inline void ConcurrentHashTable<CONFIG, F>::
     Bucket* prefetch_bucket = (bucket_it+1) < stop_idx ?
                               table->get_bucket(bucket_it+1) : NULL;
 
-    if (!HaveDeletables<IsPointer<VALUE>::value, EVALUATE_FUNC>::
+    if (!HaveDeletables<std::is_pointer<VALUE>::value, EVALUATE_FUNC>::
         have_deletable(bucket, eval_f, prefetch_bucket)) {
         // Nothing to remove in this bucket.
         continue;
@@ -1197,23 +1199,30 @@ template <typename VALUE_SIZE_FUNC>
 inline TableStatistics ConcurrentHashTable<CONFIG, F>::
   statistics_calculate(Thread* thread, VALUE_SIZE_FUNC& vs_f)
 {
+  constexpr size_t batch_size = 128;
   NumberSeq summary;
   size_t literal_bytes = 0;
   InternalTable* table = get_table();
-  for (size_t bucket_it = 0; bucket_it < table->_size; bucket_it++) {
+  size_t num_batches = table->_size / batch_size;
+  for (size_t batch_start = 0; batch_start < _table->_size; batch_start += batch_size) {
+    // We batch the use of ScopedCS here as it has been found to be quite expensive to
+    // invoke it for every single bucket.
+    size_t batch_end = MIN2(batch_start + batch_size, _table->_size);
     ScopedCS cs(thread, this);
-    size_t count = 0;
-    Bucket* bucket = table->get_bucket(bucket_it);
-    if (bucket->have_redirect() || bucket->is_locked()) {
-      continue;
+    for (size_t bucket_it = batch_start; bucket_it < batch_end; bucket_it++) {
+      size_t count = 0;
+      Bucket* bucket = table->get_bucket(bucket_it);
+      if (bucket->have_redirect() || bucket->is_locked()) {
+        continue;
+      }
+      Node* current_node = bucket->first();
+      while (current_node != nullptr) {
+        ++count;
+        literal_bytes += vs_f(current_node->value());
+        current_node = current_node->next();
+      }
+      summary.add((double)count);
     }
-    Node* current_node = bucket->first();
-    while (current_node != NULL) {
-      ++count;
-      literal_bytes += vs_f(current_node->value());
-      current_node = current_node->next();
-    }
-    summary.add((double)count);
   }
 
   return TableStatistics(_stats_rate, summary, literal_bytes, sizeof(Bucket), sizeof(Node));

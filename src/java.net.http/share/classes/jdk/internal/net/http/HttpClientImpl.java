@@ -36,6 +36,7 @@ import java.lang.ref.WeakReference;
 import java.net.Authenticator;
 import java.net.ConnectException;
 import java.net.CookieHandler;
+import java.net.ProtocolException;
 import java.net.ProxySelector;
 import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpTimeoutException;
@@ -582,6 +583,10 @@ final class HttpClientImpl extends HttpClient implements Trackable {
                 // any other SSLException is wrapped in a plain
                 // SSLException
                 throw new SSLException(msg, throwable);
+            } else if (throwable instanceof ProtocolException) {
+                ProtocolException pe = new ProtocolException(msg);
+                pe.initCause(throwable);
+                throw pe;
             } else if (throwable instanceof IOException) {
                 throw new IOException(msg, throwable);
             } else {
