@@ -534,7 +534,6 @@ private:
 public:
     BOOL HasDisplayChanged() { return m_displayChanged; }
     void ResetDisplayChanged() { m_displayChanged = FALSE; }
-    void SetDisplayChanged() { m_displayChanged = TRUE; }
     void RegisterEmbedderProcessId(HWND);
     BOOL IsEmbedderProcessId(const DWORD processID) const
     {
