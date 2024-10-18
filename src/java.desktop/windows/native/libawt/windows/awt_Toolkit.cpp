@@ -2542,13 +2542,18 @@ Java_sun_awt_windows_WToolkit_init(JNIEnv *env, jobject self)
  * Signature: ()V
  */
 JNIEXPORT void JNICALL
-        Java_sun_awt_windows_WToolkit_displayChangedNative(JNIEnv *env, jclass cls) {
+Java_sun_awt_windows_WToolkit_displayChangedNative(JNIEnv *env, jclass cls)
+{
+    TRY;
+
     // Reinitialize screens
     initScreens(env);
     ::EnumThreadWindows(AwtToolkit::MainThread(), (WNDENUMPROC)UpdateAllThreadWindowSizes, 0);
     
     AwtToolkit::GetInstance().SetDisplayChanged();
     ::PostMessage(HWND_BROADCAST, WM_PALETTEISCHANGING, NULL, NULL);
+
+    CATCH_BAD_ALLOC;
 }
 
 /*

@@ -226,30 +226,25 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
      * surface data)
      */
     @Override
-    public Graphics2D createGraphics(SurfaceData sd,
+    public synchronized Graphics2D createGraphics(SurfaceData sd,
             WComponentPeer peer, Color fgColor, Color bgColor, Font font)
     {
-        if (peer.getTarget() instanceof Component component) {
-            synchronized (component.getTreeLock()) {
-                if (peer.getSurfaceData() == null) {
-                    return null;
-                }
-                if (sd instanceof D3DWindowSurfaceData) {
-                    D3DWindowSurfaceData d3dw = (D3DWindowSurfaceData) sd;
-                    if (!d3dw.isSurfaceLost() || validate(d3dw)) {
-                        trackScreenSurface(d3dw);
-                        return new SunGraphics2D(sd, fgColor, bgColor, font);
-                    }
-                    // could not restore the d3dw surface, use the cached gdi surface
-                    // instead for this graphics object; note that we do not track
-                    // this new gdi surface, it is only used for this graphics
-                    // object
-                    sd = getGdiSurface(d3dw);
-                }
-                return super.createGraphics(sd, peer, fgColor, bgColor, font);
-            }
+        if (peer.getSurfaceData() == null) {
+            return null;
         }
-        return null;
+        if (sd instanceof D3DWindowSurfaceData) {
+            D3DWindowSurfaceData d3dw = (D3DWindowSurfaceData) sd;
+            if (!d3dw.isSurfaceLost() || validate(d3dw)) {
+                trackScreenSurface(d3dw);
+                return new SunGraphics2D(sd, fgColor, bgColor, font);
+            }
+            // could not restore the d3dw surface, use the cached gdi surface
+            // instead for this graphics object; note that we do not track
+            // this new gdi surface, it is only used for this graphics
+            // object
+            sd = getGdiSurface(d3dw);
+        }
+        return super.createGraphics(sd, peer, fgColor, bgColor, font);
     }
 
     /**
