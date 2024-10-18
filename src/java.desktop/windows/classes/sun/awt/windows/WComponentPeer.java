@@ -377,7 +377,9 @@ public abstract class WComponentPeer extends WObjectPeer
                 if (!isLayouting && ! paintPending) {
                     paintArea.paint(target,shouldClearRectBeforePaint());
                 }
-                D3DSurfaceData.displayContent();
+                if (surfaceData instanceof D3DSurfaceData) {
+                    D3DSurfaceData.displayContent();
+                }
                 return;
             case FocusEvent.FOCUS_LOST:
             case FocusEvent.FOCUS_GAINED:
