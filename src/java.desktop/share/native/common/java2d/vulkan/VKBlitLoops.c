@@ -127,6 +127,7 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
 
     VKRenderer_Flush(device->renderer);
     VKRenderer_Sync(device->renderer);
+//  TODO: Track lifecycle of the texture to avoid reuse of occupied texture
     VKTexturePoolHandle_ReleaseTexture(hnd);
     VKBuffer_Destroy(device, buffer);
 //  TODO: Add proper sync for renderVertexBuffer
@@ -237,7 +238,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
 
 
     if (!VKRenderer_Validate(context, PIPELINE_BLIT)) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "replaceTextureRegion: cannot validate renderer");
+        J2dRlsTrace(J2D_TRACE_INFO, "VKBlitLoops_Blit: VKRenderer_Validate cannot validate renderer");
         return;
     }
     VKSDOps *dstOps = context->surface;
