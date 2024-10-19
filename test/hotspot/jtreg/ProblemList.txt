@@ -73,6 +73,8 @@ compiler/vectorapi/VectorLogicalOpIdentityTest.java 8302459 linux-x64,windows-x6
 
 compiler/jvmci/TestUncaughtErrorInCompileMethod.java 8309073 generic-all
 
+compiler/codecache/CheckLargePages.java 8319795 linux-x64
+
 #############################################################################
 
 # :hotspot_gc
@@ -135,6 +137,8 @@ serviceability/sa/TestJmapCore.java 8294316,8267433 macosx-x64
 serviceability/sa/TestJmapCoreMetaspace.java 8294316,8267433 macosx-x64
 
 serviceability/attach/ConcAttachTest.java 8290043 linux-all
+
+serviceability/jvmti/stress/StackTrace/NotSuspended/GetStackTraceNotSuspendedStressTest.java 8315980 linux-all,windows-x64
 
 #############################################################################
 

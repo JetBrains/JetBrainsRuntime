@@ -475,9 +475,6 @@ class Thread: public ThreadShadow {
   }
 
  public:
-  // Used by fast lock support
-  virtual bool is_lock_owned(address adr) const;
-
   // Check if address is within the given range of this thread's
   // stack:  stack_base() > adr >= limit
   bool is_in_stack_range_incl(address adr, address limit) const {
@@ -649,15 +646,17 @@ protected:
 class ThreadInAsgct {
  private:
   Thread* _thread;
+  bool _saved_in_asgct;
  public:
   ThreadInAsgct(Thread* thread) : _thread(thread) {
     assert(thread != nullptr, "invariant");
-    assert(!thread->in_asgct(), "invariant");
+    // Allow AsyncGetCallTrace to be reentrant - save the previous state.
+    _saved_in_asgct = thread->in_asgct();
     thread->set_in_asgct(true);
   }
   ~ThreadInAsgct() {
     assert(_thread->in_asgct(), "invariant");
-    _thread->set_in_asgct(false);
+    _thread->set_in_asgct(_saved_in_asgct);
   }
 };
 
