@@ -3256,12 +3256,14 @@ jint AwtWindow::_GetScreenImOn(void *param)
     if (self == NULL) {
         JNU_ThrowByName(env, "java/awt/IllegalComponentStateException",
                         "Peer null in JNI");
-        return -1;
+        return 0;
     }
     PDATA pData = JNI_GET_PDATA(self);
     if (pData == NULL) {
+        JNU_ThrowByName(env, "java/awt/IllegalComponentStateException",
+                        "Native resources unavailable");
         env->DeleteGlobalRef(self);
-        return -1;
+        return 0;
     }
 
     jint result = 0;

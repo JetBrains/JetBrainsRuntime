@@ -37,6 +37,7 @@ import java.awt.Graphics;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.IllegalComponentStateException;
 import java.awt.Image;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
@@ -588,8 +589,10 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     }
 
     public void updateGC() {
-        int scrn = getScreenImOn();
-        if (scrn == -1) {
+        int scrn = 0;
+        try {
+            scrn = getScreenImOn();
+        } catch (IllegalComponentStateException exception) {
             return;
         }
 
