@@ -622,7 +622,7 @@ java/awt/Modal/OnTop/OnTopAppModal3Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal4Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal6Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopDocModal1Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
+java/awt/Modal/OnTop/OnTopDocModal1Test.java 8253184,JBR-5510,JBR-7778 windows-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Modal/OnTop/OnTopDocModal2Test.java 8253184,JBR-5510,JBR-7778 windows-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Modal/OnTop/OnTopDocModal3Test.java 8253184,JBR-5510,JBR-7778 windows-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Modal/OnTop/OnTopDocModal4Test.java 8253184,JBR-5510,JBR-7778 windows-all,linux-5.18.2-arch1-1,linux-all
@@ -646,7 +646,7 @@ java/awt/Modal/OnTop/OnTopTKModal3Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal4Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal6Test.java 8253184 windows-all
-java/awt/List/ActionEventTest/ActionEventTest.java JBR-5799 windows-x64
+java/awt/List/ActionEventTest/ActionEventTest.java JBR-5799,JBR-7518 windows-x64,windows-aarch64
 java/awt/List/EmptyListEventTest/EmptyListEventTest.java JBR-5387 linux-all
 java/awt/List/FirstItemRemoveTest/FirstItemRemoveTest.java JBR-86 windows-x64
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711 linux-all
