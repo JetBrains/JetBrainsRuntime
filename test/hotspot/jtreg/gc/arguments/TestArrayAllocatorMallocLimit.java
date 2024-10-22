@@ -51,7 +51,7 @@ public class TestArrayAllocatorMallocLimit {
   private static final String printFlagsFinalPattern = " *size_t *" + flagName + " *:?= *(\\d+) *\\{experimental\\} *";
 
   public static void testDefaultValue()  throws Exception {
-    ProcessBuilder pb = GCArguments.createLimitedTestJavaProcessBuilder(
+    ProcessBuilder pb = GCArguments.createTestJavaProcessBuilder(
       "-XX:+UnlockExperimentalVMOptions", "-XX:+PrintFlagsFinal", "-version");
 
     OutputAnalyzer output = new OutputAnalyzer(pb.start());
