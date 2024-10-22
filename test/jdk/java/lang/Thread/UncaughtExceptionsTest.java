@@ -65,7 +65,7 @@ public class UncaughtExceptionsTest {
 
     @Test(dataProvider = "testCases")
     public void test(String className, int exitValue, String stdOutMatch, String stdErrMatch) throws Throwable {
-        ProcessBuilder processBuilder = ProcessTools.createJavaProcessBuilder(String.format("UncaughtExitSimulator$%s",className));
+        ProcessBuilder processBuilder = ProcessTools.createLimitedTestJavaProcessBuilder(String.format("UncaughtExitSimulator$%s",className));
         OutputAnalyzer outputAnalyzer = ProcessTools.executeCommand(processBuilder);
         outputAnalyzer.shouldHaveExitValue(exitValue);
         outputAnalyzer.stderrShouldMatch(stdErrMatch);

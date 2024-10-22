@@ -49,7 +49,7 @@ public class SecondaryErrorTest {
 
 
   public static void main(String[] args) throws Exception {
-    ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+    ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(
         "-XX:+UnlockDiagnosticVMOptions",
         "-Xmx100M",
         "-XX:-CreateCoredumpOnCrash",

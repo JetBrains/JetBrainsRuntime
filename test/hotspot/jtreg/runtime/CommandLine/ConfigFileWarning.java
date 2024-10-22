@@ -46,7 +46,7 @@ public class ConfigFileWarning {
         pw.println("aaa");
         pw.close();
 
-        pb = ProcessTools.createJavaProcessBuilder("-XX:Flags=hs_flags.txt","-version");
+        pb = ProcessTools.createLimitedTestJavaProcessBuilder("-XX:Flags=hs_flags.txt","-version");
         output = new OutputAnalyzer(pb.start());
         output.shouldContain("Unrecognized VM option 'aaa'");
         output.shouldHaveExitValue(1);
@@ -57,7 +57,7 @@ public class ConfigFileWarning {
             pw.println("aa");
             pw.close();
 
-            pb = ProcessTools.createJavaProcessBuilder("-version");
+            pb = ProcessTools.createLimitedTestJavaProcessBuilder("-version");
             output = new OutputAnalyzer(pb.start());
             output.shouldHaveExitValue(0);
             output.shouldContain("warning: .hotspotrc file is present but has been ignored.  Run with -XX:Flags=.hotspotrc to load the file.");

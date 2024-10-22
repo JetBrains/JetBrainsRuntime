@@ -36,7 +36,7 @@ import jdk.test.lib.process.OutputAnalyzer;
 
 public class DoubleFlagWithIntegerValue {
   public static void testDoubleFlagWithValue(String value) throws Exception {
-    ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:SweeperThreshold=" + value, "-version");
+    ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder("-XX:SweeperThreshold=" + value, "-version");
     OutputAnalyzer output = new OutputAnalyzer(pb.start());
     output.shouldNotContain("Improperly specified VM option");
     output.shouldHaveExitValue(0);
