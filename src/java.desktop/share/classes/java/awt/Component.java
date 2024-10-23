@@ -4484,6 +4484,13 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 // to translate to client area.
                 g.translate(insets.left, insets.top);
                 for (int i = 0; i < backBuffers.length; i++) {
+                    // If we try to draw outside the buffer's bounds, some backends may
+                    // fill this area with some color rather than avoid drawing altogether.
+                    // Protect against that by clipping the area to the back buffer's rectangle.
+                    x1 = Math.max(0, x1);
+                    y1 = Math.max(0, y1);
+                    x2 = Math.min(backBuffers[i].getWidth(), x2);
+                    y2 = Math.min(backBuffers[i].getHeight(), y2);
                     g.drawImage(backBuffers[i],
                                 x1, y1, x2, y2,
                                 x1, y1, x2, y2,
