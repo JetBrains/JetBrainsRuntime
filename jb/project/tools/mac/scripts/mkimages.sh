@@ -138,9 +138,11 @@ JBRSDK_BUNDLE=jbrsdk
 # test/jdk/jb/java/awt/Focus/FullScreenFocusStealing.java test/jdk/java/awt/color/ICC_ColorSpace/MTTransformReplacedProfile.java test/jdk/java/awt/datatransfer/DataFlavor/DataFlavorRemoteTest.java test/jdk/java/awt/Robot/NonEmptyErrorStream.java
 
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
-  git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
-  update_jsdk_mods "$JSDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
-  cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
+  if [ "$bundle_type" == "jcef" ]; then
+    git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
+    update_jsdk_mods "$JSDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
+    cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
+  fi
 
   jbr_name_postfix="_${bundle_type}"
 else
@@ -153,7 +155,7 @@ create_image_bundle "jbr${jbr_name_postfix}" "jbr" $JSDK_MODS_DIR "$modules" || 
 
 # create sdk image bundle
 modules=$(cat "$JSDK"/release | grep MODULES | sed s/MODULES=//g | sed s/' '/','/g | sed s/\"//g | sed s/\\n//g) || do_exit $?
-if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ] || [ "$bundle_type" == "$JBRSDK_BUNDLE" ]; then
+if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "$JBRSDK_BUNDLE" ]; then
   modules=${modules},$(get_mods_list "$JCEF_PATH"/jmods)
 fi
 create_image_bundle "$JBRSDK_BUNDLE${jbr_name_postfix}" "$JBRSDK_BUNDLE" "$JSDK_MODS_DIR" "$modules" || do_exit $?
