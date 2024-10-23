@@ -1049,6 +1049,7 @@ jdk_awt_wayland = \
     -java/awt/Paint/LabelRepaint.java \
     -java/awt/Paint/ListRepaint.java \
     -java/awt/Paint/PaintNativeOnUpdate.java \
+    -java/awt/Paint/PaintSetEnabledDeadlock/PaintSetEnabledDeadlock.java \
     -java/awt/PopupMenu \
     -java/awt/print \
     -java/awt/PrintJob \
@@ -1084,6 +1085,9 @@ jdk_swing_wayland= \
     -javax/swing/AbstractButton/6711682/bug6711682.java \
     -javax/swing/Action/8133039/bug8133039.java \
     -javax/swing/Box/TestBoxFiller.java \
+    -javax/swing/JButton/bug4234034.java \
+    -javax/swing/JButton/bug4323121.java \
+    -javax/swing/JButton/bug4490179.java \
     -javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java \
     -javax/swing/DefaultButtonModel/DefaultButtonModelCrashTest.java \
     -javax/swing/dnd/7171812/bug7171812.java \
@@ -1137,6 +1141,7 @@ jdk_swing_wayland= \
     -javax/swing/JFileChooser/8041694/bug8041694.java \
     -javax/swing/JFileChooser/ShellFolderQueries/ShellFolderQueriesSecurityManagerTest.java \
     -javax/swing/JFileChooser/JFileChooserFontReset.java \
+    -javax/swing/JFileChooser/TABTestONFCExit.java \
     -javax/swing/JFormattedTextField/bug4863121.java \
     -javax/swing/JFrame/4962534/bug4962534.java \
     -javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java \
@@ -1226,6 +1231,7 @@ jdk_swing_wayland= \
     -javax/swing/JSplitPane/4615365/JSplitPaneDividerLocationTest.java \
     -javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java \
     -javax/swing/JSplitPane/4885629/bug4885629.java \
+    -javax/swing/JSplitPane/bug4870674.java \
     -javax/swing/JTabbedPane/7024235/Test7024235.java \
     -javax/swing/JTabbedPane/7161568/bug7161568.java \
     -javax/swing/JTabbedPane/TabbedPaneBug.java \
@@ -1244,6 +1250,7 @@ jdk_swing_wayland= \
     -javax/swing/JTextArea/4697612/bug4697612.java \
     -javax/swing/JTextArea/8149849/DNDTextToScaledArea.java \
     -javax/swing/JTextArea/bug4265784.java \
+    -javax/swing/JTextArea/bug4849868.java \
     -javax/swing/JTextField/4532513/DefaultCaretRequestsFocusTest.java \
     -javax/swing/JTextField/8036819/bug8036819.java \
     -javax/swing/JToggleButton/TestSelectedKey.java \
