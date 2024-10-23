@@ -110,9 +110,11 @@ JSDK_MODS_DIR=$IMAGES_DIR/jmods
 JBRSDK_BUNDLE=jbrsdk
 
 if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
-  git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
-  update_jsdk_mods "$JSDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
-  cp $JCEF_PATH/jmods/* ${JSDK_MODS_DIR} # $JSDK/jmods is not unchanged
+  if [ "$bundle_type" == "jcef" ]; then
+    git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
+    update_jsdk_mods "$JSDK" "$JCEF_PATH"/jmods "$JSDK"/jmods "$JSDK_MODS_DIR" || do_exit $?
+    cp $JCEF_PATH/jmods/* ${JSDK_MODS_DIR} # $JSDK/jmods is not unchanged
+  fi
 
   jbr_name_postfix="_${bundle_type}"
 else
