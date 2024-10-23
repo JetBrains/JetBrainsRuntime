@@ -119,7 +119,7 @@ JBRSDK_BUNDLE=jbrsdk
 echo Fixing permissions
 chmod -R a+r $JSDK
 
-if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
+if [ "$bundle_type" == "jcef" ]; then
   jbr_name_postfix="_${bundle_type}"
 else
   jbr_name_postfix=""
