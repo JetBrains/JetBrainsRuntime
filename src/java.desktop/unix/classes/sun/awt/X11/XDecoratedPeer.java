@@ -891,7 +891,10 @@ abstract class XDecoratedPeer extends XWindowPeer {
         updateChildrenSizes();
 
         WindowLocation eventLocation = getNewLocation(xe);
-        Dimension eventDimension = new Dimension(xe.get_width(), xe.get_height());
+        var insets = dimensions.getInsets();
+        var insetsWidth = scaleUp(insets.left + insets.right);
+        var insetsHeight = scaleUp(insets.top + insets.bottom);
+        Dimension eventDimension = new Dimension(xe.get_width() + insetsWidth, xe.get_height() + insetsHeight);
         boolean xinerama = XToolkit.localEnv.runningXinerama();
 
         SunToolkit.executeOnEventHandlerThread(target, () -> {
@@ -900,7 +903,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
                     ? checkIfOnNewScreen(new Rectangle(eventLocation.getDeviceLocation(), eventDimension))
                     : new Dimension(scaleDown(eventDimension.width), scaleDown(eventDimension.height));
             Point newUserLocation = eventLocation.getUserLocation();
-            WindowDimensions newDimensions = new WindowDimensions(newUserLocation, newSize, getRealInsets(), true);
+            WindowDimensions newDimensions = new WindowDimensions(newUserLocation, newSize, getRealInsets(), false);
             if (insLog.isLoggable(PlatformLogger.Level.FINER)) {
                 insLog.finer("Insets are {0}, new dimensions {1}",
                         getRealInsets(), newDimensions);
