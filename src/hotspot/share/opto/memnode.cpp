@@ -845,8 +845,12 @@ bool LoadNode::can_remove_control() const {
   return !has_pinned_control_dependency();
 }
 uint LoadNode::size_of() const { return sizeof(*this); }
-bool LoadNode::cmp( const Node &n ) const
-{ return !Type::cmp( _type, ((LoadNode&)n)._type ); }
+bool LoadNode::cmp(const Node &n) const {
+  LoadNode& load = (LoadNode &)n;
+  return !Type::cmp(_type, load._type) &&
+         _control_dependency == load._control_dependency &&
+         _mo == load._mo;
+}
 const Type *LoadNode::bottom_type() const { return _type; }
 uint LoadNode::ideal_reg() const {
   return _type->ideal_reg();
@@ -983,6 +987,14 @@ static bool skip_through_membars(Compile::AliasType* atp, const TypeInstPtr* tp,
   return false;
 }
 
+LoadNode* LoadNode::pin_array_access_node() const {
+  const TypePtr* adr_type = this->adr_type();
+  if (adr_type != nullptr && adr_type->isa_aryptr()) {
+    return clone_pinned();
+  }
+  return nullptr;
+}
+
 // Is the value loaded previously stored by an arraycopy? If so return
 // a load node that reads from the source array so we may be able to
 // optimize out the ArrayCopy node later.
@@ -1002,7 +1014,8 @@ Node* LoadNode::can_see_arraycopy_value(Node* st, PhaseGVN* phase) const {
       return nullptr;
     }
 
-    LoadNode* ld = clone()->as_Load();
+    // load depends on the tests that validate the arraycopy
+    LoadNode* ld = clone_pinned();
     Node* addp = in(MemNode::Address)->clone();
     if (ac->as_ArrayCopy()->is_clonebasic()) {
       assert(ld_alloc != nullptr, "need an alloc");
@@ -1044,8 +1057,6 @@ Node* LoadNode::can_see_arraycopy_value(Node* st, PhaseGVN* phase) const {
     ld->set_req(MemNode::Address, addp);
     ld->set_req(0, ctl);
     ld->set_req(MemNode::Memory, mem);
-    // load depends on the tests that validate the arraycopy
-    ld->_control_dependency = UnknownControl;
     return ld;
   }
   return nullptr;
@@ -2465,6 +2476,12 @@ Node* LoadNode::klass_identity_common(PhaseGVN* phase) {
   return this;
 }
 
+LoadNode* LoadNode::clone_pinned() const {
+  LoadNode* ld = clone()->as_Load();
+  ld->_control_dependency = UnknownControl;
+  return ld;
+}
+
 
 //------------------------------Value------------------------------------------
 const Type* LoadNKlassNode::Value(PhaseGVN* phase) const {
@@ -2741,7 +2758,10 @@ Node* StoreNode::Identity(PhaseGVN* phase) {
       val->in(MemNode::Address)->eqv_uncast(adr) &&
       val->in(MemNode::Memory )->eqv_uncast(mem) &&
       val->as_Load()->store_Opcode() == Opcode()) {
-    result = mem;
+    // Ensure vector type is the same
+    if (!is_StoreVector() || (mem->is_LoadVector() && as_StoreVector()->vect_type() == mem->as_LoadVector()->vect_type())) {
+      result = mem;
+    }
   }
 
   // Two stores in a row of the same value?
@@ -2750,7 +2770,24 @@ Node* StoreNode::Identity(PhaseGVN* phase) {
       mem->in(MemNode::Address)->eqv_uncast(adr) &&
       mem->in(MemNode::ValueIn)->eqv_uncast(val) &&
       mem->Opcode() == Opcode()) {
-    result = mem;
+    if (!is_StoreVector()) {
+      result = mem;
+    } else {
+      const StoreVectorNode* store_vector = as_StoreVector();
+      const StoreVectorNode* mem_vector = mem->as_StoreVector();
+      const Node* store_indices = store_vector->indices();
+      const Node* mem_indices = mem_vector->indices();
+      const Node* store_mask = store_vector->mask();
+      const Node* mem_mask = mem_vector->mask();
+      // Ensure types, indices, and masks match
+      if (store_vector->vect_type() == mem_vector->vect_type() &&
+          ((store_indices == nullptr) == (mem_indices == nullptr) &&
+           (store_indices == nullptr || store_indices->eqv_uncast(mem_indices))) &&
+          ((store_mask == nullptr) == (mem_mask == nullptr) &&
+           (store_mask == nullptr || store_mask->eqv_uncast(mem_mask)))) {
+        result = mem;
+      }
+    }
   }
 
   // Store of zero anywhere into a freshly-allocated object?

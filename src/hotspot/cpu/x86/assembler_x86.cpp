@@ -1907,7 +1907,7 @@ void Assembler::crc32(Register crc, Address adr, int8_t sizeInBytes) {
   int8_t w = 0x01;
   Prefix p = Prefix_EMPTY;
 
-  emit_int8((int8_t)0xF2);
+  emit_int8((uint8_t)0xF2);
   switch (sizeInBytes) {
   case 1:
     w = 0;
@@ -2507,7 +2507,7 @@ void Assembler::jmp_literal(address dest, RelocationHolder const& rspec) {
   assert(dest != nullptr, "must have a target");
   intptr_t disp = dest - (pc() + sizeof(int32_t));
   assert(is_simm32(disp), "must be 32bit offset (jmp)");
-  emit_data(disp, rspec, call32_operand);
+  emit_data(checked_cast<int32_t>(disp), rspec, call32_operand);
 }
 
 void Assembler::jmpb_0(Label& L, const char* file, int line) {
@@ -6456,6 +6456,14 @@ void Assembler::xorb(Address dst, Register src) {
 void Assembler::xorw(Register dst, Register src) {
   (void)prefix_and_encode(dst->encoding(), src->encoding());
   emit_arith(0x33, 0xC0, dst, src);
+}
+
+void Assembler::xorw(Register dst, Address src) {
+  InstructionMark im(this);
+  emit_int8(0x66);
+  prefix(src, dst);
+  emit_int8(0x33);
+  emit_operand(dst, src, 0);
 }
 
 // AVX 3-operands scalar float-point arithmetic instructions
@@ -13340,17 +13348,6 @@ void Assembler::movsbq(Register dst, Address src) {
 void Assembler::movsbq(Register dst, Register src) {
   int encode = prefixq_and_encode(dst->encoding(), src->encoding());
   emit_int24(0x0F, (unsigned char)0xBE, (0xC0 | encode));
-}
-
-void Assembler::movslq(Register dst, int32_t imm32) {
-  // dbx shows movslq(rcx, 3) as movq     $0x0000000049000000,(%rbx)
-  // and movslq(r8, 3); as movl     $0x0000000048000000,(%rbx)
-  // as a result we shouldn't use until tested at runtime...
-  ShouldNotReachHere();
-  InstructionMark im(this);
-  int encode = prefixq_and_encode(dst->encoding());
-  emit_int8(0xC7 | encode);
-  emit_int32(imm32);
 }
 
 void Assembler::movslq(Address dst, int32_t imm32) {

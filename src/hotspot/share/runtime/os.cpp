@@ -930,13 +930,63 @@ bool os::print_function_and_library_name(outputStream* st,
 }
 
 ATTRIBUTE_NO_SANITIZE_ADDRESS("Memory is read raw here without any regard for objects' boundaries")
-ATTRIBUTE_NO_ASAN static void print_hex_readable_pointer(outputStream* st, address p,
-                                                         int unitsize) {
-  switch (unitsize) {
-    case 1: st->print("%02x", *(u1*)p); break;
-    case 2: st->print("%04x", *(u2*)p); break;
-    case 4: st->print("%08x", *(u4*)p); break;
-    case 8: st->print("%016" FORMAT64_MODIFIER "x", *(u8*)p); break;
+ATTRIBUTE_NO_ASAN static bool read_safely_from(intptr_t* p, intptr_t* result) {
+  const intptr_t errval = 0x1717;
+  intptr_t i = SafeFetchN(p, errval);
+  if (i == errval) {
+    i = SafeFetchN(p, ~errval);
+    if (i == ~errval) {
+      return false;
+    }
+  }
+  (*result) = i;
+  return true;
+}
+
+static void print_hex_location(outputStream* st, address p, int unitsize) {
+  assert(is_aligned(p, unitsize), "Unaligned");
+  address pa = align_down(p, sizeof(intptr_t));
+#ifndef _LP64
+  // Special handling for printing qwords on 32-bit platforms
+  if (unitsize == 8) {
+    intptr_t i1, i2;
+    if (read_safely_from((intptr_t*)pa, &i1) &&
+        read_safely_from((intptr_t*)pa + 1, &i2)) {
+      const uint64_t value =
+        LITTLE_ENDIAN_ONLY((((uint64_t)i2) << 32) | i1)
+        BIG_ENDIAN_ONLY((((uint64_t)i1) << 32) | i2);
+      st->print("%016" FORMAT64_MODIFIER "x", value);
+    } else {
+      st->print_raw("????????????????");
+    }
+    return;
+  }
+#endif // 32-bit, qwords
+  intptr_t i = 0;
+  if (read_safely_from((intptr_t*)pa, &i)) {
+    // bytes:   CA FE BA BE DE AD C0 DE
+    // bytoff:   0  1  2  3  4  5  6  7
+    // LE bits:  0  8 16 24 32 40 48 56
+    // BE bits: 56 48 40 32 24 16  8  0
+    const int offset = (int)(p - (address)pa);
+    const int bitoffset =
+      LITTLE_ENDIAN_ONLY(offset * BitsPerByte)
+      BIG_ENDIAN_ONLY((int)((sizeof(intptr_t) - unitsize - offset) * BitsPerByte));
+    const int bitfieldsize = unitsize * BitsPerByte;
+    intptr_t value = bitfield(i, bitoffset, bitfieldsize);
+    switch (unitsize) {
+      case 1: st->print("%02x", (u1)value); break;
+      case 2: st->print("%04x", (u2)value); break;
+      case 4: st->print("%08x", (u4)value); break;
+      case 8: st->print("%016" FORMAT64_MODIFIER "x", (u8)value); break;
+    }
+  } else {
+    switch (unitsize) {
+      case 1: st->print_raw("??"); break;
+      case 2: st->print_raw("????"); break;
+      case 4: st->print_raw("????????"); break;
+      case 8: st->print_raw("????????????????"); break;
+    }
   }
 }
 
@@ -957,11 +1007,7 @@ void os::print_hex_dump(outputStream* st, address start, address end, int unitsi
   // Print out the addresses as if we were starting from logical_start.
   st->print(PTR_FORMAT ":   ", p2i(logical_p));
   while (p < end) {
-    if (is_readable_pointer(p)) {
-      print_hex_readable_pointer(st, p, unitsize);
-    } else {
-      st->print("%*.*s", 2*unitsize, 2*unitsize, "????????????????");
-    }
+    print_hex_location(st, p, unitsize);
     p += unitsize;
     logical_p += unitsize;
     cols++;
@@ -1871,14 +1917,18 @@ void os::pretouch_memory(void* start, void* end, size_t page_size) {
     // We're doing concurrent-safe touch and memory state has page
     // granularity, so we can touch anywhere in a page.  Touch at the
     // beginning of each page to simplify iteration.
-    char* cur = static_cast<char*>(align_down(start, page_size));
+    void* first = align_down(start, page_size);
     void* last = align_down(static_cast<char*>(end) - 1, page_size);
-    assert(cur <= last, "invariant");
-    // Iterate from first page through last (inclusive), being careful to
-    // avoid overflow if the last page abuts the end of the address range.
-    for ( ; true; cur += page_size) {
-      Atomic::add(reinterpret_cast<int*>(cur), 0, memory_order_relaxed);
-      if (cur >= last) break;
+    assert(first <= last, "invariant");
+    const size_t pd_page_size = pd_pretouch_memory(first, last, page_size);
+    if (pd_page_size > 0) {
+      // Iterate from first page through last (inclusive), being careful to
+      // avoid overflow if the last page abuts the end of the address range.
+      last = align_down(static_cast<char*>(end) - 1, pd_page_size);
+      for (char* cur = static_cast<char*>(first); /* break */; cur += pd_page_size) {
+        Atomic::add(reinterpret_cast<int*>(cur), 0, memory_order_relaxed);
+        if (cur >= last) break;
+      }
     }
   }
 }
