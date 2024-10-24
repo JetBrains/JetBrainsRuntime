@@ -131,6 +131,7 @@ java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java 820420
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java 8204200,JBR-811 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.java 8204200,JBR-811 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java 8204200,JBR-811 windows-all,macosx-all,linux-all
+java/awt/event/MouseWheelEvent/WheelModifier/MouseWheelOnBackgroundComponent.java JBR-7772,8342800 linux-all
 java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java JBR-94 windows-x64,linux-all
 
 java/awt/event/StressTest/MouseAndKeyEventStressTest.java JBR-6479 generic-all
@@ -378,6 +379,7 @@ java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java JBR-5799 windows-all
 java/awt/Choice/ChoiceFocusLostTest.java JBR-5799 windows-x64
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java 6849371,6849371,JBR-5210 macosx-all,linux-all,windows-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857 macosx-all
+java/awt/Choice/NonFocusablePopupMenuTest.java JBR-7785 linux-5.18.2-arch1-1
 java/awt/ColorClass/AlphaColorTest.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Component/F10TopToplevel/F10TopToplevel.java JBR-5687 linux-all
 java/awt/Component/GetScreenLocTest/GetScreenLocTest.java 4753654 generic-all
@@ -621,10 +623,10 @@ java/awt/Modal/OnTop/OnTopAppModal3Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal4Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal6Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopDocModal1Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopDocModal2Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopDocModal3Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopDocModal4Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
+java/awt/Modal/OnTop/OnTopDocModal1Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopDocModal2Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopDocModal3Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopDocModal4Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Modal/OnTop/OnTopDocModal5Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/OnTop/OnTopDocModal6Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/OnTop/OnTopModal1Test.java 8253184 windows-all
@@ -633,11 +635,11 @@ java/awt/Modal/OnTop/OnTopModal3Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopModal4Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopModal6Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopModeless1Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopModeless2Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopModeless3Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopModeless4Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopModeless5Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
+java/awt/Modal/OnTop/OnTopModeless1Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopModeless2Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopModeless3Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopModeless4Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopModeless5Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Modal/OnTop/OnTopModeless6Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/OnTop/OnTopTKModal1Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal2Test.java 8253184 windows-all
@@ -645,7 +647,7 @@ java/awt/Modal/OnTop/OnTopTKModal3Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal4Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal6Test.java 8253184 windows-all
-java/awt/List/ActionEventTest/ActionEventTest.java JBR-5799 windows-x64
+java/awt/List/ActionEventTest/ActionEventTest.java JBR-5799,JBR-7518 windows-x64,windows-aarch64
 java/awt/List/EmptyListEventTest/EmptyListEventTest.java JBR-5387 linux-all
 java/awt/List/FirstItemRemoveTest/FirstItemRemoveTest.java JBR-86 windows-x64
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711 linux-all
@@ -696,6 +698,7 @@ java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568,JBR-5583 macosx-a
 java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,JBR-5915 macosx-all,linux-all
 java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java 8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java 8233568 macosx-all
+java/awt/event/KeyEvent/FunctionKeyTest.java JBR-7770,JBR-7771 macosx-all,windows-all,linux-all
 java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720,JBR-6931 windows-all,linux-aarch64
 java/awt/Paint/bug8024864.java JBR-6544 generic-all
 java/awt/Paint/ComponentIsNotDrawnAfterRemoveAddTest/ComponentIsNotDrawnAfterRemoveAddTest.java 8253184,JBR-6844 windows-all,linux-all
@@ -1347,6 +1350,7 @@ jb/javax/swing/JPopupMenu/JPopupMenuOutOfWindowTest.java JBR-6682 windows-all,li
 
 jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984 macosx-all
+jb/java/awt/Window/RestoreFromFullScreen.java JBR-7764 linux-all
 jb/java/awt/Window/ZOrderOnModalDialogActivation.java JBR-5714 windows-all
 
 jb/java/jcef/MouseEventTest.java JBR-4908 linux-all
