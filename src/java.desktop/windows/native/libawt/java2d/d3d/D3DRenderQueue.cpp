@@ -70,6 +70,7 @@ D3DRQ_SwapBuffers(D3DPipelineManager *pMgr, D3DSDOps *d3dsdo,
     J2dTraceLn4(J2D_TRACE_VERBOSE, "  x1=%d y1=%d x2=%d y2=%d",
                 x1, y1, x2, y2);
 
+    RETURN_STATUS_IF_NULL(pMgr, E_FAIL);
     RETURN_STATUS_IF_NULL(d3dsdo, E_FAIL);
     RETURN_STATUS_IF_NULL(d3dsdo->pResource, E_FAIL);
     RETURN_STATUS_IF_NULL(pSwapChain=d3dsdo->pResource->GetSwapChain(), E_FAIL);
