@@ -696,13 +696,13 @@ D3DVertexCacher::DrawTexture(float  x1, float  y1, float  x2, float  y2,
 
 HRESULT D3DVertexCacher::Render(int actionType)
 {
-    J2DLVERTEX *lpVert;
+    J2DLVERTEX *lpVert = NULL;
     HRESULT res;
     DWORD dwLockFlags;
     UINT pendingVertices = firstUnusedVertex - firstPendingVertex;
 
     // nothing to render
-    if (pendingVertices == 0) {
+    if (pendingVertices == 0 || lpD3DVertexBuffer == NULL || lpD3DDevice == NULL) {
         if (actionType == RESET_ACTION) {
             firstPendingBatch = 0;
             firstPendingVertex = 0;
@@ -724,7 +724,7 @@ HRESULT D3DVertexCacher::Render(int actionType)
     if (SUCCEEDED(res =
         lpD3DVertexBuffer->Lock((UINT)firstPendingVertex*sizeof(J2DLVERTEX),
                                 (UINT)pendingVertices*sizeof(J2DLVERTEX),
-                                (void**)&lpVert, dwLockFlags)))
+                                (void**)&lpVert, dwLockFlags)) && lpVert != NULL)
     {
         // copy only new vertices
         memcpy((void *)lpVert,
