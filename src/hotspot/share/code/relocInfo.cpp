@@ -149,8 +149,7 @@ void RelocIterator::initialize(CompiledMethod* nm, address begin, address limit)
 
 RelocIterator::RelocIterator(CodeSection* cs, address begin, address limit) {
   initialize_misc();
-  assert((cs->locs_start() != nullptr) && (cs->locs_end() != nullptr) ||
-         (cs->locs_start() == nullptr) && (cs->locs_end() == nullptr), "valid start and end pointer");
+  assert(((cs->locs_start() != nullptr) && (cs->locs_end() != nullptr)), "valid start and end pointer");
   _current = cs->locs_start()-1;
   _end     = cs->locs_end();
   _addr    = cs->start();
@@ -396,6 +395,14 @@ void CallRelocation::fix_relocation_after_move(const CodeBuffer* src, CodeBuffer
   pd_set_call_destination(callee);
 }
 
+
+#ifdef USE_TRAMPOLINE_STUB_FIX_OWNER
+void trampoline_stub_Relocation::fix_relocation_after_move(const CodeBuffer* src, CodeBuffer* dest) {
+  // Finalize owner destination only for nmethods
+  if (dest->blob() != nullptr) return;
+  pd_fix_owner_after_move();
+}
+#endif
 
 //// pack/unpack methods
 

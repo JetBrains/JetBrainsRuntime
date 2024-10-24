@@ -1641,16 +1641,17 @@ void InstanceKlass::call_class_initializer(TRAPS) {
 
 void InstanceKlass::mask_for(const methodHandle& method, int bci,
   InterpreterOopMap* entry_for) {
-  // Lazily create the _oop_map_cache at first request
-  // Lock-free access requires load_acquire.
+  // Lazily create the _oop_map_cache at first request.
+  // Load_acquire is needed to safely get instance published with CAS by another thread.
   OopMapCache* oop_map_cache = Atomic::load_acquire(&_oop_map_cache);
   if (oop_map_cache == nullptr) {
-    MutexLocker x(OopMapCacheAlloc_lock);
-    // Check if _oop_map_cache was allocated while we were waiting for this lock
-    if ((oop_map_cache = _oop_map_cache) == nullptr) {
-      oop_map_cache = new OopMapCache();
-      // Ensure _oop_map_cache is stable, since it is examined without a lock
-      Atomic::release_store(&_oop_map_cache, oop_map_cache);
+    // Try to install new instance atomically.
+    oop_map_cache = new OopMapCache();
+    OopMapCache* other = Atomic::cmpxchg(&_oop_map_cache, (OopMapCache*)nullptr, oop_map_cache);
+    if (other != nullptr) {
+      // Someone else managed to install before us, ditch local copy and use the existing one.
+      delete oop_map_cache;
+      oop_map_cache = other;
     }
   }
   // _oop_map_cache is constant after init; lookup below does its own locking.
@@ -3691,38 +3692,31 @@ void InstanceKlass::print_on(outputStream* st) const {
     }
   }
   st->print(BULLET"method ordering:   "); method_ordering()->print_value_on(st);      st->cr();
-  st->print(BULLET"default_methods:   "); default_methods()->print_value_on(st);      st->cr();
-  if (Verbose && default_methods() != nullptr) {
-    Array<Method*>* method_array = default_methods();
-    for (int i = 0; i < method_array->length(); i++) {
-      st->print("%d : ", i); method_array->at(i)->print_value(); st->cr();
+  if (default_methods() != nullptr) {
+    st->print(BULLET"default_methods:   "); default_methods()->print_value_on(st);    st->cr();
+    if (Verbose) {
+      Array<Method*>* method_array = default_methods();
+      for (int i = 0; i < method_array->length(); i++) {
+        st->print("%d : ", i); method_array->at(i)->print_value(); st->cr();
+      }
     }
   }
-  if (default_vtable_indices() != nullptr) {
-    st->print(BULLET"default vtable indices:   "); default_vtable_indices()->print_value_on(st);       st->cr();
-  }
+  print_on_maybe_null(st, BULLET"default vtable indices:   ", default_vtable_indices());
   st->print(BULLET"local interfaces:  "); local_interfaces()->print_value_on(st);      st->cr();
   st->print(BULLET"trans. interfaces: "); transitive_interfaces()->print_value_on(st); st->cr();
   st->print(BULLET"constants:         "); constants()->print_value_on(st);         st->cr();
-  if (class_loader_data() != nullptr) {
-    st->print(BULLET"class loader data:  ");
-    class_loader_data()->print_value_on(st);
-    st->cr();
-  }
-  if (source_file_name() != nullptr) {
-    st->print(BULLET"source file:       ");
-    source_file_name()->print_value_on(st);
-    st->cr();
-  }
+
+  print_on_maybe_null(st, BULLET"class loader data:  ", class_loader_data());
+  print_on_maybe_null(st, BULLET"source file:       ", source_file_name());
   if (source_debug_extension() != nullptr) {
     st->print(BULLET"source debug extension:       ");
     st->print("%s", source_debug_extension());
     st->cr();
   }
-  st->print(BULLET"class annotations:       "); class_annotations()->print_value_on(st); st->cr();
-  st->print(BULLET"class type annotations:  "); class_type_annotations()->print_value_on(st); st->cr();
-  st->print(BULLET"field annotations:       "); fields_annotations()->print_value_on(st); st->cr();
-  st->print(BULLET"field type annotations:  "); fields_type_annotations()->print_value_on(st); st->cr();
+  print_on_maybe_null(st, BULLET"class annotations:       ", class_annotations());
+  print_on_maybe_null(st, BULLET"class type annotations:  ", class_type_annotations());
+  print_on_maybe_null(st, BULLET"field annotations:       ", fields_annotations());
+  print_on_maybe_null(st, BULLET"field type annotations:  ", fields_type_annotations());
   {
     bool have_pv = false;
     // previous versions are linked together through the InstanceKlass
@@ -3737,16 +3731,10 @@ void InstanceKlass::print_on(outputStream* st) const {
     if (have_pv) st->cr();
   }
 
-  if (generic_signature() != nullptr) {
-    st->print(BULLET"generic signature: ");
-    generic_signature()->print_value_on(st);
-    st->cr();
-  }
+  print_on_maybe_null(st, BULLET"generic signature: ", generic_signature());
   st->print(BULLET"inner classes:     "); inner_classes()->print_value_on(st);     st->cr();
   st->print(BULLET"nest members:     "); nest_members()->print_value_on(st);     st->cr();
-  if (record_components() != nullptr) {
-    st->print(BULLET"record components:     "); record_components()->print_value_on(st);     st->cr();
-  }
+  print_on_maybe_null(st, BULLET"record components:     ", record_components());
   st->print(BULLET"permitted subclasses:     "); permitted_subclasses()->print_value_on(st);     st->cr();
   if (java_mirror() != nullptr) {
     st->print(BULLET"java mirror:       ");

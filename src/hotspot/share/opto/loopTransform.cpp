@@ -2046,6 +2046,12 @@ bool IdealLoopTree::is_invariant(Node* n) const {
 // to the new stride.
 void PhaseIdealLoop::update_main_loop_assertion_predicates(Node* ctrl, CountedLoopNode* loop_head, Node* init,
                                                            const int stride_con) {
+  if (init->is_CastII()) {
+    // skip over the cast added by PhaseIdealLoop::cast_incr_before_loop() when pre/post/main loops are created because
+    // it can get in the way of type propagation
+    assert(init->as_CastII()->carry_dependency() && loop_head->skip_predicates() == init->in(0), "casted iv phi from pre loop expected");
+    init = init->in(1);
+  }
   Node* entry = ctrl;
   Node* prev_proj = ctrl;
   LoopNode* outer_loop_head = loop_head->skip_strip_mined();
@@ -2326,6 +2332,8 @@ void PhaseIdealLoop::do_unroll(IdealLoopTree *loop, Node_List &old_new, bool adj
     // can edit it's inputs directly.  Hammer in the new limit for the
     // minimum-trip guard.
     assert(opaq->outcnt() == 1, "");
+    // Notify limit -> opaq -> CmpI, it may constant fold.
+    _igvn.add_users_to_worklist(opaq->in(1));
     _igvn.replace_input_of(opaq, 1, new_limit);
   }
 
@@ -3413,7 +3421,6 @@ void IdealLoopTree::adjust_loop_exit_prob(PhaseIdealLoop *phase) {
   }
 }
 
-#ifdef ASSERT
 static CountedLoopNode* locate_pre_from_main(CountedLoopNode* main_loop) {
   assert(!main_loop->is_main_no_pre_loop(), "Does not have a pre loop");
   Node* ctrl = main_loop->skip_predicates();
@@ -3426,7 +3433,6 @@ static CountedLoopNode* locate_pre_from_main(CountedLoopNode* main_loop) {
   assert(pre_loop->is_pre_loop(), "No pre loop found");
   return pre_loop;
 }
-#endif
 
 // Remove the main and post loops and make the pre loop execute all
 // iterations. Useful when the pre loop is found empty.
@@ -3454,7 +3460,11 @@ void IdealLoopTree::remove_main_post_loops(CountedLoopNode *cl, PhaseIdealLoop *
     return;
   }
 
-  assert(locate_pre_from_main(main_head) == cl, "bad main loop");
+  // We found a main-loop after this pre-loop, but they might not belong together.
+  if (locate_pre_from_main(main_head) != cl) {
+    return;
+  }
+
   Node* main_iff = main_head->skip_predicates()->in(0);
 
   // Remove the Opaque1Node of the pre loop and make it execute all iterations
