@@ -38,8 +38,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
 import static java.lang.invoke.MethodHandleStatics.UNSAFE;
@@ -49,13 +47,6 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 final class VarHandles {
-
-    static ClassValue<ConcurrentMap<Integer, MethodHandle>> ADDRESS_FACTORIES = new ClassValue<>() {
-        @Override
-        protected ConcurrentMap<Integer, MethodHandle> computeValue(Class<?> type) {
-            return new ConcurrentHashMap<>();
-        }
-    };
 
     static VarHandle makeFieldHandle(MemberName f, Class<?> refc, Class<?> type, boolean isWriteAllowedOnFinalFields) {
         if (!f.isStatic()) {
