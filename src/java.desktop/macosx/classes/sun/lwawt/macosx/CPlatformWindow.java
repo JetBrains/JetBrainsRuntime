@@ -1232,7 +1232,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             // System-dependent appearance optimization.
             if ((byUser && !oldB.getSize().equals(nativeBounds.getSize()))
                     || isFullScreenAnimationOn) {
-                flushBuffers();
+                //flushBuffers();
             }
         }
     }
