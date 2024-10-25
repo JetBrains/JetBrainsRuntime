@@ -763,6 +763,11 @@ tools/jlink/plugins/CompressorPluginTest.java                   8247407 generic-
 
 ############################################################################
 
+# core_svc
+tools/launcher/TestXcheckJNIWarnings.java#jdwp-agent   8296936 generic-all
+
+############################################################################
+
 # jdk_jdi
 
 com/sun/jdi/RepStep.java                                        8043571 generic-all
