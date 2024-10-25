@@ -1032,13 +1032,20 @@ WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surf
         // cancel any associated pending callbacks:
         CancelFrameCallback(manager);
         if (wl_surface != NULL) {
-            // Must send whatever there is in the buffer right now, at a minimum
-            // in order to associate the surface with a buffer and make it appear
+            // If there's already something drawn in the buffer, let's send it right now,
+            // at a minimum in order to associate the surface with a buffer and make it appear
             // on the screen. Normally this would happen in WLSBM_SurfaceCommit(),
-            // but the Java side may have already drawn and committed something and
+            // but the Java side may have already drawn and committed everything it wanted and
             // will not commit anything new for a while, in which case the surface
             // may never get associated with a buffer and the window will never appear.
-            TrySendShowBufferToWayland(manager, true);
+            if (manager->bufferForDraw.damageList != NULL) {
+                WLBufferTrace(manager, "WLSBM_SurfaceAssign: surface has damage, will try to send it now");
+                TrySendShowBufferToWayland(manager, true);
+            } else {
+                WLBufferTrace(manager, "WLSBM_SurfaceAssign: no damage, will wait for WLSBM_SurfaceCommit()");
+                // The next commit must associate the surface with a buffer, so set the flag:
+                manager->sendBufferASAP = true;
+            }
         } else {
             ResetBuffers(manager);
         }
