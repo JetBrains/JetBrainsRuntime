@@ -104,8 +104,14 @@ public class RuntimeArguments {
 
     public static void main(String... expected) {
         String[] vmArgs = VM.getRuntimeArguments();
-        if (!Arrays.equals(vmArgs, expected)) {
-            throw new RuntimeException(Arrays.toString(vmArgs) +
+        // JVMInit() passes awt.toolkit.name on Linux to make splash screen work
+        // with dual toolkits on the platform. Ignore that option.
+        String[] filteredArgs = Arrays.asList(vmArgs)
+                .stream()
+                .filter(it -> !it.startsWith("-Dawt.toolkit.name"))
+                .toArray(String[]::new);
+        if (!Arrays.equals(filteredArgs, expected)) {
+            throw new RuntimeException(Arrays.toString(filteredArgs) +
                 " != " + Arrays.toString(expected));
         }
     }
