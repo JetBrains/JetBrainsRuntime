@@ -125,6 +125,7 @@ java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogT
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Mouse/EnterExitEvents/DragWindowTest.java 8253184,JBR-5710 windows-all,linux-all
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275,JBR-5510 macosx-all,linux-5.18.2-arch1-1
+java/awt/TextArea/UsingWithMouse/SelectionAutoscrollTest.java JBR-7779 linux-all
 
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-6697 linux-aarch64
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-6485 linux-all
