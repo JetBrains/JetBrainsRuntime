@@ -640,7 +640,7 @@ java/awt/Modal/OnTop/OnTopModeless2Test.java 8253184,JBR-5510,JBR-7778,8342800 w
 java/awt/Modal/OnTop/OnTopModeless3Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Modal/OnTop/OnTopModeless4Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Modal/OnTop/OnTopModeless5Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
-java/awt/Modal/OnTop/OnTopModeless6Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
+java/awt/Modal/OnTop/OnTopModeless6Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Modal/OnTop/OnTopTKModal1Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal2Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal3Test.java 8253184 windows-all
@@ -1039,6 +1039,7 @@ javax/swing/JSplitPane/4885629/bug4885629.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JTabbedPane/4361477/bug4361477.java JBR-5932 linux-all
 javax/swing/JTabbedPane/8007563/Test8007563.java 8051591 generic-all
 javax/swing/JTabbedPane/4624207/bug4624207.java 8064922,8197552,JBR-6235 macosx-all,windows-all,linux-all 8064922:macosx-all, 8197552:windows-all
+javax/swing/JTabbedPane/bug4703690.java JBR-7815,JBR-7816 linux-x64,linux-aarch64
 javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java 8253184,windows-all
 javax/swing/JToggleButton/TestSelectedKey.java JBR-5846 windows-all
 javax/swing/JToolBar/4529206/bug4529206.java JBR-5387 linux-all
@@ -1293,6 +1294,7 @@ jb/java/awt/Font/font430.sh                                                     
 jb/java/awt/Font/Font467.java                                                       JBR-3960 generic-all
 jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                    JBR-4207 windows-all
 jb/java/awt/Toolkit/AWTThreadingTest.java                                           JBR-4350 macosx-all
+jb/java/awt/Toolkit/DetectingOSThemeTest.java JBR-7135 linux-all
 jb/java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java                                JBR-4896,JBR-5163 macosx-all,
 
 java/awt/Dialog/NonResizableDialogSysMenuResize/NonResizableDialogSysMenuResize.java JBR-4250 windows-all
@@ -1332,6 +1334,8 @@ javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
 jb/java/jcef/HandleJSQueryTest3314.sh JBR-4866 linux-all
 jb/java/jcef/HwFacadeWindowNoFrontTest.java
 
+jb/sun/awt/macos/InputMethodTest/ChineseCapsLockTest.java JBR-7242 macosx-all
+jb/sun/awt/macos/InputMethodTest/JapaneseReconvertTest.java JBR-7172,JBR-7243 macosx-all
 jb/sun/awt/macos/KeyPressAndHoldTest.java JBR-4901 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_ABC.java JBR-4933 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_FRENCH_PC.java JBR-4933 macosx-all

@@ -12,6 +12,7 @@ jb/applications/ctw/plugins_keymap_visualStudio_lib_keymap_visualStudio.java JBR
 jb/applications/ctw/plugins_Kotlin_kotlinc_lib_kotlin_annotations_jvm_sources.java JBR-7360 linux-all,windows-all,macosx-all
 jb/applications/ctw/plugins_Kotlin_kotlinc_lib_kotlin_compiler.java JBR-7374 generic-all
 jb/applications/ctw/plugins_Kotlin_kotlinc_lib_kotlin_reflect_sources.java JBR-7360 linux-all,windows-all,macosx-all
+jb/applications/ctw/plugins_Kotlin_kotlinc_lib_kotlin_runner.java JBR-7361 JBR-7361 linux-all,windows-all,macosx-all
 jb/applications/ctw/plugins_Kotlin_kotlinc_lib_kotlin_script_runtime_sources.java JBR-7360 linux-all,windows-all,macosx-all
 jb/applications/ctw/plugins_Kotlin_kotlinc_lib_kotlin_stdlib_jdk7_sources.java JBR-7360 linux-all,windows-all,macosx-all
 jb/applications/ctw/plugins_Kotlin_kotlinc_lib_kotlin_stdlib_jdk7.java JBR-7360 linux-all,windows-all,macosx-all
