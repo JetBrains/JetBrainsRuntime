@@ -148,6 +148,7 @@ java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java 820420
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.java JBR-811 windows-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java 8204200 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java JBR-811 windows-all,linux-all
+java/awt/event/MouseWheelEvent/WheelModifier/MouseWheelOnBackgroundComponent.java JBR-7772,8342800 linux-all
 java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java 8169475 linux-all,windows-all
 java/awt/event/StressTest/MouseAndKeyEventStressTest.java JBR-6479 generic-all
 java/awt/FileDialog/8003399/bug8003399.java JBR-6930 windows-all
@@ -617,10 +618,10 @@ java/awt/Modal/OnTop/OnTopAppModal3Test.java 8198666,8253184 macosx-all,windows-
 java/awt/Modal/OnTop/OnTopAppModal4Test.java 8198666,8253184 macosx-all,windows-all
 java/awt/Modal/OnTop/OnTopAppModal5Test.java 8198666,8253184 macosx-all,windows-all
 java/awt/Modal/OnTop/OnTopAppModal6Test.java 8198666,8253184 macosx-all,windows-all
-java/awt/Modal/OnTop/OnTopDocModal1Test.java 8198666,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopDocModal2Test.java 8198666,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopDocModal3Test.java 8198666,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopDocModal4Test.java 8198666,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
+java/awt/Modal/OnTop/OnTopDocModal1Test.java 8198666,8253184,JBR-5510,JBR-7778,8342800 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopDocModal2Test.java 8198666,8253184,JBR-5510,JBR-7778,8342800 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopDocModal3Test.java 8198666,8253184,JBR-5510,JBR-7778,8342800 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopDocModal4Test.java 8198666,8253184,JBR-5510,JBR-7778,8342800 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Modal/OnTop/OnTopDocModal5Test.java 8198666,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/OnTop/OnTopDocModal6Test.java 8198666,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/OnTop/OnTopModal1Test.java 8198666,8253184 macosx-all,windows-all
@@ -629,11 +630,11 @@ java/awt/Modal/OnTop/OnTopModal3Test.java 8198666,8253184 macosx-all,windows-all
 java/awt/Modal/OnTop/OnTopModal4Test.java 8198666,8253184 macosx-all,windows-all
 java/awt/Modal/OnTop/OnTopModal5Test.java 8198666,8253184 macosx-all,windows-all
 java/awt/Modal/OnTop/OnTopModal6Test.java 8198666,8253184 macosx-all,windows-all
-java/awt/Modal/OnTop/OnTopModeless1Test.java 8198666,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopModeless2Test.java 8198666,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopModeless3Test.java 8198666,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopModeless4Test.java 8198666,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
-java/awt/Modal/OnTop/OnTopModeless5Test.java 8198666,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
+java/awt/Modal/OnTop/OnTopModeless1Test.java 8198666,8253184,JBR-5510,JBR-7778,8342800 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopModeless2Test.java 8198666,8253184,JBR-5510,JBR-7778,8342800 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopModeless3Test.java 8198666,8253184,JBR-5510,JBR-7778,8342800 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopModeless4Test.java 8198666,8253184,JBR-5510,JBR-7778,8342800 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopModeless5Test.java 8198666,8253184,JBR-5510,JBR-7778,8342800 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/OnTop/OnTopModeless6Test.java 8198666,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/OnTop/OnTopTKModal1Test.java 8198666,8253184 macosx-all,windows-all
 java/awt/Modal/OnTop/OnTopTKModal2Test.java 8198666,8253184 macosx-all,windows-all
@@ -694,6 +695,7 @@ java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.java JBR-5210 window
 java/awt/FullScreen/8013581/bug8013581.java 8169471,JBR-80 macosx-all,windows-all
 java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java 8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java 8233568 macosx-all
+java/awt/event/KeyEvent/FunctionKeyTest.java JBR-7770,JBR-7771 macosx-all,windows-all,linux-all
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java 7185258,JBR-64 macosx-all,windows-all
 java/awt/event/SequencedEvent/MultipleContextsFunctionalTest.java 8271519 linux-all
 java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720,JBR-6931 windows-all,linux-aarch64
@@ -1062,6 +1064,7 @@ javax/swing/JRadioButton/4314194/bug4314194.java 8298153 linux-all
 javax/swing/JRootPane/4670486/bug4670486.java 8042381,8197552 macosx-all,windows-all
 javax/swing/JRootPane/DefaultButtonTest.java 8285635 windows-all,linux-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java JBR-5210 windows-all
+javax/swing/text/html/Map/bug4322891.java JBR-6638 windows-all
 javax/swing/text/html/StyleSheet/bug4936917.java 8277816,JBR-899,JBR-5510 windows-all,macosx-aarch64,linux-5.18.2-arch1-1
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-5779 linux-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8277816,8253184,JBR-5510 macosx-aarch64,windows-all,linux-5.18.2-arch1-1
@@ -1072,6 +1075,7 @@ javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java  8277816,JBR-5510 macosx-aarch64,linux-5.18.2-arch1-1
 javax/swing/JInternalFrame/8020708/bug8020708.java JBR-4879 windows-all
 javax/swing/JInternalFrame/8069348/bug8069348.java 8277816,8253184,JBR-900 macosx-aarch64,windows-all,linux-all
+javax/swing/JInternalFrame/InternalFrameBorderTest.java#id0 JBR-5799 windows-all
 javax/swing/reliability/TaskUndJFrameProperties.java JBR-6586 windows-x64
 javax/swing/SwingUtilities/7088744/bug7088744.java 8197552 windows-all
 javax/swing/ToolTipManager/Test6256140.java 8197552 windows-all
