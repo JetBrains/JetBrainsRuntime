@@ -5,6 +5,7 @@ java/awt/Debug/X11Trace.java JBR-5442 linux-all
 java/awt/EmbeddedFrame/GraphicsConfigTest/GraphicsConfigTest.java 8305515 linux-all
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-x64
 java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916,JBR-7141 linux-all,windows-all
+java/awt/Multiscreen/MultiScreenInsetsTest/MultiScreenInsetsTest.java JBR-7782 linux-x64
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-6058,JBR-6664 windows-all,linux-all,macosx-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531 macosx-all,linux-all
 java/awt/Focus/6981400/Test1.java 8029675,JBR-5510,JBR-6702 windows-all,macosx-all,linux-5.18.2-arch1-1,linux-all
@@ -24,6 +25,7 @@ java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-
 java/awt/Robot/NonEmptyErrorStream.java 8340330,JBR-5442,JBR-5510,JBR-5442 macosx-15.0,linux-5.18.2-arch1-1
 java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
 java/awt/Robot/SpuriousMouseEvents/SpuriousMouseEvents.java JBR-6572 linux-all
+java/awt/TextArea/UsingWithMouse/SelectionAutoscrollTest.java JBR-7822 linux-x64
 java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-6065 windows-all
 java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5442 linux-all
@@ -39,6 +41,7 @@ jb/java/awt/dnd/DnDScalingWithHIDPI/DnDScalingWithHIDPITest.java JBR-5442 linux-
 java/awt/Choice/PopdownGeneratesMouseEvents/PopdownGeneratesMouseEvents.java JBR-5510 linux-all
 java/awt/ColorClass/AlphaColorTest.java JBR-5510 linux-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java JBR-5210,JBR-5510 windows-all,linux-all
+java/awt/Dialog/DialogLocationTest.java JBR-7781 linux-x64
 java/awt/dnd/DnDTestWithHIDPI/DragTestWithHIDPI.java nobug linux-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java nobug linux-all
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all,linux-all

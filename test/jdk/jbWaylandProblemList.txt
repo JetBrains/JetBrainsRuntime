@@ -1,7 +1,10 @@
 # Fedora & ArchLinux (Wayland) & Ubuntu 21.04
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java         8279256 linux-all
 java/awt/event/KeyEvent/FunctionKeyTest.java JBR-7773 linux-all
+javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-7269 linux-all
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520 linux-all
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-7140 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-7530 linux-all
 javax/swing/JInternalFrame/bug5009724.java JBR-7087 linux-all
+javax/swing/JRadioButton/bug4823809.java JBR-7774 linux-all
+javax/swing/JTabbedPane/bug4703690.java JBR-7815,JBR-7816 linux-all
