@@ -48,6 +48,9 @@ static NSString *kbdLayout;
 // workaround for JBR-6704
 static unichar lastCtrlCombo;
 
+// Constant for keyman layouts
+#define KEYMAN_LAYOUT "keyman"
+
 @interface AWTView()
 @property (retain) CDropTarget *_dropTarget;
 @property (retain) CDragSource *_dragSource;
@@ -375,7 +378,7 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     fIsPressAndHold = fEnablePressAndHold && [event willBeHandledByComplexInputMethod] && fInputMethodLOCKABLE;
 
     fProcessingKeystroke = YES;
-    fKeyEventsNeeded = !fIsPressAndHold;
+    fKeyEventsNeeded = !fIsPressAndHold && ![(NSString *)kbdLayout containsString:@KEYMAN_LAYOUT];
 
     NSString *eventCharacters = [event characters];
     unsigned mods = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
@@ -1195,7 +1198,7 @@ static jclass jc_CInputMethod = NULL;
     // text, or 'text in progress'.  We also need to send the event if we get an insert text out of the blue!
     // (i.e., when the user uses the Character palette or Inkwell), or when the string to insert is a complex
     // Unicode value.
-    BOOL usingComplexIM = [self hasMarkedText] || !fProcessingKeystroke;
+    BOOL usingComplexIM = [self hasMarkedText] || !fProcessingKeystroke || [(NSString *)kbdLayout containsString:@KEYMAN_LAYOUT];
 
 #ifdef IM_DEBUG
     NSUInteger utf16Length = [useString lengthOfBytesUsingEncoding:NSUTF16StringEncoding];
