@@ -131,7 +131,6 @@ java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java 820420
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java 8204200,JBR-811 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.java 8204200,JBR-811 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java 8204200,JBR-811 windows-all,macosx-all,linux-all
-java/awt/event/MouseWheelEvent/WheelModifier/MouseWheelOnBackgroundComponent.java JBR-7772,8342800 linux-all
 java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java JBR-94 windows-x64,linux-all
 
 java/awt/event/StressTest/MouseAndKeyEventStressTest.java JBR-6479 generic-all
@@ -623,10 +622,6 @@ java/awt/Modal/OnTop/OnTopAppModal3Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal4Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal6Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopDocModal1Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
-java/awt/Modal/OnTop/OnTopDocModal2Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
-java/awt/Modal/OnTop/OnTopDocModal3Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
-java/awt/Modal/OnTop/OnTopDocModal4Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Modal/OnTop/OnTopDocModal5Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/OnTop/OnTopDocModal6Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/OnTop/OnTopModal1Test.java 8253184 windows-all
@@ -635,11 +630,6 @@ java/awt/Modal/OnTop/OnTopModal3Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopModal4Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopModal6Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopModeless1Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
-java/awt/Modal/OnTop/OnTopModeless2Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
-java/awt/Modal/OnTop/OnTopModeless3Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
-java/awt/Modal/OnTop/OnTopModeless4Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
-java/awt/Modal/OnTop/OnTopModeless5Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Modal/OnTop/OnTopModeless6Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/OnTop/OnTopTKModal1Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal2Test.java 8253184 windows-all
