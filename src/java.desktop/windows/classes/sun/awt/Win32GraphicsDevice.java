@@ -103,13 +103,14 @@ public class Win32GraphicsDevice extends GraphicsDevice implements
         @SuppressWarnings("removal")
         String nopixfmt = java.security.AccessController.doPrivileged(
             new sun.security.action.GetPropertyAction("sun.awt.nopixfmt"));
-        pfDisabled = (nopixfmt != null);
+        pfDisabled = (nopixfmt != null || isRemoteConnection() == 1);
         initIDs();
     }
 
     private static native void initIDs();
 
     private native void initDevice(int screen);
+    private static native int isRemoteConnection();
     private static native void initNativeScale(int screen);
     private static native void setNativeScale(int screen, float scaleX, float scaleY);
     private static native float getNativeScaleX(int screen);
