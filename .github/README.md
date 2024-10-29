@@ -24,7 +24,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 
 | IDE Version | Latest JBR                                                                                              | Date Released |
 |-------------|---------------------------------------------------------------------------------------------------------|---------------|
-| 2024.3      | [21.0.4-b631.2](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.4b631.2)    | 15-Oct-2024   |
+| 2024.3      | [21.0.4-b631.8](https://github.com/JetBrains/JetBrainsRuntime/releases/edit/jbr-release-21.0.5b631.8)   | 29-Oct-2024   |
 | 2024.2      | [21.0.4-b509.26](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.4b509.26)  | 08-Oct-2024   |
 | 2024.1      | [21.0.2-b346.3](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.2b346.3)    | 30-Jan-2024   |
 
