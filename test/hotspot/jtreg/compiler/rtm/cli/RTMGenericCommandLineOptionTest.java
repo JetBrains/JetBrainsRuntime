@@ -145,7 +145,9 @@ public abstract class RTMGenericCommandLineOptionTest {
             CommandLineOptionTest.verifySameJVMStartup(
                     new String[] { experimentalOptionError },
                     new String[] { errorMessage }, shouldFailMessage,
-                    shouldFailMessage, ExitCode.FAIL, optionValue);
+                    shouldFailMessage, ExitCode.FAIL,
+                    "-XX:-UnlockExperimentalVMOptions",
+                    optionValue);
             // verify that it could be passed if experimental options
             // are unlocked
             CommandLineOptionTest.verifySameJVMStartup(null,
