@@ -134,15 +134,7 @@ public class RunBasic {
         opts.add("test/" + clsName);
         opts.add("ldap://" + HOST_NAME + "/dc=ie,dc=oracle,dc=com");
         System.out.println("Running with the '" + desc + "' module...");
-<<<<<<< HEAD
-        runJava("-Dtest.src=" + TEST_SRC, "-p", "mods", "-m", "test/" + clsName,
-                "ldap://" + HOST_NAME + "/dc=ie,dc=oracle,dc=com");
-||||||| 82c330b464
-        runJava("-Dtest.src=" + TEST_SRC, "-p", "mods", "-m", "test/" + clsName,
-                "ldap://localhost/dc=ie,dc=oracle,dc=com");
-=======
         runJava(opts.toArray(String[]::new));
->>>>>>> cee8535a9d3de8558b4b5028d68e397e508bef71
     }
 
     private static void runJava(String... opts) throws Throwable {
