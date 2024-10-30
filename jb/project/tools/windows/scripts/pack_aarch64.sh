@@ -29,8 +29,11 @@ function pack_jbr {
   __root_dir=${__bundle_name}-${JBSDK_VERSION}-windows-aarch64-${fastdebug_infix}b${build_number}
 
   echo Creating $JBR.tar.gz ...
-
+  chmod -R ug+rwx,o+rx ${BASE_DIR}/$__root_dir
   /usr/bin/tar -czf $JBR.tar.gz -C $BASE_DIR $__root_dir || do_exit $?
+
+  echo Creating $JBR.zip ...
+  /usr/bin/zip -r $JBR.zip $__root_dir || do_exit $?
 }
 
 [ "$bundle_type" == "nomod" ] && bundle_type=""
