@@ -60,12 +60,14 @@ public class TestUseRTMForStackLocksOptionOnUnsupportedConfig
                 new String[] { experimentalOptionError }, null,
                 shouldFailMessage, shouldFailMessage + "%nError message "
                         + "should be shown", ExitCode.FAIL,
+                "-XX:-UnlockExperimentalVMOptions",
                 prepareOptionValue("true"));
 
         CommandLineOptionTest.verifySameJVMStartup(
                 new String[]{ experimentalOptionError }, null,
                 shouldFailMessage, shouldFailMessage + "%nError message "
                         + "should be shown", ExitCode.FAIL,
+                "-XX:-UnlockExperimentalVMOptions",
                 prepareOptionValue("false"));
 
         String shouldPassMessage = String.format("VM option '%s' is "
