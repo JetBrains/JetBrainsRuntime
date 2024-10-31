@@ -6,4 +6,6 @@ layout(location = 0) out vec4 out_Color;
 
 void main() {
     out_Color = texture(u_TexSampler, in_TexCoord);
+    // TODO: Temporary fix of unexpected transparency with blit operations
+    out_Color.a = 1.0;
 }
