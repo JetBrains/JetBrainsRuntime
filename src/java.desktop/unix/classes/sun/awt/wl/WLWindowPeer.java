@@ -180,7 +180,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
         Window nativeFocusTarget = getNativelyFocusableOwnerOrSelf(window);
         if (nativeFocusTarget != null &&
                 WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow() == nativeFocusTarget) {
-            WLToolkit.postEvent(new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS));
+            WLToolkit.postPriorityEvent(new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS));
         }
     }
 }
