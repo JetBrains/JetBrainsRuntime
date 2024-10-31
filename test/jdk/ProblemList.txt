@@ -473,9 +473,6 @@ java/beans/Introspector/8132566/OverrideUserDefPropertyInfoTest.java 8132565 gen
 
 java/beans/XMLEncoder/Test6570354.java 8015593 macosx-all
 
-# This test fails on macOS 14
-java/awt/Choice/SelectNewItemTest/SelectNewItemTest.java 8324782 macosx-all
-
 # Wayland related
 
 java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java 8280991 linux-x64
