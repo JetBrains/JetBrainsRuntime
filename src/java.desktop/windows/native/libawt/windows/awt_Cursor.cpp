@@ -528,11 +528,11 @@ static void GlobalSetCursor(void* pStruct) {
 /*
  * Class:     sun_awt_windows_WGlobalCursorManager
  * Method:    setCursor
- * Signature: (Ljava/awt/Cursor;Z)V
+ * Signature: (Ljava/awt/Component;Ljava/awt/Cursor;)V
  */
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WGlobalCursorManager_setCursor(JNIEnv *env, jobject,
-                            jobject cursor, jboolean u)
+                            jobject, jobject cursor, jboolean u)
 {
     TRY;
 
