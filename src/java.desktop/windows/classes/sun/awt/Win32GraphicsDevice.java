@@ -100,13 +100,14 @@ public class Win32GraphicsDevice extends GraphicsDevice implements
         // completely, sun.awt.nopixfmt should be set as well.  Apps which use
         // OpenGL w/ Java probably don't want to set this.
         String nopixfmt = System.getProperty("sun.awt.nopixfmt");
-        pfDisabled = (nopixfmt != null);
+        pfDisabled = (nopixfmt != null || isRemoteConnection() == 1);
         initIDs();
     }
 
     private static native void initIDs();
 
     private native void initDevice(int screen);
+    private static native int isRemoteConnection();
     private static native void initNativeScale(int screen);
     private static native void setNativeScale(int screen, float scaleX, float scaleY);
     private static native float getNativeScaleX(int screen);
