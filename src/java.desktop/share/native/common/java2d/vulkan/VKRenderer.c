@@ -775,8 +775,7 @@ void VKRenderer_FlushRenderPass(VKSDOps* surface) {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
             .renderPass = surface->renderPass->renderPass,
             .framebuffer = surface->renderPass->framebuffer,
-            .renderArea.offset = (VkOffset2D){0, 0},
-            .renderArea.extent = surface->image->extent,
+            .renderArea = (VkRect2D) {{0, 0}, surface->image->extent},
             .clearValueCount = 0,
             .pClearValues = NULL
     };
