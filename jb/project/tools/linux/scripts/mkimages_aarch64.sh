@@ -36,6 +36,7 @@ function do_configure {
     --with-boot-jdk="$BOOT_JDK" \
     --enable-cds=yes \
     --with-gtk-shell1-protocol=/gtk-shell.xml \
+    --with-vulkan \
     $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
