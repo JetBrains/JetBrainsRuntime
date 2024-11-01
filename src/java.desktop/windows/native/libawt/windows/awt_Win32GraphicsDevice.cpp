@@ -39,6 +39,7 @@
 
 #include <cmath> // ceil()
 #include <awt.h>
+#include <wtsapi32.h>
 #include "awt_Canvas.h"
 #include "awt_Win32GraphicsDevice.h"
 #include "awt_Window.h"
@@ -1102,6 +1103,43 @@ JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_getDefaultPixIDImpl
     hDC = NULL;
     return (jint)pixFmtID;
         CATCH_BAD_ALLOC_RET(0);
+}
+
+typedef BOOL (WINAPI *pfn_WTSQuerySessionInformationW)(HANDLE, DWORD, WTS_INFO_CLASS, LPWSTR*, DWORD*);
+typedef BOOL (WINAPI *pfn_WTSFreeMemory)(PVOID);
+
+/*
+ * Class:     sun_awt_Win32GraphicsDevice
+ * Method:    isRemoteConnection
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_isRemoteConnection
+    (JNIEnv *, jclass) {
+
+    TRY;
+
+    HMODULE libWtsapi32 = JDK_LoadSystemLibrary("Wtsapi32.dll");
+    CHECK_NULL_RETURN(libWtsapi32, JNI_ERR);
+    pfn_WTSQuerySessionInformationW fn_WTSQuerySessionInformationW = (pfn_WTSQuerySessionInformationW)
+            GetProcAddress(libWtsapi32, "WTSQuerySessionInformationW");
+    CHECK_NULL_RETURN(fn_WTSQuerySessionInformationW, JNI_ERR);
+    pfn_WTSFreeMemory fn_WTSFreeMemory = (pfn_WTSFreeMemory)
+            GetProcAddress(libWtsapi32, "WTSFreeMemory");
+    CHECK_NULL_RETURN(fn_WTSFreeMemory, JNI_ERR);
+
+    LPWSTR buffer = nullptr;
+    DWORD bufferLen = 0;
+    int res = fn_WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE, WTS_CURRENT_SESSION, WTSClientProtocolType,
+                                             &buffer, &bufferLen);
+    if (res > 0 && bufferLen > 0) {
+        USHORT protocol = (USHORT) *buffer;
+        bool isRemoteConnection = (protocol == WTS_PROTOCOL_TYPE_RDP) || (protocol == WTS_PROTOCOL_TYPE_ICA);
+        fn_WTSFreeMemory(buffer);
+        return isRemoteConnection;
+    }
+    return JNI_ERR;
+
+    CATCH_BAD_ALLOC_RET(JNI_ERR);
 }
 
 /*
