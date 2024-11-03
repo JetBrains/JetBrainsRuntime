@@ -38,9 +38,6 @@ BUILD_NAME="$(ls "$EXPLODED")"
 #sed -i '' s/BNDL/APPL/ $EXPLODED/$BUILD_NAME/Contents/Info.plist
 rm -f $EXPLODED/$BUILD_NAME/Contents/CodeResources
 rm "$INPUT_FILE"
-if test -d $EXPLODED/$BUILD_NAME/Contents/Home/jmods; then
-  mv $EXPLODED/$BUILD_NAME/Contents/Home/jmods $BACKUP_JMODS
-fi
 
 log "$INPUT_FILE extracted and removed"
 
@@ -108,9 +105,37 @@ set -e
 if [ "$NOTARIZE" = "yes" ]; then
   log "Notarizing..."
   "$SCRIPT_DIR/notarize.sh" "$PKG_NAME"
+
   log "Stapling..."
-  xcrun stapler staple "$APPLICATION_PATH" ||:
-  xcrun stapler staple "$PKG_NAME" ||:
+  appStaplerOutput=$(xcrun stapler staple "$APPLICATION_PATH")
+  if [ $? -ne 0 ]; then
+    log "Stapling application failed"
+    echo "$appStaplerOutput"
+    exit 1
+  else
+    echo "$appStaplerOutput"
+  fi
+
+  log "Stapling package..."
+  pkgStaplerOutput=$(xcrun stapler staple "$PKG_NAME")
+  if [ $? -ne 0 ]; then
+    log "Stapling package failed"
+    echo "$pkgStaplerOutput"
+    exit 1
+  else
+    echo "$pkgStaplerOutput"
+  fi
+
+  # Verify stapling
+  log "Verifying stapling..."
+  if ! stapler validate "$APPLICATION_PATH"; then
+    log "Stapling verification failed for application"
+    exit 1
+  fi
+  if ! stapler validate "$PKG_NAME"; then
+    log "Stapling verification failed for package"
+    exit 1
+  fi
 else
   log "Notarization disabled"
   log "Stapling disabled"
@@ -118,11 +143,6 @@ fi
 
 log "Zipping $BUILD_NAME to $INPUT_FILE ..."
 (
-  #cd "$EXPLODED"
-  #ditto -c -k --sequesterRsrc --keepParent "$BUILD_NAME" "../$INPUT_FILE"
-  if test -d $BACKUP_JMODS/jmods; then
-    mv $BACKUP_JMODS/jmods $APPLICATION_PATH/Contents/Home
-  fi
   if [[ "$APPLICATION_PATH" != "$EXPLODED/$BUILD_NAME" ]]; then
     mv $APPLICATION_PATH $EXPLODED/$BUILD_NAME
   else
