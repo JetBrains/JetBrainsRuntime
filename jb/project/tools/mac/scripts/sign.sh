@@ -55,6 +55,51 @@ for f in \
   fi
 done
 
+log "Signing jmod files"
+JMODS_DIR="$APPLICATION_PATH/Contents/Home/jmods"
+if [ -d "$JMODS_DIR" ]; then
+  for jmod_file in "$JMODS_DIR"/*.jmod; do
+    log "Processing $jmod_file"
+
+    TMP_DIR="$JMODS_DIR/tmp"
+    rm -rf "$TMP_DIR"
+    mkdir "$TMP_DIR"
+
+    log "Unzipping $jmod_file"    
+    "$BOOT_JDK/bin/jmod" extract --dir "$TMP_DIR" "$jmod_file" >/dev/null
+    log "Removing $jmod_file"
+    rm -f "$jmod_file"
+
+    log "Signing dylibs in $TMP_DIR"
+    find "$TMP_DIR" \
+      -type f \( -name "*.dylib" -o -name "*.so"-o -perm +111 -o -name jarsigner -o -name jdeps -o -name jpackageapplauncher -o -name jspawnhelper -o -name jar -o -name javap -o -name jdeprscan -o -name jfr -o -name rmiregistry -o -name java -o -name jhsdb  -o -name jstatd  -o -name jstatd -o -name jpackage -o -name keytool -o -name jmod -o -name jlink -o -name jimage -o -name jstack -o -name jcmd -o -name jps -o -name jmap -o -name jstat -o -name jinfo -o -name jshell -o -name jwebserver -o -name javac -o -name serialver -o -name jrunscript -o -name jdb -o -name jconsole -o -name javadoc \) \
+      -exec "$SIGN_UTILITY" --timestamp \
+      -v -s "$JB_DEVELOPER_CERT" --options=runtime --force \
+      --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
+
+    cmd="$BOOT_JDK/bin/jmod create --class-path $TMP_DIR/classes"
+
+    # Check each directory and add to the command if it exists
+    [ -d "$TMP_DIR/bin" ] && cmd="$cmd --cmds $TMP_DIR/bin"
+    [ -d "$TMP_DIR/conf" ] && cmd="$cmd --config $TMP_DIR/conf"
+    [ -d "$TMP_DIR/lib" ] && cmd="$cmd --libs $TMP_DIR/lib"
+    [ -d "$TMP_DIR/include" ] && cmd="$cmd --header-files $TMP_DIR/include"
+    [ -d "$TMP_DIR/legal" ] && cmd="$cmd --legal-notices $TMP_DIR/legal"
+    [ -d "$TMP_DIR/man" ] && cmd="$cmd --man-pages $TMP_DIR/man"
+
+    # Add the output file
+    cmd="$cmd $jmod_file"
+
+    # Execute the command
+    eval $cmd
+
+    log "Removing $TMP_DIR"
+    rm -rf "$TMP_DIR"
+  done
+else
+  echo "Directory '$JMODS_DIR' does not exist. Skipping signing of jmod files."
+fi
+
 log "Signing libraries in jars in $APPLICATION_PATH"
 
 # todo: add set -euo pipefail; into the inner sh -c
