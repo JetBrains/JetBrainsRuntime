@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,9 @@
 
 /*
  * @test
- * @bug 8164130
+ * @bug 8164130 8334332
  * @summary test IOException handling
- * @library ../lib
+ * @library ../lib /test/lib
  * @modules jdk.javadoc/jdk.javadoc.internal.tool
  * @build JavadocTester
  * @run main TestIOException
@@ -33,7 +33,18 @@
 
 import java.io.File;
 import java.io.FileWriter;
+import java.nio.file.Path;
+import java.nio.file.Files;
+import java.util.Map;
 
+import jtreg.SkippedException;
+
+/**
+ * Tests IO Exception handling.
+ *
+ * Update: Windows does not permit setting folder to be readonly.
+ * https://support.microsoft.com/en-us/help/326549/you-cannot-view-or-change-the-read-only-or-the-system-attributes-of-fo
+ */
 public class TestIOException extends JavadocTester {
 
     public static void main(String... args) throws Exception {
@@ -45,13 +56,13 @@ public class TestIOException extends JavadocTester {
     void testReadOnlyDirectory() {
         File outDir = new File("out1");
         if (!outDir.mkdir()) {
-            throw new Error("Cannot create directory");
+            throw skip(outDir, "Cannot create directory");
         }
         if (!outDir.setReadOnly()) {
-            throw new Error("could not set directory read-only");
+            throw skip(outDir, "could not set directory read-only");
         }
         if (outDir.canWrite()) {
-            throw new Error("directory is writable");
+            throw skip(outDir, "directory is writable");
         }
 
         try {
@@ -69,15 +80,15 @@ public class TestIOException extends JavadocTester {
     void testReadOnlyFile() throws Exception {
         File outDir = new File("out2");
         if (!outDir.mkdir()) {
-            throw new Error("Cannot create directory");
+            throw skip(outDir, "Cannot create directory");
         }
         File index = new File(outDir, "index.html");
         try (FileWriter fw = new FileWriter(index)) { }
         if (!index.setReadOnly()) {
-            throw new Error("could not set index read-only");
+            throw skip(index, "could not set index read-only");
         }
         if (index.canWrite()) {
-            throw new Error("index is writable");
+            throw skip(index, "index is writable");
         }
 
         try {
@@ -109,13 +120,13 @@ public class TestIOException extends JavadocTester {
         File outDir = new File("out3");
         File pkgOutDir = new File(outDir, "p");
         if (!pkgOutDir.mkdirs()) {
-            throw new Error("Cannot create directory");
+            throw skip(pkgOutDir, "Cannot create directory");
         }
         if (!pkgOutDir.setReadOnly()) {
-            throw new Error("could not set directory read-only");
+            throw skip(pkgOutDir, "could not set directory read-only");
         }
         if (pkgOutDir.canWrite()) {
-            throw new Error("directory is writable");
+            throw skip(pkgOutDir, "directory is writable");
         }
 
         // run javadoc and check results
@@ -153,13 +164,13 @@ public class TestIOException extends JavadocTester {
         File pkgOutDir = new File(outDir, "p");
         File docFilesOutDir = new File(pkgOutDir, "doc-files");
         if (!docFilesOutDir.mkdirs()) {
-            throw new Error("Cannot create directory");
+            throw skip(docFilesOutDir, "Cannot create directory");
         }
         if (!docFilesOutDir.setReadOnly()) {
-            throw new Error("could not set directory read-only");
+            throw skip(docFilesOutDir, "could not set directory read-only");
         }
         if (docFilesOutDir.canWrite()) {
-            throw new Error("directory is writable");
+            throw skip(docFilesOutDir, "directory is writable");
         }
 
         try {
@@ -173,6 +184,31 @@ public class TestIOException extends JavadocTester {
         } finally {
             setOutputDirectoryCheck(DirectoryCheck.EMPTY);
             docFilesOutDir.setWritable(true);
+        }
+    }
+
+    private Error skip(File f, String message) {
+        out.print(System.getProperty("user.name"));
+        out.println(f + ": " + message);
+        showAllAttributes(f.toPath());
+        throw new SkippedException(f + ": " + message);
+    }
+
+    private void showAllAttributes(Path p) {
+        showAttributes(p, "*");
+        showAttributes(p, "posix:*");
+        showAttributes(p, "dos:*");
+    }
+
+    private void showAttributes(Path p, String attributes) {
+        out.println("Attributes: " + attributes);
+        try {
+            Map<String, Object> map = Files.readAttributes(p, attributes);
+            map.forEach((n, v) -> out.format("  %-10s: %s%n", n, v));
+        } catch (UnsupportedOperationException e) {
+            out.println("Attributes not available " + attributes);
+        } catch (Throwable t) {
+            out.println("Error accessing attributes " + attributes + ": " + t);
         }
     }
 }
