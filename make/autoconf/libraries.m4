@@ -33,7 +33,6 @@ m4_include([lib-freetype.m4])
 m4_include([lib-hsdis.m4])
 m4_include([lib-std.m4])
 m4_include([lib-x11.m4])
-m4_include([lib-fontconfig.m4])
 m4_include([lib-speechd.m4])
 m4_include([lib-nvdacontrollerclient.m4])
 m4_include([lib-wayland.m4])
@@ -53,8 +52,9 @@ AC_DEFUN_ONCE([LIB_DETERMINE_DEPENDENCIES],
     NEEDS_LIB_WAYLAND=false
     SUPPORTS_LIB_VULKAN=false
   elif test "x$ENABLE_HEADLESS_ONLY" = xtrue; then
-    # No X11 support needed when building headless only
-    NEEDS_LIB_X11=false
+    # All other instances need X11, even if building headless only, libawt still
+    # needs X11 headers.
+    NEEDS_LIB_X11=true
     NEEDS_LIB_SPEECHD=false
     NEEDS_LIB_WAYLAND=false
     SUPPORTS_LIB_VULKAN=false
