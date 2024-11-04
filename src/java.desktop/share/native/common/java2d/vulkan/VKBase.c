@@ -32,6 +32,14 @@
 #include "VKRenderer.h"
 #include "VKTexturePool.h"
 
+// For old Vulkan headers - define version-related macros.
+#ifndef VK_MAKE_API_VERSION
+#   define VK_MAKE_API_VERSION(variant, major, minor, patch) VK_MAKE_VERSION(major, minor, patch)
+#   define VK_API_VERSION_MAJOR(version) VK_VERSION_MAJOR(version)
+#   define VK_API_VERSION_MINOR(version) VK_VERSION_MINOR(version)
+#   define VK_API_VERSION_PATCH(version) VK_VERSION_PATCH(version)
+#endif
+
 #define VULKAN_DLL JNI_LIB_NAME("vulkan")
 #define VULKAN_1_DLL VERSIONED_JNI_LIB_NAME("vulkan", "1")
 static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 2, 0);
