@@ -1,4 +1,5 @@
 #include <memory.h>
+#include <stddef.h>
 #include "CArrayUtil.h"
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
