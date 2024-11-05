@@ -110,34 +110,32 @@ coverage of all the details.
 ### Linux (Docker)
 Create a container:
 ```
-$ cd jb/project/docker
-$ docker build .
-...
-Successfully built 942ea9900054
+$ cd ./jb/project/docker/
+$ ./mkdocker_x64.sh
 ```
 Run these commands in the new container:
 ```
-$ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
+$ docker run -v `pwd`../../../../:/JetBrainsRuntime -it jetbrains/runtime:oraclelinux8_x64
+# yum install java-21-openjdk-devel
 # cd /JetBrainsRuntime
-# sh ./configure
-# make images CONF=linux-x86_64-normal-server-release
+# BOOT_JDK=/usr/lib/jvm/java-21/ ./jb/project/tools/linux/scripts/mkimages_x64.sh 99 nomod
 ```
 
 ### Ubuntu Linux
 Install the necessary tools, libraries, and headers with:
 ```
-$ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev \
+$ sudo wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | tee /etc/apt/trusted.gpg.d/lunarg.asc
+$ sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list https://packages.lunarg.com/vulkan/lunarg-vulkan-noble.list
+$ sudo apt update
+$ sudo apt-get -y install openjdk-21-jdk file zip unzip autoconf make build-essential libx11-dev libxext-dev libxrender-dev \
        libxtst-dev libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev libspeechd-dev libwayland-dev \
-       libxkbcommon-x11-0
+       libxkbcommon-x11-0 vulkan-sdk vulkan-utility-libraries-dev
 ```
-Get Java 19 (for instance, [Azul Zulu Builds of OpenJDK 19](https://www.azul.com/downloads/?version=java-19-sts&os=linux&package=jdk)).
 
 Then run the following:
 ```
-$ cd JetBrainsRuntime
-$ git checkout main
-$ sh ./configure
-$ make images
+$ cd /JetBrainsRuntime
+$ BOOT_JDK=/usr/lib/jvm/java-21-openjdk-amd64 ./jb/project/tools/linux/scripts/mkimages_x64.sh 99 nomod
 ```
 This will build the release configuration under `./build/linux-x86_64-server-release/`.
 
