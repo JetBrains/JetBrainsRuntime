@@ -230,6 +230,7 @@ public class VirtualMachineImpl extends HotSpotVirtualMachine {
             try {
                 // Do not canonicalize the file path, or we will fail to attach to a VM in a container.
                 f.createNewFile();
+                return f;
             } catch (IOException x) {
             }
         }
