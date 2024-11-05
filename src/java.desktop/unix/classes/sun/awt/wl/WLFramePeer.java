@@ -128,20 +128,9 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
 
     @Override
     public void setMaximizedBounds(Rectangle bounds) {
-    }
-
-    @Override
-    public void setBounds(int newX, int newY, int newWidth, int newHeight, int op) {
-        boolean isMaximized = (getState() & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH;
-        if (isMaximized && !isSizeBeingConfigured()) {
-            // Some Wayland implementations (Weston) react badly when the size of a maximized
-            // surface differs from the size suggested by Wayland through the "configure" event.
-            // Changing the location of a maximized window does not make sense also, even if it were
-            // possible in Wayland.
-            return;
-        }
-
-        super.setBounds(newX, newY, newWidth, newHeight, op);
+        // Ignored as some Wayland implementations (Weston) react badly when the size
+        // of a maximized surface differs from the size suggested by Wayland through
+        // the "configure" event.
     }
 
     @Override
