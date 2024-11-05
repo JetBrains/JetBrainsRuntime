@@ -614,7 +614,6 @@ void ShenandoahFreeSet::print_on(outputStream* out) const {
 double ShenandoahFreeSet::internal_fragmentation() {
   double squared = 0;
   double linear = 0;
-  int count = 0;
 
   for (size_t index = _mutator_leftmost; index <= _mutator_rightmost; index++) {
     if (is_mutator_free(index)) {
@@ -622,11 +621,10 @@ double ShenandoahFreeSet::internal_fragmentation() {
       size_t used = r->used();
       squared += used * used;
       linear += used;
-      count++;
     }
   }
 
-  if (count > 0) {
+  if (linear > 0) {
     double s = squared / (ShenandoahHeapRegion::region_size_bytes() * linear);
     return 1 - s;
   } else {
