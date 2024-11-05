@@ -513,25 +513,29 @@ public class WLComponentPeer implements ComponentPeer {
     public void setBounds(int newX, int newY, int newWidth, int newHeight, int op) {
         Dimension newSize = constrainSize(newWidth, newHeight);
         boolean positionChanged = (op == SET_BOUNDS || op == SET_LOCATION);
-        if (positionChanged && isVisible()) {
+        boolean sizeChanged = (op == SET_BOUNDS || op == SET_SIZE || op == SET_CLIENT_SIZE);
+        boolean isPopup = targetIsWlPopup();
+
+        if (positionChanged && isVisible() && !isPopup) {
             // Wayland provides the ability to programmatically change the location of popups,
-            // but not top-level windows.
-            if (targetIsWlPopup()) {
-                repositionWlPopup(newX, newY, newSize.width, newSize.height);
-                // the location will be updated in notifyConfigured() following
-                // the xdg_popup::repositioned event
-            } else {
-                int newXNative = javaUnitsToSurfaceUnits(newX);
-                int newYNative = javaUnitsToSurfaceUnits(newY);
-                performLocked(() -> WLRobotPeer.setLocationOfWLSurface(getWLSurface(nativePtr), newXNative, newYNative));
-            }
+            // but not top-level windows. So we can only ask robot to do that.
+            int newXNative = javaUnitsToSurfaceUnits(newX);
+            int newYNative = javaUnitsToSurfaceUnits(newY);
+            performLocked(() -> WLRobotPeer.setLocationOfWLSurface(getWLSurface(nativePtr), newXNative, newYNative));
+        }
+
+        if ((positionChanged || sizeChanged) && isPopup && visible) {
+            // Need to update the location and size even if does not (yet) have a surface
+            // as the initial configure event needs to have the latest data on the location/size.
+            repositionWlPopup(newX, newY, newSize.width, newSize.height);
+            // the location will be updated in notifyConfigured() following
+            // the xdg_popup::repositioned event
         }
 
         if (positionChanged) {
             WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_MOVED));
         }
 
-        boolean sizeChanged = (op == SET_BOUNDS || op == SET_SIZE || op == SET_CLIENT_SIZE);
         if (sizeChanged) {
             setSizeTo(newSize.width, newSize.height);
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -768,7 +772,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public Dimension getMinimumSize() {
-        return target.getSize();
+        return target.getMinimumSize();
     }
 
     void showWindowMenu(long serial, int x, int y) {
@@ -1557,7 +1561,7 @@ public class WLComponentPeer implements ComponentPeer {
         // it means the client should decide its own window dimension".
         boolean clientDecidesDimension = newSurfaceWidth == 0 || newSurfaceHeight == 0;
         if (!clientDecidesDimension) {
-            changeSizeToConfigured(newSurfaceWidth, newSurfaceHeight);
+            changeSizeToConfigured(newSurfaceWidth, newSurfaceHeight, maximized);
         }
 
         if (!surfaceAssigned) {
@@ -1579,16 +1583,16 @@ public class WLComponentPeer implements ComponentPeer {
         }
     }
 
-    private void changeSizeToConfigured(int newSurfaceWidth, int newSurfaceHeight) {
+    private void changeSizeToConfigured(int newSurfaceWidth, int newSurfaceHeight, boolean honorSurfaceSize) {
         wlSize.deriveFromSurfaceSize(newSurfaceWidth, newSurfaceHeight);
         int newWidth = wlSize.getJavaWidth();
         int newHeight = wlSize.getJavaHeight();
         try {
-            // Must not confuse the size given by the server with the size set by the user.
-            // The former originates from the surface size in surface-local coordinates,
-            // while the latter is set in the client (Java) units. These are not always
-            // precisely convertible.
-            setSizeIsBeingConfigured(true);
+            // When 'honorSurfaceSize' is in effect, we shall not confuse the size given by the server with
+            // the size set by the user. The former originates from the surface size in surface-local coordinates,
+            // while the latter is set in the client (Java) units. These are not always precisely convertible
+            // when the scale differs from 100%.
+            setSizeIsBeingConfigured(honorSurfaceSize);
             performUnlocked(() -> target.setSize(newWidth, newHeight));
         } finally {
             setSizeIsBeingConfigured(false);
