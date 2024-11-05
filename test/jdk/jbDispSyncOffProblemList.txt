@@ -3,7 +3,7 @@ java/awt/image/multiresolution/MultiresolutionIconTest.java JBR-7146 macosx-12.7
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/Paint/PaintNativeOnUpdate.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
-java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
+java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-7146 macosx-all
 java/awt/Window/FullWindowContentTest/FullWindowContentRenderTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/Window/FullWindowContentTest/FullWindowContentTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-7312 macosx-all
@@ -11,6 +11,7 @@ java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java JBR-7146 maco
 java/awt/Window/WindowTitleVisibleTest/WindowTitleVisibleTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JButton/8151303/PressedIconTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JComponent/7154030/bug7154030.java JBR-7713 macosx-aarch64
+javax/swing/JDialog/Transparency/TransparencyTest.java JBR-7554 macosx-aarch64
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JInternalFrame/DockIconRepaint/DockIconRepaint.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
@@ -23,6 +24,7 @@ javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464 macosx-12.7.4,macosx-12.
 javax/swing/SwingGraphics/TranslateTest.java JBR-7510 macosx-aarch64
 javax/swing/system/6799345/TestShutdown.java JBR-6881 macosx-12.7.4
 
+jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-6998 macosx-all
 jb/java/awt/Window/MacNativeTransparentTitlebarWithCustomHeight.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 
 sun/java2d/SunGraphics2D/DrawImageBilinear.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
