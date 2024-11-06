@@ -113,7 +113,7 @@ jobs:
               g++-${{ inputs.gcc-major-version }} \
               gcc-${{ inputs.gcc-major-version }}-${{ matrix.gnu-arch }}-linux-gnu${{ matrix.gnu-abi}} \
               g++-${{ inputs.gcc-major-version }}-${{ matrix.gnu-arch }}-linux-gnu${{ matrix.gnu-abi}} \
-              libxrandr-dev libxtst-dev libcups2-dev libasound2-dev
+              libxrandr-dev libxtst-dev libcups2-dev libasound2-dev libatspi2.0-dev libatk1.0-dev libglib2.0-dev
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ inputs.gcc-major-version }} 100 --slave /usr/bin/g++ g++ /usr/bin/g++-${{ inputs.gcc-major-version }}
 
       - name: 'Check cache for sysroot'
@@ -133,7 +133,7 @@ jobs:
           sudo debootstrap
           --arch=${{ matrix.debian-arch }}
           --verbose
-          --include=fakeroot,symlinks,build-essential,libx11-dev,libxext-dev,libxrender-dev,libxrandr-dev,libxtst-dev,libxt-dev,libcups2-dev,libfontconfig1-dev,libasound2-dev,libfreetype-dev,libpng-dev
+          --include=fakeroot,symlinks,build-essential,libx11-dev,libxext-dev,libxrender-dev,libxrandr-dev,libxtst-dev,libxt-dev,libcups2-dev,libfontconfig1-dev,libasound2-dev,libfreetype-dev,libpng-dev,libatspi2.0-dev,libatk1.0-dev,libglib2.0-dev
           --resolve-deps
           --variant=minbase
           ${{ matrix.debian-version }}

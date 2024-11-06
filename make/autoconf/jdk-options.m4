@@ -270,6 +270,32 @@ AC_DEFUN_ONCE([JDKOPT_SETUP_JDK_OPTIONS],
     A11Y_JAWS_ANNOUNCING_ENABLED=false
   fi
   AC_SUBST(A11Y_JAWS_ANNOUNCING_ENABLED)
+
+  # Should we build support for Java ATK Wrapper?
+  if test "x$OPENJDK_TARGET_OS" = xlinux; then
+    AC_MSG_CHECKING([if Java ATK Wrapper support is enabled])
+
+    A11Y_JAVA_ATK_WRAPPER_ENABLED=true
+    AC_ARG_ENABLE(
+      [java-atk-wrapper],
+      [AS_HELP_STRING([--disable-java-atk-wrapper], [Set to disable the Java ATK Wrapper])],
+      [
+        if test "x$ENABLE_HEADLESS_ONLY" = xtrue; then
+          AC_MSG_WARN([--[enable|disable]-java-atk-wrapper[=*] flags are ignored for headless builds])
+        elif test "x$enableval" != xyes; then
+          A11Y_JAVA_ATK_WRAPPER_ENABLED=false
+        fi
+      ]
+    )
+    if test "x$ENABLE_HEADLESS_ONLY" = xtrue; then
+      A11Y_JAVA_ATK_WRAPPER_ENABLED=false
+    fi
+
+    AC_MSG_RESULT([$A11Y_JAVA_ATK_WRAPPER_ENABLED])
+  else
+    A11Y_JAVA_ATK_WRAPPER_ENABLED=false
+  fi
+  AC_SUBST(A11Y_JAVA_ATK_WRAPPER_ENABLED)
 ])
 
 ###############################################################################

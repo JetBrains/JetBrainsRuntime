@@ -112,3 +112,29 @@ ifeq ($(call isTargetOs, windows), true)
 endif
 
 ################################################################################
+
+ifeq ($(call isTargetOs, linux), true)
+  ifeq ($(ENABLE_HEADLESS_ONLY), false)
+    ifeq ($(A11Y_JAVA_ATK_WRAPPER_ENABLED), true)
+      $(eval $(call SetupJdkLibrary, BUILD_LIBATKWRAPPER, \
+        NAME := atk-wrapper, \
+        OPTIMIZATION := LOW, \
+        CFLAGS := $(CFLAGS_JDKLIB) \
+                  $(ATK_CFLAGS) \
+                  $(AT_SPI2_ATK_CFLAGS) \
+                  $(GLIB_CFLAGS) \
+                  $(GOBJECT_CFLAGS) \
+                  $(GLIBCONFIG_CFLAGS) \
+                  -DATSPI_MAJOR_VERSION=$(shell pkg-config --modversion atspi-2 | cut -d. -f1) \
+                  -DATSPI_MINOR_VERSION=$(shell pkg-config --modversion atspi-2 | cut -d. -f2) \
+                  -DATSPI_MICRO_VERSION=$(shell pkg-config --modversion atspi-2 | cut -d. -f3), \
+        LDFLAGS := $(LDFLAGS_JDKLIB), \
+        LIBS_linux := -ljvm $(ATK_LIBS) $(AT_SPI2_ATK_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS), \
+      ))
+      $(BUILD_LIBATKWRAPPER): $(call FindLib, java.base, java)
+      TARGETS += $(BUILD_LIBATKWRAPPER)
+    endif
+  endif
+endif
+
+################################################################################

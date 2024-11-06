@@ -30,6 +30,8 @@
  * @since 9
  */
 module jdk.accessibility {
+    requires java.management;
+
     requires transitive java.desktop;
 
     exports com.sun.java.accessibility.util;
