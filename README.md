@@ -110,14 +110,15 @@ coverage of all the details.
 ### Linux (Docker)
 Create a container:
 ```
-$ docker build -t jbr21env -f jb/project/docker/Dockerfile.oraclelinux .
+$ cd ./jb/project/docker/
+$ ./mkdocker_x64.sh
 ```
 Run these commands in the new container:
 ```
-$ docker run -v `pwd`:/JetBrainsRuntime -it jbr21env
+$ docker run -v `pwd`../../../../:/JetBrainsRuntime -it jetbrains/runtime:oraclelinux8_x64
 # yum install java-21-openjdk-devel
 # cd /JetBrainsRuntime
-# BOOT_JDK=/usr/lib/jvm/java-21/ ./jb/project/tools/linux/scripts/mkimages_x64.sh -i 99 nomod
+# BOOT_JDK=/usr/lib/jvm/java-21/ ./jb/project/tools/linux/scripts/mkimages_x64.sh 99 nomod
 ```
 
 ### Ubuntu Linux
