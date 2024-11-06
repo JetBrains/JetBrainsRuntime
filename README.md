@@ -135,7 +135,7 @@ $ sudo apt-get -y install openjdk-21-jdk file zip unzip autoconf make build-esse
 Then run the following:
 ```
 $ cd /JetBrainsRuntime
-$ BOOT_JDK=/usr/lib/jvm/java-21-openjdk-amd64 ./jb/project/tools/linux/scripts/mkimages_x64.sh -i 99 nomod
+$ BOOT_JDK=/usr/lib/jvm/java-21-openjdk-amd64 ./jb/project/tools/linux/scripts/mkimages_x64.sh 99 nomod
 ```
 This will build the release configuration under `./build/linux-x86_64-server-release/`.
 
