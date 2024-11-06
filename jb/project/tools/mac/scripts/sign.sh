@@ -72,7 +72,7 @@ if [ -d "$JMODS_DIR" ]; then
 
     log "Signing dylibs in $TMP_DIR"
     find "$TMP_DIR" \
-      -type f \( -name "*.dylib" -o -name "*.so"-o -perm +111 -o -name jarsigner -o -name jdeps -o -name jpackageapplauncher -o -name jspawnhelper -o -name jar -o -name javap -o -name jdeprscan -o -name jfr -o -name rmiregistry -o -name java -o -name jhsdb  -o -name jstatd  -o -name jstatd -o -name jpackage -o -name keytool -o -name jmod -o -name jlink -o -name jimage -o -name jstack -o -name jcmd -o -name jps -o -name jmap -o -name jstat -o -name jinfo -o -name jshell -o -name jwebserver -o -name javac -o -name serialver -o -name jrunscript -o -name jdb -o -name jconsole -o -name javadoc \) \
+      -type f \( -name "*.dylib" -o -name "*.so"-o -perm +111 -o -name jarsigner -o -name jnativescan -o -name jdeps -o -name jpackageapplauncher -o -name jspawnhelper -o -name jar -o -name javap -o -name jdeprscan -o -name jfr -o -name rmiregistry -o -name java -o -name jhsdb  -o -name jstatd  -o -name jstatd -o -name jpackage -o -name keytool -o -name jmod -o -name jlink -o -name jimage -o -name jstack -o -name jcmd -o -name jps -o -name jmap -o -name jstat -o -name jinfo -o -name jshell -o -name jwebserver -o -name javac -o -name serialver -o -name jrunscript -o -name jdb -o -name jconsole -o -name javadoc \) \
       -exec "$SIGN_UTILITY" --timestamp \
       -v -s "$JB_DEVELOPER_CERT" --options=runtime --force \
       --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
