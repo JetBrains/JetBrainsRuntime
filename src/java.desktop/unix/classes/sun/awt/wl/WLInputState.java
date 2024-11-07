@@ -186,6 +186,27 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 isPointerOverSurface);
     }
 
+    public WLInputState updatedFromUnregisteredSurface(long surfacePtr) {
+        if (surfaceForKeyboardInput == surfacePtr) {
+            // When a window is hidden, we don't receive the keyboard.leave event, but the surface
+            // becomes stale and its use dangerous, so must clear it out.
+            return new WLInputState(
+                    eventWithSurface,
+                    pointerEnterSerial,
+                    pointerButtonSerial,
+                    keyboardEnterSerial,
+                    keySerial,
+                    eventWithTimestamp,
+                    eventWithCoordinates,
+                    pointerButtonPressedEvent,
+                    modifiers,
+                    0,
+                    isPointerOverSurface);
+        } else {
+            return this;
+        }
+    }
+
     public WLInputState resetPointerState() {
         return new WLInputState(
                 eventWithSurface,
