@@ -236,14 +236,14 @@ public class WLComponentPeer implements ComponentPeer {
 
         if (WLKeyboardFocusManagerPeer.
                 processSynchronousLightweightTransfer(target, lightweightChild, temporary,
-                        focusedWindowChangeAllowed, time)) {
+                        false, time)) {
             return true;
         }
 
         Window nativelyFocusableWindow = getNativelyFocusableOwnerOrSelf(target);
         int result = WLKeyboardFocusManagerPeer.
                 shouldNativelyFocusHeavyweight(nativelyFocusableWindow, lightweightChild,
-                        temporary, focusedWindowChangeAllowed,
+                        temporary, false,
                         time, cause, true);
 
         switch (result) {
