@@ -57,6 +57,7 @@ done
 
 log "Signing jmod files"
 JMODS_DIR="$APPLICATION_PATH/Contents/Home/jmods"
+JMOD_EXE="$APPLICATION_PATH/Contents/Home/bin/jmod"
 if [ -d "$JMODS_DIR" ]; then
   for jmod_file in "$JMODS_DIR"/*.jmod; do
     log "Processing $jmod_file"
@@ -66,7 +67,7 @@ if [ -d "$JMODS_DIR" ]; then
     mkdir "$TMP_DIR"
 
     log "Unzipping $jmod_file"    
-    "$BOOT_JDK/bin/jmod" extract --dir "$TMP_DIR" "$jmod_file" >/dev/null
+    $JMOD_EXE extract --dir "$TMP_DIR" "$jmod_file" >/dev/null
     log "Removing $jmod_file"
     rm -f "$jmod_file"
 
@@ -77,7 +78,7 @@ if [ -d "$JMODS_DIR" ]; then
       -v -s "$JB_DEVELOPER_CERT" --options=runtime --force \
       --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
 
-    cmd="$BOOT_JDK/bin/jmod create --class-path $TMP_DIR/classes"
+    cmd="$JMOD_EXE create --class-path $TMP_DIR/classes"
 
     # Check each directory and add to the command if it exists
     [ -d "$TMP_DIR/bin" ] && cmd="$cmd --cmds $TMP_DIR/bin"
