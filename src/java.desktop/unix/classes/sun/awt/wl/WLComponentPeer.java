@@ -1038,13 +1038,23 @@ public class WLComponentPeer implements ComponentPeer {
 
     final void activate() {
         // "The serial can come from an input or focus event."
-        long serial = WLToolkit.getInputState().keyboardEnterSerial();
+        long serial = WLToolkit.getInputState().keyboardEnterSerial(); // a focus event
+        if (serial == 0) { // may have just left one surface and not yet entered another
+            serial = WLToolkit.getInputState().keySerial(); // an input event
+        }
+        if (serial == 0) {
+            // The pointer button serial seems to not work with Mutter, but may work
+            // with other implementations, so let's keep it as an input event serial
+            // of the last resort.
+            serial = WLToolkit.getInputState().pointerButtonSerial();
+        }
         long surface = WLToolkit.getInputState().surfaceForKeyboardInput();
         if (serial != 0) {
-            performLocked(() -> nativeActivate(serial, nativePtr, surface));
+            long finalSerial = serial;
+            performLocked(() -> nativeActivate(finalSerial, nativePtr, surface));
         } else {
             if (log.isLoggable(Level.WARNING)) {
-                log.warning("activate() aborted due to missing keyboard enter event serial");
+                log.warning("activate() aborted due to missing input or focus event serial");
             }
         }
     }
