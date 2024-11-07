@@ -186,6 +186,25 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 isPointerOverSurface);
     }
 
+    public WLInputState updatedFromUnregisteredSurface(long surfacePtr) {
+        if (surfaceForKeyboardInput == surfacePtr) {
+            return new WLInputState(
+                    eventWithSurface,
+                    pointerEnterSerial,
+                    pointerButtonSerial,
+                    keyboardEnterSerial,
+                    keySerial,
+                    eventWithTimestamp,
+                    eventWithCoordinates,
+                    pointerButtonPressedEvent,
+                    modifiers,
+                    0,
+                    isPointerOverSurface);
+        } else {
+            return this;
+        }
+    }
+
     public WLInputState resetPointerState() {
         return new WLInputState(
                 eventWithSurface,
