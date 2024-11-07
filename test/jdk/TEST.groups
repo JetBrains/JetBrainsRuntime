@@ -816,6 +816,7 @@ jdk_since_checks = \
 jdk_awt_wayland = \
     :jdk_awt \
     jb/java/awt/wayland \
+    jb/java/awt/Focus/ActivateAfterHide.java \
     -com/apple/eawt \
     -com/apple/laf \
     -sun/awt \
