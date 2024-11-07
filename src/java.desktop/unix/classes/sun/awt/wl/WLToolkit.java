@@ -441,6 +441,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         synchronized (wlSurfaceToComponentMap) {
             wlSurfaceToComponentMap.remove(wlSurfacePtr);
         }
+
+        inputState = inputState.updatedFromUnregisteredSurface(wlSurfacePtr);
     }
 
     static WLComponentPeer componentPeerFromSurface(long wlSurfacePtr) {
