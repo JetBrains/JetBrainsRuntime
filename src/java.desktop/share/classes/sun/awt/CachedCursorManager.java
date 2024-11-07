@@ -75,15 +75,20 @@ public abstract class CachedCursorManager {
 
     private void updateCursorImpl() {
         final Point cursorPos = getCursorPosition();
-        final Component c = findComponent(cursorPos);
-        Cursor cursor = getCursorByPosition(cursorPos, c);
+        final Component component = getComponentUnderCursor();
+        if (component != null) {
+            synchronized (component.getTreeLock()) {
+                final Component parentComponent = findComponent(cursorPos, component);
+                Cursor cursor = getCursorByPosition(cursorPos, parentComponent);
 
-        if (cursor == null) {
-            cursor = (c != null) ? c.getCursor() : null;
-        }
+                if (cursor == null) {
+                    cursor = (parentComponent != null) ? parentComponent.getCursor() : null;
+                }
 
-        if (cursor != null) {
-            setCursor(cursor);
+                if (cursor != null) {
+                    setCursor(cursor);
+                }
+            }
         }
     }
 
@@ -97,22 +102,20 @@ public abstract class CachedCursorManager {
      * @param cursorPos Current cursor position.
      * @return Component or null.
      */
-    protected Component findComponent(final Point cursorPos) {
-        Component component = getComponentUnderCursor();
-        if (component != null) {
-            if (component instanceof Container && component.isShowing()) {
-                final Point p = getLocationOnScreen(component);
-                component = AWTAccessor.getContainerAccessor().findComponentAt(
-                        (Container) component, cursorPos.x - p.x, cursorPos.y - p.y, false);
+    private Component findComponent(final Point cursorPos, Component currentComponent) {
+        Component component = currentComponent;
+        if (component instanceof Container && component.isShowing()) {
+            final Point p = getLocationOnScreen(component);
+            component = AWTAccessor.getContainerAccessor().findComponentAt(
+                    (Container) component, cursorPos.x - p.x, cursorPos.y - p.y, false);
 
+        }
+        while (component != null) {
+            final Object p = AWTAccessor.getComponentAccessor().getPeer(component);
+            if (component.isVisible() && component.isEnabled() && p != null) {
+                break;
             }
-            while (component != null) {
-                final Object p = AWTAccessor.getComponentAccessor().getPeer(component);
-                if (component.isVisible() && component.isEnabled() && p != null) {
-                    break;
-                }
-                component = component.getParent();
-            }
+            component = component.getParent();
         }
         return component;
     }
