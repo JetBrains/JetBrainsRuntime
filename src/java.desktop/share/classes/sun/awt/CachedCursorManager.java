@@ -102,7 +102,7 @@ public abstract class CachedCursorManager {
      * @param cursorPos Current cursor position.
      * @return Component or null.
      */
-    protected Component findComponent(final Point cursorPos, Component currentComponent) {
+    private Component findComponent(final Point cursorPos, Component currentComponent) {
         Component component = currentComponent;
         if (component instanceof Container && component.isShowing()) {
             final Point p = getLocationOnScreen(component);
