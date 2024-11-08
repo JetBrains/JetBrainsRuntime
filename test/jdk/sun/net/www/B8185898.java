@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /**
  * @test
- * @bug 8185898 8163921
+ * @bug 8185898 8163921 8339470
  * @modules java.base/sun.net.www
  * @library /test/lib
  * @run main/othervm B8185898
@@ -143,32 +143,32 @@ public class B8185898 {
         // {{inputString1, expectedToString1, expectedPrint1}, {...}}
         String[][] strings = {
                 {"HTTP/1.1 200 OK\r\n"
-                        + "Accept: */*\r\n"
+                        + "Accept: text/html, image/gif, image/jpeg, */*; q=0.2\r\n"
                         + "Connection: keep-alive\r\n"
                         + "Host: 127.0.0.1:12345\r\n"
                         + "User-agent: Java/12\r\n\r\nfoooo",
                 "pairs: {null: HTTP/1.1 200 OK}"
-                        + "{Accept: */*}"
+                        + "{Accept: text/html, image/gif, image/jpeg, */*; q=0.2}"
                         + "{Connection: keep-alive}"
                         + "{Host: 127.0.0.1:12345}"
                         + "{User-agent: Java/12}",
-                "Accept: */*\r\n"
+                "Accept: text/html, image/gif, image/jpeg, */*; q=0.2\r\n"
                         + "Connection: keep-alive\r\n"
                         + "Host: 127.0.0.1:12345\r\n"
                         + "User-agent: Java/12\r\n\r\n"},
                 {"HTTP/1.1 200 OK\r\n"
-                        + "Accept: */*\r\n"
+                        + "Accept: text/html, image/gif, image/jpeg, */*; q=0.2\r\n"
                         + "Connection: keep-alive\r\n"
                         + "Host: 127.0.0.1:12345\r\n"
                         + "User-agent: Java/12\r\n"
                         + "X-Header:\r\n\r\n",
                 "pairs: {null: HTTP/1.1 200 OK}"
-                        + "{Accept: */*}"
+                        + "{Accept: text/html, image/gif, image/jpeg, */*; q=0.2}"
                         + "{Connection: keep-alive}"
                         + "{Host: 127.0.0.1:12345}"
                         + "{User-agent: Java/12}"
                         + "{X-Header: }",
-                "Accept: */*\r\n"
+                "Accept: text/html, image/gif, image/jpeg, */*; q=0.2\r\n"
                         + "Connection: keep-alive\r\n"
                         + "Host: 127.0.0.1:12345\r\n"
                         + "User-agent: Java/12\r\n"
