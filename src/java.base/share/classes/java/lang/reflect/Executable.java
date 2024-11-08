@@ -334,22 +334,34 @@ public abstract sealed class Executable extends AccessibleObject
             // If we have real parameter data, then we use the
             // synthetic and mandate flags to our advantage.
             if (realParamData) {
-                final Type[] out = new Type[nonGenericParamTypes.length];
-                final Parameter[] params = getParameters();
-                int fromidx = 0;
-                for (int i = 0; i < out.length; i++) {
-                    final Parameter param = params[i];
-                    if (param.isSynthetic() || param.isImplicit()) {
-                        // If we hit a synthetic or mandated parameter,
-                        // use the non generic parameter info.
-                        out[i] = nonGenericParamTypes[i];
+                if (getDeclaringClass().isRecord() && this instanceof Constructor) {
+                    /* we could be seeing a compact constructor of a record class
+                     * its parameters are mandated but we should be able to retrieve
+                     * its generic information if present
+                     */
+                    if (genericParamTypes.length == nonGenericParamTypes.length) {
+                        return genericParamTypes;
                     } else {
-                        // Otherwise, use the generic parameter info.
-                        out[i] = genericParamTypes[fromidx];
-                        fromidx++;
+                        return nonGenericParamTypes.clone();
                     }
+                } else {
+                    final Type[] out = new Type[nonGenericParamTypes.length];
+                    final Parameter[] params = getParameters();
+                    int fromidx = 0;
+                    for (int i = 0; i < out.length; i++) {
+                        final Parameter param = params[i];
+                        if (param.isSynthetic() || param.isImplicit()) {
+                            // If we hit a synthetic or mandated parameter,
+                            // use the non generic parameter info.
+                            out[i] = nonGenericParamTypes[i];
+                        } else {
+                            // Otherwise, use the generic parameter info.
+                            out[i] = genericParamTypes[fromidx];
+                            fromidx++;
+                        }
+                    }
+                    return out;
                 }
-                return out;
             } else {
                 // Otherwise, use the non-generic parameter data.
                 // Without method parameter reflection data, we have
