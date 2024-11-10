@@ -102,12 +102,30 @@ done
 
 set -e
 
+log "Zipping $BUILD_NAME to $INPUT_FILE ..."
+(
+  if [[ "$APPLICATION_PATH" != "$EXPLODED/$BUILD_NAME" ]]; then
+    mv $APPLICATION_PATH $EXPLODED/$BUILD_NAME
+  else
+    echo "No move, source == destination: $APPLICATION_PATH"
+  fi
+
+  tar -pczvf $INPUT_FILE --exclude='man' -C $EXPLODED $BUILD_NAME
+  log "Finished zipping"
+)
+rm -rf "$EXPLODED"
+
+log "INPUT_FILE $INPUT_FILE"
+
 if [ "$NOTARIZE" = "yes" ]; then
-  log "Notarizing..."
+  log "Notarizing package file..."
   "$SCRIPT_DIR/notarize.sh" "$PKG_NAME"
 
-  log "Stapling..."
-  appStaplerOutput=$(xcrun stapler staple "$APPLICATION_PATH")
+  log "Notarizing tar.gz archive..."
+  "$SCRIPT_DIR/notarize.sh" "$INPUT_FILE"
+
+  log "Stapling tar.gz..."
+  appStaplerOutput=$(xcrun stapler staple "$INPUT_FILE")
   if [ $? -ne 0 ]; then
     log "Stapling application failed"
     echo "$appStaplerOutput"
@@ -128,7 +146,7 @@ if [ "$NOTARIZE" = "yes" ]; then
 
   # Verify stapling
   log "Verifying stapling..."
-  if ! stapler validate "$APPLICATION_PATH"; then
+  if ! stapler validate "$INPUT_FILE"; then
     log "Stapling verification failed for application"
     exit 1
   fi
@@ -141,16 +159,5 @@ else
   log "Stapling disabled"
 fi
 
-log "Zipping $BUILD_NAME to $INPUT_FILE ..."
-(
-  if [[ "$APPLICATION_PATH" != "$EXPLODED/$BUILD_NAME" ]]; then
-    mv $APPLICATION_PATH $EXPLODED/$BUILD_NAME
-  else
-    echo "No move, source == destination: $APPLICATION_PATH"
-  fi
 
-  tar -pczvf $INPUT_FILE --exclude='man' -C $EXPLODED $BUILD_NAME
-  log "Finished zipping"
-)
-rm -rf "$EXPLODED"
 log "Done"
