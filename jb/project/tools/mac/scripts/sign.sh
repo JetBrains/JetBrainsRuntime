@@ -119,10 +119,7 @@ find "$APPLICATION_PATH" -name '*.jar' \
 
     find jarfolder \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -name "jattach" \) \
-      -exec "$SIGN_UTILITY" --timestamp \
-      --force \
-      -v -s "$JB_DEVELOPER_CERT" --options=runtime \
-      --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
+      -exec sh -c '"$1" --timestamp --force -v -s "$2" --options=runtime --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements.xml" {} \;
 
     (cd jarfolder; zip -q -r -o -0 ../jar.jar .)
     mv jar.jar "$file"
@@ -137,9 +134,7 @@ for f in \
   if [ -d "$APPLICATION_PATH/$f" ]; then
     find "$APPLICATION_PATH/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -perm +111 \) \
-      -exec "$SIGN_UTILITY" --timestamp \
-      -v -s "$JB_DEVELOPER_CERT" --options=runtime --force \
-      --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
+      -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements.xml" {} \;
   fi
 done
 
@@ -155,7 +150,7 @@ if [ "$JB_SIGN" = true ]; then for f in \
         "$SIGN_UTILITY" --timestamp \
             -v -s "$JB_DEVELOPER_CERT" --options=runtime \
             --force \
-            --entitlements "$SCRIPT_DIR/entitlements.xml" tmp-to-sign.tar.gz
+            --entitlements "$SCRIPT_DIR/entitlements.xml" tmp-to-sign.tar.gz || exit 1
         rm -rf "$line"
         tar -xzf tmp-to-sign.tar.gz --directory "$(dirname "$line")"
         rm -f tmp-to-sign.tar.gz
@@ -181,7 +176,7 @@ if [ "$JB_SIGN" = true ]; then
   "$SIGN_UTILITY" --timestamp \
     -v -s "$JB_DEVELOPER_CERT" --options=runtime \
     --force \
-    --entitlements "$SCRIPT_DIR/entitlements.xml" tmp-to-sign.tar.gz
+    --entitlements "$SCRIPT_DIR/entitlements.xml" tmp-to-sign.tar.gz || exit 1
   rm -rf "$APPLICATION_PATH"
   tar -xzf tmp-to-sign.tar.gz --directory "$(dirname "$APPLICATION_PATH")"
   rm -f tmp-to-sign.tar.gz
@@ -189,7 +184,7 @@ else
   "$SIGN_UTILITY" --timestamp \
     -v -s "$JB_DEVELOPER_CERT" --options=runtime \
     --force \
-    --entitlements "$SCRIPT_DIR/entitlements.xml" "$APPLICATION_PATH"
+    --entitlements "$SCRIPT_DIR/entitlements.xml" "$APPLICATION_PATH" || exit 1
 fi
 
 BUILD_NAME="$(basename "$APPLICATION_PATH")"
