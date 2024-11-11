@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
@@ -222,7 +223,7 @@ abstract public class TLSBase {
             try {
                 sslContext = SSLContext.getDefault();
                 sock = (SSLSocket)sslContext.getSocketFactory().createSocket();
-                sock.connect(new InetSocketAddress("localhost", serverPort));
+                sock.connect(new InetSocketAddress(InetAddress.getLoopbackAddress(), serverPort));
                 System.err.println("Client connected using port " +
                         sock.getLocalPort());
                 name = "client(" + sock.toString() + ")";
