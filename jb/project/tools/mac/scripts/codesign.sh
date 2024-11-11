@@ -34,7 +34,23 @@ else
   contentType=$(jetSignContentType "$pathToBeSigned")
   (
     cd "$workDir" || exit 1
-    "$JETSIGN_CLIENT" -log-format text -denoted-content-type "$contentType" -extensions "$jetSignExtensions" "$pathToBeSigned"
+    
+    max_attempts=3
+    attempt=1
+    while [ $attempt -le $max_attempts ]; do
+      if "$JETSIGN_CLIENT" -log-format text -denoted-content-type "$contentType" -extensions "$jetSignExtensions" "$pathToBeSigned"; then
+        break
+      else
+        if [ $attempt -eq $max_attempts ]; then
+          echo "Failed to sign after $max_attempts attempts"
+          exit 1
+        fi
+        echo "Attempt $attempt failed, retrying in 5 seconds..."
+        sleep 5
+        ((attempt++))
+      fi
+    done
+
     # SRE-1223 (Codesign removes execute bits in executable files) workaround
     chmod "$(stat -f %A "$pathToBeSigned")" "$pathSigned"
     if isMacOsBinary "$pathSigned"; then
