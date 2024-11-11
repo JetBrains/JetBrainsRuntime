@@ -2602,7 +2602,6 @@ static jbNewXimClient_XIMFeatures jbNewXimClient_obtainSupportedXIMFeaturesBy(XI
         }
     }
 
-finally:
     if (ximValues != NULL) {
         XFree(ximValues);
         ximValues = NULL;
