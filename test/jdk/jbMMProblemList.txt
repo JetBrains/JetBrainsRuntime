@@ -19,6 +19,7 @@ java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5442 linux-all
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
 java/awt/GraphicsDevice/DisplayModes/UnknownRefrshRateTest.java JBR-6336 macosx-all
 java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-all
+java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java 8257529,JBR-7780 windows-x64,linux-all
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
 java/awt/Robot/NonEmptyErrorStream.java 8340330,JBR-5442,JBR-5510,JBR-5442 macosx-15.0,linux-5.18.2-arch1-1
@@ -100,7 +101,7 @@ java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510,JBR-609
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java  8253184 windows-all,linux-all
 java/awt/Window/8159168/SetShapeTest.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5510 linux-all
-java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-5510 linux-all
+java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-5510,JBR-7312 linux-all,macosx-all
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Window/WindowTitleVisibleTest/WindowTitleVisibleTestLinuxGnome.java nobug linux-all
