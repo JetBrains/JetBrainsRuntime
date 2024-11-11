@@ -378,6 +378,7 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_FEATURES],
     fi
   else
       DISABLED_JVM_FEATURES="$DISABLED_JVM_FEATURES shenandoahgc"
+      AC_MSG_RESULT([no, must be manually enabled --with-jvm-features=shenandoahgc])
   fi
 
   # Only enable ZGC on supported platforms
