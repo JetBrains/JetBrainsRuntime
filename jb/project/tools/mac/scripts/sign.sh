@@ -49,9 +49,7 @@ for f in \
   if [ -d "$APPLICATION_PATH/$f" ]; then
     find "$APPLICATION_PATH/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -name "*.node" -o -perm +111 \) \
-      -exec "$SIGN_UTILITY" --timestamp \
-      -v -s "$JB_DEVELOPER_CERT" --options=runtime --force \
-      --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
+      -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements.xml" {} \;
   fi
 done
 
@@ -74,9 +72,7 @@ if [ -d "$JMODS_DIR" ]; then
     log "Signing dylibs in $TMP_DIR"
     find "$TMP_DIR" \
       -type f \( -name "*.dylib" -o -name "*.so"-o -perm +111 -o -name jarsigner -o -name jnativescan -o -name jdeps -o -name jpackageapplauncher -o -name jspawnhelper -o -name jar -o -name javap -o -name jdeprscan -o -name jfr -o -name rmiregistry -o -name java -o -name jhsdb  -o -name jstatd  -o -name jstatd -o -name jpackage -o -name keytool -o -name jmod -o -name jlink -o -name jimage -o -name jstack -o -name jcmd -o -name jps -o -name jmap -o -name jstat -o -name jinfo -o -name jshell -o -name jwebserver -o -name javac -o -name serialver -o -name jrunscript -o -name jdb -o -name jconsole -o -name javadoc \) \
-      -exec "$SIGN_UTILITY" --timestamp \
-      -v -s "$JB_DEVELOPER_CERT" --options=runtime --force \
-      --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
+      -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements.xml" {} \;
 
     cmd="$JMOD_EXE create --class-path $TMP_DIR/classes"
 
@@ -119,10 +115,7 @@ find "$APPLICATION_PATH" -name '*.jar' \
 
     find jarfolder \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -name "jattach" \) \
-      -exec "$SIGN_UTILITY" --timestamp \
-      --force \
-      -v -s "$JB_DEVELOPER_CERT" --options=runtime \
-      --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
+      -exec sh -c '"$1" --timestamp --force -v -s "$2" --options=runtime --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements.xml" {} \;
 
     (cd jarfolder; zip -q -r -o -0 ../jar.jar .)
     mv jar.jar "$file"
@@ -137,9 +130,7 @@ for f in \
   if [ -d "$APPLICATION_PATH/$f" ]; then
     find "$APPLICATION_PATH/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -name "*.tbd" -o -perm +111 \) \
-      -exec "$SIGN_UTILITY" --timestamp \
-      -v -s "$JB_DEVELOPER_CERT" --options=runtime --force \
-      --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
+      -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements.xml" {} \;
   fi
 done
 
@@ -155,7 +146,7 @@ if [ "$JB_SIGN" = true ]; then for f in \
         "$SIGN_UTILITY" --timestamp \
             -v -s "$JB_DEVELOPER_CERT" --options=runtime \
             --force \
-            --entitlements "$SCRIPT_DIR/entitlements.xml" tmp-to-sign.tar.gz
+            --entitlements "$SCRIPT_DIR/entitlements.xml" tmp-to-sign.tar.gz || exit 1
         rm -rf "$line"
         tar -xzf tmp-to-sign.tar.gz --directory "$(dirname "$line")"
         rm -f tmp-to-sign.tar.gz
@@ -181,7 +172,7 @@ if [ "$JB_SIGN" = true ]; then
   "$SIGN_UTILITY" --timestamp \
     -v -s "$JB_DEVELOPER_CERT" --options=runtime \
     --force \
-    --entitlements "$SCRIPT_DIR/entitlements.xml" tmp-to-sign.tar.gz
+    --entitlements "$SCRIPT_DIR/entitlements.xml" tmp-to-sign.tar.gz || exit 1
   rm -rf "$APPLICATION_PATH"
   tar -xzf tmp-to-sign.tar.gz --directory "$(dirname "$APPLICATION_PATH")"
   rm -f tmp-to-sign.tar.gz
@@ -189,7 +180,7 @@ else
   "$SIGN_UTILITY" --timestamp \
     -v -s "$JB_DEVELOPER_CERT" --options=runtime \
     --force \
-    --entitlements "$SCRIPT_DIR/entitlements.xml" "$APPLICATION_PATH"
+    --entitlements "$SCRIPT_DIR/entitlements.xml" "$APPLICATION_PATH" || exit 1
 fi
 
 BUILD_NAME="$(basename "$APPLICATION_PATH")"
