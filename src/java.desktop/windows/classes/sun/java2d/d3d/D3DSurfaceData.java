@@ -758,18 +758,14 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
     }
 
     /**
-     * Swaps the buffers of the D3D window surfaces within the specified region.
+     * Swaps the buffers of the D3D window surfaces within all region.
      * If a D3D window surface is dirty or marked as lost, it will be swapped.
      *
      */
-    public static void displayContent(int dx1, int dy1, int dx2, int dy2) {
+    public static void displayAllBuffersContent() {
         if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
-            mgr.swapBuffers(dx1, dy1, dx2, dy2);
+            mgr.swapFullBuffers();
         }
-    }
-
-    public static void displayContent() {
-        displayContent(0, 0, 0, 0);
     }
 
     static void swapBuffers(D3DSurfaceData sd,
@@ -1045,6 +1041,17 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
 
         public void markClean() {
             dirtyTracker = getStateTracker();
+        }
+
+        /**
+         * Swaps the buffers of the D3D window surfaces within the specified region.
+         * If a D3D window surface is dirty or marked as lost, it will be swapped.
+         *
+         */
+        public void displayContent(int dx1, int dy1, int dx2, int dy2) {
+            if (ScreenUpdateManager.getInstance() instanceof D3DScreenUpdateManager mgr) {
+                mgr.swapBuffers(this, dx1, dy1, dx2, dy2);
+            }
         }
     }
 

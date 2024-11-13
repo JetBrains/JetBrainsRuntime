@@ -326,43 +326,47 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
      * @param dx2 the x-coordinate of the ending point of the region
      * @param dy2 the y-coordinate of the ending point of the region
      */
-    public void swapBuffers(int dx1, int dy1, int dx2, int dy2) {
+    public void swapBuffers(D3DWindowSurfaceData sd, int dx1, int dy1, int dx2, int dy2) {
+        // skip invalid surfaces (they could have become invalid
+        // after we made a copy of the list) - just a precaution
+        if (sd.isValid() && (sd.isDirty() || sd.isSurfaceLost())) {
+            if (!sd.isSurfaceLost()) {
+                // the flip and the clearing of the dirty state
+                // must be done under the lock, otherwise it's
+                // possible to miss an update to the surface
+                D3DRenderQueue rq = D3DRenderQueue.getInstance();
+                rq.lock();
+                try {
+                    Rectangle r = sd.getBounds();
+                    if (dx1 == 0 && dy1 == 0 && dx2 == 0 && dy2 == 0) {
+                        D3DSurfaceData.swapBuffers(sd, 0, 0,
+                                r.width, r.height);
+                    } else {
+                        D3DSurfaceData.swapBuffers(sd, dx1, dy1, dx2, dy2);
+                    }
+                    sd.markClean();
+                } finally {
+                    rq.unlock();
+                }
+            } else if (!validate(sd)) {
+                // it is possible that the validation may never
+                // succeed, we need to detect this and replace
+                // the d3dw surface with gdi; the replacement of
+                // the surface will also trigger a repaint
+                sd.getPeer().replaceSurfaceDataLater();
+            }
+        }
+    }
+
+    public void swapFullBuffers() {
         if (d3dwSurfaces == null) {
             return;
         }
-        
+
         // make a copy to avoid synchronization during the loop
         for (int i = 0; i < d3dwSurfaces.size(); i++) {
             D3DWindowSurfaceData sd = d3dwSurfaces.get(i);
-            // skip invalid surfaces (they could have become invalid
-            // after we made a copy of the list) - just a precaution
-            if (sd.isValid() && (sd.isDirty() || sd.isSurfaceLost())) {
-                if (!sd.isSurfaceLost()) {
-                    // the flip and the clearing of the dirty state
-                    // must be done under the lock, otherwise it's
-                    // possible to miss an update to the surface
-                    D3DRenderQueue rq = D3DRenderQueue.getInstance();
-                    rq.lock();
-                    try {
-                        Rectangle r = sd.getBounds();
-                        if (dx1 == 0 && dy1 == 0 && dx2 == 0 && dy2 == 0) {
-                            D3DSurfaceData.swapBuffers(sd, 0, 0,
-                                    r.width, r.height);
-                        } else {
-                            D3DSurfaceData.swapBuffers(sd, dx1, dy1, dx2, dy2);
-                        }
-                        sd.markClean();
-                    } finally {
-                        rq.unlock();
-                    }
-                } else if (!validate(sd)) {
-                    // it is possible that the validation may never
-                    // succeed, we need to detect this and replace
-                    // the d3dw surface with gdi; the replacement of
-                    // the surface will also trigger a repaint
-                    sd.getPeer().replaceSurfaceDataLater();
-                }
-            }
+            swapBuffers(sd, 0, 0, 0, 0);
         }
     }
 

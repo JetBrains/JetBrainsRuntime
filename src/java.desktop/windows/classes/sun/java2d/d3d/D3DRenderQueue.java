@@ -75,7 +75,7 @@ public class D3DRenderQueue extends RenderQueue {
         if (theInstance != null) {
             // need to make sure any/all screen surfaces are presented prior
             // to completing the sync operation
-            D3DSurfaceData.displayContent();
+            D3DSurfaceData.displayAllBuffersContent();
 
             theInstance.lock();
             try {
