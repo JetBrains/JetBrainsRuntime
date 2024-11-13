@@ -192,6 +192,12 @@ AC_DEFUN([FLAGS_SETUP_WARNINGS],
       DISABLE_WARNING_PREFIX="-Wno-"
       BUILD_CC_DISABLE_WARNING_PREFIX="-Wno-"
       CFLAGS_WARNINGS_ARE_ERRORS="-Werror"
+
+      WARNINGS_ENABLE_ALL="-Wall -Wextra -Wformat=2"
+      WARNINGS_ENABLE_ADDITIONAL_JVM="-Wpointer-arith -Wsign-compare -Wunused-function -Wundef -Wunused-value -Woverloaded-virtual -Wreturn-type"
+
+      DISABLED_WARNINGS="unused-parameter unused"
+
       ;;
 
     clang)
@@ -200,7 +206,7 @@ AC_DEFUN([FLAGS_SETUP_WARNINGS],
       CFLAGS_WARNINGS_ARE_ERRORS="-Werror"
 
       WARNINGS_ENABLE_ALL="-Wall -Wextra -Wformat=2"
-      WARNINGS_ENABLE_ADDITIONAL_JVM="-Wpointer-arith -Wsign-compare -Wunused-function -Wundef -Wunused-value -Woverloaded-virtual -Wreorder"
+      WARNINGS_ENABLE_ADDITIONAL_JVM="-Wpointer-arith -Wsign-compare -Wunused-function -Wundef -Wunused-value -Woverloaded-virtual"
 
       DISABLED_WARNINGS="unused-parameter unused"
       ;;
