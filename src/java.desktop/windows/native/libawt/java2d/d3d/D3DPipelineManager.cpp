@@ -38,6 +38,11 @@
 
 static BOOL bNoHwCheck = (getenv("J2D_D3D_NO_HWCHECK") != NULL);
 
+struct CheckAndResetDeviceData {
+    D3DContext *d3dc;
+    HRESULT res;
+};
+
 D3DPipelineManager *D3DPipelineManager::pMgr = NULL;
 
 
@@ -239,6 +244,11 @@ HRESULT D3DPipelineManager::HandleAdaptersChange(HMONITOR *pHMONITORs, UINT monN
     return res;
 }
 
+void D3DContext_CheckAndResetDevice(void *pData) {
+    D3DContext *d3dc = ((CheckAndResetDeviceData*)(pData))->d3dc;
+    ((CheckAndResetDeviceData*)(pData))->res = d3dc->CheckAndResetDevice();
+}
+
 HRESULT D3DPipelineManager::HandleLostDevices()
 {
     J2dTraceLn(J2D_TRACE_INFO, "D3DPPLM::HandleLostDevices()");
@@ -277,8 +287,9 @@ HRESULT D3DPipelineManager::HandleLostDevices()
             if (pAdapters[i].pd3dContext != NULL) {
                 J2dTraceLn1(J2D_TRACE_VERBOSE,
                             "  HandleLostDevices: checking adapter %d", i);
-                D3DContext *d3dc = pAdapters[i].pd3dContext;
-                if (FAILED(d3dc->CheckAndResetDevice())) {
+                CheckAndResetDeviceData data = {pAdapters[i].pd3dContext, S_OK};
+                AwtToolkit::GetInstance().InvokeFunction(D3DContext_CheckAndResetDevice, &data);
+                if (FAILED(data.res)) {
                     bAllClear = FALSE;
                 }
             }
