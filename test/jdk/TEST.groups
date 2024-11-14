@@ -865,7 +865,6 @@ jdk_awt_wayland = \
     -java/awt/event \
     -java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java \
     -java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.java \
-    -java/awt/EventDispatchThread/PropertyPermissionOnEDT/PropertyPermissionOnEDT.java \
     -java/awt/EventQueue/6980209/bug6980209.java \
     -java/awt/FileDialog \
     -java/awt/FlowLayout \
@@ -888,7 +887,6 @@ jdk_awt_wayland = \
     -java/awt/Focus/ClearGlobalFocusOwnerTest \
     -java/awt/Focus/ClearLwQueueBreakTest \
     -java/awt/Focus/ClearMostRecentFocusOwnerTest.java \
-    -java/awt/Focus/CloseDialogActivateOwnerTest \
     -java/awt/Focus/ComponentLostFocusTest.java \
     -java/awt/Focus/ConsumedTabKeyTest.java \
     -java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest \
@@ -962,7 +960,6 @@ jdk_awt_wayland = \
     -java/awt/font/TextLayout/TestTibetan.java \
     -java/awt/font/TextLayout/TestVS.java \
     -java/awt/font/TextLayout/VariationSelectorTest.java \
-    -java/awt/FontClass/FontAccess.java \
     -java/awt/Frame \
     -java/awt/FullScreen/8013581 \
     -java/awt/FullScreen/AllFramesMaximize \
@@ -1034,7 +1031,6 @@ jdk_awt_wayland = \
     -java/awt/Robot \
     -java/awt/Scrollbar \
     -java/awt/ScrollPane \
-    -java/awt/security \
     -java/awt/SplashScreen \
     -java/awt/TextArea \
     -java/awt/TextComponent \
@@ -1047,7 +1043,6 @@ jdk_awt_wayland = \
     -java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java \
     -java/awt/Toolkit/RealSync/Test.java \
     -java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java \
-    -java/awt/Toolkit/SecurityTest/SecurityTest2.java \
     -java/awt/Toolkit/ToolkitPropertyTest/ToolkitPropertyTest_Enable.java \
     -java/awt/TrayIcon \
     -java/awt/wakefield \
