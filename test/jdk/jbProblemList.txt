@@ -247,6 +247,7 @@ java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all,macosx-all
 
 java/awt/dnd/BadSerializationTest/BadSerializationTest.java linux-x64,windows-x64
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490 linux-all
+java/awt/dnd/DnDClipboardDeadlockTest.java 8079553 linux-all
 java/awt/dnd/RejectDragDropActionTest.java JBR-5858 windows-10.0
 java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.java 8194947 generic-all
 java/awt/Frame/FramesGC/FramesGC.java 8079069 macosx-all
@@ -1274,6 +1275,7 @@ jb/java/awt/Window/ZOrderOnModalDialogActivation.java JBR-5714 windows-all
 jb/java/jcef/MouseEventTest.java JBR-4908 linux-all
 
 jb/java/lang/System/SetEnv394.java JBR-2988 generic-aarch64
+jb/build/CDSArchivesTest.sh JBR-6616 windows-aarch64
 
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5510,8310487 linux-5.18.2-arch1-1,linux-all
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java JBR-5510,JBR-5905 linux-5.18.2-arch1-1,linux-all
