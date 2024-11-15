@@ -1016,11 +1016,8 @@ AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow == NULL) {
-        NSLog(@"[AWTWindow _displayChanged]: platformWindow == NULL");
         return;
     }
-
-    if (0) NSLog(@"[AWTWindow _displayChanged]: platformWindow = %p", platformWindow);
 
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_displayChanged, jc_CPlatformWindow, "displayChanged", "(Z)V");
@@ -1028,6 +1025,8 @@ AWT_ASSERT_APPKIT_THREAD;
     CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, platformWindow);
 }
+
+#define TRACE_DELIVER_MOVE_RESIZE   1
 
 - (void) _deliverMoveResizeEvent {
     AWT_ASSERT_APPKIT_THREAD;
@@ -1039,20 +1038,19 @@ AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
     if (platformWindow == NULL) {
-        if (0) NSLog(@"[AWTWindow _deliverMoveResizeEvent]: platformWindow == NULL");
         return;
     }
     NSRect frame;
     @try {
         frame = ConvertNSScreenRect(env, [self.nsWindow frame]);
     } @catch (NSException *e) {
-        if (0) NSLog(@"WARNING: suppressed exception from ConvertNSScreenRect() in [AWTWindow _deliverMoveResizeEvent]");
+        if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"WARNING: suppressed exception from ConvertNSScreenRect() in [AWTWindow _deliverMoveResizeEvent]");
         NSProcessInfo *processInfo = [NSProcessInfo processInfo];
         [NSApplicationAWT logException:e forProcess:processInfo];
         return;
     }
 
-    if (0) NSLog(@"[AWTWindow _deliverMoveResizeEvent]: platformWindow = %p", platformWindow);
+    if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow _deliverMoveResizeEvent]: platformWindow = %p", platformWindow);
 
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_deliverMoveResizeEvent, jc_CPlatformWindow, "deliverMoveResizeEvent", "(IIIIZ)V");
@@ -1072,8 +1070,8 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)windowDidMove:(NSNotification *)notification {
 AWT_ASSERT_APPKIT_THREAD;
-    if (0) NSLog(@"[AWTWindow windowDidMove] => _deliverMoveResizeEvent()");
     [self _deliverMoveResizeEvent];
+    if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow windowDidMove] => _deliverMoveResizeEvent()");
 }
 
 - (void)windowDidResize:(NSNotification *)notification {
@@ -1084,7 +1082,7 @@ AWT_ASSERT_APPKIT_THREAD;
 #endif
         return;
     }
-    if (0) NSLog(@"[AWTWindow windowDidResize] => _deliverMoveResizeEvent()");
+    if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow windowDidResize] => _deliverMoveResizeEvent()");
     [self _deliverMoveResizeEvent];
 }
 
@@ -1905,7 +1903,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     [self setPropertiesForStyleBits:newBits mask:mask];
 
     if (!fullscreen && !self.nsWindow.miniaturized) {
-        if (0) NSLog(@"[AWTWindow updateCustomTitleBar] => _deliverMoveResizeEvent()");
+        if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow updateCustomTitleBar] => _deliverMoveResizeEvent()");
         [self _deliverMoveResizeEvent];
     }
 
@@ -2311,7 +2309,7 @@ JNI_COCOA_ENTER(env);
         window.styleBits = actualBits;
 
         if (resized) {
-            if (0) NSLog(@"[AWTWindow nativeSetNSWindowStyleBits] => _deliverMoveResizeEvent()");
+            if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow nativeSetNSWindowStyleBits] => _deliverMoveResizeEvent()");
             [window _deliverMoveResizeEvent];
         }
     }];
@@ -2455,7 +2453,7 @@ JNI_COCOA_ENTER(env);
         // already uses location ignored by the macOS.
         // see sun.lwawt.LWWindowPeer#notifyReshape()
         if (!NSEqualRects(rect, [nsWindow frame])) {
-            if (0) NSLog(@"[AWTWindow nativeSetNSWindowBounds] => _deliverMoveResizeEvent()");
+            if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow nativeSetNSWindowBounds] => _deliverMoveResizeEvent()");
             [window _deliverMoveResizeEvent];
         }
     }];
@@ -3002,7 +3000,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeCallDeliverMo
     NSWindow *nsWindow = (NSWindow *)jlong_to_ptr(windowPtr);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         AWTWindow *window = (AWTWindow*)[nsWindow delegate];
-        if (0) NSLog(@"[AWTWindow nativeCallDeliverMoveResizeEvent] => _deliverMoveResizeEvent()");
+        if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow nativeCallDeliverMoveResizeEvent] => _deliverMoveResizeEvent()");
         [window _deliverMoveResizeEvent];
     }];
 

@@ -67,7 +67,7 @@ static NSArray<NSString*> *javaModes = nil;
 static NSArray<NSString*> *allModesExceptJava = nil;
 
 /* Traceability data */
-static const BOOL enableTracing = NO;
+static const BOOL enableTracing = YES;
 static const BOOL enableCallStacks = NO;
 static const BOOL enableRunLoopObserver = NO;
 
@@ -227,7 +227,8 @@ AWT_ASSERT_APPKIT_THREAD;
 
     for (NSUInteger i = 2, len = symbols.count; i < len; i++) {
          NSString* symbol = symbols[i];
-         if (![symbol hasPrefix: prefixSymbol]) {
+         if (![symbol containsString: @"performOnMainThread"]
+             && ((prefixSymbol == nil) || ![symbol containsString: prefixSymbol])) {
              return [symbol retain];
          }
     }
@@ -240,7 +241,8 @@ AWT_ASSERT_APPKIT_THREAD;
     int pos = -1;
     for (NSUInteger i = 2, len = symbols.count; i < len; i++) {
          NSString* symbol = symbols[i];
-         if (![symbol hasPrefix: prefixSymbol]) {
+         if (![symbol containsString: @"performOnMainThread"]
+             && ((prefixSymbol == nil) || ![symbol containsString: prefixSymbol])) {
              pos = i;
              break;
          }
@@ -346,7 +348,7 @@ AWT_ASSERT_APPKIT_THREAD;
         }
     } else {
         // Slow path:
-        [ThreadUtilities _performOnMainThreadWithTracing:aSelector on:target withObject:arg waitUntilDone:wait useJavaModes:useJavaModes];
+        [ThreadUtilities performOnMainThreadWithTracing:aSelector on:target withObject:arg waitUntilDone:wait useJavaModes:useJavaModes];
     }
 }
 
@@ -360,11 +362,11 @@ AWT_ASSERT_APPKIT_THREAD;
  * to ensure the execution of the given selector AS SOON AS POSSIBLE
  * i.e. during the next RunLoop run() with the lowest possible latency.
  */
-+ (void)_performOnMainThreadWithTracing:(SEL)aSelector
-                                     on:(id)target
-                             withObject:(id)arg
-                          waitUntilDone:(BOOL)wait
-                           useJavaModes:(BOOL)useJavaModes
++ (void)performOnMainThreadWithTracing:(SEL)aSelector
+                                    on:(id)target
+                            withObject:(id)arg
+                         waitUntilDone:(BOOL)wait
+                          useJavaModes:(BOOL)useJavaModes
 {
     // Slow path:
     const int mtThreshold = getMainThreadLatencyThreshold();
@@ -390,7 +392,7 @@ AWT_ASSERT_APPKIT_THREAD;
         char* operation = (invokeDirect ? "now  " : (blockingEDT ? "blocking" : "later"));
 
         // Record thread stack now and return another copy (auto-released):
-        callerCtx = [ThreadUtilities recordTraceContext:@"performOnMainThread" actionId:actionId useJavaModes:useJavaModes operation:operation];
+        callerCtx = [ThreadUtilities recordTraceContext:nil actionId:actionId useJavaModes:useJavaModes operation:operation];
         [callerCtx retain];
 
         lwc_plog(env, "%s performOnMainThread[caller]", toCString([callerCtx description]));

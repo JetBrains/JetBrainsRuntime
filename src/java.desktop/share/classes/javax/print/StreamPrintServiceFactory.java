@@ -35,6 +35,8 @@ import javax.print.attribute.PrintRequestAttributeSet;
 
 import sun.awt.AppContext;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * A {@code StreamPrintServiceFactory} is the factory for
  * {@link StreamPrintService} instances, which can print to an output stream in
@@ -51,6 +53,8 @@ import sun.awt.AppContext;
  * place of a {@code PrintService} which represents a physical printer device.
  */
 public abstract class StreamPrintServiceFactory {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(StreamPrintServiceFactory.class.getName());
 
     /**
      * Constructor for subclasses to call.
@@ -208,7 +212,7 @@ public abstract class StreamPrintServiceFactory {
                                 }  catch (ServiceConfigurationError err) {
                                      /* In the applet case, we continue */
                                     if (System.getSecurityManager() != null) {
-                                        err.printStackTrace();
+                                        log.severe("StreamPrintServiceFactory.getAllFactories: failure:", err);
                                     } else {
                                         throw err;
                                     }

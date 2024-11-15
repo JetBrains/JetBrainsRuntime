@@ -59,6 +59,7 @@ import javax.accessibility.AccessibleStateSet;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AppContext;
+import sun.util.logging.PlatformLogger;
 
 /**
  * An implementation of the Icon interface that paints Icons
@@ -87,6 +88,9 @@ import sun.awt.AppContext;
  */
 @SuppressWarnings("serial") // Same-version serialization only
 public class ImageIcon implements Icon, Serializable, Accessible {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(ImageIcon.class.getName());
+
     /* Keep references to the filename and location so that
      * alternate persistence schemes have the option to archive
      * images symbolically rather than including the image data
@@ -118,10 +122,10 @@ public class ImageIcon implements Icon, Serializable, Accessible {
                         setAppContext(component, null);
 
                 return component;
-            } catch (Throwable e) {
+            } catch (Throwable th) {
                 // We don't care about component.
                 // So don't prevent class initialisation.
-                e.printStackTrace();
+                log.severe("ImageIcon.component: failure", th);
                 return null;
             }
         }
@@ -329,6 +333,7 @@ public class ImageIcon implements Icon, Serializable, Accessible {
             try {
                 mTracker.waitForID(id, 0);
             } catch (InterruptedException e) {
+                // TODO: fix logger.fine("Class.method: interrupted");
                 interrupted = true;
             }
 

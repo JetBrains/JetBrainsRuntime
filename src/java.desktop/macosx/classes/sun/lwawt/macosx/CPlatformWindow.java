@@ -55,7 +55,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -619,7 +618,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     public FontMetrics getFontMetrics(Font f) {
         logger.severe("CPlatformWindow.getFontMetrics: exception occurred: ",
                 new RuntimeException("unimplemented"));
-
         return null;
     }
 
@@ -1203,14 +1201,22 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             try {
                 // check invokeAndWait: KO (operations require AWTLock and main thread)
                 // => use invokeLater as it is an empty event to force refresh ASAP:
-                LWCToolkit.invokeLater(new Runnable() {
+
+                // Runnable needed to get obvious stack traces:
+                final Runnable emptyTask = new Runnable() {
                     @Override
                     public void run() {
                         // Posting an empty to flush the EventQueue without blocking the main thread
                         logger.fine("CPlatformWindow.flushBuffers: run() " +
                                 "invoked on target = {0}", targetRef);
                     }
-                }, target);
+                };
+
+                if (true) {
+                    LWCToolkit.invokeAndWait(emptyTask, target);
+                } else {
+                    LWCToolkit.invokeLater(emptyTask, target);
+                }
             } catch (InvocationTargetException ite) {
                 logger.severe("CPlatformWindow.flushBuffers: exception occurred: ", ite);
             } finally {
@@ -1260,7 +1266,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         if (peer != null) {
             peer.notifyReshape(x, y, width, height);
 
-            logger.fine("CPlatformWindow.deliverMoveResizeEvent(): byUser = {0}", byUser);
+            logger.fine("CPlatformWindow.deliverMoveResizeEvent(): byUser = {0} " +
+                            "isFullScreenAnimationOn = {1}", byUser, isFullScreenAnimationOn);
 
             // System-dependent appearance optimization.
             if ((byUser && !oldB.getSize().equals(nativeBounds.getSize()))
@@ -1495,30 +1502,38 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     // ----------------------------------------------------------------------
 
     private void windowWillMiniaturize() {
+        logger.fine("windowWillMiniaturize");
         isIconifyAnimationActive = true;
     }
 
     private void windowDidBecomeMain() {
+        logger.fine("windowDidBecomeMain");
         lastBecomeMainTime = System.currentTimeMillis();
         checkBlockingAndOrder();
     }
 
     private void windowWillEnterFullScreen() {
         isFullScreenAnimationOn = true;
+        logger.fine("windowWillEnterFullScreen: isFullScreenAnimationOn = {0}", isFullScreenAnimationOn);
     }
 
     private void windowDidEnterFullScreen() {
         isInFullScreen = true;
         isFullScreenAnimationOn = false;
+        logger.fine("windowWillEnterFullScreen: isFullScreenAnimationOn = {0} isInFullScreen = {1}",
+                isFullScreenAnimationOn, isInFullScreen);
     }
 
     private void windowWillExitFullScreen() {
         isFullScreenAnimationOn = true;
+        logger.fine("windowWillExitFullScreen: isFullScreenAnimationOn = {0}", isFullScreenAnimationOn);
     }
 
     private void windowDidExitFullScreen() {
         isInFullScreen = false;
         isFullScreenAnimationOn = false;
+        logger.fine("windowDidExitFullScreen: isFullScreenAnimationOn = {0} isInFullScreen = {1}",
+                isFullScreenAnimationOn, isInFullScreen);
     }
 
     @JBRApi.Provides("java.awt.Window.CustomTitleBarPeer#update")

@@ -55,6 +55,7 @@ import javax.swing.plaf.basic.BasicLookAndFeel;
 
 import apple.laf.JRSUIControl;
 import apple.laf.JRSUIUtils;
+import sun.util.logging.PlatformLogger;
 import sun.swing.SwingAccessor;
 import sun.swing.SwingUtilities2;
 
@@ -66,6 +67,8 @@ public class AquaLookAndFeel extends BasicLookAndFeel {
 
     // for lazy initalizers. Following the pattern from metal.
     private static final String PKG_PREFIX = "com.apple.laf.";
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(AquaLookAndFeel.class.getName());
 
     /**
      * Return a short string that identifies this look and feel, e.g.
@@ -256,7 +259,7 @@ public class AquaLookAndFeel extends BasicLookAndFeel {
             initSystemColorDefaults(table);
             initComponentDefaults(table);
         } catch(final Exception e) {
-            e.printStackTrace();
+            log.severe("AquaLookAndFeel.getDefaults: failure", e);
         }
         return table;
     }
@@ -281,6 +284,7 @@ public class AquaLookAndFeel extends BasicLookAndFeel {
                 table.put(key, aquaProperties.getString(key));
             }
         } catch (final Exception e) {
+            log.fine("AquaLookAndFeel.initResourceBundle: failure", e);
         }
     }
 

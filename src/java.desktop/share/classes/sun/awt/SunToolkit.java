@@ -123,6 +123,8 @@ public abstract class SunToolkit extends Toolkit
 
     // 8014718: logging has been removed from SunToolkit
 
+    static final PlatformLogger log = PlatformLogger.getLogger(SunToolkit.class.getName());
+
     /* Load debug settings for native code */
     static {
         initStatic();
@@ -382,7 +384,7 @@ public abstract class SunToolkit extends Toolkit
         protected static final class AwtLockTracer implements AwtLockListener {
 
             private static final boolean DO_LOG = ((flags & TRACEFULL) != 0);
-            
+
             private static final java.util.Set<String> awtLockerMethods = java.util.Set.of(
                 "awtLock", "awtUnlock", "awtTryLock", /* SunToolkit methods */
                 "lock", "unlock", "tryLock"  /* RenderQueue methods */
@@ -603,7 +605,7 @@ public abstract class SunToolkit extends Toolkit
             }
         }
     }
-    
+
     /**
      * Special mask for the UngrabEvent events, in addition to the
      * public masks defined in AWTEvent.  Should be used as the mask
@@ -774,7 +776,7 @@ public abstract class SunToolkit extends Toolkit
             return;
         }
         // Special reentrancy checks to avoid deadlocks:
-        if (false) {
+        if (true) {
             final Thread owner = AWT_LOCK.getPrivateOwnerThread();
             if (owner != null) {
                 if (owner.getState() != Thread.State.RUNNABLE) {
@@ -819,8 +821,7 @@ public abstract class SunToolkit extends Toolkit
                 }
                 return acquired;
             } catch (InterruptedException ie) {
-                System.err.println("awtTryLock: interrupted");
-                ie.printStackTrace(System.err);
+                log.severe("SunToolkit.awtTryLock: interrupted", ie);
             }
         }
     }
@@ -1320,14 +1321,14 @@ public abstract class SunToolkit extends Toolkit
                     img = tk.createImage(new URLImageSource(url));
                     urlImgCache.put(key, img);
                 } catch (Exception e) {
+                    log.fine("SunToolkit.getImageFromHash: failure", e);
                 }
             }
             return img;
         }
     }
 
-    static Image getImageFromHash(Toolkit tk,
-                                               String filename) {
+    static Image getImageFromHash(Toolkit tk, String filename) {
         checkPermissions(filename);
         synchronized (fileImgCache) {
             Image img = (Image)fileImgCache.get(filename);
@@ -1336,6 +1337,7 @@ public abstract class SunToolkit extends Toolkit
                     img = tk.createImage(new FileImageSource(filename));
                     fileImgCache.put(filename, img);
                 } catch (Exception e) {
+                    log.fine("SunToolkit.getImageFromHash: failure", e);
                 }
             }
             return img;
@@ -1581,7 +1583,8 @@ public abstract class SunToolkit extends Toolkit
             try {
                 iw = im.getWidth(null);
                 ih = im.getHeight(null);
-            } catch (Exception e){
+            } catch (Exception e) {
+                log.fine("SunToolkit.getScaledIconImage: failure", e);
                 continue;
             }
             if (iw > 0 && ih > 0) {
@@ -1739,6 +1742,7 @@ public abstract class SunToolkit extends Toolkit
                 sm.checkPermission(AWTPermissions.SET_WINDOW_ALWAYS_ON_TOP_PERMISSION);
             }
         } catch (SecurityException se) {
+            log.fine("SunToolkit.canPopupOverlapTaskBar: failure", se);
             // There is no permission to show popups over the task bar
             result = false;
         }
@@ -2107,8 +2111,9 @@ public abstract class SunToolkit extends Toolkit
         }
         try {
             // We should wait unconditionally for the first event on EDT
-            EventQueue.invokeAndWait(() -> {/*dummy implementation*/});
+            EventQueue.invokeAndWait(() -> { /*dummy implementation*/ });
         } catch (InterruptedException | InvocationTargetException ignored) {
+            log.fine("SunToolkit.realSync: interrupted", ignored);
         }
         int bigLoop = 0;
         long end = TimeUnit.NANOSECONDS.toMillis(System.nanoTime()) + timeout;
@@ -2227,6 +2232,7 @@ public abstract class SunToolkit extends Toolkit
                     waitLock.wait(timeout(end));
                 }
             } catch (InterruptedException ie) {
+                log.fine("SunToolkit.realSync: interrupted", ie);
                 return false;
             }
         }
@@ -2451,7 +2457,7 @@ public abstract class SunToolkit extends Toolkit
                     getCurrentKeyboardFocusManager(),
                 keyEvent);
         } catch (ClassCastException cce) {
-             cce.printStackTrace();
+            log.severe("SunToolkit.consumeNextKeyTyped: failure", cce);
         }
     }
 
@@ -2767,8 +2773,8 @@ class PostEventQueue {
                     notifyAll();
                 }
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException ie) {
+            log.fine("SunToolkit.PostEventQueue.flush: interrupted");
             // Couldn't allow exception go up, so at least recover the flag
             newThread.interrupt();
         }

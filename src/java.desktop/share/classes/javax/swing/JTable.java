@@ -6671,6 +6671,7 @@ public class JTable extends JComponent implements TableModelListener, Scrollable
                     try {
                         runnable.wait();
                     } catch (InterruptedException ie) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
                         // short process, safe to ignore interrupts
                     }
                 }

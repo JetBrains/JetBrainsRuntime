@@ -249,6 +249,7 @@ public class XTrayIconPeer implements TrayIconPeer,
                 try {
                     XToolkit.awtLockWait(PERIOD);
                 } catch (InterruptedException e) {
+                    // TODO: fix logger.fine("Class.method: interrupted");
                     break;
                 }
                 if (System.currentTimeMillis() - start > PERIOD) {
@@ -285,7 +286,9 @@ public class XTrayIconPeer implements TrayIconPeer,
                             disposeOnEDT();
                         }
                     });
-            } catch (InterruptedException | InvocationTargetException e) {}
+            } catch (InterruptedException | InvocationTargetException e) {
+                // TODO: fix logger.fine("Class.method: interrupted");
+            }
         }
     }
 

@@ -517,6 +517,7 @@ public abstract class ShellFolder extends File {
         try {
             return invoke(task, RuntimeException.class);
         } catch (InterruptedException e) {
+            // TODO: fix logger.fine("Class.method: interrupted");
             return null;
         }
     }

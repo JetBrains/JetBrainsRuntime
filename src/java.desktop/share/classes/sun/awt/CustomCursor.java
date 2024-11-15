@@ -51,6 +51,7 @@ public abstract class CustomCursor extends Cursor {
         try {
             tracker.waitForAll();
         } catch (InterruptedException e) {
+            // TODO: fix logger.fine("Class.method: interrupted");
         }
         int width = cursor.getWidth(c);
         int height = cursor.getHeight(c);
@@ -94,6 +95,7 @@ public abstract class CustomCursor extends Cursor {
         try {
             pg.grabPixels();
         } catch (InterruptedException e) {
+            // TODO: fix logger.fine("Class.method: interrupted");
         }
 
         createNativeCursor(image, pixels, width, height, hotSpot.x, hotSpot.y);

@@ -1631,6 +1631,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                     }
                 }
             } catch (InterruptedException ie) {
+                // TODO: fix logger.fine("Class.method: interrupted");
             // Note: the returned timeStamp can be incorrect in this case.
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
                     log.fine("Caught exception, timeStamp may not be correct (ie = " + ie + ")");

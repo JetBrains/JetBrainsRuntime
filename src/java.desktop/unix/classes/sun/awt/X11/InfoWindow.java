@@ -493,6 +493,7 @@ public abstract class InfoWindow extends Window {
                     try {
                         msg = messageQueue.take();
                     } catch (InterruptedException e) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
                         return;
                     }
 
@@ -505,6 +506,7 @@ public abstract class InfoWindow extends Window {
                             try {
                                 XToolkit.awtLockWait();
                             } catch (InterruptedException e) {
+                                // TODO: fix logger.fine("Class.method: interrupted");
                                 return;
                             }
                         }

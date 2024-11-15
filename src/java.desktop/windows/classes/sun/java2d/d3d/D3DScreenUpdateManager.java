@@ -106,6 +106,7 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
             try {
                 Runtime.getRuntime().addShutdownHook(shutdown);
             } catch (Exception e) {
+                log.severe("D3DScreenUpdateManager(): failure", e);
                 done = true;
             }
             return null;
@@ -164,6 +165,7 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
                 // wasted for surfaces never rendered to
                 sd = D3DSurfaceData.createData(peer);
             }  catch (InvalidPipeException ipe) {
+                log.fine("D3DScreenUpdateManager.createScreenSurface: invalid pipeline", ipe);
                 sd = null;
             }
         }
@@ -406,7 +408,9 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
             while (needsUpdateNow) {
                 try {
                     runLock.wait();
-                } catch (InterruptedException e) {}
+                } catch (InterruptedException e) {
+                    log.fine("D3DScreenUpdateManager.runUpdateNow: interrupted");
+                }
             }
         }
     }
@@ -422,8 +426,11 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
 
                 // don't go to sleep if there's a thread waiting for an update
                 if (!needsUpdateNow) {
-                    try { runLock.wait(timeout); }
-                        catch (InterruptedException e) {}
+                    try {
+                        runLock.wait(timeout);
+                    } catch (InterruptedException ie) {
+                        log.fine("D3DScreenUpdateManager.run: interrupted");
+                    }
                 }
                 // if we were woken up, there are probably surfaces in the list,
                 // no need to check if the list is empty
@@ -493,6 +500,7 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
                 // repaint whole window to repopulate the back-buffer
                 repaintPeerTarget(sd.getPeer());
             } catch (InvalidPipeException ipe) {
+                log.fine("D3DScreenUpdateManager.createScreenSurface: invalid pipeline", ipe);
                 return false;
             }
         }

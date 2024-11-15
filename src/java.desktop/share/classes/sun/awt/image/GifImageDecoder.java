@@ -668,6 +668,7 @@ class GifFrame {
                     }
                     Thread.sleep(delay);
                 } catch (InterruptedException e) {
+                    // TODO: fix logger.fine("Class.method: interrupted");
                     return false;
                 }
             } else {

@@ -384,7 +384,7 @@ AWT_ASSERT_APPKIT_THREAD;
 + (void)_notifyJava:(jint)notificationType {
 AWT_ASSERT_APPKIT_THREAD;
 
-    if (0) NSLog(@"_notifyJava: %s", notificationToStr(notificationType));
+    if (1) NSLog(@"_notifyJava: %s", notificationToStr(notificationType));
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_APPEVENTHANDLER_CLASS();

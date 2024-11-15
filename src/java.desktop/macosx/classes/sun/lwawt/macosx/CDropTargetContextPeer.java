@@ -33,8 +33,12 @@ import sun.awt.dnd.SunDropTargetEvent;
 
 import javax.swing.*;
 
+import sun.util.logging.PlatformLogger;
+
 
 final class CDropTargetContextPeer extends SunDropTargetContextPeer {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(CDropTargetContextPeer.class.getName());
 
     private long    fNativeDropTransfer = 0;
     private long    fNativeDataAvailable = 0;
@@ -66,8 +70,8 @@ final class CDropTargetContextPeer extends SunDropTargetContextPeer {
             while (format != fNativeDataAvailable) {
                 try {
                     awtLockAccess.wait();
-                } catch (Throwable e) {
-                    e.printStackTrace();
+                } catch (Throwable th) {
+                    log.severe("CDropTargetContextPeer.getNativeData: failure", th);
                 }
             }
         }

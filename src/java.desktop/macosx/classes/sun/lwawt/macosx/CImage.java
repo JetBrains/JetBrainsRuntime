@@ -38,7 +38,13 @@ import sun.awt.image.MultiResolutionCachedImage;
 
 import sun.awt.image.SunWritableRaster;
 
+import sun.util.logging.PlatformLogger;
+
+
 public class CImage extends CFRetainedResource {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(CImage.class.getName());
+
     private static native long nativeCreateNSImageFromArray(int[] buffer, int w, int h);
     private static native long nativeCreateNSImageFromBytes(byte[] buffer);
     private static native long nativeCreateNSImageFromArrays(int[][] buffers, int[] w, int[] h);
@@ -142,6 +148,7 @@ public class CImage extends CFRetainedResource {
                 try {
                     mt.waitForID(id);
                 } catch (InterruptedException e) {
+                    log.fine("CImage.Creator.imageToArray: failure", iae);
                     return null;
                 }
 

@@ -90,9 +90,6 @@ import java.security.*;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.net.MalformedURLException;
 import javax.swing.UIManager;
 
@@ -128,7 +125,7 @@ final class NamedCursor extends Cursor {
 public final class LWCToolkit extends LWToolkit {
 
     // Logger to report issues happened during execution but that do not affect functionality
-    private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.macosx.LWCToolkit");
+    private static final PlatformLogger logger = PlatformLogger.getLogger(LWCToolkit.class.getName());
 
     // While it is possible to enumerate all mouse devices
     // and query them for the number of buttons, the code
@@ -252,7 +249,7 @@ public final class LWCToolkit extends LWToolkit {
         }
     });
 
-    private static final PlatformLogger log = PlatformLogger.getLogger(LWCToolkit.class.getName());
+    private static final PlatformLogger log = logger;
 
     @SuppressWarnings("removal")
     public LWCToolkit() {
@@ -765,7 +762,7 @@ public final class LWCToolkit extends LWToolkit {
                 }
              }, c);
         } catch (Exception e) {
-            logger.severe("CInputMethod.invokeAndWaitNoThrow: exception occurred: ", e);
+            log.severe("LWCToolkit.doEquals: exception occurred: ", e);
         }
 
         synchronized(ret) { return ret[0]; }

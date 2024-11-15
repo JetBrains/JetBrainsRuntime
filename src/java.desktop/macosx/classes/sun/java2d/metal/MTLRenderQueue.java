@@ -183,6 +183,7 @@ public class MTLRenderQueue extends RenderQueue {
                 try {
                     wait();
                 } catch (InterruptedException e) {
+                    logger.fine("QueueFlusher.flushNow: interrupted");
                 }
             }
 
@@ -225,6 +226,7 @@ public class MTLRenderQueue extends RenderQueue {
                             }
                         }
                     } catch (InterruptedException e) {
+                        logger.fine("QueueFlusher.run: interrupted");
                     }
                 }
                 try {
@@ -236,10 +238,11 @@ public class MTLRenderQueue extends RenderQueue {
                     if (task != null) {
                         task.run();
                     }
-                } catch (Error e) {
-                    error = e;
-                } catch (Exception ex) {
-                    logger.severe("QueueFlusher.run: exception occurred: ", ex);
+                } catch (Error err) {
+                    logger.severe("QueueFlusher.run: error occurred: ", err);
+                    error = err;
+                } catch (Exception e) {
+                    logger.severe("QueueFlusher.run: exception occurred: ", e);
                 } finally {
                     if (timedOut) {
                         unlock();

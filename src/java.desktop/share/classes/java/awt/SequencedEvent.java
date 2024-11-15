@@ -34,6 +34,8 @@ import sun.awt.AWTAccessor;
 import sun.awt.AppContext;
 import sun.awt.SunToolkit;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * A mechanism for ensuring that a series of AWTEvents are executed in a
  * precise order, even across multiple AppContexts. The nested events will be
@@ -48,6 +50,7 @@ import sun.awt.SunToolkit;
 @SuppressWarnings("removal")
 class SequencedEvent extends AWTEvent implements ActiveEvent {
 
+    private static final PlatformLogger log = PlatformLogger.getLogger(SequencedEvent.class.getName());
     /**
      * Use serialVersionUID from JDK 1.6 for interoperability.
      */
@@ -67,6 +70,7 @@ class SequencedEvent extends AWTEvent implements ActiveEvent {
     private static boolean fxAppThreadIsDispatchThread;
     @SuppressWarnings("serial") // Not statically typed as Serializable
     private Thread fxCheckSequenceThread;
+
     static {
         AWTAccessor.setSequencedEventAccessor(new AWTAccessor.SequencedEventAccessor() {
             public AWTEvent getNested(AWTEvent sequencedEvent) {
@@ -137,7 +141,8 @@ class SequencedEvent extends AWTEvent implements ActiveEvent {
                     while(!isFirstOrDisposed()) {
                         try {
                             Thread.sleep(100);
-                        } catch (InterruptedException e) {
+                        } catch (InterruptedException ie) {
+                            log.fine("SequencedEvent.fxCheckSequenceThread.run: interrupted");
                             break;
                         }
                     }
@@ -183,7 +188,8 @@ class SequencedEvent extends AWTEvent implements ActiveEvent {
                                 // we do not wait infinitely to avoid deadlock
                                 // as dispatch will ultimately be done by this thread
                                 fxCheckSequenceThread.join(500);
-                            } catch (InterruptedException e) {
+                            } catch (InterruptedException ie) {
+                                log.fine("SequencedEvent.dispatch: interrupted");
                             }
                         }
                     }
@@ -192,7 +198,8 @@ class SequencedEvent extends AWTEvent implements ActiveEvent {
                         synchronized (SequencedEvent.class) {
                             try {
                                 SequencedEvent.class.wait(1000);
-                            } catch (InterruptedException e) {
+                            } catch (InterruptedException ie) {
+                                log.fine("SequencedEvent.dispatch: interrupted");
                                 break;
                             }
                         }

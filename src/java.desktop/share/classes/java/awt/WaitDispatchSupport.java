@@ -268,10 +268,8 @@ class WaitDispatchSupport implements SecondaryLoop {
                         if (log.isLoggable(PlatformLogger.Level.FINE)) {
                             log.fine("waitDone " + keepBlockingEDT.get() + " " + keepBlockingCT.get());
                         }
-                    } catch (InterruptedException e) {
-                        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                            log.fine("Exception caught while waiting: " + e);
-                        }
+                    } catch (InterruptedException ie) {
+                        log.fine("WaitDispatchSupport.enter: interrupted while waiting", ie);
                     } finally {
                         if (filter != null) {
                             dispatchThread.removeEventFilter(filter);

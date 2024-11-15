@@ -25,7 +25,12 @@
 
 package sun.awt;
 
+import sun.util.logging.PlatformLogger;
+
 public class Mutex {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(Mutex.class.getName());
+
     private boolean locked;
     private Thread owner;
 
@@ -41,6 +46,7 @@ public class Mutex {
                 try {
                     wait();
                 } catch (InterruptedException e) {
+                    log.fine("Mutex.lock: interrupted");
                     // try again
                 }
             }

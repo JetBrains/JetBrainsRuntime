@@ -28,8 +28,14 @@ package sun.lwawt.macosx;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
+import sun.util.logging.PlatformLogger;
+
+
 @SuppressWarnings("serial") // JDK implementation class
 public class CCustomCursor extends Cursor {
+
+    private static final transient PlatformLogger log = PlatformLogger.getLogger(CCustomCursor.class.getName());
+
     static Dimension sMaxCursorSize;
     static Dimension getMaxCursorSize() {
         if (sMaxCursorSize != null) return sMaxCursorSize;
@@ -57,7 +63,9 @@ public class CCustomCursor extends Cursor {
         tracker.addImage(fImage, 0);
         try {
             tracker.waitForAll();
-        } catch (final InterruptedException e) {}
+        } catch (final InterruptedException e) {
+            log.fine("CCustomCursor(): interrupted");
+        }
 
         int width = fImage.getWidth(c);
         int height = fImage.getHeight(c);
@@ -146,6 +154,7 @@ public class CCustomCursor extends Cursor {
                 return fCImage.ptr;
             }
         } catch (IllegalArgumentException iae) {
+            log.fine("CCustomCursor.getImageData: failure", iae);
             // see comment above
             return 0L;
         }

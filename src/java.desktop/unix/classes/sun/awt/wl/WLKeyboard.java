@@ -102,6 +102,7 @@ class WLKeyboard {
                             }
                         });
                     } catch (InterruptedException ignored) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
                     } catch (InvocationTargetException e) {
                         throw new RuntimeException(e);
                     }

@@ -46,6 +46,8 @@ import javax.swing.UIManager;
 import jdk.internal.ref.CleanerFactory;
 import sun.awt.shell.ShellFolder;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * FileSystemView is JFileChooser's gateway to the
  * file system. Since the JDK1.1 File API doesn't allow
@@ -74,6 +76,8 @@ public abstract class FileSystemView {
 
     private boolean useSystemExtensionHiding =
             UIManager.getDefaults().getBoolean("FileChooser.useSystemExtensionHiding");
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(FileSystemView.class.getName());
 
     /**
      * Returns the file system view.
@@ -728,9 +732,8 @@ public abstract class FileSystemView {
 
         try {
             return ShellFolder.getShellFolder(f);
-        } catch (InternalError e) {
-            System.err.println("FileSystemView.getShellFolder: f="+f);
-            e.printStackTrace();
+        } catch (InternalError ie) {
+            log.severe("FileSystemView.getShellFolder: failure", ie);
             return null;
         }
     }

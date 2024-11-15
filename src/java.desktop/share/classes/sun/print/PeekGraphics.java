@@ -1839,6 +1839,7 @@ public class PeekGraphics extends Graphics2D
             try {
                 wait();
             } catch (InterruptedException e) {
+                // TODO: fix logger.fine("Class.method: interrupted");
             }
         }
 
@@ -1855,6 +1856,7 @@ public class PeekGraphics extends Graphics2D
             try {
                 wait();
             } catch (InterruptedException e) {
+                // TODO: fix logger.fine("Class.method: interrupted");
             }
         }
 
@@ -1891,6 +1893,7 @@ public class PeekGraphics extends Graphics2D
                 try {
                     Thread.sleep(50);
                 } catch(InterruptedException e) {
+                    // TODO: fix logger.fine("Class.method: interrupted");
                     // do nothing.
                 }
                 mHeight = img.getHeight(this);

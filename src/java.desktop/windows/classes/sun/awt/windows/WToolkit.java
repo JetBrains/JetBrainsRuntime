@@ -142,7 +142,7 @@ import sun.util.logging.PlatformLogger;
 
 public final class WToolkit extends SunToolkit implements Runnable {
 
-    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.windows.WToolkit");
+    private static final PlatformLogger log = PlatformLogger.getLogger(WToolkit.class.getName());
 
     // Desktop property which specifies whether XP visual styles are in effect
     public static final String XPSTYLE_THEME_ACTIVE = "win.xpstyle.themeActive";
@@ -306,7 +306,8 @@ public final class WToolkit extends SunToolkit implements Runnable {
                     wait();
                 }
             }
-        } catch (InterruptedException x) {
+        } catch (InterruptedException ie) {
+            logger.fine("WToolkit(): interrupted");
             // swallow the exception
         }
 

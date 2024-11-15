@@ -919,9 +919,7 @@ public class EventQueue {
                     // Use getNextEventPrivate() as it doesn't call flushPendingEvents()
                     newEventQueue.postEventPrivate(topQueue.getNextEventPrivate());
                 } catch (InterruptedException ie) {
-                    if (getEventLog().isLoggable(PlatformLogger.Level.FINE)) {
-                        getEventLog().fine("Interrupted push", ie);
-                    }
+                    getEventLog().fine("Interrupted push", ie);
                 }
             }
 
@@ -983,9 +981,7 @@ public class EventQueue {
                 try {
                     prevQueue.postEventPrivate(topQueue.getNextEventPrivate());
                 } catch (InterruptedException ie) {
-                    if (getEventLog().isLoggable(PlatformLogger.Level.FINE)) {
-                        getEventLog().fine("Interrupted pop", ie);
-                    }
+                    getEventLog().fine("Interrupted pop", ie);
                 }
             }
 

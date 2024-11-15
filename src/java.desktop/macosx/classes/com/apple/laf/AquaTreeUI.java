@@ -35,17 +35,19 @@ import javax.swing.plaf.*;
 import javax.swing.plaf.basic.BasicTreeUI;
 import javax.swing.tree.*;
 
-import com.apple.laf.AquaUtils.RecyclableSingleton;
-
 import apple.laf.*;
 import apple.laf.JRSUIConstants.*;
 import apple.laf.JRSUIState.AnimationFrameState;
+
+import sun.util.logging.PlatformLogger;
 
 /**
  * AquaTreeUI supports the client property "value-add" system of customization See MetalTreeUI
  * This is heavily based on the 1.3.1 AquaTreeUI implementation.
  */
 public class AquaTreeUI extends BasicTreeUI {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(AquaTreeUI.class.getName());
 
     // Create PLAF
     public static ComponentUI createUI(final JComponent c) {
@@ -416,7 +418,11 @@ public class AquaTreeUI extends BasicTreeUI {
         protected void paintAnimationFrame(final int frame) {
             fAnimationFrame = frame;
             paintOneControl();
-            try { Thread.sleep(20); } catch (final InterruptedException e) { }
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException ie) {
+                log.fine("TreeArrowMouseInputHandler.paintAnimationFrame: interrupted");
+            }
         }
 
         // Utility to paint just one widget while it's being tracked

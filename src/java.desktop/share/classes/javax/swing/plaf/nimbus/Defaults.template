@@ -60,6 +60,8 @@ import java.util.WeakHashMap;
 import javax.swing.border.Border;
 import javax.swing.plaf.UIResource;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * This class contains all the implementation details related to
  * ${LAF_NAME}. It contains all the code for initializing the UIDefaults table,
@@ -361,6 +363,9 @@ ${UI_DEFAULT_INIT}
      * proper class and invoke its constructor.
      */
     private static final class LazyPainter implements UIDefaults.LazyValue {
+
+        private static final PlatformLogger log = PlatformLogger.getLogger(LazyPainter.class.getName());
+
         private int which;
         private AbstractRegionPainter.PaintContext ctx;
         private String className;
@@ -419,7 +424,7 @@ ${UI_DEFAULT_INIT}
                 }
                 return constructor.newInstance(ctx, which);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.severe("LazyPainter.createValue: failure", e);
                 return null;
             }
         }

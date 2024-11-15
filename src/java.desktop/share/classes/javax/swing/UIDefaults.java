@@ -57,6 +57,7 @@ import sun.reflect.misc.MethodUtil;
 import sun.reflect.misc.ReflectUtil;
 import sun.swing.SwingAccessor;
 import sun.swing.SwingUtilities2;
+import sun.util.logging.PlatformLogger;
 
 /**
  * A table of defaults for Swing components.  Applications can set/get
@@ -85,6 +86,8 @@ public class UIDefaults extends Hashtable<Object,Object>
     private Vector<String> resourceBundles;
 
     private Locale defaultLocale = Locale.getDefault();
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(UIDefaults.class.getName());
 
     /**
      * Maps from a Locale to a cached Map of the ResourceBundle. This is done
@@ -199,8 +202,8 @@ public class UIDefaults extends Hashtable<Object,Object>
                 do {
                     try {
                         this.wait();
-                    }
-                    catch (InterruptedException e) {
+                    } catch (InterruptedException Ie) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
                     }
                     value = super.get(key);
                 }
@@ -761,9 +764,8 @@ public class UIDefaults extends Hashtable<Object,Object>
     protected void getUIError(String msg) {
         try {
             throw new Error(msg);
-        }
-        catch (Throwable e) {
-            e.printStackTrace();
+        } catch (Throwable th) {
+            log.severe("UIDefaults.getUIError: failure", th);
         }
     }
 
@@ -809,8 +811,8 @@ public class UIDefaults extends Hashtable<Object,Object>
             }
             catch (NoSuchMethodException e) {
                 getUIError("static createUI() method not found in " + uiClass);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
+                // TODO: KILL !
                 StringWriter w = new StringWriter();
                 PrintWriter pw = new PrintWriter(w);
                 e.printStackTrace(pw);

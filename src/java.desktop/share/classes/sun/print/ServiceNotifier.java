@@ -117,6 +117,7 @@ class ServiceNotifier extends Thread {
            try {
                 Thread.sleep(sleepTime);
            } catch (InterruptedException e) {
+                // TODO: fix logger.fine("Class.method: interrupted");
            }
            synchronized (this) {
                if (listeners == null) {

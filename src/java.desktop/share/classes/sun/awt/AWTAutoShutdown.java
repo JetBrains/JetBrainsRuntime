@@ -64,6 +64,8 @@ import sun.util.logging.PlatformLogger;
  */
 public final class AWTAutoShutdown implements Runnable {
 
+    private static final PlatformLogger log = PlatformLogger.getLogger(AWTAutoShutdown.class.getName());
+
     private static final AWTAutoShutdown theInstance = new AWTAutoShutdown();
 
     /**
@@ -311,6 +313,7 @@ public final class AWTAutoShutdown implements Runnable {
                     }
                 }
             } catch (InterruptedException e) {
+                log.fine("AWTAutoShutdown.run: interrupted", ie);
                 interrupted = true;
             } finally {
                 if (blockerThread == currentThread) {
@@ -347,9 +350,8 @@ public final class AWTAutoShutdown implements Runnable {
         try {
             /* Wait for the blocker thread to start. */
             mainLock.wait();
-        } catch (InterruptedException e) {
-            System.err.println("AWT blocker activation interrupted:");
-            e.printStackTrace();
+        } catch (InterruptedException ie) {
+            log.severe("AWTAutoShutdown.activateBlockerThread: interrupted", ie);
         }
     }
 

@@ -2945,7 +2945,8 @@ public class Container extends Component {
                 {
                     try {
                         getTreeLock().wait();
-                    } catch (InterruptedException e) {
+                    } catch (InterruptedException ie) {
+                        log.fine("Container.startLWModal: interrupted");
                         break;
                     }
                 }
@@ -5043,3 +5044,4 @@ class LightweightDispatcher implements java.io.Serializable, AWTEventListener {
         AWTEvent.MOUSE_MOTION_EVENT_MASK |
         AWTEvent.MOUSE_WHEEL_EVENT_MASK;
 }
+

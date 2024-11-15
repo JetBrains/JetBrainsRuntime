@@ -413,7 +413,9 @@ public class DefaultSynthStyle extends SynthStyle implements Cloneable {
                 synchronized(stateData) {
                     try {
                         stateData.wait();
-                    } catch (InterruptedException ie) {}
+                    } catch (InterruptedException ie) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
+                    }
                     value = stateData.get(key);
                 }
             }

@@ -2617,8 +2617,8 @@ public abstract class KeyboardFocusManager
         return ex;
     }
 
-    private static void handleException(Throwable ex) {
-        ex.printStackTrace();
+    private static void handleException(Throwable th) {
+        focusLog.severe("KeyboardFocusManager.handleException: failure", th);
     }
 
     static void processCurrentLightweightRequests() {

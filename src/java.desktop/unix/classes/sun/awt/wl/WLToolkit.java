@@ -102,7 +102,7 @@ import java.util.concurrent.Semaphore;
  * of run() method for more comments.
  */
 public class WLToolkit extends UNIXToolkit implements Runnable {
-    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLToolkit");
+    private static final PlatformLogger log = PlatformLogger.getLogger(WLToolkit.class.getName());
     private static final PlatformLogger logKeys = PlatformLogger.getLogger("sun.awt.wl.WLToolkit.keys");
 
     /**

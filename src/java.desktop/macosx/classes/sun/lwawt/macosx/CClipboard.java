@@ -33,6 +33,8 @@ import java.util.*;
 
 import sun.awt.datatransfer.*;
 
+import sun.util.logging.PlatformLogger;
+
 
 /**
 * A class which interfaces with Cocoa's pasteboard in order to support
@@ -41,6 +43,8 @@ import sun.awt.datatransfer.*;
  */
 
 final class CClipboard extends SunClipboard {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(CClipboard.class.getName());
 
     public CClipboard(String name) {
         super(name);
@@ -100,7 +104,7 @@ final class CClipboard extends SunClipboard {
                 // May remove this if-check when 5078787 is fixed.
                 if (!(flavor.isMimeTypeEqual(DataFlavor.javaJVMLocalObjectMimeType) &&
                         e instanceof NotSerializableException)) {
-                    e.printStackTrace();
+                    log.severe("CClipboard.setContentsNative: failure", e);
                 }
             }
         }

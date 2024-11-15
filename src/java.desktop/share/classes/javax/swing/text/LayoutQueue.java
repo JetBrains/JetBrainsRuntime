@@ -27,6 +27,8 @@ package javax.swing.text;
 import java.util.Vector;
 import sun.awt.AppContext;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * A queue of text layout tasks.
  *
@@ -35,6 +37,8 @@ import sun.awt.AppContext;
  * @since   1.3
  */
 public class LayoutQueue {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(LayoutQueue.class.getName());
 
     private static final Object DEFAULT_QUEUE = new Object();
 
@@ -108,6 +112,7 @@ public class LayoutQueue {
             try {
                 wait();
             } catch (InterruptedException ie) {
+                log.fine("LayoutQueue.waitForWork: interrupted");
                 return null;
             }
         }

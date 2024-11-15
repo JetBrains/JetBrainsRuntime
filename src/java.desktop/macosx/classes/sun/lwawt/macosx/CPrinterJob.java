@@ -52,6 +52,9 @@ import javax.print.attribute.Attribute;
 import sun.java2d.*;
 import sun.print.*;
 
+import sun.util.logging.PlatformLogger;
+
+
 public final class CPrinterJob extends RasterPrinterJob {
     // NOTE: This uses RasterPrinterJob as a base, but it doesn't use
     // all of the RasterPrinterJob functions. RasterPrinterJob will
@@ -83,6 +86,8 @@ public final class CPrinterJob extends RasterPrinterJob {
         // AWT has to be initialized for the native code to function correctly.
         Toolkit.getDefaultToolkit();
     }
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(CPrinterJob.class.getName());
 
     /**
      * Presents a dialog to the user for changing the properties of
@@ -192,6 +197,7 @@ public final class CPrinterJob extends RasterPrinterJob {
                 try {
                     destinationAttr = "" + new File(destination.getURI().getSchemeSpecificPart());
                 } catch (Exception e) {
+                    log.fine("CPrinterJob.setAttributes: failure", e);
                 }
             }
         }
@@ -253,17 +259,22 @@ public final class CPrinterJob extends RasterPrinterJob {
     }
 
     private void completePrintLoop() {
-        Runnable r = new Runnable() { public void run() {
-            synchronized(this) {
-                performingPrinting = false;
+        Runnable r = new Runnable() {
+            public void run() {
+                synchronized(this) {
+                    performingPrinting = false;
+                }
+                if (printingLoop != null) {
+                    printingLoop.exit();
+                }
             }
-            if (printingLoop != null) {
-                printingLoop.exit();
-            }
-        }};
-
+        };
         if (onEventThread) {
-            try { EventQueue.invokeAndWait(r); } catch (Exception e) { e.printStackTrace(); }
+            try {
+                EventQueue.invokeAndWait(r);
+            } catch (Exception e) {
+                log.severe("CPrinterJob.completePrintLoop: failure", e);
+            }
         } else {
             r.run();
         }
@@ -281,6 +292,7 @@ public final class CPrinterJob extends RasterPrinterJob {
                attributes.add(new Destination(destURI));
                destinationAttr = "" + destURI.getSchemeSpecificPart();
             } catch (Exception e) {
+                log.fine("CPrinterJob.setDestinationFile: failure", e);
             }
         }
     }
@@ -366,7 +378,7 @@ public final class CPrinterJob extends RasterPrinterJob {
                             printingLoop.enter();
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        log.severe("CPrinterJob.print: failure", e);
                     }
               } else {
                     // Fire off the print rendering loop on the AppKit, and block this thread
@@ -377,7 +389,7 @@ public final class CPrinterJob extends RasterPrinterJob {
                     try {
                         printLoop(true, firstPage, lastPage);
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        log.severe("CPrinterJob.print: failure", e);
                     }
                 }
                 if (++loopi < prMembers.length) {
@@ -640,6 +652,7 @@ public final class CPrinterJob extends RasterPrinterJob {
         try {
             page = getPageable().getPageFormat(pageIndex);
         } catch (Exception e) {
+            log.fine("CPrinterJob.getPageFormat: failure", e);
             return null;
         }
 
@@ -652,6 +665,7 @@ public final class CPrinterJob extends RasterPrinterJob {
         try {
             painter = getPageable().getPrintable(pageIndex);
         } catch (Exception e) {
+            log.fine("CPrinterJob.getPrintable: failure", e);
             return null;
         }
         return painter;
@@ -678,7 +692,8 @@ public final class CPrinterJob extends RasterPrinterJob {
             if (printerName.equals(service.getName())) {
                 try {
                     setPrintService(service);
-                } catch (PrinterException e) {
+                } catch (PrinterException pe) {
+                    log.fine("CPrinterJob.setPrinterServiceFromNative: failure", pe);
                     // ignored
                 }
                 return;
@@ -722,14 +737,19 @@ public final class CPrinterJob extends RasterPrinterJob {
         boolean cancelled = (performingPrinting && userCancelled);
         if (cancelled) {
             try {
-                LWCToolkit.invokeLater(new Runnable() { public void run() {
-                    try {
-                    cancelDoc();
-                    } catch (PrinterAbortException pae) {
-                        // no-op, let the native side handle it
+                LWCToolkit.invokeLater(new Runnable() {
+                    public void run() {
+                        try {
+                        cancelDoc();
+                        } catch (PrinterAbortException pae) {
+                            log.fine("CPrinterJob.cancelCheck: failure", pae);
+                            // no-op, let the native side handle it
+                        }
                     }
-                }}, null);
-            } catch (java.lang.reflect.InvocationTargetException ite) {}
+                }, null);
+            } catch (java.lang.reflect.InvocationTargetException ite) {
+                log.fine("CPrinterJob.cancelCheck: failure", pae);
+            }
         }
         return cancelled;
     }
@@ -743,41 +763,48 @@ public final class CPrinterJob extends RasterPrinterJob {
         return peekGraphics;
     }
 
-    private void printToPathGraphics(    final PeekGraphics graphics, // Always an actual PeekGraphics
+    private void printToPathGraphics(   final PeekGraphics graphics, // Always an actual PeekGraphics
                                         final PrinterJob printerJob, // Always an actual CPrinterJob
                                         final Printable painter, // Client class
                                         final PageFormat page, // Client class
                                         final int pageIndex,
                                         final long context) throws PrinterException {
         // This is called from the native side.
-        Runnable r = new Runnable() { public void run() {
-            try {
-                SurfaceData sd = CPrinterSurfaceData.createData(page, context); // Just stores page into an ivar
-                if (defaultFont == null) {
-                    defaultFont = new Font("Dialog", Font.PLAIN, 12);
+        Runnable r = new Runnable() {
+            public void run() {
+                try {
+                    SurfaceData sd = CPrinterSurfaceData.createData(page, context); // Just stores page into an ivar
+                    if (defaultFont == null) {
+                        defaultFont = new Font("Dialog", Font.PLAIN, 12);
+                    }
+                    Graphics2D delegate = new SunGraphics2D(sd, Color.black, Color.white, defaultFont);
+
+                    Graphics2D pathGraphics = new CPrinterGraphics(delegate, printerJob); // Just stores delegate into an ivar
+                    Rectangle2D pageFormatArea = getPageFormatArea(page);
+                    initPrinterGraphics(pathGraphics, pageFormatArea);
+                    painter.print(pathGraphics, FlipPageFormat.getOriginal(page), pageIndex);
+                    delegate.dispose();
+                    delegate = null;
+                } catch (PrinterException pe) {
+                    throw new java.lang.reflect.UndeclaredThrowableException(pe);
                 }
-                Graphics2D delegate = new SunGraphics2D(sd, Color.black, Color.white, defaultFont);
-
-                Graphics2D pathGraphics = new CPrinterGraphics(delegate, printerJob); // Just stores delegate into an ivar
-                Rectangle2D pageFormatArea = getPageFormatArea(page);
-                initPrinterGraphics(pathGraphics, pageFormatArea);
-                painter.print(pathGraphics, FlipPageFormat.getOriginal(page), pageIndex);
-                delegate.dispose();
-                delegate = null;
-        } catch (PrinterException pe) { throw new java.lang.reflect.UndeclaredThrowableException(pe); }
-        }};
-
+            }
+        };
         if (onEventThread) {
-            try { EventQueue.invokeAndWait(r);
+            try {
+                EventQueue.invokeAndWait(r);
             } catch (java.lang.reflect.InvocationTargetException ite) {
                 Throwable te = ite.getTargetException();
-                if (te instanceof PrinterException) throw (PrinterException)te;
-                else te.printStackTrace();
-            } catch (Exception e) { e.printStackTrace(); }
+                if (te instanceof PrinterException) {
+                    throw (PrinterException)te;
+                }
+                log.severe("CPrinterJob.printToPathGraphics: failure", te);
+            } catch (Exception e) {
+                log.severe("CPrinterJob.printToPathGraphics: failure", e);
+            }
         } else {
             r.run();
         }
-
     }
 
     // Returns either 1. an array of 3 object (PageFormat, Printable, PeekGraphics) or 2. null
@@ -785,35 +812,45 @@ public final class CPrinterJob extends RasterPrinterJob {
         final Object[] ret = new Object[3];
         final PrinterJob printerJob = this;
 
-        Runnable r = new Runnable() { public void run() { synchronized(ret) {
-            try {
-                Pageable pageable = getPageable();
-                PageFormat pageFormat = getPageFormat(pageIndex);
-                if (pageFormat != null) {
-                    Printable printable = pageable.getPrintable(pageIndex);
-                    if (printable != null) {
-                        BufferedImage bimg =
-                              new BufferedImage(
-                                  (int)Math.round(pageFormat.getWidth()),
-                                  (int)Math.round(pageFormat.getHeight()),
-                                  BufferedImage.TYPE_INT_ARGB_PRE);
-                        PeekGraphics peekGraphics =
-                         createPeekGraphics(bimg.createGraphics(), printerJob);
-                        Rectangle2D pageFormatArea =
-                             getPageFormatArea(pageFormat);
-                        initPrinterGraphics(peekGraphics, pageFormatArea);
+        Runnable r = new Runnable() {
+            public void run() {
+                synchronized(ret) {
+                    try {
+                        Pageable pageable = getPageable();
+                        PageFormat pageFormat = getPageFormat(pageIndex);
+                        if (pageFormat != null) {
+                            Printable printable = pageable.getPrintable(pageIndex);
+                            if (printable != null) {
+                                BufferedImage bimg =
+                                      new BufferedImage(
+                                          (int)Math.round(pageFormat.getWidth()),
+                                          (int)Math.round(pageFormat.getHeight()),
+                                          BufferedImage.TYPE_INT_ARGB_PRE);
+                                PeekGraphics peekGraphics =
+                                 createPeekGraphics(bimg.createGraphics(), printerJob);
+                                Rectangle2D pageFormatArea =
+                                     getPageFormatArea(pageFormat);
+                                initPrinterGraphics(peekGraphics, pageFormatArea);
 
-                        // Do the assignment here!
-                        ret[0] = pageFormat;
-                        ret[1] = printable;
-                        ret[2] = peekGraphics;
+                                // Do the assignment here!
+                                ret[0] = pageFormat;
+                                ret[1] = printable;
+                                ret[2] = peekGraphics;
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.fine("CPrinterJob.getPageformatPrintablePeekgraphics: failure", e);
+                        // Original code bailed on any exception
                     }
                 }
-            } catch (Exception e) {} // Original code bailed on any exception
-        }}};
-
+            }
+        };
         if (onEventThread) {
-            try { EventQueue.invokeAndWait(r); } catch (Exception e) { e.printStackTrace(); }
+            try {
+                EventQueue.invokeAndWait(r);
+            } catch (Exception e) {
+                log.severe("CPrinterJob.getPageformatPrintablePeekgraphics: failure", e);
+            }
         } else {
             r.run();
         }
@@ -838,18 +875,19 @@ public final class CPrinterJob extends RasterPrinterJob {
                         if (pageResult != Printable.NO_SUCH_PAGE) {
                             ret[0] = getPageFormatArea(pageFormat);
                         }
-                    } catch (Throwable t) {
-                        printErrorRef.compareAndSet(null, t);
+                    } catch (Throwable th) {
+                        log.fine("CPrinterJob.printAndGetPageFormatArea: failure", th);
+                        printErrorRef.compareAndSet(null, th);
                     }
                 }
             }
         };
-
         if (onEventThread) {
             try {
                 EventQueue.invokeAndWait(r);
-            } catch (Throwable t) {
-                printErrorRef.compareAndSet(null, t);
+            } catch (Throwable th) {
+                log.fine("CPrinterJob.printAndGetPageFormatArea: failure", th);
+                printErrorRef.compareAndSet(null, th);
             }
         } else {
             r.run();

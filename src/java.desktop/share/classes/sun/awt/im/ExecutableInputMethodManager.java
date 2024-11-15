@@ -26,18 +26,13 @@
 package sun.awt.im;
 
 import java.awt.AWTException;
-import java.awt.CheckboxMenuItem;
 import java.awt.Component;
 import java.awt.Dialog;
 import java.awt.EventQueue;
 import java.awt.Frame;
-import java.awt.PopupMenu;
-import java.awt.Menu;
-import java.awt.MenuItem;
 import java.awt.Toolkit;
 import sun.awt.AppContext;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+
 import java.awt.event.InvocationEvent;
 import java.awt.im.spi.InputMethodDescriptor;
 import java.lang.reflect.InvocationTargetException;
@@ -46,16 +41,15 @@ import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.Hashtable;
-import java.util.Iterator;
 import java.util.Locale;
 import java.util.ServiceLoader;
 import java.util.Vector;
-import java.util.Set;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 import sun.awt.InputMethodSupport;
 import sun.awt.SunToolkit;
 import sun.font.FontUtilities;
+import sun.util.logging.PlatformLogger;
 
 /**
  * {@code ExecutableInputMethodManager} is the implementation of the
@@ -70,6 +64,8 @@ import sun.font.FontUtilities;
 class ExecutableInputMethodManager extends InputMethodManager
                                    implements Runnable
 {
+    private static final PlatformLogger log = PlatformLogger.getLogger(ExecutableInputMethodManager.class.getName());
+
     // the input context that's informed about selections from the user interface
     private InputContext currentInputContext;
 
@@ -113,7 +109,8 @@ class ExecutableInputMethodManager extends InputMethodManager
                     hostAdapterLocator = new InputMethodLocator(hostAdapterDescriptor, null, null);
                 }
             }
-        } catch (AWTException e) {
+        } catch (AWTException ae) {
+            log.fine("ExecutableInputMethodManager(): failure", ae);
             // if we can't get a descriptor, we'll just have to do without native input methods
         }
 
@@ -135,6 +132,7 @@ class ExecutableInputMethodManager extends InputMethodManager
                     wait();
                 }
             } catch (InterruptedException e) {
+                log.fine("ExecutableInputMethodManager.run: interrupted");
             }
         }
 
@@ -154,7 +152,9 @@ class ExecutableInputMethodManager extends InputMethodManager
                     });
                 }
             } catch (InterruptedException ie) {
+                log.fine("ExecutableInputMethodManager.run: interrupted");
             } catch (InvocationTargetException ite) {
+                log.severe("ExecutableInputMethodManager.run: failure", ite);
                 // should we do anything under these exceptions?
             }
         }
@@ -246,6 +246,7 @@ class ExecutableInputMethodManager extends InputMethodManager
                 wait();
             }
         } catch (InterruptedException e) {
+            log.fine("ExecutableInputMethodManager.waitForChangeRequest: interrupted");
         }
     }
 
@@ -269,8 +270,8 @@ class ExecutableInputMethodManager extends InputMethodManager
                         return null;
                     }
                 });
-            }  catch (PrivilegedActionException e) {
-                e.printStackTrace();
+            }  catch (PrivilegedActionException pae) {
+                log.severe("ExecutableInputMethodManager.initializeInputMethodLocatorList: failure", pae);
             }
             javaInputMethodCount = javaInputMethodLocatorList.size();
         }
@@ -506,6 +507,7 @@ class ExecutableInputMethodManager extends InputMethodManager
                     }
                 }
             } catch (BackingStoreException bse) {
+                log.severe("ExecutableInputMethodManager.findPreferredInputMethodNode: failure", bse);
             }
 
             // search at parent's node
@@ -544,6 +546,7 @@ class ExecutableInputMethodManager extends InputMethodManager
                     return;
                 }
             } catch (AWTException ae) {
+                log.severe("ExecutableInputMethodManager.putPreferredInputMethod: failure", ae);
                 // do nothing here, either.
                 return;
             }

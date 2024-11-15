@@ -95,6 +95,7 @@ import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
 
 import sun.reflect.misc.ReflectUtil;
+import sun.util.logging.PlatformLogger;
 
 /**
  * A text component to edit various kinds of content.
@@ -246,6 +247,8 @@ import sun.reflect.misc.ReflectUtil;
 @SwingContainer(false)
 @SuppressWarnings("serial") // Same-version serialization only
 public class JEditorPane extends JTextComponent {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(JEditorPane.class.getName());
 
     /**
      * Creates a new <code>JEditorPane</code>.
@@ -694,6 +697,7 @@ public class JEditorPane extends JTextComponent {
                             }
                         });
                     } catch (InvocationTargetException | InterruptedException ex) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
                         UIManager.getLookAndFeel().provideErrorFeedback(
                                                             JEditorPane.this);
                         return old;
@@ -1060,10 +1064,10 @@ public class JEditorPane extends JTextComponent {
             }
         } catch (IndexOutOfBoundsException | NullPointerException e) {
             // malformed parameter list, use charset we have
+            log.fine("JEditorPane.setCharsetFromContentTypeParameters: failure", e);
         } catch (Exception e) {
             // malformed parameter list, use charset we have; but complain
-            System.err.println("JEditorPane.getCharsetFromContentTypeParameters failed on: " + paramlist);
-            e.printStackTrace();
+            log.severe("JEditorPane.setCharsetFromContentTypeParameters: failed on: " + paramlist, e);
         }
     }
 

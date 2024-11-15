@@ -43,7 +43,7 @@ final class ScreenMenu extends Menu
                    ScreenMenuPropertyHandler {
 
     // Logger to report issues happened during execution but that do not affect functionality
-    private static final PlatformLogger logger = PlatformLogger.getLogger("com.apple.laf.ScreenMenu");
+    private static final PlatformLogger logger = PlatformLogger.getLogger(ScreenMenu.class.getName());
 
     static {
         loadAWTLibrary();
