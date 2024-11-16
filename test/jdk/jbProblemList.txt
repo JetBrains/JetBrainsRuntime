@@ -908,7 +908,7 @@ javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949 linux-all,windows-a
 javax/swing/JLabel/6596966/bug6596966.java 8197552 windows-all
 javax/swing/JLabel/7004134/bug7004134.java JBR-5437 linux-all
 javax/swing/JMenu/4515762/bug4515762.java 8197552 windows-all
-javax/swing/JMenu/4692443/bug4692443.java JBR-6093 windows-x64
+javax/swing/JMenu/4692443/bug4692443.java JBR-6093 windows-all
 javax/swing/JMenu/6470128/bug6470128.java 8253184,JBR-6307 windows-all,linux-all
 javax/swing/JMenu/6538132/bug6538132.java JBR-894 windows-all
 javax/swing/JMenu/8072900/WrongSelectionOnMouseOver.java JBR-5799,JBR-6306 windows-all,linux-all
@@ -1157,8 +1157,8 @@ java/awt/font/EmojiVariation.java JBR-5009,JBR-5510 linux-aarch64,linux-5.18.2-a
 java/awt/font/TextLayout/TestJustification.html 8250791 macosx-all
 java/awt/font/TextLayout/TestSinhalaChar.java JBR-5103 generic-all
 javax/swing/JTableHeader/6889007/bug6889007.java 8253184,JBR-5387 windows-all,linux-all
-javax/swing/JTextField/8036819/bug8036819.java JBR-6113 windows-x64
-javax/swing/JTree/4927934/bug4927934.java JBR-6114 windows-x64
+javax/swing/JTextField/8036819/bug8036819.java JBR-6113 windows-all
+javax/swing/JTree/4927934/bug4927934.java JBR-6114 windows-all
 java/awt/TrayIcon/DragEventSource/DragEventSource.java 8252242 macosx-all
 java/awt/FileDialog/DefaultFocusOwner/DefaultFocusOwner.java 7187728 macosx-all,linux-all
 java/awt/FileDialog/RegexpFilterTest/RegexpFilterTest.html 7187728 macosx-all,linux-all
@@ -1251,6 +1251,7 @@ javax/swing/text/AbstractDocument/6968363/Test6968363.java JBR-4880,JBR-6760 win
 
 javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
 javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
+javax/swing/text/StyledEditorKit/bug4329418.java
 jb/java/jcef/HandleJSQueryTest3314.sh JBR-4866 linux-all
 
 jb/sun/awt/macos/KeyPressAndHoldTest.java JBR-4901 macosx-all
