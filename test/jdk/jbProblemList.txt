@@ -180,6 +180,7 @@ java/awt/Focus/CloseDialogActivateOwnerTest/CloseDialogActivateOwnerTest.java JB
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252,JBR-5178,JBR-6750 macosx-all,windows-all,linux-all
 java/awt/Focus/ConsumedTabKeyTest.java JBR-5833 windows-all
 java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java JBR-5210 windows-all
+java/awt/Focus/ModalDialogInFocusEventTest.java JBR-7818 linux-5.18.2-arch1-1
 java/awt/Focus/ModalExcludedWindowClickTest/ModalExcludedWindowClickTest.java JBR-884 windows-x64,linux-all
 java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.java 8194753 linux-all,macosx-all
 java/awt/Focus/NoAutotransferToDisabledCompTest/NoAutotransferToDisabledCompTest.java 7152980,JBR-5210 macosx-all,windows-all
@@ -1063,7 +1064,9 @@ javax/swing/JRadioButton/4314194/bug4314194.java 8298153 linux-all
 javax/swing/JRootPane/4670486/bug4670486.java 8197552 windows-all
 javax/swing/JRootPane/DefaultButtonTest.java JBR-5739 windows-all,linux-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java JBR-5210 windows-all
-javax/swing/text/html/StyleSheet/bug4936917.java JBR-899,JBR-5510 windows-all,linux-5.18.2-arch1-1
+javax/swing/text/html/Map/bug4322891.java JBR-6638 windows-all
+javax/swing/text/html/StyleSheet/bug4476002.java JBR-7498 linux-5.18.2-arch1-1
+javax/swing/text/html/StyleSheet/bug4936917.java 8277816,JBR-899,JBR-5510 windows-all,macosx-aarch64,linux-5.18.2-arch1-1
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id0 JBR-5799 windows-all
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-5779 linux-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -1086,11 +1089,11 @@ javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5541 linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952 windows-all
 javax/swing/UIDefaults/6795356/TableTest.java JBR-5767 windows-all
-java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,JBR-1656 windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java JBR-5802 windows-all
 java/awt/Robot/MultiScreenRobotPosition/MultiScreenRobotPosition.java JBR-830 windows-all
+
 
 native_sanity/simplenativelauncher/ProgramTest.java JBR-5287 windows-all
 
@@ -1218,6 +1221,7 @@ java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java 8253184 
 java/awt/print/Dialog/RestoreActiveWindowTest/RestoreActiveWindowTest.java 8185429 macosx-all
 java/awt/TrayIcon/DblClickActionEventTest/DblClickActionEventTest.html 8203867 macosx-all
 java/awt/Frame/FrameStateTest/FrameStateTest.html 8203920 macosx-all,linux-all
+javax/swing/SwingGraphics/TranslateTest.java JBR-7470 linux-all
 javax/swing/SwingUtilities/TestTextPosInPrint.java 8227025 windows-all
 java/awt/print/PrinterJob/ScaledText/ScaledText.java 8231226 macosx-all
 java/awt/font/ComplexEmoji.java JBR-5009 linux-aarch64

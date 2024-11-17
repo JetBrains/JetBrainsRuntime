@@ -156,6 +156,7 @@ runtime/CompressedOops/CompressedClassPointers.java 8305765 generic-all
 runtime/StackGuardPages/TestStackGuardPagesNative.java 8303612 linux-all
 runtime/ErrorHandling/TestDwarf.java 8305489 linux-all
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315,JBR-6289 linux-ppc64le,windows-aarch64
+runtime/ErrorHandling/UncaughtNativeExceptionTest.java 8338353 windows-aarch64
 
 applications/jcstress/copy.java 8229852 linux-all
 
@@ -166,6 +167,7 @@ runtime/cds/appcds/methodHandles/MethodHandlesPermuteArgumentsTest.java initial_
 runtime/cds/appcds/methodHandles/MethodHandlesAsCollectorTest.java initial_run generic-all
 runtime/cds/SharedBaseAddress.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_run generic-all
+runtime/Thread/ThreadCountLimit.java#id0 JBR-7286 linux-x64
 
 containers/docker/TestJcmd.java 8278102 linux-all
 containers/docker/TestMemoryAwareness.java 8303470 linux-all
