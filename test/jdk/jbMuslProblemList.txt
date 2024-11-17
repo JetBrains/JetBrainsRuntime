@@ -3,11 +3,13 @@ java/awt/BasicStroke/DashScaleMinWidth.java initial_runs generic-all
 java/awt/BasicStroke/DashZeroWidth.java initial_runs generic-all
 java/awt/Choice/ChoiceGeneratesItemEvents.java initial_runs generic-all
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java initial_runs generic-all
+java/awt/Choice/NonFocusablePopupMenuTest.java JBR-7785 linux-all
 java/awt/Choice/PopdownGeneratesMouseEvents/PopdownGeneratesMouseEvents.java initial_runs generic-all
 java/awt/datatransfer/Independence/IndependenceAWTTest.java initial_runs generic-all
 java/awt/datatransfer/Independence/IndependenceSwingTest.java initial_runs generic-all
 java/awt/event/ComponentEvent/ListItemEventsTest.java initial_runs generic-all
 java/awt/Focus/6401036/InputVerifierTest2.java initial_runs generic-all #intermittent
+java/awt/Focus/TestWindowsLFFocus.java initial_runs generic-all
 java/awt/FontClass/CreateFont/DeleteFont.sh initial_runs generic-all
 java/awt/font/ComplexEmoji.java initial_runs generic-all
 java/awt/font/EmojiVariation.java initial_runs generic-all
@@ -16,6 +18,7 @@ java/awt/font/Rotate/RotatedFontTest.java initial_runs generic-all
 java/awt/font/Rotate/TranslatedOutlineTest.java initial_runs generic-all
 java/awt/font/TextLayout/HitTest.java initial_runs generic-all
 java/awt/font/TextLayout/TestGetPixelBounds.java initial_runs generic-all
+java/awt/FontMetrics/ExtremeFontSizeTest.java JBR-7823 linux-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.java initial_runs generic-all
 java/awt/Graphics2D/DrawString/RotTransText.java initial_runs generic-all
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java initial_runs generic-all
@@ -31,6 +34,8 @@ java/awt/TextArea/AutoScrollOnSelectAndAppend/AutoScrollOnSelectAndAppend.java i
 java/awt/TextComponent/MiddleMouseClickPasteTest.java initial_runs generic-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java initial_runs generic-all
 javax/imageio/plugins/shared/ImageWriterCompressionTest.java initial_runs generic-all
+
+javax/swing/border/Test4129681.java JBR-7787 linux-all
 javax/swing/JCheckBox/ImageCheckboxFocus/ImageCheckboxTest.java initial_runs generic-all
 javax/swing/JComboBox/6559152/bug6559152.java initial_runs generic-all
 javax/swing/JComboBox/TestComboBoxComponentRendering.java initial_runs generic-all
@@ -42,11 +47,13 @@ javax/swing/JFileChooser/FileSystemView/SystemIconTest.java initial_runs generic
 javax/swing/JFileChooser/FileViewNPETest.java initial_runs generic-all
 javax/swing/JFileChooser/ShellFolderQueries/ShellFolderQueriesSecurityManagerTest.java initial_runs generic-all
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java initial_runs generic-all
+javax/swing/JFrame/JFrameBackgroundRefreshTest.java JBR-7471 linux-all
 javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java JBR-5539 windows-all,linux-all
 javax/swing/JMenu/JMenuSelectedColorTest.java JBR-2841 linux-all
 javax/swing/JMenu/TestDisabledMenuForegroundColor.java initial_runs generic-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java initial_runs generic-all
 javax/swing/JProgressBar/TestJProgressBarHighlightColor.java JBR-7342 linux-aarch64
+javax/swing/JRadioButton/bug4823809.java JBR-7788 linux-all
 javax/swing/JRadioButton/8041561/bug8041561.java JBR-7343 linux-aarch64
 javax/swing/JScrollBar/bug4202954/bug4202954.java initial_runs generic-all
 javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java initial_runs generic-all

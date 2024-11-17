@@ -73,6 +73,8 @@ gc/shenandoah/mxbeans/TestChurnNotifications.java#iu initial_run linux-x64
 
 compiler/ciReplay/TestSAServer.java 8029528 generic-all
 compiler/compilercontrol/jcmd/ClearDirectivesFileStackTest.java 8225370 generic-all
+compiler/intrinsics/sha/cli/TestUseSHA3IntrinsicsOptionOnSupportedCPU.java 8342713 generic-aarch64
+compiler/intrinsics/sha/cli/TestUseSHA512IntrinsicsOptionOnSupportedCPU.java 8342713 generic-aarch64
 compiler/jvmci/compilerToVM/GetFlagValueTest.java 8204459 generic-all
 compiler/jvmci/jdk.vm.ci.code.test/src/jdk/vm/ci/code/test/NativeCallTest.java 8262901 macosx-aarch64
 

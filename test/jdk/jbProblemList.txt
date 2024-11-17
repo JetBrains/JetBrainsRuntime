@@ -171,6 +171,7 @@ java/awt/Frame/7024749/bug7024749.java JBR-5210 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509 generic-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-all
+java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java 8340595,JBR-7786 macosx-15.0,linux-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
 java/awt/dnd/DropTargetingTest.java JBR-6729 windows-all
@@ -674,7 +675,7 @@ java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java 8282232 windo
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithOverlay.java 8253184 windows-all
 java/awt/Mouse/MouseDragEvent/MouseDraggedTest.java 8080676,8253184 linux-all,windows-all
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java 8157147 linux-all,windows-all
-java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java 8253184 windows-all
+java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java 8253184,JBR-7076 windows-all,linux-all
 java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.java 8148041 linux-all
 java/awt/Toolkit/DesktopProperties/rfe4758438.java 8193547 linux-all
 java/awt/xembed/server/RunTestXEmbed.java 7034201 linux-all
@@ -689,6 +690,7 @@ java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223 linux-all,windows
 java/awt/GraphicsDevice/DisplayModes/ExtraAllocationTest.java JBR-6384 macosx-all
 java/awt/keyboard/8218917/AltKeyBug.java JBR-5312 windows-all,macosx-all
 java/awt/keyboard/AltPlusNumberKeyCombinationsTest/AltPlusNumberKeyCombinationsTest.java JBR-5210 windows-all
+java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java JBR-7780 linux-aarch64
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithDialogButtonTest.java JBR-5210 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-5210 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java JBR-5210 windows-all
@@ -1238,7 +1240,7 @@ java/awt/FileDialog/RegexpFilterTest/RegexpFilterTest.html 7187728 macosx-all,li
 java/awt/print/PageFormat/Orient.java 8016055 macosx-all
 java/awt/TextArea/AutoScrollOnSelectAndAppend/AutoScrollOnSelectAndAppend.java JBR-6839 linux-all
 java/awt/TextArea/OverScrollTest/OverScrollTest.java 8253184 windows-all
-java/awt/TextArea/ScrollbarIntersectionTest/ScrollbarIntersectionTest.java 8253184 windows-all
+java/awt/TextArea/ScrollbarIntersectionTest/ScrollbarIntersectionTest.java 8253184,JBR-7583 windows-all,linux-all
 java/awt/TextArea/TextAreaCaretVisibilityTest/bug7129742.java JBR-5439 linux-all
 java/awt/TextArea/TextAreaCursorTest/HoveringAndDraggingTest.java 8024986 macosx-all,linux-all
 java/awt/TextArea/TextAreaTwicePack/TextAreaTwicePack.java 8253184 windows-all

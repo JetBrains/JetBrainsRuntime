@@ -127,12 +127,15 @@ java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289,JBR-7
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335,NOBUG linux-all,windows-all #timeout on windows
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
+java/awt/TextArea/UsingWithMouse/SelectionAutoscrollTest.java JBR-7779 linux-all
 java/awt/Window/HandleWindowDestroyTest/HandleWindowDestroyTest.java JBR-6540 macosx-all
 
 javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945,JBR-6726 macosx-all,linux-all
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-6485 linux-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-6698 windows-all,linux-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java NOBUG windows-x64 #timeout
+javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,JBR-6274 windows-x64,macosx-all
+
 
 jb/java/awt/CustomTitleBar/FrameNativeControlsMacOSTest.java JBR-6354 macosx-all
 jb/java/awt/Focus/FileDialogClosing.java NOBUG windows-x64 #Unexpected pressed count: 0
