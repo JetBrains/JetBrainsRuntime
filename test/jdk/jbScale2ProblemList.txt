@@ -36,7 +36,6 @@ java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720,8
 
 java/awt/Graphics/LineClipTest.java                                                 JBR-5071 linux-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071,JBR-5359 linux-all,windows-aarch64
-java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java 8257529,JBR-7780 windows-x64,linux-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050,JBR-5071 windows-all,macosx-all,linux-all
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711,JBR-6234 linux-all,windows-all,macosx-all
 java/awt/List/TriggerActionEventTest.java JBR-6234 windows-all

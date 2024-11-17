@@ -688,7 +688,7 @@ java/awt/GraphicsDevice/DisplayModes/ExtraAllocationTest.java JBR-6384 macosx-al
 java/awt/keyboard/AllKeyCode/AllKeyCode.java 8242930 macosx-all
 java/awt/keyboard/8218917/AltKeyBug.java JBR-5312 windows-all
 java/awt/keyboard/AltPlusNumberKeyCombinationsTest/AltPlusNumberKeyCombinationsTest.java JBR-5210 windows-all
-java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java 8257529 windows-x64
+java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java 8257529,JBR-7780 windows-x64,linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithDialogButtonTest.java JBR-5210 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-5210 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java JBR-5210 windows-all
@@ -1035,7 +1035,7 @@ javax/swing/JFileChooser/8194044/FileSystemRootTest.java JBR-5767 windows-all
 javax/swing/JFileChooser/ShellFolderQueries/ShellFolderQueriesSecurityManagerTest.java JBR-5767 windows-all
 javax/swing/JFormattedTextField/bug4863121.java JBR-7424 windows-10.0
 javax/swing/JFrame/8016356/bug8016356.java JBR-108 windows-all
-javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java JBR-5510,JBR-6999 linux-5.18.2-arch1-1,windows-x64,macosx-64
+javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106,JBR-5510,JBR-6999 macosx-aarch64,linux-5.18.2-arch1-1,windows-x64,macosx-x64
 javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java 8197552 windows-all
 javax/swing/JSplitPane/4885629/bug4885629.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JTabbedPane/4361477/bug4361477.java JBR-5932 linux-all
