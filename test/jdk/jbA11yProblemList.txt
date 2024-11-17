@@ -52,7 +52,7 @@ java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayout
 java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java JBR-5210,JBR-5397 windows-all,macosx-all
 java/awt/hidpi/properties/HiDPIPropertiesUnixTest.java JBR-5397 macosx-all
 java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemonicKeyTypedTest.java JBR-5397 macosx-all
-java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java JBR-5397 macosx-all
+java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java 8257529,JBR-5397,JBR-7780 windows-x64,macosx-all,linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java JBR-5397,JBR-4074 macosx-all,windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5397,JBR-5505 macosx-all,windows-all
 java/awt/Modal/ModalFocusTransferTests/FocusTransferDWFAppModalTest.java JBR-5397 macosx-all
