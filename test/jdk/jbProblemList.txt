@@ -127,6 +127,7 @@ java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java JBR-5809 linux-all
 java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayoutTraversalTest.java JBR-5210 windows-all
 java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
+java/awt/Focus/InactiveFocusRace.java 8023263 linux-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 8169110 linux-all
