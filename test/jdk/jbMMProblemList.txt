@@ -110,7 +110,6 @@ javax/swing/JComboBox/6559152/bug6559152.java JBR-7783 linux-x64
 javax/swing/JComponent/7154030/bug7154030.java JBR-5510 linux-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5510 linux-all
-javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106,JBR-5510 macosx-aarch64,linux-all
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java  JBR-5510 linux-all
 javax/swing/JMenu/JMenuSelectedColorTest.java JBR-5510 linux-all
