@@ -831,6 +831,7 @@ jdk_awt_wayland = \
     -java/awt/Clipboard \
     -java/awt/ColorClass/AlphaColorTest.java \
     -java/awt/Component/7097771 \
+    -java/awt/Component/ComponentEventTest.java \
     -java/awt/Component/CompEventOnHiddenComponent \
     -java/awt/Component/ComponentRedrawnTest.java \
     -java/awt/Component/CreateImage \
@@ -903,10 +904,12 @@ jdk_awt_wayland = \
     -java/awt/Focus/ContainerFocusAutoTransferTest \
     -java/awt/Focus/DeiconifiedFrameLoosesFocus \
     -java/awt/Focus/DisposedWindow \
+    -java/awt/Focus/EmptyWindowKeyTest.java \
     -java/awt/Focus/EventRetargetTest.java \
     -java/awt/Focus/ExtraPropChangeNotifVetoingTest.java \
     -java/awt/Focus/FocusEmbeddedFrameTest \
     -java/awt/Focus/FocusForRemovedComponentTest.java \
+    -java/awt/Focus/FocusKeepTest.java \
     -java/awt/Focus/FocusOwnerFrameOnClick \
     -java/awt/Focus/FocusSubRequestTest \
     -java/awt/Focus/FocusTransitionTest \
@@ -915,10 +918,13 @@ jdk_awt_wayland = \
     -java/awt/Focus/FrameJumpingToMouse \
     -java/awt/Focus/FrameMinimizeTest \
     -java/awt/Focus/IconifiedFrameFocusChangeTest \
+    -java/awt/Focus/InactiveFocusRace.java \
     -java/awt/Focus/InitialFocusTest.java \
     -java/awt/Focus/InputVerifierTest3 \
+    -java/awt/Focus/KeyStrokeTest.java \
     -java/awt/Focus/KeyEventForBadFocusOwnerTest \
     -java/awt/Focus/LabelScrollBarFocus.java \
+    -java/awt/MenuShortcut/ActionCommandTest.java \
     -java/awt/Focus/ModalBlockedStealsFocusTest \
     -java/awt/Focus/ModalDialogActivationTest \
     -java/awt/Focus/ModalDialogInFocusEventTest.java \
