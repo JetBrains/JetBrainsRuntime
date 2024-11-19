@@ -1,0 +1,131 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.geom.AffineTransform;
+
+import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
+
+/**
+ * @test
+ * @summary Verifies that the popup-style window can move under Wayland
+ * @requires os.family == "linux"
+ * @key headful
+ * @modules java.desktop/sun.awt
+ * @run main/othervm WLPopupMoves
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WLPopupMoves
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WLPopupMoves
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 WLPopupMoves
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 WLPopupMoves
+ */
+public class WLPopupMoves {
+
+    private static JFrame frame;
+    private static JWindow popup;
+
+    private static void createAndShowUI() {
+        frame = new JFrame("WLPopupResize Test");
+        frame.setSize(300, 200);
+        frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
+        frame.setVisible(true);
+    }
+
+    private static void initPopup() {
+        JPanel popupContents = new JPanel();
+        popupContents.add(new JLabel("test popup"));
+        popup = new JWindow(frame);
+        popup.setType(Window.Type.POPUP);
+        sun.awt.AWTAccessor.getWindowAccessor().setPopupParent(popup, frame);
+        popup.add(popupContents);
+    }
+
+    public static void main(String... args) throws Exception {
+        Toolkit toolkit = Toolkit.getDefaultToolkit();
+        if (!toolkit.getClass().getName().equals("sun.awt.wl.WLToolkit")) {
+            System.out.println("The test makes sense only for WLToolkit. Exiting...");
+            return;
+        }
+
+        Robot robot = new Robot();
+
+        SwingUtilities.invokeAndWait(WLPopupMoves::createAndShowUI);
+        pause(robot);
+
+        SwingUtilities.invokeAndWait(WLPopupMoves::initPopup);
+        pause(robot);
+
+        double uiScale = getUiScale();
+        System.out.printf("UI scale: %.2f.\n", uiScale);
+        int pixelThreshold = uiScale == 1.0 ? 0 : (int) Math.ceil(uiScale);
+        System.out.printf("Pixel threshold for verifications: %d\n", pixelThreshold);
+
+        System.out.println("Set popup to (50, 50)");
+        SwingUtilities.invokeAndWait(() -> {
+            popup.setBounds(50, 50, 120, 200);
+            popup.setVisible(true);
+        });
+        verifyBounds("Popup position after setting to (50, 50)\n", 50, 50, 120, 200, pixelThreshold);
+        pause(robot);
+        verifyBounds("Popup position (50, 50) after robot's pause\n", 50, 50, 120, 200, pixelThreshold);
+
+        System.out.println("Set popup to (100, 100)");
+        SwingUtilities.invokeAndWait(() -> {
+            popup.setBounds(100, 100, 120, 200);
+        });
+        verifyBounds("Popup position after setting to (100, 100)\n", 100, 100, 120, 200, pixelThreshold);
+        pause(robot);
+        verifyBounds("Popup position (100, 100) after robot's pause\n", 100, 100, 120, 200, pixelThreshold);
+
+        int x1 = toolkit.getScreenSize().width / 2;
+        int y1 = toolkit.getScreenSize().height / 2;
+        System.out.printf("Set popup to (%d, %d)\n", x1, y1);
+        SwingUtilities.invokeAndWait(() -> {
+            popup.setBounds(x1, y1, 120, 200);
+        });
+        verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x1, y1), x1, y1, 120, 200, pixelThreshold);
+        pause(robot);
+        verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x1, y1), x1, y1, 120, 200, pixelThreshold);
+
+
+        int x2 = toolkit.getScreenSize().width - 10;
+        int y2 = toolkit.getScreenSize().height - 10;
+        System.out.printf("Set popup to (%d, %d). (to the bottom right corner) \n", x2, y2);
+        SwingUtilities.invokeAndWait(() -> {
+            popup.setBounds(x2, y2, 120, 200);
+        });
+        verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x2, y2), x2, y2, 120, 200, pixelThreshold);
+        pause(robot);
+        verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x2, y2), x2, y2, 120, 200, pixelThreshold);
+
+        SwingUtilities.invokeAndWait(frame::dispose);
+    }
+
+    private static Double getUiScale() {
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice device = ge.getDefaultScreenDevice();
+        GraphicsConfiguration gc = device.getDefaultConfiguration();
+        AffineTransform transform = gc.getDefaultTransform();
+        double scaleX = transform.getScaleX();
+        double scaleY = transform.getScaleY();
+        if (scaleX != scaleY) {
+            throw new RuntimeException("Non-uniform scaling is not supported on this test");
+        }
+        return scaleX;
+    }
+
+    private static void verifyBounds(String message, int x, int y, int w, int h, int pixelThreshold) {
+        Rectangle bounds = popup.getBounds();
+        System.out.printf("Check %s for bounds: %s\n", message, bounds);
+        boolean isCorrectPosition = x - pixelThreshold <= bounds.x && bounds.x <= x + pixelThreshold &&
+                y - pixelThreshold <= bounds.y && bounds.y <= y + pixelThreshold;
+        if (!isCorrectPosition) {
+            throw new RuntimeException(String.format("%s has wrong position. Expected: (%d, %d). Actual: (%d, %d)", message, x, y, bounds.x, bounds.y));
+        }
+        if (bounds.width != w || bounds.height != h) {
+            throw new RuntimeException(String.format("%s has wrong size. Expected: (%d, %d). Actual: (%d, %d)", message, w, h, bounds.width, bounds.height));
+        }
+    }
+
+    private static void pause(Robot robot) {
+        robot.waitForIdle();
+        robot.delay(500);
+    }
+}
