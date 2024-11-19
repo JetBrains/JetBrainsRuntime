@@ -123,6 +123,7 @@ public class WLComponentPeer implements ComponentPeer {
     int displayScale; // protected by dataLock
     double effectiveScale; // protected by dataLock
     private final WLSize wlSize = new WLSize();
+    boolean repositionPopup = false; // protected by dataLock
 
     static {
         initIDs();
@@ -278,6 +279,12 @@ public class WLComponentPeer implements ComponentPeer {
         return null;
     }
 
+    private static Component realParentFor(Component c) {
+        return (c instanceof Window window && isWlPopup(window))
+                ? AWTAccessor.getWindowAccessor().getPopupParent(window)
+                : c.getParent();
+    }
+
     static Point getRelativeLocation(Component c, Window toplevel) {
         Objects.requireNonNull(c);
 
@@ -286,24 +293,22 @@ public class WLComponentPeer implements ComponentPeer {
         }
 
         int x = 0, y = 0;
-        while (c != null) {
-            if (c instanceof Window window) {
-                // The location of non-popup windows has no relevance since
-                // there are no absolute coordinates in Wayland.
-                // The popup windows position, on the other hand, is set relative to their
-                // parent toplevel.
-                if (isWlPopup(window)) {
-                    x += c.getX();
-                    y += c.getY();
-                }
-                break;
-            }
+        while (c != null && c != toplevel) {
             x += c.getX();
             y += c.getY();
-            c = c.getParent();
+            c = realParentFor(c);
         }
 
         return new Point(x, y);
+    }
+
+    Point nativeLocationForPopup(Window popup, Component popupParent, Window toplevel) {
+        // We need to provide popup's "parent" location relative to the surface this parent is painted upon:
+        Point parentLocation = javaUnitsToSurfaceUnits(getRelativeLocation(popupParent, toplevel));
+
+        // Offset is relative to the top-left corner of the "parent".
+        Point offsetFromParent = javaUnitsToSurfaceUnits(popup.getLocation());
+        return new Point(parentLocation.x + offsetFromParent.x, parentLocation.y + offsetFromParent.y);
     }
 
     protected void wlSetVisible(boolean v) {
@@ -327,30 +332,12 @@ public class WLComponentPeer implements ComponentPeer {
             performLocked(() -> {
                 if (isWlPopup) {
                     Window popup = (Window) target;
-                    final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
-                    final Window toplevel = getToplevelFor(popupParent);
-                    // We need to provide popup "parent" location relative to
-                    // the surface it is painted upon:
-                    final Point toplevelLocation = getRelativeLocation(popupParent, toplevel);
-                    final int parentX = javaUnitsToSurfaceUnits(toplevelLocation.x);
-                    final int parentY = javaUnitsToSurfaceUnits(toplevelLocation.y);
-
-                    // Offset must be relative to the top-left corner of the "parent".
-                    final Point offsetFromParent = popup.getLocation();
-                    final int offsetX = javaUnitsToSurfaceUnits(offsetFromParent.x);
-                    final int offsetY = javaUnitsToSurfaceUnits(offsetFromParent.y);
-
-                    if (popupLog.isLoggable(PlatformLogger.Level.FINE)) {
-                        popupLog.fine("New popup: " + popup);
-                        popupLog.fine("\tparent:" + popupParent);
-                        popupLog.fine("\ttoplevel: " + toplevel);
-                        popupLog.fine("\toffset of anchor from toplevel: " + toplevelLocation);
-                        popupLog.fine("\toffset from anchor: " + offsetFromParent);
-                    }
-
+                    Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
+                    Window toplevel = getToplevelFor(popupParent);
+                    Point nativeLocation = nativeLocationForPopup(popup, popupParent, toplevel);
                     nativeCreateWLPopup(nativePtr, getNativePtrFor(toplevel),
                             thisWidth, thisHeight,
-                            parentX + offsetX, parentY + offsetY);
+                            nativeLocation.x, nativeLocation.y);
                 } else {
                     int xNative = javaUnitsToSurfaceUnits(target.getX());
                     int yNative = javaUnitsToSurfaceUnits(target.getY());
@@ -420,6 +407,18 @@ public class WLComponentPeer implements ComponentPeer {
         nativeSetMinimumSize(nativePtr, surfaceMinSize.width, surfaceMinSize.height);
         if (surfaceMaxSize != null) {
             nativeSetMaximumSize(nativePtr, surfaceMaxSize.width, surfaceMaxSize.height);
+        }
+
+        if (popupNeedsReposition()) {
+            popupRepositioned();
+
+            // Since popup's reposition request includes both its size and location, the request
+            // needs to be in sync with all the other sizes this method is responsible for updating.
+            Window popup = (Window) target;
+            final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
+            final Window toplevel = getToplevelFor(popupParent);
+            Point nativeLocation = nativeLocationForPopup(popup, popupParent, toplevel);
+            nativeRepositionWLPopup(nativePtr, surfaceWidth, surfaceHeight, nativeLocation.x, nativeLocation.y);
         }
     }
 
@@ -505,9 +504,26 @@ public class WLComponentPeer implements ComponentPeer {
         }
     }
 
-    private void setLocationTo(int newX, int newY) {
+    private void resetTargetLocationTo(int newX, int newY) {
         var acc = AWTAccessor.getComponentAccessor();
         acc.setLocation(target, newX, newY);
+    }
+
+    private boolean popupNeedsReposition() {
+        synchronized (dataLock) {
+            return repositionPopup;
+        }
+    }
+    private void markPopupNeedsReposition() {
+        synchronized (dataLock) {
+            repositionPopup = true;
+        }
+    }
+
+    private void popupRepositioned() {
+        synchronized (dataLock) {
+            repositionPopup = false;
+        }
     }
 
     public void setBounds(int newX, int newY, int newWidth, int newHeight, int op) {
@@ -527,9 +543,7 @@ public class WLComponentPeer implements ComponentPeer {
         if ((positionChanged || sizeChanged) && isPopup && visible) {
             // Need to update the location and size even if does not (yet) have a surface
             // as the initial configure event needs to have the latest data on the location/size.
-            repositionWlPopup(newX, newY, newSize.width, newSize.height);
-            // the location will be updated in notifyConfigured() following
-            // the xdg_popup::repositioned event
+            markPopupNeedsReposition();
         }
 
         if (positionChanged) {
@@ -546,9 +560,9 @@ public class WLComponentPeer implements ComponentPeer {
             layout();
 
             WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_RESIZED));
-        }
 
-        postPaintEvent();
+            postPaintEvent(); // no need to repaint after being moved, only when resized
+        }
     }
 
     boolean isSizeBeingConfigured() {
@@ -564,41 +578,15 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     private void setSizeTo(int newWidth, int newHeight) {
-        Dimension newSize = constrainSize(newWidth, newHeight);
         if (isSizeBeingConfigured() && wlSize.hasPixelSizeSet()) {
             // Must be careful not to override the size of the Wayland surface because
             // some implementations (Weston) react badly when the size of the surface
             // mismatches the configured size. We can't always precisely derive the surface
             // size from the Java (client) size because of scaling rounding errors.
-            wlSize.setJavaSize(newSize.width, newSize.height);
+            wlSize.setJavaSize(newWidth, newHeight);
         } else {
-            wlSize.deriveFromJavaSize(newSize.width, newSize.height);
+            wlSize.deriveFromJavaSize(newWidth, newHeight);
         }
-    }
-
-    private void repositionWlPopup(int newX, int newY, int newWidth, int newHeight) {
-        performLocked(() -> {
-            Window popup = (Window) target;
-            final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
-            final Window toplevel = getToplevelFor(popupParent);
-            // We need to provide popup "parent" location relative to
-            // the surface it is painted upon:
-            final Point toplevelLocation = getRelativeLocation(popupParent, toplevel);
-            final int parentX = javaUnitsToSurfaceUnits(toplevelLocation.x);
-            final int parentY = javaUnitsToSurfaceUnits(toplevelLocation.y);
-            int newXNative = javaUnitsToSurfaceUnits(newX);
-            int newYNative = javaUnitsToSurfaceUnits(newY);
-            int newWidthNative = javaUnitsToSurfaceUnits(newWidth);
-            int newHeightNative = javaUnitsToSurfaceUnits(newHeight);
-            if (popupLog.isLoggable(Level.FINE)) {
-                popupLog.fine("Repositioning popup: " + popup);
-                popupLog.fine("\tparent:" + popupParent);
-                popupLog.fine("\ttoplevel: " + toplevel);
-                popupLog.fine("\toffset of anchor from toplevel: " + toplevelLocation);
-                popupLog.fine("\toffset from anchor: " + newX + ", " + newY);
-            }
-            nativeRepositionWLPopup(nativePtr, newWidthNative, newHeightNative, parentX + newXNative, parentY + newYNative);
-        } );
     }
 
     public int getBufferWidth() {
@@ -1548,23 +1536,34 @@ public class WLComponentPeer implements ComponentPeer {
         }
     }
 
+    Point javaUnitsToSurfaceUnits(Point p) {
+        return new Point(javaUnitsToSurfaceUnits(p.x), javaUnitsToSurfaceUnits(p.y));
+    }
+
     Dimension javaUnitsToSurfaceUnits(Dimension d) {
         return new Dimension(javaUnitsToSurfaceUnits(d.width), javaUnitsToSurfaceUnits(d.height));
     }
 
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight, boolean active, boolean maximized) {
-        // NB: The width and height, as well as X and Y arguments specify the size and the location
+        // NB: The width and height, as well as X and Y arguments, specify the size and the location
         //     of the window in surface-local coordinates.
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine(String.format("%s configured to %dx%d surface units", this, newSurfaceWidth, newSurfaceHeight));
         }
 
         boolean isWlPopup = targetIsWlPopup();
-
         if (isWlPopup) { // Only popups provide (relative) location
             int newX = surfaceUnitsToJavaUnits(newSurfaceX);
             int newY = surfaceUnitsToJavaUnits(newSurfaceY);
-            setLocationTo(newX, newY);
+
+            // The popup itself stores its location relative to its parent, but what we've got is
+            // the location relative to the toplevel. Let's convert:
+            Window popup = (Window) target;
+            Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
+            Window toplevel = getToplevelFor(popupParent);
+            Point parentLocation = getRelativeLocation(popupParent, toplevel);
+            Point locationRelativeToParent = new Point(newX - parentLocation.x, newY - parentLocation.y);
+            resetTargetLocationTo(locationRelativeToParent.x, locationRelativeToParent.y);
         }
 
         // From xdg-shell.xml: "If the width or height arguments are zero,
