@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright 2024 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +26,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JWindow;
 import javax.swing.SwingUtilities;
-import java.awt.Dimension;
-import java.awt.Robot;
-import java.awt.Toolkit;
-import java.awt.Window;
+import java.awt.*;
+import java.awt.geom.AffineTransform;
 
 import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 
@@ -41,7 +38,11 @@ import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
  * @requires os.family == "linux"
  * @key headful
  * @modules java.desktop/sun.awt
- * @run main WLPopupResize
+ * @run main/othervm WLPopupResize
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WLPopupResize
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WLPopupResize
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 WLPopupResize
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 WLPopupResize
  */
 public class WLPopupResize {
     private static JFrame frame;
@@ -80,15 +81,51 @@ public class WLPopupResize {
         SwingUtilities.invokeAndWait(WLPopupResize::showPopup);
         pause(robot);
 
-        SwingUtilities.invokeAndWait(() -> {
-            popup.setBounds(10, 20, 120, 80);
-        });
-        pause(robot);
+        double uiScale = getUiScale();
+        System.out.printf("UI scale: %.2f.\n", uiScale);
+        int pixelThreshold = uiScale == 1.0 ? 0 : (int) Math.ceil(uiScale);
+        System.out.printf("Pixel threshold for verifications: %d\n", pixelThreshold);
 
-        Dimension newSize = popup.getSize();
-        if (newSize.width != 120 || newSize.height != 80) {
-            throw new RuntimeException("Wrong popup size: " + newSize.width + ", " + newSize.height);
+        int x = 10, y = 20, w = 120, h = 80;
+        System.out.println("Set popup size to (120, 80)");
+        SwingUtilities.invokeAndWait(() -> {
+            popup.setBounds(x, y, w, h);
+        });
+        Rectangle bounds = popup.getBounds();
+        boolean isCorrectPosition = x - pixelThreshold <= bounds.x && bounds.x <= x + pixelThreshold &&
+                y - pixelThreshold <= bounds.y && bounds.y <= y + pixelThreshold;
+        if (!isCorrectPosition) {
+            throw new RuntimeException("Popup position has unexpectedly changed. Bounds: " + popup.getBounds());
         }
+        if (popup.getBounds().width != w || popup.getBounds().height != h) {
+            throw new RuntimeException("Popup size wasn't correctly changed. Bounds: " + popup.getBounds());
+        }
+        pause(robot);
+        System.out.println("Next checks after robot's waiting for idle.");
+
+        isCorrectPosition = x - pixelThreshold <= bounds.x && bounds.x <= x + pixelThreshold &&
+                y - pixelThreshold <= bounds.y && bounds.y <= y + pixelThreshold;
+        if (!isCorrectPosition) {
+            throw new RuntimeException("Popup position has unexpectedly changed. Bounds: " + popup.getBounds());
+        }
+        if (popup.getBounds().width != w || popup.getBounds().height != h) {
+            throw new RuntimeException("Popup size wasn't correctly changed. Bounds: " + popup.getBounds());
+        }
+        SwingUtilities.invokeAndWait(frame::dispose);
+    }
+
+    private static Double getUiScale() {
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice device = ge.getDefaultScreenDevice();
+        GraphicsConfiguration gc = device.getDefaultConfiguration();
+        AffineTransform transform = gc.getDefaultTransform();
+        double scaleX = transform.getScaleX();
+        double scaleY = transform.getScaleY();
+        if (scaleX != scaleY) {
+            System.out.println("Skip test due to non-uniform display scale");
+            System.exit(0);
+        }
+        return scaleX;
     }
 
     private static void pause(Robot robot) {
