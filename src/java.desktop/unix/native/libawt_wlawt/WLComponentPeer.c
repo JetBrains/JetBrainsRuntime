@@ -520,7 +520,7 @@ newPositioner
     xdg_positioner_set_size(xdg_positioner, width, height);
     xdg_positioner_set_anchor_rect(xdg_positioner, offsetX, offsetY, 1, 1);
     xdg_positioner_set_offset(xdg_positioner, 0, 0);
-    xdg_positioner_set_anchor(xdg_positioner, XDG_POSITIONER_ANCHOR_BOTTOM_LEFT);
+    xdg_positioner_set_anchor(xdg_positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
     xdg_positioner_set_gravity(xdg_positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
     xdg_positioner_set_constraint_adjustment(xdg_positioner,
         XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y
