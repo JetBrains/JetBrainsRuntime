@@ -1070,6 +1070,9 @@ jdk_swing_wayland= \
     jb/javax/swing/Popup/WLPopupAsParent.java \
     jb/javax/swing/Popup/WLPopupMinSize.java \
     jb/javax/swing/Popup/WLPopupResize.java \
+    jb/javax/swing/Popup/WLPopupLocation.java \
+    jb/javax/swing/Popup/WLPopupMoves.java \
+    jb/javax/swing/Popup/WLPopupVisibility.java \
     -com/sun/java/swing/plaf/gtk/TestBackSpaceAction.java \
     -com/sun/java/swing/plaf/gtk/TestFileChooserCtrlASelection.java \
     -com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java \
