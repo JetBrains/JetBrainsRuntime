@@ -41,6 +41,10 @@ import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
  * @key headful
  * @modules java.desktop/sun.awt
  * @run main WLPopupAsParent
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WLPopupAsParent
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WLPopupAsParent
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 WLPopupAsParent
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 WLPopupAsParent
  */
 public class WLPopupAsParent {
     private static JFrame frame;
