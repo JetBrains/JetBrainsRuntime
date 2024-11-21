@@ -180,9 +180,7 @@ void AwtWin32GraphicsDevice::Initialize()
     }
     gpBitmapInfo->bmiHeader.biBitCount = 0;
     HDC hBMDC = this->GetDC();
-    VERIFY(hBMDC != NULL);
     HBITMAP hBM = ::CreateCompatibleBitmap(hBMDC, 1, 1);
-    VERIFY(hBM != NULL);
     VERIFY(::GetDIBits(hBMDC, hBM, 0, 1, NULL, gpBitmapInfo, DIB_RGB_COLORS));
 
     if (colorData->bitsperpixel > 8) {
