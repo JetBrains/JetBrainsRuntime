@@ -38,7 +38,7 @@ else
     max_attempts=3
     attempt=1
     while [ $attempt -le $max_attempts ]; do
-      if "$JETSIGN_CLIENT" -log-format text -denoted-content-type "$contentType" -extensions "$jetSignExtensions" "$pathToBeSigned"; then
+      if timeout 60 "$JETSIGN_CLIENT" -log-format text -denoted-content-type "$contentType" -extensions "$jetSignExtensions" "$pathToBeSigned" ; then
         break
       else
         if [ $attempt -eq $max_attempts ]; then
