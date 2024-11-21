@@ -23,6 +23,7 @@
  * questions.
  */
 
+
 package java.awt;
 
 import java.awt.image.BufferedImage;
