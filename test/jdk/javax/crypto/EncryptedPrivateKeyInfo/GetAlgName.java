@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2007, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,9 +52,11 @@ public class GetAlgName {
             String algo = ALGOS[i];
             // generate AlgorithmParameters object
             SecretKeyFactory skf =
-                SecretKeyFactory.getInstance(algo, "SunJCE");
+                    SecretKeyFactory.getInstance(algo,
+                            System.getProperty("test.provider.name", "SunJCE"));
             SecretKey key = skf.generateSecret(ks);
-            Cipher c = Cipher.getInstance(algo, "SunJCE");
+            Cipher c = Cipher.getInstance(algo,
+                    System.getProperty("test.provider.name", "SunJCE"));
             c.init(Cipher.ENCRYPT_MODE, key);
             c.doFinal(BYTES); // force the parameter generation if not already
 
