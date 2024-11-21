@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -176,7 +176,8 @@ public class TestGeneral {
 
         String ALGO = "AES/KW/PKCS5Padding";
         System.out.println("Testing " + ALGO);
-        Cipher c = Cipher.getInstance(ALGO, "SunJCE");
+        Cipher c = Cipher.getInstance(ALGO,
+                    System.getProperty("test.provider.name", "SunJCE"));
 
         // test all possible pad lengths, i.e. 1 - 16
         for (int i = 1; i <= MAX_KW_PKCS5PAD_LEN; i++) {
@@ -187,7 +188,8 @@ public class TestGeneral {
 
         ALGO = "AES/KW/NoPadding";
         System.out.println("Testing " + ALGO);
-        c = Cipher.getInstance(ALGO, "SunJCE");
+        c = Cipher.getInstance(ALGO,
+                    System.getProperty("test.provider.name", "SunJCE"));
         testEnc(c, data, data.length, KW_IV_LEN, 0);
         testEnc(c, data, data.length >> 1, KW_IV_LEN, 0);
         testWrap(c, data, data.length, KW_IV_LEN, 0);
@@ -196,7 +198,8 @@ public class TestGeneral {
 
         ALGO = "AES/KWP/NoPadding";
         System.out.println("Testing " + ALGO);
-        c = Cipher.getInstance(ALGO, "SunJCE");
+        c = Cipher.getInstance(ALGO,
+                    System.getProperty("test.provider.name", "SunJCE"));
 
         // test all possible pad lengths, i.e. 0 - 7
         for (int i = 0; i <= MAX_KWP_PAD_LEN; i++) {
