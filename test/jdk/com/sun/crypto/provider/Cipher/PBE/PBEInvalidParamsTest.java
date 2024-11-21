@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,7 +65,8 @@ public class PBEInvalidParamsTest {
             System.out.println("=>testing " + algo);
             SecretKeyFactory skf = SecretKeyFactory.getInstance(algo);
             SecretKey key = skf.generateSecret(ks);
-            Cipher c = Cipher.getInstance(algo, "SunJCE");
+            Cipher c = Cipher.getInstance(algo,
+                                System.getProperty("test.provider.name", "SunJCE"));
             try {
                 c.init(Cipher.ENCRYPT_MODE, key, INVALID_PARAMS);
                 throw new Exception("Test Failed: expected IAPE is " +
