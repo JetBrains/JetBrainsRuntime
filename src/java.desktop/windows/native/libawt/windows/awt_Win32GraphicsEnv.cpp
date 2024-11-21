@@ -36,8 +36,10 @@
 BOOL DWMIsCompositionEnabled();
 
 void initScreens(JNIEnv *env) {
+
     if (!Devices::UpdateInstance(env)) {
         JNU_ThrowInternalError(env, "Could not update the devices array.");
+        return;
     }
 }
 
