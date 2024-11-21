@@ -64,8 +64,7 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
         WToolkit.loadLibraries();
         // setup flags before initializing native layer
         WindowsFlags.initFlags();
-
-        initDisplay();
+        initDisplayWrapper();
 
         double sx = -1;
         double sy = -1;
@@ -84,11 +83,19 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
     }
 
     /**
-     * Initializes native components of the graphics environment. This
+     * Initializes native components of the graphics environment.  This
      * includes everything from the native GraphicsDevice elements to
      * the DirectX rendering layer.
      */
     private static native void initDisplay();
+
+    private static boolean displayInitialized;      // = false;
+    public static void initDisplayWrapper() {
+        if (!displayInitialized) {
+            displayInitialized = true;
+            initDisplay();
+        }
+    }
 
     public Win32GraphicsEnvironment() {
     }
