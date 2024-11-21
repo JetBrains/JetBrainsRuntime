@@ -39,13 +39,17 @@ else
     attempt=1
     while [ $attempt -le $max_attempts ]; do
       (
-        "$JETSIGN_CLIENT" -log-format text -denoted-content-type "$contentType" -extensions "$jetSignExtensions" "$pathToBeSigned" &
-        cmd_pid=$!
-        sleep 60
-        if kill -0 $cmd_pid 2>/dev/null; then
-          kill $cmd_pid
-          wait $cmd_pid 2>/dev/null
-          exit 124  # Exit code for timeout
+        perl -e 'alarm shift; exec @ARGV' 60 "$JETSIGN_CLIENT" -log-format text -denoted-content-type "$contentType" -extensions "$jetSignExtensions" "$pathToBeSigned"
+        if [ $? -eq 0 ]; then
+          # Process finished successfully
+          break
+        elif [ $? -eq 124 ]; then
+          # Timeout occurred
+          echo "Process timed out"
+          exit 124
+        else
+          # Handle other exit codes if necessary
+          echo "Process failed with exit code $?"
         fi
       )
       if [ $? -eq 0 ]; then
