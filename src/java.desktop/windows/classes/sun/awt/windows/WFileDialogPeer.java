@@ -34,7 +34,6 @@ import java.util.ResourceBundle;
 import java.util.MissingResourceException;
 import java.util.Vector;
 import sun.awt.AWTAccessor;
-import sun.security.action.GetBooleanAction;
 
 final class WFileDialogPeer extends WWindowPeer implements FileDialogPeer {
 
