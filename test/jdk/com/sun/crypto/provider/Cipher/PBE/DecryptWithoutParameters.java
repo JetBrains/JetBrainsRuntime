@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2007, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,8 @@ public class DecryptWithoutParameters {
 
     public static void main(String argv[]) throws Exception {
         String algo = "PBEWithMD5AndDES";
-        Cipher cipher = Cipher.getInstance(algo, "SunJCE");
+        Cipher cipher = Cipher.getInstance(algo,
+                                    System.getProperty("test.provider.name", "SunJCE"));
         SecretKey key = new SecretKeySpec(new byte[5], algo);
         try {
             cipher.init(Cipher.DECRYPT_MODE, key);
