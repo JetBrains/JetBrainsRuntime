@@ -53,6 +53,7 @@ Link	America/Tijuana		Mexico/BajaNorte
 Link	America/Mazatlan	Mexico/BajaSur
 Link	America/Mexico_City	Mexico/General
 Link	Pacific/Auckland	NZ
+Link	Asia/Ulaanbaatar	Asia/Choibalsan
 Link	Pacific/Chatham		NZ-CHAT
 Link	America/Denver		Navajo	#= America/Shiprock
 Link	Asia/Shanghai		PRC
