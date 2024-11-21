@@ -38,7 +38,17 @@ else
     max_attempts=3
     attempt=1
     while [ $attempt -le $max_attempts ]; do
-      if timeout 60 "$JETSIGN_CLIENT" -log-format text -denoted-content-type "$contentType" -extensions "$jetSignExtensions" "$pathToBeSigned" ; then
+      (
+        "$JETSIGN_CLIENT" -log-format text -denoted-content-type "$contentType" -extensions "$jetSignExtensions" "$pathToBeSigned" &
+        cmd_pid=$!
+        sleep 60
+        if kill -0 $cmd_pid 2>/dev/null; then
+          kill $cmd_pid
+          wait $cmd_pid 2>/dev/null
+          exit 124  # Exit code for timeout
+        fi
+      )
+      if [ $? -eq 0 ]; then
         break
       else
         if [ $attempt -eq $max_attempts ]; then
