@@ -44,8 +44,6 @@ import sun.awt.X11GraphicsEnvironment;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
 
-import sun.security.action.GetPropertyAction;
-
 import javax.swing.JPopupMenu;
 import javax.swing.JWindow;
 
@@ -61,13 +59,13 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     private static final PlatformLogger iconLog = PlatformLogger.getLogger("sun.awt.X11.icon.XWindowPeer");
 
     static final boolean ENABLE_REPARENTING_CHECK
-            = "true".equals(GetPropertyAction.privilegedGetProperty("reparenting.check"));
+            = "true".equals(System.getProperty("reparenting.check"));
     private static final boolean ENABLE_DESKTOP_CHECK
-            = "true".equals(GetPropertyAction.privilegedGetProperty("transients.desktop.check", "true"));
+            = "true".equals(System.getProperty("transients.desktop.check", "true"));
     static final boolean FULL_MODAL_TRANSIENTS_CHAIN
-            = "true".equals(GetPropertyAction.privilegedGetProperty("full.modal.transients.chain"));
+            = "true".equals(System.getProperty("full.modal.transients.chain"));
     static final boolean RESIZE_WITH_SCALE
-            = "true".equals(GetPropertyAction.privilegedGetProperty("resize.with.scale", "false"));
+            = "true".equals(System.getProperty("resize.with.scale", "false"));
 
     // should be synchronized on awtLock
     private static Set<XWindowPeer> windows = new HashSet<XWindowPeer>();
@@ -859,10 +857,6 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             if (!getBounds().getLocation().equals(oldBounds.getLocation())) {
                 AWTAccessor.getComponentAccessor().setLocation(target, x, y);
                 postEvent(new ComponentEvent(target, ComponentEvent.COMPONENT_MOVED));
-            }
-
-            if (xinerama) {
-                checkIfOnNewScreen(new Rectangle(newLocation.getDeviceLocation(), newDimension));
             }
         });
     }
@@ -2549,7 +2543,6 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     @Override
     public boolean updateGraphicsData(GraphicsConfiguration gc) {
         if (super.updateGraphicsData(gc)) return true;
-        repositionSecurityWarning();
         return false;
     }
 
