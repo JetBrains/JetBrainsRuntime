@@ -8,7 +8,11 @@ import java.awt.event.InvocationEvent;
 import java.lang.ref.WeakReference;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Stack;
 import java.util.List;
 import java.util.concurrent.*;
@@ -123,6 +127,7 @@ public class AWTThreading {
         return null;
     }
 
+    @SuppressWarnings("removal")
     private <T> T execute(Callable<T> callable, long timeout, TimeUnit unit) {
         assert EventQueue.isDispatchThread();
         if (executor == null) {

@@ -78,7 +78,6 @@ public class PlatformGraphicsInfo {
       * a value for the java.awt.headless system property.
       */
     public static boolean getDefaultHeadlessProperty() {
-        final String display = System.getenv("DISPLAY");
         boolean noDisplay = true;
         if (getToolkitID() == TK_X11) {
             final String display = System.getenv("DISPLAY");
