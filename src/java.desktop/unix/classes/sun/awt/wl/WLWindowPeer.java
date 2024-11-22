@@ -158,11 +158,6 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     }
 
     @Override
-    public void repositionSecurityWarning() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public GraphicsConfiguration getAppropriateGraphicsConfiguration(
             GraphicsConfiguration gc) {
         return gc;
