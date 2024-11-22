@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import com.sun.jarsigner.ContentSigner;
 import com.sun.jarsigner.ContentSignerParameters;
 import jdk.security.jarsigner.JarSigner;
 import jdk.test.lib.util.JarUtils;
+import jdk.test.lib.security.SecurityUtils;
 import sun.security.provider.certpath.X509CertPath;
 
 import java.io.File;
@@ -181,14 +182,16 @@ public class Spec {
         assertTrue(JarSigner.Builder.getDefaultDigestAlgorithm().equals("SHA-256"));
 
         // Calculating large DSA and RSA keys are too slow.
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-        kpg.initialize(1024);
+        String kpgRSA = "RSA";
+        String kpgDSA = "DSA";
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance(kpgRSA);
+        kpg.initialize(SecurityUtils.getTestKeySize(kpgRSA));
         assertTrue(JarSigner.Builder
                 .getDefaultSignatureAlgorithm(kpg.generateKeyPair().getPrivate())
                     .equals("SHA256withRSA"));
 
-        kpg = KeyPairGenerator.getInstance("DSA");
-        kpg.initialize(1024);
+        kpg = KeyPairGenerator.getInstance(kpgDSA);
+        kpg.initialize(SecurityUtils.getTestKeySize(kpgDSA));
         assertTrue(JarSigner.Builder
                 .getDefaultSignatureAlgorithm(kpg.generateKeyPair().getPrivate())
                 .equals("SHA256withDSA"));
