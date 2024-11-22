@@ -92,8 +92,6 @@ import javax.swing.JRootPane;
 import sun.awt.AWTAccessor;
 import sun.awt.AppContext;
 import sun.awt.ComponentFactory;
-import sun.security.action.GetBooleanAction;
-import sun.security.action.GetPropertyAction;
 import sun.awt.AppContext;
 import sun.awt.AWTAccessor;
 import sun.awt.ConstrainableGraphics;
@@ -638,8 +636,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
         String s2 = System.getProperty("awt.image.redrawrate");
         incRate = (s2 != null) ? Integer.parseInt(s2) : 100;
 
-        @SuppressWarnings("removal")
-        boolean imeDisabled = java.security.AccessController.doPrivileged(new GetBooleanAction("awt.ime.disabled"));
+        boolean imeDisabled = Boolean.getBoolean("awt.ime.disabled");
         INPUT_METHODS_DISABLED = imeDisabled;
     }
 
