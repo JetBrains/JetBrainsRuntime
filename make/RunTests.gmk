@@ -200,9 +200,10 @@ $(eval $(call SetTestOpt,FAILURE_HANDLER_TIMEOUT,JTREG))
 $(eval $(call ParseKeywordVariable, JTREG, \
     SINGLE_KEYWORDS := JOBS TIMEOUT_FACTOR FAILURE_HANDLER_TIMEOUT \
         TEST_MODE ASSERT VERBOSE RETAIN MAX_MEM RUN_PROBLEM_LISTS \
-        RETRY_COUNT REPEAT_COUNT MAX_OUTPUT, \
+        RETRY_COUNT REPEAT_COUNT MAX_OUTPUT $(CUSTOM_JTREG_SINGLE_KEYWORDS), \
     STRING_KEYWORDS := OPTIONS JAVA_OPTIONS VM_OPTIONS KEYWORDS \
-        EXTRA_PROBLEM_LISTS LAUNCHER_OPTIONS, \
+        EXTRA_PROBLEM_LISTS LAUNCHER_OPTIONS\
+	        $(CUSTOM_JTREG_STRING_KEYWORDS), \
 ))
 
 ifneq ($(JTREG), )
@@ -852,6 +853,8 @@ define SetupRunJtregTestBody
     endif
   endif
 
+  $$(eval $$(call SetupRunJtregTestCustom, $1))
+
   clean-outputdirs-$1:
 	$$(RM) -r $$($1_TEST_SUPPORT_DIR)
 	$$(RM) -r $$($1_TEST_RESULTS_DIR)
@@ -954,7 +957,7 @@ define SetupRunSpecialTestBody
   $1_EXITCODE := $$($1_TEST_RESULTS_DIR)/exitcode.txt
 
   $1_FULL_TEST_NAME := $$(strip $$(patsubst special:%, %, $$($1_TEST)))
-  ifneq ($$(findstring :, $$($1_FULL_TEST_NAME)), )
+  ifneq ($$(findstring:, $$($1_FULL_TEST_NAME)), )
     $1_TEST_NAME := $$(firstword $$(subst :, ,$$($1_FULL_TEST_NAME)))
     $1_TEST_ARGS := $$(strip $$(patsubst special:$$($1_TEST_NAME):%, %, $$($1_TEST)))
   else
