@@ -1329,8 +1329,7 @@ jdk_swing_wayland= \
     -javax/swing/text/Utilities/8142966/SwingFontMetricsTest.java \
     -javax/swing/text/View/8014863/bug8014863.java \
     -javax/swing/ToolTipManager/7123767/bug7123767.java \
-    -javax/swing/ToolTipManager/Test6256140.java \
-    -javax/swing/UIDefaults/6795356/bug6795356.java
+    -javax/swing/ToolTipManager/Test6256140.java
 
 # Wayland tests to be executed with -Dawt.toolkit.name=WLToolkit
 jdk_desktop_wayland = \
