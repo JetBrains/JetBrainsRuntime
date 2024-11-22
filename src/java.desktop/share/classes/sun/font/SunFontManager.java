@@ -56,7 +56,6 @@ import sun.awt.FontConfiguration;
 import sun.awt.SunToolkit;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.FontSupport;
-import sun.security.action.GetPropertyAction;
 import sun.util.logging.PlatformLogger;
 
 /**
@@ -292,7 +291,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     static {
         initStatic();
         versionCheckEnabled = !Boolean.parseBoolean(
-                GetPropertyAction.privilegedGetProperty("java2d.font.noVersionCheck", "false"));
+                System.getProperty("java2d.font.noVersionCheck", "false"));
     }
 
     private static void initStatic() {

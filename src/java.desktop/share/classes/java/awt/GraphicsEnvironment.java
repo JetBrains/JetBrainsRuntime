@@ -36,7 +36,6 @@ import sun.font.FontManager;
 import sun.font.FontManagerFactory;
 import sun.java2d.HeadlessGraphicsEnvironment;
 import sun.java2d.SunGraphicsEnvironment;
-import sun.security.action.GetPropertyAction;
 
 /**
  *

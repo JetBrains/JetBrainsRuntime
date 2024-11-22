@@ -895,10 +895,6 @@ abstract class XDecoratedPeer extends XWindowPeer {
             }
             reconfigureContentWindow(newDimensions);
             updateChildrenSizes();
-
-            if (xinerama) {
-                checkIfOnNewScreen(new Rectangle(newLocation.getDeviceLocation(), newDimension));
-            }
         });
     }
 
