@@ -33,7 +33,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import sun.awt.wl.WLGraphicsEnvironment;
-import sun.security.action.GetPropertyAction;
 
 public class PlatformGraphicsInfo {
     @Native
@@ -78,7 +77,6 @@ public class PlatformGraphicsInfo {
       * a value for the java.awt.headless system property.
       */
     public static boolean getDefaultHeadlessProperty() {
-        final String display = System.getenv("DISPLAY");
         boolean noDisplay = true;
         if (getToolkitID() == TK_X11) {
             final String display = System.getenv("DISPLAY");
