@@ -30,7 +30,6 @@ import java.awt.Rectangle;
 import java.awt.peer.RobotPeer;
 
 import sun.awt.CGraphicsDevice;
-import sun.security.action.GetIntegerAction;
 
 final class CRobot implements RobotPeer {
 
@@ -52,7 +51,7 @@ final class CRobot implements RobotPeer {
      */
     CRobot(CGraphicsDevice d) {
         fDevice = d;
-        int safeDelayMillis = GetIntegerAction.privilegedGetProperty(
+        int safeDelayMillis = Integer.getInteger(
                 "sun.awt.osx.RobotSafeDelayMillis", DEFAULT_SAFE_DELAY_MILLIS);
         if (safeDelayMillis < 0) {
             safeDelayMillis = DEFAULT_SAFE_DELAY_MILLIS;

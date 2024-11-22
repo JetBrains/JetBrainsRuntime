@@ -29,7 +29,6 @@ package sun.awt.wl;
 import jdk.internal.misc.InnocuousThread;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAutoShutdown;
-import sun.awt.AWTPermissions;
 import sun.awt.AppContext;
 import sun.awt.LightweightFrame;
 import sun.awt.PeerEvent;
@@ -759,22 +758,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public  Clipboard getSystemClipboard() {
-        @SuppressWarnings("removal")
-        SecurityManager security = System.getSecurityManager();
-        if (security != null) {
-            security.checkPermission(AWTPermissions.ACCESS_CLIPBOARD_PERMISSION);
-        }
-
         return clipboard;
     }
 
     @Override
     public Clipboard getSystemSelection() {
-        @SuppressWarnings("removal")
-        SecurityManager security = System.getSecurityManager();
-        if (security != null) {
-            security.checkPermission(AWTPermissions.ACCESS_CLIPBOARD_PERMISSION);
-        }
         return selection;
     }
 
