@@ -507,7 +507,7 @@ public abstract class UNIXToolkit extends SunToolkit
                 result = isOnXWayland;
                 if (result == null) {
                     final String display = System.getenv("WAYLAND_DISPLAY");
-                    isOnXWayland = (display != null && !display.trim().isEmpty());
+                    isOnXWayland = result = (display != null && !display.trim().isEmpty());
                 }
             }
         }

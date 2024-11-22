@@ -860,10 +860,6 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                 AWTAccessor.getComponentAccessor().setLocation(target, x, y);
                 postEvent(new ComponentEvent(target, ComponentEvent.COMPONENT_MOVED));
             }
-
-            if (xinerama) {
-                checkIfOnNewScreen(new Rectangle(newLocation.getDeviceLocation(), newDimension));
-            }
         });
     }
 
@@ -2549,7 +2545,6 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     @Override
     public boolean updateGraphicsData(GraphicsConfiguration gc) {
         if (super.updateGraphicsData(gc)) return true;
-        repositionSecurityWarning();
         return false;
     }
 
