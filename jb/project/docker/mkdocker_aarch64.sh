@@ -4,9 +4,10 @@ set -euo pipefail
 set -x
 
 # This script creates a Docker image suitable for building AArch64 variant
+# of the JetBrains Runtime "dev" version.
 
-BOOT_JDK_REMOTE_FILE=https://cdn.azul.com/zulu/bin/zulu21.36.17-ca-jdk21.0.4-linux_aarch64.tar.gz
-BOOT_JDK_SHA=da3c2d7db33670bcf66532441aeb7f33dcf0d227c8dafe7ce35cee67f6829c4c
+BOOT_JDK_REMOTE_FILE=zulu17.30.15-ca-jdk17.0.1-linux_aarch64.tar.gz
+BOOT_JDK_SHA=4d9c9116eb0cdd2d7fb220d6d27059f4bf1b7e95cc93d5512bd8ce3791af86c7
 BOOT_JDK_LOCAL_FILE=boot_jdk.tar.gz
 
 if [ ! -f $BOOT_JDK_LOCAL_FILE ]; then
@@ -21,7 +22,7 @@ sha256sum -c - <<EOF
 $BOOT_JDK_SHA *$BOOT_JDK_LOCAL_FILE
 EOF
 
-docker build -t jetbrains/runtime:jbr21env_oraclelinux8_aarch64 -f Dockerfile.oraclelinux_aarch64 .
+docker build -t jbrdevenv_arm64v8 -f Dockerfile.aarch64 .
 
 # NB: the resulting container can (and should) be used without the network
 # connection (--network none) during build in order to reduce the chance
