@@ -16,10 +16,12 @@ java/awt/font/Rotate/RotatedFontTest.java initial_runs generic-all
 java/awt/font/Rotate/TranslatedOutlineTest.java initial_runs generic-all
 java/awt/font/TextLayout/HitTest.java initial_runs generic-all
 java/awt/font/TextLayout/TestGetPixelBounds.java initial_runs generic-all
+java/awt/FontMetrics/ExtremeFontSizeTest.java JBR-7823 linux-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.java initial_runs generic-all
 java/awt/Graphics2D/DrawString/RotTransText.java initial_runs generic-all
 java/awt/Graphics/XORPaint.java#id2 JBR-7373 linux-x64
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java initial_runs generic-all
+java/awt/image/DrawImage/IncorrectUnmanagedImageSourceOffset.java JBR-7945 linux-x64
 java/awt/image/DrawImage/SimpleManagedImage.java initial_runs generic-all
 java/awt/image/DrawImage/SimpleUnmanagedImage.java initial_runs generic-all
 java/awt/Mixing/AWT_Mixing/JListInGlassPaneOverlapping.java initial_runs generic-all

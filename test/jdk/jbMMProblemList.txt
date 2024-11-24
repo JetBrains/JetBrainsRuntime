@@ -101,7 +101,7 @@ java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510,JBR-609
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java  8253184 windows-all,linux-all
 java/awt/Window/8159168/SetShapeTest.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5510 linux-all
-java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-5510 linux-all
+java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-5510,JBR-7312 linux-5.18.2-arch1-1,macosx-all
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Window/WindowTitleVisibleTest/WindowTitleVisibleTestLinuxGnome.java nobug linux-all
