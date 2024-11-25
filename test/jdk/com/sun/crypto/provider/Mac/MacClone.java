@@ -26,6 +26,8 @@
  * @bug 7087021 8013069
  * @summary Clone tests for all MAC algorithms.
  * @author Jan Luehe
+ * @run main MacClone DES
+ * @run main MacClone AES
  */
 import java.security.spec.AlgorithmParameterSpec;
 import javax.crypto.*;
@@ -37,7 +39,8 @@ public class MacClone {
 
         String[] algos = { "HmacMD5", "HmacSHA1", "HmacSHA224", "HmacSHA256",
                            "HmacSHA384", "HmacSHA512" };
-        KeyGenerator kgen = KeyGenerator.getInstance("DES");
+        String keyAlgo = args[0];
+        KeyGenerator kgen = KeyGenerator.getInstance(keyAlgo);
         SecretKey skey = kgen.generateKey();
         for (String algo : algos) {
             doTest(algo, skey, null);
