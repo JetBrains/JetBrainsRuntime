@@ -27,6 +27,7 @@
 #include <wayland-cursor.h>
 #include "xdg-shell-client-protocol.h"
 #include "xdg-activation-v1-client-protocol.h"
+#include "xdg-output-unstable-v1-client-protocol.h"
 #include "primary-selection-client-protocol.h"
 #include "viewporter-client-protocol.h"
 #include "jvm_md.h"
@@ -62,6 +63,7 @@ extern struct gtk_shell1* gtk_shell1; // optional, check for NULL before use
 extern struct wl_cursor_theme *wl_cursor_theme;
 extern struct wl_data_device_manager *wl_ddm;
 extern struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm; // optional, check for NULL before use
+extern struct zxdg_output_manager_v1 *zxdg_output_manager_v1; // optional, check for NULL before use
 
 JNIEnv *getEnv();
 
