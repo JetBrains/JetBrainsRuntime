@@ -85,6 +85,7 @@ struct wl_cursor_theme *cursor_themes[MAX_CURSOR_SCALE] = {NULL};
 
 struct wl_data_device_manager *wl_ddm = NULL;
 struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm = NULL; // optional, check for NULL before use
+struct zxdg_output_manager_v1 *zxdg_output_manager_v1 = NULL; // optional, check for NULL before use
 
 static uint32_t num_of_outstanding_sync = 0;
 
@@ -566,6 +567,12 @@ registry_global(void *data, struct wl_registry *wl_registry,
         zwp_selection_dm = wl_registry_bind(wl_registry, name, &zwp_primary_selection_device_manager_v1_interface, 1);
     } else if (strcmp(interface, wp_viewporter_interface.name) == 0) {
         wp_viewporter = wl_registry_bind(wl_registry, name, &wp_viewporter_interface, 1);
+    } else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0) {
+        zxdg_output_manager_v1 = wl_registry_bind(wl_registry, name, &zxdg_output_manager_v1_interface, 2);
+        if (zxdg_output_manager_v1 != NULL) {
+            WLOutputXdgOutputManagerBecameAvailable();
+            process_new_listener_before_end_of_init();
+        }
     }
 
 #ifdef WAKEFIELD_ROBOT
