@@ -663,6 +663,7 @@ java/awt/security/WarningWindowDisposeTest/WarningWindowDisposeCrashTest.java JB
 java/awt/security/WarningWindowDisposeTest/WarningWindowDisposeTest.java 8266059 macosx-all
 java/awt/Robot/Delay/InterruptOfDelay.java 8265986 macosx-all
 java/awt/MenuBar/TestNoScreenMenuBar.java 8265987 macosx-all
+java/awt/Robot/ScreenCaptureRobotTest.java 8344581 generic-all
 
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java JBR-5210,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java 8266243,JBR-5510 macosx-all,linux-5.18.2-arch1-1
