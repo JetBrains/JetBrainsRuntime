@@ -25,8 +25,10 @@
  */
 #ifndef HEADLESS
 
+#include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <Trace.h>
 
 #include "JNIUtilities.h"
@@ -36,12 +38,17 @@ typedef struct WLOutput {
     struct WLOutput *  next;
 
     struct wl_output * wl_output;
+    struct zxdg_output_v1 * zxdg_output;
     uint32_t id;
 
     int32_t x;
     int32_t y;
+    int32_t x_logical;
+    int32_t y_logical;
     int32_t width;
     int32_t height;
+    int32_t width_logical;
+    int32_t height_logical;
     int32_t width_mm;
     int32_t height_mm;
 
@@ -137,12 +144,8 @@ wl_output_scale(
 }
 
 static void
-wl_output_done(
-        void *data,
-        struct wl_output *wl_output)
+NotifyOutputConfigured(WLOutput* output)
 {
-    WLOutput * output = data;
-
     JNIEnv *env = getEnv();
     jobject obj = (*env)->CallStaticObjectMethod(env, geClass, getSingleInstanceMID);
     JNU_CHECK_EXCEPTION(env);
@@ -158,14 +161,29 @@ wl_output_done(
                            output->id,
                            output->x,
                            output->y,
+                           output->x_logical,
+                           output->y_logical,
                            output->width,
                            output->height,
+                           output->width_logical,
+                           output->height_logical,
                            output->width_mm,
                            output->height_mm,
                            (jint)output->subpixel,
                            (jint)output->transform,
                            (jint)output->scale);
     JNU_CHECK_EXCEPTION(env);
+}
+
+static void
+wl_output_done(void *data, struct wl_output *wl_output)
+{
+    WLOutput * output = data;
+    // When the manager is present we'll wait for another 'done' event (see zxdg_output_done()).
+    bool wait_for_zxdg_output_done = zxdg_output_manager_v1 != NULL;
+    if (!wait_for_zxdg_output_done) {
+        NotifyOutputConfigured(output);
+    }
 }
 
 struct wl_output_listener wl_output_listener = {
@@ -179,6 +197,49 @@ struct wl_output_listener wl_output_listener = {
 #endif
         .done = &wl_output_done,
         .scale = &wl_output_scale
+};
+
+static void
+zxdg_output_logical_size(void *data, struct zxdg_output_v1 *zxdg_output_v1, int32_t width, int32_t height)
+{
+    WLOutput * output = data;
+    output->width_logical = width;
+    output->height_logical = height;
+}
+
+static void
+zxdg_output_done(void *data, struct zxdg_output_v1 *zxdg_output_v1)
+{
+    WLOutput * output = data;
+    NotifyOutputConfigured(output);
+}
+
+static void
+zxdg_output_logical_position(void *data, struct zxdg_output_v1 *zxdg_output_v1, int32_t x, int32_t y)
+{
+    WLOutput * output = data;
+    output->x_logical = x;
+    output->y_logical = y;
+}
+
+static void
+zxdg_output_description(void *data, struct zxdg_output_v1 *zxdg_output_v1, const char *description)
+{
+    // Ignored
+}
+
+static void
+zxdg_output_name(void *data, struct zxdg_output_v1 *zxdg_output_v1, const char *name)
+{
+    // Ignored
+}
+
+struct zxdg_output_v1_listener zxdg_output_listener = {
+    .logical_position = zxdg_output_logical_position,
+    .logical_size = zxdg_output_logical_size,
+    .description = zxdg_output_description,
+    .name = zxdg_output_name,
+    .done = zxdg_output_done
 };
 
 jboolean
@@ -196,7 +257,7 @@ WLGraphicsEnvironment_initIDs
     CHECK_NULL_RETURN(
                     notifyOutputConfiguredMID = (*env)->GetMethodID(env, clazz,
                                                                     "notifyOutputConfigured",
-                                                                    "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IIIIIIIIII)V"),
+                                                                    "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IIIIIIIIIIIIII)V"),
                     JNI_FALSE);
     CHECK_NULL_RETURN(
                     notifyOutputDestroyedMID = (*env)->GetMethodID(env, clazz,
@@ -204,6 +265,17 @@ WLGraphicsEnvironment_initIDs
                     JNI_FALSE);
 
     return JNI_TRUE;
+}
+
+static void RegisterXdgOutput(WLOutput* output)
+{
+    assert(zxdg_output_manager_v1 != NULL);
+
+    if (output->zxdg_output == NULL) {
+        output->zxdg_output = zxdg_output_manager_v1_get_xdg_output(zxdg_output_manager_v1, output->wl_output);
+        CHECK_NULL(output->zxdg_output);
+        zxdg_output_v1_add_listener(output->zxdg_output, &zxdg_output_listener, output);
+    }
 }
 
 void
@@ -217,10 +289,25 @@ WLOutputRegister(struct wl_registry *wl_registry, uint32_t id)
     output->wl_output = wl_registry_bind(wl_registry, id, &wl_output_interface, 2);
     if (output->wl_output == NULL) {
         JNU_ThrowByName(env, "java/awt/AWTError", "wl_registry_bind() failed");
+        return;
     }
     wl_output_add_listener(output->wl_output, &wl_output_listener, output);
     output->next = outputList;
     outputList = output;
+
+    if (zxdg_output_manager_v1 != NULL) {
+        RegisterXdgOutput(output);
+    }
+}
+
+void
+WLOutputXdgOutputManagerBecameAvailable(void)
+{
+    assert(zxdg_output_manager_v1 != NULL);
+
+    for (WLOutput* output = outputList; output; output = output->next) {
+        RegisterXdgOutput(output);
+    }
 }
 
 void
@@ -235,6 +322,9 @@ WLOutputDeregister(struct wl_registry *wl_registry, uint32_t id)
                 prev->next = cur->next;
             } else {
                 outputList = cur->next;
+            }
+            if (cur->zxdg_output != NULL) {
+                zxdg_output_v1_destroy(cur->zxdg_output);
             }
             wl_output_destroy(cur->wl_output);
             WLOutput * next = cur->next;
