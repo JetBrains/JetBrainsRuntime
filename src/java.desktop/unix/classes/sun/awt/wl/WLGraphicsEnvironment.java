@@ -39,6 +39,15 @@ import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
 public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
+    public static final int WL_OUTPUT_TRANSFORM_NORMAL = 0;
+    public static final int WL_OUTPUT_TRANSFORM_90 = 1;
+    public static final int WL_OUTPUT_TRANSFORM_180 = 2;
+    public static final int WL_OUTPUT_TRANSFORM_270 = 3;
+    public static final int WL_OUTPUT_TRANSFORM_FLIPPED = 4;
+    public static final int WL_OUTPUT_TRANSFORM_FLIPPED_90 = 5;
+    public static final int WL_OUTPUT_TRANSFORM_FLIPPED_180 = 6;
+    public static final int WL_OUTPUT_TRANSFORM_FLIPPED_270 = 7;
+
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLGraphicsEnvironment");
 
     private static final boolean debugScaleEnabled;
@@ -92,12 +101,16 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     private final List<WLGraphicsDevice> devices = new ArrayList<>(5);
 
     private void notifyOutputConfigured(String name, String make, String model, int wlID,
-                                        int x, int y, int width, int height, int widthMm, int heightMm,
+                                        int x, int y, int xLogical, int yLogical,
+                                        int width, int height,
+                                        int widthLogical, int heightLogical,
+                                        int widthMm, int heightMm,
                                         int subpixel, int transform, int scale) {
         // Called from native code whenever a new output appears or an existing one changes its properties
         // NB: initially called during WLToolkit.initIDs() on the main thread; later on EDT.
         if (log.isLoggable(Level.FINE)) {
-            log.fine(String.format("Output configured id=%d at (%d, %d) %dx%d %dx scale", wlID, x, y, width, height, scale));
+            log.fine(String.format("Output configured id=%d at (%d, %d) (%d, %d logical) %dx%d (%dx%d logical) %dx scale",
+                    wlID, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale));
         }
 
         String humanID =
@@ -110,12 +123,13 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
                 final WLGraphicsDevice gd = devices.get(i);
                 if (gd.getID() == wlID) {
                     newOutput = false;
-                    if (gd.isSameDeviceAs(wlID, x, y)) {
+                    if (gd.isSameDeviceAs(wlID, x, y, xLogical, yLogical)) {
                         // These coordinates and the size are not scaled.
-                        gd.updateConfiguration(humanID, width, height, scale);
+                        gd.updateConfiguration(humanID, width, height, widthLogical, heightLogical, scale);
                     } else {
                         final WLGraphicsDevice updatedDevice = WLGraphicsDevice.createWithConfiguration(wlID, humanID,
-                                x, y, width, height, widthMm, heightMm, scale);
+                                x, y, xLogical, yLogical, width, height, widthLogical, heightLogical,
+                                widthMm, heightMm, scale);
                         devices.set(i, updatedDevice);
                         gd.invalidate(updatedDevice);
                     }
@@ -123,8 +137,9 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
                 }
             }
             if (newOutput) {
-                final WLGraphicsDevice gd = WLGraphicsDevice.createWithConfiguration(wlID, humanID, x, y,
-                        width, height, widthMm, heightMm, scale);
+                final WLGraphicsDevice gd = WLGraphicsDevice.createWithConfiguration(wlID, humanID,
+                        x, y, xLogical, yLogical, width, height, widthLogical, heightLogical,
+                        widthMm, heightMm, scale);
                 devices.add(gd);
             }
             if (LogDisplay.ENABLED) {
