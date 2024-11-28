@@ -39,17 +39,27 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
     private final WLGraphicsDevice device;
     private final int x;
     private final int y;
+    private final int xLogical; // logical (scaled) horizontal location; optional, could be zero
+    private final int yLogical; // logical (scaled) vertical location; optional, could be zero
     private final int width;
     private final int height;
+    private final int widthLogical; // logical (scaled) width; optional, could be zero
+    private final int heightLogical;// logical (scaled) height; optional, could be zero
     private final int displayScale; // as reported by Wayland
     private final double effectiveScale; // as enforced by Java
 
-    protected WLGraphicsConfig(WLGraphicsDevice device, int x, int y, int width, int height, int displayScale) {
+    protected WLGraphicsConfig(WLGraphicsDevice device, int x, int y, int xLogical, int yLogical,
+                               int width, int height, int widthLogical, int heightLogical,
+                               int displayScale) {
         this.device = device;
         this.x = x;
         this.y = y;
+        this.xLogical = xLogical;
+        this.yLogical = yLogical;
         this.width = width;
         this.height = height;
+        this.widthLogical = widthLogical;
+        this.heightLogical = heightLogical;
         this.displayScale = displayScale;
         this.effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(displayScale);
     }
@@ -86,10 +96,13 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public Rectangle getBounds() {
-        // NB: despite the claims of GraphicsConfiguration.getBounds()'s javadoc,
-        // the value returned is expected to be in user-space coordinates,
-        // same as windows sizes, offsets, components' coordinates, etc.
-        return new Rectangle(x, y, (int) (width / effectiveScale), (int) (height / effectiveScale));
+        return (widthLogical > 0 && heightLogical > 0)
+                ? new Rectangle(xLogical, yLogical, widthLogical, heightLogical)
+                : new Rectangle(x, y, width, height);
+    }
+
+    public Rectangle getRealBounds() {
+        return new Rectangle(x, y, width, height);
     }
 
     /**
