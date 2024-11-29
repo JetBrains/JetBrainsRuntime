@@ -58,7 +58,7 @@ Java_java_awt_Cursor_finalizeImpl
     }
 }
 
-JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_nativeGetPredefinedCursor
+JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLToolkit_nativeGetPredefinedCursor
   (JNIEnv *env, jclass cls, jstring name, jint scale)
 {
     struct wl_cursor_theme *cursor_theme = getCursorTheme(scale);
@@ -91,7 +91,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_nativeGetPredefinedCurso
     return ptr_to_jlong(cursor);
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeDestroyPredefinedCursor
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLToolkit_nativeDestroyPredefinedCursor
         (JNIEnv *env, jclass cls, struct WLCursor *cursor)
 {
     free(cursor);
@@ -140,7 +140,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
     return ptr_to_jlong(cursor);
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLToolkit_nativeSetCursor
   (JNIEnv *env, jclass cls, jlong pData, jint scale, jlong pointerEnterSerial)
 {
     struct wl_buffer *buffer = NULL;
