@@ -82,26 +82,6 @@ public class WLComponentPeer implements ComponentPeer {
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
     private static final PlatformLogger popupLog = PlatformLogger.getLogger("sun.awt.wl.popup.WLComponentPeer");
 
-    // mapping of AWT cursor types to X cursor names
-    // multiple variants can be specified, that will be tried in order
-    // See https://freedesktop.org/wiki/Specifications/cursor-spec/
-    private static final String[][] CURSOR_NAMES = {
-            {"default", "arrow", "left_ptr", "left_arrow"}, // DEFAULT_CURSOR
-            {"crosshair", "cross"}, // CROSSHAIR_CURSOR
-            {"text", "xterm"}, // TEXT_CURSOR
-            {"wait", "watch", "progress"}, // WAIT_CURSOR
-            {"sw-resize", "bottom_left_corner"}, // SW_RESIZE_CURSOR
-            {"se-resize", "bottom_right_corner"}, // SE_RESIZE_CURSOR
-            {"nw-resize", "top_left_corner"}, // NW_RESIZE_CURSOR
-            {"ne-resize", "top_right_corner"}, // NE_RESIZE_CURSOR
-            {"n-resize", "top_side"}, // N_RESIZE_CURSOR
-            {"s-resize", "bottom_side"}, // S_RESIZE_CURSOR
-            {"w-resize", "left_side"}, // W_RESIZE_CURSOR
-            {"e-resize", "right_side"}, // E_RESIZE_CURSOR
-            {"pointer", "pointing_hand", "hand1", "hand2"}, // HAND_CURSOR
-            {"move"}, // MOVE_CURSOR
-    };
-
     private static final int MINIMUM_WIDTH = 1;
     private static final int MINIMUM_HEIGHT = 1;
 
@@ -847,17 +827,10 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public void updateCursorImmediately() {
-        updateCursorImmediately(WLToolkit.getInputState());
+        WLToolkit.updateCursorImmediatelyFor(this);
     }
 
-    private void updateCursorImmediately(WLInputState inputState) {
-        WLComponentPeer peer = inputState.peerForPointerEvents();
-        if (peer == null) return;
-        Cursor cursor = peer.getCursor(inputState.getPointerX(), inputState.getPointerY());
-        setCursor(cursor, getGraphicsDevice() != null ? getGraphicsDevice().getDisplayScale() : 1);
-    }
-
-    Cursor getCursor(int x, int y) {
+    Cursor cursorAt(int x, int y) {
         Component target = this.target;
         if (target instanceof Container) {
             Component c = AWTAccessor.getContainerAccessor().findComponentAt((Container) target, x, y, false);
@@ -866,56 +839,6 @@ public class WLComponentPeer implements ComponentPeer {
             }
         }
         return AWTAccessor.getComponentAccessor().getCursor(target);
-    }
-
-    private static void setCursor(Cursor c, int scale) {
-        long serial = WLToolkit.getInputState().pointerEnterSerial();
-        if (serial == 0) {
-            if (log.isLoggable(Level.WARNING)) {
-                log.warning("setCursor aborted due to missing event serial");
-            }
-            return; // Wayland will ignore the request anyway
-        }
-
-        Cursor cursor;
-        if (c.getType() == Cursor.CUSTOM_CURSOR && !(c instanceof WLCustomCursor)) {
-            cursor = Cursor.getDefaultCursor();
-        } else {
-            cursor = c;
-        }
-        performLockedGlobal(() -> {
-            long pData = AWTAccessor.getCursorAccessor().getPData(cursor, scale);
-            if (pData == 0) {
-                // instead of destroying and creating new cursor after changing scale could be used caching
-                long oldPData = AWTAccessor.getCursorAccessor().getPData(cursor);
-                if (oldPData != 0 && oldPData != -1) {
-                    nativeDestroyPredefinedCursor(oldPData);
-                }
-
-                pData = createNativeCursor(cursor.getType(), scale);
-                if (pData == 0) {
-                    pData = createNativeCursor(Cursor.DEFAULT_CURSOR, scale);
-                }
-                if (pData == 0) {
-                    pData = -1; // mark as unavailable
-                }
-                AWTAccessor.getCursorAccessor().setPData(cursor, scale, pData);
-            }
-            nativeSetCursor(pData, scale, serial);
-        });
-    }
-
-    private static long createNativeCursor(int type, int scale) {
-        if (type < Cursor.DEFAULT_CURSOR || type > Cursor.MOVE_CURSOR) {
-            type = Cursor.DEFAULT_CURSOR;
-        }
-        for (String name : CURSOR_NAMES[type]) {
-            long pData = nativeGetPredefinedCursor(name, scale);
-            if (pData != 0) {
-                return pData;
-            }
-        }
-        return 0;
     }
 
     @Override
@@ -1083,9 +1006,6 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeSetWindowGeometry(long ptr, int x, int y, int width, int height);
     private native void nativeSetMinimumSize(long ptr, int width, int height);
     private native void nativeSetMaximumSize(long ptr, int width, int height);
-    private static native void nativeSetCursor(long pData, int scale, long pointerEnterSerial);
-    private static native long nativeGetPredefinedCursor(String name, int scale);
-    private static native long nativeDestroyPredefinedCursor(long pData);
     private native void nativeShowWindowMenu(long serial, long ptr, int x, int y);
     private native void nativeActivate(long serial, long ptr, long activatingSurfacePtr);
 
@@ -1128,7 +1048,7 @@ public class WLComponentPeer implements ComponentPeer {
         final long timestamp = newInputState.getTimestamp();
 
         if (e.hasEnterEvent()) {
-            performUnlocked(() -> updateCursorImmediately(newInputState));
+            updateCursorImmediately();
             final MouseEvent mouseEvent = new MouseEvent(getTarget(), MouseEvent.MOUSE_ENTERED,
                     timestamp,
                     newInputState.getModifiers(),
@@ -1720,15 +1640,6 @@ public class WLComponentPeer implements ComponentPeer {
     // All accesses to native data, associated with the peer object (e.g. wl_surface proxy object), are expected to be
     // done using these methods. Then one can be sure that native data is not changed concurrently in any way while the
     // specified task is executed.
-
-    static void performLockedGlobal(Runnable task) {
-        WLToolkit.awtLock();
-        try {
-            task.run();
-        } finally {
-            WLToolkit.awtUnlock();
-        }
-    }
 
     void performLocked(Runnable task) {
         WLToolkit.awtLock();
