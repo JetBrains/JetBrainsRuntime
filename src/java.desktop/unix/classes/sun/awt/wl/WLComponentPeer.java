@@ -84,11 +84,12 @@ public class WLComponentPeer implements ComponentPeer {
 
     // mapping of AWT cursor types to X cursor names
     // multiple variants can be specified, that will be tried in order
+    // See https://freedesktop.org/wiki/Specifications/cursor-spec/
     private static final String[][] CURSOR_NAMES = {
             {"default", "arrow", "left_ptr", "left_arrow"}, // DEFAULT_CURSOR
-            {"crosshair"}, // CROSSHAIR_CURSOR
+            {"crosshair", "cross"}, // CROSSHAIR_CURSOR
             {"text", "xterm"}, // TEXT_CURSOR
-            {"wait", "watch"}, // WAIT_CURSOR
+            {"wait", "watch", "progress"}, // WAIT_CURSOR
             {"sw-resize", "bottom_left_corner"}, // SW_RESIZE_CURSOR
             {"se-resize", "bottom_right_corner"}, // SE_RESIZE_CURSOR
             {"nw-resize", "top_left_corner"}, // NW_RESIZE_CURSOR
@@ -97,7 +98,7 @@ public class WLComponentPeer implements ComponentPeer {
             {"s-resize", "bottom_side"}, // S_RESIZE_CURSOR
             {"w-resize", "left_side"}, // W_RESIZE_CURSOR
             {"e-resize", "right_side"}, // E_RESIZE_CURSOR
-            {"hand"}, // HAND_CURSOR
+            {"pointer", "pointing_hand", "hand1", "hand2"}, // HAND_CURSOR
             {"move"}, // MOVE_CURSOR
     };
 
