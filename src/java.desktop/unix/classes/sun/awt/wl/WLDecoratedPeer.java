@@ -144,12 +144,12 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     }
 
     @Override
-    Cursor getCursor(int x, int y) {
+    Cursor cursorAt(int x, int y) {
         Cursor cursor = decoration.getCursor(x, y);
         if (cursor != null) {
             return cursor;
         } else {
-            return super.getCursor(x, y);
+            return super.cursorAt(x, y);
         }
     }
 }
