@@ -146,7 +146,8 @@ public class WLPopupResize {
         double scaleX = transform.getScaleX();
         double scaleY = transform.getScaleY();
         if (scaleX != scaleY) {
-            throw new RuntimeException("Non-uniform scaling is not supported on this test");
+            System.out.println("Skip test due to non-uniform display scale");
+            System.exit(0);
         }
         return scaleX;
     }

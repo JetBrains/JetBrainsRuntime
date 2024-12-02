@@ -23,6 +23,7 @@
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.geom.AffineTransform;
 
 import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 
@@ -74,31 +75,56 @@ public class WLPopupLocation {
         SwingUtilities.invokeAndWait(WLPopupLocation::initPopup);
         pause(robot);
 
-        System.out.println("Action: locate to (0,0), set size (150, 200)");
+        double uiScale = getUiScale();
+        System.out.printf("UI scale: %.2f.\n", uiScale);
+        int pixelThreshold = uiScale == 1.0 ? 0 : (int) Math.ceil(uiScale);
+        System.out.printf("Pixel threshold for verifications: %d\n", pixelThreshold);
+
+        System.out.println("Action: locate to (15, 20), set size (150, 200)");
         SwingUtilities.invokeAndWait(() -> {
             popup.setVisible(true);
             popup.setSize(150, 200);
             popup.setLocation(15, 20);
         });
-        System.out.println("bounds1 = " + popup.getBounds());
-        System.out.println("location1 = " + popup.getLocation());
-        System.out.println("size1 = " + popup.getSize());
+        verifyBounds("Popup position after setting to (15, 20), size (150, 200)\n", 15, 20, 150, 200, pixelThreshold);
         pause(robot);
-        System.out.println("bounds2 = " + popup.getBounds());
-        System.out.println("location2 = " + popup.getLocation());
-        System.out.println("size2 = " + popup.getSize());
+        verifyBounds("Popup position after setting to (15, 20), size (150, 200), after robot's wait\n", 15, 20, 150, 200, pixelThreshold);
 
+        System.out.println("Action: set popup size to (100, 200)");
         SwingUtilities.invokeAndWait(() -> {
             popup.setLocation(100, 100);
         });
-        System.out.println("bounds2 = " + popup.getBounds());
-        System.out.println("location3 = " + popup.getLocation());
-        System.out.println("size3 = " + popup.getSize());
+        verifyBounds("Popup position after setting size to (100, 100)\n", 15, 20, 100, 100, pixelThreshold);
         pause(robot);
-        System.out.println("bounds4 = " + popup.getBounds());
-        System.out.println("location4 = " + popup.getLocation());
-        System.out.println("size4 = " + popup.getSize());
+        verifyBounds("Popup position after setting size to (150, 200), after robot's wait\n", 15, 20, 100, 100, pixelThreshold);
         SwingUtilities.invokeAndWait(frame::dispose);
+    }
+
+    private static Double getUiScale() {
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice device = ge.getDefaultScreenDevice();
+        GraphicsConfiguration gc = device.getDefaultConfiguration();
+        AffineTransform transform = gc.getDefaultTransform();
+        double scaleX = transform.getScaleX();
+        double scaleY = transform.getScaleY();
+        if (scaleX != scaleY) {
+            System.out.println("Skip test due to non-uniform display scale");
+            System.exit(0);
+        }
+        return scaleX;
+    }
+
+    private static void verifyBounds(String message, int x, int y, int w, int h, int pixelThreshold) {
+        Rectangle bounds = popup.getBounds();
+        System.out.printf("Check %s for bounds: %s\n", message, bounds);
+        boolean isCorrectPosition = x - pixelThreshold <= bounds.x && bounds.x <= x + pixelThreshold &&
+                y - pixelThreshold <= bounds.y && bounds.y <= y + pixelThreshold;
+        if (!isCorrectPosition) {
+            throw new RuntimeException(String.format("%s has wrong position. Expected: (%d, %d). Actual: (%d, %d)", message, x, y, bounds.x, bounds.y));
+        }
+        if (bounds.width != w || bounds.height != h) {
+            throw new RuntimeException(String.format("%s has wrong size. Expected: (%d, %d). Actual: (%d, %d)", message, w, h, bounds.width, bounds.height));
+        }
     }
 
     private static void pause(Robot robot) {
