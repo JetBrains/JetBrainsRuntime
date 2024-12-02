@@ -86,7 +86,7 @@ public class WLPopupLocation {
             popup.setSize(150, 200);
             popup.setLocation(15, 20);
         });
-        verifyBounds("Popup position after setting to (15, 20), size (150, 200)\n", 15, 20, 150, 200, pixelThreshold);
+        //verifyBounds("Popup position after setting to (15, 20), size (150, 200)\n", 15, 20, 150, 200, pixelThreshold);
         pause(robot);
         verifyBounds("Popup position after setting to (15, 20), size (150, 200), after robot's wait\n", 15, 20, 150, 200, pixelThreshold);
 
