@@ -29,7 +29,7 @@ import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 
 /**
  * @test
- * @summary Verifies that the popup-style window can change its visibility
+ * @summary Verifies that the popup-style window can change it's size and location
  * @requires os.family == "linux"
  * @key headful
  * @modules java.desktop/sun.awt
@@ -75,30 +75,43 @@ public class WLPopupLocation {
         SwingUtilities.invokeAndWait(WLPopupLocation::initPopup);
         pause(robot);
 
-        double uiScale = getUiScale();
-        System.out.printf("UI scale: %.2f.\n", uiScale);
-        int pixelThreshold = uiScale == 1.0 ? 0 : (int) Math.ceil(uiScale);
-        System.out.printf("Pixel threshold for verifications: %d\n", pixelThreshold);
-
         System.out.println("Action: locate to (15, 20), set size (150, 200)");
         SwingUtilities.invokeAndWait(() -> {
             popup.setVisible(true);
             popup.setSize(150, 200);
             popup.setLocation(100, 100);
         });
-        System.out.println("Bounds: " + popup.getBounds());
-        System.out.println("Location: " + popup.getLocation());
-        verifyBounds("Popup position after setting to (15, 20), size (150, 200)\n", 15, 20, 100, 100, pixelThreshold);
+        if (popup.getSize().width != 150 || popup.getSize().height != 200) {
+            throw new RuntimeException("Incorrect size, expected (150, 200)");
+        }
+        if (popup.getBounds().x != 100 || popup.getBounds().y != 100) {
+            throw new RuntimeException(String.format("Wrong location (via getBounds()): (%d, %d). Expected: (100, 100)", popup.getBounds().x, popup.getBounds().y));
+        }
         pause(robot);
-        verifyBounds("Popup position after setting to (15, 20), size (150, 200), after robot's wait\n", 15, 20, 100, 100, pixelThreshold);
+        if (popup.getSize().width != 150 || popup.getSize().height != 200) {
+            throw new RuntimeException("Incorrect size after robot's wait for idle, expected (150, 200)");
+        }
+        if (popup.getBounds().x != 100 || popup.getBounds().y != 100) {
+            throw new RuntimeException(String.format("Wrong location (via getBounds()) after robot's wait for idle: (%d, %d). Expected: (100, 100)", popup.getBounds().x, popup.getBounds().y));
+        }
 
         System.out.println("Action: set popup size to (100, 200)");
         SwingUtilities.invokeAndWait(() -> {
             popup.setLocation(200, 200);
         });
-        verifyBounds("Popup position after setting size to (100, 100)\n", 15, 20, 100, 100, pixelThreshold);
+        if (popup.getSize().width != 150 || popup.getSize().height != 200) {
+            throw new RuntimeException("Incorrect size, expected (150, 200)");
+        }
+        if (popup.getBounds().x != 200 || popup.getBounds().y != 200) {
+            throw new RuntimeException(String.format("Wrong location (via getBounds()): (%d, %d). Expected: (100, 100)", popup.getBounds().x, popup.getBounds().y));
+        }
         pause(robot);
-        verifyBounds("Popup position after setting size to (150, 200), after robot's wait\n", 15, 20, 200, 200, pixelThreshold);
+        if (popup.getSize().width != 150 || popup.getSize().height != 200) {
+            throw new RuntimeException("Incorrect size after robot's wait for idle, expected (150, 200)");
+        }
+        if (popup.getBounds().x != 200 || popup.getBounds().y != 200) {
+            throw new RuntimeException(String.format("Wrong location (via getBounds()) after robot's wait for idle: (%d, %d). Expected: (100, 100)", popup.getBounds().x, popup.getBounds().y));
+        }
         SwingUtilities.invokeAndWait(frame::dispose);
     }
 
@@ -114,19 +127,6 @@ public class WLPopupLocation {
             System.exit(0);
         }
         return scaleX;
-    }
-
-    private static void verifyBounds(String message, int x, int y, int w, int h, int pixelThreshold) {
-        Rectangle bounds = popup.getBounds();
-        System.out.printf("Check %s for bounds: %s\n", message, bounds);
-        boolean isCorrectPosition = x - pixelThreshold <= bounds.x && bounds.x <= x + pixelThreshold &&
-                y - pixelThreshold <= bounds.y && bounds.y <= y + pixelThreshold;
-        if (!isCorrectPosition) {
-            throw new RuntimeException(String.format("%s has wrong position. Expected: (%d, %d). Actual: (%d, %d)", message, x, y, bounds.x, bounds.y));
-        }
-        if (bounds.width != w || bounds.height != h) {
-            throw new RuntimeException(String.format("%s has wrong size. Expected: (%d, %d). Actual: (%d, %d)", message, w, h, bounds.width, bounds.height));
-        }
     }
 
     private static void pause(Robot robot) {
