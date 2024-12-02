@@ -21,7 +21,7 @@ public class WLPopupLocation {
     private static JWindow popup;
 
     private static void createAndShowUI() {
-        frame = new JFrame("WLPopupResize Test");
+        frame = new JFrame("WLPopupLocation Test");
         frame.setSize(300, 200);
         frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
         frame.setVisible(true);

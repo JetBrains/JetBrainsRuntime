@@ -22,7 +22,7 @@ public class WLPopupMoves {
     private static JWindow popup;
 
     private static void createAndShowUI() {
-        frame = new JFrame("WLPopupResize Test");
+        frame = new JFrame("WLPopupMoves Test");
         frame.setSize(300, 200);
         frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
         frame.setVisible(true);
