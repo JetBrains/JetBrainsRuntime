@@ -23,7 +23,6 @@
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.geom.AffineTransform;
 
 import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 
