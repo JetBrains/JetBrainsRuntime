@@ -75,42 +75,45 @@ public class WLPopupLocation {
         SwingUtilities.invokeAndWait(WLPopupLocation::initPopup);
         pause(robot);
 
-        System.out.println("Action: locate to (15, 20), set size (150, 200)");
+        int w1 = 150, h1 = 200;
+        int x1 = 100, y1 = 100;
+        System.out.printf("Action: locate to (%d, %d), set size (%d, %d)\n", x1, y1, w1, h1);
         SwingUtilities.invokeAndWait(() -> {
             popup.setVisible(true);
-            popup.setSize(150, 200);
-            popup.setLocation(100, 100);
+            popup.setSize(w1, h1);
+            popup.setLocation(x1, y1);
         });
-        if (popup.getSize().width != 150 || popup.getSize().height != 200) {
-            throw new RuntimeException(String.format("Incorrect size (%d, %d), expected (150, 200)", popup.getSize().width, popup.getSize().height));
+        if (popup.getSize().width != w1 || popup.getSize().height != h1) {
+            throw new RuntimeException(String.format("Incorrect size (%d, %d), expected (%d, %d)", popup.getSize().width, popup.getSize().height, w1, h1));
         }
-        if (popup.getBounds().x != 100 || popup.getBounds().y != 100) {
-            throw new RuntimeException(String.format("Wrong location (via getBounds()): (%d, %d). Expected: (100, 100)", popup.getBounds().x, popup.getBounds().y));
+        if (popup.getBounds().x != x1 || popup.getBounds().y != y1) {
+            throw new RuntimeException(String.format("Wrong location (via getBounds()): (%d, %d). Expected: (%d, %d)", popup.getBounds().x, popup.getBounds().y, x1, y1));
         }
         pause(robot);
-        if (popup.getSize().width != 150 || popup.getSize().height != 200) {
-            throw new RuntimeException(String.format("Incorrect size (%d, %d) after robot's wait for idle, expected (150, 200)", popup.getSize().width, popup.getSize().height));
+        if (popup.getSize().width != h1 || popup.getSize().height != h1) {
+            throw new RuntimeException(String.format("Incorrect size (%d, %d) after robot's wait for idle, expected (%d, %d)", popup.getSize().width, popup.getSize().height, w1, h1));
         }
-        if (popup.getBounds().x != 100 || popup.getBounds().y != 100) {
-            throw new RuntimeException(String.format("Wrong location (via getBounds()) after robot's wait for idle: (%d, %d). Expected: (100, 100)", popup.getBounds().x, popup.getBounds().y));
+        if (popup.getBounds().x != x1 || popup.getBounds().y != y1) {
+            throw new RuntimeException(String.format("Wrong location (via getBounds()) after robot's wait for idle: (%d, %d). Expected: (%d, %d)", popup.getBounds().x, popup.getBounds().y, x1, y1));
         }
 
-        System.out.println("Action: set popup size to (100, 200)");
+        int x2 = 200, y2 = 200;
+        System.out.printf("Action: set popup size to (%d, %d)\n", x2, y2);
         SwingUtilities.invokeAndWait(() -> {
-            popup.setLocation(200, 200);
+            popup.setLocation(x2, y2);
         });
-        if (popup.getSize().width != 150 || popup.getSize().height != 200) {
-            throw new RuntimeException(String.format("Incorrect size (%d, %d), expected (150, 200)", popup.getSize().width, popup.getSize().height));
+        if (popup.getSize().width != w1 || popup.getSize().height != h1) {
+            throw new RuntimeException(String.format("Incorrect size (%d, %d), expected (%d, %d)", popup.getSize().width, popup.getSize().height, w1, h1));
         }
-        if (popup.getBounds().x != 200 || popup.getBounds().y != 200) {
-            throw new RuntimeException(String.format("Wrong location (via getBounds()): (%d, %d). Expected: (100, 100)", popup.getBounds().x, popup.getBounds().y));
+        if (popup.getBounds().x != x2 || popup.getBounds().y != y2) {
+            throw new RuntimeException(String.format("Wrong location (via getBounds()): (%d, %d). Expected: (%x, %d)", popup.getBounds().x, popup.getBounds().y, x2, y2));
         }
         pause(robot);
-        if (popup.getSize().width != 150 || popup.getSize().height != 200) {
-            throw new RuntimeException(String.format("Incorrect size (%d, %d) after robot's wait for idle, expected (150, 200)", popup.getSize().width, popup.getSize().height));
+        if (popup.getSize().width != w1 || popup.getSize().height != h1) {
+            throw new RuntimeException(String.format("Incorrect size (%d, %d) after robot's wait for idle, expected (%d, %d)", popup.getSize().width, popup.getSize().height, w1, h1));
         }
-        if (popup.getBounds().x != 200 || popup.getBounds().y != 200) {
-            throw new RuntimeException(String.format("Wrong location (via getBounds()) after robot's wait for idle: (%d, %d). Expected: (100, 100)", popup.getBounds().x, popup.getBounds().y));
+        if (popup.getBounds().x != x2 || popup.getBounds().y != y2) {
+            throw new RuntimeException(String.format("Wrong location (via getBounds()) after robot's wait for idle: (%d, %d). Expected: (%d, %d)", popup.getBounds().x, popup.getBounds().y, x2, y2));
         }
         SwingUtilities.invokeAndWait(frame::dispose);
     }
