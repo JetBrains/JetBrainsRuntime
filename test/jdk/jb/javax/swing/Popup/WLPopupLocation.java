@@ -118,20 +118,6 @@ public class WLPopupLocation {
         SwingUtilities.invokeAndWait(frame::dispose);
     }
 
-    private static Double getUiScale() {
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        GraphicsDevice device = ge.getDefaultScreenDevice();
-        GraphicsConfiguration gc = device.getDefaultConfiguration();
-        AffineTransform transform = gc.getDefaultTransform();
-        double scaleX = transform.getScaleX();
-        double scaleY = transform.getScaleY();
-        if (scaleX != scaleY) {
-            System.out.println("Skip test due to non-uniform display scale");
-            System.exit(0);
-        }
-        return scaleX;
-    }
-
     private static void pause(Robot robot) {
         robot.waitForIdle();
         robot.delay(500);
