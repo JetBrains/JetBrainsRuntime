@@ -82,14 +82,14 @@ public class WLPopupLocation {
             popup.setLocation(100, 100);
         });
         if (popup.getSize().width != 150 || popup.getSize().height != 200) {
-            throw new RuntimeException("Incorrect size, expected (150, 200)");
+            throw new RuntimeException(String.format("Incorrect size (%d, %d), expected (150, 200)", popup.getSize().width, popup.getSize().height));
         }
         if (popup.getBounds().x != 100 || popup.getBounds().y != 100) {
             throw new RuntimeException(String.format("Wrong location (via getBounds()): (%d, %d). Expected: (100, 100)", popup.getBounds().x, popup.getBounds().y));
         }
         pause(robot);
         if (popup.getSize().width != 150 || popup.getSize().height != 200) {
-            throw new RuntimeException("Incorrect size after robot's wait for idle, expected (150, 200)");
+            throw new RuntimeException(String.format("Incorrect size (%d, %d) after robot's wait for idle, expected (150, 200)", popup.getSize().width, popup.getSize().height));
         }
         if (popup.getBounds().x != 100 || popup.getBounds().y != 100) {
             throw new RuntimeException(String.format("Wrong location (via getBounds()) after robot's wait for idle: (%d, %d). Expected: (100, 100)", popup.getBounds().x, popup.getBounds().y));
@@ -100,14 +100,14 @@ public class WLPopupLocation {
             popup.setLocation(200, 200);
         });
         if (popup.getSize().width != 150 || popup.getSize().height != 200) {
-            throw new RuntimeException("Incorrect size, expected (150, 200)");
+            throw new RuntimeException(String.format("Incorrect size (%d, %d), expected (150, 200)", popup.getSize().width, popup.getSize().height));
         }
         if (popup.getBounds().x != 200 || popup.getBounds().y != 200) {
             throw new RuntimeException(String.format("Wrong location (via getBounds()): (%d, %d). Expected: (100, 100)", popup.getBounds().x, popup.getBounds().y));
         }
         pause(robot);
         if (popup.getSize().width != 150 || popup.getSize().height != 200) {
-            throw new RuntimeException("Incorrect size after robot's wait for idle, expected (150, 200)");
+            throw new RuntimeException(String.format("Incorrect size (%d, %d) after robot's wait for idle, expected (150, 200)", popup.getSize().width, popup.getSize().height));
         }
         if (popup.getBounds().x != 200 || popup.getBounds().y != 200) {
             throw new RuntimeException(String.format("Wrong location (via getBounds()) after robot's wait for idle: (%d, %d). Expected: (100, 100)", popup.getBounds().x, popup.getBounds().y));
