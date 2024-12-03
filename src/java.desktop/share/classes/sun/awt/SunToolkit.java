@@ -382,7 +382,7 @@ public abstract class SunToolkit extends Toolkit
         protected static final class AwtLockTracer implements AwtLockListener {
 
             private static final boolean DO_LOG = ((flags & TRACEFULL) != 0);
-            
+
             private static final java.util.Set<String> awtLockerMethods = java.util.Set.of(
                 "awtLock", "awtUnlock", "awtTryLock", /* SunToolkit methods */
                 "lock", "unlock", "tryLock"  /* RenderQueue methods */
@@ -603,7 +603,7 @@ public abstract class SunToolkit extends Toolkit
             }
         }
     }
-    
+
     /**
      * Special mask for the UngrabEvent events, in addition to the
      * public masks defined in AWTEvent.  Should be used as the mask
@@ -780,7 +780,7 @@ public abstract class SunToolkit extends Toolkit
                 if (owner.getState() != Thread.State.RUNNABLE) {
                     System.err.println("awtLock ! lock held by thread: '" + getThreadInfo(owner)
                             + " WAITING - Current thread: '" + getThreadInfo(Thread.currentThread()) + "' !");
-                } else if (false) {
+                } else if (true) {
                     System.err.println("awtLock ? lock held by thread: '" + getThreadInfo(owner)
                             + "' - Current thread: '" + getThreadInfo(Thread.currentThread()) + "' !");
                 }

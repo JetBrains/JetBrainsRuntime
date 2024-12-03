@@ -1183,16 +1183,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     void flushBuffers() {
         // 24.11: only 1 usage by deliverMoveResizeEvent():
         if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
-            logger.fine("CPlatformWindow.flushBuffers: " +
-                            "enter LWCToolkit.invokeAndWait(empty) on target = {0}", target);
-
             // Runnable needed to get obvious stack traces:
             final Runnable emptyTask = new Runnable() {
                 @Override
                 public void run() {
                     // Posting an empty to flush the EventQueue without blocking the main thread
                     logger.fine("CPlatformWindow.flushBuffers: run() " +
-                            "invoked on target = {0}", target);
+                                "invoked on target = {0}", target);
                 }
             };
             try {
@@ -1206,13 +1203,16 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 if (INVOKE_LATER_FLUSH_BUFFERS) {
                     LWCToolkit.invokeLater(emptyTask, target);
                 } else {
+                    logger.fine("CPlatformWindow.flushBuffers: " +
+                                "enter LWCToolkit.invokeAndWait(empty) on target = {0}", target);
+
                     LWCToolkit.invokeAndWait(emptyTask, target);
+
+                    logger.fine("CPlatformWindow.flushBuffers: " +
+                                "exit LWCToolkit.invokeAndWait(empty) on target = {0}", target);
                 }
             } catch (InvocationTargetException ite) {
                 logger.severe("CPlatformWindow.flushBuffers: exception occurred: ", ite);
-            } finally {
-                logger.fine("CPlatformWindow.flushBuffers: " +
-                        "exit LWCToolkit.invokeAndWait(empty) on target = {0}", target);
             }
         }
     }

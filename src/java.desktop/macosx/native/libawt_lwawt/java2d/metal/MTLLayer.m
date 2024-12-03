@@ -35,6 +35,8 @@
 #define MAX_DRAWABLE    3
 #define LAST_DRAWABLE   (MAX_DRAWABLE - 1)
 
+#define USE_CA_TX        0
+
 static jclass jc_JavaLayer = NULL;
 #define GET_MTL_LAYER_CLASS() \
     GET_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
@@ -152,7 +154,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     if (@available(macOS 10.13.2, *)) {
         self.maximumDrawableCount = MAX_DRAWABLE;
     }
-    self.presentsWithTransaction = NO;
+    self.presentsWithTransaction = (USE_CA_TX ? YES : NO);
     self.avgBlitFrameTime = DF_BLIT_FRAME_TIME;
     self.perfCountersEnabled = perfCountersEnabled ? YES : NO;
     self.lastPresentedTime = 0.0;
@@ -297,7 +299,9 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                                CACurrentMediaTime(), self, drawableId);
             }
             if (isDisplaySyncEnabled()) {
-                [commandBuf presentDrawable:mtlDrawable];
+                if (!USE_CA_TX) {
+                    [commandBuf presentDrawable:mtlDrawable];
+                }
             } else {
                 if (@available(macOS 10.15.4, *)) {
                     [commandBuf presentDrawable:mtlDrawable afterMinimumDuration:self.avgBlitFrameTime];
@@ -307,10 +311,25 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             }
 
             [self retain];
+            [mtlDrawable retain];
+
             [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                if (usePresentHandler == NO) {
-                    // free drawable:
-                    [self freeDrawableCount];
+                if (USE_CA_TX) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        // present this drawable:
+                        [mtlDrawable present];
+                        [mtlDrawable release];
+
+                        if (usePresentHandler == NO) {
+                            // free drawable:
+                            [self freeDrawableCount];
+                        }
+                    });
+                } else {
+                    if (usePresentHandler == NO) {
+                        // free drawable:
+                        [self freeDrawableCount];
+                    }
                 }
                 if (!isDisplaySyncEnabled()) {
                     if (@available(macOS 10.15.4, *)) {
@@ -387,6 +406,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 - (void) display {
     AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_display() called");
+
+    if (0) {
+        NSString *callStack = [ThreadUtilities getCallerStack:nil];
+        NSLog(@"display: %@", callStack);
+    }
+
     [self blitCallback];
     [super display];
 }

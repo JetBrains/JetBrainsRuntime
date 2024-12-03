@@ -25,6 +25,7 @@
 
 #include <stdlib.h>
 #import <ThreadUtilities.h>
+#import <dispatch/dispatch.h>
 
 #include "sun_java2d_SunGraphics2D.h"
 
@@ -52,15 +53,15 @@ extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
 extern BOOL MTLLayer_isExtraRedrawEnabled();
 
-#define TRACE_CVLINK  0
+#define TRACE_CVLINK  1
 
-#define CHECK_CVLINK(op, cmd)                                                   \
-{                                                                               \
-    CVReturn ret = (CVReturn) (cmd);                                            \
-    if (ret != kCVReturnSuccess) {                                              \
-        J2dTraceImpl(J2D_TRACE_ERROR, JNI_TRUE, "CVDisplayLink[%s] Error: %d",  \
-                     op, ret);                                                  \
-    }                                                                           \
+#define CHECK_CVLINK(op, source, cmd)                                               \
+{                                                                                   \
+    CVReturn ret = (CVReturn) (cmd);                                                \
+    if (ret != kCVReturnSuccess) {                                                  \
+        J2dTraceImpl(J2D_TRACE_ERROR, JNI_TRUE, "CVDisplayLink[%s - %s] Error: %d", \
+                     op, (source != nil) ? source : "", ret);                       \
+    }                                                                               \
 }
 
 static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
@@ -140,7 +141,11 @@ typedef struct {
     MTLCommandBufferWrapper * _commandBufferWrapper;
     NSMutableSet* _layers;
     int _displayLinkCount;
+    CFTimeInterval _lastDisplayLinkTime;
+    CFTimeInterval _avgDisplayLinkTime;
     CFTimeInterval _lastRedrawTime;
+
+    CFTimeInterval _lastStatTime;
 
     MTLComposite *     _composite;
     MTLPaint *         _paint;
@@ -281,7 +286,10 @@ extern void initSamplers(id<MTLDevice> device);
 
         _tempTransform = [[MTLTransform alloc] init];
         _displayLinkCount = 0;
+        _lastDisplayLinkTime = 0;
+        _avgDisplayLinkTime = 0;
         _lastRedrawTime = 0.0;
+        _lastStatTime = 0.0;
         if (isDisplaySyncEnabled()) {
             _displayLinks = [[NSMutableDictionary alloc] init];
             _layers = [[NSMutableSet alloc] init];
@@ -292,14 +300,219 @@ extern void initSamplers(id<MTLDevice> device);
     return self;
 }
 
+/*
+ * Convert the mode string to the more convenient bits per pixel value
+ */
+static int getBPPFromModeString(CFStringRef mode)
+{
+    if ((CFStringCompare(mode, CFSTR(kIO30BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo)) {
+        // This is a strange mode, where we using 10 bits per RGB component and pack it into 32 bits
+        // Java is not ready to work with this mode but we have to specify it as supported
+        return 30;
+    }
+    else if (CFStringCompare(mode, CFSTR(IO32BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+        return 32;
+    }
+    else if (CFStringCompare(mode, CFSTR(IO16BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+        return 16;
+    }
+    else if (CFStringCompare(mode, CFSTR(IO8BitIndexedPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+        return 8;
+    }
+
+    return 0;
+}
+
+
++ (void)dumpDisplayInfo: (jint)displayID {
+
+/*
+    Getting the Display Configuration
+
+     CGDisplayCopyColorSpace
+    Returns the color space for a display.
+
+     CGDisplayIOServicePort
+    Returns the I/O Kit service port of the specified display.
+    Deprecated
+
+     CGDisplayIsActive
+    Returns a Boolean value indicating whether a display is active.
+
+     CGDisplayIsAlwaysInMirrorSet
+    Returns a Boolean value indicating whether a display is always in a mirroring set.
+
+     CGDisplayIsAsleep
+    Returns a Boolean value indicating whether a display is sleeping (and is therefore not drawable).
+
+     CGDisplayIsBuiltin
+    Returns a Boolean value indicating whether a display is built-in, such as the internal display in portable systems.
+
+     CGDisplayIsInHWMirrorSet
+    Returns a Boolean value indicating whether a display is in a hardware mirroring set.
+
+     CGDisplayIsInMirrorSet
+    Returns a Boolean value indicating whether a display is in a mirroring set.
+
+     CGDisplayIsMain
+    Returns a Boolean value indicating whether a display is the main display.
+
+     CGDisplayIsOnline
+    Returns a Boolean value indicating whether a display is connected or online.
+
+     CGDisplayIsStereo
+    Returns a Boolean value indicating whether a display is running in a stereo graphics mode.
+
+     CGDisplayMirrorsDisplay
+    For a secondary display in a mirroring set, returns the primary display.
+
+     CGDisplayModelNumber
+    Returns the model number of a display monitor.
+
+     CGDisplayPrimaryDisplay
+    Returns the primary display in a hardware mirroring set.
+
+     CGDisplayRotation
+    Returns the rotation angle of a display in degrees.
+
+     CGDisplayScreenSize
+    Returns the width and height of a display in millimeters.
+
+     CGDisplaySerialNumber
+    Returns the serial number of a display monitor.
+
+     CGDisplayUnitNumber
+    Returns the logical unit number of a display.
+
+     CGDisplayUsesOpenGLAcceleration
+    Returns a Boolean value indicating whether Quartz is using OpenGL-based window acceleration (Quartz Extreme) to render in a display.
+
+     CGDisplayVendorNumber
+    Returns the vendor number of the specified display’s monitor.
+*/
+
+    // Returns the color space for a display.
+    // CGColorSpaceRef csRef = CGDisplayCopyColorSpace(displayID);
+
+    // Returns a Boolean value indicating whether a display is active.
+    jint displayIsActive = CGDisplayIsActive(displayID);
+
+    // Returns a Boolean value indicating whether a display is always in a mirroring set.
+    jint displayIsalwaysInMirrorSet = CGDisplayIsAlwaysInMirrorSet(displayID);
+
+    // Returns a Boolean value indicating whether a display is sleeping (and is therefore not drawable).
+    jint displayIsAsleep = CGDisplayIsAsleep(displayID);
+
+    // Returns a Boolean value indicating whether a display is built-in, such as the internal display in portable systems.
+    jint displayIsBuiltin = CGDisplayIsBuiltin(displayID);
+
+    // Returns a Boolean value indicating whether a display is in a mirroring set.
+    jint displayIsInMirrorSet = CGDisplayIsInMirrorSet(displayID);
+
+    // Returns a Boolean value indicating whether a display is in a hardware mirroring set.
+    jint displayIsInHWMirrorSet = CGDisplayIsInHWMirrorSet(displayID);
+
+    // Returns a Boolean value indicating whether a display is the main display.
+    jint displayIsMain = CGDisplayIsMain(displayID);
+
+    // Returns a Boolean value indicating whether a display is connected or online.
+    jint displayIsOnline = CGDisplayIsOnline(displayID);
+
+    // Returns a Boolean value indicating whether a display is running in a stereo graphics mode.
+    jint displayIsStereo = CGDisplayIsStereo(displayID);
+
+    // For a secondary display in a mirroring set, returns the primary display.
+    CGDirectDisplayID displayMirrorsDisplay = CGDisplayMirrorsDisplay(displayID);
+
+    // Returns the primary display in a hardware mirroring set.
+    CGDirectDisplayID displayPrimaryDisplay = CGDisplayPrimaryDisplay(displayID);
+
+    // Returns the width and height of a display in millimeters.
+    CGSize size = CGDisplayScreenSize(displayID);
+
+    NSLog(@"CGDisplay[%d]{\n"
+           "displayIsActive=%d\n"
+           "displayIsalwaysInMirrorSet=%d\n"
+           "displayIsAsleep=%d\n"
+           "displayIsBuiltin=%d\n"
+           "displayIsInMirrorSet=%d\n"
+           "displayIsInHWMirrorSet=%d\n"
+           "displayIsMain=%d\n"
+           "displayIsOnline=%d\n"
+           "displayIsStereo=%d\n"
+           "displayMirrorsDisplay=%d\n"
+           "displayPrimaryDisplay=%d\n"
+           "displayScreenSizey=[%.1lf %.1lf]\n",
+           displayID,
+           displayIsActive,
+           displayIsalwaysInMirrorSet,
+           displayIsAsleep,
+           displayIsBuiltin,
+           displayIsInMirrorSet,
+           displayIsInHWMirrorSet,
+           displayIsMain,
+           displayIsOnline,
+           displayIsStereo,
+           displayMirrorsDisplay,
+           displayPrimaryDisplay,
+           size.width, size.height
+    );
+
+    // CGDisplayCopyDisplayMode can return NULL if displayID is invalid
+    CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayID);
+    if (mode) {
+        // Getting Information About a Display Mode
+        jint h = -1, w = -1, bpp = -1;
+        jdouble refreshRate = 0.0;
+
+        // Returns the width of the specified display mode.
+        w = CGDisplayModeGetWidth(mode);
+
+        // Returns the height of the specified display mode.
+        h = CGDisplayModeGetHeight(mode);
+
+        // Returns the pixel encoding of the specified display mode.
+        // Deprecated
+        CFStringRef currentBPP = CGDisplayModeCopyPixelEncoding(mode);
+        bpp = getBPPFromModeString(currentBPP);
+        CFRelease(currentBPP);
+
+        // Returns the refresh rate of the specified display mode.
+        refreshRate = CGDisplayModeGetRefreshRate(mode);
+
+        // Returns the I/O Kit flags of the specified display mode.
+        // CGDisplayModeGetIOFlags
+
+        // Returns the I/O Kit display mode ID of the specified display mode.
+        // CGDisplayModeGetIODisplayModeID
+
+        // Returns a Boolean value indicating whether the specified display mode is usable for a desktop graphical user interface.
+        // CGDisplayModeIsUsableForDesktopGUI
+
+        // Returns the type identifier of Quartz display modes.
+        // CGDisplayModeGetTypeID
+
+        NSLog(@"CGDisplayMode[%d]: w=%d, h=%d, bpp=%d, freq=%.2lf hz",
+              displayID, w, h, bpp, refreshRate);
+
+        CGDisplayModeRelease(mode);
+    }
+}
+
+
 - (void)createDisplayLinkIfAbsent: (jint)displayID {
     if (isDisplaySyncEnabled() && _displayLinks[@(displayID)] == nil) {
+
+        if (1) {
+            [MTLContext dumpDisplayInfo:displayID];
+        }
+
         CVDisplayLinkRef _displayLink;
         if (TRACE_CVLINK) {
             J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_createDisplayLinkIfAbsent: "
                                               "ctx=%p displayID=%d", self, displayID);
         }
-        CHECK_CVLINK("CreateWithCGDisplay",
+        CHECK_CVLINK("CreateWithCGDisplay", nil,
                      CVDisplayLinkCreateWithCGDisplay(displayID, &_displayLink));
         if (_displayLink == nil) {
             J2dRlsTraceLn(J2D_TRACE_ERROR,
@@ -310,10 +523,9 @@ extern void initSamplers(id<MTLDevice> device);
             dlParams->displayLink = _displayLink;
             dlParams->mtlc = self;
             _displayLinks[@(displayID)] = [NSValue valueWithPointer:dlParams];
-            CHECK_CVLINK("SetOutputCallback", CVDisplayLinkSetOutputCallback(
-                    _displayLink,
-                    &mtlDisplayLinkCallback,
-                    (__bridge DLParams*) dlParams));
+            CHECK_CVLINK("SetOutputCallback", nil,
+                         CVDisplayLinkSetOutputCallback(_displayLink, &mtlDisplayLinkCallback,
+                                                        (__bridge DLParams*) dlParams));
         }
     }
 }
@@ -335,7 +547,7 @@ extern void initSamplers(id<MTLDevice> device);
         CVDisplayLinkRef _displayLink = dlParams->displayLink;
         if (enabled) {
             if (!CVDisplayLinkIsRunning(_displayLink)) {
-                CHECK_CVLINK("Start", CVDisplayLinkStart(_displayLink));
+                CHECK_CVLINK("Start", src, CVDisplayLinkStart(_displayLink));
                 if (TRACE_CVLINK) {
                     J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStart[%s]: "
                                                       "ctx=%p", src, self);
@@ -343,7 +555,7 @@ extern void initSamplers(id<MTLDevice> device);
             }
         } else {
             if (CVDisplayLinkIsRunning(_displayLink)) {
-                CHECK_CVLINK("Stop", CVDisplayLinkStop(_displayLink));
+                CHECK_CVLINK("Stop", src, CVDisplayLinkStop(_displayLink));
                 if (TRACE_CVLINK) {
                     J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_CVDisplayLinkStop[%s]: "
                                                       "ctx=%p", src, self);
@@ -742,15 +954,56 @@ extern void initSamplers(id<MTLDevice> device);
     }
 }
 
-CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* now, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext)
+CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* nowTime, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext)
 {
     J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_mtlDisplayLinkCallback: ctx=%p", displayLinkContext);
     @autoreleasepool {
-        DLParams* dlParams = (__bridge DLParams* *)displayLinkContext;
-        [ThreadUtilities performOnMainThread:@selector(redraw:)
-                                          on:dlParams->mtlc
-                                  withObject:@(dlParams->displayID)
-                               waitUntilDone:NO useJavaModes:NO]; // direct mode
+        const DLParams* dlParams = (__bridge DLParams* *)displayLinkContext;
+        const MTLContext* mtlc   = dlParams->mtlc;
+        const jint displayID     = dlParams->displayID;
+
+        const CFTimeInterval now = outputTime->videoTime / (double)outputTime->videoTimeScale; // seconds
+//        const CFTimeInterval now = CACurrentMediaTime();
+
+        const CFTimeInterval delta = (mtlc->_lastDisplayLinkTime != 0.0) ? (now - mtlc->_lastDisplayLinkTime) : -1.0;
+        mtlc->_lastDisplayLinkTime = now;
+
+        const NSTimeInterval a = 1.0 / 30.0; // 60 fps typically => exponential smoothing on 0.5s:
+        mtlc->_avgDisplayLinkTime = delta * a + mtlc->_avgDisplayLinkTime * (1.0 - a);
+
+        bool restart = NO;
+        if (mtlc->_lastStatTime == 0.0) {
+            mtlc->_lastStatTime = now;
+        } else if ((now - mtlc->_lastStatTime) > 10.0) {
+            mtlc->_lastStatTime = now;
+            // dump stats:
+            NSLog(@"mtlDisplayLinkCallback[%d]: avgDisplayLinkTime = %.3lf ms", displayID,
+                  1000.0 * mtlc->_avgDisplayLinkTime);
+
+            restart = YES;
+        }
+
+        if (1) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [mtlc redraw:@(displayID)];
+            });
+        } else {
+            [ThreadUtilities performOnMainThread:@selector(redraw:)
+                                              on:mtlc
+                                      withObject:@(displayID)
+                                   waitUntilDone:NO useJavaModes:NO]; // direct mode
+        }
+
+        if (restart) {
+            [mtlc retain];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (0) NSLog(@"mtlDisplayLinkCallback[%d]: restart DisplayLink ...", displayID);
+                [mtlc handleDisplayLink:NO  display:displayID source:"mtlDisplayLinkCallback"];
+                [mtlc handleDisplayLink:YES display:displayID source:"mtlDisplayLinkCallback"];
+                if (0) NSLog(@"mtlDisplayLinkCallback[%d]: restart DisplayLink: done.", displayID);
+                [mtlc release];
+            });
+        }
     }
     return kCVReturnSuccess;
 }

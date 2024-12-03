@@ -993,6 +993,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)_displayChanged:(BOOL)profileOnly {
     AWT_ASSERT_APPKIT_THREAD;
+    NSLog(@"ApplicationDelegate: _displayChanged: enter (%d)", profileOnly);
     if (!profileOnly) {
         NSNumber* newDisplayID = [AWTWindow getNSWindowDisplayID_AppKitThread:nsWindow];
         if (newDisplayID == nil) {
@@ -1024,6 +1025,7 @@ AWT_ASSERT_APPKIT_THREAD;
     (*env)->CallVoidMethod(env, platformWindow, jm_displayChanged, profileOnly);
     CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, platformWindow);
+    NSLog(@"ApplicationDelegate: _displayChanged: exit (%d)", profileOnly);
 }
 
 - (void) _deliverMoveResizeEvent {
@@ -1668,7 +1670,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
     self.zoomButtonMouseResponder = [[AWTWindowZoomButtonMouseResponder alloc] initWithWindow:self.nsWindow];
     [self.zoomButtonMouseResponder release]; // property retains the object
-    
+
     AWTWindowDragView* windowDragView = [[AWTWindowDragView alloc] initWithPlatformWindow:self.javaPlatformWindow];
     [titlebar addSubview:windowDragView positioned:NSWindowBelow relativeTo:closeButtonView];
 
@@ -1757,7 +1759,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
     [self setWindowControlsHidden:NO];
     [self updateCustomTitleBarInsets:NO];
-    
+
     [self.nsWindow setIgnoreMove:NO];
 }
 
