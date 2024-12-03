@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1696,6 +1696,9 @@ public final class SystemModulesPlugin extends AbstractPlugin {
                                             ResourcePoolBuilder out) {
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS
                                          + ClassWriter.COMPUTE_FRAMES);
+        // sort the map of module name to the class name of the generated SystemModules class
+        List<Map.Entry<String, String>> systemModulesMap = map.entrySet()
+                .stream().sorted(Map.Entry.comparingByKey()).toList();
         cw.visit(Opcodes.V1_8,
                  ACC_FINAL+ACC_SUPER,
                  SYSTEM_MODULES_MAP_CLASS,
@@ -1762,10 +1765,10 @@ public final class SystemModulesPlugin extends AbstractPlugin {
         mv.visitTypeInsn(ANEWARRAY, "java/lang/String");
 
         int index = 0;
-        for (String moduleName : sorted(map.keySet())) {
+        for (Map.Entry<String,String> entry : systemModulesMap) {
             mv.visitInsn(DUP);                  // arrayref
             pushInt(mv, index);
-            mv.visitLdcInsn(moduleName);
+            mv.visitLdcInsn(entry.getKey());
             mv.visitInsn(AASTORE);
             index++;
         }
@@ -1785,10 +1788,10 @@ public final class SystemModulesPlugin extends AbstractPlugin {
         mv.visitTypeInsn(ANEWARRAY, "java/lang/String");
 
         index = 0;
-        for (String className : sorted(map.values())) {
+        for (Map.Entry<String,String> entry : systemModulesMap) {
             mv.visitInsn(DUP);                  // arrayref
             pushInt(mv, index);
-            mv.visitLdcInsn(className.replace('/', '.'));
+            mv.visitLdcInsn(entry.getValue().replace('/', '.'));
             mv.visitInsn(AASTORE);
             index++;
         }
