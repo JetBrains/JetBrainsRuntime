@@ -52,6 +52,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.Condition;
+
+import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.JavaUtilConcurrentFJPAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Unsafe;
@@ -979,9 +981,7 @@ public class ForkJoinPool extends AbstractExecutorService {
         implements ForkJoinWorkerThreadFactory {
         public final ForkJoinWorkerThread newThread(ForkJoinPool pool) {
             boolean isCommon = (pool.workerNamePrefix == null);
-            @SuppressWarnings("removal")
-            SecurityManager sm = System.getSecurityManager();
-            if (sm != null && isCommon)
+            if (isCommon && JLA.allowSecurityManager())
                 return newCommonWithACC(pool);
             else
                 return newRegularWithACC(pool);
@@ -997,6 +997,8 @@ public class ForkJoinPool extends AbstractExecutorService {
          */
         @SuppressWarnings("removal")
         static volatile AccessControlContext regularACC, commonACC;
+
+        private static final JavaLangAccess JLA = SharedSecrets.getJavaLangAccess();
 
         @SuppressWarnings("removal")
         static ForkJoinWorkerThread newRegularWithACC(ForkJoinPool pool) {

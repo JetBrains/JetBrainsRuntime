@@ -579,4 +579,10 @@ public interface JavaLangAccess {
      * explicitly set otherwise <qualified-class-name> @<id>
      */
     String getLoaderNameID(ClassLoader loader);
+
+    /**
+     * Is a security manager already set or allowed to be set
+     * (using -Djava.security.manager=allow)?
+     */
+    boolean allowSecurityManager();
 }
