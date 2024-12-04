@@ -614,12 +614,23 @@ public class WLComponentPeer implements ComponentPeer {
                 try {
                     return WLRobotPeer.getLocationOfWLSurface(wlSurfacePtr);
                 } catch (UnsupportedOperationException ignore) {
-                    return new Point();
+                    return getFakeLocationOnScreen();
                 }
             } else {
-                return new Point();
+                return getFakeLocationOnScreen();
             }
-        }, Point::new);
+        }, this::getFakeLocationOnScreen);
+    }
+
+    private Point getFakeLocationOnScreen() {
+        // If we can't learn the real location from WLRobotPeer, we can at least
+        // return a reasonable fake. This fake location places all windows in the top-left
+        // corner of their respective screen.
+        GraphicsConfiguration graphicsConfig = target.getGraphicsConfiguration();
+        if (graphicsConfig != null) {
+            return graphicsConfig.getBounds().getLocation();
+        }
+        return new Point();
     }
 
     /**
