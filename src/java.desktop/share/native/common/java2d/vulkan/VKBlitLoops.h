@@ -49,5 +49,10 @@ void VKBlitLoops_Blit(JNIEnv *env,
                        jdouble dx1, jdouble dy1,
                        jdouble dx2, jdouble dy2);
 
+void
+VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
+                            jlong pSrcOps, jlong pDstOps, jint dsttype,
+                            jint srcx, jint srcy, jint dstx, jint dsty,
+                            jint width, jint height);
 
 #endif /* VKBlitLoops_h_Included */
