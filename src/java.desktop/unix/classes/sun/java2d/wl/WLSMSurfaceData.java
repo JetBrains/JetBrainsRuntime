@@ -43,7 +43,7 @@ import sun.util.logging.PlatformLogger;
 /**
  * SurfaceData for shared memory buffers.
  */
-public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
+public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WLPixelGrabberExt {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.wl.WLSMSurfaceData");
     private final WLComponentPeer peer;
 
