@@ -31,6 +31,7 @@
 #include "VKBlitLoops.h"
 #include "VKSurfaceData.h"
 #include "VKRenderer.h"
+#include "GraphicsPrimitiveMgr.h"
 
 
 #include "Trace.h"
@@ -316,4 +317,144 @@ void VKBlitLoops_Blit(JNIEnv *env,
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);
     }
     SurfaceData_InvokeUnlock(env, srcOps, &srcInfo);
+}
+
+/**
+ * Specialized blit method for copying a native Vulkan "Surface" to a system
+ * memory ("Sw") surface.
+ */
+void
+VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
+                             jlong pSrcOps, jlong pDstOps, jint dsttype,
+                             jint srcx, jint srcy, jint dstx, jint dsty,
+                             jint width, jint height)
+{
+    VKSDOps *srcOps = (VKSDOps *)jlong_to_ptr(pSrcOps);
+    SurfaceDataOps *dstOps = (SurfaceDataOps *)jlong_to_ptr(pDstOps);
+    SurfaceDataRasInfo srcInfo, dstInfo;
+
+    J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_SurfaceToSwBlit: (%d %d %d %d) -> (%d %d)",
+               srcx, srcy, width, height, dstx, dsty);
+
+    if (width <= 0 || height <= 0) {
+        J2dTraceLn(J2D_TRACE_WARNING,
+                   "VKBlitLoops_SurfaceToSwBlit: dimensions are non-positive");
+        return;
+    }
+
+    RETURN_IF_NULL(srcOps);
+    RETURN_IF_NULL(dstOps);
+    RETURN_IF_NULL(context);
+
+    VKDevice* device = srcOps->device;
+    VKImage* image = srcOps->image;
+
+    if (image == NULL || device == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR,
+                      "VKBlitLoops_SurfaceToSwBlit: image(%p) or device(%p) is NULL", image, device);
+        return;
+    }
+
+    srcInfo.bounds.x1 = srcx;
+    srcInfo.bounds.y1 = srcy;
+    srcInfo.bounds.x2 = srcx + width;
+    srcInfo.bounds.y2 = srcy + height;
+    dstInfo.bounds.x1 = dstx;
+    dstInfo.bounds.y1 = dsty;
+    dstInfo.bounds.x2 = dstx + width;
+    dstInfo.bounds.y2 = dsty + height;
+
+    SurfaceData_IntersectBoundsXYXY(&srcInfo.bounds,
+                                    0, 0, srcOps->image->extent.width, srcOps->image->extent.height);
+    SurfaceData_IntersectBlitBounds(&dstInfo.bounds, &srcInfo.bounds,
+                                    srcx - dstx, srcy - dsty);
+
+    if (dstOps->Lock(env, dstOps, &dstInfo, SD_LOCK_WRITE) != SD_SUCCESS) {
+        J2dTraceLn(J2D_TRACE_WARNING,
+                   "VKBlitLoops_SurfaceToSwBlit: could not acquire dst lock");
+        return;
+    }
+
+    if (srcInfo.bounds.x2 > srcInfo.bounds.x1 &&
+        srcInfo.bounds.y2 > srcInfo.bounds.y1)
+    {
+        dstOps->GetRasInfo(env, dstOps, &dstInfo);
+        do {
+            if (dstInfo.rasBase == NULL) {
+                J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_SurfaceToSwBlit: could not get dst raster info");
+                break;
+            }
+            void *pDst = dstInfo.rasBase;
+            srcx = srcInfo.bounds.x1;
+            srcy = srcInfo.bounds.y1;
+            dstx = dstInfo.bounds.x1;
+            dsty = dstInfo.bounds.y1;
+            width = srcInfo.bounds.x2 - srcInfo.bounds.x1;
+            height = srcInfo.bounds.y2 - srcInfo.bounds.y1;
+            jsize bufferSizeInPixels = width * height;
+
+            pDst = PtrAddBytes(pDst, dstx * dstInfo.pixelStride);
+            pDst = PtrPixelsRow(pDst, dsty, dstInfo.scanStride);
+
+            VKRenderer_FlushRenderPass(srcOps);
+            VkCommandBuffer cb = VKRenderer_Record(device->renderer);
+            {
+                VkImageMemoryBarrier barrier;
+                VKBarrierBatch barrierBatch = {};
+                VKRenderer_AddImageBarrier(&barrier, &barrierBatch, image,
+                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                           VK_ACCESS_TRANSFER_READ_BIT,
+                                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+                if (barrierBatch.barrierCount > 0) {
+                    device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
+                                                 0, 0, NULL,
+                                                 0, NULL,
+                                                 barrierBatch.barrierCount, &barrier);
+                }
+            }
+
+            VKBuffer* buffer = VKBuffer_Create(device, bufferSizeInPixels * sizeof(jint),
+                                               VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+            if (buffer == NULL) {
+                J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_SurfaceToSwBlit: could not create buffer");
+                break;
+            }
+
+            VkBufferImageCopy region = {
+                    .bufferOffset = 0,
+                    .bufferRowLength = 0,
+                    .bufferImageHeight = 0,
+                    .imageSubresource= {
+                            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                            .mipLevel = 0,
+                            .baseArrayLayer = 0,
+                            .layerCount = 1
+                    },
+                    .imageOffset = {srcx, srcy, 0},
+                    .imageExtent = {width, height, 1}
+            };
+
+            device->vkCmdCopyImageToBuffer(cb, image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                           buffer->handle,
+                                           1, &region);
+            VKRenderer_Flush(device->renderer);
+            VKRenderer_Sync(device->renderer);
+            void* pixelData;
+            VK_IF_ERROR(device->vkMapMemory(device->handle,  buffer->range.memory,
+                                            0, VK_WHOLE_SIZE, 0, &pixelData))
+            {
+                J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_SurfaceToSwBlit: could not map buffer memory");
+            } else {
+                memcpy(pDst, pixelData, bufferSizeInPixels * sizeof(jint));
+                device->vkUnmapMemory(device->handle, buffer->range.memory);
+            }
+            VKBuffer_Destroy(device, buffer);
+        } while (0);
+        SurfaceData_InvokeRelease(env, dstOps, &dstInfo);
+    }
+    SurfaceData_InvokeUnlock(env, dstOps, &dstInfo);
 }
