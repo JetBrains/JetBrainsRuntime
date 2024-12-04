@@ -26,23 +26,29 @@
 
 package sun.java2d.vulkan;
 
+import java.awt.AlphaComposite;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
+import sun.awt.image.BufImgSurfaceData;
 import sun.awt.wl.WLComponentPeer;
 import sun.java2d.SurfaceData;
+import sun.java2d.loops.Blit;
+import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.SurfaceType;
 import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.RenderBuffer;
+import sun.java2d.wl.WLPixelGrabberExt;
 import sun.java2d.wl.WLSurfaceDataExt;
 import sun.util.logging.PlatformLogger;
 
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import static sun.java2d.pipe.BufferedOpCodes.CONFIGURE_SURFACE;
 
-public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurfaceDataExt {
+public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurfaceDataExt, WLPixelGrabberExt {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.WLVKSurfaceData");
 
     protected WLComponentPeer peer;
@@ -144,6 +150,51 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
             return (WLVKGraphicsConfig)gd.getDefaultConfiguration();
         }
     }
+
+    public int getRGBPixelAt(int x, int y) {
+        Rectangle r = peer.getBufferBounds();
+        if (x < r.x || x >= r.x + r.width || y < r.y || y >= r.y + r.height) {
+            throw new ArrayIndexOutOfBoundsException("x,y outside of buffer bounds");
+        }
+
+        BufferedImage resImg = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+        SurfaceData resData = BufImgSurfaceData.createData(resImg);
+
+        Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa,
+                resData.getSurfaceType());
+        blit.Blit(this, resData, AlphaComposite.Src, null,
+                    x, y, 0, 0, 1, 1);
+
+        return resImg.getRGB(0, 0);
+    }
+
+    public int [] getRGBPixelsAt(Rectangle bounds) {
+        Rectangle r = peer.getBufferBounds();
+
+        if ((long)bounds.width * (long)bounds.height > Integer.MAX_VALUE) {
+            throw new IndexOutOfBoundsException("Dimensions (width=" + bounds.width +
+                    " height=" + bounds.height + ") are too large");
+        }
+
+        Rectangle b = bounds.intersection(r);
+
+        if (b.isEmpty()) {
+            throw new IndexOutOfBoundsException("Requested bounds are outside of surface bounds");
+        }
+
+        BufferedImage resImg = new BufferedImage(b.width, b.height, BufferedImage.TYPE_INT_ARGB);
+        SurfaceData resData = BufImgSurfaceData.createData(resImg);
+
+        Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa,
+                resData.getSurfaceType());
+        blit.Blit(this, resData, AlphaComposite.Src, null,
+                b.x, b.y, 0, 0, b.width, b.height);
+
+        int [] pixels = new int[b.width * b.height];
+        resImg.getRGB(0, 0, b.width, b.height, pixels, 0, b.width);
+        return pixels;
+    }
+
 
     public static class WLVKWindowSurfaceData extends WLVKSurfaceData {
         public WLVKWindowSurfaceData(WLComponentPeer peer, WLVKGraphicsConfig gc)
