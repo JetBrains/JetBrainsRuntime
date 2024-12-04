@@ -36,13 +36,14 @@ import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
 import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.RenderBuffer;
+import sun.java2d.wl.WLPixelGrabberExt;
 import sun.java2d.wl.WLSurfaceDataExt;
 import sun.util.logging.PlatformLogger;
 
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import static sun.java2d.pipe.BufferedOpCodes.CONFIGURE_SURFACE;
 
-public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurfaceDataExt {
+public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurfaceDataExt, WLPixelGrabberExt {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.WLVKSurfaceData");
 
     protected WLComponentPeer peer;
@@ -145,6 +146,26 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
         }
     }
 
+    public int getRGBPixelAt(int x, int y) {
+        int pixel = pixelAt(x, y);
+        return getSurfaceType().rgbFor(pixel, getColorModel());
+    }
+
+    public int [] getRGBPixelsAt(Rectangle bounds) {
+        int [] pixels = pixelsAt(bounds.x, bounds.y, bounds.width, bounds.height);
+        var surfaceType = getSurfaceType();
+        if (surfaceType.equals(SurfaceType.IntArgbPre) ||  surfaceType.equals(SurfaceType.IntRgb)) {
+            // No conversion is necessary, can return raw pixels
+        } else {
+            var cm = getColorModel();
+            for (int i = 0; i < pixels.length; i++) {
+                pixels[i] = surfaceType.rgbFor(pixels[i], cm);
+            }
+        }
+        return pixels;
+    }
+
+
     public static class WLVKWindowSurfaceData extends WLVKSurfaceData {
         public WLVKWindowSurfaceData(WLComponentPeer peer, WLVKGraphicsConfig gc)
         {
@@ -193,4 +214,7 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
             return true;
         }
     }
+
+    private native int pixelAt(int x, int y);
+    private native int [] pixelsAt(int x, int y, int width, int height);
 }
