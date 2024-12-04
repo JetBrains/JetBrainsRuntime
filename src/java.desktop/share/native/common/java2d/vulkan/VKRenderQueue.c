@@ -395,6 +395,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jlong pSrc   = NEXT_LONG(b);
                 jlong pDst   = NEXT_LONG(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: SURFACE_TO_SW_BLIT");
+                VKBlitLoops_SurfaceToSwBlit(env, &context, pSrc, pDst, dsttype, sx, sy, dx, dy, w, h);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_MASK_FILL:
