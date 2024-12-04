@@ -3527,7 +3527,15 @@ static void post_thread_start_event(const JavaThread* jt) {
 extern const struct JNIInvokeInterface_ jni_InvokeInterface;
 
 // Global invocation API vars
-volatile int vm_created = 0;
+enum VM_Creation_State {
+  NOT_CREATED = 0,
+  IN_PROGRESS,  // Most JNI operations are permitted during this phase to
+                // allow for initialization actions by libraries and agents.
+  COMPLETE
+};
+
+volatile VM_Creation_State vm_created = NOT_CREATED;
+
 // Indicate whether it is safe to recreate VM. Recreation is only
 // possible after a failed initial creation attempt in some cases.
 volatile int safe_to_recreate_vm = 1;
@@ -3596,7 +3604,7 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
   // We use Atomic::xchg rather than Atomic::add/dec since on some platforms
   // the add/dec implementations are dependent on whether we are running
   // on a multiprocessor Atomic::xchg does not have this problem.
-  if (Atomic::xchg(&vm_created, 1) == 1) {
+  if (Atomic::xchg(&vm_created, IN_PROGRESS) != NOT_CREATED) {
     return JNI_EEXIST;   // already created, or create attempt in progress
   }
 
@@ -3608,8 +3616,6 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
   if (Atomic::xchg(&safe_to_recreate_vm, 0) == 0) {
     return JNI_ERR;
   }
-
-  assert(vm_created == 1, "vm_created is true during the creation");
 
   /**
    * Certain errors during initialization are recoverable and do not
@@ -3627,9 +3633,11 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
   if (result == JNI_OK) {
     JavaThread *thread = JavaThread::current();
     assert(!thread->has_pending_exception(), "should have returned not OK");
-    /* thread is thread_in_vm here */
+    // thread is thread_in_vm here
     *vm = (JavaVM *)(&main_vm);
     *(JNIEnv**)penv = thread->jni_environment();
+    // mark creation complete for other JNI ops
+    Atomic::release_store(&vm_created, COMPLETE);
 
 #if INCLUDE_JVMCI
     if (EnableJVMCI) {
@@ -3694,7 +3702,8 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
     *(JNIEnv**)penv = 0;
     // reset vm_created last to avoid race condition. Use OrderAccess to
     // control both compiler and architectural-based reordering.
-    Atomic::release_store(&vm_created, 0);
+    assert(vm_created == IN_PROGRESS, "must be");
+    Atomic::release_store(&vm_created, NOT_CREATED);
   }
 
   // Flush stdout and stderr before exit.
@@ -3723,7 +3732,7 @@ _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm, void **penv, v
 _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_GetCreatedJavaVMs(JavaVM **vm_buf, jsize bufLen, jsize *numVMs) {
   HOTSPOT_JNI_GETCREATEDJAVAVMS_ENTRY((void **) vm_buf, bufLen, (uintptr_t *) numVMs);
 
-  if (vm_created == 1) {
+  if (vm_created == COMPLETE) {
     if (numVMs != NULL) *numVMs = 1;
     if (bufLen > 0)     *vm_buf = (JavaVM *)(&main_vm);
   } else {
@@ -3743,7 +3752,7 @@ static jint JNICALL jni_DestroyJavaVM_inner(JavaVM *vm) {
   jint res = JNI_ERR;
   DT_RETURN_MARK(DestroyJavaVM, jint, (const jint&)res);
 
-  if (vm_created == 0) {
+  if (vm_created == NOT_CREATED) {
     res = JNI_ERR;
     return res;
   }
@@ -3767,7 +3776,7 @@ static jint JNICALL jni_DestroyJavaVM_inner(JavaVM *vm) {
   ThreadStateTransition::transition_from_native(thread, _thread_in_vm);
   Threads::destroy_vm();
   // Don't bother restoring thread state, VM is gone.
-  vm_created = 0;
+  vm_created = NOT_CREATED;
   return JNI_OK;
 }
 
@@ -3904,7 +3913,8 @@ static jint attach_current_thread(JavaVM *vm, void **penv, void *_args, bool dae
 
 jint JNICALL jni_AttachCurrentThread(JavaVM *vm, void **penv, void *_args) {
   HOTSPOT_JNI_ATTACHCURRENTTHREAD_ENTRY(vm, penv, _args);
-  if (vm_created == 0) {
+  if (vm_created == NOT_CREATED) {
+    // Not sure how we could possibly get here.
     HOTSPOT_JNI_ATTACHCURRENTTHREAD_RETURN((uint32_t) JNI_ERR);
     return JNI_ERR;
   }
@@ -3917,7 +3927,8 @@ jint JNICALL jni_AttachCurrentThread(JavaVM *vm, void **penv, void *_args) {
 
 jint JNICALL jni_DetachCurrentThread(JavaVM *vm)  {
   HOTSPOT_JNI_DETACHCURRENTTHREAD_ENTRY(vm);
-  if (vm_created == 0) {
+  if (vm_created == NOT_CREATED) {
+    // Not sure how we could possibly get here.
     HOTSPOT_JNI_DETACHCURRENTTHREAD_RETURN(JNI_ERR);
     return JNI_ERR;
   }
@@ -3980,7 +3991,7 @@ jint JNICALL jni_GetEnv(JavaVM *vm, void **penv, jint version) {
   jint ret = JNI_ERR;
   DT_RETURN_MARK(GetEnv, jint, (const jint&)ret);
 
-  if (vm_created == 0) {
+  if (vm_created == NOT_CREATED) {
     *penv = NULL;
     ret = JNI_EDETACHED;
     return ret;
@@ -4031,8 +4042,9 @@ jint JNICALL jni_GetEnv(JavaVM *vm, void **penv, jint version) {
 
 jint JNICALL jni_AttachCurrentThreadAsDaemon(JavaVM *vm, void **penv, void *_args) {
   HOTSPOT_JNI_ATTACHCURRENTTHREADASDAEMON_ENTRY(vm, penv, _args);
-  if (vm_created == 0) {
-  HOTSPOT_JNI_ATTACHCURRENTTHREADASDAEMON_RETURN((uint32_t) JNI_ERR);
+  if (vm_created == NOT_CREATED) {
+    // Not sure how we could possibly get here.
+    HOTSPOT_JNI_ATTACHCURRENTTHREADASDAEMON_RETURN((uint32_t) JNI_ERR);
     return JNI_ERR;
   }
 
