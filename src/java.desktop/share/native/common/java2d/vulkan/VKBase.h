@@ -115,6 +115,7 @@ struct VKDevice {
     PFN_vkInvalidateMappedMemoryRanges vkInvalidateMappedMemoryRanges;
     PFN_vkCmdPushConstants vkCmdPushConstants;
     PFN_vkCmdCopyBufferToImage vkCmdCopyBufferToImage;
+    PFN_vkCmdCopyImageToBuffer vkCmdCopyImageToBuffer;
 };
 
 struct VKGraphicsEnvironment {
