@@ -53,6 +53,7 @@ public class WLPopupVisibility {
         popupContents.add(new JLabel("test popup"));
         popup = new JWindow(frame);
         popup.setType(Window.Type.POPUP);
+        popup.setSize(100, 100);
         sun.awt.AWTAccessor.getWindowAccessor().setPopupParent(popup, frame);
         popup.add(popupContents);
     }
