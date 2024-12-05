@@ -1078,7 +1078,6 @@ jdk_swing_wayland= \
     -javax/swing/JButton/bug4234034.java \
     -javax/swing/JButton/bug4323121.java \
     -javax/swing/JButton/bug4490179.java \
-    -javax/swing/JButton/PressedButtonRightClickTest.java \
     -javax/swing/JColorChooser/Test6541987.java \
     -javax/swing/JColorChooser/Test6707406.java \
     -javax/swing/JColorChooser/Test6827032.java \
