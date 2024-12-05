@@ -301,8 +301,8 @@ public class WLComponentPeer implements ComponentPeer {
         if (v) {
             String title = getTitle();
             boolean isWlPopup = targetIsWlPopup();
-            int thisWidth = javaUnitsToSurfaceUnits(getWidth());
-            int thisHeight = javaUnitsToSurfaceUnits(getHeight());
+            int thisWidth = javaUnitsToSurfaceSize(getWidth());
+            int thisHeight = javaUnitsToSurfaceSize(getHeight());
             boolean isModal = targetIsModal();
 
             int state = (target instanceof Frame frame)
@@ -376,9 +376,9 @@ public class WLComponentPeer implements ComponentPeer {
         // which may result in visual artifacts.
         int surfaceWidth = wlSize.getSurfaceWidth();
         int surfaceHeight = wlSize.getSurfaceHeight();
-        Dimension surfaceMinSize = javaUnitsToSurfaceUnits(constrainSize(getMinimumSize()));
+        Dimension surfaceMinSize = javaUnitsToSurfaceSize(constrainSize(getMinimumSize()));
         Dimension maxSize = target.isMaximumSizeSet() ? target.getMaximumSize() : null;
-        Dimension surfaceMaxSize = maxSize != null ? javaUnitsToSurfaceUnits(constrainSize(maxSize)) : null;
+        Dimension surfaceMaxSize = maxSize != null ? javaUnitsToSurfaceSize(constrainSize(maxSize)) : null;
 
         nativeSetSurfaceSize(nativePtr, surfaceWidth, surfaceHeight);
         if (!surfaceData.getColorModel().hasAlpha()) {
@@ -1463,7 +1463,17 @@ public class WLComponentPeer implements ComponentPeer {
             return value;
         } else {
             synchronized (dataLock) {
-                return (int)(value * effectiveScale / displayScale);
+                return (int) Math.floor(value * effectiveScale / displayScale);
+            }
+        }
+    }
+
+    int javaUnitsToSurfaceSize(int value) {
+        if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
+            return value;
+        } else {
+            synchronized (dataLock) {
+                return (int) Math.ceil(value * effectiveScale / displayScale);
             }
         }
     }
@@ -1472,8 +1482,8 @@ public class WLComponentPeer implements ComponentPeer {
         return new Point(javaUnitsToSurfaceUnits(p.x), javaUnitsToSurfaceUnits(p.y));
     }
 
-    Dimension javaUnitsToSurfaceUnits(Dimension d) {
-        return new Dimension(javaUnitsToSurfaceUnits(d.width), javaUnitsToSurfaceUnits(d.height));
+    Dimension javaUnitsToSurfaceSize(Dimension d) {
+        return new Dimension(javaUnitsToSurfaceSize(d.width), javaUnitsToSurfaceSize(d.height));
     }
 
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight, boolean active, boolean maximized) {
@@ -1731,8 +1741,8 @@ public class WLComponentPeer implements ComponentPeer {
                 javaSize.height = height;
                 pixelSize.width = (int) (width * effectiveScale);
                 pixelSize.height = (int) (height * effectiveScale);
-                surfaceSize.width = javaUnitsToSurfaceUnits(width);
-                surfaceSize.height = javaUnitsToSurfaceUnits(height);
+                surfaceSize.width = javaUnitsToSurfaceSize(width);
+                surfaceSize.height = javaUnitsToSurfaceSize(height);
             }
         }
 
@@ -1751,8 +1761,8 @@ public class WLComponentPeer implements ComponentPeer {
             synchronized (dataLock) {
                 pixelSize.width = (int)(javaSize.width * effectiveScale);
                 pixelSize.height = (int)(javaSize.height * effectiveScale);
-                surfaceSize.width = javaUnitsToSurfaceUnits(javaSize.width);
-                surfaceSize.height = javaUnitsToSurfaceUnits(javaSize.height);
+                surfaceSize.width = javaUnitsToSurfaceSize(javaSize.width);
+                surfaceSize.height = javaUnitsToSurfaceSize(javaSize.height);
             }
         }
 
