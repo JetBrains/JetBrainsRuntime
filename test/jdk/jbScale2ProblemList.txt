@@ -1,3 +1,5 @@
+java/awt/Choice/ChoiceMouseEventOutbounds.java JBR-7980 windows-all
+java/awt/Choice/ChoiceMoveTest.java JBR-7980 windows-all
 java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java JBR-6027 windows-all
