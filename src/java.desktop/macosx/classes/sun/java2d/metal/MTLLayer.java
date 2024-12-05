@@ -142,8 +142,6 @@ public class MTLLayer extends CFLayer {
         // tell the flusher thread not to update the intermediate buffer
         // until we are done blitting from it
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
-
-        // Should not wait !!
         rq.lock();
         try {
             execute(ptr -> blitTexture(ptr));

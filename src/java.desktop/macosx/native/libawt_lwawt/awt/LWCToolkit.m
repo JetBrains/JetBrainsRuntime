@@ -56,8 +56,11 @@
 #define SCROLL_PHASE_MOMENTUM_BEGAN 4
 #define SCROLL_PHASE_ENDED 5
 
-/* RunLoop run max duration = few millis (was 0.010) */
-#define RUN_LOOP_TICK   0.004
+/* RunLoop run max duration = 4 millis */
+#define RUN_LOOP_TICK           (0.004)
+/* RunLoop critical run max duration = 1 millis */
+/* was 0.001 */
+#define RUN_LOOP_TICK_CRITICAL  (0.0)
 
 #define TRACE_RUN_LOOP  0
 
@@ -603,7 +606,6 @@ JNI_COCOA_ENTER(env);
         return JNI_TRUE;
     }
 
-    NSDate *deadlineDate = nil;
     NSDate *timeoutDate = timeoutSeconds > 0 ? [NSDate dateWithTimeIntervalSinceNow:timeoutSeconds] : nil;
     if (timeoutDate != nil) {
         if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: timeoutDate = %s",
@@ -613,23 +615,23 @@ JNI_COCOA_ENTER(env);
     if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: processEvents = %d", processEvents);
 
     NSRunLoopMode criticalRunMode = [ThreadUtilities criticalRunLoopMode];
-    NSRunLoopMode runMode = inAWT ? [ThreadUtilities javaRunLoopMode] : criticalRunMode;
+    NSRunLoopMode runMode = inAWT ? [ThreadUtilities javaRunLoopMode] : NSDefaultRunLoopMode;
     if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: runMode = %@", runMode);
 
     // Don't use acceptInputForMode because that doesn't setup autorelease pools properly
     BOOL isRunning = true;
-    BOOL isCriticalRunning = false;
+    NSDate *deadlineDate = nil;
 
     while (![mediatorObject shouldEndRunLoop] && isRunning) {
         // always process critical events:
         if (YES) {
             // Check every few ms at least:
             [deadlineDate release];
-            deadlineDate = [NSDate dateWithTimeIntervalSinceNow:RUN_LOOP_TICK];
+            deadlineDate = [NSDate dateWithTimeIntervalSinceNow:RUN_LOOP_TICK_CRITICAL];
 
             // Runs the loop once, blocking for input in the specified mode until the deadline date:
-            isCriticalRunning = [[NSRunLoop currentRunLoop] runMode:criticalRunMode beforeDate:deadlineDate];
-            if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: isCriticalRunning = %d", isCriticalRunning);
+            BOOL hasRunCritical = [[NSRunLoop currentRunLoop] runMode:criticalRunMode beforeDate:deadlineDate];
+            if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: hasRunCritical = %d", hasRunCritical);
         }
         // Check every few ms at least:
         [deadlineDate release];
@@ -640,7 +642,7 @@ JNI_COCOA_ENTER(env);
         if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: isRunning = %d", isRunning);
 
         if (timeoutDate != nil) {
-            NSDate *now = [NSDate date];
+            NSDate *now = [[NSDate alloc] init];
             if ([timeoutDate compare:(now)] == NSOrderedAscending) {
                 result = JNI_FALSE;
             }
@@ -651,7 +653,7 @@ JNI_COCOA_ENTER(env);
         }
 
         if (processEvents) {
-            //We do not spin a runloop here as date is nil, so does not matter which mode to use
+            // We do not spin a runloop here as date is nil, so does not matter which mode to use
             // Processing all events excluding NSApplicationDefined which need to be processed
             // on the main loop only (those events are intended for disposing resources)
             NSEvent *event = [NSApp nextEventMatchingMask:(NSAnyEventMask & ~NSApplicationDefinedMask)
@@ -659,11 +661,10 @@ JNI_COCOA_ENTER(env);
                                                    inMode:NSDefaultRunLoopMode
                                                   dequeue:YES];
             if (event != nil) {
-                if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: send event = %@", event);
-
                 if ([event.window isKindOfClass:[AWTWindow_Normal class]]) {
                     // Filter only events from AWTWindow (to skip events from ScreenMenu)
                     // See https://youtrack.jetbrains.com/issue/IDEA-305287/Implement-non-blocking-ScreenMenu.invokeOpenLater#focus=Comments-27-6614719.0-0
+                    if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: send event = %@", event);
                     [NSApp sendEvent:event];
                 } else {
                     if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: discarded event = %@", event);

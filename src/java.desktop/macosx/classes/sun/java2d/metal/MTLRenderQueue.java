@@ -169,8 +169,6 @@ public class MTLRenderQueue extends RenderQueue {
             thread.setDaemon(true);
             thread.setPriority(Thread.MAX_PRIORITY);
             thread.start();
-            // Always register thread:
-            SunToolkit.registerAwtLockThread(thread);
         }
 
         public synchronized void flushNow() {

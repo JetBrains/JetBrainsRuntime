@@ -617,7 +617,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     public FontMetrics getFontMetrics(Font f) {
         logger.severe("CPlatformWindow.getFontMetrics: exception occurred: ",
                 new RuntimeException("unimplemented"));
-
         return null;
     }
 
@@ -1188,8 +1187,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 @Override
                 public void run() {
                     // Posting an empty to flush the EventQueue without blocking the main thread
-                    logger.fine("CPlatformWindow.flushBuffers: run() " +
-                                "invoked on target = {0}", target);
+                    logger.fine("CPlatformWindow.flushBuffers: run() invoked on {0}", target);
                 }
             };
             try {

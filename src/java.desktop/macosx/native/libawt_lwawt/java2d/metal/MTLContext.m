@@ -25,7 +25,6 @@
 
 #include <stdlib.h>
 #import <ThreadUtilities.h>
-#import <dispatch/dispatch.h>
 
 #include "sun_java2d_SunGraphics2D.h"
 
@@ -53,7 +52,10 @@ extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
 extern BOOL MTLLayer_isExtraRedrawEnabled();
 
-#define TRACE_CVLINK  1
+#define STATS_CVLINK    0
+
+#define TRACE_CVLINK    0
+#define TRACE_DISPLAY   0
 
 #define CHECK_CVLINK(op, source, cmd)                                               \
 {                                                                                   \
@@ -325,75 +327,6 @@ static int getBPPFromModeString(CFStringRef mode)
 
 
 + (void)dumpDisplayInfo: (jint)displayID {
-
-/*
-    Getting the Display Configuration
-
-     CGDisplayCopyColorSpace
-    Returns the color space for a display.
-
-     CGDisplayIOServicePort
-    Returns the I/O Kit service port of the specified display.
-    Deprecated
-
-     CGDisplayIsActive
-    Returns a Boolean value indicating whether a display is active.
-
-     CGDisplayIsAlwaysInMirrorSet
-    Returns a Boolean value indicating whether a display is always in a mirroring set.
-
-     CGDisplayIsAsleep
-    Returns a Boolean value indicating whether a display is sleeping (and is therefore not drawable).
-
-     CGDisplayIsBuiltin
-    Returns a Boolean value indicating whether a display is built-in, such as the internal display in portable systems.
-
-     CGDisplayIsInHWMirrorSet
-    Returns a Boolean value indicating whether a display is in a hardware mirroring set.
-
-     CGDisplayIsInMirrorSet
-    Returns a Boolean value indicating whether a display is in a mirroring set.
-
-     CGDisplayIsMain
-    Returns a Boolean value indicating whether a display is the main display.
-
-     CGDisplayIsOnline
-    Returns a Boolean value indicating whether a display is connected or online.
-
-     CGDisplayIsStereo
-    Returns a Boolean value indicating whether a display is running in a stereo graphics mode.
-
-     CGDisplayMirrorsDisplay
-    For a secondary display in a mirroring set, returns the primary display.
-
-     CGDisplayModelNumber
-    Returns the model number of a display monitor.
-
-     CGDisplayPrimaryDisplay
-    Returns the primary display in a hardware mirroring set.
-
-     CGDisplayRotation
-    Returns the rotation angle of a display in degrees.
-
-     CGDisplayScreenSize
-    Returns the width and height of a display in millimeters.
-
-     CGDisplaySerialNumber
-    Returns the serial number of a display monitor.
-
-     CGDisplayUnitNumber
-    Returns the logical unit number of a display.
-
-     CGDisplayUsesOpenGLAcceleration
-    Returns a Boolean value indicating whether Quartz is using OpenGL-based window acceleration (Quartz Extreme) to render in a display.
-
-     CGDisplayVendorNumber
-    Returns the vendor number of the specified display’s monitor.
-*/
-
-    // Returns the color space for a display.
-    // CGColorSpaceRef csRef = CGDisplayCopyColorSpace(displayID);
-
     // Returns a Boolean value indicating whether a display is active.
     jint displayIsActive = CGDisplayIsActive(displayID);
 
@@ -480,18 +413,6 @@ static int getBPPFromModeString(CFStringRef mode)
         // Returns the refresh rate of the specified display mode.
         refreshRate = CGDisplayModeGetRefreshRate(mode);
 
-        // Returns the I/O Kit flags of the specified display mode.
-        // CGDisplayModeGetIOFlags
-
-        // Returns the I/O Kit display mode ID of the specified display mode.
-        // CGDisplayModeGetIODisplayModeID
-
-        // Returns a Boolean value indicating whether the specified display mode is usable for a desktop graphical user interface.
-        // CGDisplayModeIsUsableForDesktopGUI
-
-        // Returns the type identifier of Quartz display modes.
-        // CGDisplayModeGetTypeID
-
         NSLog(@"CGDisplayMode[%d]: w=%d, h=%d, bpp=%d, freq=%.2lf hz",
               displayID, w, h, bpp, refreshRate);
 
@@ -503,7 +424,7 @@ static int getBPPFromModeString(CFStringRef mode)
 - (void)createDisplayLinkIfAbsent: (jint)displayID {
     if (isDisplaySyncEnabled() && _displayLinks[@(displayID)] == nil) {
 
-        if (1) {
+        if (TRACE_DISPLAY) {
             [MTLContext dumpDisplayInfo:displayID];
         }
 
@@ -962,48 +883,26 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
         const MTLContext* mtlc   = dlParams->mtlc;
         const jint displayID     = dlParams->displayID;
 
-        const CFTimeInterval now = outputTime->videoTime / (double)outputTime->videoTimeScale; // seconds
-//        const CFTimeInterval now = CACurrentMediaTime();
+        if (STATS_CVLINK) {
+            const CFTimeInterval now = outputTime->videoTime / (double)outputTime->videoTimeScale; // seconds
+            const CFTimeInterval delta = (mtlc->_lastDisplayLinkTime != 0.0) ? (now - mtlc->_lastDisplayLinkTime) : -1.0;
+            mtlc->_lastDisplayLinkTime = now;
 
-        const CFTimeInterval delta = (mtlc->_lastDisplayLinkTime != 0.0) ? (now - mtlc->_lastDisplayLinkTime) : -1.0;
-        mtlc->_lastDisplayLinkTime = now;
+            const NSTimeInterval a = 1.0 / 30.0; // 60 fps typically => exponential smoothing on 0.5s:
+            mtlc->_avgDisplayLinkTime = delta * a + mtlc->_avgDisplayLinkTime * (1.0 - a);
 
-        const NSTimeInterval a = 1.0 / 30.0; // 60 fps typically => exponential smoothing on 0.5s:
-        mtlc->_avgDisplayLinkTime = delta * a + mtlc->_avgDisplayLinkTime * (1.0 - a);
-
-        bool restart = NO;
-        if (mtlc->_lastStatTime == 0.0) {
-            mtlc->_lastStatTime = now;
-        } else if ((now - mtlc->_lastStatTime) > 10.0) {
-            mtlc->_lastStatTime = now;
-            // dump stats:
-            NSLog(@"mtlDisplayLinkCallback[%d]: avgDisplayLinkTime = %.3lf ms", displayID,
-                  1000.0 * mtlc->_avgDisplayLinkTime);
-
-            restart = YES;
+            if (mtlc->_lastStatTime == 0.0) {
+                mtlc->_lastStatTime = now;
+            } else if ((now - mtlc->_lastStatTime) > 1.0) {
+                mtlc->_lastStatTime = now;
+                // dump stats:
+                NSLog(@"mtlDisplayLinkCallback[%d]: avgDisplayLinkTime = %.3lf ms", displayID,
+                      1000.0 * mtlc->_avgDisplayLinkTime);
+            }
         }
 
-        if (1) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [mtlc redraw:@(displayID)];
-            });
-        } else {
-            [ThreadUtilities performOnMainThread:@selector(redraw:)
-                                              on:mtlc
-                                      withObject:@(displayID)
-                                   waitUntilDone:NO useJavaModes:NO]; // direct mode
-        }
-
-        if (restart) {
-            [mtlc retain];
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (0) NSLog(@"mtlDisplayLinkCallback[%d]: restart DisplayLink ...", displayID);
-                [mtlc handleDisplayLink:NO  display:displayID source:"mtlDisplayLinkCallback"];
-                [mtlc handleDisplayLink:YES display:displayID source:"mtlDisplayLinkCallback"];
-                if (0) NSLog(@"mtlDisplayLinkCallback[%d]: restart DisplayLink: done.", displayID);
-                [mtlc release];
-            });
-        }
+        [ThreadUtilities performOnMainThread:@selector(redraw:) on:mtlc withObject:@(displayID)
+                               waitUntilDone:NO useJavaModes:NO]; // critical
     }
     return kCVReturnSuccess;
 }

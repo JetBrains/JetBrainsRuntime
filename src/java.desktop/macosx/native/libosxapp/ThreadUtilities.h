@@ -126,7 +126,6 @@ do {                                  \
 #endif /* AWT_THREAD_ASSERTS */
 // --------------------------------------------------------------------------
 
-__attribute__((visibility("default")))
 @interface ThreadTraceContext : NSObject <NSCopying>
 
 @property (readwrite, atomic) BOOL sleep;

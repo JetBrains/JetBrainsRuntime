@@ -379,7 +379,7 @@ public abstract class SunToolkit extends Toolkit
             return null;
         }
 
-        protected static final class AwtLockTracer implements AwtLockListener {
+        public static final class AwtLockTracer implements AwtLockListener {
 
             private static final boolean DO_LOG = ((flags & TRACEFULL) != 0);
 
@@ -388,7 +388,7 @@ public abstract class SunToolkit extends Toolkit
                 "lock", "unlock", "tryLock"  /* RenderQueue methods */
             );
 
-            protected AwtLockTracer() {}
+            public AwtLockTracer() {}
 
             @Override
             public void afterAwtLocked(final long elapsed) {
@@ -651,13 +651,6 @@ public abstract class SunToolkit extends Toolkit
     }
 
     public SunToolkit() {
-        if (PerformanceLogger.loggingEnabled()) {
-            PerformanceLogger.setTime("XToolkit construction");
-        }
-
-        if (Tracer.tracingEnabled()) {
-            addAwtLockListener(new Tracer.AwtLockTracer());
-        }
     }
 
     public boolean useBufferPerWindow() {
@@ -710,13 +703,15 @@ public abstract class SunToolkit extends Toolkit
      *     }
      */
 
-    private static final class AwtReentrantLock extends ReentrantLock {
+    static final class AwtReentrantLock extends ReentrantLock {
         // copied from ReentrantLock for compatibility:
         private static final long serialVersionUID = 7373984872572414699L;
+
         @SuppressWarnings("removal")
-        protected AwtReentrantLock() {
+        AwtReentrantLock() {
             super(AccessController.doPrivileged(new GetBooleanAction("awt.lock.fair")));
         }
+
         Thread getPrivateOwnerThread() {
             return super.getOwner();
         }
@@ -764,7 +759,7 @@ public abstract class SunToolkit extends Toolkit
         }
     }
 
-    public static final void awtLock() {
+    public static void awtLock() {
         if (awtLockThreads != null) {
             // Always register thread:
             registerAwtLockThread(Thread.currentThread());
@@ -772,27 +767,6 @@ public abstract class SunToolkit extends Toolkit
         // fast-path:
         if (awtTryLock()) {
             return;
-        }
-        // Special reentrancy checks to avoid deadlocks:
-        if (false) {
-            final Thread owner = AWT_LOCK.getPrivateOwnerThread();
-            if (owner != null) {
-                if (owner.getState() != Thread.State.RUNNABLE) {
-                    System.err.println("awtLock ! lock held by thread: '" + getThreadInfo(owner)
-                            + " WAITING - Current thread: '" + getThreadInfo(Thread.currentThread()) + "' !");
-                } else if (true) {
-                    System.err.println("awtLock ? lock held by thread: '" + getThreadInfo(owner)
-                            + "' - Current thread: '" + getThreadInfo(Thread.currentThread()) + "' !");
-                }
-
-                // TODO: reentrance pattern (count transaction if within -> )
-/*
-                final Thread dispatchThread = AWTThreading.getInstance(Toolkit.getDefaultToolkit().getSystemEventQueue()).getEventDispatchThread();
-                if (owner == dispatchThread) {
-                    // will cause deadlock !
-                }
-*/
-            }
         }
         // measure waiting time if needed:
         final long start = (awtLockListeners != null) ? System.nanoTime() : 0L;
@@ -810,22 +784,21 @@ public abstract class SunToolkit extends Toolkit
         }
     }
 
-    public static final boolean awtTryLock() {
-        while (true) {
-            try {
-                final boolean acquired = AWT_LOCK.tryLock(0, TimeUnit.NANOSECONDS);
-                if (acquired && (awtLockListeners != null)) {
-                    awtLockListeners.forEach(l -> l.afterAwtLocked(-1));
-                }
-                return acquired;
-            } catch (InterruptedException ie) {
-                System.err.println("awtTryLock: interrupted");
-                ie.printStackTrace(System.err);
+    public static boolean awtTryLock() {
+        try {
+            final boolean acquired = AWT_LOCK.tryLock(0L, TimeUnit.NANOSECONDS);
+            if (acquired && (awtLockListeners != null)) {
+                awtLockListeners.forEach(l -> l.afterAwtLocked(-1L));
             }
+            return acquired;
+        } catch (InterruptedException ie) {
+            System.err.println("awtTryLock: interrupted");
+            ie.printStackTrace(System.err);
         }
+        return false;
     }
 
-    public static final void awtUnlock() {
+    public static void awtUnlock() {
         if (awtLockListeners != null) {
             awtLockListeners.forEach(AwtLockListener::beforeAwtUnlocked);
         }

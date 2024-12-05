@@ -59,7 +59,7 @@ public final class Histogram extends StatLong {
         super(name);
         for (int i = 0; i < MAX; i++) {
             stats[i] = new StatLong(String.format("%5s .. %5s", STEPS[i],
-                    ((i + 1 < MAX) ? STEPS[i + 1] : "~")));
+                                    ((i + 1 < MAX) ? STEPS[i + 1] : "~")));
         }
     }
 
@@ -89,8 +89,7 @@ public final class Histogram extends StatLong {
 
         for (int i = 0; i < MAX; i++) {
             if (stats[i].count != 0L) {
-                sb.append("\n        ");
-                stats[i].toString(sb);
+                sb.append("\n        ").append(stats[i].toString());
             }
         }
         return sb.append(" }").toString();

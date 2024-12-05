@@ -123,7 +123,6 @@ final class NamedCursor extends Cursor {
  * Mac OS X Cocoa-based AWT Toolkit.
  */
 public final class LWCToolkit extends LWToolkit {
-
     // While it is possible to enumerate all mouse devices
     // and query them for the number of buttons, the code
     // that does it is rather complex. Instead, we opt for

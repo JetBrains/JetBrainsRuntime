@@ -593,8 +593,7 @@ static BOOL                sNeedsEnter;
 {
     AWT_ASSERT_NOT_APPKIT_THREAD;
 
-    [ThreadUtilities performOnMainThread:@selector(doDrag) on:self withObject:nil
-                           waitUntilDone:YES useJavaModes:NO]; // direct mode
+    [ThreadUtilities performOnMainThread:@selector(doDrag) on:self withObject:nil waitUntilDone:YES];
 }
 
 /********************************  BEGIN NSDraggingSource Interface  ********************************/

@@ -91,7 +91,8 @@ public class VKRenderQueue extends RenderQueue {
         try {
             flusher.flushNow();
         } catch (Exception e) {
-            logger.severe("VKRenderQueue.flushNow: exception occurred: ", e);
+            System.err.println("exception in flushNow:");
+            e.printStackTrace();
         }
     }
 
@@ -100,7 +101,8 @@ public class VKRenderQueue extends RenderQueue {
         try {
             flusher.flushAndInvokeNow(r);
         } catch (Exception e) {
-            logger.severe("VKRenderQueue.flushAndInvokeNow: exception occurred: ", e);
+            System.err.println("exception in flushAndInvokeNow:");
+            e.printStackTrace();
         }
     }
 
@@ -142,7 +144,6 @@ public class VKRenderQueue extends RenderQueue {
                 try {
                     wait();
                 } catch (InterruptedException e) {
-                    logger.fine("QueueFlusher.flushNow: interrupted");
                 }
             }
 
@@ -185,7 +186,6 @@ public class VKRenderQueue extends RenderQueue {
                             }
                         }
                     } catch (InterruptedException e) {
-                        logger.fine("QueueFlusher.run: interrupted");
                     }
                 }
                 try {
@@ -197,11 +197,11 @@ public class VKRenderQueue extends RenderQueue {
                     if (task != null) {
                         task.run();
                     }
-                } catch (Error err) {
-                    logger.severe("QueueFlusher.run: error occurred: ", err);
-                    error = err;
-                } catch (Exception e) {
-                    logger.severe("QueueFlusher.run: exception occurred: ", e);
+                } catch (Error e) {
+                    error = e;
+                } catch (Exception x) {
+                    System.err.println("exception in QueueFlusher:");
+                    x.printStackTrace();
                 } finally {
                     if (timedOut) {
                         unlock();

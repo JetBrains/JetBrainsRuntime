@@ -75,7 +75,6 @@ static const BOOL enableRunLoopObserver = NO;
 static atomic_long runLoopId = 0L;
 static atomic_long mainThreadActionId = 0L;
 
-
 static inline void attachCurrentThread(void** env) {
     if ([NSThread isMainThread]) {
         JavaVMAttachArgs args;
@@ -109,15 +108,15 @@ static void setBlockingEventDispatchThread(BOOL value) {
 }
 
 + (void)initialize {
-    /* All the standard modes plus critical */
-    allModesExceptJava = [[NSArray alloc] initWithObjects:NSDefaultRunLoopMode,
-                                           NSModalPanelRunLoopMode,
-                                           NSEventTrackingRunLoopMode,
-                                           CriticalRunLoopMode,
-                                           nil];
+    /* All the standard modes plus the Critical mode */
+    allModesExceptJava = [[NSArray alloc] initWithObjects:NSRunLoopCommonModes,
+                                                          NSModalPanelRunLoopMode,
+                                                          NSEventTrackingRunLoopMode,
+                                                          CriticalRunLoopMode,
+                                                          nil];
 
-    /* All the standard modes plus ours */
-    javaModes = [[NSArray alloc] initWithObjects:NSDefaultRunLoopMode,
+    /* All the standard modes plus Critical and Java modes */
+    javaModes = [[NSArray alloc] initWithObjects:NSRunLoopCommonModes,
                                            NSModalPanelRunLoopMode,
                                            NSEventTrackingRunLoopMode,
                                            CriticalRunLoopMode,
@@ -256,13 +255,12 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 /*
- * macOS internal performOnMainThread(block) use case to perform appkit actions from native code (ASYNC)
- * TODO: rename to performCriticalOnMainThread(block) ?
+ * macOS internal use case to perform appkit actions from native code (ASYNC)
  */
 + (void)performOnMainThreadNowOrLater:(BOOL)useJavaModes
                                 block:(void (^)())block
 {
-    if ([NSThread isMainThread]) { // removed wait check
+    if ([NSThread isMainThread]) {
         block();
     } else {
         [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
@@ -281,13 +279,12 @@ AWT_ASSERT_APPKIT_THREAD;
 
 /*
  * macOS internal performOnMainThread(block) use case to perform appkit actions from native code (ASYNC or SYNC if wait=YES)
- * TODO: rename to performCriticalOnMainThread((BOOL)wait, block) ?
  */
 + (void)performOnMainThreadWaiting:(BOOL)wait
                       useJavaModes:(BOOL)useJavaModes
                              block:(void (^)())block
 {
-    if ([NSThread isMainThread]) { // removed wait check
+    if ([NSThread isMainThread] && wait) {
         block();
     } else {
         [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
@@ -327,24 +324,26 @@ AWT_ASSERT_APPKIT_THREAD;
     const int mtThreshold = getMainThreadLatencyThreshold();
 
     if (mtThreshold < 0) {
-        NSArray<NSString*> *runLoopModes = (useJavaModes) ? javaModes : allModesExceptJava;
         const BOOL invokeDirect = ([NSThread isMainThread] && wait);
 
         // Fast Path:
         if (invokeDirect) {
             [target performSelector:aSelector withObject:arg];
-        } else if (wait && isEventDispatchThread()) {
-            void (^blockCopy)(void) = Block_copy(^() {
-                setBlockingEventDispatchThread(YES);
-                @try {
-                    [target performSelector:aSelector withObject:arg];
-                } @finally {
-                    setBlockingEventDispatchThread(NO);
-                }
-            });
-            [ThreadUtilities performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:wait modes:runLoopModes];
         } else {
-            [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:runLoopModes];
+            NSArray<NSString*> *runLoopModes = (useJavaModes) ? javaModes : allModesExceptJava;
+            if (wait && isEventDispatchThread()) {
+                void (^blockCopy)(void) = Block_copy(^() {
+                    setBlockingEventDispatchThread(YES);
+                    @try {
+                        [target performSelector:aSelector withObject:arg];
+                    } @finally {
+                        setBlockingEventDispatchThread(NO);
+                    }
+                });
+                [ThreadUtilities performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:wait modes:runLoopModes];
+            } else {
+                [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:runLoopModes];
+            }
         }
     } else {
         // Slow path:

@@ -993,7 +993,6 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)_displayChanged:(BOOL)profileOnly {
     AWT_ASSERT_APPKIT_THREAD;
-    NSLog(@"ApplicationDelegate: _displayChanged: enter (%d)", profileOnly);
     if (!profileOnly) {
         NSNumber* newDisplayID = [AWTWindow getNSWindowDisplayID_AppKitThread:nsWindow];
         if (newDisplayID == nil) {
@@ -1012,6 +1011,8 @@ AWT_ASSERT_APPKIT_THREAD;
             return;
         }
         self.currentDisplayID = newDisplayID;
+
+        // should adjust the cvdisplayLink (using volatile flag ?)
     }
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
@@ -1025,7 +1026,6 @@ AWT_ASSERT_APPKIT_THREAD;
     (*env)->CallVoidMethod(env, platformWindow, jm_displayChanged, profileOnly);
     CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, platformWindow);
-    NSLog(@"ApplicationDelegate: _displayChanged: exit (%d)", profileOnly);
 }
 
 - (void) _deliverMoveResizeEvent {
@@ -2634,7 +2634,7 @@ JNI_COCOA_ENTER(env);
     NSWindow *nsWindow = OBJC(windowPtr);
     [ThreadUtilities performOnMainThread:@selector(setTitle:) on:nsWindow
                              withObject:JavaStringToNSString(env, jtitle)
-                           waitUntilDone:NO useJavaModes:NO]; // direct mode
+                           waitUntilDone:NO];
 
 JNI_COCOA_EXIT(env);
 }

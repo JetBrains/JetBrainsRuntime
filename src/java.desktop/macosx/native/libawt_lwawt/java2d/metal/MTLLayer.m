@@ -35,8 +35,6 @@
 #define MAX_DRAWABLE    3
 #define LAST_DRAWABLE   (MAX_DRAWABLE - 1)
 
-#define USE_CA_TX        0
-
 static jclass jc_JavaLayer = NULL;
 #define GET_MTL_LAYER_CLASS() \
     GET_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
@@ -154,7 +152,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     if (@available(macOS 10.13.2, *)) {
         self.maximumDrawableCount = MAX_DRAWABLE;
     }
-    self.presentsWithTransaction = (USE_CA_TX ? YES : NO);
+    self.presentsWithTransaction = NO;
     self.avgBlitFrameTime = DF_BLIT_FRAME_TIME;
     self.perfCountersEnabled = perfCountersEnabled ? YES : NO;
     self.lastPresentedTime = 0.0;
@@ -299,9 +297,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                                CACurrentMediaTime(), self, drawableId);
             }
             if (isDisplaySyncEnabled()) {
-                if (!USE_CA_TX) {
-                    [commandBuf presentDrawable:mtlDrawable];
-                }
+                [commandBuf presentDrawable:mtlDrawable];
             } else {
                 if (@available(macOS 10.15.4, *)) {
                     [commandBuf presentDrawable:mtlDrawable afterMinimumDuration:self.avgBlitFrameTime];
@@ -311,25 +307,10 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             }
 
             [self retain];
-            [mtlDrawable retain];
-
             [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                if (USE_CA_TX) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        // present this drawable:
-                        [mtlDrawable present];
-                        [mtlDrawable release];
-
-                        if (usePresentHandler == NO) {
-                            // free drawable:
-                            [self freeDrawableCount];
-                        }
-                    });
-                } else {
-                    if (usePresentHandler == NO) {
-                        // free drawable:
-                        [self freeDrawableCount];
-                    }
+                if (usePresentHandler == NO) {
+                    // free drawable:
+                    [self freeDrawableCount];
                 }
                 if (!isDisplaySyncEnabled()) {
                     if (@available(macOS 10.15.4, *)) {
@@ -428,13 +409,13 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 - (void)startRedraw {
     if (isDisplaySyncEnabled()) {
         if (self.ctx != nil) {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // direct mode
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
                                                      block:^(){
                 [self.ctx startRedraw:self];
             }];
         }
     } else {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // direct mode
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
                                                      block:^(){
             [self setNeedsDisplay];
         }];
@@ -447,7 +428,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             self.redrawCount = 0;
         }
         if (self.ctx != nil) {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // direct mode
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
                                                      block:^(){
                 [self.ctx stopRedraw:self];
             }];
@@ -491,7 +472,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 }
                 // Ensure layer will be redrawn asap to display new content:
                 [ThreadUtilities performOnMainThread:@selector(startRedrawIfNeeded) on:self withObject:nil
-                                       waitUntilDone:NO useJavaModes:NO]; // direct mode
+                                       waitUntilDone:NO useJavaModes:NO]; // critical
             }
             [self release];
         }];
@@ -558,7 +539,7 @@ JNI_COCOA_ENTER(env);
     jobject javaLayer = (*env)->NewWeakGlobalRef(env, obj);
 
     // Wait and ensure main thread creates the MTLLayer instance now:
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
                                           block:^(){
             AWT_ASSERT_APPKIT_THREAD;
             layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer usePerfCounters: perfCountersEnabled];
@@ -617,7 +598,7 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
     // in one call on appkit, otherwise we'll get window's contents blinking,
     // during screen-2-screen moving.
     // Ensure main thread changes the MTLLayer instance later:
-    [ThreadUtilities performOnMainThreadNowOrLater:NO // direct mode
+    [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
                                              block:^(){
         layer.contentsScale = scale;
     }];
@@ -661,7 +642,7 @@ Java_sun_java2d_metal_MTLLayer_nativeSetOpaque
 
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     // Ensure main thread changes the MTLLayer instance later:
-    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // direct
+    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // critical
                                           block:^(){
         [layer setOpaque:(opaque == JNI_TRUE)];
     }];
