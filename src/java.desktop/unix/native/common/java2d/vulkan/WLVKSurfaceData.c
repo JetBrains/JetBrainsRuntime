@@ -83,8 +83,8 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_assignWlSurface(JN
 JNIEXPORT jint JNICALL
 Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt(JNIEnv *env, jobject vksd, jint x, jint y)
 {
-    J2dRlsTrace(J2D_TRACE_INFO, "Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt\n");
-    int pixel = 0xFFB6C1; // the color pink to make errors visible
+    J2dRlsTraceLn(J2D_TRACE_INFO, "Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt");
+    jint pixel = 0xFFB6C1; // the color pink to make errors visible
 
     VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);
     JNU_CHECK_EXCEPTION_RETURN(env, pixel);
@@ -93,16 +93,11 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt(JNIEnv *env, jobject vksd, jint x
     }
 
     VKDevice* device = sd->vksdOps.device;
-
-    VkDeviceMemory stagingBufferMemory;
-    VKImage* image = sd->vksdOps.image;             // Image to read from
+    VKImage* image = sd->vksdOps.image;
 
     VkCommandBuffer cb = VKRenderer_Record(device->renderer);
 
-// 2. Transition the source image layout
-// Setup barrier and call vkCmdPipelineBarrier
-
-    VKBuffer* buffer = VKBuffer_Create(device, 4,
+    VKBuffer* buffer = VKBuffer_Create(device, sizeof(jint),
                                        VK_BUFFER_USAGE_TRANSFER_DST_BIT  |
                                        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
@@ -137,9 +132,57 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt(JNIEnv *env, jobject vksd, jint x
 }
 
 JNIEXPORT jarray JNICALL
-Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt(JNIEnv *env, jobject wsd, jint x, jint y, jint width, jint height)
+Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt(JNIEnv *env, jobject vksd, jint x, jint y, jint width, jint height)
 {
-    J2dRlsTrace(J2D_TRACE_INFO, "Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt\n");
+    J2dRlsTraceLn(J2D_TRACE_INFO, "Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt");
+    jint pixel = 0xFFB6C1; // the color pink to make errors visible
+
+    VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);
+
+    /*
+    JNU_CHECK_EXCEPTION_RETURN(env, pixel);
+    if (sd == NULL) {
+        return pixel;
+    }
+
+    VKDevice* device = sd->vksdOps.device;
+    VKImage* image = sd->vksdOps.image;
+
+    VkCommandBuffer cb = VKRenderer_Record(device->renderer);
+
+    VKBuffer* buffer = VKBuffer_Create(device, sizeof(jint),
+                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT  |
+                                       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    VkBufferImageCopy region = {
+            .bufferOffset = 0,
+            .bufferRowLength = image->extent.width,
+            .bufferImageHeight = image->extent.height,
+            .imageSubresource= {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .mipLevel = 0,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1
+            },
+            .imageOffset = {x, y, 0},
+            .imageExtent = {1, 1, 1}
+    };
+
+    device->vkCmdCopyImageToBuffer(cb, image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                   buffer->handle,
+                                   1, &region);
+    VKRenderer_Flush(device->renderer);
+    VKRenderer_Sync(device->renderer);
+    void* pixelData;
+    device->vkMapMemory(device->handle,  buffer->range.memory, 0, VK_WHOLE_SIZE, 0, &pixelData);
+    pixel = *(int*)pixelData;
+    device->vkUnmapMemory(device->handle,  buffer->range.memory);
+    VKBuffer_Destroy(device, buffer);
+    return pixel;
+     */
 /*
     SurfaceDataOps *ops = SurfaceData_GetOps(env, wsd);
     JNU_CHECK_EXCEPTION_RETURN(env, NULL);
