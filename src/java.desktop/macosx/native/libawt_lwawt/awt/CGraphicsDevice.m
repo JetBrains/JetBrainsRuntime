@@ -216,6 +216,19 @@ Java_sun_awt_CGraphicsDevice_nativeGetYResolution
 
 /*
  * Class:     sun_awt_CGraphicsDevice
+ * Method:    nativeIsMirroring
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_CGraphicsDevice_nativeIsMirroring
+  (JNIEnv *env, jclass class, jint displayID)
+{
+    return (CGDisplayIsInMirrorSet(displayID)
+            || CGDisplayIsInHWMirrorSet(displayID)) ? JNI_TRUE : JNI_FALSE;
+}
+
+/*
+ * Class:     sun_awt_CGraphicsDevice
  * Method:    nativeGetBounds
  * Signature: (I)Ljava/awt/Rectangle;
  */

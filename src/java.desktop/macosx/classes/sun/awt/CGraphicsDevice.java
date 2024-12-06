@@ -56,6 +56,7 @@ public final class CGraphicsDevice extends GraphicsDevice
     private volatile int displayID;
     private volatile double xResolution;
     private volatile double yResolution;
+    private volatile boolean isMirroring;
     private volatile Rectangle bounds;
     private volatile int scale;
     private volatile Insets screenInsets;
@@ -143,6 +144,10 @@ public final class CGraphicsDevice extends GraphicsDevice
         return yResolution;
     }
 
+    public boolean isMirroring() {
+        return isMirroring;
+    }
+
     Rectangle getBounds() {
         return bounds.getBounds();
     }
@@ -170,6 +175,7 @@ public final class CGraphicsDevice extends GraphicsDevice
     public void displayChanged() {
         xResolution = nativeGetXResolution(displayID);
         yResolution = nativeGetYResolution(displayID);
+        isMirroring = nativeIsMirroring(displayID);
         bounds = nativeGetBounds(displayID).getBounds(); //does integer rounding
         screenInsets = nativeGetScreenInsets(displayID);
         initScaleFactor();
@@ -393,6 +399,8 @@ public final class CGraphicsDevice extends GraphicsDevice
     private static native double nativeGetXResolution(int displayID);
 
     private static native double nativeGetYResolution(int displayID);
+
+    private static native boolean nativeIsMirroring(int displayID);
 
     private static native Insets nativeGetScreenInsets(int displayID);
 

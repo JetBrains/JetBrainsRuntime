@@ -68,6 +68,7 @@ import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
 import sun.awt.AWTThreading;
+import sun.awt.CGraphicsDevice;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWLightweightFramePeer;
@@ -615,8 +616,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     @Override // PlatformWindow
     public FontMetrics getFontMetrics(Font f) {
-        // TODO: not implemented
-        (new RuntimeException("unimplemented")).printStackTrace();
+        logger.severe("CPlatformWindow.getFontMetrics: exception occurred: ",
+                new RuntimeException("unimplemented"));
         return null;
     }
 
@@ -1176,17 +1177,49 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return contentView.getWindowLayerPtr();
     }
 
+    @SuppressWarnings("removal")
+    private final static boolean INVOKE_LATER_FLUSH_BUFFERS
+            = Boolean.parseBoolean(AccessController.doPrivileged(
+                new GetPropertyAction("awt.mac.flushBuffers.invokeLater", "false")));
+
     void flushBuffers() {
+        // only 1 usage by deliverMoveResizeEvent():
         if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
+            // Runnable needed to get obvious stack traces:
+            final Runnable emptyTask = new Runnable() {
+                @Override
+                public void run() {
+                    // Posting an empty to flush the EventQueue without blocking the main thread
+                    logger.fine("CPlatformWindow.flushBuffers: run() invoked on {0}", target);
+                }
+            };
+
+            // use the system property 'awt.mac.flushBuffers.invokeLater' to 'true' (default: false)
+            // to avoid deadlocks caused by the LWCToolkit.invokeAndWait() call below:
+            boolean useInvokeLater = INVOKE_LATER_FLUSH_BUFFERS;
+
+            if (!useInvokeLater && (peer != null)) {
+                final GraphicsDevice device = peer.getGraphicsConfiguration().getDevice();
+                if (device instanceof CGraphicsDevice) {
+                    // JBR-5497: avoid deadlock in mirroring mode (laptop + external screen):
+                    useInvokeLater = ((CGraphicsDevice)device).isMirroring();
+                }
+            }
+            logger.fine("CPlatformWindow.flushBuffers: useInvokeLater = {0}", useInvokeLater);
             try {
-                LWCToolkit.invokeAndWait(new Runnable() {
-                    @Override
-                    public void run() {
-                        //Posting an empty to flush the EventQueue without blocking the main thread
-                    }
-                }, target);
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
+                // check invokeAndWait: KO (operations require AWTLock and main thread)
+                // => use invokeLater as it is an empty event to force refresh ASAP
+                if (useInvokeLater) {
+                    LWCToolkit.invokeLater(emptyTask, target);
+                } else {
+                    logger.fine("CPlatformWindow.flushBuffers: enter LWCToolkit.invokeAndWait(empty) on target = {0}", target);
+
+                    LWCToolkit.invokeAndWait(emptyTask, target);
+
+                    logger.fine("CPlatformWindow.flushBuffers: exit  LWCToolkit.invokeAndWait(empty) on target = {0}", target);
+                }
+            } catch (InvocationTargetException ite) {
+                logger.severe("CPlatformWindow.flushBuffers: exception occurred: ", ite);
             }
         }
     }

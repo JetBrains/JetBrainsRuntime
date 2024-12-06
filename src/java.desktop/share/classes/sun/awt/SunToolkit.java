@@ -75,8 +75,11 @@ import java.awt.peer.KeyboardFocusManagerPeer;
 import java.awt.peer.SystemTrayPeer;
 import java.awt.peer.TrayIconPeer;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.security.AccessController;
@@ -90,7 +93,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-
+import jdk.internal.misc.InnocuousThread;
 import sun.awt.im.InputContext;
 import sun.awt.image.ByteArrayImageSource;
 import sun.awt.image.FileImageSource;
@@ -98,7 +101,10 @@ import sun.awt.image.ImageRepresentation;
 import sun.awt.image.MultiResolutionToolkitImage;
 import sun.awt.image.ToolkitImage;
 import sun.awt.image.URLImageSource;
+import sun.awt.util.PerformanceLogger;
 import sun.font.FontDesignMetrics;
+import sun.java2d.marlin.stats.Histogram;
+import sun.java2d.marlin.stats.StatLong;
 import sun.net.util.URLUtil;
 import sun.security.action.GetBooleanAction;
 import sun.security.action.GetPropertyAction;
@@ -130,6 +136,472 @@ public abstract class SunToolkit extends Toolkit
         touchKeyboardAutoShowIsEnabled = Boolean.parseBoolean(
             GetPropertyAction.privilegedGetProperty(
                 "awt.touchKeyboardAutoShowIsEnabled", "true"));
+    }
+
+    protected interface AwtLockListener {
+        void afterAwtLocked(long elapsed);
+        void beforeAwtUnlocked();
+    }
+
+    private static String getThreadInfo(Thread t) {
+        if (t == null) {
+            return "<none>";
+        }
+        return t.toString() + " [" + t.getState() + "]";
+    }
+
+    public static final class Tracer {
+        private static int flags;               // what to trace (see TRACE... below)
+        private static String fileName;         // where to trace to (file or stderr if null)
+        private static String pattern;          // limit tracing to method names containing this pattern (ignore case)
+        private static PrintStream outStream;   // stream to trace to
+        private static long threshold = 0;      // minimum time delta to record the event
+        private static boolean verbose = false; // verbose tracing
+
+        private static final int TRACELOG       = 1;
+        private static final int TRACETIMESTAMP = 1 << 1;
+        private static final int TRACESTATS     = 1 << 2;
+        private static final int TRACEFULL      = 1 << 3;
+        private static final int TRACELIVE      = 1 << 4;
+
+        public static final boolean USE_HISTOGRAM = false;
+
+        private static void showTraceUsage() {
+            System.err.println("usage: -Dsun.awt.trace=" +
+                    "[log[,timestamp]],[full],[stats],[live],[name:<substr pattern>]," +
+                    "[out:<filename>],[td=<threshold>],[help],[verbose]");
+        }
+
+        @SuppressWarnings("removal")
+        private static String getTraceProperty() {
+            String trace = AccessController.doPrivileged(new GetPropertyAction("sun.awt.trace"));
+            if (trace == null) {
+                // fallback using the former x11 property:
+                trace = AccessController.doPrivileged(new GetPropertyAction("sun.awt.x11.trace"));
+            }
+            return trace;
+        }
+
+        static {
+            final String trace = getTraceProperty();
+            if (trace != null) {
+                int traceFlags = 0;
+                final java.util.StringTokenizer st = new java.util.StringTokenizer(trace, ",");
+                while (st.hasMoreTokens()) {
+                    final String tok = st.nextToken();
+                    if (tok.equalsIgnoreCase("log")) {
+                        traceFlags |= TRACELOG;
+                    } else if (tok.equalsIgnoreCase("timestamp")) {
+                        traceFlags |= TRACETIMESTAMP;
+                    } else if (tok.equalsIgnoreCase("full")) {
+                        traceFlags |= TRACEFULL;
+                    } else if (tok.equalsIgnoreCase("stats")) {
+                        traceFlags |= TRACESTATS;
+                    } else if (tok.equalsIgnoreCase("live")) {
+                        traceFlags |= TRACELIVE;
+                    } else if (tok.equalsIgnoreCase("verbose")) {
+                        verbose = true;
+                    } else if (tok.regionMatches(true, 0, "name:", 0, 5)) {
+                        pattern = tok.substring(5).toUpperCase();
+                    } else if (tok.regionMatches(true, 0, "out:", 0, 4)) {
+                        fileName = tok.substring(4);
+                    } else if (tok.regionMatches(true, 0, "td=", 0, 3)) {
+                        try {
+                            threshold = Long.max(Long.parseLong(tok.substring(3)), 0);
+                        } catch (NumberFormatException e) {
+                            showTraceUsage();
+                        }
+                    } else {
+                        if (!tok.equalsIgnoreCase("help")) {
+                            System.err.println("unrecognized token: " + tok);
+                        }
+                        showTraceUsage();
+                    }
+                }
+
+                if (verbose) {
+                    System.err.print("SunToolkit logging ");
+                    if ((traceFlags & TRACELOG) != 0) {
+                        System.err.println("enabled");
+                        System.err.print("SunToolkit timestamps ");
+                        if ((traceFlags & TRACETIMESTAMP) != 0) {
+                            System.err.println("enabled");
+                        } else {
+                            System.err.println("disabled");
+                        }
+                    } else {
+                        System.err.println("[and timestamps] disabled");
+                    }
+                    System.err.print("SunToolkit live invocation statistics ");
+                    if ((traceFlags & TRACELIVE) != 0) {
+                        System.err.println("enabled");
+                    } else {
+                        System.err.println("disabled");
+                    }
+                    System.err.print("SunToolkit invocation statistics at exit ");
+                    if ((traceFlags & TRACESTATS) != 0) {
+                        System.err.println("enabled");
+                    } else {
+                        System.err.println("disabled");
+                    }
+                    System.err.print("SunToolkit trace output to ");
+                    if (fileName == null) {
+                        System.err.println("System.err");
+                    } else {
+                        System.err.println("file '" + fileName + "'");
+                    }
+                    if (pattern != null) {
+                        System.err.println("SunToolkit trace limited to " + pattern);
+                    }
+                }
+                flags = traceFlags;
+
+                if ((flags & (TRACESTATS | TRACELIVE)) != 0) {
+                    //com.jetbrains.JBR.getJstack().includeInfoFrom( () -> "I am GROOT !" );
+                    TraceReporter.setShutdownHook();
+                }
+            }
+        }
+
+        public static boolean tracingEnabled() {
+            return (flags != 0);
+        }
+
+        private static synchronized PrintStream getTraceOutputFile() {
+            if (outStream == null) {
+                outStream = System.err;
+                if (fileName != null) {
+                    try {
+                        outStream = new PrintStream(new FileOutputStream(fileName), true);
+                    } catch (FileNotFoundException e) {
+                        System.err.println("Cannot open trace file '" + fileName + "'");
+                    }
+                }
+            }
+            return outStream;
+        }
+
+        // TODO: refine accuracy to nanoTime() ?
+        private static final long lastTimeMs = System.currentTimeMillis();
+
+        private static final StringBuilder outputBuffer = new StringBuilder(256);
+
+        private static synchronized void outputTraceLine(final String prefix, Object... elements) {
+            final StringBuilder outStr = outputBuffer;
+            outStr.setLength(0);
+            if (prefix != null) {
+                outStr.append(prefix);
+            }
+            outStr.append(' ');
+            if ((flags & TRACETIMESTAMP) != 0) {
+                final long curTimeMs = System.currentTimeMillis();
+                outStr.append(String.format("+ %1$03dms ", curTimeMs - lastTimeMs));
+            }
+            for (Object o : elements) {
+                if (o != null) {
+                    outStr.append(o);
+                }
+            }
+            getTraceOutputFile().println(outStr);
+        }
+
+        public static void traceRawLine(Object... elements) {
+            outputTraceLine(null, elements);
+        }
+
+        public static void traceLine(Object... elements) {
+            outputTraceLine("[LOG] ", elements);
+        }
+
+        public static void traceError(Object... elements) {
+            outputTraceLine("[ERR] ", elements);
+        }
+
+        private static boolean isInterestedInMethod(String mname) {
+            return (pattern == null || mname.toUpperCase().contains(pattern));
+        }
+
+        /** use System.nanoTime() (true) or System currentTimeMillis() (false) */
+        private static final boolean USE_NANO_TIME = true;
+
+        // 1 micro-second is >> minimum measurable time by nanoTime (~10ns):
+        private static final long TIME_GRANULARITY = (USE_NANO_TIME) ? 48L : 0L;
+
+        private static final double SCALE = (USE_NANO_TIME) ? 1E-6 : 1;
+        private static final double SCALE_HIST = ((USE_NANO_TIME) ? 1E-6 : 1) * TIME_GRANULARITY;
+
+        static long getCurrentTime() {
+            if (USE_NANO_TIME) {
+                return System.nanoTime();
+            }
+            return System.currentTimeMillis();
+        }
+
+        static final class AwtLockerDescriptor {
+            final long startTime;               // when the locking has occurred
+            final long waitTime;                // lock() duration in ns
+            final StackWalker.StackFrame frame; // the frame that called awtLock()
+
+            AwtLockerDescriptor(final StackWalker.StackFrame frame, final long start, final long waitTime) {
+                this.startTime = start;
+                this.frame     = frame;
+                this.waitTime  = waitTime;
+            }
+        }
+
+        private static volatile StackWalker.StackFrame currentAwtLockerStack = null;
+
+        private static AwtLockerDescriptor getCurrentAwtLockCaller() {
+            return (currentAwtLockerStack != null) ? popAwtLockCaller(currentAwtLockerStack) : null;
+        }
+
+        private static final java.util.Deque<AwtLockerDescriptor> awtLockersStack = new java.util.ArrayDeque<>();
+
+        private static void pushAwtLockCaller(final StackWalker.StackFrame frame, final long startTime, final long waitTime) {
+            // accessed under AWT lock so no need for additional synchronization
+            awtLockersStack.push(new AwtLockerDescriptor(frame, startTime, waitTime));
+        }
+
+        private static AwtLockerDescriptor popAwtLockCaller(final StackWalker.StackFrame frame) {
+            // accessed under AWT lock so no need for additional synchronization
+            if (!awtLockersStack.isEmpty()) {
+                try {
+                    final AwtLockerDescriptor descr = awtLockersStack.pop();
+                    if (descr.frame.getMethodName().compareTo(frame.getMethodName()) != 0) {
+                        // Note: this often happens with XToolkit.waitForEvents()/XToolkit.run().
+                        traceError("Mismatching awtLock()/awtUnlock(): locked by ", descr.frame, ", unlocked by ", frame);
+                    }
+                    return descr;
+                } catch (java.util.NoSuchElementException e) {
+                    traceError("No matching awtLock() for frame: ", frame);
+                }
+            }
+            return null;
+        }
+
+        public static final class AwtLockTracer implements AwtLockListener {
+
+            private static final boolean DO_LOG = ((flags & TRACEFULL) != 0);
+
+            private static final java.util.Set<String> awtLockerMethods = java.util.Set.of(
+                "awtLock", "awtUnlock", "awtTryLock", /* SunToolkit methods */
+                "lock", "unlock", "tryLock"  /* RenderQueue methods */
+            );
+
+            public AwtLockTracer() {}
+
+            @Override
+            public void afterAwtLocked(final long elapsed) {
+                final long now = getCurrentTime();
+                StackWalker.StackFrame awtLockerFrame = getLockCallerFrame();
+                if (awtLockerFrame != null) {
+                    final String mName = awtLockerFrame.getMethodName();
+                    if (isInterestedInMethod(mName)) {
+                        pushAwtLockCaller(awtLockerFrame, now, elapsed);
+                    } else {
+                        awtLockerFrame = null;
+                    }
+                }
+                // record current frame owning the AWT lock (debugging):
+                currentAwtLockerStack = awtLockerFrame;
+            }
+
+            @Override
+            public void beforeAwtUnlocked() {
+                final long now = getCurrentTime();
+                final StackWalker.StackFrame awtLockerFrame = getLockCallerFrame();
+                if (awtLockerFrame != null) {
+                    final String mName = awtLockerFrame.getMethodName();
+                    if (isInterestedInMethod(mName)) {
+                        final AwtLockerDescriptor descr = popAwtLockCaller(awtLockerFrame);
+                        if (descr != null) {
+                            final long elapsed = now - descr.startTime;
+                            if (elapsed >= threshold) {
+                                updateStatistics(awtLockerFrame.toString(), elapsed, descr.waitTime);
+                                if (DO_LOG) {
+                                    traceLine(awtLockerFrame, String.format(" held AWT lock for %.3f ms", elapsed * SCALE));
+                                }
+                            }
+                        }
+                    }
+                }
+                // anyway clear current frame:
+                currentAwtLockerStack = null;
+            }
+
+            private static StackWalker.StackFrame getLockCallerFrame() {
+                return StackWalker.getInstance().walk(
+                                s -> s.dropWhile(stackFrame -> !awtLockerMethods.contains(stackFrame.getMethodName())
+                                ).dropWhile(stackFrame -> awtLockerMethods.contains(stackFrame.getMethodName())
+                                ).findFirst() )
+                        .orElse(null);
+            }
+        }
+
+        protected static final class MethodStats implements Comparable<MethodStats> {
+            private long minTime;
+            private long maxTime;
+            private long count;
+            private long totalTime;
+
+            private final Histogram hist_time = (USE_HISTOGRAM) ? new Histogram("awtLock times (ms)") : null;
+            private final StatLong stat_wait = new StatLong("awtLock wait (ms)");
+
+            protected MethodStats() {
+                this.minTime = Long.MAX_VALUE;
+            }
+
+            protected void update(final long elapsed, final long wait) {
+                count++;
+                minTime = Math.min(minTime, elapsed);
+                maxTime = Math.max(maxTime, elapsed);
+                totalTime += elapsed;
+                if (USE_HISTOGRAM) {
+                    hist_time.add((TIME_GRANULARITY != 0L) ? divide(elapsed, TIME_GRANULARITY) : elapsed);
+                }
+                if (wait > 0L) {
+                    stat_wait.add(wait);
+                }
+            }
+
+            protected long averageTime() {
+                return divide(totalTime, count);
+            }
+
+            protected static long divide(final long val, final long divider) {
+                return (long)((double) val / divider);
+            }
+
+            @Override
+            public int compareTo(final MethodStats other) {
+                // descending
+                if (true) {
+                    return Long.compare(other.totalTime, this.totalTime);
+                } else {
+                    return Long.compare(other.averageTime(), this.averageTime());
+                }
+            }
+
+            @Override
+            public String toString() {
+                return String.format("%.3f ms\t(%d x[%.3f - %.3f] = %.3f ms) [%s]",
+                        averageTime() * SCALE, count, minTime * SCALE, maxTime * SCALE, totalTime * SCALE,
+                        (stat_wait.count != 0) ? stat_wait.toString(SCALE) : "no wait");
+            }
+
+            protected String histogramToString() {
+                return (USE_HISTOGRAM) ? hist_time.toString(SCALE_HIST) : "";
+            }
+        }
+
+        private static java.util.HashMap<String, MethodStats> methodTimingTable;
+
+        private static synchronized void initMethodTimingTable() {
+            if (methodTimingTable == null) {
+                methodTimingTable = new java.util.HashMap<>(1024);
+            }
+        }
+
+        private static synchronized void updateStatistics(final String mname, final long elapsed, final long wait) {
+            if ((flags & TRACESTATS) != 0) {
+                initMethodTimingTable();
+                methodTimingTable.computeIfAbsent(mname, k -> new MethodStats()).update(elapsed, wait);
+            }
+        }
+
+        private static synchronized ArrayList<java.util.AbstractMap.SimpleImmutableEntry<String, MethodStats>> copyMethodTimingTable() {
+            if (methodTimingTable == null) {
+                return null;
+            }
+            final ArrayList<java.util.AbstractMap.SimpleImmutableEntry<String, MethodStats>> list = new ArrayList<>(methodTimingTable.size());
+            methodTimingTable.forEach( (fname, fdescr) -> list.add(new java.util.AbstractMap.SimpleImmutableEntry<>(fname, fdescr)) );
+            return list;
+        }
+
+        private static final class TraceReporter implements Runnable {
+
+            private static final long INTERVAL = 10 * 1000L;
+
+            private static final TraceReporter REPORTER = new TraceReporter();
+            private static final Runnable LIVE_REPORTER = new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
+                        try {
+                            Thread.sleep(INTERVAL);
+                            REPORTER.run();
+                        } catch (Throwable th) {
+                            System.err.println("SunToolkit TraceReporter Live: exception occurred:" + th.getMessage());
+                            th.printStackTrace(System.err);
+                        }
+                    }
+                }
+            };
+
+            static void setShutdownHook() {
+                {
+                    final Thread thread = InnocuousThread.newSystemThread("SunToolkit TraceReporter Hook", REPORTER);
+                    thread.setContextClassLoader(null);
+                    Runtime.getRuntime().addShutdownHook(thread);
+                }
+                if ((flags & TRACELIVE) != 0) {
+                    final Thread thread = InnocuousThread.newSystemThread("SunToolkit TraceReporter Live", LIVE_REPORTER, Thread.MAX_PRIORITY);
+                    thread.setContextClassLoader(null);
+                    thread.setDaemon(true);
+                    thread.start();
+                    System.out.println("[" + thread + "]: started. (interval: " + (INTERVAL / 1000L) + "s)");
+                }
+            }
+
+            @Override
+            public void run() {
+                final ArrayList<java.util.AbstractMap.SimpleImmutableEntry<String, MethodStats>> l = copyMethodTimingTable();
+                if (l != null) {
+                    l.sort(Map.Entry.comparingByValue());
+                    traceRawLine("=========================");
+                    traceRawLine("AWT Lock usage statistics");
+                    traceRawLine("=========================");
+
+                    final AwtLockerDescriptor descr = getCurrentAwtLockCaller();
+                    if (descr != null) {
+                        final long elapsed = getCurrentTime() - descr.startTime;
+                        traceRawLine("Current AWT_LOCK owner: ", getThreadInfo(AWT_LOCK.getPrivateOwnerThread()),
+                                " at ", descr.frame, " for ", SCALE * elapsed, " ms");
+                    }
+                    // TODO: get appkit stack :
+                    traceRawLine("=========================");
+
+                    // Show all awt lock threads:
+                    final ArrayList<Thread> lt = copyAwtLockThreads();
+                    if (lt != null) {
+                        // Always log thread state:
+                        for (Thread t : lt) {
+                            traceRawLine("- Thread State: ", getThreadInfo(t));
+                            traceRawLine("         Stack: ");
+
+                            // TODO: filter out useless frames:
+                            for (StackTraceElement ste : t.getStackTrace()) {
+                                traceRawLine(ste.toString());
+                            }
+                            traceRawLine("---");
+                        }
+                        traceRawLine("=========================");
+                    }
+
+                    l.forEach(item -> traceRawLine(item.getValue(), " --- ", item.getKey()));
+                    traceRawLine("Legend: <avg time> ( <times called> x [ <fastest time> - <slowest time> ] ms) --- <caller of SunToolkit.awtUnlock()>");
+                    traceRawLine("=========================");
+
+                    if (USE_HISTOGRAM) {
+                        // Histogram dump:
+                        traceRawLine("=====");
+                        l.forEach(item -> traceRawLine(item.getKey(), " --- ",
+                                item.getValue().histogramToString()));
+                        traceRawLine("=========================");
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -231,9 +703,21 @@ public abstract class SunToolkit extends Toolkit
      *     }
      */
 
-    @SuppressWarnings("removal")
-    private static final ReentrantLock AWT_LOCK = new ReentrantLock(
-            AccessController.doPrivileged(new GetBooleanAction("awt.lock.fair")));
+    static final class AwtReentrantLock extends ReentrantLock {
+        // copied from ReentrantLock for compatibility:
+        private static final long serialVersionUID = 7373984872572414699L;
+
+        @SuppressWarnings("removal")
+        AwtReentrantLock() {
+            super(AccessController.doPrivileged(new GetBooleanAction("awt.lock.fair")));
+        }
+
+        Thread getPrivateOwnerThread() {
+            return super.getOwner();
+        }
+    }
+
+    private static final AwtReentrantLock AWT_LOCK = new AwtReentrantLock();
     private static final Condition AWT_LOCK_COND = AWT_LOCK.newCondition();
 
     /*
@@ -247,39 +731,78 @@ public abstract class SunToolkit extends Toolkit
         return null;
     }
 
-    public interface AwtLockListener {
-        void afterAwtLocked();
-        void beforeAwtUnlocked();
-    }
+    private static java.util.List<AwtLockListener> awtLockListeners = null;
 
-    private static java.util.List<AwtLockListener> awtLockListeners;
-    public static synchronized void addAwtLockListener(AwtLockListener l) {
+    private static Map<Thread, String> awtLockThreads = null;
+
+    protected static synchronized void addAwtLockListener(AwtLockListener l) {
         if (awtLockListeners == null) {
-             awtLockListeners = Collections.synchronizedList(new ArrayList<>());
+            // no synchronization needed:
+            awtLockListeners = new ArrayList<>();
+            awtLockThreads = Collections.synchronizedMap(new WeakIdentityHashMap<>());
         }
         awtLockListeners.add(l);
     }
 
-    public static final void awtLock() {
+    private static synchronized ArrayList<Thread> copyAwtLockThreads() {
+        if (awtLockThreads == null) {
+            return null;
+        }
+        final ArrayList<Thread> list = new ArrayList<>(awtLockThreads.keySet());
+        Collections.sort(list, (t1, t2) -> { return t1.getName().compareTo(t2.getName()); });
+        return list;
+    }
+
+    public static final void registerAwtLockThread(Thread t) {
+        if ((awtLockThreads != null) && (t != null)) {
+            awtLockThreads.putIfAbsent(t, t.getName());
+        }
+    }
+
+    public static void awtLock() {
+        if (awtLockThreads != null) {
+            // Always register thread:
+            registerAwtLockThread(Thread.currentThread());
+        }
+        // fast-path:
+        if (awtTryLock()) {
+            return;
+        }
+        // measure waiting time if needed:
+        final long start = (awtLockListeners != null) ? System.nanoTime() : 0L;
+
+        // lock() may block current thread = wait:
         AWT_LOCK.lock();
+        // AWT_LOCK owned by one thread
+
         if (awtLockListeners != null) {
-            awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+            final long elapsed = System.nanoTime() - start;
+            awtLockListeners.forEach(l -> l.afterAwtLocked(elapsed));
         }
     }
 
-    public static final boolean awtTryLock() {
-        final boolean wasLocked = AWT_LOCK.tryLock();
-        if (wasLocked && awtLockListeners != null) {
-            awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+    public static boolean awtTryLock() {
+        try {
+            final boolean acquired = AWT_LOCK.tryLock(0L, TimeUnit.NANOSECONDS);
+            if (acquired && (awtLockListeners != null)) {
+                awtLockListeners.forEach(l -> l.afterAwtLocked(-1L));
+            }
+            return acquired;
+        } catch (InterruptedException ie) {
+            System.err.println("awtTryLock: interrupted");
+            ie.printStackTrace(System.err);
         }
-        return wasLocked;
+        return false;
     }
 
-    public static final void awtUnlock() {
+    public static void awtUnlock() {
         if (awtLockListeners != null) {
             awtLockListeners.forEach(AwtLockListener::beforeAwtUnlocked);
         }
+        // AWT_LOCK is owned by current thread
         AWT_LOCK.unlock();
+        // AWT_LOCK is no more owned by current thread,
+        // waiting thread(s) will wake up and take the AWT_LOCK
     }
 
     public static final void awtLockWait()
@@ -294,11 +817,13 @@ public abstract class SunToolkit extends Toolkit
         AWT_LOCK_COND.await(timeout, TimeUnit.MILLISECONDS);
     }
 
-    public static final void awtLockNotify() {
+    public static final void awtLockNotify()
+    {
         AWT_LOCK_COND.signal();
     }
 
-    public static final void awtLockNotifyAll() {
+    public static final void awtLockNotifyAll()
+    {
         AWT_LOCK_COND.signalAll();
     }
 
