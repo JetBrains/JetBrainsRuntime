@@ -1673,7 +1673,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
     self.zoomButtonMouseResponder = [[AWTWindowZoomButtonMouseResponder alloc] initWithWindow:self.nsWindow];
     [self.zoomButtonMouseResponder release]; // property retains the object
-    
+
     AWTWindowDragView* windowDragView = [[AWTWindowDragView alloc] initWithPlatformWindow:self.javaPlatformWindow];
     [titlebar addSubview:windowDragView positioned:NSWindowBelow relativeTo:closeButtonView];
 
@@ -1762,7 +1762,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
     [self setWindowControlsHidden:NO];
     [self updateCustomTitleBarInsets:NO];
-    
+
     [self.nsWindow setIgnoreMove:NO];
 }
 

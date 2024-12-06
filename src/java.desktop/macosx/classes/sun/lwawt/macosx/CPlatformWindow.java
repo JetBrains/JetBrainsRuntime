@@ -55,6 +55,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -69,6 +70,7 @@ import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
 import sun.awt.AWTThreading;
+import sun.awt.CGraphicsDevice;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWLightweightFramePeer;
@@ -1177,51 +1179,68 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return contentView.getWindowLayerPtr();
     }
 
-    /**
-     * Warning: use with care as it is prone to deadlocks (appkit vs EDT vs flusher thread)
-     */
-    void flushBuffers() {
-        // 24.11: only 1 usage by deliverMoveResizeEvent():
-        //                          System-dependent appearance optimization.
-        //                          May be blocking so postpone this event processing:
+    @SuppressWarnings("removal")
+    private final static boolean INVOKE_LATER_FLUSH_BUFFERS
+            = Boolean.parseBoolean(AccessController.doPrivileged(
+                new GetPropertyAction("awt.mac.flushBuffers.invokeLater", "false")));
 
+    private final static int INVOKE_LATER_COUNT = 5;
+    private final static AtomicInteger invokeLaterCount = new AtomicInteger();
+
+    void flushBuffers() {
+        // only 1 usage by deliverMoveResizeEvent():
         if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
-            // use weak reference to avoid retaining the Window (GC)
-            final WeakReference<Window> targetRef = new WeakReference<>(target) {
+            // Runnable needed to get obvious stack traces:
+            final Runnable emptyTask = new Runnable() {
                 @Override
-                public final String toString() {
-                    final Window window = get();
-                    return "WeakReference<Window>@" +
-                            ((window != null) ? Integer.toHexString(hashCode()) : "<invalid-ref>")
-                            + " :: {" + window + "}";
+                public void run() {
+                    // Posting an empty to flush the EventQueue without blocking the main thread
+                    logger.fine("CPlatformWindow.flushBuffers: run() invoked on {0}", target);
                 }
             };
-            logger.fine("CPlatformWindow.flushBuffers: " +
-                            "enter LWCToolkit.invokeAndWait(empty) on target = {0}", targetRef);
+
+            // use the system property 'awt.mac.flushBuffers.invokeLater' to 'true' (default: false)
+            // to avoid deadlocks caused by the LWCToolkit.invokeAndWait() call below:
+            boolean useInvokeLater = INVOKE_LATER_FLUSH_BUFFERS;
+
+            if (!useInvokeLater && (peer != null)) {
+                final GraphicsDevice device = peer.getGraphicsConfiguration().getDevice();
+                if (device instanceof CGraphicsDevice) {
+                    // JBR-5497: avoid deadlock in mirroring mode (laptop + external screen):
+                    useInvokeLater = ((CGraphicsDevice)device).isMirroring();
+                    logger.fine("CPlatformWindow.flushBuffers: CGraphicsDevice.isMirroring = {0}", useInvokeLater);
+                }
+            }
+            // JBR-5497: keep few more invokeLater() when computer returns from sleep or displayChanged()
+            // to avoid deadlocks until solved definitely:
+            if (useInvokeLater) {
+                // reset to max count:
+                invokeLaterCount.set(INVOKE_LATER_COUNT);
+            } else {
+                final int prev = invokeLaterCount.get();
+                if (prev > 0) {
+                    invokeLaterCount.compareAndSet(prev, prev - 1);
+                    useInvokeLater = true;
+                }
+            }
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("CPlatformWindow.flushBuffers: useInvokeLater = {0} (count = {1})",
+                        useInvokeLater, invokeLaterCount.get());
+            }
             try {
                 // check invokeAndWait: KO (operations require AWTLock and main thread)
-                // => use invokeLater as it is an empty event to force refresh ASAP:
-
-                // Runnable needed to get obvious stack traces:
-                final Runnable emptyTask = new Runnable() {
-                    @Override
-                    public void run() {
-                        // Posting an empty to flush the EventQueue without blocking the main thread
-                        logger.fine("CPlatformWindow.flushBuffers: run() " +
-                                "invoked on target = {0}", targetRef);
-                    }
-                };
-
-                if (true) {
-                    LWCToolkit.invokeAndWait(emptyTask, target);
-                } else {
+                // => use invokeLater as it is an empty event to force refresh ASAP
+                if (useInvokeLater) {
                     LWCToolkit.invokeLater(emptyTask, target);
+                } else {
+                    logger.fine("CPlatformWindow.flushBuffers: enter LWCToolkit.invokeAndWait(empty) on target = {0}", target);
+
+                    LWCToolkit.invokeAndWait(emptyTask, target);
+
+                    logger.fine("CPlatformWindow.flushBuffers: exit  LWCToolkit.invokeAndWait(empty) on target = {0}", target);
                 }
             } catch (InvocationTargetException ite) {
                 logger.severe("CPlatformWindow.flushBuffers: exception occurred: ", ite);
-            } finally {
-                logger.fine("CPlatformWindow.flushBuffers: " +
-                        "exit LWCToolkit.invokeAndWait(empty) on target = {0}", targetRef);
             }
         }
     }

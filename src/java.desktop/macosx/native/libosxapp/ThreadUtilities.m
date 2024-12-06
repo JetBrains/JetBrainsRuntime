@@ -67,14 +67,13 @@ static NSArray<NSString*> *javaModes = nil;
 static NSArray<NSString*> *allModesExceptJava = nil;
 
 /* Traceability data */
-static const BOOL enableTracing = YES;
+static const BOOL enableTracing = NO;
 static const BOOL enableCallStacks = NO;
 static const BOOL enableRunLoopObserver = NO;
 
 /* RunLoop traceability identifier generators */
 static atomic_long runLoopId = 0L;
 static atomic_long mainThreadActionId = 0L;
-
 
 static inline void attachCurrentThread(void** env) {
     if ([NSThread isMainThread]) {
@@ -109,15 +108,15 @@ static void setBlockingEventDispatchThread(BOOL value) {
 }
 
 + (void)initialize {
-    /* All the standard modes plus critical */
-    allModesExceptJava = [[NSArray alloc] initWithObjects:NSDefaultRunLoopMode,
-                                           NSModalPanelRunLoopMode,
-                                           NSEventTrackingRunLoopMode,
-                                           CriticalRunLoopMode,
-                                           nil];
+    /* All the standard modes plus the Critical mode */
+    allModesExceptJava = [[NSArray alloc] initWithObjects:NSRunLoopCommonModes,
+                                                          NSModalPanelRunLoopMode,
+                                                          NSEventTrackingRunLoopMode,
+                                                          CriticalRunLoopMode,
+                                                          nil];
 
-    /* All the standard modes plus ours */
-    javaModes = [[NSArray alloc] initWithObjects:NSDefaultRunLoopMode,
+    /* All the standard modes plus Critical and Java modes */
+    javaModes = [[NSArray alloc] initWithObjects:NSRunLoopCommonModes,
                                            NSModalPanelRunLoopMode,
                                            NSEventTrackingRunLoopMode,
                                            CriticalRunLoopMode,

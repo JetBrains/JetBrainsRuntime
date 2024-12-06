@@ -813,27 +813,26 @@ public abstract class SunToolkit extends Toolkit
     }
 
     public static final boolean awtTryLock() {
-        while (true) {
-            try {
-                final boolean acquired = AWT_LOCK.tryLock(0, TimeUnit.NANOSECONDS);
-                if (acquired && (awtLockListeners != null)) {
-                    awtLockListeners.forEach(l -> l.afterAwtLocked(-1));
-                }
-                return acquired;
-            } catch (InterruptedException ie) {
-                log.severe("SunToolkit.awtTryLock: interrupted", ie);
+        try {
+            final boolean acquired = AWT_LOCK.tryLock(0, TimeUnit.NANOSECONDS);
+            if (acquired && (awtLockListeners != null)) {
+                awtLockListeners.forEach(l -> l.afterAwtLocked(-1));
             }
+            return acquired;
+        } catch (InterruptedException ie) {
+            log.severe("SunToolkit.awtTryLock: interrupted", ie);
         }
+        return false;
     }
 
-    public static final void awtUnlock() {
+    public static void awtUnlock() {
         if (awtLockListeners != null) {
             awtLockListeners.forEach(AwtLockListener::beforeAwtUnlocked);
         }
         // AWT_LOCK is owned by current thread
         AWT_LOCK.unlock();
         // AWT_LOCK is no more owned by current thread,
-        // waiting thread(s) will wake up and take the AWT_LOCK
+        // 1 waiting thread will wake up and take the AWT_LOCK
     }
 
     public static final void awtLockWait()

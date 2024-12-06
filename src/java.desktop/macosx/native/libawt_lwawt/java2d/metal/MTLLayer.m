@@ -403,13 +403,13 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 - (void)startRedraw {
     if (isDisplaySyncEnabled()) {
         if (self.ctx != nil) {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // direct mode
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
                                                      block:^(){
                 [self.ctx startRedraw:self];
             }];
         }
     } else {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // direct mode
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
                                                      block:^(){
             [self setNeedsDisplay];
         }];
@@ -422,7 +422,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             self.redrawCount = 0;
         }
         if (self.ctx != nil) {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // direct mode
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
                                                      block:^(){
                 [self.ctx stopRedraw:self];
             }];
@@ -466,7 +466,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 }
                 // Ensure layer will be redrawn asap to display new content:
                 [ThreadUtilities performOnMainThread:@selector(startRedrawIfNeeded) on:self withObject:nil
-                                       waitUntilDone:NO useJavaModes:NO]; // direct mode
+                                       waitUntilDone:NO useJavaModes:NO]; // critical
             }
             [self release];
         }];
@@ -533,7 +533,7 @@ JNI_COCOA_ENTER(env);
     jobject javaLayer = (*env)->NewWeakGlobalRef(env, obj);
 
     // Wait and ensure main thread creates the MTLLayer instance now:
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
                                           block:^(){
             AWT_ASSERT_APPKIT_THREAD;
             layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer usePerfCounters: perfCountersEnabled];
@@ -592,7 +592,7 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
     // in one call on appkit, otherwise we'll get window's contents blinking,
     // during screen-2-screen moving.
     // Ensure main thread changes the MTLLayer instance later:
-    [ThreadUtilities performOnMainThreadNowOrLater:NO // direct mode
+    [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
                                              block:^(){
         layer.contentsScale = scale;
     }];
@@ -636,7 +636,7 @@ Java_sun_java2d_metal_MTLLayer_nativeSetOpaque
 
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     // Ensure main thread changes the MTLLayer instance later:
-    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // direct
+    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // critical
                                           block:^(){
         [layer setOpaque:(opaque == JNI_TRUE)];
     }];

@@ -29,6 +29,8 @@ public class AWTThreading {
 
     private static final boolean TRACE_RUN_LOOP = true; // use System property
 
+    private static final boolean TRACE_RUN_LOOP = false;
+
     private static final Runnable EMPTY_RUNNABLE = () -> {};
 
     private static final AtomicReference<Function<Thread, AWTThreading>> theAWTThreadingFactory =

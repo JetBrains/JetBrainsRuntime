@@ -176,7 +176,7 @@ JNI_COCOA_ENTER(env);
 
     jobject javaLayer = (*env)->NewWeakGlobalRef(env, obj);
 
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
                                           block:^(){
             AWT_ASSERT_APPKIT_THREAD;
             layer = [[CGLLayer alloc] initWithJavaLayer: javaLayer];
@@ -225,7 +225,7 @@ Java_sun_java2d_opengl_CGLLayer_nativeSetScale
     // this method where we need to change native texture size and layer's scale
     // in one call on appkit, otherwise we'll get window's contents blinking,
     // during screen-2-screen moving.
-    [ThreadUtilities performOnMainThreadNowOrLater:NO // direct mode
+    [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
                                              block:^(){
         layer.contentsScale = scale;
     }];

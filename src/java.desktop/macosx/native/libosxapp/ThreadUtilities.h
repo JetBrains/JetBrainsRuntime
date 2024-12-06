@@ -126,6 +126,28 @@ do {                                  \
 #endif /* AWT_THREAD_ASSERTS */
 // --------------------------------------------------------------------------
 
+@interface ThreadTraceContext : NSObject <NSCopying>
+
+@property (readwrite, atomic) BOOL sleep;
+@property (readwrite, atomic) BOOL useJavaModes;
+@property (readwrite, atomic) long actionId;
+@property (readwrite, atomic) char* operation;
+@property (readwrite, atomic) CFTimeInterval timestamp;
+@property (readwrite, atomic, retain) NSString* caller;
+@property (readwrite, atomic, retain) NSString* callStack;
+
+/* autorelease in init and copy */
+- (id)init;
+- (void)reset;
+- (void)updateThreadState:(BOOL)sleepValue;
+
+- (id)set:(long)pActionId operation:(char*)pOperation useJavaModes:(BOOL)pUseJavaModes
+            caller:(NSString *)pCaller callstack:(NSString *)pCallStack;
+
+- (const char*)identifier;
+@end
+
+
 __attribute__((visibility("default")))
 @interface ThreadTraceContext : NSObject <NSCopying>
 

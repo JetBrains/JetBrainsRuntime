@@ -380,17 +380,20 @@ AWT_ASSERT_APPKIT_THREAD;
     return NSPrintingSuccess;
 }
 
+#define TRACE_NOTIFY    0
+
 // Open app handler, registered in -init
 + (void)_notifyJava:(jint)notificationType {
 AWT_ASSERT_APPKIT_THREAD;
-
-    if (1) NSLog(@"_notifyJava: %s", notificationToStr(notificationType));
+    if (TRACE_NOTIFY) NSLog(@"ApplicationDelegate._notifyJava: enter [%s]", notificationToStr(notificationType));
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_APPEVENTHANDLER_CLASS();
     DECLARE_STATIC_METHOD(jm_handleNativeNotification, sjc_AppEventHandler, "handleNativeNotification", "(I)V");
     (*env)->CallStaticVoidMethod(env, sjc_AppEventHandler, jm_handleNativeNotification, notificationType);
     CHECK_EXCEPTION();
+
+    if (TRACE_NOTIFY) NSLog(@"ApplicationDelegate._notifyJava: exit [%s]", notificationToStr(notificationType));
 }
 
 // About menu handler

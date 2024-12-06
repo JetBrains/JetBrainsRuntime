@@ -25,6 +25,7 @@
 
 #import "JNIUtilities.h"
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
+#import <ThreadUtilities.h>
 
 #import "apple_laf_JRSUIControl.h"
 #import "apple_laf_JRSUIConstants_DoubleValue.h"
@@ -160,11 +161,11 @@ static inline jint doPaintCGContext(CGContextRef cgRef, jlong controlPtr, jlong 
     JRSUIControlRef control = (JRSUIControlRef)jlong_to_ptr(controlPtr);
     _SyncEncodedProperties(control, oldProperties, newProperties);
 
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct mode
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
                                           block:^(){
         CGRect bounds = CGRectMake(x, y, w, h);
         JRSUIControlDraw(gRenderer, control, cgRef, bounds);
-/*     }]; */
+    }];
     return 0;
 }
 
@@ -254,7 +255,7 @@ JNIEXPORT jint JNICALL Java_apple_laf_JRSUIControl_getNativeHitPart
 
     __block jint result;
 
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct mode
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
                                           block:^(){
         result = JRSUIControlGetHitPart(gRenderer, control, bounds, point);
     }];
@@ -271,10 +272,10 @@ JNIEXPORT jboolean JNICALL Java_apple_laf_JRSUIUtils_00024ScrollBar_shouldUseScr
 {
     __block Boolean result;
 
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct mode
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
                                           block:^(){
         result = JRSUIControlShouldScrollToClick();
-/*    }]; */
+    }];
     return result;
 }
 
@@ -291,11 +292,11 @@ JNIEXPORT void JNICALL Java_apple_laf_JRSUIControl_getNativePartBounds
 
     __block CGRect partBounds;
 
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct mode
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
                                           block:^(){
         CGRect frame = CGRectMake(x, y, w, h);
         partBounds = JRSUIControlGetScrollBarPartBounds(control, frame, part);
-/*    }]; */
+    }];
 
     jdouble *rect = (*env)->GetPrimitiveArrayCritical(env, rectArray, NULL);
     if (rect != NULL) {
@@ -320,10 +321,10 @@ JNIEXPORT jdouble JNICALL Java_apple_laf_JRSUIControl_getNativeScrollBarOffsetCh
 
     __block jdouble result;
 
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // direct mode
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
                                           block:^(){
         CGRect frame = CGRectMake(x, y, w, h);
         result = (jdouble)JRSUIControlGetScrollBarOffsetFor(control, frame, offset, visibleAmount, extent);
-/*    }]; */
+    }];
     return result;
 }
