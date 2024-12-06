@@ -26,6 +26,8 @@
 #ifndef __THREADUTILITIES_H
 #define __THREADUTILITIES_H
 
+#import <Foundation/Foundation.h>
+
 #include "jni.h"
 
 #import <pthread.h>
@@ -124,6 +126,28 @@ do {                                  \
 #endif /* AWT_THREAD_ASSERTS */
 // --------------------------------------------------------------------------
 
+@interface ThreadTraceContext : NSObject <NSCopying>
+
+@property (readwrite, atomic) BOOL sleep;
+@property (readwrite, atomic) BOOL useJavaModes;
+@property (readwrite, atomic) long actionId;
+@property (readwrite, atomic) char* operation;
+@property (readwrite, atomic) CFTimeInterval timestamp;
+@property (readwrite, atomic, retain) NSString* caller;
+@property (readwrite, atomic, retain) NSString* callStack;
+
+/* autorelease in init and copy */
+- (id)init;
+- (void)reset;
+- (void)updateThreadState:(BOOL)sleepValue;
+
+- (id)set:(long)pActionId operation:(char*)pOperation useJavaModes:(BOOL)pUseJavaModes
+            caller:(NSString *)pCaller callstack:(NSString *)pCallStack;
+
+- (const char*)identifier;
+@end
+
+
 __attribute__((visibility("default")))
 @interface ThreadUtilities : NSObject { } /* Extend NSObject so can call performSelectorOnMainThread */
 
@@ -140,10 +164,24 @@ __attribute__((visibility("default")))
 + (void)setAppkitThreadGroup:(jobject)group;
 + (void)setApplicationOwner:(BOOL)owner;
 
-+ (void)performOnMainThreadNowOrLater:(void (^)())block;
 + (void)performOnMainThreadWaiting:(BOOL)wait block:(void (^)())block;
 + (void)performOnMainThread:(SEL)aSelector on:(id)target withObject:(id)arg waitUntilDone:(BOOL)wait;
+
+/* internal use with care to specify which RunLoopMode to use high priority queue (default run mode) or java queue */
++ (void)performOnMainThreadNowOrLater:(BOOL)useJavaModes block:(void (^)())block;
++ (void)performOnMainThreadWaiting:(BOOL)wait useJavaModes:(BOOL)useJavaModes block:(void (^)())block;
++ (void)performOnMainThread:(SEL)aSelector on:(id)target withObject:(id)arg waitUntilDone:(BOOL)wait useJavaModes:(BOOL)useJavaModes;
+
++ (NSString*)criticalRunLoopMode;
 + (NSString*)javaRunLoopMode;
+
++ (ThreadTraceContext*) getTraceContext;
++ (void)                removeTraceContext;
++ (void)                resetTraceContext;
+
++ (ThreadTraceContext*)recordTraceContext;
++ (ThreadTraceContext*)recordTraceContext:(NSString*) prefix;
++ (ThreadTraceContext*)recordTraceContext:(NSString*)prefix actionId:(long)actionId useJavaModes:(BOOL)useJavaModes operation:(char*) operation;
 
 @end
 
