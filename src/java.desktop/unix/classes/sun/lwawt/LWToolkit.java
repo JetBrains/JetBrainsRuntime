@@ -28,7 +28,6 @@ package sun.lwawt;
 import java.awt.*;
 import java.awt.List;
 import java.awt.datatransfer.*;
-import java.awt.image.*;
 import java.awt.peer.*;
 import java.util.*;
 
@@ -38,7 +37,11 @@ import sun.awt.util.ThreadGroupUtils;
 
 import static sun.lwawt.LWWindowPeer.PeerType;
 
+import sun.util.logging.PlatformLogger;
+
 public abstract class LWToolkit extends SunToolkit implements Runnable, ToolkitAPI {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(LWToolkit.class.getName());
 
     private static final int STATE_NONE = 0;
     private static final int STATE_INIT = 1;
@@ -140,8 +143,8 @@ public abstract class LWToolkit extends SunToolkit implements Runnable, ToolkitA
                 synchronized (this) {
                     wait();
                 }
-            } catch (InterruptedException z) {
-                // TODO: log
+            } catch (InterruptedException ie) {
+                log.fine("LWToolkit.run: interrupted");
                 break;
             }
         }
@@ -156,10 +159,8 @@ public abstract class LWToolkit extends SunToolkit implements Runnable, ToolkitA
         while (getRunState() < STATE_SHUTDOWN) {
             try {
                 platformRunMessage();
-            } catch (Throwable t) {
-                // TODO: log
-                System.err.println("Exception on the toolkit thread");
-                t.printStackTrace(System.err);
+            } catch (Throwable th) {
+                log.severe("LWToolkit.run: failure", th);
             }
         }
         //XXX: if that's a secondary loop, jump back to the STATE_MESSAGELOOP
