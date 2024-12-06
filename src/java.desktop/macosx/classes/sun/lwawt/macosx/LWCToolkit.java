@@ -89,9 +89,6 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.net.MalformedURLException;
 import javax.swing.UIManager;
 
@@ -715,11 +712,19 @@ public final class LWCToolkit extends LWToolkit {
         if (a == b) return true;
 
         final boolean[] ret = new boolean[1];
-
-        try {  invokeAndWait(new Runnable() { @Override
-                                              public void run() { synchronized(ret) {
-            ret[0] = a.equals(b);
-        }}}, c); } catch (Exception e) { e.printStackTrace(); }
+        try {
+            // check invokeAndWait: OK (operations look not requiring locks or main thread):
+            invokeAndWait(new Runnable() {
+                @Override
+                public void run() {
+                    synchronized(ret) {
+                        ret[0] = a.equals(b);
+                    }
+                }
+             }, c);
+        } catch (Exception e) {
+            log.severe("LWCToolkit.doEquals: exception occurred: ", e);
+        }
 
         synchronized(ret) { return ret[0]; }
     }
@@ -781,14 +786,14 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component, int timeoutSeconds)
             throws InvocationTargetException
     {
-        invokeAndWait(runnable, component, false, -1);
+        invokeAndWait(runnable, component, false, timeoutSeconds);
     }
 
     public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, int timeoutSeconds)
             throws InvocationTargetException
     {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("invokeAndWait started: " + runnable);
+            log.fine("invokeAndWait started: {0}", runnable);
         }
 
         if (isBlockingEventDispatchThread()) {
@@ -840,7 +845,7 @@ public final class LWCToolkit extends LWToolkit {
         }
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("invokeAndWait finished: " + runnable);
+            log.fine("invokeAndWait finished: {0}", runnable);
         }
 
         checkException(invocationEvent);
@@ -1040,7 +1045,16 @@ public final class LWCToolkit extends LWToolkit {
      * Starts run-loop with the provided timeout. Use (-1) for the infinite value.
      */
     static boolean doAWTRunLoop(long mediator, boolean processEvents, int timeoutSeconds) {
-        return doAWTRunLoopImpl(mediator, processEvents, inAWT, timeoutSeconds);
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("doAWTRunLoop: enter: mediator: " + mediator + " processEvents: "+ processEvents + " timeoutSeconds: " + timeoutSeconds);
+        }
+        try {
+            return doAWTRunLoopImpl(mediator, processEvents, inAWT, timeoutSeconds);
+        } finally {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("doAWTRunLoop: exit:  mediator: " + mediator + " processEvents: "+ processEvents + " timeoutSeconds: " + timeoutSeconds);
+            }
+        }
     }
     private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, int timeoutSeconds);
     static native void stopAWTRunLoop(long mediator);
