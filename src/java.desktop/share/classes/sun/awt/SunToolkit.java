@@ -242,26 +242,40 @@ public abstract class SunToolkit extends Toolkit
         awtLockListeners.add(l);
     }
 
-    public static final void awtLock() {
-        AWT_LOCK.lock();
-        if (awtLockListeners != null) {
-            awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+    public static void awtLock() {
+        // fast-path:
+        if (!awtTryLock()) {
+            // lock() may block current thread = wait:
+            AWT_LOCK.lock();
+            // AWT_LOCK owned by the current thread
+            if (awtLockListeners != null) {
+                awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+            }
         }
     }
 
-    public static final boolean awtTryLock() {
-        final boolean wasLocked = AWT_LOCK.tryLock();
-        if (wasLocked && awtLockListeners != null) {
-            awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+    public static boolean awtTryLock() {
+        try {
+            final boolean acquired = AWT_LOCK.tryLock(0L, TimeUnit.NANOSECONDS);
+            if (acquired && (awtLockListeners != null)) {
+                awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+            }
+            return acquired;
+        } catch (InterruptedException ie) {
+            PlatformLogger.getLogger(SunToolkit.class.getName())
+                    .fine("awtTryLock() interrupted");
         }
-        return wasLocked;
+        return false;
     }
 
-    public static final void awtUnlock() {
+    public static void awtUnlock() {
         if (awtLockListeners != null) {
             awtLockListeners.forEach(AwtLockListener::beforeAwtUnlocked);
         }
+        // AWT_LOCK is owned by current thread
         AWT_LOCK.unlock();
+        // AWT_LOCK is no more owned by current thread,
+        // 1 waiting thread will wake up and take the AWT_LOCK
     }
 
     public static final void awtLockWait()
@@ -276,11 +290,13 @@ public abstract class SunToolkit extends Toolkit
         AWT_LOCK_COND.await(timeout, TimeUnit.MILLISECONDS);
     }
 
-    public static final void awtLockNotify() {
+    public static final void awtLockNotify()
+    {
         AWT_LOCK_COND.signal();
     }
 
-    public static final void awtLockNotifyAll() {
+    public static final void awtLockNotifyAll()
+    {
         AWT_LOCK_COND.signalAll();
     }
 
