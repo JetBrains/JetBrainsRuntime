@@ -24,11 +24,9 @@ RUN yum -y update && \
         flex-2.6.1-9.el8 \
         fontconfig-devel-2.13.1-4.el8 \
         freetype-devel-2.9.1-9.el8 \
-        gcc-c++-8.5.0-22.0.1.el8_10 \
         git-2.43.5-1.el8_10 \
         git-core-2.43.5-1.el8_10 \
         libtool-2.4.6-25.el8 \
-        libstdc++-static-8.5.0-22.0.1.el8_10 \
         libXcomposite-0.4.4-14.el8 \
         libXdamage-1.1.4-14.el8 \
         libXi-devel-1.7.10-1.el8 \
@@ -59,6 +57,10 @@ RUN git config --global user.email "teamcity@jetbrains.com" && \
     git config --global user.name "builduser" && \
     git config --global --add safe.directory '*' && \
     git config --global http.postBuffer 524288000
+
+ENV PATH="/opt/rh/gcc-toolset-10/root/usr/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/opt/rh/gcc-toolset-10/root/usr/lib64:/opt/rh/gcc-toolset-10/root/usr/lib:/opt/rh/gcc-toolset-10/root/usr/lib64/dyninst:/opt/rh/gcc-toolset-10/root/usr/lib/dyninst:/opt/rh/gcc-toolset-10/root/usr/lib64:/opt/rh/gcc-toolset-10/root/usr/lib"
+ENV PKG_CONFIG_PATH="/opt/rh/gcc-toolset-10/root/usr/lib64/pkgconfig"
 
 # Build GLSLC
 RUN git clone https://github.com/google/shaderc --branch v2023.6 \
