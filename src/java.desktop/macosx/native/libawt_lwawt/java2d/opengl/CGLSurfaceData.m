@@ -316,7 +316,8 @@ OGLSD_Flush(JNIEnv *env)
         CGLSDOps *dstCGLOps = (CGLSDOps *)dstOps->privOps;
         CGLLayer *layer = (CGLLayer*)dstCGLOps->layer;
         if (layer != NULL) {
-            [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+            [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // critical
+                                                  block:^(){
                 AWT_ASSERT_APPKIT_THREAD;
                 [layer setNeedsDisplay];
             }];
