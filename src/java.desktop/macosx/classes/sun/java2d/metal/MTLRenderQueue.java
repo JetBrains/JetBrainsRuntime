@@ -127,8 +127,7 @@ public class MTLRenderQueue extends RenderQueue {
         try {
             flusher.flushNow();
         } catch (Exception e) {
-            System.err.println("exception in flushNow:");
-            e.printStackTrace();
+            logger.severe("MTLRenderQueue.flushNow: exception occurred: ", e);
         }
     }
 
@@ -137,8 +136,7 @@ public class MTLRenderQueue extends RenderQueue {
         try {
             flusher.flushAndInvokeNow(r);
         } catch (Exception e) {
-            System.err.println("exception in flushAndInvokeNow:");
-            e.printStackTrace();
+            logger.severe("MTLRenderQueue.flushAndInvokeNow: exception occurred: ", e);
         }
     }
 
@@ -182,6 +180,7 @@ public class MTLRenderQueue extends RenderQueue {
                 try {
                     wait();
                 } catch (InterruptedException e) {
+                    logger.fine("QueueFlusher.flushNow: interrupted");
                 }
             }
 
@@ -224,6 +223,7 @@ public class MTLRenderQueue extends RenderQueue {
                             }
                         }
                     } catch (InterruptedException e) {
+                        logger.fine("QueueFlusher.run: interrupted");
                     }
                 }
                 try {
@@ -235,11 +235,11 @@ public class MTLRenderQueue extends RenderQueue {
                     if (task != null) {
                         task.run();
                     }
-                } catch (Error e) {
-                    error = e;
-                } catch (Exception x) {
-                    System.err.println("exception in QueueFlusher:");
-                    x.printStackTrace();
+                } catch (Error err) {
+                    logger.severe("QueueFlusher.run: error occurred: ", err);
+                    error = err;
+                } catch (Exception e) {
+                    logger.severe("QueueFlusher.run: exception occurred: ", e);
                 } finally {
                     if (timedOut) {
                         unlock();
