@@ -27,16 +27,15 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Future;
 
 /*
  * @test
  * @summary Verifies that robot correctly pick color
- * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True RobotTest
+ * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True RobotGetPixelTest
  */
 
 
-public class RobotTest {
+public class RobotGetPixelTest {
     final static CountDownLatch latchShownFrame = new CountDownLatch(1);
     static volatile boolean failed = false;
 
