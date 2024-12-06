@@ -36,12 +36,12 @@ public final class Histogram extends StatLong {
     static final int[] STEPS = new int[MAX];
 
     static {
-            STEPS[0] = 0;
-            STEPS[1] = 1;
+        STEPS[0] = 0;
+        STEPS[1] = 1;
 
-            for (int i = 2; i < MAX; i++) {
-                STEPS[i] = STEPS[i - 1] * BUCKET;
-            }
+        for (int i = 2; i < MAX; i++) {
+            STEPS[i] = STEPS[i - 1] * BUCKET;
+        }
     }
 
     static int bucket(int val) {

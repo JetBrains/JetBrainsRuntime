@@ -121,7 +121,8 @@ Java_sun_java2d_opengl_CGLGraphicsConfig_getCGLConfigInfo
 {
     __block jlong ret = 0L;
     JNI_COCOA_ENTER(env);
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
+                                          block:^(){
 
         JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
 
@@ -350,7 +351,8 @@ Java_sun_java2d_opengl_CGLGraphicsConfig_nativeGetMaxTextureSize
 
     __block int max = 0;
 
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
+                                          block:^(){
         [sharedContext makeCurrentContext];
         j2d_glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max);
         [NSOpenGLContext clearCurrentContext];

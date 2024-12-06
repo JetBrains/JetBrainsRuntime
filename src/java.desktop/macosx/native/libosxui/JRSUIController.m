@@ -25,6 +25,7 @@
 
 #import "JNIUtilities.h"
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
+#import <ThreadUtilities.h>
 
 #import "apple_laf_JRSUIControl.h"
 #import "apple_laf_JRSUIConstants_DoubleValue.h"
@@ -159,13 +160,12 @@ static inline jint doPaintCGContext(CGContextRef cgRef, jlong controlPtr, jlong 
 {
     JRSUIControlRef control = (JRSUIControlRef)jlong_to_ptr(controlPtr);
     _SyncEncodedProperties(control, oldProperties, newProperties);
-/*
-JBR-5497: revert to avoid UI freeze => must be fixed in follow-up fix
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
-*/
+
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
+                                          block:^(){
         CGRect bounds = CGRectMake(x, y, w, h);
         JRSUIControlDraw(gRenderer, control, cgRef, bounds);
-/*     }]; */
+    }];
     return 0;
 }
 
@@ -254,12 +254,11 @@ JNIEXPORT jint JNICALL Java_apple_laf_JRSUIControl_getNativeHitPart
     CGPoint point = CGPointMake(pointX, pointY);
 
     __block jint result;
-/*
-JBR-5497: revert to avoid UI freeze => must be fixed in follow-up fix
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
-*/
+
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
+                                          block:^(){
         result = JRSUIControlGetHitPart(gRenderer, control, bounds, point);
-/*    }]; */
+    }];
     return result;
 }
 
@@ -273,12 +272,10 @@ JNIEXPORT jboolean JNICALL Java_apple_laf_JRSUIUtils_00024ScrollBar_shouldUseScr
 {
     __block Boolean result;
 
-/*
-JBR-5497: revert to avoid UI freeze => must be fixed in follow-up fix
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
-*/
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
+                                          block:^(){
         result = JRSUIControlShouldScrollToClick();
-/*    }]; */
+    }];
     return result;
 }
 
@@ -294,13 +291,12 @@ JNIEXPORT void JNICALL Java_apple_laf_JRSUIControl_getNativePartBounds
     _SyncEncodedProperties(control, oldProperties, newProperties);
 
     __block CGRect partBounds;
-/*
-JBR-5497: revert to avoid UI freeze => must be fixed in follow-up fix
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
-*/
+
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
+                                          block:^(){
         CGRect frame = CGRectMake(x, y, w, h);
         partBounds = JRSUIControlGetScrollBarPartBounds(control, frame, part);
-/*    }]; */
+    }];
 
     jdouble *rect = (*env)->GetPrimitiveArrayCritical(env, rectArray, NULL);
     if (rect != NULL) {
@@ -325,12 +321,10 @@ JNIEXPORT jdouble JNICALL Java_apple_laf_JRSUIControl_getNativeScrollBarOffsetCh
 
     __block jdouble result;
 
-/*
-JBR-5497: revert to avoid UI freeze => must be fixed in follow-up fix
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
-*/
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
+                                          block:^(){
         CGRect frame = CGRectMake(x, y, w, h);
         result = (jdouble)JRSUIControlGetScrollBarOffsetFor(control, frame, offset, visibleAmount, extent);
-/*    }]; */
+    }];
     return result;
 }
