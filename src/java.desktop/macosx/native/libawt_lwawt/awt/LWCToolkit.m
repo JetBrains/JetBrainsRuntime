@@ -56,6 +56,13 @@
 #define SCROLL_PHASE_MOMENTUM_BEGAN 4
 #define SCROLL_PHASE_ENDED 5
 
+/* RunLoop run max duration = 4 millis */
+#define RUN_LOOP_TICK           (0.004)
+/* RunLoop critical run max duration = 1 millis */
+#define RUN_LOOP_TICK_CRITICAL  (0.001)
+
+#define TRACE_RUN_LOOP  0
+
 int gNumberOfButtons;
 jint* gButtonDownMasks;
 int lcdSubPixelPosSupported;
@@ -594,42 +601,79 @@ JNI_COCOA_ENTER(env);
 
     AWTRunLoopObject* mediatorObject = (AWTRunLoopObject*)jlong_to_ptr(mediator);
 
-    if (mediatorObject == nil) return JNI_TRUE;
+    if (mediatorObject == nil) {
+        return JNI_TRUE;
+    }
 
-    NSDate *date = timeoutSeconds > 0 ? [NSDate dateWithTimeIntervalSinceNow:timeoutSeconds] : nil;
+    NSDate *timeoutDate = timeoutSeconds > 0 ? [NSDate dateWithTimeIntervalSinceNow:timeoutSeconds] : nil;
+    if (timeoutDate != nil) {
+        if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: timeoutDate = %s",
+              [[timeoutDate description] UTF8String]);
+    }
+
+    if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: processEvents = %d", processEvents);
+
+    NSRunLoopMode criticalRunMode = [ThreadUtilities criticalRunLoopMode];
+    NSRunLoopMode runMode = inAWT ? [ThreadUtilities javaRunLoopMode] : NSDefaultRunLoopMode;
+    if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: runMode = %@", runMode);
 
     // Don't use acceptInputForMode because that doesn't setup autorelease pools properly
     BOOL isRunning = true;
-    while (![mediatorObject shouldEndRunLoop] && isRunning) {
-        isRunning = [[NSRunLoop currentRunLoop] runMode:(inAWT ? [ThreadUtilities javaRunLoopMode] : NSDefaultRunLoopMode)
-                                             beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.010]];
+    NSDate *deadlineDate = nil;
 
-        if (date != nil) {
+    while (![mediatorObject shouldEndRunLoop] && isRunning) {
+        // always process critical events:
+        // Check every few ms at least:
+        deadlineDate = [NSDate dateWithTimeIntervalSinceNow:RUN_LOOP_TICK_CRITICAL];
+
+        // Runs the loop once, blocking for input in the specified mode until the deadline date:
+        BOOL hasRunCritical = [[NSRunLoop currentRunLoop] runMode:criticalRunMode beforeDate:deadlineDate];
+        [deadlineDate release];
+        if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: hasRunCritical = %d", hasRunCritical);
+
+        // Check every few ms at least:
+        deadlineDate = [NSDate dateWithTimeIntervalSinceNow:RUN_LOOP_TICK];
+
+        // Runs the loop once, blocking for input in the specified mode until the deadline date:
+        isRunning = [[NSRunLoop currentRunLoop] runMode:runMode beforeDate:deadlineDate];
+        [deadlineDate release];
+        if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: isRunning = %d", isRunning);
+
+        if (timeoutDate != nil) {
             NSDate *now = [[NSDate alloc] init];
-            if ([date compare:(now)] == NSOrderedAscending) result = JNI_FALSE;
+            if ([timeoutDate compare:(now)] == NSOrderedAscending) {
+                result = JNI_FALSE;
+            }
             [now release];
-            if (result == JNI_FALSE) break;
+            if (result == JNI_FALSE) {
+                break;
+            }
         }
 
         if (processEvents) {
-            //We do not spin a runloop here as date is nil, so does not matter which mode to use
+            // We do not spin a runloop here as date is nil, so does not matter which mode to use
             // Processing all events excluding NSApplicationDefined which need to be processed
             // on the main loop only (those events are intended for disposing resources)
-            NSEvent *event;
-            if ((event = [NSApp nextEventMatchingMask:(NSAnyEventMask & ~NSApplicationDefinedMask)
-                                           untilDate:nil
-                                              inMode:NSDefaultRunLoopMode
-                                             dequeue:YES]) != nil) {
+            NSEvent *event = [NSApp nextEventMatchingMask:(NSAnyEventMask & ~NSApplicationDefinedMask)
+                                                untilDate:nil
+                                                   inMode:NSDefaultRunLoopMode
+                                                  dequeue:YES];
+            if (event != nil) {
                 if ([event.window isKindOfClass:[AWTWindow_Normal class]]) {
                     // Filter only events from AWTWindow (to skip events from ScreenMenu)
                     // See https://youtrack.jetbrains.com/issue/IDEA-305287/Implement-non-blocking-ScreenMenu.invokeOpenLater#focus=Comments-27-6614719.0-0
+                    if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: send event = %@", event);
                     [NSApp sendEvent:event];
+                } else {
+                    if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: discarded event = %@", event);
                 }
             }
-
         }
     }
+    [timeoutDate release];
     [mediatorObject release];
+
+    if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: exit result = %d", result);
 JNI_COCOA_EXIT(env);
 
     return result;
