@@ -28,6 +28,7 @@ package sun.java2d.pipe;
 import java.util.HashSet;
 import java.util.Set;
 import sun.awt.SunToolkit;
+import sun.util.logging.PlatformLogger;
 
 /**
  * The RenderQueue class encapsulates a RenderBuffer on which rendering
@@ -70,6 +71,9 @@ import sun.awt.SunToolkit;
  *     }
  */
 public abstract class RenderQueue {
+
+    // Logger to report issues happened during execution but that do not affect functionality
+    protected static final PlatformLogger logger = PlatformLogger.getLogger("sun.java2d.pipe.RenderQueue");
 
     /** The size of the underlying buffer, in bytes. */
     private static final int BUFFER_SIZE = 6400000;
