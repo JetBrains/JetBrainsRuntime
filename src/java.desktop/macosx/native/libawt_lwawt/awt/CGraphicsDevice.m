@@ -39,7 +39,7 @@ static NSInteger architecture = -1;
 /*
  * Convert the mode string to the more convenient bits per pixel value
  */
-static int getBPPFromModeString(CFStringRef mode)
+int getBPPFromModeString(CFStringRef mode)
 {
     if ((CFStringCompare(mode, CFSTR(kIO30BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo)) {
         // This is a strange mode, where we using 10 bits per RGB component and pack it into 32 bits
@@ -210,6 +210,19 @@ Java_sun_awt_CGraphicsDevice_nativeGetYResolution
     // 1 inch == 25.4 mm
     jfloat inches = size.height / 25.4f;
     return inches > 0 ? rect.size.height / inches : DEFAULT_DEVICE_DPI;
+}
+
+/*
+ * Class:     sun_awt_CGraphicsDevice
+ * Method:    nativeIsMirroring
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_CGraphicsDevice_nativeIsMirroring
+  (JNIEnv *env, jclass class, jint displayID)
+{
+    return (CGDisplayIsInMirrorSet(displayID)
+            || CGDisplayIsInHWMirrorSet(displayID)) ? JNI_TRUE : JNI_FALSE;
 }
 
 /*
