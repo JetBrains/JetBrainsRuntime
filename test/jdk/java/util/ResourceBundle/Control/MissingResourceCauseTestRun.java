@@ -90,15 +90,13 @@ public class MissingResourceCauseTestRun {
         // UnreadableRB.properties is in current directory
         String cp = Utils.TEST_CLASSES + File.pathSeparator + Utils.TEST_SRC
                 + File.pathSeparator + ".";
-        JDKToolLauncher launcher = JDKToolLauncher.createUsingTestJDK("java");
-        launcher.addToolArg("-ea")
-                .addToolArg("-esa")
-                .addToolArg("-cp")
-                .addToolArg(cp)
-                .addToolArg("MissingResourceCauseTest");
-
-        int exitCode = ProcessTools.executeCommand(launcher.getCommand())
-                .getExitValue();
+        // Build process (with VM flags)
+        ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(
+                "-ea", "-esa",
+                "-cp", cp,
+                "MissingResourceCauseTest");
+        // Evaluate process status
+        int exitCode = ProcessTools.executeCommand(pb).getExitValue();
         if (exitCode != 0) {
             throw new RuntimeException("Execution of the test failed. "
                     + "Unexpected exit code: " + exitCode);
