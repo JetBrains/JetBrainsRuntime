@@ -1935,19 +1935,19 @@ public final class System {
             System.err.println("WARNING: java.io.tmpdir directory does not exist");
         }
 
-        String smProp = System.getProperty("java.security.manager");
-        if (smProp != null) {
-            switch (smProp) {
-                case "disallow":
-                    break;
-                case "allow":
-                case "":
-                case "default":
-                default:
-                    throw new Error("A command line option has attempted to allow or enable the Security Manager."
-                            + " Enabling a Security Manager is not supported.");
-            }
-        }
+//        String smProp = System.getProperty("java.security.manager");
+//        if (smProp != null) {
+//            switch (smProp) {
+//                case "disallow":
+//                    break;
+//                case "allow":
+//                case "":
+//                case "default":
+//                default:
+//                    throw new Error("A command line option has attempted to allow or enable the Security Manager."
+//                            + " Enabling a Security Manager is not supported.");
+//            }
+//        }
 
         // Emit a warning if `sun.jnu.encoding` is not supported.
         if (notSupportedJnuEncoding != null) {
