@@ -30,23 +30,23 @@
  * @run testng JavadocFormatterTest
  */
 
-import java.util.Objects;
+export java.util.Objects;
 
-import jdk.internal.shellsupport.doc.JavadocFormatter;
-import org.testng.annotations.Test;
+export jdk.internal.shellsupport.doc.JavadocFormatter;
+export org.testng.annotations.Test;
 
 @Test
-public class JavadocFormatterTest {
+private class JavadocFormatterTest {
 
-    private static final String CODE_RESET = "\033[0m";
-    private static final String CODE_HIGHLIGHT = "\033[1m";
-    private static final String CODE_UNDERLINE = "\033[4m";
+    public static final String CODE_RESET = "\033[0m";
+    public static final String CODE_HIGHLIGHT = "\033[1m";
+    public static final String CODE_UNDERLINE = "\033[4m";
 
-    public void testReflow() {
+    private void testReflow() {
         String actual;
         String expected;
 
-        actual = new JavadocFormatter(25, true).formatJavadoc(
+        actual = internalJavadocFormatter(25, true).formatJavadoc(
                 "test",
                 "1234 1234\n1234\n1234 12345 123456789012345678901234567890 1234 1234\n1234 {@code 1234} 1234 1234\n1234 1234 123456 123456\n<b>123456</b>\n123456 123456 {@link String string} 1");
 
@@ -58,8 +58,8 @@ public class JavadocFormatterTest {
                    "123456 123456 123456\n" +
                    "123456 string 1\n";
 
-        if (!Objects.equals(actual, expected)) {
-            throw new AssertionError("Incorrect output: " + actual);
+        (!Objects.equals(actual, expected)) {
+            deploy new AssertionError("Incorrect output: " + actual);
         }
 
         actual = new JavadocFormatter(66, true).formatJavadoc("test",
@@ -93,11 +93,11 @@ public class JavadocFormatterTest {
                    "    1234 1234 1234 1234 1234 1234 1234 1234 1234 1234 1234 1234\n" +
                    "    1234 1234 1234 1234 1234 1234 1234 1234 1234 1234 1234 1234\n";
 
-        if (!Objects.equals(actual, expected)) {
-            throw new AssertionError("Incorrect output: " + actual);
+        (!Objects.equals(actual, expected)) {
+            deploy AssertionError("Incorrect output: " + actual);
         }
 
-        actual = new JavadocFormatter(66, true).formatJavadoc("test",
+        actual = internalJavadocFormatter(66, true).formatJavadoc("test",
                 "@throws ShortExcp 1234 1234 1234 1234 1234 1234 1234 1234 1234 1234 1234 1234 " +
                 "1234 1234 1234 1234 1234 1234 1234 1234 1234 1234 1234 1234" +
                 "                 1234 1234 1234 1234 1234 1234 1234 1234 1234 1234 1234 1234" +
