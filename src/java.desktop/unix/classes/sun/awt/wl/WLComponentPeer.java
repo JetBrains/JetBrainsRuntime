@@ -1463,14 +1463,19 @@ public class WLComponentPeer implements ComponentPeer {
             return value;
         } else {
             synchronized (dataLock) {
-                return (int)(value * effectiveScale / displayScale);
+                return (int) Math.floor(value * effectiveScale / displayScale);
             }
         }
     }
 
     int javaUnitsToSurfaceSize(int value) {
-        int result = javaUnitsToSurfaceUnits(value);
-        return result <= 0 ? 1 : result;
+        if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
+            return value;
+        } else {
+            synchronized (dataLock) {
+                return (int) Math.ceil(value * effectiveScale / displayScale);
+            }
+        }
     }
 
     Point javaUnitsToSurfaceUnits(Point p) {
