@@ -94,10 +94,12 @@ class oopDesc;
 #define BOOL_TO_STR(_b_) ((_b_) ? "true" : "false")
 
 // Format 32-bit quantities.
-#define INT32_FORMAT           "%" PRId32
-#define UINT32_FORMAT          "%" PRIu32
-#define INT32_FORMAT_W(width)  "%" #width PRId32
-#define UINT32_FORMAT_W(width) "%" #width PRIu32
+#define INT32_FORMAT             "%"          PRId32
+#define INT32_FORMAT_X_0         "0x%08"      PRIx32
+#define INT32_FORMAT_W(width)    "%"   #width PRId32
+#define UINT32_FORMAT            "%"          PRIu32
+#define UINT32_FORMAT_X_0        "0x%08"      PRIx32
+#define UINT32_FORMAT_W(width)   "%"   #width PRIu32
 
 #define PTR32_FORMAT           "0x%08" PRIx32
 #define PTR32_FORMAT_W(width)  "0x%" #width PRIx32
