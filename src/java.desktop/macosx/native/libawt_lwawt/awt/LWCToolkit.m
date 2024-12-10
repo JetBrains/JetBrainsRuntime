@@ -59,8 +59,7 @@
 /* RunLoop run max duration = 4 millis */
 #define RUN_LOOP_TICK           (0.004)
 /* RunLoop critical run max duration = 1 millis */
-/* was 0.001 */
-#define RUN_LOOP_TICK_CRITICAL  (0.0)
+#define RUN_LOOP_TICK_CRITICAL  (0.001)
 
 #define TRACE_RUN_LOOP  0
 
@@ -624,15 +623,14 @@ JNI_COCOA_ENTER(env);
 
     while (![mediatorObject shouldEndRunLoop] && isRunning) {
         // always process critical events:
-        if (YES) {
-            // Check every few ms at least:
-            [deadlineDate release];
-            deadlineDate = [NSDate dateWithTimeIntervalSinceNow:RUN_LOOP_TICK_CRITICAL];
+        // Check every few ms at least:
+        [deadlineDate release];
+        deadlineDate = [NSDate dateWithTimeIntervalSinceNow:RUN_LOOP_TICK_CRITICAL];
 
-            // Runs the loop once, blocking for input in the specified mode until the deadline date:
-            BOOL hasRunCritical = [[NSRunLoop currentRunLoop] runMode:criticalRunMode beforeDate:deadlineDate];
-            if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: hasRunCritical = %d", hasRunCritical);
-        }
+        // Runs the loop once, blocking for input in the specified mode until the deadline date:
+        BOOL hasRunCritical = [[NSRunLoop currentRunLoop] runMode:criticalRunMode beforeDate:deadlineDate];
+        if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: hasRunCritical = %d", hasRunCritical);
+
         // Check every few ms at least:
         [deadlineDate release];
         deadlineDate = [NSDate dateWithTimeIntervalSinceNow:RUN_LOOP_TICK];
