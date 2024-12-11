@@ -1,5 +1,6 @@
 java/awt/Choice/ChoiceHandleMouseEvent.java
 java/awt/Choice/ChoiceHandleMouseEvent_2.java JBR-7174 windows-all
+java/awt/dnd/RecognizedActionTest/RecognizedActionTest.java JBR-8017 windows-x64
 java/awt/Graphics/XORPaint.java#id0 JBR-7499 windows-x64
 java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java   nobug macosx-all,linux-all,windows-all
 java/awt/Toolkit/AWTThreadingTest.java              nobug macosx-all,linux-all,windows-all
