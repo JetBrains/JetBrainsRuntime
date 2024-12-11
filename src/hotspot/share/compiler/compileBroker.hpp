@@ -87,7 +87,7 @@ class CompileQueue : public CHeapObj<mtCompiler> {
 
   CompileTask* _first_stale;
 
-  int _size;
+  volatile int _size;
 
   void purge_stale_tasks();
  public:
@@ -399,6 +399,8 @@ public:
 
   static CompileLog* get_log(CompilerThread* ct);
 
+  static int get_c1_thread_count() {                return _compilers[0]->num_compiler_threads(); }
+  static int get_c2_thread_count() {                return _compilers[1]->num_compiler_threads(); }
   static int get_total_compile_count() {            return _total_compile_count; }
   static int get_total_bailout_count() {            return _total_bailout_count; }
   static int get_total_invalidated_count() {        return _total_invalidated_count; }
