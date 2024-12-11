@@ -756,6 +756,15 @@ static void write_classloaders() {
     CompositeCldCallback callback(&_subsystem_callback, &ccldwwc);
     do_class_loaders();
   }
+  if (is_initial_typeset_for_chunk()) {
+    CldPtr bootloader = get_cld(Universe::boolArrayKlassObj());
+    assert(bootloader != nullptr, "invariant");
+    if (IS_NOT_SERIALIZED(bootloader)) {
+      write__classloader(_writer, bootloader);
+      assert(IS_SERIALIZED(bootloader), "invariant");
+      cldw.add(1);
+    }
+  }
   _artifacts->tally(cldw);
 }
 
