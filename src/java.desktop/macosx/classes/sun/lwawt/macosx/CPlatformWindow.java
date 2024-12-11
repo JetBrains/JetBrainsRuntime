@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -1182,6 +1183,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             = Boolean.parseBoolean(AccessController.doPrivileged(
                 new GetPropertyAction("awt.mac.flushBuffers.invokeLater", "false")));
 
+    private final static int INVOKE_LATER_COUNT = 5;
+    private final static AtomicInteger invokeLaterCount = new AtomicInteger();
+
     void flushBuffers() {
         // only 1 usage by deliverMoveResizeEvent():
         if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
@@ -1203,9 +1207,25 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 if (device instanceof CGraphicsDevice) {
                     // JBR-5497: avoid deadlock in mirroring mode (laptop + external screen):
                     useInvokeLater = ((CGraphicsDevice)device).isMirroring();
+                    logger.fine("CPlatformWindow.flushBuffers: CGraphicsDevice.isMirroring = {0}", useInvokeLater);
                 }
             }
-            logger.fine("CPlatformWindow.flushBuffers: useInvokeLater = {0}", useInvokeLater);
+            // JBR-5497: keep few more invokeLater() when computer returns from sleep or displayChanged()
+            // to avoid deadlocks until solved definitely:
+            if (useInvokeLater) {
+                // reset to max count:
+                invokeLaterCount.set(INVOKE_LATER_COUNT);
+            } else {
+                final int prev = invokeLaterCount.get();
+                if (prev > 0) {
+                    invokeLaterCount.compareAndSet(prev, prev - 1);
+                    useInvokeLater = true;
+                }
+            }
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("CPlatformWindow.flushBuffers: useInvokeLater = {0} (count = {1})",
+                        useInvokeLater, invokeLaterCount.get());
+            }
             try {
                 // check invokeAndWait: KO (operations require AWTLock and main thread)
                 // => use invokeLater as it is an empty event to force refresh ASAP

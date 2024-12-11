@@ -189,9 +189,10 @@ public final class CGraphicsDevice extends GraphicsDevice
     boolean updateDevice() {
         int s = scale;
         double xr = xResolution, yr = yResolution;
+        boolean m = isMirroring;
         var b = bounds;
         displayChanged();
-        return s == scale && xr == xResolution && yr == yResolution && b.equals(bounds);
+        return s == scale && xr == xResolution && yr == yResolution && m == isMirroring && b.equals(bounds);
     }
 
     public void displayParametersChanged() {

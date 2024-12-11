@@ -82,19 +82,6 @@ public class StatLong {
         return sb;
     }
 
-    public String toString(double scale) {
-        return toString(new StringBuilder(128), scale).toString();
-    }
-
-    public final StringBuilder toString(final StringBuilder sb, double scale) {
-        sb.append(name).append('[').append(count);
-        sb.append("] sum: ").append(trimTo3Digits(scale * sum)).append(" avg: ");
-        sb.append(trimTo3Digits((scale * sum) / count));
-        sb.append(" [").append(trimTo3Digits(scale * min));
-        sb.append(" | ").append(trimTo3Digits(scale * max)).append("]");
-        return sb;
-    }
-
     /**
      * Adjust the given double value to keep only 3 decimal digits
      *
@@ -105,3 +92,4 @@ public class StatLong {
         return ((long) (1e3d * value)) / 1e3d;
     }
 }
+

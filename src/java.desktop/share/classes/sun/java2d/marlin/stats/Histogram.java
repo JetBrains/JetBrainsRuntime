@@ -92,19 +92,8 @@ public final class Histogram extends StatLong {
                 sb.append("\n        ").append(stats[i].toString());
             }
         }
-        return sb.append(" }").toString();
-    }
 
-    public String toString(double scale) {
-        final StringBuilder sb = new StringBuilder(2048);
-        super.toString(sb, scale).append(" { ");
-
-        for (int i = 0; i < MAX; i++) {
-            if (stats[i].count != 0L) {
-                sb.append("\n        ");
-                stats[i].toString(sb, scale);
-            }
-        }
         return sb.append(" }").toString();
     }
 }
+

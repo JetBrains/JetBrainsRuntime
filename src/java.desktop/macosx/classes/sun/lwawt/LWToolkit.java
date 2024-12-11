@@ -34,7 +34,6 @@ import java.security.*;
 import java.util.*;
 
 import sun.awt.*;
-import sun.awt.util.PerformanceLogger;
 import sun.java2d.MacOSFlags;
 import sun.print.*;
 import sun.awt.util.ThreadGroupUtils;
@@ -66,13 +65,6 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     private volatile boolean dynamicLayoutSetting = true;
 
     protected LWToolkit() {
-        if (PerformanceLogger.loggingEnabled()) {
-            PerformanceLogger.setTime("LWToolkit construction");
-        }
-
-        if (Tracer.tracingEnabled()) {
-            addAwtLockListener(new Tracer.AwtLockTracer());
-        }
     }
 
     /*
