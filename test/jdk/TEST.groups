@@ -899,6 +899,7 @@ jdk_awt_wayland = \
     -java/awt/Focus/ClearGlobalFocusOwnerTest \
     -java/awt/Focus/ClearLwQueueBreakTest \
     -java/awt/Focus/ClearMostRecentFocusOwnerTest.java \
+    -java/awt/Focus/ComponentLostFocusTest.java \
     -java/awt/Focus/ConsumedTabKeyTest.java \
     -java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest \
     -java/awt/Focus/ContainerFocusAutoTransferTest \
