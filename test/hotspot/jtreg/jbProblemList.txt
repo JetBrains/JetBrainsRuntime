@@ -47,17 +47,19 @@ gtest/LargePageGtests.java#use-large-pages-1G initial_run linux-all
 gtest/GTestWrapper.java initial_run generic-all
 gtest/MetaspaceUtilsGtests.java initial_run generic-all
 gtest/MetaspaceGtests.java#balanced-no-ccs initial_run generic-all
-gtest/MetaspaceGtests.java#balanced-with-guards JBR-5718 generic-all
-gtest/MetaspaceGtests.java#default-debug JBR-5718 generic-all
-gtest/MetaspaceGtests.java#reclaim-aggressive-debug JBR-5718 generic-all
-gtest/MetaspaceGtests.java#reclaim-none-debug JBR-5718 generic-all
+gtest/MetaspaceGtests.java#balanced-with-guards JBR-4027 generic-all
+gtest/MetaspaceGtests.java#default-debug JBR-4027 generic-all
+gtest/MetaspaceGtests.java#reclaim-aggressive-debug JBR-4027 generic-all
+gtest/MetaspaceGtests.java#reclaim-none-debug JBR-4027 generic-all
 gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug initial_run generic-all
+gtest/MetaspaceGtests.java#UseCompactObjectHeaders JBR-4027 generic-all
 gtest/LargePageGtests.java#use-large-pages initial_run linux-all,windows-all
 
-gtest/NativeHeapTrimmerGtest.java JBR-5718 generic-all
-gtest/NMTGtests.java#nmt-detail JBR-5718 generic-all
-gtest/NMTGtests.java#nmt-off JBR-5718 generic-all
-gtest/NMTGtests.java#nmt-summary JBR-5718 generic-all
+gtest/NativeHeapTrimmerGtest.java JBR-4027 generic-all
+gtest/NMTGtests.java#nmt-detail JBR-4027 generic-all
+gtest/NMTGtests.java#nmt-off JBR-4027 generic-all
+gtest/NMTGtests.java#nmt-summary JBR-4027 generic-all
+gtest/WindowsProcessorGroups.java JBR-4027 generic-all
 
 gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
 
@@ -150,13 +152,14 @@ runtime/cds/appcds/methodHandles/MethodHandlesCastFailureTest.java initial_run g
 runtime/cds/appcds/methodHandles/MethodHandlesGeneralTest.java initial_run generic-all
 runtime/ReservedStack/ReservedStackTestCompiler.java initial_run windows-aarch64
 runtime/cds/appcds/dynamicArchive/CDSStreamTestDriver.java initial_run generic-all
-runtime/ErrorHandling/CreateCoredumpOnCrash.java initial_run windows-aarch64
 runtime/ReservedStack/ReservedStackTest.java initial_run windows-aarch64
 runtime/cds/appcds/methodHandles/MethodHandlesPermuteArgumentsTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesAsCollectorTest.java initial_run generic-all
 runtime/cds/SharedBaseAddress.java initial_run generic-all
+runtime/cds/TestCDSVMCrash.java JBR-6616 windows-aarch64
+runtime/cds/TestDefaultArchiveLoading.java#coops_nocoh JBR-6616 windows-aarch64
+runtime/cds/TestDefaultArchiveLoading.java#nocoops_nocoh JBR-6616 windows-aarch64
 runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_run generic-all
-containers/docker/TestJcmd.java 8278102 linux-all
 containers/docker/TestMemoryAwareness.java 8303470 linux-all
 
 #############################################################################
@@ -172,10 +175,10 @@ serviceability/jvmti/RedefineClasses/RedefineSharedClassJFR.java JBR-6245 generi
 serviceability/dcmd/gc/RunFinalizationTest.java 8227120 linux-all,windows-x64
 
 serviceability/sa/ClhsdbCDSCore.java 8294316,8267433 macosx-x64
-serviceability/sa/ClhsdbFindPC.java#xcomp-core 8294316,8267433 macosx-x64
-serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8294316,8267433 macosx-x64,linux_aarch64
-serviceability/sa/ClhsdbPmap.java#core 8294316,8267433 macosx-x64
-serviceability/sa/ClhsdbPstack.java#core 8294316,8267433 macosx-x64
+serviceability/sa/ClhsdbFindPC.java#xcomp-core 8267433,JBR-6259 macosx-x64,windows-aarch64
+serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8267433,JBR-6259 macosx-x64,linux_aarch64,windows-aarch64
+serviceability/sa/ClhsdbPmap.java#core 8267433,JBR-6259 macosx-x64,windows-aarch64
+serviceability/sa/ClhsdbPstack.java#core 8267433,JBR-6259 macosx-x64,windows-aarch64
 serviceability/sa/TestJmapCore.java 8294316,8267433 macosx-x64
 serviceability/sa/TestJmapCoreMetaspace.java 8294316,8267433 macosx-x64
 
@@ -183,34 +186,25 @@ serviceability/attach/ConcAttachTest.java 8290043 linux-all
 serviceability/jvmti/RedefineClasses/TestMultipleClasses.java initial_run windows-all
 serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java initial_run generic-aarch64
 
-serviceability/dcmd/gc/RunFinalizationTest.java 8227120 linux-all,windows-x64,aix-ppc64
-
 serviceability/sa/ClhsdbJstackXcompStress.java initial_run windows-all
 
-serviceability/sa/ClhsdbCDSCore.java 8267433 macosx-x64
 serviceability/sa/ClhsdbPrintAs.java initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#id1 initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#id2 initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#id3 initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#no-xcomp-process 8269881 generic-all 8277079
-serviceability/sa/ClhsdbFindPC.java#xcomp-core 8267433,JBR-6259 macosx-x64,windows-aarch64
-serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8267433,JBR-6259 macosx-x64,linux_aarch64,windows-aarch64
 
 serviceability/sa/ClhsdbCDSJstackPrintAll.java initial_run windows-aarch64
 serviceability/sa/TestClhsdbJstackLock.java initial_run windows-aarch64
 serviceability/sa/ClhsdbSource.java initial_run windows-aarch64
 serviceability/sa/ClhsdbJdis.java initial_run windows-aarch64
 serviceability/sa/TestJhsdbJstackLock.java initial_run windows-aarch64
-serviceability/sa/ClhsdbCDSCore.java initial_run generic-aarch64
 serviceability/sa/ClhsdbJstack.java#id1 initial_run windows-aarch64
-serviceability/sa/ClhsdbPmap.java#core 8267433,JBR-6259 macosx-x64,windows-aarch64
-serviceability/sa/ClhsdbPstack.java#core 8267433,JBR-6259 macosx-x64,windows-aarch64
 
 serviceability/sa/ClhsdbPstack.java#id1 initial_run generic-aarch64
 serviceability/sa/ClhsdbPmap.java#id1 initial_run generic-all
 serviceability/sa/ClhsdbWhere.java initial_run windows-aarch64
 serviceability/sa/ClhsdbDumpheap.java initial_run windows-aarch64
-serviceability/attach/ConcAttachTest.java 8290043 linux-all
 
 #############################################################################
 
@@ -277,17 +271,12 @@ vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi005/TestDescription
 
 ### initial_runs
 
-gc/shenandoah/mxbeans/TestChurnNotifications.java#aggressive NO_BUG macosx_all
-
 runtime/cds/appcds/TestDumpClassListSource.java NO_BUG generic_all
 runtime/cds/appcds/CommandLineFlagCombo.java NO_BUG generic_all
 runtime/cds/appcds/dynamicArchive/TestAutoCreateSharedArchiveNoDefaultArchive.java NO_BUG generic_all
 runtime/cds/appcds/dynamicArchive/TestAutoCreateSharedArchiveUpgrade.java NO_BUG generic_all
-runtime/cds/CheckDefaultArchiveFile.java NO_BUG generic_all
 
-serviceability/jvmti/SetBreakpoint/TestManyBreakpoints.java NO_BUG linux_aarch64
 vmTestbase/nsk/stress/thread/thread008.java initial_run windows-all
-compiler/vectorapi/VectorRebracket128Test.java NO_BUG linux_aarch64
 
 vmTestbase/nsk/sysdict/vm/stress/btree/btree001/btree001.java initial_run windows-aarch64
 vmTestbase/nsk/sysdict/vm/stress/btree/btree005/btree005.java initial_run windows-aarch64
