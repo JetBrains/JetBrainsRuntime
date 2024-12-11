@@ -1,6 +1,7 @@
 jb/applications/ctw/lib_3rd_party_native.java JBR-6832 linux-all,windows-all,macosx-all
 jb/applications/ctw/lib_3rd_party_rt.java JBR-6832 linux-all,windows-all,macosx-all
 jb/applications/ctw/lib_app.java JBR-6832 linux-all,windows-all,macosx-all
+jb/applications/ctw/lib_groovy.java JBR-6832 linux-all,windows-all,macosx-all
 jb/applications/ctw/plugins_android_lib_android.java JBR-6832 linux-all,windows-all,macosx-all
 jb/applications/ctw/plugins_android_resources_androidAnnotations.java JBR-7360 linux-all,windows-all,macosx-all
 jb/applications/ctw/plugins_design_tools_lib_design_tools.java JBR-6832 linux-all,windows-all,macosx-all
