@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import jdk.jpackage.test.PackageTest;
 import jdk.jpackage.test.PackageType;
 import jdk.jpackage.test.Functional;
 import jdk.jpackage.test.Annotations.Test;
-import jdk.jpackage.test.Annotations.Parameter;
 import jdk.jpackage.test.PackageTest;
 import jdk.jpackage.test.JPackageCommand;
 import jdk.jpackage.test.JavaTool;
@@ -54,10 +53,7 @@ import jdk.jpackage.test.Executor;
 public class RuntimeImageTest {
 
     @Test
-    @Parameter("0")
-    @Parameter("1")
-    @Parameter("2")
-    public static void test(String compression) throws Exception {
+    public static void test() throws Exception {
         final Path workDir = TKit.createTempDirectory("runtime").resolve("data");
         final Path jlinkOutputDir = workDir.resolve("temp.runtime");
         Files.createDirectories(jlinkOutputDir.getParent());
@@ -67,7 +63,6 @@ public class RuntimeImageTest {
         .dumpOutput()
         .addArguments(
                 "--output", jlinkOutputDir.toString(),
-                "--compress=" + compression,
                 "--add-modules", "ALL-MODULE-PATH",
                 "--strip-debug",
                 "--no-header-files",
