@@ -26,16 +26,17 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
 import java.util.concurrent.CountDownLatch;
 
 /*
  * @test
  * @summary Verifies that robot correctly pick color
- * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=False RobotGetPixelTest
+ * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True RobotGetPixelsTest
  */
 
 
-public class RobotGetPixelTest {
+public class RobotGetPixelsTest {
     final static int W = 600;
     final static int H = 600;
 
@@ -69,10 +70,12 @@ public class RobotGetPixelTest {
             frame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowActivated(WindowEvent e) {
+                    BufferedImage bi = robot.createScreenCapture(
+                            new Rectangle(frame.getX(), frame.getY(), frame.getWidth(), frame.getHeight()));
                     int x = frame.getX() + frame.getInsets().bottom + W/6;
                     int y = frame.getY() + frame.getInsets().left + H/6;
 
-                    Color c = robot.getPixelColor(x, y);
+                    Color c = new Color(bi.getRGB(x,y));
                     if (!compareColors(c, Color.RED, 10)) {
                         System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
                         failed = true;
@@ -81,7 +84,7 @@ public class RobotGetPixelTest {
                     x += W/3;
                     y += H/3;
 
-                    c = robot.getPixelColor(x, y);
+                    c = new Color(bi.getRGB(x,y));
                     if (!compareColors(c, Color.GREEN, 10)) {
                         System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
                         failed = true;
@@ -90,7 +93,7 @@ public class RobotGetPixelTest {
                     x += W/3;
                     y += H/3;
 
-                    c = robot.getPixelColor(x, y);
+                    c = new Color(bi.getRGB(x,y));
                     if (!compareColors(c, Color.BLUE, 10)) {
                         System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
                         failed = true;

@@ -107,8 +107,8 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt(JNIEnv *env, jobject vksd, jint x
 
     VkBufferImageCopy region = {
             .bufferOffset = 0,
-            .bufferRowLength = image->extent.width,
-            .bufferImageHeight = image->extent.height,
+            .bufferRowLength = 0,
+            .bufferImageHeight = 0,
             .imageSubresource= {
                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                     .mipLevel = 0,
@@ -162,8 +162,8 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt(JNIEnv *env, jobject vksd, jint 
 
     VkBufferImageCopy region = {
             .bufferOffset = 0,
-            .bufferRowLength = image->extent.width,
-            .bufferImageHeight = image->extent.height,
+            .bufferRowLength = 0,
+            .bufferImageHeight = 0,
             .imageSubresource= {
                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                     .mipLevel = 0,
