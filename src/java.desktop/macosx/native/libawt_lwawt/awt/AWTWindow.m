@@ -1011,8 +1011,6 @@ AWT_ASSERT_APPKIT_THREAD;
             return;
         }
         self.currentDisplayID = newDisplayID;
-
-        // should adjust the cvdisplayLink (using volatile flag ?)
     }
 
     JNIEnv *env = [ThreadUtilities getJNIEnv];

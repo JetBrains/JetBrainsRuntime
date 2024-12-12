@@ -27,7 +27,7 @@ public class AWTThreading {
 
     private static final PlatformLogger logger = PlatformLogger.getLogger(AWTThreading.class.getName());
 
-    private static final boolean TRACE_RUN_LOOP = false; // use System property
+    private static final boolean TRACE_RUN_LOOP = false;
 
     private static final Runnable EMPTY_RUNNABLE = () -> {};
 

@@ -39,7 +39,7 @@ static NSInteger architecture = -1;
 /*
  * Convert the mode string to the more convenient bits per pixel value
  */
-static int getBPPFromModeString(CFStringRef mode)
+int getBPPFromModeString(CFStringRef mode)
 {
     if ((CFStringCompare(mode, CFSTR(kIO30BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo)) {
         // This is a strange mode, where we using 10 bits per RGB component and pack it into 32 bits

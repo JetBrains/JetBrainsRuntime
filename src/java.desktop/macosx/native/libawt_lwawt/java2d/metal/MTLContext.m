@@ -51,6 +51,7 @@
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
 extern BOOL MTLLayer_isExtraRedrawEnabled();
+extern int getBPPFromModeString(CFStringRef mode);
 
 #define STATS_CVLINK    0
 
@@ -301,30 +302,6 @@ extern void initSamplers(id<MTLDevice> device);
     }
     return self;
 }
-
-/*
- * Convert the mode string to the more convenient bits per pixel value
- */
-static int getBPPFromModeString(CFStringRef mode)
-{
-    if ((CFStringCompare(mode, CFSTR(kIO30BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo)) {
-        // This is a strange mode, where we using 10 bits per RGB component and pack it into 32 bits
-        // Java is not ready to work with this mode but we have to specify it as supported
-        return 30;
-    }
-    else if (CFStringCompare(mode, CFSTR(IO32BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
-        return 32;
-    }
-    else if (CFStringCompare(mode, CFSTR(IO16BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
-        return 16;
-    }
-    else if (CFStringCompare(mode, CFSTR(IO8BitIndexedPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
-        return 8;
-    }
-
-    return 0;
-}
-
 
 + (void)dumpDisplayInfo: (jint)displayID {
     // Returns a Boolean value indicating whether a display is active.
