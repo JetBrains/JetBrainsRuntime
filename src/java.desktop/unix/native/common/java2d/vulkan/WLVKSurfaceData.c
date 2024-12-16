@@ -84,7 +84,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_assignWlSurface(JN
 JNIEXPORT jint JNICALL
 Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt(JNIEnv *env, jobject vksd, jint x, jint y)
 {
-    J2dRlsTraceLn(J2D_TRACE_INFO, "Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt");
+    J2dTraceLn(J2D_TRACE_INFO, "Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt")
     jint pixel = 0xFFB6C1; // the color pink to make errors visible
 
     VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);
@@ -96,6 +96,19 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt(JNIEnv *env, jobject vksd, jint x
     VKDevice* device = sd->vksdOps.device;
     VKImage* image = sd->vksdOps.image;
 
+    if (image == NULL || device == NULL) {
+        J2dRlsTraceLn2(J2D_TRACE_ERROR,
+                      "Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt: image(%p) or device(%p) is NULL", image, device)
+        return pixel;
+    }
+
+    SurfaceDataBounds bounds =  {x, y, x + 1, y + 1};
+    SurfaceData_IntersectBoundsXYWH(&bounds, 0, 0, (jint)image->extent.width, (jint)image->extent.height);
+    if (bounds.x2 <= bounds.x1 || bounds.y2 <= bounds.y1) {
+        JNU_ThrowByName(env, "java/lang/ArrayIndexOutOfBoundsException", "Coordinate out of bounds");
+        return pixel;
+    }
+    
     VkCommandBuffer cb = VKRenderer_Record(device->renderer);
 
     VKBuffer* buffer = VKBuffer_Create(device, sizeof(jint),
@@ -135,22 +148,39 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt(JNIEnv *env, jobject vksd, jint x
 JNIEXPORT jarray JNICALL
 Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt(JNIEnv *env, jobject vksd, jint x, jint y, jint width, jint height)
 {
-    J2dRlsTraceLn(J2D_TRACE_INFO, "Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt");
+    J2dTraceLn(J2D_TRACE_INFO, "Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt")
     VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);
 
-    jintArray arrayObj = NULL;
-    size_t bufferSizeInPixels = width * height;
-    arrayObj = (*env)->NewIntArray(env, bufferSizeInPixels);
-
-    JNU_CHECK_EXCEPTION_RETURN(env, arrayObj);
+    JNU_CHECK_EXCEPTION_RETURN(env, NULL);
 
     if (sd == NULL) {
-        return arrayObj;
+        return NULL;
     }
 
     VKDevice* device = sd->vksdOps.device;
     VKImage* image = sd->vksdOps.image;
 
+    if (image == NULL || device == NULL) {
+        J2dRlsTraceLn2(J2D_TRACE_ERROR,
+                       "Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt: image(%p) or device(%p) is NULL", image, device)
+        return NULL;
+    }
+
+    SurfaceDataBounds bounds =  {x, y, x + width, y + height};
+    SurfaceData_IntersectBoundsXYWH(&bounds, 0, 0, (jint)image->extent.width, (jint)image->extent.height);
+    if (bounds.x2 <= bounds.x1 || bounds.y2 <= bounds.y1) {
+        JNU_ThrowByName(env, "java/lang/ArrayIndexOutOfBoundsException", "Coordinate out of bounds");
+        return NULL;
+    }
+
+    if (bounds.x2 - bounds.x1 < width || bounds.y2 - bounds.y1 < height) {
+        JNU_ThrowByName(env, "java/lang/ArrayIndexOutOfBoundsException", "Surface too small");
+        return NULL;
+    }
+
+    jintArray arrayObj = NULL;
+    jsize bufferSizeInPixels = width * height;
+    arrayObj = (*env)->NewIntArray(env, bufferSizeInPixels);
     VkCommandBuffer cb = VKRenderer_Record(device->renderer);
 
     VKBuffer* buffer = VKBuffer_Create(device, bufferSizeInPixels * sizeof(jint),
@@ -170,8 +200,8 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt(JNIEnv *env, jobject vksd, jint 
                     .baseArrayLayer = 0,
                     .layerCount = 1
             },
-            .imageOffset = {x, y, 0},
-            .imageExtent = {width, height, 1}
+            .imageOffset = {bounds.x1, bounds.y1, 0},
+            .imageExtent = {bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, 1}
     };
 
     device->vkCmdCopyImageToBuffer(cb, image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
