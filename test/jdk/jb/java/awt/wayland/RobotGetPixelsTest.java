@@ -31,6 +31,7 @@ import java.util.concurrent.CountDownLatch;
 
 /*
  * @test
+ * @requires os.family == "linux"
  * @summary Verifies that robot correctly pick color
  * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True RobotGetPixelsTest
  * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=False RobotGetPixelsTest
