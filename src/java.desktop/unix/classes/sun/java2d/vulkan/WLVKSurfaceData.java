@@ -154,7 +154,7 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
     public int [] getRGBPixelsAt(Rectangle bounds) {
         int [] pixels = pixelsAt(bounds.x, bounds.y, bounds.width, bounds.height);
         var surfaceType = getSurfaceType();
-        if (surfaceType.equals(SurfaceType.IntArgbPre) ||  surfaceType.equals(SurfaceType.IntRgb)) {
+        if (surfaceType.equals(SurfaceType.IntArgbPre) || surfaceType.equals(SurfaceType.IntRgb)) {
             // No conversion is necessary, can return raw pixels
         } else {
             var cm = getColorModel();
