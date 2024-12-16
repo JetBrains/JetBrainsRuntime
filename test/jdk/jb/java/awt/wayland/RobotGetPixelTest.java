@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright 2024 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +31,7 @@ import java.util.concurrent.CountDownLatch;
  * @test
  * @summary Verifies that robot correctly pick color
  * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True RobotGetPixelTest
+ * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=False RobotGetPixelTest
  */
 
 
@@ -94,6 +94,20 @@ public class RobotGetPixelTest {
                     if (!compareColors(c, Color.BLUE, 10)) {
                         System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
                         failed = true;
+                    }
+
+                    int[] extremeValues = {Integer.MIN_VALUE, Integer.MIN_VALUE + 1, Integer.MAX_VALUE - 1,
+                            Integer.MAX_VALUE};
+
+                    for (int i = 0; i < extremeValues.length; i++) {
+                        for (int j = 0; j < extremeValues.length; j++) {
+                            try {
+                                c = robot.getPixelColor(extremeValues[i], extremeValues[j]);
+                                failed = true;
+                            } catch (ArrayIndexOutOfBoundsException ex) {
+                                // Expected
+                            }
+                        }
                     }
                     latchShownFrame.countDown();
                 }
