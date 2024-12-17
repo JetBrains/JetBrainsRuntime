@@ -81,51 +81,45 @@ public class WLPopupResize {
         SwingUtilities.invokeAndWait(WLPopupResize::showPopup);
         pause(robot);
 
-        double uiScale = getUiScale();
-        System.out.printf("UI scale: %.2f.\n", uiScale);
-        int pixelThreshold = uiScale == 1.0 ? 0 : (int) Math.ceil(uiScale);
-        System.out.printf("Pixel threshold for verifications: %d\n", pixelThreshold);
+        try {
+            int tolerance = getTolerance();
 
-        int x = 10, y = 20, w = 120, h = 80;
-        System.out.println("Set popup size to (120, 80)");
-        SwingUtilities.invokeAndWait(() -> {
-            popup.setBounds(x, y, w, h);
-        });
-        Rectangle bounds = popup.getBounds();
-        boolean isCorrectPosition = x - pixelThreshold <= bounds.x && bounds.x <= x + pixelThreshold &&
-                y - pixelThreshold <= bounds.y && bounds.y <= y + pixelThreshold;
-        if (!isCorrectPosition) {
-            throw new RuntimeException("Popup position has unexpectedly changed. Bounds: " + popup.getBounds());
-        }
-        if (popup.getBounds().width != w || popup.getBounds().height != h) {
-            throw new RuntimeException("Popup size wasn't correctly changed. Bounds: " + popup.getBounds());
-        }
-        pause(robot);
-        System.out.println("Next checks after robot's waiting for idle.");
+            int x = 10, y = 20, w = 120, h = 80;
+            System.out.println("Set popup size to (120, 80)");
+            SwingUtilities.invokeAndWait(() -> {
+                popup.setBounds(x, y, w, h);
+            });
+            Rectangle bounds = popup.getBounds();
+            if (isOutsideTolerance(x, y, bounds.x, bounds.y, tolerance)) {
+                throw new RuntimeException("Popup position has unexpectedly changed. Bounds: " + popup.getBounds());
+            }
+            if (isOutsideTolerance(w, h, bounds.width, bounds.height, tolerance)) {
+                throw new RuntimeException("Popup size wasn't correctly changed. Bounds: " + popup.getBounds());
+            }
+            pause(robot);
+            System.out.println("Next checks after robot's waiting for idle.");
 
-        isCorrectPosition = x - pixelThreshold <= bounds.x && bounds.x <= x + pixelThreshold &&
-                y - pixelThreshold <= bounds.y && bounds.y <= y + pixelThreshold;
-        if (!isCorrectPosition) {
-            throw new RuntimeException("Popup position has unexpectedly changed. Bounds: " + popup.getBounds());
+            bounds = popup.getBounds();
+            if (isOutsideTolerance(x, y, bounds.x, bounds.y, tolerance)) {
+                throw new RuntimeException("Popup position has unexpectedly changed. Bounds: " + popup.getBounds());
+            }
+            if (isOutsideTolerance(w, h, bounds.width, bounds.height, tolerance)) {
+                throw new RuntimeException("Popup size wasn't correctly changed. Bounds: " + popup.getBounds());
+            }
+        } finally {
+            SwingUtilities.invokeAndWait(frame::dispose);
         }
-        if (popup.getBounds().width != w || popup.getBounds().height != h) {
-            throw new RuntimeException("Popup size wasn't correctly changed. Bounds: " + popup.getBounds());
-        }
-        SwingUtilities.invokeAndWait(frame::dispose);
     }
 
-    private static Double getUiScale() {
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        GraphicsDevice device = ge.getDefaultScreenDevice();
-        GraphicsConfiguration gc = device.getDefaultConfiguration();
-        AffineTransform transform = gc.getDefaultTransform();
-        double scaleX = transform.getScaleX();
-        double scaleY = transform.getScaleY();
-        if (scaleX != scaleY) {
-            System.out.println("Skip test due to non-uniform display scale");
-            System.exit(0);
-        }
-        return scaleX;
+    private static int getTolerance() {
+        String uiScaleString = System.getProperty("sun.java2d.uiScale");
+        int tolerance = uiScaleString == null ? 0 : (int) Math.ceil(Double.parseDouble(uiScaleString));
+        System.out.printf("Scale settings: debug scale: %s, tolerance level: %d\n", uiScaleString, tolerance);
+        return tolerance;
+    }
+
+    private static boolean isOutsideTolerance(int expectedX, int expectedY, int realX, int realY, int tolerance) {
+        return Math.abs(realX - expectedX) > tolerance || Math.abs(realY - expectedY) > tolerance;
     }
 
     private static void pause(Robot robot) {
