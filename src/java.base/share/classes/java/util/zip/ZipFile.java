@@ -36,12 +36,9 @@ import java.lang.ref.Cleaner.Cleanable;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
-import java.nio.file.OpenOption;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1579,7 +1576,18 @@ public class ZipFile implements ZipConstants, Closeable {
                 } else {
                     options = Set.of(StandardOpenOption.READ);
                 }
-                FileChannel channel = FileSystems.getDefault().provider().newFileChannel(key.file.toPath(), options);
+                FileSystem defaultFileSystem = null;
+                try {
+                    defaultFileSystem = FileSystems.getDefault();
+                }
+                catch (NullPointerException ignored) {
+                    // NPE can be thrown during class loading, when the classloader tries to invoke ZipFile.
+                }
+                if (defaultFileSystem == null) {
+                    defaultFileSystem = DefaultFileSystemProvider.theFileSystem();
+                }
+                FileChannel channel = defaultFileSystem.provider()
+                        .newFileChannel(defaultFileSystem.getPath(key.file.toString()), options);
                 if (channel instanceof FileChannelImpl) {
                     ((FileChannelImpl) channel).setUninterruptible();
                 }
