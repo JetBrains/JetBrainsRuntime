@@ -76,65 +76,65 @@ public class WLPopupMoves {
         pause(robot);
 
         double uiScale = getUiScale();
-        System.out.printf("UI scale: %.2f.\n", uiScale);
-        int pixelThreshold = uiScale == 1.0 ? 0 : (int) Math.ceil(uiScale);
-        System.out.printf("Pixel threshold for verifications: %d\n", pixelThreshold);
+        int tolerance = getTolerance();
 
-        int w = 120, h = 200;
-        System.out.println("Set popup to (50, 50)");
-        SwingUtilities.invokeAndWait(() -> {
-            popup.setBounds(50, 50, w, h);
-            popup.setVisible(true);
-        });
-        verifyBounds("Popup position after setting to (50, 50)\n", 50, 50, w, h, pixelThreshold);
-        pause(robot);
-        verifyBounds("Popup position (50, 50) after robot's pause\n", 50, 50, w, h, pixelThreshold);
+        try {
+            int w = 120, h = 200;
+            System.out.println("Set popup to (50, 50)");
+            SwingUtilities.invokeAndWait(() -> {
+                popup.setBounds(50, 50, w, h);
+                popup.setVisible(true);
+            });
+            verifyBounds("Popup position after setting to (50, 50)\n", 50, 50, w, h, tolerance);
+            pause(robot);
+            verifyBounds("Popup position (50, 50) after robot's pause\n", 50, 50, w, h, tolerance);
 
-        System.out.println("Set popup to (100, 100)");
-        SwingUtilities.invokeAndWait(() -> {
-            popup.setBounds(100, 100, w, h);
-        });
-        verifyBounds("Popup position after setting to (100, 100)\n", 100, 100, w, h, pixelThreshold);
-        pause(robot);
-        verifyBounds("Popup position (100, 100) after robot's pause\n", 100, 100, w, h, pixelThreshold);
+            System.out.println("Set popup to (100, 100)");
+            SwingUtilities.invokeAndWait(() -> {
+                popup.setBounds(100, 100, w, h);
+            });
+            verifyBounds("Popup position after setting to (100, 100)\n", 100, 100, w, h, tolerance);
+            pause(robot);
+            verifyBounds("Popup position (100, 100) after robot's pause\n", 100, 100, w, h, tolerance);
 
-        int x1 = (int) (toolkit.getScreenSize().width / (2 * uiScale));
-        int y1 = (int) (toolkit.getScreenSize().height / (2 * uiScale));
-        System.out.printf("Set popup to (%d, %d)\n", x1, y1);
-        SwingUtilities.invokeAndWait(() -> {
-            popup.setBounds(x1, y1, w, h);
-        });
-        verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x1, y1), x1, y1, w, h, pixelThreshold);
-        pause(robot);
-        verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x1, y1), x1, y1, w, h, pixelThreshold);
-        
-        int x2 = (int) (toolkit.getScreenSize().width / uiScale - 10 - w);
-        int y2 = (int) (toolkit.getScreenSize().height / uiScale - 10 - h);
-        System.out.printf("Set popup to (%d, %d). (to the bottom right corner) \n", x2, y2);
-        SwingUtilities.invokeAndWait(() -> {
-            popup.setBounds(x2, y2, w, h);
-        });
-        verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x2, y2), x2, y2, w, h, pixelThreshold);
-        pause(robot);
-        verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x2, y2), x2, y2, w, h, pixelThreshold);
+            int x1 = (int) (toolkit.getScreenSize().width / (2 * uiScale));
+            int y1 = (int) (toolkit.getScreenSize().height / (2 * uiScale));
+            System.out.printf("Set popup to (%d, %d)\n", x1, y1);
+            SwingUtilities.invokeAndWait(() -> {
+                popup.setBounds(x1, y1, w, h);
+            });
+            verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x1, y1), x1, y1, w, h, tolerance);
+            pause(robot);
+            verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x1, y1), x1, y1, w, h, tolerance);
 
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        GraphicsDevice device = ge.getDefaultScreenDevice();
-        GraphicsConfiguration gc = device.getDefaultConfiguration();
-        Insets insets = toolkit.getScreenInsets(gc);
-        int x3 = (int) (toolkit.getScreenSize().width / uiScale - 10 - insets.right);
-        int y3 = (int) (toolkit.getScreenSize().height / uiScale - 10 - insets.bottom);
-        System.out.printf("Set popup to (%d, %d). (to the bottom right corner) \n", x3, y3);
-        SwingUtilities.invokeAndWait(() -> {
-            popup.setBounds(x2, y2, w, h);
-        });
-        int x3Relocated = x3 - w;
-        int y3Relocated = y3 - h;
-        verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x3, y3), x3Relocated, y3Relocated, w, h, pixelThreshold);
-        pause(robot);
-        verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x3, y3), x3Relocated, y3Relocated, w, h, pixelThreshold);
+            int x2 = (int) (toolkit.getScreenSize().width / uiScale - 10 - w);
+            int y2 = (int) (toolkit.getScreenSize().height / uiScale - 10 - h);
+            System.out.printf("Set popup to (%d, %d). (to the bottom right corner) \n", x2, y2);
+            SwingUtilities.invokeAndWait(() -> {
+                popup.setBounds(x2, y2, w, h);
+            });
+            verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x2, y2), x2, y2, w, h, tolerance);
+            pause(robot);
+            verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x2, y2), x2, y2, w, h, tolerance);
 
-        SwingUtilities.invokeAndWait(frame::dispose);
+            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            GraphicsDevice device = ge.getDefaultScreenDevice();
+            GraphicsConfiguration gc = device.getDefaultConfiguration();
+            Insets insets = toolkit.getScreenInsets(gc);
+            int x3 = (int) (toolkit.getScreenSize().width / uiScale - 10 - insets.right);
+            int y3 = (int) (toolkit.getScreenSize().height / uiScale - 10 - insets.bottom);
+            System.out.printf("Set popup to (%d, %d). (to the bottom right corner) \n", x3, y3);
+            SwingUtilities.invokeAndWait(() -> {
+                popup.setBounds(x2, y2, w, h);
+            });
+            int x3Relocated = x3 - w;
+            int y3Relocated = y3 - h;
+            verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x3, y3), x3Relocated, y3Relocated, w, h, tolerance);
+            pause(robot);
+            verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x3, y3), x3Relocated, y3Relocated, w, h, tolerance);
+        } finally {
+            SwingUtilities.invokeAndWait(frame::dispose);
+        }
     }
 
     private static Double getUiScale() {
@@ -167,5 +167,16 @@ public class WLPopupMoves {
     private static void pause(Robot robot) {
         robot.waitForIdle();
         robot.delay(500);
+    }
+
+    private static int getTolerance() {
+        String uiScaleString = System.getProperty("sun.java2d.uiScale");
+        int tolerance = uiScaleString == null ? 0 : (int) Math.ceil(Double.parseDouble(uiScaleString));
+        System.out.printf("Scale settings: debug scale: %s, tolerance level: %d\n", uiScaleString, tolerance);
+        return tolerance;
+    }
+
+    private static boolean isOutsideTolerance(int expectedX, int expectedY, int realX, int realY, int tolerance) {
+        return Math.abs(realX - expectedX) > tolerance || Math.abs(realY - expectedY) > tolerance;
     }
 }
