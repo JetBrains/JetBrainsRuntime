@@ -67,13 +67,14 @@ public class WLPopupMinSize {
                 throw new RuntimeException("Popup minimum size is not 1000x100 but " + popupMinSize);
             }
 
+            int tolerance = getTolerance();
             Dimension popupSize = popup.getSize();
             System.out.println("Popup size: " + popupSize);
-            if (popupSize.width != 1000 || popupSize.height != 1000) {
+            if (isOutsideTolerance(1000, 1000, popupSize.width, popupSize.height, tolerance)) {
                 throw new RuntimeException("Popup actual  size is not 1000x100 but " + popupSize);
             }
         } finally {
-            frame.dispose();
+            SwingUtilities.invokeAndWait(frame::dispose);
         }
     }
 
@@ -93,5 +94,16 @@ public class WLPopupMinSize {
 
         // Setting the minimum size at this point must resize the popup window
         popup.setMinimumSize(new Dimension(1000, 1000));
+    }
+
+    private static int getTolerance() {
+        String uiScaleString = System.getProperty("sun.java2d.uiScale");
+        int tolerance = uiScaleString == null ? 0 : (int) Math.ceil(Double.parseDouble(uiScaleString));
+        System.out.printf("Scale settings: debug scale: %s, tolerance level: %d\n", uiScaleString, tolerance);
+        return tolerance;
+    }
+
+    private static boolean isOutsideTolerance(int expectedX, int expectedY, int realX, int realY, int tolerance) {
+        return Math.abs(realX - expectedX) > tolerance || Math.abs(realY - expectedY) > tolerance;
     }
 }
