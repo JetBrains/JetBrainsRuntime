@@ -105,6 +105,7 @@ public class WLComponentPeer implements ComponentPeer {
     double effectiveScale; // protected by dataLock
     private final WLSize wlSize = new WLSize();
     boolean repositionPopup = false; // protected by dataLock
+    boolean resizePending = false; // protected by dataLock
 
     static {
         initIDs();
@@ -495,6 +496,7 @@ public class WLComponentPeer implements ComponentPeer {
             return repositionPopup;
         }
     }
+
     private void markPopupNeedsReposition() {
         synchronized (dataLock) {
             repositionPopup = true;
@@ -504,6 +506,24 @@ public class WLComponentPeer implements ComponentPeer {
     private void popupRepositioned() {
         synchronized (dataLock) {
             repositionPopup = false;
+        }
+    }
+
+    private boolean resizePending() {
+        synchronized (dataLock) {
+            return resizePending;
+        }
+    }
+
+    private void markResizePending() {
+        synchronized (dataLock) {
+            resizePending = true;
+        }
+    }
+
+    private void resizeCompleted() {
+        synchronized (dataLock) {
+            resizePending = false;
         }
     }
 
@@ -532,7 +552,10 @@ public class WLComponentPeer implements ComponentPeer {
         }
 
         if (sizeChanged) {
-            setSizeTo(newSize.width, newSize.height);
+            if (!isSizeBeingConfigured()) {
+                wlSize.deriveFromJavaSize(newSize.width, newSize.height);
+                markResizePending();
+            }
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine(String.format("%s is resizing its buffer to %dx%d pixels",
                         this, getBufferWidth(), getBufferHeight()));
@@ -555,18 +578,6 @@ public class WLComponentPeer implements ComponentPeer {
     private void setSizeIsBeingConfigured(boolean value) {
         synchronized (dataLock) {
             sizeIsBeingConfigured = value;
-        }
-    }
-
-    private void setSizeTo(int newWidth, int newHeight) {
-        if (isSizeBeingConfigured() && wlSize.hasPixelSizeSet()) {
-            // Must be careful not to override the size of the Wayland surface because
-            // some implementations (Weston) react badly when the size of the surface
-            // mismatches the configured size. We can't always precisely derive the surface
-            // size from the Java (client) size because of scaling rounding errors.
-            wlSize.setJavaSize(newWidth, newHeight);
-        } else {
-            wlSize.deriveFromJavaSize(newWidth, newHeight);
         }
     }
 
@@ -1454,6 +1465,16 @@ public class WLComponentPeer implements ComponentPeer {
         }
     }
 
+    int surfaceUnitsToJavaSize(int value) {
+        if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
+            return value;
+        } else {
+            synchronized (dataLock) {
+                return (int) Math.ceil(value * displayScale / effectiveScale);
+            }
+        }
+    }
+
     /**
      * Converts a value in the Java coordinate system into the Wayland
      * surface-local coordinate system.
@@ -1494,7 +1515,8 @@ public class WLComponentPeer implements ComponentPeer {
         }
 
         boolean isWlPopup = targetIsWlPopup();
-        if (isWlPopup) { // Only popups provide (relative) location
+        boolean acceptNewLocation = !popupNeedsReposition();
+        if (isWlPopup && acceptNewLocation) { // Only popups provide (relative) location
             int newX = surfaceUnitsToJavaUnits(newSurfaceX);
             int newY = surfaceUnitsToJavaUnits(newSurfaceY);
 
@@ -1511,8 +1533,12 @@ public class WLComponentPeer implements ComponentPeer {
         // From xdg-shell.xml: "If the width or height arguments are zero,
         // it means the client should decide its own window dimension".
         boolean clientDecidesDimension = newSurfaceWidth == 0 || newSurfaceHeight == 0;
-        if (!clientDecidesDimension) {
-            changeSizeToConfigured(newSurfaceWidth, newSurfaceHeight, maximized);
+        boolean desiredSize =
+                (wlSize.javaSize.width == surfaceUnitsToJavaSize(newSurfaceWidth)
+                && wlSize.javaSize.height == surfaceUnitsToJavaSize(newSurfaceHeight));
+        boolean acceptNewSize = !resizePending() || maximized || desiredSize;
+        if (!clientDecidesDimension && acceptNewSize) {
+            changeSizeToConfigured(newSurfaceWidth, newSurfaceHeight);
         }
 
         if (!surfaceAssigned) {
@@ -1534,16 +1560,13 @@ public class WLComponentPeer implements ComponentPeer {
         }
     }
 
-    private void changeSizeToConfigured(int newSurfaceWidth, int newSurfaceHeight, boolean honorSurfaceSize) {
+    private void changeSizeToConfigured(int newSurfaceWidth, int newSurfaceHeight) {
+        resizeCompleted();
         wlSize.deriveFromSurfaceSize(newSurfaceWidth, newSurfaceHeight);
         int newWidth = wlSize.getJavaWidth();
         int newHeight = wlSize.getJavaHeight();
         try {
-            // When 'honorSurfaceSize' is in effect, we shall not confuse the size given by the server with
-            // the size set by the user. The former originates from the surface size in surface-local coordinates,
-            // while the latter is set in the client (Java) units. These are not always precisely convertible
-            // when the scale differs from 100%.
-            setSizeIsBeingConfigured(honorSurfaceSize);
+            setSizeIsBeingConfigured(true);
             performUnlocked(() -> target.setSize(newWidth, newHeight));
         } finally {
             setSizeIsBeingConfigured(false);
@@ -1748,8 +1771,8 @@ public class WLComponentPeer implements ComponentPeer {
 
         void deriveFromSurfaceSize(int width, int height) {
             synchronized (dataLock) {
-                javaSize.width = surfaceUnitsToJavaUnits(width);
-                javaSize.height = surfaceUnitsToJavaUnits(height);
+                javaSize.width = surfaceUnitsToJavaSize(width);
+                javaSize.height = surfaceUnitsToJavaSize(height);
                 pixelSize.width = width * displayScale;
                 pixelSize.height = height * displayScale;
                 surfaceSize.width = width;
