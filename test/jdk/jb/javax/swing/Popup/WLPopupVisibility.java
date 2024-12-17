@@ -73,57 +73,59 @@ public class WLPopupVisibility {
         SwingUtilities.invokeAndWait(WLPopupVisibility::initPopup);
         pause(robot);
 
-        System.out.println("Action: set the popup visible");
-        SwingUtilities.invokeAndWait(() -> popup.setVisible(true));
-        boolean isVisible1 = popup.isVisible();
-        pause(robot);
-        boolean isVisible2 = popup.isVisible();
+        try {
+            System.out.println("Action: set the popup visible");
+            SwingUtilities.invokeAndWait(() -> popup.setVisible(true));
+            boolean isVisible1 = popup.isVisible();
+            pause(robot);
+            boolean isVisible2 = popup.isVisible();
 
-        if (!isVisible1 || !isVisible2) {
-            throw new RuntimeException("Expected result: popup is visible");
-        }
+            if (!isVisible1 || !isVisible2) {
+                throw new RuntimeException("Expected result: popup is visible");
+            }
 
-        System.out.println("Action: set the popup disabled");
-        SwingUtilities.invokeAndWait(() -> popup.setEnabled(false));
-        boolean isEnabled3 = popup.isEnabled();
-        boolean isVisible3 = popup.isVisible();
-        pause(robot);
-        boolean isEnabled4 = popup.isEnabled();
-        boolean isVisible4 = popup.isVisible();
-        if (isEnabled3 || isEnabled4) {
-            throw new RuntimeException("Expected result: popup is disabled");
-        }
-        if (!isVisible3 || !isVisible4) {
-            throw new RuntimeException("Expected result: disabled popup remains visible");
-        }
+            System.out.println("Action: set the popup disabled");
+            SwingUtilities.invokeAndWait(() -> popup.setEnabled(false));
+            boolean isEnabled3 = popup.isEnabled();
+            boolean isVisible3 = popup.isVisible();
+            pause(robot);
+            boolean isEnabled4 = popup.isEnabled();
+            boolean isVisible4 = popup.isVisible();
+            if (isEnabled3 || isEnabled4) {
+                throw new RuntimeException("Expected result: popup is disabled");
+            }
+            if (!isVisible3 || !isVisible4) {
+                throw new RuntimeException("Expected result: disabled popup remains visible");
+            }
 
-        System.out.println("Action: set the popup invisible");
-        SwingUtilities.invokeAndWait(() -> popup.setVisible(false));
-        boolean isVisible5 = popup.isVisible();
-        pause(robot);
-        boolean isVisible6 = popup.isVisible();
-        if (isVisible5 && isVisible6) {
-            throw new RuntimeException("Expected result: disabled popup remains visible");
-        }
+            System.out.println("Action: set the popup invisible");
+            SwingUtilities.invokeAndWait(() -> popup.setVisible(false));
+            boolean isVisible5 = popup.isVisible();
+            pause(robot);
+            boolean isVisible6 = popup.isVisible();
+            if (isVisible5 && isVisible6) {
+                throw new RuntimeException("Expected result: disabled popup remains visible");
+            }
 
-        System.out.println("Action: set popup enabled and visible");
-        SwingUtilities.invokeAndWait(() -> {
-            popup.setVisible(true);
-            popup.setEnabled(true);
-        });
-        boolean isEnabled7 = popup.isEnabled();
-        boolean isVisible7 = popup.isVisible();
-        pause(robot);
-        boolean isEnabled8 = popup.isEnabled();
-        boolean isVisible8 = popup.isVisible();
-        if (!isEnabled7 || !isEnabled8) {
-            throw new RuntimeException("Expected result: popup is enabled");
+            System.out.println("Action: set popup enabled and visible");
+            SwingUtilities.invokeAndWait(() -> {
+                popup.setVisible(true);
+                popup.setEnabled(true);
+            });
+            boolean isEnabled7 = popup.isEnabled();
+            boolean isVisible7 = popup.isVisible();
+            pause(robot);
+            boolean isEnabled8 = popup.isEnabled();
+            boolean isVisible8 = popup.isVisible();
+            if (!isEnabled7 || !isEnabled8) {
+                throw new RuntimeException("Expected result: popup is enabled");
+            }
+            if (!isVisible7 || !isVisible8) {
+                throw new RuntimeException("Expected result: popup becoming visible");
+            }
+        } finally {
+            SwingUtilities.invokeAndWait(frame::dispose);
         }
-        if (!isVisible7 || !isVisible8) {
-            throw new RuntimeException("Expected result: popup becoming visible");
-        }
-
-        SwingUtilities.invokeAndWait(frame::dispose);
     }
 
     private static void pause(Robot robot) {
