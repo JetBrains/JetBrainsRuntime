@@ -28,7 +28,6 @@ package sun.awt.wl;
 
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLPixelGrabberExt;
-import sun.java2d.wl.WLSMSurfaceData;
 
 import java.awt.*;
 import java.awt.peer.RobotPeer;
@@ -122,7 +121,11 @@ public class WLRobotPeer implements RobotPeer {
         } else {
             // Can get pixels from the singular window's surface data,
             // not necessarily the true value that the user observes.
-            return getRGBPixelsOfSingularWindow(bounds);
+            Rectangle deviceBounds = wgc.getDefaultTransform().createTransformedShape(wgc.getBounds()).getBounds();
+
+            Rectangle grabBounds = new Rectangle(bounds.x - deviceBounds.x, bounds.y - deviceBounds.y,
+                    bounds.width, bounds.height);
+            return getRGBPixelsOfSingularWindow(grabBounds);
         }
     }
 
