@@ -72,43 +72,48 @@ public class RobotGetPixelTest {
                 public void windowActivated(WindowEvent e) {
                     int x = frame.getX() + frame.getInsets().bottom + W/6;
                     int y = frame.getY() + frame.getInsets().left + H/6;
+                    try {
+                        Color c = robot.getPixelColor(x, y);
+                        if (!compareColors(c, Color.RED, 10)) {
+                            System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
+                            failed = true;
+                        }
 
-                    Color c = robot.getPixelColor(x, y);
-                    if (!compareColors(c, Color.RED, 10)) {
-                        System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
-                        failed = true;
-                    }
+                        x += W / 3;
+                        y += H / 3;
 
-                    x += W/3;
-                    y += H/3;
+                        c = robot.getPixelColor(x, y);
+                        if (!compareColors(c, Color.GREEN, 10)) {
+                            System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
+                            failed = true;
+                        }
 
-                    c = robot.getPixelColor(x, y);
-                    if (!compareColors(c, Color.GREEN, 10)) {
-                        System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
-                        failed = true;
-                    }
+                        x += W / 3;
+                        y += H / 3;
 
-                    x += W/3;
-                    y += H/3;
+                        c = robot.getPixelColor(x, y);
+                        if (!compareColors(c, Color.BLUE, 10)) {
+                            System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
+                            failed = true;
+                        }
 
-                    c = robot.getPixelColor(x, y);
-                    if (!compareColors(c, Color.BLUE, 10)) {
-                        System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
-                        failed = true;
-                    }
+                        int[] extremeValues = {Integer.MIN_VALUE, Integer.MIN_VALUE + 1, Integer.MAX_VALUE - 1,
+                                Integer.MAX_VALUE};
 
-                    int[] extremeValues = {Integer.MIN_VALUE, Integer.MIN_VALUE + 1, Integer.MAX_VALUE - 1,
-                            Integer.MAX_VALUE};
-
-                    for (int i = 0; i < extremeValues.length; i++) {
-                        for (int j = 0; j < extremeValues.length; j++) {
-                            try {
-                                c = robot.getPixelColor(extremeValues[i], extremeValues[j]);
-                                failed = true;
-                            } catch (ArrayIndexOutOfBoundsException ex) {
-                                // Expected
+                        for (int i = 0; i < extremeValues.length; i++) {
+                            for (int j = 0; j < extremeValues.length; j++) {
+                                try {
+                                    c = robot.getPixelColor(extremeValues[i], extremeValues[j]);
+                                    failed = true;
+                                } catch (ArrayIndexOutOfBoundsException ex) {
+                                    // Expected
+                                }
                             }
                         }
+                    } catch (Throwable t) {
+                        failed = true;
+                        System.out.println("Unexpected exception:");
+                        t.printStackTrace(System.out);
                     }
                     latchShownFrame.countDown();
                 }
