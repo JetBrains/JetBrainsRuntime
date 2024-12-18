@@ -26,10 +26,8 @@
 
 package sun.awt.wl;
 
-import java.awt.geom.Rectangle2D;
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLPixelGrabberExt;
-import sun.java2d.wl.WLSMSurfaceData;
 
 import java.awt.*;
 import java.awt.peer.RobotPeer;
@@ -123,25 +121,10 @@ public class WLRobotPeer implements RobotPeer {
         } else {
             // Can get pixels from the singular window's surface data,
             // not necessarily the true value that the user observes.
-            WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
-            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            GraphicsDevice[] screens = ge.getScreenDevices();
-            int locX = 0;
-            int locY = 0;
-            for (GraphicsDevice screen : screens) {
-                Rectangle screenBounds = screen.getDefaultConfiguration().getBounds();
-                Rectangle transformedScreenBounds = screen.getDefaultConfiguration().getDefaultTransform().createTransformedShape(screenBounds).getBounds();
-                Rectangle2D screenBounds2D = new Rectangle2D.Double(screenBounds.x, screenBounds.y, screenBounds.width, screenBounds.height);
+            Rectangle deviceBounds = wgc.getDefaultTransform().createTransformedShape(wgc.getBounds()).getBounds();
 
-                if (transformedScreenBounds.contains(bounds.getLocation())) {
-                    locX = transformedScreenBounds.x;
-                    locY = transformedScreenBounds.y;
-                    break;
-                }
-            }
-            Rectangle grabBounds =
-                    new Rectangle(bounds.x - locX, bounds.y - locY,
-                            bounds.width, bounds.height);
+            Rectangle grabBounds = new Rectangle(bounds.x - deviceBounds.x, bounds.y - deviceBounds.y,
+                    bounds.width, bounds.height);
             return getRGBPixelsOfSingularWindow(grabBounds);
         }
     }
