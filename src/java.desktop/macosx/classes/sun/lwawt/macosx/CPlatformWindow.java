@@ -53,6 +53,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -1211,53 +1212,94 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return contentView.getWindowLayerPtr();
     }
 
-    @SuppressWarnings("removal")
-    private final static boolean INVOKE_LATER_FLUSH_BUFFERS
-            = Boolean.parseBoolean(AccessController.doPrivileged(
-                new GetPropertyAction("awt.mac.flushBuffers.invokeLater", "false")));
+    private final static int INVOKE_LATER_DISABLED = 0;
+    private final static int INVOKE_LATER_AUTO     = 1;
+    private final static int INVOKE_LATER_ENABLED  = 2;
+
+    private final static int INVOKE_LATER_FLUSH_BUFFERS = getInvokeLaterMode();
+
+    private static int getInvokeLaterMode() {
+        final String invokeLaterKey = "awt.mac.flushBuffers.invokeLater";
+        final String invokeLaterArg = System.getProperty(invokeLaterKey, "auto");
+        final int result;
+        switch (invokeLaterArg.toLowerCase()) {
+            default:
+            case "auto":
+                result = INVOKE_LATER_AUTO;
+                break;
+            case "false":
+                result = INVOKE_LATER_DISABLED;
+            break;
+            case "true":
+                result = INVOKE_LATER_ENABLED;
+            break;
+        }
+        logger.info("CPlatformWindow: using {0} = {1}.", invokeLaterKey, invokeLaterArg);
+        return result;
+    }
 
     private final static int INVOKE_LATER_COUNT = 5;
-    private final static AtomicInteger invokeLaterCount = new AtomicInteger();
+    /** per window counter of remaining invokeLater calls */
+    private final AtomicInteger invokeLaterCount = new AtomicInteger();
+
+    // Specific class needed to get obvious stack traces:
+    private final class EmptyRunnable implements Runnable {
+        @Override
+        public void run() {
+            // Posting an empty to flush the EventQueue without blocking the main thread
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("CPlatformWindow.flushBuffers: run() invoked on {0}",
+                        getIdentifier(target));
+            }
+        }
+    };
+    private final EmptyRunnable emptyTask = new EmptyRunnable();
 
     void flushBuffers() {
         // only 1 usage by deliverMoveResizeEvent():
         if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
-            // Runnable needed to get obvious stack traces:
-            final Runnable emptyTask = new Runnable() {
-                @Override
-                public void run() {
-                    // Posting an empty to flush the EventQueue without blocking the main thread
-                    logger.fine("CPlatformWindow.flushBuffers: run() invoked on {0}", target);
-                }
-            };
-
-            // use the system property 'awt.mac.flushBuffers.invokeLater' to 'true' (default: false)
+            // use the system property 'awt.mac.flushBuffers.invokeLater' to true/auto (default: auto)
             // to avoid deadlocks caused by the LWCToolkit.invokeAndWait() call below:
-            boolean useInvokeLater = INVOKE_LATER_FLUSH_BUFFERS;
+            boolean useInvokeLater;
 
-            if (!useInvokeLater && (peer != null)) {
-                final GraphicsDevice device = peer.getGraphicsConfiguration().getDevice();
-                if (device instanceof CGraphicsDevice) {
-                    // JBR-5497: avoid deadlock in mirroring mode (laptop + external screen):
-                    useInvokeLater = ((CGraphicsDevice)device).isMirroring();
-                    logger.fine("CPlatformWindow.flushBuffers: CGraphicsDevice.isMirroring = {0}", useInvokeLater);
-                }
-            }
-            // JBR-5497: keep few more invokeLater() when computer returns from sleep or displayChanged()
-            // to avoid deadlocks until solved definitely:
-            if (useInvokeLater) {
-                // reset to max count:
-                invokeLaterCount.set(INVOKE_LATER_COUNT);
-            } else {
-                final int prev = invokeLaterCount.get();
-                if (prev > 0) {
-                    invokeLaterCount.compareAndSet(prev, prev - 1);
+            switch (INVOKE_LATER_FLUSH_BUFFERS) {
+                case INVOKE_LATER_DISABLED:
+                    useInvokeLater = false;
+                    break;
+                default:
+                case INVOKE_LATER_AUTO:
+                    useInvokeLater = false;
+                    if (peer != null) {
+                        final GraphicsDevice device = peer.getGraphicsConfiguration().getDevice();
+                        if (device instanceof CGraphicsDevice) {
+                            // JBR-5497: avoid deadlock in mirroring mode (laptop + external screen):
+                            useInvokeLater = ((CGraphicsDevice)device).isMirroring();
+                            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                                logger.fine("CPlatformWindow.flushBuffers: CGraphicsDevice.isMirroring = {0}",
+                                        useInvokeLater);
+                            }
+                        }
+                    }
+                    // JBR-5497: keep few more invokeLater() when computer returns from sleep or displayChanged()
+                    // to avoid deadlocks until solved definitely:
+                    if (useInvokeLater) {
+                        // reset to max count:
+                        invokeLaterCount.set(INVOKE_LATER_COUNT);
+                    } else {
+                        final int prev = invokeLaterCount.get();
+                        if (prev > 0) {
+                            invokeLaterCount.compareAndSet(prev, prev - 1);
+                            useInvokeLater = true;
+                        }
+                    }
+                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                        logger.fine("CPlatformWindow.flushBuffers: useInvokeLater = {0} (count = {1})",
+                                useInvokeLater, invokeLaterCount.get());
+                    }
+                    break;
+                case INVOKE_LATER_ENABLED:
                     useInvokeLater = true;
-                }
-            }
-            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                logger.fine("CPlatformWindow.flushBuffers: useInvokeLater = {0} (count = {1})",
-                        useInvokeLater, invokeLaterCount.get());
+                    break;
             }
             try {
                 // check invokeAndWait: KO (operations require AWTLock and main thread)
@@ -1265,16 +1307,33 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 if (useInvokeLater) {
                     LWCToolkit.invokeLater(emptyTask, target);
                 } else {
-                    logger.fine("CPlatformWindow.flushBuffers: enter LWCToolkit.invokeAndWait(empty) on target = {0}", target);
+                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                        logger.fine("CPlatformWindow.flushBuffers: enter " +
+                                "LWCToolkit.invokeAndWait(emptyTask) on target = {0}",
+                                getIdentifier(target));
+                    }
 
                     LWCToolkit.invokeAndWait(emptyTask, target);
 
-                    logger.fine("CPlatformWindow.flushBuffers: exit  LWCToolkit.invokeAndWait(empty) on target = {0}", target);
+                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                        logger.fine("CPlatformWindow.flushBuffers: exit  " +
+                                "LWCToolkit.invokeAndWait(emptyTask) on target = {0}",
+                                getIdentifier(target));
+                    }
                 }
             } catch (InvocationTargetException ite) {
                 logger.severe("CPlatformWindow.flushBuffers: exception occurred: ", ite);
             }
         }
+    }
+
+    private static String getIdentifier(Window t) {
+        if (t == null) {
+            return "null";
+        }
+        return t.getClass().getName()
+                + "['" + Objects.toString(t.getName(), "")
+                + "' @" + Integer.toHexString(System.identityHashCode(t)) + ']';
     }
 
     /**
