@@ -24,6 +24,7 @@
  */
 
 #include "precompiled.hpp"
+#include "register_aarch64.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/globals_extension.hpp"
 #include "runtime/java.hpp"
@@ -400,12 +401,25 @@ void VM_Version::initialize() {
     if (FLAG_IS_DEFAULT(UseSVE)) {
       FLAG_SET_DEFAULT(UseSVE, (_features & CPU_SVE2) ? 2 : 1);
     }
-    if (UseSVE > 0) {
-      _initial_sve_vector_length = get_current_sve_vector_length();
-    }
   } else if (UseSVE > 0) {
     warning("UseSVE specified, but not supported on current CPU. Disabling SVE.");
     FLAG_SET_DEFAULT(UseSVE, 0);
+  }
+
+  if (UseSVE > 0) {
+    int vl = get_current_sve_vector_length();
+    if (vl < 0) {
+      warning("Unable to get SVE vector length on this system. "
+              "Disabling SVE. Specify -XX:UseSVE=0 to shun this warning.");
+      FLAG_SET_DEFAULT(UseSVE, 0);
+    } else if ((vl == 0) || ((vl % FloatRegisterImpl::sve_vl_min) != 0) || !is_power_of_2(vl)) {
+      warning("Detected SVE vector length (%d) should be a power of two and a multiple of %d. "
+              "Disabling SVE. Specify -XX:UseSVE=0 to shun this warning.",
+              vl, FloatRegisterImpl::sve_vl_min);
+      FLAG_SET_DEFAULT(UseSVE, 0);
+    } else {
+      _initial_sve_vector_length = vl;
+    }
   }
 
   // This machine allows unaligned memory accesses
