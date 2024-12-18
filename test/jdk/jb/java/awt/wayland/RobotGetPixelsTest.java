@@ -72,32 +72,38 @@ public class RobotGetPixelsTest {
             frame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowActivated(WindowEvent e) {
-                    BufferedImage bi = robot.createScreenCapture(
-                            new Rectangle(frame.getX(), frame.getY(), frame.getWidth(), frame.getHeight()));
-                    int x = frame.getX() + frame.getInsets().bottom + W/6;
-                    int y = frame.getY() + frame.getInsets().left + H/6;
+                    try {
+                        BufferedImage bi = robot.createScreenCapture(
+                                new Rectangle(frame.getX(), frame.getY(), frame.getWidth(), frame.getHeight()));
+                        int x = frame.getInsets().bottom + W / 6;
+                        int y = frame.getInsets().left + H / 6;
 
-                    Color c = new Color(bi.getRGB(x,y));
-                    if (!compareColors(c, Color.RED, 10)) {
-                        System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
-                        failed = true;
-                    }
+                        Color c = new Color(bi.getRGB(x, y));
+                        if (!compareColors(c, Color.RED, 10)) {
+                            System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
+                            failed = true;
+                        }
 
-                    x += W/3;
-                    y += H/3;
+                        x += W / 3;
+                        y += H / 3;
 
-                    c = new Color(bi.getRGB(x,y));
-                    if (!compareColors(c, Color.GREEN, 10)) {
-                        System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
-                        failed = true;
-                    }
+                        c = new Color(bi.getRGB(x, y));
+                        if (!compareColors(c, Color.GREEN, 10)) {
+                            System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
+                            failed = true;
+                        }
 
-                    x += W/3;
-                    y += H/3;
+                        x += W / 3;
+                        y += H / 3;
 
-                    c = new Color(bi.getRGB(x,y));
-                    if (!compareColors(c, Color.BLUE, 10)) {
-                        System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
+                        c = new Color(bi.getRGB(x, y));
+                        if (!compareColors(c, Color.BLUE, 10)) {
+                            System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
+                            failed = true;
+                        }
+                    } catch (Throwable t) {
+                        System.out.println("Unexpected exception:");
+                        t.printStackTrace(System.out);
                         failed = true;
                     }
                     latchShownFrame.countDown();

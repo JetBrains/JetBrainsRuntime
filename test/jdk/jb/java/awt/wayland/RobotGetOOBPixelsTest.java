@@ -44,12 +44,6 @@ public class RobotGetOOBPixelsTest {
     final static CountDownLatch latchShownFrame = new CountDownLatch(1);
     static volatile boolean failed = false;
 
-    static boolean compareColors(Color c1, Color c2, double tolerance) {
-        return Math.abs(c1.getRed() - c2.getRed()) < tolerance &&
-                Math.abs(c1.getGreen() - c2.getGreen()) < tolerance &&
-                Math.abs(c1.getBlue() - c2.getBlue()) < tolerance;
-    }
-
     public static void main(String[] args) throws InterruptedException, AWTException {
         final Robot robot = new Robot();
         SwingUtilities.invokeLater(() -> {
@@ -73,17 +67,16 @@ public class RobotGetOOBPixelsTest {
                 public void windowActivated(WindowEvent e) {
                     int [] extremeValues = {Integer.MIN_VALUE, Integer.MIN_VALUE + 1, Integer.MAX_VALUE - 1,
                             Integer.MAX_VALUE};
-                    for (int i = 0; i < extremeValues.length; i++) {
-                       for (int j = 0; j < extremeValues.length; j++) {
-                           try {
-                               robot.createScreenCapture(
-                                       new Rectangle(extremeValues[i], extremeValues[j],
-                                               frame.getWidth(), frame.getHeight()));
-                               failed = true;
-                           } catch (IndexOutOfBoundsException ex) {
-                               // Expected exception
-                           }
-                       }
+                    for (int val1 : extremeValues) {
+                        for (int val2 : extremeValues) {
+                            try {
+                                robot.createScreenCapture(
+                                        new Rectangle(val1, val2, frame.getWidth(), frame.getHeight()));
+                                failed = true;
+                            } catch (IndexOutOfBoundsException ex) {
+                                // Expected exception
+                            }
+                        }
                     }
 
                     try {
