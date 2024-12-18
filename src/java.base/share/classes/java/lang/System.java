@@ -46,6 +46,7 @@ import java.nio.channels.Channel;
 import java.nio.channels.spi.SelectorProvider;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
+import java.nio.file.FileSystems;
 import java.security.ProtectionDomain;
 import java.util.List;
 import java.util.Locale;
@@ -1956,6 +1957,8 @@ public final class System {
                     " file system is not supported: " +
                     notSupportedJnuEncoding);
         }
+
+        FileSystems.getDefault();
 
         // initializing the system class loader
         VM.initLevel(3);
