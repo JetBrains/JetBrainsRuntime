@@ -1220,21 +1220,29 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     private static int getInvokeLaterMode() {
         final String invokeLaterKey = "awt.mac.flushBuffers.invokeLater";
-        final String invokeLaterArg = System.getProperty(invokeLaterKey, "auto");
+        final String invokeLaterArg = System.getProperty(invokeLaterKey);
         final int result;
-        switch (invokeLaterArg.toLowerCase()) {
-            default:
-            case "auto":
-                result = INVOKE_LATER_AUTO;
-                break;
-            case "false":
-                result = INVOKE_LATER_DISABLED;
-            break;
-            case "true":
-                result = INVOKE_LATER_ENABLED;
-            break;
+        if (invokeLaterArg == null) {
+            // default = 'auto':
+            result = INVOKE_LATER_AUTO;
+        } else {
+            switch (invokeLaterArg.toLowerCase()) {
+                default:
+                case "auto":
+                    result = INVOKE_LATER_AUTO;
+                    break;
+                case "false":
+                    result = INVOKE_LATER_DISABLED;
+                    break;
+                case "true":
+                    result = INVOKE_LATER_ENABLED;
+                    break;
+            }
+            logger.info("CPlatformWindow: property \"{0}={1}\", using invokeLater={2}.",
+                    invokeLaterKey, invokeLaterArg,
+                    (result == INVOKE_LATER_DISABLED) ? "false"
+                    : ((result == INVOKE_LATER_AUTO) ? "auto" : "true"));
         }
-        logger.info("CPlatformWindow: using {0} = {1}.", invokeLaterKey, invokeLaterArg);
         return result;
     }
 
