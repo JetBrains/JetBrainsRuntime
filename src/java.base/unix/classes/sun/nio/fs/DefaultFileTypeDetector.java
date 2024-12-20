@@ -36,8 +36,8 @@ public class DefaultFileTypeDetector {
 
     public static FileTypeDetector create() {
         FileSystemProvider provider = FileSystems.getDefault().provider();
-        if (provider instanceof UnixFileSystemProvider) {
-            return ((UnixFileSystemProvider)provider).getFileTypeDetector();
+        if (provider instanceof UnixFileSystemProvider unixProvider) {
+            return unixProvider.getFileTypeDetector();
         }
         return new FileTypeDetector() {
             @Override
