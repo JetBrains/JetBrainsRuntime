@@ -99,7 +99,7 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt(JNIEnv *env, jobject vksd, jint x
     if (image == NULL || device == NULL) {
         J2dRlsTraceLn2(J2D_TRACE_ERROR,
                       "Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt: image(%p) or device(%p) is NULL", image, device)
-        return pixel;
+        return 0x0; // black color if we don't have any content so far
     }
 
     SurfaceDataBounds bounds =  {x, y, x + 1, y + 1};
@@ -108,13 +108,12 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_pixelAt(JNIEnv *env, jobject vksd, jint x
         JNU_ThrowByName(env, "java/lang/ArrayIndexOutOfBoundsException", "Coordinate out of bounds");
         return pixel;
     }
-    
+
+    VKRenderer_FlushRenderPass(&sd->vksdOps);
     VkCommandBuffer cb = VKRenderer_Record(device->renderer);
 
     VKBuffer* buffer = VKBuffer_Create(device, sizeof(jint),
-                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT  |
-                                       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -181,12 +180,12 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt(JNIEnv *env, jobject vksd, jint 
     jintArray arrayObj = NULL;
     jsize bufferSizeInPixels = width * height;
     arrayObj = (*env)->NewIntArray(env, bufferSizeInPixels);
+
+    VKRenderer_FlushRenderPass(&sd->vksdOps);
     VkCommandBuffer cb = VKRenderer_Record(device->renderer);
 
     VKBuffer* buffer = VKBuffer_Create(device, bufferSizeInPixels * sizeof(jint),
-                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT  |
-                                       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
