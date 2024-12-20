@@ -90,6 +90,20 @@ public class SetDefaultProvider {
         assertEquals(exitValue, 0);
     }
 
+    public void testClassPathWithFileSystemProviderJarAndNioForZipFile() throws Exception {
+        String testClasses = System.getProperty("test.classes");
+        Path fspJar = Path.of("testFileSystemProvider.jar");
+        Files.deleteIfExists(fspJar);
+        createFileSystemProviderJar(fspJar, Path.of(testClasses));
+
+        String jarFile = createModularJar();
+
+        String classpath = fspJar + File.pathSeparator + jarFile + File.pathSeparator + testClasses;
+        int exitValue = exec(SET_DEFAULT_FSP, "-Djava.util.zip.use.nio.for.zip.file.access=true",
+                "-cp", classpath, "p.Main");
+        assertEquals(exitValue, 0);
+    }
+
     /**
      * Creates a JAR containing the FileSystemProvider used to override the
      * default FileSystemProvider
