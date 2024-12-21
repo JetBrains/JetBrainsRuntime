@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -245,6 +245,10 @@ class VM_HandshakeAllThreads: public VM_Operation {
       number_of_threads_issued++;
     }
 
+    // Separate the arming of the poll in add_operation() above from
+    // the read of JavaThread state in the try_process() call below.
+    OrderAccess::fence();
+
     if (number_of_threads_issued < 1) {
       log_handshake_info(start_time_ns, _op->name(), 0, 0, "no threads alive");
       return;
@@ -356,6 +360,10 @@ void Handshake::execute(HandshakeClosure* hs_cl, JavaThread* target) {
     log_handshake_info(start_time_ns, op.name(), 0, 0, buf);
     return;
   }
+
+  // Separate the arming of the poll in add_operation() above from
+  // the read of JavaThread state in the try_process() call below.
+  OrderAccess::fence();
 
   // Keeps count on how many of own emitted handshakes
   // this thread execute.
@@ -480,6 +488,10 @@ bool HandshakeState::process_by_self(bool allow_suspend) {
   // The exception to this rule is the asynchronous suspension handshake.
   // It by-passes the NSV by manually doing the transition.
   NoSafepointVerifier nsv;
+
+  // Separate all the writes above for other threads reading state
+  // set by this thread in case the operation is ThreadSuspendHandshake.
+  OrderAccess::fence();
 
   while (has_operation()) {
     MutexLocker ml(&_lock, Mutex::_no_safepoint_check_flag);
