@@ -914,6 +914,7 @@ javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949 linux-all,windows-all
 javax/swing/JLabel/6596966/bug6596966.java 8197552 windows-all
 javax/swing/JLabel/7004134/bug7004134.java JBR-5437 linux-all
+javax/swing/JList/6462008/bug6462008.java JBR-8063 windows-aarch64
 javax/swing/JMenu/4515762/bug4515762.java 8197552 windows-all
 javax/swing/JMenu/4692443/bug4692443.java JBR-6093 windows-all
 javax/swing/JMenu/6470128/bug6470128.java 8253184,JBR-6307 windows-all,linux-all
