@@ -1105,7 +1105,6 @@ jdk_swing_wayland= \
     -javax/swing/event/FocusEventCauseTest.java \
     -javax/swing/JButton/4368790/bug4368790.java \
     -javax/swing/JButton/8151303/PressedIconTest.java \
-    -javax/swing/JButton/PressedButtonRightClickTest.java \
     -javax/swing/JColorChooser/Test6541987.java \
     -javax/swing/JColorChooser/Test6707406.java \
     -javax/swing/JColorChooser/Test6827032.java \
