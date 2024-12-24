@@ -55,7 +55,7 @@ java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemoni
 java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java 8257529,JBR-5397,JBR-7780 windows-x64,macosx-all,linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java JBR-5397,JBR-4074 macosx-all,windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5397,JBR-5505 macosx-all,windows-all
-java/awt/Modal/ModalFocusTransferTests/FocusTransferDWFAppModalTest.java JBR-5397 macosx-all
+java/awt/Modal/ModalFocusTransferTests/FocusTransferDWFAppModalTest.java JBR-5397,JBR-8074 macosx-all,windows-x64
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java JBR-5397,JBR-5802 macosx-all,windows-all
 java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-6948 windows-x64
 java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java JBR-5397 macosx-all
@@ -128,6 +128,7 @@ java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857,JBR-5505 m
 java/awt/Choice/NonFocusablePopupMenuTest.java JBR-7961 windows-x64
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5510,8310487,JBR-6950 linux-5.18.2-arch1-1,linux-all,windows-x64
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java JBR-5510,JBR-5905 linux-5.18.2-arch1-1,linux-all,windows-x64
+java/awt/ColorClass/AlphaColorTest.java JBR-7253 windows-x64
 java/awt/Component/NativeInLightShow/NativeInLightShow.java JBR-7715 windows-x64
 java/awt/Component/RepaintTest.java JBR-7754 windows-x64
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-x64
