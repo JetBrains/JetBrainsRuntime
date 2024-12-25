@@ -6,6 +6,7 @@ set -euxo pipefail
 
 docker build \
   --platform=linux/i386 \
+  --no-cache \
   -t registry.jetbrains.team/p/jbre/containers/ubuntu2004_x86:latest \
   -f Dockerfile.ubuntu.x86 .
 
