@@ -1,0 +1,6 @@
+[ol7_scl]
+name=Oracle Linux $releasever Update 8 ($basearch) Software Collection
+baseurl=https://yum$ociregion.$ocidomain/repo/OracleLinux/OL7/SoftwareCollections/$basearch/
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+enabled=1
