@@ -6,6 +6,7 @@ set -euxo pipefail
 
 docker build \
   --platform=linux/amd64 \
+  --no-cache \
   -t registry.jetbrains.team/p/jbre/containers/alpine14_x64:latest \
   -f Dockerfile.alpine .
 
