@@ -15,7 +15,7 @@ RUN yum -y update; \
     yum -y install \
         devtoolset-10-libstdc++-devel-10.2.1-11.2.0.1.el7 \
         devtoolset-10-runtime-10.1-0.el7 \
-        devtoolset-10-binutils-2.35-5.el7 \
+        devtoolset-10-binutils-2.35-5.el7.4 \
         devtoolset-10-gcc-10.2.1-11.2.0.1.el7 \
         devtoolset-10-gcc-c++-10.2.1-11.2.0.1.el7
 RUN yum -y install \
