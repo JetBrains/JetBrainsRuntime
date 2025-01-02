@@ -771,6 +771,13 @@ public:
   inline u2 next_method_idnum();
   void set_initial_method_idnum(u2 value)             { _idnum_allocated_count = value; }
 
+  // DCEVM
+  void adjust_method_idnum(u2 value) {
+    if (value > _idnum_allocated_count) {
+      _idnum_allocated_count= value;
+    }
+  }
+
   // generics support
   Symbol* generic_signature() const;
   u2 generic_signature_index() const;
