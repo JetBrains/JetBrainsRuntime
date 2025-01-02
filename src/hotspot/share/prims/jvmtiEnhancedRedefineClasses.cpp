@@ -1259,6 +1259,7 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
 
   int ni = 0;
   int oi = 0;
+  int max_old_idnum = 0;
   while (true) {
     Method* k_old_method;
     Method* k_new_method;
@@ -1331,7 +1332,7 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
         u2 new_num = k_new_method->method_idnum();
         u2 old_num = k_old_method->method_idnum();
         if (new_num != old_num) {
-        Method* idnum_owner = new_class->method_with_idnum(old_num);
+          Method* idnum_owner = new_class->method_with_idnum(old_num);
           if (idnum_owner != nullptr) {
             // There is already a method assigned this idnum -- switch them
             // Take current and original idnum from the new_method
@@ -1341,6 +1342,9 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
           // Take current and original idnum from the old_method
           k_new_method->set_method_idnum(old_num);
           k_new_method->set_orig_method_idnum(k_old_method->orig_method_idnum());
+          if (old_num > max_old_idnum) {
+            max_old_idnum = old_num;
+          }
           if (thread->has_pending_exception()) {
             return JVMTI_ERROR_OUT_OF_MEMORY;
           }
@@ -1367,7 +1371,7 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
         u2 num = new_class->next_method_idnum();
         if (num == ConstMethod::UNSET_IDNUM) {
           // cannot add any more methods
-        result = result | Klass::ModifyClass;
+          result = result | Klass::ModifyClass;
         }
         u2 new_num = k_new_method->method_idnum();
         Method* idnum_owner = new_class->method_with_idnum(num);
@@ -1405,6 +1409,9 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
       ShouldNotReachHere();
     }
   }
+
+   // Ensure the jmethod_ids array has sufficient initial capacity. This array is not resized since JDK 23.
+  new_class->adjust_method_idnum(max_old_idnum+1);
 
   if (new_class->size() != new_class->old_version()->size()) {
     result |= Klass::ModifyClassSize;
