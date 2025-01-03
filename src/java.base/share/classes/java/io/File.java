@@ -31,11 +31,15 @@ import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+
+import jdk.internal.misc.VM;
 import jdk.internal.util.StaticProperty;
+import sun.security.action.GetPropertyAction;
 
 /**
  * An abstract representation of file and directory pathnames.
@@ -148,6 +152,7 @@ import jdk.internal.util.StaticProperty;
 public class File
     implements Serializable, Comparable<File>
 {
+    private static final boolean useNIO = GetPropertyAction.privilegedGetBooleanProp("jbr.java.io.use.nio", true, null);
 
     /**
      * The FileSystem object representing the platform's local file system.
@@ -830,6 +835,9 @@ public class File
         if (security != null) {
             security.checkRead(path);
         }
+        if (VM.isBooted() && useNIO) {
+            return Files.exists(toPath());
+        }
         if (isInvalid()) {
             return false;
         }
@@ -999,6 +1007,13 @@ public class File
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkRead(path);
+        }
+        if (VM.isBooted() && useNIO) {
+            try {
+                return Files.size(toPath());
+            } catch (IOException e) {
+                return 0L;
+            }
         }
         if (isInvalid()) {
             return 0L;

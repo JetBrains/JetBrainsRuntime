@@ -53,6 +53,7 @@ import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.CodeSource;
 import java.security.PrivilegedAction;
+import java.nio.file.FileSystems;
 import java.security.ProtectionDomain;
 import java.util.Collections;
 import java.util.List;
@@ -2325,6 +2326,8 @@ public final class System {
         }
 
         initialErrStream = System.err;
+
+        FileSystems.getDefault();
 
         // initializing the system class loader
         VM.initLevel(3);

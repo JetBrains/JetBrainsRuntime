@@ -36,8 +36,8 @@
  * @requires !vm.musl
  * @requires vm.flagless
  * @library /test/lib
- * @run main/othervm/native/timeout=300 -Djava.security.manager=allow Basic
- * @run main/othervm/native/timeout=300 -Djava.security.manager=allow -Djdk.lang.Process.launchMechanism=fork Basic
+ * @run main/othervm/native/timeout=300 -Djbr.java.io.use.nio=false -Djava.security.manager=allow Basic
+ * @run main/othervm/native/timeout=300 -Djbr.java.io.use.nio=false -Djava.security.manager=allow -Djdk.lang.Process.launchMechanism=fork Basic
  * @author Martin Buchholz
  */
 
@@ -48,7 +48,7 @@
  *          java.base/jdk.internal.misc
  * @requires (os.family == "linux" & !vm.musl)
  * @library /test/lib
- * @run main/othervm/timeout=300 -Djava.security.manager=allow -Djdk.lang.Process.launchMechanism=posix_spawn Basic
+ * @run main/othervm/timeout=300 -Djbr.java.io.use.nio=false  -Djava.security.manager=allow -Djdk.lang.Process.launchMechanism=posix_spawn Basic
  */
 
 import java.lang.ProcessBuilder.Redirect;
@@ -2194,6 +2194,7 @@ public class Basic {
                             }
                             equal(-1, r);
                         } catch (IOException ioe) {
+                            ioe.printStackTrace();
                             if (!ioe.getMessage().equals("Stream closed")) {
                                 // BufferedInputStream may throw IOE("Stream closed").
                                 unexpected(ioe);
