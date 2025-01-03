@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1657,7 +1657,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     ]];
 
     [self.nsWindow setIgnoreMove:YES];
-    
+
     AWTWindowDragView* windowDragView = [[AWTWindowDragView alloc] initWithPlatformWindow:self.javaPlatformWindow];
     [titlebar addSubview:windowDragView positioned:NSWindowBelow relativeTo:closeButtonView];
 
@@ -1746,7 +1746,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
     [self setWindowControlsHidden:NO];
     [self updateCustomTitleBarInsets:NO];
-    
+
     [self.nsWindow setIgnoreMove:NO];
 }
 
@@ -2844,6 +2844,7 @@ JNI_COCOA_ENTER(env);
             int shieldLevel = CGShieldingWindowLevel();
             window.preFullScreenLevel = [nsWindow level];
             [nsWindow setLevel: shieldLevel];
+            [nsWindow makeKeyAndOrderFront: nil];
 
             NSRect screenRect = [[nsWindow screen] frame];
             [nsWindow setFrame:screenRect display:YES];
