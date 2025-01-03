@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import jdk.jpackage.test.TKit;
@@ -42,6 +41,8 @@ import jdk.jpackage.test.Executor;
 import jdk.jpackage.test.JavaTool;
 import jdk.jpackage.test.Annotations.Test;
 import jdk.jpackage.test.Annotations.Parameter;
+
+import static jdk.jpackage.test.WindowsHelper.getTempDirectory;
 
 /*
  * @test
@@ -263,64 +264,64 @@ public final class BasicTest {
         cmd.executeAndAssertHelloAppImageCreated();
     }
 
+    public static enum TestTempType {
+        TEMPDIR_EMPTY,
+        TEMPDIR_NOT_EMPTY,
+        TEMPDIR_NOT_EXIST,
+    }
+
     /**
      * Test --temp option. Doesn't make much sense for app image as temporary
      * directory is used only on Windows. Test it in packaging mode.
-     * @throws IOException
      */
     @Test
-    @Parameter("true")
-    @Parameter("false")
-    public void testTemp(boolean withExistingTempDir) throws IOException {
+    @Parameter("TEMPDIR_EMPTY")
+    @Parameter("TEMPDIR_NOT_EMPTY")
+    @Parameter("TEMPDIR_NOT_EXIST")
+    public void testTemp(TestTempType type) throws IOException {
         final Path tempRoot = TKit.createTempDirectory("tmp");
-        // This Test has problems on windows where path in the temp dir are too long
-        // for the wix tools.  We can't use a tempDir outside the TKit's WorkDir, so
-        // we minimize both the tempRoot directory name (above) and the tempDir name
-        // (below) to the extension part (which is necessary to differenciate between
-        // the multiple PackageTypes that will be run for one JPackageCommand).
-        // It might be beter if the whole work dir name was shortened from:
-        // jtreg_open_test_jdk_tools_jpackage_share_jdk_jpackage_tests_BasicTest_java.
-        Function<JPackageCommand, Path> getTempDir = cmd -> {
-            String ext = cmd.outputBundle().getFileName().toString();
-            int i = ext.lastIndexOf(".");
-            if (i > 0 && i < (ext.length() - 1)) {
-                ext = ext.substring(i+1);
-            }
-            return tempRoot.resolve(ext);
-        };
 
-        Supplier<PackageTest> createTest = () -> {
-            return new PackageTest()
-            .configureHelloApp()
-            // Force save of package bundle in test work directory.
-            .addInitializer(JPackageCommand::setDefaultInputOutput)
-            .addInitializer(cmd -> {
-                Path tempDir = getTempDir.apply(cmd);
-                if (withExistingTempDir) {
-                    Files.createDirectories(tempDir);
-                } else {
-                    Files.createDirectories(tempDir.getParent());
+        var pkgTest = new PackageTest()
+        .configureHelloApp()
+        // Force save of package bundle in test work directory.
+        .addInitializer(JPackageCommand::setDefaultInputOutput)
+        .addInitializer(cmd -> {
+            Path tempDir = getTempDirectory(cmd, tempRoot);
+            switch (type) {
+                    case TEMPDIR_EMPTY -> Files.createDirectories(tempDir);
+                    case TEMPDIR_NOT_EXIST -> Files.createDirectories(tempDir.getParent());
+                    case TEMPDIR_NOT_EMPTY -> {
+                        Files.createDirectories(tempDir);
+                        TKit.createTextFile(tempDir.resolve("foo.txt"), List.of(
+                                "Hello Duke!"));
+                    }
                 }
                 cmd.addArguments("--temp", tempDir);
+            }
+        );
+
+        if (TestTempType.TEMPDIR_NOT_EMPTY.equals(type)) {
+            pkgTest.setExpectedExitCode(1).addBundleVerifier(cmd -> {
+                // Check jpackage didn't use the supplied directory.
+                Path tempDir = getTempDirectory(cmd, tempRoot);
+                String[] tempDirContents = tempDir.toFile().list();
+                TKit.assertStringListEquals(List.of("foo.txt"), List.of(
+                        tempDirContents), String.format(
+                                "Check the contents of the supplied temporary directory [%s]",
+                                tempDir));
+                TKit.assertStringListEquals(List.of("Hello Duke!"),
+                        Files.readAllLines(tempDir.resolve(tempDirContents[0])),
+                        "Check the contents of the file in the supplied temporary directory");
             });
-        };
+        } else {
+            pkgTest.addBundleVerifier(cmd -> {
+                // Check jpackage used the supplied directory.
+                Path tempDir = getTempDirectory(cmd, tempRoot);
+                TKit.assertDirectoryNotEmpty(tempDir);
+            });
+        }
 
-        createTest.get()
-        .addBundleVerifier(cmd -> {
-            // Check jpackage actually used the supplied directory.
-            Path tempDir = getTempDir.apply(cmd);
-            TKit.assertNotEquals(0, tempDir.toFile().list().length,
-                    String.format(
-                            "Check jpackage wrote some data in the supplied temporary directory [%s]",
-                            tempDir));
-        })
-        .run(PackageTest.Action.CREATE);
-
-        createTest.get()
-        // Temporary directory should not be empty,
-        // jpackage should exit with error.
-        .setExpectedExitCode(1)
-        .run(PackageTest.Action.CREATE);
+        pkgTest.run(PackageTest.Action.CREATE);
     }
 
     @Test
