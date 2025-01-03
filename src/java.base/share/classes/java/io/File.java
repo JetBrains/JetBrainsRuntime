@@ -35,7 +35,10 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
+
 import jdk.internal.util.StaticProperty;
+import sun.security.action.GetPropertyAction;
 
 /**
  * An abstract representation of file and directory pathnames.
@@ -148,11 +151,23 @@ import jdk.internal.util.StaticProperty;
 public class File
     implements Serializable, Comparable<File>
 {
+    static final Supplier<java.nio.file.FileSystem> acquireNioFs;
 
     /**
      * The FileSystem object representing the platform's local file system.
      */
-    private static final FileSystem FS = DefaultFileSystem.getFileSystem();
+    private static final FileSystem FS;
+
+    static {
+        if (GetPropertyAction.privilegedGetBooleanProp("jbr.java.io.use.nio", true, null)) {
+            IoOverNioFileSystem ioOverNio = new IoOverNioFileSystem(DefaultFileSystem.getFileSystem());
+            FS = ioOverNio;
+            acquireNioFs = ioOverNio::acquireNioFs;
+        } else {
+            FS = DefaultFileSystem.getFileSystem();
+            acquireNioFs = () -> null;
+        }
+    }
 
     /**
      * This abstract pathname's normalized pathname string. A normalized
