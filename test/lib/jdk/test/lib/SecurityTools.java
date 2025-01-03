@@ -41,8 +41,8 @@ import jdk.test.lib.process.ProcessTools;
  * Run security tools (including jarsigner and keytool) in a new process.
  * The en_US locale is always used so a test can always match output to
  * English text. {@code /dev/urandom} is used as entropy source so tool will
- * not block because of entropy scarcity. {@code -Jvm-options} is supported
- * as an argument.
+ * not block because of entropy scarcity. An argument can be a normal string,
+ * {@code -Jvm-options}, {@code $sysProp} or {@code -J$sysProp}.
  */
 public class SecurityTools {
 
@@ -63,10 +63,17 @@ public class SecurityTools {
         }
         for (String arg : args) {
             if (arg.startsWith("-J")) {
-                launcher.addVMArg(arg.substring(2));
+                String jarg = arg.substring(2);
+                if (jarg.length() > 1 && jarg.charAt(0) == '$') {
+                    launcher.addVMArg(System.getProperty(jarg.substring(1)));
+                } else {
+                    launcher.addVMArg(jarg);
+                }
             } else if (Platform.isWindows() && arg.isEmpty()) {
                 // JDK-6518827: special handling for empty argument on Windows
                 launcher.addToolArg("\"\"");
+            } else if (arg.length() > 1 && arg.charAt(0) == '$') {
+                launcher.addToolArg(System.getProperty(arg.substring(1)));
             } else {
                 launcher.addToolArg(arg);
             }
