@@ -30,6 +30,7 @@ import java.net.*;
 import java.security.*;
 import java.util.Arrays;
 
+import com.sun.IoOverNio;
 import sun.security.util.Debug;
 
 /**
@@ -126,8 +127,18 @@ public final class NativePRNG extends SecureRandomSpi {
     /**
      * Create a RandomIO object for all I/O of this Variant type.
      */
-    @SuppressWarnings("removal")
     private static RandomIO initIO(final Variant v) {
+        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
+        try {
+            IoOverNio.ALLOW_IO_OVER_NIO.set(false);
+            return initIOImpl(v);
+        } finally {
+            IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
+        }
+    }
+
+    @SuppressWarnings("removal")
+    private static RandomIO initIOImpl(final Variant v) {
         return AccessController.doPrivileged(
             new PrivilegedAction<>() {
                 @Override

@@ -41,6 +41,8 @@ import javax.security.auth.x500.X500Principal;
 import java.net.SocketPermission;
 import java.net.NetPermission;
 import java.util.concurrent.ConcurrentHashMap;
+
+import com.sun.IoOverNio;
 import jdk.internal.access.JavaSecurityAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.StaticProperty;
@@ -309,6 +311,16 @@ public class PolicyFile extends java.security.Policy {
      * initialize the Policy object.
      */
     private void init(URL url) {
+        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
+        try {
+            IoOverNio.ALLOW_IO_OVER_NIO.set(false);
+            init0(url);
+        } finally {
+            IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
+        }
+    }
+
+    private void init0(URL url) {
         // Properties are set once for each init(); ignore changes
         // between diff invocations of initPolicyFile(policy, url, info).
         String numCacheStr =
@@ -1095,6 +1107,17 @@ public class PolicyFile extends java.security.Policy {
      */
     private PermissionCollection getPermissions(Permissions perms,
                                         ProtectionDomain pd ) {
+        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
+        try {
+            IoOverNio.ALLOW_IO_OVER_NIO.set(false);
+            return getPermissions0(perms, pd);
+        } finally {
+            IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
+        }
+    }
+
+    private Permissions getPermissions0(Permissions perms,
+                                        ProtectionDomain pd) {
         if (debug != null) {
             debug.println("getPermissions:\n\t" + printPD(pd));
         }
