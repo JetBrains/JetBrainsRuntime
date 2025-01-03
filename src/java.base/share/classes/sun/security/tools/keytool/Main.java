@@ -1287,6 +1287,7 @@ public final class Main {
             kssave = true;
         } else if (command == LIST) {
             if (storePass == null
+                    && !protectedPath
                     && !KeyStoreUtil.isWindowsKeyStore(storetype)
                     && !isPasswordlessKeyStore) {
                 printNoIntegrityWarning();
@@ -1686,6 +1687,7 @@ public final class Main {
         throws Exception
     {
         if (storePass == null
+                && !protectedPath
                 && !KeyStoreUtil.isWindowsKeyStore(storetype)
                 && !isPasswordlessKeyStore) {
             printNoIntegrityWarning();
