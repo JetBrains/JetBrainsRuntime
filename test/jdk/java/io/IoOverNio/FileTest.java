@@ -1,0 +1,357 @@
+/*
+ * Copyright 2025 JetBrains s.r.o.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+/* @test
+ * @summary java.io.File uses java.nio.file inside.
+ * @library testNio
+ * @run junit/othervm
+ *      -Djava.nio.file.spi.DefaultFileSystemProvider=testNio.ManglingFileSystemProvider
+ *      -Djbr.java.io.use.nio=true
+ *      FileTest
+ */
+
+import org.junit.*;
+import org.junit.rules.TemporaryFolder;
+import testNio.ManglingFileSystemProvider;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Objects;
+
+import static java.util.Arrays.*;
+import static org.junit.Assert.*;
+
+public class FileTest {
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+    @BeforeClass
+    public static void checkSystemProperties() {
+        Objects.requireNonNull(System.getProperty("java.nio.file.spi.DefaultFileSystemProvider"));
+    }
+
+    private static void assumeNotWindows() {
+        Assume.assumeFalse(System.getProperty("os.name").toLowerCase().startsWith("win"));
+    }
+
+    @Before
+    @After
+    public void resetFs() {
+        ManglingFileSystemProvider.resetTricks();
+    }
+
+    @Test
+    public void getAbsolutePath() throws Exception {
+        File file = temporaryFolder.newFile("hello world");
+        assertNotEquals(file.getAbsolutePath(), ManglingFileSystemProvider.mangle(file.getAbsolutePath()));
+
+        ManglingFileSystemProvider.manglePaths = true;
+        assertEquals(file.getAbsolutePath(), ManglingFileSystemProvider.mangle(file.getAbsolutePath()));
+    }
+
+    @Test
+    public void canRead() throws Exception {
+        File file = temporaryFolder.newFile("testFile.txt");
+        assertTrue(file.canRead());
+
+        ManglingFileSystemProvider.denyAccessToEverything = true;
+        assertFalse(file.canRead());
+    }
+
+    @Test
+    public void canWrite() throws Exception {
+        assumeNotWindows();
+
+        File file = temporaryFolder.newFile("testFile.txt");
+        assertTrue(file.canWrite());
+
+        ManglingFileSystemProvider.denyAccessToEverything = true;
+        assertFalse(file.canWrite());
+    }
+
+    @Test
+    public void isDirectory() throws Exception {
+        File dir = temporaryFolder.newFolder("testDir");
+        File file = new File(dir, "testFile.txt");
+        assertTrue(file.createNewFile());
+
+        assertTrue(dir.isDirectory());
+        assertFalse(file.isDirectory());
+
+        ManglingFileSystemProvider.allFilesAreEmptyDirectories = true;
+        assertTrue(dir.isDirectory());
+        assertTrue(file.isDirectory());
+    }
+
+    @Test
+    public void isFile() throws Exception {
+        File file = temporaryFolder.newFile("testFile.txt");
+        File dir = temporaryFolder.newFolder("testDir");
+
+        assertTrue(file.isFile());
+        assertFalse(dir.isFile());
+
+        ManglingFileSystemProvider.allFilesAreEmptyDirectories = true;
+        assertFalse(file.isFile());
+        assertFalse(dir.isFile());
+    }
+
+    @Test
+    public void delete() throws Exception {
+        File file1 = temporaryFolder.newFile("file1.txt");
+        File file2 = temporaryFolder.newFile("file2.txt");
+        assertTrue(file1.exists());
+        assertTrue(file2.exists());
+
+        assertTrue(file1.delete());
+        assertFalse(file1.exists());
+
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        assertFalse(file2.delete());
+        assertTrue(file2.exists());
+    }
+
+    @Test
+    public void list() throws Exception {
+        File dir = temporaryFolder.newFolder("testDir");
+        File file1 = new File(dir, "file1.txt");
+        File file2 = new File(dir, "file2.txt");
+        assertTrue(file1.createNewFile());
+        assertTrue(file2.createNewFile());
+
+        String[] files = dir.list();
+        sort(files);
+        assertArrayEquals(new String[]{"file1.txt", "file2.txt"}, files);
+
+        ManglingFileSystemProvider.manglePaths = true;
+        ManglingFileSystemProvider.addEliteToEveryDirectoryListing = true;
+        files = dir.list();
+        sort(files);
+        assertArrayEquals(new String[]{"37337", "f1131.7x7", "f1132.7x7"}, files);
+    }
+
+    @Test
+    public void mkdir() throws Exception {
+        File dir1 = new File(temporaryFolder.getRoot(), "newDir1");
+        assertTrue(dir1.mkdir());
+        assertTrue(dir1.isDirectory());
+
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        File dir2 = new File(temporaryFolder.getRoot(), "newDir2");
+        assertFalse(dir2.mkdir());
+        assertFalse(dir2.exists());
+    }
+
+    @Test
+    public void renameTo() throws Exception {
+        File file = temporaryFolder.newFile("originalName.txt");
+        File renamedFile = new File(temporaryFolder.getRoot(), "newName.txt");
+        assertTrue(file.exists());
+        assertFalse(renamedFile.exists());
+
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        File renamedFile2 = new File(temporaryFolder.getRoot(), "newName2.txt");
+        assertFalse(renamedFile2.renameTo(renamedFile));
+        assertFalse(renamedFile2.exists());
+    }
+
+    @Test
+    public void setLastModified() throws Exception {
+        File file = temporaryFolder.newFile("testFile.txt");
+
+        // Beware that getting and setting mtime/atime/ctime is often unreliable.
+        Assume.assumeTrue(file.setLastModified(1234567890L));
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        assertFalse(file.setLastModified(123459999L));
+    }
+
+    @Test
+    public void setReadOnly() throws Exception {
+        File file1 = temporaryFolder.newFile("testFile1.txt");
+        assertTrue(file1.setReadOnly());
+        assertFalse(file1.canWrite());
+
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        File file2 = temporaryFolder.newFile("testFile2.txt");
+        assertFalse(file2.setReadOnly());
+        assertTrue(file2.canWrite());
+    }
+
+    @Test
+    public void setWritable() throws Exception {
+        assumeNotWindows();
+
+        assertTrue(temporaryFolder.newFile("testFile1.txt").setWritable(false));
+
+        File file2 = temporaryFolder.newFile("testFile2.txt");
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        assertFalse(file2.setWritable(false));
+    }
+
+    @Test
+    public void setReadable() throws Exception {
+        File file1 = temporaryFolder.newFile("testFile1.txt");
+        assertTrue(file1.setReadable(false));
+        assertFalse(file1.canRead());
+
+        File file2 = temporaryFolder.newFile("testFile2.txt");
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        assertFalse(file2.setReadable(false));
+        assertTrue(file2.canRead());
+    }
+
+    @Test
+    public void setExecutable() throws Exception {
+        assumeNotWindows();
+
+        File file1 = temporaryFolder.newFile("testFile1.txt");
+        Assume.assumeFalse(file1.canExecute());
+        assertTrue(file1.setExecutable(true));
+        assertTrue(file1.canExecute());
+
+        File file2 = temporaryFolder.newFile("testFile2.txt");
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        assertFalse(file2.setExecutable(true));
+        assertFalse(file2.canExecute());
+    }
+
+    @Test
+    public void listRoots() throws Exception {
+        File[] roots1 = File.listRoots();
+        String rootsString1 = Arrays.toString(roots1);
+        assertFalse(rootsString1, rootsString1.contains("31337"));
+
+        ManglingFileSystemProvider.addEliteToEveryDirectoryListing = true;
+        File[] roots2 = File.listRoots();
+        String rootsString2 = Arrays.toString(roots2);
+        assertTrue(rootsString2, rootsString2.contains("31337"));
+    }
+
+    @Test
+    public void getCanonicalPath() throws Exception {
+        assumeNotWindows();
+
+        File dir = temporaryFolder.newFolder();
+        File file = new File(dir, "file");
+        Files.createFile(file.toPath());
+        Files.createSymbolicLink(file.toPath().resolveSibling("123"), file.toPath());
+
+        ManglingFileSystemProvider.manglePaths = true;
+        ManglingFileSystemProvider.mangleOnlyFileName = true;
+        assertEquals(new File(dir, "f113").toString(), new File(dir, "123").getCanonicalPath());
+    }
+
+    @Test
+    public void normalizationInConstructor() throws Exception {
+        assertEquals(".", new File(".").toString());
+    }
+
+    @Test
+    public void unixSocketExists() throws Exception {
+        assumeNotWindows();
+
+        // Can't use `temporaryFolder` because it may have a long path,
+        // but the length of a Unix socket path is limited in the Kernel.
+        String shortTmpDir;
+        {
+            Process process = new ProcessBuilder("mktemp", "-d")
+                    .redirectInput(ProcessBuilder.Redirect.PIPE)
+                    .start();
+            try (BufferedReader br = new BufferedReader(process.inputReader())) {
+                shortTmpDir = br.readLine();
+            }
+            assertEquals(0, process.waitFor());
+        }
+        try {
+            File unixSocket = new File(shortTmpDir, "unix-socket");
+            Process ncProcess = new ProcessBuilder("nc", "-lU", unixSocket.toString())
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .start();
+
+            assertEquals(0, new ProcessBuilder(
+                    "sh", "-c",
+                    "I=50; while [ $I -gt 0 && test -S " + unixSocket + " ]; do sleep 0.1; I=$(expr $I - 1); done; echo")
+                    .start()
+                    .waitFor());
+
+            try {
+                assertTrue(unixSocket.exists());
+            } finally {
+                ncProcess.destroy();
+            }
+        } finally {
+            new ProcessBuilder("rm", "-rf", shortTmpDir).start();
+        }
+    }
+
+    @Test
+    public void mkdirsWithDot() throws Exception {
+        File dir = new File(temporaryFolder.getRoot(), "newDir1/.");
+        assertTrue(dir.mkdirs());
+        assertTrue(dir.isDirectory());
+    }
+
+    @Test
+    public void canonicalizeTraverseBeyondRoot() throws Exception {
+        File root = temporaryFolder.getRoot().toPath().getFileSystem().getRootDirectories().iterator().next().toFile();
+
+        assertEquals(root, new File(root, "..").getCanonicalFile());
+        assertEquals(new File(root, "123"), new File(root, "../123").getCanonicalFile());
+    }
+
+    @Test
+    public void canonicalizeRelativePath() throws Exception {
+        File cwd = new File(System.getProperty("user.dir")).getAbsoluteFile();
+
+        assertEquals(cwd, new File("").getCanonicalFile());
+        assertEquals(cwd, new File(".").getCanonicalFile());
+        assertEquals(new File(cwd, "..").toPath().normalize().toFile(), new File("..").getCanonicalFile());
+        assertEquals(new File(cwd, "abc"), new File("abc").getCanonicalFile());
+        assertEquals(new File(cwd, "abc"), new File("abc/.").getCanonicalFile());
+        assertEquals(cwd, new File("abc/..").getCanonicalFile());
+    }
+
+    // TODO Test file size.
+
+//    @Test
+//    public void getTotalSpace() throws Exception {
+//        throw new UnsupportedOperationException();
+//    }
+//
+//    @Test
+//    public void getFreeSpace() throws Exception {
+//        throw new UnsupportedOperationException();
+//    }
+//
+//    @Test
+//    public void getUsableSpace() throws Exception {
+//        throw new UnsupportedOperationException();
+//    }
+//
+//    @Test
+//    public void compareTo() throws Exception {
+//        throw new UnsupportedOperationException();
+//    }
+}

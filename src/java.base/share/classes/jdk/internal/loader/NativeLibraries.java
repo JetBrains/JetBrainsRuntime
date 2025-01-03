@@ -24,6 +24,7 @@
  */
 package jdk.internal.loader;
 
+import com.sun.IoOverNio;
 import jdk.internal.misc.VM;
 import jdk.internal.ref.CleanerFactory;
 import jdk.internal.util.StaticProperty;
@@ -122,13 +123,17 @@ public final class NativeLibraries {
         if (!isBuiltin) {
             name = AccessController.doPrivileged(new PrivilegedAction<>() {
                     public String run() {
+                        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
                         try {
+                            IoOverNio.ALLOW_IO_OVER_NIO.set(false);
                             if (loadLibraryOnlyIfPresent && !file.exists()) {
                                 return null;
                             }
                             return file.getCanonicalPath();
                         } catch (IOException e) {
                             return null;
+                        } finally {
+                            IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
                         }
                     }
                 });
@@ -339,8 +344,14 @@ public final class NativeLibraries {
             // will include the error message from dlopen to provide diagnostic information
             return AccessController.doPrivileged(new PrivilegedAction<>() {
                 public Boolean run() {
-                    File file = new File(name);
-                    return file.exists();
+                    boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
+                    try {
+                        IoOverNio.ALLOW_IO_OVER_NIO.set(false);
+                        File file = new File(name);
+                        return file.exists();
+                    } finally {
+                        IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
+                    }
                 }
             });
         }
