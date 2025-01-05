@@ -21,7 +21,6 @@
  * questions.
  */
 
-package jdk.jpackage.tests;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -42,8 +41,6 @@ import jdk.jpackage.test.JavaTool;
 import jdk.jpackage.test.Annotations.Test;
 import jdk.jpackage.test.Annotations.Parameter;
 
-import static jdk.jpackage.test.WindowsHelper.getTempDirectory;
-
 /*
  * @test
  * @summary jpackage basic testing
@@ -51,7 +48,7 @@ import static jdk.jpackage.test.WindowsHelper.getTempDirectory;
  * @build jdk.jpackage.test.*
  * @compile BasicTest.java
  * @run main/othervm/timeout=720 -Xmx512m jdk.jpackage.test.Main
- *  --jpt-run=jdk.jpackage.tests.BasicTest
+ *  --jpt-run=BasicTest
  */
 
 public final class BasicTest {
@@ -285,7 +282,7 @@ public final class BasicTest {
         // Force save of package bundle in test work directory.
         .addInitializer(JPackageCommand::setDefaultInputOutput)
         .addInitializer(cmd -> {
-            Path tempDir = getTempDirectory(cmd, tempRoot);
+            Path tempDir = tempRoot.resolve(cmd.packageType().name());
             switch (type) {
                     case TEMPDIR_EMPTY -> Files.createDirectories(tempDir);
                     case TEMPDIR_NOT_EXIST -> Files.createDirectories(tempDir.getParent());
@@ -302,20 +299,16 @@ public final class BasicTest {
         if (TestTempType.TEMPDIR_NOT_EMPTY.equals(type)) {
             pkgTest.setExpectedExitCode(1).addBundleVerifier(cmd -> {
                 // Check jpackage didn't use the supplied directory.
-                Path tempDir = getTempDirectory(cmd, tempRoot);
-                String[] tempDirContents = tempDir.toFile().list();
-                TKit.assertStringListEquals(List.of("foo.txt"), List.of(
-                        tempDirContents), String.format(
-                                "Check the contents of the supplied temporary directory [%s]",
-                                tempDir));
+                Path tempDir = Path.of(cmd.getArgumentValue("--temp"));
+                TKit.assertDirectoryContent(tempDir).match(Path.of("foo.txt"));
                 TKit.assertStringListEquals(List.of("Hello Duke!"),
-                        Files.readAllLines(tempDir.resolve(tempDirContents[0])),
+                        Files.readAllLines(tempDir.resolve("foo.txt")),
                         "Check the contents of the file in the supplied temporary directory");
             });
         } else {
             pkgTest.addBundleVerifier(cmd -> {
                 // Check jpackage used the supplied directory.
-                Path tempDir = getTempDirectory(cmd, tempRoot);
+                Path tempDir = Path.of(cmd.getArgumentValue("--temp"));
                 TKit.assertDirectoryNotEmpty(tempDir);
             });
         }
