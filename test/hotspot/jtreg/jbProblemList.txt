@@ -240,7 +240,7 @@ vmTestbase/nsk/jdb/options/listconnectors/listconnectors001/listconnectors001.ja
 vmTestbase/nsk/jdi/LaunchingConnector/launch/launch001/TestDescription.java initial_run windows-all
 vmTestbase/nsk/jdi/LaunchingConnector/launch/launch003/TestDescription.java initial_run windows-all
 vmTestbase/nsk/jdi/LaunchingConnector/launchnosuspend/launchnosuspend001/TestDescription.java initial_run windows-all
-vmTestbase/nsk/jdi/MethodExitRequest/addClassFilter_rt/filter_rt001/TestDescription.java JBR-7585 macosx-all
+vmTestbase/nsk/jdi/MethodExitRequest/addClassFilter_rt/filter_rt001/TestDescription.java JBR-7585 macosx-all,linux-all
 vmTestbase/nsk/jdi/ThreadReference/stop/stop001/TestDescription.java 7034630 generic-all
 vmTestbase/nsk/jdi/ReferenceType/instances/instances002/instances002.java initial_run linux-all
 vmTestbase/nsk/jdi/Value/type/type002/type002.java JBR-7553 macosx-x64

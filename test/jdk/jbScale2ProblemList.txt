@@ -88,7 +88,13 @@ java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java              
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                            nobug generic-all
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java                  nobug generic-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug generic-all
-javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java                      nobug generic-all
+javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id0                  nobug macosx-all,linux-all,windows-all
+javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1                  nobug macosx-all,linux-all,windows-all
+javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id2                  nobug windows-all
+javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id3                  nobug windows-all
+javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id4                  nobug windows-all
+javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id5                  nobug windows-all
+javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id6                  nobug windows-all
 jb/java/awt/CustomTitleBar/ActionListenerTest.java                                  nobug generic-all
 jb/java/awt/CustomTitleBar/ChangeTitleBarHeightTest.java                            nobug generic-all
 jb/java/awt/CustomTitleBar/CheckFullScreen.java                                     nobug generic-all

@@ -260,7 +260,7 @@ java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java JBR-4275,JB
 java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java 7188711,8253184 linux-all,windows-all
 java/awt/FullScreen/UninitializedDisplayModeChangeTest/UninitializedDisplayModeChangeTest.java 7188711,8273617,JBR-4880,8253184 macosx-all,linux-all,windows-all
 java/awt/Focus/8013611/JDK8013611.java 8175366 windows-all,macosx-all
-java/awt/Focus/6401036/InputVerifierTest2.java JBR-7537 linux-aarch64
+java/awt/Focus/6401036/InputVerifierTest2.java JBR-7537 linux-all
 java/awt/Focus/6981400/Test1.java 8029675,JBR-5510 windows-all,macosx-all,linux-5.18.2-arch1-1
 java/awt/Focus/6981400/Test3.java 8173264 generic-all
 java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java JBR-4997,JBR-5729 windows-all,linux-all
@@ -1316,7 +1316,7 @@ java/awt/Frame/MiscUndecorated/UndecoratedInitiallyIconified.java JBR-4880 windo
 java/awt/FullScreen/SetFSWindow/FSFrame.java 8253184 windows-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.java JBR-4880 windows-all
 java/awt/image/mlib/MlibOpsTest.java JBR-5225 windows-all,windows-aarch64
-java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java JBR-4880 windows-all
+java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java JBR-4880,JBR-8090 windows-all,linux-5.18.2-arch1-1
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880 windows-all
 javax/swing/JFileChooser/JFileChooserSetLocationTest.java 8295804 linux-all,macosx-all,windows-all
 javax/swing/JSlider/6348946/bug6348946.java 8197552,JBR-5387 windows-all,linux-all
