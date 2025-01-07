@@ -185,6 +185,7 @@ void ZCollectedHeap::collect(GCCause::Cause cause) {
   case GCCause::_wb_full_gc:
   case GCCause::_wb_breakpoint:
   case GCCause::_dcmd_gc_run:
+  case GCCause::_jbr_gc_run:
   case GCCause::_java_lang_system_gc:
   case GCCause::_full_gc_alot:
   case GCCause::_jvmti_force_gc:
