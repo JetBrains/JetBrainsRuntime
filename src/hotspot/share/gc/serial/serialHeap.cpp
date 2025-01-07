@@ -22,6 +22,7 @@
  *
  */
 
+#include "gc/shared/gcCause.hpp"
 #include "precompiled.hpp"
 #include "classfile/classLoaderDataGraph.hpp"
 #include "classfile/stringTable.hpp"
@@ -431,7 +432,8 @@ HeapWord* SerialHeap::mem_allocate(size_t size,
 
 bool SerialHeap::must_clear_all_soft_refs() {
   return _gc_cause == GCCause::_metadata_GC_clear_soft_refs ||
-         _gc_cause == GCCause::_wb_full_gc;
+         _gc_cause == GCCause::_wb_full_gc ||
+         _gc_cause == GCCause::_jbr_gc_run;
 }
 
 bool SerialHeap::is_young_gc_safe() const {
