@@ -231,6 +231,7 @@ void XDriver::collect(const XDriverRequest& request) {
   case GCCause::_wb_young_gc:
   case GCCause::_wb_full_gc:
   case GCCause::_dcmd_gc_run:
+  case GCCause::_jbr_gc_run:
   case GCCause::_java_lang_system_gc:
   case GCCause::_full_gc_alot:
   case GCCause::_scavenge_alot:
@@ -354,7 +355,8 @@ static bool should_clear_soft_references(const XDriverRequest& request) {
   // Clear soft references if implied by the GC cause
   if (request.cause() == GCCause::_wb_full_gc ||
       request.cause() == GCCause::_metadata_GC_clear_soft_refs ||
-      request.cause() == GCCause::_z_allocation_stall) {
+      request.cause() == GCCause::_z_allocation_stall ||
+      request.cause() == GCCause::_jbr_gc_run) {
     // Clear
     return true;
   }
@@ -376,7 +378,8 @@ static uint select_active_worker_threads_static(const XDriverRequest& request) {
   if (cause == GCCause::_wb_full_gc ||
       cause == GCCause::_java_lang_system_gc ||
       cause == GCCause::_metadata_GC_clear_soft_refs ||
-      cause == GCCause::_z_allocation_stall) {
+      cause == GCCause::_z_allocation_stall ||
+      cause == GCCause::_jbr_gc_run) {
     // Boost
     const uint boosted_nworkers = MAX2(nworkers, ParallelGCThreads);
     return boosted_nworkers;
