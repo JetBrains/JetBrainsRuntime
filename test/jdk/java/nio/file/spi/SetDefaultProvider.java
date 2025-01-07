@@ -26,7 +26,7 @@
  * @bug 4313887 7006126 8142968 8178380 8183320 8210112 8266345 8263940
  * @modules jdk.jartool
  * @library /test/lib
- * @build SetDefaultProvider TestProvider m/* jdk.test.lib.process.ProcessTools
+ * @build SetDefaultProvider TestProvider m/* jdk.test.lib.process.ProcessTools CustomSystemClassLoader
  * @run testng/othervm SetDefaultProvider
  * @summary Runs tests with -Djava.nio.file.spi.DefaultFileSystemProvider set on
  *          the command line to override the default file system provider
@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.spi.ToolProvider;
@@ -178,6 +179,39 @@ public class SetDefaultProvider {
                              "-p", modulePath,
                              "-m", "m/p.Main");
         assertEquals(exitValue, 0);
+    }
+
+    /**
+     * Test file system provider on class path in conjunction with a custom system
+     * class loader that uses the file system API during its initialization.
+     */
+    public void testCustomSystemClassLoader() throws Exception {
+        String testClasses = System.getProperty("test.classes");
+        int exitValue = exec(SET_DEFAULT_FSP,
+                "-Djava.system.class.loader=CustomSystemClassLoader",
+                "-cp", ofClasspath(testClasses, classes("m")),
+                "p.Main");
+        assertEquals(exitValue, 0);
+    }
+
+    /**
+     * Returns a class path from the given paths.
+     */
+    private String ofClasspath(String... paths) {
+        return String.join(File.pathSeparator, paths);
+    }
+
+    /**
+     * Returns the directory containing the classes for the given module.
+     */
+    private static String classes(String mn) {
+        String mp = System.getProperty("jdk.module.path");
+        return Arrays.stream(mp.split(File.pathSeparator))
+                .map(e -> Path.of(e, mn))
+                .filter(Files::isDirectory)
+                .findAny()
+                .map(Path::toString)
+                .orElseThrow();
     }
 
     /**
