@@ -50,9 +50,15 @@ bool VM_G1CollectFull::skip_operation() const {
 void VM_G1CollectFull::doit() {
   G1CollectedHeap* g1h = G1CollectedHeap::heap();
   GCCauseSetter x(g1h, _gc_cause);
-  g1h->do_full_collection(false /* clear_all_soft_refs */,
-                          false /* do_maximal_compaction */,
-                          size_t(0) /* allocation_word_size */);
+  if (_gc_cause == GCCause::_jbr_gc_run) {
+    g1h->do_full_collection(true      /* clear_all_soft_refs */,
+                            true      /* do_maximal_compaction */,
+                            size_t(0) /* allocation_word_size */);
+  } else {
+    g1h->do_full_collection(false     /* clear_all_soft_refs */,
+                            false     /* do_maximal_compaction */,
+                            size_t(0) /* allocation_word_size */);
+  }
 }
 
 VM_G1TryInitiateConcMark::VM_G1TryInitiateConcMark(uint gc_count_before,
