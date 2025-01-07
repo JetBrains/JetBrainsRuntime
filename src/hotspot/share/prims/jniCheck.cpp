@@ -505,6 +505,12 @@ void jniCheck::validate_throwable_klass(JavaThread* thr, Klass* klass) {
   ASSERT_OOPS_ALLOWED;
   assert(klass != nullptr, "klass argument must have a value");
 
+  if (strstr("/Exception$JB$$", klass->name()->as_C_string()) == 0) {
+    // This is a special "marker" class that is never really thrown and
+    // therefore it does not have to be Throwable.
+    return;
+  }
+
   if (!klass->is_instance_klass() ||
       !klass->is_subclass_of(vmClasses::Throwable_klass())) {
     ReportJNIFatalError(thr, fatal_class_not_a_throwable_class);

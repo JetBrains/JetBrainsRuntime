@@ -60,6 +60,7 @@ import java.util.function.Supplier;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import com.jetbrains.exported.JBRApi;
 import jdk.internal.javac.Restricted;
 import jdk.internal.loader.NativeLibraries;
 import jdk.internal.logger.LoggerFinderLoader.TemporaryLoggerFinder;
@@ -2328,4 +2329,7 @@ public final class System {
             }
         });
     }
+
+    @JBRApi.Provides("SystemUtils#fullGC")
+    private static native void $$jb$FullGC();
 }
