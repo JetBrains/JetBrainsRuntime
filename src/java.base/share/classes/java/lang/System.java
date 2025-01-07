@@ -69,6 +69,7 @@ import java.util.function.Supplier;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import com.jetbrains.exported.JBRApi;
 import jdk.internal.logger.LoggerFinderLoader.TemporaryLoggerFinder;
 import jdk.internal.misc.CarrierThreadLocal;
 import jdk.internal.misc.Unsafe;
@@ -2685,4 +2686,7 @@ public final class System {
             }
         });
     }
+
+    @JBRApi.Provides("SystemUtils#fullGC")
+    private static native void $$jb$FullGC();
 }

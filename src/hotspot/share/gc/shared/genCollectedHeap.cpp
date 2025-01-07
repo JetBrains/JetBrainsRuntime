@@ -402,7 +402,8 @@ HeapWord* GenCollectedHeap::mem_allocate(size_t size,
 
 bool GenCollectedHeap::must_clear_all_soft_refs() {
   return _gc_cause == GCCause::_metadata_GC_clear_soft_refs ||
-         _gc_cause == GCCause::_wb_full_gc;
+         _gc_cause == GCCause::_wb_full_gc ||
+         _gc_cause == GCCause::_jbr_gc_run;
 }
 
 void GenCollectedHeap::collect_generation(Generation* gen, bool full, size_t size,
