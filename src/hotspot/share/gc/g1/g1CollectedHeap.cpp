@@ -1847,6 +1847,13 @@ bool G1CollectedHeap::try_collect_fullgc(GCCause::Cause cause,
                                          const G1GCCounters& counters_before) {
   assert_heap_not_locked();
 
+  if (cause == GCCause::_jbr_gc_run) {
+    VM_G1CollectForAllocation op(0, // no following allocation
+                                 counters_before.total_collections(),
+                                 cause);
+    VMThread::execute(&op);
+  }
+
   while(true) {
     VM_G1CollectFull op(counters_before.total_collections(),
                         counters_before.total_full_collections(),
