@@ -2,8 +2,9 @@
 
 set -euxo pipefail
 
-wget https://raw.githubusercontent.com/GNOME/gtk/refs/heads/main/gdk/wayland/protocol/gtk-shell.xml
 # This script creates a Docker image suitable for building musl x64 variant
+
+wget https://raw.githubusercontent.com/GNOME/gtk/refs/heads/main/gdk/wayland/protocol/gtk-shell.xml
 
 docker build \
   --platform=linux/amd64 \
