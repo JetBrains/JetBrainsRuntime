@@ -914,7 +914,7 @@ javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949 linux-all,windows-all
 javax/swing/JLabel/6596966/bug6596966.java 8197552 windows-all
 javax/swing/JLabel/7004134/bug7004134.java JBR-5437 linux-all
-javax/swing/JList/6462008/bug6462008.java JBR-8063 windows-aarch64
+javax/swing/JList/6462008/bug6462008.java JBR-8063 windows-all
 javax/swing/JMenu/4515762/bug4515762.java 8197552 windows-all
 javax/swing/JMenu/4692443/bug4692443.java JBR-6093 windows-all
 javax/swing/JMenu/6470128/bug6470128.java 8253184,JBR-6307 windows-all,linux-all
@@ -950,6 +950,7 @@ javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all
 javax/swing/JTree/4330357/bug4330357.java 8253184,JBR-6466 windows-all,linux-all
 javax/swing/JTree/4633594/JTreeFocusTest.java 7105441,JBR-5210 macosx-all,windows-all
 javax/swing/JTree/4908142/bug4908142.java 8197552,JBR-5846,JBR-151 windows-all
+javax/swing/JTree/6578666/bug6578666.java JBR-8103 windows-all
 javax/swing/AbstractButton/6711682/bug6711682.java 8060765 windows-all,macosx-all,linux-5.15.0-39-generic,linux-5.15.0-33-generic,linux-5.19.0-1025-aws
 javax/swing/Action/8133039/bug8133039.java JBR-5210 windows-all
 javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java JBR-5210 windows-all
@@ -1030,7 +1031,7 @@ javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-896,JBR-6760 windows-
 javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-5386 windows-all,linux-all
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210 windows-all
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all
-javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5541 linux-all
+javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5542 linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952 windows-x64
 javax/swing/UIDefaults/6795356/TableTest.java JBR-5767 windows-all
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
