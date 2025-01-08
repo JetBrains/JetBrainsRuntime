@@ -7,6 +7,14 @@
 # move the version to the next manually.
 
 FROM oraclelinux:8
+ARG profilename username password csi
+
+RUN yum -y update &&\
+    yum -y install rhn-setup-2.8.16-13.0.6.module+el8.7.0+21032+057d0dfe && \
+    /usr/sbin/ulnreg_ks --profilename=$profilename \
+                        --username=$username \
+                        --password=$password \
+                        --csi=$csi
 
 # Install the necessary build tools
 RUN yum -y update && \
