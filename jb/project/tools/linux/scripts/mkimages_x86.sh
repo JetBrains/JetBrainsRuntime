@@ -92,7 +92,7 @@ WITH_DEBUG_LEVEL="--with-debug-level=release"
 RELEASE_NAME=linux-x86-server-release
 
 case "$bundle_type" in
-  "jcef")
+  "jcef" | "vk")
     echo "not implemented" && do_exit 1
     ;;
   "nomod" | "")
@@ -119,7 +119,7 @@ JBRSDK_BUNDLE=jbrsdk
 echo Fixing permissions
 chmod -R a+r $JSDK
 
-if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ]; then
+if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "fd" ] || [ "$bundle_type" == "vk" ]; then
   jbr_name_postfix="_${bundle_type}"
 else
   jbr_name_postfix=""

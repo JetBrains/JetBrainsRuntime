@@ -102,6 +102,12 @@ else
   WITH_BUNDLED_FREETYPE=""
 fi
 
+if [ "$bundle_type" == "vk" ]; then
+  WITH_VULKAN="--with-vulkan"
+else
+  WITH_VULKAN=""
+fi
+
 REPRODUCIBLE_BUILD_OPTS="--with-source-date=$SOURCE_DATE_EPOCH
   --with-hotspot-build-time=$BUILD_TIME
   --with-copyright-year=$COPYRIGHT_YEAR

@@ -30,14 +30,18 @@ import java.io.InputStreamReader;
 /**
  * @test
  * @summary VerifyDependencies checks readability verifies that a Linux shared
- *          library has no dependency on symbols from glibc version higher than 2.17
+ *          library has no dependency on symbols from glibc version higher than <code>expectedVersion</code>
  * @run main VerifyDependencies
  * @requires (os.family == "linux")
  */
 
 public class VerifyDependencies {
 
-    static final public String EXPECTED_VERSION = "2.17";
+    static final public String EXPECTED_VERSION_LEGACY = "2.17";
+    static final public String EXPECTED_VERSION_VULKAN = "2.28";
+
+    static String expectedVersion;
+
     public static void verifyLibrary(String libraryPath) throws IOException {
         Process process;
         BufferedReader reader;
@@ -52,12 +56,12 @@ public class VerifyDependencies {
             System.out.println(line);
             if (line.contains("GLIBC_")) {
                 String version = extractVersion(line);
-                if (compareVersions(version, EXPECTED_VERSION) > 0) {
+                if (compareVersions(version, expectedVersion) > 0) {
                     throw new RuntimeException(libraryPath + " has a dependency on glibc version " + version);
                 }
             }
         }
-        System.out.println(libraryPath + " has no dependency on glibc version higher than " + EXPECTED_VERSION);
+        System.out.println(libraryPath + " has no dependency on glibc version higher than " + expectedVersion);
     }
 
     private static String extractVersion(String line) {
@@ -125,6 +129,12 @@ public class VerifyDependencies {
 
     public static void main(String[] args) throws IOException {
         String javaHome = System.getProperty("java.home");
+
+        String vendorVersion = System.getProperty("java.vendor.version");
+        expectedVersion = vendorVersion.substring(Math.max(vendorVersion.length() - 3, 0)).compareTo("-vk") == 0
+                ? EXPECTED_VERSION_VULKAN : EXPECTED_VERSION_LEGACY;
+        System.out.println("supporting glibc version is not less than " + expectedVersion);
+
         findInDirectory(javaHome + "/bin", false);
         findInDirectory(javaHome + "/lib", true);
     }
