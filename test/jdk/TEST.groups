@@ -1021,7 +1021,7 @@ jdk_awt_wayland = \
     -java/awt/image/VolatileImage/TransparentVImage.java \
     -java/awt/image/mlib/MlibOpsTest.java \
     -java/awt/image/multiresolution/MenuMultiresolutionIconTest.java \
-    -java/awt/image/multiresolution/MultiDisplayTest/MultiDisplayTest.java \
+    -java/awt/image/multiresolution/MultiDisplayTest.java \
     -java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java \
     -java/awt/image/multiresolution/MultiresolutionIconTest.java \
     -java/awt/Insets/CombinedTestApp1.java \
