@@ -2039,7 +2039,8 @@ void InstanceKlass::do_nonstatic_fields_dcevm(FieldClosure* cl) {
 
     for (int i = 0; i < length; i++) {
       InstanceKlass* ik = class_hiearchy.at(fields_sorted.at(i).third);
-      fd.reinitialize(ik, fields_sorted.at(i).second);
+      FieldInfo fieldInfo = ik->field(fields_sorted.at(i).second);
+      fd.reinitialize(ik, fieldInfo);
       assert(!fd.is_static(), "only nonstatic fields");
       assert(fd.offset() == fields_sorted.at(i).first, "offset matches");
       cl->do_field(&fd);
