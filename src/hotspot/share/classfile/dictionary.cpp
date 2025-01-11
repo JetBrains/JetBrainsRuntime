@@ -92,8 +92,8 @@ void Dictionary::classes_do(void f(InstanceKlass*)) {
 }
 
 void Dictionary::classes_do_safepoint(void f(InstanceKlass*)) {
-    auto doit = [&] (DictionaryEntry** value) {
-        InstanceKlass* k = (*value)->instance_klass();
+    auto doit = [&] (InstanceKlass** value) {
+        InstanceKlass* k = (*value);
         if (loader_data() == k->class_loader_data()) {
             f(k);
         }
@@ -105,8 +105,8 @@ void Dictionary::classes_do_safepoint(void f(InstanceKlass*)) {
 
 // (DCEVM) iterate over dict entry
 void Dictionary::classes_do(KlassClosure* closure) {
-  auto doit = [&] (DictionaryEntry** value) {
-    InstanceKlass* k = (*value)->instance_klass();
+  auto doit = [&] (InstanceKlass** value) {
+    InstanceKlass* k = (*value);
     if (loader_data() == k->class_loader_data()) {
       closure->do_klass(k);
     }
@@ -207,28 +207,54 @@ InstanceKlass* Dictionary::find_class(Thread* current, Symbol* class_name) {
   return result;
 }
 
+class UpdateKlassDcevm : public StackObj {
+  InstanceKlass* _new_klass;
+  InstanceKlass* _old_klass;
+  bool _replaced;
+public:
+  UpdateKlassDcevm(InstanceKlass* new_klass, InstanceKlass* old_klass) :
+    _new_klass(new_klass),
+    _old_klass(old_klass),
+    _replaced(false) {
+  }
+
+  void operator()(InstanceKlass** old_table_value) {
+    assert(*old_table_value == _old_klass, "should be old class");
+    *old_table_value = _new_klass;
+    _replaced = true;
+  }
+
+  bool get_replaced() {
+    return _replaced;
+  }
+};
+
 // (DCEVM) replace old_class by new class in dictionary
 bool Dictionary::update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass) {
-  DictionaryEntry* entry = get_entry(current, class_name);
-  if (entry != NULL) {
-    assert(entry->instance_klass() == old_klass, "should be old class");
-    entry->set_instance_klass(k);
+  UpdateKlassDcevm found(k, old_klass);
+
+  DictionaryLookup lookup(class_name);
+  InstanceKlass* result = nullptr;
+  bool needs_rehashing = false;
+  bool ret = _table->insert_get(current, lookup, old_klass, found);
+  return ret || found.get_replaced();
+}
+
+class RollBackDcevm : public StackObj {
+public:
+  bool operator()(InstanceKlass** table_value) {
+    InstanceKlass* k = *table_value;
+    if (k->is_redefining()) {
+      *table_value = (InstanceKlass*) k->old_version();
+    }
     return true;
   }
-  return false;
-}
+};
 
 // (DCEVM) rollback redefinition
 void Dictionary::rollback_redefinition() {
-  // TODO : (DCEVM)
-  auto all_doit = [&] (DictionaryEntry** value) {
-    if ((*value)->instance_klass()->is_redefining()) {
-      (*value)->set_instance_klass((InstanceKlass*) (*value)->instance_klass()->old_version());
-    }
-    return true;
-  };
-
-  _table->do_scan(Thread::current(), all_doit);
+  RollBackDcevm rollback;
+  _table->do_scan(Thread::current(), rollback);
 }
 
 void Dictionary::print_size(outputStream* st) const {
