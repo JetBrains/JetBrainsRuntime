@@ -301,14 +301,15 @@ Klass::Klass() : _kind(UnknownKlassKind) {
 // which doesn't zero out the memory before calling the constructor.
 Klass::Klass(KlassKind kind) : _kind(kind),
                                _prototype_header(make_prototype(this)),
-                               _shared_class_path_index(-1),
                                _old_version(nullptr),
                                _new_version(nullptr),
                                _redefinition_flags(Klass::NoRedefinition),
                                _is_redefining(false),
                                _update_information(nullptr),
                                _is_copying_backwards(false),
-                               _is_rolled_back(false) {
+                               _is_rolled_back(false),
+                               _shared_class_path_index(-1)
+                               {
   CDS_ONLY(_shared_class_flags = 0;)
   CDS_JAVA_HEAP_ONLY(_archived_mirror_index = -1;)
   _primary_supers[0] = this;
