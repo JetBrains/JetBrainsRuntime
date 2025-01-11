@@ -22,7 +22,6 @@
  *
  */
 
-#include "precompiled.hpp"
 #include "cds/metaspaceShared.hpp"
 #include "classfile/classFileParser.hpp"
 #include "classfile/classFileStream.hpp"
@@ -986,8 +985,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(TRAPS
 
     ClassFileStream st((u1*)class_bytes,
                        class_byte_count,
-                       "__VM_EnhancedRedefineClasses__",
-                       ClassFileStream::verify);
+                       "__VM_EnhancedRedefineClasses__");
 
     // Parse the stream.
     Handle the_class_loader(THREAD, the_class->class_loader());
@@ -1027,11 +1025,6 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(TRAPS
         // The hidden class loader data has been artificially been kept alive to
         // this point. The mirror and any instances of this class have to keep
         // it alive afterwards.
-
-        // Keep old classloader data alive otherwise it crashes with ClassUnloading=true
-//        if (the_class->class_loader_data()->keep_alive_cnt() > 0) {
-//          the_class->class_loader_data()->dec_keep_alive();
-//        }
       }
 
     } else {
@@ -1197,8 +1190,8 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
   }
 
   // Check whether class modifiers are the same.
-  jushort old_flags = (jushort) the_class->access_flags().get_flags();
-  jushort new_flags = (jushort) new_class->access_flags().get_flags();
+  u2 old_flags = (jushort) the_class->access_flags().as_class_flags();
+  u2 new_flags = (jushort) new_class->access_flags().as_class_flags();
   if (old_flags != new_flags) {
     // FIXME: Can this have any effects?
   }
@@ -1209,8 +1202,8 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
   JavaFieldStream new_fs(new_class);
   for (; !old_fs.done() && !new_fs.done(); old_fs.next(), new_fs.next()) {
     // access
-    old_flags = old_fs.access_flags().as_short();
-    new_flags = new_fs.access_flags().as_short();
+    old_flags = old_fs.access_flags().as_field_flags();
+    new_flags = new_fs.access_flags().as_field_flags();
     if ((old_flags ^ new_flags) & JVM_RECOGNIZED_FIELD_MODIFIERS) {
       // FIXME: can this have any effect?
     }
@@ -1322,8 +1315,8 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
     switch (method_was) {
     case matched:
       // methods match, be sure modifiers do too
-      old_flags = (jushort) k_old_method->access_flags().get_flags();
-      new_flags = (jushort) k_new_method->access_flags().get_flags();
+      old_flags = k_old_method->access_flags().as_method_flags();
+      new_flags = k_new_method->access_flags().as_method_flags();
       if ((old_flags ^ new_flags) & ~(JVM_ACC_NATIVE)) {
         // TODO Can this have any effects? Probably yes on vtables?
         result = result | Klass::ModifyClass;
@@ -1359,7 +1352,7 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
       break;
     case added:
       // method added, see if it is OK
-      new_flags = (jushort) k_new_method->access_flags().get_flags();
+      new_flags = (jushort) k_new_method->access_flags().as_method_flags();
       if ((new_flags & JVM_ACC_PRIVATE) == 0
            // hack: private should be treated as final, but alas
           || (new_flags & (JVM_ACC_FINAL|JVM_ACC_STATIC)) == 0
@@ -1393,7 +1386,7 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
       break;
     case deleted:
       // method deleted, see if it is OK
-      old_flags = (jushort) k_old_method->access_flags().get_flags();
+      old_flags = (jushort) k_old_method->access_flags().as_method_flags();
       if ((old_flags & JVM_ACC_PRIVATE) == 0
            // hack: private should be treated as final, but alas
           || (old_flags & (JVM_ACC_FINAL|JVM_ACC_STATIC)) == 0
@@ -2359,8 +2352,7 @@ jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(TRAPS) {
 
     ClassFileStream st((u1*)_class_defs[i].class_bytes,
                            _class_defs[i].class_byte_count,
-                           "__VM_EnhancedRedefineClasses__",
-                           ClassFileStream::verify);
+                           "__VM_EnhancedRedefineClasses__");
 
     Handle protection_domain(THREAD, klass->protection_domain());
 

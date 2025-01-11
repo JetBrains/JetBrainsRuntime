@@ -252,10 +252,13 @@ void G1FullGCCompactionPoint::forward_dcevm(oop object, size_t size, bool force_
 
   // Store a forwarding pointer if the object should be moved.
   if (cast_from_oop<HeapWord*>(object) != _compaction_top || force_forward) {
-    object->forward_to(cast_to_oop(_compaction_top));
-    assert(object->is_forwarded(), "must be forwarded");
+    if (!object->is_forwarded()) {
+      preserved_stack()->push_if_necessary(object, object->mark());
+    }
+    FullGCForwarding::forward_to(object, cast_to_oop(_compaction_top));
+    assert(FullGCForwarding::is_forwarded(object), "must be forwarded");
   } else {
-    assert(!object->is_forwarded(), "must not be forwarded");
+    assert(!FullGCForwarding::is_forwarded(object), "must not be forwarded");
   }
 
   // Update compaction values.

@@ -210,7 +210,7 @@ void G1FullGCCompactTask::G1CompactRegionClosureDcevm::clear_in_bitmap(oop obj) 
 size_t G1FullGCCompactTask::G1CompactRegionClosureDcevm::apply(oop obj) {
   size_t size = obj->size();
   if (obj->is_forwarded()) {
-    HeapWord* destination = cast_from_oop<HeapWord*>(obj->forwardee());
+    HeapWord* destination = cast_from_oop<HeapWord*>(FullGCForwarding::forwardee(obj));
     // copy object and reinit its mark
     HeapWord *obj_addr = cast_from_oop<HeapWord *>(obj);
 
