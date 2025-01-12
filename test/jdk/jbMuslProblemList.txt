@@ -47,6 +47,7 @@ javax/swing/JFileChooser/4400728/JFileChooserDefaultDirectoryTest.java initial_r
 javax/swing/JFileChooser/FileViewNPETest.java initial_runs generic-all
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java initial_runs generic-all
 javax/swing/JFrame/JFrameBackgroundRefreshTest.java JBR-7471 linux-all
+javax/swing/JMenu/4213634/bug4213634.java JBR-8056 linux-aarch64
 javax/swing/JMenu/TestDisabledMenuForegroundColor.java initial_runs generic-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java initial_runs generic-all
 javax/swing/JRadioButton/bug4823809.java JBR-7788 linux-all
