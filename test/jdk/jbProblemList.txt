@@ -147,6 +147,7 @@ java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java JBR-94 windows-x
 java/awt/dnd/DropTargetEnterExitTest/ExtraDragEnterTest.java 8029680 generic-all
 java/awt/dnd/DropTargetEnterExitTest/MissedDragExitTest.java JBR-5730 linux-all
 java/awt/dnd/MissingDragExitEventTest/MissingDragExitEventTest.java 8288839,JBR-5727,JBR-5959 windows-all,linux-all
+java/awt/dnd/NestedHeavyweightDropTargetTest.java JBR-8114 windows-all
 java/awt/dnd/DragExitBeforeDropTest.java 8242805 macosx-all
 java/awt/dnd/DragThresholdTest.java 8076299 macosx-all
 java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.java 8171510,JBR-881 macosx-all,linux-all
