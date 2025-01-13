@@ -26,13 +26,18 @@
 
 package sun.java2d.vulkan;
 
+import java.awt.AlphaComposite;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
+import sun.awt.image.BufImgSurfaceData;
 import sun.awt.wl.WLComponentPeer;
 import sun.java2d.SurfaceData;
+import sun.java2d.loops.Blit;
+import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.SurfaceType;
 import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.RenderBuffer;
@@ -147,8 +152,20 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
     }
 
     public int getRGBPixelAt(int x, int y) {
-        int pixel = pixelAt(x, y);
-        return getSurfaceType().rgbFor(pixel, getColorModel());
+        Rectangle r = peer.getBufferBounds();
+        if (x < r.x || x >= r.x + r.width || y < r.y || y >= r.y + r.height) {
+            throw new ArrayIndexOutOfBoundsException("x,y outside of buffer bounds");
+        }
+
+        BufferedImage resImg = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+        SurfaceData resData = BufImgSurfaceData.createData(resImg);
+
+        Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa,
+                resData.getSurfaceType());
+        blit.Blit(this, resData, AlphaComposite.Src, null,
+                    x, y, 0, 0, 1, 1);
+
+        return resImg.getRGB(0, 0);
     }
 
     public int [] getRGBPixelsAt(Rectangle bounds) {
