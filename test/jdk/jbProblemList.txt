@@ -135,6 +135,7 @@ java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java JBR-5178 windows-all
 java/awt/Focus/VetoableChangeListenerLoopTest.java JBR-5785 linux-all
 java/awt/Frame/7024749/bug7024749.java JBR-5210 windows-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
+java/awt/Frame/MaximizeUndecoratedTest.java JBR-8064 linux-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/Frame/InitialIconifiedTest.java 7144049,8203920 macosx-all,linux-all
@@ -147,6 +148,7 @@ java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java JBR-94 windows-x
 java/awt/dnd/DropTargetEnterExitTest/ExtraDragEnterTest.java 8029680 generic-all
 java/awt/dnd/DropTargetEnterExitTest/MissedDragExitTest.java JBR-5730 linux-all
 java/awt/dnd/MissingDragExitEventTest/MissingDragExitEventTest.java 8288839,JBR-5727,JBR-5959 windows-all,linux-all
+java/awt/dnd/NestedHeavyweightDropTargetTest.java JBR-8114 windows-all
 java/awt/dnd/DragExitBeforeDropTest.java 8242805 macosx-all
 java/awt/dnd/DragThresholdTest.java 8076299 macosx-all
 java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.java 8171510,JBR-881 macosx-all,linux-all
@@ -159,6 +161,7 @@ java/awt/Focus/CloseDialogActivateOwnerTest/CloseDialogActivateOwnerTest.java JB
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252,JBR-5178 windows-all
 java/awt/Focus/ConsumedTabKeyTest.java JBR-5833 windows-all
 java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java JBR-5210 windows-all
+java/awt/Focus/KeyStrokeTest.java JBR-7914 windows-all
 java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.java 8194753 linux-all,macosx-all
 java/awt/Focus/NoAutotransferToDisabledCompTest/NoAutotransferToDisabledCompTest.java 7152980,JBR-5210 macosx-all,windows-all
 java/awt/Focus/ToFrontFocusTest/ToFrontFocus.java 7156130 linux-all
@@ -245,9 +248,12 @@ java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055,JBR-93 windows-
 java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916 linux-all
 
 java/awt/event/KeyEvent/KeyTyped/AltShiftEnterShouldNotSendKeyTyped7157.java JBR-7327 windows-x64
+java/awt/event/KeyEvent/KeyTyped/CancelKeyTyped.java JBR-8121 windows-all
 java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java JBR-4880 windows-all
 
 java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all,macosx-all
+java/awt/event/KeyEvent/KeyTyped/DeleteKeyTyped.java JBR-8121 windows-all
+java/awt/event/KeyEvent/KeyTyped/EscapeKeyTyped.java JBR-8121 windows-all
 
 java/awt/dnd/BadSerializationTest/BadSerializationTest.java linux-x64,windows-x64
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490 linux-all
@@ -604,6 +610,7 @@ java/awt/Modal/OnTop/OnTopTKModal4Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal6Test.java 8253184 windows-all
 java/awt/List/ActionEventTest/ActionEventTest.java JBR-5799 windows-x64
+java/awt/List/ActionEventWhenHitEnterTest.java JBR-8024 windows-all
 java/awt/List/EmptyListEventTest/EmptyListEventTest.java JBR-5387 linux-all
 java/awt/List/FirstItemRemoveTest/FirstItemRemoveTest.java JBR-86 windows-x64
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711 linux-all
