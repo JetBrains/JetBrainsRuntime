@@ -150,8 +150,6 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt(JNIEnv *env, jobject vksd, jint 
     J2dTraceLn(J2D_TRACE_INFO, "Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt")
     VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);
 
-    JNU_CHECK_EXCEPTION_RETURN(env, NULL);
-
     if (sd == NULL) {
         return NULL;
     }
@@ -180,6 +178,8 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_pixelsAt(JNIEnv *env, jobject vksd, jint 
     jintArray arrayObj = NULL;
     jsize bufferSizeInPixels = width * height;
     arrayObj = (*env)->NewIntArray(env, bufferSizeInPixels);
+
+    JNU_CHECK_EXCEPTION_RETURN(env, NULL);
 
     VKRenderer_FlushRenderPass(&sd->vksdOps);
     VkCommandBuffer cb = VKRenderer_Record(device->renderer);
