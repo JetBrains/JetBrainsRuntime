@@ -699,15 +699,6 @@ void Thread::print_owned_locks_on(outputStream* st) const {
 }
 #endif // ASSERT
 
-// We had to move these methods here, because vm threads get into ObjectSynchronizer::enter
-// However, there is a note in JavaThread::is_lock_owned() about the VM threads not being
-// used for compilation in the future. If that change is made, the need for these methods
-// should be revisited, and they should be removed if possible.
-
-bool Thread::is_lock_owned(address adr) const {
-  return is_in_full_stack(adr);
-}
-
 bool Thread::set_as_starting_thread() {
   assert(_starting_thread == NULL, "already initialized: "
          "_starting_thread=" INTPTR_FORMAT, p2i(_starting_thread));
@@ -1034,8 +1025,6 @@ JavaThread::JavaThread() :
   _current_pending_monitor_is_from_java(true),
   _current_waiting_monitor(NULL),
   _Stalled(0),
-
-  _monitor_chunks(nullptr),
 
   _suspend_flags(0),
   _async_exception_condition(_no_async_condition),
@@ -1573,13 +1562,7 @@ JavaThread* JavaThread::active() {
 }
 
 bool JavaThread::is_lock_owned(address adr) const {
-  if (Thread::is_lock_owned(adr)) return true;
-
-  for (MonitorChunk* chunk = monitor_chunks(); chunk != NULL; chunk = chunk->next()) {
-    if (chunk->contains(adr)) return true;
-  }
-
-  return false;
+  return is_in_full_stack(adr);
 }
 
 oop JavaThread::exception_oop() const {
@@ -1589,23 +1572,6 @@ oop JavaThread::exception_oop() const {
 void JavaThread::set_exception_oop(oop o) {
   Atomic::store(&_exception_oop, o);
 }
-
-void JavaThread::add_monitor_chunk(MonitorChunk* chunk) {
-  chunk->set_next(monitor_chunks());
-  set_monitor_chunks(chunk);
-}
-
-void JavaThread::remove_monitor_chunk(MonitorChunk* chunk) {
-  guarantee(monitor_chunks() != NULL, "must be non empty");
-  if (monitor_chunks() == chunk) {
-    set_monitor_chunks(chunk->next());
-  } else {
-    MonitorChunk* prev = monitor_chunks();
-    while (prev->next() != chunk) prev = prev->next();
-    prev->set_next(chunk->next());
-  }
-}
-
 
 // Asynchronous exceptions support
 //
@@ -1993,13 +1959,6 @@ void JavaThread::oops_do_no_frames(OopClosure* f, CodeBlobClosure* cf) {
   Thread::oops_do_no_frames(f, cf);
 
   DEBUG_ONLY(verify_frame_info();)
-
-  if (has_last_Java_frame()) {
-    // Traverse the monitor chunks
-    for (MonitorChunk* chunk = monitor_chunks(); chunk != NULL; chunk = chunk->next()) {
-      chunk->oops_do(f);
-    }
-  }
 
   assert(vframe_array_head() == NULL, "deopt in progress at a safepoint!");
   // If we have deferred set_locals there might be oops waiting to be
