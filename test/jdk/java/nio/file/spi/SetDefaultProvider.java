@@ -202,6 +202,23 @@ public class SetDefaultProvider {
     }
 
     /**
+     * Test the file system provider located in a jar with
+     * -Djava.util.zip.use.nio.for.zip.file.access=true
+     * that makes ZipFile use NIO to read the jar.
+     */
+    public void testClassPathWithFileSystemProviderJarAndNioForZipFile() throws Exception {
+        String testClasses = System.getProperty("test.classes");
+        Path fspJar = Path.of("testFileSystemProvider.jar");
+        Files.deleteIfExists(fspJar);
+        createFileSystemProviderJar(fspJar, Path.of(testClasses));
+        String jarFile = createModularJar();
+        String classpath = ofClasspath(fspJar.toString(), jarFile, testClasses);
+        int exitValue = exec(SET_DEFAULT_FSP, "-Djava.util.zip.use.nio.for.zip.file.access=true",
+                "-cp", classpath, "p.Main");
+        assertEquals(exitValue, 0);
+    }
+
+    /**
      * Returns the directory containing the classes for the given module.
      */
     private static String classes(String mn) {
