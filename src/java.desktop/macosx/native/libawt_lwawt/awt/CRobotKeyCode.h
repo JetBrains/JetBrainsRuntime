@@ -127,6 +127,7 @@ const static int OSX_F13                        = 0x69;
 const static int OSX_F16                        = 0x6A;
 const static int OSX_F14                        = 0x6B;
 const static int OSX_F10                        = 0x6D;
+const static int OSX_ContextualMenu             = 0x6E;
 const static int OSX_F12                        = 0x6F;
 const static int OSX_F15                        = 0x71;
 const static int OSX_Help                       = 0x72;
