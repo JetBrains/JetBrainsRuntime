@@ -320,8 +320,8 @@ void VKBlitLoops_Blit(JNIEnv *env,
 }
 
 /**
- * Specialized blit method for copying a native OpenGL "Surface" (pbuffer,
- * window, etc.) to a system memory ("Sw") surface.
+ * Specialized blit method for copying a native Vulkan "Surface" to a system
+ * memory ("Sw") surface.
  */
 void
 VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
@@ -333,7 +333,8 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
     SurfaceDataOps *dstOps = (SurfaceDataOps *)jlong_to_ptr(pDstOps);
     SurfaceDataRasInfo srcInfo, dstInfo;
 
-    J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_SurfaceToSwBlit");
+    J2dTraceLn6(J2D_TRACE_INFO, "VKBlitLoops_SurfaceToSwBlit: (%d %d %d %d) -> (%d %d)",
+                srcx, srcy, width, height, dstx, dsty);
 
     if (width <= 0 || height <= 0) {
         J2dTraceLn(J2D_TRACE_WARNING,
@@ -409,9 +410,8 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
                             .baseArrayLayer = 0,
                             .layerCount = 1
                     },
-                    .imageOffset = {srcInfo.bounds.x1, srcInfo.bounds.y1, 0},
-                    .imageExtent = {srcInfo.bounds.x2 - srcInfo.bounds.x1,
-                                    srcInfo.bounds.y2 - srcInfo.bounds.y1, 1}
+                    .imageOffset = {srcx, srcy, 0},
+                    .imageExtent = {width, height, 1}
             };
 
             device->vkCmdCopyImageToBuffer(cb, image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

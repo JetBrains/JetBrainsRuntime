@@ -169,16 +169,29 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
     }
 
     public int [] getRGBPixelsAt(Rectangle bounds) {
-        int [] pixels = pixelsAt(bounds.x, bounds.y, bounds.width, bounds.height);
-        var surfaceType = getSurfaceType();
-        if (surfaceType.equals(SurfaceType.IntArgbPre) || surfaceType.equals(SurfaceType.IntRgb)) {
-            // No conversion is necessary, can return raw pixels
-        } else {
-            var cm = getColorModel();
-            for (int i = 0; i < pixels.length; i++) {
-                pixels[i] = surfaceType.rgbFor(pixels[i], cm);
-            }
+        Rectangle r = peer.getBufferBounds();
+
+        if ((long)bounds.width * (long)bounds.height > Integer.MAX_VALUE) {
+            throw new IndexOutOfBoundsException("Dimensions (width=" + bounds.width +
+                    " height=" + bounds.height + ") are too large");
         }
+
+        Rectangle b = bounds.intersection(r);
+
+        if (b.isEmpty()) {
+            throw new IndexOutOfBoundsException("Requested bounds are outside of surface bounds");
+        }
+
+        BufferedImage resImg = new BufferedImage(b.width, b.height, BufferedImage.TYPE_INT_ARGB);
+        SurfaceData resData = BufImgSurfaceData.createData(resImg);
+
+        Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa,
+                resData.getSurfaceType());
+        blit.Blit(this, resData, AlphaComposite.Src, null,
+                b.x, b.y, 0, 0, b.width, b.height);
+
+        int [] pixels = new int[b.width * b.height];
+        resImg.getRGB(0, 0, b.width, b.height, pixels, 0, b.width);
         return pixels;
     }
 
@@ -231,7 +244,4 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
             return true;
         }
     }
-
-    private native int pixelAt(int x, int y);
-    private native int [] pixelsAt(int x, int y, int width, int height);
 }
