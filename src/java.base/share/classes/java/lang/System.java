@@ -53,6 +53,7 @@ import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.CodeSource;
 import java.security.PrivilegedAction;
+import java.nio.file.FileSystems;
 import java.security.ProtectionDomain;
 import java.util.Collections;
 import java.util.List;
@@ -2334,6 +2335,16 @@ public final class System {
 
         // set TCCL
         Thread.currentThread().setContextClassLoader(scl);
+
+        if (Boolean.getBoolean("java.util.zip.use.nio.for.zip.file.access")
+                && System.getProperty("java.nio.file.spi.DefaultFileSystemProvider") != null) {
+            // Make sure the custom file system(s) are loaded using the "standard" ZipFile operating mode
+            // rather than the one that forwards to NIO. The latter will use the file system that is being loaded to
+            // try to load files, which will result in an NPE from FileSystems.getDefault().
+            // Calling FileSystems.getDefault() here bypasses that because the NIO operating mode of ZipFile only
+            // activates at init level 4.
+            FileSystems.getDefault();
+        }
 
         // system is fully initialized
         VM.initLevel(4);
