@@ -246,9 +246,12 @@ java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055,JBR-93 windows-
 java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916 linux-all
 
 java/awt/event/KeyEvent/KeyTyped/AltShiftEnterShouldNotSendKeyTyped7157.java JBR-7327 windows-x64
+java/awt/event/KeyEvent/KeyTyped/CancelKeyTyped.java JBR-8121 windows-all
 java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java JBR-4880 windows-all
 
 java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all,macosx-all
+java/awt/event/KeyEvent/KeyTyped/DeleteKeyTyped.java JBR-8121 windows-all
+java/awt/event/KeyEvent/KeyTyped/EscapeKeyTyped.java JBR-8121 windows-all
 
 java/awt/dnd/BadSerializationTest/BadSerializationTest.java linux-x64,windows-x64
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490 linux-all
@@ -605,6 +608,7 @@ java/awt/Modal/OnTop/OnTopTKModal4Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal6Test.java 8253184 windows-all
 java/awt/List/ActionEventTest/ActionEventTest.java JBR-5799 windows-x64
+java/awt/List/ActionEventWhenHitEnterTest.java JBR-8024 windows-all
 java/awt/List/EmptyListEventTest/EmptyListEventTest.java JBR-5387 linux-all
 java/awt/List/FirstItemRemoveTest/FirstItemRemoveTest.java JBR-86 windows-x64
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711 linux-all
