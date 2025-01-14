@@ -105,6 +105,9 @@ public class KeyCodesTest extends TestFixture {
         verify("", VK_F1, "com.apple.keylayout.ABC", VK_F1);
         verify("", VK_F19, "com.apple.keylayout.ABC", VK_F19);
 
+        // context menu key on newer Apple keyboards
+        verify("", VK_CONTEXT_MENU, "com.apple.keylayout.ABC", VK_CONTEXT_MENU);
+
         // Test ANSI/ISO/JIS keyboard weirdness
         verify("\u00a7", 0x01000000+0x00A7, "com.apple.keylayout.ABC", VK_SECTION);
         verify("\u00b2", 0x01000000+0x00B2, "com.apple.keylayout.French-PC", VK_SECTION);
