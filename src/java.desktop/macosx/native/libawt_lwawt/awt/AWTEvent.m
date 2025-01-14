@@ -94,7 +94,7 @@ static const struct KeyTableEntry keyTable[] =
     {kVK_ANSI_X,                            'x',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_X},
     {kVK_ANSI_C,                            'c',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_C},
     {kVK_ANSI_V,                            'v',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_V},
-    {kVK_ISO_Section,                       '\xa7', YES, KL_STANDARD, 0x1000000 + 0x00A7},
+    {kVK_ISO_Section,                       0xA7,   YES, KL_STANDARD, 0x1000000 + 0x00A7},
     {kVK_ANSI_B,                            'b',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_B},
     {kVK_ANSI_Q,                            'q',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_Q},
     {kVK_ANSI_W,                            'w',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_W},
@@ -137,7 +137,7 @@ static const struct KeyTableEntry keyTable[] =
     {kVK_ANSI_Grave,                        '`',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_QUOTE},
     {kVK_Delete, NSDeleteCharacter,                 NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_BACK_SPACE},
     {0x34,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
-    {kVK_Escape,                            '\x1b', NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_ESCAPE},
+    {kVK_Escape,                            0x1B,   NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_ESCAPE},
     {kVK_RightCommand,                      0,      NO,  KL_RIGHT,    java_awt_event_KeyEvent_VK_META},
     {kVK_Command,                           0,      NO,  KL_LEFT,     java_awt_event_KeyEvent_VK_META},
     {kVK_Shift,                             0,      NO,  KL_LEFT,     java_awt_event_KeyEvent_VK_SHIFT},
@@ -177,7 +177,7 @@ static const struct KeyTableEntry keyTable[] =
     {kVK_F20, NSF20FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F20},
     {kVK_ANSI_Keypad8,                      '8',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD8},
     {kVK_ANSI_Keypad9,                      '9',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_NUMPAD9},
-    {kVK_JIS_Yen,                           '\xa5', YES, KL_STANDARD, 0x1000000 + 0x00A5},
+    {kVK_JIS_Yen,                           0xA5,   YES, KL_STANDARD, 0x1000000 + 0x00A5},
     {kVK_JIS_Underscore,                    '_',    YES, KL_STANDARD, java_awt_event_KeyEvent_VK_UNDERSCORE},
     {kVK_JIS_KeypadComma,                   ',',    NO,  KL_NUMPAD,   java_awt_event_KeyEvent_VK_COMMA},
     {kVK_F5, NSF5FunctionKey,                       NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F5},
@@ -194,7 +194,7 @@ static const struct KeyTableEntry keyTable[] =
     {kVK_F14, NSF14FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F14},
     {0x6C,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
     {kVK_F10, NSF10FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F10},
-    {0x6E,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
+    {0x6E, NSMenuFunctionKey,                       NO,  KL_STANDARD,  java_awt_event_KeyEvent_VK_CONTEXT_MENU},
     {kVK_F12, NSF12FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F12},
     {0x70,                                  0,      NO,  KL_UNKNOWN,  java_awt_event_KeyEvent_VK_UNDEFINED}, // undefined
     {kVK_F15, NSF15FunctionKey,                     NO,  KL_STANDARD, java_awt_event_KeyEvent_VK_F15},
