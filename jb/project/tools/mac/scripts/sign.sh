@@ -56,7 +56,7 @@ done
 log "Signing jmod files"
 JMODS_DIR="$APPLICATION_PATH/Contents/Home/jmods"
 JMOD_EXE="$APPLICATION_PATH/Contents/Home/bin/jmod"
-hash_modules=$("$__jsdk"/bin/jmod describe $JMODS_DIR/java.base.jmod | grep hashes | awk '{print $2}' | tr '\n' '|' | sed s/\|$//) || exit $?
+hash_modules=$($JMOD_EXE describe $JMODS_DIR/java.base.jmod | grep hashes | awk '{print $2}' | tr '\n' '|' | sed s/\|$//) || exit $?
 if [ -d "$JMODS_DIR" ]; then
   for jmod_file in "$JMODS_DIR"/*.jmod; do
     log "Processing $jmod_file"
