@@ -394,6 +394,21 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
 
             VKRenderer_FlushRenderPass(srcOps);
             VkCommandBuffer cb = VKRenderer_Record(device->renderer);
+            {
+                VkImageMemoryBarrier barrier;
+                VKBarrierBatch barrierBatch = {};
+                VKRenderer_AddImageBarrier(&barrier, &barrierBatch, image,
+                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                           VK_ACCESS_TRANSFER_READ_BIT,
+                                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+                if (barrierBatch.barrierCount > 0) {
+                    device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
+                                                 0, 0, NULL,
+                                                 0, NULL,
+                                                 barrierBatch.barrierCount, &barrier);
+                }
+            }
 
             VKBuffer* buffer = VKBuffer_Create(device, bufferSizeInPixels * sizeof(jint),
                                                VK_BUFFER_USAGE_TRANSFER_DST_BIT,
