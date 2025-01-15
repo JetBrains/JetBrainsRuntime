@@ -57,4 +57,4 @@ diff $DOCKERFILE $F > /dev/null 2>&1
 [ $? -eq 0 ] && echo "No changes to $DOCKERFILE, just update the image" && exit 0
 
 echo "Apply this patch to $DOCKERFILE:"
-diff -C 3 $DOCKERFILE $F
+diff -C 3 $DOCKERFILE $F | tee $DOCKERFILE.patch
