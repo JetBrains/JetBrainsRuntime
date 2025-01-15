@@ -505,7 +505,8 @@ void jniCheck::validate_throwable_klass(JavaThread* thr, Klass* klass) {
   ASSERT_OOPS_ALLOWED;
   assert(klass != nullptr, "klass argument must have a value");
 
-  if (strstr("/Exception$JB$$", klass->name()->as_C_string()) == 0) {
+  ResourceMark rm(thr);
+  if (strstr(klass->name()->as_C_string(), "/Exception$JB$$") != NULL) {
     // This is a special "marker" class that is never really thrown and
     // therefore it does not have to be Throwable.
     return;
