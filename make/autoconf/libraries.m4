@@ -43,7 +43,6 @@ m4_include([lib-atk.m4])
 m4_include([lib-at-spi2-atk.m4])
 m4_include([lib-glib.m4])
 m4_include([lib-gobject.m4])
-m4_include([lib-glibconfig.m4])
 
 ################################################################################
 # Determine which libraries are needed for this configuration
@@ -124,13 +123,11 @@ AC_DEFUN_ONCE([LIB_DETERMINE_DEPENDENCIES],
     NEEDS_LIB_AT_SPI2_ATK=true
     NEEDS_LIB_GLIB=true
     NEEDS_LIB_GOBJECT=true
-    NEEDS_LIB_GLIBCONFIG=true
   else
     NEEDS_LIB_ATK=false
     NEEDS_LIB_AT_SPI2_ATK=false
     NEEDS_LIB_GLIB=false
     NEEDS_LIB_GOBJECT=false
-    NEEDS_LIB_GLIBCONFIG=false
   fi
 ])
 
@@ -210,7 +207,6 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBRARIES],
   LIB_SETUP_ATK
   LIB_SETUP_GLIB
   LIB_SETUP_GOBJECT
-  LIB_SETUP_GLIBCONFIG
 
   # perfstat lib
   if test "x$OPENJDK_TARGET_OS" = xaix; then
