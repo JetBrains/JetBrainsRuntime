@@ -215,8 +215,22 @@ public class WLFrameDecoration {
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         g.setColor(getBackgroundColor(active));
-        g.fillRect(0, 0, width, HEIGHT);
-
+        if (g.getDeviceConfiguration().isTranslucencyCapable()
+                && peer.getRoundedCornerKind() != WLRoundedCornersManager.RoundedCornerKind.NONE
+                && peer.getState() != Frame.MAXIMIZED_BOTH
+                && !peer.isFullscreen()) {
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+            Composite originalComposite = g.getComposite();
+            g.setComposite(AlphaComposite.Clear);
+            g.fillRect(0, 0, width, HEIGHT);
+            g.setComposite(originalComposite);
+            int radius = (int) g.getTransform().getScaleX()
+                    * WLRoundedCornersManager.roundCornerRadiusFor(WLRoundedCornersManager.RoundedCornerKind.DEFAULT);
+            g.fillRoundRect(0, 0, width, HEIGHT + radius + 1, radius, radius);
+        } else {
+            g.fillRect(0, 0, width, HEIGHT);
+        }
         paintTitle(g, title, foregroundColor, width);
 
         Point closeButtonCenter = getCloseButtonCenter();
