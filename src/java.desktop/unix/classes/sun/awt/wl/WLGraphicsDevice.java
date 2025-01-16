@@ -112,10 +112,10 @@ public class WLGraphicsDevice extends GraphicsDevice {
             } else {
                 // TODO: Actually, Wayland may support a lot more shared memory buffer configurations, need to
                 //   subscribe to the wl_shm:format event and get the list from there.
-                newDefaultConfig = WLSMGraphicsConfig.getConfig(this, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale, false);
+                newDefaultConfig = WLSMGraphicsConfig.getConfig(this, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale, true);
                 newConfigs = new GraphicsConfiguration[2];
                 newConfigs[0] = newDefaultConfig;
-                newConfigs[1] = WLSMGraphicsConfig.getConfig(this, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale, true);
+                newConfigs[1] = WLSMGraphicsConfig.getConfig(this, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale, false);
             }
 
             configs = newConfigs;
