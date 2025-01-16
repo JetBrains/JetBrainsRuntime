@@ -123,6 +123,15 @@ $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 # make images CONF=linux-x86_64-normal-server-release
 ```
 
+#### Java Atk Wrapper
+
+To enable [Java Atk Wrapper](https://wiki.gnome.org/Accessibility/JavaAtkWrapper):
+1. Go to [Debian Package Search](https://www.debian.org/distrib/packages), search for the following packages for your target system, and download them:
+   - `atk`
+   - `at-spi2`
+   - `glib2`
+2. Run configure using `--enable-java-atk-wrapper`
+
 ### Ubuntu Linux
 Install the necessary tools, libraries, and headers with:
 ```
@@ -140,6 +149,15 @@ $ sh ./configure
 $ make images
 ```
 This will build the release configuration under `./build/linux-x86_64-server-release/`.
+
+#### Java-Atk-Wrapper
+
+To enable [Java Atk Wrapper](https://wiki.gnome.org/Accessibility/JavaAtkWrapper):
+1. Install the necessary libraries and headers with:
+```
+$ sudo apt-get install libatspi2.0-dev libatk1.0-dev libglib2.0-dev libatk-bridge2.0-dev
+```
+2. Run configure using `--enable-java-atk-wrapper`
 
 ### Windows
 <a name="build-windows"></a>
