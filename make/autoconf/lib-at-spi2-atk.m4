@@ -15,8 +15,6 @@ AC_DEFUN_ONCE([LIB_SETUP_AT_SPI2_ATK],
         (test "x${with_at_spi2_atk_include}" != x && test "x${with_at_spi2_atk_include}" != xno); then
       AC_MSG_WARN([[at-spi2-atk not used, so --with-at-spi2-atk[-*] is ignored]])
     fi
-    AT_SPI2_ATK_CFLAGS=
-    AT_SPI2_ATK_LIBS=
   else
     AT_SPI2_ATK_FOUND=no
     if test "x${with_at_spi2_atk}" != x && test "x${with_at_spi2_atk}" != xyes; then
@@ -50,8 +48,11 @@ AC_DEFUN_ONCE([LIB_SETUP_AT_SPI2_ATK],
     if test "x$AT_SPI2_ATK_FOUND" = xno; then
       HELP_MSG_MISSING_DEPENDENCY([at-spi2-atk])
       AC_MSG_ERROR([Could not find at-spi2-atk! $HELP_MSG ])
+    else
+      ATK_WRAPPER_CFLAGS="$ATK_WRAPPER_CFLAGS $AT_SPI2_ATK_CFLAGS"
+      ATK_WRAPPER_LIBS="$ATK_WRAPPER_LIBS $AT_SPI2_ATK_LIBS"
+      AC_SUBST(ATK_WRAPPER_CFLAGS)
+      AC_SUBST(ATK_WRAPPER_LIBS)
     fi
   fi
-  AC_SUBST(AT_SPI2_ATK_CFLAGS)
-  AC_SUBST(AT_SPI2_ATK_LIBS)
 ])

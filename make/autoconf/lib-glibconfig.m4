@@ -14,7 +14,6 @@ AC_DEFUN_ONCE([LIB_SETUP_GLIBCONFIG],
         (test "x${with_glibconfig_include}" != x && test "x${with_glibconfig_include}" != xno); then
       AC_MSG_WARN([[glibconfig not used, so --with-glibconfig[-*] is ignored]])
     fi
-    GLIBCONFIG_CFLAGS=
   else
     GLIBCONFIG_FOUND=no
     if test "x${with_glibconfig}" != x && test "x${with_glibconfig}" != xyes; then
@@ -46,7 +45,9 @@ AC_DEFUN_ONCE([LIB_SETUP_GLIBCONFIG],
     if test "x$GLIBCONFIG_FOUND" = xno; then
       HELP_MSG_MISSING_DEPENDENCY([glibconfig])
       AC_MSG_ERROR([Could not find glibconfig! $HELP_MSG ])
+    else
+      ATK_WRAPPER_CFLAGS="$ATK_WRAPPER_CFLAGS $GLIBCONFIG_CFLAGS"
+      AC_SUBST(ATK_WRAPPER_CFLAGS)
     fi
   fi
-  AC_SUBST(GLIBCONFIG_CFLAGS)
 ])

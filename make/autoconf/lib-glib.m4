@@ -14,8 +14,6 @@ AC_DEFUN_ONCE([LIB_SETUP_GLIB],
         (test "x${with_glib_include}" != x && test "x${with_glib_include}" != xno); then
       AC_MSG_WARN([[glib not used, so --with-glib[-*] is ignored]])
     fi
-    GLIB_CFLAGS=
-    GLIB_LIBS=
   else
     GLIB_FOUND=no
 
@@ -47,8 +45,11 @@ AC_DEFUN_ONCE([LIB_SETUP_GLIB],
     if test "x$GLIB_FOUND" = xno; then
       HELP_MSG_MISSING_DEPENDENCY([glib])
       AC_MSG_ERROR([Could not find glib! $HELP_MSG])
+    else
+      ATK_WRAPPER_CFLAGS="$ATK_WRAPPER_CFLAGS $GLIB_CFLAGS"
+      ATK_WRAPPER_LIBS="$ATK_WRAPPER_LIBS $GLIB_LIBS"
+      AC_SUBST(ATK_WRAPPER_CFLAGS)
+      AC_SUBST(ATK_WRAPPER_LIBS)
     fi
   fi
-  AC_SUBST(GLIB_CFLAGS)
-  AC_SUBST(GLIB_LIBS)
 ])
