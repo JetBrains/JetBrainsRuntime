@@ -379,7 +379,11 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
         srcInfo.bounds.y2 > srcInfo.bounds.y1)
     {
         dstOps->GetRasInfo(env, dstOps, &dstInfo);
-        if (dstInfo.rasBase) {
+        do {
+            if (dstInfo.rasBase == NULL) {
+                J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_SurfaceToSwBlit: could not get dst raster info");
+                break;
+            }
             void *pDst = dstInfo.rasBase;
             srcx = srcInfo.bounds.x1;
             srcy = srcInfo.bounds.y1;
@@ -415,6 +419,11 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
                                                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
+            if (buffer == NULL) {
+                J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_SurfaceToSwBlit: could not create buffer");
+                break;
+            }
+
             VkBufferImageCopy region = {
                     .bufferOffset = 0,
                     .bufferRowLength = 0,
@@ -439,13 +448,12 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
                                             0, VK_WHOLE_SIZE, 0, &pixelData))
             {
                 J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_SurfaceToSwBlit: could not map buffer memory");
-                VKBuffer_Destroy(device, buffer);
-                return;
+            } else {
+                memcpy(pDst, pixelData, bufferSizeInPixels * sizeof(jint));
+                device->vkUnmapMemory(device->handle, buffer->range.memory);
             }
-            memcpy(pDst, pixelData, bufferSizeInPixels * sizeof(jint));
-            device->vkUnmapMemory(device->handle,  buffer->range.memory);
             VKBuffer_Destroy(device, buffer);
-        }
+        } while (0);
         SurfaceData_InvokeRelease(env, dstOps, &dstInfo);
     }
     SurfaceData_InvokeUnlock(env, dstOps, &dstInfo);
