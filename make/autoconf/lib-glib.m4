@@ -42,14 +42,7 @@ AC_DEFUN_ONCE([LIB_SETUP_GLIB],
     fi
     if test "x$GLIB_FOUND" = xno; then
       # Are the glib headers installed in the default /usr/include location?
-
-      # FIXME: AC_CHECK_HEADERS doesn't find the header without CPPFLAGS update
-      PKG_CHECK_MODULES([GLIB], [glib-2.0], CPPFLAGS="$CPPFLAGS $GLIB_CFLAGS", break)
-
-      AC_CHECK_HEADERS([glib-2.0/glib.h],
-          [ GLIB_FOUND=yes; GLIB_LIBS="-lglib-2.0" ],
-          [ GLIB_FOUND=no; break ]
-      )
+      PKG_CHECK_MODULES([GLIB], [glib-2.0], [GLIB_FOUND=yes;], [GLIB_FOUND=no; break])
     fi
     if test "x$GLIB_FOUND" = xno; then
       HELP_MSG_MISSING_DEPENDENCY([glib])

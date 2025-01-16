@@ -41,14 +41,7 @@ AC_DEFUN_ONCE([LIB_SETUP_ATK],
     fi
     if test "x$ATK_FOUND" = xno; then
       # Are the atk headers installed in the default /usr/include location?
-
-      # FIXME: AC_CHECK_HEADERS doesn't find the header without CPPFLAGS update
-      PKG_CHECK_MODULES([ATK], [atk], CPPFLAGS="$CPPFLAGS $ATK_CFLAGS", break)
-
-      AC_CHECK_HEADERS([atk-1.0/atk/atk.h],
-          [ ATK_FOUND=yes;  ATK_LIBS="-latk-1.0" ],
-          [ ATK_FOUND=no; break ]
-      )
+      PKG_CHECK_MODULES([ATK], [atk], [ATK_FOUND=yes;], [ATK_FOUND=no; break])
     fi
     if test "x$ATK_FOUND" = xno; then
       HELP_MSG_MISSING_DEPENDENCY([atk])

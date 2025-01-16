@@ -43,13 +43,9 @@ AC_DEFUN_ONCE([LIB_SETUP_GOBJECT],
     fi
     if test "x$GOBJECT_FOUND" = xno; then
       # Are the gobject headers installed in the default /usr/include location?
-
-      # FIXME: AC_CHECK_HEADERS doesn't find the header without CPPFLAGS update
-      PKG_CHECK_MODULES([GOBJECT], [gobject-2.0], CPPFLAGS="$CPPFLAGS $GOBJECT_CFLAGS", break)
-
-      AC_CHECK_HEADERS([glib-object.h],
-          [ GOBJECT_FOUND=yes; GOBJECT_LIBS="-lgobject-2.0" ],
-          [ GOBJECT_FOUND=no; break ]
+      PKG_CHECK_MODULES([GOBJECT], [gobject-2.0],
+        [ GOBJECT_FOUND=yes;],
+        [ GOBJECT_FOUND=no; break ]
       )
     fi
     if test "x$GOBJECT_FOUND" = xno; then

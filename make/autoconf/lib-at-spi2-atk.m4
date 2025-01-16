@@ -42,13 +42,9 @@ AC_DEFUN_ONCE([LIB_SETUP_AT_SPI2_ATK],
     fi
     if test "x$AT_SPI2_ATK_FOUND" = xno; then
       # Are the at-spi2-atk headers installed in the default /usr/include location?
-
-      # FIXME: AC_CHECK_HEADERS doesn't find the header without CPPFLAGS update
-      PKG_CHECK_MODULES([AT_SPI2_ATK], [atk-bridge-2.0], CPPFLAGS="$CPPFLAGS $AT_SPI2_ATK_CFLAGS", break)
-
-      AC_CHECK_HEADERS([at-spi2-atk/2.0/atk-bridge.h],
-          [ AT_SPI2_ATK_FOUND=yes; AT_SPI2_ATK_LIBS="-latk-bridge-2.0" ],
-          [ AT_SPI2_ATK_FOUND=no; break ]
+      PKG_CHECK_MODULES([AT_SPI2_ATK], [atk-bridge-2.0],
+        [AT_SPI2_ATK_FOUND=yes;],
+        [AT_SPI2_ATK_FOUND=no; break]
       )
     fi
     if test "x$AT_SPI2_ATK_FOUND" = xno; then

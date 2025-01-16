@@ -39,13 +39,8 @@ AC_DEFUN_ONCE([LIB_SETUP_GLIBCONFIG],
     fi
     if test "x$GLIBCONFIG_FOUND" = xno; then
       # Are the glibconfig header installed in the default /usr/lib/glib-2.0/include location?
-
-      PKG_CHECK_MODULES([GLIBCONFIG], [glib-2.0], CPPFLAGS="$CPPFLAGS $GLIBCONFIG_CFLAGS", break)
-
-      # FIXME: AC_CHECK_HEADERS doesn't find glibconfig.h, even though $GLIBCONFIG_CFLAGS contains its path
-      AC_CHECK_HEADER([glibconfig.h],
-          [ GLIBCONFIG_FOUND=yes ],
-          [ GLIBCONFIG_FOUND=no; break ]
+      PKG_CHECK_MODULES([GLIBCONFIG], [glib-2.0],
+        [GLIBCONFIG_FOUND=yes], [GLIBCONFIG_FOUND=no; break]
       )
     fi
     if test "x$GLIBCONFIG_FOUND" = xno; then
