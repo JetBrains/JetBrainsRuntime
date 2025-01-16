@@ -51,6 +51,10 @@ AC_DEFUN_ONCE([LIB_SETUP_GLIB],
           [ GLIB_FOUND=no; break ]
       )
     fi
+    if test "x$GLIB_FOUND" = xno; then
+      HELP_MSG_MISSING_DEPENDENCY([glib])
+      AC_MSG_ERROR([Could not find glib! $HELP_MSG])
+    fi
   fi
   AC_SUBST(GLIB_CFLAGS)
   AC_SUBST(GLIB_LIBS)

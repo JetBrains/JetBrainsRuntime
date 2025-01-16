@@ -48,6 +48,10 @@ AC_DEFUN_ONCE([LIB_SETUP_GLIBCONFIG],
           [ GLIBCONFIG_FOUND=no; break ]
       )
     fi
+    if test "x$GLIBCONFIG_FOUND" = xno; then
+      HELP_MSG_MISSING_DEPENDENCY([glibconfig])
+      AC_MSG_ERROR([Could not find glibconfig! $HELP_MSG ])
+    fi
   fi
   AC_SUBST(GLIBCONFIG_CFLAGS)
 ])

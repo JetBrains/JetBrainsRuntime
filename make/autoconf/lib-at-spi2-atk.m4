@@ -51,6 +51,10 @@ AC_DEFUN_ONCE([LIB_SETUP_AT_SPI2_ATK],
           [ AT_SPI2_ATK_FOUND=no; break ]
       )
     fi
+    if test "x$AT_SPI2_ATK_FOUND" = xno; then
+      HELP_MSG_MISSING_DEPENDENCY([at-spi2-atk])
+      AC_MSG_ERROR([Could not find at-spi2-atk! $HELP_MSG ])
+    fi
   fi
   AC_SUBST(AT_SPI2_ATK_CFLAGS)
   AC_SUBST(AT_SPI2_ATK_LIBS)

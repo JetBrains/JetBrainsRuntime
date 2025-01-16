@@ -50,6 +50,10 @@ AC_DEFUN_ONCE([LIB_SETUP_ATK],
           [ ATK_FOUND=no; break ]
       )
     fi
+    if test "x$ATK_FOUND" = xno; then
+      HELP_MSG_MISSING_DEPENDENCY([atk])
+      AC_MSG_ERROR([Could not find atk! $HELP_MSG ])
+    fi
   fi
   AC_SUBST(ATK_CFLAGS)
   AC_SUBST(ATK_LIBS)

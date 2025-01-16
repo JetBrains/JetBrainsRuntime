@@ -52,6 +52,10 @@ AC_DEFUN_ONCE([LIB_SETUP_GOBJECT],
           [ GOBJECT_FOUND=no; break ]
       )
     fi
+    if test "x$GOBJECT_FOUND" = xno; then
+      HELP_MSG_MISSING_DEPENDENCY([gobject])
+      AC_MSG_ERROR([Could not find gobject! $HELP_MSG ])
+    fi
   fi
   AC_SUBST(GOBJECT_CFLAGS)
   AC_SUBST(GOBJECT_LIBS)
