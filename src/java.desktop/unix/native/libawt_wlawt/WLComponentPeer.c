@@ -112,6 +112,7 @@ struct WLFrame {
     int32_t configuredHeight;
     jboolean configuredActive;
     jboolean configuredMaximized;
+    jboolean configuredFullscreen;
 };
 
 static void
@@ -133,7 +134,7 @@ xdg_surface_configure(void *data,
             (*env)->CallVoidMethod(env, nativeFramePeer, notifyConfiguredMID,
                                    wlFrame->configuredX, wlFrame->configuredY,
                                    wlFrame->configuredWidth, wlFrame->configuredHeight,
-                                   wlFrame->configuredActive, wlFrame->configuredMaximized);
+                                   wlFrame->configuredActive, wlFrame->configuredMaximized, wlFrame->configuredFullscreen);
             (*env)->DeleteLocalRef(env, nativeFramePeer);
             JNU_CHECK_EXCEPTION(env);
         }
@@ -203,6 +204,7 @@ xdg_toplevel_configure(void *data,
 
     jboolean active = JNI_FALSE;
     jboolean maximized = JNI_FALSE;
+    jboolean fullscreen = JNI_FALSE;
     uint32_t *p;
     wl_array_for_each(p, states) {
         uint32_t state = *p;
@@ -211,6 +213,7 @@ xdg_toplevel_configure(void *data,
                 active = JNI_TRUE;
                 break;
             case XDG_TOPLEVEL_STATE_FULLSCREEN:
+                fullscreen = JNI_TRUE;
                 break;
             case XDG_TOPLEVEL_STATE_MAXIMIZED:
                 maximized = JNI_TRUE;
@@ -225,6 +228,7 @@ xdg_toplevel_configure(void *data,
     wlFrame->configuredHeight = height;
     wlFrame->configuredActive = active;
     wlFrame->configuredMaximized = maximized;
+    wlFrame->configuredFullscreen= fullscreen;
 }
 
 static void
@@ -317,7 +321,7 @@ Java_sun_awt_wl_WLComponentPeer_initIDs
         (JNIEnv *env, jclass clazz)
 {
     CHECK_NULL_THROW_IE(env,
-                        notifyConfiguredMID = (*env)->GetMethodID(env, clazz, "notifyConfigured", "(IIIIZZ)V"),
+                        notifyConfiguredMID = (*env)->GetMethodID(env, clazz, "notifyConfigured", "(IIIIZZZ)V"),
                         "Failed to find method WLComponentPeer.notifyConfigured");
     CHECK_NULL_THROW_IE(env,
                         notifyEnteredOutputMID = (*env)->GetMethodID(env, clazz, "notifyEnteredOutput", "(I)V"),
