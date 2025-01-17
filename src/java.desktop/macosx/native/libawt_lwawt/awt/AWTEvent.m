@@ -505,7 +505,33 @@ TISInputSourceRef GetCurrentUnderlyingLayout(BOOL useNationalLayouts) {
     return underlyingLayout;
 }
 
-struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef layout, unsigned short keyCode, unsigned mods)
+static unsigned NSEventModifiersToCarbonModifierMask(unsigned mods) {
+    unsigned result = 0;
+
+    if (mods & NSEventModifierFlagCommand) {
+        result |= cmdKey;
+    }
+
+    if (mods & NSEventModifierFlagControl) {
+        result |= controlKey;
+    }
+
+    if (mods & NSEventModifierFlagOption) {
+        result |= optionKey;
+    }
+
+    if (mods & NSEventModifierFlagShift) {
+        result |= shiftKey;
+    }
+
+    if (mods & NSEventModifierFlagCapsLock) {
+        result |= alphaLock;
+    }
+
+    return result;
+}
+
+struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef layout, unsigned short keyCode, unsigned nsMods)
 {
     struct KeyCodeTranslationResult result = {
         .character = (unichar)0,
@@ -547,6 +573,9 @@ struct KeyCodeTranslationResult TranslateKeyCodeUsingLayout(TISInputSourceRef la
     if (keyboardLayout == NULL) {
         return result;
     }
+
+    // UCKeyTranslate accepts Carbon modifier mask shifted by 8
+    unsigned mods = NSEventModifiersToCarbonModifierMask(nsMods) >> 8;
 
     UInt32 deadKeyState = 0;
     const UniCharCount maxStringLength = 255;
@@ -756,7 +785,7 @@ NsCharToJavaVirtualKeyCode(unsigned short key, unsigned mods, const BOOL useNati
     }
 
     // Translate the key + modifiers using the current key layout
-    struct KeyCodeTranslationResult translatedKeyCombo = TranslateKeyCodeUsingLayout(activeLayout, key, (mods >> 16) & 0xFF);
+    struct KeyCodeTranslationResult translatedKeyCombo = TranslateKeyCodeUsingLayout(activeLayout, key, mods);
 
     // If the key + modifiers produces a dead key, report it
     if (translatedKeyCombo.isDead) {
@@ -764,11 +793,18 @@ NsCharToJavaVirtualKeyCode(unsigned short key, unsigned mods, const BOOL useNati
     }
 
     // Translate the key using the underlying key layout.
-    struct KeyCodeTranslationResult translatedKey = TranslateKeyCodeUsingLayout(underlyingLayout, key, 0);
+    // We keep Cmd as a modifier, since there are some layouts, like Dvorak-QWERTY-Cmd, which change behavior when Cmd is pressed.
+    unsigned keyTranslationModsMask = mods & NSEventModifierFlagCommand;
+    struct KeyCodeTranslationResult translatedKey = TranslateKeyCodeUsingLayout(underlyingLayout, key, keyTranslationModsMask);
+
+    struct KeyCodeTranslationResult translatedKeyNoMods = translatedKey;
+    if (keyTranslationModsMask != 0) {
+        translatedKeyNoMods = TranslateKeyCodeUsingLayout(underlyingLayout, key, 0);
+    }
 
     // Test whether this key is dead.
-    if (translatedKey.isDead) {
-        result->deadKeyCode = CharacterToDeadKeyCode(translatedKey.character);
+    if (translatedKeyNoMods.isDead) {
+        result->deadKeyCode = CharacterToDeadKeyCode(translatedKeyNoMods.character);
     }
 
     if (!reportDeadKeysAsNormal && result->deadKeyCode) {
