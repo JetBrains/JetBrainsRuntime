@@ -30,4 +30,8 @@ public interface LayoutKey {
 
     // Return Key object containing common key functionality
     Key getKey();
+
+    default boolean isCmdQWERTY() {
+        return false;
+    }
 }
