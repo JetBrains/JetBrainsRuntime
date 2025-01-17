@@ -27,6 +27,7 @@
 public enum Layout {
 
     ABC                 ("ABC", Layout_ABC.values()),
+    DVORAK_QWERTY_CMD   ("DVORAK-QWERTYCMD", Layout_DVORAK_QWERTY_CMD.values()),
     US_INTERNATIONAL_PC ("USInternational-PC", Layout_US_INTERNATIONAL_PC.values()),
     SPANISH_ISO         ("Spanish-ISO", Layout_SPANISH_ISO.values()),
     FRENCH_PC           ("French-PC", Layout_FRENCH_PC.values()),
