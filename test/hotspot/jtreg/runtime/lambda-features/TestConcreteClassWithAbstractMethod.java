@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,14 @@
  * @test
  * @bug 8032010
  * @summary method lookup on an abstract method in a concrete class should be successful
- * @library /testlibrary/asm
+ * @modules java.base/jdk.internal.org.objectweb.asm
  * @run main TestConcreteClassWithAbstractMethod
  */
 
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.MethodVisitor;
+import jdk.internal.org.objectweb.asm.ClassWriter;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
 
-import static org.objectweb.asm.Opcodes.*;
+import static jdk.internal.org.objectweb.asm.Opcodes.*;
 
 /*
  *   class T1 { public int m() {} }
