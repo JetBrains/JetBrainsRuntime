@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -185,26 +185,26 @@ public class TestGCLogMessages {
 
     private void testNormalLogs() throws Exception {
 
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseG1GC",
-                                                                  "-Xmx10M",
-                                                                  GCTest.class.getName());
+        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder("-XX:+UseG1GC",
+                                                                             "-Xmx10M",
+                                                                             GCTest.class.getName());
 
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         checkMessagesAtLevel(output, allLogMessages, Level.OFF);
         output.shouldHaveExitValue(0);
 
-        pb = ProcessTools.createJavaProcessBuilder("-XX:+UseG1GC",
-                                                   "-Xmx10M",
-                                                   "-Xlog:gc+phases=debug",
-                                                   GCTest.class.getName());
+        pb = ProcessTools.createLimitedTestJavaProcessBuilder("-XX:+UseG1GC",
+                                                              "-Xmx10M",
+                                                              "-Xlog:gc+phases=debug",
+                                                              GCTest.class.getName());
 
         output = new OutputAnalyzer(pb.start());
         checkMessagesAtLevel(output, allLogMessages, Level.DEBUG);
 
-        pb = ProcessTools.createJavaProcessBuilder("-XX:+UseG1GC",
-                                                   "-Xmx10M",
-                                                   "-Xlog:gc+phases=trace",
-                                                   GCTest.class.getName());
+        pb = ProcessTools.createLimitedTestJavaProcessBuilder("-XX:+UseG1GC",
+                                                              "-Xmx10M",
+                                                              "-Xlog:gc+phases=trace",
+                                                              GCTest.class.getName());
 
         output = new OutputAnalyzer(pb.start());
         checkMessagesAtLevel(output, allLogMessages, Level.TRACE);
@@ -220,10 +220,10 @@ public class TestGCLogMessages {
     };
 
     private void testConcurrentRefinementLogs() throws Exception {
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseG1GC",
-                                                                  "-Xmx10M",
-                                                                  "-Xlog:gc+refine+stats=debug",
-                                                                  GCTest.class.getName());
+        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder("-XX:+UseG1GC",
+                                                                             "-Xmx10M",
+                                                                             "-Xlog:gc+refine+stats=debug",
+                                                                             GCTest.class.getName());
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         checkMessagesAtLevel(output, concRefineMessages, Level.DEBUG);
     }
@@ -235,29 +235,29 @@ public class TestGCLogMessages {
     };
 
     private void testWithEvacuationFailureLogs() throws Exception {
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseG1GC",
-                                                                  "-Xmx32M",
-                                                                  "-Xmn16M",
-                                                                  "-XX:+G1EvacuationFailureALot",
-                                                                  "-XX:G1EvacuationFailureALotCount=100",
-                                                                  "-XX:G1EvacuationFailureALotInterval=1",
-                                                                  "-XX:+UnlockDiagnosticVMOptions",
-                                                                  "-XX:-G1UsePreventiveGC",
-                                                                  "-Xlog:gc+phases=debug",
-                                                                  GCTestWithEvacuationFailure.class.getName());
+        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder("-XX:+UseG1GC",
+                                                                             "-Xmx32M",
+                                                                             "-Xmn16M",
+                                                                             "-XX:+G1EvacuationFailureALot",
+                                                                             "-XX:G1EvacuationFailureALotCount=100",
+                                                                             "-XX:G1EvacuationFailureALotInterval=1",
+                                                                             "-XX:+UnlockDiagnosticVMOptions",
+                                                                             "-XX:-G1UsePreventiveGC",
+                                                                             "-Xlog:gc+phases=debug",
+                                                                             GCTestWithEvacuationFailure.class.getName());
 
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         checkMessagesAtLevel(output, exhFailureMessages, Level.DEBUG);
         output.shouldHaveExitValue(0);
 
-        pb = ProcessTools.createJavaProcessBuilder("-XX:+UseG1GC",
-                                                   "-Xmx32M",
-                                                   "-Xmn16M",
-                                                   "-Xms32M",
-                                                   "-XX:+UnlockDiagnosticVMOptions",
-                                                   "-XX:-G1UsePreventiveGC",
-                                                   "-Xlog:gc+phases=trace",
-                                                   GCTestWithEvacuationFailure.class.getName());
+        pb = ProcessTools.createLimitedTestJavaProcessBuilder("-XX:+UseG1GC",
+                                                              "-Xmx32M",
+                                                              "-Xmn16M",
+                                                              "-Xms32M",
+                                                              "-XX:+UnlockDiagnosticVMOptions",
+                                                              "-XX:-G1UsePreventiveGC",
+                                                              "-Xlog:gc+phases=trace",
+                                                              GCTestWithEvacuationFailure.class.getName());
 
         output = new OutputAnalyzer(pb.start());
         checkMessagesAtLevel(output, exhFailureMessages, Level.TRACE);
@@ -265,13 +265,13 @@ public class TestGCLogMessages {
     }
 
     private void testWithConcurrentStart() throws Exception {
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseG1GC",
-                                                                  "-Xmx10M",
-                                                                  "-Xbootclasspath/a:.",
-                                                                  "-Xlog:gc*=debug",
-                                                                  "-XX:+UnlockDiagnosticVMOptions",
-                                                                  "-XX:+WhiteBoxAPI",
-                                                                  GCTestWithConcurrentStart.class.getName());
+        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder("-XX:+UseG1GC",
+                                                                             "-Xmx10M",
+                                                                             "-Xbootclasspath/a:.",
+                                                                             "-Xlog:gc*=debug",
+                                                                             "-XX:+UnlockDiagnosticVMOptions",
+                                                                             "-XX:+WhiteBoxAPI",
+                                                                             GCTestWithConcurrentStart.class.getName());
 
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.shouldContain("Clear Claimed Marks");
@@ -279,13 +279,13 @@ public class TestGCLogMessages {
     }
 
     private void testExpandHeap() throws Exception {
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseG1GC",
-                                                                  "-Xmx10M",
-                                                                  "-Xbootclasspath/a:.",
-                                                                  "-Xlog:gc+ergo+heap=debug",
-                                                                  "-XX:+UnlockDiagnosticVMOptions",
-                                                                  "-XX:+WhiteBoxAPI",
-                                                                  GCTest.class.getName());
+        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder("-XX:+UseG1GC",
+                                                                             "-Xmx10M",
+                                                                             "-Xbootclasspath/a:.",
+                                                                             "-Xlog:gc+ergo+heap=debug",
+                                                                             "-XX:+UnlockDiagnosticVMOptions",
+                                                                             "-XX:+WhiteBoxAPI",
+                                                                             GCTest.class.getName());
 
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.shouldContain("Expand the heap. requested expansion amount: ");
