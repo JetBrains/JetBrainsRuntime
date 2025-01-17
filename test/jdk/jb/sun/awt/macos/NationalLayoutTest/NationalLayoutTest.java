@@ -455,7 +455,11 @@ public class NationalLayoutTest {
 
             // Define array of key codes expected to be pressed as the result of modifiers + key
             int[] keysPattern = Arrays.copyOf(modifiers, modifiers.length + 1);
-            keysPattern[modifiers.length] = keyCode;
+            if (layoutKey.isCmdQWERTY() && modifier.isCommand()) {
+                keysPattern[modifiers.length] = key.getKeyCode_US();
+            } else {
+                keysPattern[modifiers.length] = keyCode;
+            }
 
             // Define array of key codes which were really pressed as the result of modifiers + key
             int[] keysResult = listToInts(keysPressed);
