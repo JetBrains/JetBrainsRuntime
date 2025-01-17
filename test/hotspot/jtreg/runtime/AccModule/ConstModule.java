@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,7 +21,7 @@
  * questions.
  */
 
-import org.objectweb.asm.*;
+import jdk.internal.org.objectweb.asm.*;
 
 /*
  * @test
@@ -30,7 +30,7 @@ import org.objectweb.asm.*;
  *          not set in the access_flags.
  * @bug 8175383
  * @library /test/lib
- * @library /testlibrary/asm
+ * @modules java.base/jdk.internal.org.objectweb.asm
  * @compile -XDignore.symbol.file ConstModule.java
  * @run main ConstModule
  */
