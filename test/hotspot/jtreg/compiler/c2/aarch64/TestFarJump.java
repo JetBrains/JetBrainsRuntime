@@ -94,7 +94,7 @@ public class TestFarJump {
             "-XX:CompileCommand=option," + className + "::main,bool,PrintAssembly,true",
             className};
 
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(procArgs);
+        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(procArgs);
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         List<String> lines = output.asLines();
 

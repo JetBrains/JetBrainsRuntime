@@ -73,7 +73,7 @@ public class TestEnableJVMCIProduct {
     }
 
     static void test(String explicitFlag, Expectation... expectations) throws Exception {
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(
             "-XX:+UnlockExperimentalVMOptions", "-XX:+EnableJVMCIProduct", "-XX:-UnlockExperimentalVMOptions",
             explicitFlag,
             "-XX:+PrintFlagsFinal", "-version");
