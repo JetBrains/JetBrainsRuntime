@@ -28,8 +28,8 @@ package gc.epsilon;
  * @requires vm.gc.Epsilon
  * @summary Epsilon is able to allocate a lot of classes, resizing Metaspace
  *
- * @library /testlibrary/asm
- * @modules java.base/jdk.internal.misc
+ * @modules java.base/jdk.internal.org.objectweb.asm
+ *          java.base/jdk.internal.misc
  *
  * @run main/othervm -Xmx256m
  *                   -XX:MetaspaceSize=1m -XX:MaxMetaspaceSize=64m -Xlog:gc -Xlog:gc+metaspace
@@ -37,8 +37,8 @@ package gc.epsilon;
  *                   gc.epsilon.TestClasses
  */
 
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
+import jdk.internal.org.objectweb.asm.ClassWriter;
+import jdk.internal.org.objectweb.asm.Opcodes;
 
 public class TestClasses {
 
