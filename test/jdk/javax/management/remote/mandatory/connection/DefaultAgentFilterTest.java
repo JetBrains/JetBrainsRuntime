@@ -203,7 +203,7 @@ public class DefaultAgentFilterTest {
         pbArgs.addAll(Arrays.asList(args));
         pbArgs.add(TEST_APP_NAME);
 
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(
                 pbArgs.toArray(new String[pbArgs.size()])
         );
 

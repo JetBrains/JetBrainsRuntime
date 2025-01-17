@@ -69,7 +69,7 @@ public class BooleanTest {
     }
 
     private static void testFunctional(boolean value) throws Exception {
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(
             "-Xbootclasspath/a:.",
             "-XX:+UnlockDiagnosticVMOptions",
             "-XX:+WhiteBoxAPI",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ import jdk.test.lib.JDKToolFinder;
 public class PrintTouchedMethods {
 
     public static void main(String args[]) throws Exception {
-      ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+      ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(
           "-XX:-UnlockDiagnosticVMOptions",
           "-XX:+LogTouchedMethods",
           "-XX:+PrintTouchedMethodsAtExit",
@@ -52,7 +52,7 @@ public class PrintTouchedMethods {
       output.shouldContain("Error: VM option 'LogTouchedMethods' is diagnostic and must be enabled via -XX:+UnlockDiagnosticVMOptions.");
       output.shouldContain("Error: Could not create the Java Virtual Machine.");
 
-      pb = ProcessTools.createJavaProcessBuilder(
+      pb = ProcessTools.createLimitedTestJavaProcessBuilder(
           "-XX:+UnlockDiagnosticVMOptions",
           "-XX:+LogTouchedMethods",
           "-XX:+PrintTouchedMethodsAtExit",
@@ -78,7 +78,7 @@ public class PrintTouchedMethods {
       output.shouldNotContain("TestLogTouchedMethods.methodB:()V");
       output.shouldHaveExitValue(0);
 
-      pb = ProcessTools.createJavaProcessBuilder(
+      pb = ProcessTools.createLimitedTestJavaProcessBuilder(
           "-XX:+UnlockDiagnosticVMOptions",
           "-Xint",
           "-XX:+LogTouchedMethods",
@@ -100,7 +100,7 @@ public class PrintTouchedMethods {
       output.shouldNotContain("TestLogTouchedMethods.methodB:()V");
       output.shouldHaveExitValue(0);
 
-      pb = ProcessTools.createJavaProcessBuilder(
+      pb = ProcessTools.createLimitedTestJavaProcessBuilder(
           "-XX:+UnlockDiagnosticVMOptions",
           "-Xint",
           "-XX:+LogTouchedMethods",
