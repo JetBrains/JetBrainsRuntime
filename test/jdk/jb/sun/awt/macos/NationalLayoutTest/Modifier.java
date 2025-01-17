@@ -105,6 +105,10 @@ public enum Modifier {
         return ((modifiers.length == 1) && (modifiers[0] == KeyEvent.VK_CONTROL));
     }
 
+    boolean isCommand() {
+        return ((modifiers.length == 1) && (modifiers[0] == KeyEvent.VK_META));
+    }
+
     @Override
     public String toString() {
         if (modifiers.length == 0) {
