@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@
  * @summary Confirm that DecimalFormat can format a number with a negative
  *          exponent number correctly. Tests also involve using a DecimalFormat
  *          with a custom pattern or a custom minus sign.
- * @library /java/text/testlib
  * @run junit/othervm -Djava.locale.providers=COMPAT,SPI Bug4838107
  */
 
@@ -40,6 +39,7 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -57,7 +57,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * parsing using the same DecimalFormat instance will not change the
  * Number's value anymore.
  */
-public class Bug4838107 extends IntlTest {
+public class Bug4838107 {
 
     // Save JVM default Locale
     private static final Locale savedLocale = Locale.getDefault();
