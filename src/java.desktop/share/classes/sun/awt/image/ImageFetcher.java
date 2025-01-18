@@ -153,6 +153,7 @@ class ImageFetcher extends Thread {
                         info.numWaiting++;
                         info.waitList.wait(end - now);
                     } catch (InterruptedException e) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
                         // A normal occurrence as an AppContext is disposed
                         return null;
                     } finally {

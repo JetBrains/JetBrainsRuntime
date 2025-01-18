@@ -34,6 +34,8 @@ import javax.print.attribute.AttributeSet;
 
 import sun.awt.AppContext;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * Implementations of this class provide lookup services for print services
  * (typically equivalent to printers) of a particular type.
@@ -64,6 +66,8 @@ import sun.awt.AppContext;
  * {@code checkPrintJobAccess()} method denies access.
  */
 public abstract class PrintServiceLookup {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(PrintServiceLookup.class.getName());
 
     /**
      * Constructor for subclasses to call.
@@ -371,7 +375,7 @@ public abstract class PrintServiceLookup {
                                 }  catch (ServiceConfigurationError err) {
                                     /* In the applet case, we continue */
                                     if (System.getSecurityManager() != null) {
-                                        err.printStackTrace();
+                                        log.severe("Window.getAllLookupServices: failure: ", err);
                                     } else {
                                         throw err;
                                     }

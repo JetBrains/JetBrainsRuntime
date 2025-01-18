@@ -116,6 +116,7 @@ public class ImageRepresentation extends ImageWatched implements ImageConsumer
                     try {
                         wait();
                     } catch (InterruptedException e) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
                         Thread.currentThread().interrupt();
                         return;
                     }

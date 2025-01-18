@@ -161,6 +161,7 @@ class BufferStrategyPaintManager extends RepaintManager.PaintManager {
                         try {
                             BufferStrategyPaintManager.this.wait();
                         } catch (InterruptedException ie) {
+                            LOGGER.fine("BufferStrategyPaintManager.dispose: interrupted");
                         }
                     }
                     bufferInfos = BufferStrategyPaintManager.this.bufferInfos;
@@ -332,6 +333,7 @@ class BufferStrategyPaintManager extends RepaintManager.PaintManager {
                 try {
                     wait();
                 } catch (InterruptedException ie) {
+                    LOGGER.fine("BufferStrategyPaintManager.beginPaint: interrupted");
                 }
             }
         }
@@ -448,6 +450,7 @@ class BufferStrategyPaintManager extends RepaintManager.PaintManager {
                 try {
                     wait();
                 } catch (InterruptedException ie) {
+                    LOGGER.fine("BufferStrategyPaintManager.doubleBufferingChanged0: interrupted");
                 }
             }
             info = getBufferInfo(rootPane.getParent());
@@ -890,6 +893,7 @@ class BufferStrategyPaintManager extends RepaintManager.PaintManager {
                     try {
                         BufferStrategyPaintManager.this.wait();
                     } catch (InterruptedException ie) {
+                        LOGGER.fine("BufferStrategyPaintManager.windowClosed: interrupted");
                     }
                 }
                 bufferInfos.remove(this);

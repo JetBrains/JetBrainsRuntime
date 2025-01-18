@@ -56,7 +56,13 @@ import sun.awt.SunToolkit;
 import static sun.awt.AWTAccessor.MenuComponentAccessor;
 import static sun.awt.AWTAccessor.getMenuComponentAccessor;
 
+import sun.util.logging.PlatformLogger;
+
+
 public class CTrayIcon extends CFRetainedResource implements TrayIconPeer {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(CTrayIcon.class.getName());
+
     private TrayIcon target;
     private PopupMenu popup;
 
@@ -100,7 +106,7 @@ public class CTrayIcon extends CFRetainedResource implements TrayIconPeer {
                     menuPeer = acc.getPeer(popup);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                log.severe("CTrayIcon.checkAndCreatePopupPeer: failure", e);
             }
         }
         return menuPeer;
@@ -205,7 +211,9 @@ public class CTrayIcon extends CFRetainedResource implements TrayIconPeer {
         tracker.addImage(image, 0);
         try {
             tracker.waitForAll();
-        } catch (InterruptedException ignore) { }
+        } catch (InterruptedException ignore) {
+        	log.fine("CTrayIcon.updateNativeImage: interrupted");
+        }
 
         if (image.getWidth(null) <= 0 ||
             image.getHeight(null) <= 0)

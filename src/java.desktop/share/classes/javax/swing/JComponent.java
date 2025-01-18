@@ -95,6 +95,7 @@ import sun.awt.AWTAccessor;
 import sun.awt.SunToolkit;
 import sun.swing.SwingAccessor;
 import sun.swing.SwingUtilities2;
+import sun.util.logging.PlatformLogger;
 
 import static javax.swing.ClientPropertyKey.JComponent_ANCESTOR_NOTIFIER;
 import static javax.swing.ClientPropertyKey.JComponent_INPUT_VERIFIER;

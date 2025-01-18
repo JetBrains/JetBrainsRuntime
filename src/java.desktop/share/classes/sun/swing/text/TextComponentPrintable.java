@@ -624,6 +624,7 @@ public class TextComponentPrintable implements CountingPrintable {
                         }
                     });
             } catch (InterruptedException | InvocationTargetException ignore) {
+                // TODO: fix logger.fine("Class.method: interrupted");
             }
             Document document = textComponentToPrint.getDocument();
             ((AbstractDocument) document).readLock();

@@ -33,6 +33,8 @@ import sun.awt.windows.WComponentPeer;
 import sun.java2d.d3d.D3DScreenUpdateManager;
 import sun.java2d.windows.WindowsFlags;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * This class handles the creation of on-screen surfaces and
  * corresponding graphics objects.
@@ -41,6 +43,9 @@ import sun.java2d.windows.WindowsFlags;
  * particular GraphicsConfiguration classes.
  */
 public class ScreenUpdateManager {
+
+    protected static final PlatformLogger log = PlatformLogger.getLogger(ScreenUpdateManager.class.getName());
+
     private static ScreenUpdateManager theInstance;
 
     protected ScreenUpdateManager() {

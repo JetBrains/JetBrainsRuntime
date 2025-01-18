@@ -33,6 +33,7 @@ import java.lang.reflect.InvocationTargetException;
 import sun.awt.AWTAccessor;
 import sun.awt.EmbeddedFrame;
 import sun.lwawt.LWWindowPeer;
+import sun.util.logging.PlatformLogger;
 
 /*
  * The CViewEmbeddedFrame class is used in the SWT_AWT bridge.
@@ -40,6 +41,9 @@ import sun.lwawt.LWWindowPeer;
  */
 @SuppressWarnings("serial") // JDK implementation class
 public class CViewEmbeddedFrame extends EmbeddedFrame {
+
+    // Logger to report issues happened during execution but that do not affect functionality
+    private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.macosx.CViewEmbeddedFrame");
 
     private final long nsViewPtr;
 
@@ -95,14 +99,21 @@ public class CViewEmbeddedFrame extends EmbeddedFrame {
     public void validateWithBounds(final int x, final int y, final int width,
                                    final int height) {
         try {
-            LWCToolkit.invokeAndWait(() -> {
-                final LWWindowPeer peer = AWTAccessor.getComponentAccessor()
-                                                     .getPeer(this);
-                peer.setBoundsPrivate(0, 0, width, height);
-                validate();
-                setVisible(true);
-            }, this);
-        } catch (InvocationTargetException ex) {
+            final CViewEmbeddedFrame ref = this;
+
+            // check invokeAndWait: OK (operations look not requiring locks or main thread):
+            LWCToolkit.invokeAndWait(new Runnable() {
+                @Override
+                public void run() {
+                    final LWWindowPeer peer = AWTAccessor.getComponentAccessor()
+                                                         .getPeer(ref);
+                    peer.setBoundsPrivate(0, 0, width, height);
+                    validate();
+                    setVisible(true);
+                }
+            }, ref);
+        } catch (InvocationTargetException ite) {
+            logger.severe("CViewEmbeddedFrame.validateWithBounds: exception occurred: ", ite);
         }
     }
 }

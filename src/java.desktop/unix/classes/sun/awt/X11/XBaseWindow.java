@@ -229,6 +229,7 @@ public class XBaseWindow {
                           awtLockWait();
                       }
                   } catch (InterruptedException ie) {
+                    // TODO: fix logger.fine("Class.method: interrupted");
                       return false;
                   }
                   return true;

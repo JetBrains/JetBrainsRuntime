@@ -60,6 +60,8 @@ import java.util.WeakHashMap;
 import javax.swing.border.Border;
 import javax.swing.plaf.UIResource;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * This class contains all the implementation details related to
  * ${LAF_NAME}. It contains all the code for initializing the UIDefaults table,
@@ -91,7 +93,7 @@ final class ${LAF_NAME}Defaults {
 
     private Map<JComponent, Map<Region, SynthStyle>> overridesCache =
             new WeakHashMap<JComponent, Map<Region, SynthStyle>>();
-    
+
     /**
      * Our fallback style to avoid NPEs if the proper style cannot be found in
      * this class. Not sure if relying on DefaultSynthStyle is the best choice.
@@ -245,7 +247,7 @@ ${UI_DEFAULT_INIT}
                 //found.
                 if (foundStyle == null ||
                    (foundStyle.parts.length < s.parts.length) ||
-                   (foundStyle.parts.length == s.parts.length 
+                   (foundStyle.parts.length == s.parts.length
                     && foundStyle.simple && !s.simple)) {
                     foundStyle = s;
                 }
@@ -361,6 +363,9 @@ ${UI_DEFAULT_INIT}
      * proper class and invoke its constructor.
      */
     private static final class LazyPainter implements UIDefaults.LazyValue {
+
+        private static final PlatformLogger log = PlatformLogger.getLogger(LazyPainter.class.getName());
+
         private int which;
         private AbstractRegionPainter.PaintContext ctx;
         private String className;
@@ -419,7 +424,7 @@ ${UI_DEFAULT_INIT}
                 }
                 return constructor.newInstance(ctx, which);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.severe("LazyPainter.createValue: failure", e);
                 return null;
             }
         }
@@ -528,11 +533,11 @@ ${UI_DEFAULT_INIT}
                 }
                 return s;
             }
-            
+
             // lazily create the style if necessary
             if (style == null)
                 style = new NimbusStyle(prefix, null);
-            
+
             // return the style
             return style;
         }
@@ -816,12 +821,12 @@ ${UI_DEFAULT_INIT}
         private Insets insets;
         private Painter<Component> painter;
         private String painterKey;
-        
+
         PainterBorder(String painterKey, Insets insets) {
             this.insets = insets;
             this.painterKey = painterKey;
         }
-        
+
         @Override
         public void paintBorder(Component c, Graphics g, int x, int y, int w, int h) {
             if (painter == null) {
@@ -830,7 +835,7 @@ ${UI_DEFAULT_INIT}
                 painter = temp;
                 if (painter == null) return;
             }
-            
+
             g.translate(x, y);
             if (g instanceof Graphics2D)
                 painter.paint((Graphics2D)g, c, w, h);

@@ -27,6 +27,8 @@ package java.awt.print;
 
 import java.awt.geom.Rectangle2D;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * The {@code Paper} class describes the physical characteristics of
  * a piece of paper.
@@ -40,6 +42,8 @@ import java.awt.geom.Rectangle2D;
  * @see #setImageableArea(double, double, double, double)
  */
 public class Paper implements Cloneable {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(Paper.class.getName());
 
  /* Private Class Variables */
 
@@ -109,8 +113,8 @@ public class Paper implements Cloneable {
              */
             newPaper = (Paper) super.clone();
 
-        } catch (CloneNotSupportedException e) {
-            e.printStackTrace();
+        } catch (CloneNotSupportedException cnfe) {
+            log.severe("Paper.clone: failure", cnfe);
             newPaper = null;    // should never happen.
         }
 

@@ -247,6 +247,19 @@ final class MTLBlitLoops {
                     sx1, sy1, sx2, sy2,
                     dx1, dy1, dx2, dy2);
 
+        /*
+            OpenGL impl:
+
+            if (rtt && oglDst.isOnScreen()) {
+                // we only have to flush immediately when copying from a
+                // (non-texture) surface to the screen; otherwise Swing apps
+                // might appear unresponsive until the auto-flush completes
+                rq.flushNow();
+            }
+         */
+
+            // TODO: LBO: DEADLOCK ROOT CAUSE HERE
+
             // always flush immediately, since we (currently) have no means
             // of tracking changes to the system memory surface
             rq.flushNow();

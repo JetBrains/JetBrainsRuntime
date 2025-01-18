@@ -39,7 +39,12 @@
 #import "JNIUtilities.h"
 #import "AWTWindow.h"
 
+
+static const char* notificationToStr(jint notificationType);
+
 #pragma mark App Menu helpers
+
+#define TRACE_NOTIFY    0
 
 // The following is a AWT convention?
 #define PREFERENCES_TAG  42
@@ -376,8 +381,6 @@ AWT_ASSERT_APPKIT_THREAD;
 
     return NSPrintingSuccess;
 }
-
-#define TRACE_NOTIFY    0
 
 // Open app handler, registered in -init
 + (void)_notifyJava:(jint)notificationType {
@@ -904,4 +907,34 @@ JNI_COCOA_ENTER(env);
     }];
 
 JNI_COCOA_EXIT(env);
+}
+
+static const char* notificationToStr(jint notificationType) {
+#undef CASE_NOTIFY_OP
+#define CASE_NOTIFY_OP(X)                       \
+    case com_apple_eawt__AppEventHandler_NOTIFY_##X:   \
+    return #X;
+
+    switch (notificationType) {
+        CASE_NOTIFY_OP(ABOUT)
+        CASE_NOTIFY_OP(PREFS)
+        CASE_NOTIFY_OP(OPEN_APP)
+        CASE_NOTIFY_OP(REOPEN_APP)
+        CASE_NOTIFY_OP(QUIT)
+        CASE_NOTIFY_OP(SHUTDOWN)
+        CASE_NOTIFY_OP(ACTIVE_APP_GAINED)
+        CASE_NOTIFY_OP(ACTIVE_APP_LOST)
+        CASE_NOTIFY_OP(APP_HIDDEN)
+        CASE_NOTIFY_OP(APP_SHOWN)
+        CASE_NOTIFY_OP(USER_SESSION_ACTIVE)
+        CASE_NOTIFY_OP(USER_SESSION_INACTIVE)
+        CASE_NOTIFY_OP(SCREEN_SLEEP)
+        CASE_NOTIFY_OP(SCREEN_WAKE)
+        CASE_NOTIFY_OP(SYSTEM_SLEEP)
+        CASE_NOTIFY_OP(SYSTEM_WAKE)
+        CASE_NOTIFY_OP(SCREEN_CHANGE_PARAMETERS)
+        default:
+            return "";
+    }
+#undef CASE_NOTIFY_OP
 }

@@ -26,10 +26,10 @@
 package java.awt.print;
 
 import java.awt.geom.AffineTransform;
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 
 import java.lang.annotation.Native;
+
+import sun.util.logging.PlatformLogger;
 
 /**
  * The {@code PageFormat} class describes the size and
@@ -37,6 +37,7 @@ import java.lang.annotation.Native;
  */
 public class PageFormat implements Cloneable
 {
+    private static final PlatformLogger log = PlatformLogger.getLogger(PageFormat.class.getName());
 
  /* Class Constants */
 
@@ -101,8 +102,8 @@ public class PageFormat implements Cloneable
             newPage = (PageFormat) super.clone();
             newPage.mPaper = (Paper)mPaper.clone();
 
-        } catch (CloneNotSupportedException e) {
-            e.printStackTrace();
+        } catch (CloneNotSupportedException cnfe) {
+            log.severe("PageFormat.clone: failure", cnfe);
             newPage = null;     // should never happen.
         }
 

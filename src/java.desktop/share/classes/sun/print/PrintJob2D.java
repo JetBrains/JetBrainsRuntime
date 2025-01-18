@@ -932,6 +932,7 @@ public class PrintJob2D extends PrintJob implements Printable, Runnable {
             try {
                 printerJobThread.join();
             } catch (InterruptedException e) {
+                // TODO: fix logger.fine("Class.method: interrupted");
             }
         }
     }
@@ -1045,6 +1046,7 @@ public class PrintJob2D extends PrintJob implements Printable, Runnable {
                 try {
                     wait(1000);
                 } catch (InterruptedException e) {
+                    // TODO: fix logger.fine("Class.method: interrupted");
                     // do nothing.
                 }
             }
@@ -1084,6 +1086,7 @@ public class PrintJob2D extends PrintJob implements Printable, Runnable {
                     try {
                         wait(2000);
                     } catch (InterruptedException e) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
                         // do nothing.
                     }
                 }

@@ -219,6 +219,7 @@ final class XSelection {
                     try {
                         waitForSelectionNotify(targetsGetter);
                     } catch (InterruptedException ie) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
                         return new long[0];
                     } finally {
                         propertyGetter = null;
@@ -294,6 +295,7 @@ final class XSelection {
                     try {
                         waitForSelectionNotify(dataGetter);
                     } catch (InterruptedException ie) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
                         return new byte[0];
                     } finally {
                         propertyGetter = null;
@@ -367,6 +369,7 @@ final class XSelection {
                                 // transfer.
                                 waitForSelectionNotify(incrDataGetter);
                             } catch (InterruptedException ie) {
+                                // TODO: fix logger.fine("Class.method: interrupted");
                                 break;
                             } finally {
                                 propertyGetter = null;

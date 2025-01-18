@@ -86,6 +86,8 @@ import sun.swing.SwingAccessor;
 import sun.swing.SwingUtilities2;
 import sun.swing.icon.SortArrowIcon;
 
+import sun.util.logging.PlatformLogger;
+
 import static javax.swing.UIDefaults.LazyValue;
 
 
@@ -112,6 +114,8 @@ import static javax.swing.UIDefaults.LazyValue;
 @SuppressWarnings("serial") // Same-version serialization only
 public abstract class BasicLookAndFeel extends LookAndFeel implements Serializable
 {
+    private static final PlatformLogger log = PlatformLogger.getLogger(BasicLookAndFeel.class.getName());
+
     /**
      * Whether or not the developer has created a JPopupMenu.
      */
@@ -434,9 +438,8 @@ public abstract class BasicLookAndFeel extends LookAndFeel implements Serializab
                 Color color = Color.black;
                 try {
                     color = Color.decode(systemColors[i + 1]);
-                }
-                catch(NumberFormatException e) {
-                    e.printStackTrace();
+                } catch (NumberFormatException nfe) {
+                    log.severe("BasicLookAndFeel.loadSystemColors: failure", nfe);
                 }
                 table.put(systemColors[i], new ColorUIResource(color));
             }

@@ -24,6 +24,8 @@
  */
 package javax.swing;
 
+import sun.util.logging.PlatformLogger;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.text.*;
@@ -72,6 +74,8 @@ import javax.swing.text.*;
 @JavaBean(defaultProperty = "UI")
 @SuppressWarnings("serial") // Same-version serialization only
 public abstract class AbstractButton extends JComponent implements ItemSelectable, SwingConstants {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(JComponent.class.getName());
 
     // *********************************
     // ******* Button properties *******
@@ -370,6 +374,7 @@ public abstract class AbstractButton extends JComponent implements ItemSelectabl
         try {
             Thread.sleep(pressTime);
         } catch(InterruptedException ie) {
+            log.fine("AbstractButton.doClick: interrupted");
         }
         model.setPressed(false);
         model.setArmed(false);

@@ -28,16 +28,19 @@ import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.image.BufferedImage;
-import java.util.*;
 import javax.swing.*;
 import javax.swing.plaf.synth.SynthContext;
 import javax.swing.plaf.synth.SynthPainter;
-import javax.swing.plaf.synth.SynthConstants;
 
 import javax.swing.Painter;
 
+import sun.util.logging.PlatformLogger;
+
 
 class SynthPainterImpl extends SynthPainter {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(SynthPainterImpl.class.getName());
+
     private NimbusStyle style;
 
     SynthPainterImpl(NimbusStyle style) {
@@ -63,11 +66,11 @@ class SynthPainterImpl extends SynthPainter {
                 if (transform!=null){
                     try {
                         gfx.transform(transform.createInverse());
-                    } catch (NoninvertibleTransformException e) {
+                    } catch (NoninvertibleTransformException nte) {
                         // this should never happen as we are in control of all
                         // calls into this method and only ever pass in simple
                         // transforms of rotate, flip and translates
-                        e.printStackTrace();
+                        log.severe("SynthPainterImpl.paint: failure", nte);
                     }
                 }
             } else {

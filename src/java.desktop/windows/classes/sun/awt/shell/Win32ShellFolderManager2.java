@@ -640,6 +640,7 @@ final class Win32ShellFolderManager2 extends ShellFolderManager {
                 try {
                     return future.get();
                 } catch (InterruptedException e) {
+                    // TODO: fix logger.fine("Class.method: interrupted");
                     AccessController.doPrivileged(new PrivilegedAction<Void>() {
                         public Void run() {
                             future.cancel(true);

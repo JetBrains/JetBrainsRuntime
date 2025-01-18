@@ -309,7 +309,8 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
                                 while (!se.dispatched && !targetAppContext.isDisposed()) {
                                     try {
                                         Thread.sleep(100);
-                                    } catch (InterruptedException e) {
+                                    } catch (InterruptedException ie) {
+                                        focusLog.fine("DefaultKeyboardFocusManager.sendMessage: interrupted");
                                         break;
                                     }
                                 }
@@ -324,7 +325,8 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
                             // we do not wait infinitely to avoid deadlock
                             // as dispatch will ultimately be done by this thread
                             fxCheckDispatchThread.join(500);
-                        } catch (InterruptedException ex) {
+                        } catch (InterruptedException ie) {
+                            focusLog.fine("DefaultKeyboardFocusManager.sendMessage: interrupted");
                         }
                     }
                 }
@@ -334,6 +336,7 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
                         try {
                             se.wait(1000);
                         } catch (InterruptedException ie) {
+                            focusLog.fine("DefaultKeyboardFocusManager.sendMessage: interrupted");
                             break;
                         }
                     }

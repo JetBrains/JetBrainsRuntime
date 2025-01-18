@@ -46,6 +46,8 @@ import sun.java2d.SunGraphicsEnvironment;
 import static sun.java2d.SunGraphicsEnvironment.toDeviceSpace;
 import static sun.java2d.SunGraphicsEnvironment.toDeviceSpaceAbs;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * This class is used to generate native system input events
  * for the purposes of test automation, self-running demos, and
@@ -110,6 +112,9 @@ import static sun.java2d.SunGraphicsEnvironment.toDeviceSpaceAbs;
  * @since       1.3
  */
 public class Robot {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(Robot.class.getName());
+
     private static final int MAX_DELAY = 60000;
     private RobotPeer peer;
     private boolean isAutoWaitForIdle = false;
@@ -737,7 +742,8 @@ public class Robot {
         if (!thread.isInterrupted()) {
             try {
                 Thread.sleep(ms);
-            } catch (final InterruptedException ignored) {
+            } catch (InterruptedException ignored) {
+                log.fine("Robot.delay: interrupted");
                 thread.interrupt(); // Preserve interrupt status
             }
         }

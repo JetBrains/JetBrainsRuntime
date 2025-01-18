@@ -120,7 +120,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     if (self == nil) return self;
 
     self.javaLayer = layer;
-
+    self.ctx = nil;
+    self.displayID = -1;
     self.contentsGravity = kCAGravityTopLeft;
 
     //Disable CALayer's default animation
@@ -387,6 +388,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 - (void) display {
     AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_display() called");
+
+    if (0) {
+        NSString *callStack = [ThreadUtilities getCallerStack:nil];
+        NSLog(@"display: %@", callStack);
+    }
+
     [self blitCallback];
     [super display];
 }
@@ -558,7 +565,18 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.buffer = &bmtlsdo->pTexture;
         layer.outBuffer = &bmtlsdo->pOutTexture;
         layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
-        layer.displayID = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->displayID;
+
+        NSInteger oldDisplayID = layer.displayID;
+        NSInteger newDisplayID = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->displayID;
+
+        if (isDisplaySyncEnabled()) {
+            if (oldDisplayID != newDisplayID) {
+                J2dRlsTraceLn3(J2D_TRACE_INFO, "MTLLayer_validate: layer[%p] displayID changed: %d => %d",
+                               layer, oldDisplayID, newDisplayID);
+                [layer stopRedraw:YES];
+            }
+        }
+        layer.displayID = newDisplayID;
         layer.device = layer.ctx.device;
         layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 

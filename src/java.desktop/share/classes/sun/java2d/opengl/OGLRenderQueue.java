@@ -26,6 +26,7 @@
 package sun.java2d.opengl;
 
 import sun.awt.AWTThreading;
+import sun.awt.SunToolkit;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
@@ -125,8 +126,7 @@ public class OGLRenderQueue extends RenderQueue {
         try {
             flusher.flushNow();
         } catch (Exception e) {
-            System.err.println("exception in flushNow:");
-            e.printStackTrace();
+            logger.severe("OGLRenderQueue.flushNow: exception occurred: ", e);
         }
     }
 
@@ -135,8 +135,7 @@ public class OGLRenderQueue extends RenderQueue {
         try {
             flusher.flushAndInvokeNow(r);
         } catch (Exception e) {
-            System.err.println("exception in flushAndInvokeNow:");
-            e.printStackTrace();
+            logger.severe("OGLRenderQueue.flushAndInvokeNow: exception occurred: ", e);
         }
     }
 
@@ -168,6 +167,8 @@ public class OGLRenderQueue extends RenderQueue {
             thread.setDaemon(true);
             thread.setPriority(Thread.MAX_PRIORITY);
             thread.start();
+            // Always register thread:
+            SunToolkit.registerAwtLockThread(thread);
         }
 
         public void flushNow() {
@@ -188,6 +189,7 @@ public class OGLRenderQueue extends RenderQueue {
                 try {
                     wait(100);
                 } catch (InterruptedException e) {
+                    logger.fine("QueueFlusher.flushNow: interrupted");
                 }
                 err = error;
             }
@@ -199,6 +201,7 @@ public class OGLRenderQueue extends RenderQueue {
                             try {
                                 QueueFlusher.this.wait();
                             } catch (InterruptedException e) {
+                                logger.fine("QueueFlusher.flushNow(wait): interrupted");
                             }
                         }
                         return error;
@@ -243,6 +246,7 @@ public class OGLRenderQueue extends RenderQueue {
                             }
                         }
                     } catch (InterruptedException e) {
+                        logger.fine("QueueFlusher.run: interrupted");
                     }
                 }
                 try {
@@ -254,11 +258,11 @@ public class OGLRenderQueue extends RenderQueue {
                     if (task != null) {
                         task.run();
                     }
-                } catch (Error e) {
-                    error = e;
-                } catch (Exception x) {
-                    System.err.println("exception in QueueFlusher:");
-                    x.printStackTrace();
+                } catch (Error err) {
+                    logger.severe("QueueFlusher.run: error occurred: ", err);
+                    error = err;
+                } catch (Exception e) {
+                    logger.severe("QueueFlusher.run: exception occurred: ", e);
                 } finally {
                     if (timedOut) {
                         unlock();

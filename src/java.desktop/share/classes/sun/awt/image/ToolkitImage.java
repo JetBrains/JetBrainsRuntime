@@ -233,6 +233,7 @@ public class ToolkitImage extends Image {
                 try {
                     wait();
                 } catch (InterruptedException e) {
+                    // TODO: fix logger.fine("Class.method: interrupted");
                     Thread.currentThread().interrupt();
                     return;
                 }

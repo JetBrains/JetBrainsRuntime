@@ -477,6 +477,7 @@ final class Win32ShellFolder2 extends ShellFolder {
                     }
                 }, RuntimeException.class);
             } catch (InterruptedException e) {
+                // TODO: fix logger.fine("Class.method: interrupted");
                 // Ignore error
             }
         }
@@ -564,6 +565,7 @@ final class Win32ShellFolder2 extends ShellFolder {
             try {
                 return pidlsEqual(getParentIShellFolder(), disposer.relativePIDL, rhs.disposer.relativePIDL);
             } catch (InterruptedException e) {
+                // TODO: fix logger.fine("Class.method: interrupted");
                 return false;
             }
         }
@@ -815,6 +817,7 @@ final class Win32ShellFolder2 extends ShellFolder {
 
             return Win32ShellFolderManager2.checkFiles(files);
         } catch (InterruptedException e) {
+            // TODO: fix logger.fine("Class.method: interrupted");
             return new File[0];
         }
     }
@@ -910,10 +913,12 @@ final class Win32ShellFolder2 extends ShellFolder {
                                 Win32ShellFolderManager2.createShellFolderFromRelativePIDL(getDesktop(),
                                         linkLocationPIDL);
                     } catch (InterruptedException | FileNotFoundException e) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
                         // Return null
                     } catch (InternalError e) {
                         // Could be a link to a non-bindable object, such as a network connection
                         // TODO: getIShellFolder() should throw FileNotFoundException instead
+                        // TODO: fix logger.fine("Class.method: interrupted");
                     }
                 }
                 return location;

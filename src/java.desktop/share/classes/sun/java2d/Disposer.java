@@ -25,6 +25,7 @@
 
 package sun.java2d;
 
+import sun.awt.SunToolkit;
 import sun.awt.util.ThreadGroupUtils;
 
 import java.lang.ref.Reference;
@@ -90,6 +91,8 @@ public class Disposer implements Runnable {
             t.setDaemon(true);
             t.setPriority(Thread.MAX_PRIORITY);
             t.start();
+            // Always register thread:
+            SunToolkit.registerAwtLockThread(t);
             return null;
         });
     }

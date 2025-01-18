@@ -102,7 +102,7 @@ import java.util.concurrent.Semaphore;
  * of run() method for more comments.
  */
 public class WLToolkit extends UNIXToolkit implements Runnable {
-    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLToolkit");
+    private static final PlatformLogger log = PlatformLogger.getLogger(WLToolkit.class.getName());
     private static final PlatformLogger logKeys = PlatformLogger.getLogger("sun.awt.wl.WLToolkit.keys");
 
     /**
@@ -299,7 +299,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             System.exit(0);
         });
     }
-    
+
     /**
      * If more than this amount milliseconds has passed since the same mouse button click,
      * the next click is considered separate and not part of multi-click event.

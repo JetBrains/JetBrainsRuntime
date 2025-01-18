@@ -31,6 +31,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 import java.util.concurrent.atomic.AtomicLong;
 import sun.awt.AppContext;
+import sun.util.logging.PlatformLogger;
 
 /**
  * Internal class to manage all Timers using one thread.
@@ -42,6 +43,8 @@ import sun.awt.AppContext;
  */
 class TimerQueue implements Runnable
 {
+    private static final PlatformLogger log = PlatformLogger.getLogger(TimerQueue.class.getName());
+
     private static final Object sharedInstanceKey =
         new StringBuffer("TimerQueue.sharedInstanceKey");
 
@@ -191,6 +194,7 @@ class TimerQueue implements Runnable
                         timer.getLock().unlock();
                     }
                 } catch (InterruptedException ie) {
+                    log.fine("TimerQueue.run: interrupted");
                     // Shouldn't ignore InterruptedExceptions here, so AppContext
                     // is disposed gracefully, see 6799345 for details
                     if (AppContext.getAppContext().isDisposed()) {

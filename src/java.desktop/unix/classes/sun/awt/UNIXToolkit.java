@@ -65,6 +65,8 @@ import sun.util.logging.PlatformLogger;
 
 public abstract class UNIXToolkit extends SunToolkit
 {
+    private static final PlatformLogger log = PlatformLogger.getLogger(UNIXToolkit.class.getName());
+
     /** All calls into GTK should be synchronized on this lock */
     public static final Object GTK_LOCK = new Object();
 

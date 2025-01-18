@@ -1254,14 +1254,10 @@ public class Window extends Container implements Accessible {
         else {
             try {
                 EventQueue.invokeAndWait(this, action);
-            }
-            catch (InterruptedException e) {
-                System.err.println("Disposal was interrupted:");
-                e.printStackTrace();
-            }
-            catch (InvocationTargetException e) {
-                System.err.println("Exception during disposal:");
-                e.printStackTrace();
+            } catch (InterruptedException ie) {
+                log.severe("Window.doDispose: Disposal was interrupted:", ie);
+            } catch (InvocationTargetException ite) {
+                log.severe("Window.doDispose: Exception during disposal:", ite);
             }
         }
         // Execute outside the Runnable because postWindowEvent is

@@ -48,6 +48,8 @@ import sun.awt.AWTAccessor.DragSourceContextAccessor;
 import sun.awt.dnd.SunDragSourceContextPeer;
 import sun.security.action.GetIntegerAction;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * The {@code DragSource} is the entity responsible
  * for the initiation of the Drag
@@ -124,6 +126,8 @@ public class DragSource implements Serializable {
     @Serial
     private static final long serialVersionUID = 6236096958971414066L;
 
+    private static final PlatformLogger log = PlatformLogger.getLogger(DragSource.class.getName());
+
     /*
      * load a system default cursor
      */
@@ -136,8 +140,7 @@ public class DragSource implements Serializable {
         try {
             return (Cursor)Toolkit.getDefaultToolkit().getDesktopProperty(name);
         } catch (Exception e) {
-            e.printStackTrace();
-
+            log.fine("DragSource.load: failure", e);
             throw new RuntimeException("failed to load system cursor: " + name + " : " + e.getMessage());
         }
     }

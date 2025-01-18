@@ -466,7 +466,9 @@ public final class AppContext {
                 new InvocationEvent(Toolkit.getDefaultToolkit(), runnable));
             try {
                 notificationLock.wait(DISPOSAL_TIMEOUT);
-            } catch (InterruptedException e) { }
+            } catch (InterruptedException e) {
+                log.fine("AppContext.dispose: interrupted");
+            }
         }
 
         // Next, we post another InvocationEvent to the end of the
@@ -483,7 +485,9 @@ public final class AppContext {
                 new InvocationEvent(Toolkit.getDefaultToolkit(), runnable));
             try {
                 notificationLock.wait(DISPOSAL_TIMEOUT);
-            } catch (InterruptedException e) { }
+            } catch (InterruptedException e) {
+                log.fine("AppContext.dispose: interrupted");
+            }
         }
 
         // We are done with posting events, so change the state to disposed
@@ -506,7 +510,9 @@ public final class AppContext {
                (System.currentTimeMillis() < endTime)) {
             try {
                 Thread.sleep(10);
-            } catch (InterruptedException e) { }
+            } catch (InterruptedException e) {
+                log.fine("AppContext.dispose: interrupted");
+            }
         }
 
         // Next, we remove this and all subThreadGroups from threadGroup2appContext

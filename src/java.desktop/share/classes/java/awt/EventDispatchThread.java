@@ -205,21 +205,22 @@ class EventDispatchThread extends Thread {
             }
 
             eq.dispatchEvent(event);
-        }
-        catch (InterruptedException interruptedException) {
+        } catch (InterruptedException ie) {
+            eventLog.fine("EventDispatchThread.pumpOneEventForFilters: interrupted");
             doDispatch = false; // AppContext.dispose() interrupts all
                                 // Threads in the AppContext
-        }
-        catch (Throwable e) {
-            processException(e);
+        } catch (Throwable th) {
+            processException(th);
         }
     }
 
-    private void processException(Throwable e) {
+    private void processException(Throwable th) {
         if (eventLog.isLoggable(PlatformLogger.Level.FINE)) {
-            eventLog.fine("Processing exception: " + e);
+            eventLog.fine("Processing exception: " + th);
+        } else {
+            eventLog.severe("EventDispatchThread.processException: failure", th);
         }
-        getUncaughtExceptionHandler().uncaughtException(this, e);
+        getUncaughtExceptionHandler().uncaughtException(this, th);
     }
 
     public synchronized EventQueue getEventQueue() {

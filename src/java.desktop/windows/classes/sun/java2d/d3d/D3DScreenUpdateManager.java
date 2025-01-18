@@ -138,6 +138,7 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
                 // wasted for surfaces never rendered to
                 sd = D3DSurfaceData.createData(peer);
             }  catch (InvalidPipeException ipe) {
+                log.fine("D3DScreenUpdateManager.createScreenSurface: invalid pipeline", ipe);
                 sd = null;
             }
         }
@@ -395,6 +396,7 @@ public class D3DScreenUpdateManager extends ScreenUpdateManager
                 // repaint whole window to repopulate the back-buffer
                 repaintPeerTarget(sd.getPeer());
             } catch (InvalidPipeException ipe) {
+                log.fine("D3DScreenUpdateManager.createScreenSurface: invalid pipeline", ipe);
                 return false;
             }
         }

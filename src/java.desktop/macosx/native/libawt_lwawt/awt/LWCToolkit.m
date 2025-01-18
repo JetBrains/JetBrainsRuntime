@@ -692,6 +692,41 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isBlockingEventDispa
 
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    getThreadTraceContexts
+ * Signature: (Ljava/lang/String)
+ */
+JNIEXPORT jstring JNICALL Java_sun_lwawt_macosx_LWCToolkit_getThreadTraceContexts
+        (JNIEnv *env, jclass clz)
+{
+JNI_COCOA_ENTER(env);
+
+    // Convert NSString* to JavaString
+    NSString* result = [ThreadUtilities getThreadTraceContexts];
+
+    jstring javaString = (*env)->NewStringUTF(env, result.UTF8String);
+    [result release];
+    return javaString;
+
+JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    isWithinPowerTransition
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isWithinPowerTransition
+        (JNIEnv *env, jclass clz)
+{
+JNI_COCOA_ENTER(env);
+
+    return [ThreadUtilities isWithinPowerTransition] ? JNI_TRUE : JNI_FALSE;
+
+JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
  * Method:    stopAWTRunLoop
  * Signature: (J)V
  */

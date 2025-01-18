@@ -1514,7 +1514,9 @@ final class XWM
                                 timeForInsetExtentToBecomeReadyMs);
                     try {
                         Thread.sleep(timeForInsetExtentToBecomeReadyMs);
-                    } catch (InterruptedException ignored) {}
+                    } catch (InterruptedException ignored) {
+                        // TODO: fix logger.fine("Class.method: interrupted");
+                    }
                 }
             }
 

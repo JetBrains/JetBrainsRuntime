@@ -192,6 +192,7 @@ final class TokenStorage {
                 try {
                     key = watcher.take();
                 } catch (InterruptedException e) {
+                    // TODO: fix logger.fine("Class.method: interrupted");
                     if (SCREENCAST_DEBUG) {
                         System.err.println("ScreencastWatcher: interrupted");
                     }

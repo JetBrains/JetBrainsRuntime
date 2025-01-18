@@ -903,6 +903,7 @@ public class PrintServiceLookupProvider extends PrintServiceLookup
                                     proc.waitFor();
                                     done = true;
                                 } catch (InterruptedException e) {
+                                    // TODO: fix logger.fine("Class.method: interrupted");
                                 }
                             }
 
@@ -962,6 +963,7 @@ public class PrintServiceLookupProvider extends PrintServiceLookup
                 try {
                     Thread.sleep(refreshSecs * 1000);
                 } catch (InterruptedException e) {
+                    // TODO: fix logger.fine("Class.method: interrupted");
                     break;
                 }
             }

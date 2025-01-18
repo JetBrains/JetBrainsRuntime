@@ -48,7 +48,12 @@ import com.apple.laf.AquaImageFactory.SlicedImageControl;
 import sun.awt.image.MultiResolutionCachedImage;
 import sun.swing.SwingAccessor;
 
+import sun.util.logging.PlatformLogger;
+
+
 final class AquaUtils {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(AquaUtils.class.getName());
 
     private static final String ANIMATIONS_PROPERTY = "swing.enableAnimations";
 
@@ -216,6 +221,7 @@ final class AquaUtils {
     }
 
     private static final int MENU_BLINK_DELAY = 50; // 50ms == 3/60 sec, according to the spec
+
     static void blinkMenu(final Selectable selectable) {
         if (!animationsEnabled()) return;
         try {
@@ -223,7 +229,9 @@ final class AquaUtils {
             Thread.sleep(MENU_BLINK_DELAY);
             selectable.paintSelected(true);
             Thread.sleep(MENU_BLINK_DELAY);
-        } catch (final InterruptedException ignored) { }
+        } catch (final InterruptedException ignored) {
+            log.fine("AquaUtils.blinkMenu: interrupted");
+        }
     }
 
     interface Selectable {

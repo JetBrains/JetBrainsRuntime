@@ -91,6 +91,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.net.MalformedURLException;
+import java.util.function.Supplier;
 import javax.swing.UIManager;
 
 import com.apple.laf.AquaMenuBarUI;
@@ -259,6 +260,8 @@ public final class LWCToolkit extends LWToolkit {
                        GraphicsEnvironment.isHeadless());
             return null;
         });
+
+        setAwtNativeThreadContextProvider(() -> getThreadTraceContexts());
     }
 
     /*
@@ -887,6 +890,10 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     private static native boolean isBlockingEventDispatchThread();
+
+    static native String getThreadTraceContexts();
+
+    static native boolean isWithinPowerTransition();
 
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {

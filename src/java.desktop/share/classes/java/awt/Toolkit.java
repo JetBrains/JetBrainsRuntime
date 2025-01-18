@@ -80,6 +80,7 @@ import sun.awt.HeadlessToolkit;
 import sun.awt.PeerEvent;
 import sun.awt.PlatformGraphicsInfo;
 import sun.awt.SunToolkit;
+import sun.util.logging.PlatformLogger;
 
 /**
  * This class is the abstract superclass of all actual

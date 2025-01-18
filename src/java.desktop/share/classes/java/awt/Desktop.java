@@ -53,6 +53,8 @@ import com.jetbrains.exported.JBRApi;
 import sun.awt.SunToolkit;
 import sun.security.util.SecurityConstants;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * The {@code Desktop} class allows interact with various desktop capabilities.
  *
@@ -93,6 +95,8 @@ import sun.security.util.SecurityConstants;
  * @author George Zhang
  */
 public class Desktop {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(Desktop.class.getName());
 
     /**
      * Represents an action type.  Each platform supports a different
@@ -1111,7 +1115,7 @@ public class Desktop {
         try {
             actions = new DesktopActions(h);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.severe("Desktop.setDesktopActionsHandler: failure", e);
         }
     }
 }

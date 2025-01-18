@@ -45,8 +45,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.Arrays;
-import java.util.function.Function;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.accessibility.Accessible;
 import javax.accessibility.AccessibleAction;
@@ -74,6 +72,8 @@ import sun.awt.AWTAccessor;
 import sun.lwawt.LWWindowPeer;
 import sun.swing.SwingAccessor;
 
+import sun.util.logging.PlatformLogger;
+
 class CAccessibility implements PropertyChangeListener {
     private static Set<String> ignoredRoles;
     private static final int INVOKE_TIMEOUT_SECONDS;
@@ -89,6 +89,8 @@ class CAccessibility implements PropertyChangeListener {
             });
         INVOKE_TIMEOUT_SECONDS = value;
     }
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(CAccessibility.class.getName());
 
     static CAccessibility sAccessibility;
     static synchronized CAccessibility getAccessibility(final String[] roles) {
@@ -137,7 +139,9 @@ class CAccessibility implements PropertyChangeListener {
         if (c != null) {
             try {
                 value = LWCToolkit.invokeAndWait(callable, c, INVOKE_TIMEOUT_SECONDS);
-            } catch (final Exception e) { e.printStackTrace(); }
+            } catch (final Exception e) {
+                log.severe("CAccessibility.invokeAndWait: failure", e);
+            }
         }
 
         return value != null ? value : defValue;
@@ -147,7 +151,9 @@ class CAccessibility implements PropertyChangeListener {
         if (c != null) {
             try {
                 LWCToolkit.invokeLater(runnable, c);
-            } catch (InvocationTargetException e) { e.printStackTrace(); }
+            } catch (InvocationTargetException ite) {
+                log.severe("CAccessibility.invokeLater: failure", ite);
+            }
         }
     }
 
@@ -481,6 +487,7 @@ class CAccessibility implements PropertyChangeListener {
                 try {
                     p = parent.getLocationOnScreen();
                 } catch (IllegalComponentStateException ice) {
+                    log.fine("CAccessibility.accessibilityHitTest: failure", ice);
                     return null;
                 }
 

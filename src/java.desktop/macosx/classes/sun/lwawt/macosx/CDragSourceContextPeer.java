@@ -45,8 +45,12 @@ import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.PlatformWindow;
 
+import sun.util.logging.PlatformLogger;
+
 
 public final class CDragSourceContextPeer extends SunDragSourceContextPeer {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger(CDragSourceContextPeer.class.getName());
 
     private static final CDragSourceContextPeer fInstance = new CDragSourceContextPeer(null);
 
@@ -172,7 +176,7 @@ public final class CDragSourceContextPeer extends SunDragSourceContextPeer {
                 try {
                     doDragging(nativeDragSource);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.severe("CDragSourceContextPeer.startDrag: failure", e);
                 } finally {
                     releaseNativeDragSource(nativeDragSource);
                     fDragImage = null;
