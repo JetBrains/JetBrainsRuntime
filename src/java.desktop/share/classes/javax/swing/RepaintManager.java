@@ -25,37 +25,63 @@
 package javax.swing;
 
 
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
+import java.applet.Applet;
+import java.awt.AlphaComposite;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Composite;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.EventQueue;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.HeadlessException;
+import java.awt.Image;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
+import java.awt.Transparency;
+import java.awt.Window;
+import java.awt.event.InvocationEvent;
+import java.awt.geom.AffineTransform;
 import java.awt.image.VolatileImage;
-import java.awt.peer.WindowPeer;
+import java.lang.ref.WeakReference;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.applet.*;
+import java.util.stream.Collectors;
 
 import jdk.internal.access.JavaSecurityAccess;
 import jdk.internal.access.SharedSecrets;
+
+import com.sun.java.swing.SwingUtilities3;
+
 import sun.awt.AWTAccessor;
 import sun.awt.AppContext;
 import sun.awt.DisplayChangedListener;
 import sun.awt.SunToolkit;
 import sun.java2d.SunGraphicsEnvironment;
-import sun.security.action.GetPropertyAction;
-
-import com.sun.java.swing.SwingUtilities3;
-import java.awt.geom.AffineTransform;
-import java.util.stream.Collectors;
-
 import sun.java2d.SunGraphics2D;
 import sun.java2d.pipe.Region;
+import sun.security.action.GetPropertyAction;
 import sun.swing.SwingAccessor;
 import sun.swing.SwingUtilities2;
 import sun.swing.SwingUtilities2.RepaintListener;
+import sun.util.logging.PlatformLogger;
 
 /**
  * This class manages repaint requests, allowing the number
@@ -73,6 +99,8 @@ import sun.swing.SwingUtilities2.RepaintListener;
  */
 public class RepaintManager
 {
+    private static final PlatformLogger log = PlatformLogger.getLogger(RepaintManager.class.getName());
+
     /**
      * Whether or not the RepaintManager should handle paint requests
      * for top levels.
@@ -88,8 +116,8 @@ public class RepaintManager
     /**
      * Maps from GraphicsConfiguration to VolatileImage.
      */
-    private Map<GraphicsConfiguration,VolatileImage> volatileMap = new
-                        HashMap<GraphicsConfiguration,VolatileImage>(1);
+    private final Map<GraphicsConfiguration,VolatileImage> volatileMap = new
+            HashMap<>(1);
 
     //
     // As of 1.6 Swing handles scheduling of paint events from native code.
@@ -102,14 +130,14 @@ public class RepaintManager
     // this map are pushed to the real map (dirtyComponents) and then
     // painted with the rest of the components.
     //
-    private Map<Container,Rectangle> hwDirtyComponents;
+    private Map<Container, Rectangle> hwDirtyComponents;
 
     private Map<Component,Rectangle> dirtyComponents;
     private Map<Component,Rectangle> tmpDirtyComponents;
-    private java.util.List<Component> invalidComponents;
+    private List<Component> invalidComponents;
 
     // List of Runnables that need to be processed before painting from AWT.
-    private java.util.List<Runnable> runnableList;
+    private List<Runnable> runnableList;
 
     boolean   doubleBufferingEnabled = true;
 
@@ -143,7 +171,7 @@ public class RepaintManager
     /**
      * Value of the system property awt.nativeDoubleBuffering.
      */
-    private static boolean nativeDoubleBuffering;
+    private static final boolean nativeDoubleBuffering;
 
     // The maximum number of times Swing will attempt to use the VolatileImage
     // buffer during a paint operation.
@@ -158,7 +186,7 @@ public class RepaintManager
      * Type of buffer strategy to use.  Will be one of the BUFFER_STRATEGY_
      * constants.
      */
-    private short bufferStrategyType;
+    private final short bufferStrategyType;
 
     //
     // BufferStrategyPaintManager has the unique characteristic that it
@@ -203,6 +231,8 @@ public class RepaintManager
      */
     private static final DisplayChangedListener displayChangedHandler =
             new DisplayChangedHandler();
+
+    static final boolean CHECK_EDT_VIOLATIONS;
 
     static {
         SwingAccessor.setRepaintManagerAccessor(new SwingAccessor.RepaintManagerAccessor() {
@@ -261,6 +291,10 @@ public class RepaintManager
         } else {
             volatileBufferType = Transparency.OPAQUE;
         }
+        @SuppressWarnings("removal")
+        var t4 = "true".equals(AccessController.doPrivileged(
+                new GetPropertyAction("swing.checkEDT", "false")));
+        CHECK_EDT_VIOLATIONS = t4;
     }
 
     /**
@@ -340,10 +374,10 @@ public class RepaintManager
         // Swing doublebuffering.
         doubleBufferingEnabled = !nativeDoubleBuffering;
         synchronized(this) {
-            dirtyComponents = new IdentityHashMap<Component,Rectangle>();
-            tmpDirtyComponents = new IdentityHashMap<Component,Rectangle>();
+            dirtyComponents = new IdentityHashMap<>();
+            tmpDirtyComponents = new IdentityHashMap<>();
             this.bufferStrategyType = bufferStrategyType;
-            hwDirtyComponents = new IdentityHashMap<Container,Rectangle>();
+            hwDirtyComponents = new IdentityHashMap<>();
         }
         processingRunnable = new ProcessingRunnable();
     }
@@ -358,6 +392,78 @@ public class RepaintManager
         }
     }
 
+    /* used by checkThreadViolations */
+    private volatile WeakReference<JComponent> lastCheckedComponent = null;
+
+    /* lazy initialization - used by checkThreadViolations */
+    private static class StackWalkerHolder {
+        static final StackWalker STACK_WALKER = StackWalker.getInstance();
+    }
+
+    /**
+     * Derived from https://github.com/assertj/assertj-swing/blob/main/assertj-swing/src/main/java/org/assertj/swing/edt/CheckThreadViolationRepaintManager.java
+     * <p>
+     * The CheckThreadViolationRepaintManager class is used to detect Event Dispatch Thread rule violations<br>
+     * See <a href="http://java.sun.com/docs/books/tutorial/uiswing/misc/threads.html">How to Use Threads</a> for more info
+     * </p>
+     * <p>
+     * This is a modification of original idea of Scott Delap.<br>
+     * </p>
+     * <p>
+     * @author Scott Delap
+     * @author Alexander Potochkin
+     * </p>
+     * See https://swinghelper.dev.java.net/
+     * Rules enforced by this method:
+     * (1) it is always OK to reach this method on the Event Dispatch Thread.
+     * (2) it is generally not OK to reach this method outside the Event Dispatch Thread.
+     * (3) (exception form rule 2) except when we get here from a repaint() call, because repaint() is thread-safe
+     * (4) (exception from rule 3) it is not OK if swing code calls repaint() outside the EDT,
+     *     because swing code should be called on the EDT.
+     * (5) (exception from rule 4) using SwingWorker subclasses should not be considered swing code.
+     */
+    private void checkThreadViolations(JComponent c) {
+        if ((c != null) && !SwingUtilities.isEventDispatchThread()) {
+            // ignore the last processed component
+            if ((lastCheckedComponent != null) && (c == lastCheckedComponent.get())) {
+                return;
+            }
+
+            final List<StackWalker.StackFrame> stackFrames = StackWalkerHolder.STACK_WALKER.walk(sf -> sf.skip(1)
+                            .dropWhile(
+                                    f -> f.getClassName().startsWith("java.lang.Thread") && f.getMethodName().equals("run")
+                            ).collect(Collectors.toList())
+            );
+
+            boolean repaint = false;
+            boolean fromSwing = false; // whether we were in a swing method before before the repaint() call
+
+            for (StackWalker.StackFrame f : stackFrames) {
+                if (!repaint && "repaint".equals(f.getMethodName())) {
+                    repaint = true;
+                } else if (repaint) {
+                    if (f.getClassName().startsWith("javax.swing.")
+                            && !f.getClassName().startsWith("javax.swing.SwingWorker")) {
+                        fromSwing = true;
+                    } else if ("imageUpdate".equals(f.getMethodName())) {
+                        // assuming it is java.awt.image.ImageObserver.imageUpdate(...)
+                        // image was asynchronously updated, that's ok
+                        return;
+                    }
+                }
+            }
+            if (repaint && !fromSwing) {
+                // no problems here, since repaint() is thread safe
+                return;
+            }
+            this.lastCheckedComponent = new WeakReference<>(c);
+
+            log.severe("\n-----\nEDT violation detected on component:\n  {0}\nStack trace:\n  {1}\n-----",
+                    c, String.join("\n  ", stackFrames.stream().map(Object::toString).toList())
+            );
+        }
+    }
+
     /**
      * Mark the component as in need of layout and queue a runnable
      * for the event dispatching thread that will validate the components
@@ -369,6 +475,9 @@ public class RepaintManager
      */
     public synchronized void addInvalidComponent(JComponent invalidComponent)
     {
+        if (CHECK_EDT_VIOLATIONS) {
+            checkThreadViolations(invalidComponent);
+        }
         RepaintManager delegate = getDelegate(invalidComponent);
         if (delegate != null) {
             delegate.addInvalidComponent(invalidComponent);
@@ -386,7 +495,7 @@ public class RepaintManager
          * is already in the vector, we're done.
          */
         if (invalidComponents == null) {
-            invalidComponents = new ArrayList<Component>();
+            invalidComponents = new ArrayList<>();
         }
         else {
             int n = invalidComponents.size();
@@ -508,6 +617,9 @@ public class RepaintManager
      */
     public void addDirtyRegion(JComponent c, int x, int y, int w, int h)
     {
+        if (CHECK_EDT_VIOLATIONS) {
+            checkThreadViolations(c);
+        }
         RepaintManager delegate = getDelegate(c);
         if (delegate != null) {
             delegate.addDirtyRegion(c, x, y, w, h);
@@ -561,11 +673,11 @@ public class RepaintManager
         Map<Container,Rectangle> hws;
 
         synchronized(this) {
-            if (hwDirtyComponents.size() == 0) {
+            if (hwDirtyComponents.isEmpty()) {
                 return;
             }
             hws = hwDirtyComponents;
-            hwDirtyComponents =  new IdentityHashMap<Container,Rectangle>();
+            hwDirtyComponents = new IdentityHashMap<>();
         }
         for (Container hw : hws.keySet()) {
             Rectangle dirty = hws.get(hw);
@@ -614,7 +726,7 @@ public class RepaintManager
     {
         synchronized(this) {
             if (runnableList == null) {
-                runnableList = new LinkedList<Runnable>();
+                runnableList = new LinkedList<>();
             }
             runnableList.add(new Runnable() {
                 public void run() {
@@ -727,11 +839,8 @@ public class RepaintManager
         Rectangle r;
 
         r = getDirtyRegion(aComponent);
-        if(r.width == Integer.MAX_VALUE &&
-           r.height == Integer.MAX_VALUE)
-            return true;
-        else
-            return false;
+        return r.width == Integer.MAX_VALUE &&
+                r.height == Integer.MAX_VALUE;
     }
 
 
@@ -740,7 +849,7 @@ public class RepaintManager
      * @see #addInvalidComponent
      */
     public void validateInvalidComponents() {
-        final java.util.List<Component> ic;
+        final List<Component> ic;
         synchronized(this) {
             if (invalidComponents == null) {
                 return;
@@ -775,7 +884,7 @@ public class RepaintManager
      */
     private void prePaintDirtyRegions() {
         Map<Component,Rectangle> dirtyComponents;
-        java.util.List<Runnable> runnableList;
+        List<Runnable> runnableList;
         synchronized(this) {
             dirtyComponents = this.dirtyComponents;
             runnableList = this.runnableList;
@@ -787,7 +896,7 @@ public class RepaintManager
             }
         }
         paintDirtyRegions();
-        if (dirtyComponents.size() > 0) {
+        if (!dirtyComponents.isEmpty()) {
             // This'll only happen if a subclass isn't correctly dealing
             // with toplevels.
             paintDirtyRegions(dirtyComponents);
@@ -805,7 +914,7 @@ public class RepaintManager
         if (Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit &&
             sunToolkit.needUpdateWindow())
         {
-            Set<Window> windows = new HashSet<Window>();
+            Set<Window> windows = new HashSet<>();
             Set<Component> dirtyComps = dirtyComponents.keySet();
             for (Component dirty : dirtyComps) {
                 Window window = dirty instanceof Window ?
@@ -850,8 +959,8 @@ public class RepaintManager
             return;
         }
 
-        final java.util.List<Component> roots =
-            new ArrayList<Component>(tmpDirtyComponents.size());
+        final List<Component> roots =
+                new ArrayList<>(tmpDirtyComponents.size());
         for (Component dirty : tmpDirtyComponents.keySet()) {
             collectDirtyComponents(tmpDirtyComponents, dirty, roots);
         }
@@ -933,7 +1042,7 @@ public class RepaintManager
      * root.
      */
     private void adjustRoots(JComponent root,
-                             java.util.List<Component> roots, int index) {
+                             List<Component> roots, int index) {
         for (int i = roots.size() - 1; i >= index; i--) {
             Component c = roots.get(i);
             for(;;) {
@@ -952,10 +1061,9 @@ public class RepaintManager
 
     void collectDirtyComponents(Map<Component,Rectangle> dirtyComponents,
                                 Component dirtyComponent,
-                                java.util.List<Component> roots) {
+                                List<Component> roots) {
         int dx, dy, rootDx, rootDy;
         Component component, rootDirtyComponent,parent;
-        Rectangle cBounds;
 
         // Find the highest parent which is dirty.  When we get out of this
         // rootDx and rootDy will contain the translation from the
@@ -1040,7 +1148,7 @@ public class RepaintManager
     public synchronized String toString() {
         StringBuilder sb = new StringBuilder();
         if(dirtyComponents != null)
-            sb.append("" + dirtyComponents);
+            sb.append(dirtyComponents);
         return sb.toString();
     }
 
@@ -1059,7 +1167,7 @@ public class RepaintManager
      *
      * @return the image
      */
-    public Image getOffscreenBuffer(Component c,int proposedWidth,int proposedHeight) {
+    public Image getOffscreenBuffer(Component c, int proposedWidth, int proposedHeight) {
         RepaintManager delegate = getDelegate(c);
         if (delegate != null) {
             return delegate.getOffscreenBuffer(c, proposedWidth, proposedHeight);
@@ -1108,9 +1216,9 @@ public class RepaintManager
         }
         Dimension maxSize = getDoubleBufferMaximumSize();
         int width = proposedWidth < 1 ? 1 :
-            (proposedWidth > maxSize.width? maxSize.width : proposedWidth);
+            (Math.min(proposedWidth, maxSize.width));
         int height = proposedHeight < 1 ? 1 :
-            (proposedHeight > maxSize.height? maxSize.height : proposedHeight);
+            (Math.min(proposedHeight, maxSize.height));
         VolatileImage image = volatileMap.get(config);
         if (image == null || image.getWidth() < width ||
                              image.getHeight() < height) {
@@ -1144,9 +1252,9 @@ public class RepaintManager
         doubleBuffer = standardDoubleBuffer;
 
         width = proposedWidth < 1? 1 :
-                  (proposedWidth > maxSize.width? maxSize.width : proposedWidth);
+                  (Math.min(proposedWidth, maxSize.width));
         height = proposedHeight < 1? 1 :
-                  (proposedHeight > maxSize.height? maxSize.height : proposedHeight);
+                  (Math.min(proposedHeight, maxSize.height));
 
         if (doubleBuffer.needsReset || (doubleBuffer.image != null &&
                                         (doubleBuffer.size.width < width ||
@@ -1374,7 +1482,7 @@ public class RepaintManager
         getPaintManager().copyArea(c, g, x, y, w, h, deltaX, deltaY, clip);
     }
 
-    private java.util.List<RepaintListener> repaintListeners = new ArrayList<>(1);
+    private final List<RepaintListener> repaintListeners = new ArrayList<>(1);
 
     private void addRepaintListener(RepaintListener l) {
         repaintListeners.add(l);
