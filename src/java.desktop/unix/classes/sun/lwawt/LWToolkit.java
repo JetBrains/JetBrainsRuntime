@@ -144,7 +144,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable, ToolkitA
                     wait();
                 }
             } catch (InterruptedException ie) {
-                log.fine("LWToolkit.run: interrupted");
+                log.fine("LWToolkit.waitForRunState: interrupted");
                 break;
             }
         }
