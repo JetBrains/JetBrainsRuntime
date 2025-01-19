@@ -862,8 +862,7 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 
 @synthesize sleep, useJavaModes, actionId, operation, timestamp, caller, callStack;
 
-- (id _Nonnull)init
-{
+- (id)init {
     self = [super init];
     if (self) {
         [self reset];
@@ -871,8 +870,7 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
     return self;
 }
 
-- (id)copyWithZone:(NSZone *)zone
-{
+- (id)copyWithZone:(NSZone *)zone {
     ThreadTraceContext *newCtx = [[ThreadTraceContext alloc] init];
     if (newCtx) {
         [newCtx setSleep:[self sleep]];
@@ -890,8 +888,7 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
     return [newCtx autorelease];
 }
 
-- (void)reset
-{
+- (void)reset {
     self.sleep = NO;
     self.useJavaModes = NO;
     self.actionId = -1;

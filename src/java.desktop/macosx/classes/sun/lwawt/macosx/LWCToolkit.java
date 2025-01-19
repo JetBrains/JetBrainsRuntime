@@ -888,6 +888,8 @@ public final class LWCToolkit extends LWToolkit {
 
     private static native boolean isBlockingEventDispatchThread();
 
+    static native boolean isWithinPowerTransition();
+
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {
         Objects.requireNonNull(component, "Null component provided to invokeLater");
