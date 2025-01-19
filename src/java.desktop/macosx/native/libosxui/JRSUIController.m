@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 
 #import "JNIUtilities.h"
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
-#import <ThreadUtilities.h>
 
 #import "apple_laf_JRSUIControl.h"
 #import "apple_laf_JRSUIConstants_DoubleValue.h"
@@ -160,12 +159,8 @@ static inline jint doPaintCGContext(CGContextRef cgRef, jlong controlPtr, jlong 
 {
     JRSUIControlRef control = (JRSUIControlRef)jlong_to_ptr(controlPtr);
     _SyncEncodedProperties(control, oldProperties, newProperties);
-
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
-                                          block:^(){
-        CGRect bounds = CGRectMake(x, y, w, h);
-        JRSUIControlDraw(gRenderer, control, cgRef, bounds);
-    }];
+    CGRect bounds = CGRectMake(x, y, w, h);
+    JRSUIControlDraw(gRenderer, control, cgRef, bounds);
     return 0;
 }
 
@@ -253,13 +248,7 @@ JNIEXPORT jint JNICALL Java_apple_laf_JRSUIControl_getNativeHitPart
     CGRect bounds = CGRectMake(x, y, w, h);
     CGPoint point = CGPointMake(pointX, pointY);
 
-    __block jint result;
-
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
-                                          block:^(){
-        result = JRSUIControlGetHitPart(gRenderer, control, bounds, point);
-    }];
-    return result;
+    return JRSUIControlGetHitPart(gRenderer, control, bounds, point);
 }
 
 /*
@@ -270,13 +259,7 @@ JNIEXPORT jint JNICALL Java_apple_laf_JRSUIControl_getNativeHitPart
 JNIEXPORT jboolean JNICALL Java_apple_laf_JRSUIUtils_00024ScrollBar_shouldUseScrollToClick
 (JNIEnv *env, jclass clazz)
 {
-    __block Boolean result;
-
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
-                                          block:^(){
-        result = JRSUIControlShouldScrollToClick();
-    }];
-    return result;
+    return JRSUIControlShouldScrollToClick();
 }
 
 /*
@@ -290,13 +273,8 @@ JNIEXPORT void JNICALL Java_apple_laf_JRSUIControl_getNativePartBounds
     JRSUIControlRef control = (JRSUIControlRef)jlong_to_ptr(controlPtr);
     _SyncEncodedProperties(control, oldProperties, newProperties);
 
-    __block CGRect partBounds;
-
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
-                                          block:^(){
-        CGRect frame = CGRectMake(x, y, w, h);
-        partBounds = JRSUIControlGetScrollBarPartBounds(control, frame, part);
-    }];
+    CGRect frame = CGRectMake(x, y, w, h);
+    CGRect partBounds = JRSUIControlGetScrollBarPartBounds(control, frame, part);
 
     jdouble *rect = (*env)->GetPrimitiveArrayCritical(env, rectArray, NULL);
     if (rect != NULL) {
@@ -319,12 +297,6 @@ JNIEXPORT jdouble JNICALL Java_apple_laf_JRSUIControl_getNativeScrollBarOffsetCh
     JRSUIControlRef control = (JRSUIControlRef)jlong_to_ptr(controlPtr);
     _SyncEncodedProperties(control, oldProperties, newProperties);
 
-    __block jdouble result;
-
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
-                                          block:^(){
-        CGRect frame = CGRectMake(x, y, w, h);
-        result = (jdouble)JRSUIControlGetScrollBarOffsetFor(control, frame, offset, visibleAmount, extent);
-    }];
-    return result;
+    CGRect frame = CGRectMake(x, y, w, h);
+    return (jdouble)JRSUIControlGetScrollBarOffsetFor(control, frame, offset, visibleAmount, extent);
 }
