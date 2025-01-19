@@ -37,9 +37,6 @@
         return;                     \
     }
 
-#define RUN_BLOCK_IF_MAIN(block)    \
-    RUN_BLOCK_IF([NSThread isMainThread], block)
-
 /* See LWCToolkit.APPKIT_THREAD_NAME */
 #define MAIN_THREAD_NAME    "AppKit Thread"
 
@@ -369,7 +366,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
 /* unused but kept hidden from API (private) */
 + (void)criticalDispatchOnMainThreadAndWait:(void (^)())block {
-    RUN_BLOCK_IF_MAIN(block)
+    RUN_BLOCK_IF([NSThread isMainThread], block);
 
     JNI_COCOA_ENTER()
 
@@ -402,7 +399,7 @@ AWT_ASSERT_APPKIT_THREAD;
  * - Do not expect any block execution ordering or depend on such expected order (no sequential guarantee).
  */
 + (void)criticalDispatchOnMainThreadASAP:(void (^)())block {
-    RUN_BLOCK_IF_MAIN(block)
+    RUN_BLOCK_IF([NSThread isMainThread], block);
 
     JNI_COCOA_ENTER()
 
@@ -433,7 +430,7 @@ AWT_ASSERT_APPKIT_THREAD;
 + (void)performOnMainThreadNowOrLater:(BOOL)useJavaModes
                                 block:(void (^)())block
 {
-    RUN_BLOCK_IF_MAIN(block);
+    RUN_BLOCK_IF([NSThread isMainThread], block);
 
     [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
                            waitUntilDone:NO useJavaModes:useJavaModes];
@@ -455,7 +452,7 @@ AWT_ASSERT_APPKIT_THREAD;
                       useJavaModes:(BOOL)useJavaModes
                              block:(void (^)())block
 {
-    RUN_BLOCK_IF_MAIN(block);
+    RUN_BLOCK_IF([NSThread isMainThread] && wait, block);
 
     [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
                            waitUntilDone:wait useJavaModes:useJavaModes];
