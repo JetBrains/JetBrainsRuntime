@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -128,24 +128,24 @@ do {                                  \
 // --------------------------------------------------------------------------
 
 @interface ThreadTraceContext : NSObject <NSCopying>
+    @property (readwrite, atomic) BOOL sleep;
+    @property (readwrite, atomic) BOOL useJavaModes;
+    @property (readwrite, atomic) long actionId;
+    @property (readwrite, atomic) char* operation;
+    @property (readwrite, atomic) CFTimeInterval timestamp;
+    @property (readwrite, atomic, retain) NSString* threadName;
+    @property (readwrite, atomic, retain) NSString* caller;
+    @property (readwrite, atomic, retain) NSString* callStack;
 
-@property (readwrite, atomic) BOOL sleep;
-@property (readwrite, atomic) BOOL useJavaModes;
-@property (readwrite, atomic) long actionId;
-@property (readwrite, atomic) char* operation;
-@property (readwrite, atomic) CFTimeInterval timestamp;
-@property (readwrite, atomic, retain) NSString* caller;
-@property (readwrite, atomic, retain) NSString* callStack;
+    /* autorelease in init and copy */
+    - (id)init;
+    - (void)reset;
+    - (void)updateThreadState:(BOOL)sleepValue;
 
-/* autorelease in init and copy */
-- (id)init;
-- (void)reset;
-- (void)updateThreadState:(BOOL)sleepValue;
+    - (void)set:(long)pActionId operation:(char*)pOperation useJavaModes:(BOOL)pUseJavaModes
+                caller:(NSString *)pCaller callstack:(NSString *)pCallStack;
 
-- (id)set:(long)pActionId operation:(char*)pOperation useJavaModes:(BOOL)pUseJavaModes
-            caller:(NSString *)pCaller callstack:(NSString *)pCallStack;
-
-- (const char*)identifier;
+    - (const char*)identifier;
 @end
 
 
@@ -184,13 +184,12 @@ __attribute__((visibility("default")))
 + (ThreadTraceContext*)recordTraceContext:(NSString*)prefix;
 + (ThreadTraceContext*)recordTraceContext:(NSString*)prefix actionId:(long)actionId useJavaModes:(BOOL)useJavaModes operation:(char*) operation;
 
++ (void)dumpThreadTraceContext;
+
 + (NSString*)getThreadTraceContexts;
 
 + (void)registerForSystemAndScreenNotifications;
-+ (BOOL)isWithinPowerTransition;
-
-+ (BOOL)nanoUpTime:(atomic_uint_least64_t*)nanotime;
-+ (BOOL)nowNearTime:(NSString*)src refTime:(atomic_uint_least64_t*)refTime;
++ (BOOL)isWithinPowerTransition:(double)periodInSeconds;
 @end
 
 JNIEXPORT void OSXAPP_SetJavaVM(JavaVM *vm);
