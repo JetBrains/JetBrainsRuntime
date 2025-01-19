@@ -719,9 +719,7 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isWithinPowerTransit
         (JNIEnv *env, jclass clz)
 {
 JNI_COCOA_ENTER(env);
-
     return [ThreadUtilities isWithinPowerTransition] ? JNI_TRUE : JNI_FALSE;
-
 JNI_COCOA_EXIT(env);
 }
 

@@ -1257,7 +1257,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private final EmptyRunnable emptyTask = new EmptyRunnable();
 
     void flushBuffers() {
-        // only 1 usage by deliverMoveResizeEvent():
+        // Only 1 usage by deliverMoveResizeEvent():
         //                          System-dependent appearance optimization.
         //                          May be blocking so postpone this event processing:
 
