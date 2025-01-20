@@ -71,7 +71,6 @@ public class launchnosuspend001 {
 
         argHandler = new ArgumentHandler(args);
         log = new Log(this.out, argHandler);
-        //log.enableVerbose(true);
     }
 
     private PrintStream out;
