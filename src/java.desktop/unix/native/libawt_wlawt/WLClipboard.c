@@ -134,13 +134,13 @@ data_device_handle_drop(void *data, struct wl_data_device *wl_data_device)
 {
     // TODO
 }
-
 static const struct wl_data_device_listener wl_data_device_listener = {
         .data_offer = data_device_handle_data_offer,
         .selection = data_device_handle_selection,
         .enter = data_device_handle_enter,
         .leave = data_device_handle_leave,
-        .motion = data_device_handle_motion
+        .motion = data_device_handle_motion,
+        .drop = data_device_handle_drop
 };
 
 static void
