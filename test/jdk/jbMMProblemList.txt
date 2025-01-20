@@ -20,6 +20,7 @@ java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
 java/awt/GraphicsDevice/DisplayModes/UnknownRefrshRateTest.java JBR-6336 macosx-all
 java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-all
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
+java/awt/Robot/Delay/InterruptOfDelay.java 8265986,JBR-8148 macosx-all,linux-x64
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
 java/awt/Robot/NonEmptyErrorStream.java 8340330,JBR-5442,JBR-5510 macosx-15.0.1,macosx-15.1.1,linux-5.18.2-arch1-1
 java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
@@ -52,6 +53,7 @@ java/awt/Insets/DialogInsets.java JBR-5510 linux-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050 windows-all,macosx-all,linux-all
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-6662 windows-all
 java/awt/Menu/OpensWithNoGrab/OpensWithNoGrab.java JBR-5510 linux-all
+java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java JBR-4880,JBR-8090 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JButtonInGlassPaneOverlapping.java 8158801,JBR-5510 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JButtonOverlapping.java 8158801,JBR-5510 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JColorChooserOverlapping.java 8158801,JBR-5510 windows-all,linux-all

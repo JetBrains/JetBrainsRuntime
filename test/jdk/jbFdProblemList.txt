@@ -122,6 +122,7 @@ java/awt/Focus/8073453/SwingFocusTransitionTest.java JBR-7339 linux-all,windows-
 java/awt/Focus/8282640/ScrollPaneFocusBugTest.java JBR-7340 linux-all
 java/awt/Focus/ChoiceFocus/ChoiceFocus.java JBR-7341 linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-5210,JBR-7077 windows-all,linux-all
+java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java JBR-4880,JBR-8090 windows-all,linux-all
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
 java/awt/Mouse/EnterExitEvents/DragWindowTest.java 8253184,JBR-5710 windows-all,linux-all
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275,JBR-5510 macosx-all,linux-5.18.2-arch1-1
