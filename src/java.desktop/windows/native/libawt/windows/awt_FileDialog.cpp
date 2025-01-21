@@ -902,12 +902,13 @@ AwtFileDialog::Show(void *p)
 
             DWORD dwFlags;
             OLE_HRT(pfd->GetOptions(&dwFlags));
-            dwFlags |= FOS_FORCEFILESYSTEM;
             if (multipleMode == JNI_TRUE) {
                 dwFlags |= FOS_ALLOWMULTISELECT;
             }
             if (folderPickerMode) {
                 dwFlags |= FOS_PICKFOLDERS;
+            } else {
+                dwFlags |= FOS_FORCEFILESYSTEM;  // Windows bug: in the folder picker mode, it prevents the "Linux" node from appearing
             }
             OLE_HRT(pfd->SetOptions(dwFlags));
 
