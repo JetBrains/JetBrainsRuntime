@@ -565,6 +565,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.buffer = &bmtlsdo->pTexture;
         layer.outBuffer = &bmtlsdo->pOutTexture;
         layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
+        layer.device = layer.ctx.device;
 
         NSInteger oldDisplayID = layer.displayID;
         NSInteger newDisplayID = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->displayID;
@@ -573,11 +574,12 @@ Java_sun_java2d_metal_MTLLayer_validate
             if (oldDisplayID != newDisplayID) {
                 J2dRlsTraceLn3(J2D_TRACE_INFO, "MTLLayer_validate: layer[%p] displayID changed: %d => %d",
                                layer, oldDisplayID, newDisplayID);
-                [layer stopRedraw:YES];
+                if (0) {
+                    [layer stopRedraw:YES];
+                }
             }
         }
         layer.displayID = newDisplayID;
-        layer.device = layer.ctx.device;
         layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 
         if (!isColorMatchingEnabled() && (layer.colorspace != nil)) {

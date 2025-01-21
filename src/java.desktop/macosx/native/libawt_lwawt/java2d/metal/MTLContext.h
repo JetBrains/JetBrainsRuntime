@@ -90,7 +90,7 @@
 @property (strong) id<MTLCommandQueue>         blitCommandQueue;
 @property (strong) id<MTLBuffer>               vertexBuffer;
 
-@property (readonly) NSMutableDictionary<NSNumber*, NSValue*>* displayLinks;
+@property (readonly) NSMutableDictionary<NSNumber*, NSValue*>* displayLinkStates;
 
 @property (readonly) EncoderManager * encoderManager;
 @property (readonly) MTLSamplerManager * samplerManager;
