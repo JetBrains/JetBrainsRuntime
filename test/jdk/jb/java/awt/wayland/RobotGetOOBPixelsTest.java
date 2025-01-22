@@ -45,6 +45,11 @@ public class RobotGetOOBPixelsTest {
     static volatile boolean failed = false;
 
     public static void main(String[] args) throws InterruptedException, AWTException {
+        if (GraphicsEnvironment.getLocalGraphicsEnvironment().isHeadlessInstance()) {
+            System.out.println("No WLToolkit, skipping test");
+            return;
+        }
+
         final Robot robot = new Robot();
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Robot Test");
