@@ -365,7 +365,7 @@ class IoOverNioFileSystem extends FileSystem {
         try {
             if (nioFs != null) {
                 Path path = nioFs.getPath(f.getPath());
-                nioFs.provider().readAttributes(path, BasicFileAttributes.class).size();
+                return nioFs.provider().readAttributes(path, BasicFileAttributes.class).size();
             }
         } catch (IOException e) {
             return 0;

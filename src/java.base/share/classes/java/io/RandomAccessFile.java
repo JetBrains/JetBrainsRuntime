@@ -827,7 +827,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                     Arrays.fill(buf, (byte) 0);
                     long remains = newLength - oldSize;
                     while (remains > 0) {
-                        long length = Math.max(remains, buf.length);
+                        long length = Math.min(remains, buf.length);
                         channel.write(ByteBuffer.wrap(buf), length);
                         remains -= length;
                     }

@@ -267,6 +267,8 @@ public class FileTest {
         assertEquals(".", new File(".").toString());
     }
 
+    // TODO Test file size.
+
 //    @Test
 //    public void getTotalSpace() throws Exception {
 //        throw new UnsupportedOperationException();
