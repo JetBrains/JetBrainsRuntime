@@ -32,6 +32,7 @@ echo -n "${APPLE_PRIVATE_KEY}" > tmp_key
 log "Notarizing $APP_PATH..."
 xcrun notarytool submit --key tmp_key --key-id "${APPLE_KEY_ID}" --issuer "${APPLE_ISSUER_ID}" "$APP_PATH" 2>&1 --wait| tee "notarytool.submit.out"
 REQUEST_ID="$(grep -e " id: " "notarytool.submit.out" | grep -oE '([0-9a-f-]{36})'| head -n1)"
+echo "REQUEST_ID: $REQUEST_ID"
 
 waitOutput=$(xcrun notarytool wait "$REQUEST_ID" --key tmp_key --key-id "${APPLE_KEY_ID}" --issuer "${APPLE_ISSUER_ID}" --timeout 6h)
 if [ $? -ne 0 ]; then
