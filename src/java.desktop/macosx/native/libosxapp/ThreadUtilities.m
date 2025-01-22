@@ -74,6 +74,7 @@ static const BOOL enableRunLoopObserver = NO;
 
 /* Traceability data */
 static const BOOL TRACE_PWM = NO;
+static const BOOL TRACE_PWM_EVENTS = NO;
 static const BOOL TRACE_CLOCKS = NO;
 
 /* 10s period arround reference times (sleep/wake-up...)
@@ -621,7 +622,7 @@ AWT_ASSERT_APPKIT_THREAD;
         // keep most-recent wake-up time (system or display):
         sleepTime = now;
 
-        if (TRACE_PWM) {
+        if (TRACE_PWM_EVENTS) {
             NSLog(@"EAWT: _systemOrScreenWillSleep[%@]: sleep time = %.5lf (%.5lf)",
               [notification name], 1e-9 * sleepTime,
               [NSProcessInfo processInfo].systemUptime);
@@ -642,7 +643,7 @@ AWT_ASSERT_APPKIT_THREAD;
         // keep most-recent wake-up time (system or display):
         wakeUpTime = now;
 
-        if (TRACE_PWM) {
+        if (TRACE_PWM_EVENTS) {
             NSLog(@"EAWT: _systemOrScreenDidWake[%@]: wake-up time = %.5lf (%.5lf)",
                   [notification name], 1e-9 * wakeUpTime,
                   [NSProcessInfo processInfo].systemUptime);
@@ -652,7 +653,7 @@ AWT_ASSERT_APPKIT_THREAD;
             if (now > sleepTime) {
                 // check last sleep time:
                 now -= sleepTime; // delta in ns
-                if (TRACE_PWM) {
+                if (TRACE_PWM_EVENTS) {
                     NSLog(@"EAWT: _systemOrScreenDidWake: SLEEP duration = %.5lf ms", 1e-6 * now);
                 }
             }
@@ -711,49 +712,51 @@ bool getTime_nanos(clockid_t clock_id, atomic_uint_least64_t *nanotime) {
 }
 
 void dumpClocks() {
-    logTime_nanos(CLOCK_REALTIME);
-    logTime_nanos(CLOCK_MONOTONIC);
-    logTime_nanos(CLOCK_MONOTONIC_RAW);
-    logTime_nanos(CLOCK_MONOTONIC_RAW_APPROX);
-    logTime_nanos(CLOCK_UPTIME_RAW);
-    logTime_nanos(CLOCK_UPTIME_RAW_APPROX);
-    logTime_nanos(CLOCK_PROCESS_CPUTIME_ID);
-    logTime_nanos(CLOCK_THREAD_CPUTIME_ID);
+    if (TRACE_CLOCKS) {
+        logTime_nanos(CLOCK_REALTIME);
+        logTime_nanos(CLOCK_MONOTONIC);
+        logTime_nanos(CLOCK_MONOTONIC_RAW);
+        logTime_nanos(CLOCK_MONOTONIC_RAW_APPROX);
+        logTime_nanos(CLOCK_UPTIME_RAW);
+        logTime_nanos(CLOCK_UPTIME_RAW_APPROX);
+        logTime_nanos(CLOCK_PROCESS_CPUTIME_ID);
+        logTime_nanos(CLOCK_THREAD_CPUTIME_ID);
+    }
 }
 
 void logTime_nanos(clockid_t clock_id) {
-    atomic_uint_least64_t now;
-    if (getTime_nanos(clock_id, &now)) {
-        const char *clock_name;
-        switch (clock_id) {
-            case CLOCK_REALTIME:
-                clock_name = "CLOCK_REALTIME";
-                break;
-            case CLOCK_MONOTONIC:
-                clock_name = "CLOCK_MONOTONIC";
-                break;
-            case CLOCK_MONOTONIC_RAW:
-                clock_name = "CLOCK_MONOTONIC_RAW";
-                break;
-            case CLOCK_MONOTONIC_RAW_APPROX:
-                clock_name = "CLOCK_MONOTONIC_RAW_APPROX";
-                break;
-            case CLOCK_UPTIME_RAW:
-                clock_name = "CLOCK_UPTIME_RAW";
-                break;
-            case CLOCK_UPTIME_RAW_APPROX:
-                clock_name = "CLOCK_UPTIME_RAW_APPROX";
-                break;
-            case CLOCK_PROCESS_CPUTIME_ID:
-                clock_name = "CLOCK_PROCESS_CPUTIME_ID";
-                break;
-            case CLOCK_THREAD_CPUTIME_ID:
-                clock_name = "CLOCK_THREAD_CPUTIME_ID";
-                break;
-            default:
-                clock_name = "unknown";
-        }
-        if (TRACE_PWM) {
+    if (TRACE_CLOCKS) {
+        atomic_uint_least64_t now;
+        if (getTime_nanos(clock_id, &now)) {
+            const char *clock_name;
+            switch (clock_id) {
+                case CLOCK_REALTIME:
+                    clock_name = "CLOCK_REALTIME";
+                    break;
+                case CLOCK_MONOTONIC:
+                    clock_name = "CLOCK_MONOTONIC";
+                    break;
+                case CLOCK_MONOTONIC_RAW:
+                    clock_name = "CLOCK_MONOTONIC_RAW";
+                    break;
+                case CLOCK_MONOTONIC_RAW_APPROX:
+                    clock_name = "CLOCK_MONOTONIC_RAW_APPROX";
+                    break;
+                case CLOCK_UPTIME_RAW:
+                    clock_name = "CLOCK_UPTIME_RAW";
+                    break;
+                case CLOCK_UPTIME_RAW_APPROX:
+                    clock_name = "CLOCK_UPTIME_RAW_APPROX";
+                    break;
+                case CLOCK_PROCESS_CPUTIME_ID:
+                    clock_name = "CLOCK_PROCESS_CPUTIME_ID";
+                    break;
+                case CLOCK_THREAD_CPUTIME_ID:
+                    clock_name = "CLOCK_THREAD_CPUTIME_ID";
+                    break;
+                default:
+                    clock_name = "unknown";
+            }
             NSLog(@"EAWT: logTime_nanos[%27s] time: %.6lf s", clock_name, 1e-9 * now);
         }
     }
