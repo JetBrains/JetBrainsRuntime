@@ -1956,7 +1956,7 @@ build/<name> && bash ../../configure`.
 Then you can build that configuration using `make CONF=<selector>`, where
 `<selector>` is interpreted as follows:
 
-* If `<selector>` exacly matches the name of a configuration, this and only
+* If `<selector>` exactly matches the name of a configuration, this and only
   this configuration will be selected.
 * If `<selector>` matches (i.e. is a substring of) the names of several
   configurations, then all these configurations will be selected.
