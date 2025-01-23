@@ -124,7 +124,7 @@ public class AnnotationParser {
                 if (AnnotationType.getInstance(klass).retention() == RetentionPolicy.RUNTIME &&
                     result.put(klass, a) != null) {
                         throw new AnnotationFormatError(
-                            "Duplicate annotation for class: "+klass+": " + a);
+                            "Duplicate annotation " + klass + " in " + container);
             }
         }
         }
