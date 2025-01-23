@@ -108,14 +108,22 @@ coverage of all the details.
 > It would usually have meaningful advice on how to solve the problem.
 
 ### Linux (Docker)
-Create a container:
+Download an image from [Docker Hub](https://hub.docker.com/repository/docker/jetbrains/runtime/general) related to your architecture:
 ```
-$ cd ./jb/project/docker/
-$ ./mkdocker_x64.sh
+$ docker pull jetbrains/runtime:oraclelinux8_aarch64
 ```
-Run these commands in the new container:
+or
 ```
-$ docker run -v `pwd`../../../../:/JetBrainsRuntime -it jetbrains/runtime:oraclelinux8_x64
+$ docker pull jetbrains/runtime:oraclelinux8_x64
+```
+Create and run a new container from the downloaded image
+```
+$ docker run -v $JetBrainsRuntime:/JetBrainsRuntime -it jetbrains/runtime:oraclelinux8_[arch]
+```
+where `$JetBrainsRuntime` is a full path to the directory where the repository was cloned to.
+
+Run these commands in the container:
+```
 # yum install java-21-openjdk-devel
 # cd /JetBrainsRuntime
 # BOOT_JDK=/usr/lib/jvm/java-21/ ./jb/project/tools/linux/scripts/mkimages_x64.sh 99 nomod
