@@ -138,7 +138,12 @@ Run these commands in the container:
 ```
 
 ### Ubuntu Linux
-
+Install the necessary tools, libraries, and headers with:
+```
+$ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev \
+       libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev libspeechd-dev libwayland-dev \
+       wayland-protocols libxkbcommon-x11-0
+```
 Get Java 23 (for instance, [Azul Zulu Builds of OpenJDK 23](https://www.azul.com/downloads/?version=java-23&os=linux&package=jdk#zulu)).
 
 Then run the following:
