@@ -822,13 +822,14 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 if (newLength < oldSize) {
                     channel.truncate(newLength);
                 } else {
-                    // TODO Make the buffer static.
                     byte[] buf = new byte[1 << 14];
                     Arrays.fill(buf, (byte) 0);
                     long remains = newLength - oldSize;
                     while (remains > 0) {
-                        long length = Math.min(remains, buf.length);
-                        channel.write(ByteBuffer.wrap(buf), length);
+                        ByteBuffer buffer = ByteBuffer.wrap(buf);
+                        int length = (int)Math.min(remains, buf.length);
+                        buffer.limit(length);
+                        channel.write(buffer);
                         remains -= length;
                     }
                 }
