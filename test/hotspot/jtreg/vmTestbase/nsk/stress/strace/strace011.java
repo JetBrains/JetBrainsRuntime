@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -178,6 +178,11 @@ public class strace011 {
         StackTraceElement[] all;
         for (int i = 1; i < THRD_COUNT; i++) {
             all = (StackTraceElement[]) traces.get(threads[i]);
+            if (all == null) {
+                complain("No stacktrace for thread " + threads[i].getName() +
+                         " was found in the set of all traces");
+                return false;
+            }
             int k = all.length;
             if (count - k > 2) {
                 complain("wrong lengths of stack traces:\n\t"
