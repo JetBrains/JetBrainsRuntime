@@ -71,16 +71,22 @@ coverage of all the details.
 > It would usually have a meaningful advice on how to solve the problem.
 
 ### Linux (Docker)
-Create a container:
+Download an image from [Docker Hub](https://hub.docker.com/repository/docker/jetbrains/runtime/general) related to your architecture:
 ```
-$ cd jb/project/docker
-$ docker build .
-...
-Successfully built 942ea9900054
+$ docker pull jetbrains/runtime:oraclelinux8_aarch64
 ```
-Run these commands in the new container:
+or
 ```
-$ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
+$ docker pull jetbrains/runtime:oraclelinux8_x64
+```
+Create and run a new container from the downloaded image
+```
+$ docker run -v $JetBrainsRuntime:/JetBrainsRuntime -it jetbrains/runtime:oraclelinux8_[arch]
+```
+where `$JetBrainsRuntime` is a full path to the directory where the repository was cloned to.
+
+Run these commands in the container:
+```
 # cd /JetBrainsRuntime
 # git checkout jbr17
 # sh ./configure
