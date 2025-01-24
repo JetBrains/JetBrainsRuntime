@@ -34,6 +34,7 @@ import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import testNio.ManglingFileSystemProvider;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.Arrays;
@@ -265,6 +266,44 @@ public class FileTest {
     @Test
     public void normalizationInConstructor() throws Exception {
         assertEquals(".", new File(".").toString());
+    }
+
+    @Test
+    public void unixSocketExists() throws Exception {
+        assumeNotWindows();
+
+        // Can't use `temporaryFolder` because it may have a long path,
+        // but the length of a Unix socket path is limited in the Kernel.
+        String shortTmpDir;
+        {
+            Process process = new ProcessBuilder("mktemp", "-d")
+                    .redirectInput(ProcessBuilder.Redirect.PIPE)
+                    .start();
+            try (BufferedReader br = new BufferedReader(process.inputReader())) {
+                shortTmpDir = br.readLine();
+            }
+            assertEquals(0, process.waitFor());
+        }
+        try {
+            File unixSocket = new File(shortTmpDir, "unix-socket");
+            Process ncProcess = new ProcessBuilder("nc", "-lU", unixSocket.toString())
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .start();
+
+            assertEquals(0, new ProcessBuilder(
+                    "sh", "-c",
+                    "I=50; while [ $I -gt 0 && test -S " + unixSocket + " ]; do sleep 0.1; I=$(expr $I - 1); done; echo")
+                    .start()
+                    .waitFor());
+
+            try {
+                assertTrue(unixSocket.exists());
+            } finally {
+                ncProcess.destroy();
+            }
+        } finally {
+            new ProcessBuilder("rm", "-rf", shortTmpDir).start();
+        }
     }
 
     // TODO Test file size.

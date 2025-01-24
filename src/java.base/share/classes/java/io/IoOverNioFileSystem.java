@@ -66,15 +66,16 @@ class IoOverNioFileSystem extends FileSystem {
             throw new InternalError(err.getMessage(), err);
         }
 
+        // See the comment inside getBooleanAttributes that explains the order of file attribute view classes.
         BasicFileAttributeView view;
         try {
-            view = Files.getFileAttributeView(path, DosFileAttributeView.class);
+            view = Files.getFileAttributeView(path, PosixFileAttributeView.class);
         } catch (UnsupportedOperationException ignored) {
             view = null;
         }
         if (view == null) {
             try {
-                view = Files.getFileAttributeView(path, PosixFileAttributeView.class);
+                view = Files.getFileAttributeView(path, DosFileAttributeView.class);
             } catch (UnsupportedOperationException ignored2) {
                 return false;
             }
@@ -282,11 +283,23 @@ class IoOverNioFileSystem extends FileSystem {
             try {
                 Path path = nioFs.getPath(f.getPath());
 
+                // The order of checking Posix attributes first and DOS attributes next is deliberate.
+                // WindowsFileSystem supports these attributes: basic, dos, acl, owner, user.
+                // LinuxFileSystem supports: basic, posix, unix, owner, dos, user.
+                // MacOSFileSystem and BsdFileSystem support: basic, posix, unix, owner, user.
+                //
+                // Notice that Linux FS supports DOS attributes, which is unexpected.
+                // The DOS adapter implementation from LinuxFileSystem uses `open` for getting attributes.
+                // It's not only more expensive than `stat`, but also doesn't work with Unix sockets.
+                //
+                // Also, notice that Windows FS does not support Posix attributes, which is expected.
+                // Checking for Posix attributes allows filtering Windows out,
+                // even though Posix permissions aren't used in this method.
                 BasicFileAttributes attrs;
                 try {
-                    attrs = Files.readAttributes(path, DosFileAttributes.class);
+                    attrs = Files.readAttributes(path, PosixFileAttributes.class);
                 } catch (UnsupportedOperationException ignored) {
-                    attrs = Files.readAttributes(path, BasicFileAttributes.class);
+                    attrs = Files.readAttributes(path, DosFileAttributes.class);
                 }
 
                 return BA_EXISTS
