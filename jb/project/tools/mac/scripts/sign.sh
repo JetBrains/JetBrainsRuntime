@@ -61,8 +61,8 @@ ls -lah "$APPLICATION_PATH/Contents/Home/bin"
 JMODS_DIR="$APPLICATION_PATH/Contents/Home/jmods"
 #JMOD_EXE="jbrsdk/Contents/Home/bin/jmod"
 JMOD_EXE="$BOOT_JDK/bin/jmod"
-hash_modules=$($JMOD_EXE describe $JMODS_DIR/java.base.jmod | grep hashes | awk '{print $2}' | tr '\n' '|' | sed s/\|$//) || exit $?
 if [ -d "$JMODS_DIR" ]; then
+  hash_modules=$($JMOD_EXE describe $JMODS_DIR/java.base.jmod | grep hashes | awk '{print $2}' | tr '\n' '|' | sed s/\|$//) || exit $?
   for jmod_file in "$JMODS_DIR"/*.jmod; do
     log "Processing $jmod_file"
 
