@@ -57,8 +57,10 @@ done
 
 log "Signing jmod files"
 JMODS_DIR="$APPLICATION_PATH/Contents/Home/jmods"
-JMOD_EXE="$APPLICATION_PATH/Contents/Home/bin/jmod"
+JMOD_EXE="$BOOT_JDK/bin/jmod"
 if [ -d "$JMODS_DIR" ]; then
+  log "processing jmods"  
+
   for jmod_file in "$JMODS_DIR"/*.jmod; do
     log "Processing $jmod_file"
 
@@ -66,10 +68,8 @@ if [ -d "$JMODS_DIR" ]; then
     rm -rf "$TMP_DIR"
     mkdir "$TMP_DIR"
 
-    log "Unzipping $jmod_file"    
+    log "Unzipping $jmod_file"
     $JMOD_EXE extract --dir "$TMP_DIR" "$jmod_file" >/dev/null
-    log "Removing $jmod_file"
-    rm -f "$jmod_file"
 
     log "Signing dylibs in $TMP_DIR"
     find "$TMP_DIR" \
@@ -78,6 +78,8 @@ if [ -d "$JMODS_DIR" ]; then
       -v -s "$JB_DEVELOPER_CERT" --options=runtime --force \
       --entitlements "$SCRIPT_DIR/entitlements.xml" {} \;
 
+    log "Removing $jmod_file"
+    rm -f "$jmod_file"
     cmd="$JMOD_EXE create --class-path $TMP_DIR/classes"
 
     # Check each directory and add to the command if it exists
@@ -88,6 +90,8 @@ if [ -d "$JMODS_DIR" ]; then
     [ -d "$TMP_DIR/legal" ] && cmd="$cmd --legal-notices $TMP_DIR/legal"
     [ -d "$TMP_DIR/man" ] && cmd="$cmd --man-pages $TMP_DIR/man"
 
+    log "Creating jmod file"
+		log "$cmd"
     # Add the output file
     cmd="$cmd $jmod_file"
 
@@ -97,6 +101,41 @@ if [ -d "$JMODS_DIR" ]; then
     log "Removing $TMP_DIR"
     rm -rf "$TMP_DIR"
   done
+
+  log "Repack java.base.jmod with new hashes of modules"
+  hash_modules=$($JMOD_EXE describe $JMODS_DIR/java.base.jmod | grep hashes | awk '{print $2}' | tr '\n' '|' | sed s/\|$//) || exit $?
+
+  TMP_DIR="$JMODS_DIR/tmp"
+  rm -rf "$TMP_DIR"
+  mkdir "$TMP_DIR"
+
+  jmod_file="$JMODS_DIR/java.base.jmod"
+  log "Unzipping $jmod_file"
+  $JMOD_EXE extract --dir "$TMP_DIR" "$jmod_file" >/dev/null
+
+  log "Removing java.base.jmod"
+  rm -f "$jmod_file"
+
+  cmd="$JMOD_EXE create --class-path $TMP_DIR/classes --hash-modules \"$hash_modules\" --module-path $JMODS_DIR"
+
+  # Check each directory and add to the command if it exists
+  [ -d "$TMP_DIR/bin" ] && cmd="$cmd --cmds $TMP_DIR/bin"
+  [ -d "$TMP_DIR/conf" ] && cmd="$cmd --config $TMP_DIR/conf"
+  [ -d "$TMP_DIR/lib" ] && cmd="$cmd --libs $TMP_DIR/lib"
+  [ -d "$TMP_DIR/include" ] && cmd="$cmd --header-files $TMP_DIR/include"
+  [ -d "$TMP_DIR/legal" ] && cmd="$cmd --legal-notices $TMP_DIR/legal"
+  [ -d "$TMP_DIR/man" ] && cmd="$cmd --man-pages $TMP_DIR/man"
+
+  log "Creating jmod file"
+	log "$cmd"
+  # Add the output file
+  cmd="$cmd $jmod_file"
+
+  # Execute the command
+  eval $cmd
+
+  log "Removing $TMP_DIR"
+  rm -rf "$TMP_DIR"
 else
   echo "Directory '$JMODS_DIR' does not exist. Skipping signing of jmod files."
 fi
