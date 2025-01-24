@@ -216,7 +216,7 @@ public class WLFrameDecoration {
 
         g.setColor(getBackgroundColor(active));
         if (g.getDeviceConfiguration().isTranslucencyCapable()
-                && peer.getRoundedCornerKind() != WLRoundedCornersManager.RoundedCornerKind.NONE
+                && peer.getRoundedCornerKind() == WLRoundedCornersManager.RoundedCornerKind.DEFAULT
                 && peer.getState() != Frame.MAXIMIZED_BOTH
                 && !peer.isFullscreen()) {
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
@@ -225,8 +225,7 @@ public class WLFrameDecoration {
             g.setComposite(AlphaComposite.Clear);
             g.fillRect(0, 0, width, HEIGHT);
             g.setComposite(originalComposite);
-            int radius = (int) g.getTransform().getScaleX()
-                    * WLRoundedCornersManager.roundCornerRadiusFor(WLRoundedCornersManager.RoundedCornerKind.DEFAULT);
+            int radius = 2 * WLRoundedCornersManager.roundCornerRadiusFor(WLRoundedCornersManager.RoundedCornerKind.DEFAULT);
             g.fillRoundRect(0, 0, width, HEIGHT + radius + 1, radius, radius);
         } else {
             g.fillRect(0, 0, width, HEIGHT);

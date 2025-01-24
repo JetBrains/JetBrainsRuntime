@@ -553,8 +553,7 @@ public class WLComponentPeer implements ComponentPeer {
         }
 
         if (topLeftMask == null) {
-            double scale = graphics.getTransform().getScaleX();
-            createCornerMasks((int) (WLRoundedCornersManager.roundCornerRadiusFor(roundedCornerKind) * scale));
+            createCornerMasks(WLRoundedCornersManager.roundCornerRadiusFor(roundedCornerKind));
         }
     }
 
