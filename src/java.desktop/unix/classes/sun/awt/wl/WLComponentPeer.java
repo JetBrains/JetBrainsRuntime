@@ -73,8 +73,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.PaintEvent;
 import java.awt.event.WindowEvent;
-import java.awt.geom.Area;
-import java.awt.geom.Ellipse2D;
+import java.awt.geom.Path2D;
 import java.awt.image.ColorModel;
 import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
@@ -117,10 +116,10 @@ public class WLComponentPeer implements ComponentPeer {
     boolean resizePending = false; // protected by dataLock
 
     private WLRoundedCornersManager.RoundedCornerKind roundedCornerKind = WLRoundedCornersManager.RoundedCornerKind.DEFAULT; // guarded by dataLock
-    private Area topLeftMask;      // guarded by dataLock
-    private Area topRightMask;     // guarded by dataLock
-    private Area bottomLeftMask;   // guarded by dataLock
-    private Area bottomRightMask;  // guarded by dataLock
+    private Path2D.Double topLeftMask;      // guarded by dataLock
+    private Path2D.Double topRightMask;     // guarded by dataLock
+    private Path2D.Double bottomLeftMask;   // guarded by dataLock
+    private Path2D.Double bottomRightMask;  // guarded by dataLock
     private SunGraphics2D graphics;// guarded by dataLock
 
     static {
@@ -569,21 +568,32 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     private void createCornerMasks(int size) {
-        int radius = (int) Math.ceil(size / 2.0);
         int w = getWidth();
         int h = getHeight();
 
-        topLeftMask = new Area(new Rectangle(0, 0, radius, radius));
-        topLeftMask.subtract(new Area(new Ellipse2D.Double(0, 0, size, size)));
+        topLeftMask = new Path2D.Double();
+        topLeftMask.moveTo(0, 0);
+        topLeftMask.lineTo(size, 0);
+        topLeftMask.quadTo(0, 0, 0, size);
+        topLeftMask.closePath();
 
-        topRightMask = new Area(new Rectangle(w - radius, 0, radius, radius));
-        topRightMask.subtract(new Area(new Ellipse2D.Double(w - size, 0, size, size)));
+        topRightMask = new Path2D.Double();
+        topRightMask.moveTo(w - size, 0);
+        topRightMask.quadTo(w, 0, w, size);
+        topRightMask.lineTo(w, 0);
+        topRightMask.closePath();
 
-        bottomLeftMask = new Area(new Rectangle(0, h - radius, radius, radius));
-        bottomLeftMask.subtract(new Area(new Ellipse2D.Double(0, h - size, size, size)));
+        bottomLeftMask = new Path2D.Double();
+        bottomLeftMask.moveTo(0, h - size);
+        bottomLeftMask.quadTo(0, h, size, h);
+        bottomLeftMask.lineTo(0, h);
+        bottomLeftMask.closePath();
 
-        bottomRightMask = new Area(new Rectangle(w - radius, h - radius, radius, radius));
-        bottomRightMask.subtract(new Area(new Ellipse2D.Double(w - size, h - size, size, size)));
+        bottomRightMask = new Path2D.Double();
+        bottomRightMask.moveTo(w - size, h);
+        bottomRightMask.quadTo(w, h, w, h - size);
+        bottomRightMask.lineTo(w, h);
+        bottomRightMask.closePath();
     }
 
     private void paintRoundCorners() {
