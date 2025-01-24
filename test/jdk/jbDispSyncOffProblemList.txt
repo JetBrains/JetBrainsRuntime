@@ -1,3 +1,4 @@
+java/awt/FullScreen/SetFullScreenTest.java JBR-8184 macosx-aarch64
 java/awt/Graphics2D/DrawPrimitivesTest.java JBR-5620 macosx-aarch64
 java/awt/image/multiresolution/MultiresolutionIconTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
