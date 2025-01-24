@@ -84,7 +84,7 @@ if [ -d "$JMODS_DIR" ]; then
 
     log "Removing $jmod_file"
 		rm -f "$jmod_file"
-    cmd="$JMOD_EXE create --class-path $TMP_DIR/classes --hash-modules $hash_modules"
+    cmd="$JMOD_EXE create --class-path $TMP_DIR/classes --hash-modules \"$hash_modules\""
 
     # Check each directory and add to the command if it exists
     [ -d "$TMP_DIR/bin" ] && cmd="$cmd --cmds $TMP_DIR/bin"
@@ -95,7 +95,7 @@ if [ -d "$JMODS_DIR" ]; then
     [ -d "$TMP_DIR/man" ] && cmd="$cmd --man-pages $TMP_DIR/man"
 
     log "Creating jmod file"
-		log "$cmd"		
+		log "$cmd"
     # Add the output file
     cmd="$cmd $jmod_file"
 
