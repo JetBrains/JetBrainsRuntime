@@ -3799,7 +3799,12 @@ public class Window extends Container implements Accessible {
     @Override
     public void setBackground(Color bgColor) {
         Color oldBg = getBackground();
+        // ensure making a copy (color.equals later):
+        bgColor = new Color(bgColor.getRGB());
         super.setBackground(bgColor);
+
+        System.out.print("Window.setBackground: bgColor=" + bgColor + " oldBg=" + oldBg);
+
         if (oldBg != null && oldBg.equals(bgColor)) {
             return;
         }

@@ -152,6 +152,9 @@ public class MacOSFlags {
     }
 
     public static boolean isMetalDisplaySyncEnabled() {
+        if (true) {
+            return false; // LBO: hack
+        }
         return metalDisplaySyncEnabled;
     }
 
