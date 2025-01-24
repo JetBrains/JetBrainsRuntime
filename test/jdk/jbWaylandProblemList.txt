@@ -1,3 +1,7 @@
+jb/java/awt/wayland/RobotGetOOBPixelsTest.java JBR-8029 linux-all
+jb/java/awt/wayland/RobotGetPixelTest.java JBR-8029 linux-all
+jb/java/awt/wayland/RobotGetPixelsTest.java JBR-8029 linux-all
+
 # Fedora & ArchLinux (Wayland) & Ubuntu 21.04
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java         8279256 linux-all
 java/awt/event/KeyEvent/FunctionKeyTest.java JBR-7773 linux-all
