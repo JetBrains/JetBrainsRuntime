@@ -509,7 +509,25 @@ public class LWWindowPeer
 
     @Override
     public void updateWindow() {
-        getLWGC().flush(this);
+
+        if (true) {
+            // check window color vs peer:
+            getTarget().getBackground();
+
+            Color winBg = getTarget().getBackground();
+            // ensure making a copy in Window.setBackground():
+            Color bgColor = getWindowPeerOrSelf().getBackground();
+
+            System.out.print("Window.setBackground: winBg=" + winBg + " oldBg=" + oldBg);
+
+            if ((winBg != null) && !Objects.equals(winBg, oldBg)) {
+                setBackground(winBg);
+            }
+        }
+        if (false) {
+            // hack
+            getLWGC().flush(this);
+        }
     }
 
     public final boolean isTextured() {
