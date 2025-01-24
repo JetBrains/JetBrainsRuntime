@@ -54,12 +54,7 @@ for f in \
 done
 
 log "Signing jmod files"
-log "app path"
-ls -lah $APPLICATION_PATH
-log "Contents/Home"
-ls -lah "$APPLICATION_PATH/Contents/Home/bin"
 JMODS_DIR="$APPLICATION_PATH/Contents/Home/jmods"
-#JMOD_EXE="jbrsdk/Contents/Home/bin/jmod"
 JMOD_EXE="$BOOT_JDK/bin/jmod"
 if [ -d "$JMODS_DIR" ]; then
 	log "processing jmods"  
@@ -103,7 +98,7 @@ if [ -d "$JMODS_DIR" ]; then
     rm -rf "$TMP_DIR"
   done
 
-  log "Repack java.base.jmod"
+  log "Repack java.base.jmod with new hashes of modules"
   hash_modules=$($JMOD_EXE describe $JMODS_DIR/java.base.jmod | grep hashes | awk '{print $2}' | tr '\n' '|' | sed s/\|$//) || exit $?
   log "hash: $hash_modules"
 
