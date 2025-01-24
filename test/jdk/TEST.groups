@@ -873,6 +873,7 @@ jdk_awt_wayland = \
     -java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java \
     -java/awt/event/KeyEvent/KeyTyped/DeleteKeyTyped.java \
     -java/awt/event/KeyEvent/KeyTyped/EscapeKeyTyped.java \
+    -java/awt/event/KeyEvent/KeyTyped/Numpad1KeyTyped.java \
     -java/awt/event/KeyEvent/RobotCrash/RobotCrash.java \
     -java/awt/event/KeyEvent/ShiftF10Test.java \
     -java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java \
