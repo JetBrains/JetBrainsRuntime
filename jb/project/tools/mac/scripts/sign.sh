@@ -54,6 +54,10 @@ for f in \
 done
 
 log "Signing jmod files"
+log "app path"
+ls -lah $APPLICATION_PATH
+log "Contents/Home"
+ls -lah "$APPLICATION_PATH/Contents/Home/bin"
 JMODS_DIR="$APPLICATION_PATH/Contents/Home/jmods"
 JMOD_EXE="$APPLICATION_PATH/Contents/Home/bin/jmod"
 hash_modules=$($JMOD_EXE describe $JMODS_DIR/java.base.jmod | grep hashes | awk '{print $2}' | tr '\n' '|' | sed s/\|$//) || exit $?
