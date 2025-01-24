@@ -115,6 +115,9 @@ if [ -d "$JMODS_DIR" ]; then
   log "Unzipping $jmod_file"
   $JMOD_EXE extract --dir "$TMP_DIR" "$jmod_file" >/dev/null
 
+  log "Removing java.base.jmod"
+  rm -f "$jmod_file"
+
   cmd="$JMOD_EXE create --class-path $TMP_DIR/classes --hash-modules \"$hash_modules\" --module-path $JMODS_DIR"
 
   # Check each directory and add to the command if it exists
