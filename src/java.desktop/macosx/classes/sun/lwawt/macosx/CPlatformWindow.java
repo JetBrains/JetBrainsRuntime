@@ -1353,7 +1353,10 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                                 getIdentifier(target));
                     }
 
-                    LWCToolkit.invokeAndWait(emptyTask, target);
+                    // 50ms max to flushBuffers():
+                    final double timeoutSeconds = 50 / 1000.0;
+
+                    LWCToolkit.invokeAndWait(emptyTask, target, timeoutSeconds);
 
                     if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                         logger.fine("CPlatformWindow.flushBuffers: exit  " +

@@ -746,8 +746,9 @@ public final class LWCToolkit extends LWToolkit {
 
     // Thread-safe Object.equals() called from native
     public static boolean doEquals(final Object a, final Object b, Component c) {
-        if (a == b) return true;
-
+        if (a == b) {
+            return true;
+        }
         final boolean[] ret = new boolean[1];
         try {
             // check invokeAndWait: OK (operations look not requiring locks or main thread):
@@ -762,8 +763,9 @@ public final class LWCToolkit extends LWToolkit {
         } catch (Exception e) {
             log.severe("LWCToolkit.doEquals: exception occurred: ", e);
         }
-
-        synchronized(ret) { return ret[0]; }
+        synchronized(ret) {
+            return ret[0];
+        }
     }
 
     public static <T> T invokeAndWait(final Callable<T> callable,
@@ -817,16 +819,16 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component)
             throws InvocationTargetException
     {
-        invokeAndWait(runnable, component, -1);
+        invokeAndWait(runnable, component, 0.0);
     }
 
-    public static void invokeAndWait(Runnable runnable, Component component, int timeoutSeconds)
+    public static void invokeAndWait(Runnable runnable, Component component, double timeoutSeconds)
             throws InvocationTargetException
     {
         invokeAndWait(runnable, component, false, timeoutSeconds);
     }
 
-    public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, int timeoutSeconds)
+    public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, double timeoutSeconds)
             throws InvocationTargetException
     {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1079,13 +1081,13 @@ public final class LWCToolkit extends LWToolkit {
      *                      if false - all events come after exit form the nested loop
      */
     static void doAWTRunLoop(long mediator, boolean processEvents) {
-        doAWTRunLoop(mediator, processEvents, -1);
+        doAWTRunLoop(mediator, processEvents, 0.0);
     }
 
     /**
-     * Starts run-loop with the provided timeout. Use (-1) for the infinite value.
+     * Starts run-loop with the provided timeout. Use (<=0.0) for the infinite value.
      */
-    static boolean doAWTRunLoop(long mediator, boolean processEvents, int timeoutSeconds) {
+    static boolean doAWTRunLoop(long mediator, boolean processEvents, double timeoutSeconds) {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("doAWTRunLoop: enter: mediator: " + mediator + " processEvents: "+ processEvents + " timeoutSeconds: " + timeoutSeconds);
         }
@@ -1097,7 +1099,7 @@ public final class LWCToolkit extends LWToolkit {
             }
         }
     }
-    private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, int timeoutSeconds);
+    private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, double timeoutSeconds);
     static native void stopAWTRunLoop(long mediator);
 
     private native boolean nativeSyncQueue(long timeout);

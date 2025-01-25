@@ -593,7 +593,7 @@ JNI_COCOA_EXIT(env);
  * Signature: (JZZI)Z
  */
 JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_doAWTRunLoopImpl
-(JNIEnv *env, jclass clz, jlong mediator, jboolean processEvents, jboolean inAWT, jint timeoutSeconds/*(-1) for infinite*/)
+(JNIEnv *env, jclass clz, jlong mediator, jboolean processEvents, jboolean inAWT, jdouble timeoutSeconds/*(<=0.0>) for infinite*/)
 {
     AWT_ASSERT_APPKIT_THREAD;
     jboolean result = JNI_TRUE;
@@ -605,7 +605,7 @@ JNI_COCOA_ENTER(env);
         return JNI_TRUE;
     }
 
-    NSDate *timeoutDate = timeoutSeconds > 0 ? [NSDate dateWithTimeIntervalSinceNow:timeoutSeconds] : nil;
+    NSDate *timeoutDate = (timeoutSeconds > 0.0) ? [NSDate dateWithTimeIntervalSinceNow:timeoutSeconds] : nil;
     if (timeoutDate != nil) {
         if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: timeoutDate = %s",
               [[timeoutDate description] UTF8String]);
