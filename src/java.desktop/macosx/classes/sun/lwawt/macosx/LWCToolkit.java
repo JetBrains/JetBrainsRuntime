@@ -822,6 +822,39 @@ public final class LWCToolkit extends LWToolkit {
         invokeAndWait(runnable, component, 0.0);
     }
 
+    /* 25.01.25: keep public methods with (int timeoutSeconds) */
+
+    /* IJPL uses direct invocation:
+2025-01-25 15:20:04,333 [   8213]   WARN - #c.i.u.m.s.Menu - can't find sun.lwawt.macosx.LWCToolkit method, screen menu won't be filled
+java.lang.NoSuchMethodException: no such method: sun.lwawt.macosx.LWCToolkit.invokeAndWait(Runnable,Component,boolean,int)void/invokeStatic
+	at java.base/java.lang.invoke.MemberName.makeAccessException(MemberName.java:915)
+	at java.base/java.lang.invoke.MemberName$Factory.resolveOrFail(MemberName.java:994)
+	at java.base/java.lang.invoke.MethodHandles$Lookup.resolveOrFail(MethodHandles.java:3750)
+	at java.base/java.lang.invoke.MethodHandles$Lookup.findStatic(MethodHandles.java:2675)
+	at com.intellij.ui.mac.screenmenu.Menu.getToolkitInvokeMethod(Menu.java:436)
+	at com.intellij.ui.mac.screenmenu.Menu.invokeWithLWCToolkit(Menu.java:470)
+	at com.intellij.ui.mac.screenmenu.Menu.menuNeedsUpdate(Menu.java:313)
+Caused by: java.lang.NoSuchMethodError: 'void sun.lwawt.macosx.LWCToolkit.invokeAndWait(java.lang.Runnable, java.awt.Component, boolean, int)'
+	at java.base/java.lang.invoke.MethodHandleNatives.resolve(Native Method)
+	at java.base/java.lang.invoke.MemberName$Factory.resolve(MemberName.java:962)
+	at java.base/java.lang.invoke.MemberName$Factory.resolveOrFail(MemberName.java:991)
+	... 5 more
+     */
+
+    public static void invokeAndWait(Runnable runnable, Component component, int timeoutSeconds)
+            throws InvocationTargetException
+    {
+        invokeAndWait(runnable, component, false, timeoutSeconds);
+    }
+
+    public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, int timeoutSeconds)
+            throws InvocationTargetException {
+        final double timeout = (timeoutSeconds > 0) ? timeoutSeconds : 0.0;
+        invokeAndWait(runnable, component, false, timeout);
+    }
+
+    /* 25.01.25: added public methods with (double timeoutSeconds) to have timeouts between 0.0 and 1.0 */
+
     public static void invokeAndWait(Runnable runnable, Component component, double timeoutSeconds)
             throws InvocationTargetException
     {

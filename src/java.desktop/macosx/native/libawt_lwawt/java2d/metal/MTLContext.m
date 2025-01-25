@@ -57,7 +57,7 @@ extern BOOL isDisplaySyncEnabled();
 extern BOOL MTLLayer_isExtraRedrawEnabled();
 extern int getBPPFromModeString(CFStringRef mode);
 
-#define STATS_CVLINK        0
+#define STATS_CVLINK        1
 
 #define TRACE_PWM_NOTIF     0
 
