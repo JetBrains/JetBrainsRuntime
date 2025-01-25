@@ -30,14 +30,14 @@ import java.io.InputStreamReader;
 /**
  * @test
  * @summary VerifyDependencies checks readability verifies that a Linux shared
- *          library has no dependency on symbols from glibc version higher than 2.28
+ *          library has no dependency on symbols from glibc version higher than 2.17
  * @run main VerifyDependencies
  * @requires (os.family == "linux")
  */
 
 public class VerifyDependencies {
 
-    static final public String EXPECTED_VERSION = "2.28";
+    static final public String EXPECTED_VERSION = "2.17";
     public static void verifyLibrary(String libraryPath) throws IOException {
         Process process;
         BufferedReader reader;
