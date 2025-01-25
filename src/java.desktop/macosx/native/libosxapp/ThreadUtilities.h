@@ -27,6 +27,7 @@
 #define __THREADUTILITIES_H
 
 #import <Foundation/Foundation.h>
+#import <stdatomic.h>
 
 #include "jni.h"
 
@@ -175,14 +176,21 @@ __attribute__((visibility("default")))
 + (NSString*)criticalRunLoopMode;
 + (NSString*)javaRunLoopMode;
 
-+ (ThreadTraceContext*) getTraceContext;
-+ (void)                removeTraceContext;
-+ (void)                resetTraceContext;
++ (ThreadTraceContext*)getTraceContext;
++ (void)removeTraceContext;
++ (void)resetTraceContext;
 
 + (ThreadTraceContext*)recordTraceContext;
-+ (ThreadTraceContext*)recordTraceContext:(NSString*) prefix;
++ (ThreadTraceContext*)recordTraceContext:(NSString*)prefix;
 + (ThreadTraceContext*)recordTraceContext:(NSString*)prefix actionId:(long)actionId useJavaModes:(BOOL)useJavaModes operation:(char*) operation;
 
++ (NSString*)getThreadTraceContexts;
+
++ (void)registerForSystemAndScreenNotifications;
++ (BOOL)isWithinPowerTransition;
+
++ (BOOL)nanoUpTime:(atomic_uint_least64_t*)nanotime;
++ (BOOL)nowNearTime:(NSString*)src refTime:(atomic_uint_least64_t*)refTime;
 @end
 
 JNIEXPORT void OSXAPP_SetJavaVM(JavaVM *vm);
