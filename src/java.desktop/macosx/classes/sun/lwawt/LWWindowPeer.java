@@ -61,6 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
@@ -288,6 +289,7 @@ public class LWWindowPeer
     @Override
     public void setBackground(final Color c) {
         Color oldBg = getBackground();
+        // System.out.println("LWWindowPeer.setBackground: oldBg=" + oldBg + " new=" + c);
         if (Objects.equals(oldBg, c)) {
             return;
         }
@@ -512,16 +514,21 @@ public class LWWindowPeer
 
         if (true) {
             // check window color vs peer:
-            getTarget().getBackground();
-
-            Color winBg = getTarget().getBackground();
+            Color winBg = getTarget().getBackground(); // may not be Color class
             // ensure making a copy in Window.setBackground():
-            Color bgColor = getWindowPeerOrSelf().getBackground();
+            Color peerBg = getWindowPeerOrSelf().getBackground(); // is always Color class
 
-            System.out.print("Window.setBackground: winBg=" + winBg + " oldBg=" + oldBg);
+            if ((peerBg != null) && !Objects.equals(peerBg, winBg)) {
+                // System.out.println("Window.setBackground: winBg=" + winBg + " peerBg=" + peerBg);
 
-            if ((winBg != null) && !Objects.equals(winBg, oldBg)) {
-                setBackground(winBg);
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        // System.out.println("Window.setBackground: winBg=" + winBg);
+                        getTarget().setBackground(winBg);
+                        // System.out.println("Window.setBackground: winBg=" + winBg + " done.");
+                    }
+                });
             }
         }
         if (false) {
