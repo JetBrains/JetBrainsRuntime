@@ -39,7 +39,8 @@ static jclass jc_JavaLayer = NULL;
 #define GET_MTL_LAYER_CLASS() \
     GET_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
 
-#define TRACE_DISPLAY   0
+#define TRACE_DISPLAY           0
+#define TRACE_DISPLAY_CHANGED   0
 
 const NSTimeInterval DF_BLIT_FRAME_TIME=1.0/120.0;
 
@@ -120,7 +121,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     if (self == nil) return self;
 
     self.javaLayer = layer;
-
+    self.ctx = nil;
+    self.displayID = -1;
     self.contentsGravity = kCAGravityTopLeft;
 
     //Disable CALayer's default animation
@@ -418,13 +420,19 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
 - (void)stopRedraw:(BOOL)force {
     if (isDisplaySyncEnabled()) {
+        [self stopRedraw:self.ctx displayID:self.displayID force:force];
+    }
+}
+
+- (void) stopRedraw:(MTLContext*)mtlc displayID:(jint)displayID force:(BOOL)force {
+    if (isDisplaySyncEnabled()) {
         if (force) {
             self.redrawCount = 0;
         }
-        if (self.ctx != nil) {
+        if (mtlc != nil) {
             [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
                                                      block:^(){
-                [self.ctx stopRedraw:self];
+                [mtlc stopRedraw:displayID layer:self];
             }];
         }
     }
@@ -557,9 +565,31 @@ Java_sun_java2d_metal_MTLLayer_validate
         BMTLSDOps *bmtlsdo = (BMTLSDOps*) SurfaceData_GetOps(env, surfaceData);
         layer.buffer = &bmtlsdo->pTexture;
         layer.outBuffer = &bmtlsdo->pOutTexture;
-        layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
-        layer.displayID = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->displayID;
-        layer.device = layer.ctx.device;
+
+        // Backup layer's context (device) and displayId to unregister if needed:
+        MTLContext* oldMtlc    = layer.ctx;
+        NSInteger oldDisplayID = layer.displayID;
+
+        MTLContext* newMtlc    = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
+        NSInteger newDisplayID = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->displayID;
+
+        if (isDisplaySyncEnabled()) {
+            if (oldDisplayID != -1) {
+                if ((oldMtlc != newMtlc) || (oldDisplayID != newDisplayID)) {
+                    if (TRACE_DISPLAY_CHANGED) {
+                        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_validate: layer[%p] mtlc/displayID changed: "
+                                                      "[%p - %d] => [%p - %d]",
+                                      layer, oldMtlc, oldDisplayID, newMtlc, newDisplayID);
+                    }
+                    // unregister with display link on old mtlc/display before updating layer's state:
+                    [layer stopRedraw:oldMtlc displayID:oldDisplayID force:YES];
+                }
+            }
+        }
+        // Update layer's context (device) and displayId:
+        layer.ctx       = newMtlc;
+        layer.device    = layer.ctx.device;
+        layer.displayID = newDisplayID;
         layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 
         if (!isColorMatchingEnabled() && (layer.colorspace != nil)) {
@@ -570,6 +600,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.drawableSize =
             CGSizeMake((*layer.buffer).width,
                        (*layer.buffer).height);
+
         if (isDisplaySyncEnabled()) {
             [layer startRedraw];
         } else {
