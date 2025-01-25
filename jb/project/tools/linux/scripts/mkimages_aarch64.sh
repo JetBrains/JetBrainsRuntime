@@ -35,7 +35,7 @@ function do_configure {
     --with-version-opt=b"$build_number" \
     --with-boot-jdk="$BOOT_JDK" \
     --enable-cds=yes \
-    --with-vulkan \
+    $WITH_VULKAN \
     $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
@@ -109,6 +109,11 @@ jbr_name_postfix=""
 
 case "$bundle_type" in
   "jcef")
+    do_reset_changes=1
+    jbr_name_postfix="_${bundle_type}"
+    do_maketest=1
+    ;;
+  "lb")
     do_reset_changes=1
     jbr_name_postfix="_${bundle_type}"
     do_maketest=1
