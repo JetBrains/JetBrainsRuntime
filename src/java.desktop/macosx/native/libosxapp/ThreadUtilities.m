@@ -58,6 +58,7 @@ static const char* toCString(id obj) {
 
 // The following must be named "jvm", as there are extern references to it in AWT
 JavaVM *jvm = NULL;
+static BOOL isNSApplicationOwner = NO;
 static JNIEnv *appKitEnv = NULL;
 static jobject appkitThreadGroup = NULL;
 
@@ -139,12 +140,20 @@ static void setBlockingEventDispatchThread(BOOL value) {
                                            nil];
 }
 
++ (void)setApplicationOwner:(BOOL)owner {
+    isNSApplicationOwner = owner;
+}
+
 + (JNIEnv*)getJNIEnv {
 AWT_ASSERT_APPKIT_THREAD;
-    if (appKitEnv == NULL) {
-        attachCurrentThread((void **)&appKitEnv);
+    if (isNSApplicationOwner) {
+        if (appKitEnv == NULL) {
+            attachCurrentThread((void **)&appKitEnv);
+        }
+        return appKitEnv;
+    } else {
+        return [ThreadUtilities getJNIEnvUncached];
     }
-    return appKitEnv;
 }
 
 + (JNIEnv*)getJNIEnvUncached {
@@ -862,7 +871,8 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 
 @synthesize sleep, useJavaModes, actionId, operation, timestamp, caller, callStack;
 
-- (id)init {
+- (id _Nonnull)init
+{
     self = [super init];
     if (self) {
         [self reset];
@@ -870,7 +880,8 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
     return self;
 }
 
-- (id)copyWithZone:(NSZone *)zone {
+- (id)copyWithZone:(NSZone *)zone
+{
     ThreadTraceContext *newCtx = [[ThreadTraceContext alloc] init];
     if (newCtx) {
         [newCtx setSleep:[self sleep]];
@@ -888,7 +899,8 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
     return [newCtx autorelease];
 }
 
-- (void)reset {
+- (void)reset
+{
     self.sleep = NO;
     self.useJavaModes = NO;
     self.actionId = -1;
