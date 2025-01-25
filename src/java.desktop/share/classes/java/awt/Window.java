@@ -1254,14 +1254,10 @@ public class Window extends Container implements Accessible {
         else {
             try {
                 EventQueue.invokeAndWait(this, action);
-            }
-            catch (InterruptedException e) {
-                System.err.println("Disposal was interrupted:");
-                e.printStackTrace();
-            }
-            catch (InvocationTargetException e) {
-                System.err.println("Exception during disposal:");
-                e.printStackTrace();
+            } catch (InterruptedException ie) {
+                log.severe("Window.doDispose: Disposal was interrupted:", ie);
+            } catch (InvocationTargetException ite) {
+                log.severe("Window.doDispose: Exception during disposal:", ite);
             }
         }
         // Execute outside the Runnable because postWindowEvent is
@@ -3907,9 +3903,11 @@ public class Window extends Container implements Accessible {
      */
     @Override
     public void setBackground(Color bgColor) {
-        Color oldBg = getBackground();
+        final Color oldBg = getBackgroundSnapshot();
+        // System.out.println("Window.setBackground: bgColor=" + getColorInfo(bgColor) + " vs oldBg=" + getColorInfo(oldBg));
         super.setBackground(bgColor);
-        if (oldBg != null && oldBg.equals(bgColor)) {
+
+        if ((oldBg != null) && oldBg.equals(bgColor)) {
             return;
         }
         int oldAlpha = oldBg != null ? oldBg.getAlpha() : 255;
@@ -3937,6 +3935,11 @@ public class Window extends Container implements Accessible {
         if (peer != null) {
             peer.setOpaque(alpha == 255);
         }
+    }
+
+    private static String getColorInfo(Color c) {
+        return (c == null) ? "Color[NULL]"
+                : c.getClass().getName() + "@" + System.identityHashCode(c) + "[" + c.getRGB() + "]";
     }
 
     /**

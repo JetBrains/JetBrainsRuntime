@@ -168,6 +168,10 @@ public class MacOSFlags {
     }
 
     public static boolean isMetalDisplaySyncEnabled() {
+        // LBO: hack to force detecting color changes
+        if (true) {
+            return false; // LBO: hack
+        }
         return metalDisplaySyncEnabled;
     }
 
