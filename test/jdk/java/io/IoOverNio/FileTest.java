@@ -34,13 +34,13 @@ import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import testNio.ManglingFileSystemProvider;
 
-import java.io.BufferedReader;
-import java.io.File;
+import java.io.*;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Objects;
 
-import static java.util.Arrays.*;
+import static java.util.Arrays.sort;
 import static org.junit.Assert.*;
 
 public class FileTest {
@@ -58,8 +58,19 @@ public class FileTest {
 
     @Before
     @After
-    public void resetFs() {
+    public void resetFs() throws Exception {
         ManglingFileSystemProvider.resetTricks();
+        try (var dirStream = Files.walk(temporaryFolder.getRoot().toPath())) {
+            dirStream.sorted(Comparator.reverseOrder()).forEach(path -> {
+                if (!path.equals(temporaryFolder.getRoot().toPath())) {
+                    try {
+                        Files.delete(path);
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                }
+            });
+        }
     }
 
     @Test
@@ -303,6 +314,33 @@ public class FileTest {
             }
         } finally {
             new ProcessBuilder("rm", "-rf", shortTmpDir).start();
+        }
+    }
+
+    @Test
+    public void renameFileToAlreadyExistingFile() throws Exception {
+        File file1 = temporaryFolder.newFile("testFile1.txt");
+        try (var fos = new FileOutputStream(file1)) {
+            fos.write("file1".getBytes());
+        }
+
+        File file2 = temporaryFolder.newFile("testFile2.txt");
+        try (var fos = new FileOutputStream(file2)) {
+            fos.write("file2".getBytes());
+        }
+
+        assertTrue(file1.exists());
+        assertTrue(file2.exists());
+
+        assertTrue(file1.renameTo(file2));
+
+        assertFalse(file1.exists());
+        assertTrue(file2.exists());
+
+        try (var fis = Files.newInputStream(file2.toPath());
+             var bis = new BufferedReader(new InputStreamReader(fis))) {
+            String line = bis.readLine();
+            assertEquals("file1", line);
         }
     }
 
