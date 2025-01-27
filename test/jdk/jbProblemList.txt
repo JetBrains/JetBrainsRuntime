@@ -1338,6 +1338,9 @@ javax/swing/JTable/JTableOrientationNavTest/JTableOrientationNavTest.java JBR-68
 javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-6465 windows-all,linux-aarch64
 javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
 javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
+jb/java/awt/wayland/RobotGetOOBPixelsTest.java JBR-8029 linux-5.18.2-arch1-1
+jb/java/awt/wayland/RobotGetPixelTest.java JBR-8029 linux-5.18.2-arch1-1
+jb/java/awt/wayland/RobotGetPixelsTest.java JBR-8029 linux-5.18.2-arch1-1
 jb/java/jcef/HandleJSQueryTest3314.sh JBR-4866 linux-all
 jb/java/jcef/HwFacadeWindowNoFrontTest.java
 

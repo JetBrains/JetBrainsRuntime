@@ -53,6 +53,7 @@ compiler/ciReplay/TestInliningProtectionDomain.java NOBUG generic-all
 compiler/ciReplay/TestLambdas.java 8300210 generic-all
 compiler/ciReplay/TestServerVM.java 8300210 generic-all
 compiler/ciReplay/TestUnresolvedClasses.java NOBUG generic-all
+compiler/rtm/cli/TestUseRTMDeoptOptionOnSupportedConfig.java JBR-8185 windows-x64
 
 #############################################################################
 
