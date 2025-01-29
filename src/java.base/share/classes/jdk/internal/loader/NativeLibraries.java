@@ -24,12 +24,15 @@
  */
 package jdk.internal.loader;
 
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.misc.VM;
 import jdk.internal.ref.CleanerFactory;
 import jdk.internal.util.StaticProperty;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayDeque;
@@ -114,15 +117,16 @@ public final class NativeLibraries {
      * @param file the path of the native library
      * @throws UnsatisfiedLinkError if any error in loading the native library
      */
-    @SuppressWarnings("removal")
+    @SuppressWarnings({"try", "removal"})
     public NativeLibrary loadLibrary(Class<?> fromClass, File file) {
         // Check to see if we're attempting to access a static library
         String name = findBuiltinLib(file.getName());
         boolean isBuiltin = (name != null);
         if (!isBuiltin) {
             name = AccessController.doPrivileged(new PrivilegedAction<>() {
+                    @SuppressWarnings("try")
                     public String run() {
-                        try {
+                        try(var ignored = IoOverNio.disableInThisThread()) {
                             if (loadLibraryOnlyIfPresent && !file.exists()) {
                                 return null;
                             }
@@ -338,9 +342,12 @@ public final class NativeLibraries {
             // If the file exists but fails to load, UnsatisfiedLinkException thrown by the VM
             // will include the error message from dlopen to provide diagnostic information
             return AccessController.doPrivileged(new PrivilegedAction<>() {
+                @SuppressWarnings("try")
                 public Boolean run() {
-                    File file = new File(name);
-                    return file.exists();
+                    try (var ignored = IoOverNio.disableInThisThread()) {
+                        File file = new File(name);
+                        return file.exists();
+                    }
                 }
             });
         }
