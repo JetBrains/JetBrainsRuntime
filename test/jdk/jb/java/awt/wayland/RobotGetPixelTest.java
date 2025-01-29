@@ -75,8 +75,9 @@ public class RobotGetPixelTest {
             frame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowActivated(WindowEvent e) {
-                    int x = frame.getX() + frame.getInsets().bottom + W/6;
-                    int y = frame.getY() + frame.getInsets().left + H/6;
+                    var loc = frame.getLocationOnScreen();
+                    int x = loc.x + frame.getInsets().bottom + W/6;
+                    int y = loc.y + frame.getInsets().left + H/6;
                     try {
                         Color c = robot.getPixelColor(x, y);
                         if (!compareColors(c, Color.RED, 10)) {
