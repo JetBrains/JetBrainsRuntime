@@ -279,6 +279,7 @@ java/awt/event/KeyEvent/KeyTyped/AltShiftEnterShouldNotSendKeyTyped7157.java JBR
 java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java JBR-4880 windows-all
 
 java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all,macosx-all
+java/awt/event/KeyEvent/KeyTyped/Numpad1KeyTyped.java JBR-7912 windows-all
 java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java 8129778 generic-all
 
 java/awt/dnd/RejectDragDropActionTest.java JBR-5858 windows-10.0
