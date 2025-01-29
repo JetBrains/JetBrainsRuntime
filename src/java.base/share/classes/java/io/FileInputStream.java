@@ -178,6 +178,10 @@ public class FileInputStream extends InputStream
                     fd = new FileDescriptor();
                 }
             } catch (IOException e) {
+                if (IoOverNioFileSystem.DEBUG) {
+                    new Throwable(String.format("Can't create a FileInputStream for %s with %s", file, nioFs), e)
+                            .printStackTrace(System.err);
+                }
                 // Since we can't throw IOException...
                 throw new FileNotFoundException(e.getMessage());
             }
