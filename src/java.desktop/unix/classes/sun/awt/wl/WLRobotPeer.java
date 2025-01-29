@@ -121,20 +121,17 @@ public class WLRobotPeer implements RobotPeer {
         } else {
             // Can get pixels from the singular window's surface data,
             // not necessarily the true value that the user observes.
-            Rectangle deviceBounds = wgc.getDefaultTransform().createTransformedShape(wgc.getBounds()).getBounds();
-
-            Rectangle grabBounds = new Rectangle(bounds.x - deviceBounds.x, bounds.y - deviceBounds.y,
-                    bounds.width, bounds.height);
-            return getRGBPixelsOfSingularWindow(grabBounds);
+            return getRGBPixelsOfSingularWindow(bounds);
         }
     }
 
     private int getRGBPixelOfSingularWindow(int x, int y) {
         WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
+        Point loc = peer.convertPontFromDeviceSpace(x, y);
         WLToolkit.awtLock();
         try {
             checkPeerForPixelGrab(peer);
-            return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelAt(x, y);
+            return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelAt(loc.x, loc.y);
         } finally {
             WLToolkit.awtUnlock();
         }
@@ -142,10 +139,12 @@ public class WLRobotPeer implements RobotPeer {
 
     private int [] getRGBPixelsOfSingularWindow(Rectangle bounds) {
         WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
+        Point loc = peer.convertPontFromDeviceSpace(bounds.x, bounds.y);
+        Rectangle adjustedBounds = new Rectangle(loc, bounds.getSize());
         WLToolkit.awtLock();
         try {
             checkPeerForPixelGrab(peer);
-            return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelsAt(bounds);
+            return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelsAt(adjustedBounds);
         } finally {
             WLToolkit.awtUnlock();
         }
