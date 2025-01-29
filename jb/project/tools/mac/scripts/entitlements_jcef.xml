@@ -3,14 +3,14 @@
 <plist version="1.0">
     <dict>
         <key>com.apple.security.cs.allow-jit</key>
-        <true/>
+        <false/>
         <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-        <true/>
+        <false/>
         <key>com.apple.security.cs.allow-dyld-environment-variables</key>
-        <true/>
+        <false/>
         <key>com.apple.security.cs.disable-library-validation</key>
-        <true/>
+        <false/>
         <key>com.apple.security.cs.disable-executable-page-protection</key>
-        <true/>
+        <false/>
     </dict>
 </plist>
