@@ -477,7 +477,7 @@ class IoOverNioFileSystem extends FileSystem {
             try {
                 Path path1 = nioFs.getPath(f1.getPath());
                 Path path2 = nioFs.getPath(f2.getPath());
-                nioFs.provider().move(path1, path2);
+                nioFs.provider().move(path1, path2, StandardCopyOption.REPLACE_EXISTING);
                 return true;
             } catch (InvalidPathException e) {
                 throw new InternalError(e.getMessage(), e);
