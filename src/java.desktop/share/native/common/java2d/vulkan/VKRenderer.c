@@ -1289,8 +1289,17 @@ void VKRenderer_MaskFill(const VKRenderingContext* context, jint x, jint y, jint
     // maskscan is the number of bytes in a row/
     // masklen is the size of the whole mask tile, it may be way bigger, than number of actually needed bytes.
     uint32_t byteCount = maskscan * h;
+    if (mask == NULL) {
+        maskscan = 0;
+        byteCount = 1;
+    }
     BufferWritingState maskState = VKRenderer_AllocateMaskFillBytes(context, byteCount);
-    memcpy(maskState.data, mask + maskoff, byteCount);
+    if (mask != NULL) {
+        memcpy(maskState.data, mask + maskoff, byteCount);
+    } else {
+        // Special case, fully opaque mask
+        *((char *)maskState.data) = 0xFF;
+    }
 
     VKMaskFillColorVertex* vs;
     VK_DRAW(vs, context, 6);
