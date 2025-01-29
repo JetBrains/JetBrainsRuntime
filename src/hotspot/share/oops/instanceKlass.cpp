@@ -1052,6 +1052,7 @@ void InstanceKlass::clean_initialization_error_table() {
     }
   };
 
+
   assert_locked_or_safepoint(ClassInitError_lock);
   InitErrorTableCleaner cleaner;
   if (_initialization_error_table != nullptr) {
