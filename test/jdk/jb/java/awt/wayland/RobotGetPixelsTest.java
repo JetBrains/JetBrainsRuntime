@@ -78,8 +78,9 @@ public class RobotGetPixelsTest {
                 @Override
                 public void windowActivated(WindowEvent e) {
                     try {
+                        var loc = frame.getLocationOnScreen();
                         BufferedImage bi = robot.createScreenCapture(
-                                new Rectangle(frame.getX(), frame.getY(), frame.getWidth(), frame.getHeight()));
+                                new Rectangle(loc.x, loc.y, frame.getWidth(), frame.getHeight()));
                         int x = frame.getInsets().bottom + W / 6;
                         int y = frame.getInsets().left + H / 6;
 
