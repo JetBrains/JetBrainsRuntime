@@ -34,6 +34,8 @@
 #include "unittest.hpp"
 #include "runtime/frame.inline.hpp"
 
+using testing::HasSubstr;
+
 static size_t small_page_size() {
   return os::vm_page_size();
 }
@@ -167,7 +169,7 @@ static void do_test_print_hex_dump(address addr, size_t len, int unitsize, const
   os::print_hex_dump(&ss, addr, addr + len, unitsize);
 //  tty->print_cr("expected: %s", expected);
 //  tty->print_cr("result: %s", buf);
-  ASSERT_NE(strstr(buf, expected), (char*)NULL);
+  EXPECT_THAT(buf, HasSubstr(expected));
 }
 
 TEST_VM(os, test_print_hex_dump) {
@@ -769,7 +771,7 @@ TEST_VM(os, pagesizes_test_print) {
   char buffer[256];
   stringStream ss(buffer, sizeof(buffer));
   pss.print_on(&ss);
-  ASSERT_EQ(strcmp(expected, buffer), 0);
+  EXPECT_STREQ(expected, buffer);
 }
 
 TEST_VM(os, dll_address_to_function_and_library_name) {
@@ -778,9 +780,9 @@ TEST_VM(os, dll_address_to_function_and_library_name) {
   stringStream st(output, sizeof(output));
 
 #define EXPECT_CONTAINS(haystack, needle) \
-  EXPECT_NE(::strstr(haystack, needle), (char*)NULL)
+  EXPECT_THAT(haystack, HasSubstr(needle));
 #define EXPECT_DOES_NOT_CONTAIN(haystack, needle) \
-  EXPECT_EQ(::strstr(haystack, needle), (char*)NULL)
+  EXPECT_THAT(haystack, Not(HasSubstr(needle)));
 // #define LOG(...) tty->print_cr(__VA_ARGS__); // enable if needed
 #define LOG(...)
 

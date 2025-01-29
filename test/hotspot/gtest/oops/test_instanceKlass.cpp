@@ -27,6 +27,8 @@
 #include "oops/instanceKlass.hpp"
 #include "unittest.hpp"
 
+using testing::HasSubstr;
+
 // Tests for InstanceKlass::is_class_loader_instance_klass() function
 TEST_VM(InstanceKlass, class_loader_class) {
   InstanceKlass* klass = vmClasses::ClassLoader_klass();
