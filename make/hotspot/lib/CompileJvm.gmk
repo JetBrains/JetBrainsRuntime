@@ -87,6 +87,13 @@ ifeq ($(call check-jvm-feature, zero), true)
   DISABLED_WARNINGS_gcc += return-type switch clobbered
 endif
 
+ifeq ($(DEBUG_LEVEL), fastdebug)
+  ifeq ($(call And, $(call isTargetOs, linux) $(call isTargetCpu, aarch64)), true)
+    # False positive warnings for atomic_linux_aarch64.hpp on GCC >= 13
+    DISABLED_WARNINGS_gcc += stringop-overflow
+  endif
+endif
+
 DISABLED_WARNINGS_clang := tautological-compare \
     undefined-var-template sometimes-uninitialized unknown-pragmas \
     delete-non-virtual-dtor missing-braces char-subscripts \
