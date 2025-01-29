@@ -45,7 +45,7 @@ final class FileInputStreamInstrumentor {
     @JIInstrumentationMethod
     public int read() throws IOException {
         EventConfiguration eventConfiguration = EventConfigurations.FILE_READ;
-        if (!eventConfiguration.isEnabled()) {
+        if (!eventConfiguration.isEnabled() || ioOverNioInThisThread()) {
             return read();
         }
         int result = 0;
@@ -72,7 +72,7 @@ final class FileInputStreamInstrumentor {
     @JIInstrumentationMethod
     public int read(byte b[]) throws IOException {
         EventConfiguration eventConfiguration = EventConfigurations.FILE_READ;
-        if (!eventConfiguration.isEnabled()) {
+        if (!eventConfiguration.isEnabled() || ioOverNioInThisThread()) {
             return read(b);
         }
         int bytesRead = 0;
@@ -96,7 +96,7 @@ final class FileInputStreamInstrumentor {
     @JIInstrumentationMethod
     public int read(byte b[], int off, int len) throws IOException {
         EventConfiguration eventConfiguration = EventConfigurations.FILE_READ;
-        if (!eventConfiguration.isEnabled()) {
+        if (!eventConfiguration.isEnabled() || ioOverNioInThisThread()) {
             return read(b, off, len);
         }
         int bytesRead = 0;
@@ -115,5 +115,9 @@ final class FileInputStreamInstrumentor {
             }
         }
         return bytesRead;
+    }
+
+    private boolean ioOverNioInThisThread() {
+        throw new Error("This code should never be called. JFR should have replaced the call to this code with another method.");
     }
 }

@@ -45,7 +45,7 @@ final class FileOutputStreamInstrumentor {
     @JIInstrumentationMethod
     public void write(int b) throws IOException {
         EventConfiguration eventConfiguration = EventConfigurations.FILE_WRITE;
-        if (!eventConfiguration.isEnabled()) {
+        if (!eventConfiguration.isEnabled() || ioOverNioInThisThread()) {
             write(b);
             return;
         }
@@ -66,7 +66,7 @@ final class FileOutputStreamInstrumentor {
     @JIInstrumentationMethod
     public void write(byte b[]) throws IOException {
         EventConfiguration eventConfiguration = EventConfigurations.FILE_WRITE;
-        if (!eventConfiguration.isEnabled()) {
+        if (!eventConfiguration.isEnabled() || ioOverNioInThisThread()) {
             write(b);
             return;
         }
@@ -87,7 +87,7 @@ final class FileOutputStreamInstrumentor {
     @JIInstrumentationMethod
     public void write(byte b[], int off, int len) throws IOException {
         EventConfiguration eventConfiguration = EventConfigurations.FILE_WRITE;
-        if (!eventConfiguration.isEnabled()) {
+        if (!eventConfiguration.isEnabled() || ioOverNioInThisThread()) {
             write(b, off, len);
             return;
         }
@@ -103,5 +103,10 @@ final class FileOutputStreamInstrumentor {
                 FileWriteEvent.commit(start, duration, path, bytesWritten);
             }
         }
+    }
+
+    @SuppressWarnings("unused")
+    private boolean ioOverNioInThisThread() {
+        throw new Error("This code should never be called. JFR should have replaced the call to this code with another method.");
     }
 }

@@ -45,14 +45,14 @@ import java.util.stream.Stream;
  * @test
  * @bug 8191033
  * @build custom.DotHandler custom.Handler
- * @run main/othervm -Dlogging.properties=badlogging.properties -Dclz=1custom.DotHandler BadRootLoggerHandlers CUSTOM
- * @run main/othervm -Dlogging.properties=badlogging.properties -Dclz=1custom.DotHandler BadRootLoggerHandlers DEFAULT
- * @run main/othervm -Dlogging.properties=badglobal.properties -Dclz=1custom.GlobalHandler BadRootLoggerHandlers CUSTOM
- * @run main/othervm -Dlogging.properties=badglobal.properties -Dclz=1custom.GlobalHandler BadRootLoggerHandlers DEFAULT
- * @run main/othervm/java.security.policy==test.policy -Dlogging.properties=badlogging.properties -Dclz=1custom.DotHandler BadRootLoggerHandlers CUSTOM
- * @run main/othervm/java.security.policy==test.policy  -Dlogging.properties=badlogging.properties -Dclz=1custom.DotHandler BadRootLoggerHandlers DEFAULT
- * @run main/othervm/java.security.policy==test.policy  -Dlogging.properties=badglobal.properties -Dclz=1custom.GlobalHandler BadRootLoggerHandlers CUSTOM
- * @run main/othervm/java.security.policy==test.policy  -Dlogging.properties=badglobal.properties -Dclz=1custom.GlobalHandler BadRootLoggerHandlers DEFAULT
+ * @run main/othervm -Djbr.java.io.use.nio=false -Dlogging.properties=badlogging.properties -Dclz=1custom.DotHandler BadRootLoggerHandlers CUSTOM
+ * @run main/othervm -Djbr.java.io.use.nio=false -Dlogging.properties=badlogging.properties -Dclz=1custom.DotHandler BadRootLoggerHandlers DEFAULT
+ * @run main/othervm -Djbr.java.io.use.nio=false -Dlogging.properties=badglobal.properties -Dclz=1custom.GlobalHandler BadRootLoggerHandlers CUSTOM
+ * @run main/othervm -Djbr.java.io.use.nio=false -Dlogging.properties=badglobal.properties -Dclz=1custom.GlobalHandler BadRootLoggerHandlers DEFAULT
+ * @run main/othervm/java.security.policy==test.policy -Djbr.java.io.use.nio=false -Dlogging.properties=badlogging.properties -Dclz=1custom.DotHandler BadRootLoggerHandlers CUSTOM
+ * @run main/othervm/java.security.policy==test.policy  -Djbr.java.io.use.nio=false -Dlogging.properties=badlogging.properties -Dclz=1custom.DotHandler BadRootLoggerHandlers DEFAULT
+ * @run main/othervm/java.security.policy==test.policy  -Djbr.java.io.use.nio=false -Dlogging.properties=badglobal.properties -Dclz=1custom.GlobalHandler BadRootLoggerHandlers CUSTOM
+ * @run main/othervm/java.security.policy==test.policy  -Djbr.java.io.use.nio=false -Dlogging.properties=badglobal.properties -Dclz=1custom.GlobalHandler BadRootLoggerHandlers DEFAULT
  * @author danielfuchs
  */
 public class BadRootLoggerHandlers {

@@ -25,7 +25,7 @@
  * @bug 8017212
  * @summary Examine methods in File.java that access the file system do the
  *          right permission check when a security manager exists.
- * @run main/othervm -Djava.security.manager=allow CheckPermission
+ * @run main/othervm -Djava.security.manager=allow -Djbr.java.io.use.nio=false CheckPermission
  * @author Dan Xu
  */
 
