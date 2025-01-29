@@ -681,7 +681,7 @@ Java_sun_awt_wl_WLClipboard_requestDataInFormat(
     const char * mimeType = (*env)->GetStringUTFChars(env, mimeTypeJava, NULL);
     if (mimeType) {
         int fds[2];
-        int rc = pipe(fds);
+        int rc = pipe2(fds, O_CLOEXEC);
         if (rc == 0) {
             if (isPrimary) {
                 struct zwp_primary_selection_offer_v1 * offer = jlong_to_ptr(clipboardNativePtr);
