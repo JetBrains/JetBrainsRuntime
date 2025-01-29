@@ -78,9 +78,7 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
                 (isWindows_8_1_orUpper() || FontUtilities.isLinux));
 
         if (uiScaleEnabled && FontUtilities.isWindows) {
-            if (System.getProperty("swing.bufferPerWindow") == null) {
-                System.setProperty("swing.bufferPerWindow", "false"); // todo: until JRE-489 is fixed
-            }
+            System.setProperty("swing.bufferPerWindow", "false"); // todo: until JRE-489 is fixed
         }
         debugScale = uiScaleEnabled ? getScaleFactor("sun.java2d.uiScale") : -1;
     }
