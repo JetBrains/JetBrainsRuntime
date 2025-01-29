@@ -10,4 +10,8 @@ grant {
     permission java.lang.RuntimePermission "setIO";
     permission java.lang.RuntimePermission "shutdownHooks";
     permission java.lang.RuntimePermission "setContextClassLoader";
+
+    // JBR-7700
+    permission java.lang.RuntimePermission "accessUserInformation";
+    permission java.io.FilePermission "read";
 };
