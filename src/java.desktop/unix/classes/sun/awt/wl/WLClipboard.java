@@ -36,6 +36,8 @@ import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -223,15 +225,24 @@ public final class WLClipboard extends SunClipboard {
         }
 
         if (flavor != null) {
+            byte[] bytes = wlDataTransferer.translateTransferable(contents, flavor, targetFormat);
+            if (bytes == null) return;
             FileDescriptor javaDestFD = new FileDescriptor();
             jdk.internal.access.SharedSecrets.getJavaIOFileDescriptorAccess().set(javaDestFD, destFD);
-
             try (var out = new FileOutputStream(javaDestFD)) {
-                byte[] bytes = wlDataTransferer.translateTransferable(contents, flavor, targetFormat);
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                    log.fine("Clipboard: about to write " + (bytes != null ? bytes.length : 0) + " bytes to " + out);
+                    log.fine("Clipboard: about to write " + bytes.length + " bytes to " + out);
                 }
-                out.write(bytes);
+
+                FileChannel ch = out.getChannel();
+                ByteBuffer buffer = ByteBuffer.wrap(bytes);
+                // Need to write with retries because when a pipe is in the non-blocking mode
+                // writing more than its capacity (usually 16 pages or 64K) fails with EAGAIN.
+                // Since we receive destFD from the Wayland sever, we can't assume it
+                // to always be in the blocking mode.
+                while (buffer.hasRemaining()) {
+                    ch.write(buffer);
+                }
             }
         }
     }
