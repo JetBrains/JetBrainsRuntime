@@ -41,20 +41,17 @@
 
 // The test doesn't work for PRODUCT because it needs WizardMode
 #ifndef PRODUCT
-static bool test_pattern(stringStream* st, const char* pattern) {
-  return (strstr(st->as_string(), pattern) != NULL);
-}
 
 static void assert_test_pattern(Handle object, const char* pattern) {
   stringStream st;
   object->print_on(&st);
-  ASSERT_TRUE(test_pattern(&st, pattern)) << pattern << " not in " << st.as_string();
+  ASSERT_THAT(st.base(), testing::HasSubstr(pattern));
 }
 
 static void assert_not_test_pattern(Handle object, const char* pattern) {
   stringStream st;
   object->print_on(&st);
-  ASSERT_FALSE(test_pattern(&st, pattern)) << pattern << " found in " << st.as_string();
+  ASSERT_THAT(st.base(), testing::Not(testing::HasSubstr(pattern)));
 }
 
 class LockerThread : public JavaTestThread {
