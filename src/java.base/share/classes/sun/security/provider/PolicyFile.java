@@ -41,6 +41,8 @@ import javax.security.auth.x500.X500Principal;
 import java.net.SocketPermission;
 import java.net.NetPermission;
 import java.util.concurrent.ConcurrentHashMap;
+
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.JavaSecurityAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.StaticProperty;
@@ -308,7 +310,14 @@ public class PolicyFile extends java.security.Policy {
      * See the class description for details on the algorithm used to
      * initialize the Policy object.
      */
+    @SuppressWarnings("try")
     private void init(URL url) {
+        try (var ignored = IoOverNio.disableInThisThread()) {
+            init0(url);
+        }
+    }
+
+    private void init0(URL url) {
         // Properties are set once for each init(); ignore changes
         // between diff invocations of initPolicyFile(policy, url, info).
         String numCacheStr =
@@ -1093,8 +1102,16 @@ public class PolicyFile extends java.security.Policy {
      *
      * @return the set of Permissions according to the policy.
      */
+    @SuppressWarnings("try")
     private PermissionCollection getPermissions(Permissions perms,
                                         ProtectionDomain pd ) {
+        try (var ignored = IoOverNio.disableInThisThread()) {
+            return getPermissions0(perms, pd);
+        }
+    }
+
+    private Permissions getPermissions0(Permissions perms,
+                                        ProtectionDomain pd) {
         if (debug != null) {
             debug.println("getPermissions:\n\t" + printPD(pd));
         }
