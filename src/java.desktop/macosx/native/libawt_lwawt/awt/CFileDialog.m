@@ -145,6 +145,8 @@ canCreateDirectories:(BOOL)inCreateDirectories
                     UTType *contentType = [UTType typeWithFilenameExtension:fileType conformingToType:UTTypeData];
                     if (contentType != nil) {
                         [contentTypes addObject:contentType];
+                    } else if (fileType.length == 0) {
+                        [contentTypes addObject:UTTypeUnixExecutable];
                     }
                 }
                 [thePanel setAllowedContentTypes:contentTypes];
