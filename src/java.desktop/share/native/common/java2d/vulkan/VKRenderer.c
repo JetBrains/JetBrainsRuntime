@@ -1264,8 +1264,17 @@ void VKRenderer_MaskFill(VKRenderingContext* context, jint x, jint y, jint w, ji
     Color c = context->color;
 
     uint32_t byteCount = maskscan * h;
+    if (mask == NULL) {
+        maskscan = 0;
+        byteCount = 1;
+    }
     BufferWritingState maskState = VKRenderer_AllocateMaskFillBytes(context, byteCount);
-    memcpy(maskState.data, mask + maskoff, byteCount);
+    if (mask != NULL) {
+        memcpy(maskState.data, mask + maskoff, byteCount);
+    } else {
+        // Special case, fully opaque mask
+        *((char *)maskState.data) = 0xFF;
+    }
 
     int offset = (int) maskState.offset;
     VKMaskFillColorVertex p1 = {x, y, offset, maskscan, c};
