@@ -33,6 +33,7 @@ import sun.awt.SunToolkit;
 import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
 import sun.java2d.SunGraphics2D;
+import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
 import sun.java2d.wl.WLSurfaceDataExt;
@@ -1637,6 +1638,15 @@ public class WLComponentPeer implements ComponentPeer {
 
     Dimension javaUnitsToSurfaceSize(Dimension d) {
         return new Dimension(javaUnitsToSurfaceSize(d.width), javaUnitsToSurfaceSize(d.height));
+    }
+
+    /**
+     * Converts a point in the device (screen) space into coordinates on this surface
+     */
+    Point convertPontFromDeviceSpace(int x, int y) {
+        Point userLoc = getLocationOnScreen();
+        Point topLeft = SunGraphicsEnvironment.toDeviceSpace(getGraphicsConfiguration(), userLoc.x, userLoc.y, 0, 0).getLocation();
+        return new Point(x - topLeft.x, y - topLeft.y);
     }
 
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
