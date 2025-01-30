@@ -584,6 +584,12 @@ For example:
 .TP
 .B \f[CB]\-docfilessubdirs\f[R]
 Recursively copies doc\-file subdirectories.
+Enables deep copying of doc\-files directories.
+Subdirectories and all contents are recursively copied to the
+destination.
+For example, the directory \f[CB]doc\-files/example/images\f[R] and all of
+its contents are copied.
+There is also an option to exclude subdirectories.
 .RS
 .RE
 .TP
@@ -602,12 +608,7 @@ For example,
 .TP
 .B \f[CB]\-excludedocfilessubdir\f[R] \f[I]name\f[R]
 Excludes any doc files sub directories with the given name.
-Enables deep copying of doc\-files directories.
-Subdirectories and all contents are recursively copied to the
-destination.
-For example, the directory \f[CB]doc\-files/example/images\f[R] and all of
-its contents are copied.
-There is also an option to exclude subdirectories.
+See \f[B]\f[VB]-docfilessubdirs\f[B]\f[R].
 .RS
 .RE
 .TP
