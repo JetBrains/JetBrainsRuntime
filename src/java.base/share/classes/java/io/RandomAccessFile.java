@@ -34,6 +34,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.HashSet;
 
+import static com.sun.IoOverNio.DEBUG;
 import jdk.internal.access.JavaIORandomAccessFileAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Blocker;
@@ -299,7 +300,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                     fd = new FileDescriptor();
                 }
             } catch (IOException e) {
-                if (IoOverNioFileSystem.DEBUG) {
+                if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't create a RandomAccessFile for %s with %s", file, nioFs), e)
                             .printStackTrace(System.err);
                 }
@@ -311,6 +312,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             fd.attach(this);
             open(name, imode);
             FileCleanable.register(fd);   // open sets the fd, register the cleanup
+        }
+        if (DEBUG.writeTraces()) {
+            System.err.printf("Created a RandomAccessFile for %s%n", file);
         }
     }
 

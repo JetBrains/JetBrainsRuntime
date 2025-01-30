@@ -25,8 +25,62 @@
 
 package com.sun;  // TODO better package
 
+import jdk.internal.misc.VM;
+import sun.security.action.GetPropertyAction;
+
 public class IoOverNio {
     private IoOverNio() { }
 
     public static final ThreadLocal<Boolean> ALLOW_IO_OVER_NIO = ThreadLocal.withInitial(() -> true);
+
+    public enum Debug {
+        NO(false, false),
+        ERROR(true, false),
+        NO_ERROR(false, true),
+        ALL(true, true);
+
+        private final boolean writeErrors;
+        private final boolean writeTraces;
+
+        Debug(boolean writeErrors, boolean writeTraces) {
+            this.writeErrors = writeErrors;
+            this.writeTraces = writeTraces;
+        }
+
+        private boolean mayWriteAnything() {
+            return VM.isBooted() && IoOverNio.ALLOW_IO_OVER_NIO.get();
+        }
+
+        public boolean writeErrors() {
+            return writeErrors && mayWriteAnything();
+        }
+
+        public boolean writeTraces() {
+            return writeTraces && mayWriteAnything();
+        }
+    }
+
+    public static final Debug DEBUG;
+
+    static {
+        String value = GetPropertyAction.privilegedGetProperty("jbr.java.io.use.nio.debug");
+        if (value == null) {
+            DEBUG = Debug.NO;
+        } else {
+            switch (value) {
+                case "error":
+                    DEBUG = Debug.ERROR;
+                    break;
+                case "no_error":
+                    DEBUG = Debug.NO_ERROR;
+                    break;
+                case "all":
+                    DEBUG = Debug.ALL;
+                    break;
+                default:
+                    DEBUG = Debug.NO;
+                    break;
+            }
+        }
+    }
 }
