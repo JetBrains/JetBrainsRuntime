@@ -276,7 +276,6 @@ class IoOverNioFileSystem extends FileSystem {
                 if (!nioPath.isAbsolute()) {
                     nioPath = Path.of(System.getProperty("user.dir")).resolve(nioPath);
                 }
-                nioPath = nioPath.normalize();
                 Path suffix = nioFs.getPath("");
 
                 while (!nioPath.equals(nioPath.getRoot())) {
@@ -285,17 +284,20 @@ class IoOverNioFileSystem extends FileSystem {
                         parent = nioPath.getRoot();
                     }
 
-                    try {
-                        nioPath = nioPath.toRealPath();
-                        break;
-                    } catch (IOException err) {
-                        // Nothing.
+                    String fileNameStr = nioPath.getFileName().toString();
+                    if (!fileNameStr.isEmpty() && !fileNameStr.equals(".")) {
+                        try {
+                            nioPath = nioPath.toRealPath();
+                            break;
+                        } catch (IOException err) {
+                            // Nothing.
+                        }
+                        suffix = nioPath.getFileName().resolve(suffix);
                     }
-                    suffix = nioPath.getFileName().resolve(suffix);
                     nioPath = parent;
                 }
 
-                return nioPath.resolve(suffix).toString();
+                return nioPath.resolve(suffix).normalize().toString();
             } catch (InvalidPathException err) {
                 // Path parsing in java.nio is stricter than in java.io.
                 // Giving a chance to the original implementation.

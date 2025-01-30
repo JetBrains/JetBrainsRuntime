@@ -36,6 +36,7 @@ import testNio.ManglingFileSystemProvider;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
@@ -44,6 +45,7 @@ import static java.util.Arrays.sort;
 import static org.junit.Assert.*;
 
 public class FileTest {
+
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -369,6 +371,55 @@ public class FileTest {
             String line = bis.readLine();
             assertEquals("file1", line);
         }
+    }
+
+    @Test
+    public void testToCanonicalPathSymLinksAware() throws IOException {
+        assumeNotWindows();
+
+        File rootDir = temporaryFolder.newFolder("root");
+        temporaryFolder.newFolder("root/dir1/dir2/dir3/dir4");
+        String root = rootDir.getAbsolutePath();
+
+        // non-recursive link
+        Path link1 = new File(rootDir, "dir1/dir2_link").toPath();
+        Path target1 = new File(rootDir, "dir1/dir2").toPath();
+        Files.createSymbolicLink(link1, target1);
+        // recursive links to a parent dir
+        Path link = new File(rootDir, "dir1/dir1_link").toPath();
+        Path target = new File(rootDir, "dir1").toPath();
+        Files.createSymbolicLink(link, target);
+
+        // links should NOT be resolved when ../ stays inside the linked path
+        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/./").getCanonicalFile().toString());
+        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/dir3/../").getCanonicalFile().toString());
+        assertEquals(root + "/dir1/dir2/dir3", new File(root + "/dir1/dir2_link/dir3/dir4/../").getCanonicalFile().toString());
+        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/dir3/dir4/../../").getCanonicalFile().toString());
+        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/../dir1/dir2_link/dir3/../").getCanonicalFile().toString());
+
+        // I.II) recursive links
+        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/./").getCanonicalFile().toString());
+        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/dir2/../").getCanonicalFile().toString());
+        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir1_link/dir2/dir3/../").getCanonicalFile().toString());
+        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/dir2/dir3/../../").getCanonicalFile().toString());
+        assertEquals(root + "/dir1", new File(root + "/dir1/../dir1/dir1_link/dir2/../").getCanonicalFile().toString());
+
+        // II) links should be resolved is ../ escapes outside
+
+        // II.I) non-recursive links
+        assertEquals(root + "/dir1", new File(root + "/dir1/dir2_link/../").getCanonicalFile().toString());
+        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/../dir2").getCanonicalFile().toString());
+        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/../../dir1/dir2").getCanonicalFile().toString());
+        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/dir3/../../dir2").getCanonicalFile().toString());
+        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/dir3/../../../dir1/dir2").getCanonicalFile().toString());
+        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/../dir1/dir2_link/../dir2").getCanonicalFile().toString());
+
+        assertEquals(root, new File(root + "/dir1/dir1_link/../").getCanonicalFile().toString());
+        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/../dir1").getCanonicalFile().toString());
+        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/../../root/dir1").getCanonicalFile().toString());
+        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/dir2/../../dir1").getCanonicalFile().toString());
+        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/dir2/../../../root/dir1").getCanonicalFile().toString());
+        assertEquals(root + "/dir1", new File(root + "/dir1/../dir1/dir1_link/../dir1").getCanonicalFile().toString());
     }
 
     // TODO Test file size.
