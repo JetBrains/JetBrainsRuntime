@@ -324,6 +324,7 @@ canCreateDirectories:(BOOL)inCreateDirectories
 }
 
 - (NSModalResponse) wait {
+    // LBO: TODO TRACING WAIT !
     [fCondition lock];
     while (fPanelResult == NSModalResponseContinue) {
         [fCondition wait];

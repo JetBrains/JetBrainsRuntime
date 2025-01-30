@@ -748,7 +748,7 @@ public final class CPrinterJob extends RasterPrinterJob {
                     }
                 }, null);
             } catch (java.lang.reflect.InvocationTargetException ite) {
-                log.fine("CPrinterJob.cancelCheck: failure", pae);
+                log.fine("CPrinterJob.cancelCheck: failure", ite);
             }
         }
         return cancelled;

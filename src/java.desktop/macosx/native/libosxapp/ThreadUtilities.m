@@ -31,6 +31,15 @@
 #import "ThreadUtilities.h"
 
 
+#define RUN_BLOCK_IF(COND, block)   \
+    if ((COND)) {                   \
+        block();                    \
+        return;                     \
+    }
+
+#define RUN_BLOCK_IF_MAIN(block)    \
+    RUN_BLOCK_IF([NSThread isMainThread], block)
+
 /* Returns the MainThread latency threshold in milliseconds
  * used to detect slow operations that may cause high latencies or delays.
  * If negative, the MainThread monitor is disabled */
@@ -58,6 +67,7 @@ static const char* toCString(id obj) {
 
 // The following must be named "jvm", as there are extern references to it in AWT
 JavaVM *jvm = NULL;
+static BOOL isNSApplicationOwner = NO;
 static JNIEnv *appKitEnv = NULL;
 static jobject appkitThreadGroup = NULL;
 
@@ -67,9 +77,11 @@ static NSArray<NSString*> *javaModes = nil;
 static NSArray<NSString*> *allModesExceptJava = nil;
 
 /* Traceability data */
-static const BOOL enableTracing = NO;
-static const BOOL enableTracingLog = NO;
-static const BOOL enableCallStacks = NO;
+static const BOOL forceTracing = NO;
+static const BOOL enableTracing = NO || forceTracing;
+static const BOOL enableTracingLog = YES && enableTracing;
+static const BOOL enableCallStacks = NO && enableTracing;
+
 static const BOOL enableRunLoopObserver = NO;
 
 /* Traceability data */
@@ -88,6 +100,54 @@ static atomic_long mainThreadActionId = 0L;
 
 static atomic_uint_least64_t sleepTime = 0LL;
 static atomic_uint_least64_t wakeUpTime = 0LL;
+
+bool _getTime_nanos(clockid_t clock_id, atomic_uint_least64_t *nanotime) {
+    struct timespec tp;
+    // Use the given clock:
+    int status = clock_gettime(clock_id, &tp);
+    if (status != 0) {
+        return false;
+    }
+    *nanotime = tp.tv_sec * NANOS_PER_SEC + tp.tv_nsec;
+    return true;
+}
+
+bool _nanoUpTime(atomic_uint_least64_t *nanotime) {
+    // Use a monotonic clock (linearly increasing by each tick)
+    // but not counting the time while sleeping.
+    // NOTE:CLOCK_UPTIME_RAW seems counting more elapsed time
+    // arround sleep/wake-up cycle than CLOCK_PROCESS_CPUTIME_ID (adopted):
+    return _getTime_nanos(CLOCK_PROCESS_CPUTIME_ID, nanotime);
+}
+
+static inline void doLog(JNIEnv* env, const char *formatMsg, ...) {
+    if (forceTracing) {
+        va_list args;
+        va_start(args, formatMsg);
+
+        /* formatted message can be large (stack trace ?) => 16 kb */
+        const int bufSize = 16 * 1024;
+        char buf[bufSize];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+        vsnprintf(buf, bufSize, formatMsg, args);
+#pragma clang diagnostic pop
+        va_end(args);
+
+        atomic_uint_least64_t now;
+        if (false && _nanoUpTime(&now))
+        {
+            NSLog(@"%.5lf %s\n", 1e-9 * now, buf);
+        } else {
+            NSLog(@"%s\n", buf);
+        }
+    } else {
+        va_list args;
+        va_start(args, formatMsg);
+        lwc_plog(env, formatMsg, args);
+        va_end(args);
+    }
+}
 
 
 static inline void attachCurrentThread(void** env) {
@@ -139,12 +199,20 @@ static void setBlockingEventDispatchThread(BOOL value) {
                                            nil];
 }
 
++ (void)setApplicationOwner:(BOOL)owner {
+    isNSApplicationOwner = owner;
+}
+
 + (JNIEnv*)getJNIEnv {
 AWT_ASSERT_APPKIT_THREAD;
-    if (appKitEnv == NULL) {
-        attachCurrentThread((void **)&appKitEnv);
+    if (isNSApplicationOwner) {
+        if (appKitEnv == NULL) {
+            attachCurrentThread((void **)&appKitEnv);
+        }
+        return appKitEnv;
+    } else {
+        return [ThreadUtilities getJNIEnvUncached];
     }
-    return appKitEnv;
 }
 
 + (JNIEnv*)getJNIEnvUncached {
@@ -274,19 +342,68 @@ AWT_ASSERT_APPKIT_THREAD;
     return nil;
 }
 
++ (void)dispatchOnMainThreadAndWait:(void (^)())block {
+    RUN_BLOCK_IF_MAIN(block)
+
+    JNI_COCOA_ENTER()
+
+    if (enableTracingLog) {
+        NSLog(@"dispatchOnMainThreadAndWait:");
+        [ThreadUtilities dumpThreadTraceContext];
+    }
+    void (^blockCopy)(void) = Block_copy(block);
+
+    // SYNCHRONOUS: will wait ...
+    dispatch_sync(dispatch_get_main_queue(), ^() {
+        NSAutoreleasePool *blockpool = [[NSAutoreleasePool alloc] init];
+        @try {
+            [ThreadUtilities invokeBlockCopy:blockCopy];
+        } @catch (NSException *e) {
+            NSLog(@"Apple AWT Cocoa Exception: %@", [e description]);
+            NSLog(@"Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]);
+        } @finally {
+            [blockpool drain];
+        };
+    });
+    JNI_COCOA_EXIT()
+}
+
++ (void)dispatchOnMainThreadLater:(void (^)())block {
+    RUN_BLOCK_IF_MAIN(block)
+
+    JNI_COCOA_ENTER()
+
+    if (enableTracingLog) {
+        NSLog(@"dispatchOnMainThreadLater:");
+        [ThreadUtilities dumpThreadTraceContext];
+    }
+    void (^blockCopy)(void) = Block_copy(block);
+
+    // ASYNCHRONOUS but more immediate than Runloop:
+    dispatch_async(dispatch_get_main_queue(), ^() {
+        NSAutoreleasePool *blockpool = [[NSAutoreleasePool alloc] init];
+        @try {
+            [ThreadUtilities invokeBlockCopy:blockCopy];
+        } @catch (NSException *e) {
+            NSLog(@"Apple AWT Cocoa Exception: %@", [e description]);
+            NSLog(@"Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]);
+        } @finally {
+            [blockpool drain];
+        };
+    });
+    JNI_COCOA_EXIT()
+}
+
 /*
- * macOS internal performOnMainThread(block) use case to perform appkit actions from native code (ASYNC)
- * TODO: rename to performCriticalOnMainThread(block) ?
+ * macOS internal use case to perform appkit actions from native code (ASYNC)
  */
 + (void)performOnMainThreadNowOrLater:(BOOL)useJavaModes
                                 block:(void (^)())block
 {
-    if ([NSThread isMainThread]) { // removed wait check
-        block();
-    } else {
-        [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
-                               waitUntilDone:NO useJavaModes:useJavaModes];
-    }
+    RUN_BLOCK_IF_MAIN(block);
+
+    [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
+                           waitUntilDone:NO useJavaModes:useJavaModes];
 }
 
 /*
@@ -300,18 +417,15 @@ AWT_ASSERT_APPKIT_THREAD;
 
 /*
  * macOS internal performOnMainThread(block) use case to perform appkit actions from native code (ASYNC or SYNC if wait=YES)
- * TODO: rename to performCriticalOnMainThread((BOOL)wait, block) ?
  */
 + (void)performOnMainThreadWaiting:(BOOL)wait
                       useJavaModes:(BOOL)useJavaModes
                              block:(void (^)())block
 {
-    if ([NSThread isMainThread]) { // removed wait check
-        block();
-    } else {
-        [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
-                               waitUntilDone:wait useJavaModes:useJavaModes];
-    }
+    RUN_BLOCK_IF_MAIN(block);
+
+    [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
+                           waitUntilDone:wait useJavaModes:useJavaModes];
 }
 
 /*
@@ -345,25 +459,27 @@ AWT_ASSERT_APPKIT_THREAD;
 {
     const int mtThreshold = getMainThreadLatencyThreshold();
 
-    if (mtThreshold < 0) {
-        NSArray<NSString*> *runLoopModes = (useJavaModes) ? javaModes : allModesExceptJava;
+    if (!forceTracing && (!enableTracing || (mtThreshold < 0))) {
         const BOOL invokeDirect = ([NSThread isMainThread] && wait);
 
         // Fast Path:
         if (invokeDirect) {
             [target performSelector:aSelector withObject:arg];
-        } else if (wait && isEventDispatchThread()) {
-            void (^blockCopy)(void) = Block_copy(^() {
-                setBlockingEventDispatchThread(YES);
-                @try {
-                    [target performSelector:aSelector withObject:arg];
-                } @finally {
-                    setBlockingEventDispatchThread(NO);
-                }
-            });
-            [ThreadUtilities performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:wait modes:runLoopModes];
         } else {
-            [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:runLoopModes];
+            NSArray<NSString*> *runLoopModes = (useJavaModes) ? javaModes : allModesExceptJava;
+            if (wait && isEventDispatchThread()) {
+                void (^blockCopy)(void) = Block_copy(^() {
+                    setBlockingEventDispatchThread(YES);
+                    @try {
+                        [target performSelector:aSelector withObject:arg];
+                    } @finally {
+                        setBlockingEventDispatchThread(NO);
+                    }
+                });
+                [ThreadUtilities performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:wait modes:runLoopModes];
+            } else {
+                [target performSelectorOnMainThread:aSelector withObject:arg waitUntilDone:wait modes:runLoopModes];
+            }
         }
     } else {
         // Slow path:
@@ -387,71 +503,68 @@ AWT_ASSERT_APPKIT_THREAD;
                          waitUntilDone:(BOOL)wait
                           useJavaModes:(BOOL)useJavaModes
 {
+    const BOOL invokeDirect = NSThread.isMainThread && wait;
+    const BOOL doWait = !invokeDirect && wait;
+    const BOOL blockingEDT = doWait && isEventDispatchThread();
+
     // Slow path:
     const int mtThreshold = getMainThreadLatencyThreshold();
+    const bool doTrace = (enableTracing && doWait);
 
     NSArray<NSString*> *runLoopModes = (useJavaModes) ? javaModes : allModesExceptJava;
-    const BOOL invokeDirect = ([NSThread isMainThread] && wait);
 
     // Perform instrumentation on selector:
-    BOOL blockingEDT = NO;
-    if (!invokeDirect && (wait && isEventDispatchThread())) {
-        blockingEDT = YES;
-    }
     /* Increment global main action id */
     long actionId = ++mainThreadActionId;
 
     /* tracing info */
-    JNIEnv* env = NULL;
+    JNIEnv* cenv = NULL;
     ThreadTraceContext* callerCtx = nil;
 
-    if (enableTracing) {
+    if (doTrace) {
         // Get current thread env:
-        env = [ThreadUtilities getJNIEnvUncached];
+        cenv = [ThreadUtilities getJNIEnvUncached];
         char* operation = (invokeDirect ? "now  " : (blockingEDT ? "blocking" : "later"));
 
         // Record thread stack now and return another copy (auto-released):
         callerCtx = [ThreadUtilities recordTraceContext:nil actionId:actionId useJavaModes:useJavaModes operation:operation];
-        [callerCtx retain];
 
         if (enableTracingLog) {
-            lwc_plog(env, "%s performOnMainThread[caller]", toCString([callerCtx description]));
-            if ([callerCtx callStack] != nil) {
-                lwc_plog(env, "%s performOnMainThread[caller]: call stack:\n%s",
-                         [callerCtx identifier], toCString([callerCtx callStack]));
-            }
+            doLog(cenv, "%s performOnMainThread[caller]: %s",
+                  [callerCtx identifier], toCString([callerCtx description]));
         }
-    }
 
-    // will be released in blockCopy() later:
-    [callerCtx retain];
+        // will be released in blockCopy() later:
+        [callerCtx retain];
+    }
 
     void (^blockCopy)(void) = Block_copy(^(){
         AWT_ASSERT_APPKIT_THREAD;
 
-        JNIEnv* runEnv = NULL;
+        JNIEnv* renv = NULL;
         ThreadTraceContext* runCtx = nil;
 
-        if (enableTracing) {
+        if (doTrace) {
             // Get current thread env:
-            runEnv = [ThreadUtilities getJNIEnv];
+            renv = [ThreadUtilities getJNIEnv];
 
             // Record thread stack now and return another copy (auto-released):
             runCtx = [ThreadUtilities recordTraceContext];
 
             if (enableTracingLog) {
                 const double latencyMs = ([runCtx timestamp] - [callerCtx timestamp]) * 1000.0;
-
-                lwc_plog(runEnv, "%s performOnMainThread[blockCopy]: latency = %.5lf ms. Calling: [%s]",
+                doLog(renv, "%s performOnMainThread[blockCopy:before]: latency = %.5lf ms. Calling: [%s]",
                          [callerCtx identifier], latencyMs, aSelector);
+                doLog(renv, "%s performOnMainThread[blockCopy:before]: caller = %s",
+                      [callerCtx identifier], toCString([callerCtx description]));
 
-                if ([runCtx callStack] != nil) {
-                    lwc_plog(runEnv, "%s performOnMainThread[blockCopy]: run stack:\n%s",
+                if (false && [runCtx callStack] != nil) {
+                    doLog(renv, "%s performOnMainThread[blockCopy:before]: run stack:\n%s",
                              [callerCtx identifier], toCString([runCtx callStack]));
                 }
             }
         }
-        const CFTimeInterval start = (enableTracing) ? CACurrentMediaTime() : 0.0;
+        const CFTimeInterval start = (doTrace) ? CACurrentMediaTime() : 0.0;
         @try {
             if (blockingEDT) {
                 setBlockingEventDispatchThread(YES);
@@ -461,12 +574,14 @@ AWT_ASSERT_APPKIT_THREAD;
             if (blockingEDT) {
                 setBlockingEventDispatchThread(NO);
             }
-            if (enableTracing) {
+            if (doTrace) {
                 if (enableTracingLog) {
                     const double elapsedMs = (CACurrentMediaTime() - start) * 1000.0;
-                    if (elapsedMs > mtThreshold) {
-                        lwc_plog(runEnv, "%s performOnMainThread[blockCopy]: time = %.5lf ms. Caller=[%s]",
-                                 [callerCtx identifier], elapsedMs, toCString([callerCtx caller]));
+                    if (doTrace || (elapsedMs > mtThreshold)) {
+                        doLog(renv, "%s performOnMainThread[blockCopy:after]: time = %.5lf ms. Called: [%s]",
+                              [callerCtx identifier], elapsedMs, aSelector);
+                        doLog(renv, "%s performOnMainThread[blockCopy:after]: caller = %s",
+                              [callerCtx identifier], toCString([callerCtx description]));
                     }
                 }
                 [callerCtx release];
@@ -480,20 +595,20 @@ AWT_ASSERT_APPKIT_THREAD;
     if (invokeDirect) {
         [ThreadUtilities invokeBlockCopy:blockCopy];
     } else {
-        if (enableTracingLog) {
-            lwc_plog(env, "%s performOnMainThread[caller]: waiting on MainThread(%s). Caller=[%s] [%s]",
+        if (doTrace && enableTracingLog) {
+            doLog(cenv, "%s performOnMainThread[caller]: waiting on MainThread(%s). Caller=[%s] [%s]",
                      [callerCtx identifier], aSelector, toCString([callerCtx caller]),
                      wait ? "WAIT" : "ASYNC");
         }
 
         [ThreadUtilities performSelectorOnMainThread:@selector(invokeBlockCopy:) withObject:blockCopy waitUntilDone:wait modes:runLoopModes];
 
-        if (enableTracingLog) {
-            lwc_plog(env, "%s performOnMainThread[caller]: finished on MainThread(%s). Caller=[%s] [DONE]",
+        if (doTrace && enableTracingLog) {
+            doLog(cenv, "%s performOnMainThread[caller]: finished on MainThread(%s). Caller=[%s] [DONE]",
                      [callerCtx identifier], aSelector, toCString([callerCtx caller]));
         }
-
-        [callerCtx retain];
+        // Finally reset thread context in context store:
+        [ThreadUtilities resetTraceContext];
     }
 }
 
@@ -512,7 +627,6 @@ AWT_ASSERT_APPKIT_THREAD;
     dispatch_once(&oncePredicate, ^{
         _threadTraceContextPerName = [[NSMutableDictionary alloc] init];
     });
-
     return _threadTraceContextPerName;
 }
 
@@ -560,9 +674,20 @@ AWT_ASSERT_APPKIT_THREAD;
     // Record stack trace:
     NSString *caller = [ThreadUtilities getCaller:prefix];
     NSString *callStack = (enableCallStacks) ? [ThreadUtilities getCallerStack:prefix] : nil;
+    // update recorded thread state:
+    [thCtx set:actionId operation:operation useJavaModes:useJavaModes caller:caller callstack:callStack];
 
     // Record thread stack now and return another copy (auto-released):
-    return [thCtx set:actionId operation:operation useJavaModes:useJavaModes caller:caller callstack:callStack];
+    return [[thCtx copy] autorelease];
+}
+
++ (void)dumpThreadTraceContext {
+    if (enableTracingLog) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        // Record thread stack now and return another copy (auto-released):
+        ThreadTraceContext* thCtx = [ThreadUtilities recordTraceContext];
+        doLog(env, "dumpThreadTraceContext: %s", toCString([thCtx description]));
+    }
 }
 
 + (NSString*)getThreadTraceContexts
@@ -617,7 +742,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
 + (void)_systemOrScreenWillSleep:(NSNotification*)notification {
     atomic_uint_least64_t now;
-    if (nanoUpTime(&now))
+    if (_nanoUpTime(&now))
     {
         // keep most-recent wake-up time (system or display):
         sleepTime = now;
@@ -638,7 +763,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
 + (void)_systemOrScreenDidWake:(NSNotification*)notification {
     atomic_uint_least64_t now;
-    if (nanoUpTime(&now))
+    if (_nanoUpTime(&now))
     {
         // keep most-recent wake-up time (system or display):
         wakeUpTime = now;
@@ -665,7 +790,7 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 + (BOOL)nanoUpTime:(atomic_uint_least64_t*)nanotime {
-    return nanoUpTime(nanotime);
+    return _nanoUpTime(nanotime);
 }
 
 + (BOOL)nowNearTime:(NSString*)src refTime:(atomic_uint_least64_t*)refTime {
@@ -675,7 +800,7 @@ AWT_ASSERT_APPKIT_THREAD;
 bool nowNearTime(const char* src, atomic_uint_least64_t *refTime) {
     if (*refTime != 0LL) {
         atomic_uint_least64_t now;
-        if (nanoUpTime(&now)) {
+        if (_nanoUpTime(&now)) {
             if (now < *refTime) {
                 // should not happen with monotonic clocks, but:
                 now = *refTime;
@@ -690,25 +815,6 @@ bool nowNearTime(const char* src, atomic_uint_least64_t *refTime) {
         }
     }
     return false;
-}
-
-bool nanoUpTime(atomic_uint_least64_t *nanotime) {
-    // Use a monotonic clock (linearly increasing by each tick)
-    // but not counting the time while sleeping.
-    // NOTE:CLOCK_UPTIME_RAW seems counting more elapsed time
-    // arround sleep/wake-up cycle than CLOCK_PROCESS_CPUTIME_ID (adopted):
-    return getTime_nanos(CLOCK_PROCESS_CPUTIME_ID, nanotime);
-}
-
-bool getTime_nanos(clockid_t clock_id, atomic_uint_least64_t *nanotime) {
-    struct timespec tp;
-    // Use the given clock:
-    int status = clock_gettime(clock_id, &tp);
-    if (status != 0) {
-        return false;
-    }
-    *nanotime = tp.tv_sec * NANOS_PER_SEC + tp.tv_nsec;
-    return true;
 }
 
 void dumpClocks() {
@@ -727,7 +833,7 @@ void dumpClocks() {
 void logTime_nanos(clockid_t clock_id) {
     if (TRACE_CLOCKS) {
         atomic_uint_least64_t now;
-        if (getTime_nanos(clock_id, &now)) {
+        if (_getTime_nanos(clock_id, &now)) {
             const char *clock_name;
             switch (clock_id) {
                 case CLOCK_REALTIME:
@@ -866,13 +972,13 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 {
     self = [super init];
     if (self) {
+        self.threadName = [[NSThread currentThread] name];
         [self reset];
     }
     return self;
 }
 
-- (id)copyWithZone:(NSZone *)zone
-{
+- (id)copyWithZone:(NSZone *)zone {
     ThreadTraceContext *newCtx = [[ThreadTraceContext alloc] init];
     if (newCtx) {
         [newCtx setSleep:[self sleep]];
@@ -882,30 +988,25 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
         [newCtx setTimestamp:[self timestamp]];
 
         // shallow copies:
+        [newCtx setThreadName:[self threadName]];
         [newCtx setCaller:[self caller]];
-        [[newCtx caller] retain];
         [newCtx setCallStack:[self callStack]];
-        [[newCtx callStack] retain];
+        return newCtx;
     }
-    return [newCtx autorelease];
+    return nil;
 }
 
-- (void)reset
-{
+- (void)reset {
     self.sleep = NO;
     self.useJavaModes = NO;
     self.actionId = -1;
     self.operation = nil;
     self.timestamp = 0.0;
-    [[self caller] release];
     self.caller = nil;
-    [[self callStack] release];
     self.callStack = nil;
 }
 
 - (void)dealloc {
-    [[self caller] release];
-    [[self callStack] release];
     [super dealloc];
 }
 
@@ -914,36 +1015,28 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
     self.sleep = sleepValue;
 }
 
-- (ThreadTraceContext*)set:(long)  pActionId
-                 operation:(char*) pOperation
-              useJavaModes:(BOOL)  pUseJavaModes
-                    caller:(NSString*) pCaller
-                 callstack:(NSString*) pCallStack
-{
+- (void)set:(long)pActionId operation:(char*) pOperation useJavaModes:(BOOL)  pUseJavaModes
+    caller:(NSString*) pCaller callstack:(NSString*) pCallStack {
     [self updateThreadState:NO];
     self.useJavaModes = pUseJavaModes;
     self.actionId = pActionId;
     self.operation = pOperation;
 
-    [[self caller] release];
     self.caller = pCaller;
-    [[self caller] retain];
-
-    [[self callStack] release];
+    [pCaller release];
     self.callStack = pCallStack;
-    [[self callStack] retain];
-
-    return [self copy];
+    [pCallStack release];
 }
+
 - (const char*)identifier {
-    return toCString([NSString stringWithFormat:@"[%.6lf] ThreadTrace[actionId = %ld](%s)",
-            timestamp, actionId, operation]);
+    return toCString([NSString stringWithFormat:@"[%.6lf '%@' Trace[actionId = %ld](%s)",
+            timestamp, [self threadName], actionId, operation]);
 }
 
 - (NSString *)description {
     // creates autorelease string:
     return [NSString stringWithFormat:@"%s useJavaModes=%d sleep=%d caller=[%@] callStack={\n%@}",
-            [self identifier], useJavaModes, sleep, caller, callStack];
+            [self identifier], useJavaModes, sleep, caller,
+            ([self callStack] == nil) ? @"-" : [self callStack]];
 }
-
 @end

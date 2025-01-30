@@ -166,6 +166,7 @@ final class ScreenMenu extends Menu
         try {
             // check invokeAndWait: OK (operations look not requiring locks or main thread):
             LWCToolkit.invokeAndWait(new Runnable() {
+                @Override
                 public void run() {
                     invoker.setSelected(false);
                     // Null out the tracking rectangles and the array.

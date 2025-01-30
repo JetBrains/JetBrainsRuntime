@@ -123,10 +123,6 @@ final class NamedCursor extends Cursor {
  * Mac OS X Cocoa-based AWT Toolkit.
  */
 public final class LWCToolkit extends LWToolkit {
-
-    // Logger to report issues happened during execution but that do not affect functionality
-    private static final PlatformLogger logger = PlatformLogger.getLogger(LWCToolkit.class.getName());
-
     // While it is possible to enumerate all mouse devices
     // and query them for the number of buttons, the code
     // that does it is rather complex. Instead, we opt for
@@ -249,7 +245,7 @@ public final class LWCToolkit extends LWToolkit {
         }
     });
 
-    private static final PlatformLogger log = logger;
+    private static final PlatformLogger log = PlatformLogger.getLogger(LWCToolkit.class.getName());
 
     @SuppressWarnings("removal")
     public LWCToolkit() {
@@ -263,6 +259,8 @@ public final class LWCToolkit extends LWToolkit {
                        GraphicsEnvironment.isHeadless());
             return null;
         });
+
+        setAwtNativeThreadContextProvider(() -> getThreadTraceContexts());
     }
 
     /*
@@ -748,8 +746,9 @@ public final class LWCToolkit extends LWToolkit {
 
     // Thread-safe Object.equals() called from native
     public static boolean doEquals(final Object a, final Object b, Component c) {
-        if (a == b) return true;
-
+        if (a == b) {
+            return true;
+        }
         final boolean[] ret = new boolean[1];
         try {
             // check invokeAndWait: OK (operations look not requiring locks or main thread):
@@ -764,8 +763,9 @@ public final class LWCToolkit extends LWToolkit {
         } catch (Exception e) {
             log.severe("LWCToolkit.doEquals: exception occurred: ", e);
         }
-
-        synchronized(ret) { return ret[0]; }
+        synchronized(ret) {
+            return ret[0];
+        }
     }
 
     public static <T> T invokeAndWait(final Callable<T> callable,
@@ -819,8 +819,27 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component)
             throws InvocationTargetException
     {
-        invokeAndWait(runnable, component, -1);
+        invokeAndWait(runnable, component, 0.0);
     }
+
+    /* 25.01.25: keep public methods with (int timeoutSeconds) */
+
+    /* IJPL uses direct invocation:
+2025-01-25 15:20:04,333 [   8213]   WARN - #c.i.u.m.s.Menu - can't find sun.lwawt.macosx.LWCToolkit method, screen menu won't be filled
+java.lang.NoSuchMethodException: no such method: sun.lwawt.macosx.LWCToolkit.invokeAndWait(Runnable,Component,boolean,int)void/invokeStatic
+	at java.base/java.lang.invoke.MemberName.makeAccessException(MemberName.java:915)
+	at java.base/java.lang.invoke.MemberName$Factory.resolveOrFail(MemberName.java:994)
+	at java.base/java.lang.invoke.MethodHandles$Lookup.resolveOrFail(MethodHandles.java:3750)
+	at java.base/java.lang.invoke.MethodHandles$Lookup.findStatic(MethodHandles.java:2675)
+	at com.intellij.ui.mac.screenmenu.Menu.getToolkitInvokeMethod(Menu.java:436)
+	at com.intellij.ui.mac.screenmenu.Menu.invokeWithLWCToolkit(Menu.java:470)
+	at com.intellij.ui.mac.screenmenu.Menu.menuNeedsUpdate(Menu.java:313)
+Caused by: java.lang.NoSuchMethodError: 'void sun.lwawt.macosx.LWCToolkit.invokeAndWait(java.lang.Runnable, java.awt.Component, boolean, int)'
+	at java.base/java.lang.invoke.MethodHandleNatives.resolve(Native Method)
+	at java.base/java.lang.invoke.MemberName$Factory.resolve(MemberName.java:962)
+	at java.base/java.lang.invoke.MemberName$Factory.resolveOrFail(MemberName.java:991)
+	... 5 more
+     */
 
     public static void invokeAndWait(Runnable runnable, Component component, int timeoutSeconds)
             throws InvocationTargetException
@@ -829,6 +848,20 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, int timeoutSeconds)
+            throws InvocationTargetException {
+        final double timeout = (timeoutSeconds > 0) ? timeoutSeconds : 0.0;
+        invokeAndWait(runnable, component, false, timeout);
+    }
+
+    /* 25.01.25: added public methods with (double timeoutSeconds) to have timeouts between 0.0 and 1.0 */
+
+    public static void invokeAndWait(Runnable runnable, Component component, double timeoutSeconds)
+            throws InvocationTargetException
+    {
+        invokeAndWait(runnable, component, false, timeoutSeconds);
+    }
+
+    public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, double timeoutSeconds)
             throws InvocationTargetException
     {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -849,6 +882,11 @@ public final class LWCToolkit extends LWToolkit {
             return;
         }
 
+        // LBO: TODO TRACING WAIT !
+        if (false) {
+            log.info("invokeAndWait[{0}] started: {0}",
+                     Thread.currentThread().getName(), runnable);
+        }
         AWTThreading.TrackedInvocationEvent invocationEvent =
             AWTThreading.createAndTrackInvocationEvent(component, runnable, true);
 
@@ -887,10 +925,19 @@ public final class LWCToolkit extends LWToolkit {
             log.fine("invokeAndWait finished: {0}", runnable);
         }
 
+        // LBO: TODO TRACING WAIT !
+        if (false) {
+            log.info("invokeAndWait[{0}] finished: {0}",
+                     Thread.currentThread().getName(), runnable);
+        }
         checkException(invocationEvent);
     }
 
     private static native boolean isBlockingEventDispatchThread();
+
+    static native String getThreadTraceContexts();
+
+    static native boolean isWithinPowerTransition();
 
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {
@@ -1077,13 +1124,13 @@ public final class LWCToolkit extends LWToolkit {
      *                      if false - all events come after exit form the nested loop
      */
     static void doAWTRunLoop(long mediator, boolean processEvents) {
-        doAWTRunLoop(mediator, processEvents, -1);
+        doAWTRunLoop(mediator, processEvents, 0.0);
     }
 
     /**
-     * Starts run-loop with the provided timeout. Use (-1) for the infinite value.
+     * Starts run-loop with the provided timeout. Use (<=0.0) for the infinite value.
      */
-    static boolean doAWTRunLoop(long mediator, boolean processEvents, int timeoutSeconds) {
+    static boolean doAWTRunLoop(long mediator, boolean processEvents, double timeoutSeconds) {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("doAWTRunLoop: enter: mediator: " + mediator + " processEvents: "+ processEvents + " timeoutSeconds: " + timeoutSeconds);
         }
@@ -1095,7 +1142,7 @@ public final class LWCToolkit extends LWToolkit {
             }
         }
     }
-    private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, int timeoutSeconds);
+    private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, double timeoutSeconds);
     static native void stopAWTRunLoop(long mediator);
 
     private native boolean nativeSyncQueue(long timeout);

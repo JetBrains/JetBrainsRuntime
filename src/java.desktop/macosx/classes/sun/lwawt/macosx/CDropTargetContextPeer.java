@@ -32,13 +32,12 @@ import sun.awt.dnd.SunDropTargetContextPeer;
 import sun.awt.dnd.SunDropTargetEvent;
 
 import javax.swing.*;
-
 import sun.util.logging.PlatformLogger;
 
 
 final class CDropTargetContextPeer extends SunDropTargetContextPeer {
-
-    private static final PlatformLogger log = PlatformLogger.getLogger(CDropTargetContextPeer.class.getName());
+    // Logger to report issues happened during execution but that do not affect functionality
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.lwawt.macosx.CDropTargetContextPeer");
 
     private long    fNativeDropTransfer = 0;
     private long    fNativeDataAvailable = 0;
@@ -68,6 +67,11 @@ final class CDropTargetContextPeer extends SunDropTargetContextPeer {
             }
 
             while (format != fNativeDataAvailable) {
+                // LBO: TODO TRACING WAIT !
+                if (false) {
+                    log.info("CDropTargetContextPeer.getNativeData: [{0}] wait...",
+                             Thread.currentThread().getName());
+                }
                 try {
                     awtLockAccess.wait();
                 } catch (Throwable th) {

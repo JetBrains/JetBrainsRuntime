@@ -27,9 +27,13 @@ package sun.lwawt.macosx.concurrent;
 
 import java.util.List;
 import java.util.concurrent.*;
+import sun.util.logging.PlatformLogger;
 
 class LibDispatchSerialQueue extends AbstractExecutorService {
-        static final int RUNNING    = 0;
+    // Logger to report issues happened during execution but that do not affect functionality
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.lwawt.macosx.concurrent.LibDispatchSerialQueue");
+
+    static final int RUNNING    = 0;
     static final int SHUTDOWN   = 1;
 //  static final int STOP       = 2; // not supported by GCD
     static final int TERMINATED = 3;
@@ -89,6 +93,11 @@ class LibDispatchSerialQueue extends AbstractExecutorService {
                 final long millis = unit.toMillis(timeout);
                 if (millis <= 0) return false;
 
+                // LBO: TODO TRACING WAIT !
+                if (false) {
+                    log.info("LibDispatchSerialQueue.awaitTermination: [{0}] wait with timeout = {1}...",
+                             Thread.currentThread().getName(), timeout);
+                }
                 synchronized (lock) {
                         if (runState == TERMINATED) return true;
                         lock.wait(timeout);

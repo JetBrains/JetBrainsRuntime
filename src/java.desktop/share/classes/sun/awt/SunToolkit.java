@@ -93,6 +93,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
+
 import jdk.internal.misc.InnocuousThread;
 import sun.awt.im.InputContext;
 import sun.awt.image.ByteArrayImageSource;
@@ -101,7 +103,6 @@ import sun.awt.image.ImageRepresentation;
 import sun.awt.image.MultiResolutionToolkitImage;
 import sun.awt.image.ToolkitImage;
 import sun.awt.image.URLImageSource;
-import sun.awt.util.PerformanceLogger;
 import sun.font.FontDesignMetrics;
 import sun.java2d.marlin.stats.Histogram;
 import sun.java2d.marlin.stats.StatLong;
@@ -123,6 +124,7 @@ public abstract class SunToolkit extends Toolkit
 
     // 8014718: logging has been removed from SunToolkit
 
+    /* LBO: logger is back (to be discussed) */
     static final PlatformLogger log = PlatformLogger.getLogger(SunToolkit.class.getName());
 
     /* Load debug settings for native code */
@@ -570,7 +572,14 @@ public abstract class SunToolkit extends Toolkit
                         traceRawLine("Current AWT_LOCK owner: ", getThreadInfo(AWT_LOCK.getPrivateOwnerThread()),
                                 " at ", descr.frame, " for ", SCALE * elapsed, " ms");
                     }
-                    // TODO: get appkit stack :
+
+                    final String nativeThreadContexts = getThreadTraceContexts();
+                    if (nativeThreadContexts != null) {
+                        traceRawLine("=========================");
+
+                        traceRawLine("- Native Threads State: ");
+                        traceRawLine(getThreadTraceContexts());
+                    }
                     traceRawLine("=========================");
 
                     // Show all awt lock threads:
@@ -653,11 +662,8 @@ public abstract class SunToolkit extends Toolkit
     }
 
     public SunToolkit() {
-        if (PerformanceLogger.loggingEnabled()) {
-            PerformanceLogger.setTime("XToolkit construction");
-        }
-
-        if (Tracer.tracingEnabled()) {
+        // LBO: TODO: check intialization of AWT lock listener with XTooolkit
+        if (false && Tracer.tracingEnabled()) {
             addAwtLockListener(new Tracer.AwtLockTracer());
         }
     }
@@ -742,6 +748,22 @@ public abstract class SunToolkit extends Toolkit
 
     private static Map<Thread, String> awtLockThreads = null;
 
+    private static Supplier<String> awtNativeThreadContextProvider = null;
+
+    protected static Supplier<String> getAwtNativeThreadContextProvider() {
+        return awtNativeThreadContextProvider;
+    }
+
+    protected static void setAwtNativeThreadContextProvider(Supplier<String> awtNativeThreadContextProvider) {
+        SunToolkit.awtNativeThreadContextProvider = awtNativeThreadContextProvider;
+
+        log.info("setAwtNativeThreadContextProvider: {0}", awtNativeThreadContextProvider);
+    }
+
+    private static String getThreadTraceContexts() {
+        return (awtNativeThreadContextProvider != null) ? awtNativeThreadContextProvider.get() : null;
+    }
+
     protected static synchronized void addAwtLockListener(AwtLockListener l) {
         if (awtLockListeners == null) {
             // no synchronization needed:
@@ -760,13 +782,13 @@ public abstract class SunToolkit extends Toolkit
         return list;
     }
 
-    public static final void registerAwtLockThread(Thread t) {
+    public static void registerAwtLockThread(Thread t) {
         if ((awtLockThreads != null) && (t != null)) {
             awtLockThreads.putIfAbsent(t, t.getName());
         }
     }
 
-    public static final void awtLock() {
+    public static void awtLock() {
         if (awtLockThreads != null) {
             // Always register thread:
             registerAwtLockThread(Thread.currentThread());
@@ -776,7 +798,7 @@ public abstract class SunToolkit extends Toolkit
             return;
         }
         // Special reentrancy checks to avoid deadlocks:
-        if (true) {
+        if (false) {
             final Thread owner = AWT_LOCK.getPrivateOwnerThread();
             if (owner != null) {
                 if (owner.getState() != Thread.State.RUNNABLE) {
@@ -799,10 +821,14 @@ public abstract class SunToolkit extends Toolkit
         // measure waiting time if needed:
         final long start = (awtLockListeners != null) ? System.nanoTime() : 0L;
 
+        // LBO: TODO TRACING WAIT !
+        if (false) {
+            PlatformLogger.getLogger(SunToolkit.class.getName())
+                    .info("awtLock(): [{0}] wait on AWT_LOCK.", Thread.currentThread().getName());
+        }
         // lock() may block current thread = wait:
         AWT_LOCK.lock();
-        // AWT_LOCK owned by one thread
-
+        // AWT_LOCK owned by the current thread
         if (awtLockListeners != null) {
             final long elapsed = System.nanoTime() - start;
             if (false) {
@@ -812,9 +838,9 @@ public abstract class SunToolkit extends Toolkit
         }
     }
 
-    public static final boolean awtTryLock() {
+    public static boolean awtTryLock() {
         try {
-            final boolean acquired = AWT_LOCK.tryLock(0, TimeUnit.NANOSECONDS);
+            final boolean acquired = AWT_LOCK.tryLock(0L, TimeUnit.NANOSECONDS);
             if (acquired && (awtLockListeners != null)) {
                 awtLockListeners.forEach(l -> l.afterAwtLocked(-1));
             }
@@ -2773,7 +2799,7 @@ class PostEventQueue {
                 }
             }
         } catch (InterruptedException ie) {
-            log.fine("SunToolkit.PostEventQueue.flush: interrupted");
+            SunToolkit.log.fine("SunToolkit.PostEventQueue.flush: interrupted");
             // Couldn't allow exception go up, so at least recover the flag
             newThread.interrupt();
         }

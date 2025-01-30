@@ -47,6 +47,10 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
 
     private static final PlatformLogger log = PlatformLogger.getLogger(LWToolkit.class.getName());
 
+    /* TODO: use a system property */
+    private static final boolean PAUSE_AT_AWT_STARTUP = false;
+    private static final long AWT_STARTUP_DELAY = 5 * 1000L;
+
     private static final int STATE_NONE = 0;
     private static final int STATE_INIT = 1;
     private static final int STATE_MESSAGELOOP = 2;
@@ -65,6 +69,15 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     private volatile boolean dynamicLayoutSetting = true;
 
     protected LWToolkit() {
+        if (PAUSE_AT_AWT_STARTUP) {
+            log.warning("LWToolkit(): pause at startup for " + (1e-3 * AWT_STARTUP_DELAY) + " s...");
+            try {
+                Thread.sleep(AWT_STARTUP_DELAY);
+            } catch (Throwable th) {
+                log.severe("LWToolkit(): sleep failure", th);
+            }
+            log.warning("LWToolkit(): pause done, starting AWT...");
+        }
     }
 
     /*
@@ -150,22 +163,33 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     private void waitForRunState(int state) {
         while (getRunState() < state) {
             try {
+                // LBO: TODO TRACING WAIT !
+                if (false) {
+                    log.info("LWToolkit.waitForRunState: [{0}] wait on state = {1}...",
+                             Thread.currentThread().getName(), state);
+                }
                 synchronized (this) {
                     wait();
                 }
             } catch (InterruptedException ie) {
-                log.fine("LWToolkit.run: interrupted");
+                log.fine("LWToolkit.waitForRunState: interrupted");
                 break;
             }
+        }
+        // LBO: TODO TRACING WAIT !
+        if (false) {
+            log.info("LWToolkit.waitForRunState: done");
         }
     }
 
     @Override
     public final void run() {
+        log.fine("LWToolkit.run: start");
         setRunState(STATE_INIT);
         platformInit();
         AWTAutoShutdown.notifyToolkitThreadFree();
         setRunState(STATE_MESSAGELOOP);
+        log.fine("LWToolkit.run: wait for shutdown...");
         while (getRunState() < STATE_SHUTDOWN) {
             try {
                 platformRunMessage();
@@ -178,11 +202,13 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
                 log.severe("LWToolkit.run: failure", th);
             }
         }
+        log.fine("LWToolkit.run: cleanup...");
         //XXX: if that's a secondary loop, jump back to the STATE_MESSAGELOOP
         setRunState(STATE_CLEANUP);
         AWTAutoShutdown.notifyToolkitThreadFree();
         platformCleanup();
         setRunState(STATE_DONE);
+        log.fine("LWToolkit.run: done.");
     }
 
     /*

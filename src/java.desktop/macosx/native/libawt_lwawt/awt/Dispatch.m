@@ -61,6 +61,12 @@ JNIEXPORT jlong JNICALL Java_sun_lwawt_macosx_concurrent_LibDispatchNative_nativ
 (JNIEnv *env, jclass clazz)
 {
         dispatch_queue_t queue = dispatch_get_main_queue();
+
+        // LBO: TODO TRACING WAIT !
+        if (0) {
+            NSLog(@"LibDispatchNative_nativeGetMainQueue: called:");
+            [ThreadUtilities dumpThreadTraceContext];
+        }
         return ptr_to_jlong(queue);
 }
 
@@ -120,6 +126,10 @@ JNI_COCOA_ENTER(env);
         dispatch_queue_t queue = (dispatch_queue_t)jlong_to_ptr(nativeQueue);
         if (queue == NULL) return; // shouldn't happen
 
+        // LBO: TODO TRACING WAIT !
+        if (0) {
+            NSLog(@"Dispatch.perform_dispatch: calling runnable:%p ", runnable);
+        }
         // create a global-ref around the Runnable, so it can be safely passed to the dispatch thread
         jobject runnableRef = (*env)->NewGlobalRef(env, runnable);
         dispatch_fxn(queue, ^{

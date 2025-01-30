@@ -128,47 +128,24 @@ do {                                  \
 // --------------------------------------------------------------------------
 
 @interface ThreadTraceContext : NSObject <NSCopying>
+    @property (readwrite, atomic) BOOL sleep;
+    @property (readwrite, atomic) BOOL useJavaModes;
+    @property (readwrite, atomic) long actionId;
+    @property (readwrite, atomic) char* operation;
+    @property (readwrite, atomic) CFTimeInterval timestamp;
+    @property (readwrite, atomic, retain) NSString* threadName;
+    @property (readwrite, atomic, retain) NSString* caller;
+    @property (readwrite, atomic, retain) NSString* callStack;
 
-@property (readwrite, atomic) BOOL sleep;
-@property (readwrite, atomic) BOOL useJavaModes;
-@property (readwrite, atomic) long actionId;
-@property (readwrite, atomic) char* operation;
-@property (readwrite, atomic) CFTimeInterval timestamp;
-@property (readwrite, atomic, retain) NSString* caller;
-@property (readwrite, atomic, retain) NSString* callStack;
+    /* autorelease in init and copy */
+    - (id)init;
+    - (void)reset;
+    - (void)updateThreadState:(BOOL)sleepValue;
 
-/* autorelease in init and copy */
-- (id)init;
-- (void)reset;
-- (void)updateThreadState:(BOOL)sleepValue;
+    - (void)set:(long)pActionId operation:(char*)pOperation useJavaModes:(BOOL)pUseJavaModes
+                caller:(NSString *)pCaller callstack:(NSString *)pCallStack;
 
-- (id)set:(long)pActionId operation:(char*)pOperation useJavaModes:(BOOL)pUseJavaModes
-            caller:(NSString *)pCaller callstack:(NSString *)pCallStack;
-
-- (const char*)identifier;
-@end
-
-
-__attribute__((visibility("default")))
-@interface ThreadTraceContext : NSObject <NSCopying>
-
-@property (readwrite, atomic) BOOL sleep;
-@property (readwrite, atomic) BOOL useJavaModes;
-@property (readwrite, atomic) long actionId;
-@property (readwrite, atomic) char* operation;
-@property (readwrite, atomic) CFTimeInterval timestamp;
-@property (readwrite, atomic, retain) NSString* caller;
-@property (readwrite, atomic, retain) NSString* callStack;
-
-/* autorelease in init and copy */
-- (id)init;
-- (void)reset;
-- (void)updateThreadState:(BOOL)sleepValue;
-
-- (id)set:(long)pActionId operation:(char*)pOperation useJavaModes:(BOOL)pUseJavaModes
-            caller:(NSString *)pCaller callstack:(NSString *)pCallStack;
-
-- (const char*)identifier;
+    - (const char*)identifier;
 @end
 
 
@@ -186,6 +163,7 @@ __attribute__((visibility("default")))
 + (JNIEnv*)getJNIEnvUncached;
 + (void)detachCurrentThread;
 + (void)setAppkitThreadGroup:(jobject)group;
++ (void)setApplicationOwner:(BOOL)owner;
 
 + (void)performOnMainThreadWaiting:(BOOL)wait block:(void (^)())block;
 + (void)performOnMainThread:(SEL)aSelector on:(id)target withObject:(id)arg waitUntilDone:(BOOL)wait;
@@ -194,6 +172,9 @@ __attribute__((visibility("default")))
 + (void)performOnMainThreadNowOrLater:(BOOL)useJavaModes block:(void (^)())block;
 + (void)performOnMainThreadWaiting:(BOOL)wait useJavaModes:(BOOL)useJavaModes block:(void (^)())block;
 + (void)performOnMainThread:(SEL)aSelector on:(id)target withObject:(id)arg waitUntilDone:(BOOL)wait useJavaModes:(BOOL)useJavaModes;
+
++ (void)dispatchOnMainThreadAndWait:(void (^)())block;
++ (void)dispatchOnMainThreadLater:(void (^)())block;
 
 + (NSString*)criticalRunLoopMode;
 + (NSString*)javaRunLoopMode;
@@ -205,6 +186,8 @@ __attribute__((visibility("default")))
 + (ThreadTraceContext*)recordTraceContext;
 + (ThreadTraceContext*)recordTraceContext:(NSString*)prefix;
 + (ThreadTraceContext*)recordTraceContext:(NSString*)prefix actionId:(long)actionId useJavaModes:(BOOL)useJavaModes operation:(char*) operation;
+
++ (void)dumpThreadTraceContext;
 
 + (NSString*)getThreadTraceContexts;
 

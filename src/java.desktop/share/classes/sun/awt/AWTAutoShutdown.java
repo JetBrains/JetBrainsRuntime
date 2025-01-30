@@ -312,7 +312,7 @@ public final class AWTAutoShutdown implements Runnable {
                         mainLock.wait(SAFETY_TIMEOUT);
                     }
                 }
-            } catch (InterruptedException e) {
+            } catch (InterruptedException ie) {
                 log.fine("AWTAutoShutdown.run: interrupted", ie);
                 interrupted = true;
             } finally {

@@ -304,6 +304,11 @@ public abstract class Component implements ImageObserver, MenuContainer,
     Color       background;
 
     /**
+     * Private Color snapshot if the background Color class is not the base Color class
+     */
+    private Color backgroundSnapshot;
+
+    /**
      * The font used by this component.
      * The {@code font} can be {@code null}.
      *
@@ -1893,31 +1898,63 @@ public abstract class Component implements ImageObserver, MenuContainer,
     }
 
     /**
-     * Sets the background color of this component.
-     * <p>
-     * The background color affects each component differently and the
-     * parts of the component that are affected by the background color
-     * may differ between operating systems.
-     *
-     * @param c the color to become this component's color;
-     *          if this parameter is {@code null}, then this
-     *          component will inherit the background color of its parent
-     * @see #getBackground
-     * @since 1.0
+     * Gets the background Color instance of this component.
+     * @return this component's background color as Color class; if this component does
+     *          not have a background color,
+     *          the background color of its parent is returned
+     * @see #setBackground
+     * @since 25.0
      */
+    @Transient
+    public Color getBackgroundSnapshot() {
+        Color backgroundSnapshot = this.backgroundSnapshot;
+        if (backgroundSnapshot != null) {
+            return backgroundSnapshot;
+        }
+        Container parent = this.parent;
+        return (parent != null) ? parent.getBackgroundSnapshot() : null;
+    }
+
+        /**
+         * Sets the background color of this component.
+         * <p>
+         * The background color affects each component differently and the
+         * parts of the component that are affected by the background color
+         * may differ between operating systems.
+         *
+         * @param c the color to become this component's color;
+         *          if this parameter is {@code null}, then this
+         *          component will inherit the background color of its parent
+         * @see #getBackground
+         * @since 1.0
+         */
     public void setBackground(Color c) {
-        Color oldColor = background;
+        Color oldColor = backgroundSnapshot;
         ComponentPeer peer = this.peer;
         background = c;
+        backgroundSnapshot = ((c == null) || (c.getClass() == Color.class)) ? c : new Color(c.getRGB());
+
+        // System.out.println("Component.setBackground: bgColor=" + getColorInfo(background) + " vs oldBg=" + getColorInfo(oldColor));
+        c = backgroundSnapshot;
+
         if (peer != null) {
-            c = getBackground();
+            c = getBackgroundSnapshot();
             if (c != null) {
+                // System.out.println("Peer.setBackground: bgColor=" + getColorInfo(c) + " on " + peer);
                 peer.setBackground(c);
             }
+        } else {
+            c = backgroundSnapshot;
         }
+        // System.out.println("Component.setBackground: firePropertyChange oldColor=" + getColorInfo(oldColor) + " vs newColor=" + getColorInfo(c));
         // This is a bound property, so report the change to
         // any registered listeners.  (Cheap if there are none.)
         firePropertyChange("background", oldColor, c);
+    }
+
+    private static String getColorInfo(Color c) {
+        return (c == null) ? "Color[NULL]"
+                : c.getClass().getName() + "@" + System.identityHashCode(c) + "[" + c.getRGB() + "]";
     }
 
     /**

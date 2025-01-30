@@ -389,6 +389,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 - (void) display {
     AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_display() called");
+
+    if (0) {
+        NSString *callStack = [ThreadUtilities getCallerStack:nil];
+        NSLog(@"display: %@", callStack);
+    }
+
     [self blitCallback];
     [super display];
 }
@@ -405,14 +411,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 - (void)startRedraw {
     if (isDisplaySyncEnabled()) {
         if (self.ctx != nil) {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
-                                                     block:^(){
+            [ThreadUtilities dispatchOnMainThreadLater:^(){
                 [self.ctx startRedraw:self];
             }];
         }
     } else {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
-                                                     block:^(){
+            [ThreadUtilities dispatchOnMainThreadLater:^(){
             [self setNeedsDisplay];
         }];
     }
@@ -430,8 +434,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             self.redrawCount = 0;
         }
         if (mtlc != nil) {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
-                                                     block:^(){
+            [ThreadUtilities dispatchOnMainThreadLater:^(){
                 [mtlc stopRedraw:displayID layer:self];
             }];
         }
@@ -473,8 +476,11 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                     J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_commitCommandBuffer: CompletedHandler", CACurrentMediaTime());
                 }
                 // Ensure layer will be redrawn asap to display new content:
-                [ThreadUtilities performOnMainThread:@selector(startRedrawIfNeeded) on:self withObject:nil
-                                       waitUntilDone:NO useJavaModes:NO]; // critical
+                [self retain];
+                [ThreadUtilities dispatchOnMainThreadLater:^(){
+                    [self startRedrawIfNeeded];
+                    [self release];
+                }];
             }
             [self release];
         }];
@@ -622,6 +628,7 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
     // this method where we need to change native texture size and layer's scale
     // in one call on appkit, otherwise we'll get window's contents blinking,
     // during screen-2-screen moving.
+
     // Ensure main thread changes the MTLLayer instance later:
     [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
                                              block:^(){

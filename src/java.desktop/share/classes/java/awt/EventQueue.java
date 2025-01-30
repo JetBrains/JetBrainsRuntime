@@ -1369,6 +1369,11 @@ public class EventQueue {
         synchronized (lock) {
             Toolkit.getEventQueue().postEvent(event);
             while (!event.isDispatched()) {
+                // LBO: TODO TRACING WAIT !
+                if (false) {
+                    getEventLog().info("EventQueue.invokeAndWait: [{0}] wait on event = {1}",
+                         Thread.currentThread().getName(), event);
+                 }
                 lock.wait();
             }
         }

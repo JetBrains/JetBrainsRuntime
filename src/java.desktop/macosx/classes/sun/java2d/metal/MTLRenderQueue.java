@@ -132,7 +132,7 @@ public class MTLRenderQueue extends RenderQueue {
         }
     }
 
-    public synchronized void flushAndInvokeNow(Runnable r) {
+    public void flushAndInvokeNow(Runnable r) {
         // assert lock.isHeldByCurrentThread();
         try {
             flusher.flushAndInvokeNow(r);
@@ -180,6 +180,11 @@ public class MTLRenderQueue extends RenderQueue {
 
             // wait for flush to complete
             while (needsFlush) {
+                // LBO: TODO TRACING WAIT !
+                if (false) {
+                    logger.info("QueueFlusher.flushNow: [{0}] wait...",
+                                Thread.currentThread().getName());
+                }
                 try {
                     wait();
                 } catch (InterruptedException e) {
@@ -209,6 +214,10 @@ public class MTLRenderQueue extends RenderQueue {
                          * or the timeout period elapses (so that we can
                          * flush the queue periodically).
                          */
+                        // LBO: TODO TRACING WAIT !
+                        if (false) {
+                            logger.info("QueueFlusher.run: wait 100ms.");
+                        }
                         wait(100);
                         /*
                          * We will automatically flush the queue if the

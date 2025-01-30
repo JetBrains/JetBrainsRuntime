@@ -147,8 +147,8 @@ public class CImage extends CFRetainedResource {
 
                 try {
                     mt.waitForID(id);
-                } catch (InterruptedException e) {
-                    log.fine("CImage.Creator.imageToArray: failure", iae);
+                } catch (InterruptedException ie) {
+                    log.fine("CImage.Creator.imageToArray: failure", ie);
                     return null;
                 }
 
