@@ -38,6 +38,8 @@ import jdk.internal.misc.Blocker;
 import jdk.internal.util.ArraysSupport;
 import sun.nio.ch.FileChannelImpl;
 
+import static com.sun.IoOverNio.DEBUG;
+
 /**
  * A {@code FileInputStream} obtains input bytes
  * from a file in a file system. What files
@@ -178,7 +180,7 @@ public class FileInputStream extends InputStream
                     fd = new FileDescriptor();
                 }
             } catch (IOException e) {
-                if (IoOverNioFileSystem.DEBUG) {
+                if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't create a FileInputStream for %s with %s", file, nioFs), e)
                             .printStackTrace(System.err);
                 }
@@ -190,6 +192,9 @@ public class FileInputStream extends InputStream
             fd.attach(this);
             open(name);
             FileCleanable.register(fd);       // open set the fd, register the cleanup
+        }
+        if (DEBUG.writeTraces()) {
+            System.err.printf("Created a FileInputStream for %s%n", file);
         }
     }
 

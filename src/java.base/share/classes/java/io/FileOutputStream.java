@@ -37,6 +37,7 @@ import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.misc.Blocker;
 import sun.nio.ch.FileChannelImpl;
+import static com.sun.IoOverNio.DEBUG;
 
 
 /**
@@ -258,7 +259,7 @@ public class FileOutputStream extends OutputStream
                     fd = new FileDescriptor();
                 }
             } catch (IOException e) {
-                if (IoOverNioFileSystem.DEBUG) {
+                if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't create a FileOutputStream for %s with %s", file, nioFs), e)
                             .printStackTrace(System.err);
                 }
@@ -270,6 +271,9 @@ public class FileOutputStream extends OutputStream
             fd.attach(this);
             open(name, append);
             FileCleanable.register(fd);   // open sets the fd, register the cleanup
+        }
+        if (DEBUG.writeTraces()) {
+            System.err.printf("Created a FileOutputStream for %s%n", file);
         }
     }
 
