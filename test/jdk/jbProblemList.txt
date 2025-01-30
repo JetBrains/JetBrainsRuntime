@@ -1447,7 +1447,7 @@ jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-5828 windows-all
 jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5345 windows-x64
 jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-6914 windows-all
-jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5345 windows-x64
+jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5345 windows-all
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5345 windows-x64
 sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5510,JBR-6285 linux-all
 sun/java2d/ClassCastExceptionForInvalidSurface.java JBR-6022 linux-5.18.2-arch1-1
