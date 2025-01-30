@@ -262,6 +262,7 @@ java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java 7019055,8266245 windo
 java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java 7188711,8253184 linux-all,windows-all
 java/awt/FullScreen/UninitializedDisplayModeChangeTest/UninitializedDisplayModeChangeTest.java 7188711,8273617,JBR-4880,8253184 macosx-all,linux-all,windows-all
 java/awt/Focus/8013611/JDK8013611.java 8175366 windows-all,macosx-all
+java/awt/Focus/6401036/InputVerifierTest2.java JBR-7537 linux-all
 java/awt/Focus/6981400/Test1.java 8029675,JBR-5510 windows-all,macosx-all,linux-5.18.2-arch1-1
 java/awt/Focus/6981400/Test3.java 8173264 generic-all
 java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java JBR-4997,JBR-5729 windows-all,linux-all
@@ -1084,6 +1085,7 @@ javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java  8277816,JBR-
 javax/swing/JInternalFrame/8020708/bug8020708.java JBR-4879 windows-all
 javax/swing/JInternalFrame/8069348/bug8069348.java 8277816,8253184,JBR-900 macosx-aarch64,windows-all,linux-all
 javax/swing/JInternalFrame/InternalFrameBorderTest.java#id0 JBR-5799 windows-all
+javax/swing/reliability/HangDuringStaticInitialization.java JBR-6958,JBR-8145 windows-aarch64,windows-x64
 javax/swing/reliability/TaskUndJFrameProperties.java JBR-6586 windows-x64
 javax/swing/SwingUtilities/7088744/bug7088744.java 8197552 windows-all
 javax/swing/ToolTipManager/Test6256140.java 8197552 windows-all
