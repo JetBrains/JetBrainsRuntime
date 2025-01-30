@@ -39,6 +39,9 @@
 // keyboard layout
 static NSString *kbdLayout;
 
+// Constant for keyman layouts
+#define KEYMAN_LAYOUT "keyman"
+
 @interface AWTView()
 @property (retain) CDropTarget *_dropTarget;
 @property (retain) CDragSource *_dragSource;
@@ -281,7 +284,7 @@ static BOOL shouldUsePressAndHold() {
 
 - (void) keyDown: (NSEvent *)event {
     fProcessingKeystroke = YES;
-    fKeyEventsNeeded = YES;
+    fKeyEventsNeeded = ![(NSString *)kbdLayout containsString:@KEYMAN_LAYOUT];
 
     // Allow TSM to look at the event and potentially send back NSTextInputClient messages.
     [self interpretKeyEvents:[NSArray arrayWithObject:event]];
@@ -989,7 +992,7 @@ static jclass jc_CInputMethod = NULL;
 
     if ((utf16Length > 2) ||
         ((utf8Length > 1) && [self isCodePointInUnicodeBlockNeedingIMEvent:codePoint]) ||
-        ((codePoint == 0x5c) && ([(NSString *)kbdLayout containsString:@"Kotoeri"]))) {
+        [(NSString *)kbdLayout containsString:@KEYMAN_LAYOUT]) {
         aStringIsComplex = YES;
     }
 
