@@ -1230,6 +1230,7 @@ jdk_swing_wayland= \
     -javax/swing/JPopupMenu/bug5091257.java \
     -javax/swing/JPopupMenu/JPopupMenuFocusStealTest.java \
     -javax/swing/JPopupMenu/MouseDragPopupTest.java \
+    -javax/swing/JPopupMenu/NestedFocusablePopupTest.java \
     -javax/swing/JPopupMenu/SetInvokerJPopupMenuTest.java \
     -javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java \
     -javax/swing/JRadioButton/8033699/bug8033699.java \
