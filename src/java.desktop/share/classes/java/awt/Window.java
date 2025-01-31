@@ -3904,9 +3904,7 @@ public class Window extends Container implements Accessible {
     @Override
     public void setBackground(Color bgColor) {
         final Color oldBg = getBackgroundSnapshot();
-        // System.out.println("Window.setBackground: bgColor=" + getColorInfo(bgColor) + " vs oldBg=" + getColorInfo(oldBg));
         super.setBackground(bgColor);
-
         if ((oldBg != null) && oldBg.equals(bgColor)) {
             return;
         }
@@ -3935,11 +3933,6 @@ public class Window extends Container implements Accessible {
         if (peer != null) {
             peer.setOpaque(alpha == 255);
         }
-    }
-
-    private static String getColorInfo(Color c) {
-        return (c == null) ? "Color[NULL]"
-                : c.getClass().getName() + "@" + System.identityHashCode(c) + "[" + c.getRGB() + "]";
     }
 
     /**

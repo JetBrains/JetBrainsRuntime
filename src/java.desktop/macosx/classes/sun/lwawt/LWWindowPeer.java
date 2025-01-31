@@ -289,7 +289,6 @@ public class LWWindowPeer
     @Override
     public void setBackground(final Color c) {
         Color oldBg = getBackground();
-        // System.out.println("LWWindowPeer.setBackground: oldBg=" + oldBg + " new=" + c);
         if (Objects.equals(oldBg, c)) {
             return;
         }
@@ -511,7 +510,7 @@ public class LWWindowPeer
 
     @Override
     public void updateWindow() {
-
+// TODO: move elsewhere
         if (true) {
             // check window color vs peer:
             Color winBg = getTarget().getBackground(); // may not be Color class

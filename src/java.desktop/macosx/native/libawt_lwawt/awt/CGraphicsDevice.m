@@ -156,6 +156,9 @@ void dumpDisplayInfo(jint displayID)
 }
 
 static BOOL isValidDisplayMode(CGDisplayModeRef mode) {
+    if (!CGDisplayModeIsUsableForDesktopGUI(mode)) {
+        return NO;
+    }
     // Workaround for apple bug FB13261205, since it only affects arm based macs
     // and arm support started with macOS 11 ignore the workaround for previous versions
     if (@available(macOS 11, *)) {
@@ -169,9 +172,21 @@ static BOOL isValidDisplayMode(CGDisplayModeRef mode) {
     return (1 < CGDisplayModeGetWidth(mode) && 1 < CGDisplayModeGetHeight(mode));
 }
 
-static CFMutableArrayRef getAllValidDisplayModes(jint displayID){
+static CFDictionaryRef getDisplayModesOptions() {
+    static CFDictionaryRef options = NULL;
+    if (options == NULL) {
+        CFStringRef keys[1] = { kCGDisplayShowDuplicateLowResolutionModes };
+        CFBooleanRef values[1] = { kCFBooleanTrue };
+        options = CFDictionaryCreate(kCFAllocatorDefault, (const void**) keys, (const void**) values, 1,
+                                     &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks );
+    }
+    return options;
+}
+
+static CFMutableArrayRef getAllValidDisplayModes(jint displayID) {
+    // Use the options dictionnary to get low resolution modes (scaled):
     // CGDisplayCopyAllDisplayModes can return NULL if displayID is invalid
-    CFArrayRef allModes = CGDisplayCopyAllDisplayModes(displayID, NULL);
+    CFArrayRef allModes = CGDisplayCopyAllDisplayModes(displayID, getDisplayModesOptions());
     CFMutableArrayRef validModes = NULL;
     if (allModes != NULL) {
         CFIndex numModes = CFArrayGetCount(allModes);
@@ -181,6 +196,11 @@ static CFMutableArrayRef getAllValidDisplayModes(jint displayID){
         for (n=0; n < numModes; n++) {
             CGDisplayModeRef cRef = (CGDisplayModeRef) CFArrayGetValueAtIndex(allModes, n);
             if ((cRef != NULL) && isValidDisplayMode(cRef)) {
+                if (TRACE_DISPLAY_CHANGE_CONF) {
+                    NSLog(@"getAllValidDisplayModes[%d]: w=%d, h=%d, freq=%.2lf hz", displayID,
+                          (int)CGDisplayModeGetWidth(cRef), (int)CGDisplayModeGetHeight(cRef),
+                          CGDisplayModeGetRefreshRate(cRef));
+                }
                 CFArrayAppendValue(validModes, cRef);
             }
         }
@@ -421,7 +441,7 @@ JNI_COCOA_ENTER(env);
         [configureDisplayLock lock];
 
         if (TRACE_DISPLAY_CHANGE_CONF) {
-            NSLog(@"nativeSetDisplayMode: displayID: %d w:%d h:%d refrate:%d", displayID, w, h, refrate);
+            NSLog(@"nativeSetDisplayMode: displayID: %d w:%d h:%d bpp: %d refrate:%d", displayID, w, h, bpp, refrate);
         }
         CFArrayRef allModes = getAllValidDisplayModes(displayID);
         CGDisplayModeRef closestMatch = getBestModeForParameters(allModes, (int)w, (int)h, (int)bpp, (int)refrate);

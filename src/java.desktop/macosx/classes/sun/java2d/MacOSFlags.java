@@ -168,8 +168,11 @@ public class MacOSFlags {
     }
 
     public static boolean isMetalDisplaySyncEnabled() {
+        // LBO: hack to force calling updateWindow()
+        // to force Window background consistency check (mutable getRGB vs peer)
         if (true) {
-            return false; // LBO: hack
+            return false;
+
         }
         return metalDisplaySyncEnabled;
     }

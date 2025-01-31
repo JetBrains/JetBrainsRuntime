@@ -332,6 +332,8 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     void initializeImpl() {
         // note that these methods can be overridden by the user and
         // can return some strange values like null.
+
+        // TODO: use AWT accessor
         setBackground(target.getBackgroundSnapshot());
         setForeground(target.getForeground());
         setFont(target.getFont());

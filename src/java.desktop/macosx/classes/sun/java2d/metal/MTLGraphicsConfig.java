@@ -92,12 +92,8 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
      */
     private static native int nativeGetMaxTextureSize();
 
-    private static final boolean DO_DIRECT = true;
-
     static {
         mtlAvailable = isMetalFrameworkAvailable();
-
-        System.out.println("MTLGraphicsConfig DO_DIRECT: " + DO_DIRECT);
     }
 
     private MTLGraphicsConfig(CGraphicsDevice device,
@@ -128,14 +124,14 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     {
         // Move MTLGraphicsConfig creation code to AppKit thread in order to avoid the
         // following deadlock:
-// TODO: fix
-        // 1) CGLGraphicsConfig.getCGLConfigInfo (called from EDT) takes RenderQueue.lock
-        // 2) CGLLayer.drawInCGLContext is invoked on AppKit thread and
-        //    blocked on RenderQueue.lock
-        // 1) invokes native block on AppKit and wait
 
+        // 1) MTLGraphicsConfig.getConfig (called from EDT) takes RenderQueue.lock
+        // 2) MTLLayer.drawInMTLContext is invoked on AppKit thread and
+        //    blocked on RenderQueue.lock
+
+        // 1) invokes native block on AppKit and wait
         Callable<MTLGraphicsConfig> command = () -> {
-            long cfginfo = 0;
+            long cfginfo = 0L;
             int textureSize = 0;
             MTLRenderQueue rq = MTLRenderQueue.getInstance();
             rq.lock();
@@ -152,7 +148,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
             } finally {
                 rq.unlock();
             }
-            if (cfginfo == 0) {
+            if (cfginfo == 0L) {
                 errorMessage.append(" Cannot create MTLConfigInfo.");
                 return null;
             }
@@ -167,28 +163,16 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
             return new MTLGraphicsConfig(device, cfginfo, textureSize, caps);
         };
 
-        System.out.println("MTLGraphicsConfig.getConfig: enter");
-        // TODO: decide
-        if (DO_DIRECT) {
-            try {
-                return command.call();
-            } catch (Throwable throwable) {
-                throw new AWTError(throwable.getMessage());
-            } finally {
-                System.out.println("MTLGraphicsConfig.getConfig: exit");
-            }
-        } else {
-            return java.security.AccessController.doPrivileged(
-                    (PrivilegedAction<MTLGraphicsConfig>) () -> {
-                        try {
-                            return CThreading.executeOnAppKit(command);
-                        } catch (Throwable throwable) {
-                            throw new AWTError(throwable.getMessage());
-                        } finally {
-                            System.out.println("MTLGraphicsConfig.getConfig: exit");
-                        }
-                    });
-        }
+        return java.security.AccessController.doPrivileged(
+                (PrivilegedAction<MTLGraphicsConfig>) () -> {
+                    try {
+                        return CThreading.executeOnAppKit(command);
+                    } catch (Throwable throwable) {
+                        throw new AWTError(throwable.getMessage());
+                    } finally {
+                        System.out.println("MTLGraphicsConfig.getConfig: exit");
+                    }
+                });
     }
 
     public static boolean isMetalAvailable() {
