@@ -401,7 +401,7 @@ public class FileTest {
     }
 
     @Test
-    public void testToCanonicalPathSymLinksAware() throws IOException {
+    public void testToCanonicalPathSymLinksAware() throws Exception {
         assumeNotWindows();
 
         File rootDir = temporaryFolder.newFolder("root");

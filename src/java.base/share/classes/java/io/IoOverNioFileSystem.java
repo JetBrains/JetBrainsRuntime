@@ -170,10 +170,6 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public char getSeparator() {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
-        if (nioFs != null) {
-            return nioFs.getSeparator().charAt(0);
-        }
         return defaultFileSystem.getSeparator();
     }
 
