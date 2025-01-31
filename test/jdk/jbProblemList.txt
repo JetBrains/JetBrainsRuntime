@@ -693,7 +693,7 @@ java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223 linux-all,windows
 java/awt/GraphicsDevice/DisplayModes/ExtraAllocationTest.java JBR-6384 macosx-all
 java/awt/keyboard/8218917/AltKeyBug.java JBR-5312 windows-all,macosx-all
 java/awt/keyboard/AltPlusNumberKeyCombinationsTest/AltPlusNumberKeyCombinationsTest.java JBR-5210 windows-all
-java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java JBR-7780 linux-aarch64
+java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java 8257529,JBR-7780 windows-x64,linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithDialogButtonTest.java JBR-5210 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-5210 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java JBR-5210 windows-all
