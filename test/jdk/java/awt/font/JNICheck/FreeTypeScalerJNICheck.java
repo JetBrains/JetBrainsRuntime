@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2021, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,6 +24,7 @@
 
 /* @test
  * @bug 8269223
+ * @requires !vm.debug | os.family != "windows"
  * @summary Verifies that -Xcheck:jni issues no warnings from freetypeScaler.c
  * @library /test/lib
  * @run main FreeTypeScalerJNICheck
