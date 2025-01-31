@@ -335,6 +335,22 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     @Override
+    public boolean hasBooleanAttributes(File f, int attributes) {
+        boolean result = hasBooleanAttributes0(f, attributes);
+        if (DEBUG.writeTraces()) {
+            System.err.printf("IoOverNioFileSystem.hasBooleanAttributes(%s, %s) = %b%n", f, attributes, result);
+        }
+        return result;
+    }
+
+    private boolean hasBooleanAttributes0(File f, int attributes) {
+        if (acquireNioFs() != null) {
+            return (getBooleanAttributes0(f) & attributes) == attributes;
+        }
+        return defaultFileSystem.hasBooleanAttributes(f, attributes);
+    }
+
+    @Override
     public int getBooleanAttributes(File f) {
         int result = getBooleanAttributes0(f);
         if (DEBUG.writeTraces()) {
@@ -348,6 +364,11 @@ class IoOverNioFileSystem extends FileSystem {
         if (nioFs != null) {
             try {
                 Path path = nioFs.getPath(f.getPath());
+
+                if (path.getFileName().toString().isEmpty()) {
+                    // `stat` returns errors for such calls.
+                    return 0;
+                }
 
                 // The order of checking Posix attributes first and DOS attributes next is deliberate.
                 // WindowsFileSystem supports these attributes: basic, dos, acl, owner, user.

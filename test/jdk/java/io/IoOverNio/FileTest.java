@@ -54,8 +54,10 @@ public class FileTest {
         Objects.requireNonNull(System.getProperty("java.nio.file.spi.DefaultFileSystemProvider"));
     }
 
+    public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().startsWith("win");
+
     private static void assumeNotWindows() {
-        Assume.assumeFalse(System.getProperty("os.name").toLowerCase().startsWith("win"));
+        Assume.assumeFalse(IS_WINDOWS);
     }
 
     @Before
@@ -116,6 +118,31 @@ public class FileTest {
         ManglingFileSystemProvider.allFilesAreEmptyDirectories = true;
         assertTrue(dir.isDirectory());
         assertTrue(file.isDirectory());
+    }
+
+    @Test
+    public void exists() throws Exception {
+        File file = temporaryFolder.newFile("testFile.txt");
+        File dir = temporaryFolder.newFolder("testDir");
+
+        assertTrue(file.exists());
+        assertTrue(dir.exists());
+
+        assertFalse(new File(dir, "non-existing-file").exists());
+        assertFalse(new File(file, "non-existing-file").exists());
+
+        // Corner cases
+        assertFalse(new File("").exists());
+        assertTrue(new File(".").exists());
+        assertTrue(new File("..").exists());
+
+        if (IS_WINDOWS) {
+            assertTrue(new File("C:\\..\\..").exists());
+        } else {
+            assertTrue(new File("/../..").exists());
+        }
+
+        assertFalse(new File("dir-that-does-not-exist/..").exists());
     }
 
     @Test
