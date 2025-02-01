@@ -225,9 +225,12 @@ Java_sun_java2d_opengl_CGLLayer_nativeSetScale
     // this method where we need to change native texture size and layer's scale
     // in one call on appkit, otherwise we'll get window's contents blinking,
     // during screen-2-screen moving.
-    [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
-                                             block:^(){
+
+    // Ensure main thread changes the MTLLayer instance later:
+    [layer retain];
+    [ThreadUtilities criticalDispatchOnMainThreadASAP:^(){
         layer.contentsScale = scale;
+        [layer release];
     }];
     JNI_COCOA_EXIT(env);
 }

@@ -342,13 +342,14 @@ AWT_ASSERT_APPKIT_THREAD;
     return nil;
 }
 
-+ (void)dispatchOnMainThreadAndWait:(void (^)())block {
+/* unused but kept hidden from API (private) */
++ (void)criticalDispatchOnMainThreadAndWait:(void (^)())block {
     RUN_BLOCK_IF_MAIN(block)
 
     JNI_COCOA_ENTER()
 
     if (enableTracingLog) {
-        NSLog(@"dispatchOnMainThreadAndWait:");
+        NSLog(@"criticalDispatchOnMainThreadAndWait:");
         [ThreadUtilities dumpThreadTraceContext];
     }
     void (^blockCopy)(void) = Block_copy(block);
@@ -359,8 +360,8 @@ AWT_ASSERT_APPKIT_THREAD;
         @try {
             [ThreadUtilities invokeBlockCopy:blockCopy];
         } @catch (NSException *e) {
-            NSLog(@"Apple AWT Cocoa Exception: %@", [e description]);
-            NSLog(@"Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]);
+            NSLog(@"criticalDispatchOnMainThreadAndWait.block: Apple AWT Cocoa Exception: %@", [e description]);
+            NSLog(@"criticalDispatchOnMainThreadAndWait.block: Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]);
         } @finally {
             [blockpool drain];
         };
@@ -368,13 +369,20 @@ AWT_ASSERT_APPKIT_THREAD;
     JNI_COCOA_EXIT()
 }
 
-+ (void)dispatchOnMainThreadLater:(void (^)())block {
+/*
+ * Be carefull:
+ * using Grand Central Dispatch (GCD) dispatch_async() may interfer
+ * with other blocks run on the Main Thread Runloop because:
+ * - GCD will run given block just after the current RunLoop iteration (just after currently executing Main Thread action)
+ * - Do not expect any block execution ordering or depend on such expected order (no sequential guarantee).
+ */
++ (void)criticalDispatchOnMainThreadASAP:(void (^)())block {
     RUN_BLOCK_IF_MAIN(block)
 
     JNI_COCOA_ENTER()
 
     if (enableTracingLog) {
-        NSLog(@"dispatchOnMainThreadLater:");
+        NSLog(@"criticalDispatchOnMainThreadASAP:");
         [ThreadUtilities dumpThreadTraceContext];
     }
     void (^blockCopy)(void) = Block_copy(block);
@@ -385,8 +393,8 @@ AWT_ASSERT_APPKIT_THREAD;
         @try {
             [ThreadUtilities invokeBlockCopy:blockCopy];
         } @catch (NSException *e) {
-            NSLog(@"Apple AWT Cocoa Exception: %@", [e description]);
-            NSLog(@"Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]);
+            NSLog(@"criticalDispatchOnMainThreadAndWait.block: Apple AWT Cocoa Exception: %@", [e description]);
+            NSLog(@"criticalDispatchOnMainThreadAndWait.block: Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]);
         } @finally {
             [blockpool drain];
         };

@@ -191,7 +191,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_blitTexture: skip drawable [skip blit] nextDrawableCount = %d",
                                CACurrentMediaTime(), self.nextDrawableCount);
             }
-            [self startRedraw];
+            [self startRedrawIfNeeded];
             return;
         }
 
@@ -339,7 +339,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
                 if (isDisplaySyncEnabled()) {
                     // Increment redrawCount:
-                    [self startRedraw];
+                    [self startRedrawIfNeeded];
                 }
             }
         }
@@ -371,7 +371,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 }
 
 - (void) blitCallback {
-
+    AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_MTL_LAYER_CLASS();
     DECLARE_METHOD(jm_drawInMTLContext, jc_JavaLayer, "drawInMTLContext", "()V");
@@ -399,26 +399,29 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     [super display];
 }
 
+- (void) postNeedsDisplay {
+    // use dispatch-async to make it more immediate than Runloop:
+    [self retain];
+    [ThreadUtilities criticalDispatchOnMainThreadASAP:^(){
+        [self setNeedsDisplay];
+        [self release];
+    }];
+}
+
 - (void)startRedrawIfNeeded {
-    AWT_ASSERT_APPKIT_THREAD;
-    if (isDisplaySyncEnabled()) {
-        if (self.redrawCount == 0) {
-            [self.ctx startRedraw:self];
-        }
+    if (isDisplaySyncEnabled() && (self.redrawCount == 0)) {
+        [self.ctx startRedraw:self];
     }
 }
 
 - (void)startRedraw {
     if (isDisplaySyncEnabled()) {
         if (self.ctx != nil) {
-            [ThreadUtilities dispatchOnMainThreadLater:^(){
-                [self.ctx startRedraw:self];
-            }];
+            // direct thread-safe:
+            [self.ctx startRedraw:self];
         }
     } else {
-            [ThreadUtilities dispatchOnMainThreadLater:^(){
-            [self setNeedsDisplay];
-        }];
+        [self postNeedsDisplay];
     }
 }
 
@@ -434,9 +437,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             self.redrawCount = 0;
         }
         if (mtlc != nil) {
-            [ThreadUtilities dispatchOnMainThreadLater:^(){
-                [mtlc stopRedraw:displayID layer:self];
-            }];
+            // direct thread-safe:
+            [mtlc stopRedraw:displayID layer:self];
         }
     }
 }
@@ -476,11 +478,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                     J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_commitCommandBuffer: CompletedHandler", CACurrentMediaTime());
                 }
                 // Ensure layer will be redrawn asap to display new content:
-                [self retain];
-                [ThreadUtilities dispatchOnMainThreadLater:^(){
-                    [self startRedrawIfNeeded];
-                    [self release];
-                }];
+                // direct thread-safe:
+                [self startRedrawIfNeeded];
             }
             [self release];
         }];
@@ -489,7 +488,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
         if (updateDisplay) {
             if (isDisplaySyncEnabled()) {
-                [self startRedraw];
+                [self startRedrawIfNeeded];
             } else {
                 [self flushBuffer];
             }
@@ -608,7 +607,7 @@ Java_sun_java2d_metal_MTLLayer_validate
                        (*layer.buffer).height);
 
         if (isDisplaySyncEnabled()) {
-            [layer startRedraw];
+            [layer startRedrawIfNeeded];
         } else {
             [layer flushBuffer];
         }
@@ -630,9 +629,10 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
     // during screen-2-screen moving.
 
     // Ensure main thread changes the MTLLayer instance later:
-    [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
-                                             block:^(){
+    [layer retain];
+    [ThreadUtilities criticalDispatchOnMainThreadASAP:^(){
         layer.contentsScale = scale;
+        [layer release];
     }];
     JNI_COCOA_EXIT(env);
 }
@@ -674,10 +674,10 @@ Java_sun_java2d_metal_MTLLayer_nativeSetOpaque
 
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     // Ensure main thread changes the MTLLayer instance later:
-    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // critical
-                                          block:^(){
+    [layer retain];
+    [ThreadUtilities criticalDispatchOnMainThreadASAP:^(){
         [layer setOpaque:(opaque == JNI_TRUE)];
+        [layer release];
     }];
-
     JNI_COCOA_EXIT(env);
 }

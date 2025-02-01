@@ -923,7 +923,6 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 - (void) redraw:(NSNumber*)displayIDNumber {
-    AWT_ASSERT_APPKIT_THREAD;
     const CFTimeInterval now = CACurrentMediaTime();
 
     const jint displayID = [displayIDNumber intValue];
@@ -961,7 +960,7 @@ extern void initSamplers(id<MTLDevice> device);
     @synchronized (_layers) {
         for (MTLLayer *layer in _layers) {
             if (layer.displayID == displayID) {
-                [layer setNeedsDisplay];
+                [layer postNeedsDisplay];
             }
         }
     }
@@ -1028,21 +1027,16 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
             if (TRACE_DISPLAY) {
                 dumpDisplayInfo(displayID);
             }
-
             [mtlc destroyDisplayLink:displayID];
         } else {
-            [mtlc retain];
-            [ThreadUtilities dispatchOnMainThreadLater:^(){
-                [mtlc redraw:@(displayID)];
-                [mtlc release];
-            }];
+            // direct thread-safe:
+            [mtlc redraw:@(displayID)];
         }
     JNI_COCOA_EXIT();
     return kCVReturnSuccess;
 }
 
 - (void)startRedraw:(MTLLayer*)layer {
-    AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
     const jint displayID = layer.displayID;
     MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
@@ -1057,7 +1051,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 
         if (MTLLayer_isExtraRedrawEnabled()) {
             // Request for redraw before starting display link to avoid rendering problem on M2 processor
-            [layer setNeedsDisplay];
+            [layer postNeedsDisplay];
         }
     }
     [self handleDisplayLink:YES displayID:displayID source:"startRedraw"];
@@ -1068,7 +1062,6 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 }
 
 - (void)stopRedraw:(jint)displayID layer:(MTLLayer*)layer {
-    AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn3(J2D_TRACE_VERBOSE, "MTLContext_stopRedraw: ctx=%p displayID=%d layer=%p",
                 self, displayID, layer);
     MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
