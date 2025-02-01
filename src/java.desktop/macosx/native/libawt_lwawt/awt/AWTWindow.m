@@ -1026,7 +1026,7 @@ AWT_ASSERT_APPKIT_THREAD;
     (*env)->DeleteLocalRef(env, platformWindow);
 }
 
-#define TRACE_DELIVER_MOVE_RESIZE   1
+#define TRACE_DELIVER_MOVE_RESIZE   0
 
 - (void) _deliverMoveResizeEvent {
     AWT_ASSERT_APPKIT_THREAD;

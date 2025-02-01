@@ -1399,10 +1399,10 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                                 getIdentifier(target));
                     }
 
-                    /* Ensure 100ms timeout to avoid any deadlock among
+                    /* Ensure >500ms = 666ms timeout to avoid any deadlock among
                      * appkit, EDT, Flusher & a11y threads, locks
                      * and various synchronization patterns... */
-                    final double timeoutSeconds = 100 / 1000.0;
+                    final double timeoutSeconds = 666.666;
                     LWCToolkit.invokeAndWait(emptyTask, target, timeoutSeconds);
 
                     if (logger.isLoggable(PlatformLogger.Level.FINE)) {
