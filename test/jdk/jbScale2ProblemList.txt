@@ -65,6 +65,7 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6090,JBR-6360 linux-all,windows-all,macosx-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-5342 linux-all
 javax/swing/JTextArea/bug4265784.java JBR-7472 linux-all
+javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-8212 linux-all
 
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-6589 windows-all
 
