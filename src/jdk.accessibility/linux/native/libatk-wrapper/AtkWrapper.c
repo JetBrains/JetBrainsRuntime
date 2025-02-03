@@ -611,24 +611,6 @@ static gboolean signal_emit_handler(gpointer p) {
         g_signal_emit_by_name(atk_obj, "text_caret_moved", cursor_pos);
         break;
     }
-    case Sig_Text_Property_Changed_Insert: {
-        gint insert_position = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
-        gint insert_length = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
-        g_signal_emit_by_name(atk_obj, "text_changed::insert", insert_position,
-                              insert_length);
-        break;
-    }
-    case Sig_Text_Property_Changed_Delete: {
-        gint delete_position = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
-        gint delete_length = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
-        g_signal_emit_by_name(atk_obj, "text_changed::delete", delete_position,
-                              delete_length);
-        break;
-    }
     case Sig_Object_Children_Changed_Add: {
         gint child_index = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
@@ -768,8 +750,6 @@ static gboolean signal_emit_handler(gpointer p) {
         }
         break;
     }
-    case Sig_Text_Property_Changed_Replace:
-        // TODO
     default:
         break;
     }
@@ -814,9 +794,6 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     para->args = global_args;
     switch (para->signal_id) {
     case Sig_Text_Caret_Moved:
-    case Sig_Text_Property_Changed_Insert:
-    case Sig_Text_Property_Changed_Delete:
-    case Sig_Text_Property_Changed_Replace:
     case Sig_Object_Children_Changed_Remove:
     case Sig_Object_Selection_Changed:
     case Sig_Object_Visible_Data_Changed:

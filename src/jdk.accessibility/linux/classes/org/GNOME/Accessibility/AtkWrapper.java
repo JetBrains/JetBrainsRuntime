@@ -492,35 +492,6 @@ public class AtkWrapper {
                     emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED, args);
 
                 }
-				/*
-				if (oldValue == null && newValue != null) { //insertion event
-					if (!(newValue instanceof AccessibleTextSequence)) {
-						return;
-					}
-
-					AccessibleTextSequence newSeq = (AccessibleTextSequence)newValue;
-					Object[] args = new Object[2];
-					args[0] = new Integer(newSeq.startIndex);
-					args[1] = new Integer(newSeq.endIndex - newSeq.startIndex);
-
-					emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED_INSERT, args);
-
-				} else if (oldValue != null && newValue == null) { //deletion event
-					if (!(oldValue instanceof AccessibleTextSequence)) {
-						return;
-					}
-
-					AccessibleTextSequence oldSeq = (AccessibleTextSequence)oldValue;
-					Object[] args = new Object[2];
-					args[0] = new Integer(oldSeq.startIndex);
-					args[1] = new Integer(oldSeq.endIndex - oldSeq.startIndex);
-
-					emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED_DELETE, args);
-
-				} else if (oldValue != null && newValue != null) { //replacement event
-					//It seems ATK does not support "replace" currently
-					return;
-				}*/
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_CHILD_PROPERTY)) {
                 if (oldValue == null && newValue != null) { //child added
                     AccessibleContext child_ac;
