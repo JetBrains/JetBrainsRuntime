@@ -35,9 +35,9 @@ import sun.util.logging.PlatformLogger;
 
 public class AtkWrapper {
     private static final PlatformLogger log = PlatformLogger.getLogger("org.GNOME.Accessibility.AtkWrapper");
-    static boolean accessibilityEnabled = false;
+    private static boolean accessibilityEnabled = false;
 
-    static void initAtk() {
+    private static void initAtk() {
         System.loadLibrary("atk-wrapper");
         if (AtkWrapper.initNativeLibrary())
             accessibilityEnabled = true;
