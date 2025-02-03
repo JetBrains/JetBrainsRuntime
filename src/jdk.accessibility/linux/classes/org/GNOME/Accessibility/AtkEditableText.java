@@ -27,28 +27,30 @@ import java.lang.ref.WeakReference;
 
 public class AtkEditableText extends AtkText {
 
-  WeakReference<AccessibleEditableText> _acc_edt_text;
+    WeakReference<AccessibleEditableText> _acc_edt_text;
 
-  public AtkEditableText (AccessibleContext ac) {
-    super(ac);
-    _acc_edt_text = new WeakReference<AccessibleEditableText>(ac.getAccessibleEditableText());
-  }
+    public AtkEditableText(AccessibleContext ac) {
+        super(ac);
+        _acc_edt_text = new WeakReference<AccessibleEditableText>(ac.getAccessibleEditableText());
+    }
 
-  public static AtkEditableText createAtkEditableText(AccessibleContext ac){
-      return AtkUtil.invokeInSwing ( () -> { return new AtkEditableText(ac); }, null);
-  }
+    public static AtkEditableText createAtkEditableText(AccessibleContext ac) {
+        return AtkUtil.invokeInSwing(() -> {
+            return new AtkEditableText(ac);
+        }, null);
+    }
 
-  public void set_text_contents (String s) {
-      AccessibleEditableText acc_edt_text = _acc_edt_text.get();
-      if (acc_edt_text == null)
-          return;
+    public void set_text_contents(String s) {
+        AccessibleEditableText acc_edt_text = _acc_edt_text.get();
+        if (acc_edt_text == null)
+            return;
 
-      AtkUtil.invokeInSwing( () -> {
-          acc_edt_text.setTextContents(s);
-      });
-  }
+        AtkUtil.invokeInSwing(() -> {
+            acc_edt_text.setTextContents(s);
+        });
+    }
 
-    public void insert_text (String s, int position) {
+    public void insert_text(String s, int position) {
         AccessibleEditableText acc_edt_text = _acc_edt_text.get();
         if (acc_edt_text == null)
             return;
@@ -56,10 +58,12 @@ public class AtkEditableText extends AtkText {
         if (position < 0)
             position = 0;
         final int rightPosition = position;
-        AtkUtil.invokeInSwing( () -> { acc_edt_text.insertTextAtIndex(rightPosition, s); });
+        AtkUtil.invokeInSwing(() -> {
+            acc_edt_text.insertTextAtIndex(rightPosition, s);
+        });
     }
 
-    public void copy_text (int start, int end) {
+    public void copy_text(int start, int end) {
         AccessibleEditableText acc_edt_text = _acc_edt_text.get();
         if (acc_edt_text == null)
             return;
@@ -75,7 +79,7 @@ public class AtkEditableText extends AtkText {
         }
         final int rightStart = start;
         final int rightEnd = end;
-        AtkUtil.invokeInSwing ( () -> {
+        AtkUtil.invokeInSwing(() -> {
             String s = acc_edt_text.getTextRange(rightStart, rightEnd);
             if (s != null) {
                 StringSelection stringSel = new StringSelection(s);
@@ -84,46 +88,52 @@ public class AtkEditableText extends AtkText {
         });
     }
 
-    public void cut_text (int start, int end) {
+    public void cut_text(int start, int end) {
         AccessibleEditableText acc_edt_text = _acc_edt_text.get();
         if (acc_edt_text == null)
             return;
 
-        AtkUtil.invokeInSwing( () -> { acc_edt_text.cut(start, end); });
+        AtkUtil.invokeInSwing(() -> {
+            acc_edt_text.cut(start, end);
+        });
     }
 
-    public void delete_text (int start, int end) {
+    public void delete_text(int start, int end) {
         AccessibleEditableText acc_edt_text = _acc_edt_text.get();
         if (acc_edt_text == null)
             return;
 
-        AtkUtil.invokeInSwing( () -> { acc_edt_text.delete(start, end); });
+        AtkUtil.invokeInSwing(() -> {
+            acc_edt_text.delete(start, end);
+        });
     }
 
-    public void paste_text (int position) {
+    public void paste_text(int position) {
         AccessibleEditableText acc_edt_text = _acc_edt_text.get();
         if (acc_edt_text == null)
             return;
 
-        AtkUtil.invokeInSwing( () -> { acc_edt_text.paste(position); });
+        AtkUtil.invokeInSwing(() -> {
+            acc_edt_text.paste(position);
+        });
     }
 
     /**
-    * Sets run attributes for the text between two indices.
-    *
-    * @param as the AttributeSet for the text
-    * @param start the start index of the text as an int
-    * @param end the end index for the text as an int
-    * @return whether setRunAttributes was called
-    * TODO return is a bit presumptious. This should ideally include a check for whether
-    *      attributes were set.
-    */
+     * Sets run attributes for the text between two indices.
+     *
+     * @param as    the AttributeSet for the text
+     * @param start the start index of the text as an int
+     * @param end   the end index for the text as an int
+     * @return whether setRunAttributes was called
+     * TODO return is a bit presumptious. This should ideally include a check for whether
+     *      attributes were set.
+     */
     public boolean setRunAttributes(AttributeSet as, int start, int end) {
         AccessibleEditableText acc_edt_text = _acc_edt_text.get();
         if (acc_edt_text == null)
             return false;
 
-        return AtkUtil.invokeInSwing( () -> {
+        return AtkUtil.invokeInSwing(() -> {
             acc_edt_text.setAttributes(start, end, as);
             return true;
         }, false);

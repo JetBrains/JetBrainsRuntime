@@ -25,67 +25,70 @@
  */
 
 package org.GNOME.Accessibility;
+
 import javax.swing.*;
 import java.util.concurrent.*;
 
 /**
-* AtkUtil:
-*   That class is used to wrap the callback on Java object
-*   to avoid the concurrency of AWT objects.
-* @autor Giuseppe Capaldo
-*/
-public class AtkUtil{
+ * AtkUtil:
+ * That class is used to wrap the callback on Java object
+ * to avoid the concurrency of AWT objects.
+ *
+ * @autor Giuseppe Capaldo
+ */
+public class AtkUtil {
 
-    public AtkUtil(){}
+    public AtkUtil() {
+    }
 
     /**
-    * invokeInSwing:
-    *   Invoked when we need to make an asynchronous callback on
-    *   a Java object and this callback has a return value.
-    *   this method doesn't launch any exception because in case
-    *   of problems it prints a warning and returns the default
-    *   value that is passed to it
-    *
-    * @param function A Callable object that return T value
-    * @param d A T object tha is returned if an exception occurs
-    * @return The return value of the original function or the
-    *       default value. Obviously if the value is a primitive type
-    *       this will automatically wrapped from java in the
-    *       corresponding object
-    */
-    public static <T> T invokeInSwing (Callable <T> function, T d){
+     * invokeInSwing:
+     * Invoked when we need to make an asynchronous callback on
+     * a Java object and this callback has a return value.
+     * this method doesn't launch any exception because in case
+     * of problems it prints a warning and returns the default
+     * value that is passed to it
+     *
+     * @param function A Callable object that return T value
+     * @param d        A T object tha is returned if an exception occurs
+     * @return The return value of the original function or the
+     * default value. Obviously if the value is a primitive type
+     * this will automatically wrapped from java in the
+     * corresponding object
+     */
+    public static <T> T invokeInSwing(Callable<T> function, T d) {
         if (SwingUtilities.isEventDispatchThread()) {
-          // We are already running in the EDT, we can call it directly
-          try {
-            return function.call();
-          } catch (Exception ex) {
-            ex.printStackTrace(); // we can do better than this
-            return d;
-          }
+            // We are already running in the EDT, we can call it directly
+            try {
+                return function.call();
+            } catch (Exception ex) {
+                ex.printStackTrace(); // we can do better than this
+                return d;
+            }
         }
 
         RunnableFuture<T> wf = new FutureTask<>(function);
         SwingUtilities.invokeLater(wf);
         try {
             return wf.get();
-        } catch (InterruptedException|ExecutionException ex) {
+        } catch (InterruptedException | ExecutionException ex) {
             ex.printStackTrace(); // we can do better than this
             return d;
         }
     }
 
     /**
-    * invokeInSwing:
-    *   Invoked when we need to make an asynchronous callback on
-    *   some Java object and this callback hasn't a return value.
-    *
-    * @param function A Runnable object that doesn't return some value
-    */
-    public static void invokeInSwing (Runnable function){
+     * invokeInSwing:
+     * Invoked when we need to make an asynchronous callback on
+     * some Java object and this callback hasn't a return value.
+     *
+     * @param function A Runnable object that doesn't return some value
+     */
+    public static void invokeInSwing(Runnable function) {
         if (SwingUtilities.isEventDispatchThread()) {
-          // We are already running in the EDT, we can call it directly
-          function.run();
-          return;
+            // We are already running in the EDT, we can call it directly
+            function.run();
+            return;
         }
 
         SwingUtilities.invokeLater(function);

@@ -25,50 +25,60 @@ import java.lang.ref.WeakReference;
 
 public class AtkValue {
 
-	WeakReference<AccessibleValue> _acc_value;
+    WeakReference<AccessibleValue> _acc_value;
 
-	public AtkValue (AccessibleContext ac) {
-		super();
-		this._acc_value = new WeakReference<AccessibleValue>(ac.getAccessibleValue());
-	}
+    public AtkValue(AccessibleContext ac) {
+        super();
+        this._acc_value = new WeakReference<AccessibleValue>(ac.getAccessibleValue());
+    }
 
-	public static AtkValue createAtkValue(AccessibleContext ac){
-		return AtkUtil.invokeInSwing ( () -> { return new AtkValue(ac); }, null);
-	}
+    public static AtkValue createAtkValue(AccessibleContext ac) {
+        return AtkUtil.invokeInSwing(() -> {
+            return new AtkValue(ac);
+        }, null);
+    }
 
-	public Number get_current_value () {
-		AccessibleValue acc_value = _acc_value.get();
-		if (acc_value == null)
-			return 0.0;
+    public Number get_current_value() {
+        AccessibleValue acc_value = _acc_value.get();
+        if (acc_value == null)
+            return 0.0;
 
-		return AtkUtil.invokeInSwing ( () -> { return acc_value.getCurrentAccessibleValue(); }, 0.0);
-	}
+        return AtkUtil.invokeInSwing(() -> {
+            return acc_value.getCurrentAccessibleValue();
+        }, 0.0);
+    }
 
-	public double getMaximumValue () {
-		AccessibleValue acc_value = _acc_value.get();
-		if (acc_value == null)
-			return 0.0;
+    public double getMaximumValue() {
+        AccessibleValue acc_value = _acc_value.get();
+        if (acc_value == null)
+            return 0.0;
 
-		return AtkUtil.invokeInSwing ( () -> { return acc_value.getMaximumAccessibleValue().doubleValue(); }, 0.0);
-	}
+        return AtkUtil.invokeInSwing(() -> {
+            return acc_value.getMaximumAccessibleValue().doubleValue();
+        }, 0.0);
+    }
 
-	public double getMinimumValue () {
-		AccessibleValue acc_value = _acc_value.get();
-		if (acc_value == null)
-			return 0.0;
+    public double getMinimumValue() {
+        AccessibleValue acc_value = _acc_value.get();
+        if (acc_value == null)
+            return 0.0;
 
-		return AtkUtil.invokeInSwing ( () -> { return acc_value.getMinimumAccessibleValue().doubleValue(); }, 0.0);
-	}
+        return AtkUtil.invokeInSwing(() -> {
+            return acc_value.getMinimumAccessibleValue().doubleValue();
+        }, 0.0);
+    }
 
-	public void setValue (Number n) {
-		AccessibleValue acc_value = _acc_value.get();
-		if (acc_value == null)
-			return;
+    public void setValue(Number n) {
+        AccessibleValue acc_value = _acc_value.get();
+        if (acc_value == null)
+            return;
 
-		AtkUtil.invokeInSwing( () -> { acc_value.setCurrentAccessibleValue(n); });
-	}
+        AtkUtil.invokeInSwing(() -> {
+            acc_value.setCurrentAccessibleValue(n);
+        });
+    }
 
-	public double getIncrement() {
-		return Double.MIN_VALUE;
-	}
+    public double getIncrement() {
+        return Double.MIN_VALUE;
+    }
 }

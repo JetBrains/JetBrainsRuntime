@@ -20,12 +20,12 @@
 package org.GNOME.Accessibility;
 
 public interface AtkTextBoundary {
-	public int CHAR = 0;
-	public int WORD_START = 1;
-	public int WORD_END = 2;
-	public int SENTENCE_START = 3;
-	public int SENTENCE_END = 4;
-	public int LINE_START = 5;
-	public int LINE_END = 6;
+    public int CHAR = 0;
+    public int WORD_START = 1;
+    public int WORD_END = 2;
+    public int SENTENCE_START = 3;
+    public int SENTENCE_END = 4;
+    public int LINE_START = 5;
+    public int LINE_END = 6;
 }
 

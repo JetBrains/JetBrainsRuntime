@@ -28,7 +28,7 @@ public class AtkTableCell {
     WeakReference<AccessibleTable> _acc_pt;
     public int row, rowSpan, column, columnSpan;
 
-    public AtkTableCell (AccessibleContext ac) {
+    public AtkTableCell(AccessibleContext ac) {
         this._ac = new WeakReference<AccessibleContext>(ac);
         Accessible parent = ac.getAccessibleParent();
         _acc_pt = null;
@@ -36,54 +36,57 @@ public class AtkTableCell {
         rowSpan = -1;
         column = -1;
         columnSpan = -1;
-        if (parent == null){
+        if (parent == null) {
             return;
         }
         AccessibleContext pc = parent.getAccessibleContext();
-        if(pc == null){
+        if (pc == null) {
             return;
         }
         AccessibleTable pt = pc.getAccessibleTable();
-        if(pt == null){
+        if (pt == null) {
             return;
         }
         _acc_pt = new WeakReference<AccessibleTable>(pt);
         int index = ac.getAccessibleIndexInParent();
-        if (!(pt instanceof AccessibleExtendedTable)){
+        if (!(pt instanceof AccessibleExtendedTable)) {
             return;
         }
         AccessibleExtendedTable aet = (AccessibleExtendedTable) pt;
         row = aet.getAccessibleRow(index);
         column = aet.getAccessibleColumn(index);
-        rowSpan = pt.getAccessibleRowExtentAt(row,column);
-        columnSpan = pt.getAccessibleColumnExtentAt(row,column);
+        rowSpan = pt.getAccessibleRowExtentAt(row, column);
+        columnSpan = pt.getAccessibleColumnExtentAt(row, column);
     }
 
-    public static AtkTableCell createAtkTableCell(AccessibleContext ac){
-        return AtkUtil.invokeInSwing ( () -> { return new AtkTableCell(ac); }, null);
+    public static AtkTableCell createAtkTableCell(AccessibleContext ac) {
+        return AtkUtil.invokeInSwing(() -> {
+            return new AtkTableCell(ac);
+        }, null);
     }
 
     /**
-    * getTable
-    * @return: Reference to the accessible of the containing table as an
-    *          AccessibleTable instance.
-    */
+     * getTable
+     *
+     * @return: Reference to the accessible of the containing table as an
+     * AccessibleTable instance.
+     */
     public AccessibleTable getTable() {
         if (_acc_pt == null)
             return null;
         return _acc_pt.get();
     }
 
-    public AccessibleContext[] getAccessibleColumnHeader(){
+    public AccessibleContext[] getAccessibleColumnHeader() {
         if (_acc_pt == null)
             return null;
-        return AtkUtil.invokeInSwing( () -> {
+        return AtkUtil.invokeInSwing(() -> {
             AccessibleTable iteration = _acc_pt.get().getAccessibleColumnHeader();
-            if (iteration != null){
+            if (iteration != null) {
                 int length = iteration.getAccessibleColumnCount();
                 AccessibleContext[] result = new AccessibleContext[length];
-                for (int i = 0; i < length; i++){
-                    result[i] = iteration.getAccessibleAt(0,i).getAccessibleContext();
+                for (int i = 0; i < length; i++) {
+                    result[i] = iteration.getAccessibleAt(0, i).getAccessibleContext();
                 }
                 return result;
             }
@@ -91,16 +94,16 @@ public class AtkTableCell {
         }, null);
     }
 
-    public AccessibleContext[] getAccessibleRowHeader(){
+    public AccessibleContext[] getAccessibleRowHeader() {
         if (_acc_pt == null)
             return null;
-        return AtkUtil.invokeInSwing( () -> {
+        return AtkUtil.invokeInSwing(() -> {
             AccessibleTable iteration = _acc_pt.get().getAccessibleRowHeader();
-            if (iteration != null){
+            if (iteration != null) {
                 int length = iteration.getAccessibleRowCount();
                 AccessibleContext[] result = new AccessibleContext[length];
-                for (int i = 0; i < length; i++){
-                    result[i] = iteration.getAccessibleAt(i,0).getAccessibleContext();
+                for (int i = 0; i < length; i++) {
+                    result[i] = iteration.getAccessibleAt(i, 0).getAccessibleContext();
                 }
                 return result;
             }

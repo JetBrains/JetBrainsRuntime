@@ -27,142 +27,143 @@ import java.lang.ref.WeakReference;
 
 public class AtkComponent {
 
-  WeakReference<AccessibleContext> _ac;
-  WeakReference<AccessibleComponent> _acc_component;
+    WeakReference<AccessibleContext> _ac;
+    WeakReference<AccessibleComponent> _acc_component;
 
-  public AtkComponent (AccessibleContext ac) {
-    super();
-    this._ac = new WeakReference<AccessibleContext>(ac);
-    this._acc_component = new WeakReference<AccessibleComponent>(ac.getAccessibleComponent());
-  }
+    public AtkComponent(AccessibleContext ac) {
+        super();
+        this._ac = new WeakReference<AccessibleContext>(ac);
+        this._acc_component = new WeakReference<AccessibleComponent>(ac.getAccessibleComponent());
+    }
 
-  public static AtkComponent createAtkComponent(AccessibleContext ac){
-      return AtkUtil.invokeInSwing ( () -> { return new AtkComponent(ac); }, null);
-  }
+    public static AtkComponent createAtkComponent(AccessibleContext ac) {
+        return AtkUtil.invokeInSwing(() -> {
+            return new AtkComponent(ac);
+        }, null);
+    }
 
-  static public Point getWindowLocation(AccessibleContext ac) {
-      while (ac != null) {
-          AccessibleRole role = ac.getAccessibleRole();
-          if (role == AccessibleRole.DIALOG ||
-              role == AccessibleRole.FRAME ||
-              role == AccessibleRole.WINDOW) {
-              AccessibleComponent acc_comp = ac.getAccessibleComponent();
-              if (acc_comp == null)
-                  return null;
-              return acc_comp.getLocationOnScreen();
-          }
-          Accessible parent = ac.getAccessibleParent();
-          if (parent == null)
-              return null;
-          ac = parent.getAccessibleContext();
-      }
-      return null;
-  }
+    static public Point getWindowLocation(AccessibleContext ac) {
+        while (ac != null) {
+            AccessibleRole role = ac.getAccessibleRole();
+            if (role == AccessibleRole.DIALOG ||
+                    role == AccessibleRole.FRAME ||
+                    role == AccessibleRole.WINDOW) {
+                AccessibleComponent acc_comp = ac.getAccessibleComponent();
+                if (acc_comp == null)
+                    return null;
+                return acc_comp.getLocationOnScreen();
+            }
+            Accessible parent = ac.getAccessibleParent();
+            if (parent == null)
+                return null;
+            ac = parent.getAccessibleContext();
+        }
+        return null;
+    }
 
-  // Return the position of the object relative to the coordinate type
-  public static Point getComponentOrigin(AccessibleContext ac, AccessibleComponent acc_component, int coord_type) {
-      if (coord_type == AtkCoordType.SCREEN)
-          return acc_component.getLocationOnScreen();
+    // Return the position of the object relative to the coordinate type
+    public static Point getComponentOrigin(AccessibleContext ac, AccessibleComponent acc_component, int coord_type) {
+        if (coord_type == AtkCoordType.SCREEN)
+            return acc_component.getLocationOnScreen();
 
-      if (coord_type == AtkCoordType.WINDOW)
-      {
-          Point win_p = getWindowLocation(ac);
-          if (win_p == null)
-              return null;
-          Point p = acc_component.getLocationOnScreen();
-          if (p == null)
-              return null;
-          p.translate(-win_p.x, -win_p.y);
-          return p;
-      }
+        if (coord_type == AtkCoordType.WINDOW) {
+            Point win_p = getWindowLocation(ac);
+            if (win_p == null)
+                return null;
+            Point p = acc_component.getLocationOnScreen();
+            if (p == null)
+                return null;
+            p.translate(-win_p.x, -win_p.y);
+            return p;
+        }
 
-      if (coord_type == AtkCoordType.PARENT)
-          return acc_component.getLocation();
+        if (coord_type == AtkCoordType.PARENT)
+            return acc_component.getLocation();
 
-      return null;
-  }
+        return null;
+    }
 
-  // Return the position of the parent relative to the coordinate type
-  public static Point getParentOrigin(AccessibleContext ac, AccessibleComponent acc_component, int coord_type) {
-      if (coord_type == AtkCoordType.PARENT)
-          return new Point(0, 0);
+    // Return the position of the parent relative to the coordinate type
+    public static Point getParentOrigin(AccessibleContext ac, AccessibleComponent acc_component, int coord_type) {
+        if (coord_type == AtkCoordType.PARENT)
+            return new Point(0, 0);
 
-      Accessible parent = ac.getAccessibleParent();
-      if (parent == null)
-          return null;
-      AccessibleContext parent_ac = parent.getAccessibleContext();
-      if (parent_ac == null)
-          return null;
-      AccessibleComponent parent_component = parent_ac.getAccessibleComponent();
-      if (parent_component == null)
-          return null;
+        Accessible parent = ac.getAccessibleParent();
+        if (parent == null)
+            return null;
+        AccessibleContext parent_ac = parent.getAccessibleContext();
+        if (parent_ac == null)
+            return null;
+        AccessibleComponent parent_component = parent_ac.getAccessibleComponent();
+        if (parent_component == null)
+            return null;
 
-      if (coord_type == AtkCoordType.SCREEN) {
-          return parent_component.getLocationOnScreen();
-      }
+        if (coord_type == AtkCoordType.SCREEN) {
+            return parent_component.getLocationOnScreen();
+        }
 
-      if (coord_type == AtkCoordType.WINDOW) {
-          Point window_origin = getWindowLocation(ac);
-          if (window_origin == null)
-              return null;
-          Point parent_origin = parent_component.getLocationOnScreen();
-          if (parent_origin == null)
-              return null;
-          parent_origin.translate(-window_origin.x, -window_origin.y);
-          return parent_origin;
-      }
-      return null;
-  }
+        if (coord_type == AtkCoordType.WINDOW) {
+            Point window_origin = getWindowLocation(ac);
+            if (window_origin == null)
+                return null;
+            Point parent_origin = parent_component.getLocationOnScreen();
+            if (parent_origin == null)
+                return null;
+            parent_origin.translate(-window_origin.x, -window_origin.y);
+            return parent_origin;
+        }
+        return null;
+    }
 
-  public boolean contains (int x, int y, int coord_type) {
-      AccessibleContext ac = _ac.get();
-      if (ac == null)
-          return false;
-      AccessibleComponent acc_component = _acc_component.get();
-      if (acc_component == null)
-          return false;
-
-      return AtkUtil.invokeInSwing ( () -> {
-          if(acc_component.isVisible()){
-              Point p = getComponentOrigin(ac, acc_component, coord_type);
-              if (p == null)
-                  return false;
-
-              return acc_component.contains(new Point(x - p.x, y - p.y));
-          }
-          return false;
-      }, false);
-  }
-
-  public AccessibleContext get_accessible_at_point (int x, int y, int coord_type) {
-      AccessibleContext ac = _ac.get();
-      if (ac == null)
-          return null;
-      AccessibleComponent acc_component = _acc_component.get();
-      if (acc_component == null)
-          return null;
-
-      return AtkUtil.invokeInSwing ( () -> {
-          if(acc_component.isVisible()){
-              Point p = getComponentOrigin(ac, acc_component, coord_type);
-              if (p == null)
-                  return null;
-
-              Accessible accessible = acc_component.getAccessibleAt(new Point(x - p.x, y - p.y));
-              if (accessible == null)
-                  return null;
-              return accessible.getAccessibleContext();
-          }
-          return null;
-      }, null);
-  }
-
-    public boolean grab_focus () {
+    public boolean contains(int x, int y, int coord_type) {
+        AccessibleContext ac = _ac.get();
+        if (ac == null)
+            return false;
         AccessibleComponent acc_component = _acc_component.get();
         if (acc_component == null)
             return false;
 
-        return AtkUtil.invokeInSwing ( () -> {
+        return AtkUtil.invokeInSwing(() -> {
+            if (acc_component.isVisible()) {
+                Point p = getComponentOrigin(ac, acc_component, coord_type);
+                if (p == null)
+                    return false;
+
+                return acc_component.contains(new Point(x - p.x, y - p.y));
+            }
+            return false;
+        }, false);
+    }
+
+    public AccessibleContext get_accessible_at_point(int x, int y, int coord_type) {
+        AccessibleContext ac = _ac.get();
+        if (ac == null)
+            return null;
+        AccessibleComponent acc_component = _acc_component.get();
+        if (acc_component == null)
+            return null;
+
+        return AtkUtil.invokeInSwing(() -> {
+            if (acc_component.isVisible()) {
+                Point p = getComponentOrigin(ac, acc_component, coord_type);
+                if (p == null)
+                    return null;
+
+                Accessible accessible = acc_component.getAccessibleAt(new Point(x - p.x, y - p.y));
+                if (accessible == null)
+                    return null;
+                return accessible.getAccessibleContext();
+            }
+            return null;
+        }, null);
+    }
+
+    public boolean grab_focus() {
+        AccessibleComponent acc_component = _acc_component.get();
+        if (acc_component == null)
+            return false;
+
+        return AtkUtil.invokeInSwing(() -> {
             if (!acc_component.isFocusTraversable())
                 return false;
             acc_component.requestFocus();
@@ -178,8 +179,8 @@ public class AtkComponent {
         if (acc_component == null)
             return false;
 
-        return AtkUtil.invokeInSwing( () -> {
-            if(acc_component.isVisible()){
+        return AtkUtil.invokeInSwing(() -> {
+            if (acc_component.isVisible()) {
                 Point p = getParentOrigin(ac, acc_component, coord_type);
                 if (p == null)
                     return false;
@@ -199,8 +200,8 @@ public class AtkComponent {
         if (acc_component == null)
             return null;
 
-        return AtkUtil.invokeInSwing ( () -> {
-            if(acc_component.isVisible()){
+        return AtkUtil.invokeInSwing(() -> {
+            if (acc_component.isVisible()) {
                 Rectangle rect = acc_component.getBounds();
                 if (rect == null)
                     return null;
@@ -213,19 +214,19 @@ public class AtkComponent {
                 return rect;
             }
             return null;
-        },null);
+        }, null);
     }
 
-    public int get_layer () {
+    public int get_layer() {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return AtkLayer.INVALID;
 
-        return AtkUtil.invokeInSwing ( () -> {
+        return AtkUtil.invokeInSwing(() -> {
             AccessibleRole role = ac.getAccessibleRole();
             if (role == AccessibleRole.MENU ||
-            role == AccessibleRole.MENU_ITEM ||
-            role == AccessibleRole.POPUP_MENU ) {
+                    role == AccessibleRole.MENU_ITEM ||
+                    role == AccessibleRole.POPUP_MENU) {
                 return AtkLayer.POPUP;
             }
             if (role == AccessibleRole.INTERNAL_FRAME) {
@@ -235,8 +236,8 @@ public class AtkComponent {
                 return AtkLayer.OVERLAY;
             }
             if (role == AccessibleRole.CANVAS ||
-            role == AccessibleRole.ROOT_PANE ||
-            role == AccessibleRole.LAYERED_PANE ) {
+                    role == AccessibleRole.ROOT_PANE ||
+                    role == AccessibleRole.LAYERED_PANE) {
                 return AtkLayer.CANVAS;
             }
             if (role == AccessibleRole.WINDOW) {
