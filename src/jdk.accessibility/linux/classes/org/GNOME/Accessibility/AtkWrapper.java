@@ -78,8 +78,8 @@ public class AtkWrapper {
             if (!accessibilityEnabled) {
                 builder = new ProcessBuilder("dbus-send", "--session", "--dest=org.a11y.Bus", "--print-reply", "/org/a11y/bus", "org.a11y.Bus.GetAddress");
                 p = builder.start();
-                b = new BufferedReader(new InputStreamReader(p.getInputStream()));
-                while ((b.readLine()) != null) ;
+                var ignoredOutput = p.getInputStream();
+                while (ignoredOutput.skip(Long.MAX_VALUE) == Long.MAX_VALUE);
                 p.waitFor();
                 if (p.exitValue() == 0)
                     initAtk();
