@@ -116,8 +116,6 @@ Java_org_GNOME_Accessibility_AtkWrapper_initNativeLibrary(void) {
     }
     JAW_DEBUG_JNI("");
 
-    if (jaw_initialized)
-        return TRUE;
     // Java app with GTK Look And Feel will load gail
     // Set NO_GAIL to "1" to prevent gail from executing
 
