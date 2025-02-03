@@ -164,7 +164,9 @@ public class FileInputStream extends InputStream
         if (useNio) {
             Path nioPath = nioFs.getPath(name);
             if (Files.isDirectory(nioPath)) {
-                throw new FileNotFoundException(name + " is a directory");
+                // Unfortunately, java.nio allows opening directories as file channels, and there's no way
+                // to determine if an opened nio channel belongs to a directory.
+                throw new FileNotFoundException(name + " (Is a directory)");
             }
             try {
                 // NB: the channel will be closed in the close() method
@@ -184,8 +186,7 @@ public class FileInputStream extends InputStream
                     new Throwable(String.format("Can't create a FileInputStream for %s with %s", file, nioFs), e)
                             .printStackTrace(System.err);
                 }
-                // Since we can't throw IOException...
-                throw new FileNotFoundException(e.getMessage());
+                throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
             }
         } else {
             fd = new FileDescriptor();

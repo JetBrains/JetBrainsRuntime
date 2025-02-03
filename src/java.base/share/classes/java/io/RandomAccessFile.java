@@ -283,7 +283,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (useNio) {
             Path nioPath = nioFs.getPath(name);
             if (Files.isDirectory(nioPath)) {
-                throw new FileNotFoundException(name + " is a directory");
+                // Unfortunately, java.nio allows opening directories as file channels, and there's no way
+                // to determine if an opened nio channel belongs to a directory.
+                throw new FileNotFoundException(name + " (Is a directory)");
             }
             try {
                 var options = optionsForChannel(imode);
@@ -305,6 +307,10 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                             .printStackTrace(System.err);
                 }
                 // Since we can't throw IOException...
+                e = IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
+                if (e instanceof FileNotFoundException fnne) {
+                    throw fnne;
+                }
                 throw new FileNotFoundException(e.getMessage());
             }
         } else {
