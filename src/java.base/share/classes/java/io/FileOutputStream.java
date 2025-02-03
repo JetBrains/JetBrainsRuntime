@@ -240,7 +240,7 @@ public class FileOutputStream extends OutputStream
         if (useNio) {
             Path nioPath = nioFs.getPath(name);
             if (Files.isDirectory(nioPath)) {
-                throw new FileNotFoundException(name + " is a directory");
+                throw new FileNotFoundException(name + " (Is a directory)");
             }
             try {
                 // NB: the channel will be closed in the close() method
@@ -264,7 +264,7 @@ public class FileOutputStream extends OutputStream
                             .printStackTrace(System.err);
                 }
                 // Since we can't throw IOException...
-                throw new FileNotFoundException(e.getMessage());
+                throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
             }
         } else {
             this.fd = new FileDescriptor();

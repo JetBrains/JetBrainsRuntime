@@ -60,6 +60,41 @@ class IoOverNioFileSystem extends FileSystem {
         return null;
     }
 
+    static FileNotFoundException convertNioToIoExceptionInStreams(IOException source) {
+        String message = convertNioToIoExceptionMessage(source);
+        if (source instanceof FileSystemException s && s.getFile() != null) {
+            message = s.getFile() + " (" + message + ")";
+        }
+        FileNotFoundException result = new FileNotFoundException(message);
+        result.initCause(source);
+        return result;
+    }
+
+    private static IOException convertNioToIoExceptionInFile(IOException source) {
+        return new IOException(convertNioToIoExceptionMessage(source), source);
+    }
+
+    private static String convertNioToIoExceptionMessage(IOException source) {
+        return switch (source) {
+            case AccessDeniedException s -> "Permission denied";
+            case NotDirectoryException s -> "Not a directory";
+            case NoSuchFileException s -> "No such file or directory";
+            case FileSystemLoopException s -> "Too many levels of symbolic links";
+            case FileSystemException s -> {
+                String message = source.getMessage();
+                String expectedPrefix = s.getFile() + ": ";
+                if (message.startsWith(expectedPrefix)) {
+                    message = message.substring(expectedPrefix.length());
+                    if (message.equals("Too many levels of symbolic links or unable to access attributes of symbolic link")) {
+                        yield "Too many levels of symbolic links";
+                    }
+                }
+                yield message;
+            }
+            default -> source.getMessage();
+        };
+    }
+
     private static boolean setPermission0(java.nio.file.FileSystem nioFs, File f, int access, boolean enable, boolean owneronly) {
         Path path;
         try {
@@ -551,6 +586,8 @@ class IoOverNioFileSystem extends FileSystem {
             return false;
         } catch (InvalidPathException e) {
             throw new IOException(e.getMessage(), e); // The default file system would throw IOException too.
+        }  catch (IOException e) {
+            throw convertNioToIoExceptionInFile(e);
         }
         return defaultFileSystem.createFileExclusively(pathname);
     }
