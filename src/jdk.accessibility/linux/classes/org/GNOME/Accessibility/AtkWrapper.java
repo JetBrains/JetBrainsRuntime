@@ -31,7 +31,10 @@ import javax.swing.JComboBox;
 import java.lang.management.*;
 import java.util.*;
 
+import sun.util.logging.PlatformLogger;
+
 public class AtkWrapper {
+    private static final PlatformLogger log = PlatformLogger.getLogger("org.GNOME.Accessibility.AtkWrapper");
     static boolean accessibilityEnabled = false;
 
     static void initAtk() {
@@ -93,8 +96,9 @@ public class AtkWrapper {
                 emitter.addNotificationListener(listener, null, null);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            e.getCause();
+            if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
+                log.severe("Error during ATK accessibility initialization: ", e);
+            }
         }
     }
 
@@ -328,7 +332,9 @@ public class AtkWrapper {
                 try {
                     AtkWrapper.loadAtkBridge();
                 } catch (Exception ex) {
-                    ex.printStackTrace();
+                    if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
+                        log.severe("Failed to load ATK bridge: ", ex);
+                    }
                 }
             }
 
@@ -440,7 +446,9 @@ public class AtkWrapper {
             }
             focusNotify(ctx);
         } catch (Exception e) {
-            e.printStackTrace();
+            if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
+                log.severe("Error in dispatchFocusEvent: ", e);
+            }
         }
     }
 
@@ -741,8 +749,10 @@ public class AtkWrapper {
 
     public native static long getInstance(AccessibleContext ac);
 
-    public static void printLog(String str) {
-        System.out.println(str);
+    public static void printLog(String msg) {
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info(msg);
+        }
     }
 
     public AtkWrapper() {

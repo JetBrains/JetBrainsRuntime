@@ -29,6 +29,8 @@ package org.GNOME.Accessibility;
 import javax.swing.*;
 import java.util.concurrent.*;
 
+import sun.util.logging.PlatformLogger;
+
 /**
  * AtkUtil:
  * That class is used to wrap the callback on Java object
@@ -37,6 +39,7 @@ import java.util.concurrent.*;
  * @autor Giuseppe Capaldo
  */
 public class AtkUtil {
+    private static final PlatformLogger log = PlatformLogger.getLogger("org.GNOME.Accessibility.AtkUtil");
 
     public AtkUtil() {
     }
@@ -50,7 +53,7 @@ public class AtkUtil {
      * value that is passed to it
      *
      * @param function A Callable object that return T value
-     * @param d        A T object tha is returned if an exception occurs
+     * @param d        A T object that is returned if an exception occurs
      * @return The return value of the original function or the
      * default value. Obviously if the value is a primitive type
      * this will automatically wrapped from java in the
@@ -62,7 +65,9 @@ public class AtkUtil {
             try {
                 return function.call();
             } catch (Exception ex) {
-                ex.printStackTrace(); // we can do better than this
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.severe("Error occurred while executing function. Returning default value.", ex);
+                }
                 return d;
             }
         }
@@ -72,7 +77,9 @@ public class AtkUtil {
         try {
             return wf.get();
         } catch (InterruptedException | ExecutionException ex) {
-            ex.printStackTrace(); // we can do better than this
+            if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                log.severe("Swing task execution interrupted or failed, returning default value.", ex);
+            }
             return d;
         }
     }
