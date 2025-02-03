@@ -30,8 +30,8 @@ public class AtkHypertext extends AtkText {
         super(ac);
 
         AccessibleText ac_text = ac.getAccessibleText();
-        if (ac_text instanceof AccessibleHypertext) {
-            _acc_hyper_text = new WeakReference<AccessibleHypertext>((AccessibleHypertext) ac_text);
+        if (ac_text instanceof AccessibleHypertext accessibleHypertext) {
+            _acc_hyper_text = new WeakReference<AccessibleHypertext>(accessibleHypertext);
         } else {
             _acc_hyper_text = null;
         }

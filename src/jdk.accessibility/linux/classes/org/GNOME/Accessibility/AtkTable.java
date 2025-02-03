@@ -58,8 +58,8 @@ public class AtkTable {
             return -1;
 
         return AtkUtil.invokeInSwing(() -> {
-            if (acc_table instanceof AccessibleExtendedTable)
-                return ((AccessibleExtendedTable) acc_table).getAccessibleIndex(row, column);
+            if (acc_table instanceof AccessibleExtendedTable accessibleExtendedTable)
+                return accessibleExtendedTable.getAccessibleIndex(row, column);
             Accessible child = acc_table.getAccessibleAt(row, column);
             if (child == null)
                 return -1;
@@ -77,8 +77,8 @@ public class AtkTable {
 
         return AtkUtil.invokeInSwing(() -> {
             int column = -1;
-            if (acc_table instanceof AccessibleExtendedTable)
-                column = ((AccessibleExtendedTable) acc_table).getAccessibleColumn(index);
+            if (acc_table instanceof AccessibleExtendedTable accessibleExtendedTable)
+                column = accessibleExtendedTable.getAccessibleColumn(index);
             return column;
         }, -1);
     }
@@ -90,8 +90,8 @@ public class AtkTable {
 
         return AtkUtil.invokeInSwing(() -> {
             int row = -1;
-            if (acc_table instanceof AccessibleExtendedTable)
-                row = ((AccessibleExtendedTable) acc_table).getAccessibleRow(index);
+            if (acc_table instanceof AccessibleExtendedTable accessibleExtendedTable)
+                row = accessibleExtendedTable.getAccessibleRow(index);
             return row;
         }, -1);
     }

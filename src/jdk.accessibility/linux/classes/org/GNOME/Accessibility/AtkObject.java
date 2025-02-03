@@ -64,10 +64,10 @@ public class AtkObject {
             int flags = 0;
             AccessibleContext ac;
 
-            if (o instanceof AccessibleContext)
-                ac = (AccessibleContext) o;
-            else if (o instanceof Accessible)
-                ac = ((Accessible) o).getAccessibleContext();
+            if (o instanceof AccessibleContext accessibleContext)
+                ac = accessibleContext;
+            else if (o instanceof Accessible accessible)
+                ac = accessible.getAccessibleContext();
             else
                 return flags;
 
@@ -122,8 +122,7 @@ public class AtkObject {
 
     public static void setAccessibleParent(AccessibleContext ac, AccessibleContext pa) {
         AtkUtil.invokeInSwing(() -> {
-            if (pa instanceof Accessible) {
-                Accessible father = (Accessible) pa;
+            if (pa instanceof Accessible father) {
                 ac.setAccessibleParent(father);
             }
         });
@@ -155,8 +154,7 @@ public class AtkObject {
             int indexInParent = ac.getAccessibleIndexInParent();
             Accessible child = parent.getAccessibleContext()
                     .getAccessibleChild(indexInParent);
-            if (child instanceof JMenuItem) {
-                JMenuItem menuItem = (JMenuItem) child;
+            if (child instanceof JMenuItem menuItem) {
                 KeyStroke keyStroke = menuItem.getAccelerator();
                 if (keyStroke != null) {
                     int modifiers = keyStroke.getModifiers();
@@ -271,8 +269,8 @@ public class AtkObject {
                     Object[] objs = array[i].getTarget();
                     AccessibleContext[] contexts = new AccessibleContext[objs.length];
                     for (int j = 0; j < objs.length; j++) {
-                        if (objs[i] instanceof Accessible)
-                            contexts[i] = ((Accessible) objs[i]).getAccessibleContext();
+                        if (objs[i] instanceof Accessible accessible)
+                            contexts[i] = accessible.getAccessibleContext();
                         else
                             contexts[i] = null;
                     }

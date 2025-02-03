@@ -42,8 +42,8 @@ public class AtkAction {
         this.nactions = acc_action.getAccessibleActionCount();
         this.descriptions = new String[nactions];
         AccessibleComponent acc_component = ac.getAccessibleComponent();
-        if (acc_component instanceof AccessibleExtendedComponent) {
-            this._acc_ext_component = new WeakReference<AccessibleExtendedComponent>((AccessibleExtendedComponent) acc_component);
+        if (acc_component instanceof AccessibleExtendedComponent accessibleExtendedComponent) {
+            this._acc_ext_component = new WeakReference<AccessibleExtendedComponent>(accessibleExtendedComponent);
         }
     }
 
@@ -195,8 +195,7 @@ public class AtkAction {
                         rVal += ";";
                     }
 
-                    if (o instanceof KeyStroke) {
-                        KeyStroke keyStroke = (KeyStroke) o;
+                    if (o instanceof KeyStroke keyStroke) {
                         String modString = InputEvent.getModifiersExText(keyStroke.getModifiers());
                         String keyString = KeyEvent.getKeyText(keyStroke.getKeyCode());
 
@@ -207,8 +206,7 @@ public class AtkAction {
                                 rVal += keyString;
                             }
                         }
-                    } else if (o instanceof KeyStroke[]) {
-                        KeyStroke[] keyStroke = (KeyStroke[]) o;
+                    } else if (o instanceof KeyStroke[] keyStroke) {
                         for (int j = 0; j < keyStroke.length; j++) {
                             String modString = InputEvent.getModifiersExText(keyStroke[j].getModifiers());
                             String keyString = KeyEvent.getKeyText(keyStroke[j].getKeyCode());

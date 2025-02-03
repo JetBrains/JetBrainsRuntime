@@ -82,9 +82,8 @@ public class AtkText {
             ;
             final int rightEnd = getRightEnd(start, end, acc_text.getCharCount());
 
-            if (acc_text instanceof AccessibleExtendedText) {
-                AccessibleExtendedText acc_ext_text = (AccessibleExtendedText) acc_text;
-                return acc_ext_text.getTextRange(rightStart, rightEnd);
+            if (acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
+                return accessibleExtendedText.getTextRange(rightStart, rightEnd);
             }
             StringBuffer buf = new StringBuffer();
             for (int i = rightStart; i <= rightEnd - 1; i++) {
@@ -114,13 +113,12 @@ public class AtkText {
             return null;
 
         return AtkUtil.invokeInSwing(() -> {
-            if (false && acc_text instanceof AccessibleExtendedText) {
+            if (false && acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
                 // FIXME: this is not using start/end boundaries
-                AccessibleExtendedText acc_ext_text = (AccessibleExtendedText) acc_text;
                 int part = getPartTypeFromBoundary(boundary_type);
                 if (part == -1)
                     return null;
-                AccessibleTextSequence seq = acc_ext_text.getTextSequenceAt(part, offset);
+                AccessibleTextSequence seq = accessibleExtendedText.getTextSequenceAt(part, offset);
                 if (seq == null)
                     return null;
                 return new StringSequence(seq.text, seq.startIndex, seq.endIndex + 1);
@@ -136,13 +134,12 @@ public class AtkText {
             return null;
 
         return AtkUtil.invokeInSwing(() -> {
-            if (false && acc_text instanceof AccessibleExtendedText) {
+            if (false && acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
                 // FIXME: this is not using start/end boundaries
-                AccessibleExtendedText acc_ext_text = (AccessibleExtendedText) acc_text;
                 int part = getPartTypeFromBoundary(boundary_type);
                 if (part == -1)
                     return null;
-                AccessibleTextSequence seq = acc_ext_text.getTextSequenceBefore(part, offset);
+                AccessibleTextSequence seq = accessibleExtendedText.getTextSequenceBefore(part, offset);
                 if (seq == null)
                     return null;
                 return new StringSequence(seq.text, seq.startIndex, seq.endIndex + 1);
@@ -161,13 +158,12 @@ public class AtkText {
             return null;
 
         return AtkUtil.invokeInSwing(() -> {
-            if (false && acc_text instanceof AccessibleExtendedText) {
+            if (false && acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
                 // FIXME: this is not using start/end boundaries
-                AccessibleExtendedText acc_ext_text = (AccessibleExtendedText) acc_text;
                 int part = getPartTypeFromBoundary(boundary_type);
                 if (part == -1)
                     return null;
-                AccessibleTextSequence seq = acc_ext_text.getTextSequenceAfter(part, offset);
+                AccessibleTextSequence seq = accessibleExtendedText.getTextSequenceAfter(part, offset);
                 if (seq == null)
                     return null;
                 return new StringSequence(seq.text, seq.startIndex, seq.endIndex + 1);
@@ -248,13 +244,12 @@ public class AtkText {
             return null;
 
         return AtkUtil.invokeInSwing(() -> {
-            if (acc_text instanceof AccessibleExtendedText) {
+            if (acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
                 final int rightStart = getRightStart(start);
                 ;
                 final int rightEnd = getRightEnd(start, end, acc_text.getCharCount());
 
-                AccessibleExtendedText acc_ext_text = (AccessibleExtendedText) acc_text;
-                Rectangle rect = acc_ext_text.getTextBounds(rightStart, rightEnd);
+                Rectangle rect = accessibleExtendedText.getTextBounds(rightStart, rightEnd);
                 if (rect == null)
                     return null;
                 AccessibleComponent component = ac.getAccessibleComponent();
