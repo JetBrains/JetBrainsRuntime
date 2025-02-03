@@ -259,7 +259,6 @@ JNIEnv *jaw_util_get_jni_env(void) {
     }
 
     fflush(stderr);
-    exit(2);
     return NULL;
 }
 
@@ -299,6 +298,9 @@ AtkRole
 jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     JAW_DEBUG_C("%p", jAccessibleContext);
     JNIEnv *jniEnv = jaw_util_get_jni_env();
+    if (jniEnv == NULL) {
+        return ATK_ROLE_UNKNOWN;
+    }
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
     jmethodID jmidgar = (*jniEnv)->GetStaticMethodID(
