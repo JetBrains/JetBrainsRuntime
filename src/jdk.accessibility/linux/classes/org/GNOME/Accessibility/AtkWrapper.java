@@ -39,8 +39,11 @@ public class AtkWrapper {
 
     private static void initAtk() {
         System.loadLibrary("atk-wrapper");
-        if (AtkWrapper.initNativeLibrary())
+        if (AtkWrapper.initNativeLibrary()) {
             accessibilityEnabled = true;
+        } else {
+            throw new IllegalStateException("Accessibility is disabled due to an error that happened when initializing the native libraries.");
+        }
     }
 
     private static String findXPropPath() {
@@ -85,6 +88,8 @@ public class AtkWrapper {
                     initAtk();
             }
 
+            AtkWrapper.loadAtkBridge();
+
             java.util.List<GarbageCollectorMXBean> gcbeans = ManagementFactory.getGarbageCollectorMXBeans();
             for (GarbageCollectorMXBean gcbean : gcbeans) {
                 NotificationEmitter emitter = (NotificationEmitter) gcbean;
@@ -96,6 +101,7 @@ public class AtkWrapper {
                 emitter.addNotificationListener(listener, null, null);
             }
         } catch (Exception e) {
+            accessibilityEnabled = false;
             if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
                 log.severe("Error during ATK accessibility initialization: ", e);
             }
@@ -327,17 +333,6 @@ public class AtkWrapper {
         private boolean firstEvent = true;
 
         public void eventDispatched(AWTEvent e) {
-            if (firstEvent && accessibilityEnabled) {
-                firstEvent = false;
-                try {
-                    AtkWrapper.loadAtkBridge();
-                } catch (Exception ex) {
-                    if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
-                        log.severe("Failed to load ATK bridge: ", ex);
-                    }
-                }
-            }
-
             if (e instanceof WindowEvent windowEvent) {
                 switch (e.getID()) {
                     case WindowEvent.WINDOW_OPENED:
@@ -727,8 +722,9 @@ public class AtkWrapper {
     }
 
     public AtkWrapper() {
-        if (!accessibilityEnabled)
-            return;
+        if (!accessibilityEnabled) {
+            throw new IllegalStateException("AtkWrapper not initialized due to disabled accessibility.");
+        }
 
         toolkit.addAWTEventListener(globalListener,
                 AWTEvent.WINDOW_EVENT_MASK |

@@ -110,7 +110,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_initNativeLibrary(void) {
 
         if (!jaw_log_file) {
             perror("Error opening log file " JAW_LOG_FILE2);
-            exit(1);
+            return FALSE;
         }
         jaw_start_time = time(NULL);
     }
