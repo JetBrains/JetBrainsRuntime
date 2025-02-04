@@ -61,19 +61,6 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
         addEliteToEveryDirectoryListing = false;
     }
 
-    static {
-        // TODO It's a tricky workaround. Would be better to get rid of it.
-        Class<?> ignored = ManglingPath.class;
-        ignored = ManglingBasicFileAttributeView.class;
-        ignored = ManglingBasicFileAttributes.class;
-        ignored = ManglingDirectoryStream.ManglingPathIterator.class;
-        ignored = ManglingDirectoryStream.class;
-        ignored = ManglingDosFileAttributeView.class;
-        ignored = ManglingFileChannel.class;
-        ignored = ManglingPosixFileAttributeView.class;
-        ignored = ManglingPosixFileAttributes.class;
-    }
-
     private final static byte[] manglingTable = new byte[256];
 
     static {
