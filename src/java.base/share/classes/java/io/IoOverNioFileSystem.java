@@ -32,6 +32,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.*;
 import java.security.AccessControlException;
 import java.util.*;
+import java.util.function.Function;
 
 import static com.jetbrains.internal.IoOverNio.DEBUG;
 
@@ -62,7 +63,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     static FileNotFoundException convertNioToIoExceptionInStreams(IOException source) {
-        String message = convertNioToIoExceptionMessage(source);
+        String message = convertNioToIoExceptionMessage.apply(source);
         if (source instanceof FileSystemException s && s.getFile() != null) {
             message = s.getFile() + " (" + message + ")";
         }
@@ -72,10 +73,36 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private static IOException convertNioToIoExceptionInFile(IOException source) {
-        return new IOException(convertNioToIoExceptionMessage(source), source);
+        return new IOException(convertNioToIoExceptionMessage.apply(source), source);
     }
 
-    private static String convertNioToIoExceptionMessage(IOException source) {
+    private static Function<IOException, String> convertNioToIoExceptionMessage =
+            System.getProperty("os.name").startsWith("Windows")
+                    ? IoOverNioFileSystem::convertNioToIoExceptionMessageWindows
+                    : IoOverNioFileSystem::convertNioToIoExceptionMessageUnix;
+
+    private static String convertNioToIoExceptionMessageWindows(IOException source) {
+        return switch (source) {
+            case AccessDeniedException s -> "Permission denied";
+            case NotDirectoryException s -> "Not a directory";
+            case NoSuchFileException s -> "No such file or directory";
+            case FileSystemLoopException s -> "Too many levels of symbolic links";
+            case FileSystemException s -> {
+                String message = source.getMessage();
+                String expectedPrefix = s.getFile() + ": ";
+                if (message.startsWith(expectedPrefix)) {
+                    message = message.substring(expectedPrefix.length());
+                    if (message.equals("Too many levels of symbolic links or unable to access attributes of symbolic link")) {
+                        yield "Too many levels of symbolic links";
+                    }
+                }
+                yield message;
+            }
+            default -> source.getMessage();
+        };
+    }
+
+    private static String convertNioToIoExceptionMessageUnix(IOException source) {
         return switch (source) {
             case AccessDeniedException s -> "Permission denied";
             case NotDirectoryException s -> "Not a directory";

@@ -73,7 +73,7 @@ public class ManglingFileSystem extends FileSystem {
             if (getSeparator().equals("/")) {
                 result.add(new ManglingPath(this, Paths.get("/31337")));
             } else {
-                result.add(new ManglingPath(this, Paths.get("\\\\31337\\")));
+                result.add(new ManglingPath(this, Paths.get("\\\\r00t\\31337\\")));
             }
         }
         return result;

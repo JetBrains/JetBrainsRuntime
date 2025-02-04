@@ -166,7 +166,7 @@ public class RandomAccessFileTest {
         try (RandomAccessFile rac = new RandomAccessFile(file, "rw")) {
             rac.setLength(content.length() + 2);
             rac.seek(0);
-            assertEquals(rac.readLine(), "h3110" + extraContent.substring(0, 2));
+            assertEquals("h3110" + extraContent.substring(0, 2), rac.readLine());
         }
 
         // TODO Bigger length.

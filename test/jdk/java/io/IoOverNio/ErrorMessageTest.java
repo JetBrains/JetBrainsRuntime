@@ -35,6 +35,7 @@ import org.junit.rules.TemporaryFolder;
 import testNio.ManglingFileSystemProvider;
 
 import java.io.*;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.util.Objects;
 
@@ -68,61 +69,68 @@ public class ErrorMessageTest {
         File entityInNonExistentDir = new File(nonExistentEntity, "foo");
 
         test(
-                new FileNotFoundException(nonExistentEntity + " (No such file or directory)"),
+                new FileNotFoundException(nonExistentEntity + (IS_WINDOWS ? " (The system cannot find the file specified)" : " (No such file or directory)")),
                 () -> new FileInputStream(nonExistentEntity).close()
         );
 
         test(
-                new FileNotFoundException(nonExistentEntity + " (No such file or directory)"),
+                new FileNotFoundException(nonExistentEntity + (IS_WINDOWS ? " (The system cannot find the file specified)" : " (No such file or directory)")),
                 () -> new RandomAccessFile(nonExistentEntity, "r").close()
         );
 
         test(
-                new IOException("No such file or directory"),
+                new IOException(IS_WINDOWS ? "The system cannot find the path specified" : "No such file or directory"),
                 entityInNonExistentDir::createNewFile
         );
 
         test(
-                new IOException("No such file or directory"),
+                new IOException(IS_WINDOWS ? "The system cannot find the path specified" : "No such file or directory"),
                 () -> File.createTempFile("foo", "bar", nonExistentEntity)
         );
     }
 
     @Test
     public void accessDenied() throws Exception {
-        File prohibitedRoot;
+        File f;
         if (IS_WINDOWS) {
-            prohibitedRoot = new File("C:\\System Volume Information");
+            f = new File("C:\\Windows\\System32\\config\\SAM");
+            try {
+                Files.list(f.toPath().getParent()).close();
+                Assume.assumeTrue(false);
+            } catch (AccessDeniedException ignored) {
+                // Nothing.
+            }
         } else if (IS_MAC) {
-            prohibitedRoot = new File("/private/var/audit");
+            Assume.assumeFalse(System.getProperty("user.name").equals("root"));
+            f = new File("/private/var/audit/current");
         } else {
-            prohibitedRoot = new File("/root");
+            Assume.assumeFalse(System.getProperty("user.name").equals("root"));
+            f = new File("/etc/shadow");
         }
 
-        File f = new File(prohibitedRoot, "foo");
-
         test(
-                new FileNotFoundException(f + " (Permission denied)"),
+                new FileNotFoundException(f + (IS_WINDOWS ? " (Access is denied)" : " (Permission denied)")),
                 () -> new FileInputStream(f).close()
         );
 
         test(
-                new FileNotFoundException(f + " (Permission denied)"),
+                new FileNotFoundException(f + (IS_WINDOWS ? " (Access is denied)" : " (Permission denied)")),
                 () -> new FileOutputStream(f).close()
         );
 
         test(
-                new FileNotFoundException(f + " (Permission denied)"),
+                new FileNotFoundException(f + (IS_WINDOWS ? " (Access is denied)" : " (Permission denied)")),
                 () -> new RandomAccessFile(f, "r").close()
         );
 
+        if (!IS_WINDOWS) {
+            test(
+                    new IOException("Permission denied"),
+                    f::createNewFile
+            );
+        }
         test(
-                new IOException("Permission denied"),
-                f::createNewFile
-        );
-
-        test(
-                new IOException("Permission denied"),
+                new IOException(IS_WINDOWS ? "The system cannot find the path specified" : "Permission denied"),
                 () -> File.createTempFile("foo", "bar", f)
         );
     }
@@ -132,17 +140,17 @@ public class ErrorMessageTest {
         File dir = temporaryFolder.newFolder();
 
         test(
-                new FileNotFoundException(dir + " (Is a directory)"),
+                new FileNotFoundException(dir + (IS_WINDOWS ? " (Access is denied)" : " (Is a directory)")),
                 () -> new FileInputStream(dir).close()
         );
 
         test(
-                new FileNotFoundException(dir + " (Is a directory)"),
+                new FileNotFoundException(dir + (IS_WINDOWS ? " (Access is denied)" : " (Is a directory)")),
                 () -> new FileOutputStream(dir).close()
         );
 
         test(
-                new FileNotFoundException(dir + " (Is a directory)"),
+                new FileNotFoundException(dir + (IS_WINDOWS ? " (Access is denied)" : " (Is a directory)")),
                 () -> new RandomAccessFile(dir, "r").close()
         );
     }
@@ -152,27 +160,27 @@ public class ErrorMessageTest {
         File f = new File(temporaryFolder.newFile(), "foo");
 
         test(
-                new FileNotFoundException(f + " (Not a directory)"),
+                new FileNotFoundException(f + (IS_WINDOWS ? " (The system cannot find the path specified)" : " (Not a directory)")),
                 () -> new FileInputStream(f).close()
         );
 
         test(
-                new FileNotFoundException(f + " (Not a directory)"),
+                new FileNotFoundException(f + (IS_WINDOWS ? " (The system cannot find the path specified)" : " (Not a directory)")),
                 () -> new FileOutputStream(f).close()
         );
 
         test(
-                new FileNotFoundException(f + " (Not a directory)"),
+                new FileNotFoundException(f + (IS_WINDOWS ? " (The system cannot find the path specified)" : " (Not a directory)")),
                 () -> new RandomAccessFile(f, "r").close()
         );
 
         test(
-                new IOException("Not a directory"),
+                new IOException((IS_WINDOWS ? "The system cannot find the path specified" : "Not a directory")),
                 f::createNewFile
         );
 
         test(
-                new IOException("Not a directory"),
+                new IOException((IS_WINDOWS ? "The system cannot find the path specified" : "Not a directory")),
                 () -> File.createTempFile("foo", "bar", f)
         );
     }
@@ -208,7 +216,10 @@ public class ErrorMessageTest {
     // TODO Try to test operations of FileInputStream, FileOutputStream, etc.
 
     private static void test(Exception expectedException, TestRunnable fn) {
-        test(expectedException, () -> { fn.run(); return Void.TYPE; });
+        test(expectedException, () -> {
+            fn.run();
+            return Void.TYPE;
+        });
     }
 
     private static <T> void test(Exception expectedException, TestComputable<T> fn) {
