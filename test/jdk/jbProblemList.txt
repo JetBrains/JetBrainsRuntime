@@ -135,6 +135,7 @@ java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java JBR-94 windows-x
 
 java/awt/event/StressTest/MouseAndKeyEventStressTest.java JBR-6479 generic-all
 java/awt/FileDialog/8003399/bug8003399.java JBR-6930 windows-all
+java/awt/FileDialog/8017487/bug8017487.java JBR-8144 windows-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
@@ -1076,7 +1077,7 @@ javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java JBR-5510,JBR-6546 linux-5.18.2-arch1-1,windows-x64
 javax/swing/JInternalFrame/8020708/bug8020708.java JBR-4879,JBR-6512 windows-all,linux-all
 javax/swing/JInternalFrame/8069348/bug8069348.java 8253184,JBR-900 windows-all,linux-all
-javax/swing/reliability/HangDuringStaticInitialization.java JBR-6958 windows-aarch64
+javax/swing/reliability/HangDuringStaticInitialization.java JBR-6958,JBR-8145 windows-aarch64,windows-x64
 javax/swing/reliability/TaskUndJFrameProperties.java JBR-6586 windows-x64
 javax/swing/ToolTipManager/Test6256140.java 8197552 windows-all
 javax/swing/text/DefaultEditorKit/4278839/bug4278839.java CODETOOLS-7901623 windows-all
