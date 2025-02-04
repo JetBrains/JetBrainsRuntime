@@ -126,13 +126,25 @@ $ docker pull jetbrains/runtime:oraclelinux8_x64
 ```
 Create and run a new container from the downloaded image
 ```
-$ docker run -v $JetBrainsRuntime:/JetBrainsRuntime -it jetbrains/runtime:oraclelinux8_[arch]
+$ docker run -v $JetBrainsRuntime:/JetBrainsRuntime:Z -it jetbrains/runtime:oraclelinux8_[arch]
 ```
 where `$JetBrainsRuntime` is a full path to the directory where the repository was cloned to.
 
 Run these commands in the container:
 ```
 # cd /JetBrainsRuntime
+# sh ./configure
+# make images
+```
+
+If you get an error at the `sh ./configure` stage about the lack of a JDK, you can install one via [SDKMAN!](https://sdkman.io/):
+
+- follow indications to install SDKMAN!
+- run these commands in the container:
+```
+# source "$HOME/.sdkman/bin/sdkman-init.sh"
+# sdk list java // -> pick a suitable JDK identifier (e.g. `23.0.2-tem`)
+# sdk install java 23.0.2-tem
 # sh ./configure
 # make images
 ```
