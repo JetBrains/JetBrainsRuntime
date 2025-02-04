@@ -33,7 +33,6 @@ function do_configure {
     --with-version-opt=b${build_number} \
     --with-toolchain-version=$TOOLCHAIN_VERSION \
     --with-boot-jdk=$BOOT_JDK \
-    --with-nvdacontrollerclient=$NVDA_PATH \
     --disable-ccache \
     --enable-cds=yes \
     $DISABLE_WARNINGS_AS_ERRORS \
