@@ -14,6 +14,8 @@ AC_DEFUN_ONCE([LIB_SETUP_ATK],
         (test "x${with_atk_include}" != x && test "x${with_atk_include}" != xno); then
       AC_MSG_WARN([[atk not used, so --with-atk[-*] is ignored]])
     fi
+    ATK_CFLAGS=
+    ATK_LIBS=
   else
     ATK_FOUND=no
     if test "x${with_atk}" != x && test "x${with_atk}" != xyes; then
@@ -44,11 +46,8 @@ AC_DEFUN_ONCE([LIB_SETUP_ATK],
     if test "x$ATK_FOUND" = xno; then
       HELP_MSG_MISSING_DEPENDENCY([atk])
       AC_MSG_ERROR([Could not find atk! $HELP_MSG ])
-    else
-      ATK_WRAPPER_CFLAGS="$ATK_WRAPPER_CFLAGS $ATK_CFLAGS"
-      ATK_WRAPPER_LIBS="$ATK_WRAPPER_LIBS $ATK_LIBS"
-      AC_SUBST(ATK_WRAPPER_CFLAGS)
-      AC_SUBST(ATK_WRAPPER_LIBS)
     fi
   fi
+  AC_SUBST(ATK_CFLAGS)
+  AC_SUBST(ATK_LIBS)
 ])

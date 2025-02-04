@@ -120,9 +120,12 @@ ifeq ($(call isTargetOs, linux), true)
         NAME := atk-wrapper, \
         OPTIMIZATION := LOW, \
         CFLAGS := $(CFLAGS_JDKLIB) \
-                  $(ATK_WRAPPER_CFLAGS), \
+                  $(ATK_CFLAGS) \
+                  $(AT_SPI2_ATK_CFLAGS) \
+                  $(GLIB_CFLAGS) \
+                  $(GOBJECT_CFLAGS), \
         LDFLAGS := $(LDFLAGS_JDKLIB), \
-        LIBS_linux := -ljvm $(ATK_WRAPPER_LIBS), \
+        LIBS_linux := -ljvm $(ATK_LIBS) $(AT_SPI2_ATK_LIBS) $(GLIB_LIBS) $(GOBJECT_LIBS), \
       ))
       $(BUILD_LIBATKWRAPPER): $(call FindLib, java.base, java)
       TARGETS += $(BUILD_LIBATKWRAPPER)

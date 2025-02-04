@@ -15,6 +15,8 @@ AC_DEFUN_ONCE([LIB_SETUP_GOBJECT],
         (test "x${with_gobject_include}" != x && test "x${with_gobject_include}" != xno); then
       AC_MSG_WARN([[gobject not used, so --with-gobject[-*] is ignored]])
     fi
+    GOBJECT_CFLAGS=
+    GOBJECT_LIBS=
   else
     GOBJECT_FOUND=no
 
@@ -49,11 +51,8 @@ AC_DEFUN_ONCE([LIB_SETUP_GOBJECT],
     if test "x$GOBJECT_FOUND" = xno; then
       HELP_MSG_MISSING_DEPENDENCY([gobject])
       AC_MSG_ERROR([Could not find gobject! $HELP_MSG ])
-    else
-      ATK_WRAPPER_CFLAGS="$ATK_WRAPPER_CFLAGS $GOBJECT_CFLAGS"
-      ATK_WRAPPER_LIBS="$ATK_WRAPPER_LIBS $GOBJECT_LIBS"
-      AC_SUBST(ATK_WRAPPER_CFLAGS)
-      AC_SUBST(ATK_WRAPPER_LIBS)
     fi
   fi
+  AC_SUBST(GOBJECT_CFLAGS)
+  AC_SUBST(GOBJECT_LIBS)
 ])

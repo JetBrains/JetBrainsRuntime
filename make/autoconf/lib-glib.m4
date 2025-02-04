@@ -23,6 +23,9 @@ AC_DEFUN_ONCE([LIB_SETUP_GLIB],
           (test "x${with_glibconfig_include}" != x && test "x${with_glibconfig_include}" != xno); then
       AC_MSG_WARN([[glib not used, so --with-glib[-*] and --with-glibconfig[-*] are ignored]])
     fi
+    GLIB_CFLAGS=
+    GLIB_LIBS=
+    GLIBCONFIG_CFLAGS=
   else
     GLIB_FOUND=no
     GLIBCONFIG_FOUND=no
@@ -72,15 +75,12 @@ AC_DEFUN_ONCE([LIB_SETUP_GLIB],
       # Are the glib headers installed in the default /usr/include location?
       PKG_CHECK_MODULES([GLIB], [glib-2.0], [GLIB_FOUND=yes; GLIBCONFIG_FOUND=yes], [GLIB_FOUND=no; GLIBCONFIG_FOUND=no; break])
     fi
-    # AC_MSG_ERROR([$GLIB_CFLAGS $GLIB_LIBS])
     if test "x$GLIB_FOUND" = xno || test "x$GLIBCONFIG_FOUND" = xno; then
       HELP_MSG_MISSING_DEPENDENCY([glib])
       AC_MSG_ERROR([Could not find glib! $HELP_MSG])
-    else
-      ATK_WRAPPER_CFLAGS="$ATK_WRAPPER_CFLAGS $GLIB_CFLAGS $GLIBCONFIG_CFLAGS"
-      ATK_WRAPPER_LIBS="$ATK_WRAPPER_LIBS $GLIB_LIBS"
-      AC_SUBST(ATK_WRAPPER_CFLAGS)
-      AC_SUBST(ATK_WRAPPER_LIBS)
     fi
   fi
+  GLIB_CFLAGS="$GLIB_CFLAGS $GLIBCONFIG_CFLAGS"
+  AC_SUBST(GLIB_CFLAGS)
+  AC_SUBST(GLIB_LIBS)
 ])
