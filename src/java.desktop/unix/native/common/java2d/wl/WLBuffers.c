@@ -93,6 +93,7 @@ AssertDrawLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int lin
 const int MAX_BUFFERS_IN_USE = 2;
 
 static bool traceEnabled;    // set the J2D_STATS env var to enable
+static bool drawBorder;
 
 /**
  * Represents one rectangular area linked into a list.
@@ -779,7 +780,13 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
     // frequent surface updates that it cannot deliver to the screen anyway.
     manager->sendBufferASAP = false;
 
-    DamageList_SendAll(manager->bufferForShow.damageList, manager->wlSurface);
+    if (!drawBorder) {
+        DamageList_SendAll(manager->bufferForShow.damageList, manager->wlSurface);
+    } else {
+        wl_surface_damage_buffer(manager->wlSurface,
+                                 0, 0, manager->bufferForDraw.width,
+                                 manager->bufferForDraw.height);
+    }
     DamageList_FreeAll(manager->bufferForShow.damageList);
     manager->bufferForShow.damageList = NULL;
 
@@ -797,7 +804,7 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
 }
 
 static void
-CopyDamagedArea(WLSurfaceBufferManager * manager, jint x, jint y, jint width, jint height)
+CopyDamagedArea(WLSurfaceBufferManager * manager, jint x, jint y, jint width, jint height, jboolean drawBorder)
 {
     ASSERT_SHOW_LOCK_IS_HELD(manager);
     ASSERT_DRAW_LOCK_IS_HELD(manager);
@@ -829,6 +836,26 @@ CopyDamagedArea(WLSurfaceBufferManager * manager, jint x, jint y, jint width, ji
             dest_row[j] = src_row[j];
         }
     }
+
+    if (drawBorder) {
+        const int color = 0xf04242;
+        pixel_t * dest_row = &dest[y * bufferWidth];
+        for (int j = x; j < width + x; j++) {
+            dest_row[j] = color;
+        }
+
+        dest_row = &dest[(y + height - 1) * bufferWidth];
+        for (int j = x; j < width + x; j++) {
+            dest_row[j] = color;
+        }
+
+        for (int i = y; i < height + y; i++) {
+            dest_row = &dest[i * bufferWidth];
+            dest_row[x] = color;
+            dest_row[x + width - 1] = color;
+        }
+    }
+
 }
 
 /**
@@ -874,11 +901,21 @@ CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager)
             = DamageList_AddList(manager->bufferForShow.wlSurfaceBuffer->damageList,
                                  manager->bufferForDraw.damageList);
 
-    int count = 0;
-    for (DamageList* l = manager->bufferForShow.wlSurfaceBuffer->damageList; l != NULL; l = l->next) {
-        CopyDamagedArea(manager, l->x, l->y, l->width, l->height);
-        count++;
+    if (drawBorder) {
+        pixel_t * dest = manager->bufferForShow.wlSurfaceBuffer->data;
+        pixel_t * src  = manager->bufferForDraw.data;
+        memcpy(dest, src, DrawBufferSizeInBytes(manager));
     }
+
+    int count = 0;
+    long pixels = 0;
+    for (DamageList* l = manager->bufferForShow.wlSurfaceBuffer->damageList; l != NULL; l = l->next) {
+        CopyDamagedArea(manager, l->x, l->y, l->width, l->height, drawBorder);
+        count++;
+        pixels += l->width * l->height;
+    }
+
+    jlong endTime = GetJavaTimeNanos();
 
     // This buffer is now identical to what's on the screen, so clear the difference list:
     DamageList_FreeAll(manager->bufferForShow.wlSurfaceBuffer->damageList);
@@ -888,8 +925,12 @@ CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager)
     manager->bufferForShow.damageList = manager->bufferForDraw.damageList;
     manager->bufferForDraw.damageList = NULL;
 
-    jlong endTime = GetJavaTimeNanos();
-    WLBufferTrace(manager, "CopyDrawBufferToShowBuffer: copied %d area(s) in %lldns", count, endTime - startTime);
+    jlong timeSpent = endTime - startTime;
+    jlong timePer10K = timeSpent * 1024.0 * 10 / pixels;
+    int percent = 100.0 * pixels / DrawBufferSizeInPixels(manager);
+    WLBufferTrace(manager,
+                  "CopyDrawBufferToShowBuffer: copied %d area(s) (%d%% of surface) in %lldns (%lld per 10K)",
+                  count, percent, endTime - startTime, timePer10K);
 }
 
 static void
@@ -982,6 +1023,7 @@ WLSBM_Create(jint width,
     assert (bufferAttachedCallback != NULL);
 
     traceEnabled = getenv("J2D_STATS");
+    drawBorder = getenv("J2D_BORDER");
 
     if (!HaveEnoughMemoryForWindow(width, height)) {
        return NULL;
