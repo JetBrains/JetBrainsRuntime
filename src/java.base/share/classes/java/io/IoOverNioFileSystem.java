@@ -396,7 +396,7 @@ class IoOverNioFileSystem extends FileSystem {
             try {
                 Path path = nioFs.getPath(f.getPath());
 
-                if (path.getFileName().toString().isEmpty()) {
+                if (path.getFileName() == null || path.getFileName().toString().isEmpty()) {
                     // `stat` returns errors for such calls.
                     return 0;
                 }
