@@ -53,7 +53,7 @@ AC_DEFUN_ONCE([LIB_SETUP_AT_SPI2_ATK],
     if test "x$AT_SPI2_ATK_FOUND" = xno; then
       # Are the at-spi2-atk headers installed in the default /usr/include location?
       PKG_CHECK_MODULES([AT_SPI2_ATK], [atk-bridge-2.0],
-        [AT_SPI2_ATK_FOUND=yes; AT_SPI2_ATK_VERSION=$(pkg-config --modversion atk-bridge-2.0)],
+        [AT_SPI2_ATK_FOUND=yes; AT_SPI2_ATK_VERSION=$("$PKG_CONFIG" --modversion atk-bridge-2.0)],
         [AT_SPI2_ATK_FOUND=no; break]
       )
     fi
