@@ -30,6 +30,7 @@ import jdk.internal.misc.VM;
 
 import java.nio.file.*;
 import java.nio.file.attribute.*;
+import java.security.AccessControlException;
 import java.util.*;
 
 import static com.sun.IoOverNio.DEBUG;
@@ -290,11 +291,19 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public String resolve(File f) {
-        String result = resolve0(f);
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.resolve(%s) = %s%n", f, result);
+        try {
+            String result = resolve0(f);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.resolve(%s) = %s%n", f, result);
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.resolve(%s) threw an error%n", f), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private String resolve0(File f) {
@@ -316,11 +325,19 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public String canonicalize(String path) throws IOException {
-        String result = canonicalize0(path);
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.canonicalize(%s) = %s%n", path, result);
+        try {
+            String result = canonicalize0(path);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.canonicalize(%s) = %s%n", path, result);
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.canonicalize(%s) threw an error%n", path), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private String canonicalize0(String path) throws IOException {
@@ -365,13 +382,22 @@ class IoOverNioFileSystem extends FileSystem {
         return defaultFileSystem.canonicalize(path);
     }
 
+
     @Override
     public boolean hasBooleanAttributes(File f, int attributes) {
-        boolean result = hasBooleanAttributes0(f, attributes);
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.hasBooleanAttributes(%s, %s) = %b%n", f, attributes, result);
+        try {
+            boolean result = hasBooleanAttributes0(f, attributes);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.hasBooleanAttributes(%s, %s) = %b%n", f, attributes, result);
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.hasBooleanAttributes(%s, %s) threw an error", f, attributes), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private boolean hasBooleanAttributes0(File f, int attributes) {
@@ -431,9 +457,9 @@ class IoOverNioFileSystem extends FileSystem {
                     new Throwable(String.format("Can't get attributes for a path %s", f), err)
                             .printStackTrace(System.err);
                 }
-            } catch (IOException e) {
+            } catch (@SuppressWarnings("removal") IOException | AccessControlException e) {
                 if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't get attributes a path %s", f), e)
+                    new Throwable(String.format("Can't get attributes for a path %s", f), e)
                             .printStackTrace(System.err);
                 }
                 return 0;
@@ -472,7 +498,7 @@ class IoOverNioFileSystem extends FileSystem {
 
                 nioFs.provider().checkAccess(path, accessMode);
                 return true;
-            } catch (IOException e) {
+            } catch (@SuppressWarnings("removal") IOException | AccessControlException e) {
                 if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't check access for a path %s", f), e)
                             .printStackTrace(System.err);
@@ -504,11 +530,19 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public long getLastModifiedTime(File f) {
-        long result = getLastModifiedTime0(f);
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.getLastModifiedTime(%s) = %d%n", f, result);
+        try {
+            long result = getLastModifiedTime0(f);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.getLastModifiedTime(%s) = %d%n", f, result);
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.getLastModifiedTime(%s) threw an error", f), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private long getLastModifiedTime0(File f) {
@@ -532,11 +566,19 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public long getLength(File f) {
-        long result = getLength0(f);
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.getLength(%s) = %d%n", f, result);
+        try {
+            long result = getLength0(f);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.getLength(%s) = %d%n", f, result);
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.getLength(%s) threw an error%n", f), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private long getLength0(File f) {
@@ -560,11 +602,19 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public boolean createFileExclusively(String pathname) throws IOException {
-        boolean result = createFileExclusively0(pathname);
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.createFileExclusively(%s) = %b%n", pathname, result);
+        try {
+            boolean result = createFileExclusively0(pathname);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.createFileExclusively(%s) = %b%n", pathname, result);
+            }
+            return result;
+        } catch (IOException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.createFileExclusively(%s) threw an error", pathname), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private boolean createFileExclusively0(String pathname) throws IOException {
@@ -586,7 +636,7 @@ class IoOverNioFileSystem extends FileSystem {
             return false;
         } catch (InvalidPathException e) {
             throw new IOException(e.getMessage(), e); // The default file system would throw IOException too.
-        }  catch (IOException e) {
+        } catch (IOException e) {
             throw convertNioToIoExceptionInFile(e);
         }
         return defaultFileSystem.createFileExclusively(pathname);
@@ -594,11 +644,19 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public boolean delete(File f) {
-        boolean result = delete0(f);
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.delete(%s) = %b%n", f, result);
+        try {
+            boolean result = delete0(f);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.delete(%s) = %b%n", f, result);
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.delete(%s) threw an error", f), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private boolean delete0(File f) {
@@ -623,11 +681,19 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public String[] list(File f) {
-        String[] result = list0(f);
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.list(%s) = %s%n", f, Arrays.toString(result));
+        try {
+            String[] result = list0(f);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.list(%s) = %s%n", f, Arrays.toString(result));
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.list(%s) threw an error", f), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private String[] list0(File f) {
@@ -657,11 +723,19 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public boolean createDirectory(File f) {
-        boolean result = createDirectory0(f);
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.createDirectory(%s) = %b%n", f, result);
+        try {
+            boolean result = createDirectory0(f);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.createDirectory(%s) = %b%n", f, result);
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.createDirectory(%s) threw an error", f), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private boolean createDirectory0(File f) {
@@ -686,11 +760,19 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public boolean rename(File f1, File f2) {
-        boolean result = rename0(f1, f2);
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.rename(%s, %s) = %b%n", f1, f2, result);
+        try {
+            boolean result = rename0(f1, f2);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.rename(%s, %s) = %b%n", f1, f2, result);
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.rename(%s, %s) threw an error", f1, f2), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private boolean rename0(File f1, File f2) {
@@ -716,11 +798,19 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public boolean setLastModifiedTime(File f, long time) {
-        boolean result = setLastModifiedTime0(f, time);
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.setLastModifiedTime(%s, %d) = %b%n", f, time, result);
+        try {
+            boolean result = setLastModifiedTime0(f, time);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.setLastModifiedTime(%s, %d) = %b%n", f, time, result);
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.setLastModifiedTime(%s, %d) threw an error", f, time), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private boolean setLastModifiedTime0(File f, long time) {
@@ -747,26 +837,42 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public boolean setReadOnly(File f) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
-        boolean result;
-        if (nioFs != null) {
-            result = setPermission0(nioFs, f, ACCESS_EXECUTE | ACCESS_WRITE, false, false);
-        } else {
-            result = defaultFileSystem.setReadOnly(f);
+        try {
+            java.nio.file.FileSystem nioFs = acquireNioFs();
+            boolean result;
+            if (nioFs != null) {
+                result = setPermission0(nioFs, f, ACCESS_EXECUTE | ACCESS_WRITE, false, false);
+            } else {
+                result = defaultFileSystem.setReadOnly(f);
+            }
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.setReadOnly(%s) = %b%n", f, result);
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.setReadOnly(%s) threw an error", f), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.setReadOnly(%s) = %b%n", f, result);
-        }
-        return result;
     }
 
     @Override
     public File[] listRoots() {
-        File[] result = listRoots0();
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.listRoots() = %s%n", Arrays.toString(result));
+        try {
+            File[] result = listRoots0();
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.listRoots() = %s%n", Arrays.toString(result));
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable("IoOverNioFileSystem.listRoots() threw an error", err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private File[] listRoots0() {
@@ -783,11 +889,19 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public long getSpace(File f, int t) {
-        long result = getSpace0(f, t);
-        if (DEBUG.writeTraces()) {
-            System.err.printf("IoOverNioFileSystem.getSpace(%s, %d) = %d%n", f, t, result);
+        try {
+            long result = getSpace0(f, t);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("IoOverNioFileSystem.getSpace(%s, %d) = %d%n", f, t, result);
+            }
+            return result;
+        } catch (RuntimeException err) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("IoOverNioFileSystem.getSpace(%s, %d) threw an error", f, t), err)
+                        .printStackTrace(System.err);
+            }
+            throw err;
         }
-        return result;
     }
 
     private long getSpace0(File f, int t) {
