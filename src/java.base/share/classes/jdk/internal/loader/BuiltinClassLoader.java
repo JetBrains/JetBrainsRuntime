@@ -738,9 +738,9 @@ public class BuiltinClassLoader
      */
     @SuppressWarnings("removal")
     private Class<?> findClassInModuleOrNull(LoadedModule loadedModule, String cn) {
-        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
+        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
         try {
-            IoOverNio.ALLOW_IO_OVER_NIO.set(false);
+            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
             if (System.getSecurityManager() == null) {
                 return defineClass(cn, loadedModule);
             } else {
@@ -748,7 +748,7 @@ public class BuiltinClassLoader
                 return AccessController.doPrivileged(pa);
             }
         } finally {
-            IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
+            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
         }
     }
 
@@ -760,9 +760,9 @@ public class BuiltinClassLoader
     @SuppressWarnings("removal")
     private Class<?> findClassOnClassPathOrNull(String cn) {
         String path = cn.replace('.', '/').concat(".class");
-        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
+        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
         try {
-            IoOverNio.ALLOW_IO_OVER_NIO.set(false);
+            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
             if (System.getSecurityManager() == null) {
                 Resource res = ucp.getResource(path, false);
                 if (res != null) {
@@ -791,7 +791,7 @@ public class BuiltinClassLoader
                 return AccessController.doPrivileged(pa);
             }
         } finally {
-            IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
+            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
         }
     }
 

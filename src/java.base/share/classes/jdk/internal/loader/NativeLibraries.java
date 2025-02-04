@@ -123,9 +123,9 @@ public final class NativeLibraries {
         if (!isBuiltin) {
             name = AccessController.doPrivileged(new PrivilegedAction<>() {
                     public String run() {
-                        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
+                        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
                         try {
-                            IoOverNio.ALLOW_IO_OVER_NIO.set(false);
+                            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
                             if (loadLibraryOnlyIfPresent && !file.exists()) {
                                 return null;
                             }
@@ -133,7 +133,7 @@ public final class NativeLibraries {
                         } catch (IOException e) {
                             return null;
                         } finally {
-                            IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
+                            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
                         }
                     }
                 });
@@ -344,13 +344,13 @@ public final class NativeLibraries {
             // will include the error message from dlopen to provide diagnostic information
             return AccessController.doPrivileged(new PrivilegedAction<>() {
                 public Boolean run() {
-                    boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
+                    boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
                     try {
-                        IoOverNio.ALLOW_IO_OVER_NIO.set(false);
+                        IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
                         File file = new File(name);
                         return file.exists();
                     } finally {
-                        IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
+                        IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
                     }
                 }
             });

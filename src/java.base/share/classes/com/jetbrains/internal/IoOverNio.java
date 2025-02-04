@@ -31,7 +31,7 @@ import sun.security.action.GetPropertyAction;
 public class IoOverNio {
     private IoOverNio() { }
 
-    public static final ThreadLocal<Boolean> ALLOW_IO_OVER_NIO = ThreadLocal.withInitial(() -> true);
+    public static final ThreadLocal<Boolean> ALLOW_IN_THIS_THREAD = ThreadLocal.withInitial(() -> true);
 
     public enum Debug {
         NO(false, false),
@@ -48,7 +48,7 @@ public class IoOverNio {
         }
 
         private boolean mayWriteAnything() {
-            return VM.isBooted() && IoOverNio.ALLOW_IO_OVER_NIO.get();
+            return VM.isBooted() && IoOverNio.ALLOW_IN_THIS_THREAD.get();
         }
 
         public boolean writeErrors() {

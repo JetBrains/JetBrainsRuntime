@@ -95,12 +95,12 @@ public final class Security {
     }
 
     private static void initialize() {
-        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
+        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
         try {
-            IoOverNio.ALLOW_IO_OVER_NIO.set(false);
+            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
             initialize0();
         } finally {
-            IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
+            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
         }
     }
 

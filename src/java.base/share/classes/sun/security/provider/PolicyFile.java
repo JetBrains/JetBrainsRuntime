@@ -311,12 +311,12 @@ public class PolicyFile extends java.security.Policy {
      * initialize the Policy object.
      */
     private void init(URL url) {
-        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
+        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
         try {
-            IoOverNio.ALLOW_IO_OVER_NIO.set(false);
+            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
             init0(url);
         } finally {
-            IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
+            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
         }
     }
 
@@ -1107,12 +1107,12 @@ public class PolicyFile extends java.security.Policy {
      */
     private PermissionCollection getPermissions(Permissions perms,
                                         ProtectionDomain pd ) {
-        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
+        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
         try {
-            IoOverNio.ALLOW_IO_OVER_NIO.set(false);
+            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
             return getPermissions0(perms, pd);
         } finally {
-            IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
+            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
         }
     }
 

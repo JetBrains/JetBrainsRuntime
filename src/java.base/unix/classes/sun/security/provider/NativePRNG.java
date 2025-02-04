@@ -128,12 +128,12 @@ public final class NativePRNG extends SecureRandomSpi {
      * Create a RandomIO object for all I/O of this Variant type.
      */
     private static RandomIO initIO(final Variant v) {
-        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IO_OVER_NIO.get();
+        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
         try {
-            IoOverNio.ALLOW_IO_OVER_NIO.set(false);
+            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
             return initIOImpl(v);
         } finally {
-            IoOverNio.ALLOW_IO_OVER_NIO.set(allowIoOverNioBackup);
+            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
         }
     }
 
