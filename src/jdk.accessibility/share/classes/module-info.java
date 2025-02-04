@@ -31,6 +31,7 @@
  */
 module jdk.accessibility {
     requires java.management;
+    requires java.base;
 
     requires transitive java.desktop;
 

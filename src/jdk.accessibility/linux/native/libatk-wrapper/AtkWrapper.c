@@ -184,9 +184,12 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
 }
 
 JNIEXPORT void JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_GC(JNIEnv *jniEnv) {
-    JAW_DEBUG_JNI("%p", jniEnv);
-    object_table_gc(jniEnv);
+Java_org_GNOME_Accessibility_AtkWrapper_GC(JNIEnv *jniEnv, jclass jClass, jobject jAccContext) {
+    JAW_DEBUG_JNI("%p, %p, %p", jniEnv, jClass, jAccContext);
+    jobject ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
+    JawImpl *jaw_impl = jaw_impl_get_instance(jniEnv, ac);
+    g_object_unref(JAW_OBJECT(jaw_impl));
+    (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
 }
 
 enum _SignalType {

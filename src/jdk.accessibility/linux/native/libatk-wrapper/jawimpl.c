@@ -91,56 +91,6 @@ static JawImpl *object_table_lookup(JNIEnv *jniEnv, jobject ac) {
     return (JawImpl *)value;
 }
 
-static void object_table_remove(JNIEnv *jniEnv, JawImpl *jaw_impl) {
-    JAW_DEBUG_C("%p, %p", jniEnv, jaw_impl);
-    g_mutex_lock(&objectTableMutex);
-    g_hash_table_remove(objectTable, GINT_TO_POINTER(jaw_impl->hash_key));
-    g_mutex_unlock(&objectTableMutex);
-}
-
-/* Called on completion of Java GC, take the opportunity to look for stale
- * jaw_impl */
-void object_table_gc(JNIEnv *jniEnv) {
-    JAW_DEBUG_C("%p", jniEnv);
-    GHashTableIter iter;
-    gpointer key, value;
-    GSList *list = NULL, *cur, *next;
-
-    unsigned count[INTERFACE_MASK + 1] = {
-        0,
-    };
-
-    g_mutex_lock(&objectTableMutex);
-    if (objectTable) {
-        g_hash_table_iter_init(&iter, objectTable);
-        while (g_hash_table_iter_next(&iter, &key, &value)) {
-            JawImpl *jaw_impl = value;
-            if ((*jniEnv)->IsSameObject(jniEnv, jaw_impl->parent.acc_context,
-                                        NULL)) {
-                /* Got garbage-collected, mark for dropping */
-                list = g_slist_prepend(list, jaw_impl);
-            } else {
-                count[jaw_impl->tflag]++;
-            }
-        }
-    }
-    g_mutex_unlock(&objectTableMutex);
-
-    unsigned i;
-    for (i = 0; i < INTERFACE_MASK + 1; i++) {
-        if (count[i] != 0) {
-            JAW_DEBUG_JNI("%x: %d", i, count[i]);
-        }
-    }
-
-    for (cur = list; cur != NULL; cur = next) {
-        JawImpl *jaw_impl = cur->data;
-        g_object_unref(G_OBJECT(jaw_impl));
-        next = g_slist_next(cur);
-        g_slist_free_1(cur);
-    }
-}
-
 GHashTable *jaw_impl_get_object_hash_table(void) {
     JAW_DEBUG_ALL("");
     return objectTable;
@@ -466,7 +416,6 @@ static void jaw_impl_finalize(GObject *gobject) {
     JawImpl *jaw_impl = (JawImpl *)jaw_obj;
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    object_table_remove(jniEnv, jaw_impl);
 
     (*jniEnv)->DeleteWeakGlobalRef(jniEnv, jaw_obj->acc_context);
     jaw_obj->acc_context = NULL;
