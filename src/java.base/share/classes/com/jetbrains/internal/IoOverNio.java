@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.sun;  // TODO better package
+package com.jetbrains.internal;
 
 import jdk.internal.misc.VM;
 import sun.security.action.GetPropertyAction;

@@ -24,7 +24,7 @@
  */
 package jdk.internal.loader;
 
-import com.sun.IoOverNio;
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.misc.VM;
 import jdk.internal.ref.CleanerFactory;
 import jdk.internal.util.StaticProperty;

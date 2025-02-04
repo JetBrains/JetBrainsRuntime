@@ -42,7 +42,7 @@ import java.net.SocketPermission;
 import java.net.NetPermission;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.sun.IoOverNio;
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.JavaSecurityAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.util.StaticProperty;

@@ -37,7 +37,7 @@ import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.misc.Blocker;
 import sun.nio.ch.FileChannelImpl;
-import static com.sun.IoOverNio.DEBUG;
+import static com.jetbrains.internal.IoOverNio.DEBUG;
 
 
 /**

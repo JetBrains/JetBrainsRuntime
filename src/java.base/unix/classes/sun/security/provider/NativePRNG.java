@@ -30,7 +30,7 @@ import java.net.*;
 import java.security.*;
 import java.util.Arrays;
 
-import com.sun.IoOverNio;
+import com.jetbrains.internal.IoOverNio;
 import sun.security.util.Debug;
 
 /**

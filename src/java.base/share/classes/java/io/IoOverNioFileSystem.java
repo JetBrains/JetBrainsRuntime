@@ -25,7 +25,7 @@
 
 package java.io;
 
-import com.sun.IoOverNio;
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.misc.VM;
 
 import java.nio.file.*;
@@ -33,7 +33,7 @@ import java.nio.file.attribute.*;
 import java.security.AccessControlException;
 import java.util.*;
 
-import static com.sun.IoOverNio.DEBUG;
+import static com.jetbrains.internal.IoOverNio.DEBUG;
 
 class IoOverNioFileSystem extends FileSystem {
     private final FileSystem defaultFileSystem;

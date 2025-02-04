@@ -38,7 +38,7 @@ import jdk.internal.misc.Blocker;
 import jdk.internal.util.ArraysSupport;
 import sun.nio.ch.FileChannelImpl;
 
-import static com.sun.IoOverNio.DEBUG;
+import static com.jetbrains.internal.IoOverNio.DEBUG;
 
 /**
  * A {@code FileInputStream} obtains input bytes
