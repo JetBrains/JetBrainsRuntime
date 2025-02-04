@@ -62,6 +62,7 @@ gboolean jaw_accessibility_init(void);
 void jaw_accessibility_shutdown(void);
 
 static gint key_dispatch_result;
+static GMutex key_dispatch_mutex;
 static GMainLoop *jni_main_loop;
 static GMainContext *jni_main_context;
 
@@ -966,13 +967,14 @@ static gboolean key_dispatch_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     key_dispatch_result = 0;
     jobject jAtkKeyEvent = (jobject)p;
-    AtkKeyEventStruct *event = g_new0(AtkKeyEventStruct, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (jniEnv == NULL) {
         JAW_DEBUG_I("jniEnv == NULL");
         return G_SOURCE_REMOVE;
     }
+
+    AtkKeyEventStruct *event = g_new0(AtkKeyEventStruct, 1);
 
     jclass classAtkKeyEvent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkKeyEvent");
@@ -1090,6 +1092,8 @@ Java_org_GNOME_Accessibility_AtkWrapper_dispatchKeyEvent(JNIEnv *jniEnv,
     jboolean key_consumed;
     jobject global_key_event = (*jniEnv)->NewGlobalRef(jniEnv, jAtkKeyEvent);
     callback_para_process_frees();
+
+    g_mutex_lock(&key_dispatch_mutex);
     jni_main_idle_add(key_dispatch_handler, (gpointer)global_key_event);
     JAW_DEBUG_I("result saved = %d", key_dispatch_result);
     if (key_dispatch_result == KEY_DISPATCH_CONSUMED) {
@@ -1097,8 +1101,8 @@ Java_org_GNOME_Accessibility_AtkWrapper_dispatchKeyEvent(JNIEnv *jniEnv,
     } else {
         key_consumed = FALSE;
     }
-
     key_dispatch_result = KEY_DISPATCH_NOT_DISPATCHED;
+    g_mutex_unlock(&key_dispatch_mutex);
 
     return key_consumed;
 }
