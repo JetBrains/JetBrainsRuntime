@@ -41,7 +41,7 @@ G_BEGIN_DECLS
 #define GPOINTER_TO_GTYPE(gpointer) (GPOINTER_TO_SIZE(gpointer))
 #endif
 #ifdef GSIZE_TO_POINTER
-#define GTYPE_TO_POINTER(gtype) (GSIZE_TO_POINTER(gtype))
+#define JAW_TYPE_TO_POINTER(gtype) (GSIZE_TO_POINTER(gtype))
 #endif
 
 typedef struct _JawImpl JawImpl;

@@ -434,7 +434,7 @@ GType jaw_impl_get_type(guint tflag) {
 
         g_mutex_lock(&typeTableMutex);
         g_hash_table_insert(typeTable, GINT_TO_POINTER(tflag),
-                            GTYPE_TO_POINTER(type));
+                            JAW_TYPE_TO_POINTER(type));
         g_mutex_unlock(&typeTableMutex);
     }
 
