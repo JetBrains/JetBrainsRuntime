@@ -174,9 +174,8 @@ MODULE_DEPS_MAKEFILE := $(MAKESUPPORT_OUTPUTDIR)/module-deps.gmk
 
 MODULE_INFOS := $(call FindAllModuleInfos, *)
 
-ifeq ($(GENERATE_MODULE_DEPS_FILE), true)
-  $(MODULE_DEPS_MAKEFILE): $(MODULE_INFOS) \
-      $(call DependOnVariable, MODULE_INFOS, $(MAKESUPPORT_OUTPUTDIR)/MODULE_INFOS.vardeps)
+$(MODULE_DEPS_MAKEFILE): $(MODULE_INFOS) \
+    $(call DependOnVariable, MODULE_INFOS, $(MAKESUPPORT_OUTPUTDIR)/MODULE_INFOS.vardeps)
 	$(call MakeTargetDir)
 	$(RM) $@
 	$(foreach m, $(MODULE_INFOS), \
@@ -209,7 +208,6 @@ ifeq ($(GENERATE_MODULE_DEPS_FILE), true)
 	                          printf(" %s", $$0) } \
 	          END           { printf("\n") }' $m \
 	    ) >> $@ $(NEWLINE))
-endif
 
 -include $(MODULE_DEPS_MAKEFILE)
 
