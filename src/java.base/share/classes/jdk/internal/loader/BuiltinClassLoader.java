@@ -736,19 +736,15 @@ public class BuiltinClassLoader
      *
      * @return the resulting Class or {@code null} if not found
      */
-    @SuppressWarnings("removal")
+    @SuppressWarnings({"removal", "try"})
     private Class<?> findClassInModuleOrNull(LoadedModule loadedModule, String cn) {
-        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
-        try {
-            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
+        try (var ignored = IoOverNio.disableInThisThread()) {
             if (System.getSecurityManager() == null) {
                 return defineClass(cn, loadedModule);
             } else {
                 PrivilegedAction<Class<?>> pa = () -> defineClass(cn, loadedModule);
                 return AccessController.doPrivileged(pa);
             }
-        } finally {
-            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
         }
     }
 
@@ -757,12 +753,10 @@ public class BuiltinClassLoader
      *
      * @return the resulting Class or {@code null} if not found
      */
-    @SuppressWarnings("removal")
+    @SuppressWarnings({"removal", "try"})
     private Class<?> findClassOnClassPathOrNull(String cn) {
         String path = cn.replace('.', '/').concat(".class");
-        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
-        try {
-            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
+        try (var ignored = IoOverNio.disableInThisThread()) {
             if (System.getSecurityManager() == null) {
                 Resource res = ucp.getResource(path, false);
                 if (res != null) {
@@ -790,8 +784,6 @@ public class BuiltinClassLoader
                 };
                 return AccessController.doPrivileged(pa);
             }
-        } finally {
-            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
         }
     }
 

@@ -29,9 +29,31 @@ import jdk.internal.misc.VM;
 import sun.security.action.GetPropertyAction;
 
 public class IoOverNio {
-    private IoOverNio() { }
+    private IoOverNio() {
+    }
 
-    public static final ThreadLocal<Boolean> ALLOW_IN_THIS_THREAD = ThreadLocal.withInitial(() -> true);
+    private static final ThreadLocal<Boolean> ALLOW_IN_THIS_THREAD = ThreadLocal.withInitial(() -> true);
+
+    public static boolean isAllowedInThisThread() {
+        return ALLOW_IN_THIS_THREAD.get();
+    }
+
+    public static ThreadLocalCloseable disableInThisThread() {
+        ALLOW_IN_THIS_THREAD.set(false);
+        return ThreadLocalCloseable.INSTANCE;
+    }
+
+    public static class ThreadLocalCloseable implements AutoCloseable {
+        private static final ThreadLocalCloseable INSTANCE = new ThreadLocalCloseable();
+
+        private ThreadLocalCloseable() {
+        }
+
+        @Override
+        public void close() {
+            ALLOW_IN_THIS_THREAD.set(true);
+        }
+    }
 
     public enum Debug {
         NO(false, false),

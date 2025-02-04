@@ -94,13 +94,10 @@ public final class Security {
         });
     }
 
+    @SuppressWarnings("try")
     private static void initialize() {
-        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
-        try {
-            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
+        try (var ignored = IoOverNio.disableInThisThread()) {
             initialize0();
-        } finally {
-            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
         }
     }
 

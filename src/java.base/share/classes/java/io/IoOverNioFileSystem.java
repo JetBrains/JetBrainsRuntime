@@ -47,7 +47,7 @@ class IoOverNioFileSystem extends FileSystem {
             return null;
         }
 
-        if (!IoOverNio.ALLOW_IN_THIS_THREAD.get()) {
+        if (!IoOverNio.isAllowedInThisThread()) {
             return null;
         }
 

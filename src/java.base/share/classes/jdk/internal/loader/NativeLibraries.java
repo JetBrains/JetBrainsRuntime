@@ -122,18 +122,15 @@ public final class NativeLibraries {
         boolean isBuiltin = (name != null);
         if (!isBuiltin) {
             name = AccessController.doPrivileged(new PrivilegedAction<>() {
+                    @SuppressWarnings("try")
                     public String run() {
-                        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
-                        try {
-                            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
+                        try(var ignored = IoOverNio.disableInThisThread()) {
                             if (loadLibraryOnlyIfPresent && !file.exists()) {
                                 return null;
                             }
                             return file.getCanonicalPath();
                         } catch (IOException e) {
                             return null;
-                        } finally {
-                            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
                         }
                     }
                 });
@@ -343,14 +340,11 @@ public final class NativeLibraries {
             // If the file exists but fails to load, UnsatisfiedLinkException thrown by the VM
             // will include the error message from dlopen to provide diagnostic information
             return AccessController.doPrivileged(new PrivilegedAction<>() {
+                @SuppressWarnings("try")
                 public Boolean run() {
-                    boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
-                    try {
-                        IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
+                    try (var ignored = IoOverNio.disableInThisThread()) {
                         File file = new File(name);
                         return file.exists();
-                    } finally {
-                        IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
                     }
                 }
             });

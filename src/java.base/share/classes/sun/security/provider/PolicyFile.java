@@ -310,13 +310,10 @@ public class PolicyFile extends java.security.Policy {
      * See the class description for details on the algorithm used to
      * initialize the Policy object.
      */
+    @SuppressWarnings("try")
     private void init(URL url) {
-        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
-        try {
-            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
+        try (var ignored = IoOverNio.disableInThisThread()) {
             init0(url);
-        } finally {
-            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
         }
     }
 
@@ -1105,14 +1102,11 @@ public class PolicyFile extends java.security.Policy {
      *
      * @return the set of Permissions according to the policy.
      */
+    @SuppressWarnings("try")
     private PermissionCollection getPermissions(Permissions perms,
                                         ProtectionDomain pd ) {
-        boolean allowIoOverNioBackup = IoOverNio.ALLOW_IN_THIS_THREAD.get();
-        try {
-            IoOverNio.ALLOW_IN_THIS_THREAD.set(false);
+        try (var ignored = IoOverNio.disableInThisThread()) {
             return getPermissions0(perms, pd);
-        } finally {
-            IoOverNio.ALLOW_IN_THIS_THREAD.set(allowIoOverNioBackup);
         }
     }
 
