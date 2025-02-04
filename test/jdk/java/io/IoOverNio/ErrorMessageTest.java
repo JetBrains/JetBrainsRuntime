@@ -58,6 +58,7 @@ public class ErrorMessageTest {
     }
 
     public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().startsWith("win");
+    public static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().startsWith("mac");
 
     @Test
     public void noSuchFileOrDirectory() throws Exception {
@@ -92,6 +93,8 @@ public class ErrorMessageTest {
         File prohibitedRoot;
         if (IS_WINDOWS) {
             prohibitedRoot = new File("C:\\System Volume Information");
+        } else if (IS_MAC) {
+            prohibitedRoot = new File("/private/var/audit");
         } else {
             prohibitedRoot = new File("/root");
         }
