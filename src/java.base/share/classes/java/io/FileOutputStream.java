@@ -244,15 +244,16 @@ public class FileOutputStream extends OutputStream
             }
             try {
                 // NB: the channel will be closed in the close() method
-                // TODO Handle UOE
                 var ch = FileSystems.getDefault().provider().newFileChannel(
                         nioPath,
                         append ? Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
                                 : Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING));
                 channel = ch;
+                // A nio channel may physically not have any file descriptor.
+                // Also, there's no API for retrieving file descriptors from nio channels.
                 if (ch instanceof FileChannelImpl fci) {
                     fci.setUninterruptible();
-                    fd = fci.getFD(); // TODO: this is a temporary workaround
+                    fd = fci.getFD();
                     fd.attach(this);
                     FileCleanable.register(fd);
                 } else {

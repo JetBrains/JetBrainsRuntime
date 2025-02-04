@@ -151,6 +151,11 @@ import sun.security.action.GetPropertyAction;
 public class File
     implements Serializable, Comparable<File>
 {
+    /**
+     * If this supplier returns a non-null {@link java.nio.file.FileSystem},
+     * then {@code java.io} primitives must use this filesystem for all operations inside.
+     * Otherwise, {@link java.io} must use legacy functions for accessing the filesystem.
+     */
     static final Supplier<java.nio.file.FileSystem> acquireNioFs;
 
     /**
