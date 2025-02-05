@@ -290,12 +290,13 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             try {
                 var options = optionsForChannel(imode);
                 // NB: the channel will be closed in the close() method
-                // TODO Handle UOE
                 var ch = nioFs.provider().newFileChannel(nioPath, options);
                 channel = ch;
+                // A nio channel may physically not have any file descriptor.
+                // Also, there's no API for retrieving file descriptors from nio channels.
                 if (ch instanceof FileChannelImpl fci) {
                     fci.setUninterruptible();
-                    fd = fci.getFD(); // TODO: this is a temporary workaround
+                    fd = fci.getFD();
                     fd.attach(this);
                     FileCleanable.register(fd);
                 } else {
@@ -450,7 +451,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
 
     private int implRead() throws IOException {
         if (useNio) {
-            // Really same to FileInputStream.read()
             ByteBuffer buffer = ByteBuffer.allocate(1);
             int nRead = getChannel().read(buffer);
             buffer.rewind();

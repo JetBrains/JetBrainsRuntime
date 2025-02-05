@@ -34,11 +34,8 @@ import java.util.Objects;
 import java.util.Set;
 
 public class ManglingFileSystemProvider extends FileSystemProvider {
-    final FileSystemProvider defaultProvider;
-    final FileSystem defaultFs;
-    final ManglingFileSystem manglingFs = new ManglingFileSystem(this);
-    ;
-
+    public static final String extraContent = "3x7r4";
+    private final static byte[] manglingTable = new byte[256];
     public static boolean mangleFileContent = false;
     public static boolean readExtraFileContent = false;
     public static boolean manglePaths = false;
@@ -47,21 +44,6 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
     public static boolean allFilesAreEmptyDirectories = false;
     public static boolean prohibitFileTreeModifications = false;
     public static boolean addEliteToEveryDirectoryListing = false;
-
-    public static final String extraContent = "3x7r4";
-
-    public static void resetTricks() {
-        mangleFileContent = false;
-        readExtraFileContent = false;
-        manglePaths = false;
-        mangleOnlyFileName = false;
-        denyAccessToEverything = false;
-        allFilesAreEmptyDirectories = false;
-        prohibitFileTreeModifications = false;
-        addEliteToEveryDirectoryListing = false;
-    }
-
-    private final static byte[] manglingTable = new byte[256];
 
     static {
         for (int i = 0; i < manglingTable.length; i++) {
@@ -87,6 +69,27 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
         manglingTable['z'] = '2';
 
         assert mangle("eleet haxor").equals("31337 h4x0r");
+    }
+
+    final FileSystemProvider defaultProvider;
+    final FileSystem defaultFs;
+    final ManglingFileSystem manglingFs = new ManglingFileSystem(this);
+
+    public ManglingFileSystemProvider(FileSystemProvider defaultProvider) {
+        super();
+        this.defaultProvider = defaultProvider;
+        this.defaultFs = defaultProvider.getFileSystem(URI.create("file:/"));
+    }
+
+    public static void resetTricks() {
+        mangleFileContent = false;
+        readExtraFileContent = false;
+        manglePaths = false;
+        mangleOnlyFileName = false;
+        denyAccessToEverything = false;
+        allFilesAreEmptyDirectories = false;
+        prohibitFileTreeModifications = false;
+        addEliteToEveryDirectoryListing = false;
     }
 
     public static String mangle(String source) {
@@ -116,10 +119,11 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
         return source;
     }
 
-    public ManglingFileSystemProvider(FileSystemProvider defaultProvider) {
-        super();
-        this.defaultProvider = defaultProvider;
-        this.defaultFs = defaultProvider.getFileSystem(URI.create("file:/"));
+    static Path unwrap(Path path) {
+        if (path instanceof ManglingPath pcp) {
+            return pcp.delegate;
+        }
+        throw new IllegalArgumentException("Wrong path " + path + " (class: " + path.getClass() + ")");
     }
 
     @Override
@@ -144,13 +148,6 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
     @Override
     public Path getPath(URI uri) {
         throw new UnsupportedOperationException();
-    }
-
-    static Path unwrap(Path path) {
-        if (path instanceof ManglingPath pcp) {
-            return pcp.delegate;
-        }
-        throw new IllegalArgumentException("Wrong path " + path + " (class: " + path.getClass() + ")");
     }
 
     @Override

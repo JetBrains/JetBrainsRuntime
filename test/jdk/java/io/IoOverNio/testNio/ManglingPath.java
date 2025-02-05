@@ -29,8 +29,8 @@ import java.nio.file.*;
 import java.util.Objects;
 
 public class ManglingPath implements Path {
-    private final ManglingFileSystem fileSystem;
     final Path delegate;
+    private final ManglingFileSystem fileSystem;
 
     ManglingPath(ManglingFileSystem fileSystem, Path delegate) {
         this.fileSystem = fileSystem;
