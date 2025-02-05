@@ -72,6 +72,9 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     static FileNotFoundException convertNioToIoExceptionInStreams(IOException source) {
+        if (source instanceof FileNotFoundException nsfe) {
+            return nsfe;
+        }
         String message = IoToNioErrorMessageHolder.removeMessage(source);
         if (source instanceof FileSystemException s && s.getFile() != null) {
             if (message == null) {
