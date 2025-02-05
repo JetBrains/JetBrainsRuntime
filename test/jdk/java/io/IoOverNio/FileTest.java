@@ -23,18 +23,23 @@
 
 /* @test
  * @summary java.io.File uses java.nio.file inside.
+ * @library testNio
  * @run junit/othervm
+ *      -Djava.nio.file.spi.DefaultFileSystemProvider=testNio.ManglingFileSystemProvider
  *      -Djbr.java.io.use.nio=true
  *      FileTest
  */
 
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
+import testNio.ManglingFileSystemProvider;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Objects;
 
 import static java.util.Arrays.sort;
 import static org.junit.Assert.*;
@@ -44,16 +49,53 @@ public class FileTest {
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
+    @BeforeClass
+    public static void checkSystemProperties() {
+        Objects.requireNonNull(System.getProperty("java.nio.file.spi.DefaultFileSystemProvider"));
+    }
+
     public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().startsWith("win");
 
     private static void assumeNotWindows() {
         Assume.assumeFalse(IS_WINDOWS);
     }
 
+    @Before
+    @After
+    public void resetFs() throws Exception {
+        ManglingFileSystemProvider.resetTricks();
+        try (var dirStream = Files.walk(temporaryFolder.getRoot().toPath())) {
+            dirStream.sorted(Comparator.reverseOrder()).forEach(path -> {
+                if (!path.equals(temporaryFolder.getRoot().toPath())) {
+                    try {
+                        if (IS_WINDOWS) {
+                            Files.setAttribute(path, "dos:readonly", false);
+                        }
+                        Files.delete(path);
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                }
+            });
+        }
+    }
+
+    @Test
+    public void getAbsolutePath() throws Exception {
+        File file = temporaryFolder.newFile("hello world");
+        assertNotEquals(file.getAbsolutePath(), ManglingFileSystemProvider.mangle(file.getAbsolutePath()));
+
+        ManglingFileSystemProvider.manglePaths = true;
+        assertEquals(file.getAbsolutePath(), ManglingFileSystemProvider.mangle(file.getAbsolutePath()));
+    }
+
     @Test
     public void canRead() throws Exception {
         File file = temporaryFolder.newFile("testFile.txt");
         assertTrue(file.canRead());
+
+        ManglingFileSystemProvider.denyAccessToEverything = true;
+        assertFalse(file.canRead());
     }
 
     @Test
@@ -62,6 +104,9 @@ public class FileTest {
 
         File file = temporaryFolder.newFile("testFile.txt");
         assertTrue(file.canWrite());
+
+        ManglingFileSystemProvider.denyAccessToEverything = true;
+        assertFalse(file.canWrite());
     }
 
     @Test
@@ -72,6 +117,10 @@ public class FileTest {
 
         assertTrue(dir.isDirectory());
         assertFalse(file.isDirectory());
+
+        ManglingFileSystemProvider.allFilesAreEmptyDirectories = true;
+        assertTrue(dir.isDirectory());
+        assertTrue(file.isDirectory());
     }
 
     @Test
@@ -96,7 +145,12 @@ public class FileTest {
             assertTrue(new File("/../..").exists());
         }
 
-        assertFalse(new File("dir-that-does-not-exist/..").exists());
+        boolean parentOfDirThatDoesNotExist = new File("dir-that-does-not-exist/..").exists();
+        if (IS_WINDOWS) {
+            assertTrue(parentOfDirThatDoesNotExist);
+        } else {
+            assertFalse(parentOfDirThatDoesNotExist);
+        }
     }
 
     @Test
@@ -105,6 +159,10 @@ public class FileTest {
         File dir = temporaryFolder.newFolder("testDir");
 
         assertTrue(file.isFile());
+        assertFalse(dir.isFile());
+
+        ManglingFileSystemProvider.allFilesAreEmptyDirectories = true;
+        assertFalse(file.isFile());
         assertFalse(dir.isFile());
     }
 
@@ -117,6 +175,10 @@ public class FileTest {
 
         assertTrue(file1.delete());
         assertFalse(file1.exists());
+
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        assertFalse(file2.delete());
+        assertTrue(file2.exists());
     }
 
     @Test
@@ -130,6 +192,12 @@ public class FileTest {
         String[] files = dir.list();
         sort(files);
         assertArrayEquals(new String[]{"file1.txt", "file2.txt"}, files);
+
+        ManglingFileSystemProvider.manglePaths = true;
+        ManglingFileSystemProvider.addEliteToEveryDirectoryListing = true;
+        files = dir.list();
+        sort(files);
+        assertArrayEquals(new String[]{"37337", "f1131.7x7", "f1132.7x7"}, files);
     }
 
     @Test
@@ -137,6 +205,11 @@ public class FileTest {
         File dir1 = new File(temporaryFolder.getRoot(), "newDir1");
         assertTrue(dir1.mkdir());
         assertTrue(dir1.isDirectory());
+
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        File dir2 = new File(temporaryFolder.getRoot(), "newDir2");
+        assertFalse(dir2.mkdir());
+        assertFalse(dir2.exists());
     }
 
     @Test
@@ -145,6 +218,11 @@ public class FileTest {
         File renamedFile = new File(temporaryFolder.getRoot(), "newName.txt");
         assertTrue(file.exists());
         assertFalse(renamedFile.exists());
+
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        File renamedFile2 = new File(temporaryFolder.getRoot(), "newName2.txt");
+        assertFalse(renamedFile2.renameTo(renamedFile));
+        assertFalse(renamedFile2.exists());
     }
 
     @Test
@@ -153,13 +231,21 @@ public class FileTest {
 
         // Beware that getting and setting mtime/atime/ctime is often unreliable.
         Assume.assumeTrue(file.setLastModified(1234567890L));
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        assertFalse(file.setLastModified(123459999L));
     }
 
     @Test
     public void setReadOnly() throws Exception {
         File file1 = temporaryFolder.newFile("testFile1.txt");
+        assertTrue(file1.canWrite());
         assertTrue(file1.setReadOnly());
         assertFalse(file1.canWrite());
+
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        File file2 = temporaryFolder.newFile("testFile2.txt");
+        assertFalse(file2.setReadOnly());
+        assertTrue(file2.canWrite());
     }
 
     @Test
@@ -167,13 +253,24 @@ public class FileTest {
         assumeNotWindows();
 
         assertTrue(temporaryFolder.newFile("testFile1.txt").setWritable(false));
+
+        File file2 = temporaryFolder.newFile("testFile2.txt");
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        assertFalse(file2.setWritable(false));
     }
 
     @Test
     public void setReadable() throws Exception {
+        Assume.assumeFalse("setReadable(false) doesn't work for some reason on Windows, even for original java.io.File", IS_WINDOWS);
+
         File file1 = temporaryFolder.newFile("testFile1.txt");
         assertTrue(file1.setReadable(false));
         assertFalse(file1.canRead());
+
+        File file2 = temporaryFolder.newFile("testFile2.txt");
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        assertFalse(file2.setReadable(false));
+        assertTrue(file2.canRead());
     }
 
     @Test
@@ -184,6 +281,11 @@ public class FileTest {
         Assume.assumeFalse(file1.canExecute());
         assertTrue(file1.setExecutable(true));
         assertTrue(file1.canExecute());
+
+        File file2 = temporaryFolder.newFile("testFile2.txt");
+        ManglingFileSystemProvider.prohibitFileTreeModifications = true;
+        assertFalse(file2.setExecutable(true));
+        assertFalse(file2.canExecute());
     }
 
     @Test
@@ -191,6 +293,25 @@ public class FileTest {
         File[] roots1 = File.listRoots();
         String rootsString1 = Arrays.toString(roots1);
         assertFalse(rootsString1, rootsString1.contains("31337"));
+
+        ManglingFileSystemProvider.addEliteToEveryDirectoryListing = true;
+        File[] roots2 = File.listRoots();
+        String rootsString2 = Arrays.toString(roots2);
+        assertTrue(rootsString2, rootsString2.contains("31337"));
+    }
+
+    @Test
+    public void getCanonicalPath() throws Exception {
+        assumeNotWindows();
+
+        File dir = temporaryFolder.newFolder();
+        File file = new File(dir, "file");
+        Files.createFile(file.toPath());
+        Files.createSymbolicLink(file.toPath().resolveSibling("123"), file.toPath());
+
+        ManglingFileSystemProvider.manglePaths = true;
+        ManglingFileSystemProvider.mangleOnlyFileName = true;
+        assertEquals(new File(dir, "f113").toString(), new File(dir, "123").getCanonicalPath());
     }
 
     @Test
