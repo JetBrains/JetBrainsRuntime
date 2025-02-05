@@ -197,6 +197,22 @@ class IoOverNioFileSystem extends FileSystem {
         return result;
     }
 
+    /**
+     * Unfortunately, java.nio allows opening directories as file channels, and there's no way
+     * to determine if an opened nio channel belongs to a directory.
+     */
+    static void checkIsNotDirectoryForStreams(String name, java.nio.file.Path nioPath) throws FileNotFoundException {
+        try {
+            if (Files.isDirectory(nioPath)) {
+                throw new FileNotFoundException(name + " (Is a directory)");
+            }
+        } catch (@SuppressWarnings("removal") AccessControlException ignored) {
+            // It's possible that the current security policy disallow reading, but it may still allow writing.
+            // In this case, it becomes possible for FileInputStream to open a directory as a file.
+            // Anyway, java.security is deprecated.
+        }
+    }
+
     @Override
     public char getSeparator() {
         return defaultFileSystem.getSeparator();
@@ -374,7 +390,6 @@ class IoOverNioFileSystem extends FileSystem {
         }
         return defaultFileSystem.canonicalize(path);
     }
-
 
     @Override
     public boolean hasBooleanAttributes(File f, int attributes) {
@@ -958,22 +973,6 @@ class IoOverNioFileSystem extends FileSystem {
         @Override
         public boolean accept(Path entry) {
             return true;
-        }
-    }
-
-    /**
-     * Unfortunately, java.nio allows opening directories as file channels, and there's no way
-     * to determine if an opened nio channel belongs to a directory.
-     */
-    static void checkIsNotDirectoryForStreams(String name, java.nio.file.Path nioPath) throws FileNotFoundException {
-        try {
-            if (Files.isDirectory(nioPath)) {
-                throw new FileNotFoundException(name + " (Is a directory)");
-            }
-        } catch (@SuppressWarnings("removal") AccessControlException ignored) {
-            // It's possible that the current security policy disallow reading, but it may still allow writing.
-            // In this case, it becomes possible for FileInputStream to open a directory as a file.
-            // Anyway, java.security is deprecated.
         }
     }
 }
