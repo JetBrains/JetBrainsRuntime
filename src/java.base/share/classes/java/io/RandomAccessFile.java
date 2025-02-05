@@ -27,6 +27,7 @@ package java.io;
 
 import java.nio.channels.FileChannel;
 
+import static com.jetbrains.internal.IoOverNio.DEBUG;
 import jdk.internal.access.JavaIORandomAccessFileAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Blocker;
@@ -256,6 +257,10 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         path = name;
         open(name, imode);
         FileCleanable.register(fd);   // open sets the fd, register the cleanup
+
+        if (DEBUG.writeTraces()) {
+            System.err.printf("Created a RandomAccessFile for %s%n", file);
+        }
     }
 
     /**
