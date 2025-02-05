@@ -32,11 +32,13 @@ import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Set;
 
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.event.FileWriteEvent;
 import jdk.internal.misc.VM;
 import sun.nio.ch.FileChannelImpl;
+import static com.jetbrains.internal.IoOverNio.DEBUG;
 
 
 /**
@@ -82,7 +84,7 @@ public class FileOutputStream extends OutputStream
      */
     private static boolean jfrTracing;
 
-    private static final boolean useNIO = Boolean.parseBoolean(System.getProperty("jbr.java.io.use.nio", "true"));
+    private static final boolean useNIO = IoOverNio.IS_ENABLED_IN_GENERAL;
 
     /**
      * The system dependent file descriptor.
@@ -218,6 +220,10 @@ public class FileOutputStream extends OutputStream
 
         open(this.path, append);
         FileCleanable.register(fd);   // open sets the fd, register the cleanup
+
+        if (DEBUG.writeTraces()) {
+            System.err.printf("Created a FileOutputStream for %s%n", file);
+        }
     }
 
     /**

@@ -31,11 +31,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.misc.VM;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.event.FileReadEvent;
 import jdk.internal.vm.annotation.Stable;
 import sun.nio.ch.FileChannelImpl;
+
+import static com.jetbrains.internal.IoOverNio.DEBUG;
 
 /**
  * A {@code FileInputStream} obtains input bytes
@@ -72,7 +75,7 @@ public class FileInputStream extends InputStream
      */
     private static boolean jfrTracing;
 
-    private static final boolean useNIO = Boolean.parseBoolean(System.getProperty("jbr.java.io.use.nio", "true"));
+    private static final boolean useNIO = IoOverNio.IS_ENABLED_IN_GENERAL;
 
     /* File Descriptor - handle to the open file */
     private final FileDescriptor fd;
@@ -145,6 +148,9 @@ public class FileInputStream extends InputStream
         fd.attach(this);
         open(path);
         FileCleanable.register(fd);       // open set the fd, register the cleanup
+        if (DEBUG.writeTraces()) {
+            System.err.printf("Created a FileInputStream for %s%n", file);
+        }
     }
 
     /**
