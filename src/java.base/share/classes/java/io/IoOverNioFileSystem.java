@@ -249,7 +249,7 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public String getDefaultParent() {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             return nioFs.getSeparator();
         }
@@ -271,7 +271,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private boolean isAbsolute0(File f) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 return nioFs.getPath(f.getPath()).isAbsolute();
@@ -289,7 +289,7 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public boolean isInvalid(File f) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 Path ignored = nioFs.getPath(f.getPath());
@@ -319,7 +319,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private String resolve0(File f) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 return nioFs.getPath(f.getPath()).toAbsolutePath().toString();
@@ -353,9 +353,11 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private String canonicalize0(String path) throws IOException {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
+                // Unlike java.nio.file.Path.toRealPath, File.getCanonicalFile works with non-existent files
+                // and resolves symlinks for the first existing parent.
                 Path nioPath = nioFs.getPath(path);
                 if (!nioPath.isAbsolute()) {
                     nioPath = Path.of(System.getProperty("user.dir")).resolve(nioPath);
@@ -411,6 +413,7 @@ class IoOverNioFileSystem extends FileSystem {
         }
     }
 
+    @SuppressWarnings("resource")
     private boolean hasBooleanAttributes0(File f, int attributes) {
         if (acquireNioFs() != null) {
             return (getBooleanAttributes0(f) & attributes) == attributes;
@@ -428,13 +431,13 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private int getBooleanAttributes0(File f) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 Path path = nioFs.getPath(f.getPath());
 
                 if (path.getFileName() == null || path.getFileName().toString().isEmpty()) {
-                    // `stat` returns errors for such calls.
+                    // The LibC function `stat` returns an error for such calls.
                     return 0;
                 }
 
@@ -448,7 +451,7 @@ class IoOverNioFileSystem extends FileSystem {
                 // It's not only more expensive than `stat`, but also doesn't work with Unix sockets.
                 //
                 // Also, notice that Windows FS does not support Posix attributes, which is expected.
-                // Checking for Posix attributes allows filtering Windows out,
+                // Checking for Posix attributes first prevents from checking DOS attributes on Linux,
                 // even though Posix permissions aren't used in this method.
                 BasicFileAttributes attrs;
                 try {
@@ -462,12 +465,12 @@ class IoOverNioFileSystem extends FileSystem {
                         | (attrs.isRegularFile() ? BA_REGULAR : 0)
                         | (attrs instanceof DosFileAttributes dosAttrs && dosAttrs.isHidden() ? BA_HIDDEN : 0);
             } catch (InvalidPathException err) {
-                // Path parsing in java.nio is stricter than in java.io.
-                // Giving a chance to the original implementation.
                 if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't get attributes for a path %s", f), err)
                             .printStackTrace(System.err);
                 }
+                // Path parsing in java.nio is stricter than in java.io.
+                // Not returning here to give a chance to the original implementation.
             } catch (@SuppressWarnings("removal") IOException | AccessControlException e) {
                 if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't get attributes for a path %s", f), e)
@@ -489,7 +492,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private boolean checkAccess0(File f, int access) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 Path path = nioFs.getPath(f.getPath());
@@ -557,7 +560,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private long getLastModifiedTime0(File f) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 Path path = nioFs.getPath(f.getPath());
@@ -593,7 +596,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private long getLength0(File f) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         try {
             if (nioFs != null) {
                 Path path = nioFs.getPath(f.getPath());
@@ -671,7 +674,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private boolean delete0(File f) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 Path path = nioFs.getPath(f.getPath());
@@ -708,7 +711,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private String[] list0(File f) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 Path path = nioFs.getPath(f.getPath());
@@ -750,7 +753,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private boolean createDirectory0(File f) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 Path path = nioFs.getPath(f.getPath());
@@ -787,7 +790,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private boolean rename0(File f1, File f2) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 Path path1 = nioFs.getPath(f1.getPath());
@@ -825,7 +828,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private boolean setLastModifiedTime0(File f, long time) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 Path path = nioFs.getPath(f.getPath());
@@ -887,7 +890,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private File[] listRoots0() {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             List<File> roots = new ArrayList<>();
             for (Path rootDirectory : nioFs.getRootDirectories()) {
@@ -916,7 +919,7 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private long getSpace0(File f, int t) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 Path path = nioFs.getPath(f.getPath());
@@ -942,13 +945,13 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public int getNameMax(String path) {
-        // TODO Seems to be impossible with java.nio.
+        // Seems impossible with java.nio.
         return defaultFileSystem.getNameMax(path);
     }
 
     @Override
     public int compare(File f1, File f2) {
-        java.nio.file.FileSystem nioFs = acquireNioFs();
+        @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
                 Path p1 = nioFs.getPath(f1.getPath());
