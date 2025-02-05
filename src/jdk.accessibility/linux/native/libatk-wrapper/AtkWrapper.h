@@ -18,9 +18,9 @@ Java_org_GNOME_Accessibility_AtkWrapper_initNativeLibrary(void);
 /*
  * Class:     org_GNOME_Accessibility_AtkWrapper
  * Method:    loadAtkBridge
- * Signature: ()V
+ * Signature: ()Z
  */
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void);
 
 /*

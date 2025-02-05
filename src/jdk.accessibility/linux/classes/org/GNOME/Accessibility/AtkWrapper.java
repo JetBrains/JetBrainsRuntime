@@ -41,7 +41,7 @@ public class AtkWrapper {
 
     private static void initAtk() {
         System.loadLibrary("atk-wrapper");
-        if (AtkWrapper.initNativeLibrary()) {
+        if (AtkWrapper.initNativeLibrary() && AtkWrapper.loadAtkBridge()) {
             accessibilityEnabled = true;
         } else {
             throw new IllegalStateException("Accessibility is disabled due to an error that happened when initializing the native libraries.");
@@ -89,9 +89,6 @@ public class AtkWrapper {
                 if (p.exitValue() == 0)
                     initAtk();
             }
-
-            AtkWrapper.loadAtkBridge();
-
         } catch (Exception e) {
             accessibilityEnabled = false;
             if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
@@ -700,7 +697,7 @@ public class AtkWrapper {
 
     public native static boolean initNativeLibrary();
 
-    public native static void loadAtkBridge();
+    public native static boolean loadAtkBridge();
 
     public native static void GC(AccessibleContext ac);
 

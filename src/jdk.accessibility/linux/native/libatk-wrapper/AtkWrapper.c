@@ -146,7 +146,7 @@ static guint jni_main_idle_add(GSourceFunc function, gpointer data) {
     return id;
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
     JAW_DEBUG_JNI("");
     // Enable ATK Bridge so we can load it now
@@ -161,7 +161,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
     jaw_initialized = jaw_accessibility_init();
     JAW_DEBUG_I("Jaw Initialization STATUS = %d", jaw_initialized);
     if (!jaw_initialized)
-        return;
+        return FALSE;
 
 #if ATSPI_CHECK_VERSION(2, 33, 1)
     jni_main_context = g_main_context_new();
@@ -176,11 +176,18 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
                               &err);
     if (thread == NULL) {
         JAW_DEBUG_I("Thread create failed: %s !", err->message);
+        g_main_loop_unref (jni_main_loop);
+        #if ATSPI_CHECK_VERSION(2, 33, 1)
+            g_main_context_unref(jni_main_context);
+        #endif
         g_error_free(err);
+        jaw_accessibility_shutdown();
+        return FALSE;
     } else {
         /* We won't join it */
         g_thread_unref(thread);
     }
+    return TRUE;
 }
 
 JNIEXPORT void JNICALL
