@@ -114,16 +114,20 @@ class IoOverNioFileSystem extends FileSystem {
 
         boolean result = true;
         if (view instanceof DosFileAttributeView dosView) {
-            if (((access & ACCESS_READ) != 0)) {
-                try {
-                    dosView.setReadOnly(enable);
-                } catch (IOException e) {
-                    if (DEBUG.writeErrors()) {
-                        new Throwable(String.format("Can't set read only attributes for %s", f), e)
-                                .printStackTrace(System.err);
-                    }
+            try {
+                if (enable && (access & ACCESS_READ) != 0) {
+                    dosView.setReadOnly(false);
+                } else if (!enable && (access & ACCESS_WRITE) != 0) {
+                    dosView.setReadOnly(true);
+                } else {
                     result = false;
                 }
+            } catch (IOException e) {
+                if (DEBUG.writeErrors()) {
+                    new Throwable(String.format("Can't set read only attributes for %s", f), e)
+                            .printStackTrace(System.err);
+                }
+                result = false;
             }
         } else if (view instanceof PosixFileAttributeView posixView) {
             try {

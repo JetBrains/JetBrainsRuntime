@@ -68,6 +68,9 @@ public class FileTest {
             dirStream.sorted(Comparator.reverseOrder()).forEach(path -> {
                 if (!path.equals(temporaryFolder.getRoot().toPath())) {
                     try {
+                        if (IS_WINDOWS) {
+                            Files.setAttribute(path, "dos:readonly", false);
+                        }
                         Files.delete(path);
                     } catch (IOException e) {
                         throw new UncheckedIOException(e);
@@ -142,7 +145,12 @@ public class FileTest {
             assertTrue(new File("/../..").exists());
         }
 
-        assertFalse(new File("dir-that-does-not-exist/..").exists());
+        boolean parentOfDirThatDoesNotExist = new File("dir-that-does-not-exist/..").exists();
+        if (IS_WINDOWS) {
+            assertTrue(parentOfDirThatDoesNotExist);
+        } else {
+            assertFalse(parentOfDirThatDoesNotExist);
+        }
     }
 
     @Test
@@ -230,6 +238,7 @@ public class FileTest {
     @Test
     public void setReadOnly() throws Exception {
         File file1 = temporaryFolder.newFile("testFile1.txt");
+        assertTrue(file1.canWrite());
         assertTrue(file1.setReadOnly());
         assertFalse(file1.canWrite());
 
@@ -252,6 +261,8 @@ public class FileTest {
 
     @Test
     public void setReadable() throws Exception {
+        Assume.assumeFalse("setReadable(false) doesn't work for some reason on Windows, even for original java.io.File", IS_WINDOWS);
+
         File file1 = temporaryFolder.newFile("testFile1.txt");
         assertTrue(file1.setReadable(false));
         assertFalse(file1.canRead());
