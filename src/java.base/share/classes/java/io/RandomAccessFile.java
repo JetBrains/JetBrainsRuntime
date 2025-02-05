@@ -297,8 +297,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                         // Nothing.
                     }
                 }
-                // Since we can't throw IOException...
-                throw new FileNotFoundException(e.getMessage());
+                throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
             }
         } else {
             fd = new FileDescriptor();

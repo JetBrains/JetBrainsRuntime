@@ -23,13 +23,16 @@
 
 /* @test
  * @summary java.io.File uses java.nio.file inside, special test for error messages consistency.
+ * @library testNio
  * @run junit/othervm
+ *      -Djava.nio.file.spi.DefaultFileSystemProvider=testNio.ManglingFileSystemProvider
  *      -Djbr.java.io.use.nio=true
  *      ErrorMessageTest
  */
 
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
+import testNio.ManglingFileSystemProvider;
 
 import java.io.*;
 import java.nio.file.AccessDeniedException;
@@ -44,11 +47,21 @@ public class ErrorMessageTest {
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
+    @BeforeClass
+    public static void checkSystemProperties() {
+        Objects.requireNonNull(System.getProperty("java.nio.file.spi.DefaultFileSystemProvider"));
+    }
+
+    @Before
+    @After
+    public void resetFs() {
+        ManglingFileSystemProvider.resetTricks();
+    }
+
     public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().startsWith("win");
     public static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().startsWith("mac");
 
     @Test
-    @Ignore
     public void noSuchFileOrDirectory() throws Exception {
         File nonExistentEntity = temporaryFolder.newFile();
         nonExistentEntity.delete();
@@ -77,7 +90,6 @@ public class ErrorMessageTest {
     }
 
     @Test
-    @Ignore
     public void accessDenied() throws Exception {
         File f;
         if (IS_WINDOWS) {
@@ -124,7 +136,6 @@ public class ErrorMessageTest {
     }
 
     @Test
-    @Ignore
     public void useDirectoryAsFile() throws Exception {
         File dir = temporaryFolder.newFolder();
 
@@ -145,7 +156,6 @@ public class ErrorMessageTest {
     }
 
     @Test
-    @Ignore
     public void useFileAsDirectory() throws Exception {
         File f = new File(temporaryFolder.newFile(), "foo");
 
@@ -176,7 +186,6 @@ public class ErrorMessageTest {
     }
 
     @Test
-    @Ignore
     public void symlinkLoop() throws Exception {
         Assume.assumeFalse("This test doesn't support support symlinks on Windows", IS_WINDOWS);
 

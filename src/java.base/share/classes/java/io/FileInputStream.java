@@ -181,7 +181,7 @@ public class FileInputStream extends InputStream
                         // Nothing.
                     }
                 }
-                throw new FileNotFoundException(e.getMessage());
+                throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
             }
         } else {
             fd = new FileDescriptor();

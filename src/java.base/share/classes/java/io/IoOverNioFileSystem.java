@@ -26,6 +26,7 @@
 package java.io;
 
 import com.jetbrains.internal.IoOverNio;
+import com.jetbrains.internal.IoToNioErrorMessageHolder;
 import jdk.internal.misc.VM;
 
 import java.nio.file.*;
@@ -61,6 +62,27 @@ class IoOverNioFileSystem extends FileSystem {
         }
 
         return FileSystems.getDefault();
+    }
+
+    /**
+     * To be used in {@link java.io.FileInputStream} and so on.
+     * Constructors of these classes may throw only {@link FileNotFoundException} whatever error actually happens.
+     */
+    static FileNotFoundException convertNioToIoExceptionInStreams(IOException source) {
+        if (source instanceof FileNotFoundException nsfe) {
+            return nsfe;
+        }
+        String message = IoToNioErrorMessageHolder.removeMessage(source);
+        if (source instanceof FileSystemException s && s.getFile() != null) {
+            if (message == null) {
+                message = s.getFile();
+            } else {
+                message = s.getFile() + " (" + message + ")";
+            }
+        }
+        FileNotFoundException result = new FileNotFoundException(message);
+        result.initCause(source);
+        return result;
     }
 
     private static boolean setPermission0(java.nio.file.FileSystem nioFs, File f, int access, boolean enable, boolean owneronly) {
@@ -625,6 +647,8 @@ class IoOverNioFileSystem extends FileSystem {
             return false;
         } catch (InvalidPathException e) {
             throw new IOException(e.getMessage(), e); // The default file system would throw IOException too.
+        } catch (IOException e) {
+            throw new IOException(IoToNioErrorMessageHolder.removeMessage(e), e);
         }
         return defaultFileSystem.createFileExclusively(pathname);
     }
