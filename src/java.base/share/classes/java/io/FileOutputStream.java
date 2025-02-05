@@ -28,15 +28,14 @@ package java.io;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystems;
-import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Set;
 
-import com.jetbrains.internal.IoOverNio;
+import java.nio.file.Path;
+
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.event.FileWriteEvent;
-import jdk.internal.misc.VM;
 import sun.nio.ch.FileChannelImpl;
 import static com.jetbrains.internal.IoOverNio.DEBUG;
 
@@ -84,8 +83,6 @@ public class FileOutputStream extends OutputStream
      */
     private static boolean jfrTracing;
 
-    private static final boolean useNIO = IoOverNio.IS_ENABLED_IN_GENERAL;
-
     /**
      * The system dependent file descriptor.
      */
@@ -105,6 +102,8 @@ public class FileOutputStream extends OutputStream
     private final Object closeLock = new Object();
 
     private volatile boolean closed;
+
+    private final boolean useNio;
 
     /**
      * Creates a file output stream to write to the file with the
@@ -215,12 +214,53 @@ public class FileOutputStream extends OutputStream
         }
         this.path = file.getPath();
 
-        this.fd = new FileDescriptor();
-        fd.attach(this);
+        java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs();
+        useNio = path != null && nioFs != null;
+        if (useNio) {
+            Path nioPath = nioFs.getPath(path);
+            try {
+                // NB: the channel will be closed in the close() method
+                var ch = FileSystems.getDefault().provider().newFileChannel(
+                        nioPath,
+                        append ? Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+                                : Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING));
+                channel = ch;
 
-        open(this.path, append);
-        FileCleanable.register(fd);   // open sets the fd, register the cleanup
+                // This check is performed after opening the file for throwing access errors before file type errors.
+                IoOverNioFileSystem.checkIsNotDirectoryForStreams(path, nioPath);
 
+                // A nio channel may physically not have any file descriptor.
+                // Also, there's no API for retrieving file descriptors from nio channels.
+                if (ch instanceof FileChannelImpl fci) {
+                    fci.setUninterruptible();
+                    fd = fci.getFD();
+                    fd.attach(this);
+                    FileCleanable.register(fd);
+                } else {
+                    fd = new FileDescriptor();
+                }
+            } catch (IOException e) {
+                if (DEBUG.writeErrors()) {
+                    new Throwable(String.format("Can't create a FileOutputStream for %s with %s", file, nioFs), e)
+                            .printStackTrace(System.err);
+                }
+                if (channel != null) {
+                    try {
+                        channel.close();
+                    } catch (IOException ignored) {
+                        // Nothing.
+                    }
+                }
+                // Since we can't throw IOException...
+                throw new FileNotFoundException(e.getMessage());
+            }
+        } else {
+            this.fd = new FileDescriptor();
+            fd.attach(this);
+
+            open(this.path, append);
+            FileCleanable.register(fd);   // open sets the fd, register the cleanup
+        }
         if (DEBUG.writeTraces()) {
             System.err.printf("Created a FileOutputStream for %s%n", file);
         }
@@ -243,6 +283,8 @@ public class FileOutputStream extends OutputStream
      */
     @SuppressWarnings("this-escape")
     public FileOutputStream(FileDescriptor fdObj) {
+        useNio = false;
+
         if (fdObj == null) {
             throw new NullPointerException();
         }
@@ -312,7 +354,7 @@ public class FileOutputStream extends OutputStream
     }
 
     private void implWrite(int b, boolean append) throws IOException {
-        if (!VM.isBooted() || !useNIO) {
+        if (!useNio) {
             write(b, append);
         } else {
             // 'append' is ignored; the channel is supposed to obey the mode in which the file was opened
@@ -389,7 +431,7 @@ public class FileOutputStream extends OutputStream
     }
 
     private void implWriteBytes(byte[] b, int off, int len, boolean append) throws IOException {
-        if (!VM.isBooted() || !useNIO) {
+        if (!useNio) {
             writeBytes(b, off, len, append);
         } else {
             // 'append' is ignored; the channel is supposed to obey the mode in which the file was opened
