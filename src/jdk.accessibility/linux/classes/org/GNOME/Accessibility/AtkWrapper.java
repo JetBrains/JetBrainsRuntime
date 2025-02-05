@@ -746,7 +746,7 @@ public class AtkWrapper {
     }
 
     public AtkWrapper() {
-        if (!accessibilityEnabled) {
+        if (!accessibilityEnabled || java.lang.Boolean.parseBoolean(System.getProperty("linux.jdk.accessibility.atkwrapper.block", "true"))) {
             throw new IllegalStateException("AtkWrapper not initialized due to disabled accessibility.");
         }
 
