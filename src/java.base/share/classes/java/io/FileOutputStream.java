@@ -251,8 +251,7 @@ public class FileOutputStream extends OutputStream
                         // Nothing.
                     }
                 }
-                // Since we can't throw IOException...
-                throw new FileNotFoundException(e.getMessage());
+                throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
             }
         } else {
             this.fd = new FileDescriptor();
