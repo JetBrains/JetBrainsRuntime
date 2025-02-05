@@ -159,15 +159,11 @@ public class FileInputStream extends InputStream
         }
 
         path = name;
-        java.nio.file.FileSystem nioFs = File.acquireNioFs.get();
+        java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs();
         useNio = nioFs != null;
         if (useNio) {
             Path nioPath = nioFs.getPath(name);
-            if (Files.isDirectory(nioPath)) {
-                // Unfortunately, java.nio allows opening directories as file channels, and there's no way
-                // to determine if an opened nio channel belongs to a directory.
-                throw new FileNotFoundException(name + " (Is a directory)");
-            }
+            IoOverNioFileSystem.checkIsNotDirectoryForStreams(name, nioPath);
             try {
                 // NB: the channel will be closed in the close() method
                 var ch = nioFs.provider().newFileChannel(nioPath, Set.of(StandardOpenOption.READ));

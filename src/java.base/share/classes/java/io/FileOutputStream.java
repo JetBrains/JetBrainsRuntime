@@ -235,13 +235,11 @@ public class FileOutputStream extends OutputStream
         }
 
         this.path = name;
-        java.nio.file.FileSystem nioFs = File.acquireNioFs.get();
+        java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs();
         useNio = nioFs != null;
         if (useNio) {
             Path nioPath = nioFs.getPath(name);
-            if (Files.isDirectory(nioPath)) {
-                throw new FileNotFoundException(name + " (Is a directory)");
-            }
+            IoOverNioFileSystem.checkIsNotDirectoryForStreams(name, nioPath);
             try {
                 // NB: the channel will be closed in the close() method
                 var ch = FileSystems.getDefault().provider().newFileChannel(

@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.util.StaticProperty;
 import sun.security.action.GetPropertyAction;
 
@@ -152,25 +153,15 @@ public class File
     implements Serializable, Comparable<File>
 {
     /**
-     * If this supplier returns a non-null {@link java.nio.file.FileSystem},
-     * then {@code java.io} primitives must use this filesystem for all operations inside.
-     * Otherwise, {@link java.io} must use legacy functions for accessing the filesystem.
-     */
-    static final Supplier<java.nio.file.FileSystem> acquireNioFs;
-
-    /**
      * The FileSystem object representing the platform's local file system.
      */
     private static final FileSystem FS;
 
     static {
-        if (GetPropertyAction.privilegedGetBooleanProp("jbr.java.io.use.nio", true, null)) {
-            IoOverNioFileSystem ioOverNio = new IoOverNioFileSystem(DefaultFileSystem.getFileSystem());
-            FS = ioOverNio;
-            acquireNioFs = ioOverNio::acquireNioFs;
+        if (IoOverNio.IS_ENABLED_IN_GENERAL) {
+            FS = new IoOverNioFileSystem(DefaultFileSystem.getFileSystem());
         } else {
             FS = DefaultFileSystem.getFileSystem();
-            acquireNioFs = () -> null;
         }
     }
 

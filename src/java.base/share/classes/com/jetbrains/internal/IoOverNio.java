@@ -36,7 +36,8 @@ import java.nio.file.FileSystems;
 public class IoOverNio {
     /** Preferences of debug logging. */
     public static final Debug DEBUG;
-
+    public static final boolean IS_ENABLED_IN_GENERAL =
+            GetPropertyAction.privilegedGetBooleanProp("jbr.java.io.use.nio", true, null);
     private static final ThreadLocal<Boolean> ALLOW_IN_THIS_THREAD = ThreadLocal.withInitial(() -> true);
 
     static {
