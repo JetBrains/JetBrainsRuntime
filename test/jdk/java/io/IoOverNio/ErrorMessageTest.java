@@ -123,14 +123,14 @@ public class ErrorMessageTest {
                 () -> new RandomAccessFile(f, "r").close()
         );
 
-        if (!IS_WINDOWS) {
+        if (IS_MAC) {
             test(
                     new IOException("Permission denied"),
                     f::createNewFile
             );
         }
         test(
-                new IOException(IS_WINDOWS ? "The system cannot find the path specified" : "Permission denied"),
+                new IOException(IS_WINDOWS ? "The system cannot find the path specified" : IS_MAC ? "Permission denied" : "Not a directory"),
                 () -> File.createTempFile("foo", "bar", f)
         );
     }
