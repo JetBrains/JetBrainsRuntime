@@ -30,16 +30,17 @@
  */
 
 import java.io.IOException;
-import java.io.File;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.UserPrincipal;
+import java.util.EnumSet;
 import java.util.List;
 import jdk.test.lib.Platform;
 
@@ -55,6 +56,7 @@ public class Misc {
             testIsSameFile(dir);
             testFileTypeMethods(dir);
             testAccessMethods(dir);
+            testEmptyPathForByteStream();
         } finally {
              TestUtil.removeAll(dir);
         }
@@ -360,6 +362,18 @@ public class Misc {
             }
         } finally {
             delete(file);
+        }
+    }
+
+    static void testEmptyPathForByteStream() throws IOException {
+        Path emptyPath = Path.of("");
+        try {
+            emptyPath.getFileSystem().provider()
+                    .newByteChannel(emptyPath, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))
+                    .close();
+            throw new RuntimeException("FileAlreadyExistsException was not thrown");
+        } catch (FileAlreadyExistsException e) {
+            // The expected behavior.
         }
     }
 
