@@ -25,12 +25,23 @@
 
 package java.io;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+
+import java.util.Set;
+
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.event.FileReadEvent;
 import jdk.internal.vm.annotation.Stable;
 import sun.nio.ch.FileChannelImpl;
+
+import static com.jetbrains.internal.IoOverNio.DEBUG;
 
 /**
  * A {@code FileInputStream} obtains input bytes
@@ -86,6 +97,16 @@ public class FileInputStream extends InputStream
     // operations need the current position which requires seeking
     private @Stable Boolean isRegularFile;
 
+    private final boolean useNio;
+
+    @SuppressWarnings({
+            "FieldCanBeLocal",
+            "this-escape",  // It immediately converts into a phantom reference.
+    })
+    private final NioChannelCleanable channelCleanable = new NioChannelCleanable(this);
+
+    private final ExternalChannelHolder externalChannelHolder;
+
     /**
      * Creates a {@code FileInputStream} to read from an existing file
      * named by the path name {@code name}.
@@ -134,10 +155,39 @@ public class FileInputStream extends InputStream
             throw new FileNotFoundException("Invalid file path");
         }
         path = file.getPath();
-        fd = new FileDescriptor();
-        fd.attach(this);
-        open(path);
-        FileCleanable.register(fd);       // open set the fd, register the cleanup
+
+        java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
+        Path nioPath = null;
+        if (nioFs != null && path != null) {
+            try {
+                nioPath = nioFs.getPath(path);
+                isRegularFile = Files.isRegularFile(nioPath);
+            } catch (InvalidPathException _) {
+                // Nothing.
+            }
+        }
+
+        // Two significant differences between the legacy java.io and java.nio.files:
+        // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
+        // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
+        useNio = nioPath != null && isRegularFile == Boolean.TRUE;
+
+        if (useNio) {
+            var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
+                    this, nioFs, file, nioPath, Set.of(StandardOpenOption.READ), channelCleanable);
+            channel = bundle.channel();
+            fd = bundle.fd();
+            externalChannelHolder = bundle.externalChannelHolder();
+        } else {
+            fd = new FileDescriptor();
+            fd.attach(this);
+            open(path);
+            FileCleanable.register(fd);       // open set the fd, register the cleanup
+            externalChannelHolder = null;
+        }
+        if (DEBUG.writeTraces()) {
+            System.err.printf("Created a FileInputStream for %s%n", file);
+        }
     }
 
     /**
@@ -157,6 +207,9 @@ public class FileInputStream extends InputStream
      */
     @SuppressWarnings("this-escape")
     public FileInputStream(FileDescriptor fdObj) {
+        useNio = false;
+        externalChannelHolder = null;
+
         if (fdObj == null) {
             throw new NullPointerException();
         }
@@ -195,10 +248,21 @@ public class FileInputStream extends InputStream
      */
     @Override
     public int read() throws IOException {
-        if (jfrTracing && FileReadEvent.enabled()) {
+        if (jfrTracing && FileReadEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             return traceRead0();
         }
-        return read0();
+        return implRead();
+    }
+
+    private int implRead() throws IOException {
+        if (!useNio) {
+            return read0();
+        } else {
+            ByteBuffer buffer = ByteBuffer.allocate(1);
+            int nRead = channel.read(buffer);
+            buffer.rewind();
+            return nRead == 1 ? (buffer.get() & 0xFF) : -1;
+        }
     }
 
     private native int read0() throws IOException;
@@ -210,7 +274,7 @@ public class FileInputStream extends InputStream
         long start = 0;
         try {
             start = FileReadEvent.timestamp();
-            result = read0();
+            result = implRead();
             if (result < 0) {
                 endOfFile = true;
             } else {
@@ -239,7 +303,7 @@ public class FileInputStream extends InputStream
         long start = 0;
         try {
             start = FileReadEvent.timestamp();
-            bytesRead = readBytes(b, off, len);
+            bytesRead = implRead(b, off, len);
         } finally {
             long duration = FileReadEvent.timestamp() - start;
             if (FileReadEvent.shouldCommit(duration)) {
@@ -266,10 +330,25 @@ public class FileInputStream extends InputStream
      */
     @Override
     public int read(byte[] b) throws IOException {
-        if (jfrTracing && FileReadEvent.enabled()) {
+        if (jfrTracing && FileReadEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             return traceReadBytes(b, 0, b.length);
         }
-        return readBytes(b, 0, b.length);
+
+        return implRead(b);
+    }
+
+    private int implRead(byte[] b) throws IOException {
+        if (!useNio) {
+            return readBytes(b, 0, b.length);
+        } else {
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b);
+                return channel.read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes(b, 0, b.length);
+            }
+        }
     }
 
     /**
@@ -288,10 +367,24 @@ public class FileInputStream extends InputStream
      */
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
-        if (jfrTracing && FileReadEvent.enabled()) {
+        if (jfrTracing && FileReadEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             return traceReadBytes(b, off, len);
         }
-        return readBytes(b, off, len);
+        return implRead(b, off, len);
+    }
+
+    private int implRead(byte[] b, int off, int len) throws IOException {
+        if (!useNio) {
+            return readBytes(b, off, len);
+        } else {
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+                return channel.read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes(b, off, len);
+            }
+        }
     }
 
     @Override
@@ -390,7 +483,7 @@ public class FileInputStream extends InputStream
     public long transferTo(OutputStream out) throws IOException {
         long transferred = 0L;
         if (out instanceof FileOutputStream fos && isRegularFile()) {
-            FileChannel fc = getChannel();
+            FileChannel fc = useNio ? channel : getChannel();
             long pos = fc.position();
             transferred = fc.transferTo(pos, Long.MAX_VALUE, fos.getChannel());
             long newPos = pos + transferred;
@@ -407,12 +500,21 @@ public class FileInputStream extends InputStream
     }
 
     private long length() throws IOException {
-        return length0();
+        if (!useNio) {
+            return length0();
+        } else {
+            return channel.size();
+        }
     }
+
     private native long length0() throws IOException;
 
     private long position() throws IOException {
-        return position0();
+        if (!useNio) {
+            return position0();
+        } else {
+            return channel.position();
+        }
     }
     private native long position0() throws IOException;
 
@@ -442,10 +544,15 @@ public class FileInputStream extends InputStream
      */
     @Override
     public long skip(long n) throws IOException {
-        if (isRegularFile())
+        if (!isRegularFile()) {
+            return super.skip(n);
+        } else if (!useNio) {
             return skip0(n);
-
-        return super.skip(n);
+        } else {
+            long startPos = channel.position();
+            channel.position(startPos + n);
+            return channel.position() - startPos;
+        }
     }
 
     private native long skip0(long n) throws IOException;
@@ -469,7 +576,14 @@ public class FileInputStream extends InputStream
      */
     @Override
     public int available() throws IOException {
-        return available0();
+        if (!useNio) {
+            return available0();
+        } else {
+            long size = channel.size();
+            long pos = channel.position();
+            long avail = size > pos ? (size - pos) : 0;
+            return avail > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)avail;
+        }
     }
 
     private native int available0() throws IOException;
@@ -515,6 +629,10 @@ public class FileInputStream extends InputStream
             fc.close();
         }
 
+        if (externalChannelHolder != null) {
+            externalChannelHolder.close();
+        }
+
         fd.closeAll(new Closeable() {
             public void close() throws IOException {
                fd.close();
@@ -555,6 +673,10 @@ public class FileInputStream extends InputStream
      * @since 1.4
      */
     public FileChannel getChannel() {
+        if (externalChannelHolder != null) {
+            return externalChannelHolder.getInterruptibleChannel();
+        }
+
         FileChannel fc = this.channel;
         if (fc == null) {
             synchronized (this) {
@@ -580,10 +702,17 @@ public class FileInputStream extends InputStream
     /**
      * Determine whether the file is a regular file.
      */
-    private boolean isRegularFile() {
+    private boolean isRegularFile() {  // TODO Shouldn't it be used together with checkIsNotDirectoryForStreams?
         Boolean isRegularFile = this.isRegularFile;
         if (isRegularFile == null) {
-            this.isRegularFile = isRegularFile = isRegularFile0(fd);
+            @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
+            if (path == null) {
+                this.isRegularFile = isRegularFile = false;
+            } else if (nioFs == null) {
+                this.isRegularFile = isRegularFile = isRegularFile0(fd);
+            } else {
+                this.isRegularFile = isRegularFile = Files.isRegularFile(nioFs.getPath(path));
+            }
         }
         return isRegularFile;
     }

@@ -25,11 +25,23 @@
 
 package java.io;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.DosFileAttributeView;
+import java.nio.file.attribute.DosFileAttributes;
+import java.util.Set;
+
+import java.nio.file.Path;
+
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.event.FileWriteEvent;
 import sun.nio.ch.FileChannelImpl;
+import static com.jetbrains.internal.IoOverNio.DEBUG;
 
 
 /**
@@ -94,6 +106,16 @@ public class FileOutputStream extends OutputStream
     private final Object closeLock = new Object();
 
     private volatile boolean closed;
+
+    private final boolean useNio;
+
+    @SuppressWarnings({
+            "FieldCanBeLocal",
+            "this-escape",  // It immediately converts into a phantom reference.
+    })
+    private final NioChannelCleanable channelCleanable = new NioChannelCleanable(this);
+
+    private final ExternalChannelHolder externalChannelHolder;
 
     /**
      * Creates a file output stream to write to the file with the
@@ -204,11 +226,45 @@ public class FileOutputStream extends OutputStream
         }
         this.path = file.getPath();
 
-        this.fd = new FileDescriptor();
-        fd.attach(this);
+        java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
+        useNio = path != null && nioFs != null;
+        if (useNio) {
+            Path nioPath = nioFs.getPath(path);
 
-        open(this.path, append);
-        FileCleanable.register(fd);   // open sets the fd, register the cleanup
+            // java.io backend doesn't open DOS hidden files for writing, but java.nio.file opens.
+            // This code mimics the old behavior.
+            if (nioFs.getSeparator().equals("\\")) {
+                DosFileAttributes attrs;
+                try {
+                    attrs = Files.getFileAttributeView(nioPath, DosFileAttributeView.class).readAttributes();
+                } catch (IOException | UnsupportedOperationException _) {
+                    // Windows paths without DOS attributes? Not a problem in this case.
+                    attrs = null;
+                }
+                if (attrs != null && (attrs.isHidden() || attrs.isDirectory())) {
+                    throw new FileNotFoundException(file.getPath() + " (Access is denied)");
+                }
+            }
+
+            Set<StandardOpenOption> options = append
+                    ? Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+                    : Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
+                    this, nioFs, file, nioPath, options, channelCleanable);
+            channel = bundle.channel();
+            fd = bundle.fd();
+            externalChannelHolder = bundle.externalChannelHolder();
+        } else {
+            this.fd = new FileDescriptor();
+            fd.attach(this);
+
+            open(this.path, append);
+            FileCleanable.register(fd);   // open sets the fd, register the cleanup
+            externalChannelHolder = null;
+        }
+        if (DEBUG.writeTraces()) {
+            System.err.printf("Created a FileOutputStream for %s%n", file);
+        }
     }
 
     /**
@@ -228,6 +284,9 @@ public class FileOutputStream extends OutputStream
      */
     @SuppressWarnings("this-escape")
     public FileOutputStream(FileDescriptor fdObj) {
+        useNio = false;
+        externalChannelHolder = null;
+
         if (fdObj == null) {
             throw new NullPointerException();
         }
@@ -269,7 +328,7 @@ public class FileOutputStream extends OutputStream
         long start = 0;
         try {
             start = FileWriteEvent.timestamp();
-            write(b, append);
+            implWrite(b, append);
             bytesWritten = 1;
         } finally {
             long duration = FileWriteEvent.timestamp() - start;
@@ -289,11 +348,25 @@ public class FileOutputStream extends OutputStream
     @Override
     public void write(int b) throws IOException {
         boolean append = FD_ACCESS.getAppend(fd);
-        if (jfrTracing && FileWriteEvent.enabled()) {
+        if (jfrTracing && FileWriteEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             traceWrite(b, append);
             return;
         }
-        write(b, append);
+        implWrite(b, append);
+    }
+
+    private void implWrite(int b, boolean append) throws IOException {
+        if (!useNio) {
+            write(b, append);
+        } else {
+            // 'append' is ignored; the channel is supposed to obey the mode in which the file was opened
+            byte[] array = new byte[1];
+            array[0] = (byte) b;
+            ByteBuffer buffer = ByteBuffer.wrap(array);
+            do {
+                channel.write(buffer);
+            } while (buffer.hasRemaining());
+        }
     }
 
     /**
@@ -313,7 +386,7 @@ public class FileOutputStream extends OutputStream
         long start = 0;
         try {
             start = FileWriteEvent.timestamp();
-            writeBytes(b, off, len, append);
+            implWriteBytes(b, off, len, append);
             bytesWritten = len;
         } finally {
             long duration = FileWriteEvent.timestamp() - start;
@@ -333,11 +406,12 @@ public class FileOutputStream extends OutputStream
     @Override
     public void write(byte[] b) throws IOException {
         boolean append = FD_ACCESS.getAppend(fd);
-        if (jfrTracing && FileWriteEvent.enabled()) {
+        if (jfrTracing && FileWriteEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             traceWriteBytes(b, 0, b.length, append);
             return;
         }
-        writeBytes(b, 0, b.length, append);
+
+        implWriteBytes(b, 0, b.length, append);
     }
 
     /**
@@ -353,11 +427,28 @@ public class FileOutputStream extends OutputStream
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
         boolean append = FD_ACCESS.getAppend(fd);
-        if (jfrTracing && FileWriteEvent.enabled()) {
+        if (jfrTracing && FileWriteEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             traceWriteBytes(b, off, len, append);
             return;
         }
-        writeBytes(b, off, len, append);
+        implWriteBytes(b, off, len, append);
+    }
+
+    private void implWriteBytes(byte[] b, int off, int len, boolean append) throws IOException {
+        if (!useNio) {
+            writeBytes(b, off, len, append);
+        } else {
+            // 'append' is ignored; the channel is supposed to obey the mode in which the file was opened
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+                do {
+                    channel.write(buffer);
+                } while (buffer.hasRemaining());
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                writeBytes(b, off, len, append);
+            }
+        }
     }
 
     /**
@@ -402,6 +493,10 @@ public class FileOutputStream extends OutputStream
             fc.close();
         }
 
+        if (externalChannelHolder != null) {
+            externalChannelHolder.close();
+        }
+
         fd.closeAll(new Closeable() {
             public void close() throws IOException {
                fd.close();
@@ -443,6 +538,10 @@ public class FileOutputStream extends OutputStream
      * @since 1.4
      */
     public FileChannel getChannel() {
+        if (externalChannelHolder != null) {
+            return externalChannelHolder.getInterruptibleChannel();
+        }
+
         FileChannel fc = this.channel;
         if (fc == null) {
             synchronized (this) {
