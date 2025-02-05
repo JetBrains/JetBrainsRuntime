@@ -61,14 +61,7 @@ class IoOverNioFileSystem extends FileSystem {
             return null;
         }
 
-        try {
-            return FileSystems.getDefault();
-        } catch (NullPointerException ignored) {
-            // TODO Explain.
-            // TODO Probably, it can be removed now.
-        }
-
-        return null;
+        return FileSystems.getDefault();
     }
 
     /**
