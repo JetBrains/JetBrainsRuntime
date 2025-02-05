@@ -163,11 +163,14 @@ public class FileInputStream extends InputStream
         useNio = nioFs != null;
         if (useNio) {
             Path nioPath = nioFs.getPath(name);
-            IoOverNioFileSystem.checkIsNotDirectoryForStreams(name, nioPath);
             try {
                 // NB: the channel will be closed in the close() method
                 var ch = nioFs.provider().newFileChannel(nioPath, Set.of(StandardOpenOption.READ));
                 channel = ch;
+
+                // This check is performed after opening the file for throwing access errors before file type errors.
+                IoOverNioFileSystem.checkIsNotDirectoryForStreams(name, nioPath);
+
                 // A nio channel may physically not have any file descriptor.
                 // Also, there's no API for retrieving file descriptors from nio channels.
                 if (ch instanceof FileChannelImpl fci) {
@@ -182,6 +185,13 @@ public class FileInputStream extends InputStream
                 if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't create a FileInputStream for %s with %s", file, nioFs), e)
                             .printStackTrace(System.err);
+                }
+                if (channel != null) {
+                    try {
+                        channel.close();
+                    } catch (IOException ignored) {
+                        // Nothing.
+                    }
                 }
                 throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
             }

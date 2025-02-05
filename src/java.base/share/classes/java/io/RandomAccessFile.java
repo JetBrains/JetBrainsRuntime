@@ -282,12 +282,15 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         useNio = nioFs != null;
         if (useNio) {
             Path nioPath = nioFs.getPath(name);
-            IoOverNioFileSystem.checkIsNotDirectoryForStreams(name, nioPath);
             try {
                 var options = optionsForChannel(imode);
                 // NB: the channel will be closed in the close() method
                 var ch = nioFs.provider().newFileChannel(nioPath, options);
                 channel = ch;
+
+                // This check is performed after opening the file for throwing access errors before file type errors.
+                IoOverNioFileSystem.checkIsNotDirectoryForStreams(name, nioPath);
+
                 // A nio channel may physically not have any file descriptor.
                 // Also, there's no API for retrieving file descriptors from nio channels.
                 if (ch instanceof FileChannelImpl fci) {
@@ -303,12 +306,15 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                     new Throwable(String.format("Can't create a RandomAccessFile for %s with %s", file, nioFs), e)
                             .printStackTrace(System.err);
                 }
-                // Since we can't throw IOException...
-                e = IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
-                if (e instanceof FileNotFoundException fnne) {
-                    throw fnne;
+                if (channel != null) {
+                    try {
+                        channel.close();
+                    } catch (IOException ignored) {
+                        // Nothing.
+                    }
                 }
-                throw new FileNotFoundException(e.getMessage());
+                // Since we can't throw IOException...
+                throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
             }
         } else {
             fd = new FileDescriptor();
