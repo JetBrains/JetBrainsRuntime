@@ -25,6 +25,10 @@
 
 package com.jetbrains.internal;
 
+import jdk.internal.misc.VM;
+
+import java.nio.file.FileSystems;
+
 /**
  * Internal methods to control the feature of using {@link java.nio.file} inside {@link java.io}.
  */
@@ -34,7 +38,8 @@ public class IoOverNio {
      */
     public static final Debug DEBUG;
     public static final boolean IS_ENABLED_IN_GENERAL =
-            System.getProperty("java.io.use.nio", "").equalsIgnoreCase("true");
+            System.getProperty("java.io.use.nio", "true").equalsIgnoreCase("true");
+    private static final ThreadLocal<Boolean> ALLOW_IN_THIS_THREAD = ThreadLocal.withInitial(() -> true);
 
     static {
         String value = System.getProperty("jbr.java.io.use.nio.debug", "");
@@ -57,6 +62,37 @@ public class IoOverNio {
     private IoOverNio() {
     }
 
+    public static boolean isAllowedInThisThread() {
+        return ALLOW_IN_THIS_THREAD.get();
+    }
+
+    /**
+     * This method helps to prevent infinite recursion in specific areas like class loading.
+     * An attempt to access {@link FileSystems#getDefault()} during class loading
+     * would require loading the class of the default file system provider,
+     * which would recursively require the access to {@link FileSystems#getDefault()}.
+     * <p>
+     * Beware that this function does not support correctly nested invocations.
+     * However, it doesn't bring any problem in practice.
+     * <p>
+     * Usage:
+     * <pre>
+     * {@code
+     * @SuppressWarnings("try")
+     * void method() {
+     *     try (var ignored = IoOverNio.disableInThisThread()) {
+     *         // do something here.
+     *     }
+     * }
+     * }
+     * </pre>
+     * </p>
+     */
+    public static ThreadLocalCloseable disableInThisThread() {
+        ALLOW_IN_THIS_THREAD.set(false);
+        return ThreadLocalCloseable.INSTANCE;
+    }
+
     public enum Debug {
         NO(false, false),
         ERROR(true, false),
@@ -71,12 +107,28 @@ public class IoOverNio {
             this.writeTraces = writeTraces;
         }
 
+        private boolean mayWriteAnything() {
+            return VM.isBooted() && IoOverNio.ALLOW_IN_THIS_THREAD.get();
+        }
+
         public boolean writeErrors() {
-            return writeErrors;
+            return writeErrors && mayWriteAnything();
         }
 
         public boolean writeTraces() {
-            return writeTraces;
+            return writeTraces && mayWriteAnything();
+        }
+    }
+
+    public static class ThreadLocalCloseable implements AutoCloseable {
+        private static final ThreadLocalCloseable INSTANCE = new ThreadLocalCloseable();
+
+        private ThreadLocalCloseable() {
+        }
+
+        @Override
+        public void close() {
+            ALLOW_IN_THIS_THREAD.set(true);
         }
     }
 }
