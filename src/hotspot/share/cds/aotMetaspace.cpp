@@ -1056,6 +1056,7 @@ void AOTMetaspace::exercise_runtime_cds_code(TRAPS) {
 
   // Exercise FileSystem and URL code
   CDSProtectionDomain::to_file_URL("dummy.jar", Handle(), CHECK);
+  CDSProtectionDomain::cds_preload_helper_init(CHECK);
 }
 
 bool AOTMetaspace::preimage_static_archive_dumped() {
