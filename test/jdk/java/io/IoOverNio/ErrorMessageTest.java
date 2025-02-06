@@ -213,6 +213,14 @@ public class ErrorMessageTest {
         );
     }
 
+    @Test
+    public void createNewFile() throws Exception {
+        test(
+                new IOException(IS_WINDOWS ? "The system cannot find the path specified" : "No such file or directory"),
+                () -> new File("").createNewFile()
+        );
+    }
+
     // TODO Try to test operations of FileInputStream, FileOutputStream, etc.
 
     private static void test(Exception expectedException, TestRunnable fn) {
