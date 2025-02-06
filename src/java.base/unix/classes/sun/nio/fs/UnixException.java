@@ -25,6 +25,8 @@
 
 package sun.nio.fs;
 
+import com.jetbrains.internal.IoToNioErrorMessageHolder;
+
 import java.nio.file.*;
 import java.io.IOException;
 
@@ -106,6 +108,7 @@ class UnixException extends Exception {
         String a = (file == null) ? null : file.getPathForExceptionMessage();
         String b = (other == null) ? null : other.getPathForExceptionMessage();
         IOException x = translateToIOException(a, b);
+        IoToNioErrorMessageHolder.addMessage(x, errorString());
         throw x;
     }
 
@@ -114,6 +117,8 @@ class UnixException extends Exception {
     }
 
     IOException asIOException(UnixPath file) {
-        return translateToIOException(file.getPathForExceptionMessage(), null);
+        IOException x = translateToIOException(file.getPathForExceptionMessage(), null);
+        IoToNioErrorMessageHolder.addMessage(x, errorString());
+        return x;
     }
 }
