@@ -217,6 +217,17 @@ oop CDSProtectionDomain::to_file_URL(const char* path, Handle url_h, TRAPS) {
   return result.get_oop();
 }
 
+// https://bugs.openjdk.org/browse/JDK-8324259 -- the AppCDS archive must not contain any class from java.base.
+// Make sure that new classes loaded when jbr.java.io.use.nio=true do make into the archive.
+void CDSProtectionDomain::cds_preload_helper_init(TRAPS) {
+  JavaValue result(T_VOID);
+  JavaCalls::call_static(&result,
+                         vmClasses::jdk_internal_misc_CDSPreloadHelper_klass(),
+                         vmSymbols::CDSPreloadHelper_init_name(),
+                         vmSymbols::void_method_signature(),
+                         CATCH);
+}
+
 // Get the ProtectionDomain associated with the CodeSource from the classloader.
 Handle CDSProtectionDomain::get_protection_domain_from_classloader(Handle class_loader,
                                                                       Handle url, TRAPS) {
