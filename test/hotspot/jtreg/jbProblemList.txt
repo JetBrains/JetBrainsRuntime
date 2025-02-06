@@ -40,24 +40,25 @@
 
 # gtest
 
-gtest/AsyncLogGtest.java initial_run generic-all
-gtest/MetaspaceGtests.java#reclaim-none-ndebug initial_run generic-all
-gtest/LargePageGtests.java#use-large-pages-sysV initial_run linux-all
-gtest/LargePageGtests.java#use-large-pages-1G initial_run linux-all
-gtest/GTestWrapper.java initial_run generic-all
-gtest/MetaspaceUtilsGtests.java initial_run generic-all
-gtest/MetaspaceGtests.java#balanced-no-ccs initial_run generic-all
-gtest/MetaspaceGtests.java#balanced-with-guards JBR-5718 generic-all
-gtest/MetaspaceGtests.java#default-debug JBR-5718 generic-all
-gtest/MetaspaceGtests.java#reclaim-aggressive-debug JBR-5718 generic-all
-gtest/MetaspaceGtests.java#reclaim-none-debug JBR-5718 generic-all
-gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug initial_run generic-all
-gtest/LargePageGtests.java#use-large-pages initial_run linux-all,windows-all
+gtest/AsyncLogGtest.java JBR-4027 generic-all
+gtest/GTestWrapper.java JBR-4027 generic-all
+gtest/MetaspaceGtests.java#balanced-no-ccs JBR-4027 generic-all
+gtest/MetaspaceGtests.java#balanced-with-guards JBR-4027 generic-all
+gtest/MetaspaceGtests.java#default-debug JBR-4027 generic-all
+gtest/MetaspaceGtests.java#reclaim-aggressive-debug JBR-4027 generic-all
+gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug JBR-4027 generic-all
+gtest/MetaspaceGtests.java#reclaim-none-debug JBR-4027 generic-all
+gtest/MetaspaceGtests.java#reclaim-none-ndebug JBR-4027 generic-all
+gtest/MetaspaceUtilsGtests.java JBR-4027 generic-all
+gtest/LargePageGtests.java#use-large-pages JBR-4027 linux-all,windows-all
+gtest/LargePageGtests.java#use-large-pages-sysV JBR-4027 linux-all
+gtest/LargePageGtests.java#use-large-pages-1G JBR-4027 linux-all
 
-gtest/NativeHeapTrimmerGtest.java JBR-5718 generic-all
-gtest/NMTGtests.java#nmt-detail JBR-5718 generic-all
-gtest/NMTGtests.java#nmt-off JBR-5718 generic-all
-gtest/NMTGtests.java#nmt-summary JBR-5718 generic-all
+gtest/NativeHeapTrimmerGtest.java JBR-4027 generic-all
+gtest/NMTGtests.java#nmt-detail JBR-4027 generic-all
+gtest/NMTGtests.java#nmt-off JBR-4027 generic-all
+gtest/NMTGtests.java#nmt-summary JBR-4027 generic-all
+gtest/WindowsProcessorGroups.java JBR-4027 generic-all
 
 gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
 
