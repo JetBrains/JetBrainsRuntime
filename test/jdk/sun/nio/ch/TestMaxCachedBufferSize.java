@@ -45,8 +45,8 @@ import jdk.test.lib.RandomFactory;
  * @library /test/lib
  * @build TestMaxCachedBufferSize
  * @run main/othervm/timeout=600 TestMaxCachedBufferSize
- * @run main/othervm/timeout=600 -Djbr.java.io.use.nio=false -Djdk.nio.maxCachedBufferSize=0 TestMaxCachedBufferSize
- * @run main/othervm/timeout=600 -Djbr.java.io.use.nio=false -Djdk.nio.maxCachedBufferSize=2000 TestMaxCachedBufferSize
+ * @run main/othervm/timeout=600 -Djdk.nio.maxCachedBufferSize=0 TestMaxCachedBufferSize
+ * @run main/othervm/timeout=600 -Djdk.nio.maxCachedBufferSize=2000 TestMaxCachedBufferSize
  * @run main/othervm/timeout=600 -Djdk.nio.maxCachedBufferSize=100000 TestMaxCachedBufferSize
  * @run main/othervm/timeout=600 -Djdk.nio.maxCachedBufferSize=10000000 TestMaxCachedBufferSize
  * @summary Test the implementation of the jdk.nio.maxCachedBufferSize property
