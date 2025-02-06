@@ -742,6 +742,8 @@ class SerializeClosure;
   template(runtimeSetup,                                    "runtimeSetup")                                       \
   template(toFileURL_name,                                  "toFileURL")                                          \
   template(toFileURL_signature,                             "(Ljava/lang/String;)Ljava/net/URL;")                 \
+  template(jdk_internal_misc_CDSPreloadHelper,              "jdk/internal/misc/CDSPreloadHelper")                 \
+  template(CDSPreloadHelper_init_name,                      "init")                                               \
                                                                                                                   \
   /* jcmd Thread.dump_to_file */                                                                                  \
   template(jdk_internal_vm_ThreadDumper,           "jdk/internal/vm/ThreadDumper")                                \
