@@ -665,6 +665,7 @@ java/awt/GridBagLayout/GridBagLayoutIpadXYTest/GridBagLayoutIpadXYTest.java 8253
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,8322653 windows-all,macosx-all
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720,8322653 windows-all,macosx-all
 java/awt/event/MouseEvent/FrameMouseEventAbsoluteCoordsTest/FrameMouseEventAbsoluteCoordsTest.java 8238720 windows-all
+java/awt/Headless/HeadlessMalfunctionTest.java 8349099 generic-all
 
 java/awt/wakefield/RobotKeyboard.java JBR-5653 linux-all
 java/awt/wakefield/ScreenCapture.java JBR-5653 linux-all
