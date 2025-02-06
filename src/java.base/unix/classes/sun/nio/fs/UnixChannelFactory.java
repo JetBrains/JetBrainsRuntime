@@ -197,8 +197,9 @@ class UnixChannelFactory {
             if (flags.createNew) {
                 byte[] pathForSysCall = path.getByteArrayForSysCalls();
 
-                // throw exception if file name is "." to avoid confusing error
-                if ((pathForSysCall[pathForSysCall.length-1] == '.') &&
+                // throw exception if file name is "." or "" to avoid confusing error
+                if ((pathForSysCall.length == 0) ||
+                    (pathForSysCall[pathForSysCall.length-1] == '.') &&
                     (pathForSysCall.length == 1 ||
                     (pathForSysCall[pathForSysCall.length-2] == '/')))
                 {
