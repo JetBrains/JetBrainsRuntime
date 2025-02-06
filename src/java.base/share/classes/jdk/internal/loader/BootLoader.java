@@ -39,6 +39,7 @@ import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.module.Modules;
@@ -150,8 +151,11 @@ public class BootLoader {
     /**
      * Loads a native library from the system library path.
      */
+    @SuppressWarnings("try")
     public static void loadLibrary(String name) {
-        getNativeLibraries().loadLibrary(name);
+        try (var ignored = IoOverNio.disableInThisThread()) {
+            getNativeLibraries().loadLibrary(name);
+        }
     }
 
     /**
