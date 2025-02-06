@@ -24,6 +24,7 @@
  */
 package jdk.internal.loader;
 
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.misc.VM;
 import jdk.internal.ref.CleanerFactory;
 import jdk.internal.util.StaticProperty;
@@ -112,6 +113,7 @@ public final class NativeLibraries {
      * @param file the path of the native library
      * @throws UnsatisfiedLinkError if any error in loading the native library
      */
+    @SuppressWarnings("try")
     public NativeLibrary loadLibrary(Class<?> fromClass, File file) {
         // Check to see if we're attempting to access a static library
         String name = findBuiltinLib(file.getName());
@@ -326,13 +328,16 @@ public final class NativeLibraries {
             return load(this, name, isBuiltin, throwExceptionIfFail());
         }
 
+        @SuppressWarnings("try")
         private boolean throwExceptionIfFail() {
             if (loadLibraryOnlyIfPresent) return true;
 
             // If the file exists but fails to load, UnsatisfiedLinkException thrown by the VM
             // will include the error message from dlopen to provide diagnostic information
-            File file = new File(name);
-            return file.exists();
+            try (var ignored = IoOverNio.disableInThisThread()) {
+                File file = new File(name);
+                return file.exists();
+            }
         }
 
         /*
