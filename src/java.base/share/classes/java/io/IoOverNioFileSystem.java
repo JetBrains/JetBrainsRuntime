@@ -631,7 +631,8 @@ class IoOverNioFileSystem extends FileSystem {
     private boolean createFileExclusively0(String pathname) throws IOException {
         java.nio.file.FileSystem nioFs = acquireNioFs();
         try {
-            if (nioFs != null) {
+            // In case of an empty pathname, the default file system always throws an exception.
+            if (pathname != null && !pathname.isEmpty() && nioFs != null) {
                 Path path = nioFs.getPath(pathname);
                 nioFs.provider().newByteChannel(
                         path,

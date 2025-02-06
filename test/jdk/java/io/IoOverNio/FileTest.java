@@ -460,6 +460,32 @@ public class FileTest {
         assertEquals(root + "/dir1", new File(root + "/dir1/../dir1/dir1_link/../dir1").getCanonicalFile().toString());
     }
 
+    @Test
+    public void testCreateNewFile() throws Exception {
+        File rootDir = temporaryFolder.newFolder();
+
+        File f = new File(rootDir, "hello.txt");
+        assertFalse(f.exists());
+
+        assertTrue(f.createNewFile());
+        assertTrue(f.exists());
+
+        assertFalse(f.createNewFile());
+        assertTrue(f.exists());
+
+        // Corner cases.
+        assertFalse(rootDir.createNewFile());
+
+        try {
+            boolean ignored = new File("").createNewFile();
+            fail("Expected IOException");
+        } catch (IOException e) {
+            // Nothing.
+        }
+        assertFalse(new File(".").createNewFile());
+        assertFalse(new File("..").createNewFile());
+    }
+
     // TODO Test file size.
 
 //    @Test
