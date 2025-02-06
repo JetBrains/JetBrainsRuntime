@@ -506,15 +506,36 @@ public class AtkWrapper {
                 emitSignal(ac, AtkSignal.TEXT_CARET_MOVED, args);
                 addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_TEXT_PROPERTY)) {
-                if (newValue == null) {
-                    return;
-                }
-
-                if (newValue instanceof Integer) {
-                    Object[] args = new Object[1];
-                    args[0] = newValue;
-                    emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED, args);
-                    addObjectRecord(ac);
+                /**
+                 * The documentation of AccessibleContext.ACCESSIBLE_TEXT_PROPERTY states that newValue
+                 * is an instance of AccessibleTextSequence in an insertion event, and oldValue is an
+                 * instance of AccessibleTextSequence in a deletion event. However, Swing components
+                 * send a signal where oldValue == null and newValue is an instance of Integer for both
+                 * insertion and deletion events.
+                 */
+                if (oldValue == null && newValue != null) {
+                    if (newValue instanceof AccessibleTextSequence) {
+                        AccessibleTextSequence newSeq = (AccessibleTextSequence) newValue;
+                        Object[] args = new Object[3];
+                        args[0] = Integer.valueOf(newSeq.startIndex);
+                        args[1] = Integer.valueOf(newSeq.endIndex - newSeq.startIndex);
+                        args[2] = newSeq.text;
+                        emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED_INSERT, args); // insertion event
+                        return;
+                    } else if (newValue instanceof Integer) {
+                        Object[] args = new Object[1];
+                        args[0] = newValue;
+                        emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED, args); // insertion or deletion event
+                    }
+                } else if (oldValue != null && newValue == null) {
+                    if (oldValue instanceof AccessibleTextSequence) {
+                        AccessibleTextSequence oldSeq = (AccessibleTextSequence) oldValue;
+                        Object[] args = new Object[3];
+                        args[0] = Integer.valueOf(oldSeq.startIndex);
+                        args[1] = Integer.valueOf(oldSeq.endIndex - oldSeq.startIndex);
+                        args[2] = oldSeq.text;
+                        emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED_DELETE, args); // deletion event
+                    }
                 }
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_CHILD_PROPERTY)) {
                 if (oldValue == null && newValue != null) { //child added

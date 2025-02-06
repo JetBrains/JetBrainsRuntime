@@ -588,6 +588,23 @@ static gint get_int_value(JNIEnv *jniEnv, jobject o) {
     return (gint)(*jniEnv)->CallIntMethod(jniEnv, o, jmid);
 }
 
+static gchar* get_string_value(JNIEnv *jniEnv, jobject o) {
+    JAW_DEBUG_C("%p, %p", jniEnv, o);
+    jclass classString = (*jniEnv)->FindClass(jniEnv, "java/lang/String");
+    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classString, "toString", "()Ljava/lang/String;");
+    jstring jstr = (jstring)(*jniEnv)->CallObjectMethod(jniEnv, o, jmid);
+
+    if (jstr == NULL) {
+        return NULL;
+    }
+
+    const char *nativeStr = (*jniEnv)->GetStringUTFChars(jniEnv, jstr, NULL);
+    gchar *result = g_strdup(nativeStr);
+    (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, nativeStr);
+
+    return result;
+}
+
 /*
  * OpenJDK seems to be sending flurries of visible data changed events, which
  * overloads us. They are however usually just for the same object, so we can
@@ -618,6 +635,28 @@ static gboolean signal_emit_handler(gpointer p) {
         gint cursor_pos = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         g_signal_emit_by_name(atk_obj, "text_caret_moved", cursor_pos);
+        break;
+    }
+    case Sig_Text_Property_Changed_Insert: {
+        gint insert_position = get_int_value(
+            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
+        gint insert_length = get_int_value(
+            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
+        gchar* insert_text = get_string_value(
+            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
+        g_signal_emit_by_name(atk_obj, "text_insert", insert_position,
+                              insert_length, insert_text);
+        break;
+    }
+    case Sig_Text_Property_Changed_Delete: {
+        gint delete_position = get_int_value(
+            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
+        gint delete_length = get_int_value(
+            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
+        gchar* delete_text = get_string_value(
+            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
+        g_signal_emit_by_name(atk_obj, "text_remove", delete_position,
+                              delete_length, delete_text);
         break;
     }
     case Sig_Object_Children_Changed_Add: {
@@ -750,6 +789,14 @@ static gboolean signal_emit_handler(gpointer p) {
         g_hash_table_insert(jaw_obj->storedData, (gpointer) "Previous_Count",
                             GINT_TO_POINTER(curCount));
 
+        /*
+         * The "text_changed" signal was deprecated, but only for performance reasons:
+         * https://mail.gnome.org/archives/gnome-accessibility-devel/2010-December/msg00007.html.
+         *
+         * Since there is no information about the string in this case, we cannot use
+         * "AtkObject::text-insert" or "AtkObject::text-remove", so we continue using
+         * the "text_changed" signal.
+         */
         if (curCount > prevCount) {
             g_signal_emit_by_name(atk_obj, "text_changed::insert", newValue,
                                   curCount - prevCount);
@@ -803,6 +850,8 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     para->args = global_args;
     switch (para->signal_id) {
     case Sig_Text_Caret_Moved:
+    case Sig_Text_Property_Changed_Insert:
+    case Sig_Text_Property_Changed_Delete:
     case Sig_Object_Children_Changed_Remove:
     case Sig_Object_Selection_Changed:
     case Sig_Object_Visible_Data_Changed:
