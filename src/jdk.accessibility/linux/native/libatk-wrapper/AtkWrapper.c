@@ -1060,7 +1060,7 @@ static gboolean key_dispatch_handler(gpointer p) {
     } else if (type == type_released) {
         event->type = ATK_KEY_EVENT_RELEASE;
     } else {
-        g_assert_not_reached();
+        return G_SOURCE_REMOVE;
     }
 
     // state
