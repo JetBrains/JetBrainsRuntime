@@ -31,8 +31,6 @@ import javax.swing.JComboBox;
 import java.lang.management.*;
 import java.util.*;
 
-import sun.java2d.Disposer;
-import sun.java2d.DisposerRecord;
 import sun.util.logging.PlatformLogger;
 
 public class AtkWrapper {
@@ -97,35 +95,6 @@ public class AtkWrapper {
         }
     }
 
-    private static final Object lock = new Object();
-    private static Set<AccessibleContext> set = new HashSet<>();
-
-    private static void addObjectRecord(AccessibleContext ac) {
-        synchronized (lock) {
-            if (!set.contains(ac)) {
-                set.add(ac);
-                Disposer.addRecord(ac, new AtkWrapperDisposerRecord(ac));
-            }
-        }
-    }
-
-    private static class AtkWrapperDisposerRecord implements DisposerRecord {
-        private AccessibleContext ac;
-
-        public AtkWrapperDisposerRecord(AccessibleContext ac) {
-            this.ac = ac;
-        }
-
-        @Override
-        public void dispose() {
-            synchronized (lock) {
-                set.remove(ac);
-            }
-            AtkWrapper.GC(ac);
-        }
-    }
-
-
     /**
      * winAdapter
      * <p>
@@ -150,7 +119,7 @@ public class AtkWrapper {
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
                 AtkWrapper.windowActivate(ac);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
             }
         }
 
@@ -170,7 +139,7 @@ public class AtkWrapper {
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
                 AtkWrapper.windowDeactivate(ac);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
             }
         }
 
@@ -185,11 +154,11 @@ public class AtkWrapper {
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
                 AtkWrapper.windowStateChange(ac);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
 
                 if ((e.getNewState() & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH) {
                     AtkWrapper.windowMaximize(ac);
-                    addObjectRecord(ac);
+                    AtkWrapperDisposer.addRecord(ac);
                 }
             }
         }
@@ -204,7 +173,7 @@ public class AtkWrapper {
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
                 AtkWrapper.windowRestore(ac);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
             }
         }
 
@@ -218,7 +187,7 @@ public class AtkWrapper {
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
                 AtkWrapper.windowMinimize(ac);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
             }
         }
 
@@ -232,7 +201,7 @@ public class AtkWrapper {
                 boolean isToplevel = isToplevel(o);
                 AccessibleContext ac = accessible.getAccessibleContext();
                 AtkWrapper.windowOpen(ac, isToplevel);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
             }
         }
 
@@ -247,7 +216,7 @@ public class AtkWrapper {
                 boolean isToplevel = isToplevel(o);
                 AccessibleContext ac = accessible.getAccessibleContext();
                 AtkWrapper.windowClose(ac, isToplevel);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
             }
         }
 
@@ -262,7 +231,7 @@ public class AtkWrapper {
                 boolean isToplevel = isToplevel(o);
                 AccessibleContext ac = accessible.getAccessibleContext();
                 AtkWrapper.windowClose(ac, isToplevel);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
             }
         }
 
@@ -294,7 +263,7 @@ public class AtkWrapper {
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
                 AtkWrapper.boundsChanged(ac);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
             }
         }
 
@@ -310,7 +279,7 @@ public class AtkWrapper {
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
                 AtkWrapper.boundsChanged(ac);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
             }
         }
 
@@ -323,7 +292,7 @@ public class AtkWrapper {
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
                 AtkWrapper.componentAdded(ac);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
             }
         }
 
@@ -337,7 +306,7 @@ public class AtkWrapper {
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
                 AtkWrapper.componentRemoved(ac);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
             }
         }
     };
@@ -471,6 +440,7 @@ public class AtkWrapper {
                 }
             }
             focusNotify(ctx);
+            AtkWrapperDisposer.addRecord(ctx);
         } catch (Exception e) {
             if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
                 log.severe("Error in dispatchFocusEvent: ", e);
@@ -504,7 +474,7 @@ public class AtkWrapper {
                 Object[] args = new Object[1];
                 args[0] = newValue;
                 emitSignal(ac, AtkSignal.TEXT_CARET_MOVED, args);
-                addObjectRecord(ac);
+                AtkWrapperDisposer.addRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_TEXT_PROPERTY)) {
                 /**
                  * The documentation of AccessibleContext.ACCESSIBLE_TEXT_PROPERTY states that newValue
@@ -521,11 +491,13 @@ public class AtkWrapper {
                         args[1] = Integer.valueOf(newSeq.endIndex - newSeq.startIndex);
                         args[2] = newSeq.text;
                         emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED_INSERT, args); // insertion event
+                        AtkWrapperDisposer.addRecord(ac);
                         return;
                     } else if (newValue instanceof Integer) {
                         Object[] args = new Object[1];
                         args[0] = newValue;
                         emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED, args); // insertion or deletion event
+                        AtkWrapperDisposer.addRecord(ac);
                     }
                 } else if (oldValue != null && newValue == null) {
                     if (oldValue instanceof AccessibleTextSequence) {
@@ -549,7 +521,6 @@ public class AtkWrapper {
                     args[0] = Integer.valueOf(child_ac.getAccessibleIndexInParent());
                     args[1] = child_ac;
                     emitSignal(ac, AtkSignal.OBJECT_CHILDREN_CHANGED_ADD, args);
-                    addObjectRecord(ac);
                 } else if (oldValue != null && newValue == null) { //child removed
                     AccessibleContext child_ac;
                     if (oldValue instanceof Accessible accessible) {
@@ -561,7 +532,6 @@ public class AtkWrapper {
                     args[0] = Integer.valueOf(child_ac.getAccessibleIndexInParent());
                     args[1] = child_ac;
                     emitSignal(ac, AtkSignal.OBJECT_CHILDREN_CHANGED_REMOVE, args);
-                    addObjectRecord(ac);
                 }
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY)) {
                 AccessibleContext child_ac;
@@ -584,7 +554,6 @@ public class AtkWrapper {
                 Object[] args = new Object[1];
                 args[0] = child_ac;
                 emitSignal(ac, AtkSignal.OBJECT_ACTIVE_DESCENDANT_CHANGED, args);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_SELECTION_PROPERTY)) {
                 boolean isTextEvent = false;
                 AccessibleRole role = ac.getAccessibleRole();
@@ -620,56 +589,42 @@ public class AtkWrapper {
 
                 if (!isTextEvent) {
                     emitSignal(ac, AtkSignal.OBJECT_SELECTION_CHANGED, null);
-                    addObjectRecord(ac);
                 }
 
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_VISIBLE_DATA_PROPERTY)) {
                 emitSignal(ac, AtkSignal.OBJECT_VISIBLE_DATA_CHANGED, null);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_ACTION_PROPERTY)) {
                 Object[] args = new Object[2];
                 args[0] = oldValue;
                 args[1] = newValue;
                 emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_ACTIONS, args);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_VALUE_PROPERTY)) {
                 if (oldValue instanceof Number oldValueNamber && newValue instanceof Number newValueNumber) {
                     Object[] args = new Object[2];
                     args[0] = Double.valueOf(oldValueNamber.doubleValue());
                     args[1] = Double.valueOf(newValueNumber.doubleValue());
                     emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_VALUE, args);
-                    addObjectRecord(ac);
                 }
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_DESCRIPTION_PROPERTY)) {
                 emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_DESCRIPTION, null);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_NAME_PROPERTY)) {
                 emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_NAME, null);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_HYPERTEXT_OFFSET)) {
                 emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_HYPERTEXT_OFFSET, null);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_TABLE_MODEL_CHANGED)) {
                 emitSignal(ac, AtkSignal.TABLE_MODEL_CHANGED, null);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_TABLE_CAPTION_CHANGED)) {
                 emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_CAPTION, null);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_TABLE_SUMMARY_CHANGED)) {
                 emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_SUMMARY, null);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_TABLE_COLUMN_HEADER_CHANGED)) {
                 emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_COLUMN_HEADER, null);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_TABLE_COLUMN_DESCRIPTION_CHANGED)) {
                 emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_COLUMN_DESCRIPTION, null);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_TABLE_ROW_HEADER_CHANGED)) {
                 emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_ROW_HEADER, null);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_TABLE_ROW_DESCRIPTION_CHANGED)) {
                 emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_ROW_DESCRIPTION, null);
-                addObjectRecord(ac);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_STATE_PROPERTY)) {
                 Accessible parent = ac.getAccessibleParent();
                 AccessibleRole role = ac.getAccessibleRole();
@@ -695,16 +650,14 @@ public class AtkWrapper {
                 if (parent instanceof JComboBox && oldValue ==
                         AccessibleState.VISIBLE) {
                     objectStateChange(ac, AccessibleState.SHOWING, value);
-                    addObjectRecord(ac);
                 }
                 objectStateChange(ac, state, value);
-                addObjectRecord(ac);
                 if (parent instanceof JComboBox && newValue ==
                         AccessibleState.VISIBLE && oldValue == null) {
                     objectStateChange(ac, AccessibleState.SHOWING, value);
-                    addObjectRecord(ac);
                 }
             }
+            AtkWrapperDisposer.addRecord(ac);
         }
     };
 
@@ -720,7 +673,9 @@ public class AtkWrapper {
 
     public native static boolean loadAtkBridge();
 
-    public native static void GC(AccessibleContext ac);
+    public native static long getNativeResources(AccessibleContext ac);
+
+    public native static void releaseNativeResources(long ref);
 
     public native static void focusNotify(AccessibleContext ac);
 

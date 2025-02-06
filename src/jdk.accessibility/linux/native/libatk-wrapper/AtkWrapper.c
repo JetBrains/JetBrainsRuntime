@@ -191,15 +191,6 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
     return TRUE;
 }
 
-JNIEXPORT void JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_GC(JNIEnv *jniEnv, jclass jClass, jobject jAccContext) {
-    JAW_DEBUG_JNI("%p, %p, %p", jniEnv, jClass, jAccContext);
-    jobject ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
-    JawImpl *jaw_impl = jaw_impl_get_instance(jniEnv, ac);
-    g_object_unref(JAW_OBJECT(jaw_impl));
-    (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
-}
-
 enum _SignalType {
     Sig_Text_Caret_Moved = 0,
     Sig_Text_Property_Changed_Insert = 1,
@@ -236,6 +227,24 @@ typedef struct _CallbackPara {
     AtkStateType atk_state;
     gboolean state_value;
 } CallbackPara;
+
+JNIEXPORT jlong JNICALL Java_org_GNOME_Accessibility_AtkWrapper_getNativeResources(JNIEnv *jniEnv, jclass jClass, jobject ac){
+    JawImpl *jaw_impl = jaw_impl_get_instance(jniEnv, ac);
+    JAW_DEBUG_C("%p", jaw_impl);
+    if (jaw_impl == NULL) {
+         return -1;
+    }
+    return (jlong)jaw_impl;
+}
+
+JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_releaseNativeResources(JNIEnv *jniEnv, jclass jClass, jlong reference){
+    JawImpl *jaw_impl = (JawImpl *)reference;
+    JAW_DEBUG_C("%p", jaw_impl);
+    if (jaw_impl == NULL) {
+         return;
+    }
+    g_object_unref(jaw_impl);
+}
 
 static CallbackPara *alloc_callback_para(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG_C("%p, %p", jniEnv, ac);
