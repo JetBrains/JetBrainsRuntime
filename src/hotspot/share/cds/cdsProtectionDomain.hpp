@@ -81,6 +81,7 @@ public:
   static Handle get_shared_jar_manifest(int shared_path_index, TRAPS);
   static Handle get_shared_jar_url(int shared_path_index, TRAPS);
   static oop to_file_URL(const char* path, Handle url_h, TRAPS);
+  static void cds_preload_helper_init(TRAPS);
   static Handle get_protection_domain_from_classloader(Handle class_loader,
                                                        Handle url, TRAPS);
   static Handle get_shared_protection_domain(Handle class_loader,
