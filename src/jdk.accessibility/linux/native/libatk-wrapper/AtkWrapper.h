@@ -158,7 +158,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_boundsChanged(
  * Method:    dispatchKeyEvent
  * Signature: (Lorg/GNOME/Accessibility/AtkKeyEvent;)Z
  */
-JNIEXPORT jboolean JNICALL
+JNIEXPORT void JNICALL
 Java_org_GNOME_Accessibility_AtkWrapper_dispatchKeyEvent(JNIEnv *, jclass,
                                                          jobject);
 

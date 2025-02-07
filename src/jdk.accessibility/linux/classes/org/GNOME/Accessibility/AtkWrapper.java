@@ -708,7 +708,7 @@ public class AtkWrapper {
 
     public native static void boundsChanged(AccessibleContext ac);
 
-    public native static boolean dispatchKeyEvent(AtkKeyEvent e);
+    public native static void dispatchKeyEvent(AtkKeyEvent e);
 
     public native static long getInstance(AccessibleContext ac);
 
@@ -728,31 +728,15 @@ public class AtkWrapper {
                         AWTEvent.FOCUS_EVENT_MASK |
                         AWTEvent.CONTAINER_EVENT_MASK);
         if (toolkit.getSystemEventQueue() != null) {
+            // TODO: Remove the replacement of the existing EventQueue
             toolkit.getSystemEventQueue().push(new EventQueue() {
-                boolean previousPressConsumed = false;
-
                 public void dispatchEvent(AWTEvent e) {
-                    if (e instanceof KeyEvent) {
-                        if (e.getID() == KeyEvent.KEY_PRESSED) {
-                            boolean isConsumed = AtkWrapper.dispatchKeyEvent(new AtkKeyEvent((KeyEvent) e));
-                            if (isConsumed) {
-                                previousPressConsumed = true;
-                                return;
-                            }
-                        } else if (e.getID() == KeyEvent.KEY_TYPED) {
-                            if (previousPressConsumed) {
-                                return;
-                            }
-                        } else if (e.getID() == KeyEvent.KEY_RELEASED) {
-                            boolean isConsumed = AtkWrapper.dispatchKeyEvent(new AtkKeyEvent((KeyEvent) e));
-
-                            previousPressConsumed = false;
-                            if (isConsumed) {
-                                return;
-                            }
+                    if (e instanceof KeyEvent keyEvent) {
+                        if ((e.getID() == KeyEvent.KEY_PRESSED &&
+                                (keyEvent.getKeyCode() == KeyEvent.VK_LEFT || keyEvent.getKeyCode() == KeyEvent.VK_RIGHT)) || e.getID() == KeyEvent.KEY_TYPED) {
+                            AtkWrapper.dispatchKeyEvent(new AtkKeyEvent((KeyEvent) e));
                         }
                     }
-
                     super.dispatchEvent(e);
                 }
             });
