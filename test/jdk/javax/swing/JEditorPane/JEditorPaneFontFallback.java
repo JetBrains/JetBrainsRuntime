@@ -21,7 +21,7 @@
  * questions.
  */
 
-/**
+/*
  * @test
  * @bug 8185261
  * @summary Tests that font fallback works reliably in JEditorPane
@@ -29,10 +29,16 @@
  */
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JEditorPane;
+import java.awt.GraphicsEnvironment;
+import java.awt.Font;
 import java.awt.image.BufferedImage;
+import java.awt.Graphics2D;
 import java.io.File;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.InputStream;
+import java.io.IOException;
 
 public class JEditorPaneFontFallback {
     public static final char CHINESE_CHAR = '\u4e2d';
@@ -77,7 +83,7 @@ public class JEditorPaneFontFallback {
     private static BufferedImage renderJEditorPaneInSubprocess(String fontFamilyName, boolean afterFontInfoCaching)
             throws Exception {
         String tmpFileName = "image.png";
-        int exitCode = Runtime.getRuntime().exec(new String[]{
+        Process startedProcess = Runtime.getRuntime().exec(new String[]{
                 System.getProperty("java.home") + File.separator + "bin" + File.separator + "java",
                 "-cp",
                 System.getProperty("test.classes", "."),
@@ -85,12 +91,30 @@ public class JEditorPaneFontFallback {
                 fontFamilyName,
                 Boolean.toString(afterFontInfoCaching),
                 tmpFileName
-        }).waitFor();
+        });
+        int exitCode = startedProcess.waitFor();
+
+        streamRead(startedProcess.getInputStream(), " (stdout): ");
+        streamRead(startedProcess.getErrorStream(), " (stderr): ");
+
         if (exitCode != 0) {
             throw new RuntimeException("Sub-process exited abnormally: " + exitCode);
         }
         return ImageIO.read(new File(tmpFileName));
     }
+
+    private static void streamRead(InputStream in, String prefix) throws IOException {
+
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in));
+            while (true) {
+                String line = bufferedReader.readLine();
+                if (line == null)
+                    return;
+
+                System.out.println(prefix + line);
+            }
+    }
+
 }
 
 class JEditorPaneRenderer {
