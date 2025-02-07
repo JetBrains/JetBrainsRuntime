@@ -26,6 +26,8 @@
 
 package sun.awt.wl;
 
+import java.awt.event.InputEvent;
+
 /**
  * MouseEvent objects cannot be created directly from WLPointerEvent because they require
  * the information of certain events from the past like keyboard modifiers keys getting
@@ -346,5 +348,9 @@ record WLInputState(WLPointerEvent eventWithSurface,
 
     public int getModifiers() {
         return modifiers;
+    }
+
+    public int getNonKeyboardModifiers() {
+        return modifiers & ~(InputEvent.SHIFT_DOWN_MASK |  InputEvent.CTRL_DOWN_MASK | InputEvent.META_DOWN_MASK | InputEvent.ALT_DOWN_MASK);
     }
 }
