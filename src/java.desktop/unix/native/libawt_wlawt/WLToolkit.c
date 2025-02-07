@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2022-2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022-2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022-2025, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -448,7 +448,8 @@ wlPostKeyEvent(const struct WLKeyEvent* event)
             event->keyLocation,
             event->rawCode,
             event->extendedKeyCode,
-            event->keyChar
+            event->keyChar,
+            event->modifiers
     );
     JNU_CHECK_EXCEPTION(env);
 }
@@ -700,7 +701,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                       JNI_FALSE);
     CHECK_NULL_RETURN(dispatchKeyboardKeyEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                               "dispatchKeyboardKeyEvent",
-                                                                              "(JJIIIIIC)V"),
+                                                                              "(JJIIIIICI)V"),
                       JNI_FALSE);
     CHECK_NULL_RETURN(dispatchKeyboardModifiersEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                     "dispatchKeyboardModifiersEvent",
