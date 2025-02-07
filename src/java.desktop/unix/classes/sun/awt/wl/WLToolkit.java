@@ -342,7 +342,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                                                  int keyLocation,
                                                  int rawCode,
                                                  int extendedKeyCode,
-                                                 char keyChar) {
+                                                 char keyChar,
+                                                 int modifiers) {
         // Invoked from the native code
         assert EventQueue.isDispatchThread();
 
@@ -374,7 +375,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                     keyChar,
                     keyLocation,
                     rawCode,
-                    extendedKeyCode
+                    extendedKeyCode,
+                    modifiers
             );
         }
     }
@@ -390,9 +392,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                                      char keyChar,
                                      int keyLocation,
                                      long rawCode,
-                                     int extendedKeyCode) {
+                                     int extendedKeyCode,
+                                     int modifiers) {
+        int mergedModifiers = inputState.getNonKeyboardModifiers() | modifiers;
         final KeyEvent keyEvent = new KeyEvent(source, id, timestamp,
-                inputState.getModifiers(), keyCode, keyChar, keyLocation);
+                mergedModifiers, keyCode, keyChar, keyLocation);
 
         AWTAccessor.KeyEventAccessor kea = AWTAccessor.getKeyEventAccessor();
         kea.setRawCode(keyEvent, rawCode);
