@@ -164,6 +164,34 @@ static jmethodID sjm_getAccessibleEditableText = NULL;
     return string;
 }
 
+- (void)setAccessibilityValue:(id)value {
+    if (![value isKindOfClass:[NSString class]]) return;
+
+    NSString *stringValue = (NSString *) value;
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jstring jstringValue = NSStringToJavaString(env, stringValue);
+    GET_CACCESSIBLETEXT_CLASS();
+    DECLARE_STATIC_METHOD(jm_setText, sjc_CAccessibleText, "setText",
+                          "(Ljavax/accessibility/Accessible;Ljava/awt/Component;Ljava/lang/String;)V");
+    (*env)->CallStaticVoidMethod(env, sjc_CAccessibleText, jm_setText, fAccessible, fComponent, jstringValue);
+    CHECK_EXCEPTION();
+}
+
+- (BOOL)isAccessibilitySelectorAllowed:(SEL)selector {
+    if (selector == @selector(setAccessibilityValue:)) {
+        JNIEnv *env = [ThreadUtilities getJNIEnv];
+        GET_CACCESSIBLETEXT_CLASS_RETURN(NO);
+        DECLARE_STATIC_METHOD_RETURN(sjm_isSetAccessibilityValueAllowed, sjc_CAccessibleText,
+                                     "isSetAccessibilityValueAllowed",
+                                     "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)Z", NO);
+        BOOL isAllowed = (*env)->CallStaticBooleanMethod(env, sjc_CAccessibleText, sjm_isSetAccessibilityValueAllowed,
+                                                         fAccessible, fComponent);
+        CHECK_EXCEPTION();
+        return isAllowed;
+    }
+    return [super isAccessibilitySelectorAllowed:selector];
+}
+
 - (NSAccessibilitySubrole)accessibilitySubrole {
     if ([self accessibleIsPasswordText]) {
         return NSAccessibilitySecureTextFieldSubrole;
