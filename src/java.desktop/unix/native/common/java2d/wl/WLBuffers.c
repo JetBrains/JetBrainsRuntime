@@ -94,6 +94,11 @@ const int MAX_BUFFERS_IN_USE = 2;
 
 static bool traceEnabled;    // set the J2D_STATS env var to enable
 
+typedef struct rect_t {
+    jint x, y;
+    jint width, height;
+} rect_t;
+
 /**
  * Represents one rectangular area linked into a list.
  *
@@ -135,6 +140,26 @@ DamageList_Add(DamageList* list, jint x, jint y, jint width, jint height)
             l = l->next;
         }
     }
+    
+    // Keep the list sorted so that adjacent areas follow one another
+    // in memory in hope that this facilitates faster damage copying.
+    l = list;
+    p = NULL; // We'll insert a new element _after_ p
+    while (l) {
+        if (y <= l->y) {
+            break;
+        }
+        p = l;
+        l = l->next;
+    }
+
+    while (l && y <= l->y) {
+        if (x < l->x) {
+            break;
+        }
+        p = l;
+        l = l->next;
+    }
 
     DamageList *item = malloc(sizeof(DamageList));
     if (!item) {
@@ -144,9 +169,40 @@ DamageList_Add(DamageList* list, jint x, jint y, jint width, jint height)
         item->y = y;
         item->width = width;
         item->height = height;
-        item->next = list;
+        if (p) {
+            DamageList *tmp = p->next;
+            p->next = item;
+            item->next = tmp;
+        } else {
+            item->next = list;
+            list = item;
+        }
     }
-    return item;
+
+    return list;
+}
+
+/**
+ * Returns a rectangle covering all areas on the given list.
+ */
+static rect_t
+DamageList_Bounds(DamageList* list)
+{
+    int x1 = INT_MAX;
+    int y1 = INT_MAX;
+    int x2 = 0;
+    int y2 = 0;
+
+    while (list) {
+        x1 = MIN(list->x, x1);
+        y1 = MIN(list->y, y1);
+        x2 = MAX(list->x + list->width, x2);
+        y2 = MAX(list->y + list->height, y2);
+        list = list->next;
+    }
+
+    rect_t bounds = {x1, y1, x2 - x1, y2 - y1};
+    return bounds;
 }
 
 static DamageList*
@@ -822,11 +878,19 @@ CopyDamagedArea(WLSurfaceBufferManager * manager, jint x, jint y, jint width, ji
     pixel_t * dest = manager->bufferForShow.wlSurfaceBuffer->data;
     pixel_t * src  = manager->bufferForDraw.data;
 
-    for (jint i = y; i < height + y; i++) {
-        pixel_t * dest_row = &dest[i * bufferWidth];
-        pixel_t * src_row  = &src [i * bufferWidth];
-        for (jint j = x; j < width + x; j++) {
-            dest_row[j] = src_row[j];
+    jboolean isContiguousRegion = x == 0 && width == bufferWidth;
+    if (isContiguousRegion) {
+        // Prefer copying regions of the image that are contiguous in memory
+        // as memcpy() for large amounts of memory is faster than several
+        // memcpy() for smaller ones.
+        pixel_t * dest_row = &dest[y * bufferWidth];
+        pixel_t * src_row  = &src [y * bufferWidth];
+        memcpy(dest_row, src_row, bufferWidth * height * (jint) sizeof(pixel_t));
+    } else {
+        for (jint i = y; i < height + y; i++) {
+            pixel_t * dest_row = &dest[i * bufferWidth];
+            pixel_t * src_row  = &src [i * bufferWidth];
+            memcpy(&dest_row[x], &src_row[x], width * (jint) sizeof(pixel_t));
         }
     }
 }
@@ -874,10 +938,25 @@ CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager)
             = DamageList_AddList(manager->bufferForShow.wlSurfaceBuffer->damageList,
                                  manager->bufferForDraw.damageList);
 
-    int count = 0;
+    int regionsCount = 0;
+    size_t damagedPixels = 0; // The total amount of damaged pixels
     for (DamageList* l = manager->bufferForShow.wlSurfaceBuffer->damageList; l != NULL; l = l->next) {
-        CopyDamagedArea(manager, l->x, l->y, l->width, l->height);
-        count++;
+        regionsCount++;
+        damagedPixels += l->width * l->height;
+    }
+
+    int percent = 100.0 * damagedPixels / DrawBufferSizeInPixels(manager);
+    if (percent > 50 || (percent > 30 && regionsCount > 10)) {
+        rect_t damageBounds = DamageList_Bounds(manager->bufferForShow.wlSurfaceBuffer->damageList);
+        percent = 100.0 * (damageBounds.width * damageBounds.height) / DrawBufferSizeInPixels(manager);
+        regionsCount = 1;
+        damagedPixels = damageBounds.width * damageBounds.height;
+        CopyDamagedArea(manager, 0, damageBounds.y,
+                        manager->bufferForShow.wlSurfaceBuffer->width, damageBounds.height);
+    } else {
+        for (DamageList* l = manager->bufferForShow.wlSurfaceBuffer->damageList; l != NULL; l = l->next) {
+            CopyDamagedArea(manager, l->x, l->y, l->width, l->height);
+        }
     }
 
     // This buffer is now identical to what's on the screen, so clear the difference list:
@@ -889,7 +968,10 @@ CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager)
     manager->bufferForDraw.damageList = NULL;
 
     jlong endTime = GetJavaTimeNanos();
-    WLBufferTrace(manager, "CopyDrawBufferToShowBuffer: copied %d area(s) in %lldns", count, endTime - startTime);
+    jlong timeSpent = endTime - startTime;
+    WLBufferTrace(manager,
+                  "CopyDrawBufferToShowBuffer: copied %d area(s) (%d%% of surface) in %lldns",
+                  regionsCount, percent, endTime - startTime);
 }
 
 static void
