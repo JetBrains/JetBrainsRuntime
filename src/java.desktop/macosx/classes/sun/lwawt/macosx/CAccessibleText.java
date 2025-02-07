@@ -373,4 +373,37 @@ final class CAccessibleText {
             }
         }, c);
     }
+
+    static void setText(final Accessible a, final Component c, final String newText) {
+        if (a == null) return;
+
+        CAccessibility.invokeLater(new Runnable() {
+            public void run() {
+                final AccessibleContext ac = a.getAccessibleContext();
+                if (ac == null) return;
+
+                final AccessibleEditableText aet = ac.getAccessibleEditableText();
+                if (aet == null) return;
+
+                aet.setTextContents(newText);
+            }
+        }, c);
+    }
+
+    static boolean isSetAccessibilityValueAllowed(final Accessible a, final Component c) {
+        if (a == null) return false;
+
+        return CAccessibility.invokeAndWait(new Callable<Boolean>() {
+            public Boolean call() throws Exception {
+                final AccessibleContext ac = a.getAccessibleContext();
+                if (ac == null || ac.getAccessibleEditableText() == null) return false;
+
+                final Accessible sa = CAccessible.getSwingAccessible(a);
+                if (sa instanceof JTextComponent textComponent) {
+                    return textComponent.isEditable() && textComponent.isEnabled();
+                }
+                return false;
+            }
+        }, c, false);
+    }
 }
