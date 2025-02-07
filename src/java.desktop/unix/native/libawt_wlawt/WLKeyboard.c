@@ -1,4 +1,4 @@
-// Copyright 2023 JetBrains s.r.o.
+// Copyright 2023-2025 JetBrains s.r.o.
 // DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 //
 // This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,8 @@
 
 #include "WLKeyboard.h"
 #include "WLToolkit.h"
+#include "java_awt_event_InputEvent.h"
+
 #include <sun_awt_wl_WLKeyboard.h>
 
 #include <stdint.h>
@@ -47,6 +49,15 @@ extern JNIEnv *getEnv();
 #define XKB_MOD_NAME_ALT        "Mod1"
 #define XKB_MOD_NAME_NUM        "Mod2"
 #define XKB_MOD_NAME_LOGO       "Mod4"
+
+#define XKB_SHIFT_MASK (1 << 0)
+#define XKB_CAPS_LOCK_MASK (1 << 1)
+#define XKB_CTRL_MASK (1 << 2)
+#define XKB_ALT_MASK (1 << 3)
+#define XKB_NUM_LOCK_MASK (1 << 4)
+#define XKB_MOD3_MASK (1 << 5)
+#define XKB_META_MASK (1 << 6)
+#define XKB_MOD5_MASK (1 << 7)
 
 #define XKB_LED_NAME_CAPS       "Caps Lock"
 #define XKB_LED_NAME_NUM        "Num Lock"
@@ -201,7 +212,7 @@ static struct WLKeyboardState {
 
     // Report KEY_PRESS/KEY_RELEASE events on non-ASCII capable layouts
     // as if they happen on the QWERTY layout
-    bool useNationalLayouts;
+    bool reportNonAsciiAsQwerty;
 
     // Report dead keys not as KeyEvent.VK_DEAD_something, but as the corresponding 'normal' Java keycode
     bool reportDeadKeysAsNormal;
@@ -1026,6 +1037,7 @@ convertDeadKey(xkb_keysym_t keysym, enum ConvertDeadKeyType type) {
 }
 
 enum TranslateKeycodeType {
+    TRANSLATE_USING_ACTIVE_STATE,
     TRANSLATE_USING_ACTIVE_LAYOUT,
     TRANSLATE_USING_QWERTY,
 };
@@ -1043,20 +1055,61 @@ translateKeycodeToKeysym(uint32_t keycode, enum TranslateKeycodeType type) {
     const uint32_t xkbKeycode = keycode + 8;
 
     struct xkb_state *state;
-    xkb_layout_index_t group;
 
-    if (keyboard.qwertyKeymap && type == TRANSLATE_USING_QWERTY) {
-        state = keyboard.tmpQwertyState;
-        group = 0;
+    if (type == TRANSLATE_USING_ACTIVE_STATE) {
+        state = keyboard.state;
     } else {
-        state = keyboard.tmpState;
-        group = getKeyboardLayoutIndex();
+        xkb_layout_index_t group;
+        bool numLock;
+
+        if (keyboard.qwertyKeymap && type == TRANSLATE_USING_QWERTY) {
+            state = keyboard.tmpQwertyState;
+            group = 0;
+            numLock = true;
+        } else {
+            state = keyboard.tmpState;
+            group = getKeyboardLayoutIndex();
+            numLock = xkb.state_mod_name_is_active(keyboard.state, XKB_MOD_NAME_NUM, XKB_STATE_MODS_EFFECTIVE) == 1;
+        }
+
+        xkb.state_update_mask(state, 0, 0, numLock ? XKB_NUM_LOCK_MASK : 0, 0, 0, group);
     }
 
-    bool numLock = xkb.state_mod_name_is_active(keyboard.state, XKB_MOD_NAME_NUM, XKB_STATE_MODS_EFFECTIVE) == 1;
-    xkb.state_update_mask(state, 0, 0, numLock ? sun_awt_wl_WLKeyboard_XKB_NUM_LOCK_MASK : 0, 0, 0, group);
-
     return xkb.state_key_get_one_sym(state, xkbKeycode);
+}
+
+static bool
+isKeySymTyped(xkb_keysym_t keysym) {
+    uint32_t codepoint = xkb.keysym_to_utf32(keysym);
+    return !(codepoint < 0x20 || codepoint == 0x7F);
+}
+
+static unsigned
+getXKBModifiers(void) {
+    return xkb.state_serialize_mods(keyboard.state, XKB_STATE_MODS_EFFECTIVE);
+}
+
+static int
+convertXKBModifiersToJavaModifiers(xkb_mod_mask_t mask) {
+    int result = 0;
+
+    if ((mask & XKB_SHIFT_MASK) != 0) {
+        result |= java_awt_event_InputEvent_SHIFT_DOWN_MASK;
+    }
+
+    if ((mask & XKB_CTRL_MASK) != 0) {
+        result |= java_awt_event_InputEvent_CTRL_DOWN_MASK;
+    }
+
+    if ((mask & XKB_ALT_MASK) != 0) {
+        result |= java_awt_event_InputEvent_ALT_DOWN_MASK;
+    }
+
+    if ((mask & XKB_META_MASK) != 0) {
+        result |= java_awt_event_InputEvent_META_DOWN_MASK;
+    }
+
+    return result;
 }
 
 static void
@@ -1269,18 +1322,20 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
 
     xkb_keycode_t xkbKeycode = keycode + 8;
     bool keyRepeats = xkb.keymap_key_repeats(keyboard.keymap, xkbKeycode);
-    xkb_keysym_t keysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_ACTIVE_LAYOUT);
+    xkb_mod_mask_t consumedModifiers = xkb.state_key_get_consumed_mods2(keyboard.state, xkbKeycode, XKB_CONSUMED_MODE_GTK);
+    xkb_keysym_t actualKeysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_ACTIVE_STATE);
+    xkb_keysym_t noModsKeysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_ACTIVE_LAYOUT);
     xkb_keysym_t qwertyKeysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_QWERTY);
 
 #ifdef WL_KEYBOARD_DEBUG
     char buf[256];
-    xkb.keysym_get_name(keysym, buf, sizeof buf);
-    fprintf(stderr, "handleKey: keysym = %d (%s)\n", keysym, buf);
+    xkb.keysym_get_name(actualKeysym, buf, sizeof buf);
+    fprintf(stderr, "handleKey: actualKeysym = %d (%s)\n", actualKeysym, buf);
+    xkb.keysym_get_name(noModsKeysym, buf, sizeof buf);
+    fprintf(stderr, "handleKey: noModsKeysym = %d (%s)\n", noModsKeysym, buf);
     xkb.keysym_get_name(qwertyKeysym, buf, sizeof buf);
     fprintf(stderr, "handleKey: qwertyKeysym = %d (%s)\n", qwertyKeysym, buf);
 #endif
-
-    int javaKeyCode, javaExtendedKeyCode, javaKeyLocation;
 
     // If the national layouts support is enabled, and the current keyboard is not ascii-capable,
     // we need to set the extended key code properly.
@@ -1292,19 +1347,33 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
     // swap will be lost when attempting to translate what they're typing on the non-ascii-capable
     // layout to the QWERTY key map. Hence, the 'qwertyKeysym <= 0x7f' check.
 
-    if (keyboard.useNationalLayouts && !keyboard.asciiCapable && qwertyKeysym <= 0x7f) {
+    int javaKeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
+    int javaExtendedKeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
+    int javaKeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
+    xkb_keysym_t reportedKeysym = noModsKeysym;
+    xkb_mod_mask_t modifiers = getXKBModifiers();
+
+    bool reportQwerty = keyboard.reportNonAsciiAsQwerty && !keyboard.asciiCapable && qwertyKeysym <= 0x7f;
+
+    if (!isKeySymTyped(actualKeysym) && actualKeysym != noModsKeysym) {
+        // Emulating pressing a function key, for example AltGr+F being mapped to Right on German Neo 2
+        modifiers &= ~consumedModifiers;
+        reportedKeysym = actualKeysym;
+        reportQwerty = false;
+    }
+
+    if (reportQwerty) {
         convertKeysymToJavaCode(qwertyKeysym, &javaKeyCode, &javaKeyLocation);
         javaExtendedKeyCode = javaKeyCode;
     } else {
-        xkb_keysym_t report = keysym;
         if (keyboard.reportDeadKeysAsNormal) {
-            xkb_keysym_t converted = convertDeadKey(keysym, CONVERT_TO_NON_COMBINING);
+            xkb_keysym_t converted = convertDeadKey(reportedKeysym, CONVERT_TO_NON_COMBINING);
             if (converted != 0) {
-                report = converted;
+                reportedKeysym = converted;
             }
         }
 
-        convertKeysymToJavaCode(report, &javaExtendedKeyCode, &javaKeyLocation);
+        convertKeysymToJavaCode(reportedKeysym, &javaExtendedKeyCode, &javaKeyLocation);
         if (javaExtendedKeyCode >= 0x1000000 && !keyboard.reportJavaKeyCodeForActiveLayout) {
             convertKeysymToJavaCode(qwertyKeysym, &javaKeyCode, NULL);
         } else {
@@ -1312,8 +1381,11 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
         }
     }
 
+    int javaModifiers = convertXKBModifiersToJavaModifiers(modifiers);
+
 #ifdef WL_KEYBOARD_DEBUG
     fprintf(stderr, "handleKey: javaKeyCode = %d\n", javaKeyCode);
+    fprintf(stderr, "handleKey: javaExtendedKeyCode = %d\n", javaExtendedKeyCode);
 #endif
 
     struct WLKeyEvent event = {
@@ -1325,6 +1397,7 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
             .rawCode = (int)xkbKeycode,
             .extendedKeyCode = javaExtendedKeyCode,
             .keyChar = getJavaKeyCharForKeycode(xkbKeycode),
+            .modifiers = javaModifiers,
     };
 
     wlPostKeyEvent(&event);
@@ -1433,7 +1506,7 @@ Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv *env, jobject instance, jobject key
         return;
     }
 
-    keyboard.useNationalLayouts = true;
+    keyboard.reportNonAsciiAsQwerty = true;
     keyboard.remapExtraKeycodes = true;
     keyboard.reportDeadKeysAsNormal = false;
     keyboard.reportJavaKeyCodeForActiveLayout = true;
@@ -1462,9 +1535,18 @@ Java_sun_awt_wl_WLKeyboard_cancelCompose(JNIEnv *env, jobject instance) {
 }
 
 JNIEXPORT jint JNICALL
-Java_sun_awt_wl_WLKeyboard_getXKBModifiersMask(JNIEnv *env, jobject instance) {
-    xkb_mod_mask_t mods = xkb.state_serialize_mods(keyboard.state, XKB_STATE_MODS_EFFECTIVE);
-    return (jint) mods;
+Java_sun_awt_wl_WLKeyboard_getModifiers(JNIEnv *env, jobject instance) {
+    return convertXKBModifiersToJavaModifiers(getXKBModifiers());
+}
+
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_wl_WLKeyboard_isCapsLockPressed(JNIEnv *env, jobject instance) {
+    return (getXKBModifiers() & XKB_CAPS_LOCK_MASK) != 0;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_wl_WLKeyboard_isNumLockPressed(JNIEnv *env, jobject instance) {
+    return (getXKBModifiers() & XKB_NUM_LOCK_MASK) != 0;
 }
 
 void
