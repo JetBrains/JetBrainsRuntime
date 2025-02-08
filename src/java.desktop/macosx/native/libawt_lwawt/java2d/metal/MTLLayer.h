@@ -56,6 +56,8 @@
                            DY2:(jfloat)dy2;
 - (void) blitCallback;
 - (void) display;
+
+- (void) postNeedsDisplay;
 - (void) startRedraw;
 - (void) startRedrawIfNeeded;
 - (void) stopRedraw:(BOOL)force;

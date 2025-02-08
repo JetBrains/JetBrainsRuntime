@@ -1185,9 +1185,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     private final static int INVOKE_LATER_FLUSH_BUFFERS = getInvokeLaterMode();
 
-    @SuppressWarnings("removal")
     private static int getInvokeLaterMode() {
         final String invokeLaterKey = "awt.mac.flushBuffers.invokeLater";
+        @SuppressWarnings("removal")
         final String invokeLaterArg = AccessController.doPrivileged(
                 new GetPropertyAction(invokeLaterKey));
         final int result;
@@ -1215,9 +1215,33 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return result;
     }
 
-    private final static int INVOKE_LATER_COUNT = 5;
-    /** per window counter of remaining invokeLater calls */
-    private final AtomicInteger invokeLaterCount = new AtomicInteger();
+    @SuppressWarnings("removal")
+    private final static boolean INVOKE_LATER_USE_PWM = getInvokeLaterUsePWM();
+
+    private static boolean getInvokeLaterUsePWM() {
+        final String usePwmKey = "awt.mac.flushBuffers.pwm";
+        @SuppressWarnings("removal")
+        final String usePwmArg = AccessController.doPrivileged(
+                new GetPropertyAction(usePwmKey));
+        final boolean result;
+        if (usePwmArg == null) {
+            // default = 'false':
+            result = false;
+        } else {
+            result = "true".equalsIgnoreCase(usePwmArg);
+            logger.info("CPlatformWindow: property \"{0}={1}\", using usePWM={2}.",
+                    usePwmKey, usePwmArg, INVOKE_LATER_USE_PWM);
+        }
+        return result;
+    }
+    /* 10s period arround reference times (sleep/wake-up...)
+     * to ensure all displays are awaken properly */
+    private final static long NANOS_PER_SEC = 1000000000L;
+    private final static long RDV_PERIOD = 10L * NANOS_PER_SEC;
+
+    private final AtomicBoolean mirroringState = new AtomicBoolean(false);
+    /** per window timestamp of disabling mirroring */
+    private final AtomicLong mirroringDisablingTime = new AtomicLong(0L);
 
     // Specific class needed to get obvious stack traces:
     private final class EmptyRunnable implements Runnable {
@@ -1233,7 +1257,10 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private final EmptyRunnable emptyTask = new EmptyRunnable();
 
     void flushBuffers() {
-        // only 1 usage by deliverMoveResizeEvent():
+        // Only 1 usage by deliverMoveResizeEvent():
+        //                          System-dependent appearance optimization.
+        //                          May be blocking so postpone this event processing:
+
         if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
             // use the system property 'awt.mac.flushBuffers.invokeLater' to true/auto (default: auto)
             // to avoid deadlocks caused by the LWCToolkit.invokeAndWait() call below:
@@ -1246,38 +1273,76 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 default:
                 case INVOKE_LATER_AUTO:
                     useInvokeLater = false;
+
+                    // JBR-5497: force using invokeLater() when computer returns from sleep or displayChanged()
+                    // (mirroring case especially) to avoid deadlocks until solved definitely:
+
+                    boolean mirroring = false;
                     if (peer != null) {
                         final GraphicsDevice device = peer.getGraphicsConfiguration().getDevice();
                         if (device instanceof CGraphicsDevice) {
                             // JBR-5497: avoid deadlock in mirroring mode (laptop + external screen):
-                            useInvokeLater = ((CGraphicsDevice)device).isMirroring();
+                            // Note: the CGraphicsDevice instance will be recreated when mirroring is enabled/disabled.
+                            mirroring = ((CGraphicsDevice)device).isMirroring();
                             if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                                logger.fine("CPlatformWindow.flushBuffers: CGraphicsDevice.isMirroring = {0}",
-                                        useInvokeLater);
+                                logger.fine("CPlatformWindow.flushBuffers[auto]: CGraphicsDevice.isMirroring = {0}",
+                                        mirroring);
                             }
                         }
                     }
-                    // JBR-5497: keep few more invokeLater() when computer returns from sleep or displayChanged()
-                    // to avoid deadlocks until solved definitely:
-                    if (useInvokeLater) {
-                        // reset to max count:
-                        invokeLaterCount.set(INVOKE_LATER_COUNT);
-                    } else {
-                        final int prev = invokeLaterCount.get();
-                        if (prev > 0) {
-                            invokeLaterCount.compareAndSet(prev, prev - 1);
-                            useInvokeLater = true;
+                    if (mirroring) {
+                        mirroringState.set(true);
+                    } else if (mirroringState.get()) {
+                        // mirroringState trigger enabled but mirroring=false:
+                        // keep mirroring for few iterations:
+                        mirroring = true;
+                        final long now = System.nanoTime(); // timestamp
+
+                        // should disable mirroring now ? check timestamp:
+                        final long lastTime = mirroringDisablingTime.get();
+                        final long delta;
+                        if (lastTime == 0L) {
+                            delta = 0L;
+                            // unset: set timestamp of disabling mirroring:
+                            mirroringDisablingTime.set(now);
+                        } else {
+                            delta = Math.abs(now - lastTime);
+                            if (delta > RDV_PERIOD) {
+                                // disable mirroring as period is elapsed:
+                                mirroring = false;
+                                mirroringState.set(false);
+                                // reset timestamp:
+                                mirroringDisablingTime.set(0L);
+                            }
+                        }
+                        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                            logger.fine("CPlatformWindow.flushBuffers[auto]: mirroring = {0} (mirroring = {1} delta = {2} ms)",
+                                    mirroring, mirroringState.get(), delta * 1e-6);
                         }
                     }
-                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                        logger.fine("CPlatformWindow.flushBuffers: useInvokeLater = {0} (count = {1})",
-                                useInvokeLater, invokeLaterCount.get());
+                    if (mirroring) {
+                        final boolean inTransition = LWCToolkit.isWithinPowerTransition();
+                        if (inTransition) {
+                            logger.fine("CPlatformWindow.flushBuffers[auto]: inTransition = true");
+                            useInvokeLater = true;
+                        }
                     }
                     break;
                 case INVOKE_LATER_ENABLED:
                     useInvokeLater = true;
                     break;
             }
+            if (!useInvokeLater && INVOKE_LATER_USE_PWM) {
+                // If the system property 'awt.mac.flushBuffers.pwm' is true,
+                // invokeLater is enforced during power transitions.
+                final boolean inTransition = LWCToolkit.isWithinPowerTransition();
+                if (inTransition) {
+                    logger.fine("CPlatformWindow.flushBuffers[pwm]: inTransition = true");
+                    useInvokeLater = true;
+                }
+            }
+
+            logger.info("CPlatformWindow.flushBuffers: called by {0}", Thread.currentThread());
             try {
                 // check invokeAndWait: KO (operations require AWTLock and main thread)
                 // => use invokeLater as it is an empty event to force refresh ASAP
@@ -1289,17 +1354,35 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                                 "LWCToolkit.invokeAndWait(emptyTask) on target = {0}",
                                 getIdentifier(target));
                     }
+                    logger.info("CPlatformWindow.flushBuffers: enter " +
+                                    "LWCToolkit.invokeAndWait(emptyTask) on target = {0}",
+                            getIdentifier(target));
 
-                    LWCToolkit.invokeAndWait(emptyTask, target);
+                    /* Ensure >500ms = 666ms timeout to avoid any deadlock among
+                     * appkit, EDT, Flusher & a11y threads, locks
+                     * and various synchronization patterns... */
+                    final double timeoutSeconds = 3.666;
+
+                    // FUCK: appKit is calling this method !
+                    LWCToolkit.invokeAndWait(emptyTask, target, timeoutSeconds);
 
                     if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                         logger.fine("CPlatformWindow.flushBuffers: exit  " +
                                 "LWCToolkit.invokeAndWait(emptyTask) on target = {0}",
                                 getIdentifier(target));
                     }
+                    logger.info("CPlatformWindow.flushBuffers: exit  " +
+                                    "LWCToolkit.invokeAndWait(emptyTask) on target = {0}",
+                            getIdentifier(target));
                 }
             } catch (InvocationTargetException ite) {
-                logger.severe("CPlatformWindow.flushBuffers: exception occurred: ", ite);
+                if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                    logger.fine("CPlatformWindow.flushBuffers: timeout or LWCToolkit.invoke failure: ", ite);
+                }
+                // LBO: CHECK & KILL:
+                if (true) {
+                    logger.warning("CPlatformWindow.flushBuffers: timeout or LWCToolkit.invoke failure: ", ite);
+                }
             }
         }
     }
@@ -1334,10 +1417,16 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         responder.handleWindowFocusEvent(gained, oppositePeer);
     }
 
+    /* useless ? */
     public void doDeliverMoveResizeEvent() {
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("CPlatformWindow.doDeliverMoveResizeEvent() called by {0}",
+                    Thread.currentThread());
+        }
         execute(ptr -> nativeCallDeliverMoveResizeEvent(ptr));
     }
 
+    /* native call by AWTWindow._deliverMoveResizeEvent() */
     protected void deliverMoveResizeEvent(int x, int y, int width, int height,
                                         boolean byUser) {
         AtomicBoolean ref = new AtomicBoolean();
@@ -1351,9 +1440,18 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         nativeBounds = new Rectangle(x, y, width, height);
         if (peer != null) {
             peer.notifyReshape(x, y, width, height);
+
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("CPlatformWindow.deliverMoveResizeEvent(): byUser = {0} " +
+                        "isFullScreenAnimationOn = {1}", byUser, isFullScreenAnimationOn);
+            }
+            logger.info("CPlatformWindow.deliverMoveResizeEvent: called by {0}", Thread.currentThread());
+
             // System-dependent appearance optimization.
             if ((byUser && !oldB.getSize().equals(nativeBounds.getSize()))
                     || isFullScreenAnimationOn) {
+
+                // May be blocking so postpone this event processing:
                 flushBuffers();
             }
         }

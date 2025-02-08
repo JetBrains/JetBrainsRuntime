@@ -231,9 +231,19 @@ public abstract class SunToolkit extends Toolkit
      *     }
      */
 
-    @SuppressWarnings("removal")
-    private static final ReentrantLock AWT_LOCK = new ReentrantLock(
-            AccessController.doPrivileged(new GetBooleanAction("awt.lock.fair")));
+    private static final class AwtReentrantLock extends ReentrantLock {
+        // copied from ReentrantLock for compatibility:
+        private static final long serialVersionUID = 7373984872572414699L;
+        @SuppressWarnings("removal")
+        protected AwtReentrantLock() {
+            super(AccessController.doPrivileged(new GetBooleanAction("awt.lock.fair")));
+        }
+        Thread getPrivateOwnerThread() {
+            return super.getOwner();
+        }
+    }
+
+    private static final AwtReentrantLock AWT_LOCK = new AwtReentrantLock();
     private static final Condition AWT_LOCK_COND = AWT_LOCK.newCondition();
 
     /*
@@ -260,17 +270,76 @@ public abstract class SunToolkit extends Toolkit
         awtLockListeners.add(l);
     }
 
+    private static String getThreadInfo(Thread t) {
+        if (t == null) {
+            return "<none>";
+        }
+        return t.toString() + " [" + t.getState() + "]";
+    }
+
     public static void awtLock() {
         // fast-path:
         if (!awtTryLock()) {
-            // lock() may block current thread = wait:
-            AWT_LOCK.lock();
-            // AWT_LOCK owned by the current thread
-            if (awtLockListeners != null) {
-                awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+            // Active wait ie check regularly lock owners:
+            if (true) {
+                final Throwable thc = new Throwable();
+                int n = 0;
+                // Special reentrancy checks to avoid deadlocks:
+                for(;;) {
+                    if (n != 0) {
+                        System.err.println("awtLock time["+n+"]: wait at " + new java.util.Date());
+                    }
+                    try {
+                        if (AWT_LOCK.tryLock(100L, TimeUnit.NANOSECONDS)) {
+                            break;
+                        }
+                    } catch (InterruptedException ie) {
+                        PlatformLogger.getLogger(SunToolkit.class.getName())
+                                .info("awtLock.tryLock(100L) interrupted");
+                    }
+                    n++;
+
+                    final Thread owner = AWT_LOCK.getPrivateOwnerThread();
+                    if (owner != null) {
+                        if (true) {
+                            System.err.println("awtLock ? lock held by thread: '" + getThreadInfo(owner)
+                                    + "' WAITING Current thread: '" + getThreadInfo(Thread.currentThread()) + "' !");
+                        }
+                        else if (owner.getState() != Thread.State.RUNNABLE) {
+                            System.err.println("awtLock ! lock held by thread: '" + getThreadInfo(owner)
+                                    + "' WAITING Current thread: '" + getThreadInfo(Thread.currentThread()) + "' !");
+                        }
+                        if (th != null) {
+                            System.err.println("Locking thread stack: ");
+                            th.printStackTrace(System.err);
+                        }
+                        if (thc != null) {
+                            System.err.println("Current thread stack: ");
+                            thc.printStackTrace(System.err);
+                        }
+
+                        // TODO: reentrance pattern (count transaction if within -> )
+                    }
+                }
+                if (n != 0) {
+                    System.err.println("awtLock time[" + n + "]: exit at " + new java.util.Date());
+                }
+            } else {
+                // lock() may block current thread = wait:
+                AWT_LOCK.lock();
             }
         }
+        // AWT_LOCK owned by the current thread
+        if (true) {
+            if (false) System.err.println("awtLock   LOCKED by thread: '" + getThreadInfo(Thread.currentThread()) + "'");
+            th = new Throwable();
+        }
+        if (awtLockListeners != null) {
+            awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+        }
     }
+
+    private static Throwable th = null;
 
     public static boolean awtTryLock() {
         try {
@@ -281,12 +350,16 @@ public abstract class SunToolkit extends Toolkit
             return acquired;
         } catch (InterruptedException ie) {
             PlatformLogger.getLogger(SunToolkit.class.getName())
-                    .fine("awtTryLock() interrupted");
+                    .info("awtTryLock() interrupted");
         }
         return false;
     }
 
     public static void awtUnlock() {
+        if (th != null) {
+            if (false) System.err.println("awtLock UNLOCKED by thread: '" + getThreadInfo(Thread.currentThread()) + "'");
+            th = null;
+        }
         if (awtLockListeners != null) {
             awtLockListeners.forEach(AwtLockListener::beforeAwtUnlocked);
         }

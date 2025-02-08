@@ -120,13 +120,14 @@ public class OGLRenderQueue extends RenderQueue {
         return (Thread.currentThread() == getInstance().flusher.thread);
     }
 
+
+    @Override
     public void flushNow() {
         // assert lock.isHeldByCurrentThread();
         try {
             flusher.flushNow();
         } catch (Exception e) {
-            System.err.println("exception in flushNow:");
-            e.printStackTrace();
+            logger.severe("OGLRenderQueue.flushNow: exception occurred: ", e);
         }
     }
 
@@ -135,8 +136,7 @@ public class OGLRenderQueue extends RenderQueue {
         try {
             flusher.flushAndInvokeNow(r);
         } catch (Exception e) {
-            System.err.println("exception in flushAndInvokeNow:");
-            e.printStackTrace();
+            logger.severe("OGLRenderQueue.flushAndInvokeNow: exception occurred: ", e);
         }
     }
 
@@ -243,6 +243,7 @@ public class OGLRenderQueue extends RenderQueue {
                             }
                         }
                     } catch (InterruptedException e) {
+                        logger.fine("QueueFlusher.run: interrupted");
                     }
                 }
                 try {
@@ -254,11 +255,11 @@ public class OGLRenderQueue extends RenderQueue {
                     if (task != null) {
                         task.run();
                     }
-                } catch (Error e) {
-                    error = e;
-                } catch (Exception x) {
-                    System.err.println("exception in QueueFlusher:");
-                    x.printStackTrace();
+                } catch (Error err) {
+                    logger.severe("QueueFlusher.run: error occurred: ", err);
+                    error = err;
+                } catch (Exception e) {
+                    logger.severe("QueueFlusher.run: exception occurred: ", e);
                 } finally {
                     if (timedOut) {
                         unlock();

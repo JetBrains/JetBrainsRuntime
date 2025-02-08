@@ -1026,6 +1026,8 @@ AWT_ASSERT_APPKIT_THREAD;
     (*env)->DeleteLocalRef(env, platformWindow);
 }
 
+#define TRACE_DELIVER_MOVE_RESIZE   1
+
 - (void) _deliverMoveResizeEvent {
     AWT_ASSERT_APPKIT_THREAD;
 
@@ -1049,6 +1051,8 @@ AWT_ASSERT_APPKIT_THREAD;
         return;
     }
 
+    if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow _deliverMoveResizeEvent]: platformWindow = %p", platformWindow);
+
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_deliverMoveResizeEvent, jc_CPlatformWindow, "deliverMoveResizeEvent", "(IIIIZ)V");
     (*env)->CallVoidMethod(env, platformWindow, jm_deliverMoveResizeEvent,
@@ -1067,6 +1071,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)windowDidMove:(NSNotification *)notification {
 AWT_ASSERT_APPKIT_THREAD;
+    if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow windowDidMove] => _deliverMoveResizeEvent()");
     [self _deliverMoveResizeEvent];
 }
 
@@ -1078,6 +1083,7 @@ AWT_ASSERT_APPKIT_THREAD;
 #endif
         return;
     }
+    if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow windowDidResize] => _deliverMoveResizeEvent()");
     [self _deliverMoveResizeEvent];
 }
 
@@ -1898,6 +1904,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     [self setPropertiesForStyleBits:newBits mask:mask];
 
     if (!fullscreen && !self.nsWindow.miniaturized) {
+        if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow updateCustomTitleBar] => _deliverMoveResizeEvent()");
         [self _deliverMoveResizeEvent];
     }
 
@@ -2303,6 +2310,7 @@ JNI_COCOA_ENTER(env);
         window.styleBits = actualBits;
 
         if (resized) {
+            if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow nativeSetNSWindowStyleBits] => _deliverMoveResizeEvent()");
             [window _deliverMoveResizeEvent];
         }
     }];
@@ -2446,6 +2454,7 @@ JNI_COCOA_ENTER(env);
         // already uses location ignored by the macOS.
         // see sun.lwawt.LWWindowPeer#notifyReshape()
         if (!NSEqualRects(rect, [nsWindow frame])) {
+            if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow nativeSetNSWindowBounds] => _deliverMoveResizeEvent()");
             [window _deliverMoveResizeEvent];
         }
     }];
@@ -2632,7 +2641,7 @@ JNI_COCOA_ENTER(env);
     NSWindow *nsWindow = OBJC(windowPtr);
     [ThreadUtilities performOnMainThread:@selector(setTitle:) on:nsWindow
                              withObject:JavaStringToNSString(env, jtitle)
-                           waitUntilDone:NO];
+                           waitUntilDone:NO useJavaModes:NO]; // direct mode
 
 JNI_COCOA_EXIT(env);
 }
@@ -2993,6 +3002,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeCallDeliverMo
     NSWindow *nsWindow = (NSWindow *)jlong_to_ptr(windowPtr);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         AWTWindow *window = (AWTWindow*)[nsWindow delegate];
+        if (TRACE_DELIVER_MOVE_RESIZE) NSLog(@"[AWTWindow nativeCallDeliverMoveResizeEvent] => _deliverMoveResizeEvent()");
         [window _deliverMoveResizeEvent];
     }];
 
