@@ -1230,14 +1230,14 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         } else {
             result = "true".equalsIgnoreCase(usePwmArg);
             logger.info("CPlatformWindow: property \"{0}={1}\", using usePWM={2}.",
-                    usePwmKey, usePwmArg, INVOKE_LATER_USE_PWM);
+                    usePwmKey, usePwmArg, result);
         }
         return result;
     }
     /* 10s period arround reference times (sleep/wake-up...)
      * to ensure all displays are awaken properly */
     private final static long NANOS_PER_SEC = 1000000000L;
-    private final static long RDV_PERIOD = 10L * NANOS_PER_SEC;
+    private final static long STATE_CHANGE_PERIOD = 10L * NANOS_PER_SEC;
 
     private final AtomicBoolean mirroringState = new AtomicBoolean(false);
     /** per window timestamp of disabling mirroring */
@@ -1294,7 +1294,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                         mirroringState.set(true);
                     } else if (mirroringState.get()) {
                         // mirroringState trigger enabled but mirroring=false:
-                        // keep mirroring for few iterations:
+                        // keep mirroring enabled for some time (STATE_CHANGE_PERIOD):
                         mirroring = true;
                         final long now = System.nanoTime(); // timestamp
 
@@ -1307,7 +1307,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                             mirroringDisablingTime.set(now);
                         } else {
                             delta = Math.abs(now - lastTime);
-                            if (delta > RDV_PERIOD) {
+                            if (delta > STATE_CHANGE_PERIOD) {
                                 // disable mirroring as period is elapsed:
                                 mirroring = false;
                                 mirroringState.set(false);
@@ -1320,13 +1320,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                                     mirroring, mirroringState.get(), delta * 1e-6);
                         }
                     }
-                    if (mirroring) {
-                        final boolean inTransition = LWCToolkit.isWithinPowerTransition();
-                        if (inTransition) {
-                            logger.fine("CPlatformWindow.flushBuffers[auto]: inTransition = true");
-                            useInvokeLater = true;
-                        }
-                    }
+                    useInvokeLater = mirroring;
                     break;
                 case INVOKE_LATER_ENABLED:
                     useInvokeLater = true;
@@ -1353,7 +1347,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                                 getIdentifier(target));
                     }
 
-                    LWCToolkit.invokeAndWait(emptyTask, target);
+                    /* Ensure >500ms = 666ms timeout to avoid any deadlock among
+                     * appkit, EDT, Flusher & a11y threads, locks
+                     * and various synchronization patterns... */
+                    final double timeoutSeconds = 0.666; // seconds
+
+                    // FUCK: appKit is calling this method !
+                    LWCToolkit.invokeAndWait(emptyTask, target, timeoutSeconds);
 
                     if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                         logger.fine("CPlatformWindow.flushBuffers: exit  " +
@@ -1362,7 +1362,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                     }
                 }
             } catch (InvocationTargetException ite) {
-                logger.severe("CPlatformWindow.flushBuffers: exception occurred: ", ite);
+                if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                    logger.fine("CPlatformWindow.flushBuffers: timeout or LWCToolkit.invoke failure: ", ite);
+                }
             }
         }
     }
@@ -1397,13 +1399,16 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         responder.handleWindowFocusEvent(gained, oppositePeer);
     }
 
+    /* useless ? */
     public void doDeliverMoveResizeEvent() {
         if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-            logger.fine("CPlatformWindow.doDeliverMoveResizeEvent() {0}", Thread.currentThread());
+            logger.fine("CPlatformWindow.doDeliverMoveResizeEvent() called by {0}",
+                    Thread.currentThread());
         }
         execute(ptr -> nativeCallDeliverMoveResizeEvent(ptr));
     }
 
+    /* native call by AWTWindow._deliverMoveResizeEvent() */
     protected void deliverMoveResizeEvent(int x, int y, int width, int height,
                                         boolean byUser) {
         AtomicBoolean ref = new AtomicBoolean();
@@ -1426,6 +1431,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             // System-dependent appearance optimization.
             if ((byUser && !oldB.getSize().equals(nativeBounds.getSize()))
                     || isFullScreenAnimationOn) {
+
+                // May be blocking so postpone this event processing:
                 flushBuffers();
             }
         }
