@@ -97,11 +97,14 @@ ifeq ($(call isTargetOs, macosx), true)
   BUILD_JDK_JTREG_EXECUTABLES_JDK_LIBS_exeJniInvocationTest := java.base:libjli
   BUILD_JDK_JTREG_LIBRARIES_LIBS_libTestDynamicStore := \
       -framework Cocoa -framework SystemConfiguration
+  BUILD_JDK_JTREG_LIBRARIES_LIBS_libSharedTexturesTest := \
+      -framework Cocoa -framework Metal
 else
   BUILD_JDK_JTREG_EXCLUDE += libTestMainKeyWindow.m
   BUILD_JDK_JTREG_EXCLUDE += libTestDynamicStore.m
   BUILD_JDK_JTREG_EXCLUDE += exeJniInvocationTest.c
   BUILD_JDK_JTREG_EXCLUDE += exeLibraryCache.c
+  BUILD_JDK_JTREG_EXCLUDE += libSharedTexturesTest.m
 endif
 
 ifeq ($(OPENJDK_TARGET_OS), windows)
