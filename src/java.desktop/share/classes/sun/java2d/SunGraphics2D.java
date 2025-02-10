@@ -71,6 +71,7 @@ import java.lang.annotation.Native;
 import java.text.AttributedCharacterIterator;
 import java.util.Map;
 
+import com.jetbrains.desktop.image.TextureWrapperImage;
 import sun.awt.ConstrainableGraphics;
 import sun.awt.SunHints;
 import sun.awt.image.MultiResolutionToolkitImage;
@@ -3098,7 +3099,7 @@ public final class SunGraphics2D
                                    Color bgcolor, ImageObserver observer,
                                    AffineTransform xform) {
         try {
-            if (img instanceof VolatileImage) {
+            if (img instanceof VolatileImage || img instanceof TextureWrapperImage) {
                 final SurfaceData sd = SurfaceManager.getManager(img)
                         .getPrimarySurfaceData();
                 final double scaleX = sd.getDefaultScaleX();
