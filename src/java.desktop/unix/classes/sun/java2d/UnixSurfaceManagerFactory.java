@@ -27,9 +27,11 @@
 package sun.java2d;
 
 import java.awt.GraphicsConfiguration;
+import java.awt.Image;
 
 import sun.awt.X11GraphicsConfig;
 import sun.awt.image.SunVolatileImage;
+import sun.awt.image.SurfaceManager;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.opengl.GLXGraphicsConfig;
 import sun.java2d.opengl.GLXVolatileSurfaceManager;
@@ -73,4 +75,8 @@ public class UnixSurfaceManagerFactory extends SurfaceManagerFactory {
         }
     }
 
+    @Override
+    public SurfaceManager createTextureWrapperSurfaceManager(GraphicsConfiguration gc, Image image, long texture) {
+        throw new UnsupportedOperationException();
+    }
 }
