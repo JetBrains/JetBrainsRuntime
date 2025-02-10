@@ -26,7 +26,11 @@
 package sun.java2d;
 
 import sun.awt.image.SunVolatileImage;
+import sun.awt.image.SurfaceManager;
 import sun.awt.image.VolatileSurfaceManager;
+
+import java.awt.GraphicsConfiguration;
+import java.awt.Image;
 
 /**
  * This factory creates platform specific VolatileSurfaceManager
@@ -88,4 +92,6 @@ public abstract class SurfaceManagerFactory {
      */
      public abstract VolatileSurfaceManager
          createVolatileManager(SunVolatileImage image, Object context);
+
+     public abstract SurfaceManager createTextureWrapperSurfaceManager(GraphicsConfiguration gc, Image image, long texture);
 }
