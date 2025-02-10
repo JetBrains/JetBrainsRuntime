@@ -151,7 +151,7 @@ public abstract class MTLSurfaceData extends SurfaceData
     private native void initOps(MTLGraphicsConfig gc, long pConfigInfo, long pPeerData, long layerPtr,
                                 int xoff, int yoff, boolean isOpaque);
 
-    private MTLSurfaceData(MTLLayer layer, MTLGraphicsConfig gc,
+    protected MTLSurfaceData(MTLLayer layer, MTLGraphicsConfig gc,
                            ColorModel cm, int type, int width, int height)
     {
         super(getCustomSurfaceType(type), cm);
