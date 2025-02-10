@@ -50,6 +50,7 @@ import java.awt.Transparency;
 
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_SURFACE;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
@@ -200,6 +201,10 @@ public abstract class MTLSurfaceData extends SurfaceData
                 type);
     }
 
+    public static MTLTextureWrapperSurfaceData createData(MTLGraphicsConfig gc, Image image, long pTexture) {
+        return new MTLTextureWrapperSurfaceData(gc, image, pTexture);
+    }
+
     @Override
     public double getDefaultScaleX() {
         return scale;
@@ -218,6 +223,8 @@ public abstract class MTLSurfaceData extends SurfaceData
     protected native void clearWindow();
 
     protected native boolean initTexture(long pData, boolean isOpaque, int width, int height);
+
+    protected native boolean initWithTexture(long pData, boolean isOpaque, long texturePtr);
 
     protected native boolean initRTexture(long pData, boolean isOpaque, int width, int height);
 
@@ -674,4 +681,46 @@ public abstract class MTLSurfaceData extends SurfaceData
     }
 
     private static native boolean loadNativeRasterWithRects(long sdops, long pRaster, int width, int height, long pRects, int rectsCount);
+
+    /**
+     * Surface data for an existing texture
+     */
+    public static final class MTLTextureWrapperSurfaceData extends MTLSurfaceData {
+        private final Image myImage;
+
+        private MTLTextureWrapperSurfaceData(MTLGraphicsConfig gc, Image image, long pTexture) throws IllegalArgumentException {
+            super(null, gc, ColorModel.getRGBdefault(), RT_TEXTURE, /*width=*/ 0, /*height=*/ 0);
+            myImage = image;
+
+            MTLRenderQueue rq = MTLRenderQueue.getInstance();
+            AtomicBoolean success = new AtomicBoolean(false);
+
+            rq.lock();
+            try {
+                MTLContext.setScratchSurface(gc);
+                rq.flushAndInvokeNow(() -> success.set(initWithTexture(getNativeOps(), false, pTexture)));
+            } finally {
+                rq.unlock();
+            }
+
+            if (!success.get()) {
+                throw new IllegalArgumentException("Failed to init the surface data");
+            }
+        }
+
+        @Override
+        public SurfaceData getReplacement() {
+            throw new UnsupportedOperationException("not implemented");
+        }
+
+        @Override
+        public Object getDestination() {
+            return myImage;
+        }
+
+        @Override
+        public Rectangle getBounds() {
+            return getNativeBounds();
+        }
+    }
 }
