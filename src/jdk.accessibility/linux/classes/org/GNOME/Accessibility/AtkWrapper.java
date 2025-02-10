@@ -719,7 +719,7 @@ public class AtkWrapper {
     }
 
     public AtkWrapper() {
-        if (!accessibilityEnabled || java.lang.Boolean.parseBoolean(System.getProperty("linux.jdk.accessibility.atkwrapper.block", "true"))) {
+        if (!accessibilityEnabled) {
             throw new IllegalStateException("AtkWrapper not initialized due to disabled accessibility.");
         }
 
@@ -732,10 +732,7 @@ public class AtkWrapper {
             toolkit.getSystemEventQueue().push(new EventQueue() {
                 public void dispatchEvent(AWTEvent e) {
                     if (e instanceof KeyEvent keyEvent) {
-                        if ((e.getID() == KeyEvent.KEY_PRESSED &&
-                                (keyEvent.getKeyCode() == KeyEvent.VK_LEFT || keyEvent.getKeyCode() == KeyEvent.VK_RIGHT)) || e.getID() == KeyEvent.KEY_TYPED) {
-                            AtkWrapper.dispatchKeyEvent(new AtkKeyEvent((KeyEvent) e));
-                        }
+                        AtkWrapper.dispatchKeyEvent(new AtkKeyEvent((KeyEvent) e));
                     }
                     super.dispatchEvent(e);
                 }
