@@ -25,9 +25,16 @@
 
 package sun.java2d;
 
+import java.awt.GraphicsConfiguration;
+import java.awt.Image;
+
 import sun.awt.CGraphicsEnvironment;
 import sun.awt.image.SunVolatileImage;
+import sun.awt.image.SurfaceManager;
+import sun.awt.image.TextureWrapperSurfaceManager;
 import sun.awt.image.VolatileSurfaceManager;
+import sun.java2d.metal.MTLGraphicsConfig;
+import sun.java2d.metal.MTLSurfaceData;
 import sun.java2d.metal.MTLVolatileSurfaceManager;
 import sun.java2d.opengl.CGLVolatileSurfaceManager;
 
@@ -53,5 +60,16 @@ public class MacosxSurfaceManagerFactory extends SurfaceManagerFactory {
     {
         return CGraphicsEnvironment.usingMetalPipeline() ? new MTLVolatileSurfaceManager(vImg, context) :
                 new CGLVolatileSurfaceManager(vImg, context);
+    }
+
+    @Override
+    public SurfaceManager createTextureWrapperSurfaceManager(GraphicsConfiguration gc, Image image, long texture) {
+        SurfaceData sd;
+        if (gc instanceof MTLGraphicsConfig) {
+            sd = MTLSurfaceData.createData((MTLGraphicsConfig) gc, image, texture);
+        } else {
+            throw new UnsupportedOperationException("Unsupported GraphicsConfiguration");
+        }
+        return new TextureWrapperSurfaceManager(sd);
     }
 }
