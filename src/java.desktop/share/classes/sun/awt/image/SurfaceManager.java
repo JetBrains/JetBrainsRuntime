@@ -37,6 +37,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+import com.jetbrains.desktop.image.TextureWrapperImage;
 import sun.java2d.InvalidPipeException;
 import sun.java2d.SurfaceData;
 import sun.java2d.SurfaceDataProxy;
@@ -184,6 +185,14 @@ public abstract class SurfaceManager {
     }
 
     /**
+     * See TextureWrapperImage.
+     */
+    public interface TextureWrapperFactory {
+        SurfaceManager createTextureWrapperSurfaceManager(
+                GraphicsConfiguration gc, Image image, long texture);
+    }
+
+    /**
      * An interface for GraphicsConfiguration objects to implement if
      * they create their own VolatileSurfaceManager implementations.
      */
@@ -319,7 +328,7 @@ public abstract class SurfaceManager {
      * @see SurfaceData#getDefaultScaleX
      */
     public static double getImageScaleX(final Image img) {
-        if (!(img instanceof VolatileImage)) {
+        if (!(img instanceof VolatileImage || img instanceof TextureWrapperImage)) {
             return 1;
         }
         final SurfaceManager sm = getManager(img);
@@ -333,7 +342,7 @@ public abstract class SurfaceManager {
      * @see SurfaceData#getDefaultScaleY
      */
     public static double getImageScaleY(final Image img) {
-        if (!(img instanceof VolatileImage)) {
+        if (!(img instanceof VolatileImage || img instanceof TextureWrapperImage)) {
             return 1;
         }
         final SurfaceManager sm = getManager(img);
