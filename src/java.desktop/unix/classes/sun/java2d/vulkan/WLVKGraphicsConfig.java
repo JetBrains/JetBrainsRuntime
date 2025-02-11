@@ -219,7 +219,7 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
 
     @Override
     public SurfaceData createSurfaceData(WLComponentPeer peer) {
-        return WLVKSurfaceData.createData(peer);
+        return new WLVKWindowSurfaceData(peer);
     }
 
     /**
