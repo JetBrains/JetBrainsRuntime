@@ -355,13 +355,10 @@ FrameSetTitle
 {
     if (!frame->xdg_toplevel) return;
 
-    jboolean iscopy = JNI_FALSE;
-    const char *title_c_str = JNU_GetStringPlatformChars(env, title, &iscopy);
+    const char *title_c_str = GetStringUTF8Chars(env, title);
     if (title_c_str) {
         xdg_toplevel_set_title(frame->xdg_toplevel, title_c_str);
-        if (iscopy) {
-            JNU_ReleaseStringPlatformChars(env, title, title_c_str);
-        }
+        ReleaseStringUTF8Chars(env, title, title_c_str);
     }
 }
 
@@ -371,13 +368,10 @@ FrameSetAppID
 {
     if (!frame->xdg_toplevel) return;
 
-    jboolean iscopy = JNI_FALSE;
-    const char *id_c_str = JNU_GetStringPlatformChars(env, appid, &iscopy);
+    const char *id_c_str = GetStringUTF8Chars(env, appid);
     if (id_c_str) {
         xdg_toplevel_set_app_id(frame->xdg_toplevel, id_c_str);
-        if (iscopy) {
-            JNU_ReleaseStringPlatformChars(env, appid, id_c_str);
-        }
+        ReleaseStringUTF8Chars(env, appid, id_c_str);
     }
 }
 
