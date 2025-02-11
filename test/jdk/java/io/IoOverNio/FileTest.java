@@ -343,7 +343,7 @@ public class FileTest {
 
             assertEquals(0, new ProcessBuilder(
                     "sh", "-c",
-                    "I=50; while [ $I -gt 0 && test -S " + unixSocket + " ]; do sleep 0.1; I=$(expr $I - 1); done; echo")
+                    "I=50; while [ $I -gt 0 && test -S " + unixSocket + " ]; do sleep 0.1; I=$(expr $I - 1); done; test -S " + unixSocket)
                     .start()
                     .waitFor());
 
