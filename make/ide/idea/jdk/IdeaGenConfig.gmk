@@ -43,7 +43,7 @@ OUT := $(IDEA_OUTPUT)/env.cfg
 idea:
 	$(ECHO) "MODULES=\"$(foreach mod, $(MODULES), \
 	          module='$(mod)' \
-	          moduleSrcDirs='$(foreach m,$(call FindModuleSrcDirs,$(mod)),$(call RelativePath,$m,$(topdir)))' \
+	          moduleSrcDirs='$(foreach m,$(call FindModuleSrcDirs,$(mod)),$(call RelativePath,$m,$(TOPDIR)))' \
 	          moduleDependencies='$(call FindTransitiveDepsForModule,$(mod))' \
 	        #)\"" > $(OUT)
 	$(ECHO) "SUPPORT=$(SUPPORT_OUTPUTDIR)" >> $(OUT)
@@ -51,9 +51,9 @@ idea:
 	$(ECHO) "MODULE_NAMES=\"$(strip $(foreach mod, $(MODULES), $(mod)))\"" >> $(OUT)
 	$(ECHO) "RELATIVE_TOPLEVEL_PROJECT_DIR=\"$(call RelativePath,$(TOPLEVEL_DIR),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
 	$(ECHO) "RELATIVE_PROJECT_DIR=\"$(call RelativePath,$(TOPLEVEL_DIR),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
-#	$(ECHO) "RELATIVE_PROJECT_DIR=\"$(call RelativePath,$(topdir),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
+#	$(ECHO) "RELATIVE_PROJECT_DIR=\"$(call RelativePath,$(TOPDIR),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
 	$(ECHO) "RELATIVE_BUILD_DIR=\"$(call RelativePath,$(OUTPUTDIR),$(IDEA_OUTPUT_PARENT))\"" >> $(OUT)
-	$(ECHO) "CLION_RELATIVE_PROJECT_DIR=\"$(call RelativePath,$(topdir),$(IDEA_OUTPUT_PARENT)/.idea/jdk-clion)\"" >> $(OUT)
+	$(ECHO) "CLION_RELATIVE_PROJECT_DIR=\"$(call RelativePath,$(TOPDIR),$(IDEA_OUTPUT_PARENT)/.idea/jdk-clion)\"" >> $(OUT)
 	$(ECHO) "PATHTOOL=\"$(PATHTOOL)\"" >> $(OUT)
 	$(ECHO) "JT_HOME=\"$(JT_HOME)\"" >> $(OUT)
 	$(ECHO) "WINENV_ROOT=\"$(WINENV_ROOT)\"" >> $(OUT)
