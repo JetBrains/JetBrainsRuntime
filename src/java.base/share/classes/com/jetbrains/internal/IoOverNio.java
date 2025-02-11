@@ -28,6 +28,7 @@ package com.jetbrains.internal;
 import jdk.internal.misc.VM;
 import sun.security.action.GetPropertyAction;
 
+import java.lang.Boolean;
 import java.nio.file.FileSystems;
 
 /**
@@ -63,7 +64,7 @@ public class IoOverNio {
     }
 
     public static boolean isAllowedInThisThread() {
-        return ALLOW_IN_THIS_THREAD.get();
+        return ALLOW_IN_THIS_THREAD.get() == Boolean.TRUE;
     }
 
     /**
