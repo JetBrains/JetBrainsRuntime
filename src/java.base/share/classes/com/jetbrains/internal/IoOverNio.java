@@ -37,28 +37,25 @@ public class IoOverNio {
     /** Preferences of debug logging. */
     public static final Debug DEBUG;
     public static final boolean IS_ENABLED_IN_GENERAL =
-            GetPropertyAction.privilegedGetBooleanProp("jbr.java.io.use.nio", true, null);
-    private static final ThreadLocal<Boolean> ALLOW_IN_THIS_THREAD = ThreadLocal.withInitial(() -> true);
+            GetPropertyAction.privilegedGetProperty("jbr.java.io.use.nio", "true").equalsIgnoreCase("true");
+    private static final ThreadLocal<Boolean> ALLOW_IN_THIS_THREAD = new ThreadLocal<>();
 
     static {
-        String value = GetPropertyAction.privilegedGetProperty("jbr.java.io.use.nio.debug");
-        if (value == null) {
-            DEBUG = Debug.NO;
-        } else {
-            switch (value) {
-                case "error":
-                    DEBUG = Debug.ERROR;
-                    break;
-                case "no_error":
-                    DEBUG = Debug.NO_ERROR;
-                    break;
-                case "all":
-                    DEBUG = Debug.ALL;
-                    break;
-                default:
-                    DEBUG = Debug.NO;
-                    break;
-            }
+        ALLOW_IN_THIS_THREAD.set(true);
+        String value = GetPropertyAction.privilegedGetProperty("jbr.java.io.use.nio.debug", "");
+        switch (value) {
+            case "error":
+                DEBUG = Debug.ERROR;
+                break;
+            case "no_error":
+                DEBUG = Debug.NO_ERROR;
+                break;
+            case "all":
+                DEBUG = Debug.ALL;
+                break;
+            default:
+                DEBUG = Debug.NO;
+                break;
         }
     }
 
