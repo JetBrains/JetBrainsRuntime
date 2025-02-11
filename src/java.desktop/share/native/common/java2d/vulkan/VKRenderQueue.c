@@ -559,8 +559,8 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 VKSDOps* src = NEXT_SURFACE(b);
                 VKSDOps* dst = NEXT_SURFACE(b);
 
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                    "VKRenderQueue_flushBuffer: SET_SURFACES");
+                J2dRlsTraceLn2(J2D_TRACE_VERBOSE,
+                    "VKRenderQueue_flushBuffer: SET_SURFACES src=%p dst=%p", src, dst);
                 context.surface = dst;
             }
             break;
