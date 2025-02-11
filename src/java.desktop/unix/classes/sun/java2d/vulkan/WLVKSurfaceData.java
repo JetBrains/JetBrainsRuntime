@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.awt.AlphaComposite;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
@@ -48,46 +49,15 @@ import sun.util.logging.PlatformLogger;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import static sun.java2d.pipe.BufferedOpCodes.CONFIGURE_SURFACE;
 
-public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurfaceDataExt, WLPixelGrabberExt {
+public abstract class WLVKSurfaceData extends VKSurfaceData  {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.WLVKSurfaceData");
 
-    protected WLComponentPeer peer;
-
-    private native void initOps(int backgroundRGB);
-
-    private native void assignWlSurface(long surfacePtr);
-
-    protected WLVKSurfaceData(WLComponentPeer peer, WLVKGraphicsConfig gc,
-                              SurfaceType sType, ColorModel cm, int type)
-    {
+    protected WLVKSurfaceData(WLVKGraphicsConfig gc,
+                              SurfaceType sType, ColorModel cm, int type) {
         super(gc, cm, type, 0, 0);
-        this.peer = peer;
-        final int backgroundRGB = peer.getBackground() != null
-                ? peer.getBackground().getRGB()
-                : 0;
-        initOps(backgroundRGB);
     }
 
-    private void bufferAttached() {
-        // Called from the native code when a buffer has just been attached to this surface
-        // but the surface has not been committed yet.
-        peer.updateSurfaceSize();
-    }
-
-    @Override
-    public void assignSurface(long surfacePtr) {
-        assignWlSurface(surfacePtr);
-        if (surfacePtr != 0) configure();
-    }
-    @Override
-    public void revalidate(int width, int height, int scale) {
-        this.width = width;
-        this.height = height;
-        this.scale = scale;
-        configure();
-    }
-
-    private synchronized void configure() {
+    protected synchronized void configure() {
         VKRenderQueue rq = VKRenderQueue.getInstance();
         rq.lock();
         try {
@@ -104,30 +74,10 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
         }
     }
 
-    @Override
-    public synchronized void commit() {
-        VKRenderQueue rq = VKRenderQueue.getInstance();
-        rq.lock();
-        try {
-            RenderBuffer buf = rq.getBuffer();
-            rq.ensureCapacityAndAlignment(12, 4);
-            buf.putInt(FLUSH_BUFFER);
-            buf.putLong(getNativeOps());
-
-            rq.flushNow();
-        } finally {
-            rq.unlock();
-        }
-    }
 
     @Override
     public boolean isOnScreen() {
         return false;
-    }
-
-    @Override
-    public GraphicsConfiguration getDeviceConfiguration() {
-        return peer.getGraphicsConfiguration();
     }
 
     /**
@@ -136,6 +86,12 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
     public static WLVKWindowSurfaceData createData(WLComponentPeer peer) {
         WLVKGraphicsConfig gc = getGC(peer);
         return new WLVKWindowSurfaceData(peer, gc);
+    }
+
+    public static WLVKOffScreenSurfaceData createData(WLVKGraphicsConfig gc, int width,
+                                                      int height, Image image,
+                                                      ColorModel cm, int type) {
+        return new WLVKOffScreenSurfaceData(gc, width, height, image, cm, type);
     }
 
     public static WLVKGraphicsConfig getGC(WLComponentPeer peer) {
@@ -150,56 +106,75 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
             return (WLVKGraphicsConfig)gd.getDefaultConfiguration();
         }
     }
+    /**
+     * SurfaceData object representing an off-screen buffer
+     */
+    public static class WLVKOffScreenSurfaceData extends WLVKSurfaceData {
+        private final Image offscreenImage;
 
-    public int getRGBPixelAt(int x, int y) {
-        Rectangle r = peer.getBufferBounds();
-        if (x < r.x || x >= r.x + r.width || y < r.y || y >= r.y + r.height) {
-            throw new ArrayIndexOutOfBoundsException("x,y outside of buffer bounds");
+        private native void initOps(int width, int height);
+
+        public WLVKOffScreenSurfaceData(WLVKGraphicsConfig gc, int width,
+                                       int height, Image image,
+                                       ColorModel cm, int type) {
+            super(gc, gc.getSurfaceType(), gc.getColorModel(), RT_TEXTURE);
+            offscreenImage = image;
+            this.width = width;
+            this.height = height;
+            initOps(width, height);
         }
 
-        BufferedImage resImg = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-        SurfaceData resData = BufImgSurfaceData.createData(resImg);
+        @Override
+        public SurfaceData getReplacement() {
+            return restoreContents(offscreenImage);
+        }
 
-        Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa,
-                resData.getSurfaceType());
-        blit.Blit(this, resData, AlphaComposite.Src, null,
-                    x, y, 0, 0, 1, 1);
+        @Override
+        public GraphicsConfiguration getDeviceConfiguration() {
+            return null;
+        }
 
-        return resImg.getRGB(0, 0);
+        @Override
+        public long getNativeResource(int resType) {
+            return 0;
+        }
+
+        @Override
+        public Rectangle getBounds() {
+            return new Rectangle(width, height);
+        }
+
+        /**
+         * Returns destination Image associated with this SurfaceData.
+         */
+        @Override
+        public Object getDestination() {
+            return offscreenImage;
+        }
+
+        @Override
+        public BufferedContext getContext() {
+            return getGraphicsConfig().getContext();
+        }
     }
 
-    public int [] getRGBPixelsAt(Rectangle bounds) {
-        Rectangle r = peer.getBufferBounds();
+    public static class WLVKWindowSurfaceData extends WLVKSurfaceData
+            implements WLPixelGrabberExt, WLSurfaceDataExt
+    {
+        protected WLComponentPeer peer;
 
-        if ((long)bounds.width * (long)bounds.height > Integer.MAX_VALUE) {
-            throw new IndexOutOfBoundsException("Dimensions (width=" + bounds.width +
-                    " height=" + bounds.height + ") are too large");
-        }
+        private native void initOps(int backgroundRGB);
 
-        Rectangle b = bounds.intersection(r);
+        private native void assignWlSurface(long surfacePtr);
 
-        if (b.isEmpty()) {
-            throw new IndexOutOfBoundsException("Requested bounds are outside of surface bounds");
-        }
-
-        BufferedImage resImg = new BufferedImage(b.width, b.height, BufferedImage.TYPE_INT_ARGB);
-        SurfaceData resData = BufImgSurfaceData.createData(resImg);
-
-        Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa,
-                resData.getSurfaceType());
-        blit.Blit(this, resData, AlphaComposite.Src, null,
-                b.x, b.y, 0, 0, b.width, b.height);
-
-        int [] pixels = new int[b.width * b.height];
-        resImg.getRGB(0, 0, b.width, b.height, pixels, 0, b.width);
-        return pixels;
-    }
-
-
-    public static class WLVKWindowSurfaceData extends WLVKSurfaceData {
         public WLVKWindowSurfaceData(WLComponentPeer peer, WLVKGraphicsConfig gc)
         {
-            super(peer, gc, gc.getSurfaceType(), peer.getColorModel(), WINDOW);
+            super(gc, gc.getSurfaceType(), peer.getColorModel(), WINDOW);
+            this.peer = peer;
+            final int backgroundRGB = peer.getBackground() != null
+                    ? peer.getBackground().getRGB()
+                    : 0;
+            initOps(backgroundRGB);
         }
 
         public SurfaceData getReplacement() {
@@ -242,6 +217,89 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
         @Override
         public boolean isOnScreen() {
             return true;
+        }
+
+        @Override
+        public void assignSurface(long surfacePtr) {
+            assignWlSurface(surfacePtr);
+            if (surfacePtr != 0) configure();
+        }
+
+        @Override
+        public void revalidate(int width, int height, int scale) {
+            this.width = width;
+            this.height = height;
+            this.scale = scale;
+            configure();
+        }
+
+        @Override
+        public synchronized void commit() {
+            VKRenderQueue rq = VKRenderQueue.getInstance();
+            rq.lock();
+            try {
+                RenderBuffer buf = rq.getBuffer();
+                rq.ensureCapacityAndAlignment(12, 4);
+                buf.putInt(FLUSH_BUFFER);
+                buf.putLong(getNativeOps());
+
+                rq.flushNow();
+            } finally {
+                rq.unlock();
+            }
+        }
+        @Override
+        public GraphicsConfiguration getDeviceConfiguration() {
+            return peer.getGraphicsConfiguration();
+        }
+
+        private void bufferAttached() {
+            // Called from the native code when a buffer has just been attached to this surface
+            // but the surface has not been committed yet.
+            peer.updateSurfaceSize();
+        }
+        public int getRGBPixelAt(int x, int y) {
+            Rectangle r = peer.getBufferBounds();
+            if (x < r.x || x >= r.x + r.width || y < r.y || y >= r.y + r.height) {
+                throw new ArrayIndexOutOfBoundsException("x,y outside of buffer bounds");
+            }
+
+            BufferedImage resImg = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+            SurfaceData resData = BufImgSurfaceData.createData(resImg);
+
+            Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa,
+                    resData.getSurfaceType());
+            blit.Blit(this, resData, AlphaComposite.Src, null,
+                    x, y, 0, 0, 1, 1);
+
+            return resImg.getRGB(0, 0);
+        }
+
+        public int [] getRGBPixelsAt(Rectangle bounds) {
+            Rectangle r = peer.getBufferBounds();
+
+            if ((long)bounds.width * (long)bounds.height > Integer.MAX_VALUE) {
+                throw new IndexOutOfBoundsException("Dimensions (width=" + bounds.width +
+                        " height=" + bounds.height + ") are too large");
+            }
+
+            Rectangle b = bounds.intersection(r);
+
+            if (b.isEmpty()) {
+                throw new IndexOutOfBoundsException("Requested bounds are outside of surface bounds");
+            }
+
+            BufferedImage resImg = new BufferedImage(b.width, b.height, BufferedImage.TYPE_INT_ARGB);
+            SurfaceData resData = BufImgSurfaceData.createData(resImg);
+
+            Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa,
+                    resData.getSurfaceType());
+            blit.Blit(this, resData, AlphaComposite.Src, null,
+                    b.x, b.y, 0, 0, b.width, b.height);
+
+            int [] pixels = new int[b.width * b.height];
+            resImg.getRGB(0, 0, b.width, b.height, pixels, 0, b.width);
+            return pixels;
         }
     }
 }
