@@ -47,8 +47,9 @@ public class WLVKVolatileSurfaceManager extends VolatileSurfaceManager {
          * if the image is not bitmask
          */
         int transparency = vImg.getTransparency();
-        // TODO: enable acceleration
-        accelerationEnabled = false; // transparency != Transparency.BITMASK;
+
+        accelerationEnabled = VKInstance.isSurfaceDataAccelerated() &&
+                transparency != Transparency.BITMASK;
     }
 
     protected boolean isAccelerationEnabled() {
@@ -60,7 +61,6 @@ public class WLVKVolatileSurfaceManager extends VolatileSurfaceManager {
      * of an existing window if this is a double buffered GraphicsConfig)
      */
     protected SurfaceData initAcceleratedSurface() {
-       /* TODO
         try {
             WLVKGraphicsConfig gc =
                     (WLVKGraphicsConfig)vImg.getGraphicsConfig();
@@ -71,15 +71,11 @@ public class WLVKVolatileSurfaceManager extends VolatileSurfaceManager {
             if (type == AccelSurface.UNDEFINED) {
                 type = AccelSurface.RT_TEXTURE;
             }
-            return WLVKSurfaceData.createData(gc,
-                    vImg.getWidth(),
-                    vImg.getHeight(),
-                    cm, vImg, type);
+            return new VKOffScreenSurfaceData(
+                    gc, vImg, cm, type, vImg.getWidth(), vImg.getHeight());
         } catch (NullPointerException | OutOfMemoryError ignored) {
             return null;
         }
-        */
-        return null;
     }
 
     @Override
