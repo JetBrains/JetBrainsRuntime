@@ -646,6 +646,11 @@ class IoOverNioFileSystem extends FileSystem {
                 ).close();
                 return true;
             }
+        } catch (AccessDeniedException err) {
+            // A special case for Windows. It can happen if it is an already existing directory.
+            if (Files.exists(nioFs.getPath(pathname))) {
+                return false;
+            }
         } catch (FileAlreadyExistsException e) {
             if (DEBUG.writeErrors()) {
                 new Throwable(String.format("Can't exclusively create a file %s", pathname), e)
