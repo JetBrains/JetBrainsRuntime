@@ -66,6 +66,7 @@ public class bug8081019 {
     private static void runProcess() throws Exception {
         String javaPath = System.getProperty("java.home", "");
         String command = javaPath + File.separator + "bin" + File.separator + "java"
+                + " " + System.getProperty("test.java.opts", "")
                 + " " + bug8081019.class.getName() + " " + RUN_TEST;
 
         Process process = Runtime.getRuntime().exec(command);
