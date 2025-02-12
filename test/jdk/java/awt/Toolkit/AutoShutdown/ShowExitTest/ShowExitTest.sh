@@ -168,6 +168,7 @@ chmod 777 ./*
 # pass, you should be able to cut and paste it into here and it will
 # run with the test harness.
 
+TESTVMOPTS=${TESTJAVAOPTS}
 ${TESTJAVA}/bin/java ${TESTVMOPTS} ShowExitTest
 
 ###############  END YOUR TEST CODE !!!!! ############
