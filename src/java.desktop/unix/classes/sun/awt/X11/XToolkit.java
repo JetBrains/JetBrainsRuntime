@@ -463,6 +463,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
     private int cachedScreenResolution = 72;
 
+    private boolean dirtyDevices = false;
+
     /**
     * XSETTINGS for the default screen.
      * <p>
@@ -614,28 +616,6 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             System.setProperty(extraButtons, "" + areExtraMouseButtonsEnabled);
             // Detect display mode changes
             XlibWrapper.XSelectInput(XToolkit.getDisplay(), XToolkit.getDefaultRootWindow(), XConstants.StructureNotifyMask);
-            XToolkit.addEventDispatcher(XToolkit.getDefaultRootWindow(), new XEventDispatcher() {
-                @Override
-                public void dispatchEvent(XEvent ev) {
-                    if (ev.get_type() == XConstants.ConfigureNotify ||
-                        (checkDesktopGeometry && ev.get_type() == XConstants.PropertyNotify &&
-                         ev.get_xproperty().get_atom() == XWM.XA_NET_DESKTOP_GEOMETRY.getAtom())) // possible DPI change
-                    {
-                        awtUnlock();
-                        try {
-                            ((X11GraphicsEnvironment)GraphicsEnvironment.
-                             getLocalGraphicsEnvironment()).rebuildDevices();
-                        } finally {
-                            awtLock();
-                        }
-                    } else {
-                        final XAtom XA_NET_WORKAREA = XAtom.get("_NET_WORKAREA");
-                        final boolean rootWindowWorkareaResized = (ev.get_type() == XConstants.PropertyNotify
-                                && ev.get_xproperty().get_atom() == XA_NET_WORKAREA.getAtom());
-                        if (rootWindowWorkareaResized) resetScreenInsetsCache();
-                    }
-                }
-            });
         } finally {
             awtUnlock();
         }
@@ -860,6 +840,29 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
     private void dispatchEvent(XEvent ev) {
         final XAnyEvent xany = ev.get_xany();
+
+        if (xany.get_window() == getDefaultRootWindow()) {
+            if (ev.get_type() == XConstants.ConfigureNotify ||
+                    (checkDesktopGeometry && ev.get_type() == XConstants.PropertyNotify &&
+                            ev.get_xproperty().get_atom() == XWM.XA_NET_DESKTOP_GEOMETRY.getAtom())) // possible DPI change
+            {
+                dirtyDevices = true;
+            } else {
+                final XAtom XA_NET_WORKAREA = XAtom.get("_NET_WORKAREA");
+                final boolean rootWindowWorkareaResized = (ev.get_type() == XConstants.PropertyNotify
+                        && ev.get_xproperty().get_atom() == XA_NET_WORKAREA.getAtom());
+                if (rootWindowWorkareaResized) resetScreenInsetsCache();
+            }
+        } else if (dirtyDevices) {
+            awtUnlock();
+            try {
+                ((X11GraphicsEnvironment)GraphicsEnvironment.
+                        getLocalGraphicsEnvironment()).rebuildDevices();
+                dirtyDevices = false;
+            } finally {
+                awtLock();
+            }
+        }
 
         XBaseWindow baseWindow = windowToXWindow(xany.get_window());
         if (baseWindow != null && (ev.get_type() == XConstants.MotionNotify
