@@ -412,10 +412,16 @@ class IoOverNioFileSystem extends FileSystem {
 
     @SuppressWarnings("resource")
     private boolean hasBooleanAttributes0(File f, int attributes) {
+        boolean result;
         if (acquireNioFs() != null) {
-            return (getBooleanAttributes0(f) & attributes) == attributes;
+            result = (getBooleanAttributes0(f) & attributes) == attributes;
+        } else {
+            result = defaultFileSystem.hasBooleanAttributes(f, attributes);
         }
-        return defaultFileSystem.hasBooleanAttributes(f, attributes);
+        if (DEBUG.writeTraces()) {
+            System.err.printf("IoOverNioFileSystem.hasBooleanAttributes(%s, %s) = %b%n", f, attributes, result);
+        }
+        return result;
     }
 
     @Override
