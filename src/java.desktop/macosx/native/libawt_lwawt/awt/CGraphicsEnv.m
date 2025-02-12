@@ -272,3 +272,8 @@ JNIEXPORT jint JNICALL Java_sun_awt_CGraphicsEnvironment_initMetal
     JNI_COCOA_EXIT(env);
     return ret;
 }
+
+JNIEXPORT jboolean JNICALL Java_sun_awt_CGraphicsEnvironment_isBuiltinDisplayNative
+        (JNIEnv *env, jclass cgenv, jint displayId) {
+    return CGDisplayIsBuiltin(displayId);
+}
