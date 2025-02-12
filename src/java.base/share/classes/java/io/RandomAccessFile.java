@@ -27,6 +27,8 @@ package java.io;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.NonWritableChannelException;
+import java.nio.file.*;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -867,6 +869,8 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                     }
                 }
             }
+        } catch (NonWritableChannelException err) {
+            throw new IOException("setLength failed", err);
         } finally {
             Blocker.end(comp);
         }
