@@ -27,6 +27,7 @@ package java.io;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.NonWritableChannelException;
 import java.nio.file.*;
 import java.nio.file.FileSystem;
 import java.util.Arrays;
@@ -895,21 +896,25 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (!useNio) {
             setLength0(newLength);
         } else {
-            FileChannel channel = getChannel();
-            long oldSize = channel.size();
-            if (newLength < oldSize) {
-                channel.truncate(newLength);
-            } else {
-                byte[] buf = new byte[1 << 14];
-                Arrays.fill(buf, (byte) 0);
-                long remains = newLength - oldSize;
-                while (remains > 0) {
-                    ByteBuffer buffer = ByteBuffer.wrap(buf);
-                    int length = (int)Math.min(remains, buf.length);
-                    buffer.limit(length);
-                    channel.write(buffer);
-                    remains -= length;
+            try {
+                FileChannel channel = getChannel();
+                long oldSize = channel.size();
+                if (newLength < oldSize) {
+                    channel.truncate(newLength);
+                } else {
+                    byte[] buf = new byte[1 << 14];
+                    Arrays.fill(buf, (byte) 0);
+                    long remains = newLength - oldSize;
+                    while (remains > 0) {
+                        ByteBuffer buffer = ByteBuffer.wrap(buf);
+                        int length = (int) Math.min(remains, buf.length);
+                        buffer.limit(length);
+                        channel.write(buffer);
+                        remains -= length;
+                    }
                 }
+            } catch (NonWritableChannelException err) {
+                throw new IOException("setLength failed", err);
             }
         }
     }
