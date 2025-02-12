@@ -62,12 +62,12 @@ then
         exit 1
     fi
     echo "No GTK 2 library found: we should bail out to 3"
-    strace -o strace.log -fe open,openat ${TESTJAVA}/bin/java  -cp ${TESTCLASSPATH}  -Djdk.gtk.version=2 ProvokeGTK
+    strace -o strace.log -fe open,openat ${TESTJAVA}/bin/java  -cp ${TESTCLASSPATH} ${TESTJAVAOPTS} -Djdk.gtk.version=2 ProvokeGTK
     EXECRES=$?
     grep  'libgtk-3.*=\ *[0-9]*$' strace.log > logg
 else
     echo "There is GTK 2 library: we should use it"
-    strace -o strace.log -fe open,openat ${TESTJAVA}/bin/java  -cp ${TESTCLASSPATH}  -Djdk.gtk.version=2 ProvokeGTK
+    strace -o strace.log -fe open,openat ${TESTJAVA}/bin/java  -cp ${TESTCLASSPATH} ${TESTJAVAOPTS} -Djdk.gtk.version=2 ProvokeGTK
     EXECRES=$?
     grep  'libgtk-x11.*=\ *[0-9]*$' strace.log > logg
 fi

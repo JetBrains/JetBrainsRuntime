@@ -55,12 +55,12 @@ if [ "${HAVE_3}" = "0" ]
 then
     
     echo "No GTK 3 library found: we should bail out to 2"
-    strace -o strace.log -fe open,openat ${TESTJAVA}/bin/java  -cp ${TESTCLASSPATH}  -Djdk.gtk.version=3 ProvokeGTK
+    strace -o strace.log -fe open,openat ${TESTJAVA}/bin/java  -cp ${TESTCLASSPATH} ${TESTJAVAOPTS} -Djdk.gtk.version=3 ProvokeGTK
     EXECRES=$?
     grep  'libgtk-x11.*=\ *[0-9]*$' strace.log > logg
 else
     echo "There is GTK 3 library: we should use it"
-    strace -o strace.log -fe open,openat ${TESTJAVA}/bin/java  -cp ${TESTCLASSPATH}  -Djdk.gtk.version=3 ProvokeGTK
+    strace -o strace.log -fe open,openat ${TESTJAVA}/bin/java  -cp ${TESTCLASSPATH} ${TESTJAVAOPTS} -Djdk.gtk.version=3 ProvokeGTK
     EXECRES=$?
     grep  'libgtk-3.*=\ *[0-9]*$' strace.log > logg
 fi
