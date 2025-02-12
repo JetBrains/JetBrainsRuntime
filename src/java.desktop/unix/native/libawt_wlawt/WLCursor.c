@@ -166,12 +166,12 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLToolkit_nativeSetCursor
         wl_cursor_surface = wl_compositor_create_surface(wl_compositor);
 
     CHECK_NULL(wl_cursor_surface);
+    wl_pointer_set_cursor(wl_pointer, pointerEnterSerial, wl_cursor_surface,
+                          hotspot_x / scale, hotspot_y / scale);
     wl_surface_attach(wl_cursor_surface, buffer, 0, 0);
     wl_surface_set_buffer_scale(wl_cursor_surface, scale);
     wl_surface_damage_buffer(wl_cursor_surface, 0, 0, width, height);
-    wl_surface_commit(wl_cursor_surface);
 
-    wl_pointer_set_cursor(wl_pointer, pointerEnterSerial, wl_cursor_surface,
-                          hotspot_x / scale, hotspot_y / scale);
+    wl_surface_commit(wl_cursor_surface);
     wlFlushToServer(env);
 }
