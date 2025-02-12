@@ -48,6 +48,8 @@ import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.metal.MTLGraphicsConfig;
 import sun.util.logging.PlatformLogger;
 
+import com.jetbrains.exported.JBRApi;
+
 /**
  * This is an implementation of a GraphicsEnvironment object for the default
  * local GraphicsEnvironment used by the Java Runtime Environment for Mac OS X
@@ -382,4 +384,14 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         return newFonts;
     }
 
+    @JBRApi.Provides("GraphicsUtils#isBuiltinDisplay")
+    public static boolean isBuiltinDisplay(GraphicsDevice display) {
+        if (display instanceof CGraphicsDevice) {
+            CGraphicsDevice cgd = (CGraphicsDevice) display;
+            return isBuiltinDisplayNative(cgd.getDisplayID());
+        }
+        return false;
+    }
+
+    private static native boolean isBuiltinDisplayNative(int displayID);
 }
