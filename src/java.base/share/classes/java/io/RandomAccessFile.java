@@ -27,11 +27,11 @@ package java.io;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.*;
 import java.nio.file.FileSystem;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 
 import static com.jetbrains.internal.IoOverNio.DEBUG;
 import jdk.internal.access.JavaIORandomAccessFileAccess;
@@ -263,9 +263,22 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         path = name;
 
         FileSystem nioFs = IoOverNioFileSystem.acquireNioFs();
-        useNio = nioFs != null;
+        Path nioPath = null;
+        if (nioFs != null && path != null) {
+            try {
+                nioPath = nioFs.getPath(path);
+            } catch (InvalidPathException _) {
+                // Nothing.
+            }
+        }
+
+        // Two significant differences between the legacy java.io and java.nio.files:
+        // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
+        // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
+        useNio = nioPath != null && Files.isRegularFile(nioPath);
+
         if (useNio) {
-            Path nioPath = nioFs.getPath(name);
+            Objects.requireNonNull(nioPath, "nioPath");
             try {
                 var options = optionsForChannel(imode);
                 // NB: the channel will be closed in the close() method

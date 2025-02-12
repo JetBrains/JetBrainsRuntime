@@ -28,11 +28,14 @@ package java.io;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 
 import jdk.internal.misc.VM;
+
+import java.util.Objects;
 import java.util.Set;
 
 import jdk.internal.util.ArraysSupport;
@@ -148,9 +151,23 @@ public class FileInputStream extends InputStream
         path = file.getPath();
 
         java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs();
-        useNio = path != null && nioFs != null;
+        Path nioPath = null;
+        if (nioFs != null && path != null) {
+            try {
+                nioPath = nioFs.getPath(path);
+                isRegularFile = Files.isRegularFile(nioPath);
+            } catch (InvalidPathException _) {
+                // Nothing.
+            }
+        }
+
+        // Two significant differences between the legacy java.io and java.nio.files:
+        // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
+        // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
+        useNio = nioPath != null && isRegularFile == Boolean.TRUE;
+
         if (useNio) {
-            Path nioPath = nioFs.getPath(path);
+            Objects.requireNonNull(nioPath, "nioPath");
             try {
                 // NB: the channel will be closed in the close() method
                 var ch = nioFs.provider().newFileChannel(nioPath, Set.of(StandardOpenOption.READ));
@@ -547,7 +564,9 @@ public class FileInputStream extends InputStream
      */
     @Override
     public long skip(long n) throws IOException {
-        if (!useNio) {
+        if (!isRegularFile()) {
+            return super.skip(n);
+        } else if (!useNio) {
             return skip0(n);
         } else {
             getChannel();
