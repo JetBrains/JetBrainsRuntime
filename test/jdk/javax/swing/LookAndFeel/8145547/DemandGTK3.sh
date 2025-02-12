@@ -57,7 +57,7 @@ then
     exit 0
 else
     echo "There is GTK 3 library: we should use it"
-    strace -o strace.log -fe open,openat ${TESTJAVA}/bin/java  -cp ${TESTCLASSPATH}  -Djdk.gtk.version=3 ProvokeGTK
+    strace -o strace.log -fe open,openat ${TESTJAVA}/bin/java  -cp ${TESTCLASSPATH} ${TESTJAVAOPTS} -Djdk.gtk.version=3 ProvokeGTK
     EXECRES=$?
     grep  'libgtk-3.*=\ *[0-9]*$' strace.log > logg
 fi
