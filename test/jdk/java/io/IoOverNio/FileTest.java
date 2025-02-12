@@ -486,6 +486,18 @@ public class FileTest {
         assertFalse(new File("..").createNewFile());
     }
 
+    @Test
+    public void testDeletionOfReadOnlyFileOnWindows() throws Exception {
+        Assume.assumeTrue(IS_WINDOWS);
+        File dir = temporaryFolder.newFolder();
+        File file = new File(dir, "testFile.txt");
+        assertTrue(file.createNewFile());
+        assertTrue(file.setReadOnly());
+
+        assertTrue(file.delete());
+        assertFalse(file.exists());
+    }
+
     // TODO Test file size.
 
 //    @Test

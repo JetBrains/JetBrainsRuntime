@@ -663,7 +663,7 @@ class IoOverNioFileSystem extends FileSystem {
     @Override
     public boolean delete(File f) {
         try {
-            boolean result = delete0(f);
+            boolean result = delete0(f, true);
             if (DEBUG.writeTraces()) {
                 System.err.printf("IoOverNioFileSystem.delete(%s) = %b%n", f, result);
             }
@@ -677,16 +677,27 @@ class IoOverNioFileSystem extends FileSystem {
         }
     }
 
-    private boolean delete0(File f) {
+    private boolean delete0(File f, boolean mayRepeat) {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
+            Path path = null;
             try {
-                Path path = nioFs.getPath(f.getPath());
+                path = nioFs.getPath(f.getPath());
                 nioFs.provider().delete(path);
                 return true;
             } catch (InvalidPathException e) {
                 throw new InternalError(e.getMessage(), e);
             } catch (IOException e) {
+                if (e instanceof AccessDeniedException && mayRepeat && path != null && nioFs.supportedFileAttributeViews().contains("dos")) {
+                    try {
+                        DosFileAttributeView attrs = nioFs.provider()
+                                .getFileAttributeView(path, DosFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+                        attrs.setReadOnly(false);
+                        return delete0(f, false);
+                    } catch (IOException _) {
+                        // Nothing.
+                    }
+                }
                 if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't delete a path %s", f), e)
                             .printStackTrace(System.err);
