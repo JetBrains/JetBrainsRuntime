@@ -86,6 +86,12 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     else
         WAYLAND_PROTOCOLS_ROOT=/usr/share/wayland-protocols/
     fi
+    AC_MSG_CHECKING([for wayland-protocols])
+    if test -d "$WAYLAND_PROTOCOLS_ROOT"; then
+      AC_MSG_RESULT([yes])
+    else
+      AC_MSG_ERROR([Can't find 'wayland-protocols' under $WAYLAND_PROTOCOLS_ROOT.])
+    fi
     GTK_SHELL1_PROTOCOL_PATH=
     if test "x${with_gtk_shell1_protocol}" != x && test "x${with_gtk_shell1_protocol}" != xno; then
       AC_MSG_CHECKING([for the gtk-shell1 Wayland protocol])
