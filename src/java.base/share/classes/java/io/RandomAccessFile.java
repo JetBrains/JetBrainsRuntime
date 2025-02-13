@@ -100,6 +100,12 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
 
     private final boolean useNio;
 
+    @SuppressWarnings({
+            "FieldCanBeLocal",
+            "this-escape",  // It immediately converts into a phantom reference.
+    })
+    private final NioChannelCleanable channelCleanable = new NioChannelCleanable(this);
+
     /**
      * Creates a random access file stream to read from, and optionally
      * to write to, a file with the specified name. A new
@@ -287,20 +293,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 // NB: the channel will be closed in the close() method
                 var ch = nioFs.provider().newFileChannel(nioPath, options);
                 channel = ch;
-
-                // This check is performed after opening the file for throwing access errors before file type errors.
-                IoOverNioFileSystem.checkIsNotDirectoryForStreams(name, nioPath);
-
-                // A nio channel may physically not have any file descriptor.
-                // Also, there's no API for retrieving file descriptors from nio channels.
-                if (ch instanceof FileChannelImpl fci) {
-                    fci.setUninterruptible();
-                    fd = fci.getFD();
-                    fd.attach(this);
-                    FileCleanable.register(fd);
-                } else {
-                    fd = new FileDescriptor();
-                }
+                channelCleanable.setChannel(channel);
+                fd = new FileDescriptor();
+                fd.registerCleanup(new NoOpCleanable(fd));
             } catch (IOException e) {
                 if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't create a RandomAccessFile for %s with %s", file, nioFs), e)

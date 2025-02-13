@@ -699,7 +699,7 @@ class IoOverNioFileSystem extends FileSystem {
                                 .getFileAttributeView(path, DosFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
                         attrs.setReadOnly(false);
                         return delete0(f, false);
-                    } catch (IOException _) {
+                    } catch (IOException ignored) {
                         // Nothing.
                     }
                 }
