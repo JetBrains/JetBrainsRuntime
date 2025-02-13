@@ -703,6 +703,7 @@ public class FileInputStream extends InputStream
                 }
             }
         }
+        channelCleanable.setChannel(null);
         return fc;
     }
 
