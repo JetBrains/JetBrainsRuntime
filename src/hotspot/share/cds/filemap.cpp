@@ -2024,7 +2024,7 @@ address FileMapInfo::heap_region_dumptime_address() {
   assert(UseSharedSpaces, "runtime only");
   assert(is_aligned(r->mapping_offset(), sizeof(HeapWord)), "must be");
   if (UseCompressedOops) {
-    return /*dumptime*/ narrow_oop_base() + r->mapping_offset();
+    return /*dumptime*/ (address)((uintptr_t)narrow_oop_base() + r->mapping_offset());
   } else {
     return heap_region_requested_address();
   }
@@ -2050,7 +2050,7 @@ address FileMapInfo::heap_region_requested_address() {
     // Runtime base = 0x4000 and shift is also 0. If we map this region at 0x5000, then
     // the value P can remain 0x1200. The decoded address = (0x4000 + (0x1200 << 0)) = 0x5200,
     // which is the runtime location of the referenced object.
-    return /*runtime*/ CompressedOops::base() + r->mapping_offset();
+    return /*runtime*/ (address)((uintptr_t)CompressedOops::base() + r->mapping_offset());
   } else {
     // We can avoid relocation if each region is mapped into the exact same address
     // where it was at dump time.
