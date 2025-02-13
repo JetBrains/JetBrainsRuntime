@@ -907,8 +907,8 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                         ByteBuffer buffer = ByteBuffer.wrap(buf);
                         int length = (int) Math.min(remains, buf.length);
                         buffer.limit(length);
-                        channel.write(buffer);
-                        remains -= length;
+                        int written = channel.write(buffer);
+                        remains -= written;
                     }
                 }
             } catch (NonWritableChannelException err) {
