@@ -40,7 +40,7 @@ public class IoOverNio {
     public static final Debug DEBUG;
     public static final boolean IS_ENABLED_IN_GENERAL =
             System.getProperty("jbr.java.io.use.nio", "true").equalsIgnoreCase("true");
-    private static final ThreadLocal<Boolean> ALLOW_IN_THIS_THREAD = new ThreadLocal<>();
+    private static final ThreadLocal<Integer> ALLOW_IN_THIS_THREAD = new ThreadLocal<>();
 
     static {
         String value = System.getProperty("jbr.java.io.use.nio.debug", "");
@@ -64,7 +64,7 @@ public class IoOverNio {
     }
 
     public static boolean isAllowedInThisThread() {
-        return ALLOW_IN_THIS_THREAD.get() != Boolean.FALSE;
+        return ALLOW_IN_THIS_THREAD.get() == null;
     }
 
     /**
@@ -72,9 +72,6 @@ public class IoOverNio {
      * An attempt to access {@link FileSystems#getDefault()} during class loading
      * would require loading the class of the default file system provider,
      * which would recursively require the access to {@link FileSystems#getDefault()}.
-     * <p>
-     * Beware that this function does not support correctly nested invocations.
-     * However, it doesn't bring any problem in practice.
      * <p>
      * Usage:
      * <pre>
@@ -90,7 +87,12 @@ public class IoOverNio {
      * </p>
      */
     public static ThreadLocalCloseable disableInThisThread() {
-        ALLOW_IN_THIS_THREAD.set(false);
+        Integer value = ALLOW_IN_THIS_THREAD.get();
+        if (value == null) {
+            value = 0;
+        }
+        ++value;
+        ALLOW_IN_THIS_THREAD.set(value);
         return ThreadLocalCloseable.INSTANCE;
     }
 
@@ -109,7 +111,7 @@ public class IoOverNio {
         }
 
         private boolean mayWriteAnything() {
-            return VM.isBooted() && IoOverNio.ALLOW_IN_THIS_THREAD.get();
+            return VM.isBooted() && isAllowedInThisThread();
         }
 
         public boolean writeErrors() {
@@ -129,7 +131,12 @@ public class IoOverNio {
 
         @Override
         public void close() {
-            ALLOW_IN_THIS_THREAD.set(true);
+            Integer value = ALLOW_IN_THIS_THREAD.get();
+            --value;
+            if (value == 0) {
+                value = null;
+            }
+            ALLOW_IN_THIS_THREAD.set(value);
         }
     }
 }
