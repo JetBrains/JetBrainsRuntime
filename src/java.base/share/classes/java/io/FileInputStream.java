@@ -33,8 +33,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 
-import jdk.internal.misc.VM;
-
 import java.util.Objects;
 import java.util.Set;
 
@@ -100,6 +98,12 @@ public class FileInputStream extends InputStream
     private @Stable Boolean isRegularFile;
 
     private final boolean useNio;
+
+    @SuppressWarnings({
+            "FieldCanBeLocal",
+            "this-escape",  // It immediately converts into a phantom reference.
+    })
+    private final NioChannelCleanable channelCleanable = new NioChannelCleanable(this);
 
     /**
      * Creates a {@code FileInputStream} to read from an existing file
@@ -172,17 +176,9 @@ public class FileInputStream extends InputStream
                 // NB: the channel will be closed in the close() method
                 var ch = nioFs.provider().newFileChannel(nioPath, Set.of(StandardOpenOption.READ));
                 channel = ch;
-
-                // A nio channel may physically not have any file descriptor.
-                // Also, there's no API for retrieving file descriptors from nio channels.
-                if (ch instanceof FileChannelImpl fci) {
-                    fci.setUninterruptible();
-                    fd = fci.getFD();
-                    fd.attach(this);
-                    FileCleanable.register(fd);
-                } else {
-                    fd = new FileDescriptor();
-                }
+                channelCleanable.setChannel(channel);
+                fd = new FileDescriptor();
+                fd.registerCleanup(new NoOpCleanable(fd));
             } catch (IOException e) {
                 if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't create a FileInputStream for %s with %s", file, nioFs), e)
