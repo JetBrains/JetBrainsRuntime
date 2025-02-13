@@ -377,14 +377,14 @@ public class FileOutputStream extends OutputStream
     }
 
     private void implWrite(int b, boolean append) throws IOException {
-        if (useNio) {
+        if (!useNio) {
+            write(b, append);
+        } else {
             // 'append' is ignored; the channel is supposed to obey the mode in which the file was opened
             byte[] array = new byte[1];
             array[0] = (byte) b;
             ByteBuffer buffer = ByteBuffer.wrap(array);
             getChannel().write(buffer);
-        } else {
-            write(b, append);
         }
     }
 
@@ -440,7 +440,9 @@ public class FileOutputStream extends OutputStream
     }
 
     private void implWriteBytes(byte[] b, int off, int len, boolean append) throws IOException {
-        if (useNio) {
+        if (!useNio) {
+            writeBytes(b, off, len, append);
+        } else {
             // 'append' is ignored; the channel is supposed to obey the mode in which the file was opened
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
@@ -449,8 +451,6 @@ public class FileOutputStream extends OutputStream
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 writeBytes(b, off, len, append);
             }
-        } else {
-            writeBytes(b, off, len, append);
         }
     }
 

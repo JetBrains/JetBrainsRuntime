@@ -292,13 +292,14 @@ public class FileInputStream extends InputStream
     private native int read0() throws IOException;
 
     private int implRead() throws IOException {
-        if (useNio) {
+        if (!useNio) {
+            return read0();
+        } else {
             ByteBuffer buffer = ByteBuffer.allocate(1);
             int nRead = getChannel().read(buffer);
             buffer.rewind();
             return nRead == 1 ? (buffer.get() & 0xFF) : -1;
         }
-        return read0();
     }
 
     /**
@@ -332,7 +333,9 @@ public class FileInputStream extends InputStream
     }
 
     private int implRead(byte[] b) throws IOException {
-        if (useNio) {
+        if (!useNio) {
+            return readBytes(b, 0, b.length);
+        } else {
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b);
                 return getChannel().read(buffer);
@@ -341,7 +344,6 @@ public class FileInputStream extends InputStream
                 return readBytes(b, 0, b.length);
             }
         }
-        return readBytes(b, 0, b.length);
     }
 
     /**
@@ -369,7 +371,9 @@ public class FileInputStream extends InputStream
     }
 
     private int implRead(byte[] b, int off, int len) throws IOException {
-        if (useNio) {
+        if (!useNio) {
+            return readBytes(b, off, len);
+        } else {
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
                 return getChannel().read(buffer);
@@ -378,7 +382,6 @@ public class FileInputStream extends InputStream
                 return readBytes(b, off, len);
             }
         }
-        return readBytes(b, off, len);
     }
 
     @Override
@@ -487,10 +490,11 @@ public class FileInputStream extends InputStream
     private long length() throws IOException {
         long comp = Blocker.begin();
         try {
-            if (useNio) {
+            if (!useNio) {
+                return length0();
+            } else {
                 return getChannel().size();
             }
-            return length0();
         } finally {
             Blocker.end(comp);
         }
@@ -500,10 +504,11 @@ public class FileInputStream extends InputStream
     private long position() throws IOException {
         long comp = Blocker.begin();
         try {
-            if (useNio) {
+            if (!useNio) {
+                return position0();
+            } else {
                 return getChannel().position();
             }
-            return position0();
         } finally {
             Blocker.end(comp);
         }
@@ -538,13 +543,14 @@ public class FileInputStream extends InputStream
     public long skip(long n) throws IOException {
         long comp = Blocker.begin();
         try {
-            if (useNio) {
+            if (!useNio) {
+                return skip0(n);
+            } else {
                 getChannel();
                 long startPos = channel.position();
                 channel.position(startPos + n);
                 return channel.position() - startPos;
             }
-            return skip0(n);
         } finally {
             Blocker.end(comp);
         }
@@ -573,7 +579,7 @@ public class FileInputStream extends InputStream
     public int available() throws IOException {
         long comp = Blocker.begin();
         try {
-            if (!useNio || path == null) {
+            if (!useNio) {
                 return available0();
             } else {
                 FileChannel channel = getChannel();

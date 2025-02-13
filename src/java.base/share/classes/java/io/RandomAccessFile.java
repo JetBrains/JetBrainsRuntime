@@ -452,13 +452,13 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     }
 
     private int implRead() throws IOException {
-        if (useNio) {
+        if (!useNio) {
+            return read0();
+        } else {
             ByteBuffer buffer = ByteBuffer.allocate(1);
             int nRead = getChannel().read(buffer);
             buffer.rewind();
             return nRead == 1 ? (buffer.get() & 0xFF) : -1;
-        } else {
-            return read0();
         }
     }
 
@@ -481,7 +481,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     }
 
     private int implReadBytes(byte[] b, int off, int len) throws IOException {
-        if (useNio) {
+        if (!useNio) {
+            return readBytes0(b, off, len);
+        } else {
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
                 return getChannel().read(buffer);
@@ -489,8 +491,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes0(b, off, len);
             }
-        } else {
-            return readBytes0(b, off, len);
         }
     }
 
@@ -522,7 +522,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      *             {@code b.length - off}
      */
     public int read(byte[] b, int off, int len) throws IOException {
-        if (useNio) {
+        if (!useNio) {
+            return readBytes(b, off, len);
+        } else {
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
                 return getChannel().read(buffer);
@@ -530,8 +532,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes(b, off, len);
             }
-        } else {
-            return readBytes(b, off, len);
         }
     }
 
@@ -555,7 +555,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     NullPointerException If {@code b} is {@code null}.
      */
     public int read(byte[] b) throws IOException {
-        if (useNio) {
+        if (!useNio) {
+            return readBytes(b, 0, b.length);
+        } else {
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b);
                 return getChannel().read(buffer);
@@ -563,8 +565,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes(b, 0, b.length);
             }
-        } else {
-            return readBytes(b, 0, b.length);
         }
     }
 
@@ -668,13 +668,13 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     }
 
     private void implWrite(int b) throws IOException {
-        if (useNio) {
+        if (!useNio) {
+            write0(b);
+        } else {
             byte[] array = new byte[1];
             array[0] = (byte) b;
             ByteBuffer buffer = ByteBuffer.wrap(array);
             getChannel().write(buffer);
-        } else {
-            write0(b);
         }
     }
 
@@ -698,7 +698,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     }
 
     private void implWriteBytes(byte[] b, int off, int len) throws IOException {
-        if (useNio) {
+        if (!useNio) {
+            writeBytes0(b, off, len);
+        } else {
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
                 getChannel().write(buffer);
@@ -706,8 +708,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 writeBytes0(b, off, len);
             }
-        } else {
-            writeBytes0(b, off, len);
         }
     }
 
@@ -748,10 +748,10 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     IOException  if an I/O error occurs.
      */
     public long getFilePointer() throws IOException {
-        if (useNio) {
-            return getChannel().position();
-        } else {
+        if (!useNio) {
             return getFilePointer0();
+        } else {
+            return getChannel().position();
         }
     }
 
@@ -777,10 +777,10 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         }
         long comp = Blocker.begin();
         try {
-            if (useNio) {
-                getChannel().position(pos);
-            } else {
+            if (!useNio) {
                 seek0(pos);
+            } else {
+                getChannel().position(pos);
             }
         } finally {
             Blocker.end(comp);
@@ -798,10 +798,10 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     public long length() throws IOException {
         long comp = Blocker.begin();
         try {
-            if (useNio) {
-                return getChannel().size();
-            } else {
+            if (!useNio) {
                 return length0();
+            } else {
+                return getChannel().size();
             }
         } finally {
             Blocker.end(comp);
@@ -832,7 +832,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     public void setLength(long newLength) throws IOException {
         long comp = Blocker.begin();
         try {
-            if (useNio) {
+            if (!useNio) {
+                setLength0(newLength);
+            } else {
                 FileChannel channel = getChannel();
                 long oldSize = channel.size();
                 if (newLength < oldSize) {
@@ -849,8 +851,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                         remains -= length;
                     }
                 }
-            } else {
-                setLength0(newLength);
             }
         } finally {
             Blocker.end(comp);
