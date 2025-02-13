@@ -43,7 +43,6 @@ public class IoOverNio {
     private static final ThreadLocal<Boolean> ALLOW_IN_THIS_THREAD = new ThreadLocal<>();
 
     static {
-        ALLOW_IN_THIS_THREAD.set(true);
         String value = System.getProperty("jbr.java.io.use.nio.debug", "");
         switch (value) {
             case "error":
@@ -65,7 +64,7 @@ public class IoOverNio {
     }
 
     public static boolean isAllowedInThisThread() {
-        return ALLOW_IN_THIS_THREAD.get() == Boolean.TRUE;
+        return ALLOW_IN_THIS_THREAD.get() != Boolean.FALSE;
     }
 
     /**
