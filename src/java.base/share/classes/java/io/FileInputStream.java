@@ -173,9 +173,6 @@ public class FileInputStream extends InputStream
                 var ch = nioFs.provider().newFileChannel(nioPath, Set.of(StandardOpenOption.READ));
                 channel = ch;
 
-                // This check is performed after opening the file for throwing access errors before file type errors.
-                IoOverNioFileSystem.checkIsNotDirectoryForStreams(path, nioPath);
-
                 // A nio channel may physically not have any file descriptor.
                 // Also, there's no API for retrieving file descriptors from nio channels.
                 if (ch instanceof FileChannelImpl fci) {

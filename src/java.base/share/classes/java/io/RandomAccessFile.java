@@ -285,9 +285,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 var ch = nioFs.provider().newFileChannel(nioPath, options);
                 channel = ch;
 
-                // This check is performed after opening the file for throwing access errors before file type errors.
-                IoOverNioFileSystem.checkIsNotDirectoryForStreams(name, nioPath);
-
                 // A nio channel may physically not have any file descriptor.
                 // Also, there's no API for retrieving file descriptors from nio channels.
                 if (ch instanceof FileChannelImpl fci) {
