@@ -553,6 +553,7 @@ public class FileOutputStream extends OutputStream
                 }
             }
         }
+        channelCleanable.setChannel(null);
         return fc;
     }
 

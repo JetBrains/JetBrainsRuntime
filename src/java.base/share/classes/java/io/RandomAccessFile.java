@@ -382,6 +382,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 }
             }
         }
+        channelCleanable.setChannel(null);
         return fc;
     }
 
