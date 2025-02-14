@@ -1,0 +1,2 @@
+javax/swing/JTable/JTableRightOrientationTest.java JBR-8102 linux-all
+javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all
