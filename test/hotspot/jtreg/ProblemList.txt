@@ -164,22 +164,22 @@ runtime/jni/terminatedThread/TestTerminatedThread.java 8219652 aix-ppc64
 
 serviceability/dcmd/gc/RunFinalizationTest.java 8227120 generic-all
 serviceability/sa/ClhsdbAttach.java 8193639 solaris-all
-serviceability/sa/ClhsdbCDSCore.java 8294316,8193639,8267433 solaris-all,macosx-x64
+serviceability/sa/ClhsdbCDSCore.java 8193639,8267433 solaris-all,macosx-x64
 serviceability/sa/ClhsdbCDSJstackPrintAll.java 8193639 solaris-all
 serviceability/sa/CDSJMapClstats.java 8193639 solaris-all
 serviceability/sa/ClhsdbField.java 8193639 solaris-all
-serviceability/sa/ClhsdbFindPC.java 8294316,8193639,8267433 solaris-all,macosx-x64
+serviceability/sa/ClhsdbFindPC.java 8193639,8267433 solaris-all,macosx-x64
 serviceability/sa/ClhsdbFlags.java 8193639 solaris-all
 serviceability/sa/ClhsdbInspect.java 8193639 solaris-all
 serviceability/sa/ClhsdbJdis.java 8193639 solaris-all
 serviceability/sa/ClhsdbJhisto.java 8193639 solaris-all
 serviceability/sa/ClhsdbJstack.java 8193639 solaris-all
 serviceability/sa/ClhsdbLongConstant.java 8193639 solaris-all
-serviceability/sa/ClhsdbPmap.java 8294316,8193639,8267433 solaris-all,macosx-x64
+serviceability/sa/ClhsdbPmap.java 8193639,8267433 solaris-all,macosx-x64
 serviceability/sa/ClhsdbPrintAll.java 8193639 solaris-all
 serviceability/sa/ClhsdbPrintAs.java 8193639 solaris-all
 serviceability/sa/ClhsdbPrintStatics.java 8193639 solaris-all
-serviceability/sa/ClhsdbPstack.java 8294316,8193639,8267433 solaris-all,macosx-x64
+serviceability/sa/ClhsdbPstack.java 8193639,8267433 solaris-all,macosx-x64
 serviceability/sa/ClhsdbRegionDetailsScanOopsForG1.java 8193639 solaris-all
 serviceability/sa/ClhsdbScanOops.java 8193639 solaris-all
 serviceability/sa/ClhsdbSource.java 8193639 solaris-all
@@ -203,8 +203,8 @@ serviceability/sa/TestInstanceKlassSize.java 8193639 solaris-all
 serviceability/sa/TestInstanceKlassSizeForInterface.java 8193639 solaris-all
 serviceability/sa/TestIntConstant.java 8193639 solaris-all
 serviceability/sa/TestJhsdbJstackLock.java 8193639 solaris-all
-serviceability/sa/TestJmapCore.java 8294316,8193639,8267433 solaris-all,macosx-x64
-serviceability/sa/TestJmapCoreMetaspace.java 8294316,8193639,8267433 solaris-all,macosx-x64
+serviceability/sa/TestJmapCore.java 8193639,8267433 solaris-all,macosx-x64
+serviceability/sa/TestJmapCoreMetaspace.java 8193639,8267433 solaris-all,macosx-x64
 serviceability/sa/TestPrintMdo.java 8193639 solaris-all
 serviceability/sa/TestRevPtrsForInvokeDynamic.java 8191270 generic-all
 serviceability/sa/TestType.java 8193639 solaris-all
