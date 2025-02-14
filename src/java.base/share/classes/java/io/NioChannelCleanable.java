@@ -65,7 +65,7 @@ final class NioChannelCleanable extends PhantomCleanable<Object> {
         if (channel != null) {
             try {
                 channel.close();
-            } catch (IOException | RuntimeException _) {
+            } catch (IOException | RuntimeException ignored) {
                 // Ignored.
             }
         }
