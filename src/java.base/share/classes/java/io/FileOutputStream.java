@@ -231,9 +231,16 @@ public class FileOutputStream extends OutputStream
                         append ? Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
                                 : Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING));
                 channel = ch;
-                channelCleanable.setChannel(channel);
-                fd = new FileDescriptor();
-                fd.registerCleanup(new NoOpCleanable(fd));
+
+                if (ch instanceof FileChannelImpl fci) {
+                    fd = fci.getFD();
+                    fd.attach(this);
+                    FileCleanable.register(fd);
+                } else {
+                    channelCleanable.setChannel(channel);
+                    fd = new FileDescriptor();
+                    fd.registerCleanup(new NoOpCleanable(fd));
+                }
             } catch (IOException e) {
                 if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't create a FileOutputStream for %s with %s", file, nioFs), e)

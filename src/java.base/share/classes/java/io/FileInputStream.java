@@ -176,9 +176,16 @@ public class FileInputStream extends InputStream
                 // NB: the channel will be closed in the close() method
                 var ch = nioFs.provider().newFileChannel(nioPath, Set.of(StandardOpenOption.READ));
                 channel = ch;
-                channelCleanable.setChannel(channel);
-                fd = new FileDescriptor();
-                fd.registerCleanup(new NoOpCleanable(fd));
+
+                if (ch instanceof FileChannelImpl fci) {
+                    fd = fci.getFD();
+                    fd.attach(this);
+                    FileCleanable.register(fd);
+                } else {
+                    channelCleanable.setChannel(channel);
+                    fd = new FileDescriptor();
+                    fd.registerCleanup(new NoOpCleanable(fd));
+                }
             } catch (IOException e) {
                 if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't create a FileInputStream for %s with %s", file, nioFs), e)
