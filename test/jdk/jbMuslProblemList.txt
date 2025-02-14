@@ -5,6 +5,7 @@ java/awt/Mixing/HWDisappear.java JBR-6818 linux-all
 java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java JBR-7076 linux-all
 java/awt/Window/FindOwner/FindOwnerTest.html JBR-7500 linux-all
 
+javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java JBR-8269 linux-all
 javax/swing/border/Test4129681.java JBR-7787 linux-all
 javax/swing/JFrame/JFrameBackgroundRefreshTest.java JBR-7471 linux-all
 javax/swing/JRadioButton/bug4823809.java JBR-7788 linux-all
