@@ -2,7 +2,6 @@ jb/java/awt/wayland/RobotGetOOBPixelsTest.java JBR-8029 linux-all
 jb/java/awt/wayland/RobotGetPixelTest.java JBR-8029 linux-all
 jb/java/awt/wayland/RobotGetPixelsTest.java JBR-8029 linux-all
 
-# Fedora & ArchLinux (Wayland) & Ubuntu 21.04
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java         8279256 linux-all
 java/awt/event/KeyEvent/FunctionKeyTest.java JBR-7773 linux-all
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-7269 linux-all
@@ -10,5 +9,8 @@ javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520 linux-all
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-7140 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-7530 linux-all
 javax/swing/JInternalFrame/bug5009724.java JBR-7087 linux-all
+javax/swing/JOptionPane/8081019/bug8081019.java JBR-8275 linux-all
 javax/swing/JRadioButton/bug4823809.java JBR-7774 linux-all
 javax/swing/JTabbedPane/bug4703690.java JBR-7815,JBR-7816 linux-all
+javax/swing/LookAndFeel/8145547/DemandGTK2.sh JBR-8274 linux-all
+javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-8274 linux-all
