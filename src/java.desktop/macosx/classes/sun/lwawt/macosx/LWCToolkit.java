@@ -815,33 +815,16 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component)
             throws InvocationTargetException
     {
-        invokeAndWait(runnable, component, false, 0.0);
+        invokeAndWait(runnable, component, -1);
     }
 
-    /* 25.01.25: keep public methods with (int timeoutSeconds) */
-    @Deprecated(since = "25")
     public static void invokeAndWait(Runnable runnable, Component component, int timeoutSeconds)
             throws InvocationTargetException
     {
         invokeAndWait(runnable, component, false, timeoutSeconds);
     }
 
-    @Deprecated(since = "25")
     public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, int timeoutSeconds)
-            throws InvocationTargetException {
-        final double timeout = (timeoutSeconds > 0) ? timeoutSeconds : 0.0;
-        invokeAndWait(runnable, component, processEvents, timeout);
-    }
-
-    /* 25.01.25: added public methods with (double timeoutSeconds) to have timeouts between 0.0 and 1.0 */
-
-    public static void invokeAndWait(Runnable runnable, Component component, double timeoutSeconds)
-            throws InvocationTargetException
-    {
-        invokeAndWait(runnable, component, false, timeoutSeconds);
-    }
-
-    public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, double timeoutSeconds)
             throws InvocationTargetException
     {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -904,10 +887,6 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     private static native boolean isBlockingEventDispatchThread();
-
-    static native String getThreadTraceContexts();
-
-    static native boolean isWithinPowerTransition();
 
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {
@@ -1094,13 +1073,13 @@ public final class LWCToolkit extends LWToolkit {
      *                      if false - all events come after exit form the nested loop
      */
     static void doAWTRunLoop(long mediator, boolean processEvents) {
-        doAWTRunLoop(mediator, processEvents, 0.0);
+        doAWTRunLoop(mediator, processEvents, -1);
     }
 
     /**
-     * Starts run-loop with the provided timeout. Use (<=0.0) for the infinite value.
+     * Starts run-loop with the provided timeout. Use (-1) for the infinite value.
      */
-    static boolean doAWTRunLoop(long mediator, boolean processEvents, double timeoutSeconds) {
+    static boolean doAWTRunLoop(long mediator, boolean processEvents, int timeoutSeconds) {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("doAWTRunLoop: enter: mediator: " + mediator + " processEvents: "+ processEvents + " timeoutSeconds: " + timeoutSeconds);
         }
@@ -1112,7 +1091,7 @@ public final class LWCToolkit extends LWToolkit {
             }
         }
     }
-    private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, double timeoutSeconds);
+    private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, int timeoutSeconds);
     static native void stopAWTRunLoop(long mediator);
 
     private native boolean nativeSyncQueue(long timeout);
