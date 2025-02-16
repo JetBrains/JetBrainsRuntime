@@ -59,12 +59,14 @@ java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5
 javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-6110 linux-x64
 javax/swing/JComponent/7154030/bug7154030.java JBR-6134 windows-x64
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      JBR-5071 linux-all
+javax/swing/JTextArea/bug4265784.java JBR-7472 linux-all
 javax/swing/JSlider/6848475/bug6848475.java JBR-7329,JBR-7472 windows-all
 javax/swing/JSplitPane/4885629/bug4885629.java JBR-7270 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-7404 windows-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6090,JBR-6360 linux-all,windows-all,macosx-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-5342 linux-all
-javax/swing/JTextArea/bug4265784.java JBR-7472 linux-all
+javax/swing/SwingUtilities/7146377/bug7146377.java JBR-8286 linux-x64
+javax/swing/text/AbstractDocument/8190763/TestCCEOnEditEvent.java JBR-8286 linux-x64
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-8212 linux-all
 
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-6589 windows-all

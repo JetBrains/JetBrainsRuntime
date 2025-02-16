@@ -1083,7 +1083,7 @@ javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java JBR-5210 windows-all
 javax/swing/text/html/StyleSheet/bug4476002.java JBR-7498 linux-5.18.2-arch1-1
 javax/swing/text/html/StyleSheet/bug4936917.java JBR-899,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id0 JBR-5799 windows-all
-javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-5779 linux-all,macosx-all
+javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-5779 linux-all,macosx-15.3
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/synth/7158712/bug7158712.java JBR-125,8322653 linux-all,windows-all,macosx-all
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8253184,JBR-5510,JBR-803 windows-all,linux-all,macosx-all
@@ -1102,7 +1102,7 @@ javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-53
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210,JBR-6687 windows-all,linux-5.18.2-arch1-1
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5541 linux-all
-javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952 windows-all
+javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java 8340330,JBR-5952 windows-all,macosx-15.3
 javax/swing/UIDefaults/6795356/TableTest.java JBR-5767 windows-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,JBR-1656 windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1

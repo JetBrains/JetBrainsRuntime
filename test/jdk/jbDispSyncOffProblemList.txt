@@ -20,7 +20,6 @@ javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-7247 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucent.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
-javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/SwingGraphics/TranslateTest.java JBR-7510 macosx-aarch64
 javax/swing/system/6799345/TestShutdown.java JBR-6881 macosx-12.7.4
