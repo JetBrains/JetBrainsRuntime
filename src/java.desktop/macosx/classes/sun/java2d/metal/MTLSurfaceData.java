@@ -693,9 +693,9 @@ public abstract class MTLSurfaceData extends SurfaceData
             myImage = image;
 
             MTLRenderQueue rq = MTLRenderQueue.getInstance();
-            rq.lock();
-
             AtomicBoolean success = new AtomicBoolean(false);
+
+            rq.lock();
             try {
                 MTLContext.setScratchSurface(gc);
                 rq.flushAndInvokeNow(() -> success.set(initWithTexture(getNativeOps(), false, pTexture)));
