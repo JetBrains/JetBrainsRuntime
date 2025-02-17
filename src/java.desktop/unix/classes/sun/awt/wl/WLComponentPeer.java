@@ -509,7 +509,7 @@ public class WLComponentPeer implements ComponentPeer {
                 SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).commit();
             }
         });
-        Toolkit.getDefaultToolkit().sync();
+        ((WLToolkit) Toolkit.getDefaultToolkit()).flush();
     }
 
     private boolean canPaintRoundedCorners() {
