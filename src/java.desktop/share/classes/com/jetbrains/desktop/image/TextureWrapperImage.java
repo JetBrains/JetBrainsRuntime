@@ -25,7 +25,6 @@
 
 package com.jetbrains.desktop.image;
 
-import com.jetbrains.exported.JBRApi;
 import sun.awt.image.SurfaceManager;
 import sun.java2d.SurfaceData;
 import sun.java2d.SurfaceManagerFactory;
@@ -34,7 +33,6 @@ import java.awt.AlphaComposite;
 import java.awt.GraphicsConfiguration;
 import java.awt.Graphics2D;
 import java.awt.Graphics;
-import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.ImageCapabilities;
 import java.awt.image.BufferedImage;
@@ -78,28 +76,6 @@ public class TextureWrapperImage extends Image {
         SurfaceManager.setManager(this, surfaceManager);
     }
 
-    @JBRApi.Provides("SharedTextures")
-    public static Image wrapTexture(GraphicsConfiguration gc, long texture) {
-        return new TextureWrapperImage(gc, texture);
-    }
-
-    @JBRApi.Provides("SharedTextures")
-    public static int getTextureType() {
-        GraphicsConfiguration gc = GraphicsEnvironment
-                .getLocalGraphicsEnvironment()
-                .getDefaultScreenDevice()
-                .getDefaultConfiguration();
-        try {
-            if (isInstanceOf(gc, "sun.java2d.metal.MTLGraphicsConfig")) {
-                return 1;
-            }
-        } catch (Exception e) {
-            throw new InternalError("Unexpected exception during reflection", e);
-        }
-
-        return 0;
-    }
-
     @Override
     public int getWidth(ImageObserver observer) {
         return (int) (sd.getBounds().width / sd.getDefaultScaleX());
@@ -136,14 +112,5 @@ public class TextureWrapperImage extends Image {
     @Override
     public ImageCapabilities getCapabilities(GraphicsConfiguration gc) {
         return capabilities;
-    }
-
-    private static boolean isInstanceOf(Object obj, String className) {
-        try {
-            var clazz = Class.forName(className);
-            return clazz.isInstance(obj);
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
     }
 }
