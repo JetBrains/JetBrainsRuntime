@@ -25,6 +25,8 @@
 
 package sun.java2d;
 
+import java.awt.GraphicsConfiguration;
+import java.awt.Image;
 import sun.awt.CGraphicsEnvironment;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.SurfaceManager;
@@ -34,8 +36,6 @@ import sun.java2d.metal.MTLGraphicsConfig;
 import sun.java2d.metal.MTLSurfaceData;
 import sun.java2d.metal.MTLVolatileSurfaceManager;
 import sun.java2d.opengl.CGLVolatileSurfaceManager;
-
-import java.awt.*;
 
 /**
  * This is a factory class with static methods for creating a

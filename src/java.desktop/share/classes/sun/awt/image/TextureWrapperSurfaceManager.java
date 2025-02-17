@@ -27,7 +27,9 @@ package sun.awt.image;
 
 import sun.java2d.SurfaceData;
 
-import java.awt.*;
+import java.awt.GraphicsConfiguration;
+import java.awt.ImageCapabilities;
+
 
 public class TextureWrapperSurfaceManager extends SurfaceManager {
     private final SurfaceData sd;

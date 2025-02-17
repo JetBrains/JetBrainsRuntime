@@ -29,7 +29,8 @@ import sun.awt.image.SunVolatileImage;
 import sun.awt.image.SurfaceManager;
 import sun.awt.image.VolatileSurfaceManager;
 
-import java.awt.*;
+import java.awt.GraphicsConfiguration;
+import java.awt.Image;
 
 /**
  * This factory creates platform specific VolatileSurfaceManager

@@ -25,7 +25,8 @@
 
 package sun.java2d;
 
-import java.awt.*;
+import java.awt.GraphicsConfiguration;
+import java.awt.Image;
 
 import sun.awt.image.BufImgVolatileSurfaceManager;
 import sun.awt.image.SunVolatileImage;

@@ -30,7 +30,13 @@ import sun.awt.image.SurfaceManager;
 import sun.java2d.SurfaceData;
 import sun.java2d.SurfaceManagerFactory;
 
-import java.awt.*;
+import java.awt.AlphaComposite;
+import java.awt.GraphicsConfiguration;
+import java.awt.Graphics2D;
+import java.awt.Graphics;
+import java.awt.GraphicsEnvironment;
+import java.awt.Image;
+import java.awt.ImageCapabilities;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
