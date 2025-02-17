@@ -33,6 +33,7 @@ import java.util.Set;
 
 import java.nio.file.Path;
 
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.event.FileWriteEvent;
@@ -347,7 +348,7 @@ public class FileOutputStream extends OutputStream
     @Override
     public void write(int b) throws IOException {
         boolean append = FD_ACCESS.getAppend(fd);
-        if (jfrTracing && FileWriteEvent.enabled()) {
+        if (jfrTracing && FileWriteEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             traceWrite(b, append);
             return;
         }
@@ -403,7 +404,7 @@ public class FileOutputStream extends OutputStream
     @Override
     public void write(byte[] b) throws IOException {
         boolean append = FD_ACCESS.getAppend(fd);
-        if (jfrTracing && FileWriteEvent.enabled()) {
+        if (jfrTracing && FileWriteEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             traceWriteBytes(b, 0, b.length, append);
             return;
         }
@@ -424,7 +425,7 @@ public class FileOutputStream extends OutputStream
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
         boolean append = FD_ACCESS.getAppend(fd);
-        if (jfrTracing && FileWriteEvent.enabled()) {
+        if (jfrTracing && FileWriteEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             traceWriteBytes(b, off, len, append);
             return;
         }

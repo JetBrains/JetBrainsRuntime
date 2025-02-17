@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
 
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.event.FileReadEvent;
 import jdk.internal.vm.annotation.Stable;
@@ -268,7 +269,7 @@ public class FileInputStream extends InputStream
      */
     @Override
     public int read() throws IOException {
-        if (jfrTracing && FileReadEvent.enabled()) {
+        if (jfrTracing && FileReadEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             return traceRead0();
         }
         return implRead();
@@ -350,7 +351,7 @@ public class FileInputStream extends InputStream
      */
     @Override
     public int read(byte[] b) throws IOException {
-        if (jfrTracing && FileReadEvent.enabled()) {
+        if (jfrTracing && FileReadEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             return traceReadBytes(b, 0, b.length);
         }
 
@@ -387,7 +388,7 @@ public class FileInputStream extends InputStream
      */
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
-        if (jfrTracing && FileReadEvent.enabled()) {
+        if (jfrTracing && FileReadEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             return traceReadBytes(b, off, len);
         }
         return implRead(b, off, len);

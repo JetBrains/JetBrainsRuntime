@@ -35,6 +35,8 @@ import java.util.HashSet;
 import java.util.Objects;
 
 import static com.jetbrains.internal.IoOverNio.DEBUG;
+
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.JavaIORandomAccessFileAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Blocker;
@@ -437,7 +439,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      *                          end-of-file has been reached.
      */
     public int read() throws IOException {
-        if (jfrTracing && FileReadEvent.enabled()) {
+        if (jfrTracing && FileReadEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             return traceRead0();
         }
         return implRead();
@@ -487,7 +489,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws    IOException If an I/O error has occurred.
      */
     private int readBytes(byte[] b, int off, int len) throws IOException {
-        if (jfrTracing && FileReadEvent.enabled()) {
+        if (jfrTracing && FileReadEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             return traceReadBytes0(b, off, len);
         }
         return implReadBytes(b, off, len);
@@ -691,7 +693,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     IOException  if an I/O error occurs.
      */
     public void write(int b) throws IOException {
-        if (jfrTracing && FileWriteEvent.enabled()) {
+        if (jfrTracing && FileWriteEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             traceImplWrite(b);
             return;
         }
@@ -740,7 +742,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws    IOException If an I/O error has occurred.
      */
     private void writeBytes(byte[] b, int off, int len) throws IOException {
-        if (jfrTracing && FileWriteEvent.enabled()) {
+        if (jfrTracing && FileWriteEvent.enabled() && !IoOverNio.isAllowedInThisThread()) {
             traceImplWriteBytes(b, off, len);
             return;
         }
