@@ -65,7 +65,7 @@ class SharedTextures {
                 .getDefaultConfiguration();
         try {
             if (isInstanceOf(gc, "sun.java2d.metal.MTLGraphicsConfig")) {
-                return 1;
+                return METAL_TEXTURE_TYPE;
             }
         } catch (Exception e) {
             throw new InternalError("Unexpected exception during reflection", e);
