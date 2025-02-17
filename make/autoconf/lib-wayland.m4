@@ -154,7 +154,7 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
         VULKAN_FOUND=no
 
         if test "x${with_vulkan_include}" != x; then
-          AC_MSG_CHECKING([for vulkan.h])
+          AC_MSG_CHECKING([for ${with_vulkan_include}/vulkan/vulkan.h])
           if test -s "${with_vulkan_include}/vulkan/vulkan.h"; then
             VULKAN_FOUND=yes
             VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${with_vulkan_include} -DVULKAN_ENABLED"
@@ -165,14 +165,15 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
           fi
         fi
 
-        if test "x$VULKAN_FOUND" = xno; then
-          # Check vulkan sdk location
-          AC_CHECK_HEADERS([$VULKAN_SDK/include/vulkan/vulkan.h],
-            [ VULKAN_FOUND=yes
-              VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${VULKAN_SDK}/include -DVULKAN_ENABLED"
-            ],
-            [ VULKAN_FOUND=no; break ]
-          )
+        if test "x$VULKAN_FOUND" = xno && test "x${VULKAN_SDK}" != x; then
+          AC_MSG_CHECKING([for ${VULKAN_SDK}/include/vulkan/vulkan.h])
+          if test -s "${VULKAN_SDK}/include/vulkan/vulkan.h"; then
+            VULKAN_FOUND=yes
+            VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${VULKAN_SDK}/include -DVULKAN_ENABLED"
+            AC_MSG_RESULT([yes])
+          else
+            AC_MSG_RESULT([no])
+          fi
         fi
 
         if test "x$VULKAN_FOUND" = xno; then
