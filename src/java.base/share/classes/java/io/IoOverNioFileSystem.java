@@ -450,7 +450,9 @@ class IoOverNioFileSystem extends FileSystem {
                 return BA_EXISTS
                         | (attrs.isDirectory() ? BA_DIRECTORY : 0)
                         | (attrs.isRegularFile() ? BA_REGULAR : 0)
-                        | (attrs instanceof DosFileAttributes dosAttrs && dosAttrs.isHidden() ? BA_HIDDEN : 0);
+                        | (attrs instanceof DosFileAttributes dosAttrs && dosAttrs.isHidden() ? BA_HIDDEN : 0)
+                        // Just like in java.io.UnixFileSystem.isHidden
+                        | (attrs instanceof PosixFileAttributes && f.getName().startsWith(".") ? BA_HIDDEN : 0);
             } catch (InvalidPathException err) {
                 if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't get attributes for a path %s", f), err)
@@ -463,7 +465,7 @@ class IoOverNioFileSystem extends FileSystem {
                     new Throwable(String.format("Can't get attributes for a path %s", f), e)
                             .printStackTrace(System.err);
                 }
-                return 0;
+                return getSeparator() == '/' && f.getName().startsWith(".") ? BA_HIDDEN : 0;
             }
         }
         return defaultFileSystem.getBooleanAttributes(f);
