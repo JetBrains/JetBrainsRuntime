@@ -295,7 +295,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 channel = ch;
                 if (ch instanceof FileChannelImpl fci) {
                     fd = fci.getFD();
-                    fd.attach(this);
                     FileCleanable.register(fd);
                     fci.setUninterruptible();
                 } else {
