@@ -37,6 +37,7 @@ import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.datatransfer.DataTransferer;
 import sun.java2d.vulkan.VKInstance;
+import sun.java2d.vulkan.VKRenderQueue;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
@@ -1050,6 +1051,13 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public void sync() {
+        if(VKInstance.isVulkanEnabled()) {
+            VKRenderQueue.sync();
+        }
+        flushImpl();
+    }
+
+    public void flush() {
         flushImpl();
     }
 
