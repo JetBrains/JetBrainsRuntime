@@ -180,6 +180,7 @@ public class FileInputStream extends InputStream
                     fd = fci.getFD();
                     fd.attach(this);
                     FileCleanable.register(fd);
+                    fci.setUninterruptible();
                 } else {
                     channelCleanable.setChannel(channel);
                     fd = new FileDescriptor();
