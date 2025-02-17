@@ -180,7 +180,6 @@ public class FileInputStream extends InputStream
 
                 if (ch instanceof FileChannelImpl fci) {
                     fd = fci.getFD();
-                    fd.attach(this);
                     FileCleanable.register(fd);
                     fci.setUninterruptible();
                 } else {

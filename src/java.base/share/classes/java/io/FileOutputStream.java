@@ -235,7 +235,6 @@ public class FileOutputStream extends OutputStream
 
                 if (ch instanceof FileChannelImpl fci) {
                     fd = fci.getFD();
-                    fd.attach(this);
                     FileCleanable.register(fd);
                     fci.setUninterruptible();
                 } else {
