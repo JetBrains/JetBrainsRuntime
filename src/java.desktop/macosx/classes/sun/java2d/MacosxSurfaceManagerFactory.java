@@ -27,6 +27,7 @@ package sun.java2d;
 
 import java.awt.GraphicsConfiguration;
 import java.awt.Image;
+
 import sun.awt.CGraphicsEnvironment;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.SurfaceManager;
@@ -67,7 +68,7 @@ public class MacosxSurfaceManagerFactory extends SurfaceManagerFactory {
         if (gc instanceof MTLGraphicsConfig) {
             sd = MTLSurfaceData.createData((MTLGraphicsConfig) gc, image, texture);
         } else {
-            throw new IllegalArgumentException("Unsupported GraphicsConfiguration");
+            throw new UnsupportedOperationException("Unsupported GraphicsConfiguration");
         }
         return new TextureWrapperSurfaceManager(sd);
     }
