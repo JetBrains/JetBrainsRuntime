@@ -35,12 +35,12 @@ import java.awt.Image;
 
 @JBRApi.Service
 @JBRApi.Provides("SharedTextures")
-class SharedTextures {
+public class SharedTextures {
     public final static int METAL_TEXTURE_TYPE = 1;
 
     private final int textureType;
 
-    private static SharedTextures create() {
+    public static SharedTextures create() {
         return new SharedTextures();
     }
 
@@ -51,11 +51,11 @@ class SharedTextures {
         }
     }
 
-    int getTextureType() {
+    public int getTextureType() {
         return textureType;
     }
 
-    Image wrapTexture(GraphicsConfiguration gc, long texture) {
+    public Image wrapTexture(GraphicsConfiguration gc, long texture) {
         return new TextureWrapperImage(gc, texture);
     }
 
