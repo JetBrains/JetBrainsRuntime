@@ -174,12 +174,14 @@ public class FileInputStream extends InputStream
         if (useNio) {
             Objects.requireNonNull(nioPath, "nioPath");
             try {
+                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
                 // NB: the channel will be closed in the close() method
                 var ch = nioFs.provider().newFileChannel(nioPath, Set.of(StandardOpenOption.READ));
                 channel = ch;
 
                 if (ch instanceof FileChannelImpl fci) {
                     fd = fci.getFD();
+                    fd.attach(this);
                     FileCleanable.register(fd);
                     fci.setUninterruptible();
                 } else {
@@ -200,6 +202,8 @@ public class FileInputStream extends InputStream
                     }
                 }
                 throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
+            } finally {
+                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
             }
         } else {
             fd = new FileDescriptor();

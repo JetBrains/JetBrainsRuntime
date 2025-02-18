@@ -289,12 +289,14 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (useNio) {
             Objects.requireNonNull(nioPath, "nioPath");
             try {
+                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
                 var options = optionsForChannel(imode);
                 // NB: the channel will be closed in the close() method
                 var ch = nioFs.provider().newFileChannel(nioPath, options);
                 channel = ch;
                 if (ch instanceof FileChannelImpl fci) {
                     fd = fci.getFD();
+                    fd.attach(this);
                     FileCleanable.register(fd);
                     fci.setUninterruptible();
                 } else {
@@ -315,6 +317,8 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                     }
                 }
                 throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
+            } finally {
+                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
             }
         } else {
             fd = new FileDescriptor();
