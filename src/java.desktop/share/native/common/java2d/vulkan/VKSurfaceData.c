@@ -91,7 +91,8 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
 
         VKImage* image = VKImage_Create(device, vksdo->requestedExtent.width, vksdo->requestedExtent.height,
                                         0, format, VK_IMAGE_TILING_OPTIMAL,
-                                        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                                        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                        VK_IMAGE_USAGE_SAMPLED_BIT,
                                         VK_SAMPLE_COUNT_1_BIT, VKSD_FindImageSurfaceMemoryType);
         VK_RUNTIME_ASSERT(image);
         VKSD_ResetImageSurface(vksdo);
@@ -308,6 +309,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps
     }
     sd->drawableType = VKSD_RT_TEXTURE;
     sd->background = VKUtil_DecodeJavaColor(0);
+    VKSD_ResetSurface(sd);
     VKRenderer_ConfigureSurface(sd, (VkExtent2D){width, height});
 }
 
