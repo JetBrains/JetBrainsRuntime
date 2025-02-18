@@ -106,6 +106,8 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     })
     private final NioChannelCleanable channelCleanable = new NioChannelCleanable(this);
 
+    private final ExternalChannelHolder externalChannelHolder;
+
     /**
      * Creates a random access file stream to read from, and optionally
      * to write to, a file with the specified name. A new
@@ -321,11 +323,13 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             } finally {
                 IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
             }
+            externalChannelHolder = new ExternalChannelHolder(this, channel, channelCleanable);
         } else {
             fd = new FileDescriptor();
             fd.attach(this);
             open(name, imode);
             FileCleanable.register(fd);   // open sets the fd, register the cleanup
+            externalChannelHolder = null;
         }
         if (DEBUG.writeTraces()) {
             System.err.printf("Created a RandomAccessFile for %s%n", file);
@@ -375,6 +379,10 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @since 1.4
      */
     public final FileChannel getChannel() {
+        if (externalChannelHolder != null) {
+            return externalChannelHolder.getChannel();
+        }
+
         FileChannel fc = this.channel;
         if (fc == null) {
             synchronized (this) {
@@ -392,7 +400,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 }
             }
         }
-        channelCleanable.setChannel(null);
         return fc;
     }
 
@@ -462,7 +469,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             return read0();
         } else {
             ByteBuffer buffer = ByteBuffer.allocate(1);
-            int nRead = getChannel().read(buffer);
+            int nRead = channel.read(buffer);
             buffer.rewind();
             return nRead == 1 ? (buffer.get() & 0xFF) : -1;
         }
@@ -492,7 +499,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         } else {
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                return getChannel().read(buffer);
+                return channel.read(buffer);
             } catch (OutOfMemoryError e) {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes0(b, off, len);
@@ -533,7 +540,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         } else {
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                return getChannel().read(buffer);
+                return channel.read(buffer);
             } catch (OutOfMemoryError e) {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes(b, off, len);
@@ -566,7 +573,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         } else {
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b);
-                return getChannel().read(buffer);
+                return channel.read(buffer);
             } catch (OutOfMemoryError e) {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes(b, 0, b.length);
@@ -680,7 +687,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             byte[] array = new byte[1];
             array[0] = (byte) b;
             ByteBuffer buffer = ByteBuffer.wrap(array);
-            getChannel().write(buffer);
+            channel.write(buffer);
         }
     }
 
@@ -709,7 +716,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         } else {
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                getChannel().write(buffer);
+                channel.write(buffer);
             } catch (OutOfMemoryError e) {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 writeBytes0(b, off, len);
@@ -757,7 +764,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (!useNio) {
             return getFilePointer0();
         } else {
-            return getChannel().position();
+            return channel.position();
         }
     }
 
@@ -786,7 +793,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             if (!useNio) {
                 seek0(pos);
             } else {
-                getChannel().position(pos);
+                channel.position(pos);
             }
         } finally {
             Blocker.end(comp);
@@ -807,7 +814,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             if (!useNio) {
                 return length0();
             } else {
-                return getChannel().size();
+                return channel.size();
             }
         } finally {
             Blocker.end(comp);
