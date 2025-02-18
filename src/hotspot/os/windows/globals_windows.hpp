@@ -46,7 +46,10 @@ product(bool, UseOSErrorReporting, false,                                 \
         "Let VM fatal error propagate to the OS (ie. WER on Windows)")    \
                                                                           \
 product(bool, UseCriticalSection, true, EXPERIMENTAL,                     \
-        "Use the critical section API instead of WaitForSingleObject")
+        "Use the critical section API instead of WaitForSingleObject")    \
+                                                                          \
+product(bool, UseModernSynchAPI, true, EXPERIMENTAL,                      \
+        "Use more modern WinAPI for synchronization instead of WaitForSingleObject")
 
 // end of RUNTIME_OS_FLAGS
 
