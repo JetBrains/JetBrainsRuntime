@@ -5751,7 +5751,6 @@ void PlatformEvent::unpark() {
 // use them directly.
 
 void Parker::park(bool isAbsolute, jlong time) {
-  guarantee(_ParkHandle != nullptr, "invariant");
   // First, demultiplex/decode time arguments
   if (time < 0) { // don't wait
     return;
@@ -5771,32 +5770,60 @@ void Parker::park(bool isAbsolute, jlong time) {
 
   JavaThread* thread = JavaThread::current();
 
-  // Don't wait if interrupted or already triggered
-  if (thread->is_interrupted(false)) {
-    ResetEvent(_ParkHandle);
-    return;
+  if (UseModernSynchAPI) {
+    // Don't wait if interrupted or already triggered
+    if (thread->is_interrupted(false)) {
+      Atomic::release_store(&_TargetValue, 0);
+      return;
+    } else {
+      int curHandle = Atomic::load_acquire(&_TargetValue);
+      if (curHandle > 0) {
+        // Already unparked
+        Atomic::release_store(&_TargetValue, 0);
+        return;
+      } else {
+        ThreadBlockInVM tbivm(thread);
+        OSThreadWaitState osts(thread->osthread(), false /* not Object.wait() */);
+
+        // Spurios wakeups are fine as per Unsafe.park() promise
+        ::WaitOnAddress(&_TargetValue, &curHandle, sizeof(_TargetValue), time);
+        Atomic::release_store(&_TargetValue, 0);
+      }
+    }
   } else {
-    DWORD rv = WaitForSingleObject(_ParkHandle, 0);
-    assert(rv != WAIT_FAILED,   "WaitForSingleObject failed with error code: %lu", GetLastError());
-    assert(rv == WAIT_OBJECT_0 || rv == WAIT_TIMEOUT, "WaitForSingleObject failed with return value: %lu", rv);
-    if (rv == WAIT_OBJECT_0) {
+    guarantee(_ParkHandle != nullptr, "invariant");
+    // Don't wait if interrupted or already triggered
+    if (thread->is_interrupted(false)) {
       ResetEvent(_ParkHandle);
       return;
     } else {
-      ThreadBlockInVM tbivm(thread);
-      OSThreadWaitState osts(thread->osthread(), false /* not Object.wait() */);
-
-      rv = WaitForSingleObject(_ParkHandle, time);
+      DWORD rv = WaitForSingleObject(_ParkHandle, 0);
       assert(rv != WAIT_FAILED,   "WaitForSingleObject failed with error code: %lu", GetLastError());
       assert(rv == WAIT_OBJECT_0 || rv == WAIT_TIMEOUT, "WaitForSingleObject failed with return value: %lu", rv);
-      ResetEvent(_ParkHandle);
+      if (rv == WAIT_OBJECT_0) {
+        ResetEvent(_ParkHandle);
+        return;
+      } else {
+        ThreadBlockInVM tbivm(thread);
+        OSThreadWaitState osts(thread->osthread(), false /* not Object.wait() */);
+
+        rv = WaitForSingleObject(_ParkHandle, time);
+        assert(rv != WAIT_FAILED,   "WaitForSingleObject failed with error code: %lu", GetLastError());
+        assert(rv == WAIT_OBJECT_0 || rv == WAIT_TIMEOUT, "WaitForSingleObject failed with return value: %lu", rv);
+        ResetEvent(_ParkHandle);
+      }
     }
   }
 }
 
 void Parker::unpark() {
-  guarantee(_ParkHandle != nullptr, "invariant");
-  SetEvent(_ParkHandle);
+  if (UseModernSynchAPI) {
+    Atomic::release_store(&_TargetValue, 1);
+    ::WakeByAddressAll(&_TargetValue);
+  } else {
+    guarantee(_ParkHandle != nullptr, "invariant");
+    SetEvent(_ParkHandle);
+  }
 }
 
 // Platform Mutex/Monitor implementation
