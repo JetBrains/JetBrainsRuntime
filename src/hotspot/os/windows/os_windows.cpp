@@ -5745,7 +5745,9 @@ int PlatformEvent::park(jlong Millis) {
   //    1 =>  0 : pass - return immediately
   //    0 => -1 : block; then set _Event to 0 before returning
 
-  guarantee(_ParkHandle != nullptr , "Invariant");
+  if (!UseModernSynchAPI) {
+    guarantee(_ParkHandle != nullptr , "Invariant");
+  }
   guarantee(Millis > 0          , "Invariant");
 
   // CONSIDER: defer assigning a CreateEvent() handle to the Event until
@@ -5777,23 +5779,35 @@ int PlatformEvent::park(jlong Millis) {
   // adjust Millis accordingly if we encounter a spurious wakeup.
 
   const int MAXTIMEOUT = 0x10000000;
-  DWORD rv = WAIT_TIMEOUT;
-  while (_Event < 0 && Millis > 0) {
-    DWORD prd = Millis;     // set prd = MAX (Millis, MAXTIMEOUT)
-    if (Millis > MAXTIMEOUT) {
-      prd = MAXTIMEOUT;
-    }
+
+  if (UseModernSynchAPI) {
     HighResolutionInterval *phri = nullptr;
     if (!ForceTimeHighResolution) {
-      phri = new HighResolutionInterval(prd);
+      phri = new HighResolutionInterval(Millis);
     }
-    rv = ::WaitForSingleObject(_ParkHandle, prd);
-    assert(rv != WAIT_FAILED,   "WaitForSingleObject failed with error code: %lu", GetLastError());
-    assert(rv == WAIT_OBJECT_0 || rv == WAIT_TIMEOUT, "WaitForSingleObject failed with return value: %lu", rv);
-    if (rv == WAIT_TIMEOUT) {
-      Millis -= prd;
+    if ((v = AtomicAccess::load_acquire(&_Event)) < 0) {
+      ::WaitOnAddress(&_Event, &v, sizeof(_Event), Millis);
     }
     delete phri; // if it is null, harmless
+  } else {
+    DWORD rv = WAIT_TIMEOUT;
+    while (_Event < 0 && Millis > 0) {
+      DWORD prd = Millis;     // set prd = MAX (Millis, MAXTIMEOUT)
+      if (Millis > MAXTIMEOUT) {
+        prd = MAXTIMEOUT;
+      }
+      HighResolutionInterval *phri = nullptr;
+      if (!ForceTimeHighResolution) {
+        phri = new HighResolutionInterval(prd);
+      }
+      rv = ::WaitForSingleObject(_ParkHandle, prd);
+      assert(rv != WAIT_FAILED,   "WaitForSingleObject failed with error code: %lu", GetLastError());
+      assert(rv == WAIT_OBJECT_0 || rv == WAIT_TIMEOUT, "WaitForSingleObject failed with return value: %lu", rv);
+      if (rv == WAIT_TIMEOUT) {
+        Millis -= prd;
+      }
+      delete phri; // if it is null, harmless
+    }
   }
   v = _Event;
   _Event = 0;
@@ -5811,7 +5825,9 @@ void PlatformEvent::park() {
   //    1 =>  0 : pass - return immediately
   //    0 => -1 : block; then set _Event to 0 before returning
 
-  guarantee(_ParkHandle != nullptr, "Invariant");
+  if (!UseModernSynchAPI) {
+    guarantee(_ParkHandle != nullptr, "Invariant");
+  }
   // Invariant: Only the thread associated with the Event/PlatformEvent
   // may call park().
   // Consider: use atomic decrement instead of CAS-loop
@@ -5823,21 +5839,35 @@ void PlatformEvent::park() {
   guarantee((v == 0) || (v == 1), "invariant");
   if (v != 0) return;
 
-  // Do this the hard way by blocking ...
-  // TODO: consider a brief spin here, gated on the success of recent
-  // spin attempts by this thread.
-  while (_Event < 0) {
-    // The following code is only here to maintain the
-    // characteristics/performance from when an ObjectMonitor
-    // "responsible" thread used to issue timed parks.
-    HighResolutionInterval *phri = nullptr;
-    if (!ForceTimeHighResolution) {
-      phri = new HighResolutionInterval((jlong)1);
+  if (UseModernSynchAPI) {
+    while ((v = AtomicAccess::load_acquire(&_Event)) < 0) {
+      // The following code is only here to maintain the
+      // characteristics/performance from when an ObjectMonitor
+      // "responsible" thread used to issue timed parks.
+      HighResolutionInterval *phri = nullptr;
+      if (!ForceTimeHighResolution) {
+        phri = new HighResolutionInterval((jlong)1);
+      }
+      ::WaitOnAddress(&_Event, &v, sizeof(_Event), INFINITE);
+      delete phri; // if it is null, harmless
     }
-    DWORD rv = ::WaitForSingleObject(_ParkHandle, INFINITE);
-    delete phri; // if it is null, harmless
-    assert(rv != WAIT_FAILED,   "WaitForSingleObject failed with error code: %lu", GetLastError());
-    assert(rv == WAIT_OBJECT_0, "WaitForSingleObject failed with return value: %lu", rv);
+  } else {
+    // Do this the hard way by blocking ...
+    // TODO: consider a brief spin here, gated on the success of recent
+    // spin attempts by this thread.
+    while (_Event < 0) {
+      // The following code is only here to maintain the
+      // characteristics/performance from when an ObjectMonitor
+      // "responsible" thread used to issue timed parks.
+      HighResolutionInterval *phri = nullptr;
+      if (!ForceTimeHighResolution) {
+        phri = new HighResolutionInterval((jlong)1);
+      }
+      DWORD rv = ::WaitForSingleObject(_ParkHandle, INFINITE);
+      delete phri; // if it is null, harmless
+      assert(rv != WAIT_FAILED,   "WaitForSingleObject failed with error code: %lu", GetLastError());
+      assert(rv == WAIT_OBJECT_0, "WaitForSingleObject failed with return value: %lu", rv);
+    }
   }
 
   // Usually we'll find _Event == 0 at this point, but as
@@ -5849,7 +5879,9 @@ void PlatformEvent::park() {
 }
 
 void PlatformEvent::unpark() {
-  guarantee(_ParkHandle != nullptr, "Invariant");
+  if (!UseModernSynchAPI) {
+    guarantee(_ParkHandle != nullptr, "Invariant");
+  }
 
   // Transitions for _Event:
   //    0 => 1 : just return
@@ -5865,9 +5897,14 @@ void PlatformEvent::unpark() {
   // from the first park() call after an unpark() call which will help
   // shake out uses of park() and unpark() without condition variables.
 
-  if (AtomicAccess::xchg(&_Event, 1) >= 0) return;
-
-  ::SetEvent(_ParkHandle);
+  if (UseModernSynchAPI) {
+    if (AtomicAccess::xchg(&_Event, 1) >= 0) return;
+    // Changed from -1 to 1; the target thread's WaitOnAddress() must return now
+    ::WakeByAddressAll((PVOID) &_Event);
+  } else {
+    if (AtomicAccess::xchg(&_Event, 1) >= 0) return;
+    ::SetEvent(_ParkHandle);
+  }
 }
 
 
@@ -5879,7 +5916,6 @@ void PlatformEvent::unpark() {
 // use them directly.
 
 void Parker::park(bool isAbsolute, jlong time) {
-  guarantee(_ParkHandle != nullptr, "invariant");
   // First, demultiplex/decode time arguments
   if (time < 0) { // don't wait
     return;
@@ -5899,32 +5935,60 @@ void Parker::park(bool isAbsolute, jlong time) {
 
   JavaThread* thread = JavaThread::current();
 
-  // Don't wait if interrupted or already triggered
-  if (thread->is_interrupted(false)) {
-    ResetEvent(_ParkHandle);
-    return;
+  if (UseModernSynchAPI) {
+    // Don't wait if interrupted or already triggered
+    if (thread->is_interrupted(false)) {
+      AtomicAccess::release_store(&_TargetValue, 0);
+      return;
+    } else {
+      int curHandle = AtomicAccess::load_acquire(&_TargetValue);
+      if (curHandle > 0) {
+        // Already unparked
+        AtomicAccess::release_store(&_TargetValue, 0);
+        return;
+      } else {
+        ThreadBlockInVM tbivm(thread);
+        OSThreadWaitState osts(thread->osthread(), false /* not Object.wait() */);
+
+        // Spurios wakeups are fine as per Unsafe.park() promise
+        ::WaitOnAddress(&_TargetValue, &curHandle, sizeof(_TargetValue), time);
+        AtomicAccess::release_store(&_TargetValue, 0);
+      }
+    }
   } else {
-    DWORD rv = WaitForSingleObject(_ParkHandle, 0);
-    assert(rv != WAIT_FAILED,   "WaitForSingleObject failed with error code: %lu", GetLastError());
-    assert(rv == WAIT_OBJECT_0 || rv == WAIT_TIMEOUT, "WaitForSingleObject failed with return value: %lu", rv);
-    if (rv == WAIT_OBJECT_0) {
+    guarantee(_ParkHandle != nullptr, "invariant");
+    // Don't wait if interrupted or already triggered
+    if (thread->is_interrupted(false)) {
       ResetEvent(_ParkHandle);
       return;
     } else {
-      ThreadBlockInVM tbivm(thread);
-      OSThreadWaitState osts(thread->osthread(), false /* not Object.wait() */);
-
-      rv = WaitForSingleObject(_ParkHandle, time);
+      DWORD rv = WaitForSingleObject(_ParkHandle, 0);
       assert(rv != WAIT_FAILED,   "WaitForSingleObject failed with error code: %lu", GetLastError());
       assert(rv == WAIT_OBJECT_0 || rv == WAIT_TIMEOUT, "WaitForSingleObject failed with return value: %lu", rv);
-      ResetEvent(_ParkHandle);
+      if (rv == WAIT_OBJECT_0) {
+        ResetEvent(_ParkHandle);
+        return;
+      } else {
+        ThreadBlockInVM tbivm(thread);
+        OSThreadWaitState osts(thread->osthread(), false /* not Object.wait() */);
+
+        rv = WaitForSingleObject(_ParkHandle, time);
+        assert(rv != WAIT_FAILED,   "WaitForSingleObject failed with error code: %lu", GetLastError());
+        assert(rv == WAIT_OBJECT_0 || rv == WAIT_TIMEOUT, "WaitForSingleObject failed with return value: %lu", rv);
+        ResetEvent(_ParkHandle);
+      }
     }
   }
 }
 
 void Parker::unpark() {
-  guarantee(_ParkHandle != nullptr, "invariant");
-  SetEvent(_ParkHandle);
+  if (UseModernSynchAPI) {
+    AtomicAccess::release_store(&_TargetValue, 1);
+    ::WakeByAddressAll(&_TargetValue);
+  } else {
+    guarantee(_ParkHandle != nullptr, "invariant");
+    SetEvent(_ParkHandle);
+  }
 }
 
 // Platform Mutex/Monitor implementation
