@@ -177,6 +177,15 @@ public class FileChannelImpl
         uninterruptible = true;
     }
 
+    public void setInterruptible() {
+        uninterruptible = false;
+    }
+
+    @Override
+    public FileChannelImpl clone() {
+        return new FileChannelImpl(fd, path, readable, writable, sync, direct, parent);
+    }
+
     private void beginBlocking() {
         if (!uninterruptible) begin();
     }

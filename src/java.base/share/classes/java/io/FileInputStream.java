@@ -106,6 +106,8 @@ public class FileInputStream extends InputStream
     })
     private final NioChannelCleanable channelCleanable = new NioChannelCleanable(this);
 
+    private final ExternalChannelHolder externalChannelHolder;
+
     /**
      * Creates a {@code FileInputStream} to read from an existing file
      * named by the path name {@code name}.
@@ -205,11 +207,13 @@ public class FileInputStream extends InputStream
             } finally {
                 IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
             }
+            externalChannelHolder = new ExternalChannelHolder(this, channel, channelCleanable);
         } else {
             fd = new FileDescriptor();
             fd.attach(this);
             open(path);
             FileCleanable.register(fd);       // open set the fd, register the cleanup
+            externalChannelHolder = null;
         }
         if (DEBUG.writeTraces()) {
             System.err.printf("Created a FileInputStream for %s%n", file);
@@ -234,6 +238,7 @@ public class FileInputStream extends InputStream
     @SuppressWarnings("this-escape")
     public FileInputStream(FileDescriptor fdObj) {
         useNio = false;
+        externalChannelHolder = null;
 
         if (fdObj == null) {
             throw new NullPointerException();
@@ -696,6 +701,10 @@ public class FileInputStream extends InputStream
      * @since 1.4
      */
     public FileChannel getChannel() {
+        if (externalChannelHolder != null) {
+            return externalChannelHolder.getChannel();
+        }
+
         FileChannel fc = this.channel;
         if (fc == null) {
             synchronized (this) {
@@ -715,7 +724,6 @@ public class FileInputStream extends InputStream
                 }
             }
         }
-        channelCleanable.setChannel(null);
         return fc;
     }
 
