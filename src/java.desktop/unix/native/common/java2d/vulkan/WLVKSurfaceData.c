@@ -62,15 +62,15 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_00024WLVKWindowSur
  */
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_00024WLVKOffScreenSurfaceData_initOps
         (JNIEnv *env, jobject vksd, jint width, jint height) {
-    J2dTraceLn1(J2D_TRACE_VERBOSE, "WLVKOffScreenSurfaceData_initOps(%p)", vksd);
     VKSDOps * sd = (VKSDOps*)SurfaceData_InitOps(env, vksd, sizeof(VKSDOps));
+    J2dTraceLn1(J2D_TRACE_VERBOSE, "WLVKOffScreenSurfaceData_initOps(%p)", sd);
     if (sd == NULL) {
         JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
         return;
     }
     sd->drawableType = VKSD_RT_TEXTURE;
     sd->background = VKUtil_DecodeJavaColor(0);
-    VKSD_ResetSurface(sd);
+    VKRenderer_ConfigureSurface(sd, (VkExtent2D){width, height});
 }
 /*
  * Class:     sun_java2d_vulkan_WLVKSurfaceData_WLVKWindowSurfaceData
@@ -80,9 +80,10 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_00024WLVKOffScreen
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_00024WLVKWindowSurfaceData_assignWlSurface(
         JNIEnv *env, jobject vksd, jlong wlSurfacePtr)
 {
-    J2dRlsTraceLn2(J2D_TRACE_INFO, "WLVKWindowsSurfaceData_assignWlSurface(%p): wl_surface=%p",
-                   (void*)vksd, wlSurfacePtr);
     VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);
+    J2dRlsTraceLn2(J2D_TRACE_INFO, "WLVKWindowsSurfaceData_assignWlSurface(%p): wl_surface=%p",
+                   (void*)sd, wlSurfacePtr);
+
     if (sd == NULL) {
         J2dRlsTraceLn1(J2D_TRACE_ERROR,
                        "WLVKWindowSurfaceData_assignWlSurface(%p): VKWinSDOps is NULL", vksd);

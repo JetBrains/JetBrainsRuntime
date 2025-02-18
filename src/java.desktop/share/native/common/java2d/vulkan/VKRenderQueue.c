@@ -375,7 +375,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                                       dx1, dy1, dx2, dy2);
                 }
                 context.surface = oldSurface;
-                break;
+                J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT %p -> %p ", pSrc, pDst)
                 J2dRlsTraceLn8(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT (%d %d %d %d) -> (%f %f %f %f) ",
                                sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)
                 J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT texture=%d rtt=%d xform=%d isoblit=%d",
@@ -558,9 +558,13 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             {
                 VKSDOps* src = NEXT_SURFACE(b);
                 VKSDOps* dst = NEXT_SURFACE(b);
-
                 J2dRlsTraceLn2(J2D_TRACE_VERBOSE,
-                    "VKRenderQueue_flushBuffer: SET_SURFACES src=%p dst=%p", src, dst);
+                               "VKRenderQueue_flushBuffer: SET_SURFACES src=%p dst=%p", src, dst);
+
+                if (context.surface != NULL && context.surface != dst) {
+                    VKRenderer_FlushSurface(context.surface);
+                }
+
                 context.surface = dst;
             }
             break;
@@ -575,8 +579,8 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE:
             {
                 VKSDOps* surface = NEXT_SURFACE(b);
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                    "VKRenderQueue_flushBuffer: FLUSH_SURFACE");
+                J2dRlsTraceLn1(J2D_TRACE_VERBOSE,
+                    "VKRenderQueue_flushBuffer: FLUSH_SURFACE (%p)", surface)
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DISPOSE_SURFACE:
@@ -613,8 +617,8 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 VKSDOps* surface = NEXT_SURFACE(b);
                 jint width = NEXT_INT(b);
                 jint height = NEXT_INT(b);
-                J2dRlsTraceLn2(J2D_TRACE_VERBOSE,
-                              "VKRenderQueue_flushBuffer: CONFIGURE_SURFACE %dx%d", width, height);
+                J2dRlsTraceLn3(J2D_TRACE_VERBOSE,
+                              "VKRenderQueue_flushBuffer: CONFIGURE_SURFACE (%p) %dx%d", surface, width, height);
                 VKRenderer_ConfigureSurface(surface, (VkExtent2D) {width, height});
             }
             break;
@@ -631,8 +635,8 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_FLUSH_BUFFER:
             {
                 VKSDOps* surface = NEXT_SURFACE(b);
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                    "VKRenderQueue_flushBuffer: FLUSH_BUFFER");
+                J2dRlsTraceLn1(J2D_TRACE_VERBOSE,
+                    "VKRenderQueue_flushBuffer: FLUSH_BUFFER (%p)", surface)
 
                 VKRenderer_FlushSurface(surface);
             }
