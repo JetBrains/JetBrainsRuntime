@@ -140,6 +140,7 @@ java/awt/Focus/6378278/InputVerifierTest.java JBR-5505 windows-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 8169110,JBR-5505 linux-all,windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-5505 windows-all
 java/awt/Frame/DisposeStressTest/DisposeStressTest.java JBR-7331 windows-all
+java/awt/Frame/FramesGC/FramesGC.java JBR-6057 windows-x64
 java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-5505 windows-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-5505 windows-all
 java/awt/hidpi/DrawOnFrameGraphicsTest.java JBR-5505 windows-all
