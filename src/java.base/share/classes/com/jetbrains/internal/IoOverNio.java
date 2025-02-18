@@ -26,8 +26,10 @@
 package com.jetbrains.internal;
 
 import jdk.internal.misc.VM;
+import sun.nio.ch.FileChannelImpl;
 import sun.security.action.GetPropertyAction;
 
+import java.io.Closeable;
 import java.lang.Boolean;
 import java.nio.file.FileSystems;
 
@@ -138,4 +140,13 @@ public class IoOverNio {
             ALLOW_IN_THIS_THREAD.set(value);
         }
     }
+
+    /**
+     * Since it's complicated to change Java API, some new function arguments are transferred via thread local variables.
+     * This variable allows to set {@code parent} in {@link FileChannelImpl} and therefore to avoid closing the file
+     * descriptor too early.
+     * <p>
+     * The problem was found with the test {@code jtreg:test/jdk/java/io/FileDescriptor/Sharing.java}.
+     */
+    public static final ThreadLocal<Closeable> PARENT_FOR_FILE_CHANNEL_IMPL = new ThreadLocal<>();
 }

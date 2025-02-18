@@ -47,6 +47,7 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Objects;
 
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.foreign.AbstractMemorySegmentImpl;
@@ -129,6 +130,9 @@ public class FileChannelImpl
         this.readable = readable;
         this.writable = writable;
         this.direct = direct;
+        if (parent == null) {
+            parent = IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.get();
+        }
         this.parent = parent;
         if (direct) {
             assert path != null;

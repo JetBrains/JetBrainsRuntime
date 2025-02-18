@@ -246,6 +246,7 @@ public class FileOutputStream extends OutputStream
         if (useNio) {
             Path nioPath = nioFs.getPath(name);
             try {
+                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
                 // NB: the channel will be closed in the close() method
                 var ch = FileSystems.getDefault().provider().newFileChannel(
                         nioPath,
@@ -255,6 +256,7 @@ public class FileOutputStream extends OutputStream
 
                 if (ch instanceof FileChannelImpl fci) {
                     fd = fci.getFD();
+                    fd.attach(this);
                     FileCleanable.register(fd);
                     fci.setUninterruptible();
                 } else {
@@ -276,6 +278,8 @@ public class FileOutputStream extends OutputStream
                 }
                 // Since we can't throw IOException...
                 throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
+            } finally {
+                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
             }
         } else {
             this.fd = new FileDescriptor();
