@@ -27,6 +27,7 @@ package com.jetbrains.desktop;
 
 import com.jetbrains.desktop.image.TextureWrapperImage;
 import com.jetbrains.exported.JBRApi;
+import sun.awt.SunToolkit;
 
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
@@ -64,7 +65,7 @@ class SharedTextures {
                 .getDefaultScreenDevice()
                 .getDefaultConfiguration();
         try {
-            if (isInstanceOf(gc, "sun.java2d.metal.MTLGraphicsConfig")) {
+            if (SunToolkit.isInstanceOf(gc, "sun.java2d.metal.MTLGraphicsConfig")) {
                 return METAL_TEXTURE_TYPE;
             }
         } catch (Exception e) {
@@ -72,14 +73,5 @@ class SharedTextures {
         }
 
         return 0;
-    }
-
-    private static boolean isInstanceOf(Object obj, String className) {
-        try {
-            var clazz = Class.forName(className);
-            return clazz.isInstance(obj);
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
     }
 }
