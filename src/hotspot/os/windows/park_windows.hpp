@@ -41,8 +41,10 @@ class PlatformEvent : public CHeapObj<mtSynchronizer> {
   public:
     PlatformEvent() {
       _Event   = 0 ;
-      _ParkHandle = CreateEvent (nullptr, false, false, nullptr) ;
-      guarantee (_ParkHandle != nullptr, "invariant") ;
+      if (!UseModernSynchAPI) {
+        _ParkHandle = CreateEvent (nullptr, false, false, nullptr) ;
+        guarantee (_ParkHandle != nullptr, "invariant") ;
+      }
     }
 
     // Exercise caution using reset() and fired() - they may require MEMBARs
