@@ -183,7 +183,16 @@ public class FileChannelImpl
 
     @Override
     public FileChannelImpl clone() {
-        return new FileChannelImpl(fd, path, readable, writable, sync, direct, parent);
+        FileChannelImpl result = new FileChannelImpl(fd, path, readable, writable, sync, direct, parent);
+        result.uninterruptible = uninterruptible;
+        if (!isOpen()) {
+            try {
+                result.close();
+            } catch (IOException e) {
+                // Ignored.
+            }
+        }
+        return result;
     }
 
     private void beginBlocking() {
