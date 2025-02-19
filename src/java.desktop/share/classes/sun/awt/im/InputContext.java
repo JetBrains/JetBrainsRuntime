@@ -50,6 +50,7 @@ import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 import sun.util.logging.PlatformLogger;
@@ -900,6 +901,68 @@ public class InputContext extends java.awt.im.InputContext
             logger.config(mf.format(args));
         }
     }
+
+
+    /**
+     * Makes this InputContext to forget about the passed instance of InputMethod.
+     * If it's currently active, the method deactivates it first.
+     * In the end, it also gets disposed via its {@link InputMethod#dispose()}.
+     *
+     * @param brokenIm - the instance to deregister and dispose.
+     */
+    public synchronized void deregisterAndDisposeBrokenInputMethod(final InputMethod brokenIm) {
+        Objects.requireNonNull(brokenIm, "brokenIm");
+
+        final Throwable asyncStacktraceHolder = new Throwable("Async stacktrace");
+
+        // We do this asynchronously to avoid possible reentrancy issues of this class's methods.
+        EventQueue.invokeLater(() -> deregisterAndDisposeBrokenInputMethodImpl(brokenIm, asyncStacktraceHolder));
+    }
+
+    private synchronized void deregisterAndDisposeBrokenInputMethodImpl(final InputMethod brokenIm, final Throwable asyncStacktraceHolder) {
+        assert(brokenIm != null);
+
+        try {
+            try {
+                Component componentToReloadIm = null;
+
+                if (inputMethod == brokenIm && isInputMethodActive) {
+                    componentToReloadIm = currentClientComponent != null ? currentClientComponent : awtFocussedComponent;
+                    if (componentToReloadIm != null) {
+                        componentToReloadIm.enableInputMethods(false);
+                    }
+                }
+
+                try {
+                    if (usedInputMethods != null) {
+                        usedInputMethods.values().removeIf(usedIm -> usedIm == brokenIm);
+                    }
+
+                    if (perInputMethodState != null) {
+                        perInputMethodState.remove(brokenIm);
+                    }
+
+                    if (inputMethod == brokenIm) {
+                        inputMethod = null;
+                    }
+
+                    if (previousInputMethod == brokenIm) {
+                        previousInputMethod = null;
+                    }
+                } finally {
+                    if (componentToReloadIm != null) {
+                        componentToReloadIm.enableInputMethods(true);
+                    }
+                }
+            } finally {
+                brokenIm.dispose();
+            }
+        } catch (Exception err) {
+            if (asyncStacktraceHolder != null) err.addSuppressed(asyncStacktraceHolder);
+            log.severe("deregisterAndDisposeBrokenInputMethodImpl", err);
+        }
+    }
+
 
     InputMethodLocator getInputMethodLocator() {
         if (inputMethod != null) {

@@ -44,6 +44,8 @@ public final class WLInputMethod extends InputMethodAdapter {
 
     public WLInputMethod() throws AWTException {
         wlInitializeContext();
+
+        assert(!isInstanceBroken());
     }
 
     /* sun.awt.im.InputMethodAdapter methods section */
@@ -70,11 +72,26 @@ public final class WLInputMethod extends InputMethodAdapter {
 
     @Override
     protected void stopListening() {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("stopListening");
+            return;
+        }
+
         super.stopListening();
+
+        // Judging by how {@link sun.awt.im.InputContext} works with this method,
+        //   the context has to be disabled right now, not asynchronously later,
+        //   therefore {@link #wlDisableContextNowOrLater()} can not be used here.
+        wlDisableContextNowOrReinitialize();
     }
 
     @Override
     public void notifyClientWindowChange(Rectangle location) {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("notifyClientWindowChange", location);
+            return;
+        }
+
         super.notifyClientWindowChange(location);
     }
 
@@ -85,6 +102,15 @@ public final class WLInputMethod extends InputMethodAdapter {
 
     @Override
     public void disableInputMethod() {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("disableInputMethod");
+            return;
+        }
+
+        // This method seems to be never used in the codebase and can't be called by client's code because
+        //   it's initially declared in a private package, so we can leave it empty, but just in case let's
+        //   disable the context via the safer way.
+        wlDisableContextNowOrLater();
     }
 
     @Override
@@ -97,6 +123,7 @@ public final class WLInputMethod extends InputMethodAdapter {
 
     @Override
     public void setInputMethodContext(InputMethodContext context) {
+        this.awtImContext = context;
     }
 
     @Override
@@ -124,30 +151,91 @@ public final class WLInputMethod extends InputMethodAdapter {
 
     @Override
     public void dispatchEvent(AWTEvent event) {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("dispatchEvent", event);
+            return;
+        }
     }
 
     @Override
     public void activate() {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("activate");
+            return;
+        }
+
+        awtActivationStatus = AWTActivationStatus.ACTIVATED;
+
+        // It may be wrong to only invoke this if awtActivationStatus was DEACTIVATED.
+        // E.g. if there was a call chain [activate -> disableInputMethod -> activate].
+        // So let's enable the context here unconditionally.
+        wlEnableContextLater();
     }
 
     @Override
-    public void deactivate(boolean isTemporary) {
+    public void deactivate(final boolean isTemporary) {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("deactivate", isTemporary);
+            return;
+        }
+
+        final boolean wasActivated = (awtActivationStatus == AWTActivationStatus.ACTIVATED);
+        awtActivationStatus = isTemporary ? AWTActivationStatus.DEACTIVATED_TEMPORARILY : AWTActivationStatus.DEACTIVATED;
+
+        if (wasActivated) {
+            // We can't use {@link #wlDisableContextNowOrLater()} here because the owning InputContext may supplement
+            //   the call of {@link #deactivate(boolean)} with a call of {{@link #activate()} on a different InputMethod right after.
+            wlDisableContextNowOrReinitialize();
+        }
     }
 
     @Override
     public void hideWindows() {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("hideWindows");
+            return;
+        }
+
+        // There's no dedicated Wayland API for this operation, so we do this via disabling+enabling back the context
+
+        wlDisableContextNowOrLater();
+        if (awtActivationStatus == AWTActivationStatus.ACTIVATED) {
+            wlEnableContextLater();
+        }
     }
 
     @Override
     public void removeNotify() {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("removeNotify");
+            return;
+        }
+
+        // The method is called in response to {@link Component#enableInputMethods(boolean)} and {@link Component#removeNotify()},
+        //   and it's guaranteed to be only called when the InputMethod is deactivated (see {@link java.awt.im.spi.InputMethod#removeNotify}).
+        // Thus, there is most likely no need to disable the context at all (because it should have already been disabled),
+        //   but just in case let's do it in the safer way.
+        wlDisableContextNowOrLater();
     }
 
     @Override
     public void endComposition() {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("endComposition");
+            return;
+        }
+
+        // There's no dedicated Wayland API for this operation, so we do this via disabling+enabling back the context
+
+        wlDisableContextNowOrLater();
+        if (awtActivationStatus == AWTActivationStatus.ACTIVATED) {
+            wlEnableContextLater();
+        }
     }
 
     @Override
     public void dispose() {
+        awtActivationStatus = AWTActivationStatus.DEACTIVATED;
         wlDisposeContext();
     }
 
@@ -857,6 +945,23 @@ public final class WLInputMethod extends InputMethodAdapter {
     private final WLChangesAsyncSender wlChangesAsyncSender = new WLChangesAsyncSender();
     private ZwpTextInputV3.OutgoingBeingCommittedChanges wlBeingCommittedChanges = null;
 
+    /* AWT-side state section */
+
+    // The fields in this section are prefixed with "awt" and aren't supposed to be modified by
+    //   Wayland-related methods (whose names are prefixed with "wl" or "zwp_text_input_v3_"),
+    //   though can be read by them.
+
+    private enum AWTActivationStatus {
+        ACTIVATED,               // #activate()
+        DEACTIVATED,             // #deactivate(false)
+        DEACTIVATED_TEMPORARILY  // #deactivate(true)
+    }
+
+    /** {@link #activate()} / {@link #deactivate(boolean)} */
+    private AWTActivationStatus awtActivationStatus = AWTActivationStatus.DEACTIVATED;
+    /** {@link #setInputMethodContext(InputMethodContext)} */
+    private InputMethodContext awtImContext = null;
+
 
     /* Core methods section */
 
@@ -902,6 +1007,81 @@ public final class WLInputMethod extends InputMethodAdapter {
         }
     }
 
+    private void wlReinitializeContext() throws AWTException {
+        wlDisposeContext();
+
+        //  If wlInitializeContext fails to create a new context after the current has been destroyed,
+        //    we'll get a possibly activated ({@link #activate}), but uninitialized WLInputMethod,
+        //    so it won't be able to keep functioning.
+        //  However, we shouldn't try to keep the current context if the creation of a new one has failed,
+        //    because it will break the expectations of this method's users.
+        //  If the call fails, this WLInputMethod turns into a broken state, i.e. {@link #isInstanceBroken()} returns true.
+        //  In this case the caller of wlReinitializeContext should use {@link #handleBrokenInstance()}.
+        wlInitializeContext();
+
+        // Don't enable the context from this method because it's used in wlDisableContextNowOrReinitialize.
+    }
+
+    private boolean isInstanceBroken() {
+        return wlInputContextState == null || wlInputContextState.nativeContextPtr == 0 || wlBeingCommittedChanges == null;
+    }
+
+    private void handleBrokenInstance() {
+        assert(isInstanceBroken());
+
+        try {
+            ((sun.awt.im.InputContext)awtImContext).deregisterAndDisposeBrokenInputMethod(this);
+        } catch (Exception err) {
+            log.severe(
+                String.format(
+                    "handleBrokenInstance: failed to deregister broken WLInputMethod@%d from %s.",
+                    System.identityHashCode(this),
+                    awtImContext == null ? "null" : Objects.toIdentityString(awtImContext)
+                ),
+                err
+            );
+
+            dispose();
+        }
+    }
+
+    private void logIgnoredCallOnBrokenInstance(String methodName) {
+        if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+            log.warning(
+                "{1}(): the call is ignored since this WLInputMethod@{0} is broken.",
+                System.identityHashCode(this), methodName
+            );
+        }
+    }
+
+    private void logIgnoredCallOnBrokenInstance(String methodName, Object methodArg) {
+        if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+            log.warning(
+                "{1}({2}): the call is ignored since this WLInputMethod@{0} is broken.",
+                System.identityHashCode(this), methodName, methodArg
+            );
+        }
+    }
+
+    private void logIgnoredCallOnBrokenInstance(String methodName, Object methodArg1, Object methodArg2) {
+        if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+            log.warning(
+                "{1}({2}, {3}): the call is ignored since this WLInputMethod@{0} is broken.",
+                System.identityHashCode(this), methodName, methodArg1, methodArg2
+            );
+        }
+    }
+
+    private void logIgnoredCallOnBrokenInstance(String methodName, Object methodArg1, Object methodArg2, Object methodArg3) {
+        if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+            log.warning(
+                "{1}({2}, {3}, {4}): the call is ignored since this WLInputMethod@{0} is broken.",
+                System.identityHashCode(this), methodName, methodArg1, methodArg2, methodArg3
+            );
+        }
+    }
+
+
     private boolean wlCanSendChangesNow() {
         return wlInputContextState != null &&
                wlInputContextState.nativeContextPtr != 0 &&
@@ -909,6 +1089,11 @@ public final class WLInputMethod extends InputMethodAdapter {
     }
 
     private void wlSendPendingChangesNow() {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("wlSendPendingChangesNow");
+            return;
+        }
+
         assert(wlCanSendChangesNow());
 
         if (wlPendingChanges1 == null || wlPendingChanges1.isEmpty()) {
@@ -920,7 +1105,26 @@ public final class WLInputMethod extends InputMethodAdapter {
         wlPendingChanges1 = wlPendingChanges2;
         wlPendingChanges2 = null;
 
-        if (changesToSend == null || changesToSend.isEmpty()) {
+        if (changesToSend == null) {
+            // Nothing to send
+            return;
+        }
+
+        if (Boolean.TRUE.equals(changesToSend.getEnabledState())) {
+            // The changes imply sending an enable request.
+
+            if (awtActivationStatus != AWTActivationStatus.ACTIVATED) {
+                // A context should never be enabled if AWT has deactivated it
+
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("wlSendPendingChangesNow: the change set implies sending an enable request, but this WLInputMethod instance is deactivated. Omitting the enable request for {0}", changesToSend);
+                }
+
+                changesToSend.setEnabledState(null);
+            }
+        }
+
+        if (changesToSend.isEmpty()) {
             // Nothing to send
             return;
         }
@@ -991,6 +1195,11 @@ public final class WLInputMethod extends InputMethodAdapter {
     }
 
     private void wlSendPendingChangesLater() {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("wlSendPendingChangesLater");
+            return;
+        }
+
         if (wlPendingChanges1 == null && wlPendingChanges2 == null) {
             // Nothing to send
             return;
@@ -1000,6 +1209,11 @@ public final class WLInputMethod extends InputMethodAdapter {
     }
 
     private void wlSendPendingChangesNowOrLater() {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("wlSendPendingChangesNowOrLater");
+            return;
+        }
+
         if (wlCanSendChangesNow()) {
             wlSendPendingChangesNow();
         } else {
@@ -1008,6 +1222,11 @@ public final class WLInputMethod extends InputMethodAdapter {
     }
 
     private void wlScheduleContextNewChanges(ZwpTextInputV3.OutgoingChanges newOutgoingChanges) {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("wlScheduleContextNewChanges", newOutgoingChanges);
+            return;
+        }
+
         if (wlPendingChanges1 == null) {
             wlPendingChanges1 = wlPendingChanges2;
             wlPendingChanges2 = null;
@@ -1059,6 +1278,10 @@ public final class WLInputMethod extends InputMethodAdapter {
     }
 
     private boolean wlGetContextUpcomingOrCurrentEnabledState() {
+        if (isInstanceBroken()) {
+            return false;
+        }
+
         if (wlBeingCommittedChanges.hasBeingCommitedChanges() &&
             wlBeingCommittedChanges.getChanges().getEnabledState() != null)
         {
@@ -1068,6 +1291,10 @@ public final class WLInputMethod extends InputMethodAdapter {
     }
 
     private Boolean wlGetContextPendingEnabledState() {
+        if (isInstanceBroken()) {
+            return null;
+        }
+
         if (wlPendingChanges2 != null && wlPendingChanges2.getEnabledState() != null) {
             return wlPendingChanges2.getEnabledState();
         }
@@ -1077,6 +1304,127 @@ public final class WLInputMethod extends InputMethodAdapter {
 
     private boolean wlGetContextLatestFutureEnabledState() {
         return Objects.requireNonNullElse(wlGetContextPendingEnabledState(), wlGetContextUpcomingOrCurrentEnabledState());
+    }
+
+    // There must NEVER be a method that sends enable requests immediately (even though that's technically possible):
+    //   For example, sometimes AWT activates and then immediately
+    //     (i.e. during dispatching/processing of the same EventQueue event) deactivates the last used input method.
+    //   Basically, activation ({@link #activate()}) and deactivation ({@link #deactivate(boolean)}) operations
+    //     imply sending "enable" and "disable" Wayland requests respectively.
+    //   In this case, if we send an enable request immediately, we won't be able to send a disable request after,
+    //     because we won't have received yet a confirmation from the compositor about the enable request
+    //     (because pending Wayland events won't have had a chance to be dispatched/handled yet).
+    //   If after that AWT decides to enable another instance of WLInputMethod, it will lead to an attempt to enable
+    //     two instances of IM native context, which is directly prohibited by the protocol:
+    //     "Clients must not enable more than one text input on the single seat and should disable the current
+    //      text input before enabling the new one. At most one instance of text input may be in enabled state per
+    //      instance, Requests to enable the another text input when some text input is active must be ignored
+    //      by compositor."
+    private void wlEnableContextLater() {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("wlEnableContextLater");
+            return;
+        }
+
+        assert(awtActivationStatus == AWTActivationStatus.ACTIVATED);
+
+        if (wlPendingChanges1 == null) {
+            wlPendingChanges1 = wlPendingChanges2;
+            wlPendingChanges2 = null;
+        }
+
+        //noinspection PointlessBooleanExpression
+        if (wlGetContextLatestFutureEnabledState() == false) {
+            wlScheduleContextNewChanges(new ZwpTextInputV3.OutgoingChanges().setEnabledState(true));
+        }
+
+        //noinspection PointlessBooleanExpression
+        assert(wlGetContextLatestFutureEnabledState() == true);
+
+        if (wlPendingChanges1 == null) {
+            // nothing to send
+            return;
+        }
+
+        // This method is only intended to schedule sending of an enable request, not to send it immediately.
+        wlSendPendingChangesLater();
+    }
+
+    private void wlDisableContextNowOrLater() {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("wlDisableContextNowOrLater");
+            return;
+        }
+
+        if (wlPendingChanges1 == null) {
+            wlPendingChanges1 = wlPendingChanges2;
+            wlPendingChanges2 = null;
+        }
+
+        //noinspection PointlessBooleanExpression
+        if (wlGetContextLatestFutureEnabledState() == true) {
+            wlScheduleContextNewChanges(new ZwpTextInputV3.OutgoingChanges().setEnabledState(false));
+        }
+
+        //noinspection PointlessBooleanExpression
+        assert(wlGetContextLatestFutureEnabledState() == false);
+
+        if (wlPendingChanges1 == null) {
+            // nothing to send
+            return;
+        }
+
+        wlSendPendingChangesNowOrLater();
+    }
+
+    private void wlDisableContextNowOrReinitialize() {
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("wlDisableContextNowOrReinitialize");
+            return;
+        }
+
+        //noinspection PointlessBooleanExpression
+        if (wlGetContextUpcomingOrCurrentEnabledState() == false) {
+            // The context is already disabled, or the compositor is processing a disable request.
+
+            wlPendingChanges2 = wlPendingChanges1 = null;
+            return;
+        }
+
+        if (!wlCanSendChangesNow()) {
+            try {
+                wlReinitializeContext();
+            } catch (AWTException err) {
+                if (isInstanceBroken()) {
+                    if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                        log.warning(
+                            String.format(
+                                "wlDisableContextNowOrReinitialize: reinitialization failed. WLInputMethod@%d has broken and will be replaced with another later.",
+                                System.identityHashCode(this)
+                            ),
+                            err
+                        );
+                    }
+
+                    handleBrokenInstance();
+                } else {
+                    log.severe("wlDisableContextNowOrReinitialize: unknown error", err);
+                }
+            }
+
+            return;
+        }
+
+        wlPendingChanges1 = new ZwpTextInputV3.OutgoingChanges()
+                                .appendChangesFrom(wlPendingChanges2)
+                                .appendChangesFrom(wlPendingChanges1)
+                                .setEnabledState(false);
+        wlPendingChanges2 = null;
+
+        wlSendPendingChangesNow();
+
+        //noinspection PointlessBooleanExpression
+        assert(wlGetContextUpcomingOrCurrentEnabledState() == false);
     }
 
 
@@ -1105,30 +1453,60 @@ public final class WLInputMethod extends InputMethodAdapter {
     /** Called in response to {@code zwp_text_input_v3::enter} events. */
     private void zwp_text_input_v3_onEnter(long enteredWlSurfacePtr) {
         assert EventQueue.isDispatchThread();
+
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onEnter", enteredWlSurfacePtr);
+            return;
+        }
     }
 
     /** Called in response to {@code zwp_text_input_v3::leave} events. */
     private void zwp_text_input_v3_onLeave(long leftWlSurfacePtr) {
         assert EventQueue.isDispatchThread();
+
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onLeave", leftWlSurfacePtr);
+            return;
+        }
     }
 
     /** Called in response to {@code zwp_text_input_v3::preedit_string} events. */
     private void zwp_text_input_v3_onPreeditString(byte[] preeditStrUtf8, int cursorBeginUtf8Byte, int cursorEndUtf8Byte) {
         assert EventQueue.isDispatchThread();
+
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onPreeditString", preeditStrUtf8, cursorBeginUtf8Byte, cursorEndUtf8Byte);
+            return;
+        }
     }
 
     /** Called in response to {@code zwp_text_input_v3::commit_string} events. */
     private void zwp_text_input_v3_onCommitString(byte[] commitStrUtf8) {
         assert EventQueue.isDispatchThread();
+
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onCommitString", commitStrUtf8);
+            return;
+        }
     }
 
     /** Called in response to {@code zwp_text_input_v3::delete_surrounding_text} events. */
     private void zwp_text_input_v3_onDeleteSurroundingText(long numberOfUtf8BytesBeforeToDelete, long numberOfUtf8BytesAfterToDelete) {
         assert EventQueue.isDispatchThread();
+
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onDeleteSurroundingText", numberOfUtf8BytesBeforeToDelete, numberOfUtf8BytesAfterToDelete);
+            return;
+        }
     }
 
     /** Called in response to {@code zwp_text_input_v3::done} events. */
     private void zwp_text_input_v3_onDone(long doneSerial) {
         assert EventQueue.isDispatchThread();
+
+        if (isInstanceBroken()) {
+            logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onDone", doneSerial);
+            return;
+        }
     }
 }
