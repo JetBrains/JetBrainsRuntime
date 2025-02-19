@@ -289,7 +289,7 @@ public class FileInputStream extends InputStream
             return read0();
         } else {
             ByteBuffer buffer = ByteBuffer.allocate(1);
-            int nRead = getChannel().read(buffer);
+            int nRead = channel.read(buffer);
             buffer.rewind();
             return nRead == 1 ? (buffer.get() & 0xFF) : -1;
         }
@@ -373,7 +373,7 @@ public class FileInputStream extends InputStream
         } else {
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b);
-                return getChannel().read(buffer);
+                return channel.read(buffer);
             } catch (OutOfMemoryError e) {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes(b, 0, b.length);
@@ -409,7 +409,7 @@ public class FileInputStream extends InputStream
         } else {
             try {
                 ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                return getChannel().read(buffer);
+                return channel.read(buffer);
             } catch (OutOfMemoryError e) {
                 // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                 return readBytes(b, off, len);
@@ -533,7 +533,7 @@ public class FileInputStream extends InputStream
         if (!useNio) {
             return length0();
         } else {
-            return getChannel().size();
+            return channel.size();
         }
     }
 
@@ -543,7 +543,7 @@ public class FileInputStream extends InputStream
         if (!useNio) {
             return position0();
         } else {
-            return getChannel().position();
+            return channel.position();
         }
     }
     private native long position0() throws IOException;
