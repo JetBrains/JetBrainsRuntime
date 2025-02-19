@@ -509,6 +509,10 @@ public class FileOutputStream extends OutputStream
             fc.close();
         }
 
+        if (externalChannelHolder != null) {
+            externalChannelHolder.close();
+        }
+
         fd.closeAll(new Closeable() {
             public void close() throws IOException {
                fd.close();
