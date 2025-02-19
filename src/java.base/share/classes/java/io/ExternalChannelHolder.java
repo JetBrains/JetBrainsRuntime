@@ -41,8 +41,8 @@ class ExternalChannelHolder {
     private final NioChannelCleanable channelCleanable;
     private volatile FileChannel externallySharedChannel;
 
-    ExternalChannelHolder(Object synchronizationPoint, FileChannel channel, NioChannelCleanable channelCleanable) {
-        this.synchronizationPoint = synchronizationPoint;
+    ExternalChannelHolder(Object owner, FileChannel channel, NioChannelCleanable channelCleanable) {
+        this.synchronizationPoint = owner;
         this.channel = channel;
         this.channelCleanable = channelCleanable;
     }
@@ -62,5 +62,12 @@ class ExternalChannelHolder {
         }
         channelCleanable.setChannel(null);
         return externallySharedChannel;
+    }
+
+    void close() throws IOException {
+        FileChannel ch = externallySharedChannel;
+        if (ch != null) {
+            ch.close();
+        }
     }
 }

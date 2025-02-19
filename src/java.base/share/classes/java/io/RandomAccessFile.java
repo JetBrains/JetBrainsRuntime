@@ -973,6 +973,10 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             fc.close();
         }
 
+        if (externalChannelHolder != null) {
+            externalChannelHolder.close();
+        }
+
         fd.closeAll(new Closeable() {
             public void close() throws IOException {
                fd.close();
