@@ -42,7 +42,7 @@ import java.awt.image.ImageProducer;
 /**
  * This class is a wrapper for a GPU texture-based image.
  * It provides functionalities to integrate a texture image with AWT's Image class.
- * The wrapped texture has to correspond to the current rendering pipeline(see details below).
+ * The wrapped texture has to correspond to the current rendering pipeline (see details below).
  * <p>
  * Only Metal textures are supported at the moment.
  * <p>

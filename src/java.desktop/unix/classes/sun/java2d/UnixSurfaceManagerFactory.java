@@ -77,6 +77,6 @@ public class UnixSurfaceManagerFactory extends SurfaceManagerFactory {
 
     @Override
     public SurfaceManager createTextureWrapperSurfaceManager(GraphicsConfiguration gc, Image image, long texture) {
-        throw new UnsupportedOperationException("unsupported");
+        throw new UnsupportedOperationException();
     }
 }
