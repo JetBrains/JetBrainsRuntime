@@ -35,6 +35,7 @@ import org.junit.rules.TemporaryFolder;
 import testNio.ManglingFileSystemProvider;
 
 import java.io.*;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -413,51 +414,71 @@ public class FileTest {
 
     @Test
     public void testToCanonicalPathSymLinksAware() throws Exception {
-        assumeNotWindows();
-
-        File rootDir = temporaryFolder.newFolder("root");
+        // getCanonicalFile capitalizes the drive letter on Windows.
+        File rootDir = temporaryFolder.newFolder("root").getCanonicalFile();
         temporaryFolder.newFolder("root/dir1/dir2/dir3/dir4");
         String root = rootDir.getAbsolutePath();
 
         // non-recursive link
         Path link1 = new File(rootDir, "dir1/dir2_link").toPath();
         Path target1 = new File(rootDir, "dir1/dir2").toPath();
-        Files.createSymbolicLink(link1, target1);
+        try {
+            Files.createSymbolicLink(link1, target1);
+        } catch (AccessDeniedException ignored) {
+            Assume.assumeTrue("Cannot create symbolic link", false);
+        }
         // recursive links to a parent dir
         Path link = new File(rootDir, "dir1/dir1_link").toPath();
         Path target = new File(rootDir, "dir1").toPath();
         Files.createSymbolicLink(link, target);
 
         // links should NOT be resolved when ../ stays inside the linked path
-        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/./").getCanonicalFile().toString());
-        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/dir3/../").getCanonicalFile().toString());
-        assertEquals(root + "/dir1/dir2/dir3", new File(root + "/dir1/dir2_link/dir3/dir4/../").getCanonicalFile().toString());
-        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/dir3/dir4/../../").getCanonicalFile().toString());
-        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/../dir1/dir2_link/dir3/../").getCanonicalFile().toString());
+        assertEqualsReplacingSeparators(root + "/dir1/dir2", canonicalize(root + "/dir1/dir2_link/./"));
+        assertEqualsReplacingSeparators(root + "/dir1/dir2", canonicalize(root + "/dir1/dir2_link/dir3/../"));
+        assertEqualsReplacingSeparators(root + "/dir1/dir2/dir3", canonicalize(root + "/dir1/dir2_link/dir3/dir4/../"));
+        assertEqualsReplacingSeparators(root + "/dir1/dir2", canonicalize(root + "/dir1/dir2_link/dir3/dir4/../../"));
+        assertEqualsReplacingSeparators(root + "/dir1/dir2", canonicalize(root + "/dir1/../dir1/dir2_link/dir3/../"));
 
         // I.II) recursive links
-        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/./").getCanonicalFile().toString());
-        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/dir2/../").getCanonicalFile().toString());
-        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir1_link/dir2/dir3/../").getCanonicalFile().toString());
-        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/dir2/dir3/../../").getCanonicalFile().toString());
-        assertEquals(root + "/dir1", new File(root + "/dir1/../dir1/dir1_link/dir2/../").getCanonicalFile().toString());
+        assertEqualsReplacingSeparators(root + "/dir1", canonicalize(root + "/dir1/dir1_link/./"));
+        assertEqualsReplacingSeparators(root + "/dir1", canonicalize(root + "/dir1/dir1_link/dir2/../"));
+        assertEqualsReplacingSeparators(root + "/dir1/dir2", canonicalize(root + "/dir1/dir1_link/dir2/dir3/../"));
+        assertEqualsReplacingSeparators(root + "/dir1", canonicalize(root + "/dir1/dir1_link/dir2/dir3/../../"));
+        assertEqualsReplacingSeparators(root + "/dir1", canonicalize(root + "/dir1/../dir1/dir1_link/dir2/../"));
 
         // II) links should be resolved is ../ escapes outside
 
         // II.I) non-recursive links
-        assertEquals(root + "/dir1", new File(root + "/dir1/dir2_link/../").getCanonicalFile().toString());
-        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/../dir2").getCanonicalFile().toString());
-        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/../../dir1/dir2").getCanonicalFile().toString());
-        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/dir3/../../dir2").getCanonicalFile().toString());
-        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/dir2_link/dir3/../../../dir1/dir2").getCanonicalFile().toString());
-        assertEquals(root + "/dir1/dir2", new File(root + "/dir1/../dir1/dir2_link/../dir2").getCanonicalFile().toString());
+        assertEqualsReplacingSeparators(root + "/dir1", canonicalize(root + "/dir1/dir2_link/../"));
+        assertEqualsReplacingSeparators(root + "/dir1/dir2", canonicalize(root + "/dir1/dir2_link/../dir2"));
+        assertEqualsReplacingSeparators(root + "/dir1/dir2", canonicalize(root + "/dir1/dir2_link/../../dir1/dir2"));
+        assertEqualsReplacingSeparators(root + "/dir1/dir2", canonicalize(root + "/dir1/dir2_link/dir3/../../dir2"));
+        assertEqualsReplacingSeparators(root + "/dir1/dir2", canonicalize(root + "/dir1/dir2_link/dir3/../../../dir1/dir2"));
+        assertEqualsReplacingSeparators(root + "/dir1/dir2", canonicalize(root + "/dir1/../dir1/dir2_link/../dir2"));
 
-        assertEquals(root, new File(root + "/dir1/dir1_link/../").getCanonicalFile().toString());
-        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/../dir1").getCanonicalFile().toString());
-        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/../../root/dir1").getCanonicalFile().toString());
-        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/dir2/../../dir1").getCanonicalFile().toString());
-        assertEquals(root + "/dir1", new File(root + "/dir1/dir1_link/dir2/../../../root/dir1").getCanonicalFile().toString());
-        assertEquals(root + "/dir1", new File(root + "/dir1/../dir1/dir1_link/../dir1").getCanonicalFile().toString());
+        if (IS_WINDOWS) {
+            assertEqualsReplacingSeparators(root + "/dir1", canonicalize(root + "/dir1/dir1_link/../"));
+            assertEqualsReplacingSeparators(root + "/dir1/dir1", canonicalize(root + "/dir1/dir1_link/../dir1"));
+            assertEqualsReplacingSeparators(root + "/root/dir1", canonicalize(root + "/dir1/dir1_link/../../root/dir1"));
+            assertEqualsReplacingSeparators(root + "/dir1/dir1", canonicalize(root + "/dir1/dir1_link/dir2/../../dir1"));
+            assertEqualsReplacingSeparators(root + "/root/dir1", canonicalize(root + "/dir1/dir1_link/dir2/../../../root/dir1"));
+            assertEqualsReplacingSeparators(root + "/dir1/dir1", canonicalize(root + "/dir1/../dir1/dir1_link/../dir1"));
+        } else {
+            assertEqualsReplacingSeparators(root, canonicalize(root + "/dir1/dir1_link/../"));
+            assertEqualsReplacingSeparators(root + "/dir1", canonicalize(root + "/dir1/dir1_link/../dir1"));
+            assertEqualsReplacingSeparators(root + "/dir1", canonicalize(root + "/dir1/dir1_link/../../root/dir1"));
+            assertEqualsReplacingSeparators(root + "/dir1", canonicalize(root + "/dir1/dir1_link/dir2/../../dir1"));
+            assertEqualsReplacingSeparators(root + "/dir1", canonicalize(root + "/dir1/dir1_link/dir2/../../../root/dir1"));
+            assertEqualsReplacingSeparators(root + "/dir1", canonicalize(root + "/dir1/../dir1/dir1_link/../dir1"));
+        }
+    }
+
+    private static String canonicalize(String path) throws IOException {
+        return new File(path).getCanonicalFile().toString();
+    }
+
+    private static void assertEqualsReplacingSeparators(String expected, String actual) {
+        assertEquals(expected.replace('\\', '/'), actual.replace('\\', '/'));
     }
 
     @Test

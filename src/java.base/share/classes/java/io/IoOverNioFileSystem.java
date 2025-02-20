@@ -341,6 +341,12 @@ class IoOverNioFileSystem extends FileSystem {
                 if (!nioPath.isAbsolute()) {
                     nioPath = Path.of(System.getProperty("user.dir")).resolve(nioPath);
                 }
+
+                // Java_java_io_WinNTFileSystem_canonicalize0 works differently compared to Java_java_io_UnixFileSystem_canonicalize0
+                if (getSeparator() == '\\') {
+                    nioPath = nioPath.normalize();
+                }
+
                 Path suffix = nioFs.getPath("");
 
                 while (!nioPath.equals(nioPath.getRoot())) {
