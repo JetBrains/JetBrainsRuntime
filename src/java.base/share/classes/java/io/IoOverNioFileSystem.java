@@ -115,10 +115,8 @@ class IoOverNioFileSystem extends FileSystem {
         boolean result = true;
         if (view instanceof DosFileAttributeView dosView) {
             try {
-                if (enable && (access & ACCESS_READ) != 0) {
-                    dosView.setReadOnly(false);
-                } else if (!enable && (access & ACCESS_WRITE) != 0) {
-                    dosView.setReadOnly(true);
+                if ((access & ACCESS_WRITE) != 0) {
+                    dosView.setReadOnly(!enable);
                 } else {
                     result = false;
                 }
