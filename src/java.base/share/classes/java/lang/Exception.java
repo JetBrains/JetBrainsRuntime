@@ -126,4 +126,5 @@ public class Exception extends Throwable {
     private static class JB$$Assertion {}
     private static class JB$$Event {}
     private static class JB$$FullGC {}
+    private static class JB$$ShrinkingGC {}
 }
