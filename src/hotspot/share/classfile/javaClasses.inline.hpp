@@ -375,6 +375,8 @@ inline int Backtrace::get_line_number(Method* method, int bci) {
     // "no LineNumberTable".  JDK tests for -2.
     line_number = -2;
   } else {
+    // (DCEVM): Line numbers from the newest version must be used
+    method = method->newest_version();
     // Returns -1 if no LineNumberTable, and otherwise actual line number
     line_number = method->line_number_from_bci(bci);
   }
