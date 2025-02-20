@@ -2348,4 +2348,7 @@ public final class System {
 
     @JBRApi.Provides("SystemUtils#fullGC")
     private static native void $$jb$FullGC();
+
+    @JBRApi.Provides("SystemUtils#shrinkingGC")
+    private static native void $$jb$ShrinkingGC();
 }
