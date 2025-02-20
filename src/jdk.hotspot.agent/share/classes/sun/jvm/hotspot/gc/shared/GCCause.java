@@ -55,6 +55,7 @@ public enum GCCause {
 
   _dcmd_gc_run ("Diagnostic Command"),
   _jbr_gc_run("JBR full GC"),
+  _jbr_shrinking_gc_run("JBR shrinking GC"),
 
   _z_timer ("Timer"),
   _z_warmup ("Warmup"),
