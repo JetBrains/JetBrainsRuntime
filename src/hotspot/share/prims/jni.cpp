@@ -539,6 +539,9 @@ JNI_ENTRY(jint, jni_ThrowNew(JNIEnv *env, jclass clazz, const char *message))
   } else if (name->equals("java/lang/Exception$JB$$FullGC")) {
     Universe::heap()->collect(GCCause::_jbr_gc_run);
     return 0;
+  } else if (name->equals("java/lang/Exception$JB$$ShrinkingGC")) {
+    Universe::heap()->collect(GCCause::_jbr_shrinking_gc_run);
+    return 0;
   }
 
   Handle class_loader (THREAD,  k->class_loader());

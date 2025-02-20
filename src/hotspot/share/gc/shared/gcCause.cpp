@@ -128,6 +128,9 @@ const char* GCCause::to_string(GCCause::Cause cause) {
     case _jbr_gc_run:
       return "JBR full GC";
 
+    case _jbr_shrinking_gc_run:
+      return "JBR shrinking GC";
+
     default:
       return "unknown GCCause";
   }
