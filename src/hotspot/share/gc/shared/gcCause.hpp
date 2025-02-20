@@ -71,6 +71,7 @@ class GCCause : public AllStatic {
 
     _dcmd_gc_run,
     _jbr_gc_run,
+    _jbr_shrinking_gc_run,
 
     _shenandoah_stop_vm,
     _shenandoah_allocation_failure_evac,
@@ -91,7 +92,8 @@ class GCCause : public AllStatic {
   inline static bool is_user_requested_gc(GCCause::Cause cause) {
     return (cause == GCCause::_java_lang_system_gc ||
             cause == GCCause::_dcmd_gc_run ||
-            cause == GCCause::_jbr_gc_run);
+            cause == GCCause::_jbr_gc_run ||
+            cause == GCCause::_jbr_shrinking_gc_run);
   }
 
   inline static bool is_serviceability_requested_gc(GCCause::Cause cause) {
