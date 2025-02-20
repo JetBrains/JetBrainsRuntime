@@ -734,7 +734,18 @@ class IoOverNioFileSystem extends FileSystem {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
             try {
-                Path path = nioFs.getPath(f.getPath());
+                String pathStr = f.getPath();
+                if (getSeparator() == '\\') {
+                    // Java_java_io_WinNTFileSystem_list0 deliberately and explicitly removes trailing spaces from the path.
+                    // It doesn't happen in Java_java_io_UnixFileSystem_list0
+                    int i = pathStr.length();
+                    while (i > 0 && pathStr.charAt(i - 1) == ' ') {
+                        i--;
+                    }
+                    pathStr = pathStr.substring(0, i);
+                }
+
+                Path path = nioFs.getPath(pathStr);
                 try (DirectoryStream<Path> children = nioFs.provider().newDirectoryStream(path, AcceptAllFilter.FILTER)) {
                     List<String> result = new ArrayList<>();
                     for (Path child : children) {
