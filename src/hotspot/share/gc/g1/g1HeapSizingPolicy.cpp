@@ -385,8 +385,13 @@ size_t G1HeapSizingPolicy::full_collection_resize_amount(bool& expand, size_t al
                                // expand immediately to satisfy the allocation.
                                _g1h->allocation_used_bytes(allocation_word_size);
 
+  uintx max_heap_free_ratio = MaxHeapFreeRatio;
+  if (_g1h->gc_cause() == GCCause::_jbr_shrinking_gc_run) {
+    max_heap_free_ratio = MAX2(MinHeapFreeRatio, MIN2(JbrShrinkingGcMaxHeapFreeRatio, max_heap_free_ratio));
+  }
+
   size_t minimum_desired_capacity = target_heap_capacity(used_after_gc, MinHeapFreeRatio);
-  size_t maximum_desired_capacity = target_heap_capacity(used_after_gc, MaxHeapFreeRatio);
+  size_t maximum_desired_capacity = target_heap_capacity(used_after_gc, max_heap_free_ratio);
 
   // This assert only makes sense here, before we adjust them
   // with respect to the min and max heap size.
@@ -423,7 +428,7 @@ size_t G1HeapSizingPolicy::full_collection_resize_amount(bool& expand, size_t al
     log_debug(gc, ergo, heap)("Heap resize. Attempt heap shrinking (capacity higher than max desired capacity). "
                               "Capacity: %zuB occupancy: %zuB live: %zuB "
                               "maximum_desired_capacity: %zuB (%zu %%)",
-                              capacity_after_gc, used_after_gc, _g1h->used(), maximum_desired_capacity, MaxHeapFreeRatio);
+                              capacity_after_gc, used_after_gc, _g1h->used(), maximum_desired_capacity, max_heap_free_ratio);
 
     expand = false;
     return shrink_bytes;
