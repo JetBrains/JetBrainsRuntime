@@ -1439,6 +1439,14 @@ const int ObjectAlignmentInBytes = 8;
           range(0, 100)                                                     \
           constraint(MaxHeapFreeRatioConstraintFunc,AfterErgo)              \
                                                                             \
+  product(uintx, JbrShrinkingGcMaxHeapFreeRatio, 100, MANAGEABLE,           \
+          "The maximum percentage of heap free after GC to avoid shrinking" \
+          " when using JBR Shrinking GC run."                               \
+          " The value is clamped between MinHeapFreeRatio"                  \
+          " and MaxHeapFreeRatio."                                          \
+          " Defaults to MaxHeapFreeRatio option value.")                    \
+          range(0, 100)                                                     \
+                                                                            \
   product(bool, ShrinkHeapInSteps, true,                                    \
           "When disabled, informs the GC to shrink the java heap directly"  \
           " to the target size at the next full GC rather than requiring"   \

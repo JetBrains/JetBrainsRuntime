@@ -243,6 +243,7 @@ static bool should_clear_soft_references(GCCause::Cause cause) {
   case GCCause::_heap_inspection:
   case GCCause::_wb_breakpoint:
   case GCCause::_dcmd_gc_run:
+  case GCCause::_jbr_shrinking_gc_run:
   case GCCause::_java_lang_system_gc:
   case GCCause::_full_gc_alot:
   case GCCause::_jvmti_force_gc:
@@ -278,6 +279,7 @@ static bool should_preclean_young(GCCause::Cause cause) {
   case GCCause::_wb_breakpoint:
   case GCCause::_dcmd_gc_run:
   case GCCause::_jbr_gc_run:
+  case GCCause::_jbr_shrinking_gc_run:
   case GCCause::_java_lang_system_gc:
   case GCCause::_full_gc_alot:
   case GCCause::_jvmti_force_gc:
@@ -338,6 +340,7 @@ void ZDriverMajor::collect(const ZDriverRequest& request) {
   case GCCause::_wb_full_gc:
   case GCCause::_dcmd_gc_run:
   case GCCause::_jbr_gc_run:
+  case GCCause::_jbr_shrinking_gc_run:
   case GCCause::_java_lang_system_gc:
   case GCCause::_full_gc_alot:
   case GCCause::_jvmti_force_gc:
