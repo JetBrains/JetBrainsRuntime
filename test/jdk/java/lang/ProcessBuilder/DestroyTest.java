@@ -26,6 +26,7 @@
  * @bug 4244896
  * @summary Test for the various platform specific implementations of
  *          destroyForcibly.
+ * @run main/othervm -Djbr.java.io.use.nio=false DestroyTest
  */
 
 import java.io.BufferedReader;

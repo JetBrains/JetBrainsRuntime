@@ -2328,6 +2328,8 @@ public final class System {
 
         initialErrStream = System.err;
 
+        FileSystems.getDefault();
+
         // initializing the system class loader
         VM.initLevel(3);
 

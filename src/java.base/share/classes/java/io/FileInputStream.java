@@ -25,11 +25,21 @@
 
 package java.io;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.Set;
+
 import jdk.internal.misc.Blocker;
+
+import jdk.internal.misc.VM;
 import jdk.internal.util.ArraysSupport;
 import sun.nio.ch.FileChannelImpl;
+import sun.security.action.GetPropertyAction;
 
 /**
  * A {@code FileInputStream} obtains input bytes
@@ -59,6 +69,8 @@ import sun.nio.ch.FileChannelImpl;
 public class FileInputStream extends InputStream
 {
     private static final int DEFAULT_BUFFER_SIZE = 8192;
+
+    private static final boolean useNIO = GetPropertyAction.privilegedGetBooleanProp("jbr.java.io.use.nio", true, null);
 
     /* File Descriptor - handle to the open file */
     private final FileDescriptor fd;
@@ -146,11 +158,39 @@ public class FileInputStream extends InputStream
         if (file.isInvalid()) {
             throw new FileNotFoundException("Invalid file path");
         }
-        fd = new FileDescriptor();
-        fd.attach(this);
+
+        System.err.printf("Opening %s ...%n", file.toString());
         path = name;
-        open(name);
-        FileCleanable.register(fd);       // open set the fd, register the cleanup
+        if (VM.isBooted() && useNIO) {
+            if (Files.isDirectory(Path.of(name))) {
+                throw new FileNotFoundException(name + " is a directory");
+            }
+            try {
+                // NB: the channel will be closed in the close() method
+                // TODO Handle UnsupportedOperationException from newFileChannel
+                var ch = FileSystems.getDefault().provider().newFileChannel(
+                        file.toPath(),
+                        Set.of(StandardOpenOption.READ));
+                channel = ch;
+                if (ch instanceof FileChannelImpl fci) {
+                    fci.setUninterruptible();
+                    fd = fci.getFD(); // TODO: this is a temporary workaround
+                    fd.attach(this);
+                    FileCleanable.register(fd);
+                } else {
+                    fd = new FileDescriptor();
+                }
+            } catch (IOException e) {
+                // Since we can't throw IOException...
+                throw new FileNotFoundException(e.getMessage());
+            }
+        } else {
+            fd = new FileDescriptor();
+            fd.attach(this);
+            open(name);
+            FileCleanable.register(fd);       // open set the fd, register the cleanup
+        }
+        System.err.printf("Channel: %s%n", channel);
     }
 
     /**
@@ -228,13 +268,24 @@ public class FileInputStream extends InputStream
     public int read() throws IOException {
         long comp = Blocker.begin();
         try {
-            return read0();
+            return implRead();
         } finally {
             Blocker.end(comp);
         }
     }
 
     private native int read0() throws IOException;
+
+    private int implRead() throws IOException {
+        if (!VM.isBooted() || !useNIO) {
+            return read0();
+        } else {
+            ByteBuffer buffer = ByteBuffer.allocate(1);
+            int nRead = getChannel().read(buffer);
+            buffer.rewind();
+            return nRead == 1 ? (buffer.get() & 0xFF) : -1;
+        }
+    }
 
     /**
      * Reads a subarray as a sequence of bytes.
@@ -260,9 +311,23 @@ public class FileInputStream extends InputStream
     public int read(byte[] b) throws IOException {
         long comp = Blocker.begin();
         try {
-            return readBytes(b, 0, b.length);
+            return implRead(b);
         } finally {
             Blocker.end(comp);
+        }
+    }
+
+    private int implRead(byte[] b) throws IOException {
+        if (!VM.isBooted() || !useNIO) {
+            return readBytes(b, 0, b.length);
+        } else {
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b);
+                return getChannel().read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes(b, 0, b.length);
+            }
         }
     }
 
@@ -284,9 +349,23 @@ public class FileInputStream extends InputStream
     public int read(byte[] b, int off, int len) throws IOException {
         long comp = Blocker.begin();
         try {
-            return readBytes(b, off, len);
+            return implRead(b, off, len);
         } finally {
             Blocker.end(comp);
+        }
+    }
+
+    private int implRead(byte[] b, int off, int len) throws IOException {
+        if (!VM.isBooted() || !useNIO) {
+            return readBytes(b, off, len);
+        } else {
+            try {
+                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
+                return getChannel().read(buffer);
+            } catch (OutOfMemoryError e) {
+                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
+                return readBytes(b, off, len);
+            }
         }
     }
 
@@ -396,7 +475,11 @@ public class FileInputStream extends InputStream
     private long length() throws IOException {
         long comp = Blocker.begin();
         try {
-            return length0();
+            if (fd != null || !useNIO || path == null) {
+                return length0();
+            } else {
+                return getChannel().size();
+            }
         } finally {
             Blocker.end(comp);
         }
@@ -406,7 +489,11 @@ public class FileInputStream extends InputStream
     private long position() throws IOException {
         long comp = Blocker.begin();
         try {
-            return position0();
+            if (!VM.isBooted() || !useNIO) {
+                return position0();
+            } else {
+                return getChannel().position();
+            }
         } finally {
             Blocker.end(comp);
         }
@@ -441,7 +528,14 @@ public class FileInputStream extends InputStream
     public long skip(long n) throws IOException {
         long comp = Blocker.begin();
         try {
-            return skip0(n);
+            if (!VM.isBooted() || !useNIO) {
+                return skip0(n);
+            } else {
+                getChannel();
+                long startPos = channel.position();
+                channel.position(startPos + n);
+                return channel.position() - startPos;
+            }
         } finally {
             Blocker.end(comp);
         }
@@ -470,7 +564,15 @@ public class FileInputStream extends InputStream
     public int available() throws IOException {
         long comp = Blocker.begin();
         try {
-            return available0();
+            if (!VM.isBooted() || !useNIO || path == null) {
+                return available0();
+            } else {
+                getChannel();
+                long size = channel.size();
+                long pos = channel.position();
+                long avail = size > pos ? (size - pos) : 0;
+                return avail > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)avail;
+            }
         } finally {
             Blocker.end(comp);
         }

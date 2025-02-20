@@ -31,11 +31,15 @@ import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+
+import jdk.internal.misc.VM;
 import jdk.internal.util.StaticProperty;
+import sun.security.action.GetPropertyAction;
 
 /**
  * An abstract representation of file and directory pathnames.
@@ -148,6 +152,7 @@ import jdk.internal.util.StaticProperty;
 public class File
     implements Serializable, Comparable<File>
 {
+    private static final boolean useNIO = GetPropertyAction.privilegedGetBooleanProp("jbr.java.io.use.nio", true, null);
 
     /**
      * The FileSystem object representing the platform's local file system.
@@ -777,6 +782,9 @@ public class File
         if (security != null) {
             security.checkRead(path);
         }
+        if (VM.isBooted() && useNIO) {
+            return Files.isReadable(toPath());
+        }
         if (isInvalid()) {
             return false;
         }
@@ -806,6 +814,9 @@ public class File
         if (security != null) {
             security.checkWrite(path);
         }
+        if (VM.isBooted() && useNIO) {
+            return Files.isWritable(toPath());
+        }
         if (isInvalid()) {
             return false;
         }
@@ -829,6 +840,9 @@ public class File
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkRead(path);
+        }
+        if (VM.isBooted() && useNIO) {
+            return Files.exists(toPath());
         }
         if (isInvalid()) {
             return false;
@@ -860,6 +874,9 @@ public class File
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkRead(path);
+        }
+        if (VM.isBooted() && useNIO) {
+            return Files.isDirectory(toPath());
         }
         if (isInvalid()) {
             return false;
@@ -924,6 +941,13 @@ public class File
         if (security != null) {
             security.checkRead(path);
         }
+        if (VM.isBooted() && useNIO) {
+            try {
+                return Files.isHidden(toPath());
+            } catch (IOException e) {
+                return false;
+            }
+        }
         if (isInvalid()) {
             return false;
         }
@@ -968,6 +992,13 @@ public class File
         if (security != null) {
             security.checkRead(path);
         }
+        if (VM.isBooted() && useNIO) {
+            try {
+                return Files.getLastModifiedTime(toPath()).toMillis();
+            } catch (IOException e) {
+                return 0L;
+            }
+        }
         if (isInvalid()) {
             return 0L;
         }
@@ -999,6 +1030,13 @@ public class File
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkRead(path);
+        }
+        if (VM.isBooted() && useNIO) {
+            try {
+                return Files.size(toPath());
+            } catch (IOException e) {
+                return 0L;
+            }
         }
         if (isInvalid()) {
             return 0L;
@@ -1068,6 +1106,14 @@ public class File
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkDelete(path);
+        }
+        if (VM.isBooted() && useNIO) {
+            try {
+                Files.delete(toPath());
+                return true;
+            } catch (IOException e) {
+                return false;
+            }
         }
         if (isInvalid()) {
             return false;
@@ -1174,6 +1220,13 @@ public class File
         }
         if (isInvalid()) {
             return null;
+        }
+        if (VM.isBooted() && useNIO) {
+            try (var l = Files.list(toPath())) {
+                return l.map(e -> e.getFileName().toString()).toArray(String[]::new);
+            } catch (IOException e) {
+                return null;
+            }
         }
         String[] s = FS.list(this);
         if (s != null && getClass() != File.class) {
@@ -1797,6 +1850,9 @@ public class File
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
             security.checkExec(path);
+        }
+        if (VM.isBooted() && useNIO) {
+            return Files.isExecutable(toPath());
         }
         if (isInvalid()) {
             return false;
