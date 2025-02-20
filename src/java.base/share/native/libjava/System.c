@@ -330,3 +330,14 @@ Java_java_lang_System__00024_00024jb_00024FullGC(JNIEnv *env, jclass ign)
     }
 }
 
+JNIEXPORT void JNICALL
+Java_java_lang_System__00024_00024jb_00024ShrinkingGC(JNIEnv *env, jclass ign)
+{
+    jclass cls = (*env)->FindClass(env, "java/lang/Exception$JB$$ShrinkingGC");
+    if (cls != 0) {
+        // Throwing an exception by this name will trigger a full GC with
+        // a special cause indicating the need to shrink the heap
+        (*env)->ThrowNew(env, cls, NULL);
+    }
+}
+
