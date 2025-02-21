@@ -130,6 +130,8 @@ class IoOverNioFileSystem extends FileSystem {
                 if ((access & ACCESS_WRITE) != 0 && !dosView.readAttributes().isDirectory()) {
                     dosView.setReadOnly(!enable);
                     result = true;
+                } else if (access == ACCESS_READ || access == ACCESS_EXECUTE) {
+                    result = enable; // Like in Java_java_io_WinNTFileSystem_setPermission0
                 }
             } catch (IOException e) {
                 if (DEBUG.writeErrors()) {
