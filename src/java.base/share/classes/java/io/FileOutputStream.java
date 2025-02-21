@@ -245,7 +245,7 @@ public class FileOutputStream extends OutputStream
         }
 
         this.path = name;
-        java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs();
+        java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
         useNio = nioFs != null;
         if (useNio) {
             Path nioPath = nioFs.getPath(path);

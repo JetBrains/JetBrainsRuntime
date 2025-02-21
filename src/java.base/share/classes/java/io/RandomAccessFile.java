@@ -286,7 +286,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             throw new FileNotFoundException("Invalid file path");
         }
         path = name;
-        FileSystem nioFs = IoOverNioFileSystem.acquireNioFs();
+        FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
         useNio = nioFs != null;
         if (useNio) {
             Path nioPath = nioFs.getPath(name);
