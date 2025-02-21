@@ -155,6 +155,7 @@ java/awt/dnd/DropActionChangeTest.java JBR-8308 windows-all
 java/awt/dnd/DropTargetEnterExitTest/ExtraDragEnterTest.java 8029680 generic-all
 java/awt/dnd/DropTargetEnterExitTest/MissedDragExitTest.java JBR-5730 linux-all
 java/awt/dnd/MissingDragExitEventTest/MissingDragExitEventTest.java 8288839,JBR-5727,JBR-5959 windows-all,linux-all
+java/awt/dnd/ModalDialogDeadlockTest.java JBR-6776 windows-all
 java/awt/dnd/ModalDialogOnDragDeadlockTest.java JBR-6996 windows-all
 java/awt/dnd/NestedHeavyweightDropTargetTest.java JBR-8114 windows-all
 java/awt/dnd/DragExitBeforeDropTest.java 8242805 macosx-all
@@ -182,6 +183,7 @@ java/awt/Focus/ToFrontFocusTest/ToFrontFocus.java 7156130 linux-all
 java/awt/Focus/TypeAhead/TestFocusFreeze.java JBR-5856 windows-all
 java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java JBR-69 windows-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java 8169096,JBR-4880,JBR-5387 macosx-all,windows-all,linux-all
+java/awt/Focus/ActivateFocusTest.java JBR-7888 linux-all
 java/awt/Focus/ActivateOnProperAppContextTest.java 8136516 macosx-all
 java/awt/Focus/FocusPolicyTest.java 7160904 linux-all
 java/awt/EventQueue/6980209/bug6980209.java 8198615 macosx-all
@@ -965,6 +967,7 @@ javax/swing/JButton/4368790/bug4368790.java JBR-5210 windows-all
 javax/swing/JButton/4659800/SpaceKeyActivatesButton.java JBR-4949 linux-all,windows-all
 javax/swing/JButton/8151303/PressedIconTest.java JBR-5210,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JButton/PressedButtonRightClickTest.java JBR-5210 windows-all
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7965 windows-all
 javax/swing/JColorChooser/Test6524757.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6827032.java JBR-5210 windows-all
 javax/swing/JComboBox/4743225/bug4743225.java JBR-5210 windows-all
@@ -1103,7 +1106,7 @@ javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-53
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210 windows-all
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5542 linux-all
-javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952 windows-x64
+javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,8340330 windows-all,macosx-15.3,macosx-15.3.1
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
