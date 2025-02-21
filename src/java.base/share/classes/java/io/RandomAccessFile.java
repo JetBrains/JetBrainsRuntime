@@ -273,7 +273,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         }
         path = name;
 
-        FileSystem nioFs = IoOverNioFileSystem.acquireNioFs();
+        FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
         Path nioPath = null;
         if (nioFs != null && path != null) {
             try {

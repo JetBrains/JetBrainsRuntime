@@ -157,7 +157,7 @@ public class FileInputStream extends InputStream
         }
         path = file.getPath();
 
-        java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs();
+        java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
         Path nioPath = null;
         if (nioFs != null && path != null) {
             try {
@@ -737,7 +737,7 @@ public class FileInputStream extends InputStream
     private boolean isRegularFile() {  // TODO Shouldn't it be used together with checkIsNotDirectoryForStreams?
         Boolean isRegularFile = this.isRegularFile;
         if (isRegularFile == null) {
-            @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs();
+            @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
             if (path == null) {
                 this.isRegularFile = isRegularFile = false;
             } else if (nioFs == null) {
