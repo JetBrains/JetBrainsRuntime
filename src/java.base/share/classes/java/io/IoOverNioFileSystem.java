@@ -326,8 +326,30 @@ class IoOverNioFileSystem extends FileSystem {
     private String resolve0(File f) {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs();
         if (nioFs != null) {
+            String sourceString = f.toString();
+            if (getSeparator() == '\\' && prefixLength(sourceString) == 2 && sourceString.charAt(0) == '\\') {
+                // This behavior is covered by `test/jdk/java/io/File/GetAbsolutePath.java`.
+                // If this condition passed through Path.toAbsolutePath, an additional excessive slash
+                // might be added at the end, and the behavior would differ from the original java.io.File.getAbsolutePath.
+                return sourceString;
+            }
+
             try {
-                return nioFs.getPath(f.getPath()).toAbsolutePath().toString();
+                String result = nioFs.getPath(f.getPath()).toAbsolutePath().toString();
+                if (
+                        sourceString.length() > 2
+                        && getSeparator() == '\\'
+                        && sourceString.charAt(1) == ':'
+                        && sourceString.charAt(2) != '\\'
+                        && sourceString.charAt(0) != System.getProperty("user.dir", "?").charAt(0)
+                ) {
+                    // The source is a tricky drive-relative path,
+                    // and the current working directory is on a different drive.
+                    // For unclear reasons, the result must have two backslashes after the colon.
+                    // This behavior is covered by `test/jdk/java/io/File/GetAbsolutePath.java`.
+                    result = result.substring(0, 2) + '\\' + result.substring(2);
+                }
+                return result;
             } catch (InvalidPathException err) {
                 // Path parsing in java.nio is stricter than in java.io.
                 // Giving a chance to the original implementation.
@@ -368,10 +390,7 @@ class IoOverNioFileSystem extends FileSystem {
                     nioPath = Path.of(System.getProperty("user.dir")).resolve(nioPath);
                 }
 
-                // Java_java_io_WinNTFileSystem_canonicalize0 works differently compared to Java_java_io_UnixFileSystem_canonicalize0
-                if (getSeparator() == '\\') {
-                    nioPath = nioPath.normalize();
-                }
+                boolean isTrickyDriveRelativePath = !nioPath.toString().startsWith(nioPath.getRoot().toString());
 
                 Path suffix = nioFs.getPath("");
 
@@ -382,6 +401,7 @@ class IoOverNioFileSystem extends FileSystem {
                     }
 
                     String fileNameStr = nioPath.getFileName().toString();
+
                     if (!fileNameStr.isEmpty() && !fileNameStr.equals(".")) {
                         try {
                             nioPath = nioPath.toRealPath();
@@ -394,7 +414,20 @@ class IoOverNioFileSystem extends FileSystem {
                     nioPath = parent;
                 }
 
-                return nioPath.resolve(suffix).normalize().toString();
+                Path result = nioPath.resolve(suffix).normalize();
+
+                // It's not clear why it should work like that,
+                // but this behaviour is checked by the test `GetAbsolutePath.windowsDriveRelative`.
+                if (isTrickyDriveRelativePath) {
+                    StringBuilder sb = new StringBuilder(result.getRoot().toString());
+                    for (int i = 0; i < result.getNameCount(); i++) {
+                        sb.append(getSeparator());
+                        sb.append(result.getName(i).toString());
+                    }
+                    return sb.toString();
+                } else {
+                    return result.toString();
+                }
             } catch (InvalidPathException err) {
                 // Path parsing in java.nio is stricter than in java.io.
                 // Giving a chance to the original implementation.
