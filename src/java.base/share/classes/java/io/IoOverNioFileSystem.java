@@ -114,18 +114,28 @@ class IoOverNioFileSystem extends FileSystem {
 
         boolean result = true;
         if (view instanceof DosFileAttributeView dosView) {
+            result = false;
             try {
-                if ((access & ACCESS_WRITE) != 0) {
+                // Both the original java.io.File.setReadOnly
+                // and sun.nio.fs.WindowsFileAttributeViews.Dos.setReadOnly
+                // use SetFileAttributesW.
+                //
+                // https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileattributesw
+                // The documentation states:
+                // > This attribute is not honored on directories.
+                // However, SetFileAttributesW always returns 0, not changing anything.
+                // In java.io.File (see Java_java_io_WinNTFileSystem_setReadOnly0), there's an explicit check
+                // if it is a directory.
+                // On the contrary, there's no such check in WindowsFileAttributeViews.
+                if ((access & ACCESS_WRITE) != 0 && !dosView.readAttributes().isDirectory()) {
                     dosView.setReadOnly(!enable);
-                } else {
-                    result = false;
+                    result = true;
                 }
             } catch (IOException e) {
                 if (DEBUG.writeErrors()) {
                     new Throwable(String.format("Can't set read only attributes for %s", f), e)
                             .printStackTrace(System.err);
                 }
-                result = false;
             }
         } else if (view instanceof PosixFileAttributeView posixView) {
             try {
