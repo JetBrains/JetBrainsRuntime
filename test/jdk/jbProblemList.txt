@@ -154,6 +154,7 @@ java/awt/Focus/VetoableChangeListenerLoopTest.java JBR-5785 linux-all
 java/awt/Frame/7024749/bug7024749.java JBR-5210 windows-all
 java/awt/Frame/8158918/SetExtendedState.java JBR-6408 linux-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509 generic-all
+java/awt/Frame/HideMaximized/HideMaximized.java JBR-8310 linux-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-all
 java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 linux-all,macosx-15.3,macosx-15.3.1
@@ -546,7 +547,7 @@ java/awt/Modal/ModalFocusTransferTests/FocusTransferWDFNonModal3Test.java 825318
 java/awt/Modal/ModalInternalFrameTest/ModalInternalFrameTest.java 8253184,JBR-6302 windows-all,linux-all
 java/awt/Modal/MultipleDialogs/MultipleDialogs1Test.java 8198665,8253184 macosx-all,windows-all
 java/awt/Modal/MultipleDialogs/MultipleDialogs2Test.java 8198665,8253184 macosx-all,windows-all
-java/awt/Modal/MultipleDialogs/MultipleDialogs3Test.java 8198665,8253184 macosx-all,windows-all,linux-all
+java/awt/Modal/MultipleDialogs/MultipleDialogs3Test.java 8198665,8253184,JBR-8318 macosx-all,windows-all,linux-all
 java/awt/Modal/MultipleDialogs/MultipleDialogs4Test.java 8198665,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/MultipleDialogs/MultipleDialogs5Test.java 8198665,8253184 macosx-all,windows-all
 java/awt/Mouse/EnterExitEvents/DragWindowOutOfFrameTest.java 8177326,8253184,JBR-6305 macosx-all,windows-all,linux-all
@@ -962,6 +963,7 @@ javax/swing/JComboBox/bug4890345.java JBR-5799 windows-all
 javax/swing/JComboBox/bug4924758.java JBR-5846 windows-all
 javax/swing/JComboBox/bug5029504.java JBR-5799 windows-all
 javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java JBR-5210 windows-all
+javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-8270 linux-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949 linux-all,windows-all
@@ -1299,7 +1301,7 @@ com/sun/java/accessibility/util/8051626/Bug8051626.java JBR-5767 windows-all
 com/sun/java/swing/plaf/windows/Test8173145.java                                    JBR-4197 windows-all
 com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                              JBR-4197 windows-all
 
-jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3
+jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3,macosx-15.3.1
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/Font/font430.sh                                                         JBR-4956 linux-all
 jb/java/awt/Font/Font467.java                                                       JBR-3960 generic-all
