@@ -24,6 +24,7 @@ source jb/project/tools/common/scripts/common.sh
 
 JCEF_PATH=${JCEF_PATH:=./jcef_mac}
 BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 17)}
+XCODE_PATH=${XCODE_PATH:-}
 [ -n $XCODE_PATH ] && WITH_XCODE_PATH="--with-xcode-path=$XCODE_PATH"
 
 function do_configure {
