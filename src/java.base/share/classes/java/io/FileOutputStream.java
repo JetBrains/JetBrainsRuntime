@@ -31,6 +31,8 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.DosFileAttributeView;
+import java.nio.file.attribute.DosFileAttributes;
 import java.util.Set;
 
 import jdk.internal.access.SharedSecrets;
@@ -246,7 +248,23 @@ public class FileOutputStream extends OutputStream
         java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs();
         useNio = nioFs != null;
         if (useNio) {
-            Path nioPath = nioFs.getPath(name);
+            Path nioPath = nioFs.getPath(path);
+
+            // java.io backend doesn't open DOS hidden files for writing, but java.nio.file opens.
+            // This code mimics the old behavior.
+            if (nioFs.getSeparator().equals("\\")) {
+                DosFileAttributes attrs;
+                try {
+                    attrs = Files.getFileAttributeView(nioPath, DosFileAttributeView.class).readAttributes();
+                } catch (IOException | UnsupportedOperationException e) {
+                    // Windows paths without DOS attributes? Not a problem in this case.
+                    attrs = null;
+                }
+                if (attrs != null && (attrs.isHidden() || attrs.isDirectory())) {
+                    throw new FileNotFoundException(file.getPath() + " (Access is denied)");
+                }
+            }
+
             try {
                 IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
                 // NB: the channel will be closed in the close() method
