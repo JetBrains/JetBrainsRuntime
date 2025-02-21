@@ -24,6 +24,25 @@ source jb/project/tools/common/scripts/common.sh
 
 JCEF_PATH=${JCEF_PATH:=./jcef_mac}
 BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 17)}
+XCODE_PATH=${XCODE_PATH:-}
+if [ -d "$XCODE_PATH" ]; then
+  WITH_XCODE_PATH="--with-xcode-path=$XCODE_PATH"
+else
+  if [ -z "${CONTINUOUS_INTEGRATION:-}" ]; then
+    WITH_XCODE_PATH=""
+    if [ -n "${XCODE_PATH}" ]; then
+      echo "XCode not found in the directory: ${XCODE_PATH}"
+      echo "default XCode will be used"
+    fi
+  else
+    if [ -z "${XCODE_PATH}" ]; then
+      echo "specify XCode via setting XCODE_PATH"
+    else
+      echo "XCode not found in the directory: ${XCODE_PATH}"
+    fi
+    do_exit 1
+  fi
+fi
 
 function do_configure {
   sh configure \
@@ -42,6 +61,7 @@ function do_configure {
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
+    $WITH_XCODE_PATH \
     || do_exit $?
 }
 
