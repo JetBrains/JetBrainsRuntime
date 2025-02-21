@@ -26,6 +26,8 @@ source jb/project/tools/common/scripts/common.sh
 
 JCEF_PATH=${JCEF_PATH:=./jcef_mac}
 BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 16)}
+XCODE_PATH=${XCODE_PATH:-}
+[ -n $XCODE_PATH ] && WITH_XCODE_PATH="--with-xcode-path=$XCODE_PATH"
 
 function do_configure {
   if [[ "${architecture}" == *aarch64* ]]; then
@@ -50,6 +52,7 @@ function do_configure {
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
+    $WITH_XCODE_PATH \
     || do_exit $?
 }
 
