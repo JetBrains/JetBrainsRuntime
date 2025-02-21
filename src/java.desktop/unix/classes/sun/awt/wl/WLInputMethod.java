@@ -388,6 +388,13 @@ public final class WLInputMethod extends InputMethodAdapter {
                 this.nativeContextPtr = nativeContextPtr;
             }
 
+
+            /** {@link #zwp_text_input_v3_onEnter(long)} / {@link #zwp_text_input_v3_onLeave(long)} */
+            public InputContextState setCurrentWlSurfacePtr(long newCurrentWlSurfacePtr) {
+                this.currentWlSurfacePtr = newCurrentWlSurfacePtr;
+                return this;
+            }
+
             public long getCurrentWlSurfacePtr() { return currentWlSurfacePtr; }
 
 
@@ -1458,6 +1465,16 @@ public final class WLInputMethod extends InputMethodAdapter {
             logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onEnter", enteredWlSurfacePtr);
             return;
         }
+
+        wlInputContextState
+            // Values set with this event aren't buffered, so
+            //   we shouldn't wait for a {@code zwp_text_input_v3::done} event to apply them.
+            .setCurrentWlSurfacePtr(enteredWlSurfacePtr)
+            // "After an enter event [...] all state information is invalidated and needs to be resent by the client."
+            .resetToInitialValues();
+
+        // TODO: clear preedit [and commit?] strings in the current AWT component if this IM is active and
+        //   is expected to react to native events (see e.g. {@link #stopListening()}).
     }
 
     /** Called in response to {@code zwp_text_input_v3::leave} events. */
@@ -1468,6 +1485,23 @@ public final class WLInputMethod extends InputMethodAdapter {
             logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onLeave", leftWlSurfacePtr);
             return;
         }
+
+        if (wlInputContextState.getCurrentWlSurfacePtr() != leftWlSurfacePtr) {
+            if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                log.warning(
+                    "zwp_text_input_v3_onLeave: leftWlSurfacePtr={0} isn't equal to the known current one={1}.",
+                    leftWlSurfacePtr, wlInputContextState.getCurrentWlSurfacePtr()
+                );
+            }
+        }
+
+        // Values set with this event aren't buffered, so
+        //   we shouldn't wait for a {@code zwp_text_input_v3::done} event to apply them.
+        wlInputContextState.setCurrentWlSurfacePtr(0);
+
+        // TODO: "The client should reset any preedit string previously set.".
+        //       To clear preedit [and commit?] strings in the current AWT component if this IM is/was active and
+        //       is/was expected to react to native events (see e.g. {@link #stopListening()}).
     }
 
     /** Called in response to {@code zwp_text_input_v3::preedit_string} events. */
