@@ -131,8 +131,8 @@ public class VerifyDependencies {
         String javaHome = System.getProperty("java.home");
 
         String vendorVersion = System.getProperty("java.vendor.version");
-        expectedVersion = vendorVersion.substring(Math.max(vendorVersion.length() - 3, 0)).compareTo("-vk") == 0
-                ? EXPECTED_VERSION_VULKAN : EXPECTED_VERSION_LEGACY;
+        expectedVersion = vendorVersion.substring(Math.max(vendorVersion.length() - 3, 0)).compareTo("-lb") == 0
+                ? EXPECTED_VERSION_LEGACY : EXPECTED_VERSION_VULKAN;
         System.out.println("supporting glibc version is not less than " + expectedVersion);
 
         findInDirectory(javaHome + "/bin", false);
