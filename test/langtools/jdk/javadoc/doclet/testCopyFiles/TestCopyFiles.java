@@ -259,6 +259,7 @@ public class TestCopyFiles extends JavadocTester {
     public void testDocFilesInPackagesSource7UsingClassPath() {
         javadoc("-d", "packages-out-src7-cp",
                 "-source", "7",
+                "-sourcepath", testSrc("packages"),
                 "-classpath", testSrc("packages"),
                 "p1");
         checkExit(Exit.OK);
