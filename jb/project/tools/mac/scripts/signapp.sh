@@ -81,11 +81,8 @@ while [[ $attempt -le $limit ]]; do
   log "Signing (attempt $attempt) $APPLICATION_PATH ..."
   "$SCRIPT_DIR/sign.sh" "$APPLICATION_PATH" "$PKG_NAME" "$BUNDLE_ID" "$CODESIGN_STRING" "$JB_INSTALLER_CERT"
   ec=$?
+  ((attempt += 1))
   if [[ $ec -ne 0 ]]; then
-    ((attempt += 1))
-    if [ $attempt -eq $limit ]; then
-      set -e
-    fi
     log "Signing failed, wait for 30 sec and try to sign again"
     sleep 30
   else
@@ -93,7 +90,6 @@ while [[ $attempt -le $limit ]]; do
     codesign -v "$APPLICATION_PATH" -vvvvv
     log "Check sign done"
     spctl -a -v $APPLICATION_PATH
-    ((attempt += limit))
   fi
 done
 
