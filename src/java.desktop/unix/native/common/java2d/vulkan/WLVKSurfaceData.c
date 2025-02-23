@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ static void WLVKSurfaceData_OnResize(VKWinSDOps* surface, VkExtent2D extent) {
  * Method:    initOps
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_00024WLVKWindowSurfaceData_initOps(
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_initOps(
         JNIEnv *env, jobject vksd, jint backgroundRGB)
 {
     J2dTraceLn1(J2D_TRACE_VERBOSE, "WLVKWindowsSurfaceData_initOps(%p)", vksd);
@@ -56,28 +56,11 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_00024WLVKWindowSur
 }
 
 /*
- * Class:     sun_java2d_vulkan_WLVKSurfaceData_WLVKOffScreenSurfaceData
- * Method:    initOps
- * Signature: (II)V
- */
-JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_00024WLVKOffScreenSurfaceData_initOps
-        (JNIEnv *env, jobject vksd, jint width, jint height) {
-    VKSDOps * sd = (VKSDOps*)SurfaceData_InitOps(env, vksd, sizeof(VKSDOps));
-    J2dTraceLn1(J2D_TRACE_VERBOSE, "WLVKOffScreenSurfaceData_initOps(%p)", sd);
-    if (sd == NULL) {
-        JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
-        return;
-    }
-    sd->drawableType = VKSD_RT_TEXTURE;
-    sd->background = VKUtil_DecodeJavaColor(0);
-    VKRenderer_ConfigureSurface(sd, (VkExtent2D){width, height});
-}
-/*
  * Class:     sun_java2d_vulkan_WLVKSurfaceData_WLVKWindowSurfaceData
  * Method:    assignWlSurface
  * Signature: (J)V
  */
-JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_00024WLVKWindowSurfaceData_assignWlSurface(
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_assignWlSurface(
         JNIEnv *env, jobject vksd, jlong wlSurfacePtr)
 {
     VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);

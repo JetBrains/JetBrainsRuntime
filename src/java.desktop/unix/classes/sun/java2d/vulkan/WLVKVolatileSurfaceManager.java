@@ -71,10 +71,8 @@ public class WLVKVolatileSurfaceManager extends VolatileSurfaceManager {
             if (type == AccelSurface.UNDEFINED) {
                 type = AccelSurface.RT_TEXTURE;
             }
-            return WLVKSurfaceData.createData(gc,
-                    vImg.getWidth(),
-                    vImg.getHeight(),
-                    vImg, cm, type);
+            return new VKOffScreenSurfaceData(
+                    gc, vImg, cm, type, vImg.getWidth(), vImg.getHeight());
         } catch (NullPointerException | OutOfMemoryError ignored) {
             return null;
         }
