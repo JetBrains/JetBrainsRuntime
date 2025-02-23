@@ -9,6 +9,7 @@ export COPYFILE_DISABLE=true
 
 INPUT_FILE=$1
 EXPLODED=$2.exploded
+BACKUP_JMODS=$2.backup
 USERNAME=$3
 PASSWORD=$4
 CODESIGN_STRING=$5
@@ -28,6 +29,8 @@ if test -d "$EXPLODED"; then
 fi
 rm -rf "$EXPLODED"
 mkdir "$EXPLODED"
+rm -rf "$BACKUP_JMODS"
+mkdir "$BACKUP_JMODS"
 
 log "Unzipping $INPUT_FILE to $EXPLODED ..."
 tar -xzvf "$INPUT_FILE" --directory $EXPLODED
