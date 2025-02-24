@@ -64,8 +64,6 @@ define SetupTestFilesCompilationBody
     TEST_LDFLAGS += -Wl,--exclude-libs,ALL
   else ifeq ($(TOOLCHAIN_TYPE), clang)
     TEST_CFLAGS += -fvisibility=hidden
-  else ifeq ($(TOOLCHAIN_TYPE), xlc)
-    TEST_CFLAGS += -qvisibility=hidden
   endif
 
   # The list to depend on starts out empty
