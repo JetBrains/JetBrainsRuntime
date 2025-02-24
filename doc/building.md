@@ -151,12 +151,12 @@ This table lists the OS versions used by Oracle when building the JDK. Such
 information is always subject to change, but this table is up to date at the
 time of writing.
 
- Operating system   Vendor/version used
- -----------------  -------------------------------------------------------
- Linux              Oracle Enterprise Linux 6.4 / 7.1 (using kernel 3.8.13)
- Solaris            Solaris 11.1 SRU 21.4.1 / 11.2 SRU 5.5
- macOS              Mac OS X 10.9 (Mavericks) / 10.10 (Yosemite)
- Windows            Windows Server 2012 R2
+| Operating system  | Vendor/version used                                     |
+| ----------------- | ------------------------------------------------------- |
+| Linux             | Oracle Enterprise Linux 6.4 / 7.1 (using kernel 3.8.13) |
+| Solaris           | Solaris 11.1 SRU 21.4.1 / 11.2 SRU 5.5                  |
+| macOS             | Mac OS X 10.9 (Mavericks) / 10.10 (Yosemite)            |
+| Windows           | Windows Server 2012 R2                                  |
 
 The double version numbers for Linux, Solaris and macOS is due to the hybrid
 model used at Oracle, where header files and external libraries from an older
@@ -363,18 +363,18 @@ configure.
 
 The Solaris Studio installation should contain at least these packages:
 
- Package                                            Version
- -------------------------------------------------- -------------
- developer/solarisstudio-124/backend                12.4-1.0.6.0
- developer/solarisstudio-124/c++                    12.4-1.0.10.0
- developer/solarisstudio-124/cc                     12.4-1.0.4.0
- developer/solarisstudio-124/library/c++-libs       12.4-1.0.10.0
- developer/solarisstudio-124/library/math-libs      12.4-1.0.0.1
- developer/solarisstudio-124/library/studio-gccrt   12.4-1.0.0.1
- developer/solarisstudio-124/studio-common          12.4-1.0.0.1
- developer/solarisstudio-124/studio-ja              12.4-1.0.0.1
- developer/solarisstudio-124/studio-legal           12.4-1.0.0.1
- developer/solarisstudio-124/studio-zhCN            12.4-1.0.0.1
+| Package                                            | Version       |
+| -------------------------------------------------- | ------------- |
+| developer/solarisstudio-124/backend                | 12.4-1.0.6.0  |
+| developer/solarisstudio-124/c++                    | 12.4-1.0.10.0 |
+| developer/solarisstudio-124/cc                     | 12.4-1.0.4.0  |
+| developer/solarisstudio-124/library/c++-libs       | 12.4-1.0.10.0 |
+| developer/solarisstudio-124/library/math-libs      | 12.4-1.0.0.1  |
+| developer/solarisstudio-124/library/studio-gccrt   | 12.4-1.0.0.1  |
+| developer/solarisstudio-124/studio-common          | 12.4-1.0.0.1  |
+| developer/solarisstudio-124/studio-ja              | 12.4-1.0.0.1  |
+| developer/solarisstudio-124/studio-legal           | 12.4-1.0.0.1  |
+| developer/solarisstudio-124/studio-zhCN            | 12.4-1.0.0.1  |
 
 Compiling with Solaris Studio can sometimes be finicky. This is the exact
 version used by Oracle, which worked correctly at the time of writing:
@@ -965,14 +965,14 @@ https://sourceware.org/autobook/autobook/autobook_17.html). If no
 targets are given, a native toolchain for the current platform will be
 created. Currently, at least the following targets are known to work:
 
- Supported devkit targets
- ------------------------
- x86_64-linux-gnu
- aarch64-linux-gnu
- arm-linux-gnueabihf
- ppc64-linux-gnu
- ppc64le-linux-gnu
- s390x-linux-gnu
+| Supported devkit targets |
+| ------------------------ |
+| x86_64-linux-gnu         |
+| aarch64-linux-gnu        |
+| arm-linux-gnueabihf      |
+| ppc64-linux-gnu          |
+| ppc64le-linux-gnu        |
+| s390x-linux-gnu          |
 
 `BASE_OS` must be one of "OEL6" for Oracle Enterprise Linux 6 or
 "Fedora" (if not specified "OEL6" will be the default). If the base OS
@@ -1199,21 +1199,21 @@ it might require a little nudge with:
 
 Architectures that are known to successfully cross-compile like this are:
 
-  Target        Debian tree  Debian arch   `--openjdk-target=...`   `--with-jvm-variants=...`
-  ------------  ------------ ------------- ------------------------ --------------
-  x86           buster       i386          i386-linux-gnu           (all)
-  arm           buster       armhf         arm-linux-gnueabihf      (all)
-  aarch64       buster       arm64         aarch64-linux-gnu        (all)
-  ppc64le       buster       ppc64el       powerpc64le-linux-gnu    (all)
-  s390x         buster       s390x         s390x-linux-gnu          (all)
-  mipsle        buster       mipsel        mipsel-linux-gnu         zero
-  mips64le      buster       mips64el      mips64el-linux-gnueabi64 zero
-  armel         buster       arm           arm-linux-gnueabi        zero
-  ppc           sid          powerpc       powerpc-linux-gnu        zero
-  ppc64be       sid          ppc64         powerpc64-linux-gnu      (all)
-  m68k          sid          m68k          m68k-linux-gnu           zero
-  alpha         sid          alpha         alpha-linux-gnu          zero
-  sh4           sid          sh4           sh4-linux-gnu            zero
+| Target       | Debian tree  | Debian arch   | `--openjdk-target=...`   | `--with-jvm-variants=...` |
+| ------------ | ------------ | ------------- | ------------------------ | ------------------------- |
+| x86          | buster       | i386          | i386-linux-gnu           | (all)                     |
+| arm          | buster       | armhf         | arm-linux-gnueabihf      | (all)                     |
+| aarch64      | buster       | arm64         | aarch64-linux-gnu        | (all)                     |
+| ppc64le      | buster       | ppc64el       | powerpc64le-linux-gnu    | (all)                     |
+| s390x        | buster       | s390x         | s390x-linux-gnu          | (all)                     |
+| mipsle       | buster       | mipsel        | mipsel-linux-gnu         | zero                      |
+| mips64le     | buster       | mips64el      | mips64el-linux-gnueabi64 | zero                      |
+| armel        | buster       | arm           | arm-linux-gnueabi        | zero                      |
+| ppc          | sid          | powerpc       | powerpc-linux-gnu        | zero                      |
+| ppc64be      | sid          | ppc64         | powerpc64-linux-gnu      | (all)                     |
+| m68k         | sid          | m68k          | m68k-linux-gnu           | zero                      |
+| alpha        | sid          | alpha         | alpha-linux-gnu          | zero                      |
+| sh4          | sid          | sh4           | sh4-linux-gnu            | zero                      |
 
 ### Building for ARM/aarch64
 
