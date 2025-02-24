@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2016, the original author or authors.
+ * Copyright (c) 2002-2016, the original author(s).
  *
  * This software is distributable under the BSD license. See the terms of the
  * BSD license in the documentation provided with this software.
@@ -11,10 +11,11 @@ package jdk.internal.org.jline.terminal.impl.jna.win;
 import java.io.IOException;
 import java.io.Writer;
 
-//import com.sun.jna.Pointer;
-//import com.sun.jna.ptr.IntByReference;
 import jdk.internal.org.jline.utils.AnsiWriter;
 import jdk.internal.org.jline.utils.Colors;
+
+//import com.sun.jna.Pointer;
+//import com.sun.jna.ptr.IntByReference;
 
 import static jdk.internal.org.jline.terminal.impl.jna.win.Kernel32.BACKGROUND_BLUE;
 import static jdk.internal.org.jline.terminal.impl.jna.win.Kernel32.BACKGROUND_GREEN;
@@ -24,7 +25,6 @@ import static jdk.internal.org.jline.terminal.impl.jna.win.Kernel32.FOREGROUND_B
 import static jdk.internal.org.jline.terminal.impl.jna.win.Kernel32.FOREGROUND_GREEN;
 import static jdk.internal.org.jline.terminal.impl.jna.win.Kernel32.FOREGROUND_INTENSITY;
 import static jdk.internal.org.jline.terminal.impl.jna.win.Kernel32.FOREGROUND_RED;
-
 
 /**
  * A Windows ANSI escape processor, uses JNA to access native platform
@@ -36,41 +36,41 @@ import static jdk.internal.org.jline.terminal.impl.jna.win.Kernel32.FOREGROUND_R
  */
 public final class WindowsAnsiWriter extends AnsiWriter {
 
-    private static final short FOREGROUND_BLACK   = 0;
-    private static final short FOREGROUND_YELLOW  = (short) (FOREGROUND_RED|FOREGROUND_GREEN);
-    private static final short FOREGROUND_MAGENTA = (short) (FOREGROUND_BLUE|FOREGROUND_RED);
-    private static final short FOREGROUND_CYAN    = (short) (FOREGROUND_BLUE|FOREGROUND_GREEN);
-    private static final short FOREGROUND_WHITE   = (short) (FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE);
+    private static final short FOREGROUND_BLACK = 0;
+    private static final short FOREGROUND_YELLOW = (short) (FOREGROUND_RED | FOREGROUND_GREEN);
+    private static final short FOREGROUND_MAGENTA = (short) (FOREGROUND_BLUE | FOREGROUND_RED);
+    private static final short FOREGROUND_CYAN = (short) (FOREGROUND_BLUE | FOREGROUND_GREEN);
+    private static final short FOREGROUND_WHITE = (short) (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 
-    private static final short BACKGROUND_BLACK   = 0;
-    private static final short BACKGROUND_YELLOW  = (short) (BACKGROUND_RED|BACKGROUND_GREEN);
-    private static final short BACKGROUND_MAGENTA = (short) (BACKGROUND_BLUE|BACKGROUND_RED);
-    private static final short BACKGROUND_CYAN    = (short) (BACKGROUND_BLUE|BACKGROUND_GREEN);
-    private static final short BACKGROUND_WHITE   = (short) (BACKGROUND_RED|BACKGROUND_GREEN|BACKGROUND_BLUE);
+    private static final short BACKGROUND_BLACK = 0;
+    private static final short BACKGROUND_YELLOW = (short) (BACKGROUND_RED | BACKGROUND_GREEN);
+    private static final short BACKGROUND_MAGENTA = (short) (BACKGROUND_BLUE | BACKGROUND_RED);
+    private static final short BACKGROUND_CYAN = (short) (BACKGROUND_BLUE | BACKGROUND_GREEN);
+    private static final short BACKGROUND_WHITE = (short) (BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE);
 
     private static final short ANSI_FOREGROUND_COLOR_MAP[] = {
-            FOREGROUND_BLACK,
-            FOREGROUND_RED,
-            FOREGROUND_GREEN,
-            FOREGROUND_YELLOW,
-            FOREGROUND_BLUE,
-            FOREGROUND_MAGENTA,
-            FOREGROUND_CYAN,
-            FOREGROUND_WHITE,
+        FOREGROUND_BLACK,
+        FOREGROUND_RED,
+        FOREGROUND_GREEN,
+        FOREGROUND_YELLOW,
+        FOREGROUND_BLUE,
+        FOREGROUND_MAGENTA,
+        FOREGROUND_CYAN,
+        FOREGROUND_WHITE,
     };
 
     private static final short ANSI_BACKGROUND_COLOR_MAP[] = {
-            BACKGROUND_BLACK,
-            BACKGROUND_RED,
-            BACKGROUND_GREEN,
-            BACKGROUND_YELLOW,
-            BACKGROUND_BLUE,
-            BACKGROUND_MAGENTA,
-            BACKGROUND_CYAN,
-            BACKGROUND_WHITE,
+        BACKGROUND_BLACK,
+        BACKGROUND_RED,
+        BACKGROUND_GREEN,
+        BACKGROUND_YELLOW,
+        BACKGROUND_BLUE,
+        BACKGROUND_MAGENTA,
+        BACKGROUND_CYAN,
+        BACKGROUND_WHITE,
     };
 
-    private final static int MAX_ESCAPE_SEQUENCE_LENGTH = 100;
+    private static final int MAX_ESCAPE_SEQUENCE_LENGTH = 100;
 
     private final Pointer console;
 
@@ -134,7 +134,7 @@ public final class WindowsAnsiWriter extends AnsiWriter {
     protected void processEraseScreen(int eraseOption) throws IOException {
         getConsoleInfo();
         IntByReference written = new IntByReference();
-        switch(eraseOption) {
+        switch (eraseOption) {
             case ERASE_SCREEN:
                 Kernel32.COORD topLeft = new Kernel32.COORD();
                 topLeft.X = 0;
@@ -147,36 +147,44 @@ public final class WindowsAnsiWriter extends AnsiWriter {
                 Kernel32.COORD topLeft2 = new Kernel32.COORD();
                 topLeft2.X = 0;
                 topLeft2.Y = info.srWindow.Top;
-                int lengthToCursor = (info.dwCursorPosition.Y - info.srWindow.Top) * info.dwSize.X + info.dwCursorPosition.X;
+                int lengthToCursor =
+                        (info.dwCursorPosition.Y - info.srWindow.Top) * info.dwSize.X + info.dwCursorPosition.X;
                 Kernel32.INSTANCE.FillConsoleOutputCharacter(console, ' ', lengthToCursor, topLeft2, written);
-                Kernel32.INSTANCE.FillConsoleOutputAttribute(console, info.wAttributes, lengthToCursor, topLeft2, written);
+                Kernel32.INSTANCE.FillConsoleOutputAttribute(
+                        console, info.wAttributes, lengthToCursor, topLeft2, written);
                 break;
             case ERASE_SCREEN_TO_END:
-                int lengthToEnd = (info.srWindow.Bottom - info.dwCursorPosition.Y) * info.dwSize.X +
-                        (info.dwSize.X - info.dwCursorPosition.X);
+                int lengthToEnd = (info.srWindow.Bottom - info.dwCursorPosition.Y) * info.dwSize.X
+                        + (info.dwSize.X - info.dwCursorPosition.X);
                 Kernel32.INSTANCE.FillConsoleOutputCharacter(console, ' ', lengthToEnd, info.dwCursorPosition, written);
-                Kernel32.INSTANCE.FillConsoleOutputAttribute(console, info.wAttributes, lengthToEnd, info.dwCursorPosition, written);
+                Kernel32.INSTANCE.FillConsoleOutputAttribute(
+                        console, info.wAttributes, lengthToEnd, info.dwCursorPosition, written);
         }
     }
 
     protected void processEraseLine(int eraseOption) throws IOException {
         getConsoleInfo();
         IntByReference written = new IntByReference();
-        switch(eraseOption) {
+        switch (eraseOption) {
             case ERASE_LINE:
                 Kernel32.COORD leftColCurrRow = new Kernel32.COORD((short) 0, info.dwCursorPosition.Y);
                 Kernel32.INSTANCE.FillConsoleOutputCharacter(console, ' ', info.dwSize.X, leftColCurrRow, written);
-                Kernel32.INSTANCE.FillConsoleOutputAttribute(console, info.wAttributes, info.dwSize.X, leftColCurrRow, written);
+                Kernel32.INSTANCE.FillConsoleOutputAttribute(
+                        console, info.wAttributes, info.dwSize.X, leftColCurrRow, written);
                 break;
             case ERASE_LINE_TO_BEGINING:
                 Kernel32.COORD leftColCurrRow2 = new Kernel32.COORD((short) 0, info.dwCursorPosition.Y);
-                Kernel32.INSTANCE.FillConsoleOutputCharacter(console, ' ', info.dwCursorPosition.X, leftColCurrRow2, written);
-                Kernel32.INSTANCE.FillConsoleOutputAttribute(console, info.wAttributes, info.dwCursorPosition.X, leftColCurrRow2, written);
+                Kernel32.INSTANCE.FillConsoleOutputCharacter(
+                        console, ' ', info.dwCursorPosition.X, leftColCurrRow2, written);
+                Kernel32.INSTANCE.FillConsoleOutputAttribute(
+                        console, info.wAttributes, info.dwCursorPosition.X, leftColCurrRow2, written);
                 break;
             case ERASE_LINE_TO_END:
                 int lengthToLastCol = info.dwSize.X - info.dwCursorPosition.X;
-                Kernel32.INSTANCE.FillConsoleOutputCharacter(console, ' ', lengthToLastCol, info.dwCursorPosition, written);
-                Kernel32.INSTANCE.FillConsoleOutputAttribute(console, info.wAttributes, lengthToLastCol, info.dwCursorPosition, written);
+                Kernel32.INSTANCE.FillConsoleOutputCharacter(
+                        console, ' ', lengthToLastCol, info.dwCursorPosition, written);
+                Kernel32.INSTANCE.FillConsoleOutputAttribute(
+                        console, info.wAttributes, lengthToLastCol, info.dwCursorPosition, written);
         }
     }
 
@@ -218,7 +226,7 @@ public final class WindowsAnsiWriter extends AnsiWriter {
             scroll.Top = 0;
             Kernel32.COORD org = new Kernel32.COORD();
             org.X = 0;
-            org.Y = (short)(- nb);
+            org.Y = (short) (-nb);
             Kernel32.CHAR_INFO info = new Kernel32.CHAR_INFO(' ', originalColors);
             Kernel32.INSTANCE.ScrollConsoleScreenBuffer(console, scroll, scroll, org, info);
         }
@@ -247,29 +255,31 @@ public final class WindowsAnsiWriter extends AnsiWriter {
     protected void processSetForegroundColorExt(int paletteIndex) throws IOException {
         int color = Colors.roundColor(paletteIndex, 16);
         info.wAttributes = (short) ((info.wAttributes & ~0x0007) | ANSI_FOREGROUND_COLOR_MAP[color & 0x07]);
-        info.wAttributes = (short) ((info.wAttributes & ~FOREGROUND_INTENSITY) | (color >= 8 ? FOREGROUND_INTENSITY : 0));
+        info.wAttributes =
+                (short) ((info.wAttributes & ~FOREGROUND_INTENSITY) | (color >= 8 ? FOREGROUND_INTENSITY : 0));
         applyAttribute();
     }
 
     protected void processSetBackgroundColorExt(int paletteIndex) throws IOException {
         int color = Colors.roundColor(paletteIndex, 16);
-        info.wAttributes = (short)((info.wAttributes & ~0x0070 ) | ANSI_BACKGROUND_COLOR_MAP[color & 0x07]);
-        info.wAttributes = (short) ((info.wAttributes & ~BACKGROUND_INTENSITY) | (color >= 8 ? BACKGROUND_INTENSITY : 0));
+        info.wAttributes = (short) ((info.wAttributes & ~0x0070) | ANSI_BACKGROUND_COLOR_MAP[color & 0x07]);
+        info.wAttributes =
+                (short) ((info.wAttributes & ~BACKGROUND_INTENSITY) | (color >= 8 ? BACKGROUND_INTENSITY : 0));
         applyAttribute();
     }
 
     protected void processDefaultTextColor() throws IOException {
-        info.wAttributes = (short)((info.wAttributes & ~0x000F ) | (originalColors & 0x000F));
+        info.wAttributes = (short) ((info.wAttributes & ~0x000F) | (originalColors & 0x000F));
         applyAttribute();
     }
 
     protected void processDefaultBackgroundColor() throws IOException {
-        info.wAttributes = (short)((info.wAttributes & ~0x00F0 ) | (originalColors & 0x00F0));
+        info.wAttributes = (short) ((info.wAttributes & ~0x00F0) | (originalColors & 0x00F0));
         applyAttribute();
     }
 
     protected void processAttributeRest() throws IOException {
-        info.wAttributes = (short)((info.wAttributes & ~0x00FF ) | originalColors);
+        info.wAttributes = (short) ((info.wAttributes & ~0x00FF) | originalColors);
         this.negative = false;
         this.bold = false;
         this.underline = false;
@@ -277,7 +287,7 @@ public final class WindowsAnsiWriter extends AnsiWriter {
     }
 
     protected void processSetAttribute(int attribute) throws IOException {
-        switch(attribute) {
+        switch (attribute) {
             case ATTRIBUTE_INTENSITY_BOLD:
                 bold = true;
                 applyAttribute();
@@ -330,7 +340,7 @@ public final class WindowsAnsiWriter extends AnsiWriter {
         scroll.Top = info.dwCursorPosition.Y;
         Kernel32.COORD org = new Kernel32.COORD();
         org.X = 0;
-        org.Y = (short)(info.dwCursorPosition.Y + optionInt);
+        org.Y = (short) (info.dwCursorPosition.Y + optionInt);
         Kernel32.CHAR_INFO info = new Kernel32.CHAR_INFO(' ', originalColors);
         Kernel32.INSTANCE.ScrollConsoleScreenBuffer(console, scroll, scroll, org, info);
     }
@@ -342,7 +352,7 @@ public final class WindowsAnsiWriter extends AnsiWriter {
         scroll.Top = info.dwCursorPosition.Y;
         Kernel32.COORD org = new Kernel32.COORD();
         org.X = 0;
-        org.Y = (short)(info.dwCursorPosition.Y - optionInt);
+        org.Y = (short) (info.dwCursorPosition.Y - optionInt);
         Kernel32.CHAR_INFO info = new Kernel32.CHAR_INFO(' ', originalColors);
         Kernel32.INSTANCE.ScrollConsoleScreenBuffer(console, scroll, scroll, org, info);
     }
