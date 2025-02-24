@@ -30,6 +30,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.file.*;
 import java.nio.file.FileSystem;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Objects;
@@ -286,8 +287,19 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         // Two significant differences between the legacy java.io and java.nio.files:
         // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
         // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
-        useNio = nioPath != null && Files.isRegularFile(nioPath);
+        boolean isRegularFile;
+        try {
+            isRegularFile = nioPath != null &&
+                    Files.readAttributes(nioPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).isRegularFile();
+        }
+        catch (NoSuchFileException e) {
+            isRegularFile = true;
+        }
+        catch (IOException e) {
+            isRegularFile = false;
+        }
 
+        useNio = nioPath != null && isRegularFile;
         if (useNio) {
             Objects.requireNonNull(nioPath, "nioPath");
             try {
@@ -920,15 +932,24 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 if (newLength < oldSize) {
                     channel.truncate(newLength);
                 } else {
-                    byte[] buf = new byte[1 << 14];
-                    Arrays.fill(buf, (byte) 0);
-                    long remains = newLength - oldSize;
-                    while (remains > 0) {
-                        ByteBuffer buffer = ByteBuffer.wrap(buf);
-                        int length = (int) Math.min(remains, buf.length);
-                        buffer.limit(length);
-                        int written = channel.write(buffer);
-                        remains -= written;
+                    long position = channel.position();
+                    try {
+                        byte[] buf = new byte[1 << 14];
+                        Arrays.fill(buf, (byte) 0);
+                        long remains = newLength - oldSize;
+                        while (remains > 0) {
+                            ByteBuffer buffer = ByteBuffer.wrap(buf);
+                            int length = (int) Math.min(remains, buf.length);
+                            buffer.limit(length);
+                            int written = channel.write(buffer);
+                            remains -= written;
+                        }
+                    } finally {
+                        try {
+                            channel.position(position);
+                        } catch (IOException ignored) {
+                            // Nothing.
+                        }
                     }
                 }
             } catch (NonWritableChannelException err) {

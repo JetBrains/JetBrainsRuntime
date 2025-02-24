@@ -65,6 +65,20 @@ public class RandomAccessFileTest {
     }
 
     @Test
+    public void usesNioForNonExistingFiles() throws Exception {
+        File nonExistingFile = new File(temporaryFolder.getRoot(), "non-existing-file");
+        assertFalse(Files.exists(nonExistingFile.toPath()));
+        ManglingFileSystemProvider.mangleFileContent = true;
+        try (RandomAccessFile rac = new RandomAccessFile(nonExistingFile, "rw")) {
+            byte[] buffer = "hello".getBytes();
+            rac.write(buffer);
+            rac.seek(0);
+            rac.readFully(buffer);
+            assertEquals("h3110", new String(buffer));
+        }
+    }
+
+    @Test
     public void getChannel() throws Exception {
         File file = temporaryFolder.newFile();
         try (RandomAccessFile rac = new RandomAccessFile(file, "r")) {
