@@ -481,11 +481,23 @@ class IoOverNioFileSystem extends FileSystem {
             try {
                 Path path = nioFs.getPath(f.getPath());
 
-                if (getSeparator() == '/' &&
-                        !path.isAbsolute() &&
-                        (path.getFileName() == null || path.getFileName().toString().isEmpty())) {
-                    // The LibC function `stat` returns an error for such calls.
-                    return 0;
+                {
+                    boolean isAbsoluteOrDriveRelative;
+                    if (path.isAbsolute()) {
+                        isAbsoluteOrDriveRelative = true;
+                    } else if (getSeparator() == '\\') {
+                        String pathString = path.toString();
+                        isAbsoluteOrDriveRelative = pathString.length() >= 2 &&
+                                Character.isLetter(pathString.charAt(0)) &&
+                                pathString.charAt(1) == ':' &&
+                                (pathString.length() == 2 || pathString.charAt(2) != '\\');
+                    } else {
+                        isAbsoluteOrDriveRelative = false;
+                    }
+                    if (!isAbsoluteOrDriveRelative && (path.getFileName() == null || path.getFileName().toString().isEmpty())) {
+                        // The LibC function `stat` returns an error for such calls.
+                        return 0;
+                    }
                 }
 
                 // The order of checking Posix attributes first and DOS attributes next is deliberate.
