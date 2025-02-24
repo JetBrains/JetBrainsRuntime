@@ -329,16 +329,6 @@ JNIEXPORT jobject JNICALL Java_jdk_internal_org_jline_terminal_impl_jna_win_Kern
 
 /*
  * Class:     jdk_internal_org_jline_terminal_impl_jna_win_Kernel32Impl
- * Method:    GetConsoleOutputCP
- * Signature: ()I
- */
-JNIEXPORT jint JNICALL Java_jdk_internal_org_jline_terminal_impl_jna_win_Kernel32Impl_GetConsoleOutputCP
-  (JNIEnv *, jobject) {
-    return GetConsoleOutputCP();
-}
-
-/*
- * Class:     jdk_internal_org_jline_terminal_impl_jna_win_Kernel32Impl
  * Method:    FillConsoleOutputCharacter
  * Signature: (Ljdk/internal/org/jline/terminal/impl/jna/win/Pointer;CILjdk/internal/org/jline/terminal/impl/jna/win/Kernel32/COORD;Ljdk/internal/org/jline/terminal/impl/jna/win/IntByReference;)V
  */
