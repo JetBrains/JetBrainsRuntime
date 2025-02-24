@@ -33,6 +33,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.HashSet;
 
@@ -291,9 +292,18 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         }
         path = name;
         FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
-        useNio = nioFs != null;
+        Path nioPath = null;
+        if (nioFs != null && path != null) {
+            try {
+                nioPath = nioFs.getPath(path);
+            } catch (InvalidPathException _) {
+                // Nothing.
+            }
+        }
+
+        useNio = nioPath != null;
+
         if (useNio) {
-            Path nioPath = nioFs.getPath(name);
             try {
                 IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
                 var options = optionsForChannel(imode);
@@ -857,15 +867,24 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 if (newLength < oldSize) {
                     channel.truncate(newLength);
                 } else {
-                    byte[] buf = new byte[1 << 14];
-                    Arrays.fill(buf, (byte) 0);
-                    long remains = newLength - oldSize;
-                    while (remains > 0) {
-                        ByteBuffer buffer = ByteBuffer.wrap(buf);
-                        int length = (int)Math.min(remains, buf.length);
-                        buffer.limit(length);
-                        int written = channel.write(buffer);
-                        remains -= written;
+                    long position = channel.position();
+                    try {
+                        byte[] buf = new byte[1 << 14];
+                        Arrays.fill(buf, (byte) 0);
+                        long remains = newLength - oldSize;
+                        while (remains > 0) {
+                            ByteBuffer buffer = ByteBuffer.wrap(buf);
+                            int length = (int) Math.min(remains, buf.length);
+                            buffer.limit(length);
+                            int written = channel.write(buffer);
+                            remains -= written;
+                        }
+                    } finally {
+                        try {
+                            channel.position(position);
+                        } catch (IOException ignored) {
+                            // Nothing.
+                        }
                     }
                 }
             }
