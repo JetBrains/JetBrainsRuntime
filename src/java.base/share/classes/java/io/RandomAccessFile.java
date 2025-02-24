@@ -296,7 +296,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (nioFs != null && path != null) {
             try {
                 nioPath = nioFs.getPath(path);
-            } catch (InvalidPathException _) {
+            } catch (InvalidPathException ignored) {
                 // Nothing.
             }
         }
