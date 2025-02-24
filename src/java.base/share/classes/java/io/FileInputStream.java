@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
 
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.misc.Blocker;
 
 import jdk.internal.util.ArraysSupport;
@@ -169,12 +170,13 @@ public class FileInputStream extends InputStream
             throw new FileNotFoundException("Invalid file path");
         }
 
+        this.path = name;
         java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
         Path nioPath = null;
         if (nioFs != null && path != null) {
             try {
                 nioPath = nioFs.getPath(path);
-            } catch (InvalidPathException _) {
+            } catch (InvalidPathException ignored) {
                 // Nothing.
             }
         }
@@ -185,7 +187,6 @@ public class FileInputStream extends InputStream
         useNio = nioPath != null;
 
         if (useNio) {
-            Path nioPath = nioFs.getPath(name);
             try {
                 IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
                 // NB: the channel will be closed in the close() method

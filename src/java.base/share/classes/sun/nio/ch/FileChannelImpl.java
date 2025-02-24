@@ -174,7 +174,7 @@ public class FileChannelImpl
 
     @Override
     public FileChannelImpl clone() {
-        FileChannelImpl result = new FileChannelImpl(fd, path, readable, writable, sync, direct, parent);
+        FileChannelImpl result = new FileChannelImpl(fd, path, readable, writable, direct, parent);
         result.uninterruptible = uninterruptible;
         if (!isOpen()) {
             try {

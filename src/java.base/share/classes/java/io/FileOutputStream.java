@@ -35,6 +35,7 @@ import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
 import java.util.Set;
 
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.misc.Blocker;
