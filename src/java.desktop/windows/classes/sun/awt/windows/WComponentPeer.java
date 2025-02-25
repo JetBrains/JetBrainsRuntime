@@ -30,7 +30,6 @@ import java.awt.BufferCapabilities;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -73,8 +72,6 @@ import sun.java2d.d3d.D3DSurfaceData;
 import sun.java2d.opengl.OGLSurfaceData;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
-
-import static sun.awt.windows.WToolkit.getWToolkit;
 
 public abstract class WComponentPeer extends WObjectPeer
     implements ComponentPeer, DropTargetPeer
@@ -131,10 +128,6 @@ public abstract class WComponentPeer extends WObjectPeer
     /* New 1.1 API */
     @Override
     public native Point getLocationOnScreen();
-
-    Cursor getCursor(final Point p) {
-        return getTarget() instanceof Component ? ((Component)getTarget()).getCursor() : null;
-    }
 
     /* New 1.1 API */
     @Override
@@ -715,10 +708,9 @@ public abstract class WComponentPeer extends WObjectPeer
         _setFont(f);
     }
     synchronized native void _setFont(Font f);
-    
     @Override
     public void updateCursorImmediately() {
-        WGlobalCursorManager.getInstance().updateCursor();
+        WGlobalCursorManager.getCursorManager().updateCursorImmediately();
     }
 
     // TODO: consider moving it to KeyboardFocusManagerPeerImpl
