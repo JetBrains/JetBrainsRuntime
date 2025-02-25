@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2017, the original author or authors.
+ * Copyright (c) 2002-2017, the original author(s).
  *
  * This software is distributable under the BSD license. See the terms of the
  * BSD license in the documentation provided with this software.
@@ -8,12 +8,13 @@
  */
 package jdk.internal.org.jline.terminal.impl.jna.win;
 
+import java.io.IOException;
+
+import jdk.internal.org.jline.terminal.impl.AbstractWindowsConsoleWriter;
+
 //import com.sun.jna.LastErrorException;
 //import com.sun.jna.Pointer;
 //import com.sun.jna.ptr.IntByReference;
-import jdk.internal.org.jline.terminal.impl.AbstractWindowsConsoleWriter;
-
-import java.io.IOException;
 
 class JnaWinConsoleWriter extends AbstractWindowsConsoleWriter {
 
@@ -32,5 +33,4 @@ class JnaWinConsoleWriter extends AbstractWindowsConsoleWriter {
             throw new IOException("Failed to write to console", e);
         }
     }
-
 }
