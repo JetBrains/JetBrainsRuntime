@@ -25,26 +25,30 @@
 
 package java.io;
 
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.channels.NonWritableChannelException;
-import java.nio.file.*;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Arrays;
-import java.util.HashSet;
-
-import static com.jetbrains.internal.IoOverNio.DEBUG;
-
 import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.JavaIORandomAccessFileAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Blocker;
 import jdk.internal.util.ByteArray;
 import sun.nio.ch.FileChannelImpl;
+
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Objects;
+
+import java.nio.channels.NonWritableChannelException;
+import java.nio.file.*;
+import java.nio.file.FileSystem;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
+import java.util.HashSet;
+
+import static com.jetbrains.internal.IoOverNio.DEBUG;
 
 
 /**
@@ -301,9 +305,24 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             }
         }
 
-        useNio = nioPath != null;
+        // Two significant differences between the legacy java.io and java.nio.files:
+        // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
+        // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
+        boolean isRegularFile;
+        try {
+            isRegularFile = nioPath != null &&
+                    Files.readAttributes(nioPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).isRegularFile();
+        }
+        catch (NoSuchFileException e) {
+            isRegularFile = true;
+        }
+        catch (IOException e) {
+            isRegularFile = false;
+        }
 
+        useNio = nioPath != null && isRegularFile;
         if (useNio) {
+            Objects.requireNonNull(nioPath, "nioPath");
             try {
                 IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
                 var options = optionsForChannel(imode);
@@ -332,7 +351,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                         // Nothing.
                     }
                 }
-                // Since we can't throw IOException...
                 throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
             } finally {
                 IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
@@ -862,34 +880,36 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             if (!useNio) {
                 setLength0(newLength);
             } else {
-                FileChannel channel = getChannel();
-                long oldSize = channel.size();
-                if (newLength < oldSize) {
-                    channel.truncate(newLength);
-                } else {
-                    long position = channel.position();
-                    try {
-                        byte[] buf = new byte[1 << 14];
-                        Arrays.fill(buf, (byte) 0);
-                        long remains = newLength - oldSize;
-                        while (remains > 0) {
-                            ByteBuffer buffer = ByteBuffer.wrap(buf);
-                            int length = (int) Math.min(remains, buf.length);
-                            buffer.limit(length);
-                            int written = channel.write(buffer);
-                            remains -= written;
-                        }
-                    } finally {
+                try {
+                    FileChannel channel = getChannel();
+                    long oldSize = channel.size();
+                    if (newLength < oldSize) {
+                        channel.truncate(newLength);
+                    } else {
+                        long position = channel.position();
                         try {
-                            channel.position(position);
-                        } catch (IOException ignored) {
-                            // Nothing.
+                            byte[] buf = new byte[1 << 14];
+                            Arrays.fill(buf, (byte) 0);
+                            long remains = newLength - oldSize;
+                            while (remains > 0) {
+                                ByteBuffer buffer = ByteBuffer.wrap(buf);
+                                int length = (int) Math.min(remains, buf.length);
+                                buffer.limit(length);
+                                int written = channel.write(buffer);
+                                remains -= written;
+                            }
+                        } finally {
+                            try {
+                                channel.position(position);
+                            } catch (IOException ignored) {
+                                // Nothing.
+                            }
                         }
                     }
+                } catch (NonWritableChannelException err) {
+                    throw new IOException("setLength failed", err);
                 }
             }
-        } catch (NonWritableChannelException err) {
-            throw new IOException("setLength failed", err);
         } finally {
             Blocker.end(comp);
         }

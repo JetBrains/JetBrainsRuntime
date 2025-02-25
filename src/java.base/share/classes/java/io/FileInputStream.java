@@ -40,6 +40,7 @@ import com.jetbrains.internal.IoOverNio;
 import jdk.internal.misc.Blocker;
 
 import jdk.internal.util.ArraysSupport;
+import jdk.internal.vm.annotation.Stable;
 import sun.nio.ch.FileChannelImpl;
 
 import static com.jetbrains.internal.IoOverNio.DEBUG;
@@ -87,6 +88,10 @@ public class FileInputStream extends InputStream
     private final Object closeLock = new Object();
 
     private volatile boolean closed;
+
+    // This field indicates whether the file is a regular file as some
+    // operations need the current position which requires seeking
+    private @Stable Boolean isRegularFile;
 
     private final boolean useNio;
 
@@ -169,13 +174,14 @@ public class FileInputStream extends InputStream
         if (file.isInvalid()) {
             throw new FileNotFoundException("Invalid file path");
         }
+        path = file.getPath();
 
-        this.path = name;
         java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
         Path nioPath = null;
         if (nioFs != null && path != null) {
             try {
                 nioPath = nioFs.getPath(path);
+                isRegularFile = Files.isRegularFile(nioPath);
             } catch (InvalidPathException ignored) {
                 // Nothing.
             }
@@ -184,9 +190,10 @@ public class FileInputStream extends InputStream
         // Two significant differences between the legacy java.io and java.nio.files:
         // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
         // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
-        useNio = nioPath != null;
+        useNio = nioPath != null && isRegularFile == Boolean.TRUE;
 
         if (useNio) {
+            Objects.requireNonNull(nioPath, "nioPath");
             try {
                 IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
                 // NB: the channel will be closed in the close() method
@@ -223,7 +230,7 @@ public class FileInputStream extends InputStream
         } else {
             fd = new FileDescriptor();
             fd.attach(this);
-            open(name);
+            open(path);
             FileCleanable.register(fd);       // open set the fd, register the cleanup
             externalChannelHolder = null;
         }

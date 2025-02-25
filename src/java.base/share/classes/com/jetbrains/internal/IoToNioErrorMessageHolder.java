@@ -28,6 +28,10 @@ package com.jetbrains.internal;
 import java.io.IOException;
 import java.util.WeakHashMap;
 
+/**
+ * The only purpose of this class is to mimic exception messages of `java.io`
+ * when `java.nio.file` is used as a backend.
+ */
 public class IoToNioErrorMessageHolder {
     private IoToNioErrorMessageHolder() { }
 

@@ -229,6 +229,7 @@ public class FileOutputStream extends OutputStream
      * @see        java.lang.SecurityManager#checkWrite(java.lang.String)
      * @since 1.4
      */
+    @SuppressWarnings("this-escape")
     public FileOutputStream(File file, boolean append)
         throws FileNotFoundException
     {
@@ -247,7 +248,7 @@ public class FileOutputStream extends OutputStream
 
         this.path = name;
         java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
-        useNio = nioFs != null;
+        useNio = path != null && nioFs != null;
         if (useNio) {
             Path nioPath = nioFs.getPath(path);
 
@@ -297,7 +298,6 @@ public class FileOutputStream extends OutputStream
                         // Nothing.
                     }
                 }
-                // Since we can't throw IOException...
                 throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
             } finally {
                 IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
