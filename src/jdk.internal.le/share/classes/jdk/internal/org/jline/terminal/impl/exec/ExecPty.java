@@ -1,18 +1,18 @@
 /*
- * Copyright (c) 2002-2016, the original author or authors.
+ * Copyright (c) 2002-2016, the original author(s).
  *
  * This software is distributable under the BSD license. See the terms of the
  * BSD license in the documentation provided with this software.
  *
  * https://opensource.org/licenses/BSD-3-Clause
  */
-package jdk.internal.org.jline.terminal.impl;
+package jdk.internal.org.jline.terminal.impl.exec;
 
+import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.FileDescriptor;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,8 +26,10 @@ import jdk.internal.org.jline.terminal.Attributes.InputFlag;
 import jdk.internal.org.jline.terminal.Attributes.LocalFlag;
 import jdk.internal.org.jline.terminal.Attributes.OutputFlag;
 import jdk.internal.org.jline.terminal.Size;
-import jdk.internal.org.jline.terminal.spi.TerminalProvider;
+import jdk.internal.org.jline.terminal.impl.AbstractPty;
 import jdk.internal.org.jline.terminal.spi.Pty;
+import jdk.internal.org.jline.terminal.spi.SystemStream;
+import jdk.internal.org.jline.terminal.spi.TerminalProvider;
 import jdk.internal.org.jline.utils.OSUtils;
 
 import static jdk.internal.org.jline.utils.ExecHelper.exec;
@@ -35,28 +37,26 @@ import static jdk.internal.org.jline.utils.ExecHelper.exec;
 public class ExecPty extends AbstractPty implements Pty {
 
     private final String name;
-    private final TerminalProvider.Stream console;
 
-    public static Pty current(TerminalProvider.Stream console) throws IOException {
+    public static Pty current(TerminalProvider provider, SystemStream systemStream) throws IOException {
         try {
             String result = exec(true, OSUtils.TTY_COMMAND);
-            if (console != TerminalProvider.Stream.Output && console != TerminalProvider.Stream.Error) {
-                throw new IllegalArgumentException("console should be Output or Error: " + console);
+            if (systemStream != SystemStream.Output && systemStream != SystemStream.Error) {
+                throw new IllegalArgumentException("systemStream should be Output or Error: " + systemStream);
             }
-            return new ExecPty(result.trim(), console);
+            return new ExecPty(provider, systemStream, result.trim());
         } catch (IOException e) {
             throw new IOException("Not a tty", e);
         }
     }
 
-    protected ExecPty(String name, TerminalProvider.Stream console) {
+    protected ExecPty(TerminalProvider provider, SystemStream systemStream, String name) {
+        super(provider, systemStream);
         this.name = name;
-        this.console = console;
     }
 
     @Override
-    public void close() throws IOException {
-    }
+    public void close() throws IOException {}
 
     public String getName() {
         return name;
@@ -74,18 +74,16 @@ public class ExecPty extends AbstractPty implements Pty {
 
     @Override
     protected InputStream doGetSlaveInput() throws IOException {
-        return console != null
-                ? new FileInputStream(FileDescriptor.in)
-                : new FileInputStream(getName());
+        return systemStream != null ? new FileInputStream(FileDescriptor.in) : new FileInputStream(getName());
     }
 
     @Override
     public OutputStream getSlaveOutput() throws IOException {
-        return console == TerminalProvider.Stream.Output
+        return systemStream == SystemStream.Output
                 ? new FileOutputStream(FileDescriptor.out)
-                : console == TerminalProvider.Stream.Error
-                    ? new FileOutputStream(FileDescriptor.err)
-                    : new FileOutputStream(getName());
+                : systemStream == SystemStream.Error
+                        ? new FileOutputStream(FileDescriptor.err)
+                        : new FileOutputStream(getName());
     }
 
     @Override
@@ -99,18 +97,30 @@ public class ExecPty extends AbstractPty implements Pty {
         List<String> commands = getFlagsToSet(attr, getAttr());
         if (!commands.isEmpty()) {
             commands.add(0, OSUtils.STTY_COMMAND);
-            if (console == null) {
+            if (systemStream == null) {
                 commands.add(1, OSUtils.STTY_F_OPTION);
                 commands.add(2, getName());
             }
-            exec(console != null, commands.toArray(new String[0]));
+            try {
+                exec(systemStream != null, commands.toArray(new String[0]));
+            } catch (IOException e) {
+                // Handle partial failures with GNU stty, see #97
+                if (e.toString().contains("unable to perform all requested operations")) {
+                    commands = getFlagsToSet(attr, getAttr());
+                    if (!commands.isEmpty()) {
+                        throw new IOException("Could not set the following flags: " + String.join(", ", commands), e);
+                    }
+                } else {
+                    throw e;
+                }
+            }
         }
     }
 
     protected List<String> getFlagsToSet(Attributes attr, Attributes current) {
         List<String> commands = new ArrayList<>();
         for (InputFlag flag : InputFlag.values()) {
-            if (attr.getInputFlag(flag) != current.getInputFlag(flag)) {
+            if (attr.getInputFlag(flag) != current.getInputFlag(flag) && flag != InputFlag.INORMEOL) {
                 commands.add((attr.getInputFlag(flag) ? flag.name() : "-" + flag.name()).toLowerCase());
             }
         }
@@ -137,11 +147,9 @@ public class ExecPty extends AbstractPty implements Pty {
                 commands.add(cchar.name().toLowerCase().substring(1));
                 if (cchar == ControlChar.VMIN || cchar == ControlChar.VTIME) {
                     commands.add(Integer.toString(v));
-                }
-                else if (v == 0) {
+                } else if (v == 0) {
                     commands.add(undef);
-                }
-                else {
+                } else {
                     if (v >= 128) {
                         v -= 128;
                         str += "M-";
@@ -165,12 +173,12 @@ public class ExecPty extends AbstractPty implements Pty {
     }
 
     protected String doGetConfig() throws IOException {
-        return console != null
-                ? exec(true,  OSUtils.STTY_COMMAND, "-a")
+        return systemStream != null
+                ? exec(true, OSUtils.STTY_COMMAND, "-a")
                 : exec(false, OSUtils.STTY_COMMAND, OSUtils.STTY_F_OPTION, getName(), "-a");
     }
 
-    static Attributes doGetAttr(String cfg) throws IOException {
+    public static Attributes doGetAttr(String cfg) throws IOException {
         Attributes attributes = new Attributes();
         for (InputFlag flag : InputFlag.values()) {
             Boolean value = doGetFlag(cfg, flag);
@@ -201,16 +209,19 @@ public class ExecPty extends AbstractPty implements Pty {
             if ("reprint".endsWith(name)) {
                 name = "(?:reprint|rprnt)";
             }
-            Matcher matcher = Pattern.compile("[\\s;]" + name + "\\s*=\\s*(.+?)[\\s;]").matcher(cfg);
+            Matcher matcher =
+                    Pattern.compile("[\\s;]" + name + "\\s*=\\s*(.+?)[\\s;]").matcher(cfg);
             if (matcher.find()) {
-                attributes.setControlChar(cchar, parseControlChar(matcher.group(1).toUpperCase()));
+                attributes.setControlChar(
+                        cchar, parseControlChar(matcher.group(1).toUpperCase()));
             }
         }
         return attributes;
     }
 
     private static Boolean doGetFlag(String cfg, Enum<?> flag) {
-        Matcher matcher = Pattern.compile("(?:^|[\\s;])(\\-?" + flag.name().toLowerCase() + ")(?:[\\s;]|$)").matcher(cfg);
+        Matcher matcher = Pattern.compile("(?:^|[\\s;])(\\-?" + flag.name().toLowerCase() + ")(?:[\\s;]|$)")
+                .matcher(cfg);
         return matcher.find() ? !matcher.group(1).startsWith("-") : null;
     }
 
@@ -259,9 +270,7 @@ public class ExecPty extends AbstractPty implements Pty {
 
     static int doGetInt(String name, String cfg) throws IOException {
         String[] patterns = new String[] {
-                "\\b([0-9]+)\\s+" + name + "\\b",
-                "\\b" + name + "\\s+([0-9]+)\\b",
-                "\\b" + name + "\\s*=\\s*([0-9]+)\\b"
+            "\\b([0-9]+)\\s+" + name + "\\b", "\\b" + name + "\\s+([0-9]+)\\b", "\\b" + name + "\\s*=\\s*([0-9]+)\\b"
         };
         for (String pattern : patterns) {
             Matcher matcher = Pattern.compile(pattern).matcher(cfg);
@@ -274,23 +283,29 @@ public class ExecPty extends AbstractPty implements Pty {
 
     @Override
     public void setSize(Size size) throws IOException {
-        if (console != null) {
-            exec(true,
-                 OSUtils.STTY_COMMAND,
-                 "columns", Integer.toString(size.getColumns()),
-                 "rows", Integer.toString(size.getRows()));
+        if (systemStream != null) {
+            exec(
+                    true,
+                    OSUtils.STTY_COMMAND,
+                    "columns",
+                    Integer.toString(size.getColumns()),
+                    "rows",
+                    Integer.toString(size.getRows()));
         } else {
-            exec(false,
-                 OSUtils.STTY_COMMAND,
-                 OSUtils.STTY_F_OPTION, getName(),
-                 "columns", Integer.toString(size.getColumns()),
-                 "rows", Integer.toString(size.getRows()));
+            exec(
+                    false,
+                    OSUtils.STTY_COMMAND,
+                    OSUtils.STTY_F_OPTION,
+                    getName(),
+                    "columns",
+                    Integer.toString(size.getColumns()),
+                    "rows",
+                    Integer.toString(size.getRows()));
         }
     }
 
     @Override
     public String toString() {
-        return "ExecPty[" + getName() + (console != null ? ", system]" : "]");
+        return "ExecPty[" + getName() + (systemStream != null ? ", system]" : "]");
     }
-
 }
