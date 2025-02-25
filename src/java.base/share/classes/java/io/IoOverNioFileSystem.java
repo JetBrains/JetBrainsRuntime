@@ -517,6 +517,8 @@ class IoOverNioFileSystem extends FileSystem {
                     attrs = Files.readAttributes(path, PosixFileAttributes.class);
                 } catch (UnsupportedOperationException ignored) {
                     attrs = Files.readAttributes(path, DosFileAttributes.class);
+                } catch (SecurityException ignored) {
+                    attrs = Files.readAttributes(path, BasicFileAttributes.class);
                 }
 
                 return BA_EXISTS

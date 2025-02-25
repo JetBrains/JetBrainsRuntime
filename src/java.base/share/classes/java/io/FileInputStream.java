@@ -182,7 +182,7 @@ public class FileInputStream extends InputStream
             try {
                 nioPath = nioFs.getPath(path);
                 isRegularFile = Files.isRegularFile(nioPath);
-            } catch (InvalidPathException ignored) {
+            } catch (InvalidPathException|SecurityException ignored) {
                 // Nothing.
             }
         }
