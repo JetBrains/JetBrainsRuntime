@@ -362,8 +362,8 @@ public class SizeRequirements implements Serializable {
                                      boolean forward) {
 
         // ---- determine what we have to work with ----
-        float totalPlay = Math.min(allocated - pref, max - pref);
-        float factor = (max - pref == 0) ? 0.0f : totalPlay / (max - pref);
+        long totalPlay = Math.min(allocated - pref, max - pref);
+        float factor = (max - pref == 0) ? 0.0f : ((float)totalPlay) / (max - pref);
 
         // ---- make the adjustments ----
         int totalOffset;
@@ -376,6 +376,10 @@ public class SizeRequirements implements Serializable {
                 int play = (int)(factor * (req.maximum - req.preferred));
                 spans[i] = (int) Math.min((long) req.preferred + (long) play, Integer.MAX_VALUE);
                 totalOffset = (int) Math.min((long) totalOffset + (long) spans[i], Integer.MAX_VALUE);
+            }
+            long remaining = Math.min(allocated, max) - (long)totalOffset;
+            if (remaining > 0) {
+                spans[spans.length - 1] = (int) Math.min((long) spans[spans.length - 1] + remaining, Integer.MAX_VALUE);
             }
         } else {
             // lay out with offsets decreasing from the end of the allocation
