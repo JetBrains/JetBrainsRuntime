@@ -13,7 +13,7 @@ java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117,JBR-650
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-4379 windows-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-4379 windows-all
 java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
-java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java JBR-4275,JBR-4880,JBR-7249 linux-all,windows-all,macosx-aarch64
+java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java JBR-4275,JBR-4880,JBR-7249,JBR-8278 linux-all,windows-all,macosx-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5442 linux-all
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
@@ -30,6 +30,8 @@ java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-60
 java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5442 linux-all
 
+javax/swing/JTextField/4532513/DefaultCaretRequestsFocusTest.java JBR-8330 macosx-15.3,macosx-15.3.1
+javax/swing/JTextArea/4514331/TabShiftsFocusToNextComponent.java JBR-8329 macosx-15.3,macosx-15.3.1
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java JBR-5442 linux-all
 javax/swing/SwingWorker/TestDoneBeforeDoInBackground.java JBR-5442 linux-all
 javax/swing/system/6799345/TestShutdown.java JBR-6020 windows-all

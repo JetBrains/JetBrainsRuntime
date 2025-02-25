@@ -156,7 +156,6 @@ java/awt/Frame/8158918/SetExtendedState.java JBR-6408 linux-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509 generic-all
 java/awt/Frame/HideMaximized/HideMaximized.java JBR-8310 linux-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
-java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-all
 java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 linux-all,macosx-15.3,macosx-15.3.1
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
@@ -290,7 +289,6 @@ java/awt/dnd/RemoveDropTargetCrashTest/RemoveDropTargetCrashTest.java JBR-6549 w
 java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.java 8194947 generic-all
 java/awt/Frame/FramesGC/FramesGC.java 8079069,JBR-6057 macosx-all,windows-all,linux-all
 java/awt/Frame/FrameVisible/FrameContentAppearanceTest.java JBR-5838 macosx-all
-java/awt/Frame/HideMaximized/HideMaximized.java JBR-8310 linux-all
 java/awt/ScrollPane/ScrollPanePreferredSize/ScrollPanePreferredSize.java 8253184 windows-all
 java/awt/ScrollPane/ScrollPaneWindowsTest.java JBR-6944 windows-all
 java/awt/Toolkit/DesktopProperties/rfe4758438.java JBR-5510 linux-5.18.2-arch1-1
@@ -339,7 +337,7 @@ java/awt/Window/ShapedAndTranslucentWindows/Translucent.java 8222328 windows-all
 java/awt/Window/AlwaysOnTop/AlwaysOnTopEvenOfWindow.java JBR-6686 linux-aarch64
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593,8253184 linux-all,windows-all
 java/awt/Window/AlwaysOnTop/TestAlwaysOnTopBeforeShow.java JBR-6661 windows-all
-java/awt/Window/Grab/GrabTest.java 8253184,JBR-6922,8317288 windows-all,linux-all,macosx-all
+java/awt/Window/Grab/GrabTest.java 8253184,JBR-6922 windows-all,linux-all
 java/awt/Window/GrabSequence/GrabSequence.java 6848409 macosx-all,linux-all
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux-all
 java/awt/FontClass/FontAccess.java JBR-5225 windows-all
@@ -631,10 +629,10 @@ java/awt/Modal/OnTop/OnTopAppModal3Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal4Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal6Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopDocModal1Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
-java/awt/Modal/OnTop/OnTopDocModal2Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
-java/awt/Modal/OnTop/OnTopDocModal3Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
-java/awt/Modal/OnTop/OnTopDocModal4Test.java 8253184,JBR-5510,JBR-7778,8342800 windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopDocModal1Test.java 8253184,JBR-5510,JBR-7778 windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopDocModal2Test.java 8253184,JBR-5510,JBR-7778 windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopDocModal3Test.java 8253184,JBR-5510,JBR-7778 windows-all,linux-5.18.2-arch1-1,linux-all
+java/awt/Modal/OnTop/OnTopDocModal4Test.java 8253184,JBR-5510,JBR-7778 windows-all,linux-5.18.2-arch1-1,linux-all
 java/awt/Modal/OnTop/OnTopDocModal5Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/OnTop/OnTopDocModal6Test.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/OnTop/OnTopModal1Test.java 8253184 windows-all
@@ -1327,7 +1325,7 @@ java/awt/FullScreen/SetFSWindow/FSFrame.java 8253184 windows-all
 java/awt/FullScreen/SetFullScreenTest.java JBR-8214 linux-5.18.2-arch1-1
 java/awt/grab/MenuDragEvents/MenuDragEvents.java JBR-4880 windows-all
 java/awt/image/mlib/MlibOpsTest.java JBR-5225 windows-all,windows-aarch64
-java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java JBR-4880,JBR-8090 windows-all,linux-5.18.2-arch1-1
+java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java JBR-4880,JBR-8090 windows-all,linux-all
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880 windows-all
 javax/swing/JFileChooser/JFileChooserSetLocationTest.java 8295804 linux-all,macosx-all,windows-all
 javax/swing/JSlider/6348946/bug6348946.java 8197552,JBR-5387 windows-all,linux-all
@@ -1468,7 +1466,6 @@ java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-5510,JBR-6284 linux-5.18.2-ar
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java JBR-5510 linux-5.18.2-arch1-1
-javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-8270 linux-all
 javax/swing/JMenu/TestDisabledMenuForegroundColor.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JProgressBar/TestJProgressBarHighlightColor.java JBR-5510 linux-5.18.2-arch1-1
