@@ -391,7 +391,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      */
     public final FileChannel getChannel() {
         if (externalChannelHolder != null) {
-            return externalChannelHolder.getChannel();
+            return externalChannelHolder.getInterruptibleChannel();
         }
 
         FileChannel fc = this.channel;

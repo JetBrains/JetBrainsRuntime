@@ -706,7 +706,7 @@ public class FileInputStream extends InputStream
      */
     public FileChannel getChannel() {
         if (externalChannelHolder != null) {
-            return externalChannelHolder.getChannel();
+            return externalChannelHolder.getInterruptibleChannel();
         }
 
         FileChannel fc = this.channel;

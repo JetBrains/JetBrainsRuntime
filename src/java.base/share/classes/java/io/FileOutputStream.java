@@ -563,7 +563,7 @@ public class FileOutputStream extends OutputStream
      */
     public FileChannel getChannel() {
         if (externalChannelHolder != null) {
-            return externalChannelHolder.getChannel();
+            return externalChannelHolder.getInterruptibleChannel();
         }
 
         FileChannel fc = this.channel;
