@@ -25,13 +25,12 @@
 
 package java.io;
 
-import jdk.internal.misc.Unsafe;
 import sun.nio.ch.FileChannelImpl;
 
 import java.nio.channels.FileChannel;
 
 /**
- * A channel returned by {@link #getChannel()} must be interruptible,
+ * A channel returned by {@link #getInterruptibleChannel()} must be interruptible,
  * but the channel used inside this class must be uninterruptible.
  * This class holds the channel for external usage, which may differ from {@link #channel}.
  */
@@ -47,7 +46,7 @@ class ExternalChannelHolder {
         this.channelCleanable = channelCleanable;
     }
 
-    FileChannel getChannel() {
+    FileChannel getInterruptibleChannel() {
         if (externallySharedChannel == null) {
             synchronized (synchronizationPoint) {
                 if (externallySharedChannel == null) {
