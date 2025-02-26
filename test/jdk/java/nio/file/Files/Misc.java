@@ -373,7 +373,7 @@ public class Misc {
                     .newByteChannel(emptyPath, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))
                     .close();
             throw new RuntimeException("FileAlreadyExistsException was not thrown");
-        } catch (FileAlreadyExistsException e) {
+        } catch (FileAlreadyExistsException _) {
             // The expected behavior.
         }
     }

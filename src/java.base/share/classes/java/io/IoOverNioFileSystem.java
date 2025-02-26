@@ -132,7 +132,7 @@ class IoOverNioFileSystem extends FileSystem {
         BasicFileAttributeView view;
         try {
             view = Files.getFileAttributeView(path, PosixFileAttributeView.class);
-        } catch (UnsupportedOperationException ignored) {
+        } catch (UnsupportedOperationException _) {
             view = null;
         }
         if (view == null) {
@@ -168,9 +168,9 @@ class IoOverNioFileSystem extends FileSystem {
                 } else if (access == ACCESS_READ || access == ACCESS_EXECUTE) {
                     result = enable; // Like in Java_java_io_WinNTFileSystem_setPermission0
                 }
-            } catch (IOException e) {
+            } catch (IOException err) {
                 if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't set read only attributes for %s", f), e)
+                    new Throwable(String.format("Can't set read only attributes for %s", f), err)
                             .printStackTrace(System.err);
                 }
             }
@@ -230,9 +230,9 @@ class IoOverNioFileSystem extends FileSystem {
                 }
 
                 posixView.setPermissions(perms);
-            } catch (IOException e) {
+            } catch (IOException err) {
                 if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't set posix attributes for %s", f), e)
+                    new Throwable(String.format("Can't set posix attributes for %s", f), err)
                             .printStackTrace(System.err);
                 }
                 result = false;
@@ -265,19 +265,19 @@ class IoOverNioFileSystem extends FileSystem {
                     channel,
                     new ExternalChannelHolder(owner, channel, channelCleanable)
             );
-        } catch (IOException e) {
+        } catch (IOException err) {
             if (DEBUG.writeErrors()) {
-                new Throwable(String.format("Can't create a %s for %s with %s", owner.getClass().getSimpleName(), file, nioFs), e)
+                new Throwable(String.format("Can't create a %s for %s with %s", owner.getClass().getSimpleName(), file, nioFs), err)
                         .printStackTrace(System.err);
             }
             if (channel != null) {
                 try {
                     channel.close();
-                } catch (IOException ignored) {
+                } catch (IOException _) {
                     // Nothing.
                 }
             }
-            throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
+            throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(err);
         } finally {
             IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
         }
@@ -382,7 +382,7 @@ class IoOverNioFileSystem extends FileSystem {
             try {
                 Path ignored = nioFs.getPath(f.getPath());
                 return false;
-            } catch (InvalidPathException ignored) {
+            } catch (InvalidPathException _) {
                 return true;
             }
         }
@@ -489,7 +489,7 @@ class IoOverNioFileSystem extends FileSystem {
                         try {
                             nioPath = nioPath.toRealPath();
                             break;
-                        } catch (IOException err) {
+                        } catch (IOException _) {
                             // Nothing.
                         }
                         suffix = nioPath.getFileName().resolve(suffix);
@@ -603,7 +603,7 @@ class IoOverNioFileSystem extends FileSystem {
                 BasicFileAttributes attrs;
                 try {
                     attrs = Files.readAttributes(path, PosixFileAttributes.class);
-                } catch (UnsupportedOperationException ignored) {
+                } catch (UnsupportedOperationException _) {
                     attrs = Files.readAttributes(path, DosFileAttributes.class);
                 }
 
@@ -620,9 +620,9 @@ class IoOverNioFileSystem extends FileSystem {
                 }
                 // Path parsing in java.nio is stricter than in java.io.
                 // Not returning here to give a chance to the original implementation.
-            } catch (@SuppressWarnings("removal") IOException | AccessControlException e) {
+            } catch (@SuppressWarnings("removal") IOException | AccessControlException err) {
                 if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't get attributes for a path %s", f), e)
+                    new Throwable(String.format("Can't get attributes for a path %s", f), err)
                             .printStackTrace(System.err);
                 }
                 return getSeparator() == '/' && f.getName().startsWith(".") ? BA_HIDDEN : 0;
@@ -661,9 +661,9 @@ class IoOverNioFileSystem extends FileSystem {
 
                 nioFs.provider().checkAccess(path, accessMode);
                 return true;
-            } catch (@SuppressWarnings("removal") IOException | AccessControlException e) {
+            } catch (@SuppressWarnings("removal") IOException | AccessControlException err) {
                 if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't check access for a path %s", f), e)
+                    new Throwable(String.format("Can't check access for a path %s", f), err)
                             .printStackTrace(System.err);
                 }
                 return false;
@@ -751,14 +751,14 @@ class IoOverNioFileSystem extends FileSystem {
                 Path path = nioFs.getPath(f.getPath());
                 return nioFs.provider().readAttributes(path, BasicFileAttributes.class).size();
             }
-        } catch (IOException e) {
+        } catch (IOException err) {
             if (DEBUG.writeErrors()) {
-                new Throwable(String.format("Can't get file length for a path %s", f), e)
+                new Throwable(String.format("Can't get file length for a path %s", f), err)
                         .printStackTrace(System.err);
             }
             return 0;
-        } catch (InvalidPathException e) {
-            throw new InternalError(e.getMessage(), e);
+        } catch (InvalidPathException err) {
+            throw new InternalError(err.getMessage(), err);
         }
         return parent.getLength(f);
     }
@@ -797,20 +797,20 @@ class IoOverNioFileSystem extends FileSystem {
             if (Files.exists(nioFs.getPath(pathname))) {
                 return false;
             }
-        } catch (FileAlreadyExistsException e) {
+        } catch (FileAlreadyExistsException err) {
             if (DEBUG.writeErrors()) {
-                new Throwable(String.format("Can't exclusively create a file %s", pathname), e)
+                new Throwable(String.format("Can't exclusively create a file %s", pathname), err)
                         .printStackTrace(System.err);
             }
             return false;
-        } catch (InvalidPathException e) {
-            throw new IOException(e.getMessage(), e); // The default file system would throw IOException too.
-        } catch (IOException e) {
-            String originalMessage = IoToNioErrorMessageHolder.removeMessage(e);
+        } catch (InvalidPathException err) {
+            throw new IOException(err.getMessage(), err); // The default file system would throw IOException too.
+        } catch (IOException err) {
+            String originalMessage = IoToNioErrorMessageHolder.removeMessage(err);
             if (originalMessage != null) {
-                throw new IOException(originalMessage, e);
+                throw new IOException(originalMessage, err);
             } else {
-                throw e;
+                throw err;
             }
         }
         return parent.createFileExclusively(pathname);
@@ -841,10 +841,10 @@ class IoOverNioFileSystem extends FileSystem {
                 path = nioFs.getPath(f.getPath());
                 nioFs.provider().delete(path);
                 return true;
-            } catch (InvalidPathException e) {
-                throw new InternalError(e.getMessage(), e);
-            } catch (IOException e) {
-                if (e instanceof AccessDeniedException && mayRepeat && path != null && nioFs.supportedFileAttributeViews().contains("dos")) {
+            } catch (InvalidPathException err) {
+                throw new InternalError(err.getMessage(), err);
+            } catch (IOException err) {
+                if (err instanceof AccessDeniedException && mayRepeat && path != null && nioFs.supportedFileAttributeViews().contains("dos")) {
                     try {
                         DosFileAttributeView attrs = nioFs.provider()
                                 .getFileAttributeView(path, DosFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
@@ -855,7 +855,7 @@ class IoOverNioFileSystem extends FileSystem {
                     }
                 }
                 if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't delete a path %s", f), e)
+                    new Throwable(String.format("Can't delete a path %s", f), err)
                             .printStackTrace(System.err);
                 }
                 return false;
@@ -904,11 +904,11 @@ class IoOverNioFileSystem extends FileSystem {
                     }
                     return result.toArray(String[]::new);
                 }
-            } catch (InvalidPathException e) {
-                throw new InternalError(e.getMessage(), e);
-            } catch (IOException e) {
+            } catch (InvalidPathException err) {
+                throw new InternalError(err.getMessage(), err);
+            } catch (IOException err) {
                 if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't list a path %s", f), e)
+                    new Throwable(String.format("Can't list a path %s", f), err)
                             .printStackTrace(System.err);
                 }
                 return null;
@@ -941,11 +941,11 @@ class IoOverNioFileSystem extends FileSystem {
                 Path path = nioFs.getPath(f.getPath());
                 nioFs.provider().createDirectory(path);
                 return true;
-            } catch (InvalidPathException e) {
-                throw new InternalError(e.getMessage(), e);
-            } catch (IOException e) {
+            } catch (InvalidPathException err) {
+                throw new InternalError(err.getMessage(), err);
+            } catch (IOException err) {
                 if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't create a directory %s", f), e)
+                    new Throwable(String.format("Can't create a directory %s", f), err)
                             .printStackTrace(System.err);
                 }
                 return false;
@@ -979,11 +979,11 @@ class IoOverNioFileSystem extends FileSystem {
                 Path path2 = nioFs.getPath(f2.getPath());
                 nioFs.provider().move(path1, path2, StandardCopyOption.REPLACE_EXISTING);
                 return true;
-            } catch (InvalidPathException e) {
-                throw new InternalError(e.getMessage(), e);
-            } catch (IOException e) {
+            } catch (InvalidPathException err) {
+                throw new InternalError(err.getMessage(), err);
+            } catch (IOException err) {
                 if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't rename %s to %s", f1, f2), e)
+                    new Throwable(String.format("Can't rename %s to %s", f1, f2), err)
                             .printStackTrace(System.err);
                 }
                 return false;
@@ -1018,11 +1018,11 @@ class IoOverNioFileSystem extends FileSystem {
                         .getFileAttributeView(path, BasicFileAttributeView.class)
                         .setTimes(FileTime.fromMillis(time), null, null);
                 return true;
-            } catch (InvalidPathException e) {
-                throw new InternalError(e.getMessage(), e);
-            } catch (IOException e) {
+            } catch (InvalidPathException err) {
+                throw new InternalError(err.getMessage(), err);
+            } catch (IOException err) {
                 if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't set last modified time of %s", f), e)
+                    new Throwable(String.format("Can't set last modified time of %s", f), err)
                             .printStackTrace(System.err);
                 }
                 return false;
@@ -1112,11 +1112,11 @@ class IoOverNioFileSystem extends FileSystem {
                     case SPACE_FREE -> store.getUnallocatedSpace();
                     default -> throw new IllegalArgumentException("Invalid space type: " + t);
                 };
-            } catch (InvalidPathException e) {
-                throw new InternalError(e.getMessage(), e);
-            } catch (IOException e) {
+            } catch (InvalidPathException err) {
+                throw new InternalError(err.getMessage(), err);
+            } catch (IOException err) {
                 if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't get space %s for a path %s", t, f), e)
+                    new Throwable(String.format("Can't get space %s for a path %s", t, f), err)
                             .printStackTrace(System.err);
                 }
                 return 0;
@@ -1139,7 +1139,7 @@ class IoOverNioFileSystem extends FileSystem {
                 Path p1 = nioFs.getPath(f1.getPath());
                 Path p2 = nioFs.getPath(f2.getPath());
                 return p1.compareTo(p2);
-            } catch (InvalidPathException e) {
+            } catch (InvalidPathException _) {
                 // Path parsing in java.nio is stricter than in java.io.
                 // Giving a chance to the original implementation.
             }

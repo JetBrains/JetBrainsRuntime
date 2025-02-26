@@ -88,8 +88,8 @@ public class FileTest {
                             Files.setAttribute(path, "dos:readonly", false);
                         }
                         Files.delete(path);
-                    } catch (IOException e) {
-                        throw new UncheckedIOException(e);
+                    } catch (IOException err) {
+                        throw new UncheckedIOException(err);
                     }
                 }
             });

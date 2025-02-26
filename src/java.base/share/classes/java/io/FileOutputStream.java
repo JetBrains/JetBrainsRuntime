@@ -237,7 +237,7 @@ public class FileOutputStream extends OutputStream
                 DosFileAttributes attrs;
                 try {
                     attrs = Files.getFileAttributeView(nioPath, DosFileAttributeView.class).readAttributes();
-                } catch (IOException | UnsupportedOperationException e) {
+                } catch (IOException | UnsupportedOperationException _) {
                     // Windows paths without DOS attributes? Not a problem in this case.
                     attrs = null;
                 }

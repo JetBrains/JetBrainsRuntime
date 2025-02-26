@@ -153,7 +153,7 @@ public class RandomAccessFileTest {
             try {
                 rac.readFully(data);
                 fail("An error should have been thrown but wasn't");
-            } catch (EOFException ignored) {
+            } catch (EOFException _) {
                 // Nothing.
             }
             assertEquals("v3rywh3r3 ", new String(data));

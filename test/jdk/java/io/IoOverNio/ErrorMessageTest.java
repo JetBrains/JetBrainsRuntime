@@ -107,7 +107,7 @@ public class ErrorMessageTest {
             try {
                 Files.list(f.toPath().getParent()).close();
                 Assume.assumeTrue(false);
-            } catch (AccessDeniedException ignored) {
+            } catch (AccessDeniedException _) {
                 // Nothing.
             }
         } else if (IS_MAC) {
@@ -244,13 +244,13 @@ public class ErrorMessageTest {
         final T result;
         try {
             result = fn.run();
-        } catch (Exception e) {
-            if (e.getClass().equals(expectedException.getClass()) && Objects.equals(e.getMessage(), expectedException.getMessage())) {
+        } catch (Exception err) {
+            if (err.getClass().equals(expectedException.getClass()) && Objects.equals(err.getMessage(), expectedException.getMessage())) {
                 return;
             }
-            AssertionError err = new AssertionError("Another exception was expected", e);
-            err.addSuppressed(expectedException);
-            throw err;
+            AssertionError assertionError = new AssertionError("Another exception was expected", err);
+            assertionError.addSuppressed(expectedException);
+            throw assertionError;
         }
         fail("Expected an exception but got a result: " + result);
     }
