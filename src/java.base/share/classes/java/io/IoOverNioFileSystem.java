@@ -63,10 +63,11 @@ import java.util.Set;
 import static com.jetbrains.internal.IoOverNio.DEBUG;
 
 class IoOverNioFileSystem extends FileSystem {
-    private final FileSystem defaultFileSystem;
+    /** The filesystem created by default in the original OpenJDK. */
+    private final FileSystem parent;
 
-    IoOverNioFileSystem(FileSystem defaultFileSystem) {
-        this.defaultFileSystem = defaultFileSystem;
+    IoOverNioFileSystem(FileSystem parent) {
+        this.parent = parent;
     }
 
     /**
@@ -300,12 +301,12 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public char getSeparator() {
-        return defaultFileSystem.getSeparator();
+        return parent.getSeparator();
     }
 
     @Override
     public char getPathSeparator() {
-        return defaultFileSystem.getPathSeparator();
+        return parent.getPathSeparator();
     }
 
     @Override
@@ -313,20 +314,20 @@ class IoOverNioFileSystem extends FileSystem {
         // java.nio.file.Path.normalize works differently compared to this normalizer.
         // Especially, Path.normalize converts "." into an empty string, which breaks
         // even tests in OpenJDK.
-        return defaultFileSystem.normalize(path);
+        return parent.normalize(path);
     }
 
     @Override
     public int prefixLength(String path) {
         // Although it's possible to represent this function via `Path.getRoot`,
         // the default file system and java.nio handle corner cases with incorrect paths differently.
-        return defaultFileSystem.prefixLength(path);
+        return parent.prefixLength(path);
     }
 
     @Override
     public String resolve(String parent, String child) {
         // java.nio is stricter to various invalid symbols than java.io.
-        return defaultFileSystem.resolve(parent, child);
+        return this.parent.resolve(parent, child);
     }
 
     @Override
@@ -335,12 +336,12 @@ class IoOverNioFileSystem extends FileSystem {
         if (nioFs != null) {
             return nioFs.getSeparator();
         }
-        return defaultFileSystem.getDefaultParent();
+        return parent.getDefaultParent();
     }
 
     @Override
     public String fromURIPath(String path) {
-        return defaultFileSystem.fromURIPath(path);
+        return parent.fromURIPath(path);
     }
 
     @Override
@@ -366,7 +367,7 @@ class IoOverNioFileSystem extends FileSystem {
                 }
             }
         }
-        return defaultFileSystem.isAbsolute(f);
+        return parent.isAbsolute(f);
     }
 
     @Override
@@ -383,7 +384,7 @@ class IoOverNioFileSystem extends FileSystem {
                 return true;
             }
         }
-        return defaultFileSystem.isInvalid(f);
+        return parent.isInvalid(f);
     }
 
     @Override
@@ -439,7 +440,7 @@ class IoOverNioFileSystem extends FileSystem {
                 }
             }
         }
-        return defaultFileSystem.resolve(f);
+        return parent.resolve(f);
     }
 
     @Override
@@ -517,7 +518,7 @@ class IoOverNioFileSystem extends FileSystem {
                 }
             }
         }
-        return defaultFileSystem.canonicalize(path);
+        return parent.canonicalize(path);
     }
 
     @Override
@@ -543,7 +544,7 @@ class IoOverNioFileSystem extends FileSystem {
         if (acquireNioFs(f.getPath()) != null) {
             result = (getBooleanAttributes0(f) & attributes) == attributes;
         } else {
-            result = defaultFileSystem.hasBooleanAttributes(f, attributes);
+            result = parent.hasBooleanAttributes(f, attributes);
         }
         if (DEBUG.writeTraces()) {
             System.err.printf("IoOverNioFileSystem.hasBooleanAttributes(%s, %s) = %b%n", f, attributes, result);
@@ -625,7 +626,7 @@ class IoOverNioFileSystem extends FileSystem {
                 return getSeparator() == '/' && f.getName().startsWith(".") ? BA_HIDDEN : 0;
             }
         }
-        return defaultFileSystem.getBooleanAttributes(f);
+        return parent.getBooleanAttributes(f);
     }
 
     @Override
@@ -668,7 +669,7 @@ class IoOverNioFileSystem extends FileSystem {
                 throw new InternalError(err.getMessage(), err);
             }
         }
-        return defaultFileSystem.checkAccess(f, access);
+        return parent.checkAccess(f, access);
     }
 
     @Override
@@ -685,7 +686,7 @@ class IoOverNioFileSystem extends FileSystem {
         if (nioFs != null) {
             return setPermission0(nioFs, f, access, enable, owneronly);
         }
-        return defaultFileSystem.setPermission(f, access, enable, owneronly);
+        return parent.setPermission(f, access, enable, owneronly);
     }
 
     @Override
@@ -721,7 +722,7 @@ class IoOverNioFileSystem extends FileSystem {
                 throw new InternalError(err.getMessage(), err);
             }
         }
-        return defaultFileSystem.getLastModifiedTime(f);
+        return parent.getLastModifiedTime(f);
     }
 
     @Override
@@ -757,7 +758,7 @@ class IoOverNioFileSystem extends FileSystem {
         } catch (InvalidPathException e) {
             throw new InternalError(e.getMessage(), e);
         }
-        return defaultFileSystem.getLength(f);
+        return parent.getLength(f);
     }
 
     @Override
@@ -810,7 +811,7 @@ class IoOverNioFileSystem extends FileSystem {
                 throw e;
             }
         }
-        return defaultFileSystem.createFileExclusively(pathname);
+        return parent.createFileExclusively(pathname);
     }
 
     @Override
@@ -858,7 +859,7 @@ class IoOverNioFileSystem extends FileSystem {
                 return false;
             }
         }
-        return defaultFileSystem.delete(f);
+        return parent.delete(f);
     }
 
     @Override
@@ -911,7 +912,7 @@ class IoOverNioFileSystem extends FileSystem {
                 return null;
             }
         }
-        return defaultFileSystem.list(f);
+        return parent.list(f);
     }
 
     @Override
@@ -948,7 +949,7 @@ class IoOverNioFileSystem extends FileSystem {
                 return false;
             }
         }
-        return defaultFileSystem.createDirectory(f);
+        return parent.createDirectory(f);
     }
 
     @Override
@@ -986,7 +987,7 @@ class IoOverNioFileSystem extends FileSystem {
                 return false;
             }
         }
-        return defaultFileSystem.rename(f1, f2);
+        return parent.rename(f1, f2);
     }
 
     @Override
@@ -1025,7 +1026,7 @@ class IoOverNioFileSystem extends FileSystem {
                 return false;
             }
         }
-        return defaultFileSystem.setLastModifiedTime(f, time);
+        return parent.setLastModifiedTime(f, time);
     }
 
     @Override
@@ -1036,7 +1037,7 @@ class IoOverNioFileSystem extends FileSystem {
             if (nioFs != null) {
                 result = setPermission0(nioFs, f, ACCESS_EXECUTE | ACCESS_WRITE, false, false);
             } else {
-                result = defaultFileSystem.setReadOnly(f);
+                result = parent.setReadOnly(f);
             }
             if (DEBUG.writeTraces()) {
                 System.err.printf("IoOverNioFileSystem.setReadOnly(%s) = %b%n", f, result);
@@ -1077,7 +1078,7 @@ class IoOverNioFileSystem extends FileSystem {
             }
             return roots.toArray(File[]::new);
         }
-        return defaultFileSystem.listRoots();
+        return parent.listRoots();
     }
 
     @Override
@@ -1119,13 +1120,13 @@ class IoOverNioFileSystem extends FileSystem {
                 return 0;
             }
         }
-        return defaultFileSystem.getSpace(f, t);
+        return parent.getSpace(f, t);
     }
 
     @Override
     public int getNameMax(String path) {
         // Seems impossible with java.nio.
-        return defaultFileSystem.getNameMax(path);
+        return parent.getNameMax(path);
     }
 
     @Override
@@ -1141,12 +1142,12 @@ class IoOverNioFileSystem extends FileSystem {
                 // Giving a chance to the original implementation.
             }
         }
-        return defaultFileSystem.compare(f1, f2);
+        return parent.compare(f1, f2);
     }
 
     @Override
     public int hashCode(File f) {
-        return defaultFileSystem.hashCode(f);
+        return parent.hashCode(f);
     }
 
     private static class AcceptAllFilter implements DirectoryStream.Filter<Path> {
