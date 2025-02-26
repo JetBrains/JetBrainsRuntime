@@ -72,8 +72,10 @@ class IoOverNioFileSystem extends FileSystem {
 
     /**
      * If this method returns a non-null {@link java.nio.file.FileSystem},
-     * then {@code java.io} primitives must use this filesystem for all operations inside.
+     * then {@code java.io} primitives must use this filesystem for all operations inside wherever it is possible.
      * Otherwise, {@link java.io} must use legacy functions for accessing the filesystem.
+     * It is allowed to not use NIO instead of the original java.io code
+     * if some function is not implemented in NIO.
      */
     static java.nio.file.FileSystem acquireNioFs(String path) {
         if (!VM.isBooted()) {
