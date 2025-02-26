@@ -28,7 +28,9 @@ package java.io;
 import com.jetbrains.internal.IoOverNio;
 import com.jetbrains.internal.IoToNioErrorMessageHolder;
 import jdk.internal.misc.VM;
+import sun.nio.ch.FileChannelImpl;
 
+import java.nio.channels.FileChannel;
 import java.nio.file.*;
 import java.nio.file.attribute.*;
 import java.security.AccessControlException;
@@ -211,6 +213,65 @@ class IoOverNioFileSystem extends FileSystem {
         }
 
         return result;
+    }
+
+    record StreamInitializationBundle(
+            FileDescriptor fd,
+            FileChannel channel,
+            ExternalChannelHolder externalChannelHolder
+    ) {
+    }
+
+    static StreamInitializationBundle initializeStreamUsingNio(
+            Closeable owner,
+            java.nio.file.FileSystem nioFs,
+            File file,
+            Path nioPath,
+            Set<StandardOpenOption> optionsForChannel,
+            NioChannelCleanable channelCleanable) throws FileNotFoundException {
+        FileChannel channel = null;
+        try {
+            IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(owner);
+            channel = nioFs.provider().newFileChannel(nioPath, optionsForChannel);
+            return new StreamInitializationBundle(
+                    initializeFdUsingNio(owner, channel, channelCleanable),
+                    channel,
+                    new ExternalChannelHolder(owner, channel, channelCleanable)
+            );
+        } catch (IOException e) {
+            if (DEBUG.writeErrors()) {
+                new Throwable(String.format("Can't create a %s for %s with %s", owner.getClass().getSimpleName(), file, nioFs), e)
+                        .printStackTrace(System.err);
+            }
+            if (channel != null) {
+                try {
+                    channel.close();
+                } catch (IOException ignored) {
+                    // Nothing.
+                }
+            }
+            throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
+        } finally {
+            IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
+        }
+    }
+
+    private static FileDescriptor initializeFdUsingNio(
+            Closeable owner,
+            FileChannel channel,
+            NioChannelCleanable channelCleanable) {
+        final FileDescriptor fd;
+        if (channel instanceof FileChannelImpl fci) {
+            fd = fci.getFD();
+            fd.attach(owner);
+            FileCleanable.register(fd);
+            fci.setUninterruptible();
+        } else {
+            channelCleanable.setChannel(channel);
+            fd = new FileDescriptor();
+            fd.registerCleanup(new NoOpCleanable(fd));
+        }
+        return fd;
     }
 
     @Override
