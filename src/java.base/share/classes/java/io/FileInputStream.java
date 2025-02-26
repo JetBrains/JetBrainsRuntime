@@ -33,7 +33,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 
-import java.util.Objects;
 import java.util.Set;
 
 import com.jetbrains.internal.IoOverNio;
@@ -174,39 +173,11 @@ public class FileInputStream extends InputStream
         useNio = nioPath != null && isRegularFile == Boolean.TRUE;
 
         if (useNio) {
-            try {
-                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
-                // NB: the channel will be closed in the close() method
-                var ch = nioFs.provider().newFileChannel(nioPath, Set.of(StandardOpenOption.READ));
-                channel = ch;
-
-                if (ch instanceof FileChannelImpl fci) {
-                    fd = fci.getFD();
-                    fd.attach(this);
-                    FileCleanable.register(fd);
-                    fci.setUninterruptible();
-                } else {
-                    channelCleanable.setChannel(channel);
-                    fd = new FileDescriptor();
-                    fd.registerCleanup(new NoOpCleanable(fd));
-                }
-            } catch (IOException e) {
-                if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't create a FileInputStream for %s with %s", file, nioFs), e)
-                            .printStackTrace(System.err);
-                }
-                if (channel != null) {
-                    try {
-                        channel.close();
-                    } catch (IOException ignored) {
-                        // Nothing.
-                    }
-                }
-                throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
-            } finally {
-                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
-            }
-            externalChannelHolder = new ExternalChannelHolder(this, channel, channelCleanable);
+            var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
+                    this, nioFs, file, nioPath, Set.of(StandardOpenOption.READ), channelCleanable);
+            channel = bundle.channel();
+            fd = bundle.fd();
+            externalChannelHolder = bundle.externalChannelHolder();
         } else {
             fd = new FileDescriptor();
             fd.attach(this);

@@ -33,7 +33,6 @@ import java.nio.file.FileSystem;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Objects;
 
 import static com.jetbrains.internal.IoOverNio.DEBUG;
 
@@ -301,39 +300,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
 
         useNio = nioPath != null && isRegularFile;
         if (useNio) {
-            try {
-                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
-                var options = optionsForChannel(imode);
-                // NB: the channel will be closed in the close() method
-                var ch = nioFs.provider().newFileChannel(nioPath, options);
-                channel = ch;
-                if (ch instanceof FileChannelImpl fci) {
-                    fd = fci.getFD();
-                    fd.attach(this);
-                    FileCleanable.register(fd);
-                    fci.setUninterruptible();
-                } else {
-                    channelCleanable.setChannel(channel);
-                    fd = new FileDescriptor();
-                    fd.registerCleanup(new NoOpCleanable(fd));
-                }
-            } catch (IOException e) {
-                if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't create a RandomAccessFile for %s with %s", file, nioFs), e)
-                            .printStackTrace(System.err);
-                }
-                if (channel != null) {
-                    try {
-                        channel.close();
-                    } catch (IOException ignored) {
-                        // Nothing.
-                    }
-                }
-                throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
-            } finally {
-                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
-            }
-            externalChannelHolder = new ExternalChannelHolder(this, channel, channelCleanable);
+            var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
+                    this, nioFs, file, nioPath, optionsForChannel(imode), channelCleanable);
+            channel = bundle.channel();
+            fd = bundle.fd();
+            externalChannelHolder = bundle.externalChannelHolder();
         } else {
             fd = new FileDescriptor();
             fd.attach(this);

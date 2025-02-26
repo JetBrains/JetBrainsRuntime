@@ -246,42 +246,14 @@ public class FileOutputStream extends OutputStream
                 }
             }
 
-            try {
-                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
-                // NB: the channel will be closed in the close() method
-                var ch = FileSystems.getDefault().provider().newFileChannel(
-                        nioPath,
-                        append ? Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
-                                : Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING));
-                channel = ch;
-
-                if (ch instanceof FileChannelImpl fci) {
-                    fd = fci.getFD();
-                    fd.attach(this);
-                    FileCleanable.register(fd);
-                    fci.setUninterruptible();
-                } else {
-                    channelCleanable.setChannel(channel);
-                    fd = new FileDescriptor();
-                    fd.registerCleanup(new NoOpCleanable(fd));
-                }
-            } catch (IOException e) {
-                if (DEBUG.writeErrors()) {
-                    new Throwable(String.format("Can't create a FileOutputStream for %s with %s", file, nioFs), e)
-                            .printStackTrace(System.err);
-                }
-                if (channel != null) {
-                    try {
-                        channel.close();
-                    } catch (IOException ignored) {
-                        // Nothing.
-                    }
-                }
-                throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(e);
-            } finally {
-                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
-            }
-            externalChannelHolder = new ExternalChannelHolder(this, channel, channelCleanable);
+            Set<StandardOpenOption> options = append
+                    ? Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+                    : Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
+                    this, nioFs, file, nioPath, options, channelCleanable);
+            channel = bundle.channel();
+            fd = bundle.fd();
+            externalChannelHolder = bundle.externalChannelHolder();
         } else {
             this.fd = new FileDescriptor();
             fd.attach(this);
