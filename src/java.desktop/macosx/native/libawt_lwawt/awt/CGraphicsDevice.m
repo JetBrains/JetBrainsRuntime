@@ -61,6 +61,101 @@ int getBPPFromModeString(CFStringRef mode)
     return 0;
 }
 
+void dumpDisplayInfo(jint displayID)
+{
+    // Returns a Boolean value indicating whether a display is active.
+    jint displayIsActive = CGDisplayIsActive(displayID);
+
+    // Returns a Boolean value indicating whether a display is always in a mirroring set.
+    jint displayIsalwaysInMirrorSet = CGDisplayIsAlwaysInMirrorSet(displayID);
+
+    // Returns a Boolean value indicating whether a display is sleeping (and is therefore not drawable).
+    jint displayIsAsleep = CGDisplayIsAsleep(displayID);
+
+    // Returns a Boolean value indicating whether a display is built-in, such as the internal display in portable systems.
+    jint displayIsBuiltin = CGDisplayIsBuiltin(displayID);
+
+    // Returns a Boolean value indicating whether a display is in a mirroring set.
+    jint displayIsInMirrorSet = CGDisplayIsInMirrorSet(displayID);
+
+    // Returns a Boolean value indicating whether a display is in a hardware mirroring set.
+    jint displayIsInHWMirrorSet = CGDisplayIsInHWMirrorSet(displayID);
+
+    // Returns a Boolean value indicating whether a display is the main display.
+    jint displayIsMain = CGDisplayIsMain(displayID);
+
+    // Returns a Boolean value indicating whether a display is connected or online.
+    jint displayIsOnline = CGDisplayIsOnline(displayID);
+
+    // Returns a Boolean value indicating whether a display is running in a stereo graphics mode.
+    jint displayIsStereo = CGDisplayIsStereo(displayID);
+
+    // For a secondary display in a mirroring set, returns the primary display.
+    CGDirectDisplayID displayMirrorsDisplay = CGDisplayMirrorsDisplay(displayID);
+
+    // Returns the primary display in a hardware mirroring set.
+    CGDirectDisplayID displayPrimaryDisplay = CGDisplayPrimaryDisplay(displayID);
+
+    // Returns the width and height of a display in millimeters.
+    CGSize size = CGDisplayScreenSize(displayID);
+
+    NSLog(@"CGDisplay[%d]{\n"
+           "displayIsActive=%d\n"
+           "displayIsalwaysInMirrorSet=%d\n"
+           "displayIsAsleep=%d\n"
+           "displayIsBuiltin=%d\n"
+           "displayIsInMirrorSet=%d\n"
+           "displayIsInHWMirrorSet=%d\n"
+           "displayIsMain=%d\n"
+           "displayIsOnline=%d\n"
+           "displayIsStereo=%d\n"
+           "displayMirrorsDisplay=%d\n"
+           "displayPrimaryDisplay=%d\n"
+           "displayScreenSizey=[%.1lf %.1lf]\n",
+           displayID,
+           displayIsActive,
+           displayIsalwaysInMirrorSet,
+           displayIsAsleep,
+           displayIsBuiltin,
+           displayIsInMirrorSet,
+           displayIsInHWMirrorSet,
+           displayIsMain,
+           displayIsOnline,
+           displayIsStereo,
+           displayMirrorsDisplay,
+           displayPrimaryDisplay,
+           size.width, size.height
+    );
+
+    // CGDisplayCopyDisplayMode can return NULL if displayID is invalid
+    CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayID);
+    if (mode) {
+        // Getting Information About a Display Mode
+        jint h = -1, w = -1, bpp = -1;
+        jdouble refreshRate = 0.0;
+
+        // Returns the width of the specified display mode.
+        w = CGDisplayModeGetWidth(mode);
+
+        // Returns the height of the specified display mode.
+        h = CGDisplayModeGetHeight(mode);
+
+        // Returns the pixel encoding of the specified display mode.
+        // Deprecated
+        CFStringRef currentBPP = CGDisplayModeCopyPixelEncoding(mode);
+        bpp = getBPPFromModeString(currentBPP);
+        CFRelease(currentBPP);
+
+        // Returns the refresh rate of the specified display mode.
+        refreshRate = CGDisplayModeGetRefreshRate(mode);
+
+        NSLog(@"CGDisplayMode[%d]: w=%d, h=%d, bpp=%d, freq=%.2lf hz",
+              displayID, w, h, bpp, refreshRate);
+
+        CGDisplayModeRelease(mode);
+    }
+}
+
 static BOOL isValidDisplayMode(CGDisplayModeRef mode) {
     if (!CGDisplayModeIsUsableForDesktopGUI(mode)) {
         return NO;
