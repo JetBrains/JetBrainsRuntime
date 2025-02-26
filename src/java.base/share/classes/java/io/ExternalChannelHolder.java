@@ -38,7 +38,7 @@ class ExternalChannelHolder {
     private final Object synchronizationPoint;
     private final FileChannel channel;
     private final NioChannelCleanable channelCleanable;
-    private volatile FileChannel externallySharedChannel;
+    private FileChannel externallySharedChannel;
 
     ExternalChannelHolder(Object owner, FileChannel channel, NioChannelCleanable channelCleanable) {
         this.synchronizationPoint = owner;
@@ -47,15 +47,13 @@ class ExternalChannelHolder {
     }
 
     FileChannel getInterruptibleChannel() {
-        if (externallySharedChannel == null) {
-            synchronized (synchronizationPoint) {
-                if (externallySharedChannel == null) {
-                    externallySharedChannel = channel;
-                    if (externallySharedChannel instanceof FileChannelImpl fci) {
-                        fci = fci.clone();
-                        fci.setInterruptible();
-                        externallySharedChannel = fci;
-                    }
+        synchronized (synchronizationPoint) {
+            if (externallySharedChannel == null) {
+                externallySharedChannel = channel;
+                if (externallySharedChannel instanceof FileChannelImpl fci) {
+                    fci = fci.clone();
+                    fci.setInterruptible();
+                    externallySharedChannel = fci;
                 }
             }
         }
