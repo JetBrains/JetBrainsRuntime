@@ -718,7 +718,12 @@ class IoOverNioFileSystem extends FileSystem {
         } catch (InvalidPathException e) {
             throw new IOException(e.getMessage(), e); // The default file system would throw IOException too.
         } catch (IOException e) {
-            throw new IOException(IoToNioErrorMessageHolder.removeMessage(e), e);
+            String originalMessage = IoToNioErrorMessageHolder.removeMessage(e);
+            if (originalMessage != null) {
+                throw new IOException(originalMessage, e);
+            } else {
+                throw e;
+            }
         }
         return defaultFileSystem.createFileExclusively(pathname);
     }

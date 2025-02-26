@@ -35,6 +35,11 @@ import java.util.WeakHashMap;
 public class IoToNioErrorMessageHolder {
     private IoToNioErrorMessageHolder() { }
 
+    /**
+     * While an exception is being thrown and handled inside {@code catch}-blocks,
+     * at least one strong reference exists in the stack.
+     * GC won't bring harm if {@link #removeMessage(IOException)} is called inside a {@code catch}-block.
+     */
     private static final WeakHashMap<IOException, String> messages = new WeakHashMap<>();
 
     public static void addMessage(IOException e, String message) {
