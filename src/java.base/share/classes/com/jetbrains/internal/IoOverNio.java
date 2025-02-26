@@ -86,6 +86,17 @@ public class IoOverNio {
      * }
      * </pre>
      * </p>
+     *
+     * <hr/>
+     *
+     * An implementation note.
+     * There may be a temptation to call {@link FileSystems#getDefault()} at some very early stage of loading JVM.
+     * However, it won't be enough.
+     * {@link FileSystems#getDefault()} forces an immediate load only of
+     * the corresponding instance of {@link java.nio.file.spi.FileSystemProvider}.
+     * Meanwhile, a correct operation of a NIO filesystem requires also implementations of {@link java.nio.file.Path},
+     * {@link java.nio.file.FileSystem}, {@link java.nio.file.attribute.BasicFileAttributes} and many other classes.
+     * Without this method, the classloader still can dive into an infinite recursion.
      */
     public static ThreadLocalCloseable disableInThisThread() {
         Integer value = ALLOW_IN_THIS_THREAD.get();
