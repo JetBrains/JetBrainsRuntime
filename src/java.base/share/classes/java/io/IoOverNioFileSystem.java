@@ -409,30 +409,30 @@ class IoOverNioFileSystem extends FileSystem {
     private String resolve0(File f) {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs(f.getPath());
         if (nioFs != null) {
-            String sourceString = f.toString();
-            if (getSeparator() == '\\' && prefixLength(sourceString) == 2 && sourceString.charAt(0) == '\\') {
+            String initialPath = f.toString();
+            if (getSeparator() == '\\' && prefixLength(initialPath) == 2 && initialPath.charAt(0) == '\\') {
                 // This behavior is covered by `test/jdk/java/io/File/GetAbsolutePath.java`.
                 // If this condition passed through Path.toAbsolutePath, an additional excessive slash
                 // might be added at the end, and the behavior would differ from the original java.io.File.getAbsolutePath.
-                return sourceString;
+                return initialPath;
             }
 
             try {
-                String result = nioFs.getPath(f.getPath()).toAbsolutePath().toString();
+                String resolvedPath = nioFs.getPath(f.getPath()).toAbsolutePath().toString();
                 if (
-                        sourceString.length() > 2
+                        initialPath.length() > 2
                         && getSeparator() == '\\'
-                        && sourceString.charAt(1) == ':'
-                        && sourceString.charAt(2) != '\\'
-                        && sourceString.charAt(0) != System.getProperty("user.dir", "?").charAt(0)
+                        && initialPath.charAt(1) == ':'
+                        && initialPath.charAt(2) != '\\'
+                        && initialPath.charAt(0) != System.getProperty("user.dir", "?").charAt(0)
                 ) {
                     // The source is a tricky drive-relative path,
                     // and the current working directory is on a different drive.
-                    // For unclear reasons, the result must have two backslashes after the colon.
+                    // For unclear reasons, the resolved path must have two backslashes after the colon.
                     // This behavior is covered by `test/jdk/java/io/File/GetAbsolutePath.java`.
-                    result = result.substring(0, 2) + '\\' + result.substring(2);
+                    resolvedPath = resolvedPath.substring(0, 2) + '\\' + resolvedPath.substring(2);
                 }
-                return result;
+                return resolvedPath;
             } catch (InvalidPathException err) {
                 // Path parsing in java.nio is stricter than in java.io.
                 // Giving a chance to the original implementation.
