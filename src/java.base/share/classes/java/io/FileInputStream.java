@@ -483,7 +483,7 @@ public class FileInputStream extends InputStream
     public long transferTo(OutputStream out) throws IOException {
         long transferred = 0L;
         if (out instanceof FileOutputStream fos && isRegularFile()) {
-            FileChannel fc = getChannel();
+            FileChannel fc = useNio ? channel : getChannel();
             long pos = fc.position();
             transferred = fc.transferTo(pos, Long.MAX_VALUE, fos.getChannel());
             long newPos = pos + transferred;
@@ -549,7 +549,6 @@ public class FileInputStream extends InputStream
         } else if (!useNio) {
             return skip0(n);
         } else {
-            getChannel();
             long startPos = channel.position();
             channel.position(startPos + n);
             return channel.position() - startPos;
@@ -580,7 +579,6 @@ public class FileInputStream extends InputStream
         if (!useNio) {
             return available0();
         } else {
-            getChannel();
             long size = channel.size();
             long pos = channel.position();
             long avail = size > pos ? (size - pos) : 0;
