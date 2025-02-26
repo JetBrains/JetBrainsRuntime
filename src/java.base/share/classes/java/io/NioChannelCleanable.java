@@ -50,6 +50,11 @@ final class NioChannelCleanable extends PhantomCleanable<Object> {
      */
     NioChannelCleanable(Object channelOwner) {
         super(channelOwner, CleanerFactory.cleaner());
+
+        assert channelOwner instanceof FileInputStream ||
+                channelOwner instanceof FileOutputStream ||
+                channelOwner instanceof RandomAccessFile
+                : channelOwner.getClass() + " is not an expected class";
     }
 
     /**
