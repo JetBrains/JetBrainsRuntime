@@ -319,10 +319,10 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             isRegularFile = nioPath != null &&
                     Files.readAttributes(nioPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).isRegularFile();
         }
-        catch (NoSuchFileException e) {
+        catch (NoSuchFileException ignored) {
             isRegularFile = true;
         }
-        catch (IOException e) {
+        catch (IOException ignored) {
             isRegularFile = false;
         }
 

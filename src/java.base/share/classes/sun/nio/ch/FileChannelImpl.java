@@ -179,7 +179,7 @@ public class FileChannelImpl
         if (!isOpen()) {
             try {
                 result.close();
-            } catch (IOException e) {
+            } catch (IOException ignored) {
                 // Ignored.
             }
         }
