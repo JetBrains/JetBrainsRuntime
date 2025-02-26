@@ -142,6 +142,9 @@ static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VK
                                    double dx1, double dy1, double dx2, double dy2)
 {
     VKSDOps* surface = context->surface;
+
+    VKRenderer_FlushRenderPass(surface);
+
     VKDevice* device = surface->device;
 
     ARRAY(VKTxVertex) vertices = ARRAY_ALLOC(VKTxVertex, 4);

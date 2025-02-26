@@ -309,6 +309,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps
     }
     sd->drawableType = VKSD_RT_TEXTURE;
     sd->background = VKUtil_DecodeJavaColor(0);
+    VKSD_ResetSurface(sd);
     VKRenderer_ConfigureSurface(sd, (VkExtent2D){width, height});
 }
 
