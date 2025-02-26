@@ -45,11 +45,11 @@ final class NioChannelCleanable extends PhantomCleanable<Object> {
     private WeakReference<FileChannel> channel = new WeakReference<>(null);
 
     /**
-     * @param referent The owner of a channel.
-     *                 It is supposed to be {@link FileInputStream}, {@link FileOutputStream} or {@link RandomAccessFile}.
+     * @param channelOwner The owner of a channel.
+     *                     It is supposed to be {@link FileInputStream}, {@link FileOutputStream} or {@link RandomAccessFile}.
      */
-    NioChannelCleanable(Object referent) {
-        super(referent, CleanerFactory.cleaner());
+    NioChannelCleanable(Object channelOwner) {
+        super(channelOwner, CleanerFactory.cleaner());
     }
 
     /**
