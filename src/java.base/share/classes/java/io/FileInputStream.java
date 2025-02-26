@@ -174,7 +174,6 @@ public class FileInputStream extends InputStream
         useNio = nioPath != null && isRegularFile == Boolean.TRUE;
 
         if (useNio) {
-            Objects.requireNonNull(nioPath, "nioPath");
             try {
                 IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
                 // NB: the channel will be closed in the close() method

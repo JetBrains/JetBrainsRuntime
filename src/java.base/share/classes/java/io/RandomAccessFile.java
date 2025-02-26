@@ -301,7 +301,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
 
         useNio = nioPath != null && isRegularFile;
         if (useNio) {
-            Objects.requireNonNull(nioPath, "nioPath");
             try {
                 IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(this);
                 var options = optionsForChannel(imode);
