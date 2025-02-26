@@ -275,7 +275,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
 
         FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
         Path nioPath = null;
-        if (nioFs != null && path != null) {
+        if (nioFs != null) {
             try {
                 nioPath = nioFs.getPath(path);
             } catch (InvalidPathException _) {
@@ -702,7 +702,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 byte[] array = new byte[1];
                 array[0] = (byte) b;
                 ByteBuffer buffer = ByteBuffer.wrap(array);
-                channel.write(buffer);
+                do {
+                    channel.write(buffer);
+                } while (buffer.hasRemaining());
             }
         } finally {
             Blocker.end(attempted);
@@ -750,7 +752,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             } else {
                 try {
                     ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                    channel.write(buffer);
+                    do {
+                        channel.write(buffer);
+                    } while (buffer.hasRemaining());
                 } catch (OutOfMemoryError e) {
                     // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
                     writeBytes0(b, off, len);
