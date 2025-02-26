@@ -852,7 +852,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 setLength0(newLength);
             } else {
                 try {
-                    FileChannel channel = getChannel();
                     long oldSize = channel.size();
                     if (newLength < oldSize) {
                         channel.truncate(newLength);
