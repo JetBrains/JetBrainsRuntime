@@ -33,6 +33,12 @@
 
 #define MAX_DISPLAYS 64
 
+static const BOOL TRACE_DISPLAY_CALLBACKS = YES;
+
+static atomic_long pendingDisplayCallbacks = 0L;
+
+extern void dumpDisplayInfo(jint displayID);
+
 /*
  * Class:     sun_awt_CGraphicsEnvironment
  * Method:    getDisplayIDs
@@ -111,7 +117,35 @@ Java_sun_awt_CGraphicsEnvironment_getMainDisplayID
 static void displaycb_handle
 (CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
 {
-    if (flags == kCGDisplayBeginConfigurationFlag) return;
+    if (TRACE_DISPLAY_CALLBACKS) {
+        /* Get the count NOW */
+        CGDisplayCount displayCount;
+        if (CGGetOnlineDisplayList(MAX_DISPLAYS, NULL, &displayCount) != kCGErrorSuccess) {
+            NSLog(@"displaycb_handle: failed to get display count");
+            return;
+        }
+        NSLog(@"CGraphicsEnv::displaycb_handle(displayId: %d, flags: %d, userInfo: %p) displayCount = %d",
+              display, flags, userInfo, displayCount);
+    }
+
+    if (flags == kCGDisplayBeginConfigurationFlag) {
+        /* Get the count NOW */
+        CGDisplayCount displayCount;
+        if (CGGetOnlineDisplayList(MAX_DISPLAYS, NULL, &displayCount) != kCGErrorSuccess) {
+            NSLog(@"displaycb_handle: failed to get display count");
+            return;
+        }
+        // safe as appkit ?
+        pendingDisplayCallbacks = displayCount;
+        NSLog(@"pendingDisplayCallbacks = %ld", pendingDisplayCallbacks);
+        [ThreadUtilities setBlockingMainThread:true];
+        return;
+    }
+
+    if (TRACE_DISPLAY_CALLBACKS) {
+        dumpDisplayInfo(display);
+        [ThreadUtilities dumpThreadTraceContext];
+    }
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
 
@@ -126,6 +160,13 @@ static void displaycb_handle
         (*env)->CallVoidMethod(env, graphicsEnv, jm_displayReconfiguration,
                 (jint) display, (jint) flags);
         (*env)->DeleteLocalRef(env, graphicsEnv);
+
+        if (pendingDisplayCallbacks >= 1) {
+            if (--pendingDisplayCallbacks == 0) {
+                 [ThreadUtilities setBlockingMainThread: false];
+            }
+            NSLog(@"pendingDisplayCallbacks = %ld", pendingDisplayCallbacks);
+        }
         CHECK_EXCEPTION();
     }];
 }
