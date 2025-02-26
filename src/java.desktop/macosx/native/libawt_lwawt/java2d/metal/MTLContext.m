@@ -55,13 +55,13 @@
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
 extern BOOL MTLLayer_isExtraRedrawEnabled();
-extern int getBPPFromModeString(CFStringRef mode);
+extern void dumpDisplayInfo(jint displayID);
 
-#define STATS_CVLINK        0
+#define STATS_CVLINK        1
 
-#define TRACE_PWM_NOTIF     0
+#define TRACE_PWM_NOTIF     1
 
-#define TRACE_CVLINK        0
+#define TRACE_CVLINK        1
 #define TRACE_CVLINK_WARN   0
 #define TRACE_CVLINK_DEBUG  0
 
@@ -215,9 +215,9 @@ extern void initSamplers(id<MTLDevice> device);
                         NSLog(@"MTLContext_systemOrScreenWillSleep: displayId=%d active=%d", displayID, active);
                     }
                     if (TRACE_DISPLAY) {
-                        [MTLContext dumpDisplayInfo:displayID];
+                        dumpDisplayInfo(displayID);
                     }
-                    if ((notification.name == NSWorkspaceWillSleepNotification)|| !active) {
+                    if ((notification.name == NSWorkspaceWillSleepNotification) || !active) {
                          [mtlc destroyDisplayLink:displayID];
                     }
                 }
@@ -248,7 +248,7 @@ extern void initSamplers(id<MTLDevice> device);
                         NSLog(@"MTLContext_systemOrScreenDidWake: displayId=%d active=%d", displayID, active);
                     }
                     if (TRACE_DISPLAY) {
-                        [MTLContext dumpDisplayInfo:displayID];
+                        dumpDisplayInfo(displayID);
                     }
                     if (active) {
                         // (if needed will start a new display link thread):
@@ -424,100 +424,6 @@ extern void initSamplers(id<MTLDevice> device);
     return self;
 }
 
-+ (void)dumpDisplayInfo: (jint)displayID {
-    // Returns a Boolean value indicating whether a display is active.
-    jint displayIsActive = CGDisplayIsActive(displayID);
-
-    // Returns a Boolean value indicating whether a display is always in a mirroring set.
-    jint displayIsalwaysInMirrorSet = CGDisplayIsAlwaysInMirrorSet(displayID);
-
-    // Returns a Boolean value indicating whether a display is sleeping (and is therefore not drawable).
-    jint displayIsAsleep = CGDisplayIsAsleep(displayID);
-
-    // Returns a Boolean value indicating whether a display is built-in, such as the internal display in portable systems.
-    jint displayIsBuiltin = CGDisplayIsBuiltin(displayID);
-
-    // Returns a Boolean value indicating whether a display is in a mirroring set.
-    jint displayIsInMirrorSet = CGDisplayIsInMirrorSet(displayID);
-
-    // Returns a Boolean value indicating whether a display is in a hardware mirroring set.
-    jint displayIsInHWMirrorSet = CGDisplayIsInHWMirrorSet(displayID);
-
-    // Returns a Boolean value indicating whether a display is the main display.
-    jint displayIsMain = CGDisplayIsMain(displayID);
-
-    // Returns a Boolean value indicating whether a display is connected or online.
-    jint displayIsOnline = CGDisplayIsOnline(displayID);
-
-    // Returns a Boolean value indicating whether a display is running in a stereo graphics mode.
-    jint displayIsStereo = CGDisplayIsStereo(displayID);
-
-    // For a secondary display in a mirroring set, returns the primary display.
-    CGDirectDisplayID displayMirrorsDisplay = CGDisplayMirrorsDisplay(displayID);
-
-    // Returns the primary display in a hardware mirroring set.
-    CGDirectDisplayID displayPrimaryDisplay = CGDisplayPrimaryDisplay(displayID);
-
-    // Returns the width and height of a display in millimeters.
-    CGSize size = CGDisplayScreenSize(displayID);
-
-    NSLog(@"CGDisplay[%d]{\n"
-           "displayIsActive=%d\n"
-           "displayIsalwaysInMirrorSet=%d\n"
-           "displayIsAsleep=%d\n"
-           "displayIsBuiltin=%d\n"
-           "displayIsInMirrorSet=%d\n"
-           "displayIsInHWMirrorSet=%d\n"
-           "displayIsMain=%d\n"
-           "displayIsOnline=%d\n"
-           "displayIsStereo=%d\n"
-           "displayMirrorsDisplay=%d\n"
-           "displayPrimaryDisplay=%d\n"
-           "displayScreenSizey=[%.1lf %.1lf]\n",
-           displayID,
-           displayIsActive,
-           displayIsalwaysInMirrorSet,
-           displayIsAsleep,
-           displayIsBuiltin,
-           displayIsInMirrorSet,
-           displayIsInHWMirrorSet,
-           displayIsMain,
-           displayIsOnline,
-           displayIsStereo,
-           displayMirrorsDisplay,
-           displayPrimaryDisplay,
-           size.width, size.height
-    );
-
-    // CGDisplayCopyDisplayMode can return NULL if displayID is invalid
-    CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayID);
-    if (mode) {
-        // Getting Information About a Display Mode
-        jint h = -1, w = -1, bpp = -1;
-        jdouble refreshRate = 0.0;
-
-        // Returns the width of the specified display mode.
-        w = CGDisplayModeGetWidth(mode);
-
-        // Returns the height of the specified display mode.
-        h = CGDisplayModeGetHeight(mode);
-
-        // Returns the pixel encoding of the specified display mode.
-        // Deprecated
-        CFStringRef currentBPP = CGDisplayModeCopyPixelEncoding(mode);
-        bpp = getBPPFromModeString(currentBPP);
-        CFRelease(currentBPP);
-
-        // Returns the refresh rate of the specified display mode.
-        refreshRate = CGDisplayModeGetRefreshRate(mode);
-
-        NSLog(@"CGDisplayMode[%d]: w=%d, h=%d, bpp=%d, freq=%.2lf hz",
-              displayID, w, h, bpp, refreshRate);
-
-        CGDisplayModeRelease(mode);
-    }
-}
-
 - (NSArray<NSNumber*>*)getDisplayLinkDisplayIds {
     return [_displayLinkStates allKeys];
 }
@@ -529,7 +435,7 @@ extern void initSamplers(id<MTLDevice> device);
             return;
         }
         if (TRACE_DISPLAY) {
-            [MTLContext dumpDisplayInfo:displayID];
+            dumpDisplayInfo(displayID);
         }
         CVDisplayLinkRef _displayLink;
         if (TRACE_CVLINK) {
@@ -543,7 +449,7 @@ extern void initSamplers(id<MTLDevice> device);
             J2dRlsTraceLn(J2D_TRACE_ERROR,
                           "MTLContext_createDisplayLinkIfAbsent: Failed to initialize CVDisplayLink.");
         } else {
-            J2dRlsTraceLn3(J2D_TRACE_INFO, "MTLContext_destroyDisplayLinkMTLContext_createDisplayLinkIfAbsent["
+            J2dRlsTraceLn3(J2D_TRACE_INFO, "MTLContext_createDisplayLinkIfAbsent["
                                            "ctx=%p displayID=%d] displayLink=%p",
                                            self, displayID, _displayLink);
             bool isNewDisplayLink = false;
@@ -630,7 +536,7 @@ extern void initSamplers(id<MTLDevice> device);
     }
     CVDisplayLinkRef _displayLink = dlState->displayLink;
     if (_displayLink == nil) {
-        if (TRACE_CVLINK) {
+        if (TRACE_CVLINK_DEBUG) {
             J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_handleDisplayLink[%s]: "
                                               "displayLink is nil (disabled).", src);
         }
@@ -1121,7 +1027,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
                       "=> destroyDisplayLink", displayID, active);
             }
             if (TRACE_DISPLAY) {
-                [MTLContext dumpDisplayInfo:displayID];
+                dumpDisplayInfo(displayID);
             }
             [mtlc destroyDisplayLink:displayID];
         } else {

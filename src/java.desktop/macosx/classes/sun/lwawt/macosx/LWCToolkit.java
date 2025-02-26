@@ -782,18 +782,37 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component)
             throws InvocationTargetException
     {
-        invokeAndWait(runnable, component, -1);
+        invokeAndWait(runnable, component, false, 0.0);
     }
 
+    /* 25.01.25: keep public methods with (int timeoutSeconds) */
+    @Deprecated(since = "25")
     public static void invokeAndWait(Runnable runnable, Component component, int timeoutSeconds)
             throws InvocationTargetException
     {
         invokeAndWait(runnable, component, false, timeoutSeconds);
     }
 
+    @Deprecated(since = "25")
     public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, int timeoutSeconds)
+            throws InvocationTargetException {
+        final double timeout = (timeoutSeconds > 0) ? timeoutSeconds : 0.0;
+        invokeAndWait(runnable, component, processEvents, timeout);
+    }
+
+    /* 25.01.25: added public methods with (double timeoutSeconds) to have timeouts between 0.0 and 1.0 */
+
+    public static void invokeAndWait(Runnable runnable, Component component, double timeoutSeconds)
             throws InvocationTargetException
     {
+        invokeAndWait(runnable, component, false, timeoutSeconds);
+    }
+
+    public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, double timeoutSeconds)
+            throws InvocationTargetException
+    {
+        Objects.requireNonNull(component, "Null component provided to invokeAndWait");
+
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("invokeAndWait started: {0}", runnable);
         }
@@ -854,6 +873,12 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     private static native boolean isBlockingEventDispatchThread();
+
+    public static native boolean isBlockingMainThread();
+
+    static native String getThreadTraceContexts();
+
+    static native boolean isWithinPowerTransition();
 
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {
@@ -1040,7 +1065,7 @@ public final class LWCToolkit extends LWToolkit {
      *                      if false - all events come after exit form the nested loop
      */
     static void doAWTRunLoop(long mediator, boolean processEvents) {
-        doAWTRunLoop(mediator, processEvents, -1);
+        doAWTRunLoopImpl(mediator, processEvents, inAWT);
     }
 
     /**

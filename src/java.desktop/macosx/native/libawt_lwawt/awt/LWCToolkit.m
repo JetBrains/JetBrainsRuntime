@@ -61,6 +61,12 @@
 /* RunLoop critical run max duration = 1 millis */
 #define RUN_LOOP_TICK_CRITICAL  (0.001)
 
+/* max wait timeout for AWTRunLoop > 10s */
+#define WAIT_TIMEOUT_LIMIT      (13.333)
+
+/* power transition period = 10s */
+#define PWM_TRANSITION_PERIOD   (10.000)
+
 #define TRACE_RUN_LOOP  0
 
 int gNumberOfButtons;
@@ -605,14 +611,19 @@ JNI_COCOA_ENTER(env);
         return JNI_TRUE;
     }
 
-    NSDate *timeoutDate = timeoutSeconds > 0 ? [NSDate dateWithTimeIntervalSinceNow:timeoutSeconds] : nil;
-    if (timeoutDate != nil) {
-        if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: timeoutDate = %s",
-              [[timeoutDate description] UTF8String]);
+    /*WAIT_TIMEOUT_LIMIT
+     * 2025.02: infinite timeout means possible deadlocks or freezes may happen.
+     * To ensure responsiveness, infinite is limited to a huge delay (~10s)
+     */
+    if (timeoutSeconds < WAIT_TIMEOUT_LIMIT) {
+        timeoutSeconds = WAIT_TIMEOUT_LIMIT;
     }
 
-    if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: processEvents = %d", processEvents);
-
+    NSDate *timeoutDate = [NSDate dateWithTimeIntervalSinceNow:timeoutSeconds];
+    if (TRACE_RUN_LOOP) {
+        NSLog(@"LWCToolkit_doAWTRunLoopImpl: timeoutDate = %s", [[timeoutDate description] UTF8String]);
+        NSLog(@"LWCToolkit_doAWTRunLoopImpl: processEvents = %d", processEvents);
+    }
     NSRunLoopMode criticalRunMode = [ThreadUtilities criticalRunLoopMode];
     NSRunLoopMode runMode = inAWT ? [ThreadUtilities javaRunLoopMode] : NSDefaultRunLoopMode;
     if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: runMode = %@", runMode);
@@ -639,16 +650,13 @@ JNI_COCOA_ENTER(env);
         [deadlineDate release];
         if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: isRunning = %d", isRunning);
 
-        if (timeoutDate != nil) {
-            NSDate *now = [[NSDate alloc] init];
-            if ([timeoutDate compare:(now)] == NSOrderedAscending) {
-                result = JNI_FALSE;
-            }
+        NSDate *now = [[NSDate alloc] init];
+        if ([timeoutDate compare:(now)] == NSOrderedAscending) {
             [now release];
-            if (result == JNI_FALSE) {
-                break;
-            }
+            result = JNI_FALSE;
+            break;
         }
+        [now release];
 
         if (processEvents) {
             // We do not spin a runloop here as date is nil, so does not matter which mode to use
@@ -669,7 +677,8 @@ JNI_COCOA_ENTER(env);
                 }
             }
         }
-    }
+    } // while loop
+
     [timeoutDate release];
     [mediatorObject release];
 
@@ -688,6 +697,50 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isBlockingEventDispa
         (JNIEnv *env, jclass clz)
 {
     return ThreadUtilities.blockingEventDispatchThread;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    isBlockingMainThread
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isBlockingMainThread
+        (JNIEnv *env, jclass clz)
+{
+    return ThreadUtilities.blockingMainThread;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    getThreadTraceContexts
+ * Signature: (Ljava/lang/String)
+ */
+JNIEXPORT jstring JNICALL Java_sun_lwawt_macosx_LWCToolkit_getThreadTraceContexts
+        (JNIEnv *env, jclass clz)
+{
+JNI_COCOA_ENTER(env);
+
+    // Convert NSString* to JavaString
+    NSString* result = [ThreadUtilities getThreadTraceContexts];
+
+    jstring javaString = (*env)->NewStringUTF(env, result.UTF8String);
+    [result release];
+    return javaString;
+
+JNI_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    isWithinPowerTransition
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isWithinPowerTransition
+        (JNIEnv *env, jclass clz)
+{
+JNI_COCOA_ENTER(env);
+    return [ThreadUtilities isWithinPowerTransition:PWM_TRANSITION_PERIOD] ? JNI_TRUE : JNI_FALSE;
+JNI_COCOA_EXIT(env);
 }
 
 /*
