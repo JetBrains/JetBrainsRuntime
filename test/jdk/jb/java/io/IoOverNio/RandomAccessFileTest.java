@@ -178,6 +178,7 @@ public class RandomAccessFileTest {
     public void setLength() throws Exception {
         String extraContent = ManglingFileSystemProvider.extraContent;
         assertTrue(extraContent.length() > 2);
+        assertTrue(extraContent.length() < 11);
 
         File file = temporaryFolder.newFile();
         String content = "hello";
@@ -186,12 +187,44 @@ public class RandomAccessFileTest {
         ManglingFileSystemProvider.mangleFileContent = true;
         ManglingFileSystemProvider.readExtraFileContent = true;
         try (RandomAccessFile rac = new RandomAccessFile(file, "rw")) {
+            assertEquals(content.length() + extraContent.length(), rac.length());
             rac.setLength(content.length() + 2);
+            assertEquals(content.length() + 2, rac.length());
             rac.seek(0);
             assertEquals("h3110" + extraContent.substring(0, 2), rac.readLine());
         }
 
-        // TODO Bigger length.
+        ManglingFileSystemProvider.readExtraFileContent = false;
+        Files.writeString(file.toPath(), content);
+        try (RandomAccessFile rac = new RandomAccessFile(file, "rw")) {
+            assertEquals(content.length(), rac.length());
+            rac.setLength(11);
+            assertEquals(11, rac.length());
+
+            rac.seek(0);
+            byte[] buffer = new byte[1234];
+            try {
+                rac.readFully(buffer);
+                fail("EOFException wasn't thrown");
+            } catch (EOFException ignored) {
+                // Expected behavior.
+            }
+            assertEquals("h3110\0\0\0\0\0\0", new String(buffer, 0, 11));
+
+            // setLength should keep the offset.
+            rac.seek(0);
+            assertEquals('h', rac.readByte());
+            rac.setLength(17);
+            assertEquals('3', rac.readByte());
+            rac.setLength(3);
+            assertEquals('1', rac.readByte());
+            try {
+                rac.readByte();
+                fail("EOFException wasn't thrown");
+            } catch (EOFException ignored) {
+                // Expected behavior.
+            }
+        }
     }
 
     @Test
