@@ -33,6 +33,8 @@ import java.io.File;
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.BiFunction;
@@ -115,7 +117,7 @@ public final class NativeLibraries {
      * @param file the path of the native library
      * @throws UnsatisfiedLinkError if any error in loading the native library
      */
-    @SuppressWarnings("removal")
+    @SuppressWarnings({"try", "removal"})
     public NativeLibrary loadLibrary(Class<?> fromClass, File file) {
         // Check to see if we're attempting to access a static library
         String name = findBuiltinLib(file.getName());
