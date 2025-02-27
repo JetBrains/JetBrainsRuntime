@@ -63,7 +63,9 @@ import java.util.Set;
 import static com.jetbrains.internal.IoOverNio.DEBUG;
 
 class IoOverNioFileSystem extends FileSystem {
-    /** The filesystem created by default in the original OpenJDK. */
+    /**
+     * The filesystem created by default in the original OpenJDK.
+     */
     private final FileSystem parent;
 
     IoOverNioFileSystem(FileSystem parent) {
@@ -256,9 +258,25 @@ class IoOverNioFileSystem extends FileSystem {
             Path nioPath,
             Set<StandardOpenOption> optionsForChannel,
             NioChannelCleanable channelCleanable) throws FileNotFoundException {
+        try {
+            // This tricky thread local variable allows specifying an argument for sun.nio.ch.FileChannelImpl.<init>
+            // which is not present in the NIO public API and which is not easy to specify another way.
+            IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(owner);
+            return initializeStreamsUsingNio0(owner, nioFs, file, nioPath, optionsForChannel, channelCleanable);
+        } finally {
+            IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
+        }
+    }
+
+    private static StreamInitializationBundle initializeStreamsUsingNio0(
+            Closeable owner,
+            java.nio.file.FileSystem nioFs,
+            File file,
+            Path nioPath,
+            Set<StandardOpenOption> optionsForChannel,
+            NioChannelCleanable channelCleanable) throws FileNotFoundException {
         FileChannel channel = null;
         try {
-            IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(owner);
             channel = nioFs.provider().newFileChannel(nioPath, optionsForChannel);
             return new StreamInitializationBundle(
                     initializeFdUsingNio(owner, channel, channelCleanable),
@@ -278,8 +296,6 @@ class IoOverNioFileSystem extends FileSystem {
                 }
             }
             throw IoOverNioFileSystem.convertNioToIoExceptionInStreams(err);
-        } finally {
-            IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
         }
     }
 
@@ -421,10 +437,10 @@ class IoOverNioFileSystem extends FileSystem {
                 String resolvedPath = nioFs.getPath(f.getPath()).toAbsolutePath().toString();
                 if (
                         initialPath.length() > 2
-                        && getSeparator() == '\\'
-                        && initialPath.charAt(1) == ':'
-                        && initialPath.charAt(2) != '\\'
-                        && initialPath.charAt(0) != System.getProperty("user.dir", "?").charAt(0)
+                                && getSeparator() == '\\'
+                                && initialPath.charAt(1) == ':'
+                                && initialPath.charAt(2) != '\\'
+                                && initialPath.charAt(0) != System.getProperty("user.dir", "?").charAt(0)
                 ) {
                     // The source is a tricky drive-relative path,
                     // and the current working directory is on a different drive.
