@@ -867,6 +867,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                         channel.truncate(newLength);
                     } else {
                         long position = channel.position();
+                        channel.position(channel.size());
                         try {
                             byte[] buf = new byte[1 << 14];
                             Arrays.fill(buf, (byte) 0);
