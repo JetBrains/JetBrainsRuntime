@@ -74,7 +74,6 @@ gc/shenandoah/mxbeans/TestChurnNotifications.java#iu initial_run linux-x64
 
 compiler/ciReplay/TestSAServer.java 8029528 generic-all
 compiler/compilercontrol/jcmd/ClearDirectivesFileStackTest.java 8225370 generic-all
-compiler/jvmci/compilerToVM/GetFlagValueTest.java 8204459 generic-all
 
 compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
 
@@ -117,8 +116,6 @@ compiler/codecache/CodeCacheFullCountTest.java 8332954 generic-all
 
 compiler/interpreter/Test6833129.java 8335266 generic-i586
 
-compiler/startup/StartupOutput.java 8339700 linux-x64
-
 #############################################################################
 
 # :hotspot_gc
@@ -129,7 +126,6 @@ gc/g1/logging/TestG1LoggingFailure.java 8169634 generic-all
 gc/g1/humongousObjects/TestHeapCounters.java 8178918 generic-all
 gc/stress/gclocker/TestExcessGCLockerCollections.java 8229120 generic-all
 gc/stress/gclocker/TestGCLockerWithShenandoah.java initial_run generic-all
-gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java 8192647 generic-all
 
 gc/stress/gcold/TestGCOldWithShenandoah.java initial_run windows-all
 
@@ -144,6 +140,7 @@ gc/TestAlwaysPreTouchBehavior.java#Shenandoah 8334513 generic-all
 gc/TestAlwaysPreTouchBehavior.java#G1 8334513 generic-all
 gc/TestAlwaysPreTouchBehavior.java#Z 8334513 generic-all
 gc/TestAlwaysPreTouchBehavior.java#Epsilon 8334513 generic-all
+gc/stress/gclocker/TestExcessGCLockerCollections.java 8229120 generic-all
 gc/shenandoah/oom/TestAllocOutOfMemory.java#large 8344312 linux-ppc64le
 
 #############################################################################
@@ -151,9 +148,8 @@ gc/shenandoah/oom/TestAllocOutOfMemory.java#large 8344312 linux-ppc64le
 # :hotspot_runtime
 
 runtime/jni/terminatedThread/TestTerminatedThread.java 8317789 aix-ppc64
-runtime/cds/appcds/jigsaw/modulepath/ModulePathAndCP_JFR.java 8253437 windows-x64
 runtime/cds/CheckDefaultArchiveFile.java JBR-4227 generic-all
-runtime/handshake/HandshakeSuspendExitTest.java 8294313 generic-all
+runtime/handshake/HandshakeSuspendExitTest.java 8318631 generic-all
 runtime/Monitor/SyncOnValueBasedClassTest.java 8340995 linux-s390x
 runtime/os/TestTracePageSizes.java#no-options 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#explicit-large-page-size 8267460 linux-aarch64
@@ -162,12 +158,10 @@ runtime/os/TestTracePageSizes.java#G1 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#Parallel 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#Serial 8267460 linux-aarch64
 runtime/ErrorHandling/CreateCoredumpOnCrash.java 8267433 macosx-x64
-runtime/vthread/TestObjectAllocationSampleEvent.java 8297286 generic-all
 runtime/StackGuardPages/TestStackGuardPages.java 8303612 linux-all 8293452
 runtime/StackGuardPages/TestStackGuardPagesNative.java 8303612 linux-all
+runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315 linux-ppc64le
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315,JBR-6289 linux-ppc64le,windows-aarch64
-runtime/ErrorHandling/TestDwarf.java 8305489 linux-all
-runtime/cds/appcds/customLoader/HelloCustom_JFR.java 8241075 linux-all,windows-x64
 runtime/NMT/VirtualAllocCommitMerge.java 8309698 linux-s390x
 
 applications/jcstress/copy.java 8229852 linux-all
@@ -215,8 +209,6 @@ serviceability/sa/ClhsdbPmap.java#core            8267433,8318754,JBR-6259 macos
 serviceability/sa/ClhsdbPstack.java#core          8267433,8318754,JBR-6259 macosx-x64,macosx-aarch64,windows-aarch64
 serviceability/sa/TestJmapCore.java               8267433,8318754 macosx-x64,macosx-aarch64
 serviceability/sa/TestJmapCoreMetaspace.java      8267433,8318754 macosx-x64,macosx-aarch64
-
-serviceability/attach/ConcAttachTest.java 8290043 linux-all
 
 serviceability/jvmti/stress/StackTrace/NotSuspended/GetStackTraceNotSuspendedStressTest.java 8315980 linux-all,windows-x64
 
@@ -279,17 +271,12 @@ vmTestbase/metaspace/gc/firstGC_99m/TestDescription.java 8208250 generic-all
 vmTestbase/metaspace/gc/firstGC_default/TestDescription.java 8208250 generic-all
 
 vmTestbase/nsk/jvmti/AttachOnDemand/attach045/TestDescription.java 8202971 generic-all
-vmTestbase/nsk/jvmti/scenarios/jni_interception/JI05/ji05t001/TestDescription.java 8219652 aix-ppc64
-vmTestbase/nsk/jvmti/scenarios/jni_interception/JI06/ji06t001/TestDescription.java 8219652 aix-ppc64
-vmTestbase/nsk/jvmti/SetJNIFunctionTable/setjniftab001/TestDescription.java 8219652 aix-ppc64
 vmTestbase/nsk/jvmti/scenarios/capability/CM03/cm03t001/TestDescription.java 8073470 linux-all
 vmTestbase/nsk/jvmti/InterruptThread/intrpthrd003/TestDescription.java 8288911 macosx-x64
 
 vmTestbase/nsk/jvmti/scenarios/sampling/SP04/sp04t001/TestDescription.java initial_run windows-x64
 vmTestbase/nsk/jvmti/scenarios/sampling/SP04/sp04t002/TestDescription.java initial_run windows-x64
 vmTestbase/nsk/jvmti/scenarios/sampling/SP05/sp05t003/TestDescription.java initial_run generic-all
-
-vmTestbase/gc/lock/jni/jnilock002/TestDescription.java 8192647 generic-all
 
 vmTestbase/jit/escape/LockCoarsening/LockCoarsening001.java 8148743 generic-all
 vmTestbase/jit/escape/LockCoarsening/LockCoarsening002.java 8208259 generic-all
