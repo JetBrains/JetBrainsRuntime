@@ -11,8 +11,7 @@ javax/swing/JInternalFrame/6647340/bug6647340.java JBR-8323 linux-6.8.0-1021-aws
 javax/swing/JInternalFrame/bug5009724.java JBR-7087 linux-all
 javax/swing/JPopupMenu/7156657/bug7156657.java JBR-8210 linux-all
 javax/swing/JOptionPane/8081019/bug8081019.java JBR-8275 linux-all
-javax/swing/JRadioButton/bug4823809.java JBR-7774 linux-all
-javax/swing/JTabbedPane/bug4703690.java JBR-7815,JBR-7816 linux-all
+javax/swing/JRadioButton/bug4823809.java JBR-7931 linux-all
 javax/swing/LookAndFeel/8145547/DemandGTK2.sh JBR-8274 linux-all
 javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-8274 linux-all
 javax/swing/text/html/CSS/bug8234913.java JBR-8306 linux-all
