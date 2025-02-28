@@ -157,7 +157,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         }
 
         /* Populate the device table */
-        rebuildDevices();
+        initDevices();
 
         if (LogDisplay.ENABLED) {
             for (CGraphicsDevice gd : devices.values()) {
@@ -176,11 +176,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         return mtlShadersLib;
     }
 
-    /**
-     * Updates the list of devices and notify listeners.
-     */
-    private void rebuildDevices() {
-        initDevices();
+    private void doNotifyListeners() {
         // Do not notify devices, this was already done in initDevices.
         displayChanger.notifyListeners();
     }
@@ -189,7 +185,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      * Called by the CoreGraphics Display Reconfiguration Callback.
      *
      * @param displayId CoreGraphics displayId
-     * @param removed   true if displayId was removed, false otherwise.
+     * @param flags CGDisplayChangeSummaryFlags flags as integer
      */
     void _displayReconfiguration(int displayId, int flags) {
         // See CGDisplayChangeSummaryFlags
@@ -198,17 +194,32 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
                 (flags & (1 << 5)) != 0 ? LogDisplay.REMOVED : LogDisplay.CHANGED;
         if (log == LogDisplay.REMOVED) {
             CGraphicsDevice gd = devices.get(displayId);
-            log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+            log.log(displayId, (gd != null) ? gd.getBounds() : "UNKNOWN", (gd != null) ? gd.getScaleFactor() : Double.NaN);
         }
         // we ignore the passed parameters and check removed devices ourself
         // Note that it is possible that this callback is called when the
         // monitors are not added nor removed, but when the video card is
         // switched to/from the discrete video card, so we should try to map the
         // old to the new devices.
-        rebuildDevices();
+        initDevices();
+
         if (log != null && log != LogDisplay.REMOVED) {
             CGraphicsDevice gd = devices.get(displayId);
-            log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+            log.log(displayId, (gd != null) ? gd.getBounds() : "UNKNOWN", (gd != null) ? gd.getScaleFactor() : Double.NaN);
+        }
+    }
+
+    /**
+     * Called by the CoreGraphics Display Reconfiguration Callback (once all displays processed = finished)
+     */
+    void _displayReconfigurationFinished() {
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("_displayReconfigurationFinished(): enter");
+        }
+        doNotifyListeners();
+
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("_displayReconfigurationFinished(): exit");
         }
     }
 
@@ -277,7 +288,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         }
         // Need to notify old devices, in case the user hold the reference to it
         for (ListIterator<WeakReference<CGraphicsDevice>> it =
-             oldDevices.listIterator(); it.hasNext(); ) {
+                oldDevices.listIterator(); it.hasNext(); ) {
             CGraphicsDevice gd = it.next().get();
             if (gd != null) {
                 // If the old device has the same bounds as some new device

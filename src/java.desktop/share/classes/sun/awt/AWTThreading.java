@@ -66,7 +66,7 @@ public class AWTThreading {
      * or waits a notification from Toolkit. The method is re-entrant.
      * <p>
      * Currently only macOS is supported. The callable can wrap a native obj-c selector. The selector should be executed via
-     * [JNFRunLoop performOnMainThreadWaiting:YES ...] so that doAWTRunLoop on AppKit (which is run in [JNFRunLoop javaRunLoopMode]) accepts it.
+     * [ThreadUtilities performOnMainThreadWaiting:YES ...] so that doAWTRunLoop on AppKit (which is run in [ThreadUtilities javaRunLoopMode]) accepts it.
      * The callable should not call any Java code that would normally be called on EDT.
      * <p>
      * A deadlock can happen when the callable triggers any blocking invocation from Toolkit to EDT, or when Toolkit already waits in

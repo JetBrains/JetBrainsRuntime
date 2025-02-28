@@ -1300,6 +1300,12 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         //                          System-dependent appearance optimization.
         //                          May be blocking so postpone this event processing:
 
+        if (false && LWCToolkit.isBlockingMainThread()) {
+            // TODO: disable
+            logger.warning("Blocked main thread, skip flushBuffers().");
+            return;
+        }
+
         if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
             // use the system property 'awt.mac.flushBuffers.invokeLater' to true/auto (default: auto)
             // to avoid deadlocks caused by the LWCToolkit.invokeAndWait() call below:
@@ -1436,15 +1442,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 + "' @" + Integer.toHexString(System.identityHashCode(t)) + ']';
     }
 
-    private static String getIdentifier(Window t) {
-        if (t == null) {
-            return "null";
-        }
-        return t.getClass().getName()
-                + "['" + Objects.toString(t.getName(), "")
-                + "' @" + Integer.toHexString(System.identityHashCode(t)) + ']';
-    }
-
     /**
      * Helper method to get a pointer to the native view from the PlatformWindow.
      */
@@ -1471,6 +1468,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                                         boolean byUser) {
 
         /* LBO: test only to generate more appkit freezes */
+        // TODO: KILL
         final boolean bypassToHaveMoreFreezes = true;
 
         AtomicBoolean ref = new AtomicBoolean();
@@ -1494,11 +1492,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             if (bypassToHaveMoreFreezes
                     || (byUser && !oldB.getSize().equals(nativeBounds.getSize()))
                     || isFullScreenAnimationOn) {
-
-                if (LWCToolkit.isBlockingMainThread()) {
-                    logger.info("blocked main thread, skip.");
-                    return;
-                }
 
                 // May be blocking so postpone this event processing:
                 flushBuffers();

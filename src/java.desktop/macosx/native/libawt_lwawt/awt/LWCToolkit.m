@@ -241,7 +241,7 @@ static void setUpAWTAppKit(BOOL installObservers)
                                                NULL,                        // CFAllocator
                                                kCFRunLoopAfterWaiting,      // CFOptionFlags
                                                true,                        // repeats
-                                               NSIntegerMax,                // order
+                                               NSIntegerMax,                // order (Lowest priority = last)
                                                ^(CFRunLoopObserverRef observer, CFRunLoopActivity activity) {
                                                    setBusy(YES);
                                                });
@@ -250,7 +250,7 @@ static void setUpAWTAppKit(BOOL installObservers)
                                                 NULL,                        // CFAllocator
                                                 kCFRunLoopBeforeWaiting,     // CFOptionFlags
                                                 true,                        // repeats
-                                                NSIntegerMin,                // order
+                                                NSIntegerMin,                // order (Highest priority = early)
                                                 ^(CFRunLoopObserverRef observer, CFRunLoopActivity activity) {
                                                     setBusy(NO);
                                                 });
@@ -599,11 +599,17 @@ JNI_COCOA_EXIT(env);
  * Signature: (JZZI)Z
  */
 JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_doAWTRunLoopImpl
-(JNIEnv *env, jclass clz, jlong mediator, jboolean processEvents, jboolean inAWT, jint timeoutSeconds/*(-1) for infinite*/)
+(JNIEnv *env, jclass clz, jlong mediator, jboolean processEvents, jboolean inAWT, jdouble timeoutSeconds /* (<=0.0) for infinite ~ 10s */)
 {
     AWT_ASSERT_APPKIT_THREAD;
     jboolean result = JNI_TRUE;
 JNI_COCOA_ENTER(env);
+
+    /* defensive programming (should not happen) */
+    if (![ThreadUtilities blockingMainThread]) {
+        NSLog(@"LWCToolkit_doAWTRunLoopImpl: invalid state: blockingMainThread = YES !");
+        return JNI_FALSE;
+    }
 
     AWTRunLoopObject* mediatorObject = (AWTRunLoopObject*)jlong_to_ptr(mediator);
 
@@ -615,7 +621,7 @@ JNI_COCOA_ENTER(env);
      * 2025.02: infinite timeout means possible deadlocks or freezes may happen.
      * To ensure responsiveness, infinite is limited to a huge delay (~10s)
      */
-    if (timeoutSeconds < WAIT_TIMEOUT_LIMIT) {
+    if ((timeoutSeconds <= 0.0) || (timeoutSeconds > WAIT_TIMEOUT_LIMIT)) {
         timeoutSeconds = WAIT_TIMEOUT_LIMIT;
     }
 
