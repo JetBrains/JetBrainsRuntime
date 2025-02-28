@@ -56,6 +56,7 @@ public class VKInstance {
             final int deviceNumber = parsedDeviceNumber;
             final boolean verbose = "True".equals(vulkanOption);
             System.loadLibrary("awt");
+            @SuppressWarnings("removal")
             String sdOption = AccessController.doPrivileged(
                     (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.accelsd", ""));
             initialized = initNative(nativePtr, verbose, deviceNumber);
