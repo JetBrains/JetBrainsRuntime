@@ -5657,12 +5657,8 @@ int PlatformEvent::park(jlong Millis) {
     if (!ForceTimeHighResolution) {
       phri = new HighResolutionInterval(Millis);
     }
-    jlong startTime = os::javaTimeMillis();
-    jlong endTime = startTime + Millis;
-    while (Millis > 0 && (v = Atomic::load_acquire(&_Event)) < 0) {
-      BOOL rc = ::WaitOnAddress(&_Event, &v, sizeof(_Event), Millis);
-      if (rc) break;
-      Millis = endTime - os::javaTimeMillis();
+    if ((v = Atomic::load_acquire(&_Event)) < 0) {
+      ::WaitOnAddress(&_Event, &v, sizeof(_Event), Millis);
     }
     delete phri; // if it is null, harmless
   } else {
