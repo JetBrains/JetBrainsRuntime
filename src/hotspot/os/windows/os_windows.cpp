@@ -5653,20 +5653,18 @@ int PlatformEvent::park(jlong Millis) {
   const int MAXTIMEOUT = 0x10000000;
 
   if (UseModernSynchAPI) {
-    jlong startTime = os::javaTimeMillis();
-    DWORD prd = Millis;
-    while ((v = Atomic::load_acquire(&_Event)) < 0) {
-      HighResolutionInterval *phri = nullptr;
-      if (!ForceTimeHighResolution) {
-        phri = new HighResolutionInterval(prd);
-      }
-      BOOL rc = ::WaitOnAddress(&_Event, &v, sizeof(_Event), prd);
-      if (prd != INFINITY) {
-        jlong curTime = os::javaTimeMillis();
-        if (curTime - startTime >= Millis) break;
-      }
-      delete phri; // if it is null, harmless
+    HighResolutionInterval *phri = nullptr;
+    if (!ForceTimeHighResolution) {
+      phri = new HighResolutionInterval(Millis);
     }
+    jlong startTime = os::javaTimeMillis();
+    jlong endTime = startTime + Millis;
+    while (Millis > 0 && (v = Atomic::load_acquire(&_Event)) < 0) {
+      BOOL rc = ::WaitOnAddress(&_Event, &v, sizeof(_Event), Millis);
+      if (rc) break;
+      Millis = endTime - os::javaTimeMillis();
+    }
+    delete phri; // if it is null, harmless
   } else {
     DWORD rv = WAIT_TIMEOUT;
     while (_Event < 0 && Millis > 0) {
