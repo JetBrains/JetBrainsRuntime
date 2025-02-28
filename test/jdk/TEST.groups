@@ -1109,6 +1109,7 @@ jdk_swing_wayland= \
     -javax/swing/JComboBox/bug5029504.java \
     -javax/swing/JComboBox/EditableComboBoxPopupPos.java \
     -javax/swing/JComboBox/JComboBoxPopupMenuEventTest.java \
+    -javax/swing/JComboBox/JComboBoxScrollFocusTest.java \
     -javax/swing/JComboBox/JComboBoxWithTitledBorderTest.java \
     -javax/swing/JComboBox/TestComboBoxComponentRendering.java \
     -javax/swing/JComponent/7154030/bug7154030.java \
