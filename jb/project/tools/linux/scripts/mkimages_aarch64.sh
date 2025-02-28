@@ -25,6 +25,18 @@ source jb/project/tools/common/scripts/common.sh
 JCEF_PATH=${JCEF_PATH:=./jcef_linux_aarch64}
 
 function do_configure {
+
+  GTK_SHELL_PATH=/gtk-shell.xml
+
+  if [ ! -e $GTK_SHELL_PATH ]; then
+    echo $GTK_SHELL_PATH" does not exist"
+    GTK_SHELL_PATH=`pwd`/gtk-shell.xml
+    if [ ! -e $GTK_SHELL_PATH ]; then
+      echo $GTK_SHELL_PATH" does not exist"
+      curl -O https://raw.githubusercontent.com/GNOME/gtk/refs/heads/main/gdk/wayland/protocol/gtk-shell.xml
+    fi
+  fi
+
   sh configure \
     $WITH_DEBUG_LEVEL \
     --with-vendor-name="$VENDOR_NAME" \
@@ -35,7 +47,7 @@ function do_configure {
     --with-version-opt=b"$build_number" \
     --with-boot-jdk="$BOOT_JDK" \
     --enable-cds=yes \
-    --with-gtk-shell1-protocol=/gtk-shell.xml \
+    --with-gtk-shell1-protocol=$GTK_SHELL_PATH \
     --with-vulkan \
     $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
