@@ -209,29 +209,33 @@ static VkPipeline VKPipelines_CreatePipelines(VKRenderPassContext* renderPassCon
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex = -1
         };
+    }
 
+    // Setup input states.
+    MAKE_INPUT_STATE(COLOR, VKColorVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT);
+    MAKE_INPUT_STATE(MASK_FILL_COLOR, VKMaskFillColorVertex, VK_FORMAT_R32G32B32A32_SINT, VK_FORMAT_R32G32B32A32_SFLOAT);
+    MAKE_INPUT_STATE(BLIT, VKTxVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32_SFLOAT);
+    MAKE_INPUT_STATE(CLIP, VKIntVertex, VK_FORMAT_R32G32_SINT);
+
+    for (uint32_t i = 0; i < count; i++) {
         // Setup shader-specific pipeline parameters.
         switch (descriptors[i].shader) {
         case SHADER_COLOR:
-            MAKE_INPUT_STATE(COLOR, VKColorVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT);
             createInfos[i].pVertexInputState = &INPUT_STATE_COLOR;
             createInfos[i].layout = pipelineContext->colorPipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->color_vert, shaders->color_frag }};
             break;
         case SHADER_MASK_FILL_COLOR:
-            MAKE_INPUT_STATE(MASK_FILL_COLOR, VKMaskFillColorVertex, VK_FORMAT_R32G32B32A32_SINT, VK_FORMAT_R32G32B32A32_SFLOAT);
             createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL_COLOR;
             createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->mask_fill_color_vert, shaders->mask_fill_color_frag }};
             break;
         case SHADER_BLIT:
-            MAKE_INPUT_STATE(BLIT, VKTxVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32_SFLOAT);
             createInfos[i].pVertexInputState = &INPUT_STATE_BLIT;
             createInfos[i].layout = pipelineContext->texturePipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->blit_vert, shaders->blit_frag }};
             break;
         case SHADER_CLIP:
-            MAKE_INPUT_STATE(CLIP, VKIntVertex, VK_FORMAT_R32G32_SINT);
             createInfos[i].pVertexInputState = &INPUT_STATE_CLIP;
             static const VkStencilOpState CLIP_STENCIL_OP = {
                 .failOp = VK_STENCIL_OP_REPLACE,
