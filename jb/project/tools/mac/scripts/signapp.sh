@@ -34,7 +34,7 @@ tar -xzvf "$INPUT_FILE" --directory $EXPLODED
 BUILD_NAME="$(ls "$EXPLODED")"
 #sed -i '' s/BNDL/APPL/ $EXPLODED/$BUILD_NAME/Contents/Info.plist
 rm -f $EXPLODED/$BUILD_NAME/Contents/CodeResources
-rm "$INPUT_FILE"
+mv "$INPUT_FILE" "$INPUT_FILE".origin
 
 log "$INPUT_FILE extracted and removed"
 
@@ -75,17 +75,15 @@ if [[ "${JETSIGN_CLIENT:=}" == "null" ]] || [[ "$JETSIGN_CLIENT" == "" ]]; then
 fi
 
 attempt=1
-limit=3
+limit=1
+ec=0
 set +e
 while [[ $attempt -le $limit ]]; do
   log "Signing (attempt $attempt) $APPLICATION_PATH ..."
   "$SCRIPT_DIR/sign.sh" "$APPLICATION_PATH" "$PKG_NAME" "$BUNDLE_ID" "$CODESIGN_STRING" "$JB_INSTALLER_CERT"
   ec=$?
+  ((attempt += 1))
   if [[ $ec -ne 0 ]]; then
-    ((attempt += 1))
-    if [ $attempt -eq $limit ]; then
-      set -e
-    fi
     log "Signing failed, wait for 30 sec and try to sign again"
     sleep 30
   else
@@ -93,11 +91,15 @@ while [[ $attempt -le $limit ]]; do
     codesign -v "$APPLICATION_PATH" -vvvvv
     log "Check sign done"
     spctl -a -v $APPLICATION_PATH
-    ((attempt += limit))
   fi
 done
 
 set -e
+
+if [[ $ec -ne 0 ]]; then
+  log "Signing failed, restore original input file"
+  mv "$INPUT_FILE".origin "$INPUT_FILE"
+fi
 
 if [ "$NOTARIZE" = "yes" ]; then
   log "Notarizing..."
