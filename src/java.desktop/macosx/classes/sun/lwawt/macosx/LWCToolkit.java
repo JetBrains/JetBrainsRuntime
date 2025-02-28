@@ -1055,7 +1055,7 @@ public final class LWCToolkit extends LWToolkit {
     static native long createAWTRunLoopMediator();
     /**
      * Method to run a nested run-loop. The nested loop is spinned in the javaRunLoop mode, so selectors sent
-     * by [JNFRunLoop performOnMainThreadWaiting] are processed.
+     * by [ThreadUtilities performOnMainThreadWaiting] are processed.
      * @param mediator a native pointer to the mediator object created by createAWTRunLoopMediator
      * @param processEvents if true - dispatches event while in the nested loop. Used in DnD.
      *                      Additional attention is needed when using this feature as we short-circuit normal event
@@ -1065,13 +1065,13 @@ public final class LWCToolkit extends LWToolkit {
      *                      if false - all events come after exit form the nested loop
      */
     static void doAWTRunLoop(long mediator, boolean processEvents) {
-        doAWTRunLoopImpl(mediator, processEvents, inAWT);
+        doAWTRunLoop(mediator, processEvents, 0.0);
     }
 
     /**
      * Starts run-loop with the provided timeout. Use (-1) for the infinite value.
      */
-    static boolean doAWTRunLoop(long mediator, boolean processEvents, int timeoutSeconds) {
+    static boolean doAWTRunLoop(long mediator, boolean processEvents, double timeoutSeconds) {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("doAWTRunLoop: enter: mediator: " + mediator + " processEvents: "+ processEvents + " timeoutSeconds: " + timeoutSeconds);
         }
@@ -1083,7 +1083,7 @@ public final class LWCToolkit extends LWToolkit {
             }
         }
     }
-    private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, int timeoutSeconds);
+    private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, double timeoutSeconds);
     static native void stopAWTRunLoop(long mediator);
 
     private native boolean nativeSyncQueue(long timeout);
