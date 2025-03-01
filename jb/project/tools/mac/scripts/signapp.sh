@@ -34,7 +34,7 @@ tar -xzvf "$INPUT_FILE" --directory $EXPLODED
 BUILD_NAME="$(ls "$EXPLODED")"
 #sed -i '' s/BNDL/APPL/ $EXPLODED/$BUILD_NAME/Contents/Info.plist
 rm -f $EXPLODED/$BUILD_NAME/Contents/CodeResources
-rm "$INPUT_FILE"
+mv "$INPUT_FILE" "$INPUT_FILE".origin
 
 log "$INPUT_FILE extracted and removed"
 
@@ -76,6 +76,7 @@ fi
 
 attempt=1
 limit=1
+ec=0
 set +e
 while [[ $attempt -le $limit ]]; do
   log "Signing (attempt $attempt) $APPLICATION_PATH ..."
@@ -94,6 +95,11 @@ while [[ $attempt -le $limit ]]; do
 done
 
 set -e
+
+if [[ $ec -ne 0 ]]; then
+  log "Signing failed, restore original input file"
+  mv "$INPUT_FILE".origin "$INPUT_FILE"
+fi
 
 if [ "$NOTARIZE" = "yes" ]; then
   log "Notarizing..."
