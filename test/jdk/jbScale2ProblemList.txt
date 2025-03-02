@@ -33,8 +33,8 @@ java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-6090 windows-all
 java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-6090 windows-x64
-java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,8324782,JBR-4199,JBR-6090 windows-all,macosx-all,linux-5.4.0-1083-aws,linux-5.4.0-1103-aws,
-java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720,8324782,JBR-4199,JBR-6090 windows-all,macosx-all,linux-5.4.0-1083-aws,linux-5.4.0-1103-aws,
+java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,8324782,JBR-6090,JBR-4199 windows-all,macosx-all,linux-6.8.0-54-generic,linux-6.8.0-1021-aws
+java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720,8324782,JBR-6090,JBR-4199 windows-all,macosx-all,linux-6.8.0-54-generic,linux-6.8.0-1021-aws
 
 java/awt/Graphics/LineClipTest.java                                                 JBR-5071 linux-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071,JBR-5359 linux-all,windows-aarch64
@@ -56,7 +56,7 @@ java/awt/PopupMenu/PopupMenuLocation.java 8238720,JBR-5071 windows-all,macosx-al
 java/awt/Window/AlwaysOnTop/SyncAlwaysOnTopFieldTest.java JBR-6845 linux-all
 java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5513 linux-all
-javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-6110 linux-x64
+javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-6110,JBR-8270 linux-x64,linux-6.8.0-54-generic,linux-6.8.0-1021-aws
 javax/swing/JComponent/7154030/bug7154030.java JBR-6134 windows-x64
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      JBR-5071 linux-all
 javax/swing/JTextArea/bug4265784.java JBR-7472 linux-all
@@ -67,10 +67,12 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradien
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-5342 linux-all
 javax/swing/SwingUtilities/7146377/bug7146377.java JBR-8286 linux-x64
 javax/swing/text/AbstractDocument/8190763/TestCCEOnEditEvent.java JBR-8286 linux-x64
+javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8324 linux-6.8.0-54-generic,linux-6.8.0-1021-aws
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-8212 linux-all
 
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-6589 windows-all
 
+sanity/client/SwingSet/src/ColorChooserDemoTest.java JBR-8354 linux-aarch64
 sanity/client/SwingSet/src/GridBagLayoutDemoTest.java JBR-6285,JBR-7473 linux-all,windows-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java 8253184,JBR-6685 windows-all,linux-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001,JBR-6293 linux-all,windows-all
