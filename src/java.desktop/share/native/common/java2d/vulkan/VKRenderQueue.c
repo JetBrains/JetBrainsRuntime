@@ -559,13 +559,6 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                               "VKRenderQueue_flushBuffer: SET_SURFACES src=%p dst=%p", src, dst);
 
-                if (context.surface != NULL && context.surface != dst) {
-                    // TODO Problematic surface flush on a context switch without explicit presentation request.
-                    //      Its presence here should not make any difference, but for some reason does.
-                    //      Related scenarios need an investigation, e.g. J2Demo.
-                    VKRenderer_FlushSurface(context.surface);
-                }
-
                 context.surface = dst;
             }
             break;
