@@ -1192,8 +1192,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 new GetPropertyAction(invokeLaterKey));
         final int result;
         if (invokeLaterArg == null) {
-            // default = 'auto':
-            result = INVOKE_LATER_AUTO;
+            // default = 'enabled' to avoid any potential freeze (safe) until better solution:
+            result = INVOKE_LATER_ENABLED;
         } else {
             switch (invokeLaterArg.toLowerCase()) {
                 default:
