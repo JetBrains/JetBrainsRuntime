@@ -961,6 +961,8 @@ inline BufferWritingState VKRenderer_AllocateBufferData(VKSDOps* surface, Buffer
  * This function must not be used directly, use VK_DRAW macro instead.
  * It is responsibility of the caller to pass correct vertexSize, matching current pipeline.
  * This function cannot draw more vertices than fits into single vertex buffer at once.
+ * This function must be called after all dynamic allocation functions,
+ * which can invalidate drawing state, e.g. VKRenderer_AllocateMaskFillBytes.
  */
 static void* VKRenderer_AllocateVertices(const VKRenderingContext* context, uint32_t vertices, size_t vertexSize) {
     assert(vertices > 0 && vertexSize > 0);
@@ -985,6 +987,10 @@ static void* VKRenderer_AllocateVertices(const VKRenderingContext* context, uint
 
 /**
  * Allocate vertices from vertex buffer, providing pointer for writing.
+ * VKRenderer_Validate must have been called before.
+ * This function cannot draw more vertices than fits into single vertex buffer at once.
+ * This function must be called after all dynamic allocation functions,
+ * which can invalidate drawing state, e.g. VKRenderer_AllocateMaskFillBytes.
  */
 #define VK_DRAW(VERTICES, CONTEXT, VERTEX_COUNT) \
     (VERTICES) = VKRenderer_AllocateVertices((CONTEXT), (VERTEX_COUNT), sizeof((VERTICES)[0]))
@@ -994,6 +1000,7 @@ static void* VKRenderer_AllocateVertices(const VKRenderingContext* context, uint
  * This function cannot take more bytes than fits into single mask fill buffer at once.
  * Caller must write data at the returned pointer DrawingBufferWritingState.data
  * and take into account DrawingBufferWritingState.offset from the beginning of the bound buffer.
+ * This function can invalidate drawing state, always call it before VK_DRAW.
  */
 static BufferWritingState VKRenderer_AllocateMaskFillBytes(const VKRenderingContext* context, uint32_t size) {
     assert(size > 0);
@@ -1281,10 +1288,6 @@ void VKRenderer_MaskFill(const VKRenderingContext* context, jint x, jint y, jint
     // it's the same as x and y offset within a tile (maskoff % maskscan, maskoff / maskscan).
     // maskscan is the number of bytes in a row/
     // masklen is the size of the whole mask tile, it may be way bigger, than number of actually needed bytes.
-    VKMaskFillColorVertex* vs;
-    VK_DRAW(vs, context, 6);
-    Color c = context->color;
-
     uint32_t byteCount = maskscan * h;
     if (mask == NULL) {
         maskscan = 0;
@@ -1298,6 +1301,9 @@ void VKRenderer_MaskFill(const VKRenderingContext* context, jint x, jint y, jint
         *((char *)maskState.data) = 0xFF;
     }
 
+    VKMaskFillColorVertex* vs;
+    VK_DRAW(vs, context, 6);
+    Color c = context->color;
     int offset = (int) maskState.offset;
     VKMaskFillColorVertex p1 = {x, y, offset, maskscan, c};
     VKMaskFillColorVertex p2 = {x + w, y, offset, maskscan, c};
