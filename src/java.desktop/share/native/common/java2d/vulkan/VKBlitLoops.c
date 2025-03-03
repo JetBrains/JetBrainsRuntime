@@ -143,6 +143,8 @@ static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VK
 {
     VKSDOps* surface = context->surface;
 
+    // TODO this looks wrong, needs to be investigated
+    //      we shouldn't normally need to flush DST surface before the blit, only SRC
     VKRenderer_FlushRenderPass(surface);
 
     VKDevice* device = surface->device;
@@ -336,6 +338,7 @@ void VKBlitLoops_IsoBlit(JNIEnv *env,
         }
 
         if (sx2 > sx1 && sy2 > sy1) {
+            VKRenderer_FlushRenderPass(srcOps);
             VKBlitTextureToTexture(context, srcOps->image, context->surface->image,
                                    sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
         }
