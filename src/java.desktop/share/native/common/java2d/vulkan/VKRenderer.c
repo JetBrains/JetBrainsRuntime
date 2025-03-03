@@ -757,11 +757,24 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
  * End render pass for the surface and record it into the primary command buffer,
  * which will be executed on the next VKRenderer_Flush.
  */
-void VKRenderer_FlushRenderPass(VKSDOps* surface) {
-    assert(surface != NULL && surface->renderPass != NULL);
+VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface) {
+    assert(surface != NULL);
+    // If pendingFlush is TRUE, pendingCommands must be FALSE
+    assert(surface->renderPass == NULL || !surface->renderPass->pendingFlush || !surface->renderPass->pendingCommands);
+    // Note that we skip render pass initialization, if we have pending flush,
+    // which means that we missed the last flush, but didn't start a new render pass yet.
+    // So now we are going to catch up the last frame, and don't need reconfiguration.
+    // We also skip initialization if we have pending commands, because that means we are in the middle of frame.
+    if (surface->renderPass == NULL || (!surface->renderPass->pendingCommands && !surface->renderPass->pendingFlush)) {
+        if (!VKRenderer_InitRenderPass(surface)) return VK_FALSE;
+        // Check for pendingClear after VKRenderer_InitRenderPass, it may be set after reconfiguration.
+        if (!surface->renderPass->pendingClear) return VK_FALSE;
+    }
+    assert(surface->renderPass != NULL);
+
     VKRenderer_FlushDraw(surface);
     VkBool32 hasCommands = surface->renderPass->pendingCommands, clear = surface->renderPass->pendingClear;
-    if(!hasCommands && !clear) return;
+    if(!hasCommands && !clear) return VK_FALSE;
     VKDevice* device = surface->device;
     VKRenderer* renderer = device->renderer;
     surface->renderPass->lastTimestamp = renderer->writeTimestamp;
@@ -810,24 +823,13 @@ void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     device->vkCmdEndRenderPass(cb);
     VKRenderer_ResetDrawing(surface);
     J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_FlushRenderPass(%p): hasCommands=%d, clear=%d", surface, hasCommands, clear);
+    return VK_TRUE;
 }
 
 void VKRenderer_FlushSurface(VKSDOps* surface) {
     assert(surface != NULL);
-    // If pendingFlush is TRUE, pendingCommands must be FALSE
-    assert(surface->renderPass == NULL || !surface->renderPass->pendingFlush || !surface->renderPass->pendingCommands);
-    // Note that we skip render pass initialization, if we have pending flush,
-    // which means that we missed the last flush, but didn't start a new render pass yet.
-    // So now we are going to catch up the last frame, and don't need reconfiguration.
-    // We also skip initialization if we have pending commands, because that means we are in the middle of frame.
-    if (surface->renderPass == NULL || (!surface->renderPass->pendingCommands && !surface->renderPass->pendingFlush)) {
-        if (!VKRenderer_InitRenderPass(surface)) return;
-        // Check for pendingClear after VKRenderer_InitRenderPass, it may be set after reconfiguration.
-        if (!surface->renderPass->pendingClear) return;
-    }
-
+    if (!VKRenderer_FlushRenderPass(surface)) return;
     surface->renderPass->pendingFlush = VK_FALSE;
-    VKRenderer_FlushRenderPass(surface);
 
     // If this is a swapchain surface, we need to blit the content onto it and queue it for presentation.
     if (surface->drawableType == VKSD_WINDOW) {
