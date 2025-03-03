@@ -161,10 +161,10 @@ static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VK
     double u2 = (double)sx2 / src->extent.width;
     double v2 = (double)sy2 / src->extent.height;
 
-    ARRAY_PUSH_BACK(vertices, (VKTxVertex) {dx1, dy1, u1, v1});
-    ARRAY_PUSH_BACK(vertices, (VKTxVertex) {dx2, dy1, u2, v1});
-    ARRAY_PUSH_BACK(vertices, (VKTxVertex) {dx1, dy2, u1, v2});
-    ARRAY_PUSH_BACK(vertices, (VKTxVertex) {dx2, dy2, u2, v2});
+    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx1, dy1, u1, v1};
+    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx2, dy1, u2, v1};
+    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx1, dy2, u1, v2};
+    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx2, dy2, u2, v2};
 
     VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
     ARRAY_FREE(vertices);
