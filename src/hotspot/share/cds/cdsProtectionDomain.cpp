@@ -219,6 +219,21 @@ oop CDSProtectionDomain::to_file_URL(const char* path, Handle url_h, TRAPS) {
   return result.get_oop();
 }
 
+// https://bugs.openjdk.org/browse/JDK-8324259 -- the AppCDS archive must not contain any class from java.base.
+//
+// The generator of AppCDS class list is just an option `-XX:SharedClassListFile=`,
+// i.e., it's integrated directly into the application.
+//
+// Some time ago Hotspot logged classes for java.base, because it used to load them via the classloader.
+// Therefore, the function CDSProtectionDomain::cds_preload_helper_init was introduced.
+// It calls some static functions that implicitly preloads specific classes,
+// and only after this function the option -XX:SharedClassListFile= is handled.
+//
+// During JBR-7700 a lot of classes from java.nio.file were integrated into into java.io.
+// The existing code didn't lead to loading the newly introduced classes,
+// so many records from java.io.file were logged by the CDS logger.
+//
+// This function forcibly calls some functions from java.io.File that implicitly preload all the necessary classes.
 void CDSProtectionDomain::cds_preload_helper_init(TRAPS) {
   JavaValue result(T_VOID);
   JavaCalls::call_static(&result,
@@ -226,7 +241,6 @@ void CDSProtectionDomain::cds_preload_helper_init(TRAPS) {
                          vmSymbols::CDSPreloadHelper_init_name(),
                          vmSymbols::void_method_signature(),
                          CATCH);
-                         //CHECK);
 }
 
 // Get the ProtectionDomain associated with the CodeSource from the classloader.
