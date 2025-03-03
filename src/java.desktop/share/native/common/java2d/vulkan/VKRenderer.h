@@ -88,6 +88,12 @@ void VKRenderer_Flush(VKRenderer* renderer);
 void VKRenderer_DestroyRenderPass(VKSDOps* surface);
 
 /**
+ * End render pass for the surface and record it into the primary command buffer,
+ * which will be executed on the next VKRenderer_Flush.
+ */
+VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface);
+
+/**
  * Flush pending render pass and queue surface for presentation (if applicable).
  */
 void VKRenderer_FlushSurface(VKSDOps* surface);
@@ -97,12 +103,6 @@ void VKRenderer_FlushSurface(VKSDOps* surface);
  * Actual resize will be performed later, before starting a new frame.
  */
 void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent);
-
-/**
- * End render pass for the surface and record it into the primary command buffer,
- * which will be executed on the next VKRenderer_Flush.
- */
-void VKRenderer_FlushRenderPass(VKSDOps* surface);
 
 // Blit operations.
 
