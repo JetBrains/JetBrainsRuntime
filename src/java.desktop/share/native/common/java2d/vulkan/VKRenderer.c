@@ -96,6 +96,7 @@ struct VKRenderer {
     POOL(VkSemaphore,       semaphorePool);
     POOL(VKBuffer,          vertexBufferPool);
     POOL(VKTexelBuffer,     maskFillBufferPool);
+    POOL(VkFramebuffer,     framebufferDestructionQueue);
     ARRAY(VKMemory)         bufferMemoryPages;
     ARRAY(VkDescriptorPool) descriptorPools;
 
@@ -340,6 +341,9 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
         device->vkDestroyBufferView(device->handle, entry->value.view, NULL);
         device->vkDestroyBuffer(device->handle, entry->value.buffer.handle, NULL);
     }
+    POOL_DRAIN_FOR(renderer, framebufferDestructionQueue, entry) {
+        device->vkDestroyFramebuffer(device->handle, entry->value, NULL);
+    }
     for (uint32_t i = 0; i < ARRAY_SIZE(renderer->bufferMemoryPages); i++) {
         VKAllocator_Free(device->allocator, renderer->bufferMemoryPages[i]);
     }
@@ -358,6 +362,17 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
     ARRAY_FREE(renderer->pendingPresentation.results);
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKRenderer_Destroy(%p)", renderer);
     free(renderer);
+}
+
+static void VKRenderer_CleanupPendingResources(VKRenderer* renderer) {
+    VKDevice* device = renderer->device;
+    for (;;) {
+        VkFramebuffer framebuffer = VK_NULL_HANDLE;
+        POOL_TAKE(renderer, framebufferDestructionQueue, framebuffer);
+        if (framebuffer == VK_NULL_HANDLE) break;
+        device->vkDestroyFramebuffer(device->handle, framebuffer, NULL);
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_CleanupPendingResources(%p): framebuffer destroyed", renderer);
+    }
 }
 
 /**
@@ -397,6 +412,7 @@ VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
 
 void VKRenderer_Flush(VKRenderer* renderer) {
     if (renderer == NULL) return;
+    VKRenderer_CleanupPendingResources(renderer);
     VKDevice* device = renderer->device;
     size_t pendingPresentations = ARRAY_SIZE(renderer->pendingPresentation.swapchains);
 
@@ -556,6 +572,7 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface) {
     if (device != NULL && device->renderer != NULL) {
         // Wait while surface resources are being used by the device.
         VKRenderer_Wait(device->renderer, surface->renderPass->lastTimestamp);
+        VKRenderer_CleanupPendingResources(device->renderer);
         VKRenderer_DiscardRenderPass(surface);
         // Release resources.
         device->vkDestroyFramebuffer(device->handle, surface->renderPass->framebuffer, NULL);
@@ -619,8 +636,8 @@ static void VKRenderer_InitFramebuffer(VKSDOps* surface) {
     VKRenderPass* renderPass = surface->renderPass;
 
     if (renderPass->state.stencilMode == STENCIL_MODE_NONE && surface->stencil != NULL) {
-        // Destroy outdated color-only framebuffer.
-        device->vkDestroyFramebuffer(device->handle, renderPass->framebuffer, NULL);
+        // Queue outdated color-only framebuffer for destruction.
+        POOL_RETURN(device->renderer, framebufferDestructionQueue, renderPass->framebuffer);
         renderPass->framebuffer = VK_NULL_HANDLE;
         renderPass->state.stencilMode = STENCIL_MODE_OFF;
     }
