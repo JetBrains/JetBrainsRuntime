@@ -591,10 +591,12 @@ class IoOverNioFileSystem extends FileSystem {
                         isAbsoluteOrDriveRelative = true;
                     } else if (getSeparator() == '\\') {
                         String pathString = path.toString();
-                        isAbsoluteOrDriveRelative = pathString.length() >= 2 &&
-                                Character.isLetter(pathString.charAt(0)) &&
-                                pathString.charAt(1) == ':' &&
-                                (pathString.length() == 2 || pathString.charAt(2) != '\\');
+                        isAbsoluteOrDriveRelative = switch (pathString.length()) {
+                            case 0 -> false;
+                            case 1 -> pathString.charAt(0) == '\\';
+                            case 2 -> Character.isLetter(pathString.charAt(0)) && pathString.charAt(1) == ':';
+                            default -> Character.isLetter(pathString.charAt(0)) && pathString.charAt(1) == ':' && pathString.charAt(2) != '\\';
+                        };
                     } else {
                         isAbsoluteOrDriveRelative = false;
                     }
