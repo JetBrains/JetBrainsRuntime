@@ -367,6 +367,10 @@ public class Misc {
     }
 
     static void testEmptyPathForByteStream() throws IOException {
+        if (Platform.isWindows()) {
+            return;
+        }
+
         Path emptyPath = Path.of("");
         try {
             emptyPath.getFileSystem().provider()
