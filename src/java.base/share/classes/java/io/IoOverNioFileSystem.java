@@ -123,6 +123,19 @@ class IoOverNioFileSystem extends FileSystem {
     }
 
     private static boolean setPermission0(java.nio.file.FileSystem nioFs, File f, int access, boolean enable, boolean owneronly) {
+        if (f.getPath().isEmpty()) {
+            if (nioFs.getSeparator().equals("\\")) {
+                // This behavior is hardcoded in Java_java_io_WinNTFileSystem_setPermission0,
+                // and this check happens there before calling GetFileAttributesW.
+                return (ACCESS_READ == access || ACCESS_EXECUTE == access) && enable;
+            } else {
+                // Unlike on Windows,
+                // Java_java_io_UnixFileSystem_checkAccess0 has no return statements before chmod(),
+                // and chmod() returns an error for an empty path.
+                return false;
+            }
+        }
+
         Path path;
         try {
             path = nioFs.getPath(f.getPath());
@@ -661,6 +674,12 @@ class IoOverNioFileSystem extends FileSystem {
     private boolean checkAccess0(File f, int access) {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs(f.getPath());
         if (nioFs != null) {
+            if (f.getPath().isEmpty()) {
+                // Both access() in Posix and GetFileAttributesW in Windows treat an empty path
+                // as an invalid argument and return an error.
+                return false;
+            }
+
             try {
                 Path path = nioFs.getPath(f.getPath());
 
@@ -902,8 +921,15 @@ class IoOverNioFileSystem extends FileSystem {
     private String[] list0(File f) {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs(f.getPath());
         if (nioFs != null) {
+            String pathStr = f.getPath();
+            if (pathStr.isEmpty()) {
+                // Java_java_io_UnixFileSystem_list0 calls opendir(), and it returns an error for an empty path.
+                // Java_java_io_WinNTFileSystem_list0 returns null
+                // after calling fileToNTPath and before any WinAPI call.
+                return null;
+            }
+
             try {
-                String pathStr = f.getPath();
                 if (getSeparator() == '\\') {
                     // Java_java_io_WinNTFileSystem_list0 deliberately and explicitly removes trailing spaces from the path.
                     // It doesn't happen in Java_java_io_UnixFileSystem_list0
@@ -1030,6 +1056,11 @@ class IoOverNioFileSystem extends FileSystem {
     private boolean setLastModifiedTime0(File f, long time) {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs(f.getPath());
         if (nioFs != null) {
+            if (f.getPath().isEmpty()) {
+                // Here happens the same as in checkAccess0.
+                return false;
+            }
+
             try {
                 Path path = nioFs.getPath(f.getPath());
                 nioFs.provider()
