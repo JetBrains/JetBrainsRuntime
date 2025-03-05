@@ -126,6 +126,44 @@ public class FileTest {
     }
 
     @Test
+    public void handlingEmptyPath() throws Exception {
+        File file = new File("");
+
+        // These checks fail
+        assertFalse(file.exists());
+        assertFalse(file.isDirectory());
+        assertFalse(file.isFile());
+
+        assertFalse(file.canRead());
+        if (IS_WINDOWS) {
+            assertTrue(file.setReadable(true));
+        } else {
+            assertFalse(file.setReadable(true));
+        }
+        assertFalse(file.canRead());
+
+        assertFalse(file.canWrite());
+        assertFalse(file.setWritable(true));
+        assertFalse(file.canWrite());
+
+        assertFalse(file.canExecute());
+        if (IS_WINDOWS) {
+            assertTrue(file.setExecutable(true));
+        } else {
+            assertFalse(file.setExecutable(true));
+        }
+        assertFalse(file.canExecute());
+
+        assertFalse(file.setLastModified(1234567890L));
+
+        assertEquals(null, file.list());
+
+        if (IS_WINDOWS) {
+            assertFalse(file.setReadOnly());
+        }
+    }
+
+    @Test
     public void isDirectory() throws Exception {
         File dir = temporaryFolder.newFolder("testDir");
         File file = new File(dir, "testFile.txt");
