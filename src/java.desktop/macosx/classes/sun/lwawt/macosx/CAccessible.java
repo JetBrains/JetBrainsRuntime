@@ -29,7 +29,6 @@ import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.security.PrivilegedAction;
-import java.util.concurrent.atomic.AtomicLong;
 
 import javax.accessibility.*;
 import javax.swing.*;
@@ -76,77 +75,6 @@ class CAccessible extends CFRetainedResource implements Accessible {
         return newCAX;
     }
 
-
-    /**
-     * If it's zero, there's no posted, but not yet processed {@link #treeNodeExpanded} event from this CAccessible,
-     * otherwise it holds the native pointer which was used to post the event.
-     *
-     * The value gets reset by the native code via {@link #removeFromTreeNodeExpandedEventsCache(long)} right before
-     * the event is actually processed.
-     *
-     * If {@link #ptr} changes during the lifetime of CAccessible, the current implementation may not be effective
-     * enough and should be replaced with a concurrent LRU cache of a limited size.
-     */
-    private final AtomicLong treeNodeExpandedEventsCache = new AtomicLong(0);
-
-    private void cachedInvokeTreeNodeExpanded() {
-        execute(ptr -> {
-            if (treeNodeExpandedEventsCache.getAndSet(ptr) == ptr) {
-                // There is a posted, but not yet processed treeNodeExpanded event with the current value of ptr.
-
-                // TODO: log
-            } else {
-                // There's no pending treeNodeExpanded event, or
-                // the most recent event was posted with a different ptr.
-                // We treat both cases as if there is no pending treeNodeExpanded event with the current value of ptr,
-                // i.e. we should post one.
-
-                treeNodeExpanded(ptr);
-            }
-        });
-    }
-
-    /**
-     * Called from native (on the AppKit thread).
-     *
-     * @see #treeNodeExpandedEventsCache
-     * @return true if {@code ptr} has been found and removed from the cache; false otherwise.
-     */
-    private boolean removeFromTreeNodeExpandedEventsCache(long ptr) {
-        return treeNodeExpandedEventsCache.compareAndSet(ptr, 0L);
-    }
-
-
-    private final AtomicLong treeNodeCollapsedEventsCache = new AtomicLong(0);
-
-    private void cachedInvokeTreeNodeCollapsed() {
-        execute(ptr -> {
-            if (treeNodeCollapsedEventsCache.getAndSet(ptr) == ptr) {
-                // There is a posted, but not yet processed treeNodeCollapsed event with the current value of ptr.
-
-                // TODO: log
-            } else {
-                // There's no pending treeNodeCollapsed event, or
-                // the most recent event was posted with a different ptr.
-                // We treat both cases as if there is no pending treeNodeCollapsed event with the current value of ptr,
-                // i.e. we should post one.
-
-                treeNodeCollapsed(ptr);
-            }
-        });
-    }
-
-    /**
-     * Called from native (on the AppKit thread).
-     *
-     * @see #treeNodeCollapsedEventsCache
-     * @return true if {@code ptr} has been found and removed from the cache; false otherwise.
-     */
-    private boolean removeFromTreeNodeCollapsedEventsCache(long ptr) {
-        return treeNodeCollapsedEventsCache.compareAndSet(ptr, 0L);
-    }
-
-
     private static native void unregisterFromCocoaAXSystem(long ptr);
     private static native void valueChanged(long ptr);
     private static native void selectedTextChanged(long ptr);
@@ -155,10 +83,8 @@ class CAccessible extends CFRetainedResource implements Accessible {
     private static native void menuOpened(long ptr);
     private static native void menuClosed(long ptr);
     private static native void menuItemSelected(long ptr);
-    // Don't use it directly, use cachedInvokeTreeNodeExpanded instead
-    private native void treeNodeExpanded(long ptr);
-    // Don't use it directly, use cachedInvokeTreeNodeCollapsed instead
-    private native void treeNodeCollapsed(long ptr);
+    private static native void treeNodeExpanded(long ptr);
+    private static native void treeNodeCollapsed(long ptr);
     private static native void selectedCellsChanged(long ptr);
     private static native void tableContentCacheClear(long ptr);
     private static native void updateZoomCaretFocus(long ptr);
@@ -258,11 +184,9 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     }
 
                     if (newValue == AccessibleState.EXPANDED) {
-                        cachedInvokeTreeNodeExpanded();
-                        //execute(ptr -> treeNodeExpanded(ptr));
+                        execute(ptr -> treeNodeExpanded(ptr));
                     } else if (newValue == AccessibleState.COLLAPSED) {
-                        cachedInvokeTreeNodeCollapsed();
-                        //execute(ptr -> treeNodeCollapsed(ptr));
+                        execute(ptr -> treeNodeCollapsed(ptr));
                     }
 
                     if (thisRole == AccessibleRole.COMBO_BOX) {
