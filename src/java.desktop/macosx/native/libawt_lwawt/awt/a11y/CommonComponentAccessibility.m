@@ -27,6 +27,7 @@
 #import <AppKit/AppKit.h>
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
 #import <dlfcn.h>
+#import <debug_assert.h>
 #import "JavaAccessibilityAction.h"
 #import "JavaAccessibilityUtilities.h"
 #import "ThreadUtilities.h"
@@ -1327,13 +1328,45 @@ static jobject sAccessibilityClass = NULL;
  * Signature: (J)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_treeNodeExpanded
-  (JNIEnv *env, jclass jklass, jlong element)
+  (JNIEnv *env, jobject self, jlong element)
 {
     JNI_COCOA_ENTER(env);
-        [ThreadUtilities performOnMainThread:@selector(postTreeNodeExpanded)
+        /*[ThreadUtilities performOnMainThread:@selector(postTreeNodeExpanded)
                          on:(CommonComponentAccessibility *)jlong_to_ptr(element)
                          withObject:nil
-                         waitUntilDone:NO];
+                         waitUntilDone:NO];*/
+
+        const jobject selfGlobal = (*env)->NewGlobalRef(env, self);
+        jmethodID jm_removeFromTreeNodeExpandedEventsCache = NULL;
+        if (selfGlobal != NULL) {
+            jclass cAccessibleClass = (*env)->GetObjectClass(env, selfGlobal);
+            jm_removeFromTreeNodeExpandedEventsCache =
+                (*env)->GetMethodID(env, cAccessibleClass, "removeFromTreeNodeExpandedEventsCache", "(J)Z");
+            // Just in case
+            (*env)->DeleteLocalRef(env, cAccessibleClass);
+        }
+
+        CommonComponentAccessibility * const thisCCAxPtr = (CommonComponentAccessibility *)jlong_to_ptr(element);
+        const id thisCCAx = thisCCAxPtr;
+        const SEL eventHandler = @selector(postTreeNodeExpanded);
+
+        [ThreadUtilities performOnMainThreadWaiting:NO block:^{
+            // Calling Java's CAccessible#removeFromTreeNodeExpandedEventsCache
+            JNIEnv * const env = [ThreadUtilities getJNIEnv];
+            if (env != NULL) {
+                if (jm_removeFromTreeNodeExpandedEventsCache != NULL) {
+                    DASSERT(selfGlobal != NULL);
+                    (void)(*env)->CallBooleanMethod(env, selfGlobal, jm_removeFromTreeNodeExpandedEventsCache, ptr_to_jlong(thisCCAxPtr));
+                }
+
+                if (selfGlobal != NULL) {
+                    (*env)->DeleteGlobalRef(env, selfGlobal);
+                }
+            }
+
+            // Calling CommonComponentAccessibility::postTreeNodeExpanded
+            [thisCCAx performSelector:eventHandler withObject:nil];
+        }];
     JNI_COCOA_EXIT(env);
 }
 
@@ -1343,13 +1376,45 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_treeNodeExpanded
  * Signature: (J)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_treeNodeCollapsed
-  (JNIEnv *env, jclass jklass, jlong element)
+  (JNIEnv *env, jobject self, jlong element)
 {
     JNI_COCOA_ENTER(env);
-        [ThreadUtilities performOnMainThread:@selector(postTreeNodeCollapsed)
+        /*[ThreadUtilities performOnMainThread:@selector(postTreeNodeCollapsed)
                          on:(CommonComponentAccessibility *)jlong_to_ptr(element)
                          withObject:nil
-                         waitUntilDone:NO];
+                         waitUntilDone:NO];*/
+
+        const jobject selfGlobal = (*env)->NewGlobalRef(env, self);
+        jmethodID jm_removeFromTreeNodeCollapsedEventsCache = NULL;
+        if (selfGlobal != NULL) {
+            jclass cAccessibleClass = (*env)->GetObjectClass(env, selfGlobal);
+            jm_removeFromTreeNodeCollapsedEventsCache =
+                (*env)->GetMethodID(env, cAccessibleClass, "removeFromTreeNodeCollapsedEventsCache", "(J)Z");
+            // Just in case
+            (*env)->DeleteLocalRef(env, cAccessibleClass);
+        }
+
+        CommonComponentAccessibility * const thisCCAxPtr = (CommonComponentAccessibility *)jlong_to_ptr(element);
+        const id thisCCAx = thisCCAxPtr;
+        const SEL eventHandler = @selector(postTreeNodeCollapsed);
+
+        [ThreadUtilities performOnMainThreadWaiting:NO block:^{
+            // Calling Java's CAccessible#removeFromTreeNodeCollapsedEventsCache
+            JNIEnv * const env = [ThreadUtilities getJNIEnv];
+            if (env != NULL) {
+                if (jm_removeFromTreeNodeCollapsedEventsCache != NULL) {
+                    DASSERT(selfGlobal != NULL);
+                    (void)(*env)->CallBooleanMethod(env, selfGlobal, jm_removeFromTreeNodeCollapsedEventsCache, ptr_to_jlong(thisCCAxPtr));
+                }
+
+                if (selfGlobal != NULL) {
+                    (*env)->DeleteGlobalRef(env, selfGlobal);
+                }
+            }
+
+            // Calling CommonComponentAccessibility::postTreeNodeExpanded
+            [thisCCAx performSelector:eventHandler withObject:nil];
+        }];
     JNI_COCOA_EXIT(env);
 }
 
