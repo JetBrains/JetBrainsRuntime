@@ -150,6 +150,7 @@ java/awt/dnd/DropTargetEnterExitTest/MissedDragExitTest.java JBR-5730 linux-all
 java/awt/dnd/MissingDragExitEventTest/MissingDragExitEventTest.java 8288839,JBR-5727,JBR-5959 windows-all,linux-all
 java/awt/dnd/NestedHeavyweightDropTargetTest.java JBR-8114 windows-all
 java/awt/dnd/DragExitBeforeDropTest.java 8242805 macosx-all
+java/awt/dnd/DragSourceMotionListenerTest.java 8225131 windows-all
 java/awt/dnd/DragThresholdTest.java 8076299 macosx-all
 java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.java 8171510,JBR-881 macosx-all,linux-all
 javax/swing/dnd/7171812/bug7171812.java 8253184 windows-all
@@ -1321,16 +1322,10 @@ javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-5510 linux-5.
 javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-6465 windows-all
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5510,JBR-5951 linux-5.18.2-arch1-1,windows-x64
 jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5819 macosx-all,windows-all
-jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-5345 windows-x64
-jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-5345 windows-x64
-jb/java/awt/CustomTitleBar/JDialogNativeControlsTest.java JBR-5345 windows-x64
 jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-5465,JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465,JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-5828 windows-all
-jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5345 windows-x64
 jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-6914 windows-all
-jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5345 windows-x64
-jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5345 windows-x64
 jb/java/awt/CustomTitleBar/WindowResizeTest.java JBR-5592 windows-all
 sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5510 linux-5.18.2-arch1-1
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5510 linux-5.18.2-arch1-1
