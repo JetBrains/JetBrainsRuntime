@@ -28,8 +28,8 @@
 #include <string.h>
 #include "VKUtil.h"
 #include "VKAllocator.h"
-#include "VKBase.h"
 #include "VKBuffer.h"
+#include "VKDevice.h"
 
 static VKMemory VKBuffer_DestroyBuffersOnFailure(VKDevice* device, VKMemory page, uint32_t bufferCount, VKBuffer* buffers) {
     assert(device != NULL && device->allocator != NULL);
