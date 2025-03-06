@@ -33,9 +33,9 @@
 #include "fontscalerdefs.h"
 #include "Trace.h"
 #include "jlong.h"
-#include "VKBase.h"
 #include "VKBlitLoops.h"
 #include "VKSurfaceData.h"
+#include "VKEnv.h"
 #include "VKRenderer.h"
 #include "VKUtil.h"
 
@@ -792,9 +792,9 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
     }
 
     // Flush all pending GPU work
-    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
-    for (uint32_t i = 0; i < ARRAY_SIZE(ge->devices); i++) {
-        VKRenderer_Flush(ge->devices[i].renderer);
+    VKEnv* vk = VKEnv_GetInstance();
+    for (uint32_t i = 0; i < ARRAY_SIZE(vk->devices); i++) {
+        VKRenderer_Flush(vk->devices[i].renderer);
     }
 }
 
