@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,26 @@
  * questions.
  */
 
-#ifndef VKRenderState_h_Included
-#define VKRenderState_h_Included
+#ifndef VKDevice_h_Included
+#define VKDevice_h_Included
+#include "VKTexturePool.h"
+#include "VKUtil.h"
 
-#include <stdint.h>
+struct VKDevice {
+    VkDevice         handle;
+    VkPhysicalDevice physicalDevice;
+    char*            name;
+    uint32_t         queueFamily;
+    ARRAY(pchar)     enabledLayers;
+    ARRAY(pchar)     enabledExtensions;
+    VkQueue          queue;
 
+    VKAllocator*     allocator;
+    VKRenderer*      renderer;
+    VKTexturePool*   texturePool;
 
-struct VKRenderState {
-    uint32_t color;
-    double m00;
-    double m10;
-    double m01;
-    double m11;
-    double m02;
-    double m12;
+#define DEVICE_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
+#include "VKFunctionTable.inl"
 };
 
-#endif /* VKRenderState_h_Included */
+#endif //VKDevice_h_Included
