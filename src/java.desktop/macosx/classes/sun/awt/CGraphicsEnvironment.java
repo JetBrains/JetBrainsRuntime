@@ -214,9 +214,13 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      */
     void _displayReconfigurationFinished() {
         if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-            logger.fine("_displayReconfigurationFinished(): enter");
+            logger.fine("CGraphicsEnvironment._displayReconfigurationFinished(): enter");
         }
-        doNotifyListeners();
+        try {
+            doNotifyListeners();
+        } catch (Exception e) {
+            logger.severe("CGraphicsEnvironment._displayReconfigurationFinished: exception occurred: ", e);
+        }
 
         if (logger.isLoggable(PlatformLogger.Level.FINE)) {
             logger.fine("_displayReconfigurationFinished(): exit");
