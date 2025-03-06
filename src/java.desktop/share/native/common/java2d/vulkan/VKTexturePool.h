@@ -29,6 +29,7 @@
 
 #include "AccelTexturePool.h"
 #include "jni.h"
+#include "VKTypes.h"
 
 
 /* VKTexturePoolHandle API */
