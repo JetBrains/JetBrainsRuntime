@@ -774,8 +774,11 @@
                                                                             \
   product(bool, VerifyReceiverTypes, trueInDebug, DIAGNOSTIC,               \
           "Verify receiver types at runtime")                               \
+                                                                            \
+  product(bool, InlineSecondarySupersTest, true, DIAGNOSTIC,                \
+          "Inline the secondary supers hash lookup.")                       \
 
-// end of C2_FLAGS
+ // end of C2_FLAGS
 
 DECLARE_FLAGS(C2_FLAGS)
 
