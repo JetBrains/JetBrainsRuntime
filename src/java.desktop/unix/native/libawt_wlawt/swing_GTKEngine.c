@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2005, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +40,7 @@ static char conversionBuffer[(CONV_BUFFER_SIZE - 1) * 3 + 1];
 const char *getStrFor(JNIEnv *env, jstring val)
 {
     int length = (*env)->GetStringLength(env, val);
-    if (length > CONV_BUFFER_SIZE-1)
-    {
+    if (length > CONV_BUFFER_SIZE-1) {
         length = CONV_BUFFER_SIZE-1;
     }
 
@@ -49,11 +49,6 @@ const char *getStrFor(JNIEnv *env, jstring val)
     return conversionBuffer;
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_arrow
- * Signature: (IIILjava/lang/String;IIIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1arrow(
         JNIEnv *env, jobject this,
@@ -62,15 +57,10 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1arrow(
 {
     gtk->gdk_threads_enter();
     gtk->paint_arrow(widget_type, state, shadow_type, getStrFor(env, detail),
-            x, y, w, h, arrow_type, TRUE);
+                     x, y, w, h, arrow_type, TRUE);
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_box
- * Signature: (IIILjava/lang/String;IIIIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1box(
         JNIEnv *env, jobject this,
@@ -84,11 +74,6 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1box(
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_box_gap
- * Signature: (IIILjava/lang/String;IIIIIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1box_1gap(
         JNIEnv *env, jobject this,
@@ -98,15 +83,10 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1box_1gap(
 {
     gtk->gdk_threads_enter();
     gtk->paint_box_gap(widget_type, state, shadow_type, getStrFor(env, detail),
-            x, y, w, h, gap_side, gap_x, gap_w);
+                       x, y, w, h, gap_side, gap_x, gap_w);
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_check
- * Signature: (IILjava/lang/String;IIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1check(
         JNIEnv *env, jobject this,
@@ -119,11 +99,6 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1check(
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_expander
- * Signature: (IILjava/lang/String;IIIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1expander(
         JNIEnv *env, jobject this,
@@ -132,15 +107,10 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1expander(
 {
     gtk->gdk_threads_enter();
     gtk->paint_expander(widget_type, state, getStrFor(env, detail),
-            x, y, w, h, expander_style);
+                        x, y, w, h, expander_style);
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_extension
- * Signature: (IIILjava/lang/String;IIIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1extension(
         JNIEnv *env, jobject this,
@@ -149,15 +119,10 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1extension(
 {
     gtk->gdk_threads_enter();
     gtk->paint_extension(widget_type, state, shadow_type,
-            getStrFor(env, detail), x, y, w, h, placement);
+                         getStrFor(env, detail), x, y, w, h, placement);
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_flat_box
- * Signature: (IIILjava/lang/String;IIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1flat_1box(
         JNIEnv *env, jobject this,
@@ -166,15 +131,10 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1flat_1box(
 {
     gtk->gdk_threads_enter();
     gtk->paint_flat_box(widget_type, state, shadow_type,
-            getStrFor(env, detail), x, y, w, h, has_focus);
+                        getStrFor(env, detail), x, y, w, h, has_focus);
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_focus
- * Signature: (IILjava/lang/String;IIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1focus(
         JNIEnv *env, jobject this,
@@ -183,15 +143,10 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1focus(
 {
     gtk->gdk_threads_enter();
     gtk->paint_focus(widget_type, state, getStrFor(env, detail),
-            x, y, w, h);
+                     x, y, w, h);
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_handle
- * Signature: (IIILjava/lang/String;IIIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1handle(
         JNIEnv *env, jobject this,
@@ -200,15 +155,10 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1handle(
 {
     gtk->gdk_threads_enter();
     gtk->paint_handle(widget_type, state, shadow_type, getStrFor(env, detail),
-            x, y, w, h, orientation);
+                      x, y, w, h, orientation);
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_hline
- * Signature: (IILjava/lang/String;IIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1hline(
         JNIEnv *env, jobject this,
@@ -217,15 +167,10 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1hline(
 {
     gtk->gdk_threads_enter();
     gtk->paint_hline(widget_type, state, getStrFor(env, detail),
-            x, y, w, h);
+                     x, y, w, h);
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_option
- * Signature: (IILjava/lang/String;IIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1option(
         JNIEnv *env, jobject this,
@@ -238,11 +183,6 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1option(
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_shadow
- * Signature: (IIILjava/lang/String;IIIIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1shadow(
         JNIEnv *env, jobject this,
@@ -256,11 +196,6 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1shadow(
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_slider
- * Signature: (IIILjava/lang/String;IIIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1slider(
         JNIEnv *env, jobject this,
@@ -269,15 +204,10 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1slider(
 {
     gtk->gdk_threads_enter();
     gtk->paint_slider(widget_type, state, shadow_type, getStrFor(env, detail),
-            x, y, w, h, orientation, has_focus);
+                      x, y, w, h, orientation, has_focus);
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_vline
- * Signature: (IILjava/lang/String;IIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1vline(
         JNIEnv *env, jobject this,
@@ -286,15 +216,10 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1vline(
 {
     gtk->gdk_threads_enter();
     gtk->paint_vline(widget_type, state, getStrFor(env, detail),
-            x, y, w, h);
+                     x, y, w, h);
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_paint_background
- * Signature: (IIIIII)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1background(
         JNIEnv *env, jobject this, jint widget_type, jint state,
@@ -305,11 +230,6 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1background(
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    nativeStartPainting
- * Signature: (II)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_nativeStartPainting(
         JNIEnv *env, jobject this, jint w, jint h, jint scale)
@@ -320,15 +240,10 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_nativeStartPainting(
         return;
     }
     gtk->gdk_threads_enter();
-    gtk->init_painting(env, w, h);
+    gtk->init_painting(env, w, h, scale);
     gtk->gdk_threads_leave();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    nativeFinishPainting
- * Signature: ([III)I
- */
 JNIEXPORT jint JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_nativeFinishPainting(
         JNIEnv *env, jobject this, jintArray dest, jint width, jint height)
@@ -347,11 +262,6 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_nativeFinishPainting(
     return transparency;
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_switch_theme
- * Signature: ()V
- */
 JNIEXPORT void JNICALL Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1switch_1theme(
         JNIEnv *env, jobject this)
 {
@@ -359,11 +269,6 @@ JNIEXPORT void JNICALL Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1switch
     gtk->flush_event_loop();
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    native_get_gtk_setting
- * Signature: (I)Ljava/lang/Object;
- */
 JNIEXPORT jobject JNICALL Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1get_1gtk_1setting(
         JNIEnv *env, jobject this, jint property)
 {
@@ -374,11 +279,6 @@ JNIEXPORT jobject JNICALL Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1get
     return obj;
 }
 
-/*
- * Class:     com_sun_java_swing_plaf_gtk_GTKEngine
- * Method:    nativeSetRangeValue
- * Signature: (IDDDD)V
- */
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_nativeSetRangeValue(
         JNIEnv *env, jobject this, jint widget_type,
@@ -388,3 +288,4 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_nativeSetRangeValue(
     gtk->set_range_value(widget_type, value, min, max, visible);
     gtk->gdk_threads_leave();
 }
+
