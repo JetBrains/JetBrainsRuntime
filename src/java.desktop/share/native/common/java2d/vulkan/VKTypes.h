@@ -48,7 +48,7 @@ typedef struct {
 
 VK_DEFINE_NON_DISPATCHABLE_HANDLE(VKMemory);
 
-typedef struct VKGraphicsEnvironment VKGraphicsEnvironment;
+typedef struct VKInstance VKInstance;
 typedef struct VKDevice VKDevice;
 typedef struct VKAllocator VKAllocator;
 typedef struct VKRenderer VKRenderer;
