@@ -155,9 +155,10 @@ java/awt/Frame/7024749/bug7024749.java JBR-5210 windows-all
 java/awt/Frame/8158918/SetExtendedState.java JBR-6408 linux-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509 generic-all
 java/awt/Frame/HideMaximized/HideMaximized.java JBR-8310 linux-all
-java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
+java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-all
 java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 linux-all,macosx-15.3,macosx-15.3.1
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
+java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880,JBR-6683 windows-all,linux-all
 java/awt/dnd/DragTriggerEventTest.java 8320083,JBR-6548 windows-all,linux-all
@@ -549,7 +550,7 @@ java/awt/Modal/MultipleDialogs/MultipleDialogs3Test.java 8198665,8253184,JBR-831
 java/awt/Modal/MultipleDialogs/MultipleDialogs4Test.java 8198665,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Modal/MultipleDialogs/MultipleDialogs5Test.java 8198665,8253184 macosx-all,windows-all
 java/awt/Mouse/EnterExitEvents/DragWindowOutOfFrameTest.java 8177326,8253184,JBR-6305 macosx-all,windows-all,linux-all
-java/awt/Mouse/EnterExitEvents/DragWindowTest.java 8253184 windows-all
+java/awt/Mouse/EnterExitEvents/DragWindowTest.java 8253184,8298823 windows-all,macosx-all
 java/awt/Mouse/EnterExitEvents/ModalDialogEnterExitEventsTest.java 8253184,JBR-5811 windows-all,linux-all
 java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java 8005021,8253184 macosx-all,windows-all
 java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java 8051455 macosx-all
