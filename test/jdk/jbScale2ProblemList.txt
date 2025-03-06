@@ -113,7 +113,6 @@ java/awt/hidpi/DrawOnFrameGraphicsTest.java nobug generic-all
 java/awt/hidpi/SetMaximizedBoundsTest.java nobug generic-all
 java/awt/hidpi/properties/HiDPIPropertiesUnixTest.java nobug generic-all
 java/awt/hidpi/properties/HiDPIPropertiesWindowsTest.java nobug generic-all
-java/awt/image/DrawImage/BlitRotateClippedArea.java nobug generic-all
 java/awt/image/DrawImage/IncorrectAlphaSurface2SW.java nobug generic-all
 java/awt/image/DrawImage/IncorrectClipXorModeSW2Surface.java nobug generic-all
 java/awt/image/DrawImage/IncorrectClipXorModeSurface2Surface.java nobug generic-all
@@ -143,7 +142,6 @@ javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java nobug generic
 javax/swing/JLabel/GetSpanHiDpiBug.java nobug generic-all
 javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java nobug generic-all
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java nobug generic-all
-javax/swing/JTextArea/JTextAreaWordWrapTest.java nobug generic-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucent.java nobug generic-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,nobug,JBR-7404 windows-all,generic-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java nobug generic-all
@@ -160,7 +158,6 @@ javax/swing/plaf/motif/8165485/MotifHiDPIIconsTest.java nobug generic-all
 javax/swing/plaf/nimbus/TestNimbusBGColor.java nobug generic-all
 javax/swing/plaf/synth/7158712/bug7158712.java nobug generic-all
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java nobug generic-all
-javax/swing/plaf/synth/TitledBorderLabel.java nobug generic-all
 javax/swing/plaf/windows/8165594/WindowsClassicHiDPIIconsTest.java nobug generic-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java nobug generic-all
 javax/swing/text/Caret/TestCaretPosition.java nobug generic-all
@@ -196,7 +193,6 @@ jb/javax/swing/Popup/WLPopupMoves.java nobug generic-all
 jb/javax/swing/Popup/WLPopupNoSize.java nobug generic-all
 jb/javax/swing/Popup/WLPopupResize.java nobug generic-all
 jb/javax/swing/Popup/WLPopupVisibility.java nobug generic-all
-jb/testhelpers/TitleBar/TestUtils.java nobug generic-all
 sun/java2d/SunGraphics2D/DrawImageBilinear.java nobug generic-all
 sun/java2d/pipe/InterpolationQualityTest.java nobug generic-all
 
