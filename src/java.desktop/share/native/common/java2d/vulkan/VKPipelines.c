@@ -22,7 +22,7 @@
 // questions.
 
 #include "VKUtil.h"
-#include "VKBase.h"
+#include "VKEnv.h"
 #include "VKPipelines.h"
 
 #define INCLUDE_BYTECODE
@@ -130,7 +130,7 @@ static VkPipeline VKPipelines_CreatePipelines(VKRenderPassContext* renderPassCon
     VKPipelineContext* pipelineContext = renderPassContext->pipelineContext;
     VKDevice* device = pipelineContext->device;
     VKShaders* shaders = pipelineContext->shaders;
-    VKComposites* composites = &VKGE_graphics_environment()->composites;
+    VKComposites* composites = &VKEnv_GetInstance()->composites;
 
     // Setup pipeline creation structs.
     static const uint32_t MAX_DYNAMIC_STATES = 2;
