@@ -266,6 +266,9 @@ class StubRoutines: AllStatic {
   static address _vector_f_math[VectorSupport::NUM_VEC_SIZES][VectorSupport::NUM_SVML_OP];
   static address _vector_d_math[VectorSupport::NUM_VEC_SIZES][VectorSupport::NUM_SVML_OP];
 
+  static address _lookup_secondary_supers_table_stubs[];
+  static address _lookup_secondary_supers_table_slow_path_stub;
+
  public:
   // Initialization/Testing
   static void    initialize_initial_stubs();               // must happen before universe::genesis
@@ -458,6 +461,17 @@ class StubRoutines: AllStatic {
 
   JFR_ONLY(static address jfr_write_checkpoint() { return _jfr_write_checkpoint; })
   JFR_ONLY(static address jfr_return_lease() { return _jfr_return_lease; })
+
+  static address lookup_secondary_supers_table_stub(u1 slot) {
+    assert(slot < Klass::SECONDARY_SUPERS_TABLE_SIZE, "out of bounds");
+    assert(_lookup_secondary_supers_table_stubs[slot] != nullptr, "not implemented");
+    return _lookup_secondary_supers_table_stubs[slot];
+  }
+
+  static address lookup_secondary_supers_table_slow_path_stub() {
+    assert(_lookup_secondary_supers_table_slow_path_stub != nullptr, "not implemented");
+    return _lookup_secondary_supers_table_slow_path_stub;
+  }
 
   static address select_fill_function(BasicType t, bool aligned, const char* &name);
 
