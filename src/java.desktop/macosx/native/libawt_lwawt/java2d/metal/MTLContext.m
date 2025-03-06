@@ -57,11 +57,11 @@ extern BOOL isDisplaySyncEnabled();
 extern BOOL MTLLayer_isExtraRedrawEnabled();
 extern void dumpDisplayInfo(jint displayID);
 
-#define STATS_CVLINK        1
+#define STATS_CVLINK        0
 
-#define TRACE_PWM_NOTIF     1
+#define TRACE_PWM_NOTIF     0
 
-#define TRACE_CVLINK        1
+#define TRACE_CVLINK        0
 #define TRACE_CVLINK_WARN   0
 #define TRACE_CVLINK_DEBUG  0
 

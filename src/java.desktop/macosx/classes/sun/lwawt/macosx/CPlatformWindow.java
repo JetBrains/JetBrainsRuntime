@@ -1073,8 +1073,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         }
 
         // TODO: CHECK that new locking / rendez-vous:
-        final Object lock = new Object();
-        final WindowStateListener wsl = new WindowStateListener() {
+        Object lock = new Object();
+        WindowStateListener wsl = new WindowStateListener() {
             public void windowStateChanged(WindowEvent e) {
                 synchronized (lock) {
                     if (e.getNewState() == state) {
@@ -1226,8 +1226,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         final String invokeLaterArg = System.getProperty(invokeLaterKey);
         final int result;
         if (invokeLaterArg == null) {
-            // default = 'auto':
-            result = INVOKE_LATER_AUTO;
+            // default = 'false':
+            result = INVOKE_LATER_DISABLED;
         } else {
             switch (invokeLaterArg.toLowerCase()) {
                 default:
@@ -1249,29 +1249,10 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return result;
     }
 
-    @SuppressWarnings("removal")
-    private final static boolean INVOKE_LATER_USE_PWM = getInvokeLaterUsePWM();
-
-    private static boolean getInvokeLaterUsePWM() {
-        final String usePwmKey = "awt.mac.flushBuffers.pwm";
-        final String usePwmArg = System.getProperty(usePwmKey);
-        final boolean result;
-        if (usePwmArg == null) {
-            // default = 'false':
-            result = false;
-        } else {
-            result = "true".equalsIgnoreCase(usePwmArg);
-            logger.info("CPlatformWindow: property \"{0}={1}\", using usePWM={2}.",
-                    usePwmKey, usePwmArg, result);
-        }
-        return result;
-    }
+    private final static long NANOS_PER_SEC = 1000000000L;
     /* 10s period arround reference times (sleep/wake-up...)
      * to ensure all displays are awaken properly */
-    private final static long NANOS_PER_SEC = 1000000000L;
     private final static long STATE_CHANGE_PERIOD = 10L * NANOS_PER_SEC;
-
-    private final static boolean USE_AWT_THREADING = false;
 
     private final AtomicBoolean mirroringState = new AtomicBoolean(false);
     /** per window timestamp of disabling mirroring */
@@ -1300,9 +1281,11 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         //                          System-dependent appearance optimization.
         //                          May be blocking so postpone this event processing:
 
-        if (false && LWCToolkit.isBlockingMainThread()) {
-            // TODO: disable
-            logger.warning("Blocked main thread, skip flushBuffers().");
+        // TODO: disable
+        final boolean checkLWCToolkitBlockingMainGuard = true;
+
+        if (!checkLWCToolkitBlockingMainGuard && LWCToolkit.isBlockingMainThread()) {
+            logger.info("Blocked main thread, skip flushBuffers().");
             return;
         }
 
@@ -1371,47 +1354,19 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                     useInvokeLater = true;
                     break;
             }
-            if (!useInvokeLater && INVOKE_LATER_USE_PWM) {
-                // If the system property 'awt.mac.flushBuffers.pwm' is true,
-                // invokeLater is enforced during power transitions.
-                final boolean inTransition = LWCToolkit.isWithinPowerTransition();
-                if (inTransition) {
-                    logger.fine("CPlatformWindow.flushBuffers[pwm]: inTransition = true");
-                    useInvokeLater = true;
-                }
-            }
             try {
                 final String identifier = logger.isLoggable(PlatformLogger.Level.FINE) ? getIdentifier(target) : null;
-
                 final EmptyRunnable emptyTask = new EmptyRunnable(identifier);
 
                 // check invokeAndWait: KO (operations require AWTLock and main thread)
                 // => use invokeLater as it is an empty event to force refresh ASAP
                 if (useInvokeLater) {
                     LWCToolkit.invokeLater(emptyTask, target);
-
-                } else if (USE_AWT_THREADING) {
-                    final long timeoutMicroseconds = 666666; // 0.666 seconds
-
-                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                        logger.fine("CPlatformWindow.flushBuffers: enter " +
-                                "AWTThreading.executeWaitToolkit(emptyTask) on target = {0}", identifier);
-                    }
-
-                    AWTThreading.executeWaitToolkit(() -> {
-                        emptyTask.run();
-                        return null;
-                    }, timeoutMicroseconds, TimeUnit.MICROSECONDS);
-
-                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                        logger.fine("CPlatformWindow.flushBuffers: exit  " +
-                                "AWTThreading.executeWaitToolkit(emptyTask) on target = {0}", identifier);
-                    }
                 } else {
-                    /* Ensure >500ms = 666ms timeout to avoid any deadlock among
+                    /* Ensure >3000ms = 3.666ms timeout to avoid any deadlock among
                      * appkit, EDT, Flusher & a11y threads, locks
                      * and various synchronization patterns... */
-                    final double timeoutSeconds = 0.666; // seconds
+                    final double timeoutSeconds = 3.666; // seconds
 
                     if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                         logger.fine("CPlatformWindow.flushBuffers: enter " +
@@ -1467,8 +1422,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     protected void deliverMoveResizeEvent(int x, int y, int width, int height,
                                         boolean byUser) {
 
-        /* LBO: test only to generate more appkit freezes */
-        // TODO: KILL
+        /* Test only to generate more appkit freezes */
+        // TODO: disable
         final boolean bypassToHaveMoreFreezes = true;
 
         AtomicBoolean ref = new AtomicBoolean();

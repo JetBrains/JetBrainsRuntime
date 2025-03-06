@@ -88,7 +88,7 @@ static const BOOL enableCallStacks = YES;
 
 /* Traceability data */
 static const BOOL TRACE_PWM = NO;
-static const BOOL TRACE_PWM_EVENTS = YES;
+static const BOOL TRACE_PWM_EVENTS = NO;
 static const BOOL TRACE_CLOCKS = NO;
 
 static const uint64_t NANOS_PER_SEC = 1000000000ULL;

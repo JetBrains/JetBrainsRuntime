@@ -733,7 +733,7 @@ public final class LWCToolkit extends LWToolkit {
 
     public static <T> T invokeAndWait(final Callable<T> callable,
                                       Component component) throws Exception {
-        return invokeAndWait(callable, component, -1);
+        return invokeAndWait(callable, component, 0);
     }
 
     public static <T> T invokeAndWait(final Callable<T> callable, Component component, int timeoutSeconds) throws Exception {
@@ -785,7 +785,7 @@ public final class LWCToolkit extends LWToolkit {
         invokeAndWait(runnable, component, false, 0.0);
     }
 
-    /* 25.01.25: keep public methods with (int timeoutSeconds) */
+    /* 25.03: keep public methods with (int timeoutSeconds) */
     @Deprecated(since = "25")
     public static void invokeAndWait(Runnable runnable, Component component, int timeoutSeconds)
             throws InvocationTargetException
@@ -800,7 +800,7 @@ public final class LWCToolkit extends LWToolkit {
         invokeAndWait(runnable, component, processEvents, timeout);
     }
 
-    /* 25.01.25: added public methods with (double timeoutSeconds) to have timeouts between 0.0 and 1.0 */
+    /* 25.03: added public methods with (double timeoutSeconds) to have timeouts between 0.0 and 1.0 */
 
     public static void invokeAndWait(Runnable runnable, Component component, double timeoutSeconds)
             throws InvocationTargetException
@@ -811,8 +811,6 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, double timeoutSeconds)
             throws InvocationTargetException
     {
-        Objects.requireNonNull(component, "Null component provided to invokeAndWait");
-
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("invokeAndWait started: {0}", runnable);
         }
@@ -877,8 +875,6 @@ public final class LWCToolkit extends LWToolkit {
     public static native boolean isBlockingMainThread();
 
     static native String getThreadTraceContexts();
-
-    static native boolean isWithinPowerTransition();
 
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {
@@ -1069,7 +1065,7 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     /**
-     * Starts run-loop with the provided timeout. Use (-1) for the infinite value.
+     * Starts run-loop with the provided timeout. Use (<= 0.0) for the infinite value.
      */
     static boolean doAWTRunLoop(long mediator, boolean processEvents, double timeoutSeconds) {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
