@@ -26,8 +26,8 @@
 
 #include <assert.h>
 #include "VKUtil.h"
-#include "VKBase.h"
 #include "VKAllocator.h"
+#include "VKEnv.h"
 
 /**
  * Block size is a minimum allocation size.
@@ -570,8 +570,7 @@ void VKAllocator_Invalidate(VKAllocator* allocator, VKMemory memory, VkDeviceSiz
 }
 
 VKAllocator* VKAllocator_Create(VKDevice* device) {
-    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
-    VKAllocator* allocator = (VKAllocator*) calloc(1, sizeof(VKAllocator));
+    VKAllocator* allocator = calloc(1, sizeof(VKAllocator));
     allocator->device = device;
     allocator->freePageIndex = NO_PAGE_INDEX;
     for (uint32_t i = 0; i < VK_MAX_MEMORY_TYPES; i++) {
@@ -580,7 +579,7 @@ VKAllocator* VKAllocator_Create(VKDevice* device) {
                 .allocationLevelTracker = MIN_SHARED_PAGE_LEVEL * 2
         };
     }
-    ge->vkGetPhysicalDeviceMemoryProperties(device->physicalDevice, &allocator->memoryProperties);
+    VKEnv_GetInstance()->vkGetPhysicalDeviceMemoryProperties(device->physicalDevice, &allocator->memoryProperties);
 
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKAllocator_Create: allocator=%p", allocator);
     return allocator;
