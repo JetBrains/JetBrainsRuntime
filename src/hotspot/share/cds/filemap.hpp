@@ -192,6 +192,7 @@ private:
   int     _narrow_klass_shift;                    // save narrow klass base and shift
   bool    _compressed_oops;                       // save the flag UseCompressedOops
   bool    _compressed_class_ptrs;                 // save the flag UseCompressedClassPointers
+  bool    _use_secondary_supers_table;            // save the flag UseSecondarySupersTable
   size_t  _cloned_vtables_offset;                 // The address of the first cloned vtable
   size_t  _serialized_data_offset;                // Data accessed using {ReadClosure,WriteClosure}::serialize()
   address _heap_begin;                            // heap begin at dump time.
