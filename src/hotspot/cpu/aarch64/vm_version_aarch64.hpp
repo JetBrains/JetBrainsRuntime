@@ -171,6 +171,8 @@ enum Ampere_CPU_Model {
 
   static void get_compatible_board(char *buf, int buflen);
 
+  constexpr static bool supports_secondary_supers_table() { return true; }
+
   static const SpinWait& spin_wait_desc() { return _spin_wait; }
 
   static bool supports_on_spin_wait() { return _spin_wait.inst() != SpinWait::NONE; }
