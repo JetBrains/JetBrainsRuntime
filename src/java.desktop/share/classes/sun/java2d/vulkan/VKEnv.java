@@ -31,7 +31,7 @@ import sun.util.logging.PlatformLogger;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
-public class VKInstance {
+public class VKEnv {
 
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.VKInstance");
     private static Boolean initialized;
