@@ -39,6 +39,7 @@ import com.sun.java.swing.plaf.gtk.GTKConstants.ShadowType;
 import com.sun.java.swing.plaf.gtk.GTKConstants.TextDirection;
 
 import sun.awt.image.SunWritableRaster;
+import sun.java2d.SunGraphics2D;
 import sun.swing.ImageCache;
 
 /**
@@ -118,8 +119,15 @@ class GTKEngine {
     private static HashMap<Region, Object> regionToWidgetTypeMap;
     private ImageCache cache = new ImageCache(CACHE_SIZE);
     private int x0, y0, w0, h0;
+    private int scale = 1;
     private Graphics graphics;
     private Object[] cacheArgs;
+
+    private final static boolean isWayland;
+
+    static {
+        isWayland = "sun.awt.wl.WLToolkit".equals(Toolkit.getDefaultToolkit().getClass().getName());
+    }
 
     private native void native_paint_arrow(
             int widgetType, int state, int shadowType, String detail,
@@ -171,7 +179,7 @@ class GTKEngine {
                                             double min, double max,
                                             double visible);
 
-    private native void nativeStartPainting(int w, int h);
+    private native void nativeStartPainting(int w, int h, int scale);
     private native int nativeFinishPainting(int[] buffer, int width, int height);
     private native void native_switch_theme();
 
@@ -555,9 +563,10 @@ class GTKEngine {
         }
 
         // look for cached image
-        Image img = cache.getImage(getClass(), null, w, h, args);
+        Image img = cache.getImage(getClass(), null, w * scale, h * scale, args);
         if (img != null) {
-            g.drawImage(img, x, y, null);
+            prepareGraphics(g);
+            g.drawImage(img, x, y, w, h, null);
             return true;
         }
         return false;
@@ -568,7 +577,11 @@ class GTKEngine {
      */
     public void startPainting(Graphics g,
             int x, int y, int w, int h, Object... args) {
-        nativeStartPainting(w, h);
+        if (isWayland) { // The X11 impl of GTKEngine is not HiDPI-aware yet
+            double scaleX = graphics instanceof SunGraphics2D sg2d ? sg2d.getTransform().getScaleX() : 1.0;
+            scale = scaleX <= 1.0 ? 1 : (int) scaleX;
+        }
+        nativeStartPainting(w, h, scale);
         x0 = x;
         y0 = y;
         w0 = w;
@@ -591,7 +604,9 @@ class GTKEngine {
      * and paint it.
      */
     public BufferedImage finishPainting(boolean useCache) {
-        DataBufferInt dataBuffer = new DataBufferInt(w0 * h0);
+        int nativeW = w0 * scale;
+        int nativeH = h0 * scale;
+        DataBufferInt dataBuffer = new DataBufferInt(nativeW * nativeH);
         // Note that stealData() requires a markDirty() afterwards
         // since we modify the data in it.
         int transparency =
@@ -601,14 +616,17 @@ class GTKEngine {
 
         int[] bands = BAND_OFFSETS[transparency - 1];
         WritableRaster raster = Raster.createPackedRaster(
-                dataBuffer, w0, h0, w0, bands, null);
+                dataBuffer, nativeW, nativeH, nativeW, bands, null);
 
         ColorModel cm = colorModelFor(transparency);
         BufferedImage img = new BufferedImage(cm, raster, true, null);
         if (useCache) {
-            cache.setImage(getClass(), null, w0, h0, cacheArgs, img);
+            cache.setImage(getClass(), null, nativeW, nativeH, cacheArgs, img);
         }
-        graphics.drawImage(img, x0, y0, null);
+
+        prepareGraphics(graphics);
+        graphics.drawImage(img, x0, y0, w0, h0, null);
+
         return img;
     }
 
@@ -621,6 +639,14 @@ class GTKEngine {
                         .getColorModel(transparency);
             }
             return COLOR_MODELS[index];
+        }
+    }
+
+    private void prepareGraphics(Graphics graphics) {
+        if (scale > 1 && graphics instanceof SunGraphics2D sg2d) {
+            sg2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            sg2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            sg2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
         }
     }
 
