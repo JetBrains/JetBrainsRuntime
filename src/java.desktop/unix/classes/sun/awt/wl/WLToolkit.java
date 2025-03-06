@@ -1034,7 +1034,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public boolean isNativeGTKAvailable() {
-        return false;
+        return true;
     }
 
     @Override
