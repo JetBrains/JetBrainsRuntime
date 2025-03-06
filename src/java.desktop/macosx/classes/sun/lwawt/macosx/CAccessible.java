@@ -29,7 +29,6 @@ import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.security.PrivilegedAction;
-import java.util.concurrent.atomic.AtomicLong;
 
 import javax.accessibility.*;
 import javax.swing.*;
@@ -75,42 +74,6 @@ class CAccessible extends CFRetainedResource implements Accessible {
         accessor.setNativeAXResource(context, newCAX);
         return newCAX;
     }
-
-
-    void resetTreeNodeExpandedCollapsedEventsCache() {
-        long result = executeGet(ptr -> {
-            ptrOfLastTreeNodeExpandedEvent.compareAndSet(ptr, 0);
-            ptrOfLastTreeNodeCollapsedEvent.compareAndSet(ptr, 0);
-            return 1;
-        });
-        if (result == 0) {
-            ptrOfLastTreeNodeExpandedEvent.set(0);
-            ptrOfLastTreeNodeCollapsedEvent.set(0);
-        }
-    }
-
-    private final AtomicLong ptrOfLastTreeNodeExpandedEvent = new AtomicLong(0);
-    private void cachedPostTreeNodeExpanded() {
-        execute(ptr -> {
-            if (ptrOfLastTreeNodeExpandedEvent.getAndSet(ptr) == ptr) {
-                // TODO: log
-            } else {
-                treeNodeExpanded(ptr);
-            }
-        });
-    }
-
-    private final AtomicLong ptrOfLastTreeNodeCollapsedEvent = new AtomicLong(0);
-    private void cachedPostTreeNodeCollapsed() {
-        execute(ptr -> {
-            if (ptrOfLastTreeNodeCollapsedEvent.getAndSet(ptr) == ptr) {
-                // TODO: log
-            } else {
-                treeNodeCollapsed(ptr);
-            }
-        });
-    }
-
 
     private static native void unregisterFromCocoaAXSystem(long ptr);
     private static native void valueChanged(long ptr);
@@ -221,7 +184,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     }
 
                     if (newValue == AccessibleState.EXPANDED) {
-                        cachedPostTreeNodeExpanded();
+                        execute(ptr -> treeNodeExpanded(ptr));
                     } else if (newValue == AccessibleState.COLLAPSED) {
                         execute(ptr -> treeNodeCollapsed(ptr));
                     }

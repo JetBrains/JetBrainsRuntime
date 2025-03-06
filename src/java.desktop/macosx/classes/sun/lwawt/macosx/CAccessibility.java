@@ -790,17 +790,6 @@ class CAccessibility implements PropertyChangeListener {
                     at = a;
                 }
 
-                {
-                    final var ctx = at == null ? null : at.getAccessibleContext();
-                    if (ctx != null) {
-                        final var ctxNativeResource = AWTAccessor.getAccessibleContextAccessor().getNativeAXResource(ctx);
-
-                        if (ctxNativeResource instanceof CAccessible cAcc) {
-                            cAcc.resetTreeNodeExpandedCollapsedEventsCache();
-                        }
-                    }
-                }
-
                 if (at instanceof JTree) {
                     JTree tree = ((JTree) at);
 
