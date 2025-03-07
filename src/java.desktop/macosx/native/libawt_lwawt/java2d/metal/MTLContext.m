@@ -987,6 +987,13 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
     JNI_COCOA_ENTER(env);
         J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_mtlDisplayLinkCallback: ctx=%p", displayLinkContext);
 
+        /* defensive programming (should not happen) */
+        if ([ThreadUtilities blockingMainThread]) {
+            NSLog(@"MTLContext_mtlDisplayLinkCallback: ctx=%p - invalid state: blockingMainThread = YES !",
+                  displayLinkContext);
+            return kCVReturnError;
+        }
+
         MTLDisplayLinkState *dlState = (__bridge MTLDisplayLinkState*) displayLinkContext;
         if (dlState == nil) {
             if (TRACE_CVLINK_WARN) {

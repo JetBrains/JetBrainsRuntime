@@ -145,6 +145,31 @@ JNI_COCOA_ENTER(env);
     }
 
     // Processing display changes (Finished called by displayConfigFinalizedProc):
+
+    // first register Main RunLoop callback to ensure blockingMainThread = false anyway:
+    if ([ThreadUtilities hasMainThreadRunLoopCallback:MAIN_CALLBACK_CGDISPLAY_RECONFIGURE] == NO) {
+        // avoid creating block if not needed:
+        [ThreadUtilities registerMainThreadRunLoopCallback:MAIN_CALLBACK_CGDISPLAY_RECONFIGURE
+                                                     block:^()
+        {
+            @try {
+                // TODO: notify MTLContext to update display Links (java or direct ?)
+
+                JNIEnv *env = [ThreadUtilities getJNIEnv];
+                jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
+                if (graphicsEnv == NULL) return; // ref already GC'd
+                DECLARE_CLASS(jc_CGraphicsEnvironment, "sun/awt/CGraphicsEnvironment");
+                DECLARE_METHOD(jm_displayReconfigurationFinished,
+                               jc_CGraphicsEnvironment, "_displayReconfigurationFinished", "()V");
+                (*env)->CallVoidMethod(env, graphicsEnv, jm_displayReconfigurationFinished);
+                (*env)->DeleteLocalRef(env, graphicsEnv);
+                CHECK_EXCEPTION();
+            } @finally {
+                // Allow LWCToolkit.invokeAndWait() once Finished callbacks:
+                [ThreadUtilities setBlockingMainThread:false];
+            }
+        }];
+    }
     if (TRACE_DISPLAY_CALLBACKS) {
         dumpDisplayInfo(displayId);
         // [ThreadUtilities dumpThreadTraceContext:"displaycb_handle"];
@@ -162,27 +187,6 @@ JNI_COCOA_ENTER(env);
                                (jint) displayId, (jint) flags);
         (*env)->DeleteLocalRef(env, graphicsEnv);
         CHECK_EXCEPTION();
-    }
-
-    if ([ThreadUtilities hasMainThreadRunLoopCallback:MAIN_CALLBACK_CGDISPLAY_RECONFIGURE] == NO) {
-        // avoid creating block if not needed:
-        [ThreadUtilities registerMainThreadRunLoopCallback:MAIN_CALLBACK_CGDISPLAY_RECONFIGURE
-                                                     block:^()
-        {
-            // TODO: notify MTLContext to update display Links (java or direct ?)
-
-            JNIEnv *env = [ThreadUtilities getJNIEnv];
-            jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
-            if (graphicsEnv == NULL) return; // ref already GC'd
-            DECLARE_CLASS(jc_CGraphicsEnvironment, "sun/awt/CGraphicsEnvironment");
-            DECLARE_METHOD(jm_displayReconfigurationFinished,
-                    jc_CGraphicsEnvironment, "_displayReconfigurationFinished","()V");
-            (*env)->CallVoidMethod(env, graphicsEnv, jm_displayReconfigurationFinished);
-            (*env)->DeleteLocalRef(env, graphicsEnv);
-
-            // Allow LWCToolkit.invokeAndWait() once Finished callbacks:
-            [ThreadUtilities setBlockingMainThread:false];
-        }];
     }
 JNI_COCOA_EXIT(env);
 }

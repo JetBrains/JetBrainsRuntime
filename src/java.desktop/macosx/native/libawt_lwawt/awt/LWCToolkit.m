@@ -606,7 +606,7 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_doAWTRunLoopImpl
 JNI_COCOA_ENTER(env);
 
     /* defensive programming (should not happen) */
-    if (![ThreadUtilities blockingMainThread]) {
+    if ([ThreadUtilities blockingMainThread]) {
         NSLog(@"LWCToolkit_doAWTRunLoopImpl: invalid state: blockingMainThread = YES !");
         return JNI_FALSE;
     }
