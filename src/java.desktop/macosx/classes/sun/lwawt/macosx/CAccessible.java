@@ -30,6 +30,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Objects;
 import java.security.PrivilegedAction;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.accessibility.*;
 import javax.swing.*;
@@ -60,6 +61,10 @@ final class CAccessible extends CFRetainedResource implements Accessible {
             }
         });
         SELECTED_CHILDREN_MILLISECONDS = scms >= 0 ? scms : SELECTED_CHILDREN_MILLISECONDS_DEFAULT;
+
+        EVENTS_COALESCING_ENABLED = Boolean.parseBoolean(
+            System.getProperty("sun.lwawt.macosx.CAccessible.eventsCoalescingEnabled", "true")
+        );
     }
 
     public static CAccessible getCAccessible(final Accessible a) {
@@ -84,8 +89,10 @@ final class CAccessible extends CFRetainedResource implements Accessible {
     private static native void menuOpened(long ptr);
     private static native void menuClosed(long ptr);
     private static native void menuItemSelected(long ptr);
-    private static native void treeNodeExpanded(long ptr);
-    private static native void treeNodeCollapsed(long ptr);
+    // JBR-7659: don't use this method directly; use {@link #postCoalescedTreeNodeExpanded()} instead
+    private native void treeNodeExpanded(long ptr);
+    // JBR-7659: don't use this method directly; use {@link #postCoalescedTreeNodeCollapsed()} instead
+    private native void treeNodeCollapsed(long ptr);
     private static native void selectedCellsChanged(long ptr);
     private static native void tableContentCacheClear(long ptr);
     private static native void updateZoomCaretFocus(long ptr);
@@ -123,6 +130,133 @@ final class CAccessible extends CFRetainedResource implements Accessible {
             ac.addPropertyChangeListener(new AXChangeNotifier());
         }
     }
+
+
+    // =================================================== JBR-7659 ===================================================
+
+    // Since macOS 15 applications running a lot of nested CFRunLoop s has been crashing.
+    // In AWT case, a new nested CFRunLoop is run whenever macOS asks some a11y info about a UI component.
+    // macOS usually does that when AWT notifies it about changes in UI components.
+    // So, if there happen N changes of UI components in a row, the AppKit thread may have N nested CFRunLoops.
+    // If N is too high (>= ~700), the application will crash.
+    // In JBR-7659 the problem is observed with UI tree expansion/collapsing events, but AFAIU in general it may happen
+    //   with any kind of UI change events.
+    // As for now we're covering only those 2 kinds of events to make sure if the solution is effective enough.
+    // The proposed solution is to make sure there is not more than one event of each kind in the AppKit queue
+    //   for the same UI component (i.e. for the same CAccessible).
+
+    /** Is a way to disable the fix */
+    private static final boolean EVENTS_COALESCING_ENABLED;
+
+    /**
+     * The variables indicate whether there's an "event" posted by
+     *   {@link #treeNodeExpanded}/{@link #treeNodeCollapsed(long)} onto the AppKit thread, but not processed by it yet.
+     */
+    private final AtomicBoolean isProcessingTreeNodeExpandedEvent = new AtomicBoolean(false),
+                                isProcessingTreeNodeCollapsedEvent = new AtomicBoolean(false);
+    /**
+     * The variables indicate whether there was an attempt to post another
+     *   {@link #treeNodeExpanded}/{@link #treeNodeCollapsed(long)} while there was already one
+     *   on the AppKit thread (no matter if it's still in the queue or is being processed).
+     * It's necessary to make sure there won't be unobserved changes of the component.
+     */
+    private final AtomicBoolean hasDelayedTreeNodeExpandedEvent = new AtomicBoolean(false),
+                                hasDelayedTreeNodeCollapsedEvent = new AtomicBoolean(false);
+
+    private void postCoalescedTreeNodeExpanded() {
+        postCoalescedEventImpl(
+            isProcessingTreeNodeExpandedEvent,
+            hasDelayedTreeNodeExpandedEvent,
+            this::treeNodeExpanded,
+            this
+        );
+    }
+
+    private void postCoalescedTreeNodeCollapsed() {
+        postCoalescedEventImpl(
+            isProcessingTreeNodeCollapsedEvent,
+            hasDelayedTreeNodeCollapsedEvent,
+            this::treeNodeCollapsed,
+            this
+        );
+    }
+
+    private static void postCoalescedEventImpl(
+        final AtomicBoolean isProcessingEventFlag,
+        final AtomicBoolean hasDelayedEventFlag,
+        final CFNativeAction eventPostingAction,
+        // a reference to this is passed instead of making the method non-static to make sure the implementation
+        //   doesn't accidentally touch anything of the instance by mistake
+        final CAccessible self
+    ) {
+        if (!EVENTS_COALESCING_ENABLED) {
+            self.execute(eventPostingAction);
+            return;
+        }
+
+        assert EventQueue.isDispatchThread();
+
+        final var result = self.executeGet(ptr -> {
+            if (isProcessingEventFlag.compareAndSet(false, true)) {
+                hasDelayedEventFlag.set(false);
+
+                try {
+                    eventPostingAction.run(ptr);
+                } catch (Exception err) {
+                    isProcessingEventFlag.set(false);
+                    throw err;
+                }
+            } else {
+                hasDelayedEventFlag.set(true);
+            }
+            return 1;
+        });
+
+        if (result != 1) {
+            // the routine hasn't been executed because there was no native resource (i.e. {@link #ptr} was 0)
+            isProcessingEventFlag.set(false);
+            hasDelayedEventFlag.set(false);
+        }
+    }
+
+    // Called from native
+    private void onProcessedTreeNodeExpandedEvent() {
+        onProcessedEventImpl(
+            isProcessingTreeNodeExpandedEvent,
+            hasDelayedTreeNodeExpandedEvent,
+            this::postCoalescedTreeNodeExpanded
+        );
+    }
+
+    // Called from native
+    private void onProcessedTreeNodeCollapsedEvent() {
+        onProcessedEventImpl(
+            isProcessingTreeNodeCollapsedEvent,
+            hasDelayedTreeNodeCollapsedEvent,
+            this::postCoalescedTreeNodeCollapsed
+        );
+    }
+
+    private static void onProcessedEventImpl(
+        final AtomicBoolean isProcessingEventFlag,
+        final AtomicBoolean hasDelayedEventFlag,
+        final Runnable postingCoalescedEventRoutine
+    ) {
+        if (!EVENTS_COALESCING_ENABLED) {
+            return;
+        }
+
+        isProcessingEventFlag.set(false);
+
+        if (hasDelayedEventFlag.compareAndSet(true, false)) {
+            // We shouldn't call postCoalesced<...> synchronously from here to allow the current CFRunLoop
+            //   to finish, thus reducing the current number of nested CFRunLoop s.
+            EventQueue.invokeLater(postingCoalescedEventRoutine);
+        }
+    }
+
+    // =============================================== END of JBR-7659 ================================================
+
 
     private final class AXChangeNotifier implements PropertyChangeListener {
 
@@ -189,9 +323,17 @@ final class CAccessible extends CFRetainedResource implements Accessible {
                     }
 
                     if (newValue == AccessibleState.EXPANDED) {
-                        execute(ptr -> treeNodeExpanded(ptr));
+                        if (EVENTS_COALESCING_ENABLED) {
+                            postCoalescedTreeNodeExpanded();
+                        } else {
+                            execute(ptr -> treeNodeExpanded(ptr));
+                        }
                     } else if (newValue == AccessibleState.COLLAPSED) {
-                        execute(ptr -> treeNodeCollapsed(ptr));
+                        if (EVENTS_COALESCING_ENABLED) {
+                            postCoalescedTreeNodeCollapsed();
+                        } else {
+                            execute(ptr -> treeNodeCollapsed(ptr));
+                        }
                     }
 
                     if (thisRole == AccessibleRole.COMBO_BOX) {
