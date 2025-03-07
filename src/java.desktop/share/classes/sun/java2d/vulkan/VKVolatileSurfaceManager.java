@@ -29,17 +29,16 @@ package sun.java2d.vulkan;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.SurfaceData;
-
-import java.awt.GraphicsConfiguration;
-import java.awt.Transparency;
-import java.awt.image.ColorModel;
 import sun.java2d.pipe.hw.AccelSurface;
 
-public class WLVKVolatileSurfaceManager extends VolatileSurfaceManager {
+import java.awt.*;
+import java.awt.image.ColorModel;
+
+public class VKVolatileSurfaceManager extends VolatileSurfaceManager {
 
     private final boolean accelerationEnabled;
 
-    public WLVKVolatileSurfaceManager(SunVolatileImage vImg, Object context) {
+    public VKVolatileSurfaceManager(SunVolatileImage vImg, Object context) {
         super(vImg, context);
 
         /*
@@ -62,8 +61,7 @@ public class WLVKVolatileSurfaceManager extends VolatileSurfaceManager {
      */
     protected SurfaceData initAcceleratedSurface() {
         try {
-            WLVKGraphicsConfig gc =
-                    (WLVKGraphicsConfig)vImg.getGraphicsConfig();
+            VKGraphicsConfig gc = (VKGraphicsConfig) vImg.getGraphicsConfig();
             ColorModel cm = gc.getColorModel(vImg.getTransparency());
             int type = vImg.getForcedAccelSurfaceType();
             // if acceleration type is forced (type != UNDEFINED) then
@@ -71,16 +69,31 @@ public class WLVKVolatileSurfaceManager extends VolatileSurfaceManager {
             if (type == AccelSurface.UNDEFINED) {
                 type = AccelSurface.RT_TEXTURE;
             }
-            return new VKOffScreenSurfaceData(
-                    gc, vImg, cm, type, vImg.getWidth(), vImg.getHeight());
+            VKOffScreenSurfaceData sd = new VKOffScreenSurfaceData(vImg, cm, type, vImg.getWidth(), vImg.getHeight());
+            sd.setDevice(gc.getVKDevice());
+            sd.configure();
+            return sd;
         } catch (NullPointerException | OutOfMemoryError ignored) {
             return null;
         }
     }
 
     @Override
+    public int validate(GraphicsConfiguration gc) {
+        if (gc != null && sdAccel != null && isAccelerationEnabled() && isConfigValid(gc)) {
+            VKSurfaceData vksd = (VKSurfaceData) sdAccel;
+            if (vksd.setDevice(((VKGraphicsConfig) gc).getVKDevice())) {
+                vksd.setSurfaceLost(true);
+                vksd.configure();
+            }
+        }
+        return super.validate(gc);
+    }
+
+    @Override
     protected boolean isConfigValid(GraphicsConfiguration gc) {
-        return ((gc == null) || (gc == vImg.getGraphicsConfig()));
+        // We consider configs with the same format compatible across Vulkan devices.
+        return gc == null || (true/*TODO validate configuration format*/);
     }
 
     @Override

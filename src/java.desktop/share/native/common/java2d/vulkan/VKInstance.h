@@ -45,9 +45,8 @@ typedef struct {
 } VKFunctionTableGlobal;
 
 struct VKInstance {
-    VkInstance              handle;
-    ARRAY(VKDevice)         devices;
-    VKDevice*               currentDevice;
+    VkInstance      handle;
+    ARRAY(VKDevice) devices;
 
     VKComposites composites;
 

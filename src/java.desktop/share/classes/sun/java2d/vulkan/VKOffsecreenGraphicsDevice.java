@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright 2025 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,27 +23,35 @@
  * questions.
  */
 
-#ifndef VKDevice_h_Included
-#define VKDevice_h_Included
-#include "VKTexturePool.h"
-#include "VKUtil.h"
+package sun.java2d.vulkan;
 
-struct VKDevice {
-    VkDevice             handle;
-    VkPhysicalDevice     physicalDevice;
-    char*                name;
-    VkPhysicalDeviceType type;
-    uint32_t             queueFamily;
-    ARRAY(pchar)         enabledLayers;
-    ARRAY(pchar)         enabledExtensions;
-    VkQueue              queue;
+import java.awt.*;
 
-    VKAllocator*     allocator;
-    VKRenderer*      renderer;
-    VKTexturePool*   texturePool;
+public class VKOffsecreenGraphicsDevice extends GraphicsDevice {
 
-#define DEVICE_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
-#include "VKFunctionTable.inl"
-};
+    private final VKGraphicsConfig config;
 
-#endif //VKDevice_h_Included
+    VKOffsecreenGraphicsDevice(VKGraphicsConfig config) {
+        this.config = config;
+    }
+
+    @Override
+    public int getType() {
+        return GraphicsDevice.TYPE_IMAGE_BUFFER;
+    }
+
+    @Override
+    public String getIDstring() {
+        return "VKOffscreenGraphicsDevice";
+    }
+
+    @Override
+    public GraphicsConfiguration[] getConfigurations() {
+        return new GraphicsConfiguration[]{ getDefaultConfiguration() };
+    }
+
+    @Override
+    public GraphicsConfiguration getDefaultConfiguration() {
+        return (GraphicsConfiguration) config;
+    }
+}

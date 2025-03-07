@@ -49,9 +49,8 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
 
     private native void assignWlSurface(long surfacePtr);
 
-    public WLVKWindowSurfaceData(WLComponentPeer peer)
-    {
-        super((VKGraphicsConfig) peer.getGraphicsConfiguration(), peer.getColorModel(), WINDOW, 0, 0);
+    public WLVKWindowSurfaceData(WLComponentPeer peer) {
+        super(peer.getColorModel(), WINDOW);
         this.peer = peer;
         final int backgroundRGB = peer.getBackground() != null
                 ? peer.getBackground().getRGB()
@@ -92,11 +91,6 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
     }
 
     @Override
-    public BufferedContext getContext() {
-        return ((WLVKGraphicsConfig) getDeviceConfiguration()).getContext();
-    }
-
-    @Override
     public boolean isOnScreen() {
         return true;
     }
@@ -113,6 +107,12 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
         this.height = height;
         this.scale = scale;
         configure();
+    }
+
+    @Override
+    protected void configure() {
+        setDevice(((VKGraphicsConfig) getDeviceConfiguration()).getVKDevice());
+        super.configure();
     }
 
     @Override

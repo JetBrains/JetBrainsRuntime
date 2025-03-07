@@ -26,7 +26,8 @@
 
 package sun.java2d.vulkan;
 
-import java.awt.AlphaComposite;
+import java.awt.*;
+
 import sun.awt.SunHints;
 import sun.awt.image.PixelConverter;
 import sun.java2d.SunGraphics2D;
@@ -35,13 +36,10 @@ import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.loops.SurfaceType;
 import static sun.java2d.pipe.BufferedOpCodes.CONFIGURE_SURFACE;
-import sun.java2d.pipe.ParallelogramPipe;
-import sun.java2d.pipe.PixelToParallelogramConverter;
-import sun.java2d.pipe.RenderBuffer;
-import sun.java2d.pipe.TextPipe;
+
+import sun.java2d.pipe.*;
 import sun.java2d.pipe.hw.AccelSurface;
-import java.awt.GraphicsEnvironment;
-import java.awt.Rectangle;
+
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
@@ -113,12 +111,12 @@ public abstract class VKSurfaceData extends SurfaceData
         }
     }
 
+    protected VKDevice device;
     // TODO Do we really want to have scale there? It is used by getDefaultScaleX/Y...
     protected int scale;
     protected int width;
     protected int height;
     protected int type;
-    private VKGraphicsConfig graphicsConfig;
     // these fields are set from the native code when the surface is
     // initialized
     private int nativeWidth;
@@ -139,20 +137,13 @@ public abstract class VKSurfaceData extends SurfaceData
         }
     }
 
-    protected VKSurfaceData(VKGraphicsConfig gc, ColorModel cm, int type, int width, int height)
-    {
+    protected VKSurfaceData(ColorModel cm, int type) {
         super(getCustomSurfaceType(type), cm);
-        this.graphicsConfig = gc;
         this.type = type;
-        setBlitProxyCache(gc.getSurfaceDataProxyCache());
 
         // TEXTURE shouldn't be scaled, it is used for managed BufferedImages.
         scale = 1;
-        this.width = width * scale;
-        this.height = height * scale;
     }
-
-
 
     /**
      * Returns one of the surface type constants defined above.
@@ -199,7 +190,7 @@ public abstract class VKSurfaceData extends SurfaceData
         TextPipe textpipe;
         boolean validated = false;
 
-        // MTLTextRenderer handles both AA and non-AA text, but
+        // VKTextRenderer handles both AA and non-AA text, but
         // only works with the following modes:
         // (Note: For LCD text we only enter this code path if
         // canRenderLCDText() has already validated that the mode is
@@ -247,7 +238,7 @@ public abstract class VKSurfaceData extends SurfaceData
             }
         } else {
             if (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR) {
-                if (graphicsConfig.isCapPresent(CAPS_PS30) &&
+                if (getGraphicsConfig().isCapPresent(CAPS_PS30) &&
                         (sg2d.imageComp == CompositeType.SrcOverNoEa ||
                                 sg2d.imageComp == CompositeType.SrcOver))
                 {
@@ -300,18 +291,28 @@ public abstract class VKSurfaceData extends SurfaceData
         sg2d.imagepipe = vkImagePipe;
     }
 
+    // TODO this is only used for caps checks, refactor and remove this method
     public VKGraphicsConfig getGraphicsConfig() {
-        return graphicsConfig;
+        return (VKGraphicsConfig) getDeviceConfiguration();
     }
 
-    protected synchronized void configure() {
+    protected boolean setDevice(VKDevice device) {
+        if (this.device == device) return false;
+        // TODO proxy cache needs to be cleared for this surface data?
+        setBlitProxyCache(device.getSurfaceDataProxyCache());
+        this.device = device;
+        return true;
+    }
+
+    protected void configure() {
         VKRenderQueue rq = VKRenderQueue.getInstance();
         rq.lock();
         try {
             RenderBuffer buf = rq.getBuffer();
-            rq.ensureCapacityAndAlignment(20, 4);
+            rq.ensureCapacityAndAlignment(24, 4);
             buf.putInt(CONFIGURE_SURFACE);
             buf.putLong(getNativeOps());
+            buf.putLong(device.getNativeHandle());
             buf.putInt(width);
             buf.putInt(height);
 
@@ -319,6 +320,11 @@ public abstract class VKSurfaceData extends SurfaceData
         } finally {
             rq.unlock();
         }
+    }
+
+    @Override
+    public BufferedContext getContext() {
+        return VKContext.INSTANCE;
     }
 
     public abstract boolean isOnScreen();
