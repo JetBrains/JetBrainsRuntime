@@ -204,7 +204,7 @@ InstanceKlass* Dictionary::find_class(Thread* current, Symbol* class_name) {
   bool needs_rehashing = false;
   _table->get(current, lookup, get, &needs_rehashing);
   assert (!needs_rehashing, "should never need rehashing");
-  return result;
+  return old_if_redefining(result);
 }
 
 class UpdateKlassDcevm : public StackObj {
