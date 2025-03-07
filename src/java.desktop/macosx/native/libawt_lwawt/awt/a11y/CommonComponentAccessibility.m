@@ -1322,20 +1322,55 @@ static jobject sAccessibilityClass = NULL;
 
 @end
 
+
+static void treeNodeExpandedCollapsedImpl(
+    JNIEnv * const env,
+    const jobject cAccessible,
+    const jlong ccAxJavaPtr,
+    // @selector(postTreeNodeExpanded) or @selector(postTreeNodeCollapsed)
+    const SEL ccAxSelector,
+    // "onProcessedTreeNodeExpandedEvent" or "onProcessedTreeNodeCollapsedEvent"
+    const char* const cAccessibleCompletionUpcallName
+) {
+    assert((ccAxSelector != NULL));
+    assert((cAccessibleCompletionUpcallName != NULL));
+
+    JNI_COCOA_ENTER(env);
+        const jobject cAccessibleGlobal = (*env)->NewGlobalRef(env, cAccessible);
+
+        if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+            if (cAccessibleGlobal != NULL) {
+                (*env)->DeleteGlobalRef(env, cAccessibleGlobal);
+            }
+            return;
+        }
+
+        const id ccAx = (CommonComponentAccessibility *)jlong_to_ptr(ccAxJavaPtr);
+
+        [ThreadUtilities performOnMainThreadWaiting:NO block:^{
+            [ccAx performSelector:ccAxSelector];
+
+            JNIEnv * const env = [ThreadUtilities getJNIEnv];
+            if ( (env != NULL) && (cAccessibleGlobal != NULL) ) {
+                (void)JNU_CallMethodByName(env, NULL, cAccessibleGlobal, cAccessibleCompletionUpcallName, "()V");
+
+                (*env)->DeleteGlobalRef(env, cAccessibleGlobal);
+
+                CHECK_EXCEPTION();
+            }
+        }];
+    JNI_COCOA_EXIT(env);
+}
+
 /*
  * Class:     sun_lwawt_macosx_CAccessible
  * Method:    treeNodeExpanded
  * Signature: (J)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_treeNodeExpanded
-  (JNIEnv *env, jclass jklass, jlong element)
+  (JNIEnv *env, jobject self, jlong element)
 {
-    JNI_COCOA_ENTER(env);
-        [ThreadUtilities performOnMainThread:@selector(postTreeNodeExpanded)
-                         on:(CommonComponentAccessibility *)jlong_to_ptr(element)
-                         withObject:nil
-                         waitUntilDone:NO];
-    JNI_COCOA_EXIT(env);
+    treeNodeExpandedCollapsedImpl(env, self, element, @selector(postTreeNodeExpanded), "onProcessedTreeNodeExpandedEvent");
 }
 
 /*
@@ -1344,14 +1379,9 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_treeNodeExpanded
  * Signature: (J)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CAccessible_treeNodeCollapsed
-  (JNIEnv *env, jclass jklass, jlong element)
+  (JNIEnv *env, jobject self, jlong element)
 {
-    JNI_COCOA_ENTER(env);
-        [ThreadUtilities performOnMainThread:@selector(postTreeNodeCollapsed)
-                         on:(CommonComponentAccessibility *)jlong_to_ptr(element)
-                         withObject:nil
-                         waitUntilDone:NO];
-    JNI_COCOA_EXIT(env);
+    treeNodeExpandedCollapsedImpl(env, self, element, @selector(postTreeNodeCollapsed), "onProcessedTreeNodeCollapsedEvent");
 }
 
 /*
