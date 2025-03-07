@@ -352,29 +352,34 @@ void ClassLoaderDataGraph::verify_dictionary() {
   }
 }
 
-#define FOR_ALL_DICTIONARY(X)   ClassLoaderDataGraphIterator iter; \
-                                while (ClassLoaderData* X = iter.get_next()) \
-                                  if (X->dictionary() != nullptr)
-
 // (DCEVM) - iterate over dict classes
 void ClassLoaderDataGraph::dictionary_classes_do(KlassClosure* klass_closure) {
-  FOR_ALL_DICTIONARY(cld) {
-    cld->dictionary()->classes_do(klass_closure);
+  ClassLoaderDataGraphIterator iter;
+  while (ClassLoaderData* cld = iter.get_next()) {
+    if (cld->dictionary() != nullptr) {
+      cld->dictionary()->classes_do(klass_closure);
+    }
   }
 }
 
 // (DCEVM) rollback redefined classes
 void ClassLoaderDataGraph::rollback_redefinition() {
-  FOR_ALL_DICTIONARY(cld) {
-    cld->dictionary()->rollback_redefinition();
+  ClassLoaderDataGraphIterator iter;
+  while (ClassLoaderData* cld = iter.get_next()) {
+    if (cld->dictionary() != nullptr) {
+      cld->dictionary()->rollback_redefinition();
+    }
   }
 }
 
 // (DCEVM) - iterate over all classes in all dictionaries
 bool ClassLoaderDataGraph::dictionary_classes_do_update_klass(Thread* current, Symbol* name, InstanceKlass* k, InstanceKlass* old_klass) {
   bool ok = false;
-  FOR_ALL_DICTIONARY(cld) {
-    ok = cld->dictionary()->update_klass(current, name, k, old_klass) || ok;
+  ClassLoaderDataGraphIterator iter;
+  while (ClassLoaderData* cld = iter.get_next()) {
+    if (cld->dictionary() != nullptr) {
+      ok = cld->dictionary()->update_klass(current, name, k, old_klass) || ok;
+    }
   }
   return ok;
 }
