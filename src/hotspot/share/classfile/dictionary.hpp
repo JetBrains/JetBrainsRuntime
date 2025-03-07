@@ -80,6 +80,11 @@ public:
   bool update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass);
 
   void rollback_redefinition();
+private:
+  // (DCEVM) return old class if redefining in AllowEnhancedClassRedefinition, otherwise return "k"
+  static InstanceKlass* old_if_redefining(InstanceKlass* k) {
+    return (k != nullptr && k->is_redefining()) ? ((InstanceKlass* )k->old_version()) : k;
+  }
 };
 
 #endif // SHARE_CLASSFILE_DICTIONARY_HPP
