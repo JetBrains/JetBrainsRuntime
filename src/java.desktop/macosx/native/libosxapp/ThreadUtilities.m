@@ -87,6 +87,7 @@ static const BOOL enableTracingNSLog = YES && enableTracingLog;
 static const BOOL enableCallStacks = YES;
 
 /* Traceability data */
+static const int TRACE_BLOCKING_FLAGS = 0;
 static const BOOL TRACE_PWM = NO;
 static const BOOL TRACE_PWM_EVENTS = NO;
 static const BOOL TRACE_CLOCKS = NO;
@@ -170,6 +171,9 @@ static BOOL isEventDispatchThread() {
 // The [blockingEventDispatchThread] property is readonly, so we implement a private setter
 static void setBlockingEventDispatchThread(BOOL value) {
     assert([NSThread isMainThread]);
+    if ((TRACE_BLOCKING_FLAGS & 1) != 0) {
+        NSLog(@"setBlockingEventDispatchThread(%s)", value ? "YES" : "NO");
+    }
     _blockingEventDispatchThread = value;
 }
 
@@ -179,6 +183,10 @@ static void setBlockingEventDispatchThread(BOOL value) {
 }
 
 + (void)setBlockingMainThread:(BOOL)value {
+    assert([NSThread isMainThread]);
+    if ((TRACE_BLOCKING_FLAGS & 2) != 0) {
+        NSLog(@"setBlockingMainThread(%s)", value ? "YES" : "NO");
+    }
     _blockingMainThread = value;
 }
 

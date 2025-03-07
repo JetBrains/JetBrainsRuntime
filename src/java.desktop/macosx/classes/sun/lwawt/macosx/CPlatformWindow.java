@@ -1281,8 +1281,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         //                          System-dependent appearance optimization.
         //                          May be blocking so postpone this event processing:
 
-        // TODO: disable
-        final boolean checkLWCToolkitBlockingMainGuard = true;
+        final boolean checkLWCToolkitBlockingMainGuard = false;
 
         if (!checkLWCToolkitBlockingMainGuard && LWCToolkit.isBlockingMainThread()) {
             logger.info("Blocked main thread, skip flushBuffers().");
@@ -1423,8 +1422,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                                         boolean byUser) {
 
         /* Test only to generate more appkit freezes */
-        // TODO: disable
-        final boolean bypassToHaveMoreFreezes = true;
+        final boolean bypassToHaveMoreFreezes = false;
 
         AtomicBoolean ref = new AtomicBoolean();
         execute(ptr -> {
