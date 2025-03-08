@@ -156,46 +156,87 @@ class CAccessible extends CFRetainedResource implements Accessible {
                                 hasDelayedTreeNodeCollapsedEvent = new AtomicBoolean(false);
 
     private void cachedPostTreeNodeExpanded() {
-        assert EventQueue.isDispatchThread();
-
-        if (isProcessingTreeNodeExpandedEvent.compareAndSet(false, true)) {
-            hasDelayedTreeNodeExpandedEvent.set(false);
-            execute(this::treeNodeExpanded);
-        } else {
-            hasDelayedTreeNodeExpandedEvent.set(true);
-        }
+        cachedPostEventImpl(
+            isProcessingTreeNodeExpandedEvent,
+            hasDelayedTreeNodeExpandedEvent,
+            this::treeNodeExpanded,
+            this
+        );
     }
 
     private void cachedPostTreeNodeCollapsed() {
+        cachedPostEventImpl(
+            isProcessingTreeNodeCollapsedEvent,
+            hasDelayedTreeNodeCollapsedEvent,
+            this::treeNodeCollapsed,
+            this
+        );
+    }
+
+    private static void cachedPostEventImpl(
+        final AtomicBoolean isProcessingEventFlag,
+        final AtomicBoolean hasDelayedEventFlag,
+        final CFNativeAction postingRoutine,
+        // a reference to this is passed instead of making the method non-static to make sure the implementation
+        //   doesn't accidentally touch anything of the instance by mistake
+        final CAccessible self
+    ) {
+        // TODO: a way to disable the caching logic
+
         assert EventQueue.isDispatchThread();
 
-        if (isProcessingTreeNodeCollapsedEvent.compareAndSet(false, true)) {
-            hasDelayedTreeNodeCollapsedEvent.set(false);
-            execute(this::treeNodeCollapsed);
-        } else {
-            hasDelayedTreeNodeCollapsedEvent.set(true);
+        final var result = self.executeGet(ptr -> {
+            if (isProcessingEventFlag.compareAndSet(false, true)) {
+                hasDelayedEventFlag.set(false);
+
+                try {
+                    postingRoutine.run(ptr);
+                } catch (Exception err) {
+                    isProcessingEventFlag.set(false);
+                    throw err;
+                }
+            }
+            return 1;
+        });
+
+        if (result != 1) {
+            // the routine hasn't been executed because there was no native resource (i.e. {@link #ptr} was 0)
+            isProcessingEventFlag.set(false);
+            hasDelayedEventFlag.set(false);
         }
     }
 
     // Called from native
     private void onProcessedTreeNodeExpandedEvent() {
-        isProcessingTreeNodeExpandedEvent.set(false);
-
-        if (hasDelayedTreeNodeExpandedEvent.compareAndSet(true, false)) {
-            // We shouldn't call cachedPostTreeNodeExpanded synchronously from here to allow the current CFRunLoop
-            //   to finish, thus reducing the current number of nested CFRunLoop s.
-            EventQueue.invokeLater(this::cachedPostTreeNodeExpanded);
-        }
+        onProcessedEventImpl(
+            isProcessingTreeNodeExpandedEvent,
+            hasDelayedTreeNodeExpandedEvent,
+            this::cachedPostTreeNodeExpanded
+        );
     }
 
     // Called from native
     private void onProcessedTreeNodeCollapsedEvent() {
-        isProcessingTreeNodeCollapsedEvent.set(false);
+        onProcessedEventImpl(
+            isProcessingTreeNodeCollapsedEvent,
+            hasDelayedTreeNodeCollapsedEvent,
+            this::cachedPostTreeNodeCollapsed
+        );
+    }
 
-        if (hasDelayedTreeNodeCollapsedEvent.compareAndSet(true, false)) {
-            // We shouldn't call cachedPostTreeNodeCollapsed synchronously from here to allow the current CFRunLoop
+    private static void onProcessedEventImpl(
+        final AtomicBoolean isProcessingEventFlag,
+        final AtomicBoolean hasDelayedEventFlag,
+        final Runnable cachedPostingRoutine
+    ) {
+        // TODO: a way to disable the caching logic
+
+        isProcessingEventFlag.set(false);
+
+        if (hasDelayedEventFlag.compareAndSet(true, false)) {
+            // We shouldn't call cachedPost<...> synchronously from here to allow the current CFRunLoop
             //   to finish, thus reducing the current number of nested CFRunLoop s.
-            EventQueue.invokeLater(this::cachedPostTreeNodeCollapsed);
+            EventQueue.invokeLater(cachedPostingRoutine);
         }
     }
 
