@@ -1198,7 +1198,7 @@ public:
   }
 
   static void initialize_lock_Type() {
-    assert(_lock_type_Type == nullptr, "should be called once");
+    assert(AllowEnhancedClassRedefinition || _lock_type_Type == nullptr, "should be called once");
     // create input type (domain)
     const Type **fields = TypeTuple::fields(3);
     fields[TypeFunc::Parms+0] = TypeInstPtr::NOTNULL;  // Object to be Locked
