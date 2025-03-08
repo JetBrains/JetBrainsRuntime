@@ -139,13 +139,13 @@ size_t G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::apply(oop object) 
   size_t forward_size = size;
 
   // (DCEVM) There is a new version of the class of q => different size
-  if (object->klass()->new_version() != NULL) {
+  if (object->klass()->new_version() != nullptr) {
     forward_size = object->size_given_klass(object->klass()->new_version());
   }
 
   HeapWord* compact_top = _cp->forward_compact_top(forward_size);
 
-  if (compact_top == NULL || must_rescue(object, cast_to_oop(compact_top))) {
+  if (compact_top == nullptr || must_rescue(object, cast_to_oop(compact_top))) {
     _cp->rescued_oops()->append(cast_from_oop<HeapWord*>(object));
   } else {
     _cp->forward_dcevm(object, forward_size, (size != forward_size));
@@ -156,7 +156,7 @@ size_t G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::apply(oop object) 
 
 bool G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::must_rescue(oop old_obj, oop new_obj) {
   // Only redefined objects can have the need to be rescued.
-  if (old_obj->klass()->new_version() == NULL) {
+  if (old_obj->klass()->new_version() == nullptr) {
     return false;
   }
 
