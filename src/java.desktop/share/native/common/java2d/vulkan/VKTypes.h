@@ -42,8 +42,8 @@ typedef union {
  * [ 1 ]   [   0    0    1   ] [ 1 ]   [         1         ]
  */
 typedef struct {
-    double m00, m01, m02;
-    double m10, m11, m12;
+    float m00, m01, m02;
+    float m10 __attribute__((aligned(16))), m11, m12;
 } VKTransform;
 
 VK_DEFINE_NON_DISPATCHABLE_HANDLE(VKMemory);
