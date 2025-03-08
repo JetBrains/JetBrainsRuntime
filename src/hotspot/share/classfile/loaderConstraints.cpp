@@ -224,7 +224,7 @@ void LoaderConstraintTable::update_after_redefinition() {
     int len = set.num_constraints();
     for (int i = 0; i < len; i++) {
       LoaderConstraint* probe = set.constraint_at(i);
-      if (probe->klass() != NULL) {
+      if (probe->klass() != nullptr) {
         // We swap the class with the newest version with an assumption that the hash will be the same
         probe->set_klass((InstanceKlass*) probe->klass()->newest_version());
       }

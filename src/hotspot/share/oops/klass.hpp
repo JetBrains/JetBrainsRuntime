@@ -418,9 +418,9 @@ protected:
 
   // Advanced class redefinition
   Klass* old_version() const             { return _old_version; }
-  void set_old_version(Klass* klass)     { assert(_old_version == NULL || klass == NULL, "Old version can only be set once!"); _old_version = klass; }
+  void set_old_version(Klass* klass)     { assert(_old_version == nullptr || klass == nullptr, "Old version can only be set once!"); _old_version = klass; }
   Klass* new_version() const             { return _new_version; }
-  void set_new_version(Klass* klass)     { assert(_new_version == NULL || klass == NULL, "New version can only be set once!"); _new_version = klass; }
+  void set_new_version(Klass* klass)     { assert(_new_version == nullptr || klass == nullptr, "New version can only be set once!"); _new_version = klass; }
   bool is_redefining() const             { return _is_redefining; }
   void set_redefining(bool b)            { _is_redefining = b; }
   int redefinition_flags() const         { return _redefinition_flags; }
@@ -429,11 +429,11 @@ protected:
   void set_redefinition_flag(int flag)   { _redefinition_flags |= flag; }
   void set_redefinition_flags(int flags) { _redefinition_flags = flags; }
 
-  const Klass* newest_version() const    { return _new_version == NULL ? this : _new_version->newest_version(); }
-        Klass* newest_version()          { return _new_version == NULL ? this : _new_version->newest_version(); }
+  const Klass* newest_version() const    { return _new_version == nullptr ? this : _new_version->newest_version(); }
+        Klass* newest_version()          { return _new_version == nullptr ? this : _new_version->newest_version(); }
 
-  const Klass* active_version() const   { return _new_version == NULL || _new_version->is_redefining() ? this : _new_version->active_version(); }
-        Klass* active_version()         { return _new_version == NULL || _new_version->is_redefining() ? this : _new_version->active_version(); }
+  const Klass* active_version() const   { return _new_version == nullptr || _new_version->is_redefining() ? this : _new_version->active_version(); }
+        Klass* active_version()         { return _new_version == nullptr || _new_version->is_redefining() ? this : _new_version->active_version(); }
 
   // update information
   int *update_information() const        { return _update_information; }
