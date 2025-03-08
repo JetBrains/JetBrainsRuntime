@@ -1,7 +1,7 @@
 #version 450
 
 layout(push_constant) uniform PushConstants {
-    vec2 viewportNormalizer; // 2.0 / viewport
+    mat2x3 transform;
 } push;
 
 layout(location = 0) in ivec4 in_PositionOffsetAndScanline;
@@ -14,7 +14,7 @@ layout(location = 0) out flat ivec4 out_OriginOffsetAndScanline;
 layout(location = 1) out flat  vec4 out_Color;
 
 void main() {
-    gl_Position = vec4(vec2(in_PositionOffsetAndScanline.xy) * push.viewportNormalizer - vec2(1.0), 0.0, 1.0);
+    gl_Position = vec4(vec3(in_PositionOffsetAndScanline.xy, 1)*push.transform, 0.0, 1.0);
     out_OriginOffsetAndScanline = in_PositionOffsetAndScanline;
     out_Color = in_Color;
 }
