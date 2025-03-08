@@ -337,7 +337,7 @@ Klass* SystemDictionary::resolve_or_fail(Symbol* class_name, Handle class_loader
   if (HAS_PENDING_EXCEPTION || klass == nullptr) {
     handle_resolution_exception(class_name, throw_error, CHECK_NULL);
   }
-  assert(klass == NULL || klass->new_version() == NULL || klass->newest_version()->is_redefining(), "must be");
+  assert(klass == nullptr || klass->new_version() == nullptr || klass->newest_version()->is_redefining(), "must be");
   return klass;
 }
 
@@ -792,7 +792,7 @@ InstanceKlass* SystemDictionary::resolve_hidden_class_from_stream(
   EventClassLoad class_load_start_event;
   ClassLoaderData* loader_data;
 
-  bool is_redefining = (old_klass != NULL);
+  bool is_redefining = (old_klass != nullptr);
 
   // - for hidden classes that are not strong: create a new CLD that has a class holder and
   //                                           whose loader is the Lookup class's loader.
@@ -810,7 +810,7 @@ InstanceKlass* SystemDictionary::resolve_hidden_class_from_stream(
                                                       cl_info,
                                                       is_redefining, // pick_newest
                                                       CHECK_NULL);
-  assert(k != NULL, "no klass created");
+  assert(k != nullptr, "no klass created");
   if (is_redefining && k != nullptr) {
     k->set_redefining(true);
     k->set_old_version(old_klass);
@@ -855,7 +855,7 @@ InstanceKlass* SystemDictionary::resolve_class_from_stream(
 
   HandleMark hm(THREAD);
 
-  bool is_redefining = (old_klass != NULL);
+  bool is_redefining = (old_klass != nullptr);
   ClassLoaderData* loader_data = register_loader(class_loader);
 
   // Classloaders that support parallelism, e.g. bootstrap classloader,

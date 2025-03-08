@@ -277,11 +277,11 @@ void G1FullGCCompactionPoint::forward_rescued() {
     size_t size = cast_to_oop(q)->size();
 
     // (DCEVM) There is a new version of the class of q => different size
-    if (cast_to_oop(q)->klass()->new_version() != NULL) {
+    if (cast_to_oop(q)->klass()->new_version() != nullptr) {
       // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
       size = cast_to_oop(q)->size_given_klass(cast_to_oop(q)->klass()->new_version());
     }
-    if (forward_compact_top(size) == NULL) {
+    if (forward_compact_top(size) == nullptr) {
       break;
     }
     forward_dcevm(cast_to_oop(q), size, true);
