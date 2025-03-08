@@ -398,7 +398,6 @@ class Arguments : AllStatic {
 
   static size_t conservative_max_heap_alignment() { return _conservative_max_heap_alignment; }
 
-
   // Initialize HotswapAgent
   static void setup_hotswap_agent();
 
