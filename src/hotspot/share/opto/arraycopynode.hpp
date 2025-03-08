@@ -74,7 +74,7 @@ public:
   }
 
   static void initialize_arraycopy_Type() {
-    assert(_arraycopy_type_Type == nullptr, "should be");
+    assert(AllowEnhancedClassRedefinition || _arraycopy_type_Type == nullptr, "should be");
     const Type** fields = TypeTuple::fields(ParmLimit - TypeFunc::Parms);
     fields[Src]       = TypeInstPtr::BOTTOM;
     fields[SrcPos]    = TypeInt::INT;
