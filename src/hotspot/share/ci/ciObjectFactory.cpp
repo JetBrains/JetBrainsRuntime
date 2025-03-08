@@ -78,7 +78,7 @@ volatile bool             ciObjectFactory::_initialized = false;
 volatile bool             ciObjectFactory::_reinitialize_vm_klasses = false;
 
 // TODO: review...
-Arena* ciObjectFactory::_initial_arena = NULL;
+Arena* ciObjectFactory::_initial_arena = nullptr;
 
 // ------------------------------------------------------------------
 // ciObjectFactory::ciObjectFactory
@@ -762,12 +762,12 @@ int ciObjectFactory::compare_cimetadata(ciMetadata** a, ciMetadata** b) {
 
 // FIXME: review... Resoring the ciObject arrays after class redefinition
 void ciObjectFactory::resort_shared_ci_metadata() {
-  if (_shared_ci_metadata == NULL) return;
+  if (_shared_ci_metadata == nullptr) return;
   _shared_ci_metadata->sort(ciObjectFactory::compare_cimetadata);
 
 #ifdef ASSERT
   if (CIObjectFactoryVerify) {
-    Metadata* last = NULL;
+    Metadata* last = nullptr;
     for (int j = 0; j< _shared_ci_metadata->length(); j++) {
       Metadata* o = _shared_ci_metadata->at(j)->constant_encoding();
       assert(last < o, "out of order");
