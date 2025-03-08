@@ -168,13 +168,13 @@ static jvmtiError JNICALL GetCarrierThread(const jvmtiEnv* env, ...) {
 
 // extension function
 static jvmtiError JNICALL IsEnhancedClassRedefinitionEnabled(const jvmtiEnv* env, ...) {
-  jboolean* enabled = NULL;
+  jboolean* enabled = nullptr;
   va_list ap;
 
   va_start(ap, env);
   enabled = va_arg(ap, jboolean *);
   va_end(ap);
-  if (enabled == NULL) {
+  if (enabled == nullptr) {
     return JVMTI_ERROR_NULL_POINTER;
   }
   *enabled = (jboolean)AllowEnhancedClassRedefinition;
@@ -292,7 +292,7 @@ void JvmtiExtensions::register_extensions() {
     sizeof(func_params_enh_redef)/sizeof(func_params_enh_redef[0]),
     func_params_enh_redef,
     0,              // no non-universal errors
-    NULL
+    nullptr
   };
   _ext_functions->append(&ext_func_enh_redef);
 }
