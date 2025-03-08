@@ -731,16 +731,16 @@ void Klass::remove_from_sibling_list() {
 
   // remove ourselves to superklass' subklass list
   InstanceKlass* super = superklass();
-  if (super == NULL) return;        // special case: class Object
+  if (super == nullptr) return;        // special case: class Object
   if (super->subklass() == this) {
     // this klass is the first subklass
     super->set_subklass(next_sibling());
   } else {
     Klass* sib = super->subklass();
-    assert(sib != NULL, "cannot find this class in sibling list!");
+    assert(sib != nullptr, "cannot find this class in sibling list!");
     while (sib->next_sibling() != this) {
       sib = sib->next_sibling();
-      assert(sib != NULL, "cannot find this class in sibling list!");
+      assert(sib != nullptr, "cannot find this class in sibling list!");
     }
     sib->set_next_sibling(next_sibling());
   }
