@@ -40,13 +40,19 @@
 
 # gtest
 
+gtest/ArrayTests.java#no-coops-no-ccp JBR-4027 generic-all
+gtest/ArrayTests.java#no-coops-with-ccp JBR-4027 generic-all
+gtest/ArrayTests.java#with-coops-no-ccp JBR-4027 generic-all
+gtest/ArrayTests.java#with-coops-with-ccp JBR-4027 generic-all
 gtest/AsyncLogGtest.java JBR-4027 generic-all
+gtest/CompressedKlassGtest.java#ccp_off JBR-4027 generic-all
+gtest/CompressedKlassGtest.java#use-zero-based-encoding JBR-4027 generic-all
+gtest/CompressedKlassGtest.java#use-zero-based-encoding-coh JBR-4027 generic-all
+gtest/CompressedKlassGtest.java#use-zero-based-encoding-coh-large-class-space JBR-4027 generic-all
+gtest/GTestWrapper.java JBR-4027 generic-all
 gtest/LockStackGtests.java JBR-4027 generic-all
 gtest/LargePageGtests.java#use-large-pages-sysV initial_run linux-all
 gtest/LargePageGtests.java#use-large-pages-1G initial_run linux-all
-gtest/MetaspaceGtests.java#reclaim-none-ndebug initial_run generic-all
-gtest/GTestWrapper.java initial_run generic-all
-gtest/MetaspaceUtilsGtests.java initial_run generic-all
 gtest/MetaspaceGtests.java#balanced-no-ccs JBR-4027 generic-all
 gtest/MetaspaceGtests.java#balanced-with-guards JBR-4027 generic-all
 gtest/MetaspaceGtests.java#default-debug JBR-4027 generic-all
@@ -54,8 +60,21 @@ gtest/MetaspaceGtests.java#no-ccs JBR-4027 generic-all
 gtest/MetaspaceGtests.java#reclaim-aggressive-debug JBR-4027 generic-all
 gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug JBR-4027 generic-all
 gtest/MetaspaceGtests.java#reclaim-none-debug JBR-4027 generic-all
+gtest/MetaspaceGtests.java#reclaim-none-ndebug JBR-4027 generic-all
 gtest/MetaspaceGtests.java#UseCompactObjectHeaders JBR-4027 generic-all
+gtest/MetaspaceUtilsGtests.java JBR-4027 generic-all
+gtest/ObjArrayTests.java#no-coops-no-ccp JBR-4027 generic-all
+gtest/ObjArrayTests.java#no-coops-no-ccp-large-align JBR-4027 generic-all
+gtest/ObjArrayTests.java#no-coops-with-ccp JBR-4027 generic-all
+gtest/ObjArrayTests.java#no-coops-with-ccp-large-align JBR-4027 generic-all
+gtest/ObjArrayTests.java#with-coops-no-ccp JBR-4027 generic-all
+gtest/ObjArrayTests.java#with-coops-no-ccp-large-align JBR-4027 generic-all
+gtest/ObjArrayTests.java#with-coops-with-ccp JBR-4027 generic-all
+gtest/ObjArrayTests.java#with-coops-with-ccp-large-align JBR-4027 generic-all
 gtest/LargePageGtests.java#use-large-pages JBR-4027 linux-all,windows-all
+gtest/LargePageGtests.java#use-large-pages-sysV JBR-4027 linux-all
+gtest/LargePageGtests.java#use-large-pages-1G JBR-4027 linux-all
+gtest/LockStackGtests.java JBR-4027 generic-all
 
 gtest/NativeHeapTrimmerGtest.java JBR-4027 generic-all
 gtest/NMTGtests.java#nmt-detail JBR-4027 generic-all
@@ -142,11 +161,13 @@ gc/TestAlwaysPreTouchBehavior.java#Z 8334513 generic-all
 gc/TestAlwaysPreTouchBehavior.java#Epsilon 8334513 generic-all
 gc/stress/gclocker/TestExcessGCLockerCollections.java 8229120 generic-all
 gc/shenandoah/oom/TestAllocOutOfMemory.java#large 8344312 linux-ppc64le
+gc/shenandoah/TestEvilSyncBug.java#generational 8345501 generic-all
 
 #############################################################################
 
 # :hotspot_runtime
 
+runtime/jni/daemonDestroy/TestDaemonDestroy.java JBR-6261 windows-all
 runtime/jni/terminatedThread/TestTerminatedThread.java 8317789 aix-ppc64
 runtime/cds/CheckDefaultArchiveFile.java JBR-4227 generic-all
 runtime/handshake/HandshakeSuspendExitTest.java 8318631 generic-all
@@ -157,11 +178,13 @@ runtime/os/TestTracePageSizes.java#compiler-options 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#G1 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#Parallel 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#Serial 8267460 linux-aarch64
-runtime/ErrorHandling/CreateCoredumpOnCrash.java 8267433 macosx-x64
+runtime/os/windows/TestAvailableProcessors.java JBR-8182 windows-all
+runtime/ErrorHandling/CreateCoredumpOnCrash.java 8267433,JBR-7917 macosx-x64,macosx-all
 runtime/StackGuardPages/TestStackGuardPages.java 8303612 linux-all 8293452
 runtime/StackGuardPages/TestStackGuardPagesNative.java 8303612 linux-all
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315 linux-ppc64le
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315,JBR-6289 linux-ppc64le,windows-aarch64
+runtime/NMT/CheckForProperDetailStackTrace.java 8347002 linux-all
 runtime/NMT/VirtualAllocCommitMerge.java 8309698 linux-s390x
 
 applications/jcstress/copy.java 8229852 linux-all
@@ -188,6 +211,8 @@ containers/docker/TestMemoryAwareness.java 8303470 linux-all
 containers/docker/TestJFREvents.java 8327723 linux-x64
 containers/docker/TestJcmdWithSideCar.java 8341518 linux-x64
 
+sources/TestNoNULL.java JBR-8419 generic-all
+
 #############################################################################
 
 # :hotspot_serviceability
@@ -196,6 +221,7 @@ serviceability/sa/sadebugd/DebugdConnectTest.java 8239062,8270326 macosx-x64,mac
 serviceability/sa/TestRevPtrsForInvokeDynamic.java 8241235 generic-all
 
 serviceability/jvmti/ModuleAwareAgents/ThreadStart/MAAThreadStart.java 8225354 windows-all
+serviceability/jvmti/events/MonitorWaited/monitorwaited01/monitorwaited01.java JBR-8420 windows-all
 serviceability/jvmti/vthread/GetThreadStateMountedTest/GetThreadStateMountedTest.java 8318090,8318729 generic-all
 serviceability/jvmti/vthread/GetSetLocalTest/GetSetLocalTest.java 8286836 generic-all
 serviceability/jvmti/RedefineClasses/RedefineSharedClassJFR.java JBR-6245 generic-all
