@@ -132,10 +132,12 @@ java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 
 java/awt/Focus/InactiveFocusRace.java 8023263 linux-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
+java/awt/Focus/LabelScrollBarFocus.java JBR-8027 linux-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 8169110 linux-all
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java JBR-5178 windows-all
 java/awt/Focus/VetoableChangeListenerLoopTest.java JBR-5785 linux-all
 java/awt/Frame/7024749/bug7024749.java JBR-5210 windows-all
+java/awt/Frame/8158918/SetExtendedState.java JBR-6408 linux-all
 java/awt/Frame/DisposeTest.java JBR-7937 macosx-aarch64
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MaximizeUndecoratedTest.java JBR-8064 linux-all
@@ -268,6 +270,7 @@ java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java JBR-4997,JBR-5729 w
 java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-5210,8298247 windows-all,linux-all
 java/awt/Focus/8073453/SwingFocusTransitionTest.java JBR-5210 windows-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java JBR-5210 windows-all
+java/awt/event/KeyEvent/AltGraphModifier.java JBR-6085 windows-all
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all
 java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055,JBR-93 windows-all,linux-all
 java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916 linux-all
@@ -393,6 +396,7 @@ java/awt/Checkbox/CheckboxCheckerScalingTest.java JBR-8023 linux-all
 java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java JBR-5799 windows-all
 java/awt/Choice/ChoiceFocusLostTest.java JBR-5799 windows-x64
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java 6849371,JBR-5210 macosx-all,linux-all,windows-all
+java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857 macosx-all
 java/awt/Component/ComponentLeakTest/ComponentLeakTest.java JBR-7911 windows-all
 java/awt/Component/F10TopToplevel/F10TopToplevel.java JBR-5687 linux-all
 java/awt/Component/GetScreenLocTest/GetScreenLocTest.java 4753654 generic-all
@@ -970,6 +974,7 @@ javax/swing/JButton/4659800/SpaceKeyActivatesButton.java JBR-4949 linux-all,wind
 javax/swing/JButton/8151303/PressedIconTest.java JBR-5210,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JButton/PressedButtonRightClickTest.java JBR-5210 windows-all
 javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7965 windows-all
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id1 JBR-7965 windows-all
 javax/swing/JColorChooser/Test6524757.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6827032.java JBR-5210 windows-all
 javax/swing/JComboBox/4743225/bug4743225.java JBR-5210 windows-all
@@ -1019,8 +1024,8 @@ javax/swing/JRadioButton/8033699/bug8033699.java 8197552 windows-all
 javax/swing/JRadioButton/8075609/bug8075609.java 8197552,8266085,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java 8197552,8266085 windows-all
 javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java 8266085 windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,JBR-6481 linux-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582 linux-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,JBR-6481 linux-all,windows-all,macosx-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6360 linux-all,windows-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128,8253184,JBR-5510,JBR-6515 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java 8013450,8253184 macosx-all,windows-all
@@ -1098,6 +1103,7 @@ javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8253184,JBR
 javax/swing/plaf/synth/7158712/bug7158712.java 8322653 macosx-all
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8253184,JBR-5510,JBR-803 windows-all,linux-5.18.2-arch1-1,linux-all
 javax/swing/plaf/synth/SynthScrollbarThumbPainter/SynthScrollbarThumbPainterTest.java 8253184 windows-all
+javax/swing/plaf/synth/Test6660049.java JBR-8397 windows-x64
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java  JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JInternalFrame/8020708/bug8020708.java JBR-4879,JBR-6512 windows-all,linux-all
@@ -1242,6 +1248,7 @@ java/awt/TextField/OverScrollTest/OverScrollTest.java 8253184 windows-all
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter.java 8254841 macosx-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289 windows-all
 java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java JBR-6052 macosx-all,linux-all
+java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335 linux-all
 java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java 8258103,8253184 linux-all,windows-all
 java/awt/List/HandlingKeyEventIfMousePressedTest.java 6848358 macosx-all,windows-all
 
