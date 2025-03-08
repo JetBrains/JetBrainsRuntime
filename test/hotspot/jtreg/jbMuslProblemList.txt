@@ -3,6 +3,7 @@
 # :hotspot_runtime
 
 runtime/8176717/TestInheritFD.java JBR-6974 linux-all
+runtime/ErrorHandling/CreateCoredumpOnCrash.java JBR-7917 linux-all
 
 #############################################################################
 
