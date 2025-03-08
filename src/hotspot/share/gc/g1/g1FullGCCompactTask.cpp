@@ -223,22 +223,22 @@ size_t G1FullGCCompactTask::G1CompactRegionClosureDcevm::apply(oop obj) {
       return size;
     }
 
-    if (obj->klass()->new_version() != NULL) {
+    if (obj->klass()->new_version() != nullptr) {
       Klass *new_version = obj->klass()->new_version();
-      if (new_version->update_information() == NULL) {
+      if (new_version->update_information() == nullptr) {
         Copy::aligned_conjoint_words(obj_addr, destination, size);
         cast_to_oop(destination)->set_klass(new_version);
       } else {
         DcevmSharedGC::update_fields(obj, cast_to_oop(destination));
       }
       cast_to_oop(destination)->init_mark();
-      assert(cast_to_oop(destination)->klass() != NULL, "should have a class");
+      assert(cast_to_oop(destination)->klass() != nullptr, "should have a class");
       return size;
     }
 
     Copy::aligned_conjoint_words(obj_addr, destination, size);
     cast_to_oop(destination)->init_mark();
-    assert(cast_to_oop(destination)->klass() != NULL, "should have a class");
+    assert(cast_to_oop(destination)->klass() != nullptr, "should have a class");
   }
   clear_in_bitmap(obj);
   return size;
