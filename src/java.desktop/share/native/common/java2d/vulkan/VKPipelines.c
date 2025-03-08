@@ -373,7 +373,7 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
     VkPushConstantRange pushConstantRange = {
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
             .offset = 0,
-            .size = sizeof(float) * 2
+            .size = sizeof(VKTransform)
     };
     VkPipelineLayoutCreateInfo createInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
