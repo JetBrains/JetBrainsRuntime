@@ -1073,7 +1073,7 @@ bool InstanceKlass::link_class_impl(TRAPS) {
       } else {
         set_init_state(linked);
       }
-      if (JvmtiExport::should_post_class_prepare() && (!AllowEnhancedClassRedefinition || old_version() == NULL /* JVMTI deadlock otherwise */)) {
+      if (JvmtiExport::should_post_class_prepare() && (!AllowEnhancedClassRedefinition || old_version() == nullptr /* JVMTI deadlock otherwise */)) {
         JvmtiExport::post_class_prepare(THREAD, this);
       }
     }
@@ -1220,7 +1220,7 @@ void InstanceKlass::initialize_impl(TRAPS) {
     // we might end up throwing IE from link/symbol resolution sites
     // that aren't expected to throw.  This would wreak havoc.  See 6320309.
     while ((is_being_initialized() && !is_reentrant_initialization(jt))
-           || (AllowEnhancedClassRedefinition && old_version() != NULL && InstanceKlass::cast(old_version())->is_being_initialized())) {
+           || (AllowEnhancedClassRedefinition && old_version() != nullptr && InstanceKlass::cast(old_version())->is_being_initialized())) {
       if (debug_logging_enabled) {
         ResourceMark rm(jt);
         log_debug(class, init)("Thread \"%s\" waiting for initialization of %s by thread \"%s\"",
@@ -1512,9 +1512,9 @@ void InstanceKlass::init_implementor() {
 void InstanceKlass::init_implementor_from_redefine() {
   assert(is_interface(), "not interface");
   InstanceKlass* volatile* addr = adr_implementor();
-  assert(addr != NULL, "null addr");
-  if (addr != NULL) {
-    *addr = NULL;
+  assert(addr != nullptr, "null addr");
+  if (addr != nullptr) {
+    *addr = nullptr;
   }
 }
 
@@ -1948,7 +1948,7 @@ void InstanceKlass::store_update_information(GrowableArray<int> &values) {
 
 void InstanceKlass::clear_update_information() {
   FREE_C_HEAP_ARRAY(int, update_information());
-  set_update_information(NULL);
+  set_update_information(nullptr);
 }
 
 
@@ -2636,10 +2636,10 @@ bool InstanceKlass::update_jmethod_id(Method* method, jmethodID newMethodID) {
   size_t idnum = (size_t)method->method_idnum();
   jmethodID* jmeths = methods_jmethod_ids_acquire();
   size_t length;                                // length assigned as debugging crumb
-  jmethodID id = NULL;
-  if (jmeths != NULL &&                         // If there is a cache
+  jmethodID id = nullptr;
+  if (jmeths != nullptr &&                         // If there is a cache
       (length = (size_t)jmeths[0]) > idnum) {   // and if it is long enough,
-    jmeths[idnum+1] = newMethodID;              // Set method id (may be NULL)
+    jmeths[idnum+1] = newMethodID;              // Set method id (may be nullptr)
     return true;
   }
   return false;
