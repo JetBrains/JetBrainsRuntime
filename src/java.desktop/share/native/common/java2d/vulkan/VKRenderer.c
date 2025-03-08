@@ -738,15 +738,18 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     };
     device->vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
     // Calculate inverse viewport for vertex shader.
-    viewport.width = 2.0f / viewport.width;
-    viewport.height = 2.0f / viewport.height;
+    VKTransform transform = {
+        2.0f/viewport.width,0.0f, -1.0f,
+        0.0f,2.0f/viewport.height, -1.0f
+    };
+
     device->vkCmdPushConstants(
             commandBuffer,
             renderer->pipelineContext->colorPipelineLayout, // TODO what if our pipeline layout differs?
             VK_SHADER_STAGE_VERTEX_BIT,
             0,
-            sizeof(float) * 2,
-            &viewport.width
+            sizeof(VKTransform),
+            &transform
     );
 
     surface->renderPass->pendingCommands = VK_TRUE;
