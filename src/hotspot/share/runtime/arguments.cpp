@@ -3755,7 +3755,7 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
 
 #if INCLUDE_JFR
   if (FlightRecorder) {
-    if (AllowEnhancedClassRedefinition || StartFlightRecording != NULL) {
+    if (AllowEnhancedClassRedefinition || StartFlightRecording != nullptr) {
       warning("EnhancedClassRedefinition was disabled, it is not allowed in FlightRecorder.");
       AllowEnhancedClassRedefinition = false;
     }
@@ -4151,7 +4151,7 @@ void Arguments::setup_hotswap_agent() {
   if (CDSConfig::is_dumping_heap())
     return;
 
-  if (HotswapAgent == NULL || strcmp(HotswapAgent, "disabled") == 0)
+  if (HotswapAgent == nullptr || strcmp(HotswapAgent, "disabled") == 0)
     return;
 
   // Force AllowEnhancedClassRedefinition if HA is enabled
@@ -4168,7 +4168,7 @@ void Arguments::setup_hotswap_agent() {
     os::jvm_path(ext_path_str, sizeof(ext_path_str));
     for (int i = 0; i < 3; i++) {
       char *end = strrchr(ext_path_str, *os::file_separator());
-      if (end != NULL) *end = '\0';
+      if (end != nullptr) *end = '\0';
     }
     size_t ext_path_length = strlen(ext_path_str);
     if (ext_path_length >= 3) {
