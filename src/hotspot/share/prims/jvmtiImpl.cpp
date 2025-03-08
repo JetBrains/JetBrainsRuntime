@@ -130,7 +130,7 @@ void JvmtiBreakpoint::each_method_version_do(method_action meth_act) {
 
   // (DCEVM) Go through old versions of method
   if (AllowEnhancedClassRedefinition) {
-    for (Method* m = _method->old_version(); m != NULL; m = m->old_version()) {
+    for (Method* m = _method->old_version(); m != nullptr; m = m->old_version()) {
       (m->*meth_act)(_bci);
     }
   }
