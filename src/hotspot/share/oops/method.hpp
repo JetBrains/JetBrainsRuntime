@@ -149,20 +149,20 @@ class Method : public Metadata {
 
   Method* new_version() const                    { return _new_version; }
   void set_new_version(Method* m)                { _new_version = m; }
-  Method* newest_version()                       { return (_new_version == NULL) ? this : _new_version->newest_version(); }
+  Method* newest_version()                       { return (_new_version == nullptr) ? this : _new_version->newest_version(); }
 
   Method* old_version() const                    { return _old_version; }
   void set_old_version(Method* m) {
-    /*if (m == NULL) {
-      _old_version = NULL;
+    /*if (m == nullptr) {
+      _old_version = nullptr;
       return;
     }*/
 
-    assert(_old_version == NULL, "may only be set once");
+    assert(_old_version == nullptr, "may only be set once");
     assert(this->code_size() == m->code_size(), "must have same code length");
     _old_version = m;
   }
-  const Method* oldest_version() const           { return (_old_version == NULL) ? this : _old_version->oldest_version(); }
+  const Method* oldest_version() const           { return (_old_version == nullptr) ? this : _old_version->oldest_version(); }
 
   // signature
   Symbol* signature() const                      { return constants()->symbol_at(signature_index()); }
