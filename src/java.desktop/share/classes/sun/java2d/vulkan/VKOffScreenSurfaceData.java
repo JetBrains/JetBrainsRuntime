@@ -25,36 +25,29 @@
 
 package sun.java2d.vulkan;
 
-import java.awt.GraphicsConfiguration;
 import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.image.ColorModel;
 import sun.java2d.SurfaceData;
-import sun.java2d.pipe.BufferedContext;
 
 /**
  * SurfaceData object representing an off-screen buffer
  */
 public class VKOffScreenSurfaceData extends VKSurfaceData {
     private final Image offscreenImage;
-    private native void initOps(int width, int height);
+    private native void initOps();
 
-    public VKOffScreenSurfaceData(VKGraphicsConfig gc, Image image, ColorModel cm,
-                                  int type, int width, int height)
-    {
-        super(gc, cm, type, width, height);
+    public VKOffScreenSurfaceData(Image image, ColorModel cm, int type, int width, int height) {
+        super(cm, type);
+        this.width = width;
+        this.height = height;
         offscreenImage = image;
-        initOps(width, height);
+        initOps();
     }
 
     @Override
     public SurfaceData getReplacement() {
         return restoreContents(offscreenImage);
-    }
-
-    @Override
-    public GraphicsConfiguration getDeviceConfiguration() {
-        return null;
     }
 
     @Override
@@ -76,10 +69,9 @@ public class VKOffScreenSurfaceData extends VKSurfaceData {
     }
 
     @Override
-    public BufferedContext getContext() {
-        return getGraphicsConfig().getContext();
+    protected int revalidate(VKGraphicsConfig gc) {
+        return super.revalidate(gc.getOffscreenConfig());
     }
-
 
     @Override
     public boolean isOnScreen() {
