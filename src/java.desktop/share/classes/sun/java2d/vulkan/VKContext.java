@@ -31,6 +31,8 @@ import sun.java2d.pipe.RenderQueue;
 import sun.java2d.pipe.hw.ContextCapabilities;
 import sun.util.logging.PlatformLogger;
 
+import java.awt.BufferCapabilities;
+import java.awt.ImageCapabilities;
 import java.lang.annotation.Native;
 
 /**
@@ -40,6 +42,8 @@ import java.lang.annotation.Native;
 final class VKContext extends BufferedContext {
     private static final PlatformLogger log =
             PlatformLogger.getLogger("sun.java2d.vulkan.VKContext");
+
+    public static final VKContext INSTANCE = new VKContext(VKRenderQueue.getInstance());
 
     public VKContext(RenderQueue rq) {
         super(rq);
@@ -72,6 +76,26 @@ final class VKContext extends BufferedContext {
          */
         @Native
         static final int CAPS_EXT_GRAD_SHADER  = (FIRST_PRIVATE_CAP << 3);
+
+        public static final VKContextCaps CONTEXT_CAPS = new VKContextCaps(
+                CAPS_PS30 | CAPS_PS20 | CAPS_RT_TEXTURE_ALPHA |
+                CAPS_RT_TEXTURE_OPAQUE | CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 |
+                CAPS_TEXNONSQUARE, null);
+
+        public static final ImageCapabilities IMAGE_CAPS = new ImageCapabilities(true) {
+            @Override
+            public boolean isTrueVolatile() {
+                return true;
+            }
+        };
+
+        public static final BufferCapabilities BUFFER_CAPS = new BufferCapabilities(IMAGE_CAPS, IMAGE_CAPS,
+                BufferCapabilities.FlipContents.COPIED) {
+            @Override
+            public boolean isMultiBufferAvailable() {
+                return true;
+            }
+        };
 
         public VKContextCaps(int caps, String adapterId) {
             super(caps, adapterId);
