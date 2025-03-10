@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright 2025 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,32 +25,26 @@
 
 package sun.java2d.vulkan;
 
-
 import java.awt.BufferCapabilities;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
 import java.awt.ImageCapabilities;
+import java.awt.Rectangle;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 
-import sun.awt.wl.WLComponentPeer;
-import sun.awt.wl.WLGraphicsConfig;
-import sun.awt.wl.WLGraphicsDevice;
-import sun.java2d.SurfaceData;
-import sun.java2d.loops.SurfaceType;
-import sun.util.logging.PlatformLogger;
-
-public final class WLVKGraphicsConfig extends WLGraphicsConfig
-        implements VKGraphicsConfig {
-    private static final PlatformLogger log =
-            PlatformLogger.getLogger("sun.java2d.vulkan.WLVKGraphicsConfig");
-
+public class VKOffscreenGraphicsConfig extends GraphicsConfiguration implements VKGraphicsConfig {
+    private final VKOffsecreenGraphicsDevice graphicsDevice = new VKOffsecreenGraphicsDevice(this);
     private final VKGPU gpu;
 
-    public WLVKGraphicsConfig(VKGPU gpu, WLGraphicsDevice device,
-                              int x, int y, int xLogical, int yLogical,
-                              int width, int height, int widthLogical, int heightLogical,
-                              int scale) {
-        super(device, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale);
+    VKOffscreenGraphicsConfig(VKGPU gpu) {
         this.gpu = gpu;
+    }
+
+    @Override
+    public GraphicsDevice getDevice() {
+        return graphicsDevice;
     }
 
     @Override
@@ -59,11 +52,19 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
         return gpu;
     }
 
-    public static WLVKGraphicsConfig getConfig(VKGPU vkDevice, WLGraphicsDevice device,
-                                               int x, int y, int xLogical, int yLogical,
-                                               int width, int height, int widthLogical, int heightLogical,
-                                               int scale) {
-        return new WLVKGraphicsConfig(vkDevice, device, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale);
+    @Override
+    public AffineTransform getDefaultTransform() {
+        return new AffineTransform();
+    }
+
+    @Override
+    public AffineTransform getNormalizingTransform() {
+        return new AffineTransform();
+    }
+
+    @Override
+    public Rectangle getBounds() {
+        return new Rectangle(0, 0, Integer.MAX_VALUE, Integer.MAX_VALUE);
     }
 
     @Override
@@ -93,19 +94,5 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
     @Override
     public boolean isTranslucencyCapable() {
         return VKGraphicsConfig.super.isTranslucencyCapable();
-    }
-
-    @Override
-    public String toString() {
-        return ("VKGraphicsConfig[" + getDevice().getIDstring() + "] " + super.toString());
-    }
-
-    @Override
-    public SurfaceData createSurfaceData(WLComponentPeer peer) {
-        return new WLVKWindowSurfaceData(peer);
-    }
-
-    public SurfaceType getSurfaceType() {
-        return SurfaceType.IntArgb;
     }
 }
