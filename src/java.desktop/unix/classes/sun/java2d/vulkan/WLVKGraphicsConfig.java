@@ -32,7 +32,6 @@ import java.awt.ImageCapabilities;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 
-import sun.awt.image.SurfaceManager;
 import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLGraphicsConfig;
 import sun.awt.wl.WLGraphicsDevice;
@@ -45,27 +44,26 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
     private static final PlatformLogger log =
             PlatformLogger.getLogger("sun.java2d.vulkan.WLVKGraphicsConfig");
 
-    // TODO this is wrong caching level!
-    //      on which level should we cache surface data proxies? Single cache per GPU?
-    private final SurfaceManager.ProxyCache surfaceDataProxyCache = new SurfaceManager.ProxyCache();
+    private final VKGPU gpu;
 
-    public WLVKGraphicsConfig(WLGraphicsDevice device,
+    public WLVKGraphicsConfig(VKGPU gpu, WLGraphicsDevice device,
                               int x, int y, int xLogical, int yLogical,
                               int width, int height, int widthLogical, int heightLogical,
                               int scale) {
         super(device, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale);
+        this.gpu = gpu;
     }
 
     @Override
-    public SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
-        return surfaceDataProxyCache;
+    public VKGPU getGPU() {
+        return gpu;
     }
 
-    public static WLVKGraphicsConfig getConfig(WLGraphicsDevice device,
+    public static WLVKGraphicsConfig getConfig(VKGPU vkDevice, WLGraphicsDevice device,
                                                int x, int y, int xLogical, int yLogical,
                                                int width, int height, int widthLogical, int heightLogical,
                                                int scale) {
-        return new WLVKGraphicsConfig(device, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale);
+        return new WLVKGraphicsConfig(vkDevice, device, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale);
     }
 
     @Override
