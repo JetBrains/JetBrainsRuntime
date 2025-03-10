@@ -22,7 +22,7 @@
  */
 
 import sun.java2d.vulkan.VKGraphicsConfig;
-import sun.java2d.vulkan.VKInstance;
+import sun.java2d.vulkan.VKEnv;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -82,10 +82,10 @@ public class VulkanGCCompatibilityTest {
             System.out.println("No WLToolkit, skipping test");
             return;
         }
-        if (!VKInstance.isVulkanEnabled()) {
+        if (!VKEnv.isVulkanEnabled()) {
             throw new Error("Vulkan not enabled");
         }
-        if (!VKInstance.isSurfaceDataAccelerated()) {
+        if (!VKEnv.isSurfaceDataAccelerated()) {
             throw new Error("Accelerated surface data not enabled");
         }
 
@@ -105,7 +105,7 @@ public class VulkanGCCompatibilityTest {
         }
         if (configA == null) {
             System.out.println("No suitable configs found, skipping test. Configs: " + configs.length +
-                               ", devices: " + VKInstance.getDevices().count());
+                               ", devices: " + VKEnv.getDevices().count());
             return;
         }
 
