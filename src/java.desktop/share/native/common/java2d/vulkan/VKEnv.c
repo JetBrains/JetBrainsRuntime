@@ -358,10 +358,10 @@ VKEnv* VKEnv_GetInstance() {
 /*
  * Class:     sun_java2d_vulkan_VKEnv
  * Method:    initNative
- * Signature: (JI)[Lsun/java2d/vulkan/VKDevice;
+ * Signature: (J)[Lsun/java2d/vulkan/VKDevice;
  */
 JNIEXPORT jobjectArray JNICALL
-Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv *env, jclass wlge, jlong nativePtr, jint requestedDevice) {
+Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv *env, jclass wlge, jlong nativePtr) {
 #ifdef DEBUG
     // Init random for debug-related validation tricks.
     srand(nativePtr);
@@ -392,7 +392,6 @@ Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv *env, jclass wlge, jlong nativePt
         return NULL;
     }
 
-    vk->currentDevice = &vk->devices[requestedDevice];
     instance = vk;
     return deviceArray;
 }
