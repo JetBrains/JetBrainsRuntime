@@ -73,8 +73,9 @@ static void VKSD_FindImageSurfaceMemoryType(VKMemoryRequirements* requirements) 
 }
 
 VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
-    // Initialize the device. currentDevice can be changed on the fly, and we must reconfigure surfaces accordingly.
-    VKDevice* device = VKEnv_GetInstance()->currentDevice;
+    // Initialize the device. current device can be changed on the fly, and we must reconfigure surfaces accordingly.
+    VKDevice* device = vksdo->requestedDevice;
+    if (device == NULL) return VK_FALSE;
     if (device != vksdo->device) {
         VKSD_ResetImageSurface(vksdo);
         vksdo->device = device;
@@ -262,7 +263,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
             .compositeAlpha = compositeAlpha,
             .presentMode = presentMode,
             .clipped = VK_TRUE,
-            .oldSwapchain = vkwinsdo->swapchain
+            .oldSwapchain = vkwinsdo->swapchainDevice == device ? vkwinsdo->swapchain : NULL
     };
 
     VK_IF_ERROR(device->vkCreateSwapchainKHR(device->handle, &createInfoKhr, NULL, &swapchain)) {
@@ -275,7 +276,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     if (vkwinsdo->swapchain != VK_NULL_HANDLE) {
         // Destroy old swapchain.
         // TODO is it possible that old swapchain is still being presented, can we destroy it right now?
-        device->vkDestroySwapchainKHR(device->handle, vkwinsdo->swapchain, NULL);
+        device->vkDestroySwapchainKHR(vkwinsdo->swapchainDevice->handle, vkwinsdo->swapchain, NULL);
         J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): old swapchain destroyed", vkwinsdo);
     }
     vkwinsdo->swapchain = swapchain;
@@ -297,10 +298,9 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
 /*
  * Class:     sun_java2d_vulkan_VKOffScreenSurfaceData
  * Method:    initOps
- * Signature: (II)V
+ * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps
-        (JNIEnv *env, jobject vksd, jint width, jint height) {
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps(JNIEnv *env, jobject vksd) {
     VKSDOps * sd = (VKSDOps*)SurfaceData_InitOps(env, vksd, sizeof(VKSDOps));
     J2dTraceLn(J2D_TRACE_VERBOSE, "VKOffScreenSurfaceData_initOps(%p)", sd);
     if (sd == NULL) {
@@ -310,7 +310,6 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps
     sd->drawableType = VKSD_RT_TEXTURE;
     sd->background = VKUtil_DecodeJavaColor(0);
     VKSD_ResetSurface(sd);
-    VKRenderer_ConfigureSurface(sd, (VkExtent2D){width, height});
 }
 
 #endif /* !HEADLESS */
