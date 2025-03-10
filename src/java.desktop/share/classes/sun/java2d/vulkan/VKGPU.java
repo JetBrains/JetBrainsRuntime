@@ -38,6 +38,7 @@ public class VKGPU {
     private final long nativeHandle;
     private final String name;
     private final Type type;
+    private final VKOffscreenGraphicsConfig offscreenGraphicsConfig;
 
     private static native void init(long nativeHandle);
     private static native void reset(long nativeHandle);
@@ -51,11 +52,13 @@ public class VKGPU {
         this.nativeHandle = nativeHandle;
         this.name = name;
         this.type = Type.VALUES[type];
+        offscreenGraphicsConfig = new VKOffscreenGraphicsConfig(this);
     }
 
     public SurfaceManager.ProxyCache getSurfaceDataProxyCache() { return surfaceDataProxyCache; }
     public String getName() { return name; }
     public Type getType() { return type; }
+    public VKOffscreenGraphicsConfig getOffscreenGraphicsConfig() { return offscreenGraphicsConfig; }
 
     /**
      * Initialize the device and return its native handle.
