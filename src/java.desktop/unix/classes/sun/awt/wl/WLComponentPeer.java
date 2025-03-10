@@ -400,7 +400,7 @@ public class WLComponentPeer implements ComponentPeer {
     void updateSurfaceData() {
         resetCornerMasks();
         SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
-                getBufferWidth(), getBufferHeight(), getDisplayScale());
+                getGraphicsConfiguration(), getBufferWidth(), getBufferHeight(), getDisplayScale());
     }
 
     public void updateSurfaceSize() {
@@ -1063,9 +1063,9 @@ public class WLComponentPeer implements ComponentPeer {
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
                     log.fine(String.format("%s is updating buffer to %dx%d pixels", this, getBufferWidth(), getBufferHeight()));
                 }
-                updateSurfaceData();
-                postPaintEvent();
             }
+            updateSurfaceData();
+            postPaintEvent();
         }
 
         // Not sure what would need to have changed in Wayland's graphics configuration
