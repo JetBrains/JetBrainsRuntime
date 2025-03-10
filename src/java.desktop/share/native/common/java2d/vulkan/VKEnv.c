@@ -332,32 +332,48 @@ static VkBool32 VKEnv_FindDevices(VKEnv* vk) {
     return JNI_TRUE;
 }
 
+static jobjectArray createJavaGPUs(JNIEnv *env, VKEnv* vk) {
+    jclass deviceClass = (*env)->FindClass(env, "sun/java2d/vulkan/VKGPU");
+    if (deviceClass == NULL) return NULL;
+    jmethodID deviceConstructor = (*env)->GetMethodID(env, deviceClass, "<init>", "(JLjava/lang/String;I)V");
+    if (deviceConstructor == NULL) return NULL;
+    jobjectArray deviceArray = (*env)->NewObjectArray(env, ARRAY_SIZE(vk->devices), deviceClass, NULL);
+    if (deviceArray == NULL) return NULL;
+    for (uint32_t i = 0; i < ARRAY_SIZE(vk->devices); i++) {
+        jstring name = JNU_NewStringPlatform(env, vk->devices[i].name);
+        if (name == NULL) return NULL;
+        jobject device = (*env)->NewObject(env, deviceClass, deviceConstructor,
+                                           ptr_to_jlong(&vk->devices[i]), name, vk->devices[i].type);
+        if (device == NULL) return NULL;
+        (*env)->SetObjectArrayElement(env, deviceArray, i, device);
+    }
+    return deviceArray;
+}
+
 static VKEnv* instance = NULL;
 VKEnv* VKEnv_GetInstance() {
     return instance;
 }
 
-VkBool32 VKDevice_Init(JNIEnv *env, VKDevice* device);
-
 /*
  * Class:     sun_java2d_vulkan_VKEnv
  * Method:    initNative
- * Signature: (JZI)Z
+ * Signature: (JI)[Lsun/java2d/vulkan/VKDevice;
  */
-JNIEXPORT jboolean JNICALL
-Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv *env, jclass wlge, jlong nativePtr, jboolean verb, jint requestedDevice) {
+JNIEXPORT jobjectArray JNICALL
+Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv *env, jclass wlge, jlong nativePtr, jint requestedDevice) {
 #ifdef DEBUG
     // Init random for debug-related validation tricks.
     srand(nativePtr);
 #endif
 
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = vulkanLibOpen();
-    if (vkGetInstanceProcAddr == NULL) return JNI_FALSE;
+    if (vkGetInstanceProcAddr == NULL) return NULL;
 
     VKEnv* vk = VKEnv_Create(vkGetInstanceProcAddr);
     if (vk == NULL) {
         vulkanLibClose();
-        return JNI_FALSE;
+        return NULL;
     }
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
     vk->waylandDisplay = (struct wl_display*) jlong_to_ptr(nativePtr);
@@ -366,16 +382,19 @@ Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv *env, jclass wlge, jlong nativePt
     if (!VKEnv_FindDevices(vk)) {
         VKEnv_Destroy(vk);
         vulkanLibClose();
-        return JNI_FALSE;
+        return NULL;
     }
 
+    jobjectArray deviceArray = createJavaGPUs(env, vk);
+    if (deviceArray == NULL) {
+        VKEnv_Destroy(vk);
+        vulkanLibClose();
+        return NULL;
+    }
+
+    vk->currentDevice = &vk->devices[requestedDevice];
     instance = vk;
-
-    if (requestedDevice < 0) requestedDevice = 0;
-    else if (requestedDevice >= (jint) ARRAY_SIZE(vk->devices)) requestedDevice = (jint) ARRAY_SIZE(vk->devices) - 1;
-    VKDevice_Init(env, &vk->devices[requestedDevice]);
-
-    return JNI_TRUE;
+    return deviceArray;
 }
 
 JNIEXPORT void JNICALL JNI_OnUnload(__attribute__((unused)) JavaVM *vm, __attribute__((unused)) void *reserved) {
