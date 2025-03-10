@@ -126,7 +126,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
         return peer.getTarget();
     }
 
-    public native void revalidate(int width, int height, int scale);
+    public native void revalidate(GraphicsConfiguration gc, int width, int height, int scale);
 
     @Override
     public native void commit();

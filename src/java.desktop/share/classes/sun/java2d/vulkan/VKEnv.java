@@ -41,7 +41,7 @@ public class VKEnv {
     private static VKGPU[] devices;
     private static VKGPU defaultDevice;
 
-    private static native VKGPU[] initNative(long nativePtr, int deviceNumber);
+    private static native VKGPU[] initNative(long nativePtr);
 
     public static void init(long nativePtr) {
         @SuppressWarnings("removal")
@@ -52,23 +52,22 @@ public class VKEnv {
             @SuppressWarnings("removal")
             String sdOption = AccessController.doPrivileged(
                     (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.accelsd", ""));
-            int deviceNumber = 0;
-            @SuppressWarnings("removal")
+            devices = initNative(nativePtr);
+            enabled = devices != null;
+            sdAccelerated = enabled && "true".equalsIgnoreCase(sdOption);
+            if (enabled) {
+                // Choose default device
+                @SuppressWarnings("removal")
             String deviceNumberOption = AccessController.doPrivileged(
                     (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.deviceNumber"));
             if (deviceNumberOption != null) {
                 try {
-                    deviceNumber = Integer.parseInt(deviceNumberOption);
-                } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-                    log.warning("Invalid Vulkan device number:" + deviceNumberOption);
-                }
-            }
-            devices = initNative(nativePtr, deviceNumber);
-            enabled = devices != null;
-            sdAccelerated = enabled && "true".equalsIgnoreCase(sdOption);
-            if (enabled) {
-                defaultDevice = devices[deviceNumber];
-                defaultDevice.getNativeHandle(); // Force init default device.
+                    int deviceNumber = Integer.parseInt(deviceNumberOption);
+                        defaultDevice = devices[deviceNumber];
+                    } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+                        log.warning("Invalid Vulkan device number:" + deviceNumberOption);
+                    }
+                } else defaultDevice = devices[0]; // TODO consider performance/power saving preferences?
             }
         } else enabled = false;
 
