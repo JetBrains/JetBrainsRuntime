@@ -64,6 +64,13 @@ public interface VKGraphicsConfig extends AccelGraphicsConfig,
         return new VKVolatileSurfaceManager(image, context);
     }
 
+    VKGPU getGPU();
+
+    @Override
+    default SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
+        return getGPU().getSurfaceDataProxyCache();
+    }
+
     @Override
     default BufferedContext getContext() {
         return VKContext.INSTANCE;
