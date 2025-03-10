@@ -233,6 +233,7 @@ class EATestsTarget {
         // Relocking test cases
         new EARelockingSimpleTarget()                                                       .run();
         new EARelockingSimple_2Target()                                                     .run();
+        new EARelockingSimpleWithAccessInOtherThread_02_DynamicCall_Target()                .run();
         new EARelockingRecursiveTarget()                                                    .run();
         new EARelockingNestedInflatedTarget()                                               .run();
         new EARelockingNestedInflated_02Target()                                            .run();
@@ -353,6 +354,7 @@ public class EATests extends TestScaffold {
         // Relocking test cases
         new EARelockingSimple()                                                       .run(this);
         new EARelockingSimple_2()                                                     .run(this);
+        new EARelockingSimpleWithAccessInOtherThread_02_DynamicCall()                 .run(this);
         new EARelockingRecursive()                                                    .run(this);
         new EARelockingNestedInflated()                                               .run(this);
         new EARelockingNestedInflated_02()                                            .run(this);
@@ -1807,6 +1809,95 @@ class EARelockingSimple_2Target extends EATestCaseBaseTarget {
                 dontinline_brkpt();
             }
         }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+
+// The debugger reads and publishes an object with eliminated locking to an instance field.
+// A 2nd thread in the debuggee finds it there and changes its state using a synchronized method.
+// Without eager relocking the accesses are unsynchronized which can be observed.
+// This is a variant of EARelockingSimpleWithAccessInOtherThread with a dynamic call (not devirtualized).
+class EARelockingSimpleWithAccessInOtherThread_02_DynamicCall extends EATestCaseBaseDebugger {
+
+    public void runTestCase() throws Exception {
+        BreakpointEvent bpe = resumeTo(TARGET_TESTCASE_BASE_NAME, "dontinline_brkpt", "()V");
+        printStack(bpe.thread());
+        String l1ClassName = EARelockingSimpleWithAccessInOtherThread_02_DynamicCall_Target.SyncCounter.class.getName();
+        ObjectReference ctr = getLocalRef(bpe.thread().frame(2), l1ClassName, "l1");
+        setField(testCase, "sharedCounter", ctr);
+        terminateEndlessLoop();
+    }
+}
+
+class EARelockingSimpleWithAccessInOtherThread_02_DynamicCall_Target extends EATestCaseBaseTarget {
+
+    public static final BrkPtDispatchA[] disp =
+        {new BrkPtDispatchA(), new BrkPtDispatchB(), new BrkPtDispatchC(), new BrkPtDispatchD()};
+
+    public static class BrkPtDispatchA {
+        public EATestCaseBaseTarget testCase;
+        public void dontinline_brkpt() { testCase.dontinline_brkpt(); }
+    }
+
+    public static class BrkPtDispatchB extends BrkPtDispatchA {
+        @Override
+        public void dontinline_brkpt() { testCase.dontinline_brkpt(); }
+    }
+
+    public static class BrkPtDispatchC extends BrkPtDispatchA {
+        @Override
+        public void dontinline_brkpt() { testCase.dontinline_brkpt(); }
+    }
+
+    public static class BrkPtDispatchD extends BrkPtDispatchA {
+        @Override
+        public void dontinline_brkpt() {
+            testCase.dontinline_brkpt();
+        }
+    }
+
+    public static class SyncCounter {
+        private int val;
+        public synchronized int inc() { return val++; }
+    }
+
+    public volatile SyncCounter sharedCounter;
+
+    @Override
+    public void setUp() {
+        super.setUp();
+        testMethodDepth = 2;
+        for (BrkPtDispatchA d : disp) {
+            d.testCase = this;
+        }
+        doLoop = true;
+        new Thread(() -> {
+                while (doLoop) {
+                    SyncCounter ctr = sharedCounter;
+                    if (ctr != null) {
+                        ctr.inc();
+                    }
+                }
+            }).start();
+    }
+
+    public int dispCount;
+    public void dontinline_testMethod() {
+        SyncCounter l1 = new SyncCounter();
+        synchronized (l1) {      // Eliminated locking
+            l1.inc();
+            // Use different types for the subsequent call to prevent devirtualization.
+            BrkPtDispatchA d = disp[(dispCount++) & 3];
+            d.dontinline_brkpt();  // Dynamic call. Debugger publishes l1 to sharedCounter.
+            iResult = l1.inc();    // Changes by the 2nd thread will be observed if l1
+                                   // was not relocked before passing it to the debugger.
+        }
+    }
+
+    @Override
+    public int getExpectedIResult() {
+        return 1;
     }
 }
 
