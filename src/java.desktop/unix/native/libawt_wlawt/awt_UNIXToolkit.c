@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,6 +82,7 @@ jboolean init_method(JNIEnv *env, jobject this)
     if (this_class == NULL) {
         this_class = (*env)->NewGlobalRef(env,
                                           (*env)->GetObjectClass(env, this));
+        CHECK_NULL_RETURN(this_class, JNI_FALSE);
         icon_upcall_method = (*env)->GetMethodID(env, this_class,
                                  "loadIconCallback", "([BIIIIIZ)V");
         CHECK_NULL_RETURN(icon_upcall_method, JNI_FALSE);

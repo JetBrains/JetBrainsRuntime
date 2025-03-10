@@ -32,7 +32,6 @@
 
 #include <stdlib.h>
 #include <jni.h>
-#include <X11/X.h>
 #include "gtk_interface.h"
 
 #define LIGHTNESS_MULT  1.3
