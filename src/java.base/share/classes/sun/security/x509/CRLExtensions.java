@@ -30,7 +30,6 @@ import java.io.OutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.security.cert.CRLException;
-import java.security.cert.CertificateException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -145,16 +144,8 @@ public class CRLExtensions {
     throws CRLException {
         try {
             DerOutputStream extOut = new DerOutputStream();
-            Collection<Extension> allExts = map.values();
-            Object[] objs = allExts.toArray();
-
-            for (int i = 0; i < objs.length; i++) {
-                if (objs[i] instanceof CertAttrSet)
-                    ((CertAttrSet)objs[i]).encode(extOut);
-                else if (objs[i] instanceof Extension)
-                    ((Extension)objs[i]).encode(extOut);
-                else
-                    throw new CRLException("Illegal extension object");
+            for (Extension ext : map.values()) {
+                ext.encode(extOut);
             }
 
             DerOutputStream seq = new DerOutputStream();
@@ -169,8 +160,6 @@ public class CRLExtensions {
 
             out.write(tmp.toByteArray());
         } catch (IOException e) {
-            throw new CRLException("Encoding error: " + e.toString());
-        } catch (CertificateException e) {
             throw new CRLException("Encoding error: " + e.toString());
         }
     }

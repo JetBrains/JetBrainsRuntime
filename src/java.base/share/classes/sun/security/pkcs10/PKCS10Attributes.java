@@ -26,7 +26,6 @@
 package sun.security.pkcs10;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.security.cert.CertificateException;
 import java.util.Collection;
 import java.util.Collections;
@@ -92,7 +91,7 @@ public class PKCS10Attributes implements DerEncoder {
      * @param out the OutputStream to marshal the contents to.
      * @exception IOException on encoding errors.
      */
-    public void encode(OutputStream out) throws IOException {
+    public void encode(DerOutputStream out) throws IOException {
         derEncode(out);
     }
 
@@ -103,17 +102,14 @@ public class PKCS10Attributes implements DerEncoder {
      * @param out the OutputStream to marshal the contents to.
      * @exception IOException on encoding errors.
      */
-    public void derEncode(OutputStream out) throws IOException {
+    public void derEncode(DerOutputStream out) throws IOException {
         // first copy the elements into an array
         Collection<PKCS10Attribute> allAttrs = map.values();
         PKCS10Attribute[] attribs =
                 allAttrs.toArray(new PKCS10Attribute[map.size()]);
 
-        DerOutputStream attrOut = new DerOutputStream();
-        attrOut.putOrderedSetOf(DerValue.createTag(DerValue.TAG_CONTEXT,
-                                                   true, (byte)0),
-                                attribs);
-        out.write(attrOut.toByteArray());
+        out.putOrderedSetOf(
+                DerValue.createTag(DerValue.TAG_CONTEXT, true, (byte)0), attribs);
     }
 
     /**

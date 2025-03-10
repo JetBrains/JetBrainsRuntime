@@ -32,7 +32,6 @@
  * @run main SignerOrder default 1024
  * @run main SignerOrder Sha256 2048
  */
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.KeyPair;
@@ -117,7 +116,7 @@ public class SignerOrder {
     }
 
     static void printSignerInfos(SignerInfo signerInfo) throws IOException {
-        ByteArrayOutputStream strm = new ByteArrayOutputStream();
+        DerOutputStream strm = new DerOutputStream();
         signerInfo.derEncode(strm);
         System.out.println("SignerInfo, length: "
                 + strm.toByteArray().length);
@@ -127,7 +126,7 @@ public class SignerOrder {
     }
 
     static void printSignerInfos(SignerInfo[] signerInfos) throws IOException {
-        ByteArrayOutputStream strm = new ByteArrayOutputStream();
+        DerOutputStream strm = new DerOutputStream();
         for (int i = 0; i < signerInfos.length; i++) {
             signerInfos[i].derEncode(strm);
             System.out.println("SignerInfo[" + i + "], length: "

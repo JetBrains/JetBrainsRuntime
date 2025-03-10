@@ -26,7 +26,6 @@
 package sun.security.x509;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.Enumeration;
 
 import sun.security.util.*;
@@ -190,7 +189,8 @@ implements CertAttrSet<String> {
       *
       * @param out the DerOutputStream to encode the extension to.
       */
-     public void encode(OutputStream out) throws IOException {
+     @Override
+     public void encode(DerOutputStream out) throws IOException {
          DerOutputStream tmp = new DerOutputStream();
          if (extensionValue == null) {
              this.extensionId = PKIXExtensions.BasicConstraints_Id;
@@ -201,9 +201,7 @@ implements CertAttrSet<String> {
              }
              encodeThis();
          }
-         super.encode(tmp);
-
-         out.write(tmp.toByteArray());
+         super.encode(out);
      }
 
     /**
