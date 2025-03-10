@@ -102,7 +102,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface);
  * Request size for the surface. It has no effect, if it is already of the same size.
  * Actual resize will be performed later, before starting a new frame.
  */
-void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent);
+void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* device);
 
 // Blit operations.
 

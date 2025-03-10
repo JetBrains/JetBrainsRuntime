@@ -48,6 +48,11 @@ public class VKOffscreenGraphicsConfig extends GraphicsConfiguration implements 
     }
 
     @Override
+    public VKGraphicsConfig getOffscreenConfig() {
+        return this;
+    }
+
+    @Override
     public VKGPU getGPU() {
         return gpu;
     }
