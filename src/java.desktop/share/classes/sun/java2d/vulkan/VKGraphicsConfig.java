@@ -56,7 +56,11 @@ import static sun.java2d.pipe.hw.AccelSurface.TEXTURE;
  */
 public interface VKGraphicsConfig extends AccelGraphicsConfig, SurfaceManager.ProxiedGraphicsConfig {
 
-    VKDevice getVKDevice();
+    VKGraphicsConfig getOffscreenConfig();
+
+    default VKDevice getVKDevice() {
+        return getOffscreenConfig().getVKDevice();
+    }
 
     @Override
     default SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
