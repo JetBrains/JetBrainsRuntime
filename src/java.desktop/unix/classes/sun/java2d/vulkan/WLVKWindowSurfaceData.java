@@ -34,7 +34,6 @@ import sun.awt.wl.WLComponentPeer;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
-import sun.java2d.pipe.BufferedContext;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.wl.WLPixelGrabberExt;
@@ -49,9 +48,8 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
 
     private native void assignWlSurface(long surfacePtr);
 
-    public WLVKWindowSurfaceData(WLComponentPeer peer)
-    {
-        super((VKGraphicsConfig) peer.getGraphicsConfiguration(), peer.getColorModel(), WINDOW, 0, 0);
+    public WLVKWindowSurfaceData(WLComponentPeer peer) {
+        super(peer.getColorModel(), WINDOW);
         this.peer = peer;
         final int backgroundRGB = peer.getBackground() != null
                 ? peer.getBackground().getRGB()
@@ -92,11 +90,6 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
     }
 
     @Override
-    public BufferedContext getContext() {
-        return ((WLVKGraphicsConfig) getDeviceConfiguration()).getContext();
-    }
-
-    @Override
     public boolean isOnScreen() {
         return true;
     }
@@ -108,10 +101,11 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
     }
 
     @Override
-    public void revalidate(int width, int height, int scale) {
+    public void revalidate(GraphicsConfiguration gc, int width, int height, int scale) {
         this.width = width;
         this.height = height;
         this.scale = scale;
+        revalidate((VKGraphicsConfig) gc);
         configure();
     }
 
@@ -129,10 +123,6 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
         } finally {
             rq.unlock();
         }
-    }
-    @Override
-    public GraphicsConfiguration getDeviceConfiguration() {
-        return peer.getGraphicsConfiguration();
     }
 
     private void bufferAttached() {
