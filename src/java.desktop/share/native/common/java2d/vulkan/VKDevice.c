@@ -170,6 +170,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
 
     ARRAY_PUSH_BACK(vk->devices) = (VKDevice) {
         .name = deviceName,
+        .type = deviceProperties2.properties.deviceType,
         .handle = VK_NULL_HANDLE,
         .physicalDevice = physicalDevice,
         .queueFamily = queueFamily,
@@ -194,8 +195,34 @@ void VKDevice_Reset(VKDevice* device) {
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKDevice_Reset(%s)", device->name);
 }
 
-VkBool32 VKDevice_Init(JNIEnv *env, VKDevice* device) {
-    if (device->handle != VK_NULL_HANDLE) return VK_TRUE;
+/*
+ * Class:     sun_java2d_vulkan_VKGPU
+ * Method:    reset
+ * Signature: (J)void
+ */
+JNIEXPORT void JNICALL
+Java_sun_java2d_vulkan_VKGPU_reset(JNIEnv *env, jclass jClass, jlong jDevice) {
+    VKDevice* device = jlong_to_ptr(jDevice);
+    if (device == NULL) {
+        JNU_ThrowByName(env, "java/lang/IllegalStateException", "jDevice is NULL");
+        return;
+    }
+    VKDevice_Reset(device);
+}
+
+/*
+ * Class:     sun_java2d_vulkan_VKGPU
+ * Method:    init
+ * Signature: (J)void
+ */
+JNIEXPORT void JNICALL
+Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
+    VKDevice* device = jlong_to_ptr(jDevice);
+    if (device == NULL) {
+        JNU_ThrowByName(env, "java/lang/IllegalStateException", "jDevice is NULL");
+        return;
+    }
+    if (device->handle != VK_NULL_HANDLE) return;
 
     float queuePriority = 1.0f;
     VkDeviceQueueCreateInfo queueCreateInfo = {
@@ -228,7 +255,7 @@ VkBool32 VKDevice_Init(JNIEnv *env, VKDevice* device) {
     VKEnv* vk = VKEnv_GetInstance();
     VK_IF_ERROR(vk->vkCreateDevice(device->physicalDevice, &createInfo, NULL, &device->handle)) {
         JNU_ThrowByName(env, "java/lang/RuntimeException", "Cannot create device");
-        return VK_FALSE;
+        return;
     }
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKDevice_init(%s)", device->name);
 
@@ -240,37 +267,34 @@ VkBool32 VKDevice_Init(JNIEnv *env, VKDevice* device) {
         strcpy(message, fixedMessage);
         strcat(message, missingAPI);
         JNU_ThrowByName(env, "java/lang/RuntimeException", message);
-        return VK_FALSE;
+        return;
     }
 
     device->vkGetDeviceQueue(device->handle, device->queueFamily, 0, &device->queue);
     if (device->queue == NULL) {
         VKDevice_Reset(device);
         JNU_ThrowByName(env, "java/lang/RuntimeException", "Vulkan: Failed to get device queue");
-        return VK_FALSE;
+        return;
     }
 
     device->allocator = VKAllocator_Create(device);
     if (!device->allocator) {
         VKDevice_Reset(device);
         JNU_ThrowByName(env, "java/lang/RuntimeException", "Vulkan: Cannot create allocator");
-        return VK_FALSE;
+        return;
     }
 
     device->renderer = VKRenderer_Create(device);
     if (!device->renderer) {
         VKDevice_Reset(device);
         JNU_ThrowByName(env, "java/lang/RuntimeException", "Vulkan: Cannot create renderer");
-        return VK_FALSE;
+        return;
     }
 
     device->texturePool = VKTexturePool_InitWithDevice(device);
     if (!device->texturePool) {
         VKDevice_Reset(device);
         JNU_ThrowByName(env, "java/lang/RuntimeException", "Vulkan: Cannot create texture pool");
-        return VK_FALSE;
+        return;
     }
-
-    vk->currentDevice = device;
-    return VK_TRUE;
 }
