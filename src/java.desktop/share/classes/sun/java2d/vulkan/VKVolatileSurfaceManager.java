@@ -28,17 +28,16 @@ package sun.java2d.vulkan;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.SurfaceData;
-
-import java.awt.GraphicsConfiguration;
-import java.awt.Transparency;
-import java.awt.image.ColorModel;
 import sun.java2d.pipe.hw.AccelSurface;
 
-public class WLVKVolatileSurfaceManager extends VolatileSurfaceManager {
+import java.awt.*;
+import java.awt.image.ColorModel;
+
+public class VKVolatileSurfaceManager extends VolatileSurfaceManager {
 
     private final boolean accelerationEnabled;
 
-    public WLVKVolatileSurfaceManager(SunVolatileImage vImg, Object context) {
+    public VKVolatileSurfaceManager(SunVolatileImage vImg, Object context) {
         super(vImg, context);
 
         /*
@@ -61,8 +60,7 @@ public class WLVKVolatileSurfaceManager extends VolatileSurfaceManager {
      */
     protected SurfaceData initAcceleratedSurface() {
         try {
-            WLVKGraphicsConfig gc =
-                    (WLVKGraphicsConfig)vImg.getGraphicsConfig();
+            VKGraphicsConfig gc = (VKGraphicsConfig) vImg.getGraphicsConfig();
             ColorModel cm = gc.getColorModel(vImg.getTransparency());
             int type = vImg.getForcedAccelSurfaceType();
             // if acceleration type is forced (type != UNDEFINED) then
