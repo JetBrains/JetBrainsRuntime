@@ -55,6 +55,7 @@ struct VKSDOps {
 
     Color          background;
     VkExtent2D     requestedExtent;
+    VKDevice*      requestedDevice;
 
     VKRenderPass*  renderPass;
 };
