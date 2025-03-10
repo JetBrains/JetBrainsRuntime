@@ -30,13 +30,14 @@
 #include "VKUtil.h"
 
 struct VKDevice {
-    VkDevice         handle;
-    VkPhysicalDevice physicalDevice;
-    char*            name;
-    uint32_t         queueFamily;
-    ARRAY(pchar)     enabledLayers;
-    ARRAY(pchar)     enabledExtensions;
-    VkQueue          queue;
+    VkDevice             handle;
+    VkPhysicalDevice     physicalDevice;
+    char*                name;
+    VkPhysicalDeviceType type;
+    uint32_t             queueFamily;
+    ARRAY(pchar)         enabledLayers;
+    ARRAY(pchar)         enabledExtensions;
+    VkQueue              queue;
 
     VKAllocator*     allocator;
     VKRenderer*      renderer;
