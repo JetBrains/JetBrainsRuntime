@@ -23,6 +23,8 @@
  * questions.
  */
 
+#include "jni_util.h"
+#include "jni_util.h"
 #ifdef HEADLESS
     #error This file should not be included in headless library
 #endif

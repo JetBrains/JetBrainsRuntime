@@ -29,7 +29,6 @@
 
 #include <dlfcn.h>
 #include <setjmp.h>
-#include <X11/Xlib.h>
 #include <limits.h>
 #include <string.h>
 #include "gtk3_interface.h"
@@ -115,6 +114,7 @@ do {                                                                           \
 } while(0);
 
 
+// TODO
 static void update_supported_actions(JNIEnv *env) {
     GVfs * (*fp_g_vfs_get_default) (void);
     const gchar * const * (*fp_g_vfs_get_supported_uri_schemes) (GVfs * vfs);
@@ -210,6 +210,7 @@ static gboolean gtk3_show_uri_load(JNIEnv *env) {
  */
 static void gtk3_file_chooser_load()
 {
+    // TODO
     fp_gtk_file_chooser_get_filename = dl_symbol(
             "gtk_file_chooser_get_filename");
     fp_gtk_file_chooser_dialog_new = dl_symbol("gtk_file_chooser_dialog_new");
@@ -232,14 +233,10 @@ static void gtk3_file_chooser_load()
     fp_gtk_file_chooser_get_filenames = dl_symbol(
             "gtk_file_chooser_get_filenames");
     fp_gtk_g_slist_length = dl_symbol("g_slist_length");
-    fp_gdk_x11_drawable_get_xid = dl_symbol("gdk_x11_window_get_xid");
 }
 
 static void empty() {}
 
-static gboolean gtk3_version_3_10 = TRUE;
-static gboolean gtk3_version_3_14 = FALSE;
-static gboolean gtk3_version_3_20 = FALSE;
 gboolean glib_version_2_68 = FALSE;
 
 GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
@@ -249,7 +246,7 @@ GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
     char *gtk_modules_env;
     gtk3_libhandle = dlopen(lib_name, RTLD_LAZY | RTLD_LOCAL);
     if (gtk3_libhandle == NULL) {
-        return FALSE;
+        return NULL;
     }
 
     if (setjmp(j) == 0)
@@ -260,6 +257,13 @@ GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
         fp_glib_check_version = dlsym(gtk3_libhandle, "glib_check_version");
         if (!fp_glib_check_version) {
             dlerror();
+        }
+        // Make sure all the functions that are used here can be expected to be available.
+        if (fp_gtk_check_version(3, 20, 0)) {
+            // GTK 3.20 was released in 2016
+            dlclose(gtk3_libhandle);
+            gtk3_libhandle = NULL;
+            return NULL;
         }
         fp_g_free = dl_symbol("g_free");
         fp_g_object_unref = dl_symbol("g_object_unref");
@@ -375,30 +379,18 @@ GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
         fp_gtk_render_line = dl_symbol("gtk_render_line");
         fp_gtk_widget_render_icon_pixbuf =
                       dl_symbol("gtk_widget_render_icon_pixbuf");
-        if (fp_gtk_check_version(3, 10, 0)) {
-            gtk3_version_3_10 = FALSE;
-        } else {
-            fp_gdk_window_create_similar_image_surface =
-                       dl_symbol("gdk_window_create_similar_image_surface");
-            fp_gdk_window_get_scale_factor =
-                    dl_symbol("gdk_window_get_scale_factor");
-        }
-        gtk3_version_3_14 = !fp_gtk_check_version(3, 14, 0);
+        fp_gdk_window_get_scale_factor =
+            dl_symbol("gdk_window_get_scale_factor");
 
-        if (!fp_gtk_check_version(3, 20, 0)) {
-            gtk3_version_3_20 = TRUE;
-            fp_gtk_widget_path_copy = dl_symbol("gtk_widget_path_copy");
-            fp_gtk_widget_path_new = dl_symbol("gtk_widget_path_new");
-            fp_gtk_widget_path_append_type = dl_symbol("gtk_widget_path_append_type");
-            fp_gtk_widget_path_iter_set_object_name = dl_symbol("gtk_widget_path_iter_set_object_name");
-            fp_gtk_style_context_set_path = dl_symbol("gtk_style_context_set_path");
-            fp_gtk_widget_path_unref = dl_symbol("gtk_widget_path_unref");
-            fp_gtk_style_context_get_path = dl_symbol("gtk_style_context_get_path");
-            fp_gtk_style_context_new = dl_symbol("gtk_style_context_new");
-        }
+        fp_gtk_widget_path_copy = dl_symbol("gtk_widget_path_copy");
+        fp_gtk_widget_path_new = dl_symbol("gtk_widget_path_new");
+        fp_gtk_widget_path_append_type = dl_symbol("gtk_widget_path_append_type");
+        fp_gtk_widget_path_iter_set_object_name = dl_symbol("gtk_widget_path_iter_set_object_name");
+        fp_gtk_style_context_set_path = dl_symbol("gtk_style_context_set_path");
+        fp_gtk_widget_path_unref = dl_symbol("gtk_widget_path_unref");
+        fp_gtk_style_context_get_path = dl_symbol("gtk_style_context_get_path");
+        fp_gtk_style_context_new = dl_symbol("gtk_style_context_new");
 
-        fp_gdk_window_create_similar_surface =
-                      dl_symbol("gdk_window_create_similar_surface");
         fp_gtk_settings_get_for_screen =
                       dl_symbol("gtk_settings_get_for_screen");
         fp_gtk_widget_get_screen = dl_symbol("gtk_widget_get_screen");
@@ -548,9 +540,6 @@ GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
         fp_gdk_threads_enter = dl_symbol("gdk_threads_enter");
         fp_gdk_threads_leave = dl_symbol("gdk_threads_leave");
 
-        /**
-         * Functions for sun_awt_X11_GtkFileDialogPeer.c
-         */
         gtk3_file_chooser_load();
 
         fp_gtk_combo_box_new = dlsym(gtk3_libhandle, "gtk_combo_box_new");
@@ -656,11 +645,6 @@ GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
     }
     /*
      * GTK should be initialized with gtk_init_check() before use.
-     *
-     * gtk_init_check installs its own error handlers. It is critical that
-     * we preserve error handler set from AWT. Otherwise we'll crash on
-     * BadMatch errors which we would normally ignore. The IO error handler
-     * is preserved here, too, just for consistency.
     */
     AWT_LOCK();
 
@@ -750,28 +734,6 @@ static void init_containers()
 /*
  * Ensure everything is ready for drawing an element of the specified width
  * and height.
- *
- * We should somehow handle translucent images. GTK can draw to X Drawables
- * only, which don't support alpha. When we retrieve the image back from
- * the server, translucency information is lost. There're several ways to
- * work around this:
- * 1) Subclass GdkPixmap and cache translucent objects on client side. This
- * requires us to implement parts of X server drawing logic on client side.
- * Many X requests can potentially be "translucent"; e.g. XDrawLine with
- * fill=tile and a translucent tile is a "translucent" operation, whereas
- * XDrawLine with fill=solid is an "opaque" one. Moreover themes can (and some
- * do) intermix transparent and opaque operations which makes caching even
- * more problematic.
- * 2) Use Xorg 32bit ARGB visual when available. GDK has no native support
- * for it (as of version 2.6). Also even in JDS 3 Xorg does not support
- * these visuals by default, which makes optimizing for them pointless.
- * We can consider doing this at a later point when ARGB visuals become more
- * popular.
- * 3') GTK has plans to use Cairo as its graphical backend (presumably in
- * 2.8), and Cairo supports alpha. With it we could also get rid of the
- * unnecessary round trip to server and do all the drawing on client side.
- * 4) For now we draw to two different pixmaps and restore alpha channel by
- * comparing results. This can be optimized by using subclassed pixmap and
 */
 static void gtk3_init_painting(JNIEnv *env, gint width, gint height)
 {
@@ -787,15 +749,8 @@ static void gtk3_init_painting(JNIEnv *env, gint width, gint height)
 
     }
 
-    if (gtk3_version_3_10) {
-        surface = fp_gdk_window_create_similar_image_surface(
-                           fp_gtk_widget_get_window(gtk3_window),
-                                         CAIRO_FORMAT_ARGB32, width, height, 1);
-    } else {
-        surface = fp_cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
-                                                                 width, height);
-    }
-
+    surface = fp_cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
+                                            width, height);
     cr = fp_cairo_create(surface);
     if (fp_cairo_surface_status(surface) || fp_cairo_status(cr)) {
         JNU_ThrowOutOfMemoryError(env, "The surface size is too big");
@@ -804,13 +759,9 @@ static void gtk3_init_painting(JNIEnv *env, gint width, gint height)
 
 /*
  * Restore image from white and black pixmaps and copy it into destination
- * buffer. This method compares two pixbufs taken from white and black
- * pixmaps and decodes color and alpha components. Pixbufs are RGB without
- * alpha, destination buffer is ABGR.
+ * buffer.
  *
- * The return value is the transparency type of the resulting image, either
- * one of java_awt_Transparency_OPAQUE, java_awt_Transparency_BITMASK, and
- * java_awt_Transparency_TRANSLUCENT.
+ * The return value is the transparency type of the resulting image.
  */
 static gint gtk3_copy_image(gint *dst, gint width, gint height)
 {
@@ -1387,80 +1338,66 @@ static GtkWidgetPath* createWidgetPath(const GtkWidgetPath* path) {
 
 static GtkStyleContext* get_style(WidgetType widget_type, const gchar *detail)
 {
-    if (!gtk3_version_3_20) {
-        gtk3_widget = gtk3_get_widget(widget_type);
-        GtkStyleContext* context = fp_gtk_widget_get_style_context (gtk3_widget);
-        fp_gtk_style_context_save (context);
-        if (detail != 0) {
-             transform_detail_string(detail, context);
-        }
-        return context;
-    } else {
-        gtk3_widget = gtk3_get_widget(widget_type);
-        GtkStyleContext* widget_context = fp_gtk_widget_get_style_context (gtk3_widget);
-        GtkWidgetPath *path = NULL;
-        if (detail != 0) {
-            if (strcmp(detail, "checkbutton") == 0) {
-                path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
-                append_element(path, "check");
-            } else if (strcmp(detail, "radiobutton") == 0) {
-                path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
-                append_element(path, "radio");
-            } else if (strcmp(detail, "vscale") == 0 || strcmp(detail, "hscale") == 0) {
-                path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
-                append_element(path, "slider");
-            } else if (strcmp(detail, "trough") == 0) {
-                //This is a fast solution to the scrollbar trough not being rendered properly
-                if (widget_type == HSCROLL_BAR || widget_type == HSCROLL_BAR_TRACK ||
-                    widget_type == VSCROLL_BAR || widget_type == VSCROLL_BAR_TRACK) {
-                    path = createWidgetPath (NULL);
-                } else {
-                    path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
-                }
-                append_element(path, detail);
-            } else if (strcmp(detail, "bar") == 0) {
-                path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
-                append_element(path, "trough");
-                append_element(path, "progress");
-            } else if (strcmp(detail, "vscrollbar") == 0 || strcmp(detail, "hscrollbar") == 0) {
-                path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
-                append_element(path, "button");
-            } else if (strcmp(detail, "check") == 0) {
+    gtk3_widget = gtk3_get_widget(widget_type);
+    GtkStyleContext* widget_context = fp_gtk_widget_get_style_context (gtk3_widget);
+    GtkWidgetPath *path = NULL;
+    if (detail != 0) {
+        if (strcmp(detail, "checkbutton") == 0) {
+            path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
+            append_element(path, "check");
+        } else if (strcmp(detail, "radiobutton") == 0) {
+            path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
+            append_element(path, "radio");
+        } else if (strcmp(detail, "vscale") == 0 || strcmp(detail, "hscale") == 0) {
+            path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
+            append_element(path, "slider");
+        } else if (strcmp(detail, "trough") == 0) {
+            //This is a fast solution to the scrollbar trough not being rendered properly
+            if (widget_type == HSCROLL_BAR || widget_type == HSCROLL_BAR_TRACK ||
+                widget_type == VSCROLL_BAR || widget_type == VSCROLL_BAR_TRACK) {
                 path = createWidgetPath (NULL);
-                append_element(path, detail);
-            } else if (strcmp(detail, "option") == 0) {
-                path = createWidgetPath (NULL);
-                append_element(path, "radio");
-            } else if (strcmp(detail, "paned") == 0) {
-                path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
-                append_element(path, "paned");
-                append_element(path, "separator");
-            } else if (strcmp(detail, "spinbutton_down") == 0 || strcmp(detail, "spinbutton_up") == 0) {
-                path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
-                append_element(path, "spinbutton");
-                append_element(path, "button");
             } else {
                 path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
-                append_element(path, detail);
             }
+            append_element(path, detail);
+        } else if (strcmp(detail, "bar") == 0) {
+            path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
+            append_element(path, "trough");
+            append_element(path, "progress");
+        } else if (strcmp(detail, "vscrollbar") == 0 || strcmp(detail, "hscrollbar") == 0) {
+            path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
+            append_element(path, "button");
+        } else if (strcmp(detail, "check") == 0) {
+            path = createWidgetPath (NULL);
+            append_element(path, detail);
+        } else if (strcmp(detail, "option") == 0) {
+            path = createWidgetPath (NULL);
+            append_element(path, "radio");
+        } else if (strcmp(detail, "paned") == 0) {
+            path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
+            append_element(path, "paned");
+            append_element(path, "separator");
+        } else if (strcmp(detail, "spinbutton_down") == 0 || strcmp(detail, "spinbutton_up") == 0) {
+            path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
+            append_element(path, "spinbutton");
+            append_element(path, "button");
         } else {
             path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
+            append_element(path, detail);
         }
-
-        GtkStyleContext *context = fp_gtk_style_context_new ();
-        fp_gtk_style_context_set_path (context, path);
-        fp_gtk_widget_path_unref (path);
-        return context;
+    } else {
+        path = createWidgetPath (fp_gtk_style_context_get_path (widget_context));
     }
+
+    GtkStyleContext *context = fp_gtk_style_context_new ();
+    fp_gtk_style_context_set_path (context, path);
+    fp_gtk_widget_path_unref (path);
+    return context;
 }
 
 static void disposeOrRestoreContext(GtkStyleContext *context)
 {
-    if (!gtk3_version_3_20) {
-        fp_gtk_style_context_restore (context);
-    } else {
-        fp_g_object_unref (context);
-    }
+    fp_g_object_unref (context);
 }
 
 static void gtk3_paint_arrow(WidgetType widget_type, GtkStateType state_type,
@@ -1688,10 +1625,6 @@ static void gtk3_paint_check(WidgetType widget_type, gint synth_state,
     GtkStyleContext* context = get_style(widget_type, detail);
 
     GtkStateFlags flags = get_gtk_state_flags(synth_state);
-    if (gtk3_version_3_14 && (synth_state & SELECTED)) {
-        flags &= ~GTK_STATE_FLAG_SELECTED;
-        flags |= GTK_STATE_FLAG_CHECKED;
-    }
     fp_gtk_style_context_set_state(context, flags);
 
     fp_gtk_render_background(context, cr, x, y, width, height);
@@ -1713,11 +1646,7 @@ static void gtk3_paint_expander(WidgetType widget_type, GtkStateType state_type,
 
     GtkStateFlags flags = get_gtk_flags(state_type);
     if (expander_style == GTK_EXPANDER_EXPANDED) {
-        if (gtk3_version_3_14) {
-            flags |= GTK_STATE_FLAG_CHECKED;
-        } else {
-            flags |= GTK_STATE_FLAG_ACTIVE;
-        }
+        flags |= GTK_STATE_FLAG_ACTIVE;
     }
 
     fp_gtk_style_context_set_state(context, flags);
@@ -1906,10 +1835,6 @@ static void gtk3_paint_option(WidgetType widget_type, gint synth_state,
      GtkStyleContext* context = get_style(widget_type, detail);
 
      GtkStateFlags flags = get_gtk_state_flags(synth_state);
-     if (gtk3_version_3_14 && (synth_state & SELECTED)) {
-         flags &= ~GTK_STATE_FLAG_SELECTED;
-         flags |= GTK_STATE_FLAG_CHECKED;
-     }
      fp_gtk_style_context_set_state(context, flags);
 
      fp_gtk_render_background(context, cr, x, y, width, height);
@@ -2381,17 +2306,15 @@ static gint gtk3_get_color_for_state(JNIEnv *env, WidgetType widget_type,
 
     init_containers();
 
-    if (gtk3_version_3_20) {
-        if (widget_type == TEXT_FIELD || widget_type == PASSWORD_FIELD
-            || widget_type == SPINNER_TEXT_FIELD || widget_type == FORMATTED_TEXT_FIELD) {
-                if ((state_type == GTK_STATE_SELECTED && color_type == TEXT_BACKGROUND)
-                    || (state_type == GTK_STATE_INSENSITIVE && color_type == TEXT_FOREGROUND)) {
-                    widget_type = TEXT_AREA;
-                }
-        } else if (widget_type == MENU_BAR && state_type == GTK_STATE_INSENSITIVE
-            && color_type == FOREGROUND) {
-            widget_type = MENU;
+    if (widget_type == TEXT_FIELD || widget_type == PASSWORD_FIELD
+        || widget_type == SPINNER_TEXT_FIELD || widget_type == FORMATTED_TEXT_FIELD) {
+        if ((state_type == GTK_STATE_SELECTED && color_type == TEXT_BACKGROUND)
+            || (state_type == GTK_STATE_INSENSITIVE && color_type == TEXT_FOREGROUND)) {
+            widget_type = TEXT_AREA;
         }
+    } else if (widget_type == MENU_BAR && state_type == GTK_STATE_INSENSITIVE
+        && color_type == FOREGROUND) {
+        widget_type = MENU;
     }
 
     GtkStyleContext* context = NULL;
@@ -2919,31 +2842,7 @@ static gboolean gtk3_get_drawable_data(JNIEnv *env, jintArray pixelArray,
     int skip_left = 0;
     int skip_top = 0;
     GdkWindow *root = (*fp_gdk_get_default_root_window)();
-    if (gtk3_version_3_10) {
-        int win_scale = (*fp_gdk_window_get_scale_factor)(root);
-
-        // Scale the coordinate and size carefully such that the captured area
-        // is at least as large as requested. We trim off excess later by
-        // using the skip_* variables.
-        const int x_scaled = scale_down_floor(x, win_scale);
-        const int y_scaled = scale_down_floor(y, win_scale);
-        skip_left = x - x_scaled*win_scale;
-        skip_top  = y - y_scaled*win_scale;
-        DASSERT(skip_left >= 0 && skip_top >= 0);
-
-        const int x_right_scaled = scale_down_ceiling(x + width, win_scale);
-        const int width_scaled = x_right_scaled - x_scaled;
-        DASSERT(width_scaled > 0);
-
-        const int y_bottom_scaled = scale_down_ceiling(y + height, win_scale);
-        const int height_scaled = y_bottom_scaled - y_scaled;
-        DASSERT(height_scaled > 0);
-
-        pixbuf = (*fp_gdk_pixbuf_get_from_drawable)(
-            root, x_scaled, y_scaled, width_scaled, height_scaled);
-    } else {
-        pixbuf = (*fp_gdk_pixbuf_get_from_drawable)(root, x, y, width, height);
-    }
+    pixbuf = (*fp_gdk_pixbuf_get_from_drawable)(root, x, y, width, height);
 
     if (pixbuf) {
         int nchan = (*fp_gdk_pixbuf_get_n_channels)(pixbuf);
@@ -3053,7 +2952,6 @@ static void gtk3_init(GtkApi* gtk) {
     gtk->gtk_main = fp_gtk_main;
     gtk->gtk_main_level = fp_gtk_main_level;
     gtk->g_path_get_dirname = fp_g_path_get_dirname;
-    gtk->gdk_x11_drawable_get_xid = fp_gdk_x11_drawable_get_xid;
     gtk->gtk_widget_destroy = fp_gtk_widget_destroy;
     gtk->gtk_window_present = fp_gtk_window_present;
     gtk->gtk_window_move = fp_gtk_window_move;
@@ -3116,3 +3014,4 @@ static void gtk3_init(GtkApi* gtk) {
     gtk->gdk_pixbuf_get_pixels = fp_gdk_pixbuf_get_pixels;
     gtk->gdk_pixbuf_copy_area = fp_gdk_pixbuf_copy_area;
 }
+

@@ -30,16 +30,12 @@
 #ifndef _GTK_INTERFACE_H
 #define _GTK_INTERFACE_H
 
-#include <X11/X.h>
 #include <jni.h>
 
 #ifndef FALSE
 #define FALSE           (0)
 #define TRUE            (!FALSE)
 #endif
-
-#define GTHREAD_LIB_VERSIONED VERSIONED_JNI_LIB_NAME("gthread-2.0", "0")
-#define GTHREAD_LIB JNI_LIB_NAME("gthread-2.0")
 
 #define _G_TYPE_CIC(ip, gt, ct)       ((ct*) ip)
 #define G_TYPE_CHECK_INSTANCE_CAST(instance, g_type, c_type)  \
@@ -651,7 +647,6 @@ typedef struct GtkApi {
     void (*gtk_main)(void);
     guint (*gtk_main_level)(void);
     gchar* (*g_path_get_dirname) (const gchar *file_name);
-    XID (*gdk_x11_drawable_get_xid) (void *drawable);
     void (*gtk_widget_destroy)(void *widget);
     void (*gtk_window_present)(void *window);
     void (*gtk_window_move)(void *window, gint x, gint y);

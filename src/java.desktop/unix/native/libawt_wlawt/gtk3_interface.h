@@ -352,7 +352,6 @@ static void (*fp_gtk_widget_show)(void *widget);
 static void (*fp_gtk_main)(void);
 static guint (*fp_gtk_main_level)(void);
 static gchar* (*fp_g_path_get_dirname) (const gchar *file_name);
-static XID (*fp_gdk_x11_drawable_get_xid) (GdkWindow *drawable);
 
 static GList* (*fp_g_list_append) (GList *list, gpointer data);
 static void (*fp_g_list_free) (GList *list);
