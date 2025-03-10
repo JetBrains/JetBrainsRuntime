@@ -68,16 +68,31 @@ public class VKVolatileSurfaceManager extends VolatileSurfaceManager {
             if (type == AccelSurface.UNDEFINED) {
                 type = AccelSurface.RT_TEXTURE;
             }
-            return new VKOffScreenSurfaceData(
-                    gc, vImg, cm, type, vImg.getWidth(), vImg.getHeight());
+            VKOffScreenSurfaceData sd = new VKOffScreenSurfaceData(vImg, cm, type, vImg.getWidth(), vImg.getHeight());
+            sd.setDevice(gc.getVKDevice());
+            sd.configure();
+            return sd;
         } catch (NullPointerException | OutOfMemoryError ignored) {
             return null;
         }
     }
 
     @Override
+    public int validate(GraphicsConfiguration gc) {
+        if (gc != null && sdAccel != null && isAccelerationEnabled() && isConfigValid(gc)) {
+            VKSurfaceData vksd = (VKSurfaceData) sdAccel;
+            if (vksd.setDevice(((VKGraphicsConfig) gc).getVKDevice())) {
+                vksd.setSurfaceLost(true);
+                vksd.configure();
+            }
+        }
+        return super.validate(gc);
+    }
+
+    @Override
     protected boolean isConfigValid(GraphicsConfiguration gc) {
-        return ((gc == null) || (gc == vImg.getGraphicsConfig()));
+        // We consider configs with the same format compatible across Vulkan devices.
+        return gc == null || (true/*TODO validate configuration format*/);
     }
 
     @Override
