@@ -1425,7 +1425,10 @@ const int ObjectAlignmentInBytes = 8;
                                                                             \
   product(uintx, JbrShrinkingGcMaxHeapFreeRatio, 100, MANAGEABLE,           \
           "The maximum percentage of heap free after GC to avoid shrinking" \
-          " when using JBR Shrinking GC run")                               \
+          " when using JBR Shrinking GC run."                               \
+          " The value is clamped between MinHeapFreeRatio"                  \
+          " and MaxHeapFreeRatio."                                          \
+          " Defaults to MaxHeapFreeRatio option value.")                    \
           range(0, 100)                                                     \
                                                                             \
   product(intx, SoftRefLRUPolicyMSPerMB, 1000,                              \
