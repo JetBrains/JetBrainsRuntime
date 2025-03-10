@@ -47,7 +47,6 @@ typedef struct {
 struct VKEnv {
     VkInstance      instance;
     ARRAY(VKDevice) devices;
-    VKDevice*       currentDevice;
 
     VKComposites composites;
 
