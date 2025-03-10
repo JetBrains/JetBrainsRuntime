@@ -917,9 +917,10 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
     }
 }
 
-void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent) {
+void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* device) {
     assert(surface != NULL);
     surface->requestedExtent = extent;
+    surface->requestedDevice = device;
     // We must only do pending flush between frames.
     if (surface->renderPass != NULL && surface->renderPass->pendingFlush)  {
         if (surface->renderPass->pendingCommands) {
