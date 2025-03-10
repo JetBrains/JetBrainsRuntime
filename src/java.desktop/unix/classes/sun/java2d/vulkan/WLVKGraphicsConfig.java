@@ -45,26 +45,26 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
     private static final PlatformLogger log =
             PlatformLogger.getLogger("sun.java2d.vulkan.WLVKGraphicsConfig");
 
-    private final VKDevice vkDevice;
+    private final VKGraphicsConfig offscreenConfig;
 
-    public WLVKGraphicsConfig(VKDevice vkDevice, WLGraphicsDevice device,
+    public WLVKGraphicsConfig(VKGraphicsConfig offscreenConfig, WLGraphicsDevice device,
                               int x, int y, int xLogical, int yLogical,
                               int width, int height, int widthLogical, int heightLogical,
                               int scale) {
         super(device, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale);
-        this.vkDevice = vkDevice;
+        this.offscreenConfig = offscreenConfig;
     }
 
     @Override
-    public VKDevice getVKDevice() {
-        return vkDevice;
+    public VKGraphicsConfig getOffscreenConfig() {
+        return offscreenConfig;
     }
 
-    public static WLVKGraphicsConfig getConfig(VKDevice vkDevice, WLGraphicsDevice device,
+    public static WLVKGraphicsConfig getConfig(VKGraphicsConfig offscreenConfig, WLGraphicsDevice device,
                                                int x, int y, int xLogical, int yLogical,
                                                int width, int height, int widthLogical, int heightLogical,
                                                int scale) {
-        return new WLVKGraphicsConfig(vkDevice, device, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale);
+        return new WLVKGraphicsConfig(offscreenConfig, device, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale);
     }
 
     @Override
