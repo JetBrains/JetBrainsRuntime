@@ -21,10 +21,26 @@ package org.GNOME.Accessibility;
 
 import java.awt.event.*;
 import java.util.HashMap;
+
 import sun.awt.AWTAccessor;
 
+/**
+ * Repeats structure of Atk.KeyEventStruct encapsulating information about a key event.
+ * Using to create Atk.KeyEventStruct instance.
+ * <p>
+ * struct AtkKeyEventStruct {
+ * gint type;
+ * guint state;
+ * guint keyval;
+ * gint length;
+ * gchar* string;
+ * guint16 keycode;
+ * guint32 timestamp;
+ * }
+ */
 public class AtkKeyEvent {
 
+    // Symbols mapped to X11 keysym names
     private static HashMap<String, String> nonAlphaNumericMap = null;
 
     public static final int ATK_KEY_EVENT_PRESSED = 0;
@@ -36,11 +52,24 @@ public class AtkKeyEvent {
     private boolean isAltKeyDown = false;
     private boolean isMetaKeyDown = false;
     private boolean isAltGrKeyDown = false;
+
+    /* A keysym value corresponding to those used by GDK and X11. see /usr/X11/include/keysymdef.h.
+     * FIXME: in current implementation we get this value from GNOMEKeyInfo.gdkKeyCode that are defined manually GNOMEKeyMapping.initializeMap,
+     *  doesn't look good.
+     */
     private int keyval = 0;
+
+    /*
+     * Either a string approximating the text that would result
+     * from this keypress, or a symbolic name for this keypress.
+     */
     private String string;
+
+    // The raw hardware code that generated the key event.
     private long keycode;
-    private long timestamp;
+
     // A timestamp in milliseconds indicating when the event occurred.
+    private long timestamp;
 
     static {
         // Non-alphanumeric symbols that need to be mapped to X11 keysym names
@@ -141,9 +170,10 @@ class GNOMEKeyMapping {
 
     record GNOMEKeyInfo(int gdkKeyCode, String gdkKeyString) {}
 
-    // Used to offset VK for NUMPAD keys that don't have a VK_KP_* equivalent.
-    // // At present max VK_* value is 0x0000FFFF
-    // // Also need to support Left/Right variations
+    /* Used to offset VK for NUMPAD keys that don't have a VK_KP_* equivalent.
+     * At present max VK_* value is 0x0000FFFF
+     * Also need to support Left/Right variations.
+     */
     private final static int NUMPAD_OFFSET = 0xFEFE0000;
     private final static int LEFT_OFFSET = 0xFEFD0000;
     private final static int RIGHT_OFFSET = 0xFEFC0000;
@@ -165,7 +195,7 @@ class GNOMEKeyMapping {
             javaKeyCode += RIGHT_OFFSET;
 
         if ((gdkKeyInfo = keyMap.get(Integer.valueOf(javaKeyCode))) != null) {
-            return (gdkKeyInfo);
+            return gdkKeyInfo;
         } else {
             return null;
         }
