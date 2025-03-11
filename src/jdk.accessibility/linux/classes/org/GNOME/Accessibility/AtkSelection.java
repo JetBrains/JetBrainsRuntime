@@ -27,7 +27,7 @@ public class AtkSelection {
     private WeakReference<AccessibleContext> _ac;
     private WeakReference<AccessibleSelection> _acc_selection;
 
-    public AtkSelection(AccessibleContext ac) {
+    private AtkSelection(AccessibleContext ac) {
         super();
         this._ac = new WeakReference<AccessibleContext>(ac);
         this._acc_selection = new WeakReference<AccessibleSelection>(ac.getAccessibleSelection());

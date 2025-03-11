@@ -30,7 +30,7 @@ public class AtkComponent {
     private WeakReference<AccessibleContext> _ac;
     private WeakReference<AccessibleComponent> _acc_component;
 
-    public AtkComponent(AccessibleContext ac) {
+    private AtkComponent(AccessibleContext ac) {
         super();
         this._ac = new WeakReference<AccessibleContext>(ac);
         this._acc_component = new WeakReference<AccessibleComponent>(ac.getAccessibleComponent());

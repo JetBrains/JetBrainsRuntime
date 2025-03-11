@@ -33,7 +33,7 @@ public class AtkText {
 
     private record StringSequence(String str, int start_offset, int end_offset) {}
 
-    public AtkText(AccessibleContext ac) {
+    protected AtkText(AccessibleContext ac) {
         super();
         this._ac = new WeakReference<AccessibleContext>(ac);
         this._acc_text = new WeakReference<AccessibleText>(ac.getAccessibleText());

@@ -27,7 +27,7 @@ public class AtkValue {
 
     private WeakReference<AccessibleValue> _acc_value;
 
-    public AtkValue(AccessibleContext ac) {
+    private AtkValue(AccessibleContext ac) {
         super();
         this._acc_value = new WeakReference<AccessibleValue>(ac.getAccessibleValue());
     }

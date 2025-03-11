@@ -29,7 +29,7 @@ public class AtkEditableText extends AtkText {
 
     private WeakReference<AccessibleEditableText> _acc_edt_text;
 
-    public AtkEditableText(AccessibleContext ac) {
+    private AtkEditableText(AccessibleContext ac) {
         super(ac);
         _acc_edt_text = new WeakReference<AccessibleEditableText>(ac.getAccessibleEditableText());
     }

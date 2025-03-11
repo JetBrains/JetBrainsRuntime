@@ -718,7 +718,7 @@ public class AtkWrapper {
         }
     }
 
-    public AtkWrapper() {
+    private AtkWrapper() {
         if (!accessibilityEnabled) {
             throw new IllegalStateException("AtkWrapper not initialized due to disabled accessibility.");
         }

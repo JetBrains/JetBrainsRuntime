@@ -41,7 +41,7 @@ import sun.util.logging.PlatformLogger;
 public class AtkUtil {
     private static final PlatformLogger log = PlatformLogger.getLogger("org.GNOME.Accessibility.AtkUtil");
 
-    public AtkUtil() {
+    private AtkUtil() {
     }
 
     /**

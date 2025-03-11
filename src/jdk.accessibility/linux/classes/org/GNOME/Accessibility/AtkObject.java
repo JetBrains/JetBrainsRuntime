@@ -56,8 +56,7 @@ public class AtkObject {
     public static final int INTERFACE_TEXT = 0x00000800;
     public static final int INTERFACE_VALUE = 0x00001000;
 
-    public AtkObject() {
-    }
+    private AtkObject() {}
 
     public static int getTFlagFromObj(Object o) {
         return AtkUtil.invokeInSwing(() -> {
@@ -245,15 +244,7 @@ public class AtkObject {
         }, null);
     }
 
-    public static class WrapKeyAndTarget {
-        public String key;
-        public AccessibleContext[] relations;
-
-        public WrapKeyAndTarget(String key, AccessibleContext[] relations) {
-            this.key = key;
-            this.relations = relations;
-        }
-    }
+    private record WrapKeyAndTarget(String key, AccessibleContext[] relations) {}
 
     public static WrapKeyAndTarget[] getArrayAccessibleRelation(AccessibleContext ac) {
         WrapKeyAndTarget[] d = new WrapKeyAndTarget[0];

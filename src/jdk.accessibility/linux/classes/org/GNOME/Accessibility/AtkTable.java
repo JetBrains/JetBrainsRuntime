@@ -28,7 +28,7 @@ public class AtkTable {
     private WeakReference<AccessibleContext> _ac;
     private WeakReference<AccessibleTable> _acc_table;
 
-    public AtkTable(AccessibleContext ac) {
+    private AtkTable(AccessibleContext ac) {
         this._ac = new WeakReference<AccessibleContext>(ac);
         this._acc_table = new WeakReference<AccessibleTable>(ac.getAccessibleTable());
     }

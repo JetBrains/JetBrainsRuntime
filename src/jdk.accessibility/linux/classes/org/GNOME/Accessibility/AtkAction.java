@@ -34,7 +34,7 @@ public class AtkAction {
     private String[] descriptions;
     private int nactions;
 
-    public AtkAction(AccessibleContext ac) {
+    private AtkAction(AccessibleContext ac) {
         super();
         this._ac = new WeakReference<AccessibleContext>(ac);
         AccessibleAction acc_action = ac.getAccessibleAction();

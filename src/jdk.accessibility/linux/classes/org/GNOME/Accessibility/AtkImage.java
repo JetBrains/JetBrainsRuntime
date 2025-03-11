@@ -30,7 +30,7 @@ public class AtkImage {
     private WeakReference<AccessibleContext> _ac;
     private WeakReference<AccessibleIcon[]> _acc_icons;
 
-    public AtkImage(AccessibleContext ac) {
+    private AtkImage(AccessibleContext ac) {
         super();
         this._ac = new WeakReference<AccessibleContext>(ac);
         this._acc_icons = new WeakReference<AccessibleIcon[]>(ac.getAccessibleIcon());

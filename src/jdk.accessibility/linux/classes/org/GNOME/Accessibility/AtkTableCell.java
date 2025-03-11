@@ -31,7 +31,7 @@ public class AtkTableCell {
     private int column = -1;
     private int columnSpan = -1;
 
-    public AtkTableCell(AccessibleContext ac) {
+    private AtkTableCell(AccessibleContext ac) {
         this._ac = new WeakReference<AccessibleContext>(ac);
         Accessible parent = ac.getAccessibleParent();
         _acc_pt = null;
