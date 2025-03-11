@@ -30,16 +30,16 @@ public class AtkKeyEvent {
     public static final int ATK_KEY_EVENT_PRESSED = 0;
     public static final int ATK_KEY_EVENT_RELEASED = 1;
 
-    public int type;
-    public boolean isShiftKeyDown = false;
-    public boolean isCtrlKeyDown = false;
-    public boolean isAltKeyDown = false;
-    public boolean isMetaKeyDown = false;
-    public boolean isAltGrKeyDown = false;
-    public int keyval = 0;
-    public String string;
-    public long keycode;
-    public int timestamp;
+    private int type;
+    private boolean isShiftKeyDown = false;
+    private boolean isCtrlKeyDown = false;
+    private boolean isAltKeyDown = false;
+    private boolean isMetaKeyDown = false;
+    private boolean isAltGrKeyDown = false;
+    private int keyval = 0;
+    private String string;
+    private long keycode;
+    private int timestamp;
 
     static {
         // Non-alphanumeric symbols that need to be mapped to X11 keysym names
