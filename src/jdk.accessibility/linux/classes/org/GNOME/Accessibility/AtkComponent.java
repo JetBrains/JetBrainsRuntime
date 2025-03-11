@@ -36,7 +36,7 @@ public class AtkComponent {
         this._acc_component = new WeakReference<AccessibleComponent>(ac.getAccessibleComponent());
     }
 
-    static public Point getWindowLocation(AccessibleContext ac) {
+    public static Point getWindowLocation(AccessibleContext ac) {
         while (ac != null) {
             AccessibleRole role = ac.getAccessibleRole();
             if (role == AccessibleRole.DIALOG ||
