@@ -113,8 +113,8 @@ public class AtkKeyEvent {
         switch (e.getKeyChar()) {
             case KeyEvent.CHAR_UNDEFINED: {
                 if (keyInfo != null) {
-                    keyval = keyInfo.getGdkKeyCode();
-                    string = keyInfo.getGdkKeyString();
+                    keyval = keyInfo.gdkKeyCode();
+                    string = keyInfo.gdkKeyString();
                 } else {
                     string = KeyEvent.getKeyText(e.getKeyCode());
                     if (string == null) string = "";
@@ -128,8 +128,8 @@ public class AtkKeyEvent {
                     chars[0] = (char) keyval;
                     string = new String(chars);
                 } else {
-                    keyval = keyInfo.getGdkKeyCode();
-                    string = keyInfo.getGdkKeyString();
+                    keyval = keyInfo.gdkKeyCode();
+                    string = keyInfo.gdkKeyString();
                 }
             }
         }
@@ -153,23 +153,7 @@ class GNOMEKeyMapping {
 
     private static HashMap<Integer, GNOMEKeyInfo> keyMap = null;
 
-    public static final class GNOMEKeyInfo {
-        private int gdkKeyCode;
-        private String gdkKeyString;
-
-        public GNOMEKeyInfo(int code, String string) {
-            gdkKeyCode = code;
-            gdkKeyString = string;
-        }
-
-        public int getGdkKeyCode() {
-            return gdkKeyCode;
-        }
-
-        public String getGdkKeyString() {
-            return gdkKeyString;
-        }
-    }
+    record GNOMEKeyInfo(int gdkKeyCode, String gdkKeyString) {}
 
     // Used to offset VK for NUMPAD keys that don't have a VK_KP_* equivalent.
     // // At present max VK_* value is 0x0000FFFF
