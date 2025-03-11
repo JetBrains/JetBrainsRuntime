@@ -32,13 +32,15 @@ public class AtkValue {
         this._acc_value = new WeakReference<AccessibleValue>(ac.getAccessibleValue());
     }
 
-    public static AtkValue createAtkValue(AccessibleContext ac) {
+    // JNI upcalls section
+
+    private static AtkValue create_atk_value(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             return new AtkValue(ac);
         }, null);
     }
 
-    public Number get_current_value() {
+    private Number get_current_value() {
         AccessibleValue acc_value = _acc_value.get();
         if (acc_value == null)
             return 0.0;
@@ -48,7 +50,7 @@ public class AtkValue {
         }, 0.0);
     }
 
-    public double getMaximumValue() {
+    private double get_maximum_value() {
         AccessibleValue acc_value = _acc_value.get();
         if (acc_value == null)
             return 0.0;
@@ -58,7 +60,7 @@ public class AtkValue {
         }, 0.0);
     }
 
-    public double getMinimumValue() {
+    private double get_minimum_value() {
         AccessibleValue acc_value = _acc_value.get();
         if (acc_value == null)
             return 0.0;
@@ -68,7 +70,7 @@ public class AtkValue {
         }, 0.0);
     }
 
-    public void setValue(Number n) {
+    private void set_value(Number n) {
         AccessibleValue acc_value = _acc_value.get();
         if (acc_value == null)
             return;
@@ -78,7 +80,7 @@ public class AtkValue {
         });
     }
 
-    public double getIncrement() {
+    private double get_increment() {
         return Double.MIN_VALUE;
     }
 }

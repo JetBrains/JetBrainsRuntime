@@ -69,7 +69,7 @@ gpointer jaw_editable_text_data_init(jobject ac) {
     jclass classEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classEditableText, "createAtkEditableText",
+        jniEnv, classEditableText, "create_atk_editable_text",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkEditableText;");
     jobject jatk_editable_text =
@@ -189,7 +189,7 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
     jmethodID jmid =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText, "setRunAttributes",
+        (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText, "set_run_attributes",
                                "(Ljavax/swing/text/AttributeSet;II)Z");
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_editable_text, jmid, (jobject)attrib_set,

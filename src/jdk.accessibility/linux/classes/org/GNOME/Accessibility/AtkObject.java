@@ -58,7 +58,41 @@ public class AtkObject {
 
     private AtkObject() {}
 
-    public static int getTFlagFromObj(Object o) {
+    /**
+     * Returns the JMenuItem accelerator. Similar implementation is used on
+     * macOS, see CAccessibility.getAcceleratorText(AccessibleContext) in OpenJDK, and
+     * on Windows, see AccessBridge.getAccelerator(AccessibleContext) in OpenJDK.
+     */
+    private static String getAcceleratorText(AccessibleContext ac) {
+        String accText = "";
+        Accessible parent = ac.getAccessibleParent();
+        if (parent != null) {
+            int indexInParent = ac.getAccessibleIndexInParent();
+            Accessible child = parent.getAccessibleContext()
+                    .getAccessibleChild(indexInParent);
+            if (child instanceof JMenuItem menuItem) {
+                KeyStroke keyStroke = menuItem.getAccelerator();
+                if (keyStroke != null) {
+                    int modifiers = keyStroke.getModifiers();
+                    String modifiersText = modifiers > 0 ? InputEvent.getModifiersExText(modifiers) : "";
+
+                    int keyCode = keyStroke.getKeyCode();
+                    String keyCodeText = keyCode != 0 ? KeyEvent.getKeyText(keyCode) : String.valueOf(keyStroke.getKeyChar());
+
+                    accText += modifiersText;
+                    if (!modifiersText.isEmpty() && !keyCodeText.isEmpty()) {
+                        accText += "+";
+                    }
+                    accText += keyCodeText;
+                }
+            }
+        }
+        return accText;
+    }
+
+    // JNI upcalls section
+
+    private static int get_tflag_from_obj(Object o) {
         return AtkUtil.invokeInSwing(() -> {
             int flags = 0;
             AccessibleContext ac;
@@ -109,7 +143,7 @@ public class AtkObject {
         }, 0);
     }
 
-    public static AccessibleContext getAccessibleParent(AccessibleContext ac) {
+    private static AccessibleContext get_accessible_parent(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             Accessible father = ac.getAccessibleParent();
             if (father != null)
@@ -119,7 +153,7 @@ public class AtkObject {
         }, null);
     }
 
-    public static void setAccessibleParent(AccessibleContext ac, AccessibleContext pa) {
+    private static void set_accessible_parent(AccessibleContext ac, AccessibleContext pa) {
         AtkUtil.invokeInSwing(() -> {
             if (pa instanceof Accessible father) {
                 ac.setAccessibleParent(father);
@@ -127,7 +161,7 @@ public class AtkObject {
         });
     }
 
-    public static String getAccessibleName(AccessibleContext ac) {
+    public static String get_accessible_name(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             String accessibleName = ac.getAccessibleName();
             if (accessibleName == null) {
@@ -141,80 +175,48 @@ public class AtkObject {
         }, "");
     }
 
-    /**
-     * Returns the JMenuItem accelerator. Similar implementation is used on
-     * macOS, see CAccessibility.getAcceleratorText(AccessibleContext) in OpenJDK, and
-     * on Windows, see AccessBridge.getAccelerator(AccessibleContext) in OpenJDK.
-     */
-    private static String getAcceleratorText(AccessibleContext ac) {
-        String accText = "";
-        Accessible parent = ac.getAccessibleParent();
-        if (parent != null) {
-            int indexInParent = ac.getAccessibleIndexInParent();
-            Accessible child = parent.getAccessibleContext()
-                    .getAccessibleChild(indexInParent);
-            if (child instanceof JMenuItem menuItem) {
-                KeyStroke keyStroke = menuItem.getAccelerator();
-                if (keyStroke != null) {
-                    int modifiers = keyStroke.getModifiers();
-                    String modifiersText = modifiers > 0 ? InputEvent.getModifiersExText(modifiers) : "";
-
-                    int keyCode = keyStroke.getKeyCode();
-                    String keyCodeText = keyCode != 0 ? KeyEvent.getKeyText(keyCode) : String.valueOf(keyStroke.getKeyChar());
-
-                    accText += modifiersText;
-                    if (!modifiersText.isEmpty() && !keyCodeText.isEmpty()) {
-                        accText += "+";
-                    }
-                    accText += keyCodeText;
-                }
-            }
-        }
-        return accText;
-    }
-
-    public static void setAccessibleName(AccessibleContext ac, String name) {
+    private static void set_accessible_name(AccessibleContext ac, String name) {
         AtkUtil.invokeInSwing(() -> {
             ac.setAccessibleName(name);
         });
     }
 
-    public static String getAccessibleDescription(AccessibleContext ac) {
+    private static String get_accessible_description(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             return ac.getAccessibleDescription();
         }, "");
     }
 
-    public static void setAccessibleDescription(AccessibleContext ac, String description) {
+    private static void set_accessible_description(AccessibleContext ac, String description) {
         AtkUtil.invokeInSwing(() -> {
             ac.setAccessibleDescription(description);
         });
     }
 
-    public static int getAccessibleChildrenCount(AccessibleContext ac) {
+    private static int get_accessible_children_count(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             return ac.getAccessibleChildrenCount();
         }, 0);
     }
 
-    public static int getAccessibleIndexInParent(AccessibleContext ac) {
+    private static int get_accessible_index_in_parent(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             return ac.getAccessibleIndexInParent();
         }, -1);
     }
 
-    public static AccessibleRole getAccessibleRole(AccessibleContext ac) {
+    private static AccessibleRole get_accessible_role(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             return ac.getAccessibleRole();
         }, AccessibleRole.UNKNOWN);
     }
 
-    public static boolean equalsIgnoreCaseLocaleWithRole(AccessibleRole role) {
+    private static boolean equals_ignore_case_locale_with_role(AccessibleRole role) {
         String displayString = role.toDisplayString(Locale.US);
         return displayString.equalsIgnoreCase("paragraph");
     }
 
-    public static AccessibleState[] getArrayAccessibleState(AccessibleContext ac) {
+    private static AccessibleState[] get_array_accessible_state(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             AccessibleStateSet stateSet = ac.getAccessibleStateSet();
             if (stateSet == null)
@@ -224,7 +226,7 @@ public class AtkObject {
         }, null);
     }
 
-    public static String getLocale(AccessibleContext ac) {
+    private static String get_locale(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             Locale l = ac.getLocale();
             String locale = l.getLanguage();
@@ -246,7 +248,7 @@ public class AtkObject {
 
     private record WrapKeyAndTarget(String key, AccessibleContext[] relations) {}
 
-    public static WrapKeyAndTarget[] getArrayAccessibleRelation(AccessibleContext ac) {
+    private static WrapKeyAndTarget[] get_array_accessible_relation(AccessibleContext ac) {
         WrapKeyAndTarget[] d = new WrapKeyAndTarget[0];
         return AtkUtil.invokeInSwing(() -> {
             AccessibleRelationSet relationSet = ac.getAccessibleRelationSet();
@@ -272,7 +274,7 @@ public class AtkObject {
         }, d);
     }
 
-    public static AccessibleContext getAccessibleChild(AccessibleContext ac, int i) {
+    private static AccessibleContext get_accessible_child(AccessibleContext ac, int i) {
         return AtkUtil.invokeInSwing(() -> {
             Accessible child = ac.getAccessibleChild(i);
             if (child == null)
@@ -282,7 +284,7 @@ public class AtkObject {
         }, null);
     }
 
-    public static int hashCode(AccessibleContext ac) {
+    private static int hash_code(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             return ac.hashCode();
         }, 0);

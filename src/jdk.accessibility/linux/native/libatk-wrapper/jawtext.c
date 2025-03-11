@@ -118,7 +118,7 @@ gpointer jaw_text_data_init(jobject ac) {
     jclass classText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classText, "createAtkText",
+        jniEnv, classText, "create_atk_text",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkText;");
     jobject jatk_text =

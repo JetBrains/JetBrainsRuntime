@@ -33,13 +33,15 @@ public class AtkTable {
         this._acc_table = new WeakReference<AccessibleTable>(ac.getAccessibleTable());
     }
 
-    public static AtkTable createAtkTable(AccessibleContext ac) {
+    // JNI upcalls section
+
+    private static AtkTable create_atk_table(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             return new AtkTable(ac);
         }, null);
     }
 
-    public AccessibleContext ref_at(int row, int column) {
+    private AccessibleContext ref_at(int row, int column) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return null;
@@ -52,7 +54,7 @@ public class AtkTable {
         }, null);
     }
 
-    public int get_index_at(int row, int column) {
+    private int get_index_at(int row, int column) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return -1;
@@ -70,7 +72,7 @@ public class AtkTable {
         }, -1);
     }
 
-    public int get_column_at_index(int index) {
+    private int get_column_at_index(int index) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return -1;
@@ -83,7 +85,7 @@ public class AtkTable {
         }, -1);
     }
 
-    public int get_row_at_index(int index) {
+    private int get_row_at_index(int index) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return -1;
@@ -96,7 +98,7 @@ public class AtkTable {
         }, -1);
     }
 
-    public int get_n_columns() {
+    private int get_n_columns() {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return 0;
@@ -106,7 +108,7 @@ public class AtkTable {
         }, 0);
     }
 
-    public int get_n_rows() {
+    private int get_n_rows() {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return 0;
@@ -116,7 +118,7 @@ public class AtkTable {
         }, 0);
     }
 
-    public int get_column_extent_at(int row, int column) {
+    private int get_column_extent_at(int row, int column) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return 0;
@@ -126,7 +128,7 @@ public class AtkTable {
         }, 0);
     }
 
-    public int get_row_extent_at(int row, int column) {
+    private int get_row_extent_at(int row, int column) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return 0;
@@ -136,7 +138,7 @@ public class AtkTable {
         }, 0);
     }
 
-    public AccessibleContext get_caption() {
+    private AccessibleContext get_caption() {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return null;
@@ -149,10 +151,7 @@ public class AtkTable {
         }, null);
     }
 
-    /**
-     * @param a an Accessible object
-     */
-    public void setCaption(Accessible a) {
+    public void set_caption(Accessible a) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return;
@@ -162,7 +161,7 @@ public class AtkTable {
         });
     }
 
-    public String get_column_description(int column) {
+    private String get_column_description(int column) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return "";
@@ -183,7 +182,7 @@ public class AtkTable {
      * @param description a String object representing the description text to set for the
      *                    specified column of the table
      */
-    public void setColumnDescription(int column, String description) {
+    private void set_column_description(int column, String description) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return;
@@ -195,7 +194,7 @@ public class AtkTable {
         });
     }
 
-    public String get_row_description(int row) {
+    private String get_row_description(int row) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return "";
@@ -216,7 +215,7 @@ public class AtkTable {
      * @param description a String object representing the description text to set for the
      *                    specified row of the table
      */
-    public void setRowDescription(int row, String description) {
+    private void set_row_description(int row, String description) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return;
@@ -228,7 +227,7 @@ public class AtkTable {
         });
     }
 
-    public AccessibleContext get_column_header(int column) {
+    private AccessibleContext get_column_header(int column) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return null;
@@ -244,7 +243,7 @@ public class AtkTable {
         }, null);
     }
 
-    public AccessibleContext get_row_header(int row) {
+    private AccessibleContext get_row_header(int row) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return null;
@@ -260,7 +259,7 @@ public class AtkTable {
         }, null);
     }
 
-    public AccessibleContext get_summary() {
+    private AccessibleContext get_summary() {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return null;
@@ -273,10 +272,7 @@ public class AtkTable {
         }, null);
     }
 
-    /**
-     * @param a the Accessible object to set summary for
-     */
-    public void setSummary(Accessible a) {
+    private void set_summary(Accessible a) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return;
@@ -286,7 +282,7 @@ public class AtkTable {
         });
     }
 
-    public int[] get_selected_columns() {
+    private int[] get_selected_columns() {
         int[] d = new int[0];
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
@@ -297,7 +293,7 @@ public class AtkTable {
         }, d);
     }
 
-    public int[] get_selected_rows() {
+    private int[] get_selected_rows() {
         int[] d = new int[0];
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
@@ -308,7 +304,7 @@ public class AtkTable {
         }, d);
     }
 
-    public boolean is_column_selected(int column) {
+    private boolean is_column_selected(int column) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return false;
@@ -318,7 +314,7 @@ public class AtkTable {
         }, false);
     }
 
-    public boolean is_row_selected(int row) {
+    private boolean is_row_selected(int row) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return false;
@@ -328,7 +324,7 @@ public class AtkTable {
         }, false);
     }
 
-    public boolean is_selected(int row, int column) {
+    private boolean is_selected(int row, int column) {
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return false;

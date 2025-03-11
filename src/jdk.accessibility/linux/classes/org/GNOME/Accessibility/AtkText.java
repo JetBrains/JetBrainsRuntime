@@ -40,12 +40,6 @@ public class AtkText {
         this._acc_edt_text = new WeakReference<AccessibleEditableText>(ac.getAccessibleEditableText());
     }
 
-    public static AtkText createAtkText(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
-            return new AtkText(ac);
-        }, null);
-    }
-
     public static int getRightStart(int start) {
         if (start < 0)
             return 0;
@@ -61,8 +55,16 @@ public class AtkText {
             return end;
     }
 
+    // JNI upcalls section
+
+    private static AtkText create_atk_text(AccessibleContext ac) {
+        return AtkUtil.invokeInSwing(() -> {
+            return new AtkText(ac);
+        }, null);
+    }
+
     /* Return string from start, up to, but not including end */
-    public String get_text(int start, int end) {
+    private String get_text(int start, int end) {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
             return null;
@@ -84,7 +86,7 @@ public class AtkText {
         }, null);
     }
 
-    public char get_character_at_offset(int offset) {
+    private char get_character_at_offset(int offset) {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
             return ' ';
@@ -97,7 +99,7 @@ public class AtkText {
         }, ' ');
     }
 
-    public StringSequence get_text_at_offset(int offset, int boundary_type) {
+    private StringSequence get_text_at_offset(int offset, int boundary_type) {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
             return null;
@@ -118,7 +120,7 @@ public class AtkText {
         }, null);
     }
 
-    public StringSequence get_text_before_offset(int offset, int boundary_type) {
+    private StringSequence get_text_before_offset(int offset, int boundary_type) {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
             return null;
@@ -142,7 +144,7 @@ public class AtkText {
         }, null);
     }
 
-    public StringSequence get_text_after_offset(int offset, int boundary_type) {
+    private StringSequence get_text_after_offset(int offset, int boundary_type) {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
             return null;
@@ -166,7 +168,7 @@ public class AtkText {
         }, null);
     }
 
-    public int get_caret_offset() {
+    private int get_caret_offset() {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
             return 0;
@@ -176,7 +178,7 @@ public class AtkText {
         }, 0);
     }
 
-    public Rectangle get_character_extents(int offset, int coord_type) {
+    private Rectangle get_character_extents(int offset, int coord_type) {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return null;
@@ -198,7 +200,7 @@ public class AtkText {
         }, null);
     }
 
-    public int get_character_count() {
+    private int get_character_count() {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
             return 0;
@@ -208,7 +210,7 @@ public class AtkText {
         }, 0);
     }
 
-    public int get_offset_at_point(int x, int y, int coord_type) {
+    private int get_offset_at_point(int x, int y, int coord_type) {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return -1;
@@ -225,7 +227,7 @@ public class AtkText {
         }, -1);
     }
 
-    public Rectangle get_range_extents(int start, int end, int coord_type) {
+    private Rectangle get_range_extents(int start, int end, int coord_type) {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return null;
@@ -267,7 +269,7 @@ public class AtkText {
         }, 0);
     }
 
-    public StringSequence get_selection() {
+    private StringSequence get_selection() {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
             return null;
@@ -282,7 +284,7 @@ public class AtkText {
         }, null);
     }
 
-    public boolean add_selection(int start, int end) {
+    private boolean add_selection(int start, int end) {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
             return false;
@@ -302,7 +304,7 @@ public class AtkText {
         }, false);
     }
 
-    public boolean remove_selection(int selection_num) {
+    private boolean remove_selection(int selection_num) {
         AccessibleEditableText acc_edt_text = _acc_edt_text.get();
         if (acc_edt_text == null)
             return false;
@@ -315,7 +317,7 @@ public class AtkText {
         }, false);
     }
 
-    public boolean set_selection(int selection_num, int start, int end) {
+    private boolean set_selection(int selection_num, int start, int end) {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
             return false;
@@ -336,7 +338,7 @@ public class AtkText {
         }, false);
     }
 
-    public boolean set_caret_offset(int offset) {
+    private boolean set_caret_offset(int offset) {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
             return false;

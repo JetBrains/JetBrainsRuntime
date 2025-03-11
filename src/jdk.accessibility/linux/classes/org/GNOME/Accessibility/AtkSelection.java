@@ -33,13 +33,15 @@ public class AtkSelection {
         this._acc_selection = new WeakReference<AccessibleSelection>(ac.getAccessibleSelection());
     }
 
-    public static AtkSelection createAtkSelection(AccessibleContext ac) {
+    // JNI upcalls section
+
+    private static AtkSelection create_atk_selection(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             return new AtkSelection(ac);
         }, null);
     }
 
-    public boolean add_selection(int i) {
+    private boolean add_selection(int i) {
         AccessibleSelection acc_selection = _acc_selection.get();
         if (acc_selection == null)
             return false;
@@ -50,7 +52,7 @@ public class AtkSelection {
         }, false);
     }
 
-    public boolean clear_selection() {
+    private boolean clear_selection() {
         AccessibleSelection acc_selection = _acc_selection.get();
         if (acc_selection == null)
             return false;
@@ -61,7 +63,7 @@ public class AtkSelection {
         return true;
     }
 
-    public AccessibleContext ref_selection(int i) {
+    private AccessibleContext ref_selection(int i) {
         AccessibleSelection acc_selection = _acc_selection.get();
         if (acc_selection == null)
             return null;
@@ -74,7 +76,7 @@ public class AtkSelection {
         }, null);
     }
 
-    public int get_selection_count() {
+    private int get_selection_count() {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return 0;
@@ -94,7 +96,7 @@ public class AtkSelection {
         //return acc_selection.getAccessibleSelectionCount();
     }
 
-    public boolean is_child_selected(int i) {
+    private boolean is_child_selected(int i) {
         AccessibleSelection acc_selection = _acc_selection.get();
         if (acc_selection == null)
             return false;
@@ -104,7 +106,7 @@ public class AtkSelection {
         }, false);
     }
 
-    public boolean remove_selection(int i) {
+    private boolean remove_selection(int i) {
         AccessibleSelection acc_selection = _acc_selection.get();
         if (acc_selection == null)
             return false;
@@ -115,7 +117,7 @@ public class AtkSelection {
         }, false);
     }
 
-    public boolean select_all_selection() {
+    private boolean select_all_selection() {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return false;

@@ -58,25 +58,21 @@ public class AtkTableCell {
         columnSpan = pt.getAccessibleColumnExtentAt(row, column);
     }
 
-    public static AtkTableCell createAtkTableCell(AccessibleContext ac) {
+    // JNI upcalls section
+
+    private static AtkTableCell create_atk_table_cell(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             return new AtkTableCell(ac);
         }, null);
     }
 
-    /**
-     * getTable
-     *
-     * @return: Reference to the accessible of the containing table as an
-     * AccessibleTable instance.
-     */
-    public AccessibleTable getTable() {
+    private AccessibleTable get_table() {
         if (_acc_pt == null)
             return null;
         return _acc_pt.get();
     }
 
-    public AccessibleContext[] getAccessibleColumnHeader() {
+    private AccessibleContext[] get_accessible_column_header() {
         if (_acc_pt == null)
             return null;
         return AtkUtil.invokeInSwing(() -> {
@@ -93,7 +89,7 @@ public class AtkTableCell {
         }, null);
     }
 
-    public AccessibleContext[] getAccessibleRowHeader() {
+    private AccessibleContext[] get_accessible_row_header() {
         if (_acc_pt == null)
             return null;
         return AtkUtil.invokeInSwing(() -> {

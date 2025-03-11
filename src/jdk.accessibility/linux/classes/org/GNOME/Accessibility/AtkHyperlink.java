@@ -37,7 +37,15 @@ public class AtkHyperlink {
         }, null);
     }
 
-    public String get_uri(int i) {
+    // JNI upcalls section
+
+    private static AtkHyperlink create_atk_hyperlink(AccessibleHyperlink hl) {
+        return AtkUtil.invokeInSwing(() -> {
+            return new AtkHyperlink(hl);
+        }, null);
+    }
+
+    private String get_uri(int i) {
         AccessibleHyperlink acc_hyperlink = _acc_hyperlink.get();
         if (acc_hyperlink == null)
             return "";
@@ -50,7 +58,7 @@ public class AtkHyperlink {
         }, "");
     }
 
-    public AccessibleContext get_object(int i) {
+    private AccessibleContext get_object(int i) {
         AccessibleHyperlink acc_hyperlink = _acc_hyperlink.get();
         if (acc_hyperlink == null)
             return null;
@@ -63,7 +71,7 @@ public class AtkHyperlink {
         }, null);
     }
 
-    public int get_end_index() {
+    private int get_end_index() {
         AccessibleHyperlink acc_hyperlink = _acc_hyperlink.get();
         if (acc_hyperlink == null)
             return 0;
@@ -73,7 +81,7 @@ public class AtkHyperlink {
         }, 0);
     }
 
-    public int get_start_index() {
+    private int get_start_index() {
         AccessibleHyperlink acc_hyperlink = _acc_hyperlink.get();
         if (acc_hyperlink == null)
             return 0;
@@ -83,7 +91,7 @@ public class AtkHyperlink {
         }, 0);
     }
 
-    public boolean is_valid() {
+    private boolean is_valid() {
         AccessibleHyperlink acc_hyperlink = _acc_hyperlink.get();
         if (acc_hyperlink == null)
             return false;
@@ -93,7 +101,7 @@ public class AtkHyperlink {
         }, false);
     }
 
-    public int get_n_anchors() {
+    private int get_n_anchors() {
         AccessibleHyperlink acc_hyperlink = _acc_hyperlink.get();
         if (acc_hyperlink == null)
             return 0;

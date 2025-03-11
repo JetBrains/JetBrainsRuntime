@@ -36,12 +36,6 @@ public class AtkComponent {
         this._acc_component = new WeakReference<AccessibleComponent>(ac.getAccessibleComponent());
     }
 
-    public static AtkComponent createAtkComponent(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
-            return new AtkComponent(ac);
-        }, null);
-    }
-
     static public Point getWindowLocation(AccessibleContext ac) {
         while (ac != null) {
             AccessibleRole role = ac.getAccessibleRole();
@@ -115,7 +109,15 @@ public class AtkComponent {
         return null;
     }
 
-    public boolean contains(int x, int y, int coord_type) {
+    // JNI upcalls section
+
+    private static AtkComponent create_atk_component(AccessibleContext ac) {
+        return AtkUtil.invokeInSwing(() -> {
+            return new AtkComponent(ac);
+        }, null);
+    }
+
+    private boolean contains(int x, int y, int coord_type) {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return false;
@@ -135,7 +137,7 @@ public class AtkComponent {
         }, false);
     }
 
-    public AccessibleContext get_accessible_at_point(int x, int y, int coord_type) {
+    private AccessibleContext get_accessible_at_point(int x, int y, int coord_type) {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return null;
@@ -158,7 +160,7 @@ public class AtkComponent {
         }, null);
     }
 
-    public boolean grab_focus() {
+    private boolean grab_focus() {
         AccessibleComponent acc_component = _acc_component.get();
         if (acc_component == null)
             return false;
@@ -171,7 +173,7 @@ public class AtkComponent {
         }, false);
     }
 
-    public boolean set_extents(int x, int y, int width, int height, int coord_type) {
+    private boolean set_extents(int x, int y, int width, int height, int coord_type) {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return false;
@@ -192,7 +194,7 @@ public class AtkComponent {
         }, false);
     }
 
-    public Rectangle get_extents(int coord_type) {
+    private Rectangle get_extents(int coord_type) {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return null;
@@ -217,7 +219,7 @@ public class AtkComponent {
         }, null);
     }
 
-    public int get_layer() {
+    private int get_layer() {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return AtkLayer.INVALID;

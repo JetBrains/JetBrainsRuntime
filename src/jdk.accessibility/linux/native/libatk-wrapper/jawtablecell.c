@@ -63,7 +63,7 @@ gpointer jaw_table_cell_data_init(jobject ac) {
     jclass classTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classTableCell, "createAtkTableCell",
+        jniEnv, classTableCell, "create_atk_table_cell",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkTableCell;");
     jobject jatk_table_cell =
@@ -99,7 +99,7 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
     jclass classAtkTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     jmethodID jmid =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkTableCell, "getTable",
+        (*jniEnv)->GetMethodID(jniEnv, classAtkTableCell, "get_table",
                                "()Ljavax/accessibility/AccessibleTable;");
     jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, jatk_table_cell, jmid);
     (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
@@ -201,7 +201,7 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     jclass classAtkTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     jmethodID jmid = (*jniEnv)->GetMethodID(
-        jniEnv, classAtkTableCell, "getAccessibleColumnHeader",
+        jniEnv, classAtkTableCell, "get_accessible_column_header",
         "()[Ljavax/accessibility/AccessibleContext;");
     jobjectArray ja_ac = (jobjectArray)(*jniEnv)->CallObjectMethod(
         jniEnv, jatk_table_cell, jmid);
@@ -225,7 +225,7 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
     jclass classAtkTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     jmethodID jmid = (*jniEnv)->GetMethodID(
-        jniEnv, classAtkTableCell, "getAccessibleRowHeader",
+        jniEnv, classAtkTableCell, "get_accessible_row_header",
         "()[Ljavax/accessibility/AccessibleContext;");
     jobjectArray ja_ac = (jobjectArray)(*jniEnv)->CallObjectMethod(
         jniEnv, jatk_table_cell, jmid);

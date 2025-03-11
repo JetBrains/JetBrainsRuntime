@@ -187,7 +187,7 @@ guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, atkObject, "getTFlagFromObj", "(Ljava/lang/Object;)I");
+        jniEnv, atkObject, "get_tflag_from_obj", "(Ljava/lang/Object;)I");
     return (guint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, jObj);
 }
 
@@ -304,7 +304,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
     jmethodID jmidgar = (*jniEnv)->GetStaticMethodID(
-        jniEnv, atkObject, "getAccessibleRole",
+        jniEnv, atkObject, "get_accessible_role",
         "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/"
         "AccessibleRole;");
     jobject ac_role = (*jniEnv)->CallStaticObjectMethod(
@@ -440,7 +440,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
 
     if (jaw_util_is_java_acc_role(jniEnv, ac_role, "RADIO_BUTTON")) {
         jmethodID jmidgap = (*jniEnv)->GetStaticMethodID(
-            jniEnv, atkObject, "getAccessibleParent",
+            jniEnv, atkObject, "get_accessible_parent",
             "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/"
             "AccessibleContext;");
         jobject jparent = (*jniEnv)->CallStaticObjectMethod(
@@ -509,7 +509,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
 
     if (jaw_util_is_java_acc_role(jniEnv, ac_role, "UNKNOWN")) {
         jmethodID jmidgap = (*jniEnv)->GetStaticMethodID(
-            jniEnv, atkObject, "getAccessibleParent",
+            jniEnv, atkObject, "get_accessible_parent",
             "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/"
             "AccessibleContext;");
         jobject jparent = (*jniEnv)->CallStaticObjectMethod(
@@ -528,7 +528,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
         return ATK_ROLE_WINDOW;
 
     jmethodID jmideic = (*jniEnv)->GetStaticMethodID(
-        jniEnv, atkObject, "equalsIgnoreCaseLocaleWithRole",
+        jniEnv, atkObject, "equals_ignore_case_locale_with_role",
         "(Ljavax/accessibility/AccessibleRole;)Z");
     if ((*jniEnv)->CallStaticBooleanMethod(jniEnv, atkObject, jmideic, ac_role))
         return ATK_ROLE_PARAGRAPH;

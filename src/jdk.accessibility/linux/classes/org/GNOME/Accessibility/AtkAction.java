@@ -47,13 +47,29 @@ public class AtkAction {
         }
     }
 
-    public static AtkAction createAtkAction(AccessibleContext ac) {
+    private String convertModString(String mods) {
+        if (mods == null || mods.length() == 0) {
+            return "";
+        }
+
+        String modStrs[] = mods.split("\\+");
+        String newModString = "";
+        for (int i = 0; i < modStrs.length; i++) {
+            newModString += "<" + modStrs[i] + ">";
+        }
+
+        return newModString;
+    }
+
+    // JNI upcalls section
+
+    private static AtkAction create_atk_action(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             return new AtkAction(ac);
         }, null);
     }
 
-    public boolean do_action(int i) {
+    private boolean do_action(int i) {
         AccessibleAction acc_action = _acc_action.get();
         if (acc_action == null)
             return false;
@@ -64,11 +80,11 @@ public class AtkAction {
         return true;
     }
 
-    public int get_n_actions() {
+    private int get_n_actions() {
         return this.nactions;
     }
 
-    public String get_description(int i) {
+    private String get_description(int i) {
         AccessibleAction acc_action = _acc_action.get();
         if (acc_action == null)
             return null;
@@ -85,7 +101,7 @@ public class AtkAction {
         return descriptions[i];
     }
 
-    public boolean setDescription(int i, String description) {
+    private boolean set_description(int i, String description) {
         if (i >= nactions) {
             return false;
         }
@@ -104,7 +120,7 @@ public class AtkAction {
      * name so a getter from the AcccessibleContext
      * class is one way to work around that)
      */
-    public String getLocalizedName(int i) {
+    private String get_localized_name(int i) {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return null;
@@ -130,21 +146,7 @@ public class AtkAction {
         }, null);
     }
 
-    private String convertModString(String mods) {
-        if (mods == null || mods.length() == 0) {
-            return "";
-        }
-
-        String modStrs[] = mods.split("\\+");
-        String newModString = "";
-        for (int i = 0; i < modStrs.length; i++) {
-            newModString += "<" + modStrs[i] + ">";
-        }
-
-        return newModString;
-    }
-
-    public String get_keybinding(int index) {
+    private String get_keybinding(int index) {
         AccessibleExtendedComponent acc_ext_component;
         if (_acc_ext_component == null)
             return "";

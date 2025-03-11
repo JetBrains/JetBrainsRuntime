@@ -36,13 +36,15 @@ public class AtkImage {
         this._acc_icons = new WeakReference<AccessibleIcon[]>(ac.getAccessibleIcon());
     }
 
-    public static AtkImage createAtkImage(AccessibleContext ac) {
+    // JNI upcalls section
+
+    private static AtkImage create_atk_image(AccessibleContext ac) {
         return AtkUtil.invokeInSwing(() -> {
             return new AtkImage(ac);
         }, null);
     }
 
-    public Point get_image_position(int coord_type) {
+    private Point get_image_position(int coord_type) {
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return null;
@@ -55,7 +57,7 @@ public class AtkImage {
         }, null);
     }
 
-    public String get_image_description() {
+    private String get_image_description() {
         AccessibleIcon[] acc_icons = _acc_icons.get();
         if (acc_icons == null)
             return "";
@@ -71,7 +73,7 @@ public class AtkImage {
         }, "");
     }
 
-    public Dimension get_image_size() {
+    private Dimension get_image_size() {
         Dimension d = new Dimension(0, 0);
 
         AccessibleContext ac = _ac.get();

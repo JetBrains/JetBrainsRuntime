@@ -61,7 +61,7 @@ static void object_table_insert(JNIEnv *jniEnv, jobject ac, JawImpl *jaw_impl) {
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, atkObject, "hashCode",
+        jniEnv, atkObject, "hash_code",
         "(Ljavax/accessibility/AccessibleContext;)I");
     jaw_impl->hash_key =
         (gint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
@@ -76,7 +76,7 @@ static JawImpl *object_table_lookup(JNIEnv *jniEnv, jobject ac) {
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, atkObject, "hashCode",
+        jniEnv, atkObject, "hash_code",
         "(Ljavax/accessibility/AccessibleContext;)I");
     gint hash_key =
         (gint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);

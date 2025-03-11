@@ -62,7 +62,7 @@ gpointer jaw_value_data_init(jobject ac) {
     jclass classValue =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classValue, "createAtkValue",
+        jniEnv, classValue, "create_atk_value",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkValue;");
     jobject jatk_value =
@@ -171,7 +171,7 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
 
     jclass classAtkValue =
         (*env)->FindClass(env, "org/GNOME/Accessibility/AtkValue");
-    jmethodID jmid = (*env)->GetMethodID(env, classAtkValue, "setValue",
+    jmethodID jmid = (*env)->GetMethodID(env, classAtkValue, "set_value",
                                          "(Ljava/lang/Number;)V");
     (*env)->CallVoidMethod(env, atk_value, jmid, (jdouble)value);
     (*env)->DeleteGlobalRef(env, atk_value);
@@ -184,9 +184,9 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
     jclass classAtkValue =
         (*env)->FindClass(env, "org/GNOME/Accessibility/AtkValue");
     jmethodID jmidMin =
-        (*env)->GetMethodID(env, classAtkValue, "getMinimumValue", "()D");
+        (*env)->GetMethodID(env, classAtkValue, "get_minimum_value", "()D");
     jmethodID jmidMax =
-        (*env)->GetMethodID(env, classAtkValue, "getMaximumValue", "()D");
+        (*env)->GetMethodID(env, classAtkValue, "get_maximum_value", "()D");
     AtkRange *ret = atk_range_new(
         (gdouble)(*env)->CallDoubleMethod(env, atk_value, jmidMin),
         (gdouble)(*env)->CallDoubleMethod(env, atk_value, jmidMax),
@@ -202,7 +202,7 @@ static gdouble jaw_value_get_increment(AtkValue *obj) {
     jclass classAtkValue =
         (*env)->FindClass(env, "org/GNOME/Accessibility/AtkValue");
     jmethodID jmid =
-        (*env)->GetMethodID(env, classAtkValue, "getIncrement", "()D");
+        (*env)->GetMethodID(env, classAtkValue, "get_increment", "()D");
     gdouble ret = (*env)->CallDoubleMethod(env, atk_value, jmid);
     (*env)->DeleteGlobalRef(env, atk_value);
     return ret;

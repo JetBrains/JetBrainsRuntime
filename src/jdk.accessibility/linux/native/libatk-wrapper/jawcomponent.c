@@ -79,7 +79,7 @@ gpointer jaw_component_data_init(jobject ac) {
     jclass classComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classComponent, "createAtkComponent",
+        jniEnv, classComponent, "create_atk_component",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkComponent;");
 
