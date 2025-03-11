@@ -111,27 +111,17 @@ public class AtkKeyEvent {
         }
 
         GNOMEKeyMapping.GNOMEKeyInfo keyInfo = GNOMEKeyMapping.getKey(e);
-        switch (e.getKeyChar()) {
-            case KeyEvent.CHAR_UNDEFINED: {
-                if (keyInfo != null) {
-                    keyval = keyInfo.gdkKeyCode();
-                    string = keyInfo.gdkKeyString();
-                } else {
-                    string = KeyEvent.getKeyText(e.getKeyCode());
-                    if (string == null) string = "";
-                }
-                break;
-            }
-            default: {
-                char[] chars = new char[1];
-                if (keyInfo == null) {
-                    keyval = e.getKeyChar();
-                    chars[0] = (char) keyval;
-                    string = new String(chars);
-                } else {
-                    keyval = keyInfo.gdkKeyCode();
-                    string = keyInfo.gdkKeyString();
-                }
+
+        if (keyInfo != null) {
+            keyval = keyInfo.gdkKeyCode();
+            string = keyInfo.gdkKeyString();
+        } else {
+            if (e.getKeyChar() == KeyEvent.CHAR_UNDEFINED) {
+                string = KeyEvent.getKeyText(e.getKeyCode());
+                if (string == null) string = "";
+            } else {
+                keyval = e.getKeyChar();
+                string = String.valueOf(keyval);
             }
         }
 
