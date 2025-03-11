@@ -10,6 +10,9 @@ java/awt/Focus/TemporaryLostComponentDeadlock.java JBR-5734 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java nobug macosx-all,linux-all,windows-all
 java/awt/List/NofocusListDblClickTest/NofocusListDblClickTest.java nobug macosx-all,linux-all,windows-all
 java/awt/List/TriggerActionEventTest.java JBR-7621 windows-all
+java/awt/Modal/BlockedMouseInputTest.java JBR-8406 windows-x64
+java/awt/Modal/BlockedMouseInputTest2.java JBR-8406 windows-x64
+java/awt/Modal/BlockedMouseInputTest3.java JBR-8406 windows-x64
 java/awt/Paint/PaintNativeOnUpdate.java JBR-5397,JBR-7415 macosx-all,windows-x64
 java/awt/PopupMenu/PopupMenuLocation.java JBR-5397,JBR-7375 macosx-all,windows-x64
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java JBR-5397,JBR-6092 macosx-all,windows-x64
@@ -38,6 +41,7 @@ javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-7386 windows-x64
 
 jb/java/awt/Desktop/AboutHandlerTest.java           nobug macosx-all,linux-all,windows-all
 jb/java/awt/Focus/NewFrameAfterDialogTest.java JBR-7387 windows-x64
+jb/java/awt/Focus/ChainOfPopupsFocusTest.java JBR-8407 windows-x64
 
 # VoiceOver on MacOS
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-5397 macosx-all
