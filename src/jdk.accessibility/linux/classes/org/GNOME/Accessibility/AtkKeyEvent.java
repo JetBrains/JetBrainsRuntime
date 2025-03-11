@@ -151,7 +151,7 @@ public class AtkKeyEvent {
 
 class GNOMEKeyMapping {
 
-    private static HashMap<Integer, Object> keyMap = null;
+    private static HashMap<Integer, GNOMEKeyInfo> keyMap = null;
 
     public static final class GNOMEKeyInfo {
         private int gdkKeyCode;
@@ -194,7 +194,7 @@ class GNOMEKeyMapping {
         else if (javaKeyLocation == KeyEvent.KEY_LOCATION_RIGHT)
             javaKeyCode += RIGHT_OFFSET;
 
-        if ((gdkKeyInfo = (GNOMEKeyInfo) keyMap.get(Integer.valueOf(javaKeyCode))) != null) {
+        if ((gdkKeyInfo = keyMap.get(Integer.valueOf(javaKeyCode))) != null) {
             return (gdkKeyInfo);
         } else {
             return null;
