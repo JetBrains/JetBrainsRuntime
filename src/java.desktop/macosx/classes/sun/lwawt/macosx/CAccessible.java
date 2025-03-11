@@ -60,6 +60,10 @@ class CAccessible extends CFRetainedResource implements Accessible {
             }
         });
         SELECTED_CHILDREN_MILLISECONDS = scms >= 0 ? scms : SELECTED_CHILDREN_MILLISECONDS_DEFAULT;
+
+        EVENTS_CACHED_POSTING_ENABLED = Boolean.parseBoolean(
+            System.getProperty("sun.lwawt.macosx.CAccessible.eventsCachedPostingEnabled", "true")
+        );
     }
 
     public static CAccessible getCAccessible(final Accessible a) {
@@ -140,6 +144,9 @@ class CAccessible extends CFRetainedResource implements Accessible {
     // The proposed solution is to make sure there is not more than one event of each kind in the AppKit queue
     //   for the same UI component (i.e. for the same CAccessible).
 
+    /** Is a way to disable the fix */
+    private static final boolean EVENTS_CACHED_POSTING_ENABLED;
+
     /**
      * The variables indicate whether there's an "event" posted by
      *   {@link #treeNodeExpanded}/{@link #treeNodeCollapsed(long)} onto the AppKit thread, but not processed by it yet.
@@ -181,7 +188,10 @@ class CAccessible extends CFRetainedResource implements Accessible {
         //   doesn't accidentally touch anything of the instance by mistake
         final CAccessible self
     ) {
-        // TODO: a way to disable the caching logic
+        if (!EVENTS_CACHED_POSTING_ENABLED) {
+            self.execute(postingRoutine);
+            return;
+        }
 
         assert EventQueue.isDispatchThread();
 
@@ -229,7 +239,9 @@ class CAccessible extends CFRetainedResource implements Accessible {
         final AtomicBoolean hasDelayedEventFlag,
         final Runnable cachedPostingRoutine
     ) {
-        // TODO: a way to disable the caching logic
+        if (!EVENTS_CACHED_POSTING_ENABLED) {
+            return;
+        }
 
         isProcessingEventFlag.set(false);
 
@@ -304,9 +316,17 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     }
 
                     if (newValue == AccessibleState.EXPANDED) {
-                        cachedPostTreeNodeExpanded();
+                        if (EVENTS_CACHED_POSTING_ENABLED) {
+                            cachedPostTreeNodeExpanded();
+                        } else {
+                            execute(ptr -> treeNodeExpanded(ptr));
+                        }
                     } else if (newValue == AccessibleState.COLLAPSED) {
-                        cachedPostTreeNodeCollapsed();
+                        if (EVENTS_CACHED_POSTING_ENABLED) {
+                            cachedPostTreeNodeCollapsed();
+                        } else {
+                            execute(ptr -> treeNodeCollapsed(ptr));
+                        }
                     }
 
                     if (thisRole == AccessibleRole.COMBO_BOX) {
