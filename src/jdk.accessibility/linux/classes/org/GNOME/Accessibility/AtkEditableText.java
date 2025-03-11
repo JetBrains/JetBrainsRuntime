@@ -27,7 +27,7 @@ import java.lang.ref.WeakReference;
 
 public class AtkEditableText extends AtkText {
 
-    WeakReference<AccessibleEditableText> _acc_edt_text;
+    private WeakReference<AccessibleEditableText> _acc_edt_text;
 
     public AtkEditableText(AccessibleContext ac) {
         super(ac);

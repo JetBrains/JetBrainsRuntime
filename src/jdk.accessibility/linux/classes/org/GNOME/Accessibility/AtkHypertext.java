@@ -24,7 +24,7 @@ import java.lang.ref.WeakReference;
 
 public class AtkHypertext extends AtkText {
 
-    WeakReference<AccessibleHypertext> _acc_hyper_text;
+    private WeakReference<AccessibleHypertext> _acc_hyper_text;
 
     public AtkHypertext(AccessibleContext ac) {
         super(ac);

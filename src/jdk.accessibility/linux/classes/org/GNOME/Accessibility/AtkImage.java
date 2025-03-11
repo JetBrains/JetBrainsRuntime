@@ -27,8 +27,8 @@ import java.lang.ref.WeakReference;
 
 public class AtkImage {
 
-    WeakReference<AccessibleContext> _ac;
-    WeakReference<AccessibleIcon[]> _acc_icons;
+    private WeakReference<AccessibleContext> _ac;
+    private WeakReference<AccessibleIcon[]> _acc_icons;
 
     public AtkImage(AccessibleContext ac) {
         super();

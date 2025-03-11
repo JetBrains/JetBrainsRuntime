@@ -27,21 +27,11 @@ import java.lang.ref.WeakReference;
 
 public class AtkText {
 
-    WeakReference<AccessibleContext> _ac;
-    WeakReference<AccessibleText> _acc_text;
-    WeakReference<AccessibleEditableText> _acc_edt_text;
+    private WeakReference<AccessibleContext> _ac;
+    private WeakReference<AccessibleText> _acc_text;
+    private WeakReference<AccessibleEditableText> _acc_edt_text;
 
-    public class StringSequence {
-
-        public String str;
-        public int start_offset, end_offset;
-
-        public StringSequence(String str, int start_offset, int end_offset) {
-            this.str = str;
-            this.start_offset = start_offset;
-            this.end_offset = end_offset;
-        }
-    }
+    private record StringSequence(String str, int start_offset, int end_offset) {}
 
     public AtkText(AccessibleContext ac) {
         super();

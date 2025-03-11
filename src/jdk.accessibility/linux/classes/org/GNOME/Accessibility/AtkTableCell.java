@@ -24,18 +24,17 @@ import java.lang.ref.WeakReference;
 
 public class AtkTableCell {
 
-    WeakReference<AccessibleContext> _ac;
-    WeakReference<AccessibleTable> _acc_pt;
-    public int row, rowSpan, column, columnSpan;
+    private WeakReference<AccessibleContext> _ac;
+    private WeakReference<AccessibleTable> _acc_pt;
+    private int row = -1;
+    private int rowSpan = -1;
+    private int column = -1;
+    private int columnSpan = -1;
 
     public AtkTableCell(AccessibleContext ac) {
         this._ac = new WeakReference<AccessibleContext>(ac);
         Accessible parent = ac.getAccessibleParent();
         _acc_pt = null;
-        row = -1;
-        rowSpan = -1;
-        column = -1;
-        columnSpan = -1;
         if (parent == null) {
             return;
         }

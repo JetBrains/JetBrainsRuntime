@@ -101,7 +101,7 @@ public class AtkWrapper {
      * <http://docs.oracle.com/javase/8/docs/api/java/awt/event/WindowAdapter.html>
      * <http://docs.oracle.com/javase/8/docs/api/java/awt/event/WindowEvent.html>
      */
-    final WindowAdapter winAdapter = new WindowAdapter() {
+    private final WindowAdapter winAdapter = new WindowAdapter() {
 
         /**
          * windowActivated:
@@ -250,7 +250,7 @@ public class AtkWrapper {
     }; // Close WindowAdapter brace
 
 
-    final ComponentAdapter componentAdapter = new ComponentAdapter() {
+    private final ComponentAdapter componentAdapter = new ComponentAdapter() {
 
         /**
          *  componentResized
@@ -329,7 +329,7 @@ public class AtkWrapper {
         return isToplevel;
     }
 
-    final AWTEventListener globalListener = new AWTEventListener() {
+    private final AWTEventListener globalListener = new AWTEventListener() {
         private boolean firstEvent = true;
 
         public void eventDispatched(AWTEvent e) {
@@ -375,9 +375,9 @@ public class AtkWrapper {
         }
     };
 
-    static AccessibleContext oldSourceContext = null;
-    static AccessibleContext savedSourceContext = null;
-    static AccessibleContext oldPaneContext = null;
+    private static AccessibleContext oldSourceContext = null;
+    private static AccessibleContext savedSourceContext = null;
+    private static AccessibleContext oldPaneContext = null;
 
     /**
      * dispatchFocusEvent
@@ -448,9 +448,9 @@ public class AtkWrapper {
         }
     }
 
-    final Toolkit toolkit = Toolkit.getDefaultToolkit();
+    private final Toolkit toolkit = Toolkit.getDefaultToolkit();
 
-    static PropertyChangeListener propertyChangeListener = new PropertyChangeListener() {
+    private static PropertyChangeListener propertyChangeListener = new PropertyChangeListener() {
 
         /**
          * propertyChange:

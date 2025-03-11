@@ -27,8 +27,8 @@ import java.lang.ref.WeakReference;
 
 public class AtkComponent {
 
-    WeakReference<AccessibleContext> _ac;
-    WeakReference<AccessibleComponent> _acc_component;
+    private WeakReference<AccessibleContext> _ac;
+    private WeakReference<AccessibleComponent> _acc_component;
 
     public AtkComponent(AccessibleContext ac) {
         super();

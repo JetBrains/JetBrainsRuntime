@@ -28,11 +28,11 @@ import java.awt.event.KeyEvent;
 
 public class AtkAction {
 
-    WeakReference<AccessibleContext> _ac;
-    WeakReference<AccessibleAction> _acc_action;
-    WeakReference<AccessibleExtendedComponent> _acc_ext_component;
-    String[] descriptions;
-    int nactions;
+    private WeakReference<AccessibleContext> _ac;
+    private WeakReference<AccessibleAction> _acc_action;
+    private WeakReference<AccessibleExtendedComponent> _acc_ext_component;
+    private String[] descriptions;
+    private int nactions;
 
     public AtkAction(AccessibleContext ac) {
         super();

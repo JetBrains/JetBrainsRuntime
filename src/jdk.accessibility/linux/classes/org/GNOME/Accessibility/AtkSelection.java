@@ -24,8 +24,8 @@ import java.lang.ref.WeakReference;
 
 public class AtkSelection {
 
-    WeakReference<AccessibleContext> _ac;
-    WeakReference<AccessibleSelection> _acc_selection;
+    private WeakReference<AccessibleContext> _ac;
+    private WeakReference<AccessibleSelection> _acc_selection;
 
     public AtkSelection(AccessibleContext ac) {
         super();

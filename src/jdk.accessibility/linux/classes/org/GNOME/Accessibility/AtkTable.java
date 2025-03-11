@@ -25,8 +25,8 @@ import java.lang.ref.WeakReference;
 
 public class AtkTable {
 
-    WeakReference<AccessibleContext> _ac;
-    WeakReference<AccessibleTable> _acc_table;
+    private WeakReference<AccessibleContext> _ac;
+    private WeakReference<AccessibleTable> _acc_table;
 
     public AtkTable(AccessibleContext ac) {
         this._ac = new WeakReference<AccessibleContext>(ac);
