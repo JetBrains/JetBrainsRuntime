@@ -1340,3 +1340,27 @@ jdk_swing_wayland= \
 jdk_desktop_wayland = \
     :jdk_awt_wayland \
     :jdk_swing_wayland
+
+# tests to be executed against Legacy Binary builds
+jdk_awt_legacy_libc= \
+    :jdk_awt \
+    -jb/java/awt/wayland/VulkanMaskFillTest.java
+
+jdk_swing_legacy_libc= \
+    :jdk_swing
+
+jdk_desktop_legacy_libc = \
+    :jdk_desktop \
+    -jb/java/awt/wayland/VulkanMaskFillTest.java
+
+# Wayland tests to be executed against Legacy Binary builds with -Dawt.toolkit.name=WLToolkit
+jdk_awt_wayland_legacy_libc= \
+    :jdk_awt_wayland \
+    -jb/java/awt/wayland/VulkanMaskFillTest.java
+
+jdk_swing_wayland_legacy_libc= \
+    :jdk_swing_wayland
+
+jdk_desktop_wayland_legacy_libc = \
+    :jdk_awt_wayland_legacy_libc \
+    :jdk_swing_wayland_legacy_libc
