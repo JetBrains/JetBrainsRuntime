@@ -70,6 +70,9 @@ public class AtkAction {
     }
 
     private boolean do_action(int i) {
+        if (i < 0) {
+            return false;
+        }
         AccessibleAction acc_action = _acc_action.get();
         if (acc_action == null)
             return false;
@@ -85,6 +88,9 @@ public class AtkAction {
     }
 
     private String get_description(int i) {
+        if (i < 0) {
+            return null;
+        }
         AccessibleAction acc_action = _acc_action.get();
         if (acc_action == null)
             return null;
@@ -102,7 +108,7 @@ public class AtkAction {
     }
 
     private boolean set_description(int i, String description) {
-        if (i >= nactions) {
+        if (i >= nactions || i < 0) {
             return false;
         }
         descriptions[i] = description;
@@ -121,6 +127,9 @@ public class AtkAction {
      * class is one way to work around that)
      */
     private String get_localized_name(int i) {
+        if (i < 0) {
+            return null;
+        }
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return null;
@@ -147,6 +156,9 @@ public class AtkAction {
     }
 
     private String get_keybinding(int index) {
+        if (index < 0) {
+            return null;
+        }
         AccessibleExtendedComponent acc_ext_component;
         if (_acc_ext_component == null)
             return "";
