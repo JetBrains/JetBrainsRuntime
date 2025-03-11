@@ -69,6 +69,19 @@ inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
 #define C_ARRAY_UTIL_ALLOCATION_FAILED() VK_FATAL_ERROR("CArrayUtil allocation failed")
 #include "CArrayUtil.h"
 
+#define VK_ID_TRANSFORM ((VKTransform)\
+    {1.0f, 0.0f, 0.0f,                \
+     0.0f, 1.0f, 0.0f})
+//   0.0f, 0.0f, 1.0f  -- omitted values
+
+#define VK_IS_NEQ_TRANSFORM(PA, PB) \
+    ((PA)->m00 != (PB)->m00 ||     \
+     (PA)->m01 != (PB)->m01 ||     \
+     (PA)->m02 != (PB)->m02 ||     \
+     (PA)->m10 != (PB)->m10 ||     \
+     (PA)->m11 != (PB)->m11 ||     \
+     (PA)->m12 != (PB)->m12 )
+
 typedef enum {
     FORMAT_ALIAS_ORIGINAL = 0,
     FORMAT_ALIAS_UNORM    = 1,
@@ -112,6 +125,11 @@ uint32_t VKUtil_Log2(uint64_t i);
  * Get group of formats with the same component layout.
  */
 FormatGroup VKUtil_GetFormatGroup(VkFormat format);
+
+/**
+ * Apply src transform to dst
+ */
+void VKUtil_ConcatenateTransform(VKTransform* dst, const VKTransform* src);
 
 /*
  * The following macros allow the caller to return (or continue) if the
