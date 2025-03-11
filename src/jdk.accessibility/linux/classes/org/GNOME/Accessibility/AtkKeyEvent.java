@@ -21,6 +21,7 @@ package org.GNOME.Accessibility;
 
 import java.awt.event.*;
 import java.util.HashMap;
+import sun.awt.AWTAccessor;
 
 public class AtkKeyEvent {
 
@@ -37,7 +38,7 @@ public class AtkKeyEvent {
     public boolean isAltGrKeyDown = false;
     public int keyval = 0;
     public String string;
-    public int keycode;
+    public long keycode;
     public int timestamp;
 
     static {
@@ -134,13 +135,7 @@ public class AtkKeyEvent {
             }
         }
 
-        // Yes, this is crude, but Java does not provide another way.
-        String s = e.paramString();
-        int begin = s.lastIndexOf("rawCode=") + 8;
-        int end = s.indexOf(',', begin);
-        String rawcode_s = s.substring(begin, end);
-
-        keycode = Integer.valueOf(rawcode_s);
+        keycode = AWTAccessor.getKeyEventAccessor().getRawCode(e);
         timestamp = (int) e.getWhen();
 
         String nonAlphaNumericString = nonAlphaNumericMap.get(string);
