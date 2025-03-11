@@ -57,6 +57,7 @@ static GtkStyleProvider *gtk3_css = NULL;
 
 /* Paint system */
 static cairo_surface_t *surface = NULL;
+static gint surface_scale;
 static cairo_t *cr = NULL;
 
 static const char ENV_PREFIX[] = "GTK_MODULES=";
@@ -660,7 +661,7 @@ static void init_containers()
  * Ensure everything is ready for drawing an element of the specified width
  * and height.
 */
-static void gtk3_init_painting(JNIEnv *env, gint width, gint height)
+static void gtk3_init_painting(JNIEnv *env, gint width, gint height, gint scale)
 {
     init_containers();
 
@@ -676,11 +677,12 @@ static void gtk3_init_painting(JNIEnv *env, gint width, gint height)
 
     surface = fp_gdk_window_create_similar_image_surface(
                            fp_gtk_widget_get_window(gtk3_window),
-                                         CAIRO_FORMAT_ARGB32, width, height, 1);
+                                         CAIRO_FORMAT_ARGB32, width * scale, height * scale, scale);
     cr = fp_cairo_create(surface);
     if (fp_cairo_surface_status(surface) || fp_cairo_status(cr)) {
         JNU_ThrowOutOfMemoryError(env, "The surface size is too big");
     }
+    surface_scale = scale;
 }
 
 /*
@@ -695,6 +697,8 @@ static gint gtk3_copy_image(gint *dst, gint width, gint height)
     guchar *data;
     gint stride, padding;
 
+    width *= surface_scale;
+    height *= surface_scale;
     fp_cairo_surface_flush(surface);
     data = (*fp_cairo_image_surface_get_data)(surface);
     stride = (*fp_cairo_image_surface_get_stride)(surface);

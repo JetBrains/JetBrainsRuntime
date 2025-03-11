@@ -232,7 +232,7 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_native_1paint_1background(
 
 JNIEXPORT void JNICALL
 Java_com_sun_java_swing_plaf_gtk_GTKEngine_nativeStartPainting(
-        JNIEnv *env, jobject this, jint w, jint h)
+        JNIEnv *env, jobject this, jint w, jint h, jint scale)
 {
     if (w > 0x7FFF || h > 0x7FFF || (uintptr_t)4 * w * h > 0x7FFFFFFFL) {
         // Same limitation as in X11SurfaceData.c
@@ -240,7 +240,7 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_nativeStartPainting(
         return;
     }
     gtk->gdk_threads_enter();
-    gtk->init_painting(env, w, h);
+    gtk->init_painting(env, w, h, scale);
     gtk->gdk_threads_leave();
 }
 

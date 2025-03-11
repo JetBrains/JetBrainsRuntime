@@ -582,7 +582,7 @@ typedef struct GtkApi {
     void (*set_range_value)(WidgetType widget_type, jdouble value,
                               jdouble min, jdouble max, jdouble visible);
 
-    void (*init_painting)(JNIEnv *env, gint w, gint h);
+    void (*init_painting)(JNIEnv *env, gint w, gint h, gint scale);
     gint (*copy_image)(gint *dest, gint width, gint height);
 
     gint (*get_xthickness)(JNIEnv *env, WidgetType widget_type);
