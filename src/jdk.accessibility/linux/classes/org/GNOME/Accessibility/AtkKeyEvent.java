@@ -39,7 +39,8 @@ public class AtkKeyEvent {
     private int keyval = 0;
     private String string;
     private long keycode;
-    private int timestamp;
+    private long timestamp;
+    // A timestamp in milliseconds indicating when the event occurred.
 
     static {
         // Non-alphanumeric symbols that need to be mapped to X11 keysym names
@@ -126,7 +127,7 @@ public class AtkKeyEvent {
         }
 
         keycode = AWTAccessor.getKeyEventAccessor().getRawCode(e);
-        timestamp = (int) e.getWhen();
+        timestamp = e.getWhen();
 
         String nonAlphaNumericString = nonAlphaNumericMap.get(string);
         if (nonAlphaNumericString != null)
