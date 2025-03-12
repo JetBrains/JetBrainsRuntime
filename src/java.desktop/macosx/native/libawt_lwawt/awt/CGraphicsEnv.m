@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@
 
 #define MAX_DISPLAYS 64
 
-static const BOOL TRACE_DISPLAY_CALLBACKS = YES;
+static const BOOL TRACE_DISPLAY_CALLBACKS = NO;
 
 extern void dumpDisplayInfo(jint displayID);
 
@@ -127,7 +127,6 @@ JNI_COCOA_ENTER(env);
      * RunLoop interactions with callbacks means several RunLoop iterations may be needed to run these callbacks
      * within dispatch_queue (RunLoopBeforeSources -> RunLoopExit)
      */
-
     const jobject cgeRef = (jobject)userInfo;
 
     if (flags == kCGDisplayBeginConfigurationFlag) {
@@ -153,8 +152,6 @@ JNI_COCOA_ENTER(env);
                                                      block:^()
         {
             @try {
-                // TODO: notify MTLContext to update display Links (java or direct ?)
-
                 JNIEnv *env = [ThreadUtilities getJNIEnv];
                 jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
                 if (graphicsEnv == NULL) return; // ref already GC'd
@@ -172,7 +169,6 @@ JNI_COCOA_ENTER(env);
     }
     if (TRACE_DISPLAY_CALLBACKS) {
         dumpDisplayInfo(displayId);
-        // [ThreadUtilities dumpThreadTraceContext:"displaycb_handle"];
     }
 
     // braces to reduce variable scope

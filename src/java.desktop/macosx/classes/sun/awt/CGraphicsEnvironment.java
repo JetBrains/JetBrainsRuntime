@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,7 @@ import sun.java2d.MacOSFlags;
 import sun.java2d.MacosxSurfaceManagerFactory;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceManagerFactory;
+import sun.java2d.metal.MTLGraphicsConfig;
 import sun.util.logging.PlatformLogger;
 
 /**
@@ -194,7 +195,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
                 (flags & (1 << 5)) != 0 ? LogDisplay.REMOVED : LogDisplay.CHANGED;
         if (log == LogDisplay.REMOVED) {
             CGraphicsDevice gd = devices.get(displayId);
-            log.log(displayId, (gd != null) ? gd.getBounds() : "UNKNOWN", (gd != null) ? gd.getScaleFactor() : Double.NaN);
+            log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
         }
         // we ignore the passed parameters and check removed devices ourself
         // Note that it is possible that this callback is called when the
@@ -202,10 +203,9 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         // switched to/from the discrete video card, so we should try to map the
         // old to the new devices.
         initDevices();
-
         if (log != null && log != LogDisplay.REMOVED) {
             CGraphicsDevice gd = devices.get(displayId);
-            log.log(displayId, (gd != null) ? gd.getBounds() : "UNKNOWN", (gd != null) ? gd.getScaleFactor() : Double.NaN);
+            log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
         }
     }
 
@@ -220,8 +220,12 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
             doNotifyListeners();
         } catch (Exception e) {
             logger.severe("CGraphicsEnvironment._displayReconfigurationFinished: exception occurred: ", e);
+        } finally {
+            // notify the metal pipeline after processing listeners:
+            if (CGraphicsEnvironment.usingMetalPipeline()) {
+                MTLGraphicsConfig.displayReconfigurationDone();
+            }
         }
-
         if (logger.isLoggable(PlatformLogger.Level.FINE)) {
             logger.fine("_displayReconfigurationFinished(): exit");
         }
@@ -292,7 +296,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         }
         // Need to notify old devices, in case the user hold the reference to it
         for (ListIterator<WeakReference<CGraphicsDevice>> it =
-                oldDevices.listIterator(); it.hasNext(); ) {
+             oldDevices.listIterator(); it.hasNext(); ) {
             CGraphicsDevice gd = it.next().get();
             if (gd != null) {
                 // If the old device has the same bounds as some new device

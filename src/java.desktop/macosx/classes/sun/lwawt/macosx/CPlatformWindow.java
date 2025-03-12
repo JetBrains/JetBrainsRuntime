@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1072,7 +1072,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             return;
         }
 
-        // TODO: CHECK that new locking / rendez-vous:
         Object lock = new Object();
         WindowStateListener wsl = new WindowStateListener() {
             public void windowStateChanged(WindowEvent e) {
@@ -1281,6 +1280,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         //                          System-dependent appearance optimization.
         //                          May be blocking so postpone this event processing:
 
+        // Test only to validate LWCToolkit self-defense against freezes:
         final boolean checkLWCToolkitBlockingMainGuard = false;
 
         if (!checkLWCToolkitBlockingMainGuard && LWCToolkit.isBlockingMainThread()) {
@@ -1445,8 +1445,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             if (bypassToHaveMoreFreezes
                     || (byUser && !oldB.getSize().equals(nativeBounds.getSize()))
                     || isFullScreenAnimationOn) {
-
-                // May be blocking so postpone this event processing:
                 flushBuffers();
             }
         }
