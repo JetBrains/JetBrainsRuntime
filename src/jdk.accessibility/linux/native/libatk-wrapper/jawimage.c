@@ -70,15 +70,15 @@ void jaw_image_data_finalize(gpointer p) {
     ImageData *data = (ImageData *)p;
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
-    if (data && data->atk_image) {
-        if (data->image_description != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrImageDescription,
+    if (data->image_description != NULL) {
+        (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrImageDescription,
                                              data->image_description);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrImageDescription);
-            data->jstrImageDescription = NULL;
-            data->image_description = NULL;
-        }
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrImageDescription);
+        data->jstrImageDescription = NULL;
+        data->image_description = NULL
+    }
 
+    if (data && data->atk_image) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_image);
         data->atk_image = NULL;
     }
