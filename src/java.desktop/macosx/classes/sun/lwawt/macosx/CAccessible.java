@@ -205,6 +205,8 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     isProcessingEventFlag.set(false);
                     throw err;
                 }
+            } else {
+                hasDelayedEventFlag.set(true);
             }
             return 1;
         });
