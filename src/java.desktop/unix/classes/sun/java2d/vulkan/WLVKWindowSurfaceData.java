@@ -138,15 +138,8 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
             throw new ArrayIndexOutOfBoundsException("x,y outside of buffer bounds");
         }
 
-        BufferedImage resImg = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-        SurfaceData resData = BufImgSurfaceData.createData(resImg);
-
-        Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa,
-                resData.getSurfaceType());
-        blit.Blit(this, resData, AlphaComposite.Src, null,
-                x, y, 0, 0, 1, 1);
-
-        return resImg.getRGB(0, 0);
+        BufferedImage image = getSnapshot(x, y, 1, 1);
+        return image.getRGB(0, 0);
     }
 
     public int [] getRGBPixelsAt(Rectangle bounds) {
@@ -163,16 +156,9 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
             throw new IndexOutOfBoundsException("Requested bounds are outside of surface bounds");
         }
 
-        BufferedImage resImg = new BufferedImage(b.width, b.height, BufferedImage.TYPE_INT_ARGB);
-        SurfaceData resData = BufImgSurfaceData.createData(resImg);
-
-        Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa,
-                resData.getSurfaceType());
-        blit.Blit(this, resData, AlphaComposite.Src, null,
-                b.x, b.y, 0, 0, b.width, b.height);
-
+        BufferedImage image = getSnapshot(b.x, b.y, b.width, b.height);
         int [] pixels = new int[b.width * b.height];
-        resImg.getRGB(0, 0, b.width, b.height, pixels, 0, b.width);
+        image.getRGB(0, 0, b.width, b.height, pixels, 0, b.width);
         return pixels;
     }
 }
