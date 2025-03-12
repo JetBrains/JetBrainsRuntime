@@ -37,6 +37,8 @@ public class AtkComponent {
     }
 
     public static Point getWindowLocation(AccessibleContext ac) {
+        assert EventQueue.isDispatchThread();
+
         while (ac != null) {
             AccessibleRole role = ac.getAccessibleRole();
             if (role == AccessibleRole.DIALOG ||
@@ -57,6 +59,8 @@ public class AtkComponent {
 
     // Return the position of the object relative to the coordinate type
     public static Point getComponentOrigin(AccessibleContext ac, AccessibleComponent acc_component, int coord_type) {
+        assert EventQueue.isDispatchThread();
+
         if (coord_type == AtkCoordType.SCREEN)
             return acc_component.getLocationOnScreen();
 
@@ -79,6 +83,8 @@ public class AtkComponent {
 
     // Return the position of the parent relative to the coordinate type
     public static Point getParentOrigin(AccessibleContext ac, AccessibleComponent acc_component, int coord_type) {
+        assert EventQueue.isDispatchThread();
+
         if (coord_type == AtkCoordType.PARENT)
             return new Point(0, 0);
 
