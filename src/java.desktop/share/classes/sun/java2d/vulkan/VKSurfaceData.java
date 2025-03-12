@@ -44,7 +44,6 @@ import sun.java2d.pipe.hw.AccelSurface;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
-import java.awt.image.ColorModel;
 import java.awt.image.Raster;
 import java.awt.image.VolatileImage;
 
@@ -117,9 +116,8 @@ public abstract class VKSurfaceData extends SurfaceData
         }
     }
 
+    private final VKFormat format;
     private VKGraphicsConfig gc;
-    // TODO Do we really want to have scale there? It is used by getDefaultScaleX/Y...
-    protected int scale;
     protected int width;
     protected int height;
     protected int type;
@@ -128,27 +126,14 @@ public abstract class VKSurfaceData extends SurfaceData
     private int nativeWidth;
     private int nativeHeight;
 
-    /**
-     * Returns the appropriate SurfaceType corresponding to the given Metal
-     * surface type constant (e.g. TEXTURE -> MTLTexture).
-     */
-    private static SurfaceType getCustomSurfaceType(int vkType) {
-        switch (vkType) {
-            case TEXTURE:
-                return VKTexture;
-            case RT_TEXTURE:
-                return VKSurfaceRTT;
-            default:
-                return VKSurface;
-        }
+    protected VKSurfaceData(VKFormat format, int transparency, int type) {
+        super(format.getSurfaceType(), format.getFormatModel(transparency).getColorModel());
+        this.format = format;
+        this.type = type;
     }
 
-    protected VKSurfaceData(ColorModel cm, int type) {
-        super(getCustomSurfaceType(type), cm);
-        this.type = type;
-
-        // TEXTURE shouldn't be scaled, it is used for managed BufferedImages.
-        scale = 1;
+    public VKFormat getFormat() {
+        return format;
     }
 
     /**
@@ -309,7 +294,9 @@ public abstract class VKSurfaceData extends SurfaceData
     }
 
     protected int revalidate(VKGraphicsConfig gc) {
-        if (this.gc == gc) return VolatileImage.IMAGE_OK;
+        if (gc.getFormat() != format) {
+            throw new IllegalArgumentException("Wrong GC format, expected " + format + ", got " + gc.getFormat());
+        } else if (this.gc == gc) return VolatileImage.IMAGE_OK;
         // TODO proxy cache needs to be cleared for this surface data?
         setBlitProxyCache(gc.getGPU().getSurfaceDataProxyCache());
         this.gc = gc;
