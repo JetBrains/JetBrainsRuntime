@@ -66,6 +66,10 @@ public class VKEnv {
                         log.warning("Invalid Vulkan device number:" + deviceNumberOption);
                     }
                 } else defaultDevice = devices[0]; // TODO consider performance/power saving preferences?
+
+                VKBlitLoops.register();
+                VKMaskFill.register();
+                VKMaskBlit.register();
             }
         } else enabled = false;
 
