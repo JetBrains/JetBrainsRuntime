@@ -964,6 +964,7 @@ public final class WLInputMethod extends InputMethodAdapter {
     private ZwpTextInputV3.OutgoingChanges wlPendingChanges1 = null, wlPendingChanges2 = null;
     private final WLChangesAsyncSender wlChangesAsyncSender = new WLChangesAsyncSender();
     private ZwpTextInputV3.OutgoingBeingCommittedChanges wlBeingCommittedChanges = null;
+    private ZwpTextInputV3.IncomingChanges wlIncomingChanges = null;
 
     /* AWT-side state section */
 
@@ -1021,6 +1022,7 @@ public final class WLInputMethod extends InputMethodAdapter {
         wlPendingChanges2 = null;
         wlChangesAsyncSender.stop();
         wlBeingCommittedChanges = null;
+        wlIncomingChanges = null;
 
         if (ctxToDispose != null && ctxToDispose.nativeContextPtr != 0) {
             disposeNativeContext(ctxToDispose.nativeContextPtr);
@@ -1436,6 +1438,15 @@ public final class WLInputMethod extends InputMethodAdapter {
         assert(wlGetContextUpcomingOrCurrentEnabledState() == false);
     }
 
+    private ZwpTextInputV3.IncomingChanges wlGetOrAllocateIncomingChanges() {
+        assert(EventQueue.isDispatchThread());
+
+        if (wlIncomingChanges == null) {
+            wlIncomingChanges = new ZwpTextInputV3.IncomingChanges();
+        }
+        return wlIncomingChanges;
+    }
+
 
     /* JNI downcalls section */
 
@@ -1513,9 +1524,24 @@ public final class WLInputMethod extends InputMethodAdapter {
     private void zwp_text_input_v3_onPreeditString(byte[] preeditStrUtf8, int cursorBeginUtf8Byte, int cursorEndUtf8Byte) {
         assert EventQueue.isDispatchThread();
 
-        if (isInstanceBroken()) {
-            logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onPreeditString", preeditStrUtf8, cursorBeginUtf8Byte, cursorEndUtf8Byte);
-            return;
+        try {
+            if (isInstanceBroken()) {
+                logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onPreeditString", preeditStrUtf8, cursorBeginUtf8Byte, cursorEndUtf8Byte);
+                return;
+            }
+
+            wlGetOrAllocateIncomingChanges().updatePreeditString(preeditStrUtf8, cursorBeginUtf8Byte, cursorEndUtf8Byte);
+
+            if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                log.finer("zwp_text_input_v3_onPreeditString({0}, {1}, {2}): wlIncomingChanges={3}.",
+                    preeditStrUtf8,
+                    cursorBeginUtf8Byte,
+                    cursorEndUtf8Byte,
+                    wlIncomingChanges
+                );
+            }
+        } catch (Exception err) {
+            log.severe("zwp_text_input_v3_onPreeditString", err);
         }
     }
 
@@ -1523,9 +1549,22 @@ public final class WLInputMethod extends InputMethodAdapter {
     private void zwp_text_input_v3_onCommitString(byte[] commitStrUtf8) {
         assert EventQueue.isDispatchThread();
 
-        if (isInstanceBroken()) {
-            logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onCommitString", commitStrUtf8);
-            return;
+        try {
+            if (isInstanceBroken()) {
+                logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onCommitString", commitStrUtf8);
+                return;
+            }
+
+            wlGetOrAllocateIncomingChanges().updateCommitString(commitStrUtf8);
+
+            if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                log.finer("zwp_text_input_v3_onCommitString({0}): wlIncomingChanges={1}.",
+                    commitStrUtf8,
+                    wlIncomingChanges
+                );
+            }
+        } catch (Exception err) {
+            log.severe("zwp_text_input_v3_onCommitString", err);
         }
     }
 
@@ -1533,9 +1572,17 @@ public final class WLInputMethod extends InputMethodAdapter {
     private void zwp_text_input_v3_onDeleteSurroundingText(long numberOfUtf8BytesBeforeToDelete, long numberOfUtf8BytesAfterToDelete) {
         assert EventQueue.isDispatchThread();
 
-        if (isInstanceBroken()) {
-            logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onDeleteSurroundingText", numberOfUtf8BytesBeforeToDelete, numberOfUtf8BytesAfterToDelete);
-            return;
+        try {
+            if (isInstanceBroken()) {
+                logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onDeleteSurroundingText", numberOfUtf8BytesBeforeToDelete, numberOfUtf8BytesAfterToDelete);
+                return;
+            }
+
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("Not implemented: WLInputMethod.zwp_text_input_v3_onDeleteSurroundingText(long, long)");
+            }
+        } catch (Exception err) {
+            log.severe("zwp_text_input_v3_onDeleteSurroundingText", err);
         }
     }
 
