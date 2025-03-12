@@ -44,16 +44,25 @@ typedef struct _ActionData {
     JAW_GET_OBJ_IFACE(action, INTERFACE_ACTION, ActionData, atk_action,        \
                       jniEnv, atk_action, def_ret)
 
+/*
+  Atk.Action methods:
+  do_action
+  get_description
+  get_keybinding
+  get_localized_name
+  get_n_actions
+  get_name
+  set_description
+*/
 void jaw_action_interface_init(AtkActionIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
     iface->do_action = jaw_action_do_action;
-    iface->get_n_actions = jaw_action_get_n_actions;
-    // FIXME: missing java support for distinguishing name and description
     iface->get_description = jaw_action_get_description;
-    iface->get_name = jaw_action_get_description;
     iface->get_keybinding = jaw_action_get_keybinding;
-    iface->set_description = jaw_action_set_description;
     iface->get_localized_name = jaw_action_get_localized_name;
+    iface->get_n_actions = jaw_action_get_n_actions;
+    iface->get_name = jaw_action_get_description;
+    iface->set_description = jaw_action_set_description;
 }
 
 gpointer jaw_action_data_init(jobject ac) {
