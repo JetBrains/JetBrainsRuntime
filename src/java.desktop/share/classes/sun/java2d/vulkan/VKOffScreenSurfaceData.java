@@ -27,7 +27,6 @@ package sun.java2d.vulkan;
 
 import java.awt.Image;
 import java.awt.Rectangle;
-import java.awt.image.ColorModel;
 import sun.java2d.SurfaceData;
 
 /**
@@ -37,8 +36,8 @@ public class VKOffScreenSurfaceData extends VKSurfaceData {
     private final Image offscreenImage;
     private native void initOps();
 
-    public VKOffScreenSurfaceData(Image image, ColorModel cm, int type, int width, int height) {
-        super(cm, type);
+    public VKOffScreenSurfaceData(Image image, VKFormat format, int transparency, int type, int width, int height) {
+        super(format, transparency, type);
         this.width = width;
         this.height = height;
         offscreenImage = image;
