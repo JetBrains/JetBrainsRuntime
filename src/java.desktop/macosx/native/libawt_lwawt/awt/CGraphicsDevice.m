@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,7 @@ static NSInteger architecture = -1;
 /*
  * Convert the mode string to the more convenient bits per pixel value
  */
-int getBPPFromModeString(CFStringRef mode)
+static int getBPPFromModeString(CFStringRef mode)
 {
     if ((CFStringCompare(mode, CFSTR(kIO30BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo)) {
         // This is a strange mode, where we using 10 bits per RGB component and pack it into 32 bits
@@ -156,7 +156,7 @@ void dumpDisplayInfo(jint displayID)
     }
 }
 
-static BOOL isValidDisplayMode(CGDisplayModeRef mode) {
+BOOL isValidDisplayMode(CGDisplayModeRef mode) {
     if (!CGDisplayModeIsUsableForDesktopGUI(mode)) {
         return NO;
     }
