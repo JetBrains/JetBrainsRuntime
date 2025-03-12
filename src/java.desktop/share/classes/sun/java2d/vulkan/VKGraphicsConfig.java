@@ -28,10 +28,7 @@ package sun.java2d.vulkan;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
-import java.awt.image.DataBuffer;
-import java.awt.image.DirectColorModel;
 import java.awt.image.VolatileImage;
-import java.awt.image.WritableRaster;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.SurfaceManager;
 import sun.awt.image.VolatileSurfaceManager;
@@ -44,9 +41,9 @@ import sun.java2d.pipe.hw.ContextCapabilities;
 import java.awt.BufferCapabilities;
 import java.awt.GraphicsConfiguration;
 import java.awt.ImageCapabilities;
-import java.awt.Transparency;
-import java.awt.color.ColorSpace;
 
+import static java.awt.Transparency.OPAQUE;
+import static java.awt.Transparency.TRANSLUCENT;
 import static sun.java2d.pipe.hw.AccelSurface.RT_TEXTURE;
 import static sun.java2d.pipe.hw.AccelSurface.TEXTURE;
 
@@ -68,6 +65,10 @@ public interface VKGraphicsConfig extends AccelGraphicsConfig,
 
     default VKGPU getGPU() {
         return getOffscreenConfig().getGPU();
+    }
+
+    default VKFormat getFormat() {
+        return getOffscreenConfig().getFormat();
     }
 
     @Override
@@ -95,7 +96,8 @@ public interface VKGraphicsConfig extends AccelGraphicsConfig,
 
     @Override
     default VolatileImage createCompatibleVolatileImage(int width, int height, int transparency, int type) {
-        if ((type != RT_TEXTURE && type != TEXTURE) || transparency == Transparency.BITMASK) return null;
+        if (type != RT_TEXTURE && type != TEXTURE) return null;
+        if (transparency != OPAQUE && (transparency != TRANSLUCENT || !isTranslucencyCapable())) return null;
         SunVolatileImage vi =
                 new AccelTypedVolatileImage((GraphicsConfiguration) this, width, height, transparency, type);
         Surface sd = vi.getDestSurface();
@@ -106,31 +108,27 @@ public interface VKGraphicsConfig extends AccelGraphicsConfig,
         return vi;
     }
 
+    default String descriptorString() {
+        return getFormat().name() + ", " + getGPU();
+    }
+
     // Default implementation of GraphicsConfiguration methods.
     // Those need to be explicitly overridden by subclasses using VKGraphicsConfig.super.
 
     default BufferedImage createCompatibleImage(int width, int height) {
-        return createCompatibleImage(width, height, isTranslucencyCapable() ? Transparency.TRANSLUCENT : Transparency.OPAQUE);
+        return createCompatibleImage(width, height, isTranslucencyCapable() ? TRANSLUCENT : OPAQUE);
     }
 
     default BufferedImage createCompatibleImage(int width, int height, int transparency) {
-        ColorModel model = new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
-        WritableRaster raster = model.createCompatibleWritableRaster(width, height);
-        return new BufferedImage(model, raster, model.isAlphaPremultiplied(), null);
+        return getFormat().createCompatibleImage(width, height, transparency);
     }
 
     default ColorModel getColorModel() {
-        return getColorModel(isTranslucencyCapable() ? Transparency.TRANSLUCENT : Transparency.OPAQUE);
+        return getColorModel(isTranslucencyCapable() ? TRANSLUCENT : OPAQUE);
     }
 
     default ColorModel getColorModel(int transparency) {
-        return switch (transparency) {
-            case Transparency.OPAQUE -> new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
-            case Transparency.BITMASK -> new DirectColorModel(25, 0xff0000, 0xff00, 0xff, 0x1000000);
-            case Transparency.TRANSLUCENT -> new DirectColorModel(ColorSpace.getInstance(ColorSpace.CS_sRGB),
-                    32, 0xff0000, 0xff00, 0xff, 0xff000000, true, DataBuffer.TYPE_INT);
-            default -> null;
-        };
+        return getFormat().getFormatModel(transparency).getColorModel();
     }
 
     default BufferCapabilities getBufferCapabilities() {
@@ -142,6 +140,6 @@ public interface VKGraphicsConfig extends AccelGraphicsConfig,
     }
 
     default boolean isTranslucencyCapable() {
-        return true;
+        return getFormat().isTranslucencyCapable();
     }
 }
