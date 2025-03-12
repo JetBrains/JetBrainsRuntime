@@ -37,9 +37,11 @@ import java.awt.image.ColorModel;
 public class VKOffscreenGraphicsConfig extends GraphicsConfiguration implements VKGraphicsConfig {
     private final VKOffsecreenGraphicsDevice graphicsDevice = new VKOffsecreenGraphicsDevice(this);
     private final VKDevice device;
+    private final VKFormat format;
 
-    VKOffscreenGraphicsConfig(VKDevice device) {
+    VKOffscreenGraphicsConfig(VKDevice device, VKFormat format) {
         this.device = device;
+        this.format = format;
     }
 
     @Override
@@ -55,6 +57,11 @@ public class VKOffscreenGraphicsConfig extends GraphicsConfiguration implements 
     @Override
     public VKDevice getVKDevice() {
         return device;
+    }
+
+    @Override
+    public VKFormat getFormat() {
+        return format;
     }
 
     @Override
@@ -99,5 +106,10 @@ public class VKOffscreenGraphicsConfig extends GraphicsConfiguration implements 
     @Override
     public boolean isTranslucencyCapable() {
         return VKGraphicsConfig.super.isTranslucencyCapable();
+    }
+
+    @Override
+    public String toString() {
+        return "VKOffscreenGraphicsConfig[" + descriptorString() + "]";
     }
 }
