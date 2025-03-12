@@ -20,9 +20,9 @@
 package org.GNOME.Accessibility;
 
 public interface AtkTextGranularity {
-    public static final int CHAR = 0;
-    public static final int WORD = 1;
-    public static final int SENTENCE = 2;
-    public static final int LINE = 3; /* The LINE constant field value is in AccessibleExtendedText */
-    public static final int PARAGRAPH = 4;  /*  There is no constant field value, PARAGRAPH in AccessibleText */
+    int CHAR = 0;
+    int WORD = 1;
+    int SENTENCE = 2;
+    int LINE = 3; /* The LINE constant field value is in AccessibleExtendedText */
+    int PARAGRAPH = 4;  /*  There is no constant field value, PARAGRAPH in AccessibleText */
 }

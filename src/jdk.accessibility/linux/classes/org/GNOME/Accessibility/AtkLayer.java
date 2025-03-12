@@ -20,13 +20,13 @@
 package org.GNOME.Accessibility;
 
 public interface AtkLayer {
-    public static final int INVALID = 0;
-    public static final int BACKGROUND = 1;
-    public static final int CANVAS = 2;
-    public static final int WIDGET = 3;
-    public static final int MDI = 4;
-    public static final int POPUP = 5;
-    public static final int OVERLAY = 6;
-    public static final int WINDOW = 7;
+    int INVALID = 0;
+    int BACKGROUND = 1;
+    int CANVAS = 2;
+    int WIDGET = 3;
+    int MDI = 4;
+    int POPUP = 5;
+    int OVERLAY = 6;
+    int WINDOW = 7;
 }
 

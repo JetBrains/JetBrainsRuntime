@@ -20,8 +20,7 @@
 package org.GNOME.Accessibility;
 
 public interface AtkCoordType {
-    public static final int SCREEN = 0;
-    public static final int WINDOW = 1;
-    public static final int PARENT = 2;
+    int SCREEN = 0;
+    int WINDOW = 1;
+    int PARENT = 2;
 }
-
