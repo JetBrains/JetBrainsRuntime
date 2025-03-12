@@ -973,18 +973,12 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     public boolean isDesktopSupported() {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.isDesktopSupported()");
-        }
-        return false;
+        return WLDesktopPeer.isDesktopSupported();
     }
 
     @Override
     public DesktopPeer createDesktopPeer(Desktop target) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createDesktopPeer()");
-        }
-        return null;
+        return new WLDesktopPeer();
     }
 
     @Override
