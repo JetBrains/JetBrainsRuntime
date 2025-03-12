@@ -27,6 +27,8 @@ package sun.java2d.vulkan;
 
 import sun.awt.image.SurfaceManager;
 
+import java.util.stream.Stream;
+
 /**
  * VKDevice wrapper.
  */
@@ -38,7 +40,7 @@ public class VKGPU {
     private final long nativeHandle;
     private final String name;
     private final Type type;
-    private final VKOffscreenGraphicsConfig offscreenGraphicsConfig;
+    private final VKGraphicsConfig[] offscreenGraphicsConfigs, presentableGraphicsConfigs;
 
     private static native void init(long nativeHandle);
     private static native void reset(long nativeHandle);
@@ -52,13 +54,24 @@ public class VKGPU {
         this.nativeHandle = nativeHandle;
         this.name = name;
         this.type = Type.VALUES[type];
-        offscreenGraphicsConfig = new VKOffscreenGraphicsConfig(this);
+        // TODO pull out supported formats dynamically
+        offscreenGraphicsConfigs = new VKGraphicsConfig[] {
+                new VKOffscreenGraphicsConfig(this, VKFormat.B8G8R8A8_UNORM)
+        };
+        presentableGraphicsConfigs = offscreenGraphicsConfigs;
     }
 
     public SurfaceManager.ProxyCache getSurfaceDataProxyCache() { return surfaceDataProxyCache; }
     public String getName() { return name; }
     public Type getType() { return type; }
-    public VKOffscreenGraphicsConfig getOffscreenGraphicsConfig() { return offscreenGraphicsConfig; }
+
+    public Stream<VKGraphicsConfig> getOffscreenGraphicsConfigs() {
+        return Stream.of(offscreenGraphicsConfigs);
+    }
+
+    public Stream<VKGraphicsConfig> getPresentableGraphicsConfigs() {
+        return Stream.of(presentableGraphicsConfigs);
+    }
 
     /**
      * Initialize the device and return its native handle.
