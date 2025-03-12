@@ -870,7 +870,6 @@ jdk_awt_wayland = \
     -java/awt/datatransfer/SystemSelection/SystemSelectionSwingTest.java \
     -java/awt/datatransfer/UnicodeTransferTest/UnicodeTransferTest.java \
     -java/awt/Debug \
-    -java/awt/Desktop \
     -java/awt/Dialog \
     -java/awt/FullScreen/DisplayModeNoRefreshTest.java \
     -java/awt/dnd \
