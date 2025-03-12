@@ -98,7 +98,7 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
 
     @Override
     public String toString() {
-        return ("VKGraphicsConfig[" + getDevice().getIDstring() + "] " + super.toString());
+        return "WLVKGraphicsConfig[" + descriptorString() + ", " + getDevice().getIDstring() + "]";
     }
 
     @Override
