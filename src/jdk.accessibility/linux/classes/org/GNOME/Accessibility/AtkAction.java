@@ -170,42 +170,9 @@ public class AtkAction {
      * @return null if there is no keybinding
      */
     private String get_keybinding(int index) {
-        // FIXME: The function result doesn't relate to the component's actions.
-        //  It returns the first element of AccessibleKeyBinding,
-        //  that contains either a keyboard mnemonic or a keyboard shortcut.
-
-        return AtkUtil.invokeInSwing(() -> {
-            if (index < 0 || index > _acc_action.get().getAccessibleActionCount() || _acc_ext_component == null) {
-                return null;
-            }
-
-            AccessibleExtendedComponent acc_ext_component = _acc_ext_component.get();
-            if (acc_ext_component == null) {
-                return null;
-            }
-
-            AccessibleKeyBinding akb = acc_ext_component.getAccessibleKeyBinding();
-            int keyBindingCount = akb.getAccessibleKeyBindingCount();
-            if (akb == null || keyBindingCount == 0) {
-                return null;
-            }
-
-            String keybinding = "";
-            Object accessibleKeyBinding = akb.getAccessibleKeyBinding(0);
-            if (accessibleKeyBinding instanceof KeyStroke keyStroke) {
-                keybinding = keyStrokeToShortcut(keyStroke);
-            } else if (accessibleKeyBinding instanceof KeyStroke[] keyStrokes) {
-                if (keyStrokes.length != 0) {
-                    keybinding = keyStrokeToShortcut(keyStrokes[0]);
-                }
-            }
-
-            if (keybinding.isEmpty()) {
-                return null;
-            }
-
-            // Let's return only shortcut and skip mnemonic and sequence, since they are not necessary parts
-            return ";;" + keybinding;
-        }, null);
+        // TODO: implement
+        //  There is no dependency between javax.accessibility.AccessibleAction and keybindings,
+        //  so there is no way to return the correct keybinding based on AccessibleContext.
+        return null;
     }
 }
