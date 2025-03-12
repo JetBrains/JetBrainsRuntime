@@ -32,7 +32,6 @@ import sun.java2d.pipe.hw.AccelSurface;
 
 import java.awt.GraphicsConfiguration;
 import java.awt.Transparency;
-import java.awt.image.ColorModel;
 import java.awt.image.VolatileImage;
 
 public class VKVolatileSurfaceManager extends VolatileSurfaceManager {
@@ -63,14 +62,14 @@ public class VKVolatileSurfaceManager extends VolatileSurfaceManager {
     protected SurfaceData initAcceleratedSurface() {
         try {
             VKGraphicsConfig gc = (VKGraphicsConfig) vImg.getGraphicsConfig();
-            ColorModel cm = gc.getColorModel(vImg.getTransparency());
             int type = vImg.getForcedAccelSurfaceType();
             // if acceleration type is forced (type != UNDEFINED) then
             // use the forced type, otherwise choose RT_TEXTURE
             if (type == AccelSurface.UNDEFINED) {
                 type = AccelSurface.RT_TEXTURE;
             }
-            VKOffScreenSurfaceData sd = new VKOffScreenSurfaceData(vImg, cm, type, vImg.getWidth(), vImg.getHeight());
+            VKOffScreenSurfaceData sd = new VKOffScreenSurfaceData(vImg, gc.getFormat(), vImg.getTransparency(), type,
+                                                                   vImg.getWidth(), vImg.getHeight());
             sd.revalidate(gc);
             sd.configure();
             return sd;
@@ -97,7 +96,8 @@ public class VKVolatileSurfaceManager extends VolatileSurfaceManager {
     @Override
     protected boolean isConfigValid(GraphicsConfiguration gc) {
         // We consider configs with the same format compatible across Vulkan devices.
-        return gc == null || (true/*TODO validate configuration format*/);
+        return gc == null || vImg.getGraphicsConfig() == null ||
+                ((VKGraphicsConfig) gc).getFormat() == ((VKGraphicsConfig) vImg.getGraphicsConfig()).getFormat();
     }
 
     @Override
