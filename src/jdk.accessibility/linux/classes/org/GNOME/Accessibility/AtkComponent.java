@@ -24,6 +24,7 @@ import javax.accessibility.*;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.lang.ref.WeakReference;
+import java.awt.EventQueue;
 
 public class AtkComponent {
 
