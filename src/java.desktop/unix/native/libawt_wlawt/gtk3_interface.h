@@ -291,8 +291,6 @@ static gchar* (*fp_gtk_check_version)(guint required_major, guint
 
 static void (*fp_g_free)(gpointer mem);
 static void (*fp_g_object_unref)(gpointer object);
-static GdkWindow *(*fp_gdk_get_default_root_window) (void);
-static int (*fp_gdk_window_get_scale_factor) (GdkWindow *window);
 
 static int (*fp_gdk_pixbuf_get_bits_per_sample)(const GdkPixbuf *pixbuf);
 static guchar *(*fp_gdk_pixbuf_get_pixels)(const GdkPixbuf *pixbuf);
@@ -357,7 +355,7 @@ static void (*fp_g_list_free_full) (GList *list, GDestroyNotify free_func);
 static void (*fp_gdk_threads_enter)(void);
 static void (*fp_gdk_threads_leave)(void);
 
-static gboolean (*fp_gtk_show_uri)(GdkScreen *screen, const gchar *uri,
+static gboolean (*fp_gtk_show_uri_on_window)(GdkWindow *parent, const gchar *uri,
     guint32 timestamp, GError **error);
 
 // Implementation functions prototypes
