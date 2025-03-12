@@ -47,23 +47,20 @@ public class AtkAction {
         }
     }
 
-    private String keyStrokeToShortcut(KeyStroke keyStroke) {
-        // Let's add only shortcut and skip mnemonic and sequence, since they are not necessary parts
-        String keybinding = ";;";
+    private static String keyStrokeToShortcut(KeyStroke keyStroke) {
+        String keybinding = "";
 
-        // a String describing the extended modifier keys and mouse buttons, such as "Shift", "Button1", or "Ctrl+Shift"
-        String modString = KeyEvent.getModifiersExText(keyStroke.getModifiers());
-
-        // a String describing the keyCode, such as "HOME", "F1" or "A".
-        String keyString = KeyEvent.getKeyText(keyStroke.getKeyCode());
-
-        if (modString != null) {
+        if (keyStroke.getModifiers() != 0) {
+            // a String describing the extended modifier keys and mouse buttons, such as "Shift", "Button1", or "Ctrl+Shift"
+            String modString = KeyEvent.getModifiersExText(keyStroke.getModifiers());
             keybinding += modString;
         }
-        if (keyString != null) {
-            if (modString != null) {
-                keybinding += "+";
-            }
+        if (keyStroke.getModifiers() != 0 && keyStroke.getKeyCode() != 0) {
+            keybinding += "+";
+        }
+        if (keyStroke.getKeyCode() != 0) {
+            // a String describing the keyCode, such as "HOME", "F1" or "A".
+            String keyString = KeyEvent.getKeyText(keyStroke.getKeyCode());
             keybinding += keyString;
         }
 
@@ -173,17 +170,20 @@ public class AtkAction {
      * @return null if there is no keybinding
      */
     private String get_keybinding(int index) {
-        // TODO: do we really need to check the index if we don't use it?
-        if (index < 0 || _acc_ext_component == null) {
-            return null;
-        }
-
-        AccessibleExtendedComponent acc_ext_component = _acc_ext_component.get();
-        if (acc_ext_component == null) {
-            return null;
-        }
+        // FIXME: The function result doesn't relate to the component's actions.
+        //  It returns the first element of AccessibleKeyBinding,
+        //  that contains either a keyboard mnemonic or a keyboard shortcut.
 
         return AtkUtil.invokeInSwing(() -> {
+            if (index < 0 || index > _acc_action.get().getAccessibleActionCount() || _acc_ext_component == null) {
+                return null;
+            }
+
+            AccessibleExtendedComponent acc_ext_component = _acc_ext_component.get();
+            if (acc_ext_component == null) {
+                return null;
+            }
+
             AccessibleKeyBinding akb = acc_ext_component.getAccessibleKeyBinding();
             int keyBindingCount = akb.getAccessibleKeyBindingCount();
             if (akb == null || keyBindingCount == 0) {
@@ -203,7 +203,9 @@ public class AtkAction {
             if (keybinding.isEmpty()) {
                 return null;
             }
-            return keybinding;
+
+            // Let's return only shortcut and skip mnemonic and sequence, since they are not necessary parts
+            return ";;" + keybinding;
         }, null);
     }
 }
