@@ -129,17 +129,6 @@ static void update_supported_actions(JNIEnv *env) {
 
     ADD_SUPPORTED_ACTION("OPEN");
 
-    /**
-     * gtk_show_uri() documentation says:
-     *
-     * > you need to install gvfs to get support for uri schemes such as http://
-     * > or ftp://, as only local files are handled by GIO itself.
-     *
-     * So OPEN action was safely added here.
-     * However, it looks like Solaris 11 have gvfs support only for 32-bit
-     * applications only by default.
-     */
-
     fp_g_vfs_get_default = dl_symbol("g_vfs_get_default");
     fp_g_vfs_get_supported_uri_schemes = dl_symbol("g_vfs_get_supported_uri_schemes");
     dlerror();
@@ -165,24 +154,25 @@ static void update_supported_actions(JNIEnv *env) {
     }
 
 }
+
 /**
  * Functions for awt_Desktop.c
  */
 static gboolean gtk3_show_uri_load(JNIEnv *env) {
     gboolean success = FALSE;
     dlerror();
-    fp_gtk_show_uri = dl_symbol("gtk_show_uri");
+    fp_gtk_show_uri_on_window = dl_symbol("gtk_show_uri_on_window");
     const char *dlsym_error = dlerror();
     if (dlsym_error) {
 #ifdef DEBUG
         fprintf (stderr, "Cannot load symbol: %s \n", dlsym_error);
 #endif /* DEBUG */
-    } else if (fp_gtk_show_uri == NULL) {
+    } else if (fp_gtk_show_uri_on_window == NULL) {
 #ifdef DEBUG
-        fprintf(stderr, "dlsym(gtk_show_uri) returned NULL\n");
+        fprintf(stderr, "dlsym(gtk_show_uri_on_window) returned NULL\n");
 #endif /* DEBUG */
     } else {
-        gtk->gtk_show_uri = fp_gtk_show_uri;
+        gtk->gtk_show_uri_on_window = fp_gtk_show_uri_on_window;
         update_supported_actions(env);
         success = TRUE;
     }
@@ -211,9 +201,7 @@ static void gtk3_file_chooser_load()
     fp_gtk_g_slist_length = dl_symbol("g_slist_length");
 }
 
-static void empty() {}
-
-gboolean glib_version_2_68 = FALSE;
+static gboolean glib_version_2_68 = FALSE;
 
 GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
 {
@@ -240,7 +228,7 @@ GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
         }
 
         // Make sure all the functions that are used here can be expected to be available.
-        if (fp_gtk_check_version(3, 20, 0)) {
+        if (fp_gtk_check_version(3, 22, 0)) {
             // GTK 3.20 was released in 2016, expect at least this version.
             dlclose(gtk3_libhandle);
             gtk3_libhandle = NULL;
@@ -284,8 +272,6 @@ GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
         fp_g_strfreev = dl_symbol("g_strfreev");
 
         /* GDK */
-        fp_gdk_get_default_root_window =
-            dl_symbol("gdk_get_default_root_window");
 
         /* Pixbuf */
         fp_gdk_pixbuf_new = dl_symbol("gdk_pixbuf_new");
@@ -2726,87 +2712,6 @@ static void transform_detail_string (const gchar *detail, GtkStyleContext *conte
     }
 }
 
-inline static int scale_down_ceiling(int what, int scale)
-{
-    return (int)ceilf(what / (float)scale);
-}
-
-inline static int scale_down_floor(int what, int scale)
-{
-    return (int)floorf(what / (float)scale);
-}
-
-static gboolean gtk3_get_drawable_data(JNIEnv *env, jintArray pixelArray,
-     int x, jint y, jint width, jint height, jint jwidth, int dx, int dy) {
-    GdkPixbuf *pixbuf;
-    jint *ary;
-
-    int skip_left = 0;
-    int skip_top = 0;
-    GdkWindow *root = (*fp_gdk_get_default_root_window)();
-    int win_scale = (*fp_gdk_window_get_scale_factor)(root);
-
-    // Scale the coordinate and size carefully such that the captured area
-    // is at least as large as requested. We trim off excess later by
-    // using the skip_* variables.
-    const int x_scaled = scale_down_floor(x, win_scale);
-    const int y_scaled = scale_down_floor(y, win_scale);
-    skip_left = x - x_scaled*win_scale;
-    skip_top  = y - y_scaled*win_scale;
-    DASSERT(skip_left >= 0 && skip_top >= 0);
-
-    const int x_right_scaled = scale_down_ceiling(x + width, win_scale);
-    const int width_scaled = x_right_scaled - x_scaled;
-    DASSERT(width_scaled > 0);
-
-    const int y_bottom_scaled = scale_down_ceiling(y + height, win_scale);
-    const int height_scaled = y_bottom_scaled - y_scaled;
-    DASSERT(height_scaled > 0);
-
-    pixbuf = (*fp_gdk_pixbuf_get_from_drawable)(
-        root, x_scaled, y_scaled, width_scaled, height_scaled);
-
-
-    if (pixbuf) {
-        int nchan = (*fp_gdk_pixbuf_get_n_channels)(pixbuf);
-        int stride = (*fp_gdk_pixbuf_get_rowstride)(pixbuf);
-        if ((*fp_gdk_pixbuf_get_width)(pixbuf) >= width
-                && (*fp_gdk_pixbuf_get_height)(pixbuf) >= height
-                && (*fp_gdk_pixbuf_get_bits_per_sample)(pixbuf) == 8
-                && (*fp_gdk_pixbuf_get_colorspace)(pixbuf) == GDK_COLORSPACE_RGB
-                && nchan >= 3
-                ) {
-            guchar *p, *pix = (*fp_gdk_pixbuf_get_pixels)(pixbuf);
-            ary = (*env)->GetPrimitiveArrayCritical(env, pixelArray, NULL);
-            if (ary) {
-                jint _x, _y;
-                int index;
-                for (_y = 0; _y < height; _y++) {
-                    for (_x = 0; _x < width; _x++) {
-                        p = pix + (intptr_t) (_y + skip_top) * stride
-                                + (_x + skip_left) * nchan;
-
-                        index = (_y + dy) * jwidth + (_x + dx);
-                        ary[index] = 0xff000000
-                                        | (p[0] << 16)
-                                        | (p[1] << 8)
-                                        | (p[2]);
-
-                    }
-                }
-                (*env)->ReleasePrimitiveArrayCritical(env, pixelArray, ary, 0);
-            }
-        }
-        (*fp_g_object_unref)(pixbuf);
-    }
-    return JNI_FALSE;
-}
-
-static GdkWindow* gtk3_get_window(void *widget)
-{
-    return fp_gtk_widget_get_window((GtkWidget*)widget);
-}
-
 static void gtk3_init(GtkApi* gtk)
 {
     gtk->version = GTK_3;
@@ -2847,8 +2752,7 @@ static void gtk3_init(GtkApi* gtk)
     gtk->get_file_icon_data = &gtk3_get_file_icon_data;
     gtk->gdk_threads_enter = fp_gdk_threads_enter;
     gtk->gdk_threads_leave = fp_gdk_threads_leave;
-    gtk->gtk_show_uri = fp_gtk_show_uri;
-    gtk->get_drawable_data = &gtk3_get_drawable_data;
+    gtk->gtk_show_uri_on_window = fp_gtk_show_uri_on_window;
     gtk->g_free = fp_g_free;
 
     gtk->gtk_file_chooser_get_filename = fp_gtk_file_chooser_get_filename;
@@ -2881,7 +2785,6 @@ static void gtk3_init(GtkApi* gtk)
     gtk->gtk_window_present = fp_gtk_window_present;
     gtk->gtk_window_move = fp_gtk_window_move;
     gtk->gtk_window_resize = fp_gtk_window_resize;
-    gtk->get_window = &gtk3_get_window;
 
     gtk->g_object_unref = fp_g_object_unref;
     gtk->g_list_append = fp_g_list_append;
