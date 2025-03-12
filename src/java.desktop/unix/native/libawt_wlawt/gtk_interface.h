@@ -603,9 +603,6 @@ typedef struct GtkApi {
     void (*gdk_threads_leave)(void);
     gboolean (*gtk_show_uri)(GdkScreen *screen, const gchar *uri,
                              guint32 timestamp, GError **error);
-    gboolean (*get_drawable_data)(JNIEnv *env, jintArray pixelArray,
-                                  jint x, jint y, jint width, jint height,
-                                  jint jwidth, int dx, int dy);
     void (*g_free)(gpointer mem);
 
     gchar* (*gtk_file_chooser_get_filename)(GtkFileChooser *chooser);
@@ -641,7 +638,6 @@ typedef struct GtkApi {
     void (*gtk_window_present)(void *window);
     void (*gtk_window_move)(void *window, gint x, gint y);
     void (*gtk_window_resize)(void *window, gint width, gint height);
-    GdkWindow *(*get_window)(void *widget);
 
     void (*g_object_unref)(gpointer object);
     GList* (*g_list_append) (GList *list, gpointer data);
