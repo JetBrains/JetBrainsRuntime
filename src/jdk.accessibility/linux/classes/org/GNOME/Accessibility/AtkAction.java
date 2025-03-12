@@ -47,18 +47,27 @@ public class AtkAction {
         }
     }
 
-    private String convertModString(String mods) {
-        if (mods == null || mods.length() == 0) {
-            return "";
+    private String keyStrokeToShortcut(KeyStroke keyStroke) {
+        // Let's add only shortcut and skip mnemonic and sequence, since they are not necessary parts
+        String keybinding = ";;";
+
+        // a String describing the extended modifier keys and mouse buttons, such as "Shift", "Button1", or "Ctrl+Shift"
+        String modString = KeyEvent.getModifiersExText(keyStroke.getModifiers());
+
+        // a String describing the keyCode, such as "HOME", "F1" or "A".
+        String keyString = KeyEvent.getKeyText(keyStroke.getKeyCode());
+
+        if (modString != null) {
+            keybinding += modString;
+        }
+        if (keyString != null) {
+            if (modString != null) {
+                keybinding += "+";
+            }
+            keybinding += keyString;
         }
 
-        String modStrs[] = mods.split("\\+");
-        String newModString = "";
-        for (int i = 0; i < modStrs.length; i++) {
-            newModString += "<" + modStrs[i] + ">";
-        }
-
-        return newModString;
+        return keybinding;
     }
 
     // JNI upcalls section
@@ -155,98 +164,46 @@ public class AtkAction {
         }, null);
     }
 
+    /*
+     * Gets the keybinding which can be used to activate the action, if one exists.
+     * The string returned should contain localized, human-readable, key sequences
+     * as they would appear when displayed on screen.
+     * It must be in the format "mnemonic;sequence;shortcut".
+     *
+     * @return null if there is no keybinding
+     */
     private String get_keybinding(int index) {
-        if (index < 0) {
+        // TODO: do we really need to check the index if we don't use it?
+        if (index < 0 || _acc_ext_component == null) {
             return null;
         }
-        AccessibleExtendedComponent acc_ext_component;
-        if (_acc_ext_component == null)
-            return "";
 
-        acc_ext_component = _acc_ext_component.get();
-
-        // TODO: improve/fix conversion to strings, concatenate,
-        //       and follow our formatting convention for the role of
-        //       various keybindings (i.e. global, transient, etc.)
-
-        //
-        // Presently, JAA doesn't define a relationship between the index used
-        // and the action associated. As such, all keybindings are only
-        // associated with the default (index 0 in GNOME) action.
-        //
-        if (index > 0) {
-            return "";
+        AccessibleExtendedComponent acc_ext_component = _acc_ext_component.get();
+        if (acc_ext_component == null) {
+            return null;
         }
 
-        if (acc_ext_component != null) {
+        return AtkUtil.invokeInSwing(() -> {
             AccessibleKeyBinding akb = acc_ext_component.getAccessibleKeyBinding();
-
-            if (akb != null && akb.getAccessibleKeyBindingCount() > 0) {
-                String rVal = "";
-                int i;
-
-                // Privately Agreed interface with StarOffice to workaround
-                // deficiency in JAA.
-                //
-                // The aim is to use an array of keystrokes, if there is more
-                // than one keypress involved meaning that we would have:
-                //
-                //	KeyBinding(0)    -> nmeumonic       KeyStroke
-                //	KeyBinding(1)    -> full key path   KeyStroke[]
-                //	KeyBinding(2)    -> accelerator     KeyStroke
-                //
-                // GNOME Expects a string in the format:
-                //
-                //	<nmemonic>;<full-path>;<accelerator>
-                //
-                // The keybindings in <full-path> should be separated by ":"
-                //
-                // Since only the first three are relevant, ignore others
-                for (i = 0; (i < akb.getAccessibleKeyBindingCount() && i < 3); i++) {
-                    Object o = akb.getAccessibleKeyBinding(i);
-
-                    if (i > 0) {
-                        rVal += ";";
-                    }
-
-                    if (o instanceof KeyStroke keyStroke) {
-                        String modString = InputEvent.getModifiersExText(keyStroke.getModifiers());
-                        String keyString = KeyEvent.getKeyText(keyStroke.getKeyCode());
-
-                        if (keyString != null) {
-                            if (modString != null && modString.length() > 0) {
-                                rVal += convertModString(modString) + keyString;
-                            } else {
-                                rVal += keyString;
-                            }
-                        }
-                    } else if (o instanceof KeyStroke[] keyStroke) {
-                        for (int j = 0; j < keyStroke.length; j++) {
-                            String modString = InputEvent.getModifiersExText(keyStroke[j].getModifiers());
-                            String keyString = KeyEvent.getKeyText(keyStroke[j].getKeyCode());
-
-                            if (j > 0) {
-                                rVal += ":";
-                            }
-
-                            if (keyString != null) {
-                                if (modString != null && modString.length() > 0) {
-                                    rVal += convertModString(modString) + keyString;
-                                } else {
-                                    rVal += keyString;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (i < 2) rVal += ";";
-                if (i < 3) rVal += ";";
-
-                return rVal;
+            int keyBindingCount = akb.getAccessibleKeyBindingCount();
+            if (akb == null || keyBindingCount == 0) {
+                return null;
             }
-        }
 
-        return "";
+            String keybinding = "";
+            Object accessibleKeyBinding = akb.getAccessibleKeyBinding(0);
+            if (accessibleKeyBinding instanceof KeyStroke keyStroke) {
+                keybinding = keyStrokeToShortcut(keyStroke);
+            } else if (accessibleKeyBinding instanceof KeyStroke[] keyStrokes) {
+                if (keyStrokes.length != 0) {
+                    keybinding = keyStrokeToShortcut(keyStrokes[0]);
+                }
+            }
+
+            if (keybinding.isEmpty()) {
+                return null;
+            }
+            return keybinding;
+        }, null);
     }
 }
