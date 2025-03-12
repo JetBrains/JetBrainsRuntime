@@ -524,7 +524,8 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
             dsty = dstInfo.bounds.y1;
             width = srcInfo.bounds.x2 - srcInfo.bounds.x1;
             height = srcInfo.bounds.y2 - srcInfo.bounds.y1;
-            jsize bufferSizeInPixels = width * height;
+            jsize bufferScan = width * dstInfo.pixelStride;
+            jsize bufferSize = bufferScan * height;
 
             pDst = PtrAddBytes(pDst, dstx * dstInfo.pixelStride);
             pDst = PtrPixelsRow(pDst, dsty, dstInfo.scanStride);
@@ -547,7 +548,7 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
                 }
             }
 
-            VKBuffer* buffer = VKBuffer_Create(device, bufferSizeInPixels * sizeof(jint),
+            VKBuffer* buffer = VKBuffer_Create(device, bufferSize,
                                                VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                                                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -582,7 +583,17 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
             {
                 J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_SurfaceToSwBlit: could not map buffer memory");
             } else {
-                memcpy(pDst, pixelData, bufferSizeInPixels * sizeof(jint));
+                if (bufferScan == dstInfo.scanStride) {
+                    // Tightly packed, copy in one go.
+                    memcpy(pDst, pixelData, bufferSize);
+                } else {
+                    // Sparse, copy by scanlines.
+                    for (jint i = 0; i < height; i++) {
+                        memcpy(pDst, pixelData, bufferScan);
+                        pixelData = PtrAddBytes(pixelData, bufferScan);
+                        pDst = PtrAddBytes(pDst, dstInfo.scanStride);
+                    }
+                }
                 device->vkUnmapMemory(device->handle, buffer->range.memory);
             }
             VKBuffer_Destroy(device, buffer);
