@@ -23,10 +23,8 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/shared/bufferNode.hpp"
 #include "gc/shared/ptrQueue.hpp"
-#include "memory/allocation.inline.hpp"
-
-#include <new>
 
 PtrQueue::PtrQueue(PtrQueueSet* qset) :
   _index(0),
@@ -38,39 +36,7 @@ PtrQueue::~PtrQueue() {
   assert(_buf == nullptr, "queue must be flushed before delete");
 }
 
-BufferNode::AllocatorConfig::AllocatorConfig(size_t size) : _buffer_size(size) {}
 
-void* BufferNode::AllocatorConfig::allocate() {
-  size_t byte_size = _buffer_size * sizeof(void*);
-  return NEW_C_HEAP_ARRAY(char, buffer_offset() + byte_size, mtGC);
-}
-
-void BufferNode::AllocatorConfig::deallocate(void* node) {
-  assert(node != nullptr, "precondition");
-  FREE_C_HEAP_ARRAY(char, node);
-}
-
-BufferNode::Allocator::Allocator(const char* name, size_t buffer_size) :
-  _config(buffer_size),
-  _free_list(name, &_config)
-{
-
-}
-
-size_t BufferNode::Allocator::free_count() const {
-  return _free_list.free_count();
-}
-
-BufferNode* BufferNode::Allocator::allocate() {
-  return ::new (_free_list.allocate()) BufferNode();
-}
-
-void BufferNode::Allocator::release(BufferNode* node) {
-  assert(node != nullptr, "precondition");
-  assert(node->next() == nullptr, "precondition");
-  node->~BufferNode();
-  _free_list.release(node);
-}
 
 PtrQueueSet::PtrQueueSet(BufferNode::Allocator* allocator) :
   _allocator(allocator)

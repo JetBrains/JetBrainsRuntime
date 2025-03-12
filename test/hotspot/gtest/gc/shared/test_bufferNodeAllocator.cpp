@@ -23,7 +23,7 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/shared/ptrQueue.hpp"
+#include "gc/shared/bufferNode.hpp"
 #include "memory/allocation.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
@@ -51,7 +51,7 @@ typedef BufferNode::TestSupport::AllocatorThread AllocatorThread;
 typedef BufferNode::TestSupport::ProcessorThread ProcessorThread;
 
 // Some basic testing of BufferNode::Allocator.
-TEST_VM(PtrQueueBufferAllocatorTest, test) {
+TEST_VM(BufferNodeAllocatorTest, test) {
   const size_t buffer_size = 256;
   BufferNode::Allocator allocator("Test Buffer Allocator", buffer_size);
   ASSERT_EQ(buffer_size, allocator.buffer_size());
@@ -235,7 +235,7 @@ static void run_test(BufferNode::Allocator* allocator, CompletedList* cbl) {
 
 const size_t buffer_size = 1024;
 
-TEST_VM(PtrQueueBufferAllocatorTest, stress_free_list_allocator) {
+TEST_VM(BufferNodeAllocatorTest, stress_free_list_allocator) {
   BufferNode::Allocator allocator("Test Allocator", buffer_size);
   CompletedList completed;
   run_test(&allocator, &completed);
