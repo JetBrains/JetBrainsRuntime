@@ -61,8 +61,8 @@ class CAccessible extends CFRetainedResource implements Accessible {
         });
         SELECTED_CHILDREN_MILLISECONDS = scms >= 0 ? scms : SELECTED_CHILDREN_MILLISECONDS_DEFAULT;
 
-        EVENTS_CACHED_POSTING_ENABLED = Boolean.parseBoolean(
-            System.getProperty("sun.lwawt.macosx.CAccessible.eventsCachedPostingEnabled", "true")
+        EVENTS_COALESCING_ENABLED = Boolean.parseBoolean(
+            System.getProperty("sun.lwawt.macosx.CAccessible.eventsCoalescingEnabled", "true")
         );
     }
 
@@ -88,9 +88,9 @@ class CAccessible extends CFRetainedResource implements Accessible {
     private static native void menuOpened(long ptr);
     private static native void menuClosed(long ptr);
     private static native void menuItemSelected(long ptr);
-    // JBR-7659: don't use this method directly; use {@link #cachedPostTreeNodeExpanded()} instead
+    // JBR-7659: don't use this method directly; use {@link #postCoalescedTreeNodeExpanded()} instead
     private native void treeNodeExpanded(long ptr);
-    // JBR-7659: don't use this method directly; use {@link #cachedPostTreeNodeCollapsed()} instead
+    // JBR-7659: don't use this method directly; use {@link #postCoalescedTreeNodeCollapsed()} instead
     private native void treeNodeCollapsed(long ptr);
     private static native void selectedCellsChanged(long ptr);
     private static native void tableContentCacheClear(long ptr);
@@ -145,7 +145,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
     //   for the same UI component (i.e. for the same CAccessible).
 
     /** Is a way to disable the fix */
-    private static final boolean EVENTS_CACHED_POSTING_ENABLED;
+    private static final boolean EVENTS_COALESCING_ENABLED;
 
     /**
      * The variables indicate whether there's an "event" posted by
@@ -162,8 +162,8 @@ class CAccessible extends CFRetainedResource implements Accessible {
     private final AtomicBoolean hasDelayedTreeNodeExpandedEvent = new AtomicBoolean(false),
                                 hasDelayedTreeNodeCollapsedEvent = new AtomicBoolean(false);
 
-    private void cachedPostTreeNodeExpanded() {
-        cachedPostEventImpl(
+    private void postCoalescedTreeNodeExpanded() {
+        postCoalescedEventImpl(
             isProcessingTreeNodeExpandedEvent,
             hasDelayedTreeNodeExpandedEvent,
             this::treeNodeExpanded,
@@ -171,8 +171,8 @@ class CAccessible extends CFRetainedResource implements Accessible {
         );
     }
 
-    private void cachedPostTreeNodeCollapsed() {
-        cachedPostEventImpl(
+    private void postCoalescedTreeNodeCollapsed() {
+        postCoalescedEventImpl(
             isProcessingTreeNodeCollapsedEvent,
             hasDelayedTreeNodeCollapsedEvent,
             this::treeNodeCollapsed,
@@ -180,16 +180,16 @@ class CAccessible extends CFRetainedResource implements Accessible {
         );
     }
 
-    private static void cachedPostEventImpl(
+    private static void postCoalescedEventImpl(
         final AtomicBoolean isProcessingEventFlag,
         final AtomicBoolean hasDelayedEventFlag,
-        final CFNativeAction postingRoutine,
+        final CFNativeAction eventPostingAction,
         // a reference to this is passed instead of making the method non-static to make sure the implementation
         //   doesn't accidentally touch anything of the instance by mistake
         final CAccessible self
     ) {
-        if (!EVENTS_CACHED_POSTING_ENABLED) {
-            self.execute(postingRoutine);
+        if (!EVENTS_COALESCING_ENABLED) {
+            self.execute(eventPostingAction);
             return;
         }
 
@@ -200,7 +200,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
                 hasDelayedEventFlag.set(false);
 
                 try {
-                    postingRoutine.run(ptr);
+                    eventPostingAction.run(ptr);
                 } catch (Exception err) {
                     isProcessingEventFlag.set(false);
                     throw err;
@@ -223,7 +223,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
         onProcessedEventImpl(
             isProcessingTreeNodeExpandedEvent,
             hasDelayedTreeNodeExpandedEvent,
-            this::cachedPostTreeNodeExpanded
+            this::postCoalescedTreeNodeExpanded
         );
     }
 
@@ -232,25 +232,25 @@ class CAccessible extends CFRetainedResource implements Accessible {
         onProcessedEventImpl(
             isProcessingTreeNodeCollapsedEvent,
             hasDelayedTreeNodeCollapsedEvent,
-            this::cachedPostTreeNodeCollapsed
+            this::postCoalescedTreeNodeCollapsed
         );
     }
 
     private static void onProcessedEventImpl(
         final AtomicBoolean isProcessingEventFlag,
         final AtomicBoolean hasDelayedEventFlag,
-        final Runnable cachedPostingRoutine
+        final Runnable postingCoalescedEventRoutine
     ) {
-        if (!EVENTS_CACHED_POSTING_ENABLED) {
+        if (!EVENTS_COALESCING_ENABLED) {
             return;
         }
 
         isProcessingEventFlag.set(false);
 
         if (hasDelayedEventFlag.compareAndSet(true, false)) {
-            // We shouldn't call cachedPost<...> synchronously from here to allow the current CFRunLoop
+            // We shouldn't call postCoalesced<...> synchronously from here to allow the current CFRunLoop
             //   to finish, thus reducing the current number of nested CFRunLoop s.
-            EventQueue.invokeLater(cachedPostingRoutine);
+            EventQueue.invokeLater(postingCoalescedEventRoutine);
         }
     }
 
@@ -318,14 +318,14 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     }
 
                     if (newValue == AccessibleState.EXPANDED) {
-                        if (EVENTS_CACHED_POSTING_ENABLED) {
-                            cachedPostTreeNodeExpanded();
+                        if (EVENTS_COALESCING_ENABLED) {
+                            postCoalescedTreeNodeExpanded();
                         } else {
                             execute(ptr -> treeNodeExpanded(ptr));
                         }
                     } else if (newValue == AccessibleState.COLLAPSED) {
-                        if (EVENTS_CACHED_POSTING_ENABLED) {
-                            cachedPostTreeNodeCollapsed();
+                        if (EVENTS_COALESCING_ENABLED) {
+                            postCoalescedTreeNodeCollapsed();
                         } else {
                             execute(ptr -> treeNodeCollapsed(ptr));
                         }
