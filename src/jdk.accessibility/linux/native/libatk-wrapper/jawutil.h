@@ -130,6 +130,10 @@ void jaw_util_detach(void);
     }                                                                          \
     Data *data = jaw_object_get_interface_data(jaw_obj, iface);                \
     JNIEnv *env = jaw_util_get_jni_env();                                      \
+    if (!env) {                                                                \
+        JAW_DEBUG_I(#env " == NULL");                                          \
+        return def_ret;                                                        \
+    }                                                                          \
     jobject name = (*env)->NewGlobalRef(env, data->field);                     \
     if (!name) {                                                               \
         JAW_DEBUG_I(#name " == NULL");                                         \
@@ -149,6 +153,10 @@ void jaw_util_detach(void);
         JAW_DEBUG_I(#name " == NULL");                                         \
         return def_ret;                                                        \
     }
+
+#define CHECK_NULL(ptr, ret_val) { \
+    if (!ptr) return ret_val; \
+}
 
 G_END_DECLS
 
