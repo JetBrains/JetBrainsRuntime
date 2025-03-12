@@ -42,14 +42,16 @@ import sun.java2d.wl.WLSurfaceDataExt;
 public class WLVKWindowSurfaceData extends VKSurfaceData
         implements WLPixelGrabberExt, WLSurfaceDataExt
 {
-    protected WLComponentPeer peer;
+    private final WLComponentPeer peer;
+    // TODO Do we really need the scale there? It is used by getDefaultScaleX/Y...
+    private int scale = 1;
 
     private native void initOps(int backgroundRGB);
 
     private native void assignWlSurface(long surfacePtr);
 
     public WLVKWindowSurfaceData(WLComponentPeer peer) {
-        super(peer.getColorModel(), WINDOW);
+        super(((VKGraphicsConfig) peer.getGraphicsConfiguration()).getFormat(), peer.getColorModel().getTransparency(), WINDOW);
         this.peer = peer;
         final int backgroundRGB = peer.getBackground() != null
                 ? peer.getBackground().getRGB()
