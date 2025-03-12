@@ -79,7 +79,7 @@ void jaw_action_data_finalize(gpointer p) {
     ActionData *data = (ActionData *)p;
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
-    if (data && data->atk_action) {
+    if (data) {
         if (data->localized_name != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrLocalizedName,
                                              data->localized_name);
@@ -104,8 +104,10 @@ void jaw_action_data_finalize(gpointer p) {
             data->action_keybinding = NULL;
         }
 
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_action);
-        data->atk_action = NULL;
+        if (data->atk_action != NULL) {
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_action);
+            data->atk_action = NULL;
+        }
     }
 }
 
