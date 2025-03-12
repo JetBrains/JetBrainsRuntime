@@ -39,6 +39,7 @@ import sun.java2d.pipe.RenderQueue;
 import sun.java2d.pipe.hw.AccelSurface;
 import java.awt.AlphaComposite;
 import java.awt.Composite;
+import java.awt.Rectangle;
 import java.awt.Transparency;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
@@ -46,8 +47,12 @@ import java.awt.image.BufferedImage;
 import java.awt.image.BufferedImageOp;
 import java.lang.annotation.Native;
 import java.lang.ref.WeakReference;
+import java.util.stream.Stream;
+
 import static sun.java2d.pipe.BufferedOpCodes.BLIT;
 import static sun.java2d.pipe.BufferedOpCodes.SURFACE_TO_SW_BLIT;
+import static java.awt.Transparency.OPAQUE;
+import static java.awt.Transparency.TRANSLUCENT;
 
 final class VKBlitLoops {
 
@@ -62,8 +67,7 @@ final class VKBlitLoops {
                 new VKSwToSurfaceTransform(SurfaceType.IntArgbPre,
                         VKSurfaceData.PF_INT_ARGB_PRE);
         VKSurfaceToSwBlit blitSurfaceToIntArgbPre =
-                new VKSurfaceToSwBlit(SurfaceType.IntArgbPre,
-                        VKSurfaceData.PF_INT_ARGB_PRE);
+                new VKSurfaceToSwBlit(VKFormat.B8G8R8A8_UNORM); // TODO this is a placeholder.
 
         GraphicsPrimitive[] primitives = {
                 // surface->surface ops
@@ -75,11 +79,6 @@ final class VKBlitLoops {
                 new VKRTTSurfaceToSurfaceBlit(),
                 new VKRTTSurfaceToSurfaceScale(),
                 new VKRTTSurfaceToSurfaceTransform(),
-
-                // surface->sw ops
-                new VKSurfaceToSwBlit(SurfaceType.IntArgb,
-                        VKSurfaceData.PF_INT_ARGB),
-                blitSurfaceToIntArgbPre,
 
                 // sw->surface ops
                 blitIntArgbPreToSurface,
@@ -146,7 +145,10 @@ final class VKBlitLoops {
                         CompositeType.SrcNoEa,
                         blitIntArgbPreToTexture),
         };
-        GraphicsPrimitiveMgr.register(primitives);
+
+        Stream<GraphicsPrimitive> surfaceToSwBlits = Stream.of(VKFormat.values()).map(VKSurfaceToSwBlit::new);
+        GraphicsPrimitiveMgr.register(
+                Stream.concat(Stream.of(primitives), surfaceToSwBlits).toArray(GraphicsPrimitive[]::new));
     }
 
     /**
@@ -472,57 +474,59 @@ class VKRTTSurfaceToSurfaceTransform extends TransformBlit {
 
 final class VKSurfaceToSwBlit extends Blit {
 
-    private final int typeval;
-    private WeakReference<SurfaceData> srcTmp;
+    private final VKFormat format;
+    private final SurfaceType translucentSurfaceType, opaqueSurfaceType;
+    private WeakReference<SurfaceData> srcTmpOpaque, srcTmpTranslucent;
 
-    // destination will actually be ArgbPre or Argb
-    VKSurfaceToSwBlit(final SurfaceType dstType, final int typeval) {
-        super(VKSurfaceData.VKSurface,
-                CompositeType.SrcNoEa,
-                dstType);
-        this.typeval = typeval;
+    VKSurfaceToSwBlit(VKFormat format) {
+        // TODO Support for any composite via staged blit?
+        //      This way we could do one intermediate blit instead of two.
+        super(format.getSurfaceType(), CompositeType.SrcNoEa, SurfaceType.Any);
+        this.format = format;
+        translucentSurfaceType = format.getFormatModel(TRANSLUCENT).getSurfaceType();
+        opaqueSurfaceType = format.getFormatModel(OPAQUE).getSurfaceType();
     }
 
-    private synchronized void complexClipBlit(SurfaceData src, SurfaceData dst,
-                                              Composite comp, Region clip,
-                                              int sx, int sy, int dx, int dy,
-                                              int w, int h) {
-        SurfaceData cachedSrc = null;
+    private void stagedBlit(SurfaceData src, SurfaceData dst,
+                            Composite comp, Region clip,
+                            int sx, int sy, int dx, int dy,
+                            int w, int h) {
+        SurfaceData tmp = null;
+        WeakReference<SurfaceData> srcTmp = dst.getTransparency() == OPAQUE ? srcTmpOpaque : srcTmpTranslucent;
         if (srcTmp != null) {
-            // use cached intermediate surface, if available
-            cachedSrc = srcTmp.get();
+            // Use cached intermediate surface, if available.
+            tmp = srcTmp.get();
+            if (tmp != null) {
+                Rectangle b = tmp.getBounds();
+                if (b.width < w || b.height < h) tmp = null;
+            }
+        }
+        if (tmp == null) {
+            BufferedImage bi = format.createCompatibleImage(w, h, dst.getTransparency());
+            tmp = SurfaceData.getPrimarySurfaceData(bi);
+            srcTmp = null;
         }
 
-        // We can convert argb_pre data from VK surface in two places:
-        // - During VK surface -> SW blit
-        // - During SW -> SW blit
-        // The first one is faster when we use opaque MTL surface, because in
-        // this case we simply skip conversion and use color components as is.
-        // Because of this we align intermediate buffer type with type of
-        // destination not source.
-        final int type = typeval == VKSurfaceData.PF_INT_ARGB_PRE ?
-                BufferedImage.TYPE_INT_ARGB_PRE :
-                BufferedImage.TYPE_INT_ARGB;
+        // Blit from Vulkan to intermediate SW image.
+        Blit(src, tmp, null, null, sx, sy, 0, 0, w, h);
 
-        src = convertFrom(this, src, sx, sy, w, h, cachedSrc, type);
+        // Copy intermediate SW to destination SW using complex clip.
+        Blit performop = Blit.getFromCache(tmp.getSurfaceType(), CompositeType.SrcNoEa, dst.getSurfaceType());
+        performop.Blit(tmp, dst, comp, clip, 0, 0, dx, dy, w, h);
 
-        // copy intermediate SW to destination SW using complex clip
-        final Blit performop = Blit.getFromCache(src.getSurfaceType(),
-                CompositeType.SrcNoEa,
-                dst.getSurfaceType());
-        performop.Blit(src, dst, comp, clip, 0, 0, dx, dy, w, h);
-
-        if (src != cachedSrc) {
-            // cache the intermediate surface
-            srcTmp = new WeakReference<>(src);
+        if (srcTmp == null) {
+            // Cache the intermediate surface.
+            srcTmp = new WeakReference<>(tmp);
+            if (dst.getTransparency() == OPAQUE) srcTmpOpaque = srcTmp;
+            else srcTmpTranslucent = srcTmp;
         }
     }
 
+    @Override
     public void Blit(SurfaceData src, SurfaceData dst,
                      Composite comp, Region clip,
                      int sx, int sy, int dx, int dy,
-                     int w, int h)
-    {
+                     int w, int h) {
         if (clip != null) {
             clip = clip.getIntersectionXYWH(dx, dy, w, h);
             // At the end this method will flush the RenderQueue, we should exit
@@ -536,11 +540,12 @@ final class VKSurfaceToSwBlit extends Blit {
             dy = clip.getLoY();
             w = clip.getWidth();
             h = clip.getHeight();
+        }
 
-            if (!clip.isRectangular()) {
-                complexClipBlit(src, dst, comp, clip, sx, sy, dx, dy, w, h);
-                return;
-            }
+        if ((clip != null && !clip.isRectangular()) ||
+                (dst.getSurfaceType() != translucentSurfaceType && dst.getSurfaceType() != opaqueSurfaceType)) {
+            stagedBlit(src, dst, comp, clip, sx, sy, dx, dy, w, h);
+            return;
         }
 
         VKRenderQueue rq = VKRenderQueue.getInstance();
@@ -559,7 +564,7 @@ final class VKSurfaceToSwBlit extends Blit {
             buf.putInt(sx).putInt(sy);
             buf.putInt(dx).putInt(dy);
             buf.putInt(w).putInt(h);
-            buf.putInt(typeval);
+            buf.putInt(format.getValue());
             buf.putLong(src.getNativeOps());
             buf.putLong(dst.getNativeOps());
 
