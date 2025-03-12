@@ -31,6 +31,7 @@ import sun.awt.SunHints;
 import sun.awt.image.PixelConverter;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
+import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.loops.SurfaceType;
@@ -44,6 +45,7 @@ import sun.java2d.pipe.hw.AccelSurface;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.awt.image.VolatileImage;
 
@@ -109,10 +111,6 @@ public abstract class VKSurfaceData extends SurfaceData
             vkAAPgramPipe = vkRenderPipe.getAAParallelogramPipe();
             vkTxRenderPipe =
                     new PixelToParallelogramConverter(vkRenderPipe, vkRenderPipe, 1.0, 0.25, true);
-
-            VKBlitLoops.register();
-            VKMaskFill.register();
-            VKMaskBlit.register();
         }
     }
 
@@ -127,7 +125,7 @@ public abstract class VKSurfaceData extends SurfaceData
     private int nativeHeight;
 
     protected VKSurfaceData(VKFormat format, int transparency, int type) {
-        super(format.getSurfaceType(), format.getFormatModel(transparency).getColorModel());
+        super(format.getSurfaceType(transparency), format.getFormatModel(transparency).getColorModel());
         this.format = format;
         this.type = type;
     }
@@ -166,9 +164,16 @@ public abstract class VKSurfaceData extends SurfaceData
         }
     }
 
+    protected BufferedImage getSnapshot(int x, int y, int width, int height) {
+        BufferedImage image = getFormat().createCompatibleImage(width, height, getTransparency());
+        SurfaceData sd = SurfaceData.getPrimarySurfaceData(image);
+        Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa, sd.getSurfaceType());
+        blit.Blit(this, sd, AlphaComposite.Src, null, x, y, 0, 0, width, height);
+        return image;
+    }
 
     public Raster getRaster(int x, int y, int w, int h) {
-        throw new InternalError("not implemented yet");
+        return getSnapshot(x, y, w, h).getRaster().createTranslatedChild(x, y);
     }
 
 
