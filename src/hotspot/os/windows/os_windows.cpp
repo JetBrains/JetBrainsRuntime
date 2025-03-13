@@ -1715,11 +1715,11 @@ static errno_t convert_to_UTF16(char const* source_str, UINT source_encoding, LP
                                                 MB_ERR_INVALID_CHARS,
                                                 source_str,
                                                 -1, // source is null-terminated
-                                                NULL,
+                                                nullptr,
                                                 0); // estimate characters count
   if (len_estimated == 0) {
     // Probably source_str contains characters that cannot be represented in the source_encoding given.
-    *dest_utf16_str = NULL;
+    *dest_utf16_str = nullptr;
     return EINVAL;
   }
 
@@ -1752,11 +1752,11 @@ static errno_t convert_UTF16_to_platform(LPWSTR source_utf16_str, char*& dest_st
                                                 0,
                                                 source_utf16_str,
                                                 -1, // source is null-terminated
-                                                NULL,
+                                                nullptr,
                                                 0, // estimate characters count
-                                                NULL, NULL);
+                                                nullptr, nullptr);
   if (len_estimated == 0) {
-    dest_str = NULL;
+    dest_str = nullptr;
     return EINVAL;
   }
 
@@ -1766,7 +1766,7 @@ static errno_t convert_UTF16_to_platform(LPWSTR source_utf16_str, char*& dest_st
                                            0,
                                            source_utf16_str,
                                            -1, // source is null-terminated
-                                           dest_str, len_estimated, NULL, NULL);
+                                           dest_str, len_estimated, nullptr, nullptr);
   assert(len_real == len_estimated, "length already checked above");
 
   return ERROR_SUCCESS;
@@ -1778,7 +1778,7 @@ private:
 
 public:
   MemoryReleaserW(WCHAR * object_ptr) : _object_ptr(object_ptr) {}
-  ~MemoryReleaserW() { if (_object_ptr != NULL) FREE_C_HEAP_ARRAY(WCHAR, _object_ptr); }
+  ~MemoryReleaserW() { if (_object_ptr != nullptr) FREE_C_HEAP_ARRAY(WCHAR, _object_ptr); }
 };
 
 class MemoryReleaser : public StackObj {
@@ -1787,22 +1787,22 @@ private:
 
 public:
   MemoryReleaser(CHAR * object_ptr) : _object_ptr(object_ptr) {}
-  ~MemoryReleaser() { if (_object_ptr != NULL) FREE_C_HEAP_ARRAY(CHAR, _object_ptr); }
+  ~MemoryReleaser() { if (_object_ptr != nullptr) FREE_C_HEAP_ARRAY(CHAR, _object_ptr); }
 };
 
 // Loads .dll/.so and
 // in case of error it checks if .dll/.so was built for the
 // same architecture as Hotspot is running on
 void * os::dll_load_utf8(const char *utf8_name, char *ebuf, int ebuflen) {
-  LPWSTR utf16_name = NULL;
+  LPWSTR utf16_name = nullptr;
   errno_t err = convert_UTF8_to_UTF16(utf8_name, &utf16_name);
   MemoryReleaserW release_utf16_name(utf16_name);
   if (err != ERROR_SUCCESS) {
     errno = err;
-    return NULL;
+    return nullptr;
   }
 
-  char* platform_name = NULL; // name of the library converted to the "platform" encoding for use in log messages
+  char* platform_name = nullptr; // name of the library converted to the "platform" encoding for use in log messages
   errno_t ignored_err = convert_UTF16_to_platform(utf16_name, platform_name);
   MemoryReleaser release_platform_name(platform_name);
 
@@ -1810,8 +1810,8 @@ void * os::dll_load_utf8(const char *utf8_name, char *ebuf, int ebuflen) {
 
   void * result = LoadLibraryW(utf16_name);
 
-  if (result != NULL) {
-    Events::log(NULL, "Loaded shared library %s", platform_name);
+  if (result != nullptr) {
+    Events::log(nullptr, "Loaded shared library %s", platform_name);
     // Recalculate pdb search path if a DLL was loaded successfully.
     SymbolEngine::recalc_search_path();
     log_info(os)("shared library load of %s was successful", platform_name);
@@ -1822,13 +1822,13 @@ void * os::dll_load_utf8(const char *utf8_name, char *ebuf, int ebuflen) {
   // It may or may not be overwritten below (in the for loop and just above)
   lasterror(ebuf, (size_t) ebuflen);
   ebuf[ebuflen - 1] = '\0';
-  Events::log(NULL, "Loading shared library %s failed, error code %lu", platform_name, errcode);
+  Events::log(nullptr, "Loading shared library %s failed, error code %lu", platform_name, errcode);
   log_info(os)("shared library load of %s failed, error code %lu", platform_name, errcode);
 
   if (errcode == ERROR_MOD_NOT_FOUND) {
     strncpy(ebuf, "Can't find dependent libraries", ebuflen - 1);
     ebuf[ebuflen - 1] = '\0';
-    return NULL;
+    return nullptr;
   }
 
   // Parsing dll below
@@ -1838,7 +1838,7 @@ void * os::dll_load_utf8(const char *utf8_name, char *ebuf, int ebuflen) {
   // else call os::lasterror to obtain system error message
   int fd = ::wopen(utf16_name, O_RDONLY | O_BINARY, 0);
   if (fd < 0) {
-    return NULL;
+    return nullptr;
   }
 
   uint32_t signature_offset;
@@ -1864,7 +1864,7 @@ void * os::dll_load_utf8(const char *utf8_name, char *ebuf, int ebuflen) {
   ::close(fd);
   if (failed_to_get_lib_arch) {
     // file i/o error - report os::lasterror(...) msg
-    return NULL;
+    return nullptr;
   }
 
   typedef struct {
@@ -1892,7 +1892,7 @@ void * os::dll_load_utf8(const char *utf8_name, char *ebuf, int ebuflen) {
   // Obtain a string for printf operation
   // lib_arch_str shall contain string what platform this .dll was built for
   // running_arch_str shall string contain what platform Hotspot was built for
-  char *running_arch_str = NULL, *lib_arch_str = NULL;
+  char *running_arch_str = nullptr, *lib_arch_str = nullptr;
   for (unsigned int i = 0; i < ARRAY_SIZE(arch_array); i++) {
     if (lib_arch == arch_array[i].arch_code) {
       lib_arch_str = arch_array[i].arch_name;
@@ -1908,10 +1908,10 @@ void * os::dll_load_utf8(const char *utf8_name, char *ebuf, int ebuflen) {
   // If the architecture is right
   // but some other error took place - report os::lasterror(...) msg
   if (lib_arch == running_arch) {
-    return NULL;
+    return nullptr;
   }
 
-  if (lib_arch_str != NULL) {
+  if (lib_arch_str != nullptr) {
     jio_snprintf(ebuf, ebuflen - 1,
                 "Can't load %s-bit .dll on a %s-bit platform",
                 lib_arch_str, running_arch_str);
@@ -1922,7 +1922,7 @@ void * os::dll_load_utf8(const char *utf8_name, char *ebuf, int ebuflen) {
                 lib_arch, running_arch_str);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void * os::dll_load(const char *name, char *ebuf, int ebuflen) {
