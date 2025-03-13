@@ -50,6 +50,12 @@ JawHyperlink *jaw_hyperlink_new(jobject jhyperlink) {
 
 static void jaw_hyperlink_class_init(JawHyperlinkClass *klass) {
     JAW_DEBUG_ALL("%p", klass);
+
+    if (!klass) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     gobject_class->dispose = jaw_hyperlink_dispose;
     gobject_class->finalize = jaw_hyperlink_finalize;
@@ -71,12 +77,24 @@ static void jaw_hyperlink_init(JawHyperlink *link) {
 
 static void jaw_hyperlink_dispose(GObject *gobject) {
     JAW_DEBUG_ALL("%p", gobject);
+
+    if (!gobject) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     /* Chain up to parent's dispose */
     G_OBJECT_CLASS(jaw_hyperlink_parent_class)->dispose(gobject);
 }
 
 static void jaw_hyperlink_finalize(GObject *gobject) {
     JAW_DEBUG_ALL("%p", gobject);
+
+    if (!gobject) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     JawHyperlink *jaw_hyperlink = JAW_HYPERLINK(gobject);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
@@ -89,6 +107,12 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
 
 static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     JAW_DEBUG_C("%p, %d", atk_hyperlink, i);
+
+    if (!atk_hyperlink) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     JAW_GET_HYPERLINK(atk_hyperlink, NULL);
 
     jclass classAtkHyperlink =
@@ -115,6 +139,12 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
 static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
                                            gint i) {
     JAW_DEBUG_C("%p, %d", atk_hyperlink, i);
+
+    if (!atk_hyperlink) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     JAW_GET_HYPERLINK(atk_hyperlink, NULL);
 
     jclass classAtkHyperlink =
@@ -137,6 +167,11 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
     JAW_GET_HYPERLINK(atk_hyperlink, 0);
 
+    if (!atk_hyperlink) {
+        g_warning("Null argument passed to function");
+        return -1;
+    }
+
     jclass classAtkHyperlink =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHyperlink");
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkHyperlink,
@@ -151,6 +186,11 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
     JAW_GET_HYPERLINK(atk_hyperlink, 0);
 
+    if (!atk_hyperlink) {
+        g_warning("Null argument passed to function");
+        return -1;
+    }
+
     jclass classAtkHyperlink =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHyperlink");
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkHyperlink,
@@ -163,6 +203,12 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
 
 static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
+
+    if (!atk_hyperlink) {
+        g_warning("Null argument passed to function");
+        return FALSE;
+    }
+
     JAW_GET_HYPERLINK(atk_hyperlink, FALSE);
 
     jclass classAtkHyperlink =
@@ -177,6 +223,12 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
 
 static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
+
+    if (!atk_hyperlink) {
+        g_warning("Null argument passed to function");
+        return 0;
+    }
+
     JAW_GET_HYPERLINK(atk_hyperlink, 0);
 
     jclass classAtkHyperlink =
