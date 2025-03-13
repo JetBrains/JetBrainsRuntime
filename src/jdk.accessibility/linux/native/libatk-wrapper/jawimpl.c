@@ -60,6 +60,12 @@ static void object_table_insert(JNIEnv *jniEnv, jobject ac, JawImpl *jaw_impl) {
     JAW_DEBUG_C("%p, %p, %p", jniEnv, ac, jaw_impl);
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
+
+    if (!jniEnv || !ac || !jaw_impl) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, atkObject, "hash_code",
         "(Ljavax/accessibility/AccessibleContext;)I");
@@ -73,6 +79,12 @@ static void object_table_insert(JNIEnv *jniEnv, jobject ac, JawImpl *jaw_impl) {
 
 static JawImpl *object_table_lookup(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG_C("%p, %p", jniEnv, ac);
+
+    if (!jniEnv || !ac) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
@@ -104,6 +116,12 @@ GMutex *jaw_impl_get_object_hash_table_mutex(void) {
 static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
                                 guint tflag) {
     JAW_DEBUG_C("%p, %p, %u", jniEnv, jaw_obj, tflag);
+
+    if (!jniEnv || !jaw_obj) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     JawImpl *jaw_impl = JAW_IMPL(tflag, jaw_obj);
     jaw_impl->tflag = tflag;
 
@@ -195,6 +213,12 @@ static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
 
 JawImpl *jaw_impl_get_instance(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG_C("%p, %p", jniEnv, ac);
+
+    if (!ac) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     JawImpl *jaw_impl;
     jniEnv = jaw_util_get_jni_env();
 
@@ -244,6 +268,12 @@ JawImpl *jaw_impl_get_instance(JNIEnv *jniEnv, jobject ac) {
 
 JawImpl *jaw_impl_get_instance_from_jaw(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG_C("%p, %p", jniEnv, ac);
+
+    if (!jniEnv || !ac) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     jclass classWrapper =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
@@ -255,6 +285,12 @@ JawImpl *jaw_impl_get_instance_from_jaw(JNIEnv *jniEnv, jobject ac) {
 
 JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG_C("%p, %p", jniEnv, ac);
+
+    if (!jniEnv || !ac) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     JawImpl *jaw_impl;
 
     jaw_impl = object_table_lookup(jniEnv, ac);
@@ -268,6 +304,12 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
 
 static void jaw_impl_class_intern_init(gpointer klass, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", klass, data);
+
+    if (!klass) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     if (jaw_impl_parent_class == NULL) {
         jaw_impl_parent_class = g_type_class_peek_parent(klass);
     }
@@ -393,6 +435,12 @@ GType jaw_impl_get_type(guint tflag) {
 
 static void jaw_impl_class_init(JawImplClass *klass) {
     JAW_DEBUG_ALL("%p", klass);
+
+    if (!klass) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     gobject_class->dispose = jaw_impl_dispose;
     gobject_class->finalize = jaw_impl_finalize;
@@ -412,6 +460,12 @@ static void jaw_impl_dispose(GObject *gobject) {
 
 static void jaw_impl_finalize(GObject *gobject) {
     JAW_DEBUG_ALL("%p", gobject);
+
+    if (!gobject) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     JawObject *jaw_obj = JAW_OBJECT(gobject);
     JawImpl *jaw_impl = (JawImpl *)jaw_obj;
 
@@ -443,6 +497,12 @@ static void jaw_impl_finalize(GObject *gobject) {
 
 static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface) {
     JAW_DEBUG_C("%p, %u", jaw_obj, iface);
+
+    if (!jaw_obj) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     JawImpl *jaw_impl = (JawImpl *)jaw_obj;
 
     if (jaw_impl == NULL || jaw_impl->ifaceTable == NULL)
@@ -459,6 +519,12 @@ static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface) {
 
 static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
     JAW_DEBUG_C("%p, %p", atk_obj, data);
+
+    if (!atk_obj || !data) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     ATK_OBJECT_CLASS(jaw_impl_parent_class)->initialize(atk_obj, data);
 
     JawObject *jaw_obj = JAW_OBJECT(atk_obj);
@@ -477,6 +543,12 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
 static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
                                      const gchar *strKey) {
     JAW_DEBUG_C("%p, %p, %s", jniEnv, jKey, strKey);
+
+    if (!jniEnv || !strKey) {
+        g_warning("Null argument passed to function");
+        return FALSE;
+    }
+
     jclass classAccessibleRelation =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRelation");
     jfieldID jfid = (*jniEnv)->GetStaticFieldID(jniEnv, classAccessibleRelation,
