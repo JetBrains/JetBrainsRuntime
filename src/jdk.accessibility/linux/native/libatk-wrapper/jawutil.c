@@ -72,6 +72,12 @@ GType jaw_util_get_type(void) {
 
 static void jaw_util_class_init(JawUtilClass *kclass, void *klass_data) {
     JAW_DEBUG_ALL("%p, %p", kclass, klass_data);
+
+    if (!kclass || !klass_data) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     AtkUtilClass *atk_class;
     gpointer data;
 
@@ -114,6 +120,12 @@ static void insert_hf(gpointer key, gpointer value, gpointer data) {
 
 gboolean jaw_util_dispatch_key_event(AtkKeyEventStruct *event) {
     JAW_DEBUG_C("%p", event);
+
+    if (!event) {
+        g_warning("Null argument passed to function");
+        return FALSE;
+    }
+
     gint consumed = 0;
     if (key_listener_list) {
         GHashTable *new_hash = g_hash_table_new(NULL, NULL);
@@ -129,11 +141,13 @@ gboolean jaw_util_dispatch_key_event(AtkKeyEventStruct *event) {
 static guint jaw_util_add_key_event_listener(AtkKeySnoopFunc listener,
                                              gpointer data) {
     JAW_DEBUG_C("%p, %p", listener, data);
-    static guint key = 0;
 
-    if (!listener) {
-        return 0;
+    if (!listener || !data) {
+        g_warning("Null argument passed to function");
+        return -1;
     }
+
+    static guint key = 0;
 
     if (!key_listener_list) {
         key_listener_list = g_hash_table_new(NULL, NULL);
@@ -184,6 +198,12 @@ static const gchar *jaw_util_get_toolkit_version(void) {
 /* static functions */
 guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
     JAW_DEBUG_C("%p, %p", jniEnv, jObj);
+
+    if (!jniEnv) {
+        g_warning("Null argument passed to function");
+        return -1;
+    }
+
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
@@ -214,6 +234,13 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserve) {
 
 JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *jvm, void *reserve) {
     JAW_DEBUG_JNI("%p, %p", jvm, reserve);
+
+    if (jvm == NULL) {
+        JAW_DEBUG_I("JavaVM pointer was NULL when unloading library");
+        g_error("JavaVM pointer was NULL when unloading library");
+        return;
+    }
+
     g_warning("JNI_OnUnload() called but this is not supported yet\n");
 }
 
@@ -272,6 +299,11 @@ void jaw_util_detach(void) {
 
 static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
                                           const gchar *roleName) {
+    if (!jniEnv || !roleName) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     jclass classAccessibleRole =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRole");
     jfieldID jfid =
@@ -285,6 +317,11 @@ static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
 
 static gboolean jaw_util_is_java_acc_role(JNIEnv *jniEnv, jobject acc_role,
                                           const gchar *roleName) {
+    if (!jniEnv || !roleName) {
+        g_warning("Null argument passed to function");
+        return FALSE;
+    }
+
     jobject jrole = jaw_util_get_java_acc_role(jniEnv, roleName);
 
     if ((*jniEnv)->IsSameObject(jniEnv, acc_role, jrole)) {
@@ -297,6 +334,12 @@ static gboolean jaw_util_is_java_acc_role(JNIEnv *jniEnv, jobject acc_role,
 AtkRole
 jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     JAW_DEBUG_C("%p", jAccessibleContext);
+
+    if (!jAccessibleContext) {
+        g_warning("Null argument passed to function");
+        return ATK_ROLE_UNKNOWN;
+    }
+
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (jniEnv == NULL) {
         return ATK_ROLE_UNKNOWN;
@@ -538,6 +581,10 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
 
 static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
                                    const gchar *strState) {
+    if (!jniEnv || !strState) {
+        g_warning("Null argument passed to function");
+        return FALSE;
+    }
     jclass classAccessibleState =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleState");
     jfieldID jfid =
@@ -555,6 +602,11 @@ static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
 
 AtkStateType jaw_util_get_atk_state_type_from_java_state(JNIEnv *jniEnv,
                                                          jobject jobj) {
+    if (!jniEnv) {
+        g_warning("Null argument passed to function");
+        return ATK_STATE_INVALID;
+    }
+
     if (is_same_java_state(jniEnv, jobj, "ACTIVE"))
         return ATK_STATE_ACTIVE;
 
@@ -652,6 +704,12 @@ AtkStateType jaw_util_get_atk_state_type_from_java_state(JNIEnv *jniEnv,
 void jaw_util_get_rect_info(JNIEnv *jniEnv, jobject jrect, gint *x, gint *y,
                             gint *width, gint *height) {
     JAW_DEBUG_C("%p, %p, %p, %p, %p, %p", jniEnv, jrect, x, y, width, height);
+
+    if (!jniEnv || !x || !y || !width || !height) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     jclass classRectangle = (*jniEnv)->FindClass(jniEnv, "java/awt/Rectangle");
     jfieldID jfidX = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "x", "I");
     jfieldID jfidY = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "y", "I");
