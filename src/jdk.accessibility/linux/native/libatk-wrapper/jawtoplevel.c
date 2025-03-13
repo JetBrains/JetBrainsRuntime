@@ -92,10 +92,15 @@ static void jaw_toplevel_object_finalize(GObject *obj) {
     }
 
     JawToplevel *jaw_toplevel = JAW_TOPLEVEL(obj);
-    g_list_free(jaw_toplevel->windows);
+
+    if (jaw_toplevel) {
+        g_list_free(jaw_toplevel->windows);
+    }
 
     JawToplevelClass *klass = JAW_TOPLEVEL_GET_CLASS(obj);
-    G_OBJECT_CLASS(klass)->finalize(obj);
+    if (klass) {
+        G_OBJECT_CLASS(klass)->finalize(obj);
+    }
 }
 
 static const gchar *jaw_toplevel_get_name(AtkObject *obj) {
@@ -109,6 +114,9 @@ static const gchar *jaw_toplevel_get_name(AtkObject *obj) {
     gint i;
     for (i = 0; i < atk_object_get_n_accessible_children(obj); i++) {
         AtkObject *child = atk_object_ref_accessible_child(obj, i);
+        if (!child) {
+            continue;
+        }
         const gchar *name = atk_object_get_name(child);
         if (name && strlen(name) > 0) {
             g_object_unref(G_OBJECT(child));
@@ -140,6 +148,8 @@ static gint jaw_toplevel_get_n_children(AtkObject *obj) {
     }
 
     JawToplevel *jaw_toplevel = JAW_TOPLEVEL(obj);
+    CHECK_NULL(jaw_toplevel, -1);
+    CHECK_NULL(jaw_toplevel->windows, -1);
     gint n = g_list_length(jaw_toplevel->windows);
 
     return n;
@@ -154,6 +164,8 @@ static gint jaw_toplevel_get_index_in_parent(AtkObject *obj) {
     }
 
     JawToplevel *jaw_toplevel = JAW_TOPLEVEL(obj);
+    CHECK_NULL(jaw_toplevel, -1);
+    CHECK_NULL(jaw_toplevel->windows, -1);
     gint i = g_list_index(jaw_toplevel->windows, obj);
 
     return i;
@@ -179,6 +191,8 @@ static AtkObject *jaw_toplevel_ref_child(AtkObject *obj, gint i) {
     }
 
     JawToplevel *jaw_toplevel = JAW_TOPLEVEL(obj);
+    CHECK_NULL(jaw_toplevel, NULL);
+    CHECK_NULL(jaw_toplevel->windows, NULL);
     AtkObject *child = (AtkObject *)g_list_nth_data(jaw_toplevel->windows, i);
 
     if (G_OBJECT(child) != NULL)
@@ -206,6 +220,8 @@ gint jaw_toplevel_add_window(JawToplevel *toplevel, AtkObject *child) {
         return -1;
     }
 
+    CHECK_NULL(toplevel->windows, -1);
+
     if (g_list_index(toplevel->windows, child) != -1) {
         return -1;
     }
@@ -225,9 +241,7 @@ gint jaw_toplevel_remove_window(JawToplevel *toplevel, AtkObject *child) {
 
     gint index = -1;
 
-    if (toplevel == NULL) {
-        return index;
-    }
+    CHECK_NULL(toplevel->windows, -1);
 
     if ((index = g_list_index(toplevel->windows, child)) == -1) {
         return index;
