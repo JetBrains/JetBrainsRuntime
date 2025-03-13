@@ -636,6 +636,7 @@ typedef struct GtkApi {
     gchar* (*g_path_get_dirname) (const gchar *file_name);
     void (*gtk_widget_destroy)(void *widget);
     void (*gtk_window_present)(void *window);
+    void (*gtk_window_present_with_time)(void *window, guint32 timestamp);
     void (*gtk_window_move)(void *window, gint x, gint y);
     void (*gtk_window_resize)(void *window, gint width, gint height);
 
