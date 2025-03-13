@@ -40,6 +40,12 @@ typedef struct _ImageData {
 
 void jaw_image_interface_init(AtkImageIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
+
+    if (!iface) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     iface->get_image_position = jaw_image_get_image_position;
     iface->get_image_description = jaw_image_get_image_description;
     iface->get_image_size = jaw_image_get_image_size;
@@ -49,6 +55,12 @@ void jaw_image_interface_init(AtkImageIface *iface, gpointer data) {
 
 gpointer jaw_image_data_init(jobject ac) {
     JAW_DEBUG_C("%p", ac);
+
+    if (!ac) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     ImageData *data = g_new0(ImageData, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
@@ -67,6 +79,12 @@ gpointer jaw_image_data_init(jobject ac) {
 
 void jaw_image_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
+
+    if (!p) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     ImageData *data = (ImageData *)p;
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
@@ -87,6 +105,14 @@ void jaw_image_data_finalize(gpointer p) {
 static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
                                          AtkCoordType coord_type) {
     JAW_DEBUG_C("%p, %p, %p, %d", image, x, y, coord_type);
+
+    if (!image || !x || !y) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
+    JAW_GET_IMAGE(image, );
+
     (*x) = -1;
     (*y) = -1;
     JAW_GET_IMAGE(image, );
@@ -116,6 +142,12 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
 
 static const gchar *jaw_image_get_image_description(AtkImage *image) {
     JAW_DEBUG_C("%p", image);
+
+    if (!image) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     JAW_GET_IMAGE(image, NULL);
 
     jclass classAtkImage =
@@ -141,6 +173,13 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
 static void jaw_image_get_image_size(AtkImage *image, gint *width,
                                      gint *height) {
     JAW_DEBUG_C("%p, %p, %p", image, width, height);
+
+    if (!image || !width || !height) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
+    JAW_GET_IMAGE(image, );
     (*width) = -1;
     (*height) = -1;
     JAW_GET_IMAGE(image, );
