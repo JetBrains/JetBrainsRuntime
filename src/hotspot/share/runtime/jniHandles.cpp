@@ -260,16 +260,16 @@ void JNIHandles::print_on(outputStream* st) {
 // Called while generating crash log, possibly not at safepoint
 void JNIHandles::print_on_unsafe(outputStream* st) {
   st->print_cr("JNI global refs: %zu, weak refs: %zu",
-               global_handles() != NULL ? global_handles()->allocation_count() : 0,
-               weak_global_handles() != NULL ? weak_global_handles()->allocation_count() : 0);
+               global_handles() != nullptr ? global_handles()->allocation_count() : 0,
+               weak_global_handles() != nullptr ? weak_global_handles()->allocation_count() : 0);
   st->cr();
   st->flush();
 }
 
 void JNIHandles::print_memory_usage_on(outputStream *st) {
   st->print_cr("JNI global refs memory usage: %zu, weak refs: %zu",
-               global_handles() != NULL ? global_handles()->total_memory_usage() : 0,
-               global_handles() != NULL ? weak_global_handles()->total_memory_usage() : 0);
+               global_handles() != nullptr ? global_handles()->total_memory_usage() : 0,
+               global_handles() != nullptr ? weak_global_handles()->total_memory_usage() : 0);
   st->cr();
   st->flush();
 }
