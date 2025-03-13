@@ -878,7 +878,8 @@ jdk_awt_wayland = \
     -java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java \
     -java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.java \
     -java/awt/EventQueue/6980209/bug6980209.java \
-    -java/awt/FileDialog \
+    -java/awt/FileDialog/DoubleActionESC.java \
+    -java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java \
     -java/awt/FlowLayout \
     -java/awt/Focus/6378278 \
     -java/awt/Focus/6382144 \
