@@ -21,7 +21,9 @@
  * questions.
  */
 
+import sun.java2d.vulkan.VKDevice;
 import sun.java2d.vulkan.VKEnv;
+import sun.java2d.vulkan.VKGraphicsConfig;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -37,10 +39,10 @@ import java.util.Arrays;
  * @requires os.family == "linux"
  * @summary Verifies that Vulkan blit works
  * @modules java.desktop/sun.java2d.vulkan:+open
- * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=true VulkanBlitTest translucent
- * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=true VulkanBlitTest opaque
- * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=false VulkanBlitTest translucent
- * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=false VulkanBlitTest opaque
+ * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=true VulkanBlitTest TRANSLUCENT
+ * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=true VulkanBlitTest OPAQUE
+ * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=false VulkanBlitTest TRANSLUCENT
+ * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=false VulkanBlitTest OPAQUE
  */
 
 
@@ -199,12 +201,10 @@ public class VulkanBlitTest {
         }
     }
 
-    static void test(boolean hasAlpha) throws IOException {
+    static void test(VKGraphicsConfig vkgc, boolean hasAlpha) throws IOException {
+        GraphicsConfiguration config = (GraphicsConfiguration) vkgc;
         int transparency = hasAlpha ? VolatileImage.TRANSLUCENT : VolatileImage.OPAQUE;
-        String prefix = hasAlpha ? "translucent-" : "opaque-";
-        // We don't expect image content to be lost.
-        final GraphicsConfiguration config =
-                GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
+        String prefix = vkgc.descriptorString() + (hasAlpha ? ", TRANSLUCENT, " : ", OPAQUE, ");
 
         // Create and paint a new Vulkan image.
         VolatileImage image = config.createCompatibleVolatileImage(W, H, transparency);
@@ -228,19 +228,19 @@ public class VulkanBlitTest {
         //      This is because we cannot currently ignore alpha channel when rendering into a surface.
         //      Therefore, with some formats, copies from OPAQUE surface may result in translucent colors.
         bi = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);
-        testSurfaceToSwBlit(bi, image, prefix + "INT_RGB-", false);
+        testSurfaceToSwBlit(bi, image, prefix + "INT_RGB, ", false);
         bi = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
-        testSurfaceToSwBlit(bi, image, prefix + "INT_ARGB-", hasAlpha);
+        testSurfaceToSwBlit(bi, image, prefix + "INT_ARGB, ", hasAlpha);
 //        bi = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB_PRE);
-//        testSurfaceToSwBlit(bi, image, prefix + "INT_ARGB_PRE-", hasAlpha);
+//        testSurfaceToSwBlit(bi, image, prefix + "INT_ARGB_PRE, ", hasAlpha);
         bi = new BufferedImage(W, H, BufferedImage.TYPE_INT_BGR);
-        testSurfaceToSwBlit(bi, image, prefix + "INT_BGR-", false);
+        testSurfaceToSwBlit(bi, image, prefix + "INT_BGR, ", false);
         bi = new BufferedImage(W, H, BufferedImage.TYPE_3BYTE_BGR);
-        testSurfaceToSwBlit(bi, image, prefix + "3BYTE_BGR-", false);
+        testSurfaceToSwBlit(bi, image, prefix + "3BYTE_BGR, ", false);
 //        bi = new BufferedImage(W, H, BufferedImage.TYPE_4BYTE_ABGR);
-//        testSurfaceToSwBlit(bi, image, prefix + "4BYTE_ABGR-", hasAlpha);
+//        testSurfaceToSwBlit(bi, image, prefix + "4BYTE_ABGR, ", hasAlpha);
 //        bi = new BufferedImage(W, H, BufferedImage.TYPE_4BYTE_ABGR_PRE);
-//        testSurfaceToSwBlit(bi, image, prefix + "4BYTE_ABGR_PRE-", hasAlpha);
+//        testSurfaceToSwBlit(bi, image, prefix + "4BYTE_ABGR_PRE, ", hasAlpha);
     }
 
     public static void main(String[] args) throws IOException {
@@ -256,10 +256,17 @@ public class VulkanBlitTest {
         }
 
         boolean hasAlpha;
-        if (args.length > 0 && args[0].equals("translucent")) hasAlpha = true;
-        else if (args.length > 0 && args[0].equals("opaque")) hasAlpha = false;
-        else throw new Error("Usage: VulkanBlitTest <translucent|opaque>");
+        if (args.length > 0 && args[0].equals("TRANSLUCENT")) hasAlpha = true;
+        else if (args.length > 0 && args[0].equals("OPAQUE")) hasAlpha = false;
+        else throw new Error("Usage: VulkanBlitTest <TRANSLUCENT|OPAQUE>");
 
-        test(hasAlpha);
+        VKEnv.getDevices().flatMap(VKDevice::getOffscreenGraphicsConfigs).forEach(gc -> {
+            System.out.println("Testing " + gc);
+            try {
+                test(gc, hasAlpha);
+            } catch (IOException e) {
+                throw new Error(e);
+            }
+        });
     }
 }
