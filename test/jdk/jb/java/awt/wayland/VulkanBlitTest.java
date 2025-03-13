@@ -240,6 +240,28 @@ public class VulkanBlitTest {
         testSurfaceToSwBlit(bi, image, prefix + "4BYTE_ABGR, ", hasAlpha);
         bi = new BufferedImage(W, H, BufferedImage.TYPE_4BYTE_ABGR_PRE);
         testSurfaceToSwBlit(bi, image, prefix + "4BYTE_ABGR_PRE, ", hasAlpha);
+
+        // Blit into another Vulkan image.
+        hasAlpha = false; // TODO our blit currently ignores alpha, remove when fixed.
+        SUPPRESS_ALPHA_VALIDATION = true; // TODO same.
+        VolatileImage anotherImage = config.createCompatibleVolatileImage(W, H, transparency);
+        if (anotherImage.validate(config) == VolatileImage.IMAGE_INCOMPATIBLE) {
+            throw new Error("Image validation failed");
+        }
+        {
+            Graphics2D g = anotherImage.createGraphics();
+            g.drawImage(image, 0, 0, null);
+            g.dispose();
+        }
+        if (anotherImage.contentsLost()) throw new Error("Image contents lost");
+        // Take a snapshot (blit into Sw) and validate.
+        bi = anotherImage.getSnapshot();
+        ImageIO.write(bi, "PNG", new File(prefix + "another-snapshot.png"));
+        try {
+            validate(bi, hasAlpha);
+        } catch (Throwable t) {
+            throw new Error(prefix + "another-snapshot", t);
+        }
     }
 
     public static void main(String[] args) throws IOException {
