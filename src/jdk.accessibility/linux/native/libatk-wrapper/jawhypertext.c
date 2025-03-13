@@ -39,6 +39,11 @@ typedef struct _HypertextData {
                       atk_hypertext, jniEnv, atk_hypertext, def_ret)
 
 void jaw_hypertext_interface_init(AtkHypertextIface *iface, gpointer data) {
+    if (!iface) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     iface->get_link = jaw_hypertext_get_link;
     iface->get_n_links = jaw_hypertext_get_n_links;
     iface->get_link_index = jaw_hypertext_get_link_index;
@@ -46,6 +51,12 @@ void jaw_hypertext_interface_init(AtkHypertextIface *iface, gpointer data) {
 
 static void link_destroy_notify(gpointer p) {
     JAW_DEBUG_C("%p", p);
+
+    if (!p) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     JawHyperlink *jaw_hyperlink = (JawHyperlink *)p;
     if (G_OBJECT(jaw_hyperlink) != NULL)
         g_object_unref(G_OBJECT(jaw_hyperlink));
@@ -53,6 +64,12 @@ static void link_destroy_notify(gpointer p) {
 
 gpointer jaw_hypertext_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
+
+    if (!ac) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     HypertextData *data = g_new0(HypertextData, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
@@ -74,6 +91,12 @@ gpointer jaw_hypertext_data_init(jobject ac) {
 
 void jaw_hypertext_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
+
+    if (!p) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     HypertextData *data = (HypertextData *)p;
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
@@ -88,6 +111,12 @@ void jaw_hypertext_data_finalize(gpointer p) {
 static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
                                             gint link_index) {
     JAW_DEBUG_C("%p, %d", hypertext, link_index);
+
+    if (!hypertext) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     JAW_GET_HYPERTEXT(hypertext, NULL);
 
     jclass classAtkHypertext =
@@ -112,6 +141,12 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
 
 static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
     JAW_DEBUG_C("%p", hypertext);
+
+    if (!hypertext) {
+        g_warning("Null argument passed to function");
+        return 0;
+    }
+
     JAW_GET_HYPERTEXT(hypertext, 0);
 
     jclass classAtkHypertext =
@@ -128,6 +163,11 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
                                          gint char_index) {
     JAW_DEBUG_C("%p, %d", hypertext, char_index);
     JAW_GET_HYPERTEXT(hypertext, 0);
+
+    if (!hypertext) {
+        g_warning("Null argument passed to function");
+        return -1;
+    }
 
     jclass classAtkHypertext =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
