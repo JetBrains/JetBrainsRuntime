@@ -266,14 +266,12 @@ static jboolean clipDestCoords(
 }
 
 void VKBlitLoops_IsoBlit(JNIEnv *env, jlong pSrcOps, jboolean xform, jint hint,
-                         jboolean texture, jint sx1, jint sy1, jint sx2,
-                         jint sy2, jdouble dx1, jdouble dy1, jdouble dx2,
-                         jdouble dy2)
+                         jint sx1, jint sy1, jint sx2, jint sy2,
+                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     J2dRlsTraceLn8(J2D_TRACE_VERBOSE, "VKBlitLoops_IsoBlit: (%d %d %d %d) -> (%f %f %f %f) ",
                                    sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
-    J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "VKBlitLoops_IsoBlit: texture=%d xform=%d",
-                                   texture, xform)
+    J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKBlitLoops_IsoBlit: xform=%d", xform)
 
     VKSDOps *srcOps = (VKSDOps *)jlong_to_ptr(pSrcOps);
 
@@ -349,7 +347,7 @@ void VKBlitLoops_IsoBlit(JNIEnv *env, jlong pSrcOps, jboolean xform, jint hint,
 
 void VKBlitLoops_Blit(JNIEnv *env,
                       jlong pSrcOps, jboolean xform, jint hint,
-                      jint srctype, jboolean texture,
+                      jint srctype,
                       jint sx1, jint sy1,
                       jint sx2, jint sy2,
                       jdouble dx1, jdouble dy1,
@@ -357,8 +355,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
 {
     J2dRlsTraceLn8(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT_Blit (%d %d %d %d) -> (%f %f %f %f) ",
                                    sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)
-    J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT_Blit texture=%d xform=%d srctype=%d",
-                                   texture, xform, srctype)
+    J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT_Blit xform=%d srctype=%d", xform, srctype)
 
     SurfaceDataOps *srcOps = (SurfaceDataOps *)jlong_to_ptr(pSrcOps);
 
