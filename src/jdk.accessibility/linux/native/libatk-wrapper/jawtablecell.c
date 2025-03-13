@@ -46,6 +46,12 @@ typedef struct _TableCellData {
 
 void jaw_table_cell_interface_init(AtkTableCellIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
+
+    if (!iface) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     iface->get_column_span = jaw_table_cell_get_column_span;
     iface->get_column_header_cells = jaw_table_cell_get_column_header_cells;
     iface->get_position = jaw_table_cell_get_position;
@@ -57,6 +63,12 @@ void jaw_table_cell_interface_init(AtkTableCellIface *iface, gpointer data) {
 
 gpointer jaw_table_cell_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
+
+    if (!ac) {
+      g_warning("Null argument passed to function");
+      return NULL;
+    }
+
     TableCellData *data = g_new0(TableCellData, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
@@ -75,6 +87,12 @@ gpointer jaw_table_cell_data_init(jobject ac) {
 
 void jaw_table_cell_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
+
+    if (!p) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     TableCellData *data = (TableCellData *)p;
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
@@ -94,6 +112,12 @@ void jaw_table_cell_data_finalize(gpointer p) {
 
 static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
     JAW_DEBUG_C("%p", cell);
+
+    if (!cell) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     JAW_GET_TABLECELL(cell, NULL);
 
     jclass classAtkTableCell =
@@ -114,6 +138,11 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
 
 static void getPosition(JNIEnv *jniEnv, jobject jatk_table_cell,
                         jclass classAtkTableCell, gint *row, gint *column) {
+    if (!jniEnv || !row || !column) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     jfieldID id_row =
         (*jniEnv)->GetFieldID(jniEnv, classAtkTableCell, "row", "I");
     jfieldID id_column =
@@ -126,6 +155,11 @@ static void getPosition(JNIEnv *jniEnv, jobject jatk_table_cell,
 
 static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
                                             gint *column) {
+    if (!cell || !row || !column) {
+        g_warning("Null argument passed to function");
+        return FALSE;
+    }
+
     JAW_DEBUG_C("%p, %p, %p", cell, row, column);
     JAW_GET_TABLECELL(cell, FALSE);
 
@@ -138,6 +172,11 @@ static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
 
 static void getRowSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
                        jclass classAtkTableCell, gint *row_span) {
+    if (!jniEnv || !row_span) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     jfieldID id_row_span =
         (*jniEnv)->GetFieldID(jniEnv, classAtkTableCell, "rowSpan", "I");
     jint jrow_span =
@@ -159,6 +198,12 @@ static gboolean jaw_table_cell_get_row_column_span(AtkTableCell *cell,
                                                    gint *row_span,
                                                    gint *column_span) {
     JAW_DEBUG_C("%p, %p, %p, %p, %p", cell, row, column, row_span, column_span);
+
+    if (!cell || !row || !column || !row_span || !column_span) {
+        g_warning("Null argument passed to function");
+        return FALSE;
+    }
+
     JAW_GET_TABLECELL(cell, FALSE);
 
     jclass classAtkTableCell =
@@ -184,6 +229,12 @@ static gint jaw_table_cell_get_row_span(AtkTableCell *cell) {
 
 static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
     JAW_DEBUG_C("%p", cell);
+
+    if (!cell) {
+        g_warning("Null argument passed to function");
+        return 0;
+    }
+
     JAW_GET_TABLECELL(cell, 0);
 
     gint column_span = -1;
@@ -196,6 +247,12 @@ static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
 
 static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     JAW_DEBUG_C("%p", cell);
+
+    if (!cell) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     JAW_GET_TABLECELL(cell, NULL);
 
     jclass classAtkTableCell =
@@ -220,6 +277,12 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
 
 static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
     JAW_DEBUG_C("%p", cell);
+
+    if (!cell) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     JAW_GET_TABLECELL(cell, NULL);
 
     jclass classAtkTableCell =
