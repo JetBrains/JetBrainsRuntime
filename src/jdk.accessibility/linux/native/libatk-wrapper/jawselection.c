@@ -41,6 +41,12 @@ typedef struct _SelectionData {
 
 void jaw_selection_interface_init(AtkSelectionIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
+
+    if (!iface) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     iface->add_selection = jaw_selection_add_selection;
     iface->clear_selection = jaw_selection_clear_selection;
     iface->ref_selection = jaw_selection_ref_selection;
@@ -52,6 +58,12 @@ void jaw_selection_interface_init(AtkSelectionIface *iface, gpointer data) {
 
 gpointer jaw_selection_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
+
+    if (!ac) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     SelectionData *data = g_new0(SelectionData, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
@@ -70,6 +82,12 @@ gpointer jaw_selection_data_init(jobject ac) {
 
 void jaw_selection_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
+
+    if (!p) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     SelectionData *data = (SelectionData *)p;
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
@@ -81,6 +99,12 @@ void jaw_selection_data_finalize(gpointer p) {
 
 static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
+
+    if (!selection) {
+        g_warning("Null argument passed to function");
+        return FALSE;
+    }
+
     JAW_GET_SELECTION(selection, FALSE);
 
     jclass classAtkSelection =
@@ -96,6 +120,12 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
 
 static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
+
+    if (!selection) {
+        g_warning("Null argument passed to function");
+        return FALSE;
+    }
+
     JAW_GET_SELECTION(selection, FALSE);
 
     jclass classAtkSelection =
@@ -110,6 +140,12 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
 
 static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
+
+    if (!selection) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     JAW_GET_SELECTION(selection, NULL);
 
     jclass classAtkSelection =
@@ -134,6 +170,12 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
 
 static gint jaw_selection_get_selection_count(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
+
+    if (!selection) {
+        g_warning("Null argument passed to function");
+        return 0;
+    }
+
     JAW_GET_SELECTION(selection, 0);
 
     jclass classAtkSelection =
@@ -149,6 +191,12 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
 static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
                                                 gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
+
+    if (!selection) {
+        g_warning("Null argument passed to function");
+        return FALSE;
+    }
+
     JAW_GET_SELECTION(selection, FALSE);
 
     jclass classAtkSelection =
@@ -165,6 +213,12 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
 static gboolean jaw_selection_remove_selection(AtkSelection *selection,
                                                gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
+
+    if (!selection) {
+        g_warning("Null argument passed to function");
+        return FALSE;
+    }
+
     JAW_GET_SELECTION(selection, FALSE);
 
     jclass classAtkSelection =
@@ -180,6 +234,12 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
 
 static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
+
+    if (!selection) {
+        g_warning("Null argument passed to function");
+        return FALSE;
+    }
+
     JAW_GET_SELECTION(selection, FALSE);
 
     jclass classAtkSelection =
