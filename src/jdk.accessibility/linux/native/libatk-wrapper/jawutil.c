@@ -129,9 +129,11 @@ gboolean jaw_util_dispatch_key_event(AtkKeyEventStruct *event) {
     gint consumed = 0;
     if (key_listener_list) {
         GHashTable *new_hash = g_hash_table_new(NULL, NULL);
-        g_hash_table_foreach(key_listener_list, insert_hf, new_hash);
-        consumed = g_hash_table_foreach_steal(new_hash, notify_hf, event);
-        g_hash_table_destroy(new_hash);
+        if (new_hash) {
+            g_hash_table_foreach(key_listener_list, insert_hf, new_hash);
+            consumed = g_hash_table_foreach_steal(new_hash, notify_hf, event);
+            g_hash_table_destroy(new_hash);
+        }
     }
     JAW_DEBUG_C("consumed: %d", consumed);
 
@@ -176,11 +178,9 @@ static void jaw_util_remove_key_event_listener(guint remove_listener) {
 static AtkObject *jaw_util_get_root(void) {
     JAW_DEBUG_C("");
     static JawToplevel *root = NULL;
-
-    if (!root) {
-        root = g_object_new(JAW_TYPE_TOPLEVEL, NULL);
-        atk_object_initialize(ATK_OBJECT(root), NULL);
-    }
+    root = g_object_new(JAW_TYPE_TOPLEVEL, NULL);
+    CHECK_NULL(root, NULL);
+    atk_object_initialize(ATK_OBJECT(root), NULL);
 
     return ATK_OBJECT(root);
 }
@@ -206,14 +206,17 @@ guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
 
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
+    CHECK_NULL(atkObject, -1);
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, atkObject, "get_tflag_from_obj", "(Ljava/lang/Object;)I");
+    CHECK_NULL(jmid, -1);
     return (guint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, jObj);
 }
 
 gboolean jaw_util_is_same_jobject(gconstpointer a, gconstpointer b) {
     JAW_DEBUG_C("%p, %p", a, b);
     JNIEnv *jniEnv = jaw_util_get_jni_env();
+    CHECK_NULL(jniEnv, FALSE);
     if ((*jniEnv)->IsSameObject(jniEnv, (jobject)a, (jobject)b)) {
         return TRUE;
     } else {
@@ -306,9 +309,11 @@ static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
 
     jclass classAccessibleRole =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRole");
+    CHECK_NULL(classAccessibleRole, NULL);
     jfieldID jfid =
         (*jniEnv)->GetStaticFieldID(jniEnv, classAccessibleRole, roleName,
                                     "Ljavax/accessibility/AccessibleRole;");
+    CHECK_NULL(jfid, NULL);
     jobject jrole =
         (*jniEnv)->GetStaticObjectField(jniEnv, classAccessibleRole, jfid);
 
@@ -346,14 +351,18 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     }
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
+    CHECK_NULL(atkObject, ATK_ROLE_UNKNOWN);
     jmethodID jmidgar = (*jniEnv)->GetStaticMethodID(
         jniEnv, atkObject, "get_accessible_role",
         "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/"
         "AccessibleRole;");
+    CHECK_NULL(jmidgar, ATK_ROLE_UNKNOWN);
     jobject ac_role = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, atkObject, jmidgar, jAccessibleContext);
+    CHECK_NULL(ac_role, ATK_ROLE_UNKNOWN);
     jclass classAccessibleRole =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRole");
+    CHECK_NULL(classAccessibleRole, ATK_ROLE_UNKNOWN);
 
     if (!(*jniEnv)->IsInstanceOf(jniEnv, ac_role, classAccessibleRole))
         return ATK_ROLE_INVALID;
@@ -486,13 +495,14 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
             jniEnv, atkObject, "get_accessible_parent",
             "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/"
             "AccessibleContext;");
+        CHECK_NULL(jmidgap, ATK_ROLE_UNKNOWN);
         jobject jparent = (*jniEnv)->CallStaticObjectMethod(
             jniEnv, atkObject, jmidgap, jAccessibleContext);
         if (!jparent)
             return ATK_ROLE_RADIO_BUTTON;
         jobject parent_role = (*jniEnv)->CallStaticObjectMethod(
             jniEnv, atkObject, jmidgar, jparent);
-
+        CHECK_NULL(parent_role, ATK_ROLE_UNKNOWN);
         if (jaw_util_is_java_acc_role(jniEnv, parent_role, "MENU"))
             return ATK_ROLE_RADIO_MENU_ITEM;
 
@@ -555,6 +565,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
             jniEnv, atkObject, "get_accessible_parent",
             "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/"
             "AccessibleContext;");
+        CHECK_NULL(jmidgap, ATK_ROLE_UNKNOWN);
         jobject jparent = (*jniEnv)->CallStaticObjectMethod(
             jniEnv, atkObject, jmidgap, jAccessibleContext);
 
@@ -573,6 +584,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     jmethodID jmideic = (*jniEnv)->GetStaticMethodID(
         jniEnv, atkObject, "equals_ignore_case_locale_with_role",
         "(Ljavax/accessibility/AccessibleRole;)Z");
+    CHECK_NULL(jmideic, ATK_ROLE_UNKNOWN);
     if ((*jniEnv)->CallStaticBooleanMethod(jniEnv, atkObject, jmideic, ac_role))
         return ATK_ROLE_PARAGRAPH;
 
@@ -587,9 +599,11 @@ static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
     }
     jclass classAccessibleState =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleState");
+    CHECK_NULL(classAccessibleState, FALSE);
     jfieldID jfid =
         (*jniEnv)->GetStaticFieldID(jniEnv, classAccessibleState, strState,
                                     "Ljavax/accessibility/AccessibleState;");
+    CHECK_NULL(jfid, FALSE);
     jobject jstate =
         (*jniEnv)->GetStaticObjectField(jniEnv, classAccessibleState, jfid);
 
@@ -711,13 +725,19 @@ void jaw_util_get_rect_info(JNIEnv *jniEnv, jobject jrect, gint *x, gint *y,
     }
 
     jclass classRectangle = (*jniEnv)->FindClass(jniEnv, "java/awt/Rectangle");
+    CHECK_NULL(classRectangle, );
     jfieldID jfidX = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "x", "I");
+    CHECK_NULL(jfidX, );
     jfieldID jfidY = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "y", "I");
+    CHECK_NULL(jfidY, );
     jfieldID jfidWidth =
         (*jniEnv)->GetFieldID(jniEnv, classRectangle, "width", "I");
+    CHECK_NULL(jfidWidth, );
     jfieldID jfidHeight =
         (*jniEnv)->GetFieldID(jniEnv, classRectangle, "height", "I");
+    CHECK_NULL(jfidHeight, );
 
+    CHECK_NULL(jrect, );
     (*x) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, jfidX);
     (*y) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, jfidY);
     (*width) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, jfidWidth);
