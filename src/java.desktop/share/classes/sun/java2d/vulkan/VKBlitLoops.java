@@ -70,16 +70,6 @@ final class VKBlitLoops {
                 new VKSurfaceToSwBlit(VKFormat.B8G8R8A8_UNORM); // TODO this is a placeholder.
 
         GraphicsPrimitive[] primitives = {
-                // surface->surface ops
-                new VKSurfaceToSurfaceBlit(),
-                new VKSurfaceToSurfaceScale(),
-                new VKSurfaceToSurfaceTransform(),
-
-                // render-to-texture surface->surface ops
-                new VKRTTSurfaceToSurfaceBlit(),
-                new VKRTTSurfaceToSurfaceScale(),
-                new VKRTTSurfaceToSurfaceTransform(),
-
                 // sw->surface ops
                 blitIntArgbPreToSurface,
                 new VKSwToSurfaceBlit(SurfaceType.IntRgb,
@@ -126,11 +116,6 @@ final class VKBlitLoops {
 
                 new VKGeneralTransformedBlit(transformBlitIntArgbPreToSurface),
 
-                // texture->surface ops
-                new VKTextureToSurfaceBlit(),
-                new VKTextureToSurfaceScale(),
-                new VKTextureToSurfaceTransform(),
-
                 // sw->texture ops
                 blitIntArgbPreToTexture,
                 new VKSwToTextureBlit(SurfaceType.IntRgb,
@@ -146,9 +131,19 @@ final class VKBlitLoops {
                         blitIntArgbPreToTexture),
         };
 
+        Stream<GraphicsPrimitive> surfaceToSurfaceBlits = Stream.of(
+                new VKSurfaceToSurfaceBlit(),
+                new VKSurfaceToSurfaceScale(),
+                new VKSurfaceToSurfaceTransform()
+        );
+
         Stream<GraphicsPrimitive> surfaceToSwBlits = Stream.of(VKFormat.values()).map(VKSurfaceToSwBlit::new);
-        GraphicsPrimitiveMgr.register(
-                Stream.concat(Stream.of(primitives), surfaceToSwBlits).toArray(GraphicsPrimitive[]::new));
+
+        GraphicsPrimitiveMgr.register(Stream.of(
+                surfaceToSurfaceBlits,
+                surfaceToSwBlits,
+                Stream.of(primitives)
+        ).flatMap(s->s).toArray(GraphicsPrimitive[]::new));
     }
 
     /**
@@ -158,24 +153,17 @@ final class VKBlitLoops {
      */
     @Native private static final int OFFSET_SRCTYPE = 16;
     @Native private static final int OFFSET_HINT    =  8;
-    @Native private static final int OFFSET_TEXTURE =  3;
-    @Native private static final int OFFSET_RTT     =  2;
-    @Native private static final int OFFSET_XFORM   =  1;
+    @Native private static final int OFFSET_XFORM   =  1; // TODO do we need this flag in native code?
     @Native private static final int OFFSET_ISOBLIT =  0;
 
     /**
      * Packs the given parameters into a single int value in order to save
      * space on the rendering queue.
      */
-    private static int createPackedParams(boolean isoblit, boolean texture,
-                                          boolean rtt, boolean xform,
-                                          int hint, int srctype)
-    {
+    private static int createPackedParams(boolean isoblit, boolean xform, int hint, int srctype) {
         return
                 ((srctype           << OFFSET_SRCTYPE) |
                  (hint              << OFFSET_HINT   ) |
-                 ((texture ? 1 : 0) << OFFSET_TEXTURE) |
-                 ((rtt     ? 1 : 0) << OFFSET_RTT    ) |
                  ((xform   ? 1 : 0) << OFFSET_XFORM  ) |
                  ((isoblit ? 1 : 0) << OFFSET_ISOBLIT));
     }
@@ -239,9 +227,7 @@ final class VKBlitLoops {
                         ctxflags);
             }
 
-            int packedParams = createPackedParams(false, texture,
-                    false /*unused*/, xform != null,
-                    hint, srctype);
+            int packedParams = createPackedParams(false, xform != null, hint, srctype);
             enqueueBlit(rq, srcData, dstData,
                     packedParams,
                     sx1, sy1, sx2, sy2,
@@ -268,9 +254,7 @@ final class VKBlitLoops {
                         int sx1, int sy1,
                         int sx2, int sy2,
                         double dx1, double dy1,
-                        double dx2, double dy2,
-                        boolean texture)
-    {
+                        double dx2, double dy2) {
         int ctxflags = 0;
         if (srcData.getTransparency() == Transparency.OPAQUE) {
             ctxflags |= VKContext.SRC_IS_OPAQUE;
@@ -310,9 +294,7 @@ final class VKBlitLoops {
                 VKBufImgOps.enableBufImgOp(rq, vkSrc, srcImg, biop);
             }
 
-            int packedParams = createPackedParams(true, texture,
-                    false /*unused*/, xform != null,
-                    hint, 0 /*unused*/);
+            int packedParams = createPackedParams(true, xform != null, hint, 0 /*unused*/);
             enqueueBlit(rq, srcData, dstData,
                     packedParams,
                     sx1, sy1, sx2, sy2,
@@ -333,12 +315,10 @@ final class VKBlitLoops {
     }
 }
 
-class VKSurfaceToSurfaceBlit extends Blit {
+final class VKSurfaceToSurfaceBlit extends Blit {
 
     VKSurfaceToSurfaceBlit() {
-        super(VKSurfaceData.VKSurface,
-                CompositeType.AnyAlpha,
-                VKSurfaceData.VKSurface);
+        super(VKSurfaceData.VKSurface, CompositeType.Any /*XOR too*/, VKSurfaceData.VKSurface);
     }
 
     public void Blit(SurfaceData src, SurfaceData dst,
@@ -350,17 +330,14 @@ class VKSurfaceToSurfaceBlit extends Blit {
                 comp, clip, null,
                 AffineTransformOp.TYPE_NEAREST_NEIGHBOR,
                 sx, sy, sx+w, sy+h,
-                dx, dy, dx+w, dy+h,
-                false);
+                dx, dy, dx+w, dy+h);
     }
 }
 
-class VKSurfaceToSurfaceScale extends ScaledBlit {
+final class VKSurfaceToSurfaceScale extends ScaledBlit {
 
     VKSurfaceToSurfaceScale() {
-        super(VKSurfaceData.VKSurface,
-                CompositeType.AnyAlpha,
-                VKSurfaceData.VKSurface);
+        super(VKSurfaceData.VKSurface, CompositeType.Any /*XOR too*/, VKSurfaceData.VKSurface);
     }
 
     public void Scale(SurfaceData src, SurfaceData dst,
@@ -375,17 +352,14 @@ class VKSurfaceToSurfaceScale extends ScaledBlit {
                 comp, clip, null,
                 AffineTransformOp.TYPE_NEAREST_NEIGHBOR,
                 sx1, sy1, sx2, sy2,
-                dx1, dy1, dx2, dy2,
-                false);
+                dx1, dy1, dx2, dy2);
     }
 }
 
-class VKSurfaceToSurfaceTransform extends TransformBlit {
+final class VKSurfaceToSurfaceTransform extends TransformBlit {
 
     VKSurfaceToSurfaceTransform() {
-        super(VKSurfaceData.VKSurface,
-                CompositeType.AnyAlpha,
-                VKSurfaceData.VKSurface);
+        super(VKSurfaceData.VKSurface, CompositeType.Any /*XOR too*/, VKSurfaceData.VKSurface);
     }
 
     public void Transform(SurfaceData src, SurfaceData dst,
@@ -398,77 +372,7 @@ class VKSurfaceToSurfaceTransform extends TransformBlit {
                 null, null,
                 comp, clip, at, hint,
                 sx, sy, sx+w, sy+h,
-                dx, dy, dx+w, dy+h,
-                false);
-    }
-}
-
-class VKRTTSurfaceToSurfaceBlit extends Blit {
-
-    VKRTTSurfaceToSurfaceBlit() {
-        super(VKSurfaceData.VKSurfaceRTT,
-                CompositeType.AnyAlpha,
-                VKSurfaceData.VKSurface);
-    }
-
-    public void Blit(SurfaceData src, SurfaceData dst,
-                     Composite comp, Region clip,
-                     int sx, int sy, int dx, int dy, int w, int h)
-    {
-        VKBlitLoops.IsoBlit(src, dst,
-                null, null,
-                comp, clip, null,
-                AffineTransformOp.TYPE_NEAREST_NEIGHBOR,
-                sx, sy, sx+w, sy+h,
-                dx, dy, dx+w, dy+h,
-                true);
-    }
-}
-
-class VKRTTSurfaceToSurfaceScale extends ScaledBlit {
-
-    VKRTTSurfaceToSurfaceScale() {
-        super(VKSurfaceData.VKSurfaceRTT,
-                CompositeType.AnyAlpha,
-                VKSurfaceData.VKSurface);
-    }
-
-    public void Scale(SurfaceData src, SurfaceData dst,
-                      Composite comp, Region clip,
-                      int sx1, int sy1,
-                      int sx2, int sy2,
-                      double dx1, double dy1,
-                      double dx2, double dy2)
-    {
-        VKBlitLoops.IsoBlit(src, dst,
-                null, null,
-                comp, clip, null,
-                AffineTransformOp.TYPE_NEAREST_NEIGHBOR,
-                sx1, sy1, sx2, sy2,
-                dx1, dy1, dx2, dy2,
-                true);
-    }
-}
-
-class VKRTTSurfaceToSurfaceTransform extends TransformBlit {
-
-    VKRTTSurfaceToSurfaceTransform() {
-        super(VKSurfaceData.VKSurfaceRTT,
-                CompositeType.AnyAlpha,
-                VKSurfaceData.VKSurface);
-    }
-
-    public void Transform(SurfaceData src, SurfaceData dst,
-                          Composite comp, Region clip,
-                          AffineTransform at, int hint,
-                          int sx, int sy, int dx, int dy, int w, int h)
-    {
-        VKBlitLoops.IsoBlit(src, dst,
-                null, null,
-                comp, clip, at, hint,
-                sx, sy, sx+w, sy+h,
-                dx, dy, dx+w, dy+h,
-                true);
+                dx, dy, dx+w, dy+h);
     }
 }
 
@@ -672,76 +576,6 @@ class VKSwToTextureBlit extends Blit {
                 sx, sy, sx+w, sy+h,
                 dx, dy, dx+w, dy+h,
                 typeval, true);
-    }
-}
-
-class VKTextureToSurfaceBlit extends Blit {
-
-    VKTextureToSurfaceBlit() {
-        super(VKSurfaceData.VKTexture,
-                CompositeType.AnyAlpha,
-                VKSurfaceData.VKSurface);
-    }
-
-    public void Blit(SurfaceData src, SurfaceData dst,
-                     Composite comp, Region clip,
-                     int sx, int sy, int dx, int dy, int w, int h)
-    {
-        VKBlitLoops.IsoBlit(src, dst,
-                null, null,
-                comp, clip, null,
-                AffineTransformOp.TYPE_NEAREST_NEIGHBOR,
-                sx, sy, sx+w, sy+h,
-                dx, dy, dx+w, dy+h,
-                true);
-    }
-}
-
-class VKTextureToSurfaceScale extends ScaledBlit {
-
-    VKTextureToSurfaceScale() {
-        super(VKSurfaceData.VKTexture,
-                CompositeType.AnyAlpha,
-                VKSurfaceData.VKSurface);
-    }
-
-    public void Scale(SurfaceData src, SurfaceData dst,
-                      Composite comp, Region clip,
-                      int sx1, int sy1,
-                      int sx2, int sy2,
-                      double dx1, double dy1,
-                      double dx2, double dy2)
-    {
-        VKBlitLoops.IsoBlit(src, dst,
-                null, null,
-                comp, clip, null,
-                AffineTransformOp.TYPE_NEAREST_NEIGHBOR,
-                sx1, sy1, sx2, sy2,
-                dx1, dy1, dx2, dy2,
-                true);
-    }
-}
-
-class VKTextureToSurfaceTransform extends TransformBlit {
-
-    VKTextureToSurfaceTransform() {
-        super(VKSurfaceData.VKTexture,
-                CompositeType.AnyAlpha,
-                VKSurfaceData.VKSurface);
-    }
-
-    public void Transform(SurfaceData src, SurfaceData dst,
-                          Composite comp, Region clip,
-                          AffineTransform at, int hint,
-                          int sx, int sy, int dx, int dy,
-                          int w, int h)
-    {
-        VKBlitLoops.IsoBlit(src, dst,
-                null, null,
-                comp, clip, at, hint,
-                sx, sy, sx+w, sy+h,
-                dx, dy, dx+w, dy+h,
-                true);
     }
 }
 
