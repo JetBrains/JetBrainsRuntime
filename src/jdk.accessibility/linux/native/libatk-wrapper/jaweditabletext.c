@@ -78,14 +78,19 @@ gpointer jaw_editable_text_data_init(jobject ac) {
     EditableTextData *data = g_new0(EditableTextData, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
+    CHECK_NULL(jniEnv, NULL);
+
     jclass classEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
+    CHECK_NULL(classEditableText, NULL);
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classEditableText, "create_atk_editable_text",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkEditableText;");
+    CHECK_NULL(jmid, NULL);
     jobject jatk_editable_text =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classEditableText, jmid, ac);
+    CHECK_NULL(jatk_editable_text, NULL);
     data->atk_editable_text =
         (*jniEnv)->NewGlobalRef(jniEnv, jatk_editable_text);
 
@@ -122,11 +127,22 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
 
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
+    if (!classAtkEditableText) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        return;
+    }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
                                "set_text_contents", "(Ljava/lang/String;)V");
-
+    if (!jmid) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        return;
+    }
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, string);
+    if (!jstr) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        return;
+    }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, jstr);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
 }
@@ -144,10 +160,21 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
 
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
+    if (!classAtkEditableText) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        return;
+    }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkEditableText, "insert_text", "(Ljava/lang/String;I)V");
-
+    if (!jmid) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        return;
+    }
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, string);
+    if (!jstr) {
+      (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+      return;
+    }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, jstr,
                               (jint)*position);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
@@ -168,8 +195,16 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
 
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
+    if (!classAtkEditableText) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        return;
+    }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
                                             "copy_text", "(II)V");
+    if (!jmid) {
+      (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+      return;
+    }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)start_pos,
                               (jint)end_pos);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
@@ -188,8 +223,16 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
 
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
+    if (!classAtkEditableText) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        return;
+    }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
                                             "cut_text", "(II)V");
+    if(!jmid) {
+      (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+      return;
+    }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)start_pos,
                               (jint)end_pos);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
@@ -208,8 +251,16 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
 
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
+    if (!classAtkEditableText) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        return;
+    }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
                                             "delete_text", "(II)V");
+    if (!jmid) {
+      (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+      return;
+    }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)start_pos,
                               (jint)end_pos);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
@@ -227,8 +278,16 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
 
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
+    if (!classAtkEditableText) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        return;
+    }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
                                             "paste_text", "(I)V");
+    if (!jmid) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        return;
+    }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)position);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
 }
@@ -248,9 +307,17 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
 
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
+    if (!classAtkEditableText) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        return FALSE;
+    }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText, "set_run_attributes",
                                "(Ljavax/swing/text/AttributeSet;II)Z");
+    if (!jmid) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        return FALSE;
+    }
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_editable_text, jmid, (jobject)attrib_set,
         (jint)start_offset, (jint)end_offset);
