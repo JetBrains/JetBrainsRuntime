@@ -182,16 +182,16 @@ void VM_PrintThreads::print_additional_info() {
   ResourceMark rm;
 
   InstanceKlass *klass = vmClasses::Throwable_klass();
-  if (klass != NULL) {
+  if (klass != nullptr) {
     TempNewSymbol method_name = SymbolTable::new_symbol("$$jb$getAdditionalInfoForJstack");
     Symbol *signature = vmSymbols::void_string_signature();
     Method *method = klass->find_method(method_name, signature);
-    if (method != NULL) {
+    if (method != nullptr) {
       JavaValue result(T_OBJECT);
       JavaCalls::call_static(&result, klass,
                              method_name, signature, THREAD);
       oop dump_oop = result.get_oop();
-      if (dump_oop != NULL) {
+      if (dump_oop != nullptr) {
         // convert Java String to utf8 string
         char *s = java_lang_String::as_utf8_string(dump_oop);
         _out->cr();
