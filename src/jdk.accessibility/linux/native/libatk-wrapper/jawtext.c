@@ -119,9 +119,9 @@ void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
 gpointer jaw_text_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
-    if(!ac) {
-       g_warning("Null argument passed to function");
-       return NULL;
+    if (!ac) {
+        g_warning("Null argument passed to function");
+        return NULL;
     }
 
     TextData *data = g_new0(TextData, 1);
@@ -148,9 +148,9 @@ gpointer jaw_text_data_init(jobject ac) {
 void jaw_text_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
-    if(!p) {
-       g_warning("Null argument passed to function");
-       return;
+    if (!p) {
+        g_warning("Null argument passed to function");
+        return;
     }
 
     TextData *data = (TextData *)p;
@@ -159,10 +159,11 @@ void jaw_text_data_finalize(gpointer p) {
     CHECK_NULL(jniEnv, );
 
     if (data->text != NULL) {
-       if (data->jstrText != NULL) {
-           (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrText, data->text);
-           (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrText);
-           data->jstrText = NULL;
+        if (data->jstrText != NULL) {
+            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrText,
+                                             data->text);
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrText);
+            data->jstrText = NULL;
         }
         data->text = NULL;
     }

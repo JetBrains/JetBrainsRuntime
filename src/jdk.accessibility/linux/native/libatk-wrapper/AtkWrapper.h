@@ -29,14 +29,17 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void);
  * Signature: (Ljavax/accessibility/AccessibleContext;)V
  */
 JNIEXPORT jlong JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_getNativeResources(JNIEnv *, jclass, jobject);
+Java_org_GNOME_Accessibility_AtkWrapper_getNativeResources(JNIEnv *, jclass,
+                                                           jobject);
 
 /*
  * Class:     org_GNOME_Accessibility_AtkWrapper
  * Method:    releaseNativeResources
  * Signature: (Ljavax/accessibility/AccessibleContext;)V
  */
-JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_releaseNativeResources(JNIEnv *, jclass, jlong);
+JNIEXPORT void JNICALL
+Java_org_GNOME_Accessibility_AtkWrapper_releaseNativeResources(JNIEnv *, jclass,
+                                                               jlong);
 
 /*
  * Class:     org_GNOME_Accessibility_AtkWrapper
@@ -158,9 +161,8 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_boundsChanged(
  * Method:    dispatchKeyEvent
  * Signature: (Lorg/GNOME/Accessibility/AtkKeyEvent;)Z
  */
-JNIEXPORT void JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_dispatchKeyEvent(JNIEnv *, jclass,
-                                                         jobject);
+JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_dispatchKeyEvent(
+    JNIEnv *, jclass, jobject);
 
 /*
  * Class:     org_GNOME_Accessibility_AtkWrapper

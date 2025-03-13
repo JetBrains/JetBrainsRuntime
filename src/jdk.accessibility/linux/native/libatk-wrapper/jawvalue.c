@@ -186,15 +186,15 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
 
     jclass classAtkValue =
         (*env)->FindClass(env, "org/GNOME/Accessibility/AtkValue");
-    if(!classAtkValue) {
-      (*env)->DeleteGlobalRef(env, atk_value);
-      return;
+    if (!classAtkValue) {
+        (*env)->DeleteGlobalRef(env, atk_value);
+        return;
     }
     jmethodID jmid = (*env)->GetMethodID(
         env, classAtkValue, "get_current_value", "()Ljava/lang/Number;");
-    if(!jmid) {
-      (*env)->DeleteGlobalRef(env, atk_value);
-      return;
+    if (!jmid) {
+        (*env)->DeleteGlobalRef(env, atk_value);
+        return;
     }
     jobject jnumber = (*env)->CallObjectMethod(env, atk_value, jmid);
     (*env)->DeleteGlobalRef(env, atk_value);
@@ -216,14 +216,14 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
     jclass classAtkValue =
         (*env)->FindClass(env, "org/GNOME/Accessibility/AtkValue");
     if (!classAtkValue) {
-      (*env)->DeleteGlobalRef(env, atk_value);
-      return;
+        (*env)->DeleteGlobalRef(env, atk_value);
+        return;
     }
     jmethodID jmid = (*env)->GetMethodID(env, classAtkValue, "set_value",
                                          "(Ljava/lang/Number;)V");
     if (!jmid) {
-      (*env)->DeleteGlobalRef(env, atk_value);
-      return;
+        (*env)->DeleteGlobalRef(env, atk_value);
+        return;
     }
     (*env)->CallVoidMethod(env, atk_value, jmid, (jdouble)value);
     (*env)->DeleteGlobalRef(env, atk_value);
@@ -242,20 +242,20 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
     jclass classAtkValue =
         (*env)->FindClass(env, "org/GNOME/Accessibility/AtkValue");
     if (!classAtkValue) {
-      (*env)->DeleteGlobalRef(env, atk_value);
-      return NULL;
+        (*env)->DeleteGlobalRef(env, atk_value);
+        return NULL;
     }
     jmethodID jmidMin =
         (*env)->GetMethodID(env, classAtkValue, "get_minimum_value", "()D");
     if (!jmidMin) {
-      (*env)->DeleteGlobalRef(env, atk_value);
-      return NULL;
+        (*env)->DeleteGlobalRef(env, atk_value);
+        return NULL;
     }
     jmethodID jmidMax =
         (*env)->GetMethodID(env, classAtkValue, "get_maximum_value", "()D");
     if (!jmidMax) {
-      (*env)->DeleteGlobalRef(env, atk_value);
-      return NULL;
+        (*env)->DeleteGlobalRef(env, atk_value);
+        return NULL;
     }
     AtkRange *ret = atk_range_new(
         (gdouble)(*env)->CallDoubleMethod(env, atk_value, jmidMin),
@@ -267,8 +267,8 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
 
 /*
  * Gets the minimum increment by which the value of this object may be changed.
- * If zero, the minimum increment is undefined, which may mean that it is limited
- * only by the floating point precision of the platform.
+ * If zero, the minimum increment is undefined, which may mean that it is
+ * limited only by the floating point precision of the platform.
  */
 static gdouble jaw_value_get_increment(AtkValue *obj) {
     JAW_DEBUG_C("%p", obj);
@@ -283,14 +283,14 @@ static gdouble jaw_value_get_increment(AtkValue *obj) {
     jclass classAtkValue =
         (*env)->FindClass(env, "org/GNOME/Accessibility/AtkValue");
     if (!classAtkValue) {
-      (*env)->DeleteGlobalRef(env, atk_value);
-      return 0;
+        (*env)->DeleteGlobalRef(env, atk_value);
+        return 0;
     }
     jmethodID jmid =
         (*env)->GetMethodID(env, classAtkValue, "get_increment", "()D");
     if (!jmid) {
-      (*env)->DeleteGlobalRef(env, atk_value);
-      return 0;
+        (*env)->DeleteGlobalRef(env, atk_value);
+        return 0;
     }
     gdouble ret = (*env)->CallDoubleMethod(env, atk_value, jmid);
     (*env)->DeleteGlobalRef(env, atk_value);

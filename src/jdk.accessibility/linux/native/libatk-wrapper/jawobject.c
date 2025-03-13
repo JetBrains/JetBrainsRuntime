@@ -277,7 +277,8 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     CHECK_NULL(jparent, NULL);
 
-    AtkObject *parent_obj =(AtkObject *)jaw_object_table_lookup(jniEnv, jparent);
+    AtkObject *parent_obj =
+        (AtkObject *)jaw_object_table_lookup(jniEnv, jparent);
 
     if (parent_obj != NULL)
         return parent_obj;
@@ -371,7 +372,8 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
 
     if (atk_obj->name != NULL) {
         if (jaw_obj->jstrName != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_obj->jstrName, atk_obj->name);
+            (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_obj->jstrName,
+                                             atk_obj->name);
             (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrName);
             jaw_obj->jstrName = NULL;
         }
@@ -545,7 +547,7 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
                                             atk_obj);
     }
 
-    JAW_GET_OBJECT(atk_obj,-1);
+    JAW_GET_OBJECT(atk_obj, -1);
 
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
@@ -649,7 +651,8 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         return NULL;
     }
-    jobject jstate_arr = (*jniEnv)->CallStaticObjectMethod(jniEnv, atkObject, jmid, ac);
+    jobject jstate_arr =
+        (*jniEnv)->CallStaticObjectMethod(jniEnv, atkObject, jmid, ac);
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     CHECK_NULL(jstate_arr, NULL);
 
@@ -690,14 +693,14 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
     if (!atkObject) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
-        return  NULL;
+        return NULL;
     }
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, atkObject, "get_locale",
         "(Ljavax/accessibility/AccessibleContext;)Ljava/lang/String;");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
-        return  NULL;
+        return NULL;
     }
     jobject jstr =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, atkObject, jmid, ac);
@@ -839,7 +842,8 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     CHECK_NULL(child_ac, NULL);
 
-    AtkObject *obj = (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, child_ac);
+    AtkObject *obj =
+        (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, child_ac);
     if (G_OBJECT(obj) != NULL)
         g_object_ref(G_OBJECT(obj));
 

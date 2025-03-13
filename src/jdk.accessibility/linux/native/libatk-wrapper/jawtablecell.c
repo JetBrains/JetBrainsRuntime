@@ -65,8 +65,8 @@ gpointer jaw_table_cell_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-      g_warning("Null argument passed to function");
-      return NULL;
+        g_warning("Null argument passed to function");
+        return NULL;
     }
 
     TableCellData *data = g_new0(TableCellData, 1);
@@ -104,16 +104,16 @@ void jaw_table_cell_data_finalize(gpointer p) {
     CHECK_NULL(jniEnv, );
 
     if (data->description != NULL) {
-            if (data->jstrDescription != NULL) {
-                (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
-                                                 data->description);
-                (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
-                data->jstrDescription = NULL;
-            }
-            data->description = NULL;
+        if (data->jstrDescription != NULL) {
+            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
+                                             data->description);
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
+            data->jstrDescription = NULL;
         }
+        data->description = NULL;
+    }
 
-    if ( data->atk_table_cell) {
+    if (data->atk_table_cell) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_table_cell);
         data->atk_table_cell = NULL;
     }

@@ -97,7 +97,7 @@ void jaw_image_data_finalize(gpointer p) {
     if (data->image_description != NULL) {
         if (data->image_description != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrImageDescription,
-                                                 data->image_description);
+                                             data->image_description);
             (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrImageDescription);
             data->jstrImageDescription = NULL;
         }

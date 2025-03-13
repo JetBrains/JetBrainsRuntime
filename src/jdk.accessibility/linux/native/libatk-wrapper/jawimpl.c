@@ -64,13 +64,15 @@ static void object_table_insert(JNIEnv *jniEnv, jobject ac, JawImpl *jaw_impl) {
         return;
     }
 
-    jclass atkObject = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
+    jclass atkObject =
+        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
     CHECK_NULL(atkObject, );
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, atkObject, "hash_code",
         "(Ljavax/accessibility/AccessibleContext;)I");
     CHECK_NULL(jmid, );
-    gint hash_key = (gint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
+    gint hash_key =
+        (gint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
     CHECK_NULL(hash_key, );
     jaw_impl->hash_key = hash_key;
 
@@ -95,7 +97,8 @@ static JawImpl *object_table_lookup(JNIEnv *jniEnv, jobject ac) {
         jniEnv, atkObject, "hash_code",
         "(Ljavax/accessibility/AccessibleContext;)I");
     CHECK_NULL(jmid, NULL);
-    gint hash_key = (gint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
+    gint hash_key =
+        (gint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
     CHECK_NULL(hash_key, NULL);
     gpointer value = NULL;
     g_mutex_lock(&objectTableMutex);
@@ -494,7 +497,7 @@ static void jaw_impl_finalize(GObject *gobject) {
     g_hash_table_iter_init(&iter, jaw_impl->ifaceTable);
     while (g_hash_table_iter_next(&iter, NULL, &value)) {
         JawInterfaceInfo *info = (JawInterfaceInfo *)value;
-        if(info != NULL) {
+        if (info != NULL) {
             info->finalize(info->data);
             g_free(info);
         }

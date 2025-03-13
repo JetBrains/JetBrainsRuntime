@@ -186,9 +186,9 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
     return ret;
 }
 
-
 /*
- * Gets the index into the array of hyperlinks that is associated with the character specified by char-index.
+ * Gets the index into the array of hyperlinks that is associated with the
+ * character specified by char-index.
  *
  * Returns -1 if an error occurred.
  */

@@ -134,7 +134,7 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
     CHECK_NULL(jstr, NULL);
 
-    if (jaw_hyperlink->uri != NULL  && jaw_hyperlink->jstrUri != NULL) {
+    if (jaw_hyperlink->uri != NULL && jaw_hyperlink->jstrUri != NULL) {
         (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_hyperlink->jstrUri,
                                          jaw_hyperlink->uri);
         (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jstrUri);
@@ -279,7 +279,7 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
 
 /**
  * Gets the total number of anchors.
-*/
+ */
 static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
 

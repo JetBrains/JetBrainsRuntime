@@ -201,7 +201,8 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
         (*env)->DeleteGlobalRef(env, atk_table);
         return NULL;
     }
-    jobject jac = (*env)->CallObjectMethod(env, atk_table, jmid, (jint)row, (jint)column);
+    jobject jac =
+        (*env)->CallObjectMethod(env, atk_table, jmid, (jint)row, (jint)column);
     (*env)->DeleteGlobalRef(env, atk_table);
     CHECK_NULL(jac, NULL);
 
@@ -226,14 +227,14 @@ static gint jaw_table_get_index_at(AtkTable *table, gint row, gint column) {
     jclass classAtkTable =
         (*env)->FindClass(env, "org/GNOME/Accessibility/AtkTable");
     if (!classAtkTable) {
-      (*env)->DeleteGlobalRef(env, atk_table);
-      return 0;
+        (*env)->DeleteGlobalRef(env, atk_table);
+        return 0;
     }
     jmethodID jmid =
         (*env)->GetMethodID(env, classAtkTable, "get_index_at", "(II)I");
     if (!jmid) {
-      (*env)->DeleteGlobalRef(env, atk_table);
-      return 0;
+        (*env)->DeleteGlobalRef(env, atk_table);
+        return 0;
     }
     jint jindex =
         (*env)->CallIntMethod(env, atk_table, jmid, (jint)row, (jint)column);
@@ -256,14 +257,14 @@ static gint jaw_table_get_column_at_index(AtkTable *table, gint index) {
     jclass classAtkTable =
         (*env)->FindClass(env, "org/GNOME/Accessibility/AtkTable");
     if (!classAtkTable) {
-      (*env)->DeleteGlobalRef(env, atk_table);
-      return 0;
+        (*env)->DeleteGlobalRef(env, atk_table);
+        return 0;
     }
     jmethodID jmid =
         (*env)->GetMethodID(env, classAtkTable, "get_column_at_index", "(I)I");
     if (!jmid) {
-      (*env)->DeleteGlobalRef(env, atk_table);
-      return 0;
+        (*env)->DeleteGlobalRef(env, atk_table);
+        return 0;
     }
     jint jcolumn = (*env)->CallIntMethod(env, atk_table, jmid, (jint)index);
     (*env)->DeleteGlobalRef(env, atk_table);

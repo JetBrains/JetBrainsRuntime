@@ -51,7 +51,6 @@ typedef struct _ComponentData {
     JAW_GET_OBJ_IFACE(component, INTERFACE_COMPONENT, ComponentData,           \
                       atk_component, jniEnv, atk_component, def_ret)
 
-
 /*
  * Atk.Component Methods
  * contains (x, y, coord_type)
@@ -109,14 +108,16 @@ gpointer jaw_component_data_init(jobject ac) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     CHECK_NULL(jniEnv, NULL);
 
-    jclass classComponent = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
+    jclass classComponent =
+        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
     CHECK_NULL(classComponent, NULL);
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classComponent, "create_atk_component",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkComponent;");
     CHECK_NULL(jmid, NULL);
-    jobject jatk_component = (*jniEnv)->CallStaticObjectMethod(jniEnv, classComponent, jmid, ac);
+    jobject jatk_component =
+        (*jniEnv)->CallStaticObjectMethod(jniEnv, classComponent, jmid, ac);
     CHECK_NULL(jatk_component, NULL);
     data->atk_component = (*jniEnv)->NewGlobalRef(jniEnv, jatk_component);
 

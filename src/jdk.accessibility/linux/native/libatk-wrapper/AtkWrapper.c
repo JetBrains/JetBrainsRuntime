@@ -174,10 +174,10 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
                               &err);
     if (thread == NULL) {
         JAW_DEBUG_I("Thread create failed: %s !", err->message);
-        g_main_loop_unref (jni_main_loop);
-        #if ATSPI_CHECK_VERSION(2, 33, 1)
-            g_main_context_unref(jni_main_context);
-        #endif
+        g_main_loop_unref(jni_main_loop);
+#if ATSPI_CHECK_VERSION(2, 33, 1)
+        g_main_context_unref(jni_main_context);
+#endif
         g_error_free(err);
         jaw_accessibility_shutdown();
         return FALSE;
@@ -229,20 +229,25 @@ typedef struct _CallbackParaEvent {
     jobject global_event;
 } CallbackParaEvent;
 
-JNIEXPORT jlong JNICALL Java_org_GNOME_Accessibility_AtkWrapper_getNativeResources(JNIEnv *jniEnv, jclass jClass, jobject ac){
+JNIEXPORT jlong JNICALL
+Java_org_GNOME_Accessibility_AtkWrapper_getNativeResources(JNIEnv *jniEnv,
+                                                           jclass jClass,
+                                                           jobject ac) {
     JawImpl *jaw_impl = jaw_impl_get_instance(jniEnv, ac);
     JAW_DEBUG_C("%p", jaw_impl);
     if (jaw_impl == NULL) {
-         return -1;
+        return -1;
     }
     return (jlong)jaw_impl;
 }
 
-JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_releaseNativeResources(JNIEnv *jniEnv, jclass jClass, jlong reference){
+JNIEXPORT void JNICALL
+Java_org_GNOME_Accessibility_AtkWrapper_releaseNativeResources(
+    JNIEnv *jniEnv, jclass jClass, jlong reference) {
     JawImpl *jaw_impl = (JawImpl *)reference;
     JAW_DEBUG_C("%p", jaw_impl);
     if (jaw_impl == NULL) {
-         return;
+        return;
     }
     g_object_unref(jaw_impl);
 }
@@ -266,7 +271,8 @@ static CallbackPara *alloc_callback_para(JNIEnv *jniEnv, jobject ac) {
     return para;
 }
 
-static CallbackParaEvent *alloc_callback_para_event(JNIEnv *jniEnv, jobject event) {
+static CallbackParaEvent *alloc_callback_para_event(JNIEnv *jniEnv,
+                                                    jobject event) {
     JAW_DEBUG_C("%p, %p", jniEnv, event);
     if (event == NULL)
         return NULL;
@@ -331,7 +337,8 @@ static void queue_free_callback_para(CallbackPara *para) {
 static void queue_free_callback_para_event(CallbackParaEvent *para) {
     JAW_DEBUG_C("%p", para);
     g_mutex_lock(&callback_para_event_frees_mutex);
-    callback_para_event_frees = g_slist_prepend(callback_para_event_frees, para);
+    callback_para_event_frees =
+        g_slist_prepend(callback_para_event_frees, para);
     g_mutex_unlock(&callback_para_event_frees_mutex);
 }
 
@@ -648,10 +655,11 @@ static gint get_int_value(JNIEnv *jniEnv, jobject o) {
     return (gint)(*jniEnv)->CallIntMethod(jniEnv, o, jmid);
 }
 
-static gchar* get_string_value(JNIEnv *jniEnv, jobject o) {
+static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
     JAW_DEBUG_C("%p, %p", jniEnv, o);
     jclass classString = (*jniEnv)->FindClass(jniEnv, "java/lang/String");
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classString, "toString", "()Ljava/lang/String;");
+    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classString, "toString",
+                                            "()Ljava/lang/String;");
     jstring jstr = (jstring)(*jniEnv)->CallObjectMethod(jniEnv, o, jmid);
 
     if (jstr == NULL) {
@@ -702,7 +710,7 @@ static gboolean signal_emit_handler(gpointer p) {
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         gint insert_length = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
-        gchar* insert_text = get_string_value(
+        gchar *insert_text = get_string_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
         g_signal_emit_by_name(atk_obj, "text_insert", insert_position,
                               insert_length, insert_text);
@@ -713,7 +721,7 @@ static gboolean signal_emit_handler(gpointer p) {
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         gint delete_length = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
-        gchar* delete_text = get_string_value(
+        gchar *delete_text = get_string_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
         g_signal_emit_by_name(atk_obj, "text_remove", delete_position,
                               delete_length, delete_text);
@@ -850,12 +858,13 @@ static gboolean signal_emit_handler(gpointer p) {
                             GINT_TO_POINTER(curCount));
 
         /*
-         * The "text_changed" signal was deprecated, but only for performance reasons:
+         * The "text_changed" signal was deprecated, but only for performance
+         * reasons:
          * https://mail.gnome.org/archives/gnome-accessibility-devel/2010-December/msg00007.html.
          *
-         * Since there is no information about the string in this case, we cannot use
-         * "AtkObject::text-insert" or "AtkObject::text-remove", so we continue using
-         * the "text_changed" signal.
+         * Since there is no information about the string in this case, we
+         * cannot use "AtkObject::text-insert" or "AtkObject::text-remove", so
+         * we continue using the "text_changed" signal.
          */
         if (curCount > prevCount) {
             g_signal_emit_by_name(atk_obj, "text_changed::insert", newValue,
@@ -1198,15 +1207,14 @@ static gboolean key_dispatch_handler(gpointer p) {
     return G_SOURCE_REMOVE;
 }
 
-JNIEXPORT void JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_dispatchKeyEvent(JNIEnv *jniEnv,
-                                                         jclass jClass,
-                                                         jobject jAtkKeyEvent) {
+JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_dispatchKeyEvent(
+    JNIEnv *jniEnv, jclass jClass, jobject jAtkKeyEvent) {
     JAW_DEBUG_JNI("%p, %p, %p", jniEnv, jClass, jAtkKeyEvent);
     jobject global_key_event = (*jniEnv)->NewGlobalRef(jniEnv, jAtkKeyEvent);
     callback_para_event_process_frees();
-    CallbackParaEvent *para = alloc_callback_para_event(jniEnv, global_key_event);
-    jni_main_idle_add(key_dispatch_handler,  para);
+    CallbackParaEvent *para =
+        alloc_callback_para_event(jniEnv, global_key_event);
+    jni_main_idle_add(key_dispatch_handler, para);
 }
 
 JNIEXPORT jlong JNICALL Java_org_GNOME_Accessibility_AtkWrapper_getInstance(
