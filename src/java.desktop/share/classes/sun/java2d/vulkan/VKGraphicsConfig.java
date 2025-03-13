@@ -100,6 +100,10 @@ public interface VKGraphicsConfig extends AccelGraphicsConfig, SurfaceManager.Pr
         return vi;
     }
 
+    default String descriptorString() {
+        return getFormat().name() + ", " + getVKDevice();
+    }
+
     // Default implementation of GraphicsConfiguration methods.
     // Those need to be explicitly overridden by subclasses using VKGraphicsConfig.super.
 

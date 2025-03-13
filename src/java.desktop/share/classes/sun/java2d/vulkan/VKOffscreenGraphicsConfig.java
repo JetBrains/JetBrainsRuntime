@@ -107,4 +107,9 @@ public class VKOffscreenGraphicsConfig extends GraphicsConfiguration implements 
     public boolean isTranslucencyCapable() {
         return VKGraphicsConfig.super.isTranslucencyCapable();
     }
+
+    @Override
+    public String toString() {
+        return "VKOffscreenGraphicsConfig[" + descriptorString() + "]";
+    }
 }
