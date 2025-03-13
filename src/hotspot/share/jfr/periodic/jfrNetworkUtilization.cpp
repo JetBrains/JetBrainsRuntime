@@ -112,7 +112,7 @@ class JfrNetworkInterfaceName : public JfrSerializer {
    void serialize(JfrCheckpointWriter& writer) {} // we write each constant lazily
 
    void on_rotation() {
-     if (_interfaces != NULL) {
+     if (_interfaces != nullptr) {
        for (int i = 0; i < _interfaces->length(); ++i) {
          const InterfaceEntry &entry = _interfaces->at(i);
          if (entry.written) {
