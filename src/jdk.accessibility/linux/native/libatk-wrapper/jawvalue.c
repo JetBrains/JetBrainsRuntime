@@ -42,6 +42,12 @@ typedef struct _ValueData {
 
 void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
+
+    if (!iface) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     iface->get_current_value = jaw_value_get_current_value;
     // deprecated: iface->get_maximum_value
     // deprecated: iface->get_minimum_value
@@ -86,6 +92,12 @@ void jaw_value_data_finalize(gpointer p) {
 static void get_g_value_from_java_number(JNIEnv *jniEnv, jobject jnumber,
                                          GValue *value) {
     JAW_DEBUG_C("%p, %p, %p", jniEnv, jnumber, value);
+
+    if (!jniEnv || !value) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     jclass classByte = (*jniEnv)->FindClass(jniEnv, "java/lang/Byte");
     jclass classDouble = (*jniEnv)->FindClass(jniEnv, "java/lang/Double");
     jclass classFloat = (*jniEnv)->FindClass(jniEnv, "java/lang/Float");
@@ -145,7 +157,9 @@ static void get_g_value_from_java_number(JNIEnv *jniEnv, jobject jnumber,
 
 static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
     JAW_DEBUG_C("%p, %p", obj, value);
-    if (!value)
+
+    if (!obj || !value) {
+        g_warning("Null argument passed to function");
         return;
     g_value_unset(value);
     JAW_GET_VALUE(obj, );
@@ -167,6 +181,11 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
 static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
     JAW_DEBUG_C("%p, %lf", obj, value);
 
+    if (!obj) {
+        g_warning("Null argument passed to function");
+        return;
+    }
+
     JAW_GET_VALUE(obj, );
 
     jclass classAtkValue =
@@ -179,6 +198,12 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
 
 static AtkRange *jaw_value_get_range(AtkValue *obj) {
     JAW_DEBUG_C("%p", obj);
+
+    if (!obj) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
     JAW_GET_VALUE(obj, NULL);
 
     jclass classAtkValue =
@@ -197,6 +222,12 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
 
 static gdouble jaw_value_get_increment(AtkValue *obj) {
     JAW_DEBUG_C("%p", obj);
+
+    if (!obj) {
+        g_warning("Null argument passed to function");
+        return 0;
+    }
+
     JAW_GET_VALUE(obj, 0.);
 
     jclass classAtkValue =
