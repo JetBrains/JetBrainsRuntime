@@ -313,6 +313,7 @@ static GdkPixbuf *(*fp_gdk_pixbuf_scale_simple)(GdkPixbuf *src,
 
 static void (*fp_gtk_widget_destroy)(void *widget);
 static void (*fp_gtk_window_present)(GtkWindow *window);
+static void (*fp_gtk_window_present_with_time)(GtkWindow *window, guint32 timestamp);
 static void (*fp_gtk_window_move)(GtkWindow *window, gint x, gint y);
 static void (*fp_gtk_window_resize)(GtkWindow *window, gint width, gint height);
 
