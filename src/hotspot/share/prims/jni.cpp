@@ -3574,7 +3574,7 @@ static void unsetLdPreload() {
     // NOTE: Probably it still can affect child processes, see
     // https://stackoverflow.com/questions/3275015/ld-preload-affects-new-child-even-after-unsetenvld-preload
     char * envUnset = ::getenv("UNSET_LD_PRELOAD");
-    if (envUnset != NULL && strlen(envUnset) > 3 && strncmp("true", envUnset, 4) == 0) {
+    if (envUnset != nullptr && strlen(envUnset) > 3 && strncmp("true", envUnset, 4) == 0) {
         unsetenv("LD_PRELOAD");
         fprintf(stdout, "LD_PRELOAD was unset\n");
     }
