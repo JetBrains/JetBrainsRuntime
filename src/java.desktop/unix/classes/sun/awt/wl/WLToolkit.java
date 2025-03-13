@@ -160,6 +160,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     private static Cursor currentCursor;
 
+    private static Boolean sunAwtDisableGtkFileDialogs = null;
+
     private static native void initIDs(long displayPtr);
 
     static {
@@ -200,6 +202,13 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             clipboard = null;
             selection = null;
         }
+    }
+
+    public static synchronized boolean getSunAwtDisableGtkFileDialogs() {
+        if (sunAwtDisableGtkFileDialogs == null) {
+            sunAwtDisableGtkFileDialogs = Boolean.getBoolean("sun.awt.disableGtkFileDialogs");
+        }
+        return sunAwtDisableGtkFileDialogs;
     }
 
     private static void initSystemProperties() {
@@ -680,10 +689,17 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public FileDialogPeer createFileDialog(FileDialog target) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createFileDialog()");
+        FileDialogPeer peer = null;
+        if (!getSunAwtDisableGtkFileDialogs() && checkGtkVersion(3, 0, 0)) {
+            peer = new GtkFileDialogPeer(target);
+            targetCreatedPeer(target, peer);
+            return peer;
+        } else {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("Not implemented: WLToolkit.createFileDialog()");
+            }
+            return null;
         }
-        return null;
     }
 
     @Override
