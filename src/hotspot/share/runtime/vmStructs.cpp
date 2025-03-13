@@ -687,7 +687,7 @@ typedef HashtableEntry<InstanceKlass*, mtClass>  KlassHashtableEntry;
   nonstatic_field(nmethod,                     _verified_entry_point,                         address)                               \
   nonstatic_field(nmethod,                     _osr_entry_point,                              address)                               \
   volatile_nonstatic_field(nmethod,            _lock_count,                                   jint)                                  \
-  volatile_nonstatic_field(nmethod,            _stack_traversal_mark,                         long)                                  \
+  volatile_nonstatic_field(nmethod,            _stack_traversal_mark,                         int64_t)                               \
   nonstatic_field(nmethod,                     _compile_id,                                   int)                                   \
   nonstatic_field(nmethod,                     _comp_level,                                   int)                                   \
                                                                                                                                      \
@@ -1224,6 +1224,7 @@ typedef HashtableEntry<InstanceKlass*, mtClass>  KlassHashtableEntry;
   declare_integer_type(ssize_t)                                           \
   declare_integer_type(intx)                                              \
   declare_integer_type(intptr_t)                                          \
+  declare_integer_type(int64_t)                                           \
   declare_unsigned_integer_type(uintx)                                    \
   declare_unsigned_integer_type(uintptr_t)                                \
   declare_unsigned_integer_type(uint8_t)                                  \

@@ -569,7 +569,7 @@ void JVMCIEnv::put_int_at(JVMCIPrimitiveArray array, int index, jint value) {
   }
 }
 
-long JVMCIEnv::get_long_at(JVMCIPrimitiveArray array, int index) {
+jlong JVMCIEnv::get_long_at(JVMCIPrimitiveArray array, int index) {
   if (is_hotspot()) {
     return HotSpotJVMCI::resolve(array)->long_at(index);
   } else {
