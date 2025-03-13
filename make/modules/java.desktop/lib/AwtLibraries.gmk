@@ -546,7 +546,7 @@ ifeq ($(call isTargetOs, macosx), true)
       DISABLED_WARNINGS_clang_OGLBufImgOps.c := format-nonliteral, \
       DISABLED_WARNINGS_clang_OGLPaints.c := format-nonliteral, \
       DISABLED_WARNINGS_clang_PrinterView.m := enum-conversion, \
-      DISABLED_WARNINGS_clang_SystemHotkey.m := format-nonliteral, \
+      DISABLED_WARNINGS_clang_SystemHotkey.m := format-nonliteral gnu-folding-constant, \
       DISABLED_WARNINGS_clang_system_properties.c := format-nonliteral, \
       JDK_LIBS := libawt java.base:libjava libosxapp, \
       LIBS_macosx := $(LIBM) \

@@ -82,7 +82,7 @@ static NSArray<NSString*> *allModesExceptJava = nil;
 /* Traceability data */
 static const BOOL forceTracing = NO;
 static const BOOL enableTracing = NO || forceTracing;
-static const BOOL enableTracingLog = NO;
+static const BOOL enableTracingLog = YES;
 static const BOOL enableTracingNSLog = YES && enableTracingLog;
 static const BOOL enableCallStacks = YES;
 
@@ -92,6 +92,8 @@ static const BOOL TRACE_PWM = NO;
 static const BOOL TRACE_PWM_EVENTS = NO;
 static const BOOL TRACE_CLOCKS = NO;
 
+/* 10s period around reference times (sleep/wake-up...)
+ * to ensure all displays are awaken properly */
 static const uint64_t NANOS_PER_SEC = 1000000000ULL;
 static const double SEC_PER_NANOS = 1e9;
 
@@ -363,6 +365,66 @@ AWT_ASSERT_APPKIT_THREAD;
         return [[filteredSymbols componentsJoinedByString:@"\n"] retain];
     }
     return nil;
+}
+
+/* unused but kept hidden from API (private) */
++ (void)criticalDispatchOnMainThreadAndWait:(void (^)())block {
+    RUN_BLOCK_IF_MAIN(block)
+
+    JNI_COCOA_ENTER()
+
+    if (enableTracingLog) {
+        NSLog(@"criticalDispatchOnMainThreadAndWait: %@", block);
+        [ThreadUtilities dumpThreadTraceContext:"criticalDispatchOnMainThreadAndWait"];
+    }
+    void (^blockCopy)(void) = Block_copy(block);
+
+    // SYNCHRONOUS: will wait ...
+    dispatch_sync(dispatch_get_main_queue(), ^() {
+        NSAutoreleasePool *blockPool = [[NSAutoreleasePool alloc] init];
+        @try {
+            [ThreadUtilities invokeBlockCopy:blockCopy];
+        } @catch (NSException *e) {
+            NSLog(@"criticalDispatchOnMainThreadAndWait.block: Apple AWT Cocoa Exception: %@", [e description]);
+            NSLog(@"criticalDispatchOnMainThreadAndWait.block: Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]);
+        } @finally {
+            [blockPool drain];
+        };
+    });
+    JNI_COCOA_EXIT()
+}
+
+/*
+ * Be careful:
+ * using Grand Central Dispatch (GCD) dispatch_async() may interfere
+ * with other blocks run on the Main Thread Runloop because:
+ * - GCD will run given block just after the current RunLoop iteration (just after currently executing Main Thread action)
+ * - Do not expect any block execution ordering or depend on such expected order (no sequential guarantee).
+ */
++ (void)criticalDispatchOnMainThreadASAP:(void (^)())block {
+    RUN_BLOCK_IF_MAIN(block)
+
+    JNI_COCOA_ENTER()
+
+    if (false && enableTracingLog) {
+        NSLog(@"criticalDispatchOnMainThreadASAP: %@", block);
+        [ThreadUtilities dumpThreadTraceContext:"criticalDispatchOnMainThreadASAP"];
+    }
+    void (^blockCopy)(void) = Block_copy(block);
+
+    // ASYNCHRONOUS but more immediate than Runloop:
+    dispatch_async(dispatch_get_main_queue(), ^() {
+        NSAutoreleasePool *blockPool = [[NSAutoreleasePool alloc] init];
+        @try {
+            [ThreadUtilities invokeBlockCopy:blockCopy];
+        } @catch (NSException *e) {
+            NSLog(@"criticalDispatchOnMainThreadASAP.block: Apple AWT Cocoa Exception: %@", [e description]);
+            NSLog(@"criticalDispatchOnMainThreadASAP.block: Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]);
+        } @finally {
+            [blockPool drain];
+        };
+    });
+    JNI_COCOA_EXIT()
 }
 
 /*

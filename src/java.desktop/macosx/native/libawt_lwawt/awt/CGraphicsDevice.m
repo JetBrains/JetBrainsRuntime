@@ -35,7 +35,7 @@
 #define DEFAULT_DEVICE_HEIGHT 768
 #define DEFAULT_DEVICE_DPI 72
 
-#define TRACE_DISPLAY_CHANGE_CONF 0
+#define TRACE_DISPLAY_CHANGE_CONF   0
 
 static NSInteger architecture = -1;
 /*
@@ -57,7 +57,6 @@ static int getBPPFromModeString(CFStringRef mode)
     else if (CFStringCompare(mode, CFSTR(IO8BitIndexedPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
         return 8;
     }
-
     return 0;
 }
 
@@ -129,7 +128,7 @@ void dumpDisplayInfo(jint displayID)
 
     // CGDisplayCopyDisplayMode can return NULL if displayID is invalid
     CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayID);
-    if (mode) {
+    if (mode != NULL) {
         // Getting Information About a Display Mode
         jint h = -1, w = -1, bpp = -1;
         jdouble refreshRate = 0.0;
@@ -279,7 +278,7 @@ static jobject createJavaDisplayMode(CGDisplayModeRef mode, JNIEnv *env) {
     jint h = DEFAULT_DEVICE_HEIGHT, w = DEFAULT_DEVICE_WIDTH, bpp = 0, refrate = 0;
     JNI_COCOA_ENTER(env);
     BOOL isDisplayModeDefault = NO;
-    if (mode) {
+    if (mode != NULL) {
         CFStringRef currentBPP = CGDisplayModeCopyPixelEncoding(mode);
         bpp = getBPPFromModeString(currentBPP);
         CFRelease(currentBPP);
@@ -449,8 +448,8 @@ JNI_COCOA_ENTER(env);
 
         if (closestMatch != NULL) {
             /*
-             * 2025.01: Do not call the following DisplayConfiguration transaction on
-             * main thread as it hangs for several seconds on macbook intel + macOS 15
+             * 2025.01: Do not call the following DisplayConfiguration transaction on main thread
+             * as it somehow hangs for several seconds on macbook intel + macOS 15
              */
             CGDisplayConfigRef config;
             retCode = CGBeginDisplayConfiguration(&config);
@@ -506,7 +505,9 @@ JNI_COCOA_ENTER(env);
     // CGDisplayCopyDisplayMode can return NULL if displayID is invalid
     CGDisplayModeRef currentMode = CGDisplayCopyDisplayMode(displayID);
     ret = createJavaDisplayMode(currentMode, env);
-    CGDisplayModeRelease(currentMode);
+    if (currentMode != NULL) {
+        CGDisplayModeRelease(currentMode);
+    }
 JNI_COCOA_EXIT(env);
     return ret;
 }

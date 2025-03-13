@@ -194,6 +194,15 @@ __attribute__((visibility("default")))
 + (void)performOnMainThreadWaiting:(BOOL)wait useJavaModes:(BOOL)useJavaModes block:(void (^)())block;
 + (void)performOnMainThread:(SEL)aSelector on:(id)target withObject:(id)arg waitUntilDone:(BOOL)wait useJavaModes:(BOOL)useJavaModes;
 
+/*
+ * Be careful:
+ * using Grand Central Dispatch (GCD) dispatch_async() may interfere
+ * with other blocks run on the Main Thread Runloop because:
+ * - GCD will run given block just after the current RunLoop iteration (just after currently executing Main Thread action)
+ * - Do not expect any block execution ordering or depend on such expected order (no sequential guarantee).
+ */
++ (void)criticalDispatchOnMainThreadASAP:(void (^)())block;
+
 + (NSString*)criticalRunLoopMode;
 + (NSString*)javaRunLoopMode;
 

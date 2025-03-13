@@ -2634,7 +2634,7 @@ JNI_COCOA_ENTER(env);
     NSWindow *nsWindow = OBJC(windowPtr);
     [ThreadUtilities performOnMainThread:@selector(setTitle:) on:nsWindow
                              withObject:JavaStringToNSString(env, jtitle)
-                           waitUntilDone:NO];
+                           waitUntilDone:NO useJavaModes:NO]; // direct mode
 
 JNI_COCOA_EXIT(env);
 }

@@ -297,7 +297,7 @@ extern void initSamplers(id<MTLDevice> device);
                     // Ensure mode is really valid:
                     // CGDisplayCopyDisplayMode can return NULL if displayID is invalid
                     CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayID);
-                    if (mode) {
+                    if (mode != NULL) {
                         active = isValidDisplayMode(mode);
                         CGDisplayModeRelease(mode);
                     }
@@ -423,7 +423,7 @@ extern void initSamplers(id<MTLDevice> device);
             [mtlc release];
             J2dRlsTraceLn2(J2D_TRACE_INFO, "MTLContext_releaseContext: release context(%p) retainCount=%d", mtlc, mtlc.retainCount);
         } else {
-            // explicit halt redraw to shutdown CVDisplayLink threads before dealloc():
+            // explicit halt redraw to shut down CVDisplayLink threads before dealloc():
             [mtlc haltRedraw];
             // remove ownership (objc ref):
             [MTLContext.contextStore removeObjectForKey:deviceID];
@@ -484,11 +484,13 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 - (NSArray<NSNumber*>*)getDisplayLinkDisplayIds {
-    return [_displayLinkStates allKeys];
+    @synchronized (_displayLinkStates) {
+        return [_displayLinkStates allKeys];
+    }
 }
 
 - (void)createDisplayLinkIfAbsent: (jint)displayID {
-    if (isDisplaySyncEnabled()) {
+    if (_displayLinkStates != nil) {
         MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
         if ((dlState != nil) && (dlState->displayLink != nil)) {
             return;
@@ -529,10 +531,11 @@ extern void initSamplers(id<MTLDevice> device);
             dlState->lastStatTime = 0.0;
 
             if (isNewDisplayLink) {
-                // publish fully initialized object:
-                _displayLinkStates[@(displayID)] = [NSValue valueWithPointer:dlState];
+                @synchronized (_displayLinkStates) {
+                    // publish fully initialized object:
+                    _displayLinkStates[@(displayID)] = [NSValue valueWithPointer:dlState];
+                }
             }
-
             CHECK_CVLINK("SetOutputCallback", nil, &_displayLink,
                          CVDisplayLinkSetOutputCallback(_displayLink, &mtlDisplayLinkCallback,
                                                         (__bridge MTLDisplayLinkState*) dlState));
@@ -548,7 +551,10 @@ extern void initSamplers(id<MTLDevice> device);
         }
         return nil;
     }
-    NSValue* dlStateVal = _displayLinkStates[@(displayID)];
+    NSValue* dlStateVal = nil;
+    @synchronized (_displayLinkStates) {
+        dlStateVal = _displayLinkStates[@(displayID)];
+    }
     if (dlStateVal == nil) {
         if (TRACE_CVLINK_WARN) {
             J2dRlsTraceLn2(J2D_TRACE_ERROR, "MTLContext_getDisplayLinkState[ctx=%p displayID=%d]: "
@@ -560,7 +566,7 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 - (void)destroyDisplayLink: (jint)displayID {
-    if (isDisplaySyncEnabled()) {
+    if (_displayLinkStates != nil) {
         MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
         if (dlState == nil) {
             return;
@@ -585,6 +591,9 @@ extern void initSamplers(id<MTLDevice> device);
         // Release display link thread:
         CVDisplayLinkRelease(_displayLink);
         dlState->displayLink = nil;
+        J2dRlsTraceLn2(J2D_TRACE_INFO, "MTLContext_destroyDisplayLink["
+                                       "ctx=%p displayID=%d] done",
+                                       self, displayID);
     }
 }
 
@@ -987,7 +996,6 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 - (void) redraw:(NSNumber*)displayIDNumber {
-    AWT_ASSERT_APPKIT_THREAD;
     const CFTimeInterval now = CACurrentMediaTime();
 
     const jint displayID = [displayIDNumber intValue];
@@ -1022,19 +1030,23 @@ extern void initSamplers(id<MTLDevice> device);
     dlState->lastRedrawTime = now;
 
     // Process layers:
-    for (MTLLayer *layer in _layers) {
-        if (layer.displayID == displayID) {
-            [layer setNeedsDisplay];
+    @synchronized (_layers) {
+        for (MTLLayer *layer in _layers) {
+            if (layer.displayID == displayID) {
+                [layer postNeedsDisplay];
+            }
         }
     }
     if (dlState->redrawCount > 0) {
         dlState->redrawCount--;
     } else {
         // dlState->redrawCount == 0:
-        if (_layers.count > 0) {
-            for (MTLLayer *layer in _layers.allObjects) {
-                if (layer.displayID == displayID) {
-                    [_layers removeObject:layer];
+        @synchronized (_layers) {
+            if (_layers.count > 0) {
+                for (MTLLayer *layer in _layers.allObjects) {
+                    if (layer.displayID == displayID) {
+                        [_layers removeObject:layer];
+                    }
                 }
             }
         }
@@ -1043,7 +1055,7 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* nowTime, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext) {
-    JNI_COCOA_ENTER(env);
+    JNI_COCOA_ENTER();
         J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_mtlDisplayLinkCallback: ctx=%p", displayLinkContext);
 
         MTLDisplayLinkState *dlState = (__bridge MTLDisplayLinkState*) displayLinkContext;
@@ -1099,15 +1111,14 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
             }
             [mtlc destroyDisplayLink:displayID];
         } else {
-            [ThreadUtilities performOnMainThread:@selector(redraw:) on:mtlc withObject:@(displayID)
-                                   waitUntilDone:NO useJavaModes:NO]; // critical
+            // direct thread-safe:
+            [mtlc redraw:@(displayID)];
         }
-    JNI_COCOA_EXIT(env);
+    JNI_COCOA_EXIT();
     return kCVReturnSuccess;
 }
 
 - (void)startRedraw:(MTLLayer*)layer {
-    AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
     const jint displayID = layer.displayID;
     MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
@@ -1116,12 +1127,14 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
     }
     dlState->redrawCount = KEEP_ALIVE_COUNT;
 
-    layer.redrawCount = REDRAW_COUNT;
-    [_layers addObject:layer];
+    @synchronized (_layers) {
+        layer.redrawCount = REDRAW_COUNT;
+        [_layers addObject:layer];
 
-    if (MTLLayer_isExtraRedrawEnabled()) {
-        // Request for redraw before starting display link to avoid rendering problem on M2 processor
-        [layer setNeedsDisplay];
+        if (MTLLayer_isExtraRedrawEnabled()) {
+            // Request for redraw before starting display link to avoid rendering problem on M2 processor
+            [layer postNeedsDisplay];
+        }
     }
     [self handleDisplayLink:YES displayID:displayID source:"startRedraw"];
 }
@@ -1131,23 +1144,24 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 }
 
 - (void)stopRedraw:(jint)displayID layer:(MTLLayer*)layer {
-    AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn3(J2D_TRACE_VERBOSE, "MTLContext_stopRedraw: ctx=%p displayID=%d layer=%p",
                 self, displayID, layer);
     MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
     if (dlState == nil) {
         return;
     }
-    if (--layer.redrawCount <= 0) {
-        [_layers removeObject:layer];
-        layer.redrawCount = 0;
-    }
     bool hasLayers = false;
-    if (_layers.count > 0) {
-        for (MTLLayer *l in _layers) {
-            if (l.displayID == displayID) {
-                hasLayers = true;
-                break;
+    @synchronized (_layers) {
+        if (--layer.redrawCount <= 0) {
+            [_layers removeObject:layer];
+            layer.redrawCount = 0;
+        }
+        if (_layers.count > 0) {
+            for (MTLLayer *l in _layers) {
+                if (l.displayID == displayID) {
+                    hasLayers = true;
+                    break;
+                }
             }
         }
     }
@@ -1161,27 +1175,31 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
         if (TRACE_CVLINK) {
             J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_haltRedraw: ctx=%p", self);
         }
-        if (_layers.count > 0) {
-            for (MTLLayer *layer in _layers) {
-                layer.redrawCount = 0;
+        @synchronized (_layers) {
+            if (_layers.count > 0) {
+                for (MTLLayer *layer in _layers) {
+                    layer.redrawCount = 0;
+                }
+                [_layers removeAllObjects];
             }
-            [_layers removeAllObjects];
         }
-        if (_displayLinkStates.count > 0) {
-            const NSArray<NSNumber*>* displayIDs = [self getDisplayLinkDisplayIds]; // old ids
-            if (TRACE_CVLINK) {
-                NSLog(@"MTLContext_haltRedraw: ctx=%p (%d displayLinks)",
-                      self, (int) displayIDs.count);
-            }
-            for (NSNumber* displayIDVal in displayIDs) {
-                const jint displayID = [displayIDVal intValue];
-                [self destroyDisplayLink:displayID];
+        @synchronized (_displayLinkStates) {
+            if (_displayLinkStates.count > 0) {
+                const NSArray<NSNumber*>* displayIDs = [self getDisplayLinkDisplayIds]; // old ids
+                if (TRACE_CVLINK) {
+                    NSLog(@"MTLContext_haltRedraw: ctx=%p (%d displayLinks)",
+                          self, (int) displayIDs.count);
+                }
+                for (NSNumber* displayIDVal in displayIDs) {
+                    const jint displayID = [displayIDVal intValue];
+                    [self destroyDisplayLink:displayID];
 
-                MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
-                if (dlState != nil) {
-                    // Remove reference:
-                    [_displayLinkStates removeObjectForKey:@(displayID)];
-                    free(dlState);
+                    MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
+                    if (dlState != nil) {
+                        // Remove reference:
+                        [_displayLinkStates removeObjectForKey:@(displayID)];
+                        free(dlState);
+                    }
                 }
             }
         }
