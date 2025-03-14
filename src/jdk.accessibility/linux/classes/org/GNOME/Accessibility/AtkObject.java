@@ -64,6 +64,8 @@ public class AtkObject {
      * on Windows, see AccessBridge.getAccelerator(AccessibleContext) in OpenJDK.
      */
     private static String getAcceleratorText(AccessibleContext ac) {
+        assert(EventQueue.isDispatchThread());
+        
         String accText = "";
         Accessible parent = ac.getAccessibleParent();
         if (parent != null) {
