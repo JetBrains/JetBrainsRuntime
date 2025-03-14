@@ -36,7 +36,7 @@ public class AtkSelection {
     // JNI upcalls section
 
     private static AtkSelection create_atk_selection(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkSelection(ac);
         }, null);
     }
@@ -46,7 +46,7 @@ public class AtkSelection {
         if (acc_selection == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             acc_selection.addAccessibleSelection(i);
             return is_child_selected(i);
         }, false);
@@ -68,7 +68,7 @@ public class AtkSelection {
         if (acc_selection == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             Accessible sel = acc_selection.getAccessibleSelection(i);
             if (sel == null)
                 return null;
@@ -84,7 +84,7 @@ public class AtkSelection {
         if (acc_selection == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             int count = 0;
             for (int i = 0; i < ac.getAccessibleChildrenCount(); i++) {
                 if (acc_selection.isAccessibleChildSelected(i))
@@ -101,7 +101,7 @@ public class AtkSelection {
         if (acc_selection == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_selection.isAccessibleChildSelected(i);
         }, false);
     }
@@ -111,7 +111,7 @@ public class AtkSelection {
         if (acc_selection == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             acc_selection.removeAccessibleSelection(i);
             return !is_child_selected(i);
         }, false);
@@ -125,7 +125,7 @@ public class AtkSelection {
         if (acc_selection == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             AccessibleStateSet stateSet = ac.getAccessibleStateSet();
             if (stateSet.contains(AccessibleState.MULTISELECTABLE)) {
                 acc_selection.selectAllAccessibleSelection();

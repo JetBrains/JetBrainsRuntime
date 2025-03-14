@@ -39,7 +39,7 @@ public class AtkImage {
     // JNI upcalls section
 
     private static AtkImage create_atk_image(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkImage(ac);
         }, null);
     }
@@ -49,7 +49,7 @@ public class AtkImage {
         if (ac == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             AccessibleComponent acc_component = ac.getAccessibleComponent();
             if (acc_component == null)
                 return null;
@@ -62,7 +62,7 @@ public class AtkImage {
         if (acc_icons == null)
             return "";
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             String desc = "";
             if (acc_icons != null && acc_icons.length > 0) {
                 desc = acc_icons[0].getAccessibleIconDescription();
@@ -82,7 +82,7 @@ public class AtkImage {
 
         AccessibleIcon[] acc_icons = _acc_icons.get();
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_icons != null && acc_icons.length > 0) {
                 d.height = acc_icons[0].getAccessibleIconHeight();
                 d.width = acc_icons[0].getAccessibleIconWidth();

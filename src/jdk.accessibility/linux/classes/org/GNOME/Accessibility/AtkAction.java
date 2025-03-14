@@ -70,7 +70,7 @@ public class AtkAction {
     // JNI upcalls section
 
     private static AtkAction create_atk_action(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkAction(ac);
         }, null);
     }
@@ -107,7 +107,7 @@ public class AtkAction {
         if (descriptions[i] != null) {
             return descriptions[i];
         }
-        descriptions[i] = AtkUtil.invokeInSwing(() -> {
+        descriptions[i] = AtkUtil.invokeInSwingAndWait(() -> {
             return acc_action.getAccessibleActionDescription(i);
         }, "");
         return descriptions[i];
@@ -149,7 +149,7 @@ public class AtkAction {
         if (descriptions[i] != null) {
             return descriptions[i];
         }
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             descriptions[i] = acc_action.getAccessibleActionDescription(i);
             if (descriptions[i] != null)
                 return descriptions[i];

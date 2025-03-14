@@ -35,7 +35,7 @@ public class AtkValue {
     // JNI upcalls section
 
     private static AtkValue create_atk_value(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkValue(ac);
         }, null);
     }
@@ -45,7 +45,7 @@ public class AtkValue {
         if (acc_value == null)
             return 0.0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_value.getCurrentAccessibleValue();
         }, 0.0);
     }
@@ -55,7 +55,7 @@ public class AtkValue {
         if (acc_value == null)
             return 0.0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_value.getMaximumAccessibleValue().doubleValue();
         }, 0.0);
     }
@@ -65,7 +65,7 @@ public class AtkValue {
         if (acc_value == null)
             return 0.0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_value.getMinimumAccessibleValue().doubleValue();
         }, 0.0);
     }

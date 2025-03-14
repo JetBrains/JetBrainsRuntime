@@ -40,7 +40,7 @@ public class AtkHypertext extends AtkText {
     // JNI upcalls section
 
     private static AtkHypertext create_atk_hypertext(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkHypertext(ac);
         }, null);
     }
@@ -52,7 +52,7 @@ public class AtkHypertext extends AtkText {
         if (acc_hyper_text == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             AccessibleHyperlink link = acc_hyper_text.getLink(link_index);
             if (link != null)
                 return AtkHyperlink.createAtkHyperlink(link);
@@ -67,7 +67,7 @@ public class AtkHypertext extends AtkText {
         if (acc_hyper_text == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_hyper_text.getLinkCount();
         }, 0);
     }
@@ -79,7 +79,7 @@ public class AtkHypertext extends AtkText {
         if (acc_hyper_text == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_hyper_text.getLinkIndex(char_index);
         }, 0);
     }

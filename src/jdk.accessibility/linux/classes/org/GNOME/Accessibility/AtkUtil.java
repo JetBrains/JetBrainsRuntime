@@ -45,7 +45,7 @@ public class AtkUtil {
     }
 
     /**
-     * invokeInSwing:
+     * invokeInSwingAndWait:
      * Invoked when we need to make an asynchronous callback on
      * a Java object and this callback has a return value.
      * this method doesn't launch any exception because in case
@@ -59,7 +59,7 @@ public class AtkUtil {
      * this will automatically wrapped from java in the
      * corresponding object
      */
-    public static <T> T invokeInSwing(Callable<T> function, T d) {
+    public static <T> T invokeInSwingAndWait(Callable<T> function, T d) {
         if (SwingUtilities.isEventDispatchThread()) {
             // We are already running in the EDT, we can call it directly
             try {

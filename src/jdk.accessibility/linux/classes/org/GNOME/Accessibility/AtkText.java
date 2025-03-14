@@ -58,7 +58,7 @@ public class AtkText {
     // JNI upcalls section
 
     private static AtkText create_atk_text(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkText(ac);
         }, null);
     }
@@ -69,7 +69,7 @@ public class AtkText {
         if (acc_text == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             final int rightStart = getRightStart(start);
             ;
             final int rightEnd = getRightEnd(start, end, acc_text.getCharCount());
@@ -91,7 +91,7 @@ public class AtkText {
         if (acc_text == null)
             return ' ';
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             String str = acc_text.getAtIndex(AccessibleText.CHARACTER, offset);
             if (str == null || str.length() == 0)
                 return ' ';
@@ -104,7 +104,7 @@ public class AtkText {
         if (acc_text == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (false && acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
                 // FIXME: this is not using start/end boundaries
                 int part = getPartTypeFromBoundary(boundary_type);
@@ -125,7 +125,7 @@ public class AtkText {
         if (acc_text == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (false && acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
                 // FIXME: this is not using start/end boundaries
                 int part = getPartTypeFromBoundary(boundary_type);
@@ -149,7 +149,7 @@ public class AtkText {
         if (acc_text == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (false && acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
                 // FIXME: this is not using start/end boundaries
                 int part = getPartTypeFromBoundary(boundary_type);
@@ -173,7 +173,7 @@ public class AtkText {
         if (acc_text == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_text.getCaretPosition();
         }, 0);
     }
@@ -186,7 +186,7 @@ public class AtkText {
         if (acc_text == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             Rectangle rect = acc_text.getCharacterBounds(offset);
             if (rect == null)
                 return null;
@@ -205,7 +205,7 @@ public class AtkText {
         if (acc_text == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_text.getCharCount();
         }, 0);
     }
@@ -218,7 +218,7 @@ public class AtkText {
         if (acc_text == null)
             return -1;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             AccessibleComponent component = ac.getAccessibleComponent();
             if (component == null)
                 return -1;
@@ -235,7 +235,7 @@ public class AtkText {
         if (acc_text == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
                 final int rightStart = getRightStart(start);
                 ;
@@ -261,7 +261,7 @@ public class AtkText {
         if (acc_text == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             String str = acc_text.getSelectedText();
             if (str != null && str.length() > 0)
                 return 1;
@@ -274,7 +274,7 @@ public class AtkText {
         if (acc_text == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             int start = acc_text.getSelectionStart();
             int end = acc_text.getSelectionEnd();
             String text = acc_text.getSelectedText();
@@ -292,7 +292,7 @@ public class AtkText {
         if (acc_edt_text == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_edt_text == null || get_n_selections() > 0)
                 return false;
 
@@ -309,7 +309,7 @@ public class AtkText {
         if (acc_edt_text == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_edt_text == null || selection_num > 0)
                 return false;
             acc_edt_text.selectText(0, 0);
@@ -325,7 +325,7 @@ public class AtkText {
         if (acc_edt_text == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_edt_text == null || selection_num > 0)
                 return false;
 
@@ -346,7 +346,7 @@ public class AtkText {
         if (acc_edt_text == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_edt_text != null) {
                 final int rightOffset = getRightEnd(0, offset, acc_text.getCharCount());
                 acc_edt_text.selectText(offset, offset);

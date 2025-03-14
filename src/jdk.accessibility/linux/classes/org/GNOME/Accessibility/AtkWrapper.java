@@ -741,7 +741,7 @@ public class AtkWrapper {
     }
 
     public static long getInstanceFromSwing(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return getInstance(ac);
         }, 0l);
     }

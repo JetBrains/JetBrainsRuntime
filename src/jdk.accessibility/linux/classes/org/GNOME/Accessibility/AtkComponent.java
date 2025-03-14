@@ -119,7 +119,7 @@ public class AtkComponent {
     // JNI upcalls section
 
     private static AtkComponent create_atk_component(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkComponent(ac);
         }, null);
     }
@@ -132,7 +132,7 @@ public class AtkComponent {
         if (acc_component == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_component.isVisible()) {
                 Point p = getComponentOrigin(ac, acc_component, coord_type);
                 if (p == null)
@@ -152,7 +152,7 @@ public class AtkComponent {
         if (acc_component == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_component.isVisible()) {
                 Point p = getComponentOrigin(ac, acc_component, coord_type);
                 if (p == null)
@@ -172,7 +172,7 @@ public class AtkComponent {
         if (acc_component == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (!acc_component.isFocusTraversable())
                 return false;
             acc_component.requestFocus();
@@ -188,7 +188,7 @@ public class AtkComponent {
         if (acc_component == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_component.isVisible()) {
                 Point p = getParentOrigin(ac, acc_component, coord_type);
                 if (p == null)
@@ -209,7 +209,7 @@ public class AtkComponent {
         if (acc_component == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_component.isVisible()) {
                 Rectangle rect = acc_component.getBounds();
                 if (rect == null)
@@ -231,7 +231,7 @@ public class AtkComponent {
         if (ac == null)
             return AtkLayer.INVALID;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             AccessibleRole role = ac.getAccessibleRole();
             if (role == AccessibleRole.MENU ||
                     role == AccessibleRole.MENU_ITEM ||

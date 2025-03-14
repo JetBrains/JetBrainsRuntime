@@ -36,7 +36,7 @@ public class AtkTable {
     // JNI upcalls section
 
     private static AtkTable create_atk_table(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkTable(ac);
         }, null);
     }
@@ -46,7 +46,7 @@ public class AtkTable {
         if (acc_table == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             Accessible accessible = acc_table.getAccessibleAt(row, column);
             if (accessible != null)
                 return accessible.getAccessibleContext();
@@ -59,7 +59,7 @@ public class AtkTable {
         if (acc_table == null)
             return -1;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_table instanceof AccessibleExtendedTable accessibleExtendedTable)
                 return accessibleExtendedTable.getAccessibleIndex(row, column);
             Accessible child = acc_table.getAccessibleAt(row, column);
@@ -77,7 +77,7 @@ public class AtkTable {
         if (acc_table == null)
             return -1;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             int column = -1;
             if (acc_table instanceof AccessibleExtendedTable accessibleExtendedTable)
                 column = accessibleExtendedTable.getAccessibleColumn(index);
@@ -90,7 +90,7 @@ public class AtkTable {
         if (acc_table == null)
             return -1;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             int row = -1;
             if (acc_table instanceof AccessibleExtendedTable accessibleExtendedTable)
                 row = accessibleExtendedTable.getAccessibleRow(index);
@@ -103,7 +103,7 @@ public class AtkTable {
         if (acc_table == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_table.getAccessibleColumnCount();
         }, 0);
     }
@@ -113,7 +113,7 @@ public class AtkTable {
         if (acc_table == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_table.getAccessibleRowCount();
         }, 0);
     }
@@ -123,7 +123,7 @@ public class AtkTable {
         if (acc_table == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_table.getAccessibleColumnExtentAt(row, column);
         }, 0);
     }
@@ -133,7 +133,7 @@ public class AtkTable {
         if (acc_table == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_table.getAccessibleRowExtentAt(row, column);
         }, 0);
     }
@@ -143,7 +143,7 @@ public class AtkTable {
         if (acc_table == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             Accessible accessible = acc_table.getAccessibleCaption();
             if (accessible != null)
                 return accessible.getAccessibleContext();
@@ -166,7 +166,7 @@ public class AtkTable {
         if (acc_table == null)
             return "";
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             Accessible accessible = acc_table.getAccessibleColumnDescription(column);
             if (accessible != null) {
                 AccessibleContext ac = accessible.getAccessibleContext();
@@ -199,7 +199,7 @@ public class AtkTable {
         if (acc_table == null)
             return "";
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             Accessible accessible = acc_table.getAccessibleRowDescription(row);
             if (accessible != null) {
                 AccessibleContext ac = accessible.getAccessibleContext();
@@ -232,7 +232,7 @@ public class AtkTable {
         if (acc_table == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             AccessibleTable accessibleTable = acc_table.getAccessibleColumnHeader();
             if (accessibleTable != null) {
                 Accessible accessible = accessibleTable.getAccessibleAt(0, column);
@@ -248,7 +248,7 @@ public class AtkTable {
         if (acc_table == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             AccessibleTable accessibleTable = acc_table.getAccessibleRowHeader();
             if (accessibleTable != null) {
                 Accessible accessible = accessibleTable.getAccessibleAt(row, 0);
@@ -264,7 +264,7 @@ public class AtkTable {
         if (acc_table == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             Accessible accessible = acc_table.getAccessibleSummary();
             if (accessible != null)
                 return accessible.getAccessibleContext();
@@ -288,7 +288,7 @@ public class AtkTable {
         if (acc_table == null)
             return d;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_table.getSelectedAccessibleColumns();
         }, d);
     }
@@ -299,7 +299,7 @@ public class AtkTable {
         if (acc_table == null)
             return d;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_table.getSelectedAccessibleRows();
         }, d);
     }
@@ -309,7 +309,7 @@ public class AtkTable {
         if (acc_table == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_table.isAccessibleColumnSelected(column);
         }, false);
     }
@@ -319,7 +319,7 @@ public class AtkTable {
         if (acc_table == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_table.isAccessibleRowSelected(row);
         }, false);
     }
@@ -329,7 +329,7 @@ public class AtkTable {
         if (acc_table == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_table.isAccessibleSelected(row, column);
         }, false);
     }

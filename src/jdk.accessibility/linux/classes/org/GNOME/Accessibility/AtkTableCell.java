@@ -61,7 +61,7 @@ public class AtkTableCell {
     // JNI upcalls section
 
     private static AtkTableCell create_atk_table_cell(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkTableCell(ac);
         }, null);
     }
@@ -75,7 +75,7 @@ public class AtkTableCell {
     private AccessibleContext[] get_accessible_column_header() {
         if (_acc_pt == null)
             return null;
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             AccessibleTable iteration = _acc_pt.get().getAccessibleColumnHeader();
             if (iteration != null) {
                 int length = iteration.getAccessibleColumnCount();
@@ -92,7 +92,7 @@ public class AtkTableCell {
     private AccessibleContext[] get_accessible_row_header() {
         if (_acc_pt == null)
             return null;
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             AccessibleTable iteration = _acc_pt.get().getAccessibleRowHeader();
             if (iteration != null) {
                 int length = iteration.getAccessibleRowCount();

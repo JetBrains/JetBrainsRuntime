@@ -32,7 +32,7 @@ public class AtkHyperlink {
     }
 
     public static AtkHyperlink createAtkHyperlink(AccessibleHyperlink hl) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkHyperlink(hl);
         }, null);
     }
@@ -40,7 +40,7 @@ public class AtkHyperlink {
     // JNI upcalls section
 
     private static AtkHyperlink create_atk_hyperlink(AccessibleHyperlink hl) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkHyperlink(hl);
         }, null);
     }
@@ -50,7 +50,7 @@ public class AtkHyperlink {
         if (acc_hyperlink == null)
             return "";
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             Object o = acc_hyperlink.getAccessibleActionObject(i);
             if (o != null)
                 return o.toString();
@@ -63,7 +63,7 @@ public class AtkHyperlink {
         if (acc_hyperlink == null)
             return null;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             Object anchor = acc_hyperlink.getAccessibleActionAnchor(i);
             if (anchor instanceof Accessible accessible)
                 return accessible.getAccessibleContext();
@@ -76,7 +76,7 @@ public class AtkHyperlink {
         if (acc_hyperlink == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_hyperlink.getEndIndex();
         }, 0);
     }
@@ -86,7 +86,7 @@ public class AtkHyperlink {
         if (acc_hyperlink == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_hyperlink.getStartIndex();
         }, 0);
     }
@@ -96,7 +96,7 @@ public class AtkHyperlink {
         if (acc_hyperlink == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_hyperlink.isValid();
         }, false);
     }
@@ -106,7 +106,7 @@ public class AtkHyperlink {
         if (acc_hyperlink == null)
             return 0;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_hyperlink.getAccessibleActionCount();
         }, 0);
     }

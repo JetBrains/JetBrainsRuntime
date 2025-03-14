@@ -37,7 +37,7 @@ public class AtkEditableText extends AtkText {
     // JNI upcalls section
 
     private static AtkEditableText create_atk_editable_text(AccessibleContext ac) {
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkEditableText(ac);
         }, null);
     }
@@ -135,7 +135,7 @@ public class AtkEditableText extends AtkText {
         if (acc_edt_text == null)
             return false;
 
-        return AtkUtil.invokeInSwing(() -> {
+        return AtkUtil.invokeInSwingAndWait(() -> {
             acc_edt_text.setAttributes(start, end, as);
             return true;
         }, false);
