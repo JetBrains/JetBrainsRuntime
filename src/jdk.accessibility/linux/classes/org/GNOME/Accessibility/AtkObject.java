@@ -65,7 +65,7 @@ public class AtkObject {
      */
     private static String getAcceleratorText(AccessibleContext ac) {
         assert(EventQueue.isDispatchThread());
-        
+
         String accText = "";
         Accessible parent = ac.getAccessibleParent();
         if (parent != null) {
@@ -264,10 +264,10 @@ public class AtkObject {
                     Object[] objs = array[i].getTarget();
                     AccessibleContext[] contexts = new AccessibleContext[objs.length];
                     for (int j = 0; j < objs.length; j++) {
-                        if (objs[i] instanceof Accessible accessible)
-                            contexts[i] = accessible.getAccessibleContext();
+                        if (objs[j] instanceof Accessible accessible)
+                            contexts[j] = accessible.getAccessibleContext();
                         else
-                            contexts[i] = null;
+                            contexts[j] = null;
                     }
                     result[i] = new WrapKeyAndTarget(key, contexts);
                 }
