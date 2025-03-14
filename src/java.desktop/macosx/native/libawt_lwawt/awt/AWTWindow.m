@@ -1528,31 +1528,46 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 - (void)sendEvent:(NSEvent *)event {
-        if ([event type] == NSLeftMouseDown ||
-            [event type] == NSRightMouseDown ||
-            [event type] == NSOtherMouseDown) {
-            NSPoint p = [NSEvent mouseLocation];
-            NSRect frame = [self.nsWindow frame];
-            NSRect contentRect = [self.nsWindow contentRectForFrameRect:frame];
+    if ([self.nsWindow isIgnoreMove]) {
+        // https://mmazzarolo.com/blog/2022-04-16-drag-window-by-clicking-anywhere-on-macos/
+        // Allow dragging a window by clicking on any part of it while holding cmd + ctrl
+        // if NSWindowShouldDragOnGesture is on.
+        const NSEventModifierFlags windowDragModifierFlags = NSEventModifierFlagCommand & NSEventModifierFlagControl;
+        if ([event type] == NSLeftMouseDown &&
+            ([event modifierFlags] & windowDragModifierFlags) == windowDragModifierFlags &&
+            [[NSUserDefaults standardUserDefaults] boolForKey:@"NSWindowShouldDragOnGesture"]) {
+            self.nsWindow.movable = YES;
+            return;
+        }
+        if ([event type] == NSLeftMouseUp) {
+            self.nsWindow.movable = NO;
+        }
+    }
+    if ([event type] == NSLeftMouseDown ||
+        [event type] == NSRightMouseDown ||
+        [event type] == NSOtherMouseDown) {
+        NSPoint p = [NSEvent mouseLocation];
+        NSRect frame = [self.nsWindow frame];
+        NSRect contentRect = [self.nsWindow contentRectForFrameRect:frame];
 
-            // Check if the click happened in the non-client area (title bar)
-            // Also, non-client area includes the edges at left, right and botton of frame
-            if ((p.y >= (frame.origin.y + contentRect.size.height)) ||
-                (p.x >= (frame.origin.x + contentRect.size.width - 3)) ||
-                (fabs(frame.origin.x - p.x) < 3) ||
-                (fabs(frame.origin.y - p.y) < 3)) {
-                JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-                jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
-                if (platformWindow != NULL) {
-                    // Currently, no need to deliver the whole NSEvent.
-                    GET_CPLATFORM_WINDOW_CLASS();
-                    DECLARE_METHOD(jm_deliverNCMouseDown, jc_CPlatformWindow, "deliverNCMouseDown", "()V");
-                    (*env)->CallVoidMethod(env, platformWindow, jm_deliverNCMouseDown);
-                    CHECK_EXCEPTION();
-                    (*env)->DeleteLocalRef(env, platformWindow);
-                }
+        // Check if the click happened in the non-client area (title bar)
+        // Also, non-client area includes the edges at left, right and botton of frame
+        if ((p.y >= (frame.origin.y + contentRect.size.height)) ||
+            (p.x >= (frame.origin.x + contentRect.size.width - 3)) ||
+            (fabs(frame.origin.x - p.x) < 3) ||
+            (fabs(frame.origin.y - p.y) < 3)) {
+            JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+            jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
+            if (platformWindow != NULL) {
+                // Currently, no need to deliver the whole NSEvent.
+                GET_CPLATFORM_WINDOW_CLASS();
+                DECLARE_METHOD(jm_deliverNCMouseDown, jc_CPlatformWindow, "deliverNCMouseDown", "()V");
+                (*env)->CallVoidMethod(env, platformWindow, jm_deliverNCMouseDown);
+                CHECK_EXCEPTION();
+                (*env)->DeleteLocalRef(env, platformWindow);
             }
         }
+    }
 }
 
 - (void)constrainSize:(NSSize*)size {
