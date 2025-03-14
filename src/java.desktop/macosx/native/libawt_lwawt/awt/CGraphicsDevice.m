@@ -23,6 +23,8 @@
  * questions.
  */
 
+#import <pthread.h>
+
 #import "LWCToolkit.h"
 #import "ThreadUtilities.h"
 #include "GeomUtilities.h"
@@ -429,17 +431,11 @@ Java_sun_awt_CGraphicsDevice_nativeSetDisplayMode
 
 JNI_COCOA_ENTER(env);
     // global lock to ensure only 1 display change transaction at the same time:
-    static NSLock* configureDisplayLock;
-    static dispatch_once_t oncePredicate;
+    static pthread_mutex_t configureDisplayMutex = PTHREAD_MUTEX_INITIALIZER;
 
-    dispatch_once(&oncePredicate, ^{
-        configureDisplayLock = [[NSLock alloc] init];
-    });
-
+    // Avoid reentrance and ensure consistency between the best mode and ConfigureDisplay transaction:
+    pthread_mutex_lock(&configureDisplayMutex);
     @try {
-        // Avoid reentrance and ensure consistency between the best mode and ConfigureDisplay transaction:
-        [configureDisplayLock lock];
-
         if (TRACE_DISPLAY_CHANGE_CONF) {
             NSLog(@"nativeSetDisplayMode: displayID: %d w:%d h:%d bpp: %d refrate:%d", displayID, w, h, bpp, refrate);
         }
@@ -482,7 +478,7 @@ JNI_COCOA_ENTER(env);
             CFRelease(allModes);
         }
     } @finally {
-        [configureDisplayLock unlock];
+        pthread_mutex_unlock(&configureDisplayMutex);
     }
     if (retCode != kCGErrorSuccess) {
         JNU_ThrowIllegalArgumentException(env, "Unable to set display mode!");

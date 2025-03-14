@@ -24,6 +24,7 @@
  * questions.
  */
 
+#include <pthread.h>
 #include "time.h"
 
 #import "AccelTexturePool.h"
@@ -38,29 +39,35 @@
 
 /* lock API */
 ATexturePoolLockPrivPtr* MTLTexturePoolLock_initImpl(void) {
-    NSLock* l = [[[NSLock alloc] init] autorelease];
-    [l retain];
+    pthread_mutex_t *l = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+    CHECK_NULL_LOG_RETURN(l, NULL, "MTLTexturePoolLock_initImpl: could not allocate pthread_mutex_t");
+
+    int status = pthread_mutex_init(l, NULL);
+    if (status != 0) {
+      return NULL;
+    }
     if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_initImpl: lock=%p", l);
-    return l;
+    return (ATexturePoolLockPrivPtr*)l;
 }
 
 void MTLTexturePoolLock_DisposeImpl(ATexturePoolLockPrivPtr *lock) {
-    NSLock* l = (NSLock*)lock;
+    pthread_mutex_t* l = (pthread_mutex_t*)lock;
     if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_DisposeImpl: lock=%p", l);
-    [l release];
+    pthread_mutex_destroy(l);
+    free(l);
 }
 
 void MTLTexturePoolLock_lockImpl(ATexturePoolLockPrivPtr *lock) {
-    NSLock* l = (NSLock*)lock;
+    pthread_mutex_t* l = (pthread_mutex_t*)lock;
     if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_lockImpl: lock=%p", l);
-    [l lock];
+    pthread_mutex_lock(l);
     if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_lockImpl: lock=%p - locked", l);
 }
 
 void MTLTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
-    NSLock* l = (NSLock*)lock;
+    pthread_mutex_t* l = (pthread_mutex_t*)lock;
     if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_unlockImpl: lock=%p", l);
-    [l unlock];
+    pthread_mutex_unlock(l);
     if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_unlockImpl: lock=%p - unlocked", l);
 }
 
@@ -272,8 +279,8 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 
 
 @implementation MTLPoolCell {
-    MTLTexturePool* _pool;
-    NSLock*         _lock;
+    MTLTexturePool*  _pool;
+    pthread_mutex_t _lock;
 }
 @synthesize available, availableTail, occupied;
 
@@ -285,7 +292,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     self.availableTail = nil;
     self.occupied = nil;
     _pool = pool;
-    _lock = [[NSLock alloc] init];
+    pthread_mutex_init(&_lock, NULL);
 
     if (TRACE_MEM_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_init: cell = %p", self);
     return self;
@@ -340,13 +347,12 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 
 - (void) dealloc {
     if (TRACE_MEM_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_dealloc: cell = %p", self);
-    [_lock lock];
+    pthread_mutex_lock(&_lock);
     @try {
         [self removeAllItems];
     } @finally {
-        [_lock unlock];
+        pthread_mutex_unlock(&_lock);
     }
-    [_lock release];
     [super dealloc];
 }
 
@@ -384,7 +390,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 - (void) releaseCellItem:(MTLTexturePoolItem *)item {
     if (!item.isBusy) return;
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_releaseCellItem: item = %p", item);
-    [_lock lock];
+    pthread_mutex_lock(&_lock);
     @try {
         [item retain];
         if (item.prev == nil) {
@@ -409,13 +415,13 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
         item.isBusy = NO;
         [item release];
     } @finally {
-        [_lock unlock];
+        pthread_mutex_unlock(&_lock);
     }
 }
 
 - (void) addOccupiedItem:(MTLTexturePoolItem *)item {
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_addOccupiedItem: item = %p", item);
-    [_lock lock];
+    pthread_mutex_lock(&_lock);
     @try {
         _pool.allocatedCount++;
         _pool.totalAllocatedCount++;
@@ -427,12 +433,12 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
         self.occupied = item;
         item.isBusy = YES;
     } @finally {
-        [_lock unlock];
+        pthread_mutex_unlock(&_lock);
     }
 }
 
 - (void) cleanIfBefore:(time_t)lastUsedTimeToRemove {
-    [_lock lock];
+    pthread_mutex_lock(&_lock);
     @try {
         MTLTexturePoolItem *cur = availableTail;
         while (cur != nil) {
@@ -457,7 +463,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
             cur = prev;
         }
     } @finally {
-        [_lock unlock];
+        pthread_mutex_unlock(&_lock);
     }
 }
 
@@ -465,7 +471,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     int minDeltaArea = -1;
     const int requestedPixels = width*height;
     MTLTexturePoolItem *minDeltaTpi = nil;
-    [_lock lock];
+    pthread_mutex_lock(&_lock);
     @try {
         for (MTLTexturePoolItem *cur = available; cur != nil; cur = cur.next) {
             // TODO: use swizzle when formats are not equal:
@@ -489,9 +495,8 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
             [self occupyItem:minDeltaTpi];
         }
     } @finally {
-        [_lock unlock];
+        pthread_mutex_unlock(&_lock);
     }
-
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_occupyCellItem: item = %p", minDeltaTpi);
     return minDeltaTpi;
 }

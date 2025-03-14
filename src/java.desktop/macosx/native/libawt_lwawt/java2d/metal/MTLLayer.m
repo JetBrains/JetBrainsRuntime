@@ -23,6 +23,7 @@
  * questions.
  */
 
+#import <pthread.h>
 #import <sys/sysctl.h>
 #import "PropertiesUtilities.h"
 #import "MTLGraphicsConfig.h"
@@ -110,7 +111,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 }
 
 @implementation MTLLayer {
-    NSLock* _lock;
+    pthread_mutex_t _lock;
 }
 
 - (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled
@@ -158,7 +159,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     self.avgBlitFrameTime = DF_BLIT_FRAME_TIME;
     self.perfCountersEnabled = perfCountersEnabled ? YES : NO;
     self.lastPresentedTime = 0.0;
-    _lock = [[NSLock alloc] init];
+    pthread_mutex_init(&_lock, NULL);
     return self;
 }
 
@@ -176,7 +177,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     @autoreleasepool {
         // MTLDrawable pool barrier:
         BOOL skipDrawable = YES;
-        [_lock lock];
+        pthread_mutex_lock(&_lock);
         @try {
             if (self.nextDrawableCount < LAST_DRAWABLE) {
                 // increment used drawables to act as the CPU fence:
@@ -184,7 +185,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 skipDrawable = NO;
             }
         } @finally {
-            [_lock unlock];
+            pthread_mutex_unlock(&_lock);
         }
         if (skipDrawable) {
             if (TRACE_DISPLAY) {
@@ -339,7 +340,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
                 if (isDisplaySyncEnabled()) {
                     // Increment redrawCount:
-                    [self startRedrawIfNeeded];
+                    [self startRedraw];
                 }
             }
         }
@@ -347,9 +348,9 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 }
 
 - (void) freeDrawableCount {
-    [_lock lock];
+    pthread_mutex_lock(&_lock);
     --self.nextDrawableCount;
-    [_lock unlock];
+    pthread_mutex_unlock(&_lock);
     if (TRACE_DISPLAY) {
         J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_freeDrawableCount: layer[%p] nextDrawableCount = %d",
                        CACurrentMediaTime(), self, self.nextDrawableCount);
@@ -366,7 +367,6 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     [self stopRedraw:YES];
     self.buffer = NULL;
     self.outBuffer = NULL;
-    [_lock release];
     [super dealloc];
 }
 
@@ -396,10 +396,19 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 - (void) postNeedsDisplay {
     // use dispatch-async to make it more immediate than Runloop:
     [self retain];
-    [ThreadUtilities criticalDispatchOnMainThreadASAP:^(){
-        [self setNeedsDisplay];
-        [self release];
-    }];
+    // More smooth during resize:
+    if (1) {
+        [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+                                                 block:^(){
+            [self setNeedsDisplay];
+            [self release];
+        }];
+    } else {
+        [ThreadUtilities criticalDispatchOnMainThreadASAP:^() {
+            [self setNeedsDisplay];
+            [self release];
+        }];
+    }
 }
 
 - (void)startRedrawIfNeeded {
@@ -482,7 +491,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
         if (updateDisplay) {
             if (isDisplaySyncEnabled()) {
-                [self startRedrawIfNeeded];
+                [self startRedraw];
             } else {
                 [self flushBuffer];
             }
@@ -601,7 +610,7 @@ Java_sun_java2d_metal_MTLLayer_validate
                        (*layer.buffer).height);
 
         if (isDisplaySyncEnabled()) {
-            [layer startRedrawIfNeeded];
+            [layer startRedraw];
         } else {
             [layer flushBuffer];
         }
