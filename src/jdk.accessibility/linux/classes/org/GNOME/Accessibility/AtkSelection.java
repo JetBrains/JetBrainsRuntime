@@ -125,8 +125,8 @@ public class AtkSelection {
         if (acc_selection == null)
             return false;
 
-        AccessibleStateSet stateSet = ac.getAccessibleStateSet();
         return AtkUtil.invokeInSwing(() -> {
+            AccessibleStateSet stateSet = ac.getAccessibleStateSet();
             if (stateSet.contains(AccessibleState.MULTISELECTABLE)) {
                 acc_selection.selectAllAccessibleSelection();
                 return true;
