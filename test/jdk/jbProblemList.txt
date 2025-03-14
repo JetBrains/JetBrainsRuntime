@@ -172,7 +172,7 @@ java/awt/Frame/7024749/bug7024749.java JBR-5210 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509 generic-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-all
-java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java 8340595,JBR-7786,JBR-7947 linux-all,macosx-15.3,macosx-15.3.1
+java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java 8340595,JBR-7786,JBR-7947 linux-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
 java/awt/dnd/DropActionChangedTest.java JBR-6757 windows-all
@@ -1317,7 +1317,7 @@ jb/java/awt/Focus/ContextMenuAfterPopup.java JBR-5799 windows-all
 jb/java/awt/Focus/EventsOnPopupShowing.java                                         JBR-6230 windows-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java                                            JBR-3180 linux-5.18.2-arch1-1
-jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3,macosx-15.3.1
+jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3,macosx-15.3.1,macosx-15.3.2
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTest.java JBR-6681 windows-all
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/Font/font430.sh                                                         JBR-4956 linux-all
