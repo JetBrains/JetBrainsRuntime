@@ -32,7 +32,7 @@
 #include "VKTypes.h"
 
 void VKBlitLoops_IsoBlit(JNIEnv *env,
-                          VKRenderingContext* context, jlong pSrcOps,
+                          jlong pSrcOps,
                           jboolean xform, jint hint,
                           jboolean texture,
                           jint sx1, jint sy1,
@@ -41,7 +41,7 @@ void VKBlitLoops_IsoBlit(JNIEnv *env,
                           jdouble dx2, jdouble dy2);
 
 void VKBlitLoops_Blit(JNIEnv *env,
-                       VKRenderingContext* context, jlong pSrcOps,
+                       jlong pSrcOps,
                        jboolean xform, jint hint,
                        jint srctype, jboolean texture,
                        jint sx1, jint sy1,
@@ -50,7 +50,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
                        jdouble dx2, jdouble dy2);
 
 void
-VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
+VKBlitLoops_SurfaceToSwBlit(JNIEnv *env,
                             jlong pSrcOps, jlong pDstOps, jint dsttype,
                             jint srcx, jint srcy, jint dstx, jint dsty,
                             jint width, jint height);
