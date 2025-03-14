@@ -1264,6 +1264,7 @@ java/awt/TextArea/UsingWithMouse/SelectionAutoscrollTest.java JBR-7822 linux-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java 8253184 windows-all
 java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java JBR-6748 linux-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289 windows-all
+java/awt/Focus/RequestFocusAndHideTest/RequestFocusAndHideTest.java JBR-8431 linux-aarch64
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335 linux-all
 java/awt/Focus/RequestOnCompWithNullParent/RequestOnCompWithNullParent1.java JBR-6507 linux-all
 java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java JBR-6052 macosx-all,linux-all
