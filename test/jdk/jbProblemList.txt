@@ -272,7 +272,7 @@ java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-5210,8298247 windows-all,
 java/awt/Focus/8073453/SwingFocusTransitionTest.java JBR-5210 windows-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java JBR-5210 windows-all
 java/awt/event/KeyEvent/AltGraphModifier.java JBR-6085 windows-all
-java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all
+java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all,macosx-all
 java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055,JBR-93 windows-all,linux-all
 java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916 linux-all
 
@@ -936,7 +936,7 @@ javax/swing/plaf/basic/BasicTableHeaderUI/6394566/bug6394566.java JBR-5846 windo
 javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,windows-all
 javax/swing/plaf/basic/BasicTreeUI/8023474/bug8023474.java 8253184 linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
+javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510,JBR-8300 windows-all,linux-5.18.2-arch1-1,macosx-15.3,macosx-15.3.1,macosx-15.3.2
 javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464 windows-all,linux-all,windows-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java 8253184,JBR-5829 windows-all,linux-all
 javax/swing/plaf/windows/6921687/bug6921687.java 8253184 windows-all
