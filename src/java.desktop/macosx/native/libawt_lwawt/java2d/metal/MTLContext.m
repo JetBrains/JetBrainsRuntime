@@ -25,7 +25,7 @@
 
 #include <stdlib.h>
 #import <ThreadUtilities.h>
-#import <pthread.h>
+#include <pthread.h>
 
 #include "sun_java2d_SunGraphics2D.h"
 
@@ -198,8 +198,7 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
     MTLSamplerManager * _samplerManager;
     MTLStencilManager * _stencilManager;
 
-    pthread_mutex_t     _lockDisplayLinkStates;
-    pthread_mutex_t     _lockLayers;
+    pthread_mutex_t     _lockDisplayLink;
 }
 
 @synthesize textureFunction,
@@ -482,23 +481,22 @@ extern void initSamplers(id<MTLDevice> device);
         _glyphCacheLCD = [[MTLGlyphCache alloc] initWithContext:self];
         _glyphCacheAA = [[MTLGlyphCache alloc] initWithContext:self];
 
+        // create reentrant mutex to synchronize layers and displayLinkStates:
         pthread_mutexattr_t attr;
         pthread_mutexattr_init(&attr);
         pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-        pthread_mutex_init(&_lockDisplayLinkStates, &attr);
+        pthread_mutex_init(&_lockDisplayLink, &attr);
         pthread_mutexattr_destroy(&attr);
-
-        pthread_mutex_init(&_lockLayers, NULL);
     }
     return self;
 }
 
 - (NSArray<NSNumber*>*)getDisplayLinkDisplayIds {
-    pthread_mutex_lock(&_lockDisplayLinkStates);
+    pthread_mutex_lock(&_lockDisplayLink);
     @try {
         return [_displayLinkStates allKeys];
     } @finally {
-        pthread_mutex_unlock(&_lockDisplayLinkStates);
+        pthread_mutex_unlock(&_lockDisplayLink);
     }
 }
 
@@ -544,12 +542,12 @@ extern void initSamplers(id<MTLDevice> device);
             dlState->lastStatTime = 0.0;
 
             if (isNewDisplayLink) {
-                pthread_mutex_lock(&_lockDisplayLinkStates);
+                // publish fully initialized object:
+                pthread_mutex_lock(&_lockDisplayLink);
                 @try {
-                    // publish fully initialized object:
                     _displayLinkStates[@(displayID)] = [NSValue valueWithPointer:dlState];
                 } @finally {
-                    pthread_mutex_unlock(&_lockDisplayLinkStates);
+                    pthread_mutex_unlock(&_lockDisplayLink);
                 }
             }
             CHECK_CVLINK("SetOutputCallback", nil, &_displayLink,
@@ -568,11 +566,11 @@ extern void initSamplers(id<MTLDevice> device);
         return nil;
     }
     NSValue* dlStateVal = nil;
-    pthread_mutex_lock(&_lockDisplayLinkStates);
+    pthread_mutex_lock(&_lockDisplayLink);
     @try {
         dlStateVal = _displayLinkStates[@(displayID)];
     } @finally {
-        pthread_mutex_unlock(&_lockDisplayLinkStates);
+        pthread_mutex_unlock(&_lockDisplayLink);
     }
     if (dlStateVal == nil) {
         if (TRACE_CVLINK_WARN) {
@@ -1049,7 +1047,7 @@ extern void initSamplers(id<MTLDevice> device);
     dlState->lastRedrawTime = now;
 
     // Process layers:
-    pthread_mutex_lock(&_lockLayers);
+    pthread_mutex_lock(&_lockDisplayLink);
     @try {
         for (MTLLayer *layer in _layers) {
             if (layer.displayID == displayID) {
@@ -1057,13 +1055,13 @@ extern void initSamplers(id<MTLDevice> device);
             }
         }
     } @finally {
-        pthread_mutex_unlock(&_lockLayers);
+        pthread_mutex_unlock(&_lockDisplayLink);
     }
     if (dlState->redrawCount > 0) {
         dlState->redrawCount--;
     } else {
         // dlState->redrawCount == 0:
-        pthread_mutex_lock(&_lockLayers);
+        pthread_mutex_lock(&_lockDisplayLink);
         @try {
             if (_layers.count > 0) {
                 for (MTLLayer *layer in _layers.allObjects) {
@@ -1073,7 +1071,7 @@ extern void initSamplers(id<MTLDevice> device);
                 }
             }
         } @finally {
-            pthread_mutex_unlock(&_lockLayers);
+            pthread_mutex_unlock(&_lockDisplayLink);
         }
         [self handleDisplayLink:NO displayID:displayID source:"redraw"];
     }
@@ -1153,11 +1151,11 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
     dlState->redrawCount = KEEP_ALIVE_COUNT;
     layer.redrawCount = REDRAW_COUNT;
 
-    pthread_mutex_lock(&_lockLayers);
+    pthread_mutex_lock(&_lockDisplayLink);
     @try {
         [_layers addObject:layer];
     } @finally {
-        pthread_mutex_unlock(&_lockLayers);
+        pthread_mutex_unlock(&_lockDisplayLink);
     }
     if (MTLLayer_isExtraRedrawEnabled()) {
         // Request for redraw before starting display link to avoid rendering problem on M2 processor
@@ -1178,7 +1176,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
         return;
     }
     bool hasLayers = false;
-    pthread_mutex_lock(&_lockLayers);
+    pthread_mutex_lock(&_lockDisplayLink);
     @try {
         if (--layer.redrawCount <= 0) {
             [_layers removeObject:layer];
@@ -1193,7 +1191,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
             }
         }
     } @finally {
-        pthread_mutex_unlock(&_lockLayers);
+        pthread_mutex_unlock(&_lockDisplayLink);
     }
     if (!hasLayers && (dlState->redrawCount == 0)) {
         [self handleDisplayLink:NO displayID:displayID source:"stopRedraw"];
@@ -1205,7 +1203,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
         if (TRACE_CVLINK) {
             J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLContext_haltRedraw: ctx=%p", self);
         }
-        pthread_mutex_lock(&_lockLayers);
+        pthread_mutex_lock(&_lockDisplayLink);
         @try {
             if (_layers.count > 0) {
                 for (MTLLayer *layer in _layers) {
@@ -1213,13 +1211,8 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
                 }
                 [_layers removeAllObjects];
             }
-        } @finally {
-            pthread_mutex_unlock(&_lockLayers);
-        }
-        pthread_mutex_lock(&_lockDisplayLinkStates);
-        @try {
             if (_displayLinkStates.count > 0) {
-                const NSArray<NSNumber*>* displayIDs = [self getDisplayLinkDisplayIds]; // old ids
+                const NSArray<NSNumber*>* displayIDs = [self _getDisplayLinkDisplayIds]; // old ids
                 if (TRACE_CVLINK) {
                     NSLog(@"MTLContext_haltRedraw: ctx=%p (%d displayLinks)",
                           self, (int) displayIDs.count);
@@ -1237,7 +1230,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
                 }
             }
         } @finally {
-            pthread_mutex_unlock(&_lockDisplayLinkStates);
+            pthread_mutex_unlock(&_lockDisplayLink);
         }
     }
 }

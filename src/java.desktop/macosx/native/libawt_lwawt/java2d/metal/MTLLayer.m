@@ -23,7 +23,7 @@
  * questions.
  */
 
-#import <pthread.h>
+#include <pthread.h>
 #import <sys/sysctl.h>
 #import "PropertiesUtilities.h"
 #import "MTLGraphicsConfig.h"
