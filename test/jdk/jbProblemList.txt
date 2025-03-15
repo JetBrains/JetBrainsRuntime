@@ -331,7 +331,7 @@ java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java 8222328 windows-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java 8222328 windows-all,linux-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java 8165218,8222328 windows-all,macosx-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/Translucent.java 8222328 windows-all,linux-all,macosx-all
-java/awt/Window/AlwaysOnTop/AlwaysOnTopEvenOfWindow.java JBR-6686 linux-aarch64
+java/awt/Window/AlwaysOnTop/AlwaysOnTopEvenOfWindow.java JBR-6686 linux-all
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593,8253184 linux-all,windows-all
 java/awt/Window/AlwaysOnTop/TestAlwaysOnTopBeforeShow.java JBR-6661 windows-x64
 java/awt/Window/Grab/GrabTest.java 8253184 windows-all
@@ -689,7 +689,7 @@ java/awt/image/VolatileImage/CustomCompositeTest.java 8199002 windows-all,linux-
 java/awt/image/VolatileImage/GradientPaints.java 8199003 linux-all
 java/awt/JAWT/JAWT.sh 8197798 windows-all,linux-all
 java/awt/datatransfer/ConstructFlavoredObjectTest/ConstructFlavoredObjectTest.java 8202860 linux-all
-java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.java 8202882 linux-all
+java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.java 8202882,JBR-1147 linux-all,macosx-all
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275 macosx-all
 java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-7299 linux-all
 java/awt/Focus/NoFocusOwnerAWTTest.java JBR-5825 windows-all
@@ -1114,7 +1114,7 @@ javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-53
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210 windows-all
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5542 linux-all
-javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,8340330 windows-all,macosx-15.3,macosx-15.3.1
+javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,8340330 windows-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
