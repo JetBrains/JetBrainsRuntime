@@ -111,7 +111,7 @@ jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java nobug generic-all
 jb/java/awt/CustomTitleBar/WindowResizeTest.java nobug generic-all
 jb/java/awt/CustomTitleBar/WindowVisibilityTest.java nobug generic-all
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java nobug generic-all
-jb/java/awt/Window/ZOrderOnModalDialogActivation.java nobug generic-all
+jb/java/awt/Window/ZOrderOnModalDialogActivation.java JBR-5713 windows-all
 jb/java/awt/dnd/DnDScalingWithHIDPI/DnDScalingWithHIDPITest.java nobug generic-all
 jb/javax/swing/CustomTitleBar/JFrameNativeControlsMacOSTest.java nobug generic-all
 jb/javax/swing/Popup/WLPopupAsParent.java nobug generic-all
@@ -136,5 +136,4 @@ jb/java/awt/Focus/RequestFocusInParent.java                                     
 jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
 jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
 jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                          JBR-6090 windows-all
-jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
 jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
