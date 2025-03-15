@@ -26,10 +26,11 @@
 
 #include <pthread.h>
 
+#include "AccelTexturePool.h"
+#include "AccelTexturePoolLock_pthread.h"
 #include "VKImage.h"
 #include "VKUtil.h"
 #include "VKTexturePool.h"
-#include "AccelTexturePool.h"
 #include "jni.h"
 #include "Trace.h"
 
@@ -37,40 +38,6 @@
 #define TRACE_LOCK              0
 #define TRACE_TEX               0
 
-
-/* lock API */
-ATexturePoolLockPrivPtr* VKTexturePoolLock_initImpl(void) {
-    pthread_mutex_t *l = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-    CHECK_NULL_LOG_RETURN(l, NULL, "VKTexturePoolLock_initImpl: could not allocate pthread_mutex_t");
-
-    int status = pthread_mutex_init(l, NULL);
-    if (status != 0) {
-      return NULL;
-    }
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_initImpl: lock=%p", l);
-    return (ATexturePoolLockPrivPtr*)l;
-}
-
-void VKTexturePoolLock_DisposeImpl(ATexturePoolLockPrivPtr *lock) {
-    pthread_mutex_t* l = (pthread_mutex_t*)lock;
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_DisposeImpl: lock=%p", l);
-    pthread_mutex_destroy(l);
-    free(l);
-}
-
-void VKTexturePoolLock_lockImpl(ATexturePoolLockPrivPtr *lock) {
-    pthread_mutex_t* l = (pthread_mutex_t*)lock;
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_lockImpl: lock=%p", l);
-    pthread_mutex_lock(l);
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_lockImpl: lock=%p - locked", l);
-}
-
-void VKTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
-    pthread_mutex_t* l = (pthread_mutex_t*)lock;
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_unlockImpl: lock=%p", l);
-    pthread_mutex_unlock(l);
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_unlockImpl: lock=%p - unlocked", l);
-}
 
 static void VKTexturePool_FindImageMemoryType(VKMemoryRequirements* requirements) {
     VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_ALL_MEMORY_PROPERTIES);
@@ -150,10 +117,10 @@ VKTexturePool* VKTexturePool_InitWithDevice(VKDevice *device) {
     // TODO: get vulkan device memory information (1gb fixed here):
     uint64_t maxDeviceMemory = 1024 * UNIT_MB;
 
-    ATexturePoolLockWrapper *lockWrapper = ATexturePoolLockWrapper_init(&VKTexturePoolLock_initImpl,
-                                                                        &VKTexturePoolLock_DisposeImpl,
-                                                                        &VKTexturePoolLock_lockImpl,
-                                                                        &VKTexturePoolLock_unlockImpl);
+    ATexturePoolLockWrapper *lockWrapper = ATexturePoolLockWrapper_init(&AccelTexturePoolLock_InitImpl,
+                                                                        &AccelTexturePoolLock_DisposeImpl,
+                                                                        &AccelTexturePoolLock_LockImpl,
+                                                                        &AccelTexturePoolLock_UnlockImpl);
 
     return ATexturePool_initWithDevice(device,
                                        (jlong)maxDeviceMemory,

@@ -1284,7 +1284,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         final boolean checkLWCToolkitBlockingMainGuard = false;
 
         if (!checkLWCToolkitBlockingMainGuard && LWCToolkit.isBlockingMainThread()) {
-            logger.info("Blocked main thread, skip flushBuffers().");
+            logger.fine("Blocked main thread, skip flushBuffers().");
             return;
         }
 

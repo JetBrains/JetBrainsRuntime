@@ -26,7 +26,8 @@
 
 #include "time.h"
 
-#import "AccelTexturePool.h"
+#include "AccelTexturePool.h"
+#include "AccelTexturePoolLock_pthread.h"
 #import "MTLTexturePool.h"
 #import "Trace.h"
 
@@ -34,35 +35,6 @@
 
 #define TRACE_LOCK              0
 #define TRACE_TEX               0
-
-
-/* lock API */
-ATexturePoolLockPrivPtr* MTLTexturePoolLock_initImpl(void) {
-    NSLock* l = [[[NSLock alloc] init] autorelease];
-    [l retain];
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_initImpl: lock=%p", l);
-    return l;
-}
-
-void MTLTexturePoolLock_DisposeImpl(ATexturePoolLockPrivPtr *lock) {
-    NSLock* l = (NSLock*)lock;
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_DisposeImpl: lock=%p", l);
-    [l release];
-}
-
-void MTLTexturePoolLock_lockImpl(ATexturePoolLockPrivPtr *lock) {
-    NSLock* l = (NSLock*)lock;
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_lockImpl: lock=%p", l);
-    [l lock];
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_lockImpl: lock=%p - locked", l);
-}
-
-void MTLTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
-    NSLock* l = (NSLock*)lock;
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_unlockImpl: lock=%p", l);
-    [l unlock];
-    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "MTLTexturePoolLock_unlockImpl: lock=%p - unlocked", l);
-}
 
 
 /* Texture allocate/free API */
@@ -272,8 +244,8 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 
 
 @implementation MTLPoolCell {
-    MTLTexturePool* _pool;
-    NSLock*         _lock;
+    MTLTexturePool*  _pool;
+    ATexturePoolLockPrivPtr* _lock;
 }
 @synthesize available, availableTail, occupied;
 
@@ -285,7 +257,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     self.availableTail = nil;
     self.occupied = nil;
     _pool = pool;
-    _lock = [[NSLock alloc] init];
+    _lock = AccelTexturePoolLock_InitImpl();
 
     if (TRACE_MEM_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_init: cell = %p", self);
     return self;
@@ -340,13 +312,13 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 
 - (void) dealloc {
     if (TRACE_MEM_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_dealloc: cell = %p", self);
-    [_lock lock];
+    AccelTexturePoolLock_LockImpl(_lock);
     @try {
         [self removeAllItems];
     } @finally {
-        [_lock unlock];
+        AccelTexturePoolLock_UnlockImpl(_lock);
     }
-    [_lock release];
+    AccelTexturePoolLock_DisposeImpl(_lock);
     [super dealloc];
 }
 
@@ -384,7 +356,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 - (void) releaseCellItem:(MTLTexturePoolItem *)item {
     if (!item.isBusy) return;
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_releaseCellItem: item = %p", item);
-    [_lock lock];
+    AccelTexturePoolLock_LockImpl(_lock);
     @try {
         [item retain];
         if (item.prev == nil) {
@@ -409,13 +381,13 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
         item.isBusy = NO;
         [item release];
     } @finally {
-        [_lock unlock];
+        AccelTexturePoolLock_UnlockImpl(_lock);
     }
 }
 
 - (void) addOccupiedItem:(MTLTexturePoolItem *)item {
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_addOccupiedItem: item = %p", item);
-    [_lock lock];
+    AccelTexturePoolLock_LockImpl(_lock);
     @try {
         _pool.allocatedCount++;
         _pool.totalAllocatedCount++;
@@ -427,12 +399,12 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
         self.occupied = item;
         item.isBusy = YES;
     } @finally {
-        [_lock unlock];
+        AccelTexturePoolLock_UnlockImpl(_lock);
     }
 }
 
 - (void) cleanIfBefore:(time_t)lastUsedTimeToRemove {
-    [_lock lock];
+    AccelTexturePoolLock_LockImpl(_lock);
     @try {
         MTLTexturePoolItem *cur = availableTail;
         while (cur != nil) {
@@ -457,7 +429,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
             cur = prev;
         }
     } @finally {
-        [_lock unlock];
+        AccelTexturePoolLock_UnlockImpl(_lock);
     }
 }
 
@@ -465,7 +437,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     int minDeltaArea = -1;
     const int requestedPixels = width*height;
     MTLTexturePoolItem *minDeltaTpi = nil;
-    [_lock lock];
+    AccelTexturePoolLock_LockImpl(_lock);
     @try {
         for (MTLTexturePoolItem *cur = available; cur != nil; cur = cur.next) {
             // TODO: use swizzle when formats are not equal:
@@ -489,9 +461,8 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
             [self occupyItem:minDeltaTpi];
         }
     } @finally {
-        [_lock unlock];
+        AccelTexturePoolLock_UnlockImpl(_lock);
     }
-
     if (TRACE_USE_API) J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLPoolCell_occupyCellItem: item = %p", minDeltaTpi);
     return minDeltaTpi;
 }
@@ -558,10 +529,10 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     if (self == nil) return self;
 
 #if (USE_ACCEL_TEXTURE_POOL == 1)
-    ATexturePoolLockWrapper *lockWrapper = ATexturePoolLockWrapper_init(&MTLTexturePoolLock_initImpl,
-                                                                        &MTLTexturePoolLock_DisposeImpl,
-                                                                        &MTLTexturePoolLock_lockImpl,
-                                                                        &MTLTexturePoolLock_unlockImpl);
+    ATexturePoolLockWrapper *lockWrapper = ATexturePoolLockWrapper_init(&AccelTexturePoolLock_InitImpl,
+                                                                        &AccelTexturePoolLock_DisposeImpl,
+                                                                        &AccelTexturePoolLock_LockImpl,
+                                                                        &AccelTexturePoolLock_UnlockImpl);
 
     _accelTexturePool = ATexturePool_initWithDevice(dev,
                                                     (jlong)maxDeviceMemory,

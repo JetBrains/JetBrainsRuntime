@@ -23,6 +23,7 @@
  * questions.
  */
 
+#include <pthread.h>
 #import <sys/sysctl.h>
 #import "PropertiesUtilities.h"
 #import "MTLGraphicsConfig.h"
@@ -110,7 +111,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 }
 
 @implementation MTLLayer {
-    NSLock* _lock;
+    pthread_mutex_t _lock;
 }
 
 - (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled
@@ -158,7 +159,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     self.avgBlitFrameTime = DF_BLIT_FRAME_TIME;
     self.perfCountersEnabled = perfCountersEnabled ? YES : NO;
     self.lastPresentedTime = 0.0;
-    _lock = [[NSLock alloc] init];
+    pthread_mutex_init(&_lock, NULL);
     return self;
 }
 
@@ -176,7 +177,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     @autoreleasepool {
         // MTLDrawable pool barrier:
         BOOL skipDrawable = YES;
-        [_lock lock];
+        pthread_mutex_lock(&_lock);
         @try {
             if (self.nextDrawableCount < LAST_DRAWABLE) {
                 // increment used drawables to act as the CPU fence:
@@ -184,14 +185,14 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 skipDrawable = NO;
             }
         } @finally {
-            [_lock unlock];
+            pthread_mutex_unlock(&_lock);
         }
         if (skipDrawable) {
             if (TRACE_DISPLAY) {
                 J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_blitTexture: skip drawable [skip blit] nextDrawableCount = %d",
                                CACurrentMediaTime(), self.nextDrawableCount);
             }
-            [self startRedraw];
+            [self startRedrawIfNeeded];
             return;
         }
 
@@ -347,9 +348,9 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 }
 
 - (void) freeDrawableCount {
-    [_lock lock];
+    pthread_mutex_lock(&_lock);
     --self.nextDrawableCount;
-    [_lock unlock];
+    pthread_mutex_unlock(&_lock);
     if (TRACE_DISPLAY) {
         J2dRlsTraceLn3(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_freeDrawableCount: layer[%p] nextDrawableCount = %d",
                        CACurrentMediaTime(), self, self.nextDrawableCount);
@@ -366,12 +367,11 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     [self stopRedraw:YES];
     self.buffer = NULL;
     self.outBuffer = NULL;
-    [_lock release];
     [super dealloc];
 }
 
 - (void) blitCallback {
-
+    AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_MTL_LAYER_CLASS();
     DECLARE_METHOD(jm_drawInMTLContext, jc_JavaLayer, "drawInMTLContext", "()V");
@@ -393,28 +393,29 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     [super display];
 }
 
+- (void) postNeedsDisplay {
+    [self retain];
+    [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+                                             block:^(){
+        [self setNeedsDisplay];
+        [self release];
+    }];
+}
+
 - (void)startRedrawIfNeeded {
-    AWT_ASSERT_APPKIT_THREAD;
-    if (isDisplaySyncEnabled()) {
-        if (self.redrawCount == 0) {
-            [self.ctx startRedraw:self];
-        }
+    if (isDisplaySyncEnabled() && (self.redrawCount == 0)) {
+        [self.ctx startRedraw:self];
     }
 }
 
 - (void)startRedraw {
     if (isDisplaySyncEnabled()) {
         if (self.ctx != nil) {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
-                                                     block:^(){
-                [self.ctx startRedraw:self];
-            }];
+            // direct thread-safe:
+            [self.ctx startRedraw:self];
         }
     } else {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
-                                                     block:^(){
-            [self setNeedsDisplay];
-        }];
+        [self postNeedsDisplay];
     }
 }
 
@@ -430,10 +431,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             self.redrawCount = 0;
         }
         if (mtlc != nil) {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
-                                                     block:^(){
-                [mtlc stopRedraw:displayID layer:self];
-            }];
+            // direct thread-safe:
+            [mtlc stopRedraw:displayID layer:self];
         }
     }
 }
@@ -473,8 +472,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                     J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_commitCommandBuffer: CompletedHandler", CACurrentMediaTime());
                 }
                 // Ensure layer will be redrawn asap to display new content:
-                [ThreadUtilities performOnMainThread:@selector(startRedrawIfNeeded) on:self withObject:nil
-                                       waitUntilDone:NO useJavaModes:NO]; // critical
+                // direct thread-safe:
+                [self startRedrawIfNeeded];
             }
             [self release];
         }];
@@ -622,10 +621,13 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
     // this method where we need to change native texture size and layer's scale
     // in one call on appkit, otherwise we'll get window's contents blinking,
     // during screen-2-screen moving.
+
     // Ensure main thread changes the MTLLayer instance later:
+    [layer retain];
     [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
                                              block:^(){
         layer.contentsScale = scale;
+        [layer release];
     }];
     JNI_COCOA_EXIT(env);
 }
@@ -667,10 +669,11 @@ Java_sun_java2d_metal_MTLLayer_nativeSetOpaque
 
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     // Ensure main thread changes the MTLLayer instance later:
+    [layer retain];
     [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // critical
                                           block:^(){
         [layer setOpaque:(opaque == JNI_TRUE)];
+        [layer release];
     }];
-
     JNI_COCOA_EXIT(env);
 }

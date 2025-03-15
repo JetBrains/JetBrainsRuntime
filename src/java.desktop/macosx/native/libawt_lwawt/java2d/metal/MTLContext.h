@@ -125,7 +125,6 @@ typedef enum {
 - (id)initWithDevice:(id<MTLDevice>)device shadersLib:(NSString*)mtlShadersLib;
 - (void)dealloc;
 
-- (NSArray<NSNumber*>*)getDisplayLinkDisplayIds;
 - (void)handleDisplayLink:(BOOL)enabled displayID:(jint)displayID source:(const char*)src;
 - (void)createDisplayLinkIfAbsent: (jint)displayID;
 

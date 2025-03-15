@@ -876,6 +876,8 @@ public final class LWCToolkit extends LWToolkit {
 
     static native String getThreadTraceContexts();
 
+    static native boolean isWithinPowerTransition();
+
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {
         Objects.requireNonNull(component, "Null component provided to invokeLater");
