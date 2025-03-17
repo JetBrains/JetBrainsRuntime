@@ -1002,6 +1002,11 @@ public class IRNode {
         vectorNode(NEG_VD, "NegVD", TYPE_DOUBLE);
     }
 
+    public static final String NOP = PREFIX + "NOP" + POSTFIX;
+    static {
+        machOnlyNameRegex(NOP, "Nop");
+    }
+
     public static final String NULL_ASSERT_TRAP = PREFIX + "NULL_ASSERT_TRAP" + POSTFIX;
     static {
         trapNodes(NULL_ASSERT_TRAP,"null_assert");
