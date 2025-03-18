@@ -432,22 +432,22 @@ bool CARR_hash_map_linear_probing_rehash(CARR_MAP_LAYOUT_ARGS, void** handle, CA
 /**
  * Find a value for the provided key.
  * @param P map
- * @param KEY key to find, can be a compound literal, like (int){0}
+ * @param ... key to find, can be a compound literal, like (int){0}
  * @return pointer to the found value, or NULL
  */
-#define MAP_FIND(P, KEY) \
-    CARR_MAP_VALUE_PTR((P), CARR_MAP_DISPATCH((P), find, (P), CARR_MAP_KEY_GUARD((P), &(KEY)), NULL, false))
+#define MAP_FIND(P, ...) \
+    CARR_MAP_VALUE_PTR((P), CARR_MAP_DISPATCH((P), find, (P), CARR_MAP_KEY_GUARD((P), &(__VA_ARGS__)), NULL, false))
 
 /**
  * Find a value for the provided key, or insert a new one.
  * Value is zeroed for newly inserted items.
  * On allocation failure, C_ARRAY_UTIL_ALLOCATION_FAILED is called.
  * @param P map
- * @param KEY key to find, can be a compound literal, like (int){0}
+ * @param ... key to find, can be a compound literal, like (int){0}
  * @return dereferenced pointer to the found value
  */
-#define MAP_AT(P, KEY) (*(MAP_ENSURE_EXTRA_CAPACITY((P), 1), \
-    CARR_MAP_VALUE_PTR((P), CARR_MAP_DISPATCH((P), find, (P), CARR_MAP_KEY_GUARD((P), &(KEY)), NULL, true))))
+#define MAP_AT(P, ...) (*(MAP_ENSURE_EXTRA_CAPACITY((P), 1), \
+    CARR_MAP_VALUE_PTR((P), CARR_MAP_DISPATCH((P), find, (P), CARR_MAP_KEY_GUARD((P), &(__VA_ARGS__)), NULL, true))))
 
 /**
  * Resolve provided key and find corresponding value.
@@ -474,10 +474,10 @@ bool CARR_hash_map_linear_probing_rehash(CARR_MAP_LAYOUT_ARGS, void** handle, CA
 /**
  * Remove the provided key, if one exists.
  * @param P map
- * @param KEY key to remove, can be a compound literal, like (int){0}
+ * @param ... key to remove, can be a compound literal, like (int){0}
  * @return true if the key was removed
  */
-#define MAP_REMOVE(P, KEY) CARR_MAP_DISPATCH((P), remove, (P), CARR_MAP_KEY_GUARD((P), &(KEY)))
+#define MAP_REMOVE(P, ...) CARR_MAP_DISPATCH((P), remove, (P), CARR_MAP_KEY_GUARD((P), &(__VA_ARGS__)))
 
 /**
  * Ensure that map has enough capacity to insert COUNT more items without reallocation.
