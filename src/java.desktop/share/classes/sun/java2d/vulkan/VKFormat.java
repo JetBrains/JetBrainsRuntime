@@ -68,8 +68,9 @@ public enum VKFormat {
         this.opaqueModel = opaqueModel;
     }
 
-    public int getValue() {
-        return value;
+    public int getValue(int transparency) {
+        final int FORMAT_OPAQUE_BIT = 0x80000000;
+        return transparency != Transparency.OPAQUE ? value : value | FORMAT_OPAQUE_BIT;
     }
 
     public SurfaceType getSurfaceType() {

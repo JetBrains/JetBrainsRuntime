@@ -468,7 +468,7 @@ final class VKSurfaceToSwBlit extends Blit {
             buf.putInt(sx).putInt(sy);
             buf.putInt(dx).putInt(dy);
             buf.putInt(w).putInt(h);
-            buf.putInt(format.getValue());
+            buf.putInt(format.getValue(dst.getTransparency()));
             buf.putLong(src.getNativeOps());
             buf.putLong(dst.getNativeOps());
 
