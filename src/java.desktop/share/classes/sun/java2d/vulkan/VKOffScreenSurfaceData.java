@@ -34,14 +34,14 @@ import sun.java2d.SurfaceData;
  */
 public class VKOffScreenSurfaceData extends VKSurfaceData {
     private final Image offscreenImage;
-    private native void initOps();
+    private native void initOps(int format);
 
     public VKOffScreenSurfaceData(Image image, VKFormat format, int transparency, int type, int width, int height) {
         super(format, transparency, type);
         this.width = width;
         this.height = height;
         offscreenImage = image;
-        initOps();
+        initOps(format.getValue(transparency));
     }
 
     @Override
