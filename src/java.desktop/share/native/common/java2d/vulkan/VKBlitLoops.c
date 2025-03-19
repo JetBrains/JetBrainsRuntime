@@ -131,7 +131,6 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
                              renderVertexBuffer->handle, 4);
 
 //  TODO: Not optimal but required for releasing raster buffer. Such Buffers should also be managed by special pools
-//  TODO: Also, consider using VKRenderer_FlushRenderPass here to process pending command
     VKRenderer_FlushSurface(dstOps);
     VKRenderer_Flush(device->renderer);
     VKRenderer_Sync(device->renderer);
