@@ -41,8 +41,10 @@
 #include "VKTexturePool.h"
 #include "VKUtil.h"
 
-static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKImage* dest, const SurfaceDataRasInfo *srcInfo,
-                     int dx1, int dy1, int dx2, int dy2) {
+static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
+                                              VKSDOps *dstOps,
+                                              const SurfaceDataRasInfo *srcInfo,
+                                              int dx1, int dy1, int dx2, int dy2) {
     VKSDOps* surface = context->surface;
     VKDevice* device = surface->device;
 
@@ -125,11 +127,11 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
         }
     }
 
-    VKRenderer_TextureRender(dest, VKTexturePoolHandle_GetTexture(hnd),
+    VKRenderer_TextureRender(dstOps->image, VKTexturePoolHandle_GetTexture(hnd),
                              renderVertexBuffer->handle, 4);
 
 //  TODO: Not optimal but required for releasing raster buffer. Such Buffers should also be managed by special pools
-//  TODO: Also, consider using VKRenderer_FlushRenderPass here to process pending command
+    VKRenderer_FlushSurface(dstOps);
     VKRenderer_Flush(device->renderer);
     VKRenderer_Sync(device->renderer);
 //  TODO: Track lifecycle of the texture to avoid reuse of occupied texture
@@ -375,7 +377,6 @@ void VKBlitLoops_Blit(JNIEnv *env,
 
     VKRenderingContext *context = VKRenderer_GetContext();
     VKSDOps *dstOps = context->surface;
-    VKImage *dest = context->surface->image;
 //    if (srctype < 0 || srctype >= sizeof(RasterFormatInfos)/ sizeof(MTLRasterFormatInfo)) {
 //        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: source pixel format %d isn't supported", srctype);
 //        return;
@@ -440,8 +441,9 @@ void VKBlitLoops_Blit(JNIEnv *env,
 //            if (texture) {
 //                replaceTextureRegion(mtlc, dest, &srcInfo, &rfi, (int) dx1, (int) dy1, (int) dx2, (int) dy2);
 //            } else {
-                VKBlitSwToTextureViaPooledTexture(context, dest, &srcInfo,
-                                                  (int)dstX1, (int)dstY1, (int)dstX2, (int)dstY2);
+                VKBlitSwToTextureViaPooledTexture(context, dstOps, &srcInfo,
+                                                  (int)dstX1, (int)dstY1,
+                                                  (int)dstX2, (int)dstY2);
 //            }
         }
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);
