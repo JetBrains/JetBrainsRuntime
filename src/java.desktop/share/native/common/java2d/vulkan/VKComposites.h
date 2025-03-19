@@ -56,15 +56,23 @@ typedef enum {
     NO_COMPOSITE )
 
 typedef struct {
+    VKCompositeMode mode;
+    VkBool32        dstOpaque;
+} VKCompositeDescriptor;
+
+typedef struct {
     VkPipelineColorBlendAttachmentState attachmentState;
     VkPipelineColorBlendStateCreateInfo blendState;
+    AlphaType                           outAlphaType;
 } VKCompositeState;
 
-typedef MAP(VKCompositeMode, VKCompositeState) VKComposites;
+typedef struct {
+    MAP(VKCompositeDescriptor, VKCompositeState) map;
+} VKComposites;
 
 VKComposites VKComposites_Create();
 void VKComposites_Destroy(VKComposites composites);
 void VKComposites_AddState(VKComposites* composites, VKCompositeMode mode, VKCompositeState state);
-const VKCompositeState* VKComposites_GetState(VKComposites* composites, VKCompositeMode mode);
+const VKCompositeState* VKComposites_GetState(VKComposites* composites, VKCompositeMode mode, VkBool32 dstOpaque);
 
 #endif //VKComposites_h_Included
