@@ -5,6 +5,7 @@ layout(location = 0) in  vec2 in_TexCoord;
 layout(location = 0) out vec4 out_Color;
 
 void main() {
+    // TODO consider in/out alpha type.
     out_Color = texture(u_TexSampler, in_TexCoord);
     // TODO: Temporary fix of unexpected transparency with blit operations
     out_Color.a = 1.0;
