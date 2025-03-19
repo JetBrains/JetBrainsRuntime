@@ -533,6 +533,11 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 if (VKRenderer_GetContext()->surface != NULL &&
                     VK_IS_NEQ_TRANSFORM(&VKRenderer_GetContext()->transform, &transform))
                 {
+                  // TODO: Consider replacing this with setting a new transform
+                  //  in VKRenderingContext and increment transformModCount,
+                  //  then check for changed transform modification counter in
+                  //  VKRenderer_Validate, do VKRenderer_FlushDraw and push
+                  //  new constants into the shader
                   VKRenderer_FlushSurface(VKRenderer_GetContext()->surface);
                   VKRenderer_GetContext()->transform = transform;
                 }
