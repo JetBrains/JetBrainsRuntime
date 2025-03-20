@@ -53,6 +53,7 @@ public final class WLInputMethod extends InputMethodAdapter {
 
     /* sun.awt.im.InputMethodAdapter methods section */
 
+    @Deprecated
     @Override
     protected Component getClientComponent() {
         return super.getClientComponent();
@@ -276,6 +277,39 @@ public final class WLInputMethod extends InputMethodAdapter {
         initIDs();
     }
 
+
+    // The important protocol points:
+    //
+    // * "Text is valid UTF-8 encoded, indices and lengths are in bytes.
+    //    Indices must not point to middle bytes inside a code point:
+    //    they must either point to the first byte of a code point or to the end of the buffer.
+    //    Lengths must be measured between two valid indices." ;
+    //
+    // * zwp_text_input_v3.enable and zwp_text_input_v3.disable requests are not expected to be paired with each other,
+    //   the compositor must be able to handle consecutive series of the same request ;
+    //
+    // * After an enter event or disable request all state information is invalidated and needs to be resent by the client
+    //
+    // * zwp_text_input_v3::enable: must be issued every time the active text input changes to a new one,
+    //                              including within the current surface
+    //
+    // * zwp_text_input_v3::enable: this request resets all state associated with previous
+    //                              enable, disable, set_surrounding_text, set_text_change_cause,
+    //                              set_content_type, and set_cursor_rectangle requests,
+    //                              as well as the state associated with
+    //                              preedit_string, commit_string, and delete_surrounding_text events
+    //
+    // * zwp_text_input_v3::enable: the set_surrounding_text, set_content_type and set_cursor_rectangle requests must
+    //                              follow if the text input supports the necessary functionality
+    //
+    // * zwp_text_input_v3::set_content_type: values set with this request remain valid until
+    //                                        the next committed enable or disable request.
+    //                                        The initial value for hint is none, and
+    //                                        the initial value for purpose is normal.
+    //
+    //
+
+
     /**
      * The interface serves just as a namespace for all the types, constants
      * and helper (static) methods required for work with the "text-input-unstable-v3" protocol.
@@ -409,6 +443,59 @@ public final class WLInputMethod extends InputMethodAdapter {
                 caretRectangle = INITIAL_VALUE_CURSOR_RECTANGLE;
                 preeditString = INITIAL_VALUE_PREEDIT_STRING;
                 commitString = INITIAL_VALUE_COMMIT_STRING;
+
+                return this;
+            }
+
+
+            public InputContextState enableTextInput() {
+                enabled = true;
+                return this;
+            }
+
+            public InputContextState disableTextInput() {
+                enabled = false;
+                return this;
+            }
+
+
+            public InputContextState setLastDoneSerial(long newLastDoneSerial) {
+                this.lastDoneSerial = newLastDoneSerial;
+                return this;
+            }
+
+
+            public InputContextState applyIncomingChanges(IncomingChanges changes) {
+                this.commitString = changes.getCommitString();
+                this.preeditString = changes.getPreeditString();
+
+                return this;
+            }
+
+            public InputContextState syncWithCommittedOutgoingChanges(final OutgoingChanges changes, final long newVersion) {
+                assert(
+                    (newVersion == this.version) ||
+                    // See the implementation of
+                    // {@link OutgoingBeingCommittedChanges#acceptNewBeingCommitedChanges(OutgoingChanges)}
+                    (newVersion == (this.version + 1) % 0x100000000L)
+                );
+
+                version = newVersion;
+                if (changes != null) {
+                    if (changes.getEnabledState() != null) {
+                        enabled = changes.getEnabledState();
+                    }
+                    if (changes.getTextChangeCause() != null) {
+                        textChangeCause = changes.getTextChangeCause();
+                    }
+                    if (changes.getContentTypeHint() != null) {
+                        contentHint = changes.getContentTypeHint();
+                        contentPurpose = changes.getContentTypePurpose();
+                    }
+                    if (changes.getCursorRectangle() != null) {
+                        caretRectangle = changes.getCursorRectangle();
+                    }
+                }
 
                 return this;
             }
@@ -983,8 +1070,12 @@ public final class WLInputMethod extends InputMethodAdapter {
 
     /** {@link #activate()} / {@link #deactivate(boolean)} */
     private AWTActivationStatus awtActivationStatus = AWTActivationStatus.DEACTIVATED;
+    /** {@link #setAWTFocussedComponent(Component)} */
+    private Component awtFocussedComponent = null;
     /** {@link #setInputMethodContext(InputMethodContext)} */
     private InputMethodContext awtImContext = null;
+    /** {@link #setLocale(Locale)} */
+    private Locale awtLocale = null;
 
 
     /* Core methods section */
