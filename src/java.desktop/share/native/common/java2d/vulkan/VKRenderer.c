@@ -520,7 +520,7 @@ void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* 
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .image = image->handle,
-                .subresourceRange = { VKImage_GetAspect(image), 0, 1, 0, 1 }
+                .subresourceRange = { VKUtil_GetFormatGroup(image->format).aspect, 0, 1, 0, 1 }
         };
         batch->barrierCount++;
         batch->srcStages |= image->lastStage;
@@ -675,7 +675,7 @@ static void VKRenderer_InitFramebuffer(VKSDOps* surface) {
     // Initialize framebuffer.
     if (renderPass->framebuffer == VK_NULL_HANDLE) {
         renderPass->renderPass = renderPass->context->renderPass[surface->stencil != NULL];
-        VkImageView views[] = { surface->image->view, VK_NULL_HANDLE };
+        VkImageView views[] = { VKImage_GetView(device, surface->image, surface->image->format, 0), VK_NULL_HANDLE };
         VkFramebufferCreateInfo framebufferCreateInfo = {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .renderPass = renderPass->renderPass,
@@ -687,7 +687,7 @@ static void VKRenderer_InitFramebuffer(VKSDOps* surface) {
         };
         if (surface->stencil != NULL) {
             framebufferCreateInfo.attachmentCount = 2;
-            views[1] = surface->stencil->view;
+            views[1] = VKImage_GetView(device, surface->stencil, surface->stencil->format, 0);
         }
         VK_IF_ERROR(device->vkCreateFramebuffer(device->handle, &framebufferCreateInfo, NULL,
                                                 &renderPass->framebuffer)) VK_UNHANDLED_ERROR();
@@ -1297,7 +1297,7 @@ void VKRenderer_TextureRender(VKImage *destImage, VKImage *srcImage,
 
     VkDescriptorImageInfo imageInfo = {
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            .imageView = srcImage->view,
+            .imageView = VKImage_GetView(device, srcImage, srcImage->format, 0),
             .sampler = device->renderer->pipelineContext->linearRepeatSampler
     };
 
