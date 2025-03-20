@@ -192,8 +192,6 @@ static jobject createJavaDisplayMode(CGDisplayModeRef mode, JNIEnv *env) {
         uint32_t flags = CGDisplayModeGetIOFlags(mode);
         isDisplayModeDefault = (flags & kDisplayModeDefaultFlag) ? YES : NO;
     }
-    uint32_t flags = CGDisplayModeGetIOFlags(mode);
-    BOOL isDisplayModeDefault = (flags & kDisplayModeDefaultFlag) ? YES : NO;
     DECLARE_CLASS_RETURN(jc_DisplayMode, "java/awt/DisplayMode", ret);
     DECLARE_METHOD_RETURN(jc_DisplayMode_ctor, jc_DisplayMode, "<init>", "(IIIIZ)V", ret);
     ret = (*env)->NewObject(env, jc_DisplayMode, jc_DisplayMode_ctor, w, h, bpp, refrate, (jboolean)isDisplayModeDefault);
