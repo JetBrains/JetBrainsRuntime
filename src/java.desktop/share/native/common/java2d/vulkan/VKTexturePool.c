@@ -123,7 +123,7 @@ void VKTexturePoolHandle_ReleaseTexture(VKTexturePoolHandle *handle) {
     ATexturePoolHandle_ReleaseTexture(handle);
 }
 
-ATexturePrivPtr* VKTexturePoolHandle_GetTexture(VKTexturePoolHandle *handle) {
+VKImage* VKTexturePoolHandle_GetTexture(VKTexturePoolHandle *handle) {
     return ATexturePoolHandle_GetTexture(handle);
 }
 
