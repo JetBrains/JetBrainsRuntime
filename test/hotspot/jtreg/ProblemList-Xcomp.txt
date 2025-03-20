@@ -50,3 +50,5 @@ vmTestbase/vm/mlvm/indy/func/jvmti/redefineClassInTarget/TestDescription.java 83
 vmTestbase/nsk/jvmti/scenarios/capability/CM03/cm03t001/TestDescription.java 8299493 macosx-x64
 
 gc/arguments/TestNewSizeFlags.java 8299116 macosx-aarch64
+
+runtime/condy/escapeAnalysis/TestEscapeCondy.java 8339694 generic-all
