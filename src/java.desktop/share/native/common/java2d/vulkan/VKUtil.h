@@ -94,12 +94,19 @@ typedef enum {
     FORMAT_ALIAS_COUNT    = 9
 } FormatAlias;
 
+#define VK_PACK_SWIZZLE(R, G, B, A) ((VKPackedSwizzle)(R) & 0b111) | (((VKPackedSwizzle)(G) & 0b111) << 3) | \
+                             (((VKPackedSwizzle)(B) & 0b111) << 6) | (((VKPackedSwizzle)(A) & 0b111) << 9)
+
+#define VK_UNPACK_SWIZZLE(S) ((VkComponentMapping){ (VKPackedSwizzle)(S) & 0b111, ((VKPackedSwizzle)(S) >> 3) & 0b111, \
+                                             ((VKPackedSwizzle)(S) >> 6) & 0b111, ((VKPackedSwizzle)(S) >> 9) & 0b111 })
+
 /**
  * Group of format aliases. Use FormatAlias enum values to index into FormatGroup.aliases.
  */
 typedef struct {
-    VkFormat aliases[FORMAT_ALIAS_COUNT];
-    uint     bytes;
+    VkFormat              aliases[FORMAT_ALIAS_COUNT];
+    uint                  bytes;
+    VkImageAspectFlagBits aspect;
 } FormatGroup;
 
 /**
