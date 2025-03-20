@@ -483,7 +483,6 @@ java/beans/XMLEncoder/Test6570354.java 8015593 macosx-all
 
 # Wayland related
 
-java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java 8280991 linux-x64
 
 ############################################################################
 
