@@ -28,7 +28,6 @@ package jdk.internal.net.http;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.Base64;
@@ -100,7 +99,7 @@ class Http2ClientImpl {
             Http2Connection connection = connections.get(key);
             if (connection != null) {
                 try {
-                    if (connection.closed
+                    if (!connection.isOpen()
                             || !connection.reserveStream(true, pushEnabled)) {
                         if (debug.on())
                             debug.log("removing connection from pool since " +
@@ -156,7 +155,7 @@ class Http2ClientImpl {
      */
     boolean offerConnection(Http2Connection c) {
         if (debug.on()) debug.log("offering to the connection pool: %s", c);
-        if (c.closed || c.finalStream()) {
+        if (!c.isOpen() || c.finalStream()) {
             if (debug.on())
                 debug.log("skipping offered closed or closing connection: %s", c);
             return false;
@@ -164,6 +163,11 @@ class Http2ClientImpl {
 
         String key = c.key();
         synchronized(this) {
+            if (!c.isOpen()) {
+                if (debug.on())
+                    debug.log("skipping offered closed or closing connection: %s", c);
+                return false;
+            }
             Http2Connection c1 = connections.putIfAbsent(key, c);
             if (c1 != null) {
                 if (c.serverPushEnabled() && !c1.serverPushEnabled()) {

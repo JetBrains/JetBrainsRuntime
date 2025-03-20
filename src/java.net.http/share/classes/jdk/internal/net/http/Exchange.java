@@ -150,14 +150,45 @@ final class Exchange<T> {
         private volatile boolean closeRequested;
 
         void connection(HttpConnection connection) {
-            this.connection = connection;
-            if (closeRequested) closeConnection();
+            boolean closeRequested;
+            synchronized (this) {
+                // check whether this new connection should be
+                // closed
+                closeRequested = this.closeRequested;
+                if (!closeRequested) {
+                    this.connection = connection;
+                } else {
+                    // assert this.connection == null
+                    this.closeRequested = false;
+                }
+            }
+            if (closeRequested) closeConnection(connection);
         }
 
         void closeConnection() {
-            closeRequested = true;
-            HttpConnection connection = this.connection;
-            this.connection = null;
+            HttpConnection connection;
+            synchronized (this) {
+                connection = this.connection;
+                if (connection == null) {
+                    closeRequested = true;
+                } else {
+                    this.connection = null;
+                }
+            }
+            closeConnection(connection);
+        }
+
+        HttpConnection disable() {
+            HttpConnection connection;
+            synchronized (this) {
+                connection = this.connection;
+                this.connection = null;
+                this.closeRequested = false;
+            }
+            return connection;
+        }
+
+        private static void closeConnection(HttpConnection connection) {
             if (connection != null) {
                 try {
                     connection.close();
@@ -165,11 +196,6 @@ final class Exchange<T> {
                     // ignore
                 }
             }
-        }
-
-        void disable() {
-            connection = null;
-            closeRequested = false;
         }
     }
 
@@ -614,8 +640,11 @@ final class Exchange<T> {
                                                  client.client2(),
                                                  this, e::drainLeftOverBytes)
                         .thenCompose((Http2Connection c) -> {
+                            HttpConnection connection = connectionAborter.disable();
                             boolean cached = c.offerConnection();
-                            if (cached) connectionAborter.disable();
+                            if (!cached && connection != null) {
+                                connectionAborter.connection(connection);
+                            }
                             Stream<T> s = c.getInitialStream();
 
                             if (s == null) {

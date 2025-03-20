@@ -1073,6 +1073,10 @@ class Http2Connection  {
         }
     }
 
+    boolean isOpen() {
+        return !closed && connection.channel().isOpen();
+    }
+
     void resetStream(int streamid, int code) {
         try {
             if (connection.channel().isOpen()) {
