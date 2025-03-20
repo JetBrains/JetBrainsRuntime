@@ -526,8 +526,6 @@ java/lang/instrument/RetransformBigClass.sh                     8065756 generic-
 java/lang/management/MemoryMXBean/Pending.java                  8158837 generic-all
 java/lang/management/MemoryMXBean/PendingAllGC.sh               8158837 generic-all
 
-javax/management/monitor/DerivedGaugeMonitorTest.java         8042211 generic-all
-
 ############################################################################
 
 # jdk_io
