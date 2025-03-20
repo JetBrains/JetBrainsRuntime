@@ -98,9 +98,17 @@ typedef enum {
  * Group of format aliases. Use FormatAlias enum values to index into FormatGroup.aliases.
  */
 typedef struct {
-    VkFormat aliases[FORMAT_ALIAS_COUNT];
-    uint     bytes;
+    VkFormat              aliases[FORMAT_ALIAS_COUNT];
+    uint                  bytes;
+    VkImageAspectFlagBits aspect;
 } FormatGroup;
+
+inline VKPackedSwizzle VKUtil_PackSwizzle(VkComponentMapping swizzle) {
+    return (swizzle.r & 0b111) | ((swizzle.g & 0b111) << 3) | ((swizzle.b & 0b111) << 6) | ((swizzle.a & 0b111) << 9);
+}
+inline VkComponentMapping VKUtil_UnpackSwizzle(VKPackedSwizzle swizzle) {
+    return (VkComponentMapping) { swizzle & 0b111, (swizzle >> 3) & 0b111, (swizzle >> 6) & 0b111, (swizzle >> 9) & 0b111 };
+}
 
 /**
  * Vulkan expects linear colors.
