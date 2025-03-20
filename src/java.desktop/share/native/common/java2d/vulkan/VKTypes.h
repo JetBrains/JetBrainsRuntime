@@ -49,6 +49,11 @@ typedef struct {
 } Color;
 
 /**
+ * VkComponentMapping packed into 12 bits.
+ */
+typedef uint16_t VKPackedSwizzle;
+
+/**
  * Transform matrix
  * [ x']   [  m00  m01  m02  ] [ x ]   [ m00x + m01y + m02 ]
  * [ y'] = [  m10  m11  m12  ] [ y ] = [ m10x + m11y + m12 ]
