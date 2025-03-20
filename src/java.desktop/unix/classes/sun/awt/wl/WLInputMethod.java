@@ -29,8 +29,11 @@ import sun.awt.im.InputMethodAdapter;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
+import java.awt.font.TextHitInfo;
 import java.awt.im.spi.InputMethodContext;
 import java.nio.charset.StandardCharsets;
+import java.text.AttributedCharacterIterator;
+import java.text.AttributedString;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
@@ -1447,6 +1450,28 @@ public final class WLInputMethod extends InputMethodAdapter {
         return wlIncomingChanges;
     }
 
+    private void dispatchIMESafely(
+        int id,
+        AttributedCharacterIterator text,
+        int committedCharacterCount,
+        TextHitInfo caret,
+        TextHitInfo visiblePosition
+    ) {
+        assert(EventQueue.isDispatchThread());
+
+        try {
+            Objects.requireNonNull(this.awtImContext, "this.awtImContext").dispatchInputMethodEvent(
+                id,
+                text,
+                committedCharacterCount,
+                caret,
+                visiblePosition
+            );
+        } catch (Exception err) {
+            log.severe("Failed to dispatch an InputMethodEvent", err);
+        }
+    }
+
 
     /* JNI downcalls section */
 
@@ -1590,9 +1615,131 @@ public final class WLInputMethod extends InputMethodAdapter {
     private void zwp_text_input_v3_onDone(long doneSerial) {
         assert EventQueue.isDispatchThread();
 
-        if (isInstanceBroken()) {
-            logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onDone", doneSerial);
-            return;
+        try {
+            if (isInstanceBroken()) {
+                logIgnoredCallOnBrokenInstance("zwp_text_input_v3_onDone", doneSerial);
+                return;
+            }
+
+            // 0. Resetting this.wlIncomingChanges, this.wlBeingCommittedChanges at the beginning to avoid reentrancy issues
+
+            final ZwpTextInputV3.IncomingChanges incomingChanges = wlIncomingChanges;
+            wlIncomingChanges = null;
+
+            final ZwpTextInputV3.OutgoingChanges appliedChanges;
+            if (wlBeingCommittedChanges.hasBeingCommitedChanges()) {
+                appliedChanges = wlBeingCommittedChanges.clearIfChangesHaveBeenApplied(doneSerial);
+
+                // Here it's a totally fine situation if appliedChanges is null.
+                // It happens when the compositor sends some changes (e.g. a preedit_string)
+                //   but hasn't applied yet the changes we've sent to it before.
+            } else {
+                appliedChanges = null;
+            }
+
+            // 1. Syncing the state with the changes previously committed by us.
+
+            // It's ok if appliedChanges is null, we anyway should update the serial
+            wlInputContextState.syncWithCommittedOutgoingChanges(appliedChanges, doneSerial);
+
+            // 2. Reacting to the changes received before (via other zwp_text_input_v3_on<Smth> methods)
+
+            if (incomingChanges != null) {
+                wlInputContextState.applyIncomingChanges(incomingChanges);
+
+                final ZwpTextInputV3.JavaPreeditString preeditString =
+                    // From zwp_text_input_v3::preedit_string:
+                    //   "Values set with this event [...] must be applied and reset to initial on the next zwp_text_input_v3.done event."
+                    // This basically means each zwp_text_input_v3::done should end up with posting a preedit string,
+                    //   even if there was no zwp_text_input_v3::preedit_string event (the initial value should be used in this case).
+                    Objects.requireNonNullElse(incomingChanges.getPreeditString(), ZwpTextInputV3.INITIAL_VALUE_PREEDIT_STRING);
+
+                final ZwpTextInputV3.JavaCommitString commitString =
+                    // The situation is pretty similar to preeditString except it doesn't really make sense to post an
+                    //   empty commit string. However, let's have it instead of null for consistency and for
+                    //   a more clear adherence to the protocol.
+                    Objects.requireNonNullElse(incomingChanges.getCommitString(), ZwpTextInputV3.INITIAL_VALUE_COMMIT_STRING);
+
+                // From zwp_text_input_v3::done:
+                // "The application must proceed by evaluating the changes in the following order:
+                //  1. Replace existing preedit string with the cursor.
+                //  2. Delete requested surrounding text.
+                //  3. Insert commit string with the cursor at its end.
+                //  4. Calculate surrounding text to send.
+                //  5. Insert new preedit text in cursor position.
+                //  6. Place cursor inside preedit text."
+                //
+                // Steps 2, 4 are skipped since we aren't currently supporting the
+                //   zwp_text_input_v3::set_surrounding_text API.
+                //
+                // All the other steps seem possible to do via a single properly constructed InputMethodEvent.
+
+                final int imeId = java.awt.event.InputMethodEvent.INPUT_METHOD_TEXT_CHANGED;
+                final AttributedString imeText;
+                final int imeCommittedCharactersCount;
+                // the offset of caret is relative to the current composed text
+                final TextHitInfo imeCaret;
+                // no recommendation for a visible position
+                final TextHitInfo imeVisiblePosition = null;
+
+                if (preeditString.text == null || preeditString.text.isEmpty()) {
+                    if (commitString.text == null) {
+                        imeText = null;
+                        imeCommittedCharactersCount = 0;
+                    } else {
+                        imeText = new AttributedString(commitString.text);
+                        imeCommittedCharactersCount = commitString.text.length();
+                    }
+
+                    imeCaret = null;
+                } else {
+                    if (commitString.text == null) {
+                        imeText = new AttributedString(preeditString.text);
+                        imeCommittedCharactersCount = 0;
+                    } else {
+                        imeText = new AttributedString(commitString.text + preeditString.text);
+                        imeCommittedCharactersCount = commitString.text.length();
+                    }
+
+                    if (preeditString.cursorBeginCodeUnit == -1 && preeditString.cursorEndCodeUnit == -1) {
+                        // "Cursor should be hidden when both are equal to -1."
+                        imeCaret = null;
+                    } else {
+                        final int caretCodeUnitIndex =
+                            Math.max(0, Math.min(preeditString.cursorBeginCodeUnit, preeditString.text.length()));
+                        imeCaret = TextHitInfo.beforeOffset(caretCodeUnitIndex);
+
+                        final int highlightEndCodeUnitIndex =
+                            Math.max(0, Math.min(preeditString.cursorEndCodeUnit, preeditString.text.length()));
+                        if (highlightEndCodeUnitIndex != caretCodeUnitIndex) {
+                            // cursor_begin and cursor_end
+                            //  "could be represented by the client as a line if both values are the same,
+                            //   or as a text highlight otherwise"
+
+                            // TODO: support highlighting
+                        }
+                    }
+                }
+
+                // TODO: add underlining/highlighting/etc. to imeText
+
+                dispatchIMESafely(
+                    imeId,
+                    imeText == null ? null : imeText.getIterator(),
+                    imeCommittedCharactersCount,
+                    imeCaret,
+                    imeVisiblePosition
+                );
+            }
+
+            // 3. Sending pending changes if any
+
+            wlSendPendingChangesNowOrLater();
+        } catch (Exception err) {
+            log.severe(
+                String.format("Error occurred during handling a zwp_text_input_v3::done event with serial=%d.", doneSerial),
+                err
+            );
         }
     }
 }
