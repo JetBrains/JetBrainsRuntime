@@ -31,31 +31,34 @@
 #include "VKDevice.h"
 #include "VKImage.h"
 #include "VKRenderer.h"
-#include "VKSurfaceData.h"
 
+static size_t viewKeyHash(const void* ptr) {
+    const VKImageViewKey* k = ptr;
+    return (size_t) k->format | ((size_t) k->swizzle << 32);
+}
+static bool viewKeyEquals(const void* ap, const void* bp) {
+    const VKImageViewKey *a = ap, *b = bp;
+    return a->format == b->format && a->swizzle == b->swizzle;
+}
 
-static VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
+static VkImageView VKImage_CreateView(VKDevice* device, VkImage image, VkFormat format, VkComponentMapping swizzle) {
     VkImageViewCreateInfo viewInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = image->handle,
+            .image = image,
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = image->format,
-            .subresourceRange.aspectMask = VKImage_GetAspect(image),
+            .format = format,
+            .components = swizzle,
+            .subresourceRange.aspectMask = VKUtil_GetFormatGroup(format).aspect,
             .subresourceRange.baseMipLevel = 0,
             .subresourceRange.levelCount = 1,
             .subresourceRange.baseArrayLayer = 0,
             .subresourceRange.layerCount = 1,
     };
-
-    VK_IF_ERROR(device->vkCreateImageView(device->handle, &viewInfo, NULL, &image->view)) {
-        return VK_FALSE;
+    VkImageView view;
+    VK_IF_ERROR(device->vkCreateImageView(device->handle, &viewInfo, NULL, &view)) {
+        return VK_NULL_HANDLE;
     }
-    return VK_TRUE;
-}
-
-VkImageAspectFlagBits VKImage_GetAspect(VKImage* image) {
-    return VKUtil_GetFormatGroup(image->format).bytes == 0 ? // Unknown format group means stencil.
-           VK_IMAGE_ASPECT_STENCIL_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+    return view;
 }
 
 VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
@@ -106,10 +109,7 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
         return NULL;
     }
 
-    if (!VKImage_CreateView(device, image)) {
-        VKImage_Destroy(device, image);
-        return NULL;
-    }
+    HASH_MAP_REHASH(image->viewMap, linear_probing, &viewKeyEquals, &viewKeyHash, 1, 10, 0.75);
 
     return image;
 }
@@ -142,8 +142,25 @@ void VKImage_LoadBuffer(VKDevice* device, VKImage* image, VKBuffer* buffer,
 void VKImage_Destroy(VKDevice* device, VKImage* image) {
     assert(device != NULL && device->allocator != NULL);
     if (image == NULL) return;
-    device->vkDestroyImageView(device->handle, image->view, NULL);
+    if (image->viewMap != NULL) {
+        for (const VKImageViewKey* k = NULL; (k = MAP_NEXT_KEY(image->viewMap, k)) != NULL;) {
+            const VkImageView* view = MAP_FIND(image->viewMap, *k);
+            device->vkDestroyImageView(device->handle, *view, NULL);
+        }
+        MAP_FREE(image->viewMap);
+    }
     device->vkDestroyImage(device->handle, image->handle, NULL);
     VKAllocator_Free(device->allocator, image->memory);
     free(image);
+}
+
+VkImageView VKImage_GetView(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle) {
+    VKImageViewKey key = { format, swizzle };
+    const VkImageView* view = MAP_FIND(image->viewMap, key);
+    if (view == NULL) {
+        VkImageView* newView = &MAP_AT(image->viewMap, key);
+        *newView = VKImage_CreateView(device, image->handle, format, VK_UNPACK_SWIZZLE(swizzle));
+        view = newView;
+    }
+    return *view;
 }
