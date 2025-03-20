@@ -537,7 +537,7 @@ public abstract class UNIXToolkit extends SunToolkit
     private static volatile Boolean isOnXWayland = null;
 
     @SuppressWarnings("removal")
-    private static boolean isOnXWayland() {
+    static boolean isOnXWayland() {
         Boolean result = isOnXWayland;
         if (result == null) {
             synchronized (GTK_LOCK) {
