@@ -208,6 +208,13 @@ public final class OutputAnalyzer {
     }
 
     /**
+     * Returns true if stdout contains the given string
+     */
+    public boolean stdoutContains(String expectedString) {
+        return getStdout().contains(expectedString);
+    }
+
+    /**
      * Verify that the stdout and stderr contents of output buffer contains the string
      *
      * @param expectedString String that buffer should contain
