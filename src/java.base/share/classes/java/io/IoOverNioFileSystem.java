@@ -1092,7 +1092,7 @@ class IoOverNioFileSystem extends FileSystem {
             java.nio.file.FileSystem nioFs = acquireNioFs(f.getPath());
             boolean result;
             if (nioFs != null) {
-                result = setPermission0(nioFs, f, ACCESS_EXECUTE | ACCESS_WRITE, false, false);
+                result = setPermission0(nioFs, f, ACCESS_WRITE, false, false);
             } else {
                 result = parent.setReadOnly(f);
             }
