@@ -888,8 +888,10 @@ class IoOverNioFileSystem extends FileSystem {
                     try {
                         DosFileAttributeView attrs = nioFs.provider()
                                 .getFileAttributeView(path, DosFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
-                        attrs.setReadOnly(false);
-                        return delete0(f, false);
+                        if (attrs != null) {
+                            attrs.setReadOnly(false);
+                            return delete0(f, false);
+                        }
                     } catch (IOException ignored) {
                         // Nothing.
                     }
@@ -1066,10 +1068,13 @@ class IoOverNioFileSystem extends FileSystem {
 
             try {
                 Path path = nioFs.getPath(f.getPath());
-                nioFs.provider()
-                        .getFileAttributeView(path, BasicFileAttributeView.class)
-                        .setTimes(FileTime.fromMillis(time), null, null);
-                return true;
+                var view = nioFs.provider().getFileAttributeView(path, BasicFileAttributeView.class);
+                if (view != null) {
+                    view.setTimes(FileTime.fromMillis(time), null, null);
+                    return true;
+                } else {
+                    return false;
+                }
             } catch (InvalidPathException err) {
                 throw new InternalError(err.getMessage(), err);
             } catch (IOException err) {
