@@ -33,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -322,8 +323,8 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         }
     }
 
-    private static HashSet<StandardOpenOption> optionsForChannel(int imode) {
-        HashSet<StandardOpenOption> options = new HashSet<>(6);
+    private static HashSet<OpenOption> optionsForChannel(int imode) {
+        HashSet<OpenOption> options = new HashSet<>(6);
         options.add(StandardOpenOption.READ);
         if ((imode & O_RDONLY) == 0) {
             options.add(StandardOpenOption.WRITE);
@@ -332,6 +333,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if ((imode & O_SYNC) == O_SYNC) options.add(StandardOpenOption.SYNC);
         if ((imode & O_DSYNC) == O_DSYNC) options.add(StandardOpenOption.DSYNC);
         if ((imode & O_TEMPORARY) == O_TEMPORARY) options.add(StandardOpenOption.DELETE_ON_CLOSE);
+        IoOverNioOsSpecific.optionsForChannelInRandomAccessFile(options, imode);
         return options;
     }
 
