@@ -41,6 +41,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
@@ -269,7 +270,7 @@ class IoOverNioFileSystem extends FileSystem {
             java.nio.file.FileSystem nioFs,
             File file,
             Path nioPath,
-            Set<StandardOpenOption> optionsForChannel,
+            Set<OpenOption> optionsForChannel,
             NioChannelCleanable channelCleanable) throws FileNotFoundException {
         try {
             // This tricky thread local variable allows specifying an argument for sun.nio.ch.FileChannelImpl.<init>
@@ -286,7 +287,7 @@ class IoOverNioFileSystem extends FileSystem {
             java.nio.file.FileSystem nioFs,
             File file,
             Path nioPath,
-            Set<StandardOpenOption> optionsForChannel,
+            Set<OpenOption> optionsForChannel,
             NioChannelCleanable channelCleanable) throws FileNotFoundException {
         FileChannel channel = null;
         try {
