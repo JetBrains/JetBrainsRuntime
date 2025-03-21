@@ -27,14 +27,13 @@ package java.io;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
 import java.util.Set;
-
-import java.nio.file.Path;
 
 import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.SharedSecrets;
@@ -246,7 +245,7 @@ public class FileOutputStream extends OutputStream
                 }
             }
 
-            Set<StandardOpenOption> options = append
+            Set<OpenOption> options = append
                     ? Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
                     : Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
