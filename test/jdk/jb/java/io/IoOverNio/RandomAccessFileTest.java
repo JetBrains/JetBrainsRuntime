@@ -43,6 +43,7 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Objects;
@@ -256,5 +257,15 @@ public class RandomAccessFileTest {
 
         ManglingFileSystemProvider.mangleFileContent = false;
         assertEquals("h3rpd3rp", Files.readString(file.toPath()));
+    }
+
+    @Test
+    public void testDeletionOfLockedFile() throws Exception {
+        Assume.assumeTrue("Windows-only test", System.getProperty("os.name").toLowerCase().startsWith("win"));
+        File file = temporaryFolder.newFile();
+        try (RandomAccessFile rac = new RandomAccessFile(file, "rw");
+             FileLock ignored = rac.getChannel().lock()) {
+            assertFalse(file.delete());
+        }
     }
 }
