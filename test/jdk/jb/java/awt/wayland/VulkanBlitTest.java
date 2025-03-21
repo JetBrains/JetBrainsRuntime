@@ -32,7 +32,6 @@ import java.awt.image.BufferedImage;
 import java.awt.image.VolatileImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 
 /*
  * @test
@@ -47,10 +46,8 @@ import java.util.Arrays;
 
 
 public class VulkanBlitTest {
-    static boolean SUPPRESS_ALPHA_VALIDATION = false; // TODO this is temporary.
     final static int W = 256*3;
     final static int H = 600;
-    final static int[] FILL_SCANLINE = new int[W];
     final static Color FILL_COLOR = new Color(0xffa1babe);
     final static Rectangle[] CLIP_RECTS = new Rectangle[] {
             new Rectangle(W*1/12, H*0/10, W/6, H/10+1),
@@ -65,7 +62,6 @@ public class VulkanBlitTest {
     };
     final static Area COMPLEX_CLIP = new Area();
     static {
-        Arrays.fill(FILL_SCANLINE, 0xffa1babe);
         for (Rectangle clip : CLIP_RECTS) COMPLEX_CLIP.add(new Area(clip));
     }
 
@@ -144,62 +140,70 @@ public class VulkanBlitTest {
             validate(image, W*j/256+1, H*7/10, new Color(j, j, j), "opaque gradient stripe " + j, 1);
         }
         for (int j = 0; j < 256; j++) {
-            if (SUPPRESS_ALPHA_VALIDATION) break;
             Color expected = new Color(j, j, j, hasAlpha ? j : 255);
             validate(image, W*j/256+1, H*9/10, expected, "alpha gradient stripe " + j, 12);
         }
     }
 
-    static void testSurfaceToSwBlit(BufferedImage bi, VolatileImage image, String prefix, boolean hasAlpha) throws IOException {
-        // Fill the buffered image with plain color.
-        bi.setRGB(0, 0, W, H, FILL_SCANLINE, 0, 0);
-        { // Blit into software image.
-            Graphics2D g = bi.createGraphics();
-            g.setComposite(AlphaComposite.Src);
-            g.drawImage(image, 0, 0, null);
-            g.dispose();
-        }
-        ImageIO.write(bi, "PNG", new File(prefix + "no-clip.png"));
-        try {
-            validate(bi, hasAlpha);
-        } catch (Throwable t) {
-            throw new Error(prefix + "no-clip", t);
-        }
+    static void testBlit(Image src, Image dst, String prefix, boolean hasAlpha) throws IOException {
+        BufferedImage validationImage;
 
-        // Fill the buffered image with plain color.
-        bi.setRGB(0, 0, W, H, FILL_SCANLINE, 0, 0);
-        { // Blit again with rect clips.
-            Graphics2D g = bi.createGraphics();
+        {
+            Graphics2D g = (Graphics2D) dst.getGraphics();
             g.setComposite(AlphaComposite.Src);
+            g.setColor(FILL_COLOR);
+            g.fillRect(0, 0, W, H);
             for (Rectangle clip : CLIP_RECTS) {
                 g.setClip(clip);
-                g.drawImage(image, 0, 0, null);
+                g.drawImage(src, 0, 0, null);
             }
             g.dispose();
         }
-        ImageIO.write(bi, "PNG", new File(prefix + "rect-clip.png"));
+        validationImage = dst instanceof BufferedImage ? (BufferedImage) dst : ((VolatileImage) dst).getSnapshot();
+        ImageIO.write(validationImage, "PNG", new File(prefix + "rect-clip.png"));
         try {
-            validate(bi, hasAlpha);
-            validateClip(bi);
+            validate(validationImage, hasAlpha);
+            validateClip(validationImage);
         } catch (Throwable t) {
             throw new Error(prefix + "rect-clip", t);
         }
 
-        // Fill the buffered image with plain color.
-        bi.setRGB(0, 0, W, H, FILL_SCANLINE, 0, 0);
-        { // Blit again with a complex clip.
-            Graphics2D g = bi.createGraphics();
+        {
+            Graphics2D g = (Graphics2D) dst.getGraphics();
             g.setComposite(AlphaComposite.Src);
+            g.setColor(FILL_COLOR);
+            g.fillRect(0, 0, W, H);
             g.setClip(COMPLEX_CLIP);
-            g.drawImage(image, 0, 0, null);
+            g.drawImage(src, 0, 0, null);
             g.dispose();
         }
-        ImageIO.write(bi, "PNG", new File(prefix + "complex-clip.png"));
+        validationImage = dst instanceof BufferedImage ? (BufferedImage) dst : ((VolatileImage) dst).getSnapshot();
+        ImageIO.write(validationImage, "PNG", new File(prefix + "complex-clip.png"));
         try {
-            validate(bi, hasAlpha);
-            validateClip(bi);
+            validate(validationImage, hasAlpha);
+            validateClip(validationImage);
         } catch (Throwable t) {
             throw new Error(prefix + "complex-clip", t);
+        }
+
+        {
+            Graphics2D g = (Graphics2D) dst.getGraphics();
+            g.setComposite(AlphaComposite.Src);
+            g.setColor(FILL_COLOR);
+            g.fillRect(0, 0, W, H);
+            g.drawImage(src, 0, 0, null);
+            g.dispose();
+        }
+        validationImage = dst instanceof BufferedImage ? (BufferedImage) dst : ((VolatileImage) dst).getSnapshot();
+        ImageIO.write(validationImage, "PNG", new File(prefix + "no-clip.png"));
+        try {
+            validate(validationImage, hasAlpha);
+            try {
+                validateClip(validationImage);
+                throw new Error("Clip validation succeeded");
+            } catch (Throwable ignore) {}
+        } catch (Throwable t) {
+            throw new Error(prefix + "no-clip", t);
         }
     }
 
@@ -222,46 +226,44 @@ public class VulkanBlitTest {
             throw new Error(prefix + "snapshot", t);
         }
 
-        // Repeat blit into the same snapshot image.
-        testSurfaceToSwBlit(bi, image, prefix + "snapshot-", hasAlpha);
+        // Create another Vulkan image.
+        VolatileImage check = config.createCompatibleVolatileImage(W, H, transparency);
+        if (check.validate(config) == VolatileImage.IMAGE_INCOMPATIBLE) {
+            throw new Error("Image validation failed");
+        }
+
+        // Repeat blit to/from the same snapshot image.
+        testBlit(image, bi, prefix + "snapshot, surface-sw, ", hasAlpha);
+        testBlit(bi, check, prefix + "snapshot, sw-surface, ", hasAlpha);
 
         // Repeat with generic buffered image formats.
         bi = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);
-        testSurfaceToSwBlit(bi, image, prefix + "INT_RGB, ", false);
+        testBlit(image, bi, prefix + "INT_RGB, surface-sw, ", false);
+        testBlit(bi, check, prefix + "INT_RGB, sw-surface, ", false);
         bi = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
-        testSurfaceToSwBlit(bi, image, prefix + "INT_ARGB, ", hasAlpha);
+        testBlit(image, bi, prefix + "INT_ARGB, surface-sw, ", hasAlpha);
+        testBlit(bi, check, prefix + "INT_ARGB, sw-surface, ", hasAlpha);
         bi = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB_PRE);
-        testSurfaceToSwBlit(bi, image, prefix + "INT_ARGB_PRE, ", hasAlpha);
+        testBlit(image, bi, prefix + "INT_ARGB_PRE, surface-sw, ", hasAlpha);
+        testBlit(bi, check, prefix + "INT_ARGB_PRE, sw-surface, ", hasAlpha);
         bi = new BufferedImage(W, H, BufferedImage.TYPE_INT_BGR);
-        testSurfaceToSwBlit(bi, image, prefix + "INT_BGR, ", false);
+        testBlit(image, bi, prefix + "INT_BGR, surface-sw, ", false);
+        testBlit(bi, check, prefix + "INT_BGR, sw-surface, ", false);
         bi = new BufferedImage(W, H, BufferedImage.TYPE_3BYTE_BGR);
-        testSurfaceToSwBlit(bi, image, prefix + "3BYTE_BGR, ", false);
+        testBlit(image, bi, prefix + "3BYTE_BGR, surface-sw, ", false);
+        testBlit(bi, check, prefix + "3BYTE_BGR, sw-surface, ", false);
         bi = new BufferedImage(W, H, BufferedImage.TYPE_4BYTE_ABGR);
-        testSurfaceToSwBlit(bi, image, prefix + "4BYTE_ABGR, ", hasAlpha);
+        testBlit(image, bi, prefix + "4BYTE_ABGR, surface-sw, ", hasAlpha);
+        testBlit(bi, check, prefix + "4BYTE_ABGR, sw-surface, ", hasAlpha);
         bi = new BufferedImage(W, H, BufferedImage.TYPE_4BYTE_ABGR_PRE);
-        testSurfaceToSwBlit(bi, image, prefix + "4BYTE_ABGR_PRE, ", hasAlpha);
+        testBlit(image, bi, prefix + "4BYTE_ABGR_PRE, surface-sw, ", hasAlpha);
+        testBlit(bi, check, prefix + "4BYTE_ABGR_PRE, sw-surface, ", hasAlpha);
 
         // Blit into another Vulkan image.
-        hasAlpha = false; // TODO our blit currently ignores alpha, remove when fixed.
-        SUPPRESS_ALPHA_VALIDATION = true; // TODO same.
-        VolatileImage anotherImage = config.createCompatibleVolatileImage(W, H, transparency);
-        if (anotherImage.validate(config) == VolatileImage.IMAGE_INCOMPATIBLE) {
-            throw new Error("Image validation failed");
-        }
-        {
-            Graphics2D g = anotherImage.createGraphics();
-            g.drawImage(image, 0, 0, null);
-            g.dispose();
-        }
-        if (anotherImage.contentsLost()) throw new Error("Image contents lost");
-        // Take a snapshot (blit into Sw) and validate.
-        bi = anotherImage.getSnapshot();
-        ImageIO.write(bi, "PNG", new File(prefix + "another-snapshot.png"));
-        try {
-            validate(bi, hasAlpha);
-        } catch (Throwable t) {
-            throw new Error(prefix + "another-snapshot", t);
-        }
+        testBlit(image, check, prefix + "surface-surface, ", hasAlpha);
+
+        if (image.contentsLost()) throw new Error("Image contents lost");
+        if (check.contentsLost()) throw new Error("Check contents lost");
     }
 
     public static void main(String[] args) throws IOException {
@@ -280,9 +282,6 @@ public class VulkanBlitTest {
         if (args.length > 0 && args[0].equals("TRANSLUCENT")) hasAlpha = true;
         else if (args.length > 0 && args[0].equals("OPAQUE")) hasAlpha = false;
         else throw new Error("Usage: VulkanBlitTest <TRANSLUCENT|OPAQUE>");
-
-        // TODO We don't have proper support for alpha rendering into OPAQUE surface atm.
-        if (!hasAlpha) SUPPRESS_ALPHA_VALIDATION = true;
 
         VKEnv.getDevices().flatMap(VKGPU::getOffscreenGraphicsConfigs).forEach(gc -> {
             System.out.println("Testing " + gc);
