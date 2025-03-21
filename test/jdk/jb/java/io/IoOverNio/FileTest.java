@@ -129,34 +129,26 @@ public class FileTest {
     public void handlingEmptyPath() throws Exception {
         File file = new File("");
 
+        // A new behavior for java.io.File was introduced in commit 9477c705c0bd5ce2d445abb5ca44d46656fc315f
+
         // These checks fail
-        assertFalse(file.exists());
-        assertFalse(file.isDirectory());
+        assertTrue(file.exists());
+        assertTrue(file.isDirectory());
         assertFalse(file.isFile());
 
-        assertFalse(file.canRead());
-        if (IS_WINDOWS) {
-            assertTrue(file.setReadable(true));
-        } else {
-            assertFalse(file.setReadable(true));
-        }
-        assertFalse(file.canRead());
+        assertTrue(file.canRead());
+        assertTrue(file.setReadable(true));
+        assertTrue(file.canRead());
 
-        assertFalse(file.canWrite());
-        assertFalse(file.setWritable(true));
-        assertFalse(file.canWrite());
+        assertTrue(file.canWrite());
 
-        assertFalse(file.canExecute());
-        if (IS_WINDOWS) {
-            assertTrue(file.setExecutable(true));
-        } else {
-            assertFalse(file.setExecutable(true));
-        }
-        assertFalse(file.canExecute());
+        assertTrue(file.canExecute());
+        assertTrue(file.setExecutable(true));
+        assertTrue(file.canExecute());
 
-        assertFalse(file.setLastModified(1234567890L));
+        assertTrue(file.setLastModified(1234567890L));
 
-        assertEquals(null, file.list());
+        assertNotEquals(null, file.list());
 
         if (IS_WINDOWS) {
             assertFalse(file.setReadOnly());
@@ -189,7 +181,8 @@ public class FileTest {
         assertFalse(new File(file, "non-existing-file").exists());
 
         // Corner cases
-        assertFalse(new File("").exists());
+        // A new behavior for java.io.File was introduced in commit 9477c705c0bd5ce2d445abb5ca44d46656fc315f
+        assertTrue(new File("").exists());
         assertTrue(new File(".").exists());
         assertTrue(new File("..").exists());
 
