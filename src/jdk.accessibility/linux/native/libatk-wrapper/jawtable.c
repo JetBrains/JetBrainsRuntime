@@ -928,7 +928,7 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
     }
     jclass accessible =
         (*env)->FindClass(env, "javax/accessibility/Accessible");
-    if (!((*env)->IsInstanceOf(env, jcaption->acc_context, accessible))) {
+    if (!(*env)->IsInstanceOf(env, jcaption->acc_context, accessible)) {
         (*env)->DeleteGlobalRef(env, atk_table);
         return;
     }
@@ -975,7 +975,7 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
     }
     jclass accessible =
         (*env)->FindClass(env, "javax/accessibility/Accessible");
-    if (!((*env)->IsInstanceOf(env, jsummary->acc_context, accessible))) {
+    if (!(*env)->IsInstanceOf(env, jsummary->acc_context, accessible)) {
         (*env)->DeleteGlobalRef(env, atk_table);
         return;
     }
