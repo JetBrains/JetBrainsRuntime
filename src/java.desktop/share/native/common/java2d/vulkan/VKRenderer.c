@@ -54,6 +54,12 @@ RING_BUFFER(struct PoolEntry_ ## NAME { \
     }} while(0)
 
 /**
+ * Check if there are available items in the pool.
+ */
+#define POOL_NOT_EMPTY(RENDERER, NAME)                                                   \
+    (VKRenderer_CheckPoolEntryAvailable((RENDERER), RING_BUFFER_FRONT((RENDERER)->NAME)))
+
+/**
  * Return an item to the pool. It will only become available again
  * after the next submitted batch of work completes execution on GPU.
  */
@@ -83,6 +89,11 @@ RING_BUFFER(struct PoolEntry_ ## NAME { \
  */
 #define POOL_FREE(RENDERER, NAME) RING_BUFFER_FREE((RENDERER)->NAME)
 
+typedef struct {
+    VKCleanupHandler handler;
+    void* data;
+} VKCleanupEntry;
+
 /**
  * Renderer attached to device.
  */
@@ -96,6 +107,7 @@ struct VKRenderer {
     POOL(VKBuffer,          vertexBufferPool);
     POOL(VKTexelBuffer,     maskFillBufferPool);
     POOL(VkFramebuffer,     framebufferDestructionQueue);
+    POOL(VKCleanupEntry,    cleanupQueue);
     ARRAY(VKMemory)         bufferMemoryPages;
     ARRAY(VkDescriptorPool) descriptorPools;
     ARRAY(VkDescriptorPool) imageDescriptorPools;
@@ -436,6 +448,13 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
 
 static void VKRenderer_CleanupPendingResources(VKRenderer* renderer) {
     VKDevice* device = renderer->device;
+
+    while (POOL_NOT_EMPTY(renderer, cleanupQueue)) {
+        VKCleanupEntry entry;
+        POOL_TAKE(renderer, cleanupQueue, entry);
+        entry.handler(device, entry.data);
+    }
+
     for (;;) {
         VkFramebuffer framebuffer = VK_NULL_HANDLE;
         POOL_TAKE(renderer, framebufferDestructionQueue, framebuffer);
@@ -576,6 +595,33 @@ void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* 
         image->lastStage = stage;
         image->lastAccess = access;
         image->layout = layout;
+    }
+}
+
+/**
+ * Prepare buffer barrier info to be executed in batch, if needed.
+ */
+void VKRenderer_AddBufferBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
+                                VKBuffer* buffer, VkPipelineStageFlags stage,
+                                VkAccessFlags access)
+{
+    assert(barriers != NULL && batch != NULL && buffer != NULL);
+    if (stage != buffer->lastStage || access != buffer->lastAccess) {
+        barriers[batch->barrierCount] = (VkBufferMemoryBarrier) {
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                .srcAccessMask = buffer->lastAccess,
+                .dstAccessMask = access,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .buffer = buffer->handle,
+                .offset = 0,
+                .size = VK_WHOLE_SIZE
+        };
+        batch->barrierCount++;
+        batch->srcStages |= buffer->lastStage;
+        batch->dstStages |= stage;
+        buffer->lastStage = stage;
+        buffer->lastAccess = access;
     }
 }
 
@@ -1176,6 +1222,12 @@ static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
 
     // Reset pipeline state.
     renderPass->state.shader = NO_SHADER;
+}
+
+void VKRenderer_DisposeOnCleanup(VKRenderer* renderer, VKCleanupHandler hnd, void* data) {
+    if (renderer == NULL) return;
+    VKCleanupEntry entry = {hnd, data};
+    POOL_RETURN(renderer, cleanupQueue, entry);
 }
 
 /**
