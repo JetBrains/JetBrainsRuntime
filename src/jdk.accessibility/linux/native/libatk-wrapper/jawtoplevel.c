@@ -115,15 +115,14 @@ static const gchar *jaw_toplevel_get_name(AtkObject *obj) {
     gint n_accessible_children = atk_object_get_n_accessible_children(obj);
     for (gint i = 0; i < n_accessible_children; i++) {
         AtkObject *child = atk_object_ref_accessible_child(obj, i);
-        if (!child) {
-            continue;
-        }
-        const gchar *name = atk_object_get_name(child);
-        if (name && strlen(name) > 0) {
+        if (child != NULL) {
+            const gchar *name = atk_object_get_name(child);
+            if (name && strlen(name) > 0) {
+                g_object_unref(G_OBJECT(child));
+                return name;
+            }
             g_object_unref(G_OBJECT(child));
-            return name;
         }
-        g_object_unref(G_OBJECT(child));
     }
 
     return "Java Application";
