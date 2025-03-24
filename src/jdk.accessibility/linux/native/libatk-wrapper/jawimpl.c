@@ -506,8 +506,11 @@ static void jaw_impl_finalize(GObject *gobject) {
     }
     if (jaw_impl->ifaceTable != NULL) {
         g_hash_table_unref(jaw_impl->ifaceTable);
+    }
+    if (jaw_obj->storedData != NULL) {
         g_hash_table_destroy(jaw_obj->storedData);
     }
+
     /* Chain up to parent's finalize */
     G_OBJECT_CLASS(jaw_impl_parent_class)->finalize(gobject);
 }
