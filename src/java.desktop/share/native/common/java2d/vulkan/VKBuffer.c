@@ -30,6 +30,9 @@
 #include "VKAllocator.h"
 #include "VKBuffer.h"
 #include "VKDevice.h"
+#include "VKRenderer.h"
+
+const size_t VK_BUFFER_CREATE_THRESHOLD = 128;
 
 static VKMemory VKBuffer_DestroyBuffersOnFailure(VKDevice* device, VKMemory page, uint32_t bufferCount, VKBuffer* buffers) {
     assert(device != NULL && device->allocator != NULL);
@@ -220,14 +223,118 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
         VKBuffer_Destroy(device, buffer);
         return NULL;
     }
+    buffer->lastStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    buffer->lastAccess = 0;
     return buffer;
 }
 
-VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize bufferSize)
+static void VKBuffer_CopyBuffer(VKDevice* device, VKBuffer* srcBuffer, VKBuffer* dstBuffer, VkDeviceSize size) {
+
+    VkCommandBuffer cb = VKRenderer_Record(device->renderer);
+    {
+        VkBufferMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = {};
+        VKRenderer_AddBufferBarrier(&barrier, &barrierBatch, dstBuffer,
+                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                   VK_ACCESS_TRANSFER_WRITE_BIT);
+
+        if (barrierBatch.barrierCount > 0) {
+            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
+                                         0, 0, NULL,
+                                         barrierBatch.barrierCount, &barrier,
+                                         0, NULL);
+        }
+    }
+    VkBufferCopy copyRegion = {
+            .srcOffset = 0,
+            .dstOffset = 0,
+            .size = size,
+    };
+    device->vkCmdCopyBuffer(cb,srcBuffer->handle, dstBuffer->handle,
+                            1, &copyRegion);
+
+    {
+        VkBufferMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = {};
+        VKRenderer_AddBufferBarrier(&barrier, &barrierBatch, dstBuffer,
+                                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                    VK_ACCESS_TRANSFER_READ_BIT);
+
+        if (barrierBatch.barrierCount > 0) {
+            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
+                                         0, 0, NULL,
+                                         barrierBatch.barrierCount, &barrier,
+                                         0, NULL);
+        }
+    }
+    VKRenderer_Flush(device->renderer);
+}
+
+void VKBuffer_Dispose(VKDevice* device, void* ctx) {
+    VKBuffer* buffer = (VKBuffer*) ctx;
+    VKBuffer_Destroy(device, buffer);
+}
+
+VKBuffer *VKBuffer_CreateFromDataViaBuffer(VKDevice *device,
+                                           void *vertices,
+                                           VkDeviceSize bufferSize,
+                                           VkPipelineStageFlags stage,
+                                           VkAccessFlags access)
 {
-    VKBuffer* buffer = VKBuffer_Create(device, bufferSize,
-                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+    VKBuffer *hostBuffer =
+            VKBuffer_Create(device, bufferSize,
+                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    void* data;
+    VK_IF_ERROR(device->vkMapMemory(device->handle, hostBuffer->range.memory, 0, VK_WHOLE_SIZE, 0, &data)) {
+        VKBuffer_Destroy(device, hostBuffer);;
+        return NULL;
+    }
+
+    memcpy(data, vertices, bufferSize);
+
+    device->vkUnmapMemory(device->handle, hostBuffer->range.memory);
+
+    VKBuffer *buffer = VKBuffer_Create(device, bufferSize,
+                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                                       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VKBuffer_CopyBuffer(device, hostBuffer, buffer, bufferSize);
+    {
+        VkCommandBuffer cb = VKRenderer_Record(device->renderer);
+        VkBufferMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = {};
+        VKRenderer_AddBufferBarrier(&barrier, &barrierBatch, buffer,
+                                    stage, access);
+
+        if (barrierBatch.barrierCount > 0) {
+            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages,
+                                         barrierBatch.dstStages,
+                                         0, 0, NULL,
+                                         barrierBatch.barrierCount, &barrier,
+                                         0, NULL);
+        }
+    }
+    VKRenderer_DisposeOnPrimaryComplete(device->renderer, VKBuffer_Dispose, hostBuffer);
+    return buffer;
+}
+
+VKBuffer *VKBuffer_CreateDirectFromData(VKDevice *device,
+                                        void *vertices,
+                                        VkDeviceSize bufferSize,
+                                        VkPipelineStageFlags stage,
+                                        VkAccessFlags access)
+{
+    VKBuffer *buffer = VKBuffer_Create(device, bufferSize,
+                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                                       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     void* data;
@@ -237,22 +344,33 @@ VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize
     }
     memcpy(data, vertices, bufferSize);
 
-    VkMappedMemoryRange memoryRange = {
-            .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            .pNext = NULL,
-            .memory = buffer->range.memory,
-            .offset = 0,
-            .size = VK_WHOLE_SIZE
-    };
-
-
-    VK_IF_ERROR(device->vkFlushMappedMemoryRanges(device->handle, 1, &memoryRange)) {
-        VKBuffer_Destroy(device, buffer);
-        return NULL;
-    }
     device->vkUnmapMemory(device->handle, buffer->range.memory);
+    {
+        VkCommandBuffer cb = VKRenderer_Record(device->renderer);
+        VkBufferMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = {};
+        VKRenderer_AddBufferBarrier(&barrier, &barrierBatch, buffer,
+                                    stage, access);
 
+        if (barrierBatch.barrierCount > 0) {
+            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages,
+                                         barrierBatch.dstStages,
+                                         0, 0, NULL,
+                                         barrierBatch.barrierCount, &barrier,
+                                         0, NULL);
+        }
+    }
     return buffer;
+}
+
+VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize bufferSize,
+                                  VkPipelineStageFlags stage, VkAccessFlags access) {
+    if (bufferSize < VK_BUFFER_CREATE_THRESHOLD) {
+        return VKBuffer_CreateDirectFromData(device, vertices, bufferSize, stage, access);
+    } else {
+        return VKBuffer_CreateFromDataViaBuffer(device, vertices, bufferSize,
+                                                stage, access);
+    }
 }
 
 void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer) {
