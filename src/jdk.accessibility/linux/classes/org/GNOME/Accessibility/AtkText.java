@@ -347,7 +347,7 @@ public class AtkText {
         return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_edt_text != null) {
                 final int rightOffset = getRightEnd(0, offset, acc_text.getCharCount());
-                acc_edt_text.selectText(offset, offset);
+                acc_edt_text.selectText(rightOffset, rightOffset);
                 return true;
             }
             return false;
