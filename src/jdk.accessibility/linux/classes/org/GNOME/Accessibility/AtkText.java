@@ -196,8 +196,9 @@ public class AtkText {
             if (component == null)
                 return null;
             Point p = AtkComponent.getComponentOrigin(ac, component, coord_type);
-            if (p == null)
+            if (p == null) {
                 return null;
+            }
             rect.x += p.x;
             rect.y += p.y;
             return rect;
@@ -227,6 +228,9 @@ public class AtkText {
             if (component == null)
                 return -1;
             Point p = AtkComponent.getComponentOrigin(ac, component, coord_type);
+            if (p == null) {
+                return -1;
+            }
             return acc_text.getIndexAtPoint(new Point(x - p.x, y - p.y));
         }, -1);
     }
@@ -251,6 +255,9 @@ public class AtkText {
                 if (component == null)
                     return null;
                 Point p = AtkComponent.getComponentOrigin(ac, component, coord_type);
+                if (p == null) {
+                    return null;
+                }
                 rect.x += p.x;
                 rect.y += p.y;
                 return rect;
