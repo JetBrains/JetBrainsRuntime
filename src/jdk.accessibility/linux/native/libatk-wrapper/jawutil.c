@@ -44,7 +44,7 @@ static const gchar *jaw_util_get_toolkit_version(void);
 
 static GHashTable *key_listener_list = NULL;
 
-JavaVM *cachedJVM;
+static JavaVM *cachedJVM = NULL;
 
 GType jaw_util_get_type(void) {
     JAW_DEBUG_ALL("");
