@@ -213,17 +213,6 @@ guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
     return (guint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, jObj);
 }
 
-gboolean jaw_util_is_same_jobject(gconstpointer a, gconstpointer b) {
-    JAW_DEBUG_C("%p, %p", a, b);
-    JNIEnv *jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, FALSE);
-    if ((*jniEnv)->IsSameObject(jniEnv, (jobject)a, (jobject)b)) {
-        return TRUE;
-    } else {
-        return FALSE;
-    }
-}
-
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserve) {
     JAW_DEBUG_JNI("%p, %p", jvm, reserve);
     if (jvm == NULL) {

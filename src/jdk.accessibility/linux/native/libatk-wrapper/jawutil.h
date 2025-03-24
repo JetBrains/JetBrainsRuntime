@@ -111,7 +111,6 @@ struct _JawUtilClass {
 };
 
 guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj);
-gboolean jaw_util_is_same_jobject(gconstpointer a, gconstpointer b);
 JNIEnv *jaw_util_get_jni_env(void);
 AtkRole jaw_util_get_atk_role_from_AccessibleContext(jobject jobj);
 AtkStateType jaw_util_get_atk_state_type_from_java_state(JNIEnv *jniEnv,
