@@ -112,8 +112,8 @@ static const gchar *jaw_toplevel_get_name(AtkObject *obj) {
         return NULL;
     }
 
-    gint i;
-    for (i = 0; i < atk_object_get_n_accessible_children(obj); i++) {
+    gint n_accessible_children = atk_object_get_n_accessible_children(obj);
+    for (gint i = 0; i < n_accessible_children; i++) {
         AtkObject *child = atk_object_ref_accessible_child(obj, i);
         if (!child) {
             continue;
