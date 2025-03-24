@@ -655,15 +655,7 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
     CHECK_NULL(jcolumnArray, 0);
 
     jsize length = (*env)->GetArrayLength(env, jcolumnArray);
-    jint *jcolumns = (*env)->GetIntArrayElements(env, jcolumnArray, NULL);
-    gint *columns = g_new(gint, length);
-
-    gint i;
-    for (i = 0; i < length; i++) {
-        columns[i] = (gint)jcolumns[i];
-    }
-
-    (*env)->ReleaseIntArrayElements(env, jcolumnArray, jcolumns, JNI_ABORT);
+    CHECK_NULL(length, 0);
 
     return (gint)length;
 }
@@ -695,15 +687,7 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
     CHECK_NULL(jrowArray, 0);
 
     jsize length = (*env)->GetArrayLength(env, jrowArray);
-    jint *jrows = (*env)->GetIntArrayElements(env, jrowArray, NULL);
-    gint *rows = g_new(gint, length);
-
-    gint i;
-    for (i = 0; i < length; i++) {
-        rows[i] = (gint)jrows[i];
-    }
-
-    (*env)->ReleaseIntArrayElements(env, jrowArray, jrows, JNI_ABORT);
+    CHECK_NULL(length, 0);
 
     return (gint)length;
 }
