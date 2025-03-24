@@ -1,4 +1,4 @@
-#include "SystemHotkey.h"
+#include <pthread.h>
 
 #import <Foundation/Foundation.h>
 #import <Carbon/Carbon.h>
@@ -15,6 +15,10 @@
 
 extern JavaVM *jvm;
 
+@interface SystemHotkey : NSObject
++ (void)subscribeToChanges;
+@end
+
 enum LOG_LEVEL {
     LL_TRACE,
     LL_DEBUG,
@@ -23,7 +27,7 @@ enum LOG_LEVEL {
     LL_ERROR
 };
 
-void plog(int logLevel, const char *formatMsg, ...) {
+static void plog(int logLevel, const char *formatMsg, ...) {
     if (!jvm)
         return;
     if (logLevel < LL_TRACE || logLevel > LL_ERROR || formatMsg == NULL)
@@ -268,12 +272,20 @@ static const struct SymbolicHotKey defaultSymbolicHotKeys[] = {
 
 static const int numSymbolicHotkeys = sizeof(defaultSymbolicHotKeys) / sizeof(defaultSymbolicHotKeys[0]);
 
-// Current state of system shortcuts.
-// Should only be read and written inside a @synchronized([SystemHotkey class]) block
-static struct SymbolicHotKey currentSymbolicHotkeys[numSymbolicHotkeys];
+static struct SystemHotkeyState {
+    bool symbolicHotkeysFilled;
+    struct SymbolicHotKey currentSymbolicHotkeys[numSymbolicHotkeys];
 
-// Should only be read and written inside a @synchronized([SystemHotkey class]) block
-static bool subscribedToShortcutUpdates = false;
+    bool initialized;
+    bool enabled;
+
+    pthread_mutex_t mutex;
+} state = {
+        .symbolicHotkeysFilled = false,
+        .initialized = false,
+        .enabled = false,
+        .mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER,
+};
 
 @interface DefaultParams: NSObject
 @property (assign) BOOL enabled;
@@ -457,9 +469,10 @@ static void updateAppleSymbolicHotkeysCache() {
     struct SymbolicHotKey hotkeys[numSymbolicHotkeys];
     readAppleSymbolicHotkeys(hotkeys);
 
-    @synchronized ([SystemHotkey class]) {
-        memcpy(currentSymbolicHotkeys, hotkeys, numSymbolicHotkeys * sizeof(struct SymbolicHotKey));
-    }
+    pthread_mutex_lock(&state.mutex);
+    memcpy(state.currentSymbolicHotkeys, hotkeys, sizeof(hotkeys));
+    state.symbolicHotkeysFilled = true;
+    pthread_mutex_unlock(&state.mutex);
 }
 
 static void iterateAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymbolicHotkeys], Visitor visitorBlock) {
@@ -559,19 +572,46 @@ static void readPbsHotkeys(Visitor visitorBlock) {
     }
 }
 
-static void readAppleSymbolicHotkeysCached(struct SymbolicHotKey hotkeys[numSymbolicHotkeys]) {
-    @synchronized ([SystemHotkey class]) {
-        if (!subscribedToShortcutUpdates) {
-            [SystemHotkey setUp];
-        }
-
-        memcpy(hotkeys, currentSymbolicHotkeys, numSymbolicHotkeys * sizeof(struct SymbolicHotKey));
+static bool ensureInitializedAndEnabled() {
+    pthread_mutex_lock(&state.mutex);
+    if (state.initialized) {
+        bool enabled = state.enabled;
+        pthread_mutex_unlock(&state.mutex);
+        return enabled;
     }
+
+    // JBR-8422
+    const NSOperatingSystemVersion macOSVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
+    if (macOSVersion.majorVersion > 15 || (macOSVersion.majorVersion == 15 && macOSVersion.minorVersion >= 4)) {
+        state.initialized = true;
+        state.enabled = false;
+        pthread_mutex_unlock(&state.mutex);
+        return false;
+    }
+
+    state.initialized = true;
+    state.enabled = true;
+    [SystemHotkey subscribeToChanges];
+    pthread_mutex_unlock(&state.mutex);
+    updateAppleSymbolicHotkeysCache();
+
+    return true;
+}
+
+static void readAppleSymbolicHotkeysCached(struct SymbolicHotKey hotkeys[numSymbolicHotkeys]) {
+    memset(hotkeys, 0, sizeof(struct SymbolicHotKey) * numSymbolicHotkeys);
+
+    pthread_mutex_lock(&state.mutex);
+    if (state.symbolicHotkeysFilled) {
+        memcpy(hotkeys, state.currentSymbolicHotkeys, sizeof(struct SymbolicHotKey) * numSymbolicHotkeys);
+    }
+    pthread_mutex_unlock(&state.mutex);
 }
 
 static void readSystemHotkeysImpl(Visitor visitorBlock) {
-    // Normally, SystemHotkey would get initialized in LWCToolkit initialization.
-    // But since we can (theoretically) use this API from headless, let's check again.
+    if (!ensureInitializedAndEnabled()) {
+        return;
+    }
 
     struct SymbolicHotKey hotkeys[numSymbolicHotkeys];
     readAppleSymbolicHotkeysCached(hotkeys);
@@ -581,40 +621,32 @@ static void readSystemHotkeysImpl(Visitor visitorBlock) {
 }
 
 @implementation SystemHotkey
-+ (void)setUp {
-    // This should be called on LWCToolkit initialization.
++ (void)subscribeToChanges {
+    // Subscribe to changes
+    NSUserDefaults *symbolicHotKeys = [[NSUserDefaults alloc] initWithSuiteName:@"com.apple.symbolichotkeys"];
+    [symbolicHotKeys addObserver:self forKeyPath:@"AppleSymbolicHotKeys" options:NSKeyValueObservingOptionNew
+                         context:nil];
 
-    @synchronized (self) {
-        if (subscribedToShortcutUpdates) {
-            return;
-        }
-
-        // Update cached values
-        updateAppleSymbolicHotkeysCache();
-
-        // Subscribe to changes
-        NSUserDefaults *symbolicHotKeys = [[NSUserDefaults alloc] initWithSuiteName:@"com.apple.symbolichotkeys"];
-        [symbolicHotKeys addObserver:self forKeyPath:@"AppleSymbolicHotKeys" options:NSKeyValueObservingOptionNew
-                             context:nil];
-
-        NSUserDefaults *pbsHotKeys = [[NSUserDefaults alloc] initWithSuiteName:@"pbs"];
-        [pbsHotKeys addObserver:self forKeyPath:@"NSServicesStatus" options:NSKeyValueObservingOptionNew context:nil];
-
-        subscribedToShortcutUpdates = true;
-    }
+    NSUserDefaults *pbsHotKeys = [[NSUserDefaults alloc] initWithSuiteName:@"pbs"];
+    [pbsHotKeys addObserver:self forKeyPath:@"NSServicesStatus" options:NSKeyValueObservingOptionNew context:nil];
 }
 
 + (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey, id> *)change context:(void *)context {
     // Called after AppleSymbolicHotKeys or pbs hotkeys change.
-    // This method can be called from any thread.
 
     if ([keyPath isEqualToString:@"AppleSymbolicHotKeys"]) {
         updateAppleSymbolicHotkeysCache();
     }
 
+    // This method should only be called from the main thread, but let's check anyway
+    if (pthread_main_np() == 0) {
+        return;
+    }
+
     // Since this notification is sent *after* the configuration was updated,
     // the user can safely re-read the hotkeys info after receiving this callback.
     // On the Java side, this simply enqueues the change handler to run on the EDT later.
+
     JNIEnv* env = [ThreadUtilities getJNIEnv];
     DECLARE_CLASS(jc_SystemHotkey, "java/awt/desktop/SystemHotkey");
     DECLARE_STATIC_METHOD(jsm_onChange, jc_SystemHotkey, "onChange", "()V");
@@ -624,12 +656,13 @@ static void readSystemHotkeysImpl(Visitor visitorBlock) {
 @end
 
 bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, int keyCode, NSString *chars) {
-    struct SymbolicHotKey shortcut;
-    @synchronized ([SystemHotkey class]) {
-        if (!subscribedToShortcutUpdates) {
-            [SystemHotkey setUp];
+    struct SymbolicHotKey shortcut = defaultSymbolicHotKeys[Shortcut_FocusNextApplicationWindow];
+    if (ensureInitializedAndEnabled()) {
+        pthread_mutex_lock(&state.mutex);
+        if (state.symbolicHotkeysFilled) {
+            shortcut = state.currentSymbolicHotkeys[Shortcut_FocusNextApplicationWindow];
         }
-        shortcut = currentSymbolicHotkeys[Shortcut_FocusNextApplicationWindow];
+        pthread_mutex_unlock(&state.mutex);
     }
 
     int ignoredModifiers = NSAlphaShiftKeyMask | NSFunctionKeyMask | NSNumericPadKeyMask | NSHelpKeyMask;
