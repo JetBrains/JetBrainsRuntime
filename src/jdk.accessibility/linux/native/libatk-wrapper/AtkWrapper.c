@@ -283,23 +283,37 @@ static CallbackParaEvent *alloc_callback_para_event(JNIEnv *jniEnv,
 
 static void free_callback_para(CallbackPara *para) {
     JAW_DEBUG_C("%p", para);
+
+    if (para == NULL) {
+        JAW_DEBUG_I("para == NULL");
+        return;
+    }
+
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (jniEnv == NULL) {
         JAW_DEBUG_I("jniEnv == NULL");
-        return;
     }
 
-    if (para->global_ac == NULL) {
-        JAW_DEBUG_I("para->global_ac == NULL");
-        return;
+    if (jniEnv) {
+        if (para->global_ac != NULL) {
+            (*jniEnv)->DeleteGlobalRef(jniEnv, para->global_ac);
+        } else {
+            JAW_DEBUG_I("para->global_ac == NULL");
+        }
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, para->global_ac);
+    if (para->jaw_impl) {
+        g_object_unref(G_OBJECT(para->jaw_impl));
+    } else {
+        JAW_DEBUG_I("para->jaw_impl == NULL");
+    }
 
-    g_object_unref(G_OBJECT(para->jaw_impl));
-
-    if (para->args) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, para->args);
+    if (jniEnv) {
+        if (para->args) {
+            (*jniEnv)->DeleteGlobalRef(jniEnv, para->args);
+        } else {
+            JAW_DEBUG_I("para->args == NULL");
+        }
     }
 
     g_free(para);
