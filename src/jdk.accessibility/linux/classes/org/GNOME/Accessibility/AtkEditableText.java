@@ -70,7 +70,10 @@ public class AtkEditableText extends AtkText {
         if (acc_edt_text == null)
             return;
 
-        int n = acc_edt_text.getCharCount();
+        int n = AtkUtil.invokeInSwingAndWait(() -> {
+            return acc_edt_text.getCharCount();
+        }, -1);
+
         if (start < 0) {
             start = 0;
         }
