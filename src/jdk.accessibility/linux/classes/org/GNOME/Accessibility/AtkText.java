@@ -47,6 +47,9 @@ public class AtkText {
     }
 
     public static int getRightEnd(int start, int end, int count) {
+        if (end < start) {
+            return start;
+        }
         if (end < -1)
             return start;
         else if (end > count || end == -1)
