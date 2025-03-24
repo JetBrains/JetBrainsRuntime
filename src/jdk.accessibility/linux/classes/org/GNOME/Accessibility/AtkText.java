@@ -193,6 +193,8 @@ public class AtkText {
             if (component == null)
                 return null;
             Point p = AtkComponent.getComponentOrigin(ac, component, coord_type);
+            if (p == null)
+                return null;
             rect.x += p.x;
             rect.y += p.y;
             return rect;
