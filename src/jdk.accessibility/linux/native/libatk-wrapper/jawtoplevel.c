@@ -93,8 +93,9 @@ static void jaw_toplevel_object_finalize(GObject *obj) {
 
     JawToplevel *jaw_toplevel = JAW_TOPLEVEL(obj);
 
-    if (jaw_toplevel) {
+    if (jaw_toplevel && jaw_toplevel->windows) {
         g_list_free(jaw_toplevel->windows);
+        jaw_toplevel->windows = NULL;
     }
 
     JawToplevelClass *klass = JAW_TOPLEVEL_GET_CLASS(obj);
