@@ -77,7 +77,11 @@ public class AtkTableCell {
         if (_acc_pt == null)
             return null;
         return AtkUtil.invokeInSwingAndWait(() -> {
-            AccessibleTable iteration = _acc_pt.get().getAccessibleColumnHeader();
+            AccessibleTable accessibleTable = _acc_pt.get();
+            if (accessibleTable == null) {
+                return null;
+            }
+            AccessibleTable iteration = accessibleTable.getAccessibleColumnHeader();
             if (iteration != null) {
                 int length = iteration.getAccessibleColumnCount();
                 AccessibleContext[] result = new AccessibleContext[length];
@@ -94,7 +98,11 @@ public class AtkTableCell {
         if (_acc_pt == null)
             return null;
         return AtkUtil.invokeInSwingAndWait(() -> {
-            AccessibleTable iteration = _acc_pt.get().getAccessibleRowHeader();
+            AccessibleTable accessibleTable = _acc_pt.get();
+            if (accessibleTable == null) {
+                return null;
+            }
+            AccessibleTable iteration = accessibleTable.getAccessibleRowHeader();
             if (iteration != null) {
                 int length = iteration.getAccessibleRowCount();
                 AccessibleContext[] result = new AccessibleContext[length];
