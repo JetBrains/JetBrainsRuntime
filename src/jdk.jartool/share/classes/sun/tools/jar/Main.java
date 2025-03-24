@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.FileTime;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.function.Consumer;
@@ -124,7 +123,7 @@ public class Main {
     Set<Entry> entries = new LinkedHashSet<>();
 
     // module-info.class entries need to be added/updated.
-    Map<String, ModuleInfoEntry> moduleInfos = new HashMap<>();
+    Map<String,byte[]> moduleInfos = new HashMap<>();
 
     // A paths Set for each version, where each Set contains directories
     // specified by the "-C" operation.
@@ -253,7 +252,7 @@ public class Main {
      * Starts main program with the specified arguments.
      */
     @SuppressWarnings({"removal"})
-    public synchronized boolean run(String args[]) {
+    public synchronized boolean run(String[] args) {
         ok = true;
         if (!parseArgs(args)) {
             return false;
@@ -368,11 +367,9 @@ public class Main {
                 if (fname != null) {
                     list(fname, files);
                 } else {
-                    InputStream in = new FileInputStream(FileDescriptor.in);
-                    try {
-                        list(new BufferedInputStream(in), files);
-                    } finally {
-                        in.close();
+                    try (InputStream in = new FileInputStream(FileDescriptor.in);
+                         BufferedInputStream bis = new BufferedInputStream(in)) {
+                        list(bis, files);
                     }
                 }
             } else if (xflag) {
@@ -388,18 +385,12 @@ public class Main {
                 // latter can handle it.
 
                 String[] files = filesMapToFiles(filesMap);
-                if (fname != null && files != null) {
+                if (fname != null) {
                     extract(fname, files);
                 } else {
-                    InputStream in = (fname == null)
-                        ? new FileInputStream(FileDescriptor.in)
-                        : new FileInputStream(fname);
-                    try {
-                        if (!extract(new BufferedInputStream(in), files) && fname != null) {
-                            extract(fname, files);
-                        }
-                    } finally {
-                        in.close();
+                    try (InputStream in = new FileInputStream(FileDescriptor.in);
+                         BufferedInputStream bis = new BufferedInputStream(in)) {
+                        extract(bis, files);
                     }
                 }
             } else if (iflag) {
@@ -496,7 +487,7 @@ public class Main {
     /**
      * Parses command line arguments.
      */
-    boolean parseArgs(String args[]) {
+    boolean parseArgs(String[] args) {
         /* Preprocess and expand @file arguments */
         try {
             args = CommandLine.parse(args);
@@ -826,10 +817,7 @@ public class Main {
             if (f.isFile()) {
                 Entry e = new Entry(f, name, false);
                 if (isModuleInfoEntry(name)) {
-                    Path path = f.toPath();
-                    byte[] fileContent = Files.readAllBytes(path);
-                    ModuleInfoEntry mie = new StreamedModuleInfoEntry(name, fileContent, Files.getLastModifiedTime(path));
-                    moduleInfos.putIfAbsent(name, mie);
+                    moduleInfos.putIfAbsent(name, Files.readAllBytes(f.toPath()));
                     if (uflag) {
                         entryMap.put(name, e);
                     }
@@ -930,121 +918,119 @@ public class Main {
      */
     boolean update(InputStream in, OutputStream out,
                    InputStream newManifest,
-                   Map<String, ModuleInfoEntry> moduleInfos,
+                   Map<String,byte[]> moduleInfos,
                    JarIndex jarIndex) throws IOException
     {
-        ZipInputStream zis = new ZipInputStream(in);
-        ZipOutputStream zos = new JarOutputStream(out);
-        ZipEntry e = null;
-        boolean foundManifest = false;
         boolean updateOk = true;
+        try (ZipInputStream zis = new ZipInputStream(in);
+            ZipOutputStream zos = new JarOutputStream(out)) {
 
-        // All actual entries added/updated/existing, in the jar file (excl manifest
-        // and module-info.class ).
-        Set<String> jentries = new HashSet<>();
+            if (jarIndex != null) {
+                addIndex(jarIndex, zos);
+            }
+            ZipEntry e = null;
+            boolean foundManifest = false;
+            // All actual entries added/updated/existing, in the jar file (excl manifest
+            // and module-info.class ).
+            Set<String> jentries = new HashSet<>();
 
-        if (jarIndex != null) {
-            addIndex(jarIndex, zos);
-        }
+            // put the old entries first, replace if necessary
+            while ((e = zis.getNextEntry()) != null) {
+                String name = e.getName();
 
-        // put the old entries first, replace if necessary
-        while ((e = zis.getNextEntry()) != null) {
-            String name = e.getName();
+                boolean isManifestEntry = equalsIgnoreCase(name, MANIFEST_NAME);
+                boolean isModuleInfoEntry = isModuleInfoEntry(name);
 
-            boolean isManifestEntry = equalsIgnoreCase(name, MANIFEST_NAME);
-            boolean isModuleInfoEntry = isModuleInfoEntry(name);
-
-            if ((jarIndex != null && equalsIgnoreCase(name, INDEX_NAME))
-                || (Mflag && isManifestEntry)) {
-                continue;
-            } else if (isManifestEntry && ((newManifest != null) ||
+                if ((jarIndex != null && equalsIgnoreCase(name, INDEX_NAME))
+                        || (Mflag && isManifestEntry)) {
+                    continue;
+                } else if (isManifestEntry && ((newManifest != null) ||
                         (ename != null) || isMultiRelease)) {
-                foundManifest = true;
-                if (newManifest != null) {
-                    // Don't read from the newManifest InputStream, as we
-                    // might need it below, and we can't re-read the same data
-                    // twice.
-                    try (FileInputStream fis = new FileInputStream(mname)) {
-                        if (isAmbiguousMainClass(new Manifest(fis))) {
-                            return false;
+                    foundManifest = true;
+                    if (newManifest != null) {
+                        // Don't read from the newManifest InputStream, as we
+                        // might need it below, and we can't re-read the same data
+                        // twice.
+                        try (FileInputStream fis = new FileInputStream(mname)) {
+                            if (isAmbiguousMainClass(new Manifest(fis))) {
+                                return false;
+                            }
                         }
                     }
-                }
-                // Update the manifest.
-                Manifest old = new Manifest(zis);
-                if (newManifest != null) {
-                    old.read(newManifest);
-                }
-                if (!updateManifest(old, zos)) {
-                    return false;
-                }
-            } else if (moduleInfos != null && isModuleInfoEntry) {
-                moduleInfos.putIfAbsent(name, new StreamedModuleInfoEntry(name, zis.readAllBytes(), e.getLastModifiedTime()));
-            } else {
-                boolean isDir = e.isDirectory();
-                if (!entryMap.containsKey(name)) { // copy the old stuff
-                    // do our own compression
-                    ZipEntry e2 = new ZipEntry(name);
-                    e2.setMethod(e.getMethod());
-                    setZipEntryTime(e2, e.getTime());
-                    e2.setComment(e.getComment());
-                    e2.setExtra(e.getExtra());
-                    if (e.getMethod() == ZipEntry.STORED) {
-                        e2.setSize(e.getSize());
-                        e2.setCrc(e.getCrc());
+                    // Update the manifest.
+                    Manifest old = new Manifest(zis);
+                    if (newManifest != null) {
+                        old.read(newManifest);
                     }
-                    zos.putNextEntry(e2);
-                    copy(zis, zos);
-                } else { // replace with the new files
-                    Entry ent = entryMap.get(name);
-                    addFile(zos, ent);
-                    entryMap.remove(name);
-                    entries.remove(ent);
-                    isDir = ent.isDir;
-                }
-                if (!isDir) {
-                    jentries.add(name);
+                    if (!updateManifest(old, zos)) {
+                        return false;
+                    }
+                } else if (moduleInfos != null && isModuleInfoEntry) {
+                    moduleInfos.putIfAbsent(name, zis.readAllBytes());
+                } else {
+                    boolean isDir = e.isDirectory();
+                    if (!entryMap.containsKey(name)) { // copy the old stuff
+                        // do our own compression
+                        ZipEntry e2 = new ZipEntry(name);
+                        e2.setMethod(e.getMethod());
+                        setZipEntryTime(e2, e.getTime());
+                        e2.setComment(e.getComment());
+                        e2.setExtra(e.getExtra());
+                        if (e.getMethod() == ZipEntry.STORED) {
+                            e2.setSize(e.getSize());
+                            e2.setCrc(e.getCrc());
+                        }
+                        zos.putNextEntry(e2);
+                        copy(zis, zos);
+                    } else { // replace with the new files
+                        Entry ent = entryMap.get(name);
+                        addFile(zos, ent);
+                        entryMap.remove(name);
+                        entries.remove(ent);
+                        isDir = ent.isDir;
+                    }
+                    if (!isDir) {
+                        jentries.add(name);
+                    }
                 }
             }
-        }
 
-        // add the remaining new files
-        for (Entry entry : entries) {
-            addFile(zos, entry);
-            if (!entry.isDir) {
-                jentries.add(entry.name);
+            // add the remaining new files
+            for (Entry entry : entries) {
+                addFile(zos, entry);
+                if (!entry.isDir) {
+                    jentries.add(entry.name);
+                }
             }
-        }
-        if (!foundManifest) {
-            if (newManifest != null) {
-                Manifest m = new Manifest(newManifest);
-                updateOk = !isAmbiguousMainClass(m);
-                if (updateOk) {
-                    if (!updateManifest(m, zos)) {
+            if (!foundManifest) {
+                if (newManifest != null) {
+                    Manifest m = new Manifest(newManifest);
+                    updateOk = !isAmbiguousMainClass(m);
+                    if (updateOk) {
+                        if (!updateManifest(m, zos)) {
+                            updateOk = false;
+                        }
+                    }
+                } else if (ename != null) {
+                    if (!updateManifest(new Manifest(), zos)) {
                         updateOk = false;
                     }
                 }
-            } else if (ename != null) {
-                if (!updateManifest(new Manifest(), zos)) {
+            }
+            if (updateOk) {
+                if (moduleInfos != null && !moduleInfos.isEmpty()) {
+                    Set<String> pkgs = new HashSet<>();
+                    jentries.forEach(je -> addPackageIfNamed(pkgs, je));
+                    addExtendedModuleAttributes(moduleInfos, pkgs);
+                    updateOk = checkModuleInfo(moduleInfos.get(MODULE_INFO), jentries);
+                    updateModuleInfo(moduleInfos, zos);
+                    // TODO: check manifest main classes, etc
+                } else if (moduleVersion != null || modulesToHash != null) {
+                    error(getMsg("error.module.options.without.info"));
                     updateOk = false;
                 }
             }
         }
-        if (updateOk) {
-            if (moduleInfos != null && !moduleInfos.isEmpty()) {
-                Set<String> pkgs = new HashSet<>();
-                jentries.forEach( je -> addPackageIfNamed(pkgs, je));
-                addExtendedModuleAttributes(moduleInfos, pkgs);
-                updateOk = checkModuleInfo(moduleInfos.get(MODULE_INFO), jentries);
-                updateModuleInfo(moduleInfos, zos);
-                // TODO: check manifest main classes, etc
-            } else if (moduleVersion != null || modulesToHash != null) {
-                error(getMsg("error.module.options.without.info"));
-                updateOk = false;
-            }
-        }
-        zis.close();
-        zos.close();
         return updateOk;
     }
 
@@ -1063,21 +1049,15 @@ public class Main {
         zos.closeEntry();
     }
 
-    private void updateModuleInfo(Map<String, ModuleInfoEntry> moduleInfos, ZipOutputStream zos)
+    private void updateModuleInfo(Map<String,byte[]> moduleInfos, ZipOutputStream zos)
         throws IOException
     {
         String fmt = uflag ? "out.update.module-info": "out.added.module-info";
-        for (Map.Entry<String, ModuleInfoEntry> mi : moduleInfos.entrySet()) {
+        for (Map.Entry<String,byte[]> mi : moduleInfos.entrySet()) {
             String name = mi.getKey();
-            ModuleInfoEntry mie = mi.getValue();
-            byte[] bytes = mie.readAllBytes();
+            byte[] bytes = mi.getValue();
             ZipEntry e = new ZipEntry(name);
-            FileTime lastModified = mie.getLastModifiedTime();
-            if (lastModified != null) {
-                setZipEntryTime(e, lastModified.toMillis());
-            } else {
-                setZipEntryTime(e);
-            }
+            setZipEntryTime(e);
             if (flag0) {
                 crc32ModuleInfo(e, bytes);
             }
@@ -1372,19 +1352,12 @@ public class Main {
 
     /**
      * Extracts specified entries from JAR file.
-     *
-     * @return whether entries were found and successfully extracted
-     * (indicating this was a zip file without "leading garbage")
      */
-    boolean extract(InputStream in, String files[]) throws IOException {
+    void extract(InputStream in, String[] files) throws IOException {
         ZipInputStream zis = new ZipInputStream(in);
         ZipEntry e;
-        // Set of all directory entries specified in archive.  Disallows
-        // null entries.  Disallows all entries if using pre-6.0 behavior.
-        boolean entriesFound = false;
         Set<ZipEntry> dirs = newDirSet();
         while ((e = zis.getNextEntry()) != null) {
-            entriesFound = true;
             if (files == null) {
                 dirs.add(extractFile(zis, e));
             } else {
@@ -1403,32 +1376,31 @@ public class Main {
         // instead of during, because creating a file in a directory changes
         // that directory's timestamp.
         updateLastModifiedTime(dirs);
-
-        return entriesFound;
     }
 
     /**
      * Extracts specified entries from JAR file, via ZipFile.
      */
-    void extract(String fname, String files[]) throws IOException {
-        ZipFile zf = new ZipFile(fname);
-        Set<ZipEntry> dirs = newDirSet();
-        Enumeration<? extends ZipEntry> zes = zf.entries();
-        while (zes.hasMoreElements()) {
-            ZipEntry e = zes.nextElement();
-            if (files == null) {
-                dirs.add(extractFile(zf.getInputStream(e), e));
-            } else {
-                String name = e.getName();
-                for (String file : files) {
-                    if (name.startsWith(file)) {
-                        dirs.add(extractFile(zf.getInputStream(e), e));
-                        break;
+    void extract(String fname, String[] files) throws IOException {
+        final Set<ZipEntry> dirs;
+        try (ZipFile zf = new ZipFile(fname)) {
+            dirs = newDirSet();
+            Enumeration<? extends ZipEntry> zes = zf.entries();
+            while (zes.hasMoreElements()) {
+                ZipEntry e = zes.nextElement();
+                if (files == null) {
+                    dirs.add(extractFile(zf.getInputStream(e), e));
+                } else {
+                    String name = e.getName();
+                    for (String file : files) {
+                        if (name.startsWith(file)) {
+                            dirs.add(extractFile(zf.getInputStream(e), e));
+                            break;
+                        }
                     }
                 }
             }
         }
-        zf.close();
         updateLastModifiedTime(dirs);
     }
 
@@ -1509,7 +1481,7 @@ public class Main {
     /**
      * Lists contents of JAR file.
      */
-    void list(InputStream in, String files[]) throws IOException {
+    void list(InputStream in, String[] files) throws IOException {
         ZipInputStream zis = new ZipInputStream(in);
         ZipEntry e;
         while ((e = zis.getNextEntry()) != null) {
@@ -1527,13 +1499,13 @@ public class Main {
     /**
      * Lists contents of JAR file, via ZipFile.
      */
-    void list(String fname, String files[]) throws IOException {
-        ZipFile zf = new ZipFile(fname);
-        Enumeration<? extends ZipEntry> zes = zf.entries();
-        while (zes.hasMoreElements()) {
-            printEntry(zes.nextElement(), files);
+    void list(String fname, String[] files) throws IOException {
+        try (ZipFile zf = new ZipFile(fname)) {
+            Enumeration<? extends ZipEntry> zes = zf.entries();
+            while (zes.hasMoreElements()) {
+                printEntry(zes.nextElement(), files);
+            }
         }
-        zf.close();
     }
 
     /**
@@ -1576,10 +1548,8 @@ public class Main {
         // class path attribute will give us jar file name with
         // '/' as separators, so we need to change them to the
         // appropriate one before we open the jar file.
-        JarFile rf = new JarFile(jar.replace('/', File.separatorChar));
-
-        if (rf != null) {
-            Manifest man = rf.getManifest();
+        try (JarFile jarFile = new JarFile(jar.replace('/', File.separatorChar))) {
+            Manifest man = jarFile.getManifest();
             if (man != null) {
                 Attributes attr = man.getMainAttributes();
                 if (attr != null) {
@@ -1600,7 +1570,6 @@ public class Main {
                 }
             }
         }
-        rf.close();
         return files;
     }
 
@@ -1707,7 +1676,7 @@ public class Main {
     /**
      * Main routine to start program.
      */
-    public static void main(String args[]) {
+    public static void main(String[] args) {
         Main jartool = new Main(System.out, System.err, "jar");
         System.exit(jartool.run(args) ? 0 : 1);
     }
@@ -1778,23 +1747,12 @@ public class Main {
 
     /**
      * Associates a module descriptor's zip entry name along with its
-     * bytes and an optional URI.
+     * bytes and an optional URI. Used when describing modules.
      */
     interface ModuleInfoEntry {
-        String name();
-        Optional<String> uriString();
-        InputStream bytes() throws IOException;
-        /**
-         * @return Returns the last modified time of the module-info.class.
-         * Returns null if the last modified time is unknown or cannot be
-         * determined.
-         */
-        FileTime getLastModifiedTime();
-        default byte[] readAllBytes() throws IOException {
-            try (InputStream is = bytes()) {
-                return is.readAllBytes();
-            }
-        }
+       String name();
+       Optional<String> uriString();
+       InputStream bytes() throws IOException;
     }
 
     static class ZipFileModuleInfoEntry implements ModuleInfoEntry {
@@ -1808,12 +1766,6 @@ public class Main {
         @Override public InputStream bytes() throws IOException {
             return zipFile.getInputStream(entry);
         }
-
-        @Override
-        public FileTime getLastModifiedTime() {
-            return entry.getLastModifiedTime();
-        }
-
         /** Returns an optional containing the effective URI. */
         @Override public Optional<String> uriString() {
             String uri = (Paths.get(zipFile.getName())).toUri().toString();
@@ -1825,28 +1777,14 @@ public class Main {
     static class StreamedModuleInfoEntry implements ModuleInfoEntry {
         private final String name;
         private final byte[] bytes;
-        private final FileTime lastModifiedTime;
-
-        StreamedModuleInfoEntry(String name, byte[] bytes, FileTime lastModifiedTime) {
+        StreamedModuleInfoEntry(String name, byte[] bytes) {
             this.name = name;
             this.bytes = bytes;
-            this.lastModifiedTime = lastModifiedTime;
         }
         @Override public String name() { return name; }
         @Override public InputStream bytes() throws IOException {
             return new ByteArrayInputStream(bytes);
         }
-
-        @Override
-        public byte[] readAllBytes() throws IOException {
-            return bytes;
-        }
-
-        @Override
-        public FileTime getLastModifiedTime() {
-            return lastModifiedTime;
-        }
-
         /** Returns an empty optional. */
         @Override public Optional<String> uriString() {
             return Optional.empty();  // no URI can be derived
@@ -1898,7 +1836,7 @@ public class Main {
             while ((e = zis.getNextEntry()) != null) {
                 String ename = e.getName();
                 if (isModuleInfoEntry(ename)) {
-                    infos.add(new StreamedModuleInfoEntry(ename, zis.readAllBytes(), e.getLastModifiedTime()));
+                    infos.add(new StreamedModuleInfoEntry(ename, zis.readAllBytes()));
                 }
             }
         }
@@ -2111,14 +2049,14 @@ public class Main {
         return (classname.replace('.', '/')) + ".class";
     }
 
-    private boolean checkModuleInfo(ModuleInfoEntry moduleInfoEntry, Set<String> entries)
+    private boolean checkModuleInfo(byte[] moduleInfoBytes, Set<String> entries)
         throws IOException
     {
         boolean ok = true;
-        if (moduleInfoEntry != null) {  // no root module-info.class if null
+        if (moduleInfoBytes != null) {  // no root module-info.class if null
             try {
                 // ModuleDescriptor.read() checks open/exported pkgs vs packages
-                ModuleDescriptor md = ModuleDescriptor.read(moduleInfoEntry.bytes());
+                ModuleDescriptor md = ModuleDescriptor.read(ByteBuffer.wrap(moduleInfoBytes));
                 // A module must have the implementation class of the services it 'provides'.
                 if (md.provides().stream().map(Provides::providers).flatMap(List::stream)
                       .filter(p -> !entries.contains(toBinaryName(p)))
@@ -2136,19 +2074,15 @@ public class Main {
 
     /**
      * Adds extended modules attributes to the given module-info's.  The given
-     * Map values are updated in-place.
+     * Map values are updated in-place. Returns false if an error occurs.
      */
-    private void addExtendedModuleAttributes(Map<String, ModuleInfoEntry> moduleInfos,
+    private void addExtendedModuleAttributes(Map<String,byte[]> moduleInfos,
                                                 Set<String> packages)
         throws IOException
     {
-        for (Map.Entry<String, ModuleInfoEntry> e: moduleInfos.entrySet()) {
-            ModuleInfoEntry mie = e.getValue();
-            byte[] bytes = mie.readAllBytes();
-            ModuleDescriptor md = ModuleDescriptor.read(ByteBuffer.wrap(bytes));
-            byte[] extended = extendedInfoBytes(md, bytes, packages);
-            // replace the entry value with the extended bytes
-            e.setValue(new StreamedModuleInfoEntry(mie.name(), extended, mie.getLastModifiedTime()));
+        for (Map.Entry<String,byte[]> e: moduleInfos.entrySet()) {
+            ModuleDescriptor md = ModuleDescriptor.read(ByteBuffer.wrap(e.getValue()));
+            e.setValue(extendedInfoBytes(md, e.getValue(), packages));
         }
     }
 
