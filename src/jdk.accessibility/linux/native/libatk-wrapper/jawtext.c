@@ -158,14 +158,14 @@ void jaw_text_data_finalize(gpointer p) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     CHECK_NULL(jniEnv, );
 
-    if (data->text != NULL) {
-        if (data->jstrText != NULL) {
+    if (data->jstrText != NULL) {
+        if (data->text != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrText,
                                              data->text);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrText);
-            data->jstrText = NULL;
+            data->text = NULL;
         }
-        data->text = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrText);
+        data->jstrText = NULL;
     }
 
     if (data->atk_text != NULL) {

@@ -206,34 +206,34 @@ static void jaw_object_finalize(GObject *gobject) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     CHECK_NULL(jniEnv, );
 
-    if (atk_obj->name != NULL) {
-        if (jaw_obj->jstrName != NULL) {
+    if (jaw_obj->jstrName != NULL) {
+        if (atk_obj->name != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_obj->jstrName,
                                              atk_obj->name);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrName);
-            jaw_obj->jstrName = NULL;
+            atk_obj->name = NULL;
         }
-        atk_obj->name = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrName);
+        jaw_obj->jstrName = NULL;
     }
 
-    if (atk_obj->description != NULL) {
-        if (jaw_obj->jstrDescription != NULL) {
+    if (jaw_obj->jstrDescription != NULL) {
+        if (atk_obj->description != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_obj->jstrDescription,
                                              atk_obj->description);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrDescription);
-            jaw_obj->jstrDescription = NULL;
+            atk_obj->description = NULL;
         }
-        atk_obj->description = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrDescription);
+        jaw_obj->jstrDescription = NULL;
     }
 
-    if (jaw_obj->locale != NULL) {
-        if (jaw_obj->jstrLocale != NULL) {
+    if (jaw_obj->jstrLocale != NULL) {
+        if (jaw_obj->locale != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_obj->jstrLocale,
                                              jaw_obj->locale);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrLocale);
-            jaw_obj->jstrLocale = NULL;
+            jaw_obj->locale = NULL;
         }
-        jaw_obj->locale = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrLocale);
+        jaw_obj->jstrLocale = NULL;
     }
 
     if (G_OBJECT(jaw_obj->state_set) != NULL) {
@@ -370,14 +370,14 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     CHECK_NULL(jstr, NULL);
 
-    if (atk_obj->name != NULL) {
-        if (jaw_obj->jstrName != NULL) {
+    if (jaw_obj->jstrName != NULL) {
+        if (atk_obj->name != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_obj->jstrName,
                                              atk_obj->name);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrName);
-            jaw_obj->jstrName = NULL;
+            atk_obj->name = NULL;
         }
-        atk_obj->name = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrName);
+        jaw_obj->jstrName = NULL;
     }
 
     if (jstr != NULL) {
@@ -451,14 +451,14 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     CHECK_NULL(jstr, NULL);
 
-    if (atk_obj->description != NULL) {
-        if (jaw_obj->jstrDescription != NULL) {
+    if (jaw_obj->jstrDescription != NULL) {
+        if (atk_obj->description != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_obj->jstrDescription,
                                              atk_obj->description);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrDescription);
-            jaw_obj->jstrDescription = NULL;
+            atk_obj->description = NULL;
         }
-        atk_obj->description = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrDescription);
+        jaw_obj->jstrDescription = NULL;
     }
 
     if (jstr != NULL) {
@@ -707,14 +707,14 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     CHECK_NULL(jstr, NULL);
 
-    if (jaw_obj->locale != NULL) {
-        if (jaw_obj->jstrLocale != NULL) {
+    if (jaw_obj->jstrLocale != NULL) {
+        if (jaw_obj->locale != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_obj->jstrLocale,
                                              jaw_obj->locale);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrLocale);
-            jaw_obj->jstrLocale = NULL;
+            jaw_obj->locale = NULL;
         }
-        jaw_obj->locale = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrLocale);
+        jaw_obj->jstrLocale = NULL;
     }
 
     if (jstr != NULL) {

@@ -667,6 +667,7 @@ static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
     }
 
     const char *nativeStr = (*jniEnv)->GetStringUTFChars(jniEnv, jstr, NULL);
+    CHECK_NULL(nativeStr, NULL);
     gchar *result = g_strdup(nativeStr);
     (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, nativeStr);
 

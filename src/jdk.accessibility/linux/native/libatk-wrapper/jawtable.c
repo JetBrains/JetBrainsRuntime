@@ -150,14 +150,14 @@ void jaw_table_data_finalize(gpointer p) {
     CHECK_NULL(env, );
 
     if (data && data->atk_table) {
-        if (data->description != NULL) {
-            if (data->jstrDescription != NULL) {
+        if (data->jstrDescription != NULL) {
+            if (data->description != NULL) {
                 (*env)->ReleaseStringUTFChars(env, data->jstrDescription,
                                               data->description);
-                (*env)->DeleteGlobalRef(env, data->jstrDescription);
-                data->jstrDescription = NULL;
+                data->description = NULL;
             }
-            data->description = NULL;
+            (*env)->DeleteGlobalRef(env, data->jstrDescription);
+            data->jstrDescription = NULL;
         }
 
         (*env)->DeleteGlobalRef(env, data->atk_table);
@@ -481,7 +481,7 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
     (*env)->DeleteGlobalRef(env, atk_table);
     CHECK_NULL(jstr, NULL);
 
-    if (data->description != NULL) {
+    if (data->description != NULL && data->jstrDescription != NULL) {
         (*env)->ReleaseStringUTFChars(env, data->jstrDescription,
                                       data->description);
         (*env)->DeleteGlobalRef(env, data->jstrDescription);
@@ -520,7 +520,7 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     (*env)->DeleteGlobalRef(env, atk_table);
     CHECK_NULL(jstr, NULL);
 
-    if (data->description != NULL) {
+    if (data->description != NULL && data->jstrDescription != NULL) {
         (*env)->ReleaseStringUTFChars(env, data->jstrDescription,
                                       data->description);
         (*env)->DeleteGlobalRef(env, data->jstrDescription);

@@ -103,14 +103,14 @@ void jaw_table_cell_data_finalize(gpointer p) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     CHECK_NULL(jniEnv, );
 
-    if (data->description != NULL) {
-        if (data->jstrDescription != NULL) {
+    if (data->jstrDescription != NULL) {
+        if (data->description != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
                                              data->description);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
-            data->jstrDescription = NULL;
+            data->description = NULL;
         }
-        data->description = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
+        data->jstrDescription = NULL;
     }
 
     if (data->atk_table_cell) {

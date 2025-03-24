@@ -116,34 +116,34 @@ void jaw_action_data_finalize(gpointer p) {
         return;
     }
 
-    if (data->localized_name != NULL) {
-        if (data->jstrLocalizedName != NULL) {
+    if (data->jstrLocalizedName != NULL) {
+        if (data->localized_name != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrLocalizedName,
                                              data->localized_name);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrLocalizedName);
-            data->jstrLocalizedName = NULL;
+            data->localized_name = NULL;
         }
-        data->localized_name = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrLocalizedName);
+        data->jstrLocalizedName = NULL;
     }
 
-    if (data->action_description != NULL) {
-        if (data->jstrActionDescription != NULL) {
+    if (data->jstrActionDescription != NULL) {
+        if (data->action_description != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(
                 jniEnv, data->jstrActionDescription, data->action_description);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionDescription);
-            data->jstrActionDescription = NULL;
+            data->action_description = NULL;
         }
-        data->action_description = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionDescription);
+        data->jstrActionDescription = NULL;
     }
 
-    if (data->action_keybinding != NULL) {
-        if (data->jstrActionKeybinding != NULL) {
+    if (data->jstrActionKeybinding != NULL) {
+        if (data->action_keybinding != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrActionKeybinding,
                                              data->action_keybinding);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionKeybinding);
-            data->jstrActionKeybinding = NULL;
+            data->action_keybinding = NULL;
         }
-        data->action_keybinding = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionKeybinding);
+        data->jstrActionKeybinding = NULL;
     }
 
     if (data->atk_action != NULL) {
@@ -240,14 +240,14 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
     CHECK_NULL(jstr, NULL);
 
-    if (data->action_description != NULL) {
-        if (data->jstrActionDescription != NULL) {
+    if (data->jstrActionDescription != NULL) {
+        if (data->action_description != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(
                 jniEnv, data->jstrActionDescription, data->action_description);
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionDescription);
-            data->jstrActionDescription = NULL;
+            data->action_description = NULL;
         }
-        data->action_description = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionDescription);
+        data->jstrActionDescription = NULL;
     }
 
     if (jstr) {

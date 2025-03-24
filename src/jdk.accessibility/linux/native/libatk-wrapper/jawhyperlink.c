@@ -100,8 +100,20 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     CHECK_NULL(jniEnv, );
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jhyperlink);
-    jaw_hyperlink->jhyperlink = NULL;
+    if (jaw_hyperlink->jstrUri != NULL) {
+        if (jaw_hyperlink->uri != NULL) {
+            (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_hyperlink->jstrUri,
+                                             jaw_hyperlink->uri);
+            jaw_hyperlink->uri = NULL;
+        }
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jstrUri);
+        jaw_hyperlink->jstrUri = NULL;
+    }
+
+    if (jaw_hyperlink->jhyperlink != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jhyperlink);
+        jaw_hyperlink->jhyperlink = NULL;
+    }
 
     /* Chain up to parent's finalize */
     G_OBJECT_CLASS(jaw_hyperlink_parent_class)->finalize(gobject);
@@ -134,9 +146,11 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
     CHECK_NULL(jstr, NULL);
 
-    if (jaw_hyperlink->uri != NULL && jaw_hyperlink->jstrUri != NULL) {
-        (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_hyperlink->jstrUri,
-                                         jaw_hyperlink->uri);
+    if (jaw_hyperlink->jstrUri != NULL) {
+        if (jaw_hyperlink->uri != NULL) {
+            (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_hyperlink->jstrUri,
+                                             jaw_hyperlink->uri);
+        }
         (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jstrUri);
     }
 
