@@ -30,6 +30,9 @@
 #include "VKAllocator.h"
 #include "VKBuffer.h"
 #include "VKDevice.h"
+#include "VKRenderer.h"
+
+const size_t VK_BUFFER_CREATE_THRESHOLD = 0xDC000;
 
 static VKMemory VKBuffer_DestroyBuffersOnFailure(VKDevice* device, VKMemory page, uint32_t bufferCount, VKBuffer* buffers) {
     assert(device != NULL && device->allocator != NULL);
@@ -220,14 +223,124 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
         VKBuffer_Destroy(device, buffer);
         return NULL;
     }
+    buffer->lastStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    buffer->lastAccess = 0;
     return buffer;
 }
 
-VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize bufferSize)
+static void VKBuffer_CopyBuffer(VKDevice* device, VKBuffer* srcBuffer, VKBuffer* dstBuffer, VkDeviceSize size) {
+
+    VkCommandBuffer cb = VKRenderer_Record(device->renderer);
+    {
+        VkBufferMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = {};
+        VKRenderer_AddBufferBarrier(&barrier, &barrierBatch, dstBuffer,
+                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                   VK_ACCESS_TRANSFER_WRITE_BIT);
+
+        if (barrierBatch.barrierCount > 0) {
+            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
+                                         0, 0, NULL,
+                                         barrierBatch.barrierCount, &barrier,
+                                         0, NULL);
+        }
+    }
+    VkBufferCopy copyRegion = {
+            .srcOffset = 0,
+            .dstOffset = 0,
+            .size = size,
+    };
+    device->vkCmdCopyBuffer(cb,srcBuffer->handle, dstBuffer->handle,
+                            1, &copyRegion);
+
+    {
+        VkBufferMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = {};
+        VKRenderer_AddBufferBarrier(&barrier, &barrierBatch, dstBuffer,
+                                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                    VK_ACCESS_TRANSFER_READ_BIT);
+
+        if (barrierBatch.barrierCount > 0) {
+            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
+                                         0, 0, NULL,
+                                         barrierBatch.barrierCount, &barrier,
+                                         0, NULL);
+        }
+    }
+    VKRenderer_Flush(device->renderer);
+}
+
+void VKBuffer_Dispose(VKDevice* device, void* ctx) {
+    VKBuffer* buffer = (VKBuffer*) ctx;
+    VKBuffer_Destroy(device, buffer);
+}
+
+VKBuffer *VKBuffer_CreateFromDataViaBuffer(VKDevice *device,
+                                           VKBuffer_RasterInfo info,
+                                           VkPipelineStageFlags stage,
+                                           VkAccessFlags access)
 {
-    VKBuffer* buffer = VKBuffer_Create(device, bufferSize,
-                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+    uint32_t dataSize = info.w * info.h * info.pixelStride;
+    VKBuffer *hostBuffer =
+            VKBuffer_Create(device, dataSize,
+                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    void* data;
+    VK_IF_ERROR(device->vkMapMemory(device->handle, hostBuffer->range.memory, 0, VK_WHOLE_SIZE, 0, &data)) {
+        VKBuffer_Destroy(device, hostBuffer);;
+        return NULL;
+    }
+
+    char* raster = (char*)info.data + info.y1 * info.scanStride + info.x1 * info.pixelStride;;
+
+    // copy src pixels inside src bounds to buff
+    for (size_t row = 0; row < info.h; row++) {
+        memcpy((char*)data + (row * info.w * info.pixelStride), raster, info.w * info.pixelStride);
+        raster += (uint32_t) info.scanStride;
+    }
+
+    device->vkUnmapMemory(device->handle, hostBuffer->range.memory);
+
+    VKBuffer *buffer = VKBuffer_Create(device, dataSize,
+                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                                       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VKBuffer_CopyBuffer(device, hostBuffer, buffer, dataSize);
+    {
+        VkCommandBuffer cb = VKRenderer_Record(device->renderer);
+        VkBufferMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = {};
+        VKRenderer_AddBufferBarrier(&barrier, &barrierBatch, buffer,
+                                    stage, access);
+
+        if (barrierBatch.barrierCount > 0) {
+            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages,
+                                         barrierBatch.dstStages,
+                                         0, 0, NULL,
+                                         barrierBatch.barrierCount, &barrier,
+                                         0, NULL);
+        }
+    }
+    VKRenderer_DisposeOnPrimaryComplete(device->renderer, VKBuffer_Dispose, hostBuffer);
+    return buffer;
+}
+
+VKBuffer *VKBuffer_CreateDirectFromData(VKDevice *device,
+                                        VKBuffer_RasterInfo info,
+                                        VkPipelineStageFlags stage,
+                                        VkAccessFlags access)
+{
+    uint32_t dataSize = info.w * info.h * info.pixelStride;
+    VKBuffer *buffer = VKBuffer_Create(device, dataSize,
+                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                                       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     void* data;
@@ -235,24 +348,58 @@ VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize
         VKBuffer_Destroy(device, buffer);
         return NULL;
     }
-    memcpy(data, vertices, bufferSize);
 
-    VkMappedMemoryRange memoryRange = {
-            .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            .pNext = NULL,
-            .memory = buffer->range.memory,
-            .offset = 0,
-            .size = VK_WHOLE_SIZE
-    };
+    char* raster = (char*)info.data + info.y1 * info.scanStride + info.x1 * info.pixelStride;;
 
-
-    VK_IF_ERROR(device->vkFlushMappedMemoryRanges(device->handle, 1, &memoryRange)) {
-        VKBuffer_Destroy(device, buffer);
-        return NULL;
+    // copy src pixels inside src bounds to buff
+    for (size_t row = 0; row < info.h; row++) {
+        memcpy((char*)data + (row * info.w * info.pixelStride), raster, info.w * info.pixelStride);
+        raster += (uint32_t) info.scanStride;
     }
+
     device->vkUnmapMemory(device->handle, buffer->range.memory);
+    {
+        VkCommandBuffer cb = VKRenderer_Record(device->renderer);
+        VkBufferMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = {};
+        VKRenderer_AddBufferBarrier(&barrier, &barrierBatch, buffer,
+                                    stage, access);
+
+        if (barrierBatch.barrierCount > 0) {
+            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages,
+                                         barrierBatch.dstStages,
+                                         0, 0, NULL,
+                                         barrierBatch.barrierCount, &barrier,
+                                         0, NULL);
+        }
+    }
+    return buffer;
+}
+
+VKBuffer* VKBuffer_CreateFromRaster(VKDevice* device, VKBuffer_RasterInfo info,
+                                    VkPipelineStageFlags stage, VkAccessFlags access) {
+
+    uint32_t dataSize = info.w * info.h * info.pixelStride;
+    VKBuffer* buffer = NULL;
+    if (dataSize < VK_BUFFER_CREATE_THRESHOLD) {
+        buffer = VKBuffer_CreateDirectFromData(device, info, stage, access);
+    } else {
+        buffer = VKBuffer_CreateFromDataViaBuffer(device, info, stage, access);
+    }
+
 
     return buffer;
+}
+
+VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* data, VkDeviceSize dataSize,
+                                  VkPipelineStageFlags stage, VkAccessFlags access) {
+    return VKBuffer_CreateFromRaster(device, (VKBuffer_RasterInfo) {
+        .data = data,
+        .w = dataSize,
+        .h = 1,
+        .scanStride = dataSize,
+        .pixelStride = 1
+    }, stage, access);
 }
 
 void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer) {
