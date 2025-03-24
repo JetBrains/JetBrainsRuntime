@@ -71,18 +71,17 @@ public class AtkText {
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             final int rightStart = getRightStart(start);
-            ;
             final int rightEnd = getRightEnd(start, end, acc_text.getCharCount());
 
             if (acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
                 return accessibleExtendedText.getTextRange(rightStart, rightEnd);
             }
-            StringBuffer buf = new StringBuffer();
+            StringBuilder builder = new StringBuilder();
             for (int i = rightStart; i <= rightEnd - 1; i++) {
                 String str = acc_text.getAtIndex(AccessibleText.CHARACTER, i);
-                buf.append(str);
+                builder.append(str);
             }
-            return buf.toString();
+            return builder.toString();
         }, null);
     }
 
@@ -238,7 +237,6 @@ public class AtkText {
         return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
                 final int rightStart = getRightStart(start);
-                ;
                 final int rightEnd = getRightEnd(start, end, acc_text.getCharCount());
 
                 Rectangle rect = accessibleExtendedText.getTextBounds(rightStart, rightEnd);
@@ -297,7 +295,6 @@ public class AtkText {
                 return false;
 
             final int rightStart = getRightStart(start);
-            ;
             final int rightEnd = getRightEnd(start, end, acc_text.getCharCount());
 
             return set_selection(0, rightStart, rightEnd);
@@ -330,7 +327,6 @@ public class AtkText {
                 return false;
 
             final int rightStart = getRightStart(start);
-            ;
             final int rightEnd = getRightEnd(start, end, acc_text.getCharCount());
 
             acc_edt_text.selectText(rightStart, rightEnd);
