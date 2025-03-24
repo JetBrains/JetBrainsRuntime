@@ -1,7 +1,7 @@
 #!/bin/bash
 
-set -euo pipefail
-set -x
+#set -euo pipefail
+#set -x
 
 BASE_DIR=$(dirname "$0")
 source $BASE_DIR/run_inc.sh
@@ -19,12 +19,11 @@ if [ -z "$RENDERPERFTEST" ]; then
   RENDERPERFTEST=$RENDERPERFTEST_DIR/dist/RenderPerfTest.jar
 fi
 
-
 TRACE=false
 
 # removes leading hyphen
 mode_param="${1/-}"
-
+MODE="Robot"
 while [ $# -ge 1 ] ; do
   case "$1" in
     -onscreen) MODE="Robot"
@@ -66,13 +65,12 @@ fi
 
 OPTS=""
 # use time + repeat
-OPTS="$OPTS -r=$R -t -e$MODE $1"
+OPTS="$OPTS -t -n=$N  -e$MODE $1"
 
 echo "OPTS: $OPTS"
 
 echo "Unit: Milliseconds (not FPS), lower is better"
-
-for i in `seq $N` ; do 
+for i in `seq $R` ; do 
   if [ $i -eq 1 ]; then
     echo x
   fi
@@ -82,9 +80,9 @@ for i in `seq $N` ; do
 #  -jar $RENDERPERFTEST $OPTS 2>&1 | awk '/'$1'/{print $3 }' | tee test_run.log
 
   $JAVA $J2D_OPTS -DTRACE=$TRACE \
-  -jar $RENDERPERFTEST $OPTS -v 2>&1 | tee render_$1_${mode_param}_$i.log | grep -v "^#" | tail -n 2 | \
+  -jar $RENDERPERFTEST $OPTS -v 2>&1 | tee render_$1_${mode_param}_$i.log | grep -v "^#" | tail -n 1 | \
   awk '{print $3 }'
   if [ $i -ne $N ]; then
     sleep $ST
   fi
-done | $DATAMASH_CMD | expand -t12 > render_$1_${mode_param}.log
+done | $DATAMASH_CMD | expand -t12 | tee render_$1_${mode_param}.log
