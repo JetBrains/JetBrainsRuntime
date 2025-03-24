@@ -34,6 +34,8 @@
 
 struct VKBuffer {
     VkBuffer handle;
+    VkPipelineStageFlagBits lastStage;
+    VkAccessFlagBits        lastAccess;
     // Buffer has no ownership over its memory.
     // Provided memory, offset and size must only be used to flush memory writes.
     // Allocation and freeing is done in pages.
