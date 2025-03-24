@@ -26,15 +26,16 @@ public class AtkTableCell {
 
     private WeakReference<AccessibleContext> _ac;
     private WeakReference<AccessibleTable> _acc_pt;
-    private int row = -1;
-    private int rowSpan = -1;
-    private int column = -1;
-    private int columnSpan = -1;
+    private int row, rowSpan, column, columnSpan;
 
     private AtkTableCell(AccessibleContext ac) {
-        this._ac = new WeakReference<AccessibleContext>(ac);
-        Accessible parent = ac.getAccessibleParent();
+        _ac = new WeakReference<AccessibleContext>(ac);
         _acc_pt = null;
+        row = -1;
+        rowSpan = -1;
+        column = -1;
+        columnSpan = -1;
+        Accessible parent = ac.getAccessibleParent();
         if (parent == null) {
             return;
         }
