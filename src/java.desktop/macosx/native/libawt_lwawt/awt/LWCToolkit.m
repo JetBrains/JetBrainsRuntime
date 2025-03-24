@@ -36,7 +36,6 @@
 #import  "NSApplicationAWT.h"
 #import "PropertiesUtilities.h"
 #import "ApplicationDelegate.h"
-#import "SystemHotkey.h"
 
 #import "sun_lwawt_macosx_LWCToolkit.h"
 
@@ -263,8 +262,6 @@ static void setUpAWTAppKit(BOOL installObservers)
         CFRelease(notBusyObserver);
 
         setBusy(YES);
-
-        [SystemHotkey setUp];
     }
 
     JNIEnv* env = [ThreadUtilities getJNIEnv];
