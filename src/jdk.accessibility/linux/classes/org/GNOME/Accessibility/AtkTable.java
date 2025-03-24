@@ -286,22 +286,22 @@ public class AtkTable {
         int[] d = new int[0];
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
-            return d;
+            return null;
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_table.getSelectedAccessibleColumns();
-        }, d);
+        }, null);
     }
 
     private int[] get_selected_rows() {
         int[] d = new int[0];
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
-            return d;
+            return null;
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             return acc_table.getSelectedAccessibleRows();
-        }, d);
+        }, null);
     }
 
     private boolean is_column_selected(int column) {
