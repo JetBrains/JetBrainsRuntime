@@ -74,16 +74,8 @@ public class AtkEditableText extends AtkText {
             return acc_edt_text.getCharCount();
         }, -1);
 
-        if (start < 0) {
-            start = 0;
-        }
-        if (end > n || end == -1) {
-            end = n;
-        } else if (end < -1) {
-            end = 0;
-        }
-        final int rightStart = start;
-        final int rightEnd = end;
+        final int rightStart = getRightStart(start);
+        final int rightEnd = getRightEnd(rightStart, end, n);
         AtkUtil.invokeInSwing(() -> {
             String s = acc_edt_text.getTextRange(rightStart, rightEnd);
             if (s != null) {
