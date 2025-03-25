@@ -84,7 +84,7 @@ void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_text_interface_init");
         return;
     }
 
@@ -120,7 +120,7 @@ gpointer jaw_text_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_text_data_init");
         return NULL;
     }
 
@@ -149,7 +149,7 @@ void jaw_text_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_text_data_finalize");
         return;
     }
 
@@ -178,7 +178,8 @@ static gchar *jaw_text_get_gtext_from_jstr(JNIEnv *jniEnv, jstring jstr) {
     JAW_DEBUG_C("%p, %p", jniEnv, jstr);
 
     if (!jniEnv || !jstr) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_text_get_gtext_from_jstr");
         return NULL;
     }
 
@@ -195,7 +196,7 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
     JAW_DEBUG_C("%p, %d, %d", text, start_offset, end_offset);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_text_get_text");
         return NULL;
     }
 
@@ -225,7 +226,8 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
     JAW_DEBUG_C("%p, %d", text, offset);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_text_get_character_at_offset");
         return 0;
     }
 
@@ -256,7 +258,8 @@ static gchar *jaw_text_get_gtext_from_string_seq(JNIEnv *jniEnv,
                                                  gint *start_offset,
                                                  gint *end_offset) {
     if (!jniEnv || !start_offset || !end_offset) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_text_get_gtext_from_string_seq");
         return NULL;
     }
 
@@ -293,7 +296,8 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_text_get_text_at_offset");
         return NULL;
     }
 
@@ -329,7 +333,8 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_text_get_text_before_offset");
         return NULL;
     }
 
@@ -365,7 +370,8 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_text_get_text_after_offset");
         return NULL;
     }
 
@@ -397,7 +403,7 @@ static gint jaw_text_get_caret_offset(AtkText *text) {
     JAW_DEBUG_C("%p", text);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_text_get_caret_offset");
         return 0;
     }
 
@@ -429,7 +435,8 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
                 coords);
 
     if (!text || !x || !y || !width || !height) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_text_get_character_extents");
         return;
     }
 
@@ -464,7 +471,8 @@ static gint jaw_text_get_character_count(AtkText *text) {
     JAW_DEBUG_C("%p", text);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_text_get_character_count");
         return 0;
     }
 
@@ -494,7 +502,8 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
     JAW_DEBUG_C("%p, %d, %d, %d", text, x, y, coords);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_text_get_offset_at_point");
         return 0;
     }
 
@@ -527,7 +536,8 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
                 coord_type, rect);
 
     if (!text || !rect) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_text_get_range_extents");
         return;
     }
 
@@ -564,7 +574,7 @@ static gint jaw_text_get_n_selections(AtkText *text) {
     JAW_DEBUG_C("%p", text);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_text_get_n_selections");
         return 0;
     }
 
@@ -595,7 +605,7 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_text_get_selection");
         return NULL;
     }
 
@@ -646,7 +656,7 @@ static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
     JAW_DEBUG_C("%p, %d, %d", text, start_offset, end_offset);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_text_add_selection");
         return FALSE;
     }
 
@@ -676,7 +686,7 @@ static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
     JAW_DEBUG_C("%p, %d", text, selection_num);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_text_remove_selection");
         return FALSE;
     }
 
@@ -708,7 +718,7 @@ static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
                 end_offset);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_text_set_selection");
         return FALSE;
     }
 
@@ -739,7 +749,7 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
     JAW_DEBUG_C("%p, %d", text, offset);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_text_set_caret_offset");
         return FALSE;
     }
 

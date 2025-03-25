@@ -60,7 +60,7 @@ gpointer jaw_selection_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_selection_data_init");
         return NULL;
     }
 
@@ -89,7 +89,8 @@ void jaw_selection_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_selection_data_finalize");
         return;
     }
 
@@ -107,7 +108,8 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
 
     if (!selection) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_selection_add_selection");
         return FALSE;
     }
 
@@ -137,7 +139,8 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
 
     if (!selection) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_selection_clear_selection");
         return FALSE;
     }
 
@@ -166,7 +169,8 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
 
     if (!selection) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_selection_ref_selection");
         return NULL;
     }
 
@@ -202,7 +206,8 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
 
     if (!selection) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_selection_get_selection_count");
         return 0;
     }
 
@@ -232,7 +237,8 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
     JAW_DEBUG_C("%p, %d", selection, i);
 
     if (!selection) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_selection_is_child_selected");
         return FALSE;
     }
 
@@ -263,7 +269,8 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
     JAW_DEBUG_C("%p, %d", selection, i);
 
     if (!selection) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_selection_remove_selection");
         return FALSE;
     }
 
@@ -293,7 +300,8 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
 
     if (!selection) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_selection_select_all_selection");
         return FALSE;
     }
 

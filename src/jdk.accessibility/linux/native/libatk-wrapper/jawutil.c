@@ -73,11 +73,6 @@ GType jaw_util_get_type(void) {
 static void jaw_util_class_init(JawUtilClass *kclass, void *klass_data) {
     JAW_DEBUG_ALL("%p, %p", kclass, klass_data);
 
-    if (!kclass || !klass_data) {
-        g_warning("Null argument passed to function");
-        return;
-    }
-
     AtkUtilClass *atk_class;
     gpointer data;
 
@@ -98,8 +93,16 @@ typedef struct _JawKeyListenerInfo {
 
 static gboolean notify_hf(gpointer key, gpointer value, gpointer data) {
     JAW_DEBUG_C("%p, %p, %p", key, value, data);
+
+    if (!key || !value || !data) {
+        g_warning("Null argument passed to function notify_hf");
+        return FALSE;
+    }
+
     JawKeyListenerInfo *info = (JawKeyListenerInfo *)value;
+    CHECK_NULL(info, FALSE);
     AtkKeyEventStruct *key_event = (AtkKeyEventStruct *)data;
+    CHECK_NULL(key_event, FALSE);
 
     AtkKeySnoopFunc func = info->listener;
     gpointer func_data = info->data;
@@ -114,7 +117,14 @@ static gboolean notify_hf(gpointer key, gpointer value, gpointer data) {
 
 static void insert_hf(gpointer key, gpointer value, gpointer data) {
     JAW_DEBUG_C("%p, %p, %p", key, value, data);
+
+    if (!key || !value || !data) {
+        g_warning("Null argument passed to function insert_hf");
+        return;
+    }
+
     GHashTable *new_table = (GHashTable *)data;
+    CHECK_NULL(new_table, );
     g_hash_table_insert(new_table, key, value);
 }
 
@@ -122,7 +132,8 @@ gboolean jaw_util_dispatch_key_event(AtkKeyEventStruct *event) {
     JAW_DEBUG_C("%p", event);
 
     if (!event) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_util_dispatch_key_event");
         return FALSE;
     }
 
@@ -145,7 +156,8 @@ static guint jaw_util_add_key_event_listener(AtkKeySnoopFunc listener,
     JAW_DEBUG_C("%p, %p", listener, data);
 
     if (!listener || !data) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_util_add_key_event_listener");
         return -1;
     }
 
@@ -200,7 +212,8 @@ guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
     JAW_DEBUG_C("%p, %p", jniEnv, jObj);
 
     if (!jniEnv) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_util_get_tflag_from_jobj");
         return -1;
     }
 
@@ -292,7 +305,8 @@ void jaw_util_detach(void) {
 static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
                                           const gchar *roleName) {
     if (!jniEnv || !roleName) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_util_get_java_acc_role");
         return NULL;
     }
 
@@ -312,7 +326,7 @@ static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
 static gboolean jaw_util_is_java_acc_role(JNIEnv *jniEnv, jobject acc_role,
                                           const gchar *roleName) {
     if (!jniEnv || !roleName) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_util_is_java_acc_role");
         return FALSE;
     }
 
@@ -330,7 +344,8 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     JAW_DEBUG_C("%p", jAccessibleContext);
 
     if (!jAccessibleContext) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_util_get_atk_role_from_AccessibleContext");
         return ATK_ROLE_UNKNOWN;
     }
 
@@ -583,7 +598,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
 static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
                                    const gchar *strState) {
     if (!jniEnv || !strState) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function is_same_java_state");
         return FALSE;
     }
     jclass classAccessibleState =
@@ -606,7 +621,8 @@ static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
 AtkStateType jaw_util_get_atk_state_type_from_java_state(JNIEnv *jniEnv,
                                                          jobject jobj) {
     if (!jniEnv) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_util_get_atk_state_type_from_java_state");
         return ATK_STATE_INVALID;
     }
 
@@ -709,7 +725,7 @@ void jaw_util_get_rect_info(JNIEnv *jniEnv, jobject jrect, gint *x, gint *y,
     JAW_DEBUG_C("%p, %p, %p, %p, %p, %p", jniEnv, jrect, x, y, width, height);
 
     if (!jniEnv || !x || !y || !width || !height) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_util_get_rect_info");
         return;
     }
 

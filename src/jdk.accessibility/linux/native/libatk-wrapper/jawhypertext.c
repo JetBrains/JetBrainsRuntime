@@ -40,7 +40,8 @@ typedef struct _HypertextData {
 
 void jaw_hypertext_interface_init(AtkHypertextIface *iface, gpointer data) {
     if (!iface) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_hypertext_interface_init");
         return;
     }
 
@@ -53,7 +54,7 @@ static void link_destroy_notify(gpointer p) {
     JAW_DEBUG_C("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function link_destroy_notify");
         return;
     }
 
@@ -66,7 +67,7 @@ gpointer jaw_hypertext_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_hypertext_data_init");
         return NULL;
     }
 
@@ -98,7 +99,8 @@ void jaw_hypertext_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_hypertext_data_finalize");
         return;
     }
 
@@ -123,7 +125,7 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     JAW_DEBUG_C("%p, %d", hypertext, link_index);
 
     if (!hypertext) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_hypertext_get_link");
         return NULL;
     }
 
@@ -162,7 +164,7 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
     JAW_DEBUG_C("%p", hypertext);
 
     if (!hypertext) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_hypertext_get_n_links");
         return 0;
     }
 
@@ -197,7 +199,8 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
     JAW_DEBUG_C("%p, %d", hypertext, char_index);
 
     if (!hypertext) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_hypertext_get_link_index");
         return -1;
     }
 

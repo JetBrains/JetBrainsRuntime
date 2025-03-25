@@ -73,7 +73,7 @@ void jaw_table_interface_init(AtkTableIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_interface_init");
         return;
     }
 
@@ -112,7 +112,7 @@ gpointer jaw_table_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_data_init");
         return NULL;
     }
 
@@ -140,7 +140,7 @@ void jaw_table_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_data_finalize");
         return;
     }
 
@@ -168,7 +168,7 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
     JAW_DEBUG_C("%p, %d, %d", table, row, column);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_ref_at");
         return NULL;
     }
 
@@ -217,7 +217,7 @@ static gint jaw_table_get_index_at(AtkTable *table, gint row, gint column) {
     JAW_DEBUG_C("%p, %d, %d", table, row, column);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_get_index_at");
         return 0;
     }
 
@@ -247,7 +247,8 @@ static gint jaw_table_get_column_at_index(AtkTable *table, gint index) {
     JAW_DEBUG_C("%p, %d", table, index);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_get_column_at_index");
         return 0;
     }
 
@@ -276,7 +277,8 @@ static gint jaw_table_get_row_at_index(AtkTable *table, gint index) {
     JAW_DEBUG_C("%p, %d", table, index);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_get_row_at_index");
         return 0;
     }
 
@@ -305,7 +307,7 @@ static gint jaw_table_get_n_columns(AtkTable *table) {
     JAW_DEBUG_C("%p", table);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_get_n_columns");
         return 0;
     }
 
@@ -334,7 +336,7 @@ static gint jaw_table_get_n_rows(AtkTable *table) {
     JAW_DEBUG_C("%p", table);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_get_n_rows");
         return 0;
     }
 
@@ -364,7 +366,8 @@ static gint jaw_table_get_column_extent_at(AtkTable *table, gint row,
     JAW_DEBUG_C("%p, %d, %d", table, row, column);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_get_column_extent_at");
         return 0;
     }
 
@@ -395,7 +398,8 @@ static gint jaw_table_get_row_extent_at(AtkTable *table, gint row,
     JAW_DEBUG_C("%p, %d, %d", table, row, column);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_get_row_extent_at");
         return 0;
     }
 
@@ -425,7 +429,7 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
     JAW_DEBUG_C("%p", table);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_get_caption");
         return 0;
     }
 
@@ -458,7 +462,8 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
     JAW_DEBUG_C("%p, %d", table, column);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_table_get_column_description");
         return NULL;
     }
 
@@ -497,7 +502,8 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     JAW_DEBUG_C("%p, %d", table, row);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_get_row_description");
         return NULL;
     }
 
@@ -536,7 +542,8 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
     JAW_DEBUG_C("%p, %d", table, column);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_get_column_header");
         return NULL;
     }
 
@@ -568,7 +575,7 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
     JAW_DEBUG_C("%p, %d", table, row);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_get_row_header");
         return NULL;
     }
 
@@ -600,7 +607,7 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
     JAW_DEBUG_C("%p", table);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_get_summary");
         return NULL;
     }
 
@@ -632,7 +639,8 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
     JAW_DEBUG_C("%p, %p", table, selected);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_get_selected_columns");
         return 0;
     }
 
@@ -664,7 +672,8 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
     JAW_DEBUG_C("%p, %p", table, selected);
 
     if (!table || !selected) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_get_selected_rows");
         return 0;
     }
 
@@ -696,7 +705,8 @@ static gboolean jaw_table_is_column_selected(AtkTable *table, gint column) {
     JAW_DEBUG_C("%p, %d", table, column);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_is_column_selected");
         return FALSE;
     }
 
@@ -725,7 +735,7 @@ static gboolean jaw_table_is_row_selected(AtkTable *table, gint row) {
     JAW_DEBUG_C("%p, %d", table, row);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_is_row_selected");
         return FALSE;
     }
 
@@ -754,7 +764,7 @@ static gboolean jaw_table_is_selected(AtkTable *table, gint row, gint column) {
     JAW_DEBUG_C("%p, %d, %d", table, row, column);
 
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_is_selected");
         return FALSE;
     }
 
@@ -781,7 +791,8 @@ static gboolean jaw_table_is_selected(AtkTable *table, gint row, gint column) {
 
 static gboolean jaw_table_add_row_selection(AtkTable *table, gint row) {
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_add_row_selection");
         return FALSE;
     }
 
@@ -792,7 +803,8 @@ static gboolean jaw_table_add_row_selection(AtkTable *table, gint row) {
 
 static gboolean jaw_table_remove_row_selection(AtkTable *table, gint row) {
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_remove_row_selection");
         return FALSE;
     }
 
@@ -803,7 +815,8 @@ static gboolean jaw_table_remove_row_selection(AtkTable *table, gint row) {
 
 static gboolean jaw_table_add_column_selection(AtkTable *table, gint column) {
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_add_column_selection");
         return FALSE;
     }
 
@@ -815,7 +828,8 @@ static gboolean jaw_table_add_column_selection(AtkTable *table, gint column) {
 static gboolean jaw_table_remove_column_selection(AtkTable *table,
                                                   gint column) {
     if (!table) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_table_remove_column_selection");
         return FALSE;
     }
 
@@ -829,7 +843,8 @@ static void jaw_table_set_row_description(AtkTable *table, gint row,
     JAW_DEBUG_C("%p, %d, %s", table, row, description);
 
     if (!table || !description) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_set_row_description");
         return;
     }
 
@@ -861,7 +876,8 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
     JAW_DEBUG_C("%p, %d, %s", table, column, description);
 
     if (!table || !description) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_table_set_column_description");
         return;
     }
 
@@ -891,7 +907,7 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
 static void jaw_table_set_row_header(AtkTable *table, gint row,
                                      AtkObject *header) {
     if (!table || !header) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_set_row_header");
         return;
     }
 
@@ -902,7 +918,8 @@ static void jaw_table_set_row_header(AtkTable *table, gint row,
 static void jaw_table_set_column_header(AtkTable *table, gint column,
                                         AtkObject *header) {
     if (!table || !header) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_table_set_column_header");
         return;
     }
 
@@ -914,7 +931,7 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
     JAW_DEBUG_C("%p, %p", table, caption);
 
     if (!table || !caption) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_set_caption");
         return;
     }
 
@@ -961,7 +978,7 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
     JAW_DEBUG_C("%p, %p", table, summary);
 
     if (!table || !summary) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_table_set_summary");
         return;
     }
 

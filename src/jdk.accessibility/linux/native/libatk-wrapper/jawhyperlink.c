@@ -52,7 +52,7 @@ static void jaw_hyperlink_class_init(JawHyperlinkClass *klass) {
     JAW_DEBUG_ALL("%p", klass);
 
     if (!klass) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_hyperlink_class_init");
         return;
     }
 
@@ -79,7 +79,7 @@ static void jaw_hyperlink_dispose(GObject *gobject) {
     JAW_DEBUG_ALL("%p", gobject);
 
     if (!gobject) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_hyperlink_dispose");
         return;
     }
 
@@ -91,7 +91,7 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
     JAW_DEBUG_ALL("%p", gobject);
 
     if (!gobject) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_hyperlink_finalize");
         return;
     }
 
@@ -123,7 +123,7 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     JAW_DEBUG_C("%p, %d", atk_hyperlink, i);
 
     if (!atk_hyperlink) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_hyperlink_get_uri");
         return NULL;
     }
 
@@ -166,7 +166,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
     JAW_DEBUG_C("%p, %d", atk_hyperlink, i);
 
     if (!atk_hyperlink) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_hyperlink_get_object");
         return NULL;
     }
 
@@ -203,7 +203,8 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
 
     if (!atk_hyperlink) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_hyperlink_get_end_index");
         return -1;
     }
 
@@ -237,7 +238,8 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
 
     if (!atk_hyperlink) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_hyperlink_get_start_index");
         return -1;
     }
 
@@ -266,7 +268,7 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
 
     if (!atk_hyperlink) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_hyperlink_is_valid");
         return FALSE;
     }
 
@@ -298,7 +300,8 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
 
     if (!atk_hyperlink) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_hyperlink_get_n_anchors");
         return 0;
     }
 

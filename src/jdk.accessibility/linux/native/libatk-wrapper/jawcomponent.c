@@ -73,7 +73,8 @@ void jaw_component_interface_init(AtkComponentIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p,%p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_component_interface_init in jawcomponent.c");
         return;
     }
 
@@ -99,7 +100,7 @@ gpointer jaw_component_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_component_data_init");
         return NULL;
     }
 
@@ -128,7 +129,8 @@ void jaw_component_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_component_data_finalize in jawcomponent.c");
         return;
     }
 
@@ -148,7 +150,8 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
     JAW_DEBUG_C("%p, %d, %d, %d", component, x, y, coord_type);
 
     if (!component) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_component_contains in "
+                  "jawcomponent.c");
         return FALSE;
     }
 
@@ -181,7 +184,8 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
     JAW_DEBUG_C("%p, %d, %d, %d", component, x, y, coord_type);
 
     if (!component) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_component_ref_accessible_at_point in jawcomponent.c");
         return NULL;
     }
 
@@ -221,7 +225,8 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
                 coord_type);
 
     if (!component || !x || !y || !width || !height) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_component_get_extents "
+                  "in jawcomponent.c");
         return;
     }
 
@@ -280,7 +285,8 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
                 coord_type);
 
     if (!component) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_component_set_extents "
+                  "in jawcomponent.c");
         return FALSE;
     }
 
@@ -311,7 +317,8 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
     JAW_DEBUG_C("%p", component);
 
     if (!component) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_component_grab_focus "
+                  "in jawcomponent.c");
         return FALSE;
     }
 
@@ -341,7 +348,8 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
     JAW_DEBUG_C("%p", component);
 
     if (!component) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_component_get_layer in "
+                  "jawcomponent.c");
         return 0;
     }
 

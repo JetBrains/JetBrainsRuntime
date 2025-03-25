@@ -42,7 +42,7 @@ static void jaw_toplevel_class_init(JawToplevelClass *klass) {
     JAW_DEBUG_ALL("%p", klass);
 
     if (!klass) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_toplevel_class_init");
         return;
     }
 
@@ -65,7 +65,7 @@ static void jaw_toplevel_init(JawToplevel *toplevel) {
     JAW_DEBUG_ALL("%p", toplevel);
 
     if (!toplevel) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_toplevel_init");
         return;
     }
 
@@ -76,7 +76,7 @@ static void jaw_toplevel_initialize(AtkObject *accessible, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", accessible, data);
 
     if (!accessible) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_toplevel_initialize");
         return;
     }
 
@@ -87,7 +87,8 @@ static void jaw_toplevel_object_finalize(GObject *obj) {
     JAW_DEBUG_ALL("%p", obj);
 
     if (!obj) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_toplevel_object_finalize");
         return;
     }
 
@@ -108,7 +109,7 @@ static const gchar *jaw_toplevel_get_name(AtkObject *obj) {
     JAW_DEBUG_C("%p", obj);
 
     if (!obj) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_toplevel_get_name");
         return NULL;
     }
 
@@ -132,7 +133,8 @@ static const gchar *jaw_toplevel_get_description(AtkObject *obj) {
     JAW_DEBUG_C("%p", obj);
 
     if (!obj) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_toplevel_get_description");
         return NULL;
     }
 
@@ -143,7 +145,8 @@ static gint jaw_toplevel_get_n_children(AtkObject *obj) {
     JAW_DEBUG_C("%p", obj);
 
     if (!obj) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_toplevel_get_n_children");
         return -1;
     }
 
@@ -159,7 +162,8 @@ static gint jaw_toplevel_get_index_in_parent(AtkObject *obj) {
     JAW_DEBUG_C("%p", obj);
 
     if (!obj) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_toplevel_get_index_in_parent");
         return -1;
     }
 
@@ -175,7 +179,7 @@ static AtkRole jaw_toplevel_get_role(AtkObject *obj) {
     JAW_DEBUG_C("%p", obj);
 
     if (!obj) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_toplevel_get_role");
         return ATK_ROLE_INVALID;
     }
 
@@ -186,7 +190,7 @@ static AtkObject *jaw_toplevel_ref_child(AtkObject *obj, gint i) {
     JAW_DEBUG_C("%p, %d", obj, i);
 
     if (!obj) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_toplevel_ref_child");
         return NULL;
     }
 
@@ -205,7 +209,7 @@ static AtkObject *jaw_toplevel_get_parent(AtkObject *obj) {
     JAW_DEBUG_C("%p", obj);
 
     if (!obj) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_toplevel_get_parent");
         return NULL;
     }
 
@@ -216,7 +220,7 @@ gint jaw_toplevel_add_window(JawToplevel *toplevel, AtkObject *child) {
     JAW_DEBUG_C("%p, %p", toplevel, child);
 
     if (!toplevel || !child) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_toplevel_add_window");
         return -1;
     }
 
@@ -235,7 +239,8 @@ gint jaw_toplevel_remove_window(JawToplevel *toplevel, AtkObject *child) {
     JAW_DEBUG_C("%p, %p", toplevel, child);
 
     if (!toplevel || !child) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_toplevel_remove_window");
         return -1;
     }
 
@@ -256,7 +261,8 @@ gint jaw_toplevel_get_child_index(JawToplevel *toplevel, AtkObject *child) {
     JAW_DEBUG_C("%p, %p", toplevel, child);
 
     if (!toplevel || !child) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_toplevel_get_child_index");
         return -1;
     }
 

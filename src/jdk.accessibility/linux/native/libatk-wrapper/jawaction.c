@@ -58,7 +58,8 @@ void jaw_action_interface_init(AtkActionIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_action_interface_init "
+                  "in jawaction.c");
         return;
     }
 
@@ -75,7 +76,8 @@ gpointer jaw_action_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_action_data_init in "
+                  "jawaction.c");
         return NULL;
     }
 
@@ -105,7 +107,8 @@ void jaw_action_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_action_data_finalize "
+                  "in jawaction.c");
         return;
     }
 
@@ -156,7 +159,8 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
     JAW_DEBUG_C("%p, %d", action, i);
 
     if (!action) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_action_do_action in "
+                  "jawaction.c");
         return FALSE;
     }
 
@@ -187,7 +191,8 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
     JAW_DEBUG_C("%p", action);
 
     if (!action) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_action_get_n_actions "
+                  "in jawaction.c");
         return 0;
     }
 
@@ -216,7 +221,8 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
     JAW_DEBUG_C("%p, %d", action, i);
 
     if (!action) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_action_get_description "
+                  "in jawaction.c");
         return NULL;
     }
 
@@ -264,7 +270,8 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
     JAW_DEBUG_C("%p, %d, %s", action, i, description);
 
     if (!action) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_action_set_description "
+                  "in jawaction.c");
         return FALSE;
     }
 
@@ -294,7 +301,8 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     JAW_DEBUG_C("%p, %d", action, i);
 
     if (!action) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_action_get_localized_name in jawaction.c");
         return NULL;
     }
 
@@ -333,7 +341,8 @@ static const gchar *jaw_action_get_keybinding(AtkAction *action, gint i) {
     JAW_DEBUG_C("%p, %d", action, i);
 
     if (!action) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_action_get_keybinding "
+                  "in jawaction.c");
         return NULL;
     }
 

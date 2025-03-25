@@ -44,7 +44,7 @@ void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_value_interface_init");
         return;
     }
 
@@ -62,6 +62,12 @@ void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
 
 gpointer jaw_value_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
+
+    if (!ac) {
+        g_warning("Null argument passed to function jaw_value_data_init");
+        return NULL;
+    }
+
     ValueData *data = g_new0(ValueData, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
@@ -84,6 +90,12 @@ gpointer jaw_value_data_init(jobject ac) {
 
 void jaw_value_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
+
+    if (!p) {
+        g_warning("Null argument passed to function jaw_value_data_finalize");
+        return;
+    }
+
     ValueData *data = (ValueData *)p;
     CHECK_NULL(data, );
 
@@ -101,7 +113,7 @@ static void get_g_value_from_java_number(JNIEnv *jniEnv, jobject jnumber,
     JAW_DEBUG_C("%p, %p, %p", jniEnv, jnumber, value);
 
     if (!jniEnv || !value) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function get_g_value_from_java_number");
         return;
     }
 
@@ -177,7 +189,7 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
     JAW_DEBUG_C("%p, %p", obj, value);
 
     if (!obj || !value) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_value_get_current_value");
         return;
     }
 
@@ -207,7 +219,7 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
     JAW_DEBUG_C("%p, %lf", obj, value);
 
     if (!obj) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_value_set_value");
         return;
     }
 
@@ -233,7 +245,7 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
     JAW_DEBUG_C("%p", obj);
 
     if (!obj) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_value_get_range");
         return NULL;
     }
 
@@ -274,7 +286,7 @@ static gdouble jaw_value_get_increment(AtkValue *obj) {
     JAW_DEBUG_C("%p", obj);
 
     if (!obj) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_value_get_increment");
         return 0;
     }
 

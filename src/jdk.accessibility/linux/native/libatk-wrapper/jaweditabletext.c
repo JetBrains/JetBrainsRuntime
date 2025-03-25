@@ -54,7 +54,8 @@ void jaw_editable_text_interface_init(AtkEditableTextIface *iface,
     JAW_DEBUG_ALL("%p,%p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_editable_text_interface_init");
         return;
     }
 
@@ -71,7 +72,8 @@ gpointer jaw_editable_text_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_editable_text_data_init");
         return NULL;
     }
 
@@ -101,7 +103,8 @@ void jaw_editable_text_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_editable_text_data_finalize");
         return;
     }
 
@@ -119,7 +122,8 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
     JAW_DEBUG_C("%p, %s", text, string);
 
     if (!text || !string) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_editable_text_set_text_contents");
         return;
     }
 
@@ -152,7 +156,8 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
     JAW_DEBUG_C("%p, %s, %d, %p", text, string, length, position);
 
     if (!text || !string || !position) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_editable_text_insert_text");
         return;
     }
 
@@ -187,7 +192,8 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
     JAW_DEBUG_C("%p, %d, %d", text, start_pos, end_pos);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_editable_text_copy_text");
         return;
     }
 
@@ -215,7 +221,8 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
     JAW_DEBUG_C("%p, %d, %d", text, start_pos, end_pos);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_editable_text_cut_text");
         return;
     }
 
@@ -243,7 +250,8 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
     JAW_DEBUG_C("%p, %d, %d", text, start_pos, end_pos);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_editable_text_delete_text");
         return;
     }
 
@@ -270,7 +278,8 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
     JAW_DEBUG_C("%p, %d", text, position);
 
     if (!text) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_editable_text_paste_text");
         return;
     }
 
@@ -299,7 +308,8 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
     JAW_DEBUG_C("%p, %p, %d, %d", text, attrib_set, start_offset, end_offset);
 
     if (!text || !attrib_set) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function "
+                  "jaw_editable_text_set_run_attributes");
         return FALSE;
     }
 

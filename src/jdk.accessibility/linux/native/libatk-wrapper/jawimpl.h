@@ -58,8 +58,8 @@ struct _JawImpl {
 JawImpl *jaw_impl_create_instance(JNIEnv *, jobject);
 JawImpl *jaw_impl_get_instance_from_jaw(JNIEnv *, jobject);
 JawImpl *jaw_impl_find_instance(JNIEnv *, jobject);
-//GHashTable *jaw_impl_get_object_hash_table(void);
-//GMutex *jaw_impl_get_object_hash_table_mutex(void);
+// GHashTable *jaw_impl_get_object_hash_table(void);
+// GMutex *jaw_impl_get_object_hash_table_mutex(void);
 
 GType jaw_impl_get_type(guint);
 AtkRelationType jaw_impl_get_atk_relation_type(JNIEnv *jniEnv,

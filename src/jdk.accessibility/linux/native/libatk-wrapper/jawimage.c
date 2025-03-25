@@ -42,7 +42,7 @@ void jaw_image_interface_init(AtkImageIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_image_interface_init");
         return;
     }
 
@@ -57,7 +57,7 @@ gpointer jaw_image_data_init(jobject ac) {
     JAW_DEBUG_C("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_image_data_init");
         return NULL;
     }
 
@@ -85,7 +85,7 @@ void jaw_image_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_image_data_finalize");
         return;
     }
 
@@ -115,7 +115,8 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
     JAW_DEBUG_C("%p, %p, %p, %d", image, x, y, coord_type);
 
     if (!image || !x || !y) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_image_get_image_position");
         return;
     }
 
@@ -160,7 +161,8 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
     JAW_DEBUG_C("%p", image);
 
     if (!image) {
-        g_warning("Null argument passed to function");
+        g_warning(
+            "Null argument passed to function jaw_image_get_image_description");
         return NULL;
     }
 
@@ -202,7 +204,7 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
     JAW_DEBUG_C("%p, %p, %p", image, width, height);
 
     if (!image || !width || !height) {
-        g_warning("Null argument passed to function");
+        g_warning("Null argument passed to function jaw_image_get_image_size");
         return;
     }
 
