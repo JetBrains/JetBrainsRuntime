@@ -145,7 +145,9 @@ void VKImage_Destroy(VKDevice* device, VKImage* image) {
     if (image->viewMap != NULL) {
         for (const VKImageViewKey* k = NULL; (k = MAP_NEXT_KEY(image->viewMap, k)) != NULL;) {
             const VKImageViewInfo* viewInfo = MAP_FIND(image->viewMap, *k);
-            device->vkFreeDescriptorSets(device->handle, viewInfo->descriptorPool, 1, &viewInfo->descriptorSet);
+            if (viewInfo->descriptorSet != VK_NULL_HANDLE) {
+                device->vkFreeDescriptorSets(device->handle, viewInfo->descriptorPool, 1, &viewInfo->descriptorSet);
+            }
             device->vkDestroyImageView(device->handle, viewInfo->view, NULL);
         }
         MAP_FREE(image->viewMap);
