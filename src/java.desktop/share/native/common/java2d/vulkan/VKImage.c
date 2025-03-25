@@ -159,7 +159,7 @@ VkImageView VKImage_GetView(VKDevice* device, VKImage* image, VkFormat format, V
     const VkImageView* view = MAP_FIND(image->viewMap, key);
     if (view == NULL) {
         VkImageView* newView = &MAP_AT(image->viewMap, key);
-        *newView = VKImage_CreateView(device, image->handle, format, VKUtil_UnpackSwizzle(swizzle));
+        *newView = VKImage_CreateView(device, image->handle, format, VK_UNPACK_SWIZZLE(swizzle));
         view = newView;
     }
     return *view;
