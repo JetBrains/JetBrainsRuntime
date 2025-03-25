@@ -144,8 +144,11 @@ void VKImage_Destroy(VKDevice* device, VKImage* image) {
     if (image == NULL) return;
     if (image->viewMap != NULL) {
         for (const VKImageViewKey* k = NULL; (k = MAP_NEXT_KEY(image->viewMap, k)) != NULL;) {
-            const VkImageView* view = MAP_FIND(image->viewMap, *k);
-            device->vkDestroyImageView(device->handle, *view, NULL);
+            const VKImageViewInfo* viewInfo = MAP_FIND(image->viewMap, *k);
+            if (viewInfo->descriptorSet != VK_NULL_HANDLE) {
+                device->vkFreeDescriptorSets(device->handle, viewInfo->descriptorPool, 1, &viewInfo->descriptorSet);
+            }
+            device->vkDestroyImageView(device->handle, viewInfo->view, NULL);
         }
         MAP_FREE(image->viewMap);
     }
@@ -154,13 +157,38 @@ void VKImage_Destroy(VKDevice* device, VKImage* image) {
     free(image);
 }
 
-VkImageView VKImage_GetView(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle) {
+static VKImageViewInfo* VKImage_GetViewInfo(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle) {
     VKImageViewKey key = { format, swizzle };
-    const VkImageView* view = MAP_FIND(image->viewMap, key);
-    if (view == NULL) {
-        VkImageView* newView = &MAP_AT(image->viewMap, key);
-        *newView = VKImage_CreateView(device, image->handle, format, VK_UNPACK_SWIZZLE(swizzle));
-        view = newView;
+    VKImageViewInfo* viewInfo = MAP_FIND(image->viewMap, key);
+    if (viewInfo == NULL || viewInfo->view == VK_NULL_HANDLE) {
+        if (viewInfo == NULL) viewInfo = &MAP_AT(image->viewMap, key);
+        viewInfo->view = VKImage_CreateView(device, image->handle, format, VK_UNPACK_SWIZZLE(swizzle));
     }
-    return *view;
+    return viewInfo;
+}
+
+VkImageView VKImage_GetView(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle) {
+    return VKImage_GetViewInfo(device, image, format, swizzle)->view;
+}
+
+VkDescriptorSet VKImage_GetDescriptorSet(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle) {
+    VKImageViewInfo* info = VKImage_GetViewInfo(device, image, format, swizzle);
+    if (info->descriptorSet == VK_NULL_HANDLE) {
+        VKRenderer_CreateImageDescriptorSet(device->renderer, &info->descriptorPool, &info->descriptorSet);
+        VkDescriptorImageInfo imageInfo = {
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .imageView = info->view
+        };
+        VkWriteDescriptorSet descriptorWrites = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = info->descriptorSet,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+            .descriptorCount = 1,
+            .pImageInfo = &imageInfo
+        };
+        device->vkUpdateDescriptorSets(device->handle, 1, &descriptorWrites, 0, NULL);
+    }
+    return info->descriptorSet;
 }

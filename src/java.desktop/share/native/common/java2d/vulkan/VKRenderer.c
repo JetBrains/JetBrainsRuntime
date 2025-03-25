@@ -99,6 +99,7 @@ struct VKRenderer {
     POOL(VkFramebuffer,     framebufferDestructionQueue);
     ARRAY(VKMemory)         bufferMemoryPages;
     ARRAY(VkDescriptorPool) descriptorPools;
+    ARRAY(VkDescriptorPool) imageDescriptorPools;
 
     /**
      * Last known timestamp reached by GPU execution. Resources with equal or less timestamp may be safely reused.
@@ -253,6 +254,48 @@ static VKTexelBuffer VKRenderer_GetMaskFillBuffer(VKRenderer* renderer) {
     return texelBuffers[0];
 }
 
+#define IMAGE_DESCRIPTOR_POOL_SIZE 64
+static VkDescriptorSet VKRenderer_AllocateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool descriptorPool) {
+    VKDevice* device = renderer->device;
+    VkDescriptorSetAllocateInfo allocateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = descriptorPool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &renderer->pipelineContext->textureDescriptorSetLayout
+    };
+    VkDescriptorSet set;
+    VkResult result = device->vkAllocateDescriptorSets(device->handle, &allocateInfo, &set);
+    if (result == VK_SUCCESS) return set;
+    if (result != VK_ERROR_OUT_OF_POOL_MEMORY && result != VK_ERROR_FRAGMENTED_POOL) {
+        VK_IF_ERROR(result) VK_UNHANDLED_ERROR();
+    }
+    return VK_NULL_HANDLE;
+}
+void VKRenderer_CreateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool* descriptorPool, VkDescriptorSet* set) {
+    VKDevice* device = renderer->device;
+    for (int i = ARRAY_SIZE(renderer->imageDescriptorPools) - 1; i >= 0; i--) {
+        *set = VKRenderer_AllocateImageDescriptorSet(renderer, renderer->imageDescriptorPools[i]);
+        if (*set != VK_NULL_HANDLE) {
+            *descriptorPool = renderer->imageDescriptorPools[i];
+            return;
+        }
+    }
+    VkDescriptorPoolSize poolSize = {
+        .type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        .descriptorCount = IMAGE_DESCRIPTOR_POOL_SIZE
+    };
+    VkDescriptorPoolCreateInfo poolInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .poolSizeCount = 1,
+        .pPoolSizes = &poolSize,
+        .maxSets = IMAGE_DESCRIPTOR_POOL_SIZE
+    };
+    VK_IF_ERROR(device->vkCreateDescriptorPool(device->handle, &poolInfo, NULL, descriptorPool)) VK_UNHANDLED_ERROR();
+    ARRAY_PUSH_BACK(renderer->imageDescriptorPools) = *descriptorPool;
+    *set = VKRenderer_AllocateImageDescriptorSet(renderer, *descriptorPool);
+}
+
 static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
     VKDevice* device = renderer->device;
     VkSemaphore semaphore = VK_NULL_HANDLE;
@@ -374,6 +417,10 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
         device->vkDestroyDescriptorPool(device->handle, renderer->descriptorPools[i], NULL);
     }
     ARRAY_FREE(renderer->descriptorPools);
+    for (uint32_t i = 0; i < ARRAY_SIZE(renderer->imageDescriptorPools); i++) {
+        device->vkDestroyDescriptorPool(device->handle, renderer->imageDescriptorPools[i], NULL);
+    }
+    ARRAY_FREE(renderer->imageDescriptorPools);
 
     device->vkDestroySemaphore(device->handle, renderer->timelineSemaphore, NULL);
     device->vkDestroyCommandPool(device->handle, renderer->commandPool, NULL);
@@ -1272,48 +1319,6 @@ void VKRenderer_TextureRender(VKImage *destImage, VKImage *srcImage,
     VkCommandBuffer cb = renderPass->commandBuffer;
     VKDevice* device = surface->device;
 
-    // TODO We create a new descriptor set on each command, we'll implement reusing them later.
-    VkDescriptorPoolSize poolSize = {
-            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 1
-    };
-    VkDescriptorPoolCreateInfo descrPoolInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-            .poolSizeCount = 1,
-            .pPoolSizes = &poolSize,
-            .maxSets = 1
-    };
-    VkDescriptorPool descriptorPool;
-    VK_IF_ERROR(device->vkCreateDescriptorPool(device->handle, &descrPoolInfo, NULL, &descriptorPool)) VK_UNHANDLED_ERROR();
-
-    VkDescriptorSetAllocateInfo descrAllocInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = descriptorPool,
-            .descriptorSetCount = 1,
-            .pSetLayouts = &device->renderer->pipelineContext->textureDescriptorSetLayout
-    };
-    VkDescriptorSet descriptorSet;
-    VK_IF_ERROR(device->vkAllocateDescriptorSets(device->handle, &descrAllocInfo, &descriptorSet)) VK_UNHANDLED_ERROR();
-
-    VkDescriptorImageInfo imageInfo = {
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            .imageView = VKImage_GetView(device, srcImage, srcImage->format, 0),
-            .sampler = device->renderer->pipelineContext->linearRepeatSampler
-    };
-
-    VkWriteDescriptorSet descriptorWrites = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = descriptorSet,
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 1,
-            .pImageInfo = &imageInfo
-    };
-
-    device->vkUpdateDescriptorSets(device->handle, 1, &descriptorWrites, 0, NULL);
-
-
     // TODO We flush all pending draws and rebind the vertex buffer with the provided one.
     //      We will make it work with our unified vertex buffer later.
     VKRenderer_FlushDraw(surface);
@@ -1321,8 +1326,10 @@ void VKRenderer_TextureRender(VKImage *destImage, VKImage *srcImage,
     VkBuffer vertexBuffers[] = {vertexBuffer};
     VkDeviceSize offsets[] = {0};
     device->vkCmdBindVertexBuffers(cb, 0, 1, vertexBuffers, offsets);
+    VkDescriptorSet descriptorSets[] = { VKImage_GetDescriptorSet(device, srcImage, srcImage->format, 0),
+                                         device->renderer->pipelineContext->linearRepeatSamplerDescriptorSet };
     device->vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    device->renderer->pipelineContext->texturePipelineLayout, 0, 1, &descriptorSet, 0, NULL);
+                                    device->renderer->pipelineContext->texturePipelineLayout, 0, 2, descriptorSets, 0, NULL);
     device->vkCmdDraw(cb, vertexNum, 1, 0, 0);
 }
 
