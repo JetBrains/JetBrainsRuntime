@@ -103,7 +103,8 @@ public class AtkWrapperDisposer implements Runnable {
             if (weakHashMap.containsKey(ac)) {
                 return weakHashMap.get(ac);
             }
-            return -1;
+            addRecord(ac);
+            return weakHashMap.get(ac);
         }
     }
 }
