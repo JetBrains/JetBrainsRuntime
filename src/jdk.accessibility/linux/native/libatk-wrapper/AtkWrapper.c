@@ -323,16 +323,25 @@ static void free_callback_para(CallbackPara *para) {
 
 static void free_callback_para_event(CallbackParaEvent *para) {
     JAW_DEBUG_C("%p", para);
+
+    if (para == NULL) {
+        JAW_DEBUG_I("para == NULL");
+        return;
+    }
+
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (jniEnv == NULL) {
         JAW_DEBUG_I("jniEnv == NULL");
-        return;
     }
-    if (para->global_event == NULL) {
-        JAW_DEBUG_I("para->global_event == NULL");
-        return;
+
+    if (jniEnv) {
+        if (para->global_event != NULL) {
+            (*jniEnv)->DeleteGlobalRef(jniEnv, para->global_event);
+        } else {
+            JAW_DEBUG_I("para->global_event == NULL");
+        }
     }
-    (*jniEnv)->DeleteGlobalRef(jniEnv, para->global_event);
+
     g_free(para);
 }
 
