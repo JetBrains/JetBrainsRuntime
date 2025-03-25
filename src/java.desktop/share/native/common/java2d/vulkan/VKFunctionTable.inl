@@ -122,6 +122,7 @@ DEVICE_FUNCTION_TABLE_ENTRY(vkUpdateDescriptorSets);
 DEVICE_FUNCTION_TABLE_ENTRY(vkCreateDescriptorPool);
 DEVICE_FUNCTION_TABLE_ENTRY(vkDestroyDescriptorPool);
 DEVICE_FUNCTION_TABLE_ENTRY(vkAllocateDescriptorSets);
+DEVICE_FUNCTION_TABLE_ENTRY(vkFreeDescriptorSets);
 DEVICE_FUNCTION_TABLE_ENTRY(vkCmdBindDescriptorSets);
 DEVICE_FUNCTION_TABLE_ENTRY(vkGetImageMemoryRequirements2);
 DEVICE_FUNCTION_TABLE_ENTRY(vkCreateBuffer);
