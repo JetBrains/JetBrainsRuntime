@@ -1,1 +1,0 @@
-provides javax.accessibility.AccessibilityProvider with org.GNOME.Accessibility.AtkProvider;
