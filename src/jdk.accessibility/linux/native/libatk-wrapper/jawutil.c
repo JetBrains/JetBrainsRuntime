@@ -190,8 +190,8 @@ static void jaw_util_remove_key_event_listener(guint remove_listener) {
 static AtkObject *jaw_util_get_root(void) {
     JAW_DEBUG_C("");
     static JawToplevel *root = NULL;
+
     root = g_object_new(JAW_TYPE_TOPLEVEL, NULL);
-    CHECK_NULL(root, NULL);
     atk_object_initialize(ATK_OBJECT(root), NULL);
 
     return ATK_OBJECT(root);
