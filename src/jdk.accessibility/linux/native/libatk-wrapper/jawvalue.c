@@ -113,7 +113,8 @@ static void get_g_value_from_java_number(JNIEnv *jniEnv, jobject jnumber,
     JAW_DEBUG_C("%p, %p, %p", jniEnv, jnumber, value);
 
     if (!jniEnv || !value) {
-        g_warning("Null argument passed to function get_g_value_from_java_number");
+        g_warning(
+            "Null argument passed to function get_g_value_from_java_number");
         return;
     }
 
@@ -189,7 +190,8 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
     JAW_DEBUG_C("%p, %p", obj, value);
 
     if (!obj || !value) {
-        g_warning("Null argument passed to function jaw_value_get_current_value");
+        g_warning(
+            "Null argument passed to function jaw_value_get_current_value");
         return;
     }
 
