@@ -53,73 +53,74 @@ static gpointer jaw_impl_parent_class = NULL;
 
 static GMutex typeTableMutex;
 static GHashTable *typeTable = NULL;
-static GMutex objectTableMutex;
-static GHashTable *objectTable = NULL;
+//static GMutex objectTableMutex;
+//static GHashTable *objectTable = NULL;
 
-static void object_table_insert(JNIEnv *jniEnv, jobject ac, JawImpl *jaw_impl) {
-    JAW_DEBUG_C("%p, %p, %p", jniEnv, ac, jaw_impl);
+// static void object_table_insert(JNIEnv *jniEnv, jobject ac, JawImpl
+// *jaw_impl) {
+//     JAW_DEBUG_C("%p, %p, %p", jniEnv, ac, jaw_impl);
+//
+//     if (!jniEnv || !ac || !jaw_impl) {
+//         g_warning("Null argument passed to function");
+//         return;
+//     }
+//
+//     jclass atkObject =
+//         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
+//     CHECK_NULL(atkObject, );
+//     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
+//         jniEnv, atkObject, "hash_code",
+//         "(Ljavax/accessibility/AccessibleContext;)I");
+//     CHECK_NULL(jmid, );
+//     gint hash_key =
+//         (gint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
+//     CHECK_NULL(hash_key, );
+//     jaw_impl->hash_key = hash_key;
+//
+//     g_mutex_lock(&objectTableMutex);
+//     g_hash_table_insert(objectTable, GINT_TO_POINTER(jaw_impl->hash_key),
+//                         jaw_impl);
+//     g_mutex_unlock(&objectTableMutex);
+// }
 
-    if (!jniEnv || !ac || !jaw_impl) {
-        g_warning("Null argument passed to function");
-        return;
-    }
+//static JawImpl *object_table_lookup(JNIEnv *jniEnv, jobject ac) {
+//    JAW_DEBUG_C("%p, %p", jniEnv, ac);
+//
+//    if (!jniEnv || !ac) {
+//        g_warning("Null argument passed to function");
+//        return NULL;
+//    }
+//
+//    jclass atkObject =
+//        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
+//    CHECK_NULL(atkObject, NULL);
+//    jmethodID jmid = (*jniEnv)->GetStaticMethodID(
+//        jniEnv, atkObject, "hash_code",
+//        "(Ljavax/accessibility/AccessibleContext;)I");
+//    CHECK_NULL(jmid, NULL);
+//    gint hash_key =
+//        (gint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
+//    CHECK_NULL(hash_key, NULL);
+//    gpointer value = NULL;
+//    g_mutex_lock(&objectTableMutex);
+//    if (objectTable == NULL) {
+//        g_mutex_unlock(&objectTableMutex);
+//        return NULL;
+//    }
+//    value = g_hash_table_lookup(objectTable, GINT_TO_POINTER(hash_key));
+//    g_mutex_unlock(&objectTableMutex);
+//    return (JawImpl *)value;
+//}
 
-    jclass atkObject =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
-    CHECK_NULL(atkObject, );
-    jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, atkObject, "hash_code",
-        "(Ljavax/accessibility/AccessibleContext;)I");
-    CHECK_NULL(jmid, );
-    gint hash_key =
-        (gint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
-    CHECK_NULL(hash_key, );
-    jaw_impl->hash_key = hash_key;
+//GHashTable *jaw_impl_get_object_hash_table(void) {
+//    JAW_DEBUG_ALL("");
+//    return objectTable;
+//}
 
-    g_mutex_lock(&objectTableMutex);
-    g_hash_table_insert(objectTable, GINT_TO_POINTER(jaw_impl->hash_key),
-                        jaw_impl);
-    g_mutex_unlock(&objectTableMutex);
-}
-
-static JawImpl *object_table_lookup(JNIEnv *jniEnv, jobject ac) {
-    JAW_DEBUG_C("%p, %p", jniEnv, ac);
-
-    if (!jniEnv || !ac) {
-        g_warning("Null argument passed to function");
-        return NULL;
-    }
-
-    jclass atkObject =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
-    CHECK_NULL(atkObject, NULL);
-    jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, atkObject, "hash_code",
-        "(Ljavax/accessibility/AccessibleContext;)I");
-    CHECK_NULL(jmid, NULL);
-    gint hash_key =
-        (gint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
-    CHECK_NULL(hash_key, NULL);
-    gpointer value = NULL;
-    g_mutex_lock(&objectTableMutex);
-    if (objectTable == NULL) {
-        g_mutex_unlock(&objectTableMutex);
-        return NULL;
-    }
-    value = g_hash_table_lookup(objectTable, GINT_TO_POINTER(hash_key));
-    g_mutex_unlock(&objectTableMutex);
-    return (JawImpl *)value;
-}
-
-GHashTable *jaw_impl_get_object_hash_table(void) {
-    JAW_DEBUG_ALL("");
-    return objectTable;
-}
-
-GMutex *jaw_impl_get_object_hash_table_mutex(void) {
-    JAW_DEBUG_ALL("");
-    return &objectTableMutex;
-}
+//GMutex *jaw_impl_get_object_hash_table_mutex(void) {
+//    JAW_DEBUG_ALL("");
+//    return &objectTableMutex;
+//}
 
 static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
                                 guint tflag) {
@@ -223,56 +224,62 @@ static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
 }
 
-JawImpl *jaw_impl_get_instance(JNIEnv *jniEnv, jobject ac) {
+JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG_C("%p, %p", jniEnv, ac);
 
-    if (!ac) {
+    if (!ac || !jniEnv) {
         g_warning("Null argument passed to function");
         return NULL;
     }
 
     JawImpl *jaw_impl;
-    jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, NULL);
 
-    g_mutex_lock(&objectTableMutex);
-    if (objectTable == NULL)
-        objectTable = g_hash_table_new(NULL, NULL);
-    g_mutex_unlock(&objectTableMutex);
+    jobject temp_ref = (*jniEnv)->NewGlobalRef(jniEnv, ac);
+    guint tflag = jaw_util_get_tflag_from_jobj(jniEnv, temp_ref);
 
-    jaw_impl = object_table_lookup(jniEnv, ac);
-
+    jaw_impl = (JawImpl *)g_object_new(JAW_TYPE_IMPL(tflag), NULL);
     if (jaw_impl == NULL) {
-        jobject temp_ref = (*jniEnv)->NewGlobalRef(jniEnv, ac);
-        if (temp_ref != NULL) {
-            guint tflag = jaw_util_get_tflag_from_jobj(jniEnv, temp_ref);
-            jaw_impl = (JawImpl *)g_object_new(JAW_TYPE_IMPL(tflag), NULL);
-            if (jaw_impl != NULL) {
-                JawObject *jaw_obj = JAW_OBJECT(jaw_impl);
-
-                if (jaw_obj != NULL) {
-                    jobject weak_ref =
-                        (*jniEnv)->NewWeakGlobalRef(jniEnv, temp_ref);
-                    jaw_obj->acc_context = weak_ref;
-                    jaw_obj->storedData =
-                        g_hash_table_new(g_str_hash, g_str_equal);
-                    aggregate_interface(jniEnv, jaw_obj, tflag);
-                    atk_object_initialize(ATK_OBJECT(jaw_impl), NULL);
-                    object_table_insert(jniEnv, weak_ref, jaw_impl);
-                } else {
-                    JAW_DEBUG_I("jaw_obj == NULL");
-                    (*jniEnv)->DeleteGlobalRef(jniEnv, temp_ref);
-                    return NULL;
-                }
-            } else {
-                JAW_DEBUG_I("jaw_impl == NULL");
-            }
-            (*jniEnv)->DeleteGlobalRef(jniEnv, temp_ref);
-        } else {
-            JAW_DEBUG_I("global_ac == NULL");
-            return NULL;
-        }
+        (*jniEnv)->DeleteGlobalRef(jniEnv, temp_ref);
+        return NULL;
     }
+
+    JawObject *jaw_obj = JAW_OBJECT(jaw_impl);
+    if (jaw_obj == NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, temp_ref);
+        return NULL;
+    }
+
+    jobject weak_ref = (*jniEnv)->NewWeakGlobalRef(jniEnv, temp_ref);
+    jaw_obj->acc_context = weak_ref;
+    jaw_obj->storedData = g_hash_table_new(g_str_hash, g_str_equal);
+    aggregate_interface(jniEnv, jaw_obj, tflag);
+    atk_object_initialize(ATK_OBJECT(jaw_impl), NULL);
+    (*jniEnv)->DeleteGlobalRef(jniEnv, temp_ref);
+
+    return jaw_impl;
+}
+
+JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
+    JAW_DEBUG_C("%p, %p", jniEnv, ac);
+
+    if (!ac || !jniEnv) {
+        g_warning("Null argument passed to function");
+        return NULL;
+    }
+
+    jclass classAtkWrapper =
+        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
+    CHECK_NULL(classAtkWrapper, NULL);
+    jmethodID jmid = (*jniEnv)->GetStaticMethodID(
+        jniEnv, classAtkWrapper, "get_native_resources",
+        "(Ljavax/accessibility/AccessibleContext;)J");
+    CHECK_NULL(jmid, NULL);
+    jlong reference = (gint)(*jniEnv)->CallStaticLongMethod(
+        jniEnv, classAtkWrapper, jmid, ac);
+    CHECK_NULL(reference, NULL);
+
+    JawImpl *jaw_impl = (JawImpl *)reference;
+
     return jaw_impl;
 }
 
@@ -296,22 +303,22 @@ JawImpl *jaw_impl_get_instance_from_jaw(JNIEnv *jniEnv, jobject ac) {
     return (JawImpl *)(uintptr_t)ptr;
 }
 
-JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
-    JAW_DEBUG_C("%p, %p", jniEnv, ac);
-
-    if (!jniEnv || !ac) {
-        g_warning("Null argument passed to function");
-        return NULL;
-    }
-
-    JawImpl *jaw_impl = object_table_lookup(jniEnv, ac);
-    if (jaw_impl == NULL) {
-        JAW_DEBUG_I("jaw_impl == NULL");
-        return NULL;
-    }
-
-    return jaw_impl;
-}
+//JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
+//    JAW_DEBUG_C("%p, %p", jniEnv, ac);
+//
+//    if (!jniEnv || !ac) {
+//        g_warning("Null argument passed to function");
+//        return NULL;
+//    }
+//
+//    JawImpl *jaw_impl = object_table_lookup(jniEnv, ac);
+//    if (jaw_impl == NULL) {
+//        JAW_DEBUG_I("jaw_impl == NULL");
+//        return NULL;
+//    }
+//
+//    return jaw_impl;
+//}
 
 static void jaw_impl_class_intern_init(gpointer klass, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", klass, data);

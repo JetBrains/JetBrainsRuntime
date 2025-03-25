@@ -25,12 +25,12 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void);
 
 /*
  * Class:     org_GNOME_Accessibility_AtkWrapper
- * Method:    getNativeResources
+ * Method:    createNativeResources
  * Signature: (Ljavax/accessibility/AccessibleContext;)V
  */
 JNIEXPORT jlong JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_getNativeResources(JNIEnv *, jclass,
-                                                           jobject);
+Java_org_GNOME_Accessibility_AtkWrapper_createNativeResources(JNIEnv *, jclass,
+                                                              jobject);
 
 /*
  * Class:     org_GNOME_Accessibility_AtkWrapper

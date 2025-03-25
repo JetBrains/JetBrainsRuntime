@@ -37,11 +37,14 @@ public class AtkWrapper {
 
     private static void initAtk() {
         System.loadLibrary("atk-wrapper");
-        if (AtkWrapper.initNativeLibrary() && AtkWrapper.loadAtkBridge()) {
-            accessibilityEnabled = true;
-        } else {
-            throw new IllegalStateException("Accessibility is disabled due to an error that happened when initializing the native libraries.");
+        if (!AtkWrapper.initNativeLibrary()) {
+            throw new IllegalStateException("Accessibility is disabled due to an error in initNativeLibrary.");
         }
+        if (!AtkWrapper.loadAtkBridge()) {
+            throw new IllegalStateException("Accessibility is disabled due to an error in loadAtkBridge.");
+
+        }
+        accessibilityEnabled = true;
     }
 
     private static String findXPropPath() {
@@ -671,7 +674,7 @@ public class AtkWrapper {
 
     public native static boolean loadAtkBridge();
 
-    public native static long getNativeResources(AccessibleContext ac);
+    public native static long createNativeResources(AccessibleContext ac);
 
     public native static void releaseNativeResources(long ref);
 
@@ -749,5 +752,19 @@ public class AtkWrapper {
 
     public static void main(String args[]) {
         new AtkWrapper();
+    }
+
+
+    // TODO: transfer jni calls
+
+    // JNI upcalls section
+
+    /**
+     * returns -1 if it was not difined
+     * @param ac
+     * @return
+     */
+    private static long get_native_resources(AccessibleContext ac) {
+        return AtkWrapperDisposer.getRecord(ac);
     }
 }

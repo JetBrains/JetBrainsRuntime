@@ -230,10 +230,10 @@ typedef struct _CallbackParaEvent {
 } CallbackParaEvent;
 
 JNIEXPORT jlong JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_getNativeResources(JNIEnv *jniEnv,
-                                                           jclass jClass,
-                                                           jobject ac) {
-    JawImpl *jaw_impl = jaw_impl_get_instance(jniEnv, ac);
+Java_org_GNOME_Accessibility_AtkWrapper_createNativeResources(JNIEnv *jniEnv,
+                                                              jclass jClass,
+                                                              jobject ac) {
+    JawImpl *jaw_impl = jaw_impl_create_instance(jniEnv, ac);
     JAW_DEBUG_C("%p", jaw_impl);
     if (jaw_impl == NULL) {
         return -1;
@@ -256,7 +256,7 @@ static CallbackPara *alloc_callback_para(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG_C("%p, %p", jniEnv, ac);
     if (ac == NULL)
         return NULL;
-    JawImpl *jaw_impl = jaw_impl_get_instance(jniEnv, ac);
+    JawImpl *jaw_impl = jaw_impl_find_instance(jniEnv, ac);
     if (jaw_impl == NULL) {
         JAW_DEBUG_I("jaw_impl == NULL");
         return NULL;
@@ -996,7 +996,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
         break;
     case Sig_Object_Children_Changed_Add: {
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
-        JawImpl *child_impl = jaw_impl_get_instance(jniEnv, child_ac);
+        JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
         if (child_impl == NULL) {
             JAW_DEBUG_I("child_impl == NULL");
             free_callback_para(para);
@@ -1007,7 +1007,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     }
     case Sig_Object_Active_Descendant_Changed: {
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
-        JawImpl *child_impl = jaw_impl_get_instance(jniEnv, child_ac);
+        JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
         if (child_impl == NULL) {
             JAW_DEBUG_I("child_impl == NULL");
             free_callback_para(para);
@@ -1298,7 +1298,7 @@ JNIEXPORT jlong JNICALL Java_org_GNOME_Accessibility_AtkWrapper_getInstance(
     if (!ac)
         return 0;
 
-    return (jlong)(uintptr_t)jaw_impl_get_instance(jniEnv, ac);
+    return (jlong)(uintptr_t)jaw_impl_find_instance(jniEnv, ac);
 }
 
 #ifdef __cplusplus
