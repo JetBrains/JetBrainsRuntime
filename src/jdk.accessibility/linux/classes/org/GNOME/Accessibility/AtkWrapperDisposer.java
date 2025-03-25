@@ -45,9 +45,6 @@ public class AtkWrapperDisposer implements Runnable {
     private static final Hashtable<java.lang.ref.Reference<Object>, DisposerRecord> records =
             new Hashtable<>();
     private static final Map<PhantomReference<Object>, Long> phantomMap = new HashMap<>();
-    private static final Set<Object> set = Collections.newSetFromMap(
-            new WeakHashMap<Object, Boolean>()
-    );
     private static final WeakHashMap<Object, Long> weakHashMap = new WeakHashMap<>();
     private static final Object lock = new Object();
     private static AtkWrapperDisposer disposerInstance;
