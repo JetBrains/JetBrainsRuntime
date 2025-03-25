@@ -26,9 +26,7 @@ import java.beans.*;
 import java.io.*;
 import javax.accessibility.*;
 import java.awt.Toolkit;
-import javax.management.*;
 import javax.swing.JComboBox;
-import java.lang.management.*;
 import java.util.*;
 
 import sun.util.logging.PlatformLogger;
