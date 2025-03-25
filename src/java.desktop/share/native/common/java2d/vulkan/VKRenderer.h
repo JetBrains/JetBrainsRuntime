@@ -78,6 +78,8 @@ VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
 void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
                                 VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout);
 
+void VKRenderer_CreateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool* descriptorPool, VkDescriptorSet* set);
+
 void VKRenderer_Destroy(VKRenderer* renderer);
 
 /**
