@@ -158,8 +158,10 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
 
     jaw_initialized = jaw_accessibility_init();
     JAW_DEBUG_I("Jaw Initialization STATUS = %d", jaw_initialized);
-    if (!jaw_initialized)
+    if (!jaw_initialized) {
+        g_warning("loadAtkBridge: jaw_initialized == NULL");
         return FALSE;
+    }
 
 #if ATSPI_CHECK_VERSION(2, 33, 1)
     jni_main_context = g_main_context_new();
