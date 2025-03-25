@@ -224,7 +224,8 @@ gint jaw_toplevel_add_window(JawToplevel *toplevel, AtkObject *child) {
         return -1;
     }
 
-    if (toplevel->windows != NULL && g_list_index(toplevel->windows, child) != -1) {
+    if (toplevel->windows != NULL &&
+        g_list_index(toplevel->windows, child) != -1) {
         return -1;
     }
 
@@ -244,7 +245,8 @@ gint jaw_toplevel_remove_window(JawToplevel *toplevel, AtkObject *child) {
 
     gint index = -1;
 
-    if (toplevel->windows != NULL && (index = g_list_index(toplevel->windows, child)) == -1) {
+    if (toplevel->windows != NULL &&
+        (index = g_list_index(toplevel->windows, child)) == -1) {
         return index;
     }
 
