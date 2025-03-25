@@ -35,12 +35,19 @@ typedef struct {
     VKPackedSwizzle swizzle;
 } VKImageViewKey;
 
+typedef struct {
+    VkImageView      view;
+    VkDescriptorSet  descriptorSet;
+    VkDescriptorPool descriptorPool; // Non-owning.
+} VKImageViewInfo;
+
 struct VKImage {
-    VkImage                          handle;
-    VKMemory                         memory;
-    MAP(VKImageViewKey, VkImageView) viewMap;
-    VkFormat                         format;
-    VkExtent2D                       extent;
+    VkImage    handle;
+    VKMemory   memory;
+    VkFormat   format;
+    VkExtent2D extent;
+    MAP(VKImageViewKey, VKImageViewInfo) viewMap;
+
 
     VkImageLayout           layout;
     VkPipelineStageFlagBits lastStage;
@@ -58,5 +65,7 @@ void VKImage_LoadBuffer(VKDevice* device, VKImage* image, VKBuffer* buffer,
 void VKImage_Destroy(VKDevice* device, VKImage* image);
 
 VkImageView VKImage_GetView(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle);
+
+VkDescriptorSet VKImage_GetDescriptorSet(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle);
 
 #endif // VKImage_h_Included
