@@ -155,10 +155,10 @@ static guint jaw_util_add_key_event_listener(AtkKeySnoopFunc listener,
                                              gpointer data) {
     JAW_DEBUG_C("%p, %p", listener, data);
 
-    if (!listener || !data) {
+    if (!listener) {
         g_warning(
             "Null argument passed to function jaw_util_add_key_event_listener");
-        return -1;
+        return 0;
     }
 
     static guint key = 0;

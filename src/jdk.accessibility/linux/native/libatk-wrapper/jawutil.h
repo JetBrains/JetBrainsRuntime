@@ -155,8 +155,9 @@ void jaw_util_detach(void);
 
 #define CHECK_NULL(ptr, ret_val)                                               \
     {                                                                          \
-        if (!ptr)                                                              \
+        if (!ptr) {                                                            \
             return ret_val;                                                    \
+        }                                                                      \
     }
 
 G_END_DECLS

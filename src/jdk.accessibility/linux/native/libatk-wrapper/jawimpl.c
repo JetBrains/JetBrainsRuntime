@@ -553,8 +553,9 @@ static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface) {
 static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
     JAW_DEBUG_C("%p, %p", atk_obj, data);
 
-    if (!atk_obj || !data) {
-        g_warning("Null argument passed to function jaw_impl_initialize");
+    if (!atk_obj) {
+        g_warning(
+            "jaw_impl_initialize: Null argument atk_obj passed to function");
         return;
     }
 
