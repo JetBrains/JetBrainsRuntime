@@ -48,8 +48,12 @@ public class AtkWrapperDisposer implements Runnable {
     private static final Set<Object> set = Collections.newSetFromMap(
             new WeakHashMap<Object, Boolean>()
     );
+    private static final WeakHashMap<Object, Long> weakHashMap = new WeakHashMap<>();
     private static final Object lock = new Object();
     private static AtkWrapperDisposer disposerInstance;
+
+    private AtkWrapperDisposer() {
+    }
 
     static {
         disposerInstance = new AtkWrapperDisposer();
@@ -83,14 +87,23 @@ public class AtkWrapperDisposer implements Runnable {
 
     public static void addRecord(AccessibleContext ac) {
         synchronized (lock) {
-            if (!set.contains(ac)) {
-                set.add(ac);
-                long nativeReference = AtkWrapper.getNativeResources(ac);
+            if (!weakHashMap.containsKey(ac)) {
+                long nativeReference = AtkWrapper.createNativeResources(ac);
                 if (nativeReference != -1) {
                     PhantomReference<Object> phantomReference = new PhantomReference<>(ac, queue);
                     phantomMap.put(phantomReference, nativeReference);
                 }
+                weakHashMap.put(ac, nativeReference);
             }
+        }
+    }
+
+    public static long getRecord(AccessibleContext ac) {
+        synchronized (lock) {
+            if (weakHashMap.containsKey(ac)) {
+                return weakHashMap.get(ac);
+            }
+            return -1;
         }
     }
 }
