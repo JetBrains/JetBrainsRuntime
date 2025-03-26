@@ -41,7 +41,7 @@
 #include "VKTexturePool.h"
 #include "VKUtil.h"
 
-#define SRCTYPE_BITS sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_BITS
+#define SRCTYPE_BITS sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_BITS
 
 typedef struct {
     VkFormat        format;
@@ -50,11 +50,11 @@ typedef struct {
 
 // See encodeSrcType() in VKBlitLoops.java
 static BlitSrcType decodeSrcType(VKDevice* device, jshort srctype) {
-    jshort type = srctype & sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_MASK;
+    jshort type = srctype & sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_MASK;
     const VKSampledSrcType* entry = &device->sampledSrcTypes.table[type];
     BlitSrcType result = { entry->format, 0 };
     switch (type) {
-    case sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_4BYTE: {
+    case sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_4BYTE: {
         uint32_t components[] = {
             ((uint32_t) srctype >>  SRCTYPE_BITS     ) & 0b11,
             ((uint32_t) srctype >> (SRCTYPE_BITS + 2)) & 0b11,
@@ -69,7 +69,7 @@ static BlitSrcType decodeSrcType(VKDevice* device, jshort srctype) {
             entry->components[components[3]]
         );
     } break;
-    case sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_3BYTE: {
+    case sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_3BYTE: {
         uint32_t components[] = {
             ((uint32_t) srctype >>  SRCTYPE_BITS     ) & 0b11,
             ((uint32_t) srctype >> (SRCTYPE_BITS + 2)) & 0b11,
@@ -91,7 +91,7 @@ static BlitSrcType decodeSrcType(VKDevice* device, jshort srctype) {
 }
 
 static AlphaType getSrcAlphaType(jshort srctype) {
-    return srctype & sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_PRE_MULTIPLIED_ALPHA_BIT ?
+    return srctype & sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_PRE_MULTIPLIED_ALPHA_BIT ?
         ALPHA_TYPE_PRE_MULTIPLIED : ALPHA_TYPE_STRAIGHT;
 }
 
