@@ -178,6 +178,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
         JAW_DEBUG_I("Thread create failed: %s !", err->message);
         g_main_loop_unref(jni_main_loop);
 #if ATSPI_CHECK_VERSION(2, 33, 1)
+        atk_bridge_set_event_context(NULL); // set default context
         g_main_context_unref(jni_main_context);
 #endif
         g_error_free(err);
