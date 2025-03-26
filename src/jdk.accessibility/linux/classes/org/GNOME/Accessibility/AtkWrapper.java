@@ -487,8 +487,7 @@ public class AtkWrapper {
                  * insertion and deletion events.
                  */
                 if (oldValue == null && newValue != null) {
-                    if (newValue instanceof AccessibleTextSequence) {
-                        AccessibleTextSequence newSeq = (AccessibleTextSequence) newValue;
+                    if (newValue instanceof AccessibleTextSequence newSeq) {
                         Object[] args = new Object[3];
                         args[0] = Integer.valueOf(newSeq.startIndex);
                         args[1] = Integer.valueOf(newSeq.endIndex - newSeq.startIndex);
