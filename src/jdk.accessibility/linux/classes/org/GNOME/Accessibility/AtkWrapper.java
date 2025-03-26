@@ -736,7 +736,7 @@ public class AtkWrapper {
             toolkit.getSystemEventQueue().push(new EventQueue() {
                 public void dispatchEvent(AWTEvent e) {
                     if (e instanceof KeyEvent keyEvent) {
-                        AtkWrapper.dispatchKeyEvent(new AtkKeyEvent((KeyEvent) e));
+                        AtkWrapper.dispatchKeyEvent(new AtkKeyEvent(keyEvent));
                     }
                     super.dispatchEvent(e);
                 }
