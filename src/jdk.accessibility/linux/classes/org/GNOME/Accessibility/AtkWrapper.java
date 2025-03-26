@@ -500,8 +500,7 @@ public class AtkWrapper {
                         emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED, args); // insertion or deletion event
                     }
                 } else if (oldValue != null && newValue == null) {
-                    if (oldValue instanceof AccessibleTextSequence) {
-                        AccessibleTextSequence oldSeq = (AccessibleTextSequence) oldValue;
+                    if (oldValue instanceof AccessibleTextSequence oldSeq) {
                         Object[] args = new Object[3];
                         args[0] = Integer.valueOf(oldSeq.startIndex);
                         args[1] = Integer.valueOf(oldSeq.endIndex - oldSeq.startIndex);
