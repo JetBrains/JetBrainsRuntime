@@ -39,13 +39,21 @@ import java.util.Collections;
 import sun.java2d.DisposerRecord;
 import sun.awt.util.ThreadGroupUtils;
 
+/**
+ * Manages the disposal of native resources associated with AccessibleContext.
+ * It uses PhantomReference to track object deallocation and automatically release related native resources.
+ */
 @SuppressWarnings("removal")
 public class AtkWrapperDisposer implements Runnable {
+    // Reference queue that holds objects ready for garbage collection
     private static final ReferenceQueue<Object> queue = new ReferenceQueue<>();
-    private static final Hashtable<java.lang.ref.Reference<Object>, DisposerRecord> records =
-            new Hashtable<>();
+
+    // Map storing PhantomReferences and their associated native resource pointer
     private static final Map<PhantomReference<Object>, Long> phantomMap = new HashMap<>();
+
+    // WeakHashMap that associates AccessibleContext object with native resource pointer
     private static final WeakHashMap<Object, Long> weakHashMap = new WeakHashMap<>();
+
     private static final Object lock = new Object();
     private static AtkWrapperDisposer INSTANCE = null;
 
@@ -77,9 +85,14 @@ public class AtkWrapperDisposer implements Runnable {
         return INSTANCE;
     }
 
+    /**
+     * Monitors the reference queue and releases native resources
+     * when an associated AccessibleContext is garbage collected.
+     */
     public void run() {
         while (true) {
             try {
+                // When an AccessibleContext is freed, release associated native resources
                 Reference<?> obj = queue.remove();
                 long nativeReference;
                 synchronized (lock) {
@@ -94,6 +107,13 @@ public class AtkWrapperDisposer implements Runnable {
         }
     }
 
+    /**
+     * Associates a native resource with an AccessibleContext.
+     * If the context is not already registered, gets a new native resource pointer
+     * and stores the mapping.
+     *
+     * @param ac The AccessibleContext to associate with a native resource.
+     */
     public void addRecord(AccessibleContext ac) {
         synchronized (lock) {
             if (!weakHashMap.containsKey(ac)) {
@@ -107,6 +127,13 @@ public class AtkWrapperDisposer implements Runnable {
         }
     }
 
+    /**
+     * Retrieves the native resource associated with the given AccessibleContext.
+     * If no record exists, a new one is created and returned.
+     *
+     * @param ac The AccessibleContext whose native resource is requested.
+     * @return The native resource pointer associated with the given AccessibleContext.
+     */
     public long getRecord(AccessibleContext ac) {
         synchronized (lock) {
             if (weakHashMap.containsKey(ac)) {
