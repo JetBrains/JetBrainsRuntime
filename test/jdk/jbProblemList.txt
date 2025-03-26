@@ -156,7 +156,7 @@ java/awt/Frame/8158918/SetExtendedState.java JBR-6408 linux-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509 generic-all
 java/awt/Frame/HideMaximized/HideMaximized.java JBR-8310 linux-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-all
-java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 linux-all,macosx-15.3,macosx-15.3.1
+java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 linux-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
@@ -399,7 +399,7 @@ java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
-java/awt/Robot/NonEmptyErrorStream.java 8340330,JBR-5510 macosx-15.3,macosx-15.3.1,linux-5.18.2-arch1-1
+java/awt/Robot/NonEmptyErrorStream.java 8340330,JBR-5510 macosx-15.3,macosx-15.3.1,macosx-15.3.2,linux-5.18.2-arch1-1
 java/awt/Robot/RobotExtraButton/RobotExtraButton.java JBR-6554 linux-all
 java/awt/Modal/FileDialog/FileDialogAppModal1Test.java 7186009,8253184 macosx-all,windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal2Test.java 7186009,8253184 macosx-all,windows-all
@@ -750,6 +750,7 @@ java/beans/XMLEncoder/Test6570354.java 8015593 macosx-all
 # jdk_foreign
 
 java/foreign/callarranger/TestAarch64CallArranger.java generic-x86
+java/foreign/nested/TestNested.java JBR-8451 generic-all
 java/foreign/TestLargeSegmentCopy.java generic-x86
 java/foreign/TestMismatch.java 8249684 macosx-all
 
@@ -757,10 +758,12 @@ java/foreign/TestMismatch.java 8249684 macosx-all
 
 # jdk_lang
 
+java/lang/Class/getDeclaredField/FieldSetAccessibleTest.java JBR-8453 generic-all
 java/lang/ProcessHandle/InfoTest.java                           8211847 aix-ppc64
 java/lang/invoke/LFCaching/LFMultiThreadCachingTest.java        8151492 generic-all
 java/lang/invoke/LFCaching/LFGarbageCollectedTest.java          8078602 generic-all
 java/lang/invoke/lambda/LambdaFileEncodingSerialization.java    8249079 linux-x64
+java/lang/invoke/PrivateInvokeTest.java JBR-8454 generic-all
 java/lang/invoke/RicochetTest.java                              8251969 generic-all
 
 ############################################################################
@@ -775,6 +778,7 @@ java/lang/instrument/RetransformBigClass.sh                     8065756 generic-
 # jdk_io
 
 java/io/pathNames/GeneralWin32.java                             8180264 windows-all
+java/io/Serializable/font/FontSerialization.java JBR-8452 macosx-all,windows-all
 
 ############################################################################
 
@@ -808,7 +812,13 @@ javax/management/remote/mandatory/connection/BrokenConnectionTest.java 8262312 l
 
 # jdk_net
 
+java/net/DatagramSocket/DatagramSocketExample.java              8144003,JBR-8455,JBR-8456,8308807 macosx-all,aix-ppc64
+java/net/DatagramSocket/DatagramSocketMulticasting.java         8144003,JBR-8455,JBR-8456,8308807 macosx-all,aix-ppc64
+
 java/net/MulticastSocket/NoLoopbackPackets.java                 7122846 macosx-all
+java/net/MulticastSocket/Promiscuous.java                       8308807,JBR-8455 aix-ppc64,macosx-all
+java/net/MulticastSocket/SetLoopbackModeIPv4.java JBR-8455 macosx-all
+java/net/SocketPermission/SocketPermissionTest.java JBR-8455 macosx-all
 java/net/MulticastSocket/SetLoopbackMode.java                   7122846 macosx-all
 
 java/net/MulticastSocket/Test.java                              7145658 macosx-all
@@ -821,11 +831,17 @@ java/net/ServerSocket/AcceptInheritHandle.java                  8211854 aix-ppc6
 
 java/nio/channels/AsynchronousSocketChannel/StressLoopback.java 8211851 aix-ppc64
 
+java/nio/channels/DatagramChannel/AdaptorMulticasting.java      8144003,JBR-8455,JBR-8456,8308807 macosx-all,aix-ppc64
+java/nio/channels/DatagramChannel/BasicMulticastTests.java      8144003 macosx-all
 java/nio/channels/DatagramChannel/ManySourcesAndTargets.java    8264385 macosx-aarch64
-
+java/nio/channels/DatagramChannel/MulticastSendReceiveTests.java 8144003 macosx-all
+java/nio/channels/DatagramChannel/Promiscuous.java              8144003 macosx-all
 java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-all
 
 java/nio/channels/Selector/Wakeup.java                          6963118 windows-all
+
+java/nio/file/WatchService/JNIChecks.java JBR-8457 generic-all
+java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
 
 jdk/nio/zipfs/TestLocOffsetFromZip64EF.java                     8301183 linux-all
 
@@ -1009,7 +1025,7 @@ javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java 8197552,8266
 javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java 8266085 windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,JBR-6481 linux-all,windows-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6360 linux-all,windows-all,macosx-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
+javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-5510,JBR-7404 windows-all,linux-5.18.2-arch1-1,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128,8253184,JBR-5510,JBR-6515 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java 8013450,8253184 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 8024627,8253184 macosx-all,windows-all
@@ -1104,7 +1120,7 @@ javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-53
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210,JBR-6687 windows-all,linux-5.18.2-arch1-1
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5541 linux-all
-javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,8340330 windows-all,macosx-15.3,macosx-15.3.1
+javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,8340330 windows-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2
 javax/swing/UIDefaults/6795356/TableTest.java JBR-5767 windows-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,JBR-1656 windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -1132,6 +1148,8 @@ sanity/client/SwingSet/src/SwingSet2DemoTest.java 8253184 windows-all
 
 # jdk_text
 
+java/text/Format/NumberFormat/Bug4944439.java JBR-8458 macosx-aarch64
+
 ############################################################################
 
 # jdk_time
@@ -1141,7 +1159,12 @@ sanity/client/SwingSet/src/SwingSet2DemoTest.java 8253184 windows-all
 
 # core_tools
 
+tools/jimage/VerifyJimage.java JBR-8453 generic-all
 tools/jlink/JLinkReproducible3Test.java                         8253688 linux-aarch64
+tools/jlink/plugins/SystemModuleDescriptors/SystemModulesTest.java JBR-8465 generic-all
+tools/launcher/Arrrghs.java JBR-8466 generic-all
+tools/launcher/ChangeDataModel.java JBR-8467 generic-all
+tools/launcher/Settings.java JBR-8469 macosx-all
 
 ############################################################################
 
@@ -1198,10 +1221,15 @@ jdk/jfr/startupargs/TestStartName.java                          8214685 windows-
 jdk/jfr/startupargs/TestStartDuration.java                      8214685 windows-x64
 jdk/jfr/jvm/TestWaste.java                                      8282427 generic-all
 jdk/jfr/api/consumer/recordingstream/TestOnEvent.java           8255404 linux-x64
+jdk/jfr/api/consumer/streaming/TestOutOfProcessMigration.java JBR-8460 macosx-15.3,macosx-15.3.1,macosx-15.3.2
+jdk/jfr/api/consumer/streaming/TestJVMCrash.java JBR-8459 macosx-15.3,macosx-15.3.1,macosx-15.3.2
+jdk/jfr/api/consumer/streaming/TestJVMExit.java JBR-8460 macosx-15.3,macosx-15.3.1,macosx-15.3.2
 
 ############################################################################
 
 # jdk_internal
+
+jdk/internal/jimage/JImageOpenTest.java JBR-8453
 
 jdk/internal/platform/docker/TestDockerBasic.java          JBR-5220 linux-aarch64
 jdk/internal/platform/docker/TestDockerMemoryMetrics.java  JBR-5220 linux-aarch64
@@ -1211,6 +1239,12 @@ jdk/internal/platform/docker/TestPidsLimit.java 8311539 linux-all
 ############################################################################
 
 # jdk_jpackage
+
+############################################################################
+
+# jdk_modules
+
+jdk/modules/etc/UpgradeableModules.java JBR-8464 generic-all
 
 ############################################################################
 
@@ -1299,7 +1333,7 @@ com/sun/java/accessibility/util/8051626/Bug8051626.java JBR-5767 windows-all
 com/sun/java/swing/plaf/windows/Test8173145.java                                    JBR-4197 windows-all
 com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                              JBR-4197 windows-all
 
-jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3,macosx-15.3.1
+jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3,macosx-15.3.1,macosx-15.3.2
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/Font/font430.sh                                                         JBR-4956 linux-all
 jb/java/awt/Font/Font467.java                                                       JBR-3960 generic-all
@@ -1311,7 +1345,6 @@ jb/java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java                            
 java/awt/Dialog/NonResizableDialogSysMenuResize/NonResizableDialogSysMenuResize.java JBR-4250 windows-all
 java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java JBR-6487 generic-all
 java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                 JBR-4250 windows-all
-java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
 
 javax/swing/SwingUtilities/4917669/bug4917669.java                                  JBR-4677 windows-all
 javax/swing/SwingUtilities/7088744/bug7088744.java JBR-4677 windows-all
