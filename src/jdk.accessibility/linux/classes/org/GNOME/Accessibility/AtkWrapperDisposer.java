@@ -81,12 +81,13 @@ public class AtkWrapperDisposer implements Runnable {
         while (true) {
             try {
                 Reference<?> obj = queue.remove();
+                long nativeReference;
                 synchronized (lock) {
-                    long nativeReference = phantomMap.remove(obj);
-                    AtkWrapper.releaseNativeResources(nativeReference);
-                    obj.clear();
-                    obj = null;
+                    nativeReference = phantomMap.remove(obj);
                 }
+                AtkWrapper.releaseNativeResources(nativeReference);
+                obj.clear();
+                obj = null;
             } catch (Exception e) {
                 System.out.println("Exception while removing reference.");
             }
