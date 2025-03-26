@@ -39,6 +39,7 @@ import sun.java2d.pipe.RenderQueue;
 import sun.java2d.pipe.hw.AccelSurface;
 import java.awt.AlphaComposite;
 import java.awt.Composite;
+import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.Transparency;
 import java.awt.geom.AffineTransform;
@@ -53,7 +54,9 @@ import java.lang.annotation.Native;
 import java.lang.ref.WeakReference;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static sun.java2d.pipe.BufferedOpCodes.BLIT;
 import static sun.java2d.pipe.BufferedOpCodes.SURFACE_TO_SW_BLIT;
@@ -64,18 +67,11 @@ final class VKBlitLoops {
 
     static void register() {
         List<GraphicsPrimitive> primitives = new ArrayList<>();
-        VKSwToSurfaceBlitContext blitContext = new VKSwToSurfaceBlitContext();
-        for (CompositeType compositeType : new CompositeType[] { CompositeType.AnyAlpha, CompositeType.Xor }) {
-            // Sw->Surface
-            primitives.add(new VKSwToSurfaceBlit(compositeType, blitContext));
-            primitives.add(new VKSwToSurfaceScale(compositeType, blitContext));
-            primitives.add(new VKSwToSurfaceTransform(compositeType, blitContext));
-            // Surface->Surface
-            primitives.add(new VKSurfaceToSurfaceBlit(compositeType));
-            primitives.add(new VKSurfaceToSurfaceScale(compositeType));
-            primitives.add(new VKSurfaceToSurfaceTransform(compositeType));
-        }
-        // Surface->Sw & Any composite per format
+        // Sw->Surface, any src/dst type, any alpha/xor composite.
+        primitives.addAll(VKSwToSurfaceBlit.INSTANCE.primitives);
+        // Surface->Surface, any src/dst type, any alpha/xor composite.
+        primitives.addAll(VKSurfaceToSurfaceBlit.INSTANCE.primitives);
+        // Surface->Sw, any dst type, only plain copy (SrcNoEa).
         for (VKFormat format : VKFormat.values()) {
             primitives.add(new VKSurfaceToSwBlit(format, OPAQUE));
             if (format.isTranslucencyCapable()) {
@@ -257,9 +253,12 @@ final class VKBlitLoops {
 
 @FunctionalInterface
 interface VKStageSurfaceFactory {
-    BufferedImage create(int width, int height);
+    Image create(int width, int height);
 }
 
+/**
+ * Cached temporary surface, used as an intermediate blit destination.
+ */
 final class VKStageSurface implements AutoCloseable {
 
     private final VKStageSurfaceFactory factory;
@@ -280,8 +279,8 @@ final class VKStageSurface implements AutoCloseable {
             } else cachedSD = null;
         }
         if (currentSD == null) {
-            BufferedImage bi = factory.create(width, height);
-            currentSD = SurfaceData.getPrimarySurfaceData(bi);
+            Image image = factory.create(width, height);
+            currentSD = SurfaceData.getPrimarySurfaceData(image);
             cachedSD = new WeakReference<>(currentSD);
         }
         return currentSD;
@@ -293,64 +292,121 @@ final class VKStageSurface implements AutoCloseable {
     }
 }
 
-final class VKSurfaceToSurfaceBlit extends Blit {
+/**
+ * Unified implementation for Blit, ScaledBlit, TransformBlit,
+ * allowing multiple combinations of src/dst and composite types.
+ */
+abstract class VKMultiplexedBlit {
 
-    VKSurfaceToSurfaceBlit(CompositeType compositeType) {
-        super(VKSurfaceData.VKSurface, compositeType, VKSurfaceData.VKSurface);
+    final List<GraphicsPrimitive> primitives = new ArrayList<>();
+
+    abstract void blit(SurfaceData src, SurfaceData dst,
+                       Composite comp, Region clip,
+                       AffineTransform xform, int hint,
+                       int sx1, int sy1,
+                       int sx2, int sy2,
+                       double dx1, double dy1,
+                       double dx2, double dy2,
+                       int w, int h);
+
+    void registerBlits(SurfaceType srctype, CompositeType comptype, SurfaceType dsttype) {
+        registerBlit(srctype, comptype, dsttype);
+        registerScaledBlit(srctype, comptype, dsttype);
+        registerTransformBlit(srctype, comptype, dsttype);
     }
 
-    public void Blit(SurfaceData src, SurfaceData dst,
-                     Composite comp, Region clip,
-                     int sx, int sy, int dx, int dy, int w, int h)
-    {
-        VKBlitLoops.IsoBlit(src, dst,
-                null, null,
-                comp, clip, null,
-                AffineTransformOp.TYPE_NEAREST_NEIGHBOR,
-                sx, sy, sx+w, sy+h,
-                dx, dy, dx+w, dy+h);
+    void registerBlit(SurfaceType srctype, CompositeType comptype, SurfaceType dsttype) {
+        primitives.add(new Blit(srctype, comptype, dsttype) {
+            @Override
+            public void Blit(SurfaceData src, SurfaceData dst, Composite comp, Region clip,
+                             int sx, int sy, int dx, int dy, int w, int h) {
+                blit(src, dst, comp, clip, null, AffineTransformOp.TYPE_NEAREST_NEIGHBOR,
+                     sx, sy, sx+w, sy+h, dx, dy, dx+w, dy+h, w, h);
+            }
+        });
+    }
+
+    void registerScaledBlit(SurfaceType srctype, CompositeType comptype, SurfaceType dsttype) {
+        primitives.add(new ScaledBlit(srctype, comptype, dsttype) {
+            @Override
+            public void Scale(SurfaceData src, SurfaceData dst,
+                              Composite comp, Region clip,
+                              int sx1, int sy1, int sx2, int sy2,
+                              double dx1, double dy1, double dx2, double dy2) {
+                blit(src, dst, comp, clip, null, AffineTransformOp.TYPE_NEAREST_NEIGHBOR,
+                     sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2, sx2 - sx1, sy2 - sy1);
+            }
+        });
+    }
+
+    void registerTransformBlit(SurfaceType srctype, CompositeType comptype, SurfaceType dsttype) {
+        primitives.add(new TransformBlit(srctype, comptype, dsttype) {
+            @Override
+            public void Transform(SurfaceData src, SurfaceData dst,
+                                  Composite comp, Region clip,
+                                  AffineTransform at, int hint,
+                                  int sx, int sy, int dx, int dy,
+                                  int w, int h) {
+                blit(src, dst, comp, clip, at, hint,
+                     sx, sy, sx+w, sy+h, dx, dy, dx+w, dy+h, w, h);
+            }
+        });
     }
 }
 
-final class VKSurfaceToSurfaceScale extends ScaledBlit {
+final class VKSurfaceToSurfaceBlit extends VKMultiplexedBlit {
 
-    VKSurfaceToSurfaceScale(CompositeType compositeType) {
-        super(VKSurfaceData.VKSurface, compositeType, VKSurfaceData.VKSurface);
+    static final VKSurfaceToSurfaceBlit INSTANCE = new VKSurfaceToSurfaceBlit();
+
+    // We need to use stage Vulkan surfaces for blit of the surface into itself.
+    // The cache maps offscreen graphics configs (GPU + format) to stage surfaces.
+    private final Map<VKGraphicsConfig, VKStageSurface> stageCache = new HashMap<>();
+
+    private VKSurfaceToSurfaceBlit() {
+        // Any Vulkan src type: we can sample any Vulkan surface format.
+        // Any Vulkan dst type: we don't care about dst format as long as we can render into it.
+        // Any alpha/xor composite is supported.
+        registerBlits(VKSurfaceData.VKSurface, CompositeType.AnyAlpha, VKSurfaceData.VKSurface);
+        registerBlits(VKSurfaceData.VKSurface, CompositeType.Xor,      VKSurfaceData.VKSurface);
     }
 
-    public void Scale(SurfaceData src, SurfaceData dst,
-                      Composite comp, Region clip,
-                      int sx1, int sy1,
-                      int sx2, int sy2,
-                      double dx1, double dy1,
-                      double dx2, double dy2)
-    {
+    private VKStageSurface getStage(VKSurfaceData src) {
+        // If accelerated surface data is disabled, create the compatible buffered stage image instead.
+        return stageCache.computeIfAbsent(src.getGraphicsConfig().getOffscreenConfig(),
+                gc -> new VKStageSurface(!VKEnv.isSurfaceDataAccelerated() ? gc::createCompatibleImage :
+                        (w, h) -> gc.createCompatibleVolatileImage(
+                                w, h, gc.isTranslucencyCapable() ? TRANSLUCENT : OPAQUE, AccelSurface.RT_TEXTURE)));
+    }
+
+    @Override
+    void blit(SurfaceData src, SurfaceData dst,
+              Composite comp, Region clip, AffineTransform xform, int hint,
+              int sx1, int sy1, int sx2, int sy2,
+              double dx1, double dy1, double dx2, double dy2,
+              int w, int h) {
+        if (src == dst) { // Blit into itself cannot be done directly, need to use stage surface.
+            try (VKStageSurface stageSurface = getStage((VKSurfaceData) src)) {
+                SurfaceData stage = stageSurface.acquire(w, h);
+                if (VKEnv.isSurfaceDataAccelerated()) {
+                    // Blit into the intermediate image.
+                    blit(src, stage, null, null, null, AffineTransformOp.TYPE_NEAREST_NEIGHBOR, sx1, sy1, sx2, sy2, 0, 0, w, h, w, h);
+                    // Blit back from the intermediate image.
+                    blit(stage, dst, comp, clip, xform, hint, 0, 0, w, h, dx1, dy1, dx2, dy2, w, h);
+                } else { // Accelerated surface data disabled - blit via buffered stage image.
+                    // Blit into the intermediate image.
+                    Blit srcop = Blit.getFromCache(src.getSurfaceType(), CompositeType.SrcNoEa, stage.getSurfaceType());
+                    srcop.Blit(src, stage, null, null, sx1, sy1, 0, 0, w, h);
+                    // Blit back from the intermediate image.
+                    VKSwToSurfaceBlit.INSTANCE.blit(stage, dst, comp, clip, xform, hint, 0, 0, w, h, dx1, dy1, dx2, dy2, w, h);
+                }
+            }
+            return;
+        }
         VKBlitLoops.IsoBlit(src, dst,
                 null, null,
-                comp, clip, null,
-                AffineTransformOp.TYPE_NEAREST_NEIGHBOR,
+                comp, clip, xform, hint,
                 sx1, sy1, sx2, sy2,
                 dx1, dy1, dx2, dy2);
-    }
-}
-
-final class VKSurfaceToSurfaceTransform extends TransformBlit {
-
-    VKSurfaceToSurfaceTransform(CompositeType compositeType) {
-        super(VKSurfaceData.VKSurface, compositeType, VKSurfaceData.VKSurface);
-    }
-
-    public void Transform(SurfaceData src, SurfaceData dst,
-                          Composite comp, Region clip,
-                          AffineTransform at, int hint,
-                          int sx, int sy, int dx, int dy,
-                          int w, int h)
-    {
-        VKBlitLoops.IsoBlit(src, dst,
-                null, null,
-                comp, clip, at, hint,
-                sx, sy, sx+w, sy+h,
-                dx, dy, dx+w, dy+h);
     }
 }
 
@@ -362,6 +418,10 @@ final class VKSurfaceToSwBlit extends Blit {
     VKSurfaceToSwBlit(VKFormat format, int transparency) {
         // TODO Support for any composite via staged blit?
         //      This way we could do one intermediate blit instead of two.
+        // We can only copy image data from the Surface into the matching Sw format (see bufferedSurfaceType).
+        // Specific Vulkan src type: we register specific blit loop for each format + transparency variant.
+        // Any dst type: we use a stage surface with compatible format in case of non-matching format or complex clip.
+        // Only plain copy (SrcNoEa composite) is supported.
         super(format.getSurfaceType(transparency), CompositeType.SrcNoEa, SurfaceType.Any);
         stageSurface = new VKStageSurface((w, h) -> format.createCompatibleImage(w, h, transparency));
         bufferedSurfaceType = format.getFormatModel(transparency).getSurfaceType();
@@ -427,12 +487,23 @@ final class VKSurfaceToSwBlit extends Blit {
     }
 }
 
-final class VKSwToSurfaceBlitContext {
+final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
+
+    static final VKSwToSurfaceBlit INSTANCE = new VKSwToSurfaceBlit();
 
     // Don't use pre-multiplied alpha to preserve color values whenever possible.
     private final VKStageSurface stage4Byte = new VKStageSurface((w, h) -> new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB));
 
-    VKStageSurface getStage(SurfaceData src, VKSurfaceData dst) {
+    private VKSwToSurfaceBlit() {
+        // Any src type: we either blit directly, if we can sample a given source format (see encodeSrcType),
+        // or via a stage Sw surface, taking the closest format to represent source colors (see getStage).
+        // Any Vulkan dst type: we don't care about dst format as long as we can render into it.
+        // Any alpha/xor composite is supported.
+        registerBlits(SurfaceType.Any, CompositeType.AnyAlpha, VKSurfaceData.VKSurface);
+        registerBlits(SurfaceType.Any, CompositeType.Xor,      VKSurfaceData.VKSurface);
+    }
+
+    private VKStageSurface getStage(SurfaceData src, VKSurfaceData dst) {
         // We assume that 4 byte sampled format is always supported.
         return stage4Byte;
     }
@@ -484,7 +555,7 @@ final class VKSwToSurfaceBlitContext {
      * All stage surfaces from getStage() must always be supported.
      * See decodeSrcType() in VKBlitLoops.c
      */
-    int encodeSrcType(SurfaceData src, VKSurfaceData dst) {
+    private int encodeSrcType(SurfaceData src, VKSurfaceData dst) {
         if (src.getNativeOps() == 0) return -1; // No native raster info - needs a staged blit.
         // We assume that the 4-byte sampled format is always supported.
         if (src.getColorModel() instanceof DirectColorModel dcm) {
@@ -529,107 +600,29 @@ final class VKSwToSurfaceBlitContext {
         }
         return -1;
     }
-}
 
-class VKSwToSurfaceBlit extends Blit {
-
-    private final VKSwToSurfaceBlitContext blitContext;
-
-    VKSwToSurfaceBlit(CompositeType compositeType, VKSwToSurfaceBlitContext blitContext) {
-        super(SurfaceType.Any, compositeType, VKSurfaceData.VKSurface);
-        this.blitContext = blitContext;
-    }
-
-    public void Blit(SurfaceData src, SurfaceData dst,
-                     Composite comp, Region clip,
-                     int sx, int sy, int dx, int dy, int w, int h) {
-        int srcType = blitContext.encodeSrcType(src, (VKSurfaceData) dst);
+    @Override
+    void blit(SurfaceData src, SurfaceData dst,
+              Composite comp, Region clip, AffineTransform xform, int hint,
+              int sx1, int sy1, int sx2, int sy2,
+              double dx1, double dy1, double dx2, double dy2,
+              int w, int h) {
+        int srcType = encodeSrcType(src, (VKSurfaceData) dst);
         if (srcType == -1) {
-            try (VKStageSurface stageSurface = blitContext.getStage(src, (VKSurfaceData) dst)) {
-                SurfaceData stage = stageSurface.acquire(w, h);
-                // Blit from src to intermediate SW image.
-                Blit op = Blit.getFromCache(src.getSurfaceType(), CompositeType.SrcNoEa, stage.getSurfaceType());
-                op.Blit(src, stage, AlphaComposite.Src, null, sx, sy, 0, 0, w, h);
-                // Copy intermediate SW to Vulkan surface.
-                Blit(stage, dst, comp, clip, 0, 0, dx, dy, w, h);
-            }
-            return;
-        }
-        VKBlitLoops.Blit(src, dst,
-                comp, clip, null,
-                AffineTransformOp.TYPE_NEAREST_NEIGHBOR,
-                sx, sy, sx+w, sy+h,
-                dx, dy, dx+w, dy+h,
-                srcType, false);
-    }
-}
-
-class VKSwToSurfaceScale extends ScaledBlit {
-
-    private final VKSwToSurfaceBlitContext blitContext;
-
-    VKSwToSurfaceScale(CompositeType compositeType, VKSwToSurfaceBlitContext blitContext) {
-        super(SurfaceType.Any, compositeType, VKSurfaceData.VKSurface);
-        this.blitContext = blitContext;
-    }
-
-    public void Scale(SurfaceData src, SurfaceData dst,
-                      Composite comp, Region clip,
-                      int sx1, int sy1,
-                      int sx2, int sy2,
-                      double dx1, double dy1,
-                      double dx2, double dy2) {
-        int srcType = blitContext.encodeSrcType(src, (VKSurfaceData) dst);
-        if (srcType == -1) {
-            try (VKStageSurface stageSurface = blitContext.getStage(src, (VKSurfaceData) dst)) {
-                int w = sx2-sx1, h = sy2-sy1;
+            try (VKStageSurface stageSurface = getStage(src, (VKSurfaceData) dst)) {
                 SurfaceData stage = stageSurface.acquire(w, h);
                 // Blit from src to intermediate SW image.
                 Blit op = Blit.getFromCache(src.getSurfaceType(), CompositeType.SrcNoEa, stage.getSurfaceType());
                 op.Blit(src, stage, AlphaComposite.Src, null, sx1, sy1, 0, 0, w, h);
                 // Copy intermediate SW to Vulkan surface.
-                Scale(stage, dst, comp, clip, 0, 0, w, h, dx1, dy1, dx2, dy2);
+                blit(stage, dst, comp, clip, xform, hint, 0, 0, w, h, dx1, dy1, dx2, dy2, w, h);
             }
             return;
         }
         VKBlitLoops.Blit(src, dst,
-                comp, clip, null,
-                AffineTransformOp.TYPE_NEAREST_NEIGHBOR,
-                sx1, sy1, sx2, sy2,
-                dx1, dy1, dx2, dy2,
-                srcType, false);
-    }
-}
-
-class VKSwToSurfaceTransform extends TransformBlit {
-
-    private final VKSwToSurfaceBlitContext blitContext;
-
-    VKSwToSurfaceTransform(CompositeType compositeType, VKSwToSurfaceBlitContext blitContext) {
-        super(SurfaceType.Any, compositeType, VKSurfaceData.VKSurface);
-        this.blitContext = blitContext;
-    }
-
-    public void Transform(SurfaceData src, SurfaceData dst,
-                          Composite comp, Region clip,
-                          AffineTransform at, int hint,
-                          int sx, int sy, int dx, int dy, int w, int h) {
-        int srcType = blitContext.encodeSrcType(src, (VKSurfaceData) dst);
-        if (srcType == -1) {
-            try (VKStageSurface stageSurface = blitContext.getStage(src, (VKSurfaceData) dst)) {
-                SurfaceData stage = stageSurface.acquire(w, h);
-                // Blit from src to intermediate SW image.
-                Blit op = Blit.getFromCache(src.getSurfaceType(), CompositeType.SrcNoEa, stage.getSurfaceType());
-                op.Blit(src, stage, AlphaComposite.Src, null, sx, sy, 0, 0, w, h);
-                // Copy intermediate SW to Vulkan surface.
-                Transform(stage, dst, comp, clip, at, hint, 0, 0, dx, dy, w, h);
-            }
-            return;
-        }
-        VKBlitLoops.Blit(src, dst,
-                comp, clip, at, hint,
-                sx, sy, sx+w, sy+h,
-                dx, dy, dx+w, dy+h,
-                srcType, false);
+                         comp, clip, xform, hint,
+                         sx1, sy1, sx2, sy2,
+                         dx1, dy1, dx2, dy2,
+                         srcType, false);
     }
 }
