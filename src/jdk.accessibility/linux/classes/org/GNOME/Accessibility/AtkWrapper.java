@@ -119,7 +119,7 @@ public class AtkWrapper {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.addRecord(ac);
+                AtkWrapperDisposer.getInstance().addRecord(ac);
                 AtkWrapper.windowActivate(ac);
             }
         }
@@ -139,7 +139,7 @@ public class AtkWrapper {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.addRecord(ac);
+                AtkWrapperDisposer.getInstance().addRecord(ac);
                 AtkWrapper.windowDeactivate(ac);
             }
         }
@@ -154,11 +154,9 @@ public class AtkWrapper {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.addRecord(ac);
+                AtkWrapperDisposer.getInstance().addRecord(ac);
                 AtkWrapper.windowStateChange(ac);
-
                 if ((e.getNewState() & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH) {
-                    AtkWrapperDisposer.addRecord(ac);
                     AtkWrapper.windowMaximize(ac);
                 }
             }
@@ -173,7 +171,7 @@ public class AtkWrapper {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.addRecord(ac);
+                AtkWrapperDisposer.getInstance().addRecord(ac);
                 AtkWrapper.windowRestore(ac);
             }
         }
@@ -187,7 +185,7 @@ public class AtkWrapper {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.addRecord(ac);
+                AtkWrapperDisposer.getInstance().addRecord(ac);
                 AtkWrapper.windowMinimize(ac);
             }
         }
@@ -201,7 +199,7 @@ public class AtkWrapper {
             if (o instanceof Accessible accessible) {
                 boolean isToplevel = isToplevel(o);
                 AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.addRecord(ac);
+                AtkWrapperDisposer.getInstance().addRecord(ac);
                 AtkWrapper.windowOpen(ac, isToplevel);
             }
         }
@@ -216,7 +214,7 @@ public class AtkWrapper {
             if (o instanceof Accessible accessible) {
                 boolean isToplevel = isToplevel(o);
                 AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.addRecord(ac);
+                AtkWrapperDisposer.getInstance().addRecord(ac);
                 AtkWrapper.windowClose(ac, isToplevel);
             }
         }
@@ -231,7 +229,7 @@ public class AtkWrapper {
             if (o instanceof Accessible accessible) {
                 boolean isToplevel = isToplevel(o);
                 AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.addRecord(ac);
+                AtkWrapperDisposer.getInstance().addRecord(ac);
                 AtkWrapper.windowClose(ac, isToplevel);
             }
         }
@@ -263,7 +261,7 @@ public class AtkWrapper {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.addRecord(ac);
+                AtkWrapperDisposer.getInstance().addRecord(ac);
                 AtkWrapper.boundsChanged(ac);
             }
         }
@@ -279,7 +277,7 @@ public class AtkWrapper {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.addRecord(ac);
+                AtkWrapperDisposer.getInstance().addRecord(ac);
                 AtkWrapper.boundsChanged(ac);
             }
         }
@@ -292,7 +290,7 @@ public class AtkWrapper {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.addRecord(ac);
+                AtkWrapperDisposer.getInstance().addRecord(ac);
                 AtkWrapper.componentAdded(ac);
             }
         }
@@ -306,7 +304,7 @@ public class AtkWrapper {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
                 AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.addRecord(ac);
+                AtkWrapperDisposer.getInstance().addRecord(ac);
                 AtkWrapper.componentRemoved(ac);
             }
         }
@@ -440,7 +438,7 @@ public class AtkWrapper {
                     }
                 }
             }
-            AtkWrapperDisposer.addRecord(ctx);
+            AtkWrapperDisposer.getInstance().addRecord(ctx);
             focusNotify(ctx);
         } catch (Exception e) {
             if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
@@ -472,7 +470,7 @@ public class AtkWrapper {
             Object newValue = e.getNewValue();
             String propertyName = e.getPropertyName();
 
-            AtkWrapperDisposer.addRecord(ac);
+            AtkWrapperDisposer.getInstance().addRecord(ac);
 
             if (propertyName.equals(AccessibleContext.ACCESSIBLE_CARET_PROPERTY)) {
                 Object[] args = new Object[1];
@@ -760,6 +758,6 @@ public class AtkWrapper {
      * @return
      */
     private static long get_native_resources(AccessibleContext ac) {
-        return AtkWrapperDisposer.getRecord(ac);
+        return AtkWrapperDisposer.getInstance().getRecord(ac);
     }
 }

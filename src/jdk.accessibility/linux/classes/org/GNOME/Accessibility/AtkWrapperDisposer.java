@@ -47,23 +47,34 @@ public class AtkWrapperDisposer implements Runnable {
     private static final Map<PhantomReference<Object>, Long> phantomMap = new HashMap<>();
     private static final WeakHashMap<Object, Long> weakHashMap = new WeakHashMap<>();
     private static final Object lock = new Object();
-    private static AtkWrapperDisposer disposerInstance;
+    private static AtkWrapperDisposer INSTANCE = null;
 
     private AtkWrapperDisposer() {
     }
 
-    static {
-        disposerInstance = new AtkWrapperDisposer();
+    private void init() {
         AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
             String name = "Atk Wrapper Disposer";
             ThreadGroup rootTG = ThreadGroupUtils.getRootThreadGroup();
-            Thread t = new Thread(rootTG, disposerInstance, name, 0);
+            Thread t = new Thread(rootTG, INSTANCE, name, 0);
             t.setContextClassLoader(null);
             t.setDaemon(true);
             t.setPriority(Thread.MAX_PRIORITY);
             t.start();
             return null;
         });
+    }
+
+    public static synchronized AtkWrapperDisposer getInstance() {
+        if (INSTANCE == null) {
+            synchronized (AtkWrapperDisposer.class) {
+                if (INSTANCE == null) {
+                    INSTANCE = new AtkWrapperDisposer();
+                    INSTANCE.init();
+                }
+            }
+        }
+        return INSTANCE;
     }
 
     public void run() {
@@ -82,7 +93,7 @@ public class AtkWrapperDisposer implements Runnable {
         }
     }
 
-    public static void addRecord(AccessibleContext ac) {
+    public void addRecord(AccessibleContext ac) {
         synchronized (lock) {
             if (!weakHashMap.containsKey(ac)) {
                 long nativeReference = AtkWrapper.createNativeResources(ac);
@@ -95,7 +106,7 @@ public class AtkWrapperDisposer implements Runnable {
         }
     }
 
-    public static long getRecord(AccessibleContext ac) {
+    public long getRecord(AccessibleContext ac) {
         synchronized (lock) {
             if (weakHashMap.containsKey(ac)) {
                 return weakHashMap.get(ac);
