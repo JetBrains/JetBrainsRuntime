@@ -109,7 +109,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_initNativeLibrary(void) {
 
         if (!jaw_log_file) {
             perror("Error opening log file " JAW_LOG_FILE2);
-            return FALSE;
+            return JNI_FALSE;
         }
         jaw_start_time = time(NULL);
     }
@@ -128,7 +128,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_initNativeLibrary(void) {
     // Force to invoke base initialization function of each ATK interfaces
     g_type_class_unref(g_type_class_ref(ATK_TYPE_NO_OP_OBJECT));
 
-    return TRUE;
+    return JNI_TRUE;
 }
 
 static guint jni_main_idle_add(GSourceFunc function, gpointer data) {
@@ -160,7 +160,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
     JAW_DEBUG_I("Jaw Initialization STATUS = %d", jaw_initialized);
     if (!jaw_initialized) {
         g_warning("loadAtkBridge: jaw_initialized == NULL");
-        return FALSE;
+        return JNI_FALSE;
     }
 
 #if ATSPI_CHECK_VERSION(2, 33, 1)
@@ -182,12 +182,12 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
 #endif
         g_error_free(err);
         jaw_accessibility_shutdown();
-        return FALSE;
+        return JNI_FALSE;
     } else {
         /* We won't join it */
         g_thread_unref(thread);
     }
-    return TRUE;
+    return JNI_TRUE;
 }
 
 enum _SignalType {
