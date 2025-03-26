@@ -26,7 +26,7 @@
 
 #ifndef VKDevice_h_Included
 #define VKDevice_h_Included
-#include "sun_java2d_vulkan_VKSwToSurfaceBlitContext.h"
+#include "sun_java2d_vulkan_VKSwToSurfaceBlit.h"
 #include "VKTexturePool.h"
 #include "VKUtil.h"
 
@@ -39,7 +39,7 @@ typedef struct {
 } VKSampledSrcType;
 
 typedef struct {
-    VKSampledSrcType table[1 << sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_BITS];
+    VKSampledSrcType table[1 << sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_BITS];
     jint caps;
 } VKSampledSrcTypes;
 
