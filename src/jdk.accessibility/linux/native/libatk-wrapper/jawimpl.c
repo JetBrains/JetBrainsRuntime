@@ -298,7 +298,7 @@ JawImpl *jaw_impl_get_instance_from_jaw(JNIEnv *jniEnv, jobject ac) {
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
     CHECK_NULL(classWrapper, NULL);
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classWrapper, "getInstanceFromSwing",
+        jniEnv, classWrapper, "get_instance_from_swing",
         "(Ljavax/accessibility/AccessibleContext;)J");
     CHECK_NULL(jmid, NULL);
     jlong ptr = (*jniEnv)->CallStaticLongMethod(jniEnv, classWrapper, jmid, ac);

@@ -320,7 +320,7 @@ public class AtkWrapper {
      * @return true if instance is of a window, frame or dialogue object
      * false otherwise.
      */
-    public static boolean isToplevel(Object o) {
+    private static boolean isToplevel(Object o) {
         boolean isToplevel = false;
         if (o instanceof java.awt.Window ||
                 o instanceof java.awt.Frame ||
@@ -385,7 +385,7 @@ public class AtkWrapper {
      *
      * @param eventSource An instance of the event source object.
      */
-    static void dispatchFocusEvent(Object eventSource) {
+    private static void dispatchFocusEvent(Object eventSource) {
         if (eventSource == null) {
             oldSourceContext = null;
             return;
@@ -661,7 +661,7 @@ public class AtkWrapper {
         }
     };
 
-    public static void registerPropertyChangeListener(AccessibleContext ac) {
+    private static void registerPropertyChangeListener(AccessibleContext ac) {
         if (ac != null) {
             AtkUtil.invokeInSwing(() -> {
                 ac.addPropertyChangeListener(propertyChangeListener);
@@ -669,50 +669,51 @@ public class AtkWrapper {
         }
     }
 
-    public native static boolean initNativeLibrary();
+    private native static boolean initNativeLibrary();
 
-    public native static boolean loadAtkBridge();
+    private native static boolean loadAtkBridge();
 
-    public native static long createNativeResources(AccessibleContext ac);
+    native static long createNativeResources(AccessibleContext ac);
 
-    public native static void releaseNativeResources(long ref);
+    native static void releaseNativeResources(long ref);
 
-    public native static void focusNotify(AccessibleContext ac);
+    private native static void focusNotify(AccessibleContext ac);
 
-    public native static void windowOpen(AccessibleContext ac,
+    private native static void windowOpen(AccessibleContext ac,
                                          boolean isToplevel);
 
-    public native static void windowClose(AccessibleContext ac,
+    private native static void windowClose(AccessibleContext ac,
                                           boolean isToplevel);
 
-    public native static void windowMinimize(AccessibleContext ac);
+    private native static void windowMinimize(AccessibleContext ac);
 
-    public native static void windowMaximize(AccessibleContext ac);
+    private native static void windowMaximize(AccessibleContext ac);
 
-    public native static void windowRestore(AccessibleContext ac);
+    private native static void windowRestore(AccessibleContext ac);
 
-    public native static void windowActivate(AccessibleContext ac);
+    private native static void windowActivate(AccessibleContext ac);
 
-    public native static void windowDeactivate(AccessibleContext ac);
+    private native static void windowDeactivate(AccessibleContext ac);
 
-    public native static void windowStateChange(AccessibleContext ac);
+    private native static void windowStateChange(AccessibleContext ac);
 
-    public native static void emitSignal(AccessibleContext ac, int id, Object[] args);
+    private native static void emitSignal(AccessibleContext ac, int id, Object[] args);
 
-    public native static void objectStateChange(AccessibleContext ac,
+    private native static void objectStateChange(AccessibleContext ac,
                                                 Object state, boolean value);
 
-    public native static void componentAdded(AccessibleContext ac);
+    private native static void componentAdded(AccessibleContext ac);
 
-    public native static void componentRemoved(AccessibleContext ac);
+    private native static void componentRemoved(AccessibleContext ac);
 
-    public native static void boundsChanged(AccessibleContext ac);
+    private native static void boundsChanged(AccessibleContext ac);
 
-    public native static void dispatchKeyEvent(AtkKeyEvent e);
+    private native static void dispatchKeyEvent(AtkKeyEvent e);
 
-    public native static long getInstance(AccessibleContext ac);
+    private native static long getInstance(AccessibleContext ac);
 
-    public static void printLog(String msg) {
+    // FIXME: no usages
+    private static void printLog(String msg) {
         if (log.isLoggable(PlatformLogger.Level.INFO)) {
             log.info(msg);
         }
@@ -743,20 +744,17 @@ public class AtkWrapper {
         }
     }
 
-    public static long getInstanceFromSwing(AccessibleContext ac) {
-        return AtkUtil.invokeInSwingAndWait(() -> {
-            return getInstance(ac);
-        }, 0l);
-    }
-
     public static void main(String args[]) {
         new AtkWrapper();
     }
 
-
-    // TODO: transfer jni calls
-
     // JNI upcalls section
+
+    private static long get_instance_from_swing(AccessibleContext ac) {
+        return AtkUtil.invokeInSwingAndWait(() -> {
+            return getInstance(ac);
+        }, 0l);
+    }
 
     /**
      * returns -1 if it was not difined
