@@ -36,7 +36,6 @@ import java.util.Hashtable;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.Collections;
 
-import sun.java2d.DisposerRecord;
 import sun.awt.util.ThreadGroupUtils;
 
 /**
