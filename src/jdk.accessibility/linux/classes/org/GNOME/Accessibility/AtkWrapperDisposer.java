@@ -138,8 +138,22 @@ public class AtkWrapperDisposer implements Runnable {
             if (weakHashMap.containsKey(ac)) {
                 return weakHashMap.get(ac);
             }
-            addRecord(ac);
-            return weakHashMap.get(ac);
         }
+        return -1;
+    }
+
+    // TODO: add documentation
+    public long addRecordWithDefaultReference(AccessibleContext ac, long nativeReference) {
+        synchronized (lock) {
+            if (weakHashMap.containsKey(ac)) {
+                return weakHashMap.get(ac);
+            }
+            if (nativeReference != -1) {
+                PhantomReference<Object> phantomReference = new PhantomReference<>(ac, queue);
+                phantomMap.put(phantomReference, nativeReference);
+            }
+            weakHashMap.put(ac, nativeReference);
+        }
+        return nativeReference;
     }
 }

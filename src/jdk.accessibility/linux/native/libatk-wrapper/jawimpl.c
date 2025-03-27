@@ -276,8 +276,15 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     CHECK_NULL(jmid, NULL);
     jlong reference =
         (*jniEnv)->CallStaticLongMethod(jniEnv, classAtkWrapper, jmid, ac);
+
     if (reference == -1) {
-        return NULL;
+        JawImpl *jaw_impl = jaw_impl_create_instance(jniEnv, ac);
+
+        jmethodID jmid = (*jniEnv)->GetStaticMethodID(
+                jniEnv, classAtkWrapper, "add_default_native_resources",
+                "(Ljavax/accessibility/AccessibleContext;J)J");
+
+        reference = (*jniEnv)->CallStaticLongMethod(jniEnv, classAtkWrapper, jmid, ac, (jlong)jaw_impl);
     }
 
     JawImpl *jaw_impl = (JawImpl *)reference;

@@ -760,4 +760,8 @@ public class AtkWrapper {
     private static long get_native_resources(AccessibleContext ac) {
         return AtkWrapperDisposer.getInstance().getRecord(ac);
     }
+
+    private static long add_default_native_resources(AccessibleContext ac, long nativeRef) {
+        return AtkWrapperDisposer.getInstance().addRecordWithDefaultReference(ac, nativeRef);
+    }
 }
