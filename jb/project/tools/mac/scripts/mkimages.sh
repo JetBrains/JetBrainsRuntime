@@ -25,7 +25,20 @@ source jb/project/tools/common/scripts/common.sh
 JCEF_PATH=${JCEF_PATH:=./jcef_mac}
 BOOT_JDK=${BOOT_JDK:=$(/usr/libexec/java_home -v 17)}
 XCODE_PATH=${XCODE_PATH:-}
-[ -d "$XCODE_PATH" ] && WITH_XCODE_PATH="--with-xcode-path=$XCODE_PATH" || WITH_XCODE_PATH=""
+if [ -z "${CONTINUOUS_INTEGRATION:-}"]; then
+  [ -d "$XCODE_PATH" ] && WITH_XCODE_PATH="--with-xcode-path=$XCODE_PATH" || WITH_XCODE_PATH=""
+else
+  if [ -d "$XCODE_PATH" ]; then
+    WITH_XCODE_PATH="--with-xcode-path=$XCODE_PATH"
+  else
+    if [ -z "${XCODE_PATH}"]; then
+      echo "specify XCode via setting XCODE_PATH"
+    else
+      echo "XCode not found in the directory: ${XCODE_PATH}"
+    fi
+    do_exit $?
+  fi
+fi
 
 function do_configure {
   sh configure \
