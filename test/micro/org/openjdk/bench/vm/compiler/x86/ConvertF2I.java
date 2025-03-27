@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
-@Fork(value = 1, jvmArgsAppend = {"-XX:-UseSuperWord"})
+@Fork(value = 1, jvmArgs = {"-XX:-UseSuperWord"})
 public class ConvertF2I {
     static final int LENGTH = 1000;
     static final int[] INT_ARRAY = new int[LENGTH];
