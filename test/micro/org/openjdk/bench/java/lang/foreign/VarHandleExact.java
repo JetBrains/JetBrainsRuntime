@@ -47,7 +47,7 @@ import static java.lang.foreign.ValueLayout.JAVA_INT;
 @Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
 @State(org.openjdk.jmh.annotations.Scope.Thread)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Fork(value = 3, jvmArgsAppend = "--enable-preview")
+@Fork(value = 3, jvmArgs = "--enable-preview")
 public class VarHandleExact {
 
     static final VarHandle exact;
