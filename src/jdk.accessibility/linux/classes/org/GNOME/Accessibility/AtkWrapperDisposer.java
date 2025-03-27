@@ -45,13 +45,13 @@ import sun.awt.util.ThreadGroupUtils;
 @SuppressWarnings("removal")
 public class AtkWrapperDisposer implements Runnable {
     // Reference queue that holds objects ready for garbage collection
-    private static final ReferenceQueue<Object> queue = new ReferenceQueue<>();
+    private static final ReferenceQueue<AccessibleContext> queue = new ReferenceQueue<>();
 
     // Map storing PhantomReferences and their associated native resource pointer
-    private static final Map<PhantomReference<Object>, Long> phantomMap = new HashMap<>();
+    private static final Map<PhantomReference<AccessibleContext>, Long> phantomMap = new HashMap<>();
 
     // WeakHashMap that associates AccessibleContext object with native resource pointer
-    private static final WeakHashMap<Object, Long> weakHashMap = new WeakHashMap<>();
+    private static final WeakHashMap<AccessibleContext, Long> weakHashMap = new WeakHashMap<>();
 
     private static final Object lock = new Object();
     private static AtkWrapperDisposer INSTANCE = null;
@@ -92,7 +92,7 @@ public class AtkWrapperDisposer implements Runnable {
         while (true) {
             try {
                 // When an AccessibleContext is freed, release associated native resources
-                Reference<?> obj = queue.remove();
+                Reference<? extends AccessibleContext> obj = queue.remove();
                 long nativeReference;
                 synchronized (lock) {
                     nativeReference = phantomMap.remove(obj);
@@ -118,7 +118,7 @@ public class AtkWrapperDisposer implements Runnable {
             if (!weakHashMap.containsKey(ac)) {
                 long nativeReference = AtkWrapper.createNativeResources(ac);
                 if (nativeReference != -1) {
-                    PhantomReference<Object> phantomReference = new PhantomReference<>(ac, queue);
+                    PhantomReference<AccessibleContext> phantomReference = new PhantomReference<>(ac, queue);
                     phantomMap.put(phantomReference, nativeReference);
                 }
                 weakHashMap.put(ac, nativeReference);
@@ -149,7 +149,7 @@ public class AtkWrapperDisposer implements Runnable {
                 return weakHashMap.get(ac);
             }
             if (nativeReference != -1) {
-                PhantomReference<Object> phantomReference = new PhantomReference<>(ac, queue);
+                PhantomReference<AccessibleContext> phantomReference = new PhantomReference<>(ac, queue);
                 phantomMap.put(phantomReference, nativeReference);
             }
             weakHashMap.put(ac, nativeReference);
