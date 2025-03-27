@@ -36,6 +36,7 @@ import java.util.Hashtable;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.Collections;
 
+import jdk.internal.misc.InnocuousThread;
 import sun.awt.util.ThreadGroupUtils;
 
 /**
@@ -60,16 +61,11 @@ public class AtkWrapperDisposer implements Runnable {
     }
 
     private void init() {
-        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-            String name = "Atk Wrapper Disposer";
-            ThreadGroup rootTG = ThreadGroupUtils.getRootThreadGroup();
-            Thread t = new Thread(rootTG, INSTANCE, name, 0);
-            t.setContextClassLoader(null);
-            t.setDaemon(true);
-            t.setPriority(Thread.MAX_PRIORITY);
-            t.start();
-            return null;
-        });
+        String name = "Atk Wrapper Disposer";
+        Thread t = InnocuousThread.newThread(name, INSTANCE, Thread.MAX_PRIORITY);
+        t.setContextClassLoader(null);
+        t.setDaemon(true);
+        t.start();
     }
 
     public static synchronized AtkWrapperDisposer getInstance() {
