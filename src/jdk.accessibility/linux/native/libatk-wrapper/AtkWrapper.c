@@ -777,6 +777,7 @@ static gboolean signal_emit_handler(gpointer p) {
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
         g_signal_emit_by_name(atk_obj, "text_insert", insert_position,
                               insert_length, insert_text);
+        g_free(insert_text);
         break;
     }
     case Sig_Text_Property_Changed_Delete: {
@@ -788,6 +789,7 @@ static gboolean signal_emit_handler(gpointer p) {
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
         g_signal_emit_by_name(atk_obj, "text_remove", delete_position,
                               delete_length, delete_text);
+        g_free(delete_text);
         break;
     }
     case Sig_Object_Children_Changed_Add: {
