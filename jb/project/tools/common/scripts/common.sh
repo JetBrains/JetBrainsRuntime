@@ -19,7 +19,7 @@ function getVersionProp() {
 
 DISABLE_WARNINGS_AS_ERRORS=""
 CONTINUOUS_INTEGRATION=""
-while getopts ":iw?" o; do
+while getopts ":iwc?" o; do
     case "${o}" in
         i) INC_BUILD=1 ;;
         w) DISABLE_WARNINGS_AS_ERRORS="--disable-warnings-as-errors" ;;
