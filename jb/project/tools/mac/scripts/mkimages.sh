@@ -40,7 +40,7 @@ else
     else
       echo "XCode not found in the directory: ${XCODE_PATH}"
     fi
-    do_exit $?
+    do_exit 1
   fi
 fi
 
