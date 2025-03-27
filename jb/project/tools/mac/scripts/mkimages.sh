@@ -28,14 +28,14 @@ XCODE_PATH=${XCODE_PATH:-}
 if [ -d "$XCODE_PATH" ]; then
   WITH_XCODE_PATH="--with-xcode-path=$XCODE_PATH"
 else
-  if [ -z "${CONTINUOUS_INTEGRATION:-}"]; then
+  if [ -z "${CONTINUOUS_INTEGRATION:-}" ]; then
     WITH_XCODE_PATH=""
-    if [ -n "${XCODE_PATH}"]; then
+    if [ -n "${XCODE_PATH}" ]; then
       echo "XCode not found in the directory: ${XCODE_PATH}"
       echo "default XCode will be used"
     fi
   else
-    if [ -z "${XCODE_PATH}"]; then
+    if [ -z "${XCODE_PATH}" ]; then
       echo "specify XCode via setting XCODE_PATH"
     else
       echo "XCode not found in the directory: ${XCODE_PATH}"
