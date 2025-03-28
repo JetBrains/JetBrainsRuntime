@@ -75,6 +75,197 @@ public class AtkText {
         }
     }
 
+    private int getPartTypeFromBoundary(int boundary_type) {
+        switch (boundary_type) {
+            case AtkTextBoundary.CHAR:
+                return AccessibleText.CHARACTER;
+            case AtkTextBoundary.WORD_START:
+            case AtkTextBoundary.WORD_END:
+                return AccessibleText.WORD;
+            case AtkTextBoundary.SENTENCE_START:
+            case AtkTextBoundary.SENTENCE_END:
+                return AccessibleText.SENTENCE;
+            case AtkTextBoundary.LINE_START:
+            case AtkTextBoundary.LINE_END:
+                return AccessibleExtendedText.LINE;
+            default:
+                return -1;
+        }
+    }
+
+    private int getNextWordStart(int offset, String str) {
+        BreakIterator words = BreakIterator.getWordInstance();
+        words.setText(str);
+        int start = words.following(offset);
+        int end = words.next();
+
+        while (end != BreakIterator.DONE) {
+            for (int i = start; i < end; i++) {
+                if (Character.isLetter(str.codePointAt(i))) {
+                    return start;
+                }
+            }
+
+            start = end;
+            end = words.next();
+        }
+
+        return BreakIterator.DONE;
+    }
+
+    private int getNextWordEnd(int offset, String str) {
+        int start = getNextWordStart(offset, str);
+
+        BreakIterator words = BreakIterator.getWordInstance();
+        words.setText(str);
+        int next = words.following(offset);
+
+        if (start == next) {
+            return words.following(start);
+        } else {
+            return next;
+        }
+    }
+
+    private int getPreviousWordStart(int offset, String str) {
+        BreakIterator words = BreakIterator.getWordInstance();
+        words.setText(str);
+        int start = words.preceding(offset);
+        int end = words.next();
+
+        while (start != BreakIterator.DONE) {
+            for (int i = start; i < end; i++) {
+                if (Character.isLetter(str.codePointAt(i))) {
+                    return start;
+                }
+            }
+
+            end = start;
+            start = words.preceding(end);
+        }
+
+        return BreakIterator.DONE;
+    }
+
+    private int getPreviousWordEnd(int offset, String str) {
+        int start = getPreviousWordStart(offset, str);
+
+        BreakIterator words = BreakIterator.getWordInstance();
+        words.setText(str);
+        int pre = words.preceding(offset);
+
+        if (start == pre) {
+            return words.preceding(start);
+        } else {
+            return pre;
+        }
+    }
+
+    private int getNextSentenceStart(int offset, String str) {
+        BreakIterator sentences = BreakIterator.getSentenceInstance();
+        sentences.setText(str);
+        int start = sentences.following(offset);
+
+        return start;
+    }
+
+    private int getNextSentenceEnd(int offset, String str) {
+        int start = getNextSentenceStart(offset, str);
+        if (start == BreakIterator.DONE) {
+            return str.length();
+        }
+
+        int index = start;
+        do {
+            index--;
+        } while (index >= 0 && Character.isWhitespace(str.charAt(index)));
+
+        index++;
+        if (index < offset) {
+            start = getNextSentenceStart(start, str);
+            if (start == BreakIterator.DONE) {
+                return str.length();
+            }
+
+            index = start;
+            do {
+                index--;
+            } while (index >= 0 && Character.isWhitespace(str.charAt(index)));
+
+            index++;
+        }
+
+        return index;
+    }
+
+    private int getPreviousSentenceStart(int offset, String str) {
+        BreakIterator sentences = BreakIterator.getSentenceInstance();
+        sentences.setText(str);
+        int start = sentences.preceding(offset);
+
+        return start;
+    }
+
+    private int getPreviousSentenceEnd(int offset, String str) {
+        int start = getPreviousSentenceStart(offset, str);
+        if (start == BreakIterator.DONE) {
+            return 0;
+        }
+
+        int end = getNextSentenceEnd(start, str);
+        if (offset < end) {
+            start = getPreviousSentenceStart(start, str);
+            if (start == BreakIterator.DONE) {
+                return 0;
+            }
+
+            end = getNextSentenceEnd(start, str);
+        }
+
+        return end;
+    }
+
+    private int getNextLineStart(int offset, String str) {
+        int max = str.length();
+        while (offset < max) {
+            if (str.charAt(offset) == '\n')
+                return offset + 1;
+            offset += 1;
+        }
+        return offset;
+    }
+
+    private int getPreviousLineStart(int offset, String str) {
+        offset -= 2;
+        while (offset >= 0) {
+            if (str.charAt(offset) == '\n')
+                return offset + 1;
+            offset -= 1;
+        }
+        return 0;
+    }
+
+    private int getNextLineEnd(int offset, String str) {
+        int max = str.length();
+        offset += 1;
+        while (offset < max) {
+            if (str.charAt(offset) == '\n')
+                return offset;
+            offset += 1;
+        }
+        return offset;
+    }
+
+    private int getPreviousLineEnd(int offset, String str) {
+        offset -= 1;
+        while (offset >= 0) {
+            if (str.charAt(offset) == '\n')
+                return offset;
+            offset -= 1;
+        }
+        return 0;
+    }
+
     // JNI upcalls section
 
     private static AtkText create_atk_text(AccessibleContext ac) {
@@ -116,41 +307,6 @@ public class AtkText {
                 return ' ';
             return str.charAt(0);
         }, ' ');
-    }
-    /**
-     * @param offset        Position.
-     * @param boundary_type An AtkTextBoundary.
-     * @return A newly allocated string containing the text at offset bounded by the specified boundary_type.
-     * @deprecated Please use get_string_at_offset() instead.
-     * <p>
-     * Returns a newly allocated string containing the text at offset bounded by the specified boundary_type.
-     */
-    private StringSequence get_text_at_offset(int offset, int boundary_type) {
-        return private_get_text_at_offset(offset, boundary_type);
-    }
-
-    /**
-     * @param offset        Position.
-     * @param boundary_type An AtkTextBoundary.
-     * @return A newly allocated string containing the text before offset bounded by the specified boundary_type
-     * @deprecated Please use get_string_at_offset() instead.
-     * <p>
-     * Returns a newly allocated string containing the text before offset bounded by the specified boundary_type.
-     */
-    private StringSequence get_text_before_offset(int offset, int boundary_type) {
-        return private_get_text_at_offset(offset - 1, boundary_type);
-    }
-
-    /**
-     * @param offset        Position.
-     * @param boundary_type An AtkTextBoundary.
-     * @return A newly allocated string containing the text after offset bounded by the specified boundary_type.
-     * @deprecated Please use get_string_at_offset() instead.
-     * <p>
-     * Returns newly allocated string containing the text after offset bounded by the specified boundary_type.
-     */
-    private StringSequence get_text_after_offset(int offset, int boundary_type) {
-        return private_get_text_at_offset(offset + 1, boundary_type);
     }
 
     private int get_caret_offset() {
@@ -347,195 +503,40 @@ public class AtkText {
         }, false);
     }
 
-    private int getPartTypeFromBoundary(int boundary_type) {
-        switch (boundary_type) {
-            case AtkTextBoundary.CHAR:
-                return AccessibleText.CHARACTER;
-            case AtkTextBoundary.WORD_START:
-            case AtkTextBoundary.WORD_END:
-                return AccessibleText.WORD;
-            case AtkTextBoundary.SENTENCE_START:
-            case AtkTextBoundary.SENTENCE_END:
-                return AccessibleText.SENTENCE;
-            case AtkTextBoundary.LINE_START:
-            case AtkTextBoundary.LINE_END:
-                return AccessibleExtendedText.LINE;
-            default:
-                return -1;
-        }
+    /**
+     * @param offset        Position.
+     * @param boundary_type An AtkTextBoundary.
+     * @return A newly allocated string containing the text at offset bounded by the specified boundary_type.
+     * @deprecated Please use get_string_at_offset() instead.
+     * <p>
+     * Returns a newly allocated string containing the text at offset bounded by the specified boundary_type.
+     */
+    private StringSequence get_text_at_offset(int offset, int boundary_type) {
+        return private_get_text_at_offset(offset, boundary_type);
     }
 
-    private int getNextWordStart(int offset, String str) {
-        BreakIterator words = BreakIterator.getWordInstance();
-        words.setText(str);
-        int start = words.following(offset);
-        int end = words.next();
-
-        while (end != BreakIterator.DONE) {
-            for (int i = start; i < end; i++) {
-                if (Character.isLetter(str.codePointAt(i))) {
-                    return start;
-                }
-            }
-
-            start = end;
-            end = words.next();
-        }
-
-        return BreakIterator.DONE;
+    /**
+     * @param offset        Position.
+     * @param boundary_type An AtkTextBoundary.
+     * @return A newly allocated string containing the text before offset bounded by the specified boundary_type
+     * @deprecated Please use get_string_at_offset() instead.
+     * <p>
+     * Returns a newly allocated string containing the text before offset bounded by the specified boundary_type.
+     */
+    private StringSequence get_text_before_offset(int offset, int boundary_type) {
+        return private_get_text_at_offset(offset - 1, boundary_type);
     }
 
-    private int getNextWordEnd(int offset, String str) {
-        int start = getNextWordStart(offset, str);
-
-        BreakIterator words = BreakIterator.getWordInstance();
-        words.setText(str);
-        int next = words.following(offset);
-
-        if (start == next) {
-            return words.following(start);
-        } else {
-            return next;
-        }
-    }
-
-    private int getPreviousWordStart(int offset, String str) {
-        BreakIterator words = BreakIterator.getWordInstance();
-        words.setText(str);
-        int start = words.preceding(offset);
-        int end = words.next();
-
-        while (start != BreakIterator.DONE) {
-            for (int i = start; i < end; i++) {
-                if (Character.isLetter(str.codePointAt(i))) {
-                    return start;
-                }
-            }
-
-            end = start;
-            start = words.preceding(end);
-        }
-
-        return BreakIterator.DONE;
-    }
-
-    private int getPreviousWordEnd(int offset, String str) {
-        int start = getPreviousWordStart(offset, str);
-
-        BreakIterator words = BreakIterator.getWordInstance();
-        words.setText(str);
-        int pre = words.preceding(offset);
-
-        if (start == pre) {
-            return words.preceding(start);
-        } else {
-            return pre;
-        }
-    }
-
-    private int getNextSentenceStart(int offset, String str) {
-        BreakIterator sentences = BreakIterator.getSentenceInstance();
-        sentences.setText(str);
-        int start = sentences.following(offset);
-
-        return start;
-    }
-
-    private int getNextSentenceEnd(int offset, String str) {
-        int start = getNextSentenceStart(offset, str);
-        if (start == BreakIterator.DONE) {
-            return str.length();
-        }
-
-        int index = start;
-        do {
-            index--;
-        } while (index >= 0 && Character.isWhitespace(str.charAt(index)));
-
-        index++;
-        if (index < offset) {
-            start = getNextSentenceStart(start, str);
-            if (start == BreakIterator.DONE) {
-                return str.length();
-            }
-
-            index = start;
-            do {
-                index--;
-            } while (index >= 0 && Character.isWhitespace(str.charAt(index)));
-
-            index++;
-        }
-
-        return index;
-    }
-
-    private int getPreviousSentenceStart(int offset, String str) {
-        BreakIterator sentences = BreakIterator.getSentenceInstance();
-        sentences.setText(str);
-        int start = sentences.preceding(offset);
-
-        return start;
-    }
-
-    private int getPreviousSentenceEnd(int offset, String str) {
-        int start = getPreviousSentenceStart(offset, str);
-        if (start == BreakIterator.DONE) {
-            return 0;
-        }
-
-        int end = getNextSentenceEnd(start, str);
-        if (offset < end) {
-            start = getPreviousSentenceStart(start, str);
-            if (start == BreakIterator.DONE) {
-                return 0;
-            }
-
-            end = getNextSentenceEnd(start, str);
-        }
-
-        return end;
-    }
-
-    private int getNextLineStart(int offset, String str) {
-        int max = str.length();
-        while (offset < max) {
-            if (str.charAt(offset) == '\n')
-                return offset + 1;
-            offset += 1;
-        }
-        return offset;
-    }
-
-    private int getPreviousLineStart(int offset, String str) {
-        offset -= 2;
-        while (offset >= 0) {
-            if (str.charAt(offset) == '\n')
-                return offset + 1;
-            offset -= 1;
-        }
-        return 0;
-    }
-
-    private int getNextLineEnd(int offset, String str) {
-        int max = str.length();
-        offset += 1;
-        while (offset < max) {
-            if (str.charAt(offset) == '\n')
-                return offset;
-            offset += 1;
-        }
-        return offset;
-    }
-
-    private int getPreviousLineEnd(int offset, String str) {
-        offset -= 1;
-        while (offset >= 0) {
-            if (str.charAt(offset) == '\n')
-                return offset;
-            offset -= 1;
-        }
-        return 0;
+    /**
+     * @param offset        Position.
+     * @param boundary_type An AtkTextBoundary.
+     * @return A newly allocated string containing the text after offset bounded by the specified boundary_type.
+     * @deprecated Please use get_string_at_offset() instead.
+     * <p>
+     * Returns newly allocated string containing the text after offset bounded by the specified boundary_type.
+     */
+    private StringSequence get_text_after_offset(int offset, int boundary_type) {
+        return private_get_text_at_offset(offset + 1, boundary_type);
     }
 
     private StringSequence private_get_text_at_offset(int offset,
