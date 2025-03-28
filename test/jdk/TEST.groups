@@ -1181,6 +1181,7 @@ jdk_swing_wayland= \
     -javax/swing/JMenuItem/4171437/bug4171437.java \
     -javax/swing/JMenuItem/6209975/bug6209975.java \
     -javax/swing/JMenuItem/6249972/bug6249972.java \
+    -javax/swing/JMenuItem/bug4327146.java.bug4327146 \
     -javax/swing/JMenuItem/bug4839464.java \
     -javax/swing/JOptionPane/6428694/bug6428694.java \
     -javax/swing/JOptionPane/7138665/bug7138665.java \
