@@ -67,6 +67,7 @@ import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JTextArea;
 import javax.swing.JList;
+import javax.swing.JScrollPane;
 import javax.swing.JTree;
 import javax.swing.KeyStroke;
 
@@ -1095,5 +1096,24 @@ class CAccessibility implements PropertyChangeListener {
                 return false;
             }
         }, c, false);
+    }
+
+    private static Accessible getScrollBar(Accessible a, Component c, int orientation) {
+        if (a == null) return null;
+
+        return invokeAndWait(() -> {
+            Accessible sa = CAccessible.getSwingAccessible(a);
+            if (sa instanceof JScrollPane scrollPane) {
+                // NSAccessibilityOrientationVertical
+                if (orientation == 1) {
+                    return scrollPane.getVerticalScrollBar();
+                }
+                // NSAccessibilityOrientationHorizontal
+                else if (orientation == 2) {
+                    return scrollPane.getHorizontalScrollBar();
+                }
+            }
+            return null;
+        }, c);
     }
 }
