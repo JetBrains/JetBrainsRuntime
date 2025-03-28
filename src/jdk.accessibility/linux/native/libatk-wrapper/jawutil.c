@@ -250,28 +250,24 @@ JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *jvm, void *reserve) {
 }
 
 JNIEnv *jaw_util_get_jni_env(void) {
+    if (cachedJVM == NULL) {
+       g_printerr("jaw_util_get_jni_env: cachedJVM is NULL");
+       return NULL;
+    }
+
     JNIEnv *env;
-    env = NULL;
-    static int i;
-
-    i = 0;
-    void *ptr;
-    ptr = NULL;
-    jint res;
-
-#ifdef JNI_VERSION_1_6
-    res = (*cachedJVM)->GetEnv(cachedJVM, &ptr, JNI_VERSION_1_6);
-#endif
-    env = (JNIEnv *)ptr;
-
-    if (env != NULL)
+    jint res = (*cachedJVM)->GetEnv(cachedJVM, (void**)&env, JNI_VERSION_1_6);
+    if (res == JNI_OK && env != NULL) {
         return env;
+    }
 
     switch (res) {
     case JNI_EDETACHED:
-        res = (*cachedJVM)->AttachCurrentThreadAsDaemon(cachedJVM, &ptr, NULL);
-        env = (JNIEnv *)ptr;
-        if ((res == JNI_OK) && (env != NULL)) {
+        JavaVMAttachArgs args;
+        args.version = JNI_VERSION_1_6;
+        args.name = "NativeThread";
+        res = (*cachedJVM)->AttachCurrentThreadAsDaemon(cachedJVM, (void**)&env, &args);
+        if (res == JNI_OK && env != NULL) {
             return env;
         }
         g_printerr("\n *** Attach failed. *** JNIEnv thread is detached.\n");
