@@ -257,9 +257,6 @@ JNIEnv *jaw_util_get_jni_env(void) {
     i = 0;
     void *ptr;
     ptr = NULL;
-    JavaVMAttachArgs args = {
-        0,
-    };
     jint res;
 
 #ifdef JNI_VERSION_1_6
@@ -272,12 +269,9 @@ JNIEnv *jaw_util_get_jni_env(void) {
 
     switch (res) {
     case JNI_EDETACHED:
-        args.version = JNI_VERSION_1_6;
-        args.name = g_strdup_printf("NativeThread %d", i++);
         res = (*cachedJVM)->AttachCurrentThreadAsDaemon(cachedJVM, &ptr, NULL);
         env = (JNIEnv *)ptr;
         if ((res == JNI_OK) && (env != NULL)) {
-            g_free(args.name);
             return env;
         }
         g_printerr("\n *** Attach failed. *** JNIEnv thread is detached.\n");
