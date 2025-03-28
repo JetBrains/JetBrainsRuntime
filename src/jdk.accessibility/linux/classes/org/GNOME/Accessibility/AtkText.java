@@ -31,7 +31,8 @@ public class AtkText {
     private WeakReference<AccessibleText> _acc_text;
     private WeakReference<AccessibleEditableText> _acc_edt_text;
 
-    private record StringSequence(String str, int start_offset, int end_offset) {}
+    private record StringSequence(String str, int start_offset, int end_offset) {
+    }
 
     protected AtkText(AccessibleContext ac) {
         super();
@@ -46,16 +47,32 @@ public class AtkText {
         return start;
     }
 
-    public static int getRightEnd(int start, int end, int count) {
-        if (end < start) {
-            return start;
+    /**
+     * Returns a valid end position based on start, end, and text length constraints.
+     *
+     * @param start           The starting position in the text, which may be invalid.
+     * @param end             The ending position, which may be undefined (-1) or invalid.
+     * @param charCountInText The total character count in the text.
+     * @return A corrected end position.
+     */
+    public static int getRightEnd(int start, int end, int charCountInText) {
+        int rightStart = getRightStart(start);
+
+        // unique case : the end is undefined or an error happened,
+        // let's define the right end as charCountInText
+        if (end == -1) {
+            return charCountInText;
         }
-        if (end < -1)
-            return start;
-        else if (end > count || end == -1)
-            return count;
-        else
+
+        if (end < 0) { // we processed end == -1 in another statement
+            return rightStart;
+        } else if (end < rightStart) {
+            return rightStart;
+        } else if (count < end) {
+            return charCountInText;
+        } else {
             return end;
+        }
     }
 
     // JNI upcalls section
@@ -101,27 +118,12 @@ public class AtkText {
         }, ' ');
     }
 
+    @Deprecated
     private StringSequence get_text_at_offset(int offset, int boundary_type) {
-        AccessibleText acc_text = _acc_text.get();
-        if (acc_text == null)
-            return null;
-
-        return AtkUtil.invokeInSwingAndWait(() -> {
-            if (false && acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
-                // FIXME: this is not using start/end boundaries
-                int part = getPartTypeFromBoundary(boundary_type);
-                if (part == -1)
-                    return null;
-                AccessibleTextSequence seq = accessibleExtendedText.getTextSequenceAt(part, offset);
-                if (seq == null)
-                    return null;
-                return new StringSequence(seq.text, seq.startIndex, seq.endIndex + 1);
-            } else {
-                return private_get_text_at_offset(offset, boundary_type);
-            }
-        }, null);
+        return private_get_text_at_offset(offset, boundary_type);
     }
 
+    @Deprecated
     private StringSequence get_text_before_offset(int offset, int boundary_type) {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
