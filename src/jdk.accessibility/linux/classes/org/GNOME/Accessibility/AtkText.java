@@ -117,59 +117,40 @@ public class AtkText {
             return str.charAt(0);
         }, ' ');
     }
-
-    @Deprecated
+    /**
+     * @param offset        Position.
+     * @param boundary_type An AtkTextBoundary.
+     * @return A newly allocated string containing the text at offset bounded by the specified boundary_type.
+     * @deprecated Please use get_string_at_offset() instead.
+     * <p>
+     * Returns a newly allocated string containing the text at offset bounded by the specified boundary_type.
+     */
     private StringSequence get_text_at_offset(int offset, int boundary_type) {
         return private_get_text_at_offset(offset, boundary_type);
     }
 
-    @Deprecated
+    /**
+     * @param offset        Position.
+     * @param boundary_type An AtkTextBoundary.
+     * @return A newly allocated string containing the text before offset bounded by the specified boundary_type
+     * @deprecated Please use get_string_at_offset() instead.
+     * <p>
+     * Returns a newly allocated string containing the text before offset bounded by the specified boundary_type.
+     */
     private StringSequence get_text_before_offset(int offset, int boundary_type) {
-        AccessibleText acc_text = _acc_text.get();
-        if (acc_text == null)
-            return null;
-
-        return AtkUtil.invokeInSwingAndWait(() -> {
-            if (false && acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
-                // FIXME: this is not using start/end boundaries
-                int part = getPartTypeFromBoundary(boundary_type);
-                if (part == -1)
-                    return null;
-                AccessibleTextSequence seq = accessibleExtendedText.getTextSequenceBefore(part, offset);
-                if (seq == null)
-                    return null;
-                return new StringSequence(seq.text, seq.startIndex, seq.endIndex + 1);
-            } else {
-                StringSequence seq = private_get_text_at_offset(offset, boundary_type);
-                if (seq == null)
-                    return null;
-                return private_get_text_at_offset(seq.start_offset - 1, boundary_type);
-            }
-        }, null);
+        return private_get_text_at_offset(offset - 1, boundary_type);
     }
 
+    /**
+     * @param offset        Position.
+     * @param boundary_type An AtkTextBoundary.
+     * @return A newly allocated string containing the text after offset bounded by the specified boundary_type.
+     * @deprecated Please use get_string_at_offset() instead.
+     * <p>
+     * Returns newly allocated string containing the text after offset bounded by the specified boundary_type.
+     */
     private StringSequence get_text_after_offset(int offset, int boundary_type) {
-        AccessibleText acc_text = _acc_text.get();
-        if (acc_text == null)
-            return null;
-
-        return AtkUtil.invokeInSwingAndWait(() -> {
-            if (false && acc_text instanceof AccessibleExtendedText accessibleExtendedText) {
-                // FIXME: this is not using start/end boundaries
-                int part = getPartTypeFromBoundary(boundary_type);
-                if (part == -1)
-                    return null;
-                AccessibleTextSequence seq = accessibleExtendedText.getTextSequenceAfter(part, offset);
-                if (seq == null)
-                    return null;
-                return new StringSequence(seq.text, seq.startIndex, seq.endIndex + 1);
-            } else {
-                StringSequence seq = private_get_text_at_offset(offset, boundary_type);
-                if (seq == null)
-                    return null;
-                return private_get_text_at_offset(seq.end_offset, boundary_type);
-            }
-        }, null);
+        return private_get_text_at_offset(offset + 1, boundary_type);
     }
 
     private int get_caret_offset() {
