@@ -410,7 +410,8 @@ final class CAccessible extends CFRetainedResource implements Accessible {
                     AccessibleRole thisRole = accessible.getAccessibleContext()
                                                         .getAccessibleRole();
                     if (thisRole == AccessibleRole.SLIDER ||
-                            thisRole == AccessibleRole.PROGRESS_BAR) {
+                            thisRole == AccessibleRole.PROGRESS_BAR ||
+                            thisRole == AccessibleRole.SCROLL_BAR) {
                         execute(ptr -> valueChanged(ptr));
                     }
                 }
