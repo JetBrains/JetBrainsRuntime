@@ -22,6 +22,7 @@
 #include "jawimpl.h"
 #include "jawtoplevel.h"
 #include "jawutil.h"
+#include "org_GNOME_Accessibility_AtkSignal.h"
 #include <X11/Xlib.h>
 #include <atk-bridge.h>
 #include <glib.h>
@@ -57,7 +58,6 @@ extern "C" {
      ((ATSPI_MAJOR_VERSION) == (major) && (ATSPI_MINOR_VERSION) == (minor) &&  \
       (ATSPI_MICRO_VERSION) >= (micro)))
 
-typedef enum _SignalType SignalType;
 gboolean jaw_accessibility_init(void);
 void jaw_accessibility_shutdown(void);
 
@@ -191,38 +191,13 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
     return JNI_TRUE;
 }
 
-enum _SignalType {
-    Sig_Text_Caret_Moved = 0,
-    Sig_Text_Property_Changed_Insert = 1,
-    Sig_Text_Property_Changed_Delete = 2,
-    Sig_Text_Property_Changed_Replace = 3,
-    Sig_Object_Children_Changed_Add = 4,
-    Sig_Object_Children_Changed_Remove = 5,
-    Sig_Object_Active_Descendant_Changed = 6,
-    Sig_Object_Selection_Changed = 7,
-    Sig_Object_Visible_Data_Changed = 8,
-    Sig_Object_Property_Change_Accessible_Actions = 9,
-    Sig_Object_Property_Change_Accessible_Value = 10,
-    Sig_Object_Property_Change_Accessible_Description = 11,
-    Sig_Object_Property_Change_Accessible_Name = 12,
-    Sig_Object_Property_Change_Accessible_Hypertext_Offset = 13,
-    Sig_Object_Property_Change_Accessible_Table_Caption = 14,
-    Sig_Object_Property_Change_Accessible_Table_Summary = 15,
-    Sig_Object_Property_Change_Accessible_Table_Column_Header = 16,
-    Sig_Object_Property_Change_Accessible_Table_Column_Description = 17,
-    Sig_Object_Property_Change_Accessible_Table_Row_Header = 18,
-    Sig_Object_Property_Change_Accessible_Table_Row_Description = 19,
-    Sig_Table_Model_Changed = 20,
-    Sig_Text_Property_Changed = 21
-};
-
 typedef struct _CallbackPara {
     jobject ac;
     jobject global_ac;
     JawImpl *jaw_impl;
     JawImpl *child_impl;
     gboolean is_toplevel;
-    SignalType signal_id;
+    gint signal_id;
     jobjectArray args;
     AtkStateType atk_state;
     gboolean state_value;
@@ -756,7 +731,7 @@ static gboolean signal_emit_handler(gpointer p) {
     jobjectArray args = para->args;
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
 
-    if (para->signal_id == Sig_Object_Visible_Data_Changed) {
+    if (para->signal_id == org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED) {
         pthread_mutex_lock(&jaw_vdc_dup_mutex);
         if (jaw_vdc_last_ac == para->ac)
             /* So we will be sending the visible data changed event. If any
@@ -766,13 +741,13 @@ static gboolean signal_emit_handler(gpointer p) {
     }
 
     switch (para->signal_id) {
-    case Sig_Text_Caret_Moved: {
+    case org_GNOME_Accessibility_AtkSignal_TEXT_CARET_MOVED: {
         gint cursor_pos = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         g_signal_emit_by_name(atk_obj, "text_caret_moved", cursor_pos);
         break;
     }
-    case Sig_Text_Property_Changed_Insert: {
+    case org_GNOME_Accessibility_AtkSignal_TEXT_PROPERTY_CHANGED_INSERT: {
         gint insert_position = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         gint insert_length = get_int_value(
@@ -784,7 +759,7 @@ static gboolean signal_emit_handler(gpointer p) {
         g_free(insert_text);
         break;
     }
-    case Sig_Text_Property_Changed_Delete: {
+    case org_GNOME_Accessibility_AtkSignal_TEXT_PROPERTY_CHANGED_DELETE: {
         gint delete_position = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         gint delete_length = get_int_value(
@@ -796,7 +771,7 @@ static gboolean signal_emit_handler(gpointer p) {
         g_free(delete_text);
         break;
     }
-    case Sig_Object_Children_Changed_Add: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_CHILDREN_CHANGED_ADD: {
         gint child_index = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         g_signal_emit_by_name(atk_obj, "children_changed::add", child_index,
@@ -805,7 +780,7 @@ static gboolean signal_emit_handler(gpointer p) {
             g_object_ref(G_OBJECT(atk_obj));
         break;
     }
-    case Sig_Object_Children_Changed_Remove: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_CHILDREN_CHANGED_REMOVE: {
         gint child_index = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
@@ -820,20 +795,20 @@ static gboolean signal_emit_handler(gpointer p) {
             g_object_unref(G_OBJECT(atk_obj));
         break;
     }
-    case Sig_Object_Active_Descendant_Changed: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_ACTIVE_DESCENDANT_CHANGED: {
         g_signal_emit_by_name(atk_obj, "active_descendant_changed",
                               para->child_impl);
         break;
     }
-    case Sig_Object_Selection_Changed: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_SELECTION_CHANGED: {
         g_signal_emit_by_name(atk_obj, "selection_changed");
         break;
     }
-    case Sig_Object_Visible_Data_Changed: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED: {
         g_signal_emit_by_name(atk_obj, "visible_data_changed");
         break;
     }
-    case Sig_Object_Property_Change_Accessible_Actions: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_ACTIONS: {
         gint oldValue = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         gint newValue = get_int_value(
@@ -861,59 +836,59 @@ static gboolean signal_emit_handler(gpointer p) {
                               &values);
         break;
     }
-    case Sig_Object_Property_Change_Accessible_Value: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_VALUE: {
         g_object_notify(G_OBJECT(atk_obj), "accessible-value");
         break;
     }
-    case Sig_Object_Property_Change_Accessible_Description: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_DESCRIPTION: {
         g_object_notify(G_OBJECT(atk_obj), "accessible-description");
         break;
     }
-    case Sig_Object_Property_Change_Accessible_Name: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_NAME: {
         g_object_notify(G_OBJECT(atk_obj), "accessible-name");
         break;
     }
-    case Sig_Object_Property_Change_Accessible_Hypertext_Offset: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_HYPERTEXT_OFFSET: {
         g_signal_emit_by_name(
             atk_obj, "property_change::accessible-hypertext-offset", NULL);
         break;
     }
-    case Sig_Object_Property_Change_Accessible_Table_Caption: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_CAPTION: {
         g_signal_emit_by_name(
             atk_obj, "property_change::accessible-table-caption", NULL);
         break;
     }
-    case Sig_Object_Property_Change_Accessible_Table_Summary: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_SUMMARY: {
         g_signal_emit_by_name(
             atk_obj, "property_change::accessible-table-summary", NULL);
         break;
     }
-    case Sig_Object_Property_Change_Accessible_Table_Column_Header: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_COLUMN_HEADER: {
         g_signal_emit_by_name(
             atk_obj, "property_change::accessible-table-column-header", NULL);
         break;
     }
-    case Sig_Object_Property_Change_Accessible_Table_Column_Description: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_COLUMN_DESCRIPTION: {
         g_signal_emit_by_name(
             atk_obj, "property_change::accessible-table-column-description",
             NULL);
         break;
     }
-    case Sig_Object_Property_Change_Accessible_Table_Row_Header: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_ROW_HEADER: {
         g_signal_emit_by_name(
             atk_obj, "property_change::accessible-table-row-header", NULL);
         break;
     }
-    case Sig_Object_Property_Change_Accessible_Table_Row_Description: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_ROW_DESCRIPTION: {
         g_signal_emit_by_name(
             atk_obj, "property_change::accessible-table-row-description", NULL);
         break;
     }
-    case Sig_Table_Model_Changed: {
+    case org_GNOME_Accessibility_AtkSignal_TABLE_MODEL_CHANGED: {
         g_signal_emit_by_name(atk_obj, "model_changed");
         break;
     }
-    case Sig_Text_Property_Changed: {
+    case org_GNOME_Accessibility_AtkSignal_TEXT_PROPERTY_CHANGED: {
         JawObject *jaw_obj = JAW_OBJECT(atk_obj);
 
         gint newValue = get_int_value(
@@ -957,7 +932,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     JAW_DEBUG_JNI("%p, %p, %p, %d, %p", jniEnv, jClass, jAccContext, id, args);
 
     pthread_mutex_lock(&jaw_vdc_dup_mutex);
-    if (id != Sig_Object_Visible_Data_Changed) {
+    if (id != org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED) {
         /* Something may have happened since the last visible data changed
          * event, so we want to sent it again */
         jaw_vdc_last_ac = NULL;
@@ -990,29 +965,31 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     para->ac = jAccContext;
     para->signal_id = (gint)id;
     para->args = global_args;
+
+    // FIXME: there is no TEXT_PROPERTY_CHANGED_REPLACE case
     switch (para->signal_id) {
-    case Sig_Text_Caret_Moved:
-    case Sig_Text_Property_Changed_Insert:
-    case Sig_Text_Property_Changed_Delete:
-    case Sig_Object_Children_Changed_Remove:
-    case Sig_Object_Selection_Changed:
-    case Sig_Object_Visible_Data_Changed:
-    case Sig_Object_Property_Change_Accessible_Actions:
-    case Sig_Object_Property_Change_Accessible_Value:
-    case Sig_Object_Property_Change_Accessible_Description:
-    case Sig_Object_Property_Change_Accessible_Name:
-    case Sig_Object_Property_Change_Accessible_Hypertext_Offset:
-    case Sig_Object_Property_Change_Accessible_Table_Caption:
-    case Sig_Object_Property_Change_Accessible_Table_Summary:
-    case Sig_Object_Property_Change_Accessible_Table_Column_Header:
-    case Sig_Object_Property_Change_Accessible_Table_Column_Description:
-    case Sig_Object_Property_Change_Accessible_Table_Row_Header:
-    case Sig_Object_Property_Change_Accessible_Table_Row_Description:
-    case Sig_Table_Model_Changed:
-    case Sig_Text_Property_Changed:
+    case org_GNOME_Accessibility_AtkSignal_TEXT_CARET_MOVED:
+    case org_GNOME_Accessibility_AtkSignal_TEXT_PROPERTY_CHANGED_INSERT:
+    case org_GNOME_Accessibility_AtkSignal_TEXT_PROPERTY_CHANGED_DELETE:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_CHILDREN_CHANGED_REMOVE:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_SELECTION_CHANGED:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_ACTIONS:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_VALUE:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_DESCRIPTION:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_NAME:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_HYPERTEXT_OFFSET:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_CAPTION:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_SUMMARY:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_COLUMN_HEADER:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_COLUMN_DESCRIPTION:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_ROW_HEADER:
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_TABLE_ROW_DESCRIPTION:
+    case org_GNOME_Accessibility_AtkSignal_TABLE_MODEL_CHANGED:
+    case org_GNOME_Accessibility_AtkSignal_TEXT_PROPERTY_CHANGED:
     default:
         break;
-    case Sig_Object_Children_Changed_Add: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_CHILDREN_CHANGED_ADD: {
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
         if (child_impl == NULL) {
@@ -1024,7 +1001,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
         para->child_impl = child_impl;
         break;
     }
-    case Sig_Object_Active_Descendant_Changed: {
+    case org_GNOME_Accessibility_AtkSignal_OBJECT_ACTIVE_DESCENDANT_CHANGED: {
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
         if (child_impl == NULL) {
