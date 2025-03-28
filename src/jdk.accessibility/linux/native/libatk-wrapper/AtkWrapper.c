@@ -735,7 +735,8 @@ static gboolean signal_emit_handler(gpointer p) {
     jobjectArray args = para->args;
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
 
-    if (para->signal_id == org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED) {
+    if (para->signal_id ==
+        org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED) {
         pthread_mutex_lock(&jaw_vdc_dup_mutex);
         if (jaw_vdc_last_ac == para->ac)
             /* So we will be sending the visible data changed event. If any
@@ -755,8 +756,9 @@ static gboolean signal_emit_handler(gpointer p) {
         gint insert_position = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         gint insert_length = get_int_value(
-                    jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
-        gchar *insert_text = get_string_value(jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
+            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
+        gchar *insert_text = get_string_value(
+            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
         g_signal_emit_by_name(atk_obj, "text_insert", insert_position,
                               insert_length, insert_text);
         g_free(insert_text);
@@ -767,7 +769,8 @@ static gboolean signal_emit_handler(gpointer p) {
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         gint delete_length = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
-        gchar *delete_text = get_string_value(jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
+        gchar *delete_text = get_string_value(
+            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
         g_signal_emit_by_name(atk_obj, "text_remove", delete_position,
                               delete_length, delete_text);
         g_free(delete_text);
