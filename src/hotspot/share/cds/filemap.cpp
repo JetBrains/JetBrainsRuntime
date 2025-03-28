@@ -404,7 +404,6 @@ bool SharedClassPathEntry::validate(bool is_class_path) const {
     // filters out any archived module classes that do not have a matching runtime
     // module path location.
     log_warning(cds)("Required classpath entry does not exist: %s", name);
-    ok = false;
   } else if (is_dir()) {
     if (!os::dir_is_empty(name)) {
       log_warning(cds)("directory is not empty: %s", name);
@@ -844,6 +843,20 @@ bool FileMapInfo::validate_boot_class_paths() {
         num = rp_len;
       }
       mismatch = check_paths(1, num, rp_array, 0, 0);
+      if (mismatch) {
+        // To facilitate app deployment, we allow the JAR files to be moved *together* to
+        // a different location, as long as they are still stored under the same directory
+        // structure. E.g., the following is OK.
+        // Extends JDK-8279366 to boot classpath.
+        unsigned int dumptime_prefix_len = header()->common_app_classpath_prefix_size();
+        unsigned int runtime_prefix_len = longest_common_app_classpath_prefix_len(num, rp_array);
+        if (dumptime_prefix_len != 0 || runtime_prefix_len != 0) {
+          log_info(cds, path)("LCP length for boot classpath (dumptime: %u, runtime: %u)",
+                              dumptime_prefix_len, runtime_prefix_len);
+          mismatch = check_paths(1, num, rp_array,
+                                 dumptime_prefix_len, runtime_prefix_len);
+        }
+      }
     } else {
       // create_path_array() ignores non-existing paths. Although the dump time and runtime boot classpath lengths
       // are the same initially, after the call to create_path_array(), the runtime boot classpath length could become

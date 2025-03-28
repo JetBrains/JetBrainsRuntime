@@ -65,33 +65,28 @@ public class BootClassPathMismatch {
         test.testBootClassPathMismatchTwoJars();
     }
 
-    /* Archive contains boot classes only, with Hello class on -Xbootclasspath/a path.
-     *
-     * Error should be detected if:
-     * dump time: -Xbootclasspath/a:${testdir}/hello.jar
-     * run-time : -Xbootclasspath/a:${testdir}/newdir/hello.jar
-     *
-     * or
-     * dump time: -Xbootclasspath/a:${testdir}/newdir/hello.jar
-     * run-time : -Xbootclasspath/a:${testdir}/hello.jar
-     */
+    // Jars in bootclasspath were moved together, it should be ok
     public void testBootClassPathMismatch() throws Exception {
         String appJar = JarBuilder.getOrCreateHelloJar();
-        String appClasses[] = {"Hello"};
+        String jar2 = ClassFileInstaller.writeJar("jar2.jar", "pkg/C2");
+        String jars = appJar + File.pathSeparator + jar2;
+        String appClasses[] = {"Hello", "pkg/C2"};
         String testDir = TestCommon.getTestDir("newdir");
         String otherJar = testDir + File.separator + "hello.jar";
+        String otherJar2 = ClassFileInstaller.writeJar("newdir/jar2.jar", "pkg/C2");
+        String otherJars = otherJar + File.pathSeparator + otherJar2;
 
-        TestCommon.dump(appJar, appClasses, "-Xbootclasspath/a:" + appJar);
+        TestCommon.dump(appJar, appClasses, "-Xbootclasspath/a:" + jars);
         TestCommon.run(
-                "-Xlog:cds",
-                "-cp", appJar, "-Xbootclasspath/a:" + otherJar, "Hello")
-            .assertAbnormalExit(mismatchMessage);
-
-        TestCommon.dump(appJar, appClasses, "-Xbootclasspath/a:" + otherJar);
+                "-Xlog:cds,class+path,cds+path",
+                "-cp", appJar, "-verbose:class",
+                "-Xbootclasspath/a:" + otherJars, "Hello")
+            .assertNormalExit("[class,load] Hello source: shared objects file");
         TestCommon.run(
-                "-Xlog:cds",
-                "-cp", appJar, "-Xbootclasspath/a:" + appJar, "Hello")
-            .assertAbnormalExit(mismatchMessage);
+                "-Xlog:cds,class+path,cds+path",
+                "-cp", otherJar, "-verbose:class",
+                "-Xbootclasspath/a:" + otherJars, "Hello")
+            .assertNormalExit("[class,load] Hello source: shared objects file");
     }
 
     /* Archive contains boot classes only.
