@@ -265,7 +265,7 @@ JNIEnv *jaw_util_get_jni_env(void) {
     case JNI_EDETACHED:
         JavaVMAttachArgs args;
         args.version = JNI_VERSION_1_6;
-        args.name = "NativeThread";
+        args.name = "JavaAtkWrapper-JNI-Attached-Thread";
         res = (*cachedJVM)->AttachCurrentThreadAsDaemon(cachedJVM, (void**)&env, &args);
         if (res == JNI_OK && env != NULL) {
             return env;

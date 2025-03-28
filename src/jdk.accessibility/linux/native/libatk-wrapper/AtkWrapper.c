@@ -153,7 +153,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
     GThread *thread;
     GError *err;
     const char *message;
-    message = "AtkWrapper MainLoop";
+    message = "JavaAtkWrapper-MainLoop";
     err = NULL;
 
     jaw_initialized = jaw_accessibility_init();
