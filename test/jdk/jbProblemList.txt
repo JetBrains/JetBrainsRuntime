@@ -304,7 +304,6 @@ java/awt/Window/Grab/GrabTest.java 8253184 windows-all
 java/awt/Window/GrabSequence/GrabSequence.java 6848409 macosx-all,linux-all
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux-all
 java/awt/FontClass/FontAccess.java JBR-5225 windows-all
-java/awt/font/FontScaling/StretchedFontTest.java JBR-6225 macosx-all
 java/awt/font/GlyphVector/NLGlyphTest.java 8273321,JBR-5355 linux-all
 java/awt/font/JNICheck/JNICheck.sh JBR-5011 linux-all
 java/awt/font/TextLayout/TextLayoutBounds.java 8169188 generic-all
@@ -937,7 +936,6 @@ javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java JBR-5510,JBR-55
 javax/swing/JMenuItem/bug4839464.java JBR-5911 windows-all
 javax/swing/JMenuItem/6249972/bug6249972.java 8197552 windows-all
 javax/swing/JOptionPane/7138665/bug7138665.java JBR-5799,JBR-8171 windows-all,linux-all
-javax/swing/JOptionPane/8081019/bug8081019.java JBR-5767 windows-all
 javax/swing/JPopupMenu/6415145/bug6415145.java 8197552 windows-all
 javax/swing/JPopupMenu/6495920/bug6495920.java JBR-6928 linux-all
 javax/swing/JPopupMenu/6515446/bug6515446.java 8197552,JBR-6531 windows-all,linux-all
@@ -974,15 +972,9 @@ javax/swing/JFileChooser/4524490/bug4524490.java JBR-5846 windows-all
 javax/swing/JFileChooser/8021253/bug8021253.java JBR-107 windows-all
 javax/swing/JFileChooser/8041694/bug8041694.java JBR-5210 windows-all
 javax/swing/JFileChooser/6396844/TwentyThousandTest.java 8198003 generic-all
-javax/swing/JFileChooser/6570445/bug6570445.java JBR-5767 windows-all
-javax/swing/JFileChooser/6738668/bug6738668.java JBR-5767 windows-all
-javax/swing/JFileChooser/7036025/bug7036025.java JBR-5767 windows-all
-javax/swing/JFileChooser/8062561/bug8062561.java JBR-5767,JBR-5808 windows-all
-javax/swing/JFileChooser/8194044/FileSystemRootTest.java 8305413,JBR-5767 windows-aarch64,windows-all
-javax/swing/JFileChooser/ShellFolderQueries/ShellFolderQueriesSecurityManagerTest.java JBR-5767 windows-all
+javax/swing/JFileChooser/8194044/FileSystemRootTest.java 8305413 windows-aarch64
 javax/swing/JFrame/8016356/bug8016356.java JBR-108 windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106,JBR-5510 macosx-aarch64,linux-5.18.2-arch1-1
-javax/swing/JPopupMenu/6675802/bug6675802.java JBR-5767 windows-all
 javax/swing/JPopupMenu/6800513/bug6800513.java 7184956,JBR-6533 macosx-all,linux-all,windows-all
 javax/swing/JScrollBar/4708809/bug4708809.java 8169957 windows-x64
 javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java 8197552 windows-all
@@ -1029,7 +1021,6 @@ javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-5779 linu
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8253184,JBR-5510,JBR-803 windows-all,linux-5.18.2-arch1-1,linux-all
 javax/swing/plaf/synth/SynthScrollbarThumbPainter/SynthScrollbarThumbPainterTest.java 8253184 windows-all
-javax/swing/plaf/synth/Test8043627.java JBR-5767 windows-all
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java  JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JInternalFrame/8020708/bug8020708.java JBR-4879 windows-all
@@ -1041,11 +1032,9 @@ javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210 windows-all
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5542 linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952 windows-x64
-javax/swing/UIDefaults/6795356/TableTest.java JBR-5767 windows-all
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java JBR-5802 windows-all
 java/awt/ColorClass/AlphaColorTest.java JBR-5510 linux-5.18.2-arch1-1
 
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001 linux-all
