@@ -99,9 +99,17 @@ void jaw_hypertext_data_finalize(gpointer p) {
     }
 }
 
-/*
- * Gets the link in this hypertext document at index link-index.
- */
+/**
+ * jaw_hypertext_get_link:
+ * @hypertext: an #AtkHypertext
+ * @link_index: an integer specifying the desired link
+ *
+ * Gets the link in this hypertext document at index
+ * @link_index
+ *
+ * Returns: (transfer none): the link in this hypertext document at
+ * index @link_index
+ **/
 static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
                                             gint link_index) {
     JAW_DEBUG_C("%p, %d", hypertext, link_index);
