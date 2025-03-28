@@ -165,6 +165,19 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
     return jbool;
 }
 
+/**
+ * jaw_selection_ref_selection:
+ * @selection: a #GObject instance that implements AtkSelectionIface
+ * @i: a #gint specifying the index in the selection set.  (e.g. the
+ * ith selection as opposed to the ith child).
+ *
+ * Gets a reference to the accessible object representing the specified
+ * selected child of the object.
+ *
+ * Returns: (nullable) (transfer full): an #AtkObject representing the
+ * selected accessible, or %NULL if @selection does not implement this
+ * interface.
+ **/
 static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
 
@@ -196,8 +209,13 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
 
     AtkObject *obj =
         (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, child_ac);
-    if (obj)
+
+    // From the documentation of the `atk_selection_ref_selection`:
+    // "The caller of the method takes ownership of the returned data, and is
+    // responsible for freeing it." (transfer full)
+    if (obj) {
         g_object_ref(G_OBJECT(obj));
+    }
 
     return obj;
 }

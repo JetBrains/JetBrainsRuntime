@@ -178,6 +178,20 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
     return jcontains;
 }
 
+/**
+ * jaw_component_ref_accessible_at_point:
+ * @component: the #AtkComponent
+ * @x: x coordinate
+ * @y: y coordinate
+ * @coord_type: specifies whether the coordinates are relative to the screen
+ * or to the components top level window
+ *
+ * Gets a reference to the accessible child, if one exists, at the
+ * coordinate point specified by @x and @y.
+ *
+ * Returns: (nullable) (transfer full): a reference to the accessible
+ * child, if one exists
+ **/
 static AtkObject *
 jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
                                       AtkCoordType coord_type) {
@@ -212,8 +226,12 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
 
     JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(jniEnv, child_ac);
 
-    if (jaw_impl)
+    // From the documentation of the `atk_component_ref_accessible_at_point`:
+    // "The caller of the method takes ownership of the returned data, and is
+    // responsible for freeing it." (transfer full)
+    if (jaw_impl) {
         g_object_ref(G_OBJECT(jaw_impl));
+    }
 
     return ATK_OBJECT(jaw_impl);
 }

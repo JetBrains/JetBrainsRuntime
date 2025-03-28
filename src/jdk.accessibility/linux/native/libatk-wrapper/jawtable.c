@@ -164,6 +164,18 @@ void jaw_table_data_finalize(gpointer p) {
     }
 }
 
+/**
+ * jaw_table_ref_at:
+ * @table: a GObject instance that implements AtkTableIface
+ * @row: a #gint representing a row in @table
+ * @column: a #gint representing a column in @table
+ *
+ * Get a reference to the table cell at @row, @column. This cell
+ * should implement the interface #AtkTableCell
+ *
+ * Returns: (transfer full): an #AtkObject representing the referred
+ * to accessible
+ **/
 static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
     JAW_DEBUG_C("%p, %d, %d", table, row, column);
 
@@ -207,8 +219,12 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
 
     JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(env, jac);
 
-    if (G_OBJECT(jaw_impl) != NULL)
+    // From the documentation of the `atk_table_ref_at`:
+    // "The caller of the method takes ownership of the returned data, and is
+    // responsible for freeing it." (transfer full)
+    if (G_OBJECT(jaw_impl) != NULL) {
         g_object_ref(G_OBJECT(jaw_impl));
+    }
 
     return ATK_OBJECT(jaw_impl);
 }
@@ -425,6 +441,15 @@ static gint jaw_table_get_row_extent_at(AtkTable *table, gint row,
     return (gint)jextent;
 }
 
+/**
+ * jaw_table_get_caption:
+ * @table: a GObject instance that implements AtkTableInterface
+ *
+ * Gets the caption for the @table.
+ *
+ * Returns: (nullable) (transfer none): a AtkObject* representing the
+ * table caption, or %NULL if value does not implement this interface.
+ **/
 static AtkObject *jaw_table_get_caption(AtkTable *table) {
     JAW_DEBUG_C("%p", table);
 
@@ -453,6 +478,9 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
     JAW_CHECK_NULL(jac, NULL);
 
     JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(env, jac);
+    // From documentation of the `atk_table_get_caption` in AtkObject:
+    // The returned data is owned by the instance (transfer none), so we don't
+    // ref the obj before returning it.
 
     return ATK_OBJECT(jaw_impl);
 }
@@ -538,6 +566,17 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     return data->description;
 }
 
+/**
+ * atk_table_get_column_header:
+ * @table: a GObject instance that implements AtkTableIface
+ * @column: a #gint representing a column in the table
+ *
+ * Gets the column header of a specified column in an accessible table.
+ *
+ * Returns: (nullable) (transfer none): a AtkObject* representing the
+ * specified column header, or %NULL if value does not implement this
+ * interface.
+ **/
 static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
     JAW_DEBUG_C("%p, %d", table, column);
 
@@ -567,10 +606,24 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
     JAW_CHECK_NULL(jac, NULL);
 
     JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(env, jac);
+    // From documentation of the `atk_table_get_column_header` in AtkObject:
+    // The returned data is owned by the instance (transfer none), so we don't
+    // ref the obj before returning it.
 
     return ATK_OBJECT(jaw_impl);
 }
 
+/**
+ * jaw_table_get_row_header:
+ * @table: a GObject instance that implements AtkTableIface
+ * @row: a #gint representing a row in the table
+ *
+ * Gets the row header of a specified row in an accessible table.
+ *
+ * Returns: (nullable) (transfer none): a AtkObject* representing the
+ * specified row header, or %NULL if value does not implement this
+ * interface.
+ **/
 static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
     JAW_DEBUG_C("%p, %d", table, row);
 
@@ -599,10 +652,22 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
     JAW_CHECK_NULL(jac, NULL);
 
     JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(env, jac);
+    // From documentation of the `atk_table_get_row_header` in AtkObject:
+    // The returned data is owned by the instance (transfer none), so we don't
+    // ref the jaw_impl before returning it.
 
     return ATK_OBJECT(jaw_impl);
 }
 
+/**
+ * jaw_table_get_summary:
+ * @table: a GObject instance that implements AtkTableIface
+ *
+ * Gets the summary description of the table.
+ *
+ * Returns: (transfer full): a AtkObject* representing a summary description
+ * of the table, or zero if value does not implement this interface.
+ **/
 static AtkObject *jaw_table_get_summary(AtkTable *table) {
     JAW_DEBUG_C("%p", table);
 
@@ -631,6 +696,12 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
     JAW_CHECK_NULL(jac, NULL);
 
     JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(env, jac);
+    // From the documentation of the `atk_table_get_summary`:
+    // "The caller of the method takes ownership of the returned data, and is
+    // responsible for freeing it." (transfer full)
+    if (jaw_impl) {
+        g_object_ref(G_OBJECT(jaw_impl));
+    }
 
     return ATK_OBJECT(jaw_impl);
 }

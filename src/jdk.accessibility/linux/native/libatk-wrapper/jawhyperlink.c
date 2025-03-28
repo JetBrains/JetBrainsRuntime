@@ -161,6 +161,16 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     return jaw_hyperlink->uri;
 }
 
+/**
+ * jaw_hyperlink_get_object:
+ * @atk_hyperlink: an #AtkHyperlink
+ * @i: a (zero-index) integer specifying the desired anchor
+ *
+ * Returns the item associated with this hyperlinks nth anchor.
+ *
+ * Returns: (transfer none): an #AtkObject associated with this hyperlinks
+ * i-th anchor
+ **/
 static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
                                            gint i) {
     JAW_DEBUG_C("%p, %d", atk_hyperlink, i);
@@ -190,6 +200,9 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
     JAW_CHECK_NULL(ac, NULL);
 
     AtkObject *obj = (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, ac);
+    // From documentation of the `atk_hyperlink_get_object`:
+    // The returned data is owned by the instance (transfer none), so we don't
+    // ref the obj before returning it.
 
     return obj;
 }

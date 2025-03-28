@@ -121,6 +121,14 @@ void jaw_table_cell_data_finalize(gpointer p) {
     }
 }
 
+/**
+ * jaw_table_cell_get_table:
+ * @cell: a GObject instance that implements AtkTableCellIface
+ *
+ * Returns a reference to the accessible of the containing table.
+ *
+ * Returns: (transfer full): the atk object for the containing table.
+ */
 static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
     JAW_DEBUG_C("%p", cell);
 
@@ -149,6 +157,12 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
     JAW_CHECK_NULL(jac, NULL);
 
     JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(jniEnv, jac);
+    // From the documentation of the `atk_table_cell_get_table`:
+    // "The caller of the method takes ownership of the returned data, and is
+    // responsible for freeing it." (transfer full)
+    if (jaw_impl) {
+        g_object_ref(G_OBJECT(jaw_impl));
+    }
 
     return ATK_OBJECT(jaw_impl);
 }
@@ -300,6 +314,15 @@ static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
     return column_span;
 }
 
+/**
+ * jaw_table_cell_get_column_header_cells:
+ * @cell: a GObject instance that implements AtkTableCellIface
+ *
+ * Returns the column headers as an array of cell accessibles.
+ *
+ * Returns: (element-type AtkObject) (transfer full): a GPtrArray of AtkObjects
+ * representing the column header cells.
+ */
 static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     JAW_DEBUG_C("%p", cell);
 
@@ -335,11 +358,27 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
         JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(jniEnv, jac);
         if (!jaw_impl) {
             g_ptr_array_add(result, jaw_impl);
+
+            // FIXME: is it true that the caller is responsible for freeing not
+            // only GPtrArray but all its elements? From the documentation of
+            // the `atk_table_cell_get_column_header_cells`: "The caller of the
+            // method takes ownership of the returned data, and is responsible
+            // for freeing it." (transfer full)
+            g_object_ref(G_OBJECT(jaw_impl));
         }
     }
     return result;
 }
 
+/**
+ * jaw_table_cell_get_row_header_cells:
+ * @cell: a GObject instance that implements AtkTableCellIface
+ *
+ * Returns the row headers as an array of cell accessibles.
+ *
+ * Returns: (element-type AtkObject) (transfer full): a GPtrArray of AtkObjects
+ * representing the row header cells.
+ */
 static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
     JAW_DEBUG_C("%p", cell);
 
@@ -376,6 +415,13 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
         JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(jniEnv, jac);
         if (!jaw_impl) {
             g_ptr_array_add(result, jaw_impl);
+
+            // FIXME: is it true that the caller is responsible for freeing not
+            // only GPtrArray but all its elements? From the documentation of
+            // the `atk_table_cell_get_row_header_cells`: "The caller of the
+            // method takes ownership of the returned data, and is responsible
+            // for freeing it." (transfer full)
+            g_object_ref(G_OBJECT(jaw_impl));
         }
     }
     return result;

@@ -826,6 +826,16 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
     return atk_obj->relation_set;
 }
 
+/**
+ * jaw_object_ref_child:
+ * @accessible: an #AtkObject
+ * @i: a gint representing the position of the child, starting from 0
+ *
+ * Gets a reference to the specified accessible child of the object.
+ *
+ * Returns: (transfer none): an #AtkObject representing the specified
+ * accessible child of the accessible.
+ **/
 static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
     JAW_DEBUG_C("%p, %d", atk_obj, i);
 
@@ -857,8 +867,9 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
 
     AtkObject *obj =
         (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, child_ac);
-    if (G_OBJECT(obj) != NULL)
-        g_object_ref(G_OBJECT(obj));
+    // From documentation of the `ref_child` in AtkObject:
+    // The returned data is owned by the instance (transfer none), so we don't
+    // ref the obj before returning it.
 
     return obj;
 }
