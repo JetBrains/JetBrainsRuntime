@@ -556,9 +556,9 @@ void VKRenderer_Flush(VKRenderer* renderer) {
 
 void VKRenderer_DisposePrimaryResources(VKRenderer* renderer) {
     if (renderer == NULL) return;
-    VKRenderer_Flush(renderer);
-    VKRenderer_Sync(renderer);
     size_t disposeRecordsCount = ARRAY_SIZE(renderer->disposeRecords);
+    if (disposeRecordsCount == 0) return;
+    VKRenderer_Sync(renderer);
     for (uint32_t i = 0; i < disposeRecordsCount; i++) {
         renderer->disposeRecords[i].hnd(renderer->device, renderer->disposeRecords[i].ctx);
     }
