@@ -31,7 +31,6 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
 
 typedef struct _HypertextData {
     jobject atk_hypertext;
-    GHashTable *link_table;
 } HypertextData;
 
 #define JAW_GET_HYPERTEXT(hypertext, def_ret)                                  \
@@ -48,19 +47,6 @@ void jaw_hypertext_interface_init(AtkHypertextIface *iface, gpointer data) {
     iface->get_link = jaw_hypertext_get_link;
     iface->get_n_links = jaw_hypertext_get_n_links;
     iface->get_link_index = jaw_hypertext_get_link_index;
-}
-
-static void link_destroy_notify(gpointer p) {
-    JAW_DEBUG_C("%p", p);
-
-    if (!p) {
-        g_warning("Null argument passed to function link_destroy_notify");
-        return;
-    }
-
-    JawHyperlink *jaw_hyperlink = (JawHyperlink *)p;
-    if (G_OBJECT(jaw_hyperlink) != NULL)
-        g_object_unref(G_OBJECT(jaw_hyperlink));
 }
 
 gpointer jaw_hypertext_data_init(jobject ac) {
@@ -89,9 +75,6 @@ gpointer jaw_hypertext_data_init(jobject ac) {
     JAW_CHECK_NULL(jatk_hypertext, NULL);
     data->atk_hypertext = (*jniEnv)->NewGlobalRef(jniEnv, jatk_hypertext);
 
-    data->link_table =
-        g_hash_table_new_full(NULL, NULL, NULL, link_destroy_notify);
-
     return data;
 }
 
@@ -110,7 +93,6 @@ void jaw_hypertext_data_finalize(gpointer p) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, );
 
-    g_hash_table_remove_all(data->link_table);
     if (data->atk_hypertext) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_hypertext);
         data->atk_hypertext = NULL;
@@ -151,8 +133,6 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
 
     JawHyperlink *jaw_hyperlink = jaw_hyperlink_new(jhyperlink);
     JAW_CHECK_NULL(jaw_hyperlink, NULL);
-    g_hash_table_insert(data->link_table, GINT_TO_POINTER(link_index),
-                        (gpointer)jaw_hyperlink);
 
     return ATK_HYPERLINK(jaw_hyperlink);
 }
