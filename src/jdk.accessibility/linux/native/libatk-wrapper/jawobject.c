@@ -863,38 +863,6 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
     return obj;
 }
 
-// static JawObject *jaw_object_table_lookup(JNIEnv *jniEnv, jobject ac) {
-//     JAW_DEBUG_C("%p, %p", jniEnv, ac);
-//
-//     if (!jniEnv || !ac) {
-//         g_warning("Null argument passed to function");
-//         return NULL;
-//     }
-//
-//     GHashTable *object_table = jaw_impl_get_object_hash_table();
-//     JAW_CHECK_NULL(object_table, NULL);
-//     GMutex *object_table_mutex = jaw_impl_get_object_hash_table_mutex();
-//     JAW_CHECK_NULL(object_table_mutex, NULL);
-//     jclass atkObject =
-//         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
-//     JAW_CHECK_NULL(atkObject, NULL);
-//     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-//         jniEnv, atkObject, "hash_code",
-//         "(Ljavax/accessibility/AccessibleContext;)I");
-//     JAW_CHECK_NULL(jmid, NULL);
-//     gint hash_key =
-//         (gint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
-//     JAW_CHECK_NULL(hash_key, NULL);
-//     gpointer value = NULL;
-//     if (object_table == NULL)
-//         return NULL;
-//
-//     g_mutex_lock(object_table_mutex);
-//     value = g_hash_table_lookup(object_table, GINT_TO_POINTER(hash_key));
-//     g_mutex_unlock(object_table_mutex);
-//     return (JawObject *)value;
-// }
-
 #ifdef __cplusplus
 }
 #endif
