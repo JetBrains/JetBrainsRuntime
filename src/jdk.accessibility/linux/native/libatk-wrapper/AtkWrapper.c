@@ -311,6 +311,10 @@ static void free_callback_para(CallbackPara *para) {
         JAW_DEBUG_I("para->jaw_impl == NULL");
     }
 
+    if (para->child_impl) {
+        g_object_unref(G_OBJECT(para->child_impl));
+    }
+
     if (jniEnv) {
         if (para->args) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, para->args);
@@ -1016,6 +1020,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
             free_callback_para(para);
             return;
         }
+        g_object_ref(child_impl);
         para->child_impl = child_impl;
         break;
     }
@@ -1027,6 +1032,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
             free_callback_para(para);
             return;
         }
+        g_object_ref(child_impl);
         para->child_impl = child_impl;
         break;
     }
