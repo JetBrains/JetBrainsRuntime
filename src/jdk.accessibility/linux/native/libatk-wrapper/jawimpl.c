@@ -22,6 +22,7 @@
 #include "jawobject.h"
 #include "jawtoplevel.h"
 #include "jawutil.h"
+#include <assert.h>
 #include <glib-object.h>
 #include <glib.h>
 #include <glib/gprintf.h>
@@ -270,23 +271,23 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     jclass classAtkWrapper =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
     CHECK_NULL(classAtkWrapper, NULL);
+
+    JawImpl *jaw_impl_default = jaw_impl_create_instance(jniEnv, ac);
+
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classAtkWrapper, "get_native_resources",
-        "(Ljavax/accessibility/AccessibleContext;)J");
-    CHECK_NULL(jmid, NULL);
-    jlong reference =
-        (*jniEnv)->CallStaticLongMethod(jniEnv, classAtkWrapper, jmid, ac);
+        jniEnv, classAtkWrapper, "get_or_add_native_resources",
+        "(Ljavax/accessibility/AccessibleContext;J)J");
 
-    if (reference == -1) {
-        JawImpl *jaw_impl = jaw_impl_create_instance(jniEnv, ac);
+    jlong reference = (*jniEnv)->CallStaticLongMethod(
+        jniEnv, classAtkWrapper, jmid, ac, (jlong)jaw_impl_default);
 
-        jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-                jniEnv, classAtkWrapper, "add_default_native_resources",
-                "(Ljavax/accessibility/AccessibleContext;J)J");
+    assert(reference != -1);
 
-        reference = (*jniEnv)->CallStaticLongMethod(jniEnv, classAtkWrapper, jmid, ac, (jlong)jaw_impl);
+    if (jaw_impl == NULL || jaw_impl == jaw_impl_default) {
+        return jaw_impl; // No leak of jaw_impl_default
     }
 
+    g_object_ref(G_OBJECT(jaw_impl_default));
     JawImpl *jaw_impl = (JawImpl *)reference;
 
     return jaw_impl;
@@ -305,7 +306,7 @@ JawImpl *jaw_impl_get_instance_from_jaw(JNIEnv *jniEnv, jobject ac) {
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
     CHECK_NULL(classWrapper, NULL);
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classWrapper, "get_instance_from_swing",
+        jniEnv, classWrapper, "get_native_resources",
         "(Ljavax/accessibility/AccessibleContext;)J");
     CHECK_NULL(jmid, NULL);
     jlong ptr = (*jniEnv)->CallStaticLongMethod(jniEnv, classWrapper, jmid, ac);

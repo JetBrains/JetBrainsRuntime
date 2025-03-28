@@ -706,8 +706,6 @@ public class AtkWrapper {
 
     private native static void dispatchKeyEvent(AtkKeyEvent e);
 
-    private native static long getInstance(AccessibleContext ac);
-
     // FIXME: no usages
     private static void printLog(String msg) {
         if (log.isLoggable(PlatformLogger.Level.INFO)) {
@@ -746,12 +744,6 @@ public class AtkWrapper {
 
     // JNI upcalls section
 
-    private static long get_instance_from_swing(AccessibleContext ac) {
-        return AtkUtil.invokeInSwingAndWait(() -> {
-            return getInstance(ac);
-        }, 0l);
-    }
-
     /**
      * returns -1 if it was not difined
      * @param ac
@@ -761,7 +753,7 @@ public class AtkWrapper {
         return AtkWrapperDisposer.getInstance().getRecord(ac);
     }
 
-    private static long add_default_native_resources(AccessibleContext ac, long nativeRef) {
-        return AtkWrapperDisposer.getInstance().addRecordWithDefaultReference(ac, nativeRef);
+    private static long get_or_add_native_resources(AccessibleContext ac, long nativeRef) {
+        return AtkWrapperDisposer.getInstance().getRecordWithDefaultReference(ac, nativeRef);
     }
 }

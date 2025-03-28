@@ -1313,15 +1313,6 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_dispatchKeyEvent(
     jni_main_idle_add(key_dispatch_handler, para);
 }
 
-JNIEXPORT jlong JNICALL Java_org_GNOME_Accessibility_AtkWrapper_getInstance(
-    JNIEnv *jniEnv, jclass jClass, jobject ac) {
-    JAW_DEBUG_JNI("%p, %p, %p", jniEnv, jClass, ac);
-    if (!ac)
-        return 0;
-
-    return (jlong)(uintptr_t)jaw_impl_find_instance(jniEnv, ac);
-}
-
 #ifdef __cplusplus
 }
 #endif

@@ -139,7 +139,7 @@ public class AtkWrapperDisposer implements Runnable {
     }
 
     // TODO: add documentation
-    public long addRecordWithDefaultReference(AccessibleContext ac, long nativeReference) {
+    public long getRecordWithDefaultReference(AccessibleContext ac, long nativeReference) {
         synchronized (lock) {
             if (weakHashMap.containsKey(ac)) {
                 return weakHashMap.get(ac);
