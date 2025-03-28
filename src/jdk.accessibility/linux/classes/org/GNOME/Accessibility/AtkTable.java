@@ -189,8 +189,12 @@ public class AtkTable {
 
         AtkUtil.invokeInSwing(() -> {
             Accessible accessible = acc_table.getAccessibleColumnDescription(column);
-            if (accessible != null && description.equals(accessible.toString()))
-                acc_table.setAccessibleColumnDescription(column, accessible);
+            if (accessible != null) {
+                AccessibleContext ac = accessible.getAccessibleContext();
+                if (ac != null) {
+                    ac.setAccessibleDescription(description);
+                }
+            }
         });
     }
 
@@ -222,8 +226,12 @@ public class AtkTable {
 
         AtkUtil.invokeInSwing(() -> {
             Accessible accessible = acc_table.getAccessibleRowDescription(row);
-            if (accessible != null && description.equals(accessible.toString()))
-                acc_table.setAccessibleRowDescription(row, accessible);
+            if (accessible != null) {
+                AccessibleContext ac = accessible.getAccessibleContext();
+                if (ac != null) {
+                    ac.setAccessibleDescription(description);
+                }
+            }
         });
     }
 
