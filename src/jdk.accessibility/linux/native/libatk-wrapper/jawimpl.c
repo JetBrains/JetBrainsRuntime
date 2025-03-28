@@ -280,15 +280,13 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
 
     jlong reference = (*jniEnv)->CallStaticLongMethod(
         jniEnv, classAtkWrapper, jmid, ac, (jlong)jaw_impl_default);
-
     assert(reference != -1);
 
+    JawImpl *jaw_impl = (JawImpl *)reference;
     if (jaw_impl == NULL || jaw_impl == jaw_impl_default) {
         return jaw_impl; // No leak of jaw_impl_default
     }
-
     g_object_ref(G_OBJECT(jaw_impl_default));
-    JawImpl *jaw_impl = (JawImpl *)reference;
 
     return jaw_impl;
 }
