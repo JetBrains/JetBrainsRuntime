@@ -153,7 +153,7 @@ void jaw_util_detach(void);
         return def_ret;                                                        \
     }
 
-#define CHECK_NULL(ptr, ret_val)                                               \
+#define JAW_CHECK_NULL(ptr, ret_val)                                               \
     {                                                                          \
         if (!ptr) {                                                            \
             return ret_val;                                                    \

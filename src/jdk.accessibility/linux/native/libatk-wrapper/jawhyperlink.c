@@ -98,7 +98,7 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
     JawHyperlink *jaw_hyperlink = JAW_HYPERLINK(gobject);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, );
+    JAW_CHECK_NULL(jniEnv, );
 
     if (jaw_hyperlink->jstrUri != NULL) {
         if (jaw_hyperlink->uri != NULL) {
@@ -144,7 +144,7 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     jstring jstr =
         (*jniEnv)->CallObjectMethod(jniEnv, jhyperlink, jmid, (jint)i);
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
-    CHECK_NULL(jstr, NULL);
+    JAW_CHECK_NULL(jstr, NULL);
 
     if (jaw_hyperlink->jstrUri != NULL) {
         if (jaw_hyperlink->uri != NULL) {
@@ -187,7 +187,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
     }
     jobject ac = (*jniEnv)->CallObjectMethod(jniEnv, jhyperlink, jmid, (jint)i);
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
-    CHECK_NULL(ac, NULL);
+    JAW_CHECK_NULL(ac, NULL);
 
     AtkObject *obj = (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, ac);
 
@@ -224,7 +224,7 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
     }
     jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, jmid);
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
-    CHECK_NULL(jindex, -1);
+    JAW_CHECK_NULL(jindex, -1);
 
     return jindex;
 }
@@ -259,7 +259,7 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
     }
     jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, jmid);
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
-    CHECK_NULL(jindex, -1);
+    JAW_CHECK_NULL(jindex, -1);
 
     return jindex;
 }
@@ -288,7 +288,7 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
     }
     jboolean jvalid = (*jniEnv)->CallBooleanMethod(jniEnv, jhyperlink, jmid);
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
-    CHECK_NULL(jvalid, FALSE);
+    JAW_CHECK_NULL(jvalid, FALSE);
 
     return jvalid;
 }
@@ -321,7 +321,7 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
     }
     jint janchors = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, jmid);
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
-    CHECK_NULL(janchors, 0);
+    JAW_CHECK_NULL(janchors, 0);
 
     return janchors;
 }

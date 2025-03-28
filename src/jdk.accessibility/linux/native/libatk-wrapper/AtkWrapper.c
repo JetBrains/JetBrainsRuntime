@@ -698,17 +698,21 @@ static gint get_int_value(JNIEnv *jniEnv, jobject o) {
 
 static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
     JAW_DEBUG_C("%p, %p", jniEnv, o);
-    jclass classString = (*jniEnv)->FindClass(jniEnv, "java/lang/String");
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classString, "toString",
-                                            "()Ljava/lang/String;");
-    jstring jstr = (jstring)(*jniEnv)->CallObjectMethod(jniEnv, o, jmid);
+    JAW_CHECK_NULL(o, NULL);
 
-    if (jstr == NULL) {
-        return NULL;
-    }
+    jclass objClass = (*jniEnv)->GetObjectClass(jniEnv, o);
+    JAW_CHECK_NULL(objClass, NULL);
+
+    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, objClass, "toString",
+                                            "()Ljava/lang/String;");
+    JAW_CHECK_NULL(jmid, NULL);
+
+    jstring jstr = (jstring)(*jniEnv)->CallObjectMethod(jniEnv, o, jmid);
+    JAW_CHECK_NULL(jstr, NULL);
 
     const char *nativeStr = (*jniEnv)->GetStringUTFChars(jniEnv, jstr, NULL);
-    CHECK_NULL(nativeStr, NULL);
+    JAW_CHECK_NULL(nativeStr, NULL);
+
     gchar *result = g_strdup(nativeStr);
     (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, nativeStr);
 
@@ -751,9 +755,8 @@ static gboolean signal_emit_handler(gpointer p) {
         gint insert_position = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         gint insert_length = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
-        gchar *insert_text = get_string_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
+                    jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
+        gchar *insert_text = get_string_value(jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
         g_signal_emit_by_name(atk_obj, "text_insert", insert_position,
                               insert_length, insert_text);
         g_free(insert_text);
@@ -764,8 +767,7 @@ static gboolean signal_emit_handler(gpointer p) {
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
         gint delete_length = get_int_value(
             jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
-        gchar *delete_text = get_string_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
+        gchar *delete_text = get_string_value(jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
         g_signal_emit_by_name(atk_obj, "text_remove", delete_position,
                               delete_length, delete_text);
         g_free(delete_text);

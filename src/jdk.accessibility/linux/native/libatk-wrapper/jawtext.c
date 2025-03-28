@@ -127,18 +127,18 @@ gpointer jaw_text_data_init(jobject ac) {
     TextData *data = g_new0(TextData, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, NULL);
+    JAW_CHECK_NULL(jniEnv, NULL);
     jclass classText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
-    CHECK_NULL(classText, NULL);
+    JAW_CHECK_NULL(classText, NULL);
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classText, "create_atk_text",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkText;");
-    CHECK_NULL(jmid, NULL);
+    JAW_CHECK_NULL(jmid, NULL);
     jobject jatk_text =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classText, jmid, ac);
-    CHECK_NULL(jatk_text, NULL);
+    JAW_CHECK_NULL(jatk_text, NULL);
 
     data->atk_text = (*jniEnv)->NewGlobalRef(jniEnv, jatk_text);
 
@@ -154,9 +154,9 @@ void jaw_text_data_finalize(gpointer p) {
     }
 
     TextData *data = (TextData *)p;
-    CHECK_NULL(data, );
+    JAW_CHECK_NULL(data, );
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, );
+    JAW_CHECK_NULL(jniEnv, );
 
     if (data->jstrText != NULL) {
         if (data->text != NULL) {
@@ -184,7 +184,7 @@ static gchar *jaw_text_get_gtext_from_jstr(JNIEnv *jniEnv, jstring jstr) {
     }
 
     gchar *tmp_text = (gchar *)(*jniEnv)->GetStringUTFChars(jniEnv, jstr, NULL);
-    CHECK_NULL(tmp_text, NULL);
+    JAW_CHECK_NULL(tmp_text, NULL);
     gchar *text = g_strdup(tmp_text);
     (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, tmp_text);
 
@@ -217,7 +217,7 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
     jstring jstr = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, jmid, (jint)start_offset, (jint)end_offset);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jstr, NULL);
+    JAW_CHECK_NULL(jstr, NULL);
 
     return jaw_text_get_gtext_from_jstr(jniEnv, jstr);
 }
@@ -248,7 +248,7 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
     jchar jcharacter =
         (*jniEnv)->CallCharMethod(jniEnv, atk_text, jmid, (jint)offset);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jcharacter, 0);
+    JAW_CHECK_NULL(jcharacter, 0);
 
     return (gunichar)jcharacter;
 }
@@ -265,22 +265,22 @@ static gchar *jaw_text_get_gtext_from_string_seq(JNIEnv *jniEnv,
 
     jclass classStringSeq = (*jniEnv)->FindClass(
         jniEnv, "org/GNOME/Accessibility/AtkText$StringSequence");
-    CHECK_NULL(classStringSeq, NULL);
+    JAW_CHECK_NULL(classStringSeq, NULL);
     jfieldID jfidStr = (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "str",
                                              "Ljava/lang/String;");
-    CHECK_NULL(jfidStr, NULL);
+    JAW_CHECK_NULL(jfidStr, NULL);
     jfieldID jfidStart =
         (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "start_offset", "I");
-    CHECK_NULL(jfidStart, NULL);
+    JAW_CHECK_NULL(jfidStart, NULL);
     jfieldID jfidEnd =
         (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "end_offset", "I");
-    CHECK_NULL(jfidEnd, NULL);
+    JAW_CHECK_NULL(jfidEnd, NULL);
     jstring jStr = (*jniEnv)->GetObjectField(jniEnv, jStrSeq, jfidStr);
-    CHECK_NULL(jStr, NULL);
+    JAW_CHECK_NULL(jStr, NULL);
     jint jStart = (*jniEnv)->GetIntField(jniEnv, jStrSeq, jfidStart);
-    CHECK_NULL(jStart, NULL);
+    JAW_CHECK_NULL(jStart, NULL);
     jint jEnd = (*jniEnv)->GetIntField(jniEnv, jStrSeq, jfidEnd);
-    CHECK_NULL(jEnd, NULL);
+    JAW_CHECK_NULL(jEnd, NULL);
 
     (*start_offset) = (gint)jStart;
     (*end_offset) = (gint)jEnd;
@@ -319,7 +319,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, jmid, (jint)offset, (jint)boundary_type);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jStrSeq, NULL);
+    JAW_CHECK_NULL(jStrSeq, NULL);
 
     return jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq, start_offset,
                                               end_offset);
@@ -356,7 +356,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, jmid, (jint)offset, (jint)boundary_type);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jStrSeq, NULL);
+    JAW_CHECK_NULL(jStrSeq, NULL);
 
     return jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq, start_offset,
                                               end_offset);
@@ -393,7 +393,7 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, jmid, (jint)offset, (jint)boundary_type);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jStrSeq, NULL);
+    JAW_CHECK_NULL(jStrSeq, NULL);
 
     return jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq, start_offset,
                                               end_offset);
@@ -423,7 +423,7 @@ static gint jaw_text_get_caret_offset(AtkText *text) {
     }
     jint joffset = (*jniEnv)->CallIntMethod(jniEnv, atk_text, jmid);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(joffset, 0);
+    JAW_CHECK_NULL(joffset, 0);
 
     return (gint)joffset;
 }
@@ -462,7 +462,7 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
     jobject jrect = (*jniEnv)->CallObjectMethod(jniEnv, atk_text, jmid,
                                                 (jint)offset, (jint)coords);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jrect, );
+    JAW_CHECK_NULL(jrect, );
 
     jaw_util_get_rect_info(jniEnv, jrect, x, y, width, height);
 }
@@ -492,7 +492,7 @@ static gint jaw_text_get_character_count(AtkText *text) {
     }
     jint jcount = (*jniEnv)->CallIntMethod(jniEnv, atk_text, jmid);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jcount, 0);
+    JAW_CHECK_NULL(jcount, 0);
 
     return (gint)jcount;
 }
@@ -524,7 +524,7 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
     jint joffset = (*jniEnv)->CallIntMethod(jniEnv, atk_text, jmid, (jint)x,
                                             (jint)y, (jint)coords);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(joffset, 0);
+    JAW_CHECK_NULL(joffset, 0);
 
     return (gint)joffset;
 }
@@ -564,7 +564,7 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
         (*jniEnv)->CallObjectMethod(jniEnv, atk_text, jmid, (jint)start_offset,
                                     (jint)end_offset, (jint)coord_type);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jrect, );
+    JAW_CHECK_NULL(jrect, );
 
     jaw_util_get_rect_info(jniEnv, jrect, &(rect->x), &(rect->y),
                            &(rect->width), &(rect->height));
@@ -594,7 +594,7 @@ static gint jaw_text_get_n_selections(AtkText *text) {
     }
     jint jselections = (*jniEnv)->CallIntMethod(jniEnv, atk_text, jmid);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jselections, 0);
+    JAW_CHECK_NULL(jselections, 0);
 
     return (gint)jselections;
 }
@@ -626,27 +626,27 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
     }
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(jniEnv, atk_text, jmid);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jStrSeq, 0);
+    JAW_CHECK_NULL(jStrSeq, 0);
 
     jclass classStringSeq = (*jniEnv)->FindClass(
         jniEnv, "org/GNOME/Accessibility/AtkText$StringSequence");
-    CHECK_NULL(classStringSeq, 0);
+    JAW_CHECK_NULL(classStringSeq, 0);
     jfieldID jfidStr = (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "str",
                                              "Ljava/lang/String;");
-    CHECK_NULL(jfidStr, 0);
+    JAW_CHECK_NULL(jfidStr, 0);
     jfieldID jfidStart =
         (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "start_offset", "I");
-    CHECK_NULL(jfidStart, 0);
+    JAW_CHECK_NULL(jfidStart, 0);
     jfieldID jfidEnd =
         (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "end_offset", "I");
-    CHECK_NULL(jfidEnd, 0);
+    JAW_CHECK_NULL(jfidEnd, 0);
 
     jstring jStr = (*jniEnv)->GetObjectField(jniEnv, jStrSeq, jfidStr);
-    CHECK_NULL(jStr, 0);
+    JAW_CHECK_NULL(jStr, 0);
     *start_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, jfidStart);
-    CHECK_NULL(start_offset, 0);
+    JAW_CHECK_NULL(start_offset, 0);
     *end_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, jfidEnd);
-    CHECK_NULL(end_offset, 0);
+    JAW_CHECK_NULL(end_offset, 0);
 
     return jaw_text_get_gtext_from_jstr(jniEnv, jStr);
 }
@@ -677,7 +677,7 @@ static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_text, jmid, (jint)start_offset, (jint)end_offset);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jresult, 0);
+    JAW_CHECK_NULL(jresult, 0);
 
     return jresult;
 }
@@ -707,7 +707,7 @@ static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
     jboolean jresult = (*jniEnv)->CallBooleanMethod(jniEnv, atk_text, jmid,
                                                     (jint)selection_num);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jresult, 0);
+    JAW_CHECK_NULL(jresult, 0);
 
     return jresult;
 }
@@ -740,7 +740,7 @@ static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
         jniEnv, atk_text, jmid, (jint)selection_num, (jint)start_offset,
         (jint)end_offset);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jresult, 0);
+    JAW_CHECK_NULL(jresult, 0);
 
     return jresult;
 }
@@ -770,7 +770,7 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
     jboolean jresult =
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_text, jmid, (jint)offset);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    CHECK_NULL(jresult, 0);
+    JAW_CHECK_NULL(jresult, 0);
 
     return jresult;
 }

@@ -80,19 +80,19 @@ gpointer jaw_editable_text_data_init(jobject ac) {
     EditableTextData *data = g_new0(EditableTextData, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, NULL);
+    JAW_CHECK_NULL(jniEnv, NULL);
 
     jclass classEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
-    CHECK_NULL(classEditableText, NULL);
+    JAW_CHECK_NULL(classEditableText, NULL);
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classEditableText, "create_atk_editable_text",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkEditableText;");
-    CHECK_NULL(jmid, NULL);
+    JAW_CHECK_NULL(jmid, NULL);
     jobject jatk_editable_text =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classEditableText, jmid, ac);
-    CHECK_NULL(jatk_editable_text, NULL);
+    JAW_CHECK_NULL(jatk_editable_text, NULL);
     data->atk_editable_text =
         (*jniEnv)->NewGlobalRef(jniEnv, jatk_editable_text);
 

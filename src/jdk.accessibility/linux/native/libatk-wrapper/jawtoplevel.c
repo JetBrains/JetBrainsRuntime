@@ -151,8 +151,8 @@ static gint jaw_toplevel_get_n_children(AtkObject *obj) {
     }
 
     JawToplevel *jaw_toplevel = JAW_TOPLEVEL(obj);
-    CHECK_NULL(jaw_toplevel, -1);
-    CHECK_NULL(jaw_toplevel->windows, -1);
+    JAW_CHECK_NULL(jaw_toplevel, -1);
+    JAW_CHECK_NULL(jaw_toplevel->windows, -1);
     gint n = g_list_length(jaw_toplevel->windows);
 
     return n;
@@ -168,8 +168,8 @@ static gint jaw_toplevel_get_index_in_parent(AtkObject *obj) {
     }
 
     JawToplevel *jaw_toplevel = JAW_TOPLEVEL(obj);
-    CHECK_NULL(jaw_toplevel, -1);
-    CHECK_NULL(jaw_toplevel->windows, -1);
+    JAW_CHECK_NULL(jaw_toplevel, -1);
+    JAW_CHECK_NULL(jaw_toplevel->windows, -1);
     gint i = g_list_index(jaw_toplevel->windows, obj);
 
     return i;
@@ -195,8 +195,8 @@ static AtkObject *jaw_toplevel_ref_child(AtkObject *obj, gint i) {
     }
 
     JawToplevel *jaw_toplevel = JAW_TOPLEVEL(obj);
-    CHECK_NULL(jaw_toplevel, NULL);
-    CHECK_NULL(jaw_toplevel->windows, NULL);
+    JAW_CHECK_NULL(jaw_toplevel, NULL);
+    JAW_CHECK_NULL(jaw_toplevel->windows, NULL);
     AtkObject *child = (AtkObject *)g_list_nth_data(jaw_toplevel->windows, i);
 
     if (G_OBJECT(child) != NULL)
@@ -264,7 +264,7 @@ gint jaw_toplevel_get_child_index(JawToplevel *toplevel, AtkObject *child) {
         return -1;
     }
 
-    CHECK_NULL(toplevel->windows, -1);
+    JAW_CHECK_NULL(toplevel->windows, -1);
 
     gint i = g_list_index(toplevel->windows, child);
     return i;

@@ -107,19 +107,19 @@ gpointer jaw_component_data_init(jobject ac) {
     ComponentData *data = g_new0(ComponentData, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, NULL);
+    JAW_CHECK_NULL(jniEnv, NULL);
 
     jclass classComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
-    CHECK_NULL(classComponent, NULL);
+    JAW_CHECK_NULL(classComponent, NULL);
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classComponent, "create_atk_component",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkComponent;");
-    CHECK_NULL(jmid, NULL);
+    JAW_CHECK_NULL(jmid, NULL);
     jobject jatk_component =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classComponent, jmid, ac);
-    CHECK_NULL(jatk_component, NULL);
+    JAW_CHECK_NULL(jatk_component, NULL);
     data->atk_component = (*jniEnv)->NewGlobalRef(jniEnv, jatk_component);
 
     return data;
@@ -137,7 +137,7 @@ void jaw_component_data_finalize(gpointer p) {
     ComponentData *data = (ComponentData *)p;
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, );
+    JAW_CHECK_NULL(jniEnv, );
 
     if (data->atk_component) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_component);
@@ -173,7 +173,7 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
         jniEnv, atk_component, jmid, (jint)x, (jint)y, (jint)coord_type);
     // deleting ref that was created in JAW_GET_COMPONENT
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-    CHECK_NULL(jcontains, FALSE);
+    JAW_CHECK_NULL(jcontains, FALSE);
 
     return jcontains;
 }
@@ -208,7 +208,7 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
         jniEnv, atk_component, jmid, (jint)x, (jint)y, (jint)coord_type);
     // deleting ref that was created in JAW_GET_COMPONENT
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-    CHECK_NULL(child_ac, NULL);
+    JAW_CHECK_NULL(child_ac, NULL);
 
     JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(jniEnv, child_ac);
 
@@ -253,7 +253,7 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
                                                      jmid, (jint)coord_type);
     // deleting ref that was created in JAW_GET_COMPONENT
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-    CHECK_NULL(jrectangle, );
+    JAW_CHECK_NULL(jrectangle, );
 
     if (jrectangle == NULL) {
         JAW_DEBUG_I("jrectangle == NULL");
@@ -261,17 +261,17 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
     }
 
     jclass classRectangle = (*jniEnv)->FindClass(jniEnv, "java/awt/Rectangle");
-    CHECK_NULL(classRectangle, );
+    JAW_CHECK_NULL(classRectangle, );
     jfieldID jfidX = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "x", "I");
-    CHECK_NULL(jfidX, );
+    JAW_CHECK_NULL(jfidX, );
     jfieldID jfidY = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "y", "I");
-    CHECK_NULL(jfidY, );
+    JAW_CHECK_NULL(jfidY, );
     jfieldID jfidW =
         (*jniEnv)->GetFieldID(jniEnv, classRectangle, "width", "I");
-    CHECK_NULL(jfidW, );
+    JAW_CHECK_NULL(jfidW, );
     jfieldID jfidH =
         (*jniEnv)->GetFieldID(jniEnv, classRectangle, "height", "I");
-    CHECK_NULL(jfidH, );
+    JAW_CHECK_NULL(jfidH, );
     (*x) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, jfidX);
     (*y) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, jfidY);
     (*width) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, jfidW);
@@ -309,7 +309,7 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
         (jint)height, (jint)coord_type);
     // deleting ref that was created in JAW_GET_COMPONENT
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-    CHECK_NULL(assigned, FALSE);
+    JAW_CHECK_NULL(assigned, FALSE);
     return assigned;
 }
 
@@ -340,7 +340,7 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_component, jmid);
     // deleting ref that was created in JAW_GET_COMPONENT
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-    CHECK_NULL(jresult, FALSE);
+    JAW_CHECK_NULL(jresult, FALSE);
     return jresult;
 }
 
@@ -370,7 +370,7 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
     jint jlayer = (*jniEnv)->CallIntMethod(jniEnv, atk_component, jmid);
     // deleting ref that was created in JAW_GET_COMPONENT
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-    CHECK_NULL(jlayer, 0);
+    JAW_CHECK_NULL(jlayer, 0);
 
     return (AtkLayer)jlayer;
 }

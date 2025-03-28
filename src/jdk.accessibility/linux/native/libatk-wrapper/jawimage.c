@@ -64,18 +64,18 @@ gpointer jaw_image_data_init(jobject ac) {
     ImageData *data = g_new0(ImageData, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, NULL);
+    JAW_CHECK_NULL(jniEnv, NULL);
     jclass classImage =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkImage");
-    CHECK_NULL(classImage, NULL);
+    JAW_CHECK_NULL(classImage, NULL);
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classImage, "create_atk_image",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkImage;");
-    CHECK_NULL(jmid, NULL);
+    JAW_CHECK_NULL(jmid, NULL);
     jobject jatk_image =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classImage, jmid, ac);
-    CHECK_NULL(jatk_image, NULL);
+    JAW_CHECK_NULL(jatk_image, NULL);
     data->atk_image = (*jniEnv)->NewGlobalRef(jniEnv, jatk_image);
 
     return data;
@@ -90,9 +90,9 @@ void jaw_image_data_finalize(gpointer p) {
     }
 
     ImageData *data = (ImageData *)p;
-    CHECK_NULL(data, );
+    JAW_CHECK_NULL(data, );
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, );
+    JAW_CHECK_NULL(jniEnv, );
 
     if (data->jstrImageDescription != NULL) {
         if (data->image_description != NULL) {
@@ -140,18 +140,18 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
     jobject jpoint =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_image, jmid, (jint)coord_type);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
-    CHECK_NULL(jpoint, );
+    JAW_CHECK_NULL(jpoint, );
 
     jclass classPoint = (*jniEnv)->FindClass(jniEnv, "java/awt/Point");
-    CHECK_NULL(classPoint, );
+    JAW_CHECK_NULL(classPoint, );
     jfieldID jfidX = (*jniEnv)->GetFieldID(jniEnv, classPoint, "x", "I");
-    CHECK_NULL(jfidX, );
+    JAW_CHECK_NULL(jfidX, );
     jfieldID jfidY = (*jniEnv)->GetFieldID(jniEnv, classPoint, "y", "I");
-    CHECK_NULL(jfidY, );
+    JAW_CHECK_NULL(jfidY, );
     jint jx = (*jniEnv)->GetIntField(jniEnv, jpoint, jfidX);
-    CHECK_NULL(jx, );
+    JAW_CHECK_NULL(jx, );
     jint jy = (*jniEnv)->GetIntField(jniEnv, jpoint, jfidY);
-    CHECK_NULL(jy, );
+    JAW_CHECK_NULL(jy, );
 
     (*x) = (gint)jx;
     (*y) = (gint)jy;
@@ -182,7 +182,7 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
     }
     jstring jstr = (*jniEnv)->CallObjectMethod(jniEnv, atk_image, jmid);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
-    CHECK_NULL(jstr, NULL);
+    JAW_CHECK_NULL(jstr, NULL);
 
     if (data->jstrImageDescription != NULL) {
         if (data->image_description != NULL) {
@@ -226,20 +226,20 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
     }
     jobject jdimension = (*jniEnv)->CallObjectMethod(jniEnv, atk_image, jmid);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
-    CHECK_NULL(jdimension, );
+    JAW_CHECK_NULL(jdimension, );
 
     jclass classDimension = (*jniEnv)->FindClass(jniEnv, "java/awt/Dimension");
-    CHECK_NULL(classDimension, );
+    JAW_CHECK_NULL(classDimension, );
     jfieldID jfidWidth =
         (*jniEnv)->GetFieldID(jniEnv, classDimension, "width", "I");
-    CHECK_NULL(jfidWidth, );
+    JAW_CHECK_NULL(jfidWidth, );
     jfieldID jfidHeight =
         (*jniEnv)->GetFieldID(jniEnv, classDimension, "height", "I");
-    CHECK_NULL(jfidHeight, );
+    JAW_CHECK_NULL(jfidHeight, );
     jint jwidth = (*jniEnv)->GetIntField(jniEnv, jdimension, jfidWidth);
-    CHECK_NULL(jwidth, );
+    JAW_CHECK_NULL(jwidth, );
     jint jheight = (*jniEnv)->GetIntField(jniEnv, jdimension, jfidHeight);
-    CHECK_NULL(jheight, );
+    JAW_CHECK_NULL(jheight, );
 
     (*width) = (gint)jwidth;
     (*height) = (gint)jheight;

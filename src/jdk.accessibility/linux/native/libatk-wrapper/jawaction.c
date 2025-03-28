@@ -84,19 +84,19 @@ gpointer jaw_action_data_init(jobject ac) {
     ActionData *data = g_new0(ActionData, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, NULL);
+    JAW_CHECK_NULL(jniEnv, NULL);
 
     jclass classAction =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    CHECK_NULL(classAction, NULL);
+    JAW_CHECK_NULL(classAction, NULL);
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classAction, "create_atk_action",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkAction;");
-    CHECK_NULL(jmid, NULL);
+    JAW_CHECK_NULL(jmid, NULL);
     jobject jatk_action =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classAction, jmid, ac);
-    CHECK_NULL(jatk_action, NULL);
+    JAW_CHECK_NULL(jatk_action, NULL);
 
     data->atk_action = (*jniEnv)->NewGlobalRef(jniEnv, jatk_action);
 
@@ -182,7 +182,7 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_action, jmid, (jint)i);
     // deleting ref that was created in JAW_GET_ACTION(action, FALSE);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-    CHECK_NULL(jresult, FALSE);
+    JAW_CHECK_NULL(jresult, FALSE);
 
     return jresult;
 }
@@ -213,7 +213,7 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_action, jmid);
     // deleting ref that was created in JAW_GET_ACTION(action, FALSE);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-    CHECK_NULL(ret, 0);
+    JAW_CHECK_NULL(ret, 0);
     return ret;
 }
 
@@ -244,7 +244,7 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         (*jniEnv)->CallObjectMethod(jniEnv, atk_action, jmid, (jint)i);
     // deleting ref that was created in JAW_GET_ACTION(action, FALSE);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-    CHECK_NULL(jstr, NULL);
+    JAW_CHECK_NULL(jstr, NULL);
 
     if (data->jstrActionDescription != NULL) {
         if (data->action_description != NULL) {
@@ -293,7 +293,7 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
         jniEnv, atk_action, jmid, (jint)i, (jstring)description);
     // deleting ref that was created in JAW_GET_ACTION(action, FALSE);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-    CHECK_NULL(jisset, FALSE);
+    JAW_CHECK_NULL(jisset, FALSE);
     return jisset;
 }
 
@@ -324,7 +324,7 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         (*jniEnv)->CallObjectMethod(jniEnv, atk_action, jmid, (jint)i);
     // deleting ref that was created in JAW_GET_ACTION(action, NULL);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-    CHECK_NULL(jstr, NULL);
+    JAW_CHECK_NULL(jstr, NULL);
 
     if (data->localized_name != NULL && data->jstrLocalizedName != NULL) {
         (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrLocalizedName,
@@ -364,7 +364,7 @@ static const gchar *jaw_action_get_keybinding(AtkAction *action, gint i) {
         (*jniEnv)->CallObjectMethod(jniEnv, atk_action, jmid, (jint)i);
     // deleting ref that was created in JAW_GET_ACTION(action, FALSE);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-    CHECK_NULL(jstr, NULL);
+    JAW_CHECK_NULL(jstr, NULL);
 
     if (data->action_keybinding != NULL && data->jstrActionKeybinding != NULL) {
         (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrActionKeybinding,

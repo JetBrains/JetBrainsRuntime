@@ -74,19 +74,19 @@ gpointer jaw_hypertext_data_init(jobject ac) {
     HypertextData *data = g_new0(HypertextData, 1);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, NULL);
+    JAW_CHECK_NULL(jniEnv, NULL);
 
     jclass classHypertext =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
-    CHECK_NULL(classHypertext, NULL);
+    JAW_CHECK_NULL(classHypertext, NULL);
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classHypertext, "create_atk_hypertext",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkHypertext;");
-    CHECK_NULL(jmid, NULL);
+    JAW_CHECK_NULL(jmid, NULL);
     jobject jatk_hypertext =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classHypertext, jmid, ac);
-    CHECK_NULL(jatk_hypertext, NULL);
+    JAW_CHECK_NULL(jatk_hypertext, NULL);
     data->atk_hypertext = (*jniEnv)->NewGlobalRef(jniEnv, jatk_hypertext);
 
     data->link_table =
@@ -105,10 +105,10 @@ void jaw_hypertext_data_finalize(gpointer p) {
     }
 
     HypertextData *data = (HypertextData *)p;
-    CHECK_NULL(data, );
+    JAW_CHECK_NULL(data, );
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    CHECK_NULL(jniEnv, );
+    JAW_CHECK_NULL(jniEnv, );
 
     g_hash_table_remove_all(data->link_table);
     if (data->atk_hypertext) {
@@ -147,10 +147,10 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     jobject jhyperlink = (*jniEnv)->CallObjectMethod(jniEnv, atk_hypertext,
                                                      jmid, (jint)link_index);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-    CHECK_NULL(jhyperlink, NULL);
+    JAW_CHECK_NULL(jhyperlink, NULL);
 
     JawHyperlink *jaw_hyperlink = jaw_hyperlink_new(jhyperlink);
-    CHECK_NULL(jaw_hyperlink, NULL);
+    JAW_CHECK_NULL(jaw_hyperlink, NULL);
     g_hash_table_insert(data->link_table, GINT_TO_POINTER(link_index),
                         (gpointer)jaw_hyperlink);
 
@@ -184,7 +184,7 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
     }
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, jmid);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-    CHECK_NULL(ret, 0);
+    JAW_CHECK_NULL(ret, 0);
     return ret;
 }
 
@@ -221,6 +221,6 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, jmid,
                                               (jint)char_index);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-    CHECK_NULL(ret, -1);
+    JAW_CHECK_NULL(ret, -1);
     return ret;
 }
