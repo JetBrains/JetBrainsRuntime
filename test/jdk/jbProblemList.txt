@@ -222,8 +222,8 @@ java/awt/Mixing/AWT_Mixing/JListInGlassPaneOverlapping.java 8158801,JBR-5510 win
 java/awt/Mixing/AWT_Mixing/JListOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JPanelInGlassPaneOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JPanelOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Mixing/AWT_Mixing/JProgressBarInGlassPaneOverlapping.java 8158801,JBR-5510,JBR-6545 windows-all,linux-5.18.2-arch1-1,macosx-all
-java/awt/Mixing/AWT_Mixing/JProgressBarOverlapping.java 8158801,JBR-5510,JBR-6545 windows-all,linux-5.18.2-arch1-1,macosx-all
+java/awt/Mixing/AWT_Mixing/JProgressBarInGlassPaneOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
+java/awt/Mixing/AWT_Mixing/JProgressBarOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JScrollBarInGlassPaneOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JScrollBarOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JScrollPaneOverlapping.java JBR-5210,JBR-5510 windows-all,linux-5.18.2-arch1-1
