@@ -369,18 +369,6 @@ void ConstantPool::remove_unshareable_info() {
   // we always set _on_stack to true to avoid having to change _flags during runtime.
   _flags |= (_on_stack | _is_shared);
 
-  if (!_pool_holder->is_linked() && !_pool_holder->verified_at_dump_time()) {
-    return;
-  }
-  // Resolved references are not in the shared archive.
-  // Save the length for restoration.  It is not necessarily the same length
-  // as reference_map.length() if invokedynamic is saved. It is needed when
-  // re-creating the resolved reference array if archived heap data cannot be map
-  // at runtime.
-  set_resolved_reference_length(
-    resolved_references() != nullptr ? resolved_references()->length() : 0);
-  set_resolved_references(OopHandle());
-
   bool archived = false;
   for (int index = 1; index < length(); index++) { // Index 0 is unused
     switch (tag_at(index).value()) {
@@ -402,6 +390,19 @@ void ConstantPool::remove_unshareable_info() {
       break;
     }
   }
+
+  if (!_pool_holder->is_linked() && !_pool_holder->verified_at_dump_time()) {
+    return;
+  }
+
+  // Resolved references are not in the shared archive.
+  // Save the length for restoration.  It is not necessarily the same length
+  // as reference_map.length() if invokedynamic is saved. It is needed when
+  // re-creating the resolved reference array if archived heap data cannot be map
+  // at runtime.
+  set_resolved_reference_length(
+    resolved_references() != nullptr ? resolved_references()->length() : 0);
+  set_resolved_references(OopHandle());
 
   if (cache() != nullptr) {
     // cache() is null if this class is not yet linked.
