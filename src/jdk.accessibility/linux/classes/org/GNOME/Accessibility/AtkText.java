@@ -68,28 +68,10 @@ public class AtkText {
             return rightStart;
         } else if (end < rightStart) {
             return rightStart;
-        } else if (count < end) {
+        } else if (charCountInText < end) {
             return charCountInText;
         } else {
             return end;
-        }
-    }
-
-    private int getPartTypeFromBoundary(int boundary_type) {
-        switch (boundary_type) {
-            case AtkTextBoundary.CHAR:
-                return AccessibleText.CHARACTER;
-            case AtkTextBoundary.WORD_START:
-            case AtkTextBoundary.WORD_END:
-                return AccessibleText.WORD;
-            case AtkTextBoundary.SENTENCE_START:
-            case AtkTextBoundary.SENTENCE_END:
-                return AccessibleText.SENTENCE;
-            case AtkTextBoundary.LINE_START:
-            case AtkTextBoundary.LINE_END:
-                return AccessibleExtendedText.LINE;
-            default:
-                return -1;
         }
     }
 
@@ -264,6 +246,139 @@ public class AtkText {
             offset -= 1;
         }
         return 0;
+    }
+
+    private int getNextParagraphStart(int offset, String str) {
+        int max = str.length();
+        while (offset < max) {
+            if (offset < max - 1 && str.charAt(offset) == '\n' && str.charAt(offset + 1) == '\n') {
+                return offset + 2;
+            }
+            offset += 1;
+        }
+        return offset;
+    }
+
+    private int getPreviousParagraphStart(int offset, String str) {
+        offset -= 2;
+        while (offset >= 0) {
+            if (offset > 0 && str.charAt(offset) == '\n' && str.charAt(offset - 1) == '\n') {
+                return offset + 1;
+            }
+            offset -= 1;
+        }
+        return 0;
+    }
+
+    private StringSequence privateGetTextAtOffset(int offset,
+                                                  int boundary_type) {
+        int char_count = get_character_count();
+        if (offset < 0 || offset > char_count) {
+            return null;
+        }
+
+        switch (boundary_type) {
+            case AtkTextBoundary.CHAR: {
+                if (offset == char_count)
+                    return null;
+                String str = get_text(offset, offset + 1);
+                return new StringSequence(str, offset, offset + 1);
+            }
+            case AtkTextBoundary.WORD_START: {
+                if (offset == char_count)
+                    return new StringSequence("", char_count, char_count);
+
+                String s = get_text(0, char_count);
+                int start = getPreviousWordStart(offset + 1, s);
+                if (start == BreakIterator.DONE) {
+                    start = 0;
+                }
+
+                int end = getNextWordStart(offset, s);
+                if (end == BreakIterator.DONE) {
+                    end = s.length();
+                }
+
+                String str = get_text(start, end);
+                return new StringSequence(str, start, end);
+            }
+            case AtkTextBoundary.WORD_END: {
+                if (offset == 0)
+                    return new StringSequence("", 0, 0);
+
+                String s = get_text(0, char_count);
+                int start = getPreviousWordEnd(offset, s);
+                if (start == BreakIterator.DONE) {
+                    start = 0;
+                }
+
+                int end = getNextWordEnd(offset - 1, s);
+                if (end == BreakIterator.DONE) {
+                    end = s.length();
+                }
+
+                String str = get_text(start, end);
+                return new StringSequence(str, start, end);
+            }
+            case AtkTextBoundary.SENTENCE_START: {
+                if (offset == char_count)
+                    return new StringSequence("", char_count, char_count);
+
+                String s = get_text(0, char_count);
+                int start = getPreviousSentenceStart(offset + 1, s);
+                if (start == BreakIterator.DONE) {
+                    start = 0;
+                }
+
+                int end = getNextSentenceStart(offset, s);
+                if (end == BreakIterator.DONE) {
+                    end = s.length();
+                }
+
+                String str = get_text(start, end);
+                return new StringSequence(str, start, end);
+            }
+            case AtkTextBoundary.SENTENCE_END: {
+                if (offset == 0)
+                    return new StringSequence("", 0, 0);
+
+                String s = get_text(0, char_count);
+                int start = getPreviousSentenceEnd(offset, s);
+                if (start == BreakIterator.DONE) {
+                    start = 0;
+                }
+
+                int end = getNextSentenceEnd(offset - 1, s);
+                if (end == BreakIterator.DONE) {
+                    end = s.length();
+                }
+
+                String str = get_text(start, end);
+                return new StringSequence(str, start, end);
+            }
+            case AtkTextBoundary.LINE_START: {
+                if (offset == char_count)
+                    return new StringSequence("", char_count, char_count);
+
+                String s = get_text(0, char_count);
+                int start = getPreviousLineStart(offset + 1, s);
+                int end = getNextLineStart(offset, s);
+
+                String str = get_text(start, end);
+                return new StringSequence(str, start, end);
+            }
+            case AtkTextBoundary.LINE_END: {
+                String s = get_text(0, char_count);
+                int start = getPreviousLineEnd(offset, s);
+                int end = getNextLineEnd(offset - 1, s);
+
+                String str = get_text(start, end);
+                return new StringSequence(str, start, end);
+            }
+            default: {
+                return null;
+            }
+        }
     }
 
     // JNI upcalls section
@@ -511,8 +626,9 @@ public class AtkText {
      * <p>
      * Returns a newly allocated string containing the text at offset bounded by the specified boundary_type.
      */
+    @Deprecated
     private StringSequence get_text_at_offset(int offset, int boundary_type) {
-        return private_get_text_at_offset(offset, boundary_type);
+        return privateGetTextAtOffset(offset, boundary_type);
     }
 
     /**
@@ -523,8 +639,9 @@ public class AtkText {
      * <p>
      * Returns a newly allocated string containing the text before offset bounded by the specified boundary_type.
      */
+    @Deprecated
     private StringSequence get_text_before_offset(int offset, int boundary_type) {
-        return private_get_text_at_offset(offset - 1, boundary_type);
+        return privateGetTextAtOffset(offset - 1, boundary_type);
     }
 
     /**
@@ -535,25 +652,46 @@ public class AtkText {
      * <p>
      * Returns newly allocated string containing the text after offset bounded by the specified boundary_type.
      */
+    @Deprecated
     private StringSequence get_text_after_offset(int offset, int boundary_type) {
-        return private_get_text_at_offset(offset + 1, boundary_type);
+        return privateGetTextAtOffset(offset + 1, boundary_type);
     }
 
-    private StringSequence private_get_text_at_offset(int offset,
-                                                      int boundary_type) {
+    /**
+     * Gets a portion of the text exposed through an {@link AtkText} according to a given
+     * offset and a specific granularity, along with the start and end offsets defining the
+     * boundaries of such a portion of text.
+     *
+     * @param offset The position in the text where the extraction starts.
+     * @param granularity The granularity of the text to extract, which can be one of the following:
+     *                    - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_CHAR}: returns the character at the offset.
+     *                    - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_WORD}: returns the word that contains the offset.
+     *                    - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_SENTENCE}: returns the sentence that contains the offset.
+     *                    - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_LINE}: returns the line that contains the offset.
+     *                    - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_PARAGRAPH}: returns the paragraph that contains the offset.
+     * @param start_offset (out) The starting character offset of the returned string, or -1 if there is an error (e.g., invalid offset, not implemented).
+     * @param end_offset (out) The offset of the first character after the returned string, or -1 in the case of an error (e.g., invalid offset, not implemented).
+     *
+     * @return A newly allocated string containing the text at the specified offset, bounded by the specified granularity.
+     *         The caller is responsible for freeing the returned string using {@code g_free()}.
+     *         Returns {@code null} if the offset is invalid or no implementation is available.
+     *
+     * @since 2.10 (in atk)
+     */
+    private StringSequence get_string_at_offset(int offset, int granularity) {
         int char_count = get_character_count();
         if (offset < 0 || offset > char_count) {
             return null;
         }
 
-        switch (boundary_type) {
-            case AtkTextBoundary.CHAR: {
+        switch (granularity) {
+            case AtkTextGranularity.CHAR: {
                 if (offset == char_count)
                     return null;
                 String str = get_text(offset, offset + 1);
                 return new StringSequence(str, offset, offset + 1);
             }
-            case AtkTextBoundary.WORD_START: {
+            case AtkTextGranularity.WORD: {
                 if (offset == char_count)
                     return new StringSequence("", char_count, char_count);
 
@@ -571,25 +709,7 @@ public class AtkText {
                 String str = get_text(start, end);
                 return new StringSequence(str, start, end);
             }
-            case AtkTextBoundary.WORD_END: {
-                if (offset == 0)
-                    return new StringSequence("", 0, 0);
-
-                String s = get_text(0, char_count);
-                int start = getPreviousWordEnd(offset, s);
-                if (start == BreakIterator.DONE) {
-                    start = 0;
-                }
-
-                int end = getNextWordEnd(offset - 1, s);
-                if (end == BreakIterator.DONE) {
-                    end = s.length();
-                }
-
-                String str = get_text(start, end);
-                return new StringSequence(str, start, end);
-            }
-            case AtkTextBoundary.SENTENCE_START: {
+            case AtkTextGranularity.SENTENCE: {
                 if (offset == char_count)
                     return new StringSequence("", char_count, char_count);
 
@@ -607,25 +727,7 @@ public class AtkText {
                 String str = get_text(start, end);
                 return new StringSequence(str, start, end);
             }
-            case AtkTextBoundary.SENTENCE_END: {
-                if (offset == 0)
-                    return new StringSequence("", 0, 0);
-
-                String s = get_text(0, char_count);
-                int start = getPreviousSentenceEnd(offset, s);
-                if (start == BreakIterator.DONE) {
-                    start = 0;
-                }
-
-                int end = getNextSentenceEnd(offset - 1, s);
-                if (end == BreakIterator.DONE) {
-                    end = s.length();
-                }
-
-                String str = get_text(start, end);
-                return new StringSequence(str, start, end);
-            }
-            case AtkTextBoundary.LINE_START: {
+            case AtkTextGranularity.LINE: {
                 if (offset == char_count)
                     return new StringSequence("", char_count, char_count);
 
@@ -636,10 +738,13 @@ public class AtkText {
                 String str = get_text(start, end);
                 return new StringSequence(str, start, end);
             }
-            case AtkTextBoundary.LINE_END: {
+            case AtkTextGranularity.PARAGRAPH: {
+                if (offset == char_count)
+                    return new StringSequence("", char_count, char_count);
+
                 String s = get_text(0, char_count);
-                int start = getPreviousLineEnd(offset, s);
-                int end = getNextLineEnd(offset - 1, s);
+                int start = getPreviousParagraphStart(offset + 1, s);
+                int end = getNextParagraphStart(offset, s);
 
                 String str = get_text(start, end);
                 return new StringSequence(str, start, end);
@@ -649,4 +754,5 @@ public class AtkText {
             }
         }
     }
+
 }
