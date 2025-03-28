@@ -445,7 +445,8 @@ final class CAccessible extends CFRetainedResource implements Accessible {
                             thisRole == AccessibleRole.PROGRESS_BAR ||
                             thisRole == AccessibleRole.CHECK_BOX ||
                             thisRole == AccessibleRole.RADIO_BUTTON ||
-                            thisRole == AccessibleRole.TOGGLE_BUTTON ) {
+                            thisRole == AccessibleRole.TOGGLE_BUTTON ||
+                            thisRole == AccessibleRole.SCROLL_BAR) {
                         execute(ptr -> valueChanged(ptr));
                     }
                 }
