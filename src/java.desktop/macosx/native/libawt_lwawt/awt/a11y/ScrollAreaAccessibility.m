@@ -28,6 +28,9 @@
 #import "JNIUtilities.h"
 #import "sun_lwawt_macosx_CAccessibility.h"
 
+static jclass sjc_CAccessibility = NULL;
+static jmethodID sjm_getScrollBar = NULL;
+
 /*
  * Implementation of the accessibility peer for the ScrollArea role
  */
@@ -57,10 +60,30 @@
 {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
 
+    // Firstly, try to get the scroll bar using getHorizontalScrollBar/getVerticalScrollBar methods of JScrollPane.
+    jobject scrollBar = NULL;
+    GET_CACCESSIBILITY_CLASS_RETURN(nil);
+    GET_STATIC_METHOD_RETURN(sjm_getScrollBar, sjc_CAccessibility, "getScrollBar",
+                             "(Ljavax/accessibility/Accessible;Ljava/awt/Component;I)Ljavax/accessibility/Accessible;", nil);
+    scrollBar = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility, sjm_getScrollBar, fAccessible, fComponent, orientation);
+    CHECK_EXCEPTION();
+
+    if (scrollBar != NULL) {
+        CommonComponentAccessibility *axScrollBar = nil;
+        DECLARE_CLASS_RETURN(sjc_Accessible, "javax/accessibility/Accessible", nil);
+        if ((*env)->IsInstanceOf(env, scrollBar, sjc_Accessible)) {
+            axScrollBar = [CommonComponentAccessibility createWithAccessible:scrollBar withEnv:env withView:fView];
+        }
+        (*env)->DeleteLocalRef(env, scrollBar);
+        if (axScrollBar != nil) {
+            return axScrollBar;
+        }
+    }
+
+    // Otherwise, try to search for the scroll bar within the children.
     NSArray *children = [CommonComponentAccessibility childrenOfParent:self withEnv:env withChildrenCode:sun_lwawt_macosx_CAccessibility_JAVA_AX_ALL_CHILDREN allowIgnored:YES];
     if ([children count] <= 0) return nil;
 
-    // The scroll bars are in the children.
     CommonComponentAccessibility *aElement;
     NSEnumerator *enumerator = [children objectEnumerator];
     while ((aElement = (CommonComponentAccessibility *)[enumerator nextObject])) {
