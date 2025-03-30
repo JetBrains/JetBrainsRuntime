@@ -3764,6 +3764,10 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
 
   setup_hotswap_agent();
 
+  if (AllowEnhancedClassRedefinition) {
+    VMContinuations = false;
+  }
+
 #if !INCLUDE_CDS
   if (CDSConfig::is_dumping_static_archive() || RequireSharedSpaces) {
     jio_fprintf(defaultStream::error_stream(),
