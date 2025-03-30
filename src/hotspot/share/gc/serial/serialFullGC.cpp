@@ -70,6 +70,7 @@
 #include "utilities/copy.hpp"
 #include "utilities/events.hpp"
 #include "utilities/stack.inline.hpp"
+#include "gc/shared/dcevmSharedGC.hpp"
 #if INCLUDE_JVMCI
 #include "jvmci/jvmci.hpp"
 #endif
@@ -104,7 +105,11 @@ public:
   DeadSpacer(ContiguousSpace* space) : _allowed_deadspace_words(0), _space(space) {
     size_t ratio = (_space == SerialHeap::heap()->old_gen()->space())
                    ? MarkSweepDeadRatio : 0;
-    _active = ratio > 0;
+    if (!Universe::is_redefining_gc_run()) {
+      _active = ratio > 0;
+    } else {
+      _active = false; // dead spacer is not active in DCEVM
+    }
 
     if (_active) {
       // We allow some amount of garbage towards the bottom of the space, so
@@ -173,6 +178,11 @@ class Compacter {
   // Used for BOT update
   TenuredGeneration* _old_gen;
 
+  // (DCEVM)
+  GrowableArray<HeapWord*>* _rescued_oops;
+  GrowableArray<HeapWord*>* _rescued_oops_values;
+  GrowableArrayIterator<HeapWord*> _rescue_oops_it;
+
   HeapWord* get_compaction_top(uint index) const {
     return _spaces[index]._compaction_top;
   }
@@ -238,6 +248,12 @@ class Compacter {
     }
   }
 
+  static void forward_obj_dcevm(oop obj, HeapWord* new_addr) {
+    // always forward in dcevm
+    prefetch_write_scan(obj);
+    FullGCForwarding::forward_to(obj, cast_to_oop(new_addr));
+  }
+
   static HeapWord* find_next_live_addr(HeapWord* start, HeapWord* end) {
     for (HeapWord* i_addr = start; i_addr < end; /* empty */) {
       prefetch_read_scan(i_addr);
@@ -267,6 +283,45 @@ class Compacter {
     return obj_size;
   }
 
+  size_t relocate_dcevm(HeapWord* addr) {
+    // Prefetch source and destination
+    prefetch_read_scan(addr);
+
+    oop obj = cast_to_oop(addr);
+    size_t obj_size = obj->size();
+
+    if (!_rescue_oops_it.at_end() && *_rescue_oops_it == addr) {
+      ++_rescue_oops_it;
+      HeapWord *rescued_obj = NEW_C_HEAP_ARRAY(HeapWord, obj_size, mtInternal);
+      Copy::aligned_disjoint_words(addr, rescued_obj, obj_size);
+      _rescued_oops_values->append(rescued_obj);
+      DEBUG_ONLY(Copy::fill_to_words(addr, obj_size, 0));
+      return obj_size;
+    }
+
+    oop new_obj = FullGCForwarding::forwardee(obj);
+    HeapWord* new_addr = cast_from_oop<HeapWord*>(new_obj);
+    // assert(addr != new_addr, "inv");
+    prefetch_write_copy(new_addr);
+
+    if (obj->klass()->new_version() != nullptr) {
+      Klass *new_version = obj->klass()->new_version();
+      if (new_version->update_information() == nullptr) {
+        Copy::aligned_conjoint_words(addr, new_addr, obj_size);
+        cast_to_oop(new_addr)->set_klass(new_version);
+      } else {
+        DcevmSharedGC::update_fields(obj, cast_to_oop(new_addr));
+      }
+      cast_to_oop(new_addr)->init_mark();
+      assert(cast_to_oop(new_addr)->klass() != nullptr, "should have a class");
+      return obj_size;
+    }
+
+    Copy::aligned_conjoint_words(addr, new_addr, obj_size);
+    new_obj->init_mark();
+
+    return obj_size;
+  }
 public:
   explicit Compacter(SerialHeap* heap) {
     // In this order so that heap is compacted towards old-gen.
@@ -283,9 +338,25 @@ public:
     }
     _index = 0;
     _old_gen = heap->old_gen();
+    _rescued_oops = nullptr;
+    _rescued_oops_values = nullptr;
+  }
+
+  ~Compacter() {
+    if (_rescued_oops != nullptr) {
+      delete _rescued_oops;
+      delete _rescued_oops_values;
+    }
   }
 
   void phase2_calculate_new_addr() {
+    bool redefinition_run = Universe::is_redefining_gc_run();
+
+    if (redefinition_run) {
+      _rescued_oops = new (mtGC) GrowableArray<HeapWord*>(128, mtGC);
+      _rescued_oops_values = new (mtGC) GrowableArray<HeapWord*>(128, mtGC);
+    }
+
     for (uint i = 0; i < _num_spaces; ++i) {
       ContiguousSpace* space = get_space(i);
       HeapWord* cur_addr = space->bottom();
@@ -299,9 +370,24 @@ public:
         oop obj = cast_to_oop(cur_addr);
         size_t obj_size = obj->size();
         if (obj->is_gc_marked()) {
-          HeapWord* new_addr = alloc(obj_size);
-          forward_obj(obj, new_addr);
-          cur_addr += obj_size;
+          if (redefinition_run) {
+            size_t forward_size = obj_size;
+            if (obj->klass()->new_version() != nullptr) {
+              forward_size = obj->size_given_klass(obj->klass()->new_version());
+            }
+            if (must_rescue(obj, cast_to_oop(get_compaction_top(_index)))) {
+              _rescued_oops->append(cast_from_oop<HeapWord *>(obj));
+              cur_addr += obj_size;
+              continue;
+            }
+            HeapWord *new_addr = alloc(forward_size);
+            forward_obj_dcevm(obj, new_addr);
+            cur_addr += obj_size;
+          } else {
+            HeapWord *new_addr = alloc(obj_size);
+            forward_obj(obj, new_addr);
+            cur_addr += obj_size;
+          }
         } else {
           // Skipping the current known-unmarked obj
           HeapWord* next_live_addr = find_next_live_addr(cur_addr + obj_size, top);
@@ -322,6 +408,10 @@ public:
       if (!record_first_dead_done) {
         record_first_dead(i, top);
       }
+    }
+
+    if (redefinition_run) {
+      forward_rescued();
     }
   }
 
@@ -346,6 +436,12 @@ public:
   }
 
   void phase4_compact() {
+    bool redefinition_run = Universe::is_redefining_gc_run();
+
+    if (redefinition_run) {
+      _rescue_oops_it = _rescued_oops->begin();
+    }
+
     for (uint i = 0; i < _num_spaces; ++i) {
       ContiguousSpace* space = get_space(i);
       HeapWord* cur_addr = space->bottom();
@@ -362,7 +458,11 @@ public:
           cur_addr = *(HeapWord**) cur_addr;
           continue;
         }
-        cur_addr += relocate(cur_addr);
+        if (redefinition_run) {
+          cur_addr += relocate_dcevm(cur_addr);
+        } else {
+          cur_addr += relocate(cur_addr);
+        }
       }
 
       // Reset top and unused memory
@@ -371,6 +471,60 @@ public:
       if (ZapUnusedHeapArea && new_top < top) {
         space->mangle_unused_area(MemRegion(new_top, top));
       }
+    }
+
+    if (redefinition_run) {
+      DcevmSharedGC::copy_rescued_objects_back(_rescued_oops_values, false);
+      DcevmSharedGC::clear_rescued_objects_heap(_rescued_oops_values);
+    }
+  }
+
+  bool must_rescue(oop old_obj, oop new_obj) {
+    // Only redefined objects can have the need to be rescued.
+    if (oop(old_obj)->klass()->new_version() == nullptr) return false;
+
+    size_t new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
+    size_t original_size = old_obj->size();
+
+    uint old_index = -1u;
+    uint new_index = -1u;
+
+    for (uint i=0; i<_num_spaces; i++) {
+      if (old_index == -1u && _spaces[i]._space->is_in_reserved(old_obj)) {
+        old_index = i;
+      }
+      if (new_index == -1u && _spaces[i]._space->is_in_reserved(new_obj)) {
+        new_index = i;
+      }
+    }
+
+    if (old_index == new_index) {
+      // Rescue if object may overlap with a higher memory address.
+      bool overlap = (cast_from_oop<HeapWord*>(old_obj) + original_size < cast_from_oop<HeapWord*>(new_obj) + new_size);
+      return overlap;
+    } else {
+      if (old_index == 0) {
+        // Must always rescue when moving from the old into the new generation.
+        return false;
+      } else {
+        // Must never rescue when moving from the new into the old generation.
+        return true;
+      }
+    }
+  }
+
+  void forward_rescued() {
+    for (int i=0; i<_rescued_oops->length(); i++) {
+      oop obj = cast_to_oop(_rescued_oops->at(i));
+      size_t obj_size = obj->size();
+      size_t forward_size = obj_size;
+
+      if (obj->klass()->new_version() != nullptr) {
+        forward_size = obj->size_given_klass(obj->klass()->new_version());
+      }
+
+      HeapWord *new_addr = alloc(forward_size);
+      forward_obj_dcevm(obj, new_addr);
     }
   }
 };
