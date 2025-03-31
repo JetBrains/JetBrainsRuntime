@@ -39,6 +39,21 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 | 2021.1      | [11.0.11+9-b1341.60](https://github.com/JetBrains/JetBrainsRuntime/issues/171#issuecomment-1248891540)| 15-Jun-2021   |
 | 2020.3      | [11_0_10-b1145.115](https://github.com/JetBrains/JetBrainsRuntime/issues/171#issuecomment-1249243977) | 21-Jun-2021   |
 
+## Release Flavours
+
+There are many kinds of JBR bundles available on the [Releases page](https://github.com/JetBrains/JetBrainsRuntime/releases):
+
+| Flavour       | Description                                                                                                   |
+|---------------|---------------------------------------------------------------------------------------------------------------|
+| JBR           | Contains the Java Runtime Environment (JRE) suitable to _run_ JVM-based programs.                             |
+| JBRSDK        | Contains the Software Developmet Kit (SDK) suitable to _develop_ and _run_ JVM-based programs.                |
+| JBR with JCEF | Contains both JBR and JCEF; this flavour is bundled by default with all IntelliJ IDEs.                        |
+| vanilla       | Contains just JBR.                                                                                            |
+| fastdebug     | The native binaries in this bundle are less optimized and are easier to debug. They also run much slower.     |
+| FreeType      | The bundle includes the freetype library built from sources; normally, the library is provided by the system. |
+| Vulkan        | The bundle includes experimental Vulkan support.                                                              |                                                              |
+| debug symbols | In addition to the usual contents of the bundle the debug information is also included.                       |
+
 ## Contents
 - [Welcome to JetBrains Runtime](#welcome-to-jetbrains-runtime)
   - [Why Use JetBrains Runtime?](#why-use-jetbrains-runtime)
