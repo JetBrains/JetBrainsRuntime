@@ -478,32 +478,54 @@ public class AtkWrapper {
                 emitSignal(ac, AtkSignal.TEXT_CARET_MOVED, args);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_TEXT_PROPERTY)) {
                 /**
-                 * The documentation of AccessibleContext.ACCESSIBLE_TEXT_PROPERTY states that newValue
+                 * The documentation for AccessibleContext.ACCESSIBLE_TEXT_PROPERTY states that newValue
                  * is an instance of AccessibleTextSequence in an insertion event, and oldValue is an
-                 * instance of AccessibleTextSequence in a deletion event. However, Swing components
-                 * send a signal where oldValue == null and newValue is an instance of Integer for both
-                 * insertion and deletion events.
+                 * instance of AccessibleTextSequence in a deletion event. This allows us to use
+                 * AtkSignal.TEXT_PROPERTY_CHANGED_INSERT and AtkSignal.TEXT_PROPERTY_CHANGED_DELETE.
+                 * However, Swing components send a signal where oldValue is null and newValue is an
+                 * instance of Integer for both insertion and deletion events. As a result, we continue
+                 * using the deprecated in atk AtkSignal.TEXT_PROPERTY_CHANGED.
                  */
                 if (oldValue == null && newValue != null) {
-                    if (newValue instanceof AccessibleTextSequence newSeq) {
+                    if (newValue instanceof AccessibleTextSequence newSeq) { // insertion event according to the Swing documentation
                         Object[] args = new Object[3];
-                        args[0] = Integer.valueOf(newSeq.startIndex);
-                        args[1] = Integer.valueOf(newSeq.endIndex - newSeq.startIndex);
-                        args[2] = newSeq.text;
-                        emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED_INSERT, args); // insertion event
-                        return;
-                    } else if (newValue instanceof Integer) {
+                        args[0] = Integer.valueOf(newSeq.startIndex); // the position (character offset) of the insertion
+                        args[1] = Integer.valueOf(newSeq.endIndex - newSeq.startIndex); // the length (in characters) of text inserted
+                        args[2] = newSeq.text; // the new text inserted
+
+                        /*
+                         * `text_insert` has 3 parameters:
+                         * 1. arg1 - the position (character offset) of the insertion.
+                         * 2. arg2 - the length (in characters) of text inserted.
+                         * 3. arg3 - the new text inserted.
+                         */
+                        emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED_INSERT, args);
+                    } else if (newValue instanceof Integer) { // real insertion or deletion event that Swing components send
                         Object[] args = new Object[1];
-                        args[0] = newValue;
-                        emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED, args); // insertion or deletion event
+                        args[0] = newValue; // the position (character offset) of the insertion or deletion
+                        /*
+                         * `text-changed` has 2 parameters:
+                         * 1. arg1 - the position (character offset) of the insertion or deletion.
+                         * 2. arg2 - the length (in characters) of text inserted or deleted.
+                         *
+                         * In our case, arg2 is unknown.
+                         */
+                        emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED, args);
                     }
                 } else if (oldValue != null && newValue == null) {
-                    if (oldValue instanceof AccessibleTextSequence oldSeq) {
+                    if (oldValue instanceof AccessibleTextSequence oldSeq) { // deletion event according to the Swing documentation
                         Object[] args = new Object[3];
-                        args[0] = Integer.valueOf(oldSeq.startIndex);
-                        args[1] = Integer.valueOf(oldSeq.endIndex - oldSeq.startIndex);
-                        args[2] = oldSeq.text;
-                        emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED_DELETE, args); // deletion event
+                        args[0] = Integer.valueOf(oldSeq.startIndex); // the position (character offset) of the removal
+                        args[1] = Integer.valueOf(oldSeq.endIndex - oldSeq.startIndex); // the length (in characters) of text removed
+                        args[2] = oldSeq.text; // the old text removed
+
+                        /*
+                         * `text_remove` has 3 parameters:
+                         * 1. arg1 - the position (character offset) of the removal.
+                         * 2. arg2 - the length (in characters) of text removed.
+                         * 3. arg3 - the new text removed.
+                         */
+                        emitSignal(ac, AtkSignal.TEXT_PROPERTY_CHANGED_DELETE, args);
                     }
                 }
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_CHILD_PROPERTY)) {
@@ -676,10 +698,10 @@ public class AtkWrapper {
     private native static void focusNotify(AccessibleContext ac);
 
     private native static void windowOpen(AccessibleContext ac,
-                                         boolean isToplevel);
+                                          boolean isToplevel);
 
     private native static void windowClose(AccessibleContext ac,
-                                          boolean isToplevel);
+                                           boolean isToplevel);
 
     private native static void windowMinimize(AccessibleContext ac);
 
@@ -696,7 +718,7 @@ public class AtkWrapper {
     private native static void emitSignal(AccessibleContext ac, int id, Object[] args);
 
     private native static void objectStateChange(AccessibleContext ac,
-                                                Object state, boolean value);
+                                                 Object state, boolean value);
 
     private native static void componentAdded(AccessibleContext ac);
 
@@ -713,7 +735,8 @@ public class AtkWrapper {
         }
     }
 
-    /** AtkWrapper is service provider that adds an assistive technology feature
+    /**
+     * AtkWrapper is service provider that adds an assistive technology feature
      * using assistive_technologies property, so constructor is public
      */
     public AtkWrapper() {
@@ -746,6 +769,7 @@ public class AtkWrapper {
 
     /**
      * returns -1 if it was not difined
+     *
      * @param ac
      * @return
      */
