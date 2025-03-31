@@ -121,6 +121,7 @@ java/awt/Focus/8013611/JDK8013611.java JBR-7338,JBR-7506 linux-all,windows-all
 java/awt/Focus/8073453/SwingFocusTransitionTest.java JBR-7339 linux-all,windows-all
 java/awt/Focus/8282640/ScrollPaneFocusBugTest.java JBR-7340 linux-all
 java/awt/Focus/ChoiceFocus/ChoiceFocus.java JBR-7341 linux-all
+java/awt/Focus/ModalDialogInFocusEventTest.java JBR-7818 linux-all
 java/awt/Focus/RollbackFocusFromAnotherWindowTest/RollbackFocusFromAnotherWindowTest.java JBR-8233 linux-x64
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-5210,JBR-7077 windows-all,linux-all
 java/awt/List/PageUPSelectsItemsTest.java JBR-8281 linux-all
