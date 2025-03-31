@@ -59,7 +59,7 @@ There are many kinds of JBR bundles available on the [Releases page](https://git
 |---------------|---------------------------------------------------------------------------------------------------------------|
 | JBR           | Contains the Java Runtime Environment (JRE) suitable to _run_ JVM-based programs.                             |
 | JBRSDK        | Contains the Software Developmet Kit (SDK) suitable to _develop_ and _run_ JVM-based programs.                |
-| JBR with JCEF | Contains both JBR and JCEF; this flavour is bundled with all IntelliJ IDEs.                                   |
+| JBR with JCEF | Contains both JBR and JCEF; this flavour is bundled by default with all IntelliJ IDEs.                        |
 | vanilla       | Contains just JBR.                                                                                            |
 | fastdebug     | The native binaries in this bundle are less optimized and are easier to debug. They also run much slower.     |
 | FreeType      | The bundle includes the freetype library built from sources; normally, the library is provided by the system. |
