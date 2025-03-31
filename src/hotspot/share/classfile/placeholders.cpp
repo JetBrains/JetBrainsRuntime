@@ -326,7 +326,12 @@ void PlaceholderTable::find_and_remove(unsigned int hash,
     PlaceholderEntry *probe = get_entry(hash, name, loader_data);
     if (probe != NULL) {
        log(probe, "find_and_remove", action);
-       probe->remove_seen_thread(thread, action);
+
+       bool empty = probe->remove_seen_thread(thread, action);
+       if (empty && action == LOAD_SUPER) {
+          probe->set_supername(NULL);
+       }
+
        // If no other threads using this entry, and this thread is not using this entry for other states
        if ((probe->superThreadQ() == NULL) && (probe->loadInstanceThreadQ() == NULL)
           && (probe->defineThreadQ() == NULL) && (probe->definer() == NULL)) {

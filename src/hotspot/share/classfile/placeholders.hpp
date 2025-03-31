@@ -142,8 +142,12 @@ class PlaceholderEntry : public HashtableEntry<Symbol*, mtClass> {
 
   Symbol*            supername()           const { return _supername; }
   void               set_supername(Symbol* supername) {
-    _supername = supername;
-    if (_supername != NULL) _supername->increment_refcount();
+    if (supername != _supername) {
+      _supername = supername;
+      if (_supername != NULL) {
+        _supername->increment_refcount();
+      }
+    }
   }
 
   Thread*            definer()             const {return _definer; }
