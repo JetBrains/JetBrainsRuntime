@@ -508,7 +508,7 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
     JAW_CHECK_NULL(classAtkWrapper, );
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classAtkWrapper, "registerPropertyChangeListener",
+        jniEnv, classAtkWrapper, "register_property_change_listener",
         "(Ljavax/accessibility/AccessibleContext;)V");
     JAW_CHECK_NULL(jmid, );
     jobject ac = (*jniEnv)->NewGlobalRef(jniEnv, jaw_obj->acc_context);

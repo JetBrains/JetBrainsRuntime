@@ -679,14 +679,6 @@ public class AtkWrapper {
         }
     };
 
-    private static void registerPropertyChangeListener(AccessibleContext ac) {
-        if (ac != null) {
-            AtkUtil.invokeInSwing(() -> {
-                ac.addPropertyChangeListener(propertyChangeListener);
-            });
-        }
-    }
-
     private native static boolean initNativeLibrary();
 
     private native static boolean loadAtkBridge();
@@ -779,5 +771,13 @@ public class AtkWrapper {
 
     private static long get_or_add_native_resources(AccessibleContext ac, long nativeRef) {
         return AtkWrapperDisposer.getInstance().getRecordWithDefaultReference(ac, nativeRef);
+    }
+
+    private static void register_property_change_listener(AccessibleContext ac) {
+        if (ac != null) {
+            AtkUtil.invokeInSwing(() -> {
+                ac.addPropertyChangeListener(propertyChangeListener);
+            });
+        }
     }
 }
