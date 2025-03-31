@@ -32,9 +32,8 @@ import java.util.concurrent.*;
 import sun.util.logging.PlatformLogger;
 
 /**
- * AtkUtil:
- * That class is used to wrap the callback on Java object
- * to avoid the concurrency of AWT objects.
+ * Utility class for safely executing code on the event dispatching thread.
+ * Is used to wrap the callback on Java object to avoid the concurrency of AWT objects.
  *
  * @autor Giuseppe Capaldo
  */
@@ -45,19 +44,14 @@ public class AtkUtil {
     }
 
     /**
-     * invokeInSwingAndWait:
-     * Invoked when we need to make an asynchronous callback on
-     * a Java object and this callback has a return value.
-     * this method doesn't launch any exception because in case
-     * of problems it prints a warning and returns the default
-     * value that is passed to it
+     * Executes a Callable on  event dispatching thread and returns its result.
+     * If called from the EDT, it executes the function directly.
+     * Otherwise, it schedules asynchronous execution on the EDT and waits for the result.
      *
-     * @param function A Callable object that return T value
-     * @param d        A T object that is returned if an exception occurs
-     * @return The return value of the original function or the
-     * default value. Obviously if the value is a primitive type
-     * this will automatically wrapped from java in the
-     * corresponding object
+     * @param function The Callable task to execute.
+     * @param d        A default value to return if an exception occurs.
+     * @param <T>      The return type of the Callable.
+     * @return The result of the Callable, or the default value in case of an exception.
      */
     public static <T> T invokeInSwingAndWait(Callable<T> function, T d) {
         if (SwingUtilities.isEventDispatchThread()) {
@@ -85,11 +79,11 @@ public class AtkUtil {
     }
 
     /**
-     * invokeInSwing:
-     * Invoked when we need to make an asynchronous callback on
-     * some Java object and this callback hasn't a return value.
+     * Executes a Runnable on the event dispatching thread.
+     * If called from the EDT, it runs the function directly.
+     * Otherwise, it executed asynchronously on the AWT event dispatching thread.
      *
-     * @param function A Runnable object that doesn't return some value
+     * @param function The Runnable task to execute.
      */
     public static void invokeInSwing(Runnable function) {
         if (SwingUtilities.isEventDispatchThread()) {
