@@ -399,7 +399,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_focusNotify(
         JAW_DEBUG_I("jAccContext == NULL");
         return;
     }
-    jobject global_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
+    jobject global_ac = (*jniEnv)->NewGlobalRef(
+        jniEnv,
+        jAccContext); // `free_callback_para` is responsible for deleting it
     callback_para_process_frees();
     CallbackPara *para = alloc_callback_para(jniEnv, global_ac);
     if (para == NULL) {
@@ -449,7 +451,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowOpen(
         JAW_DEBUG_I("jAccContext == NULL");
         return;
     }
-    jobject global_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
+    jobject global_ac = (*jniEnv)->NewGlobalRef(
+        jniEnv,
+        jAccContext); // `free_callback_para` is responsible for deleting it
     callback_para_process_frees();
     CallbackPara *para = alloc_callback_para(jniEnv, global_ac);
     if (para == NULL) {
@@ -501,7 +505,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowClose(
         JAW_DEBUG_I("jAccContext == NULL");
         return;
     }
-    jobject global_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
+    jobject global_ac = (*jniEnv)->NewGlobalRef(
+        jniEnv,
+        jAccContext); // `free_callback_para` is responsible for deleting it
     callback_para_process_frees();
     CallbackPara *para = alloc_callback_para(jniEnv, global_ac);
     if (para == NULL) {
@@ -531,7 +537,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowMinimize(
         JAW_DEBUG_I("jAccContext == NULL");
         return;
     }
-    jobject global_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
+    jobject global_ac = (*jniEnv)->NewGlobalRef(
+        jniEnv,
+        jAccContext); // `free_callback_para` is responsible for deleting it
     callback_para_process_frees();
     CallbackPara *para = alloc_callback_para(jniEnv, global_ac);
     if (para == NULL) {
@@ -560,7 +568,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowMaximize(
         JAW_DEBUG_I("jAccContext == NULL");
         return;
     }
-    jobject global_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
+    jobject global_ac = (*jniEnv)->NewGlobalRef(
+        jniEnv,
+        jAccContext); // `free_callback_para` is responsible for deleting it
     callback_para_process_frees();
     CallbackPara *para = alloc_callback_para(jniEnv, global_ac);
     if (para == NULL) {
@@ -589,7 +599,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowRestore(
         JAW_DEBUG_I("jAccContext == NULL");
         return;
     }
-    jobject global_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
+    jobject global_ac = (*jniEnv)->NewGlobalRef(
+        jniEnv,
+        jAccContext); // `free_callback_para` is responsible for deleting it
     callback_para_process_frees();
     CallbackPara *para = alloc_callback_para(jniEnv, global_ac);
     if (para == NULL) {
@@ -618,7 +630,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowActivate(
         JAW_DEBUG_I("jAccContext == NULL");
         return;
     }
-    jobject global_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
+    jobject global_ac = (*jniEnv)->NewGlobalRef(
+        jniEnv,
+        jAccContext); // `free_callback_para` is responsible for deleting it
     callback_para_process_frees();
     CallbackPara *para = alloc_callback_para(jniEnv, global_ac);
     if (para == NULL) {
@@ -647,7 +661,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowDeactivate(
         JAW_DEBUG_I("jAccContext == NULL");
         return;
     }
-    jobject global_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
+    jobject global_ac = (*jniEnv)->NewGlobalRef(
+        jniEnv,
+        jAccContext); // `free_callback_para` is responsible for deleting it
     callback_para_process_frees();
     CallbackPara *para = alloc_callback_para(jniEnv, global_ac);
     if (para == NULL) {
@@ -678,7 +694,9 @@ Java_org_GNOME_Accessibility_AtkWrapper_windowStateChange(JNIEnv *jniEnv,
         JAW_DEBUG_I("jAccContext == NULL");
         return;
     }
-    jobject global_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
+    jobject global_ac = (*jniEnv)->NewGlobalRef(
+        jniEnv,
+        jAccContext); // `free_callback_para` is responsible for deleting it
     callback_para_process_frees();
     CallbackPara *para = alloc_callback_para(jniEnv, global_ac);
     if (para == NULL) {
@@ -690,9 +708,25 @@ Java_org_GNOME_Accessibility_AtkWrapper_windowStateChange(JNIEnv *jniEnv,
 
 static gint get_int_value(JNIEnv *jniEnv, jobject o) {
     JAW_DEBUG_C("%p, %p", jniEnv, o);
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return 0;
+    }
+
     jclass classInteger = (*jniEnv)->FindClass(jniEnv, "java/lang/Integer");
+    if (!classInteger) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return 0;
+    }
+
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classInteger, "intValue", "()I");
+    if (!jmid) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return 0;
+    }
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     return (gint)(*jniEnv)->CallIntMethod(jniEnv, o, jmid);
 }
 
@@ -700,22 +734,39 @@ static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
     JAW_DEBUG_C("%p, %p", jniEnv, o);
     JAW_CHECK_NULL(o, NULL);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 4) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
+
     jclass objClass = (*jniEnv)->GetObjectClass(jniEnv, o);
-    JAW_CHECK_NULL(objClass, NULL);
+    if (!objClass) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, objClass, "toString",
                                             "()Ljava/lang/String;");
-    JAW_CHECK_NULL(jmid, NULL);
+    if (!jmid) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     jstring jstr = (jstring)(*jniEnv)->CallObjectMethod(jniEnv, o, jmid);
-    JAW_CHECK_NULL(jstr, NULL);
+    if (!jstr) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     const char *nativeStr = (*jniEnv)->GetStringUTFChars(jniEnv, jstr, NULL);
-    JAW_CHECK_NULL(nativeStr, NULL);
+    if (!nativeStr) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     gchar *result = g_strdup(nativeStr);
-    (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, nativeStr);
-
     return result;
 }
 
@@ -731,7 +782,13 @@ static jobject jaw_vdc_last_ac = NULL;
 static gboolean signal_emit_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
+
     JNIEnv *jniEnv = jaw_util_get_jni_env();
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jobjectArray args = para->args;
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
 
@@ -747,48 +804,100 @@ static gboolean signal_emit_handler(gpointer p) {
 
     switch (para->signal_id) {
     case org_GNOME_Accessibility_AtkSignal_TEXT_CARET_MOVED: {
-        gint cursor_pos = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
+        jobject objectArrayElement =
+            (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
+        if (!objectArrayElement) {
+            break;
+        }
+        gint cursor_pos = get_int_value(jniEnv, objectArrayElement);
+
         g_signal_emit_by_name(atk_obj, "text_caret_moved", cursor_pos);
         break;
     }
     case org_GNOME_Accessibility_AtkSignal_TEXT_PROPERTY_CHANGED_INSERT: {
-        gint insert_position = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
-        gint insert_length = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
-        gchar *insert_text = get_string_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
+        jobject objectArrayElement0 =
+            (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
+        if (!objectArrayElement0) {
+            break;
+        }
+        gint insert_position = get_int_value(jniEnv, objectArrayElement0);
+
+        jobject objectArrayElement1 =
+            (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
+        if (!objectArrayElement1) {
+            break;
+        }
+        gint insert_length = get_int_value(jniEnv, objectArrayElement1);
+
+        jobject objectArrayElement2 =
+            (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2);
+        if (!objectArrayElement2) {
+            break;
+        }
+        gchar *insert_text = get_string_value(jniEnv, objectArrayElement2);
+
         g_signal_emit_by_name(atk_obj, "text_insert", insert_position,
                               insert_length, insert_text);
+
         g_free(insert_text);
         break;
     }
     case org_GNOME_Accessibility_AtkSignal_TEXT_PROPERTY_CHANGED_DELETE: {
-        gint delete_position = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
-        gint delete_length = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
-        gchar *delete_text = get_string_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2));
+        jobject objectArrayElement0 =
+            (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
+        if (!objectArrayElement0) {
+            break;
+        }
+        gint delete_position = get_int_value(jniEnv, objectArrayElement0);
+
+        jobject objectArrayElement1 =
+            (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
+        if (!objectArrayElement1) {
+            break;
+        }
+        gint delete_length = get_int_value(jniEnv, objectArrayElement1);
+
+        jobject objectArrayElement2 =
+            (*jniEnv)->GetObjectArrayElement(jniEnv, args, 2);
+        if (!objectArrayElement2) {
+            break;
+        }
+        gchar *delete_text = get_string_value(jniEnv, objectArrayElement2);
+
         g_signal_emit_by_name(atk_obj, "text_remove", delete_position,
                               delete_length, delete_text);
+
         g_free(delete_text);
         break;
     }
     case org_GNOME_Accessibility_AtkSignal_OBJECT_CHILDREN_CHANGED_ADD: {
-        gint child_index = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
+        jobject objectArrayElement0 =
+            (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
+        if (!objectArrayElement0) {
+            break;
+        }
+        gint child_index = get_int_value(jniEnv, objectArrayElement0);
+
         g_signal_emit_by_name(atk_obj, "children_changed::add", child_index,
                               para->child_impl);
-        if (G_OBJECT(atk_obj) != NULL)
+
+        if (G_OBJECT(atk_obj) != NULL) {
             g_object_ref(G_OBJECT(atk_obj));
+        }
         break;
     }
     case org_GNOME_Accessibility_AtkSignal_OBJECT_CHILDREN_CHANGED_REMOVE: {
-        gint child_index = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
+        jobject objectArrayElement0 =
+            (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
+        if (!objectArrayElement0) {
+            break;
+        }
+        gint child_index = get_int_value(jniEnv, objectArrayElement0);
+
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
+        if (!child_ac) {
+            break;
+        }
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
         if (!child_impl) {
             break;
@@ -796,8 +905,10 @@ static gboolean signal_emit_handler(gpointer p) {
 
         g_signal_emit_by_name(atk_obj, "children_changed::remove", child_index,
                               child_impl);
-        if (G_OBJECT(atk_obj) != NULL)
+
+        if (G_OBJECT(atk_obj) != NULL) {
             g_object_unref(G_OBJECT(atk_obj));
+        }
         break;
     }
     case org_GNOME_Accessibility_AtkSignal_OBJECT_ACTIVE_DESCENDANT_CHANGED: {
@@ -814,10 +925,19 @@ static gboolean signal_emit_handler(gpointer p) {
         break;
     }
     case org_GNOME_Accessibility_AtkSignal_OBJECT_PROPERTY_CHANGE_ACCESSIBLE_ACTIONS: {
-        gint oldValue = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
-        gint newValue = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1));
+        jobject objectArrayElement0 =
+            (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
+        if (!objectArrayElement0) {
+            break;
+        }
+        gint oldValue = get_int_value(jniEnv, objectArrayElement0);
+        jobject objectArrayElement1 =
+            (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
+        if (!objectArrayElement1) {
+            break;
+        }
+        gint newValue = get_int_value(jniEnv, objectArrayElement1);
+
         AtkPropertyValues values = {NULL};
 
         // GValues must be initialized
@@ -896,8 +1016,12 @@ static gboolean signal_emit_handler(gpointer p) {
     case org_GNOME_Accessibility_AtkSignal_TEXT_PROPERTY_CHANGED: {
         JawObject *jaw_obj = JAW_OBJECT(atk_obj);
 
-        gint newValue = get_int_value(
-            jniEnv, (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0));
+        jobject objectArrayElement0 =
+            (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
+        if (!objectArrayElement0) {
+            break;
+        }
+        gint newValue = get_int_value(jniEnv, objectArrayElement0);
 
         gint prevCount = GPOINTER_TO_INT(
             g_hash_table_lookup(jaw_obj->storedData, "Previous_Count"));
@@ -927,7 +1051,10 @@ static gboolean signal_emit_handler(gpointer p) {
     default:
         break;
     }
+
     queue_free_callback_para(para);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     return G_SOURCE_REMOVE;
 }
 
@@ -935,6 +1062,11 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     JNIEnv *jniEnv, jclass jClass, jobject jAccContext, jint id,
     jobjectArray args) {
     JAW_DEBUG_JNI("%p, %p, %p, %d, %p", jniEnv, jClass, jAccContext, id, args);
+
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return;
+    }
 
     pthread_mutex_lock(&jaw_vdc_dup_mutex);
     if (id != org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED) {
@@ -958,7 +1090,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
         return;
     }
 
-    jobject global_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
+    jobject global_ac = (*jniEnv)->NewGlobalRef(
+        jniEnv,
+        jAccContext); // `free_callback_para` is responsible for deleting it
     callback_para_process_frees();
     CallbackPara *para = alloc_callback_para(jniEnv, global_ac);
     if (para == NULL) {
@@ -996,9 +1130,15 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
         break;
     case org_GNOME_Accessibility_AtkSignal_OBJECT_CHILDREN_CHANGED_ADD: {
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
+        if (!child_ac) {
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+            free_callback_para(para);
+            return;
+        }
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
         if (child_impl == NULL) {
             JAW_DEBUG_I("child_impl == NULL");
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             free_callback_para(para);
             return;
         }
@@ -1008,9 +1148,14 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     }
     case org_GNOME_Accessibility_AtkSignal_OBJECT_ACTIVE_DESCENDANT_CHANGED: {
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
+        if (!child_ac) {
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+            free_callback_para(para);
+        }
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
         if (child_impl == NULL) {
             JAW_DEBUG_I("child_impl == NULL");
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             free_callback_para(para);
             return;
         }
@@ -1019,7 +1164,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
         break;
     }
     }
-    jni_main_idle_add(signal_emit_handler, para);
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+    jni_main_idle_add(signal_emit_handler,
+                      para); // calls `queue_free_callback_para`
 }
 
 static gboolean object_state_change_handler(gpointer p) {
@@ -1175,109 +1323,201 @@ static gboolean key_dispatch_handler(gpointer p) {
         return G_SOURCE_REMOVE;
     }
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 30) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return 0;
+    }
+
     AtkKeyEventStruct *event = g_new0(AtkKeyEventStruct, 1);
 
     jclass classAtkKeyEvent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkKeyEvent");
+    if (!classAtkKeyEvent) {
+        // Unknown event type: clean up and exit
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        g_free(event);
+        queue_free_callback_para_event(para);
+        return G_SOURCE_REMOVE;
+    }
 
-    // type
     jfieldID jfidType =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "type", "I");
+    if (!jfidType) {
+        // Unknown event type: clean up and exit
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        g_free(event);
+        queue_free_callback_para_event(para);
+        return G_SOURCE_REMOVE;
+    }
+
     jint type = (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidType);
+    if (!type) {
+        // Unknown event type: clean up and exit
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        g_free(event);
+        queue_free_callback_para_event(para);
+        return G_SOURCE_REMOVE;
+    }
 
     jfieldID jfidTypePressed = (*jniEnv)->GetStaticFieldID(
         jniEnv, classAtkKeyEvent, "ATK_KEY_EVENT_PRESSED", "I");
+    if (!jfidTypePressed) {
+        // Unknown event type: clean up and exit
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        g_free(event);
+        queue_free_callback_para_event(para);
+        return G_SOURCE_REMOVE;
+    }
+
     jfieldID jfidTypeReleased = (*jniEnv)->GetStaticFieldID(
         jniEnv, classAtkKeyEvent, "ATK_KEY_EVENT_RELEASED", "I");
+    if (!jfidTypeReleased) {
+        // Unknown event type: clean up and exit
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        g_free(event);
+        queue_free_callback_para_event(para);
+        return G_SOURCE_REMOVE;
+    }
 
     jint type_pressed =
         (*jniEnv)->GetStaticIntField(jniEnv, classAtkKeyEvent, jfidTypePressed);
+    if (!type_pressed) {
+        // Unknown event type: clean up and exit
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        g_free(event);
+        queue_free_callback_para_event(para);
+        return G_SOURCE_REMOVE;
+    }
+
     jint type_released = (*jniEnv)->GetStaticIntField(jniEnv, classAtkKeyEvent,
                                                       jfidTypeReleased);
+    if (!type_released) {
+        // Unknown event type: clean up and exit
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        g_free(event);
+        queue_free_callback_para_event(para);
+        return G_SOURCE_REMOVE;
+    }
 
     if (type == type_pressed) {
         event->type = ATK_KEY_EVENT_PRESS;
     } else if (type == type_released) {
         event->type = ATK_KEY_EVENT_RELEASE;
     } else {
+        // Unknown event type: clean up and exit
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         g_free(event);
         queue_free_callback_para_event(para);
         return G_SOURCE_REMOVE;
     }
 
-    // state
+    // state: shift
     jfieldID jfidShift =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "isShiftKeyDown", "Z");
-    jboolean jShiftKeyDown =
-        (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidShift);
-    if (jShiftKeyDown) {
-        event->state |= GDK_SHIFT_MASK;
+    if (jfidShift) {
+        jboolean jShiftKeyDown =
+            (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidShift);
+        if (jShiftKeyDown) {
+            event->state |= GDK_SHIFT_MASK;
+        }
     }
 
+    // state: ctrl
     jfieldID jfidCtrl =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "isCtrlKeyDown", "Z");
-    jboolean jCtrlKeyDown =
-        (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidCtrl);
-    if (jCtrlKeyDown) {
-        event->state |= GDK_CONTROL_MASK;
+    if (jfidCtrl) {
+        jboolean jCtrlKeyDown =
+            (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidCtrl);
+        if (jCtrlKeyDown) {
+            event->state |= GDK_CONTROL_MASK;
+        }
     }
 
+    // state: alt
     jfieldID jfidAlt =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "isAltKeyDown", "Z");
-    jboolean jAltKeyDown =
-        (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidAlt);
-    if (jAltKeyDown) {
-        event->state |= GDK_MOD1_MASK;
+    if (jfidAlt) {
+        jboolean jAltKeyDown =
+            (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidAlt);
+        if (jAltKeyDown) {
+            event->state |= GDK_MOD1_MASK;
+        }
     }
 
+    // state: meta
     jfieldID jfidMeta =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "isMetaKeyDown", "Z");
-    jboolean jMetaKeyDown =
-        (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidMeta);
-    if (jMetaKeyDown) {
-        event->state |= GDK_META_MASK;
+    if (jfidMeta) {
+        jboolean jMetaKeyDown =
+            (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidMeta);
+        if (jMetaKeyDown) {
+            event->state |= GDK_META_MASK;
+        }
     }
 
+    // state: alt gr
     jfieldID jfidAltGr =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "isAltGrKeyDown", "Z");
-    jboolean jAltGrKeyDown =
-        (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidAltGr);
-    if (jAltGrKeyDown) {
-        event->state |= GDK_MOD5_MASK;
+    if (jfidAltGr) {
+        jboolean jAltGrKeyDown =
+            (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidAltGr);
+        if (jAltGrKeyDown) {
+            event->state |= GDK_MOD5_MASK;
+        }
     }
 
     // keyval
     jfieldID jfidKeyval =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "keyval", "I");
-    jint jkeyval = (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidKeyval);
-    event->keyval = (guint)jkeyval;
+    if (jfidKeyval) {
+        jint jkeyval = (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidKeyval);
+        if (jkeyval) {
+            event->keyval = (guint)jkeyval;
+        }
+    }
 
     // string
     jfieldID jfidString = (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent,
                                                 "string", "Ljava/lang/String;");
-    jstring jstr =
-        (jstring)(*jniEnv)->GetObjectField(jniEnv, jAtkKeyEvent, jfidString);
-    event->length = (gint)(*jniEnv)->GetStringLength(jniEnv, jstr);
-    event->string = (gchar *)(*jniEnv)->GetStringUTFChars(jniEnv, jstr, 0);
+    if (jfidString) {
+        jstring jstr = (jstring)(*jniEnv)->GetObjectField(jniEnv, jAtkKeyEvent,
+                                                          jfidString);
+        if (jstr) {
+            event->length = (gint)(*jniEnv)->GetStringLength(jniEnv, jstr);
+            event->string =
+                (gchar *)(*jniEnv)->GetStringUTFChars(jniEnv, jstr, 0);
+        }
+    }
 
     // keycode
     jfieldID jfidKeycode =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "keycode", "I");
-    event->keycode =
-        (gint)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidKeycode);
+    if (jfidKeycode) {
+        gint keycode =
+            (gint)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidKeycode);
+        if (keycode) {
+            event->keycode = keycode;
+        }
+    }
 
     // timestamp
     jfieldID jfidTimestamp =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "timestamp", "I");
-    event->timestamp =
-        (guint32)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidTimestamp);
+    if (jfidTimestamp) {
+        guint32 timestamp = (guint32)(*jniEnv)->GetIntField(
+            jniEnv, jAtkKeyEvent, jfidTimestamp);
+        if (timestamp) {
+            event->timestamp = timestamp;
+        }
+    }
 
     jaw_util_dispatch_key_event(event);
 
-    (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, event->string);
+    // clean up
     g_free(event);
-
     queue_free_callback_para_event(para);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     return G_SOURCE_REMOVE;
 }
 
