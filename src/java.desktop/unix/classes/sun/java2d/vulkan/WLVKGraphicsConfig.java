@@ -59,6 +59,11 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
         return offscreenConfig;
     }
 
+    @Override
+    public double getScale() {
+        return getEffectiveScale();
+    }
+
     public static WLVKGraphicsConfig getConfig(VKGraphicsConfig offscreenConfig, WLGraphicsDevice device,
                                                int x, int y, int xLogical, int yLogical,
                                                int width, int height, int widthLogical, int heightLogical,
