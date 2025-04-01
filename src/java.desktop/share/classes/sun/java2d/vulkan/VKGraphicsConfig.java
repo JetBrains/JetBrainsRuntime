@@ -63,6 +63,10 @@ public interface VKGraphicsConfig extends AccelGraphicsConfig, SurfaceManager.Pr
         return getOffscreenConfig().getFormat();
     }
 
+    default double getScale() {
+        return 1;
+    }
+
     @Override
     default SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
         return getGPU().getSurfaceDataProxyCache();
