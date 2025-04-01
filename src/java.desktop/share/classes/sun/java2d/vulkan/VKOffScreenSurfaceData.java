@@ -27,19 +27,24 @@ package sun.java2d.vulkan;
 
 import java.awt.Image;
 import java.awt.Rectangle;
+import java.awt.image.VolatileImage;
+
 import sun.java2d.SurfaceData;
 
 /**
  * SurfaceData object representing an off-screen buffer
  */
 public class VKOffScreenSurfaceData extends VKSurfaceData {
+
     private final Image offscreenImage;
+    private final int userWidth, userHeight; // In logical units.
+
     private native void initOps(int format);
 
     public VKOffScreenSurfaceData(Image image, VKFormat format, int transparency, int type, int width, int height) {
         super(format, transparency, type);
-        this.width = width;
-        this.height = height;
+        this.userWidth = width;
+        this.userHeight = height;
         offscreenImage = image;
         initOps(format.getValue(transparency));
     }
@@ -69,7 +74,13 @@ public class VKOffScreenSurfaceData extends VKSurfaceData {
 
     @Override
     protected int revalidate(VKGraphicsConfig gc) {
-        return super.revalidate(gc.getOffscreenConfig());
+        int result = super.revalidate(gc);
+        if (result != VolatileImage.IMAGE_INCOMPATIBLE) {
+            scale = gc.getScale();
+            width = (int) Math.ceil(scale * userWidth);
+            height = (int) Math.ceil(scale * userHeight);
+        }
+        return result;
     }
 
     @Override
