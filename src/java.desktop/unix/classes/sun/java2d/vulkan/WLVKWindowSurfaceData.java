@@ -25,26 +25,19 @@
 
 package sun.java2d.vulkan;
 
-import java.awt.AlphaComposite;
 import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
-import sun.awt.image.BufImgSurfaceData;
 import sun.awt.wl.WLComponentPeer;
 import sun.java2d.SurfaceData;
-import sun.java2d.loops.Blit;
-import sun.java2d.loops.CompositeType;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.wl.WLPixelGrabberExt;
 import sun.java2d.wl.WLSurfaceDataExt;
 
 public class WLVKWindowSurfaceData extends VKSurfaceData
-        implements WLPixelGrabberExt, WLSurfaceDataExt
-{
+        implements WLPixelGrabberExt, WLSurfaceDataExt {
     private final WLComponentPeer peer;
-    // TODO Do we really need the scale there? It is used by getDefaultScaleX/Y...
-    private int scale = 1;
 
     private native void initOps(int format, int backgroundRGB);
 
@@ -79,16 +72,6 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
      */
     public Object getDestination() {
         return peer.getTarget();
-    }
-
-    @Override
-    public double getDefaultScaleX() {
-        return scale;
-    }
-
-    @Override
-    public double getDefaultScaleY() {
-        return scale;
     }
 
     @Override
