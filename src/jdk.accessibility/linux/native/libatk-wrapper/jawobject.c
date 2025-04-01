@@ -872,12 +872,12 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
         (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, child_ac);
     // From the documentation of `ref_child` in AtkObject
     // (https://docs.gtk.org/atk/vfunc.Object.ref_child.html): The returned data
-    // is owned by the instance, so the object is not referenced before being returned.
-    // Documentation in the repository states nothing about it.
-    // In fact, `ref_child` is used in `atk_object_ref_accessible_child`, where the caller
-    // takes ownership of the returned data and is responsible for freeing it.
-    // `atk_object_ref_accessible_child` does not reference the object.
-    // Therefore, I assume that `ref_child` should reference the object.
+    // is owned by the instance, so the object is not referenced before being
+    // returned. Documentation in the repository states nothing about it. In
+    // fact, `ref_child` is used in `atk_object_ref_accessible_child`, where the
+    // caller takes ownership of the returned data and is responsible for
+    // freeing it. `atk_object_ref_accessible_child` does not reference the
+    // object. Therefore, I assume that `ref_child` should reference the object.
     if (obj) {
         g_object_ref(obj);
     }
