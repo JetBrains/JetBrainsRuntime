@@ -1382,23 +1382,9 @@ static gboolean key_dispatch_handler(gpointer p) {
 
     jint type_pressed =
         (*jniEnv)->GetStaticIntField(jniEnv, classAtkKeyEvent, jfidTypePressed);
-    if (!type_pressed) {
-        // Unknown event type: clean up and exit
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        g_free(event);
-        queue_free_callback_para_event(para);
-        return G_SOURCE_REMOVE;
-    }
 
     jint type_released = (*jniEnv)->GetStaticIntField(jniEnv, classAtkKeyEvent,
                                                       jfidTypeReleased);
-    if (!type_released) {
-        // Unknown event type: clean up and exit
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        g_free(event);
-        queue_free_callback_para_event(para);
-        return G_SOURCE_REMOVE;
-    }
 
     if (type == type_pressed) {
         event->type = ATK_KEY_EVENT_PRESS;
