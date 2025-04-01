@@ -565,8 +565,9 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
         jobject jparent = (*jniEnv)->CallStaticObjectMethod(
             jniEnv, atkObject, jmidgap, jAccessibleContext);
 
-        if (jparent == NULL)
+        if (jparent == NULL) {
             return ATK_ROLE_APPLICATION;
+        }
 
         return ATK_ROLE_UNKNOWN;
     }

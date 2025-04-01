@@ -347,6 +347,8 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
         atk_object_get_n_accessible_children(atk_obj) == 1) {
         AtkSelection *selection = ATK_SELECTION(atk_obj);
         if (selection != NULL) {
+            // The caller of the method takes ownership of the returned data,
+            // and is responsible for freeing it.
             AtkObject *child = atk_selection_ref_selection(selection, 0);
             if (child != NULL) {
                 const gchar *name = atk_object_get_name(child);
@@ -749,8 +751,9 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
 
     JAW_GET_OBJECT(atk_obj, NULL);
 
-    if (atk_obj->relation_set)
+    if (atk_obj->relation_set) {
         g_object_unref(G_OBJECT(atk_obj->relation_set));
+    }
     atk_obj->relation_set = atk_relation_set_new();
 
     jclass atkObject =

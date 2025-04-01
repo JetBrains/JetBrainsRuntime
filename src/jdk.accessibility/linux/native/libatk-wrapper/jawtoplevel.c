@@ -115,6 +115,8 @@ static const gchar *jaw_toplevel_get_name(AtkObject *obj) {
 
     gint n_accessible_children = atk_object_get_n_accessible_children(obj);
     for (gint i = 0; i < n_accessible_children; i++) {
+        // the caller of the method takes ownership of the returned data, and is
+        // responsible for freeing it.
         AtkObject *child = atk_object_ref_accessible_child(obj, i);
         if (child != NULL) {
             const gchar *name = atk_object_get_name(child);
