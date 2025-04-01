@@ -1132,14 +1132,14 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
         if (!child_ac) {
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            free_callback_para(para);
+            queue_free_callback_para(para);
             return;
         }
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
         if (child_impl == NULL) {
             JAW_DEBUG_I("child_impl == NULL");
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            free_callback_para(para);
+            queue_free_callback_para(para);
             return;
         }
         g_object_ref(child_impl);
@@ -1150,13 +1150,13 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
         if (!child_ac) {
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            free_callback_para(para);
+            queue_free_callback_para(para);
         }
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
         if (child_impl == NULL) {
             JAW_DEBUG_I("child_impl == NULL");
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            free_callback_para(para);
+            queue_free_callback_para(para);
             return;
         }
         g_object_ref(child_impl);
