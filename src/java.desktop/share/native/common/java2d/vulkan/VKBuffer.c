@@ -32,7 +32,7 @@
 #include "VKDevice.h"
 #include "VKRenderer.h"
 
-const size_t VK_BUFFER_CREATE_THRESHOLD = 128;
+const size_t VK_BUFFER_CREATE_THRESHOLD = 0xDC000;
 
 static VKMemory VKBuffer_DestroyBuffersOnFailure(VKDevice* device, VKMemory page, uint32_t bufferCount, VKBuffer* buffers) {
     assert(device != NULL && device->allocator != NULL);
