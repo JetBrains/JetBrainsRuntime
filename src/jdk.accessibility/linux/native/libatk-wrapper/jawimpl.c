@@ -200,17 +200,31 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
         return NULL;
     }
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
+
     jclass classAtkWrapper =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
-    JAW_CHECK_NULL(classAtkWrapper, NULL);
+    if (!classAtkWrapper) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     jmethodID jmid_get_native_resources = (*jniEnv)->GetStaticMethodID(
         jniEnv, classAtkWrapper, "get_native_resources",
         "(Ljavax/accessibility/AccessibleContext;)J");
-
+    if (!jmid_get_native_resources) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jlong reference = (*jniEnv)->CallStaticLongMethod(
         jniEnv, classAtkWrapper, jmid_get_native_resources, ac);
-
+    if (!reference) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     if (reference != -1) {
         return (JawImpl *)reference;
     }
@@ -220,14 +234,22 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     jmethodID jmid_add_native_resources = (*jniEnv)->GetStaticMethodID(
         jniEnv, classAtkWrapper, "add_native_resources",
         "(Ljavax/accessibility/AccessibleContext;J)J");
-
+    if (!jmid_add_native_resources) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jlong new_reference = (*jniEnv)->CallStaticLongMethod(
         jniEnv, classAtkWrapper, jmid_add_native_resources, ac,
         (jlong)jaw_impl);
-
+    if (!new_reference) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     if (new_reference != (jlong)jaw_impl) {
         g_object_unref(jaw_impl);
     }
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return (JawImpl *)new_reference;
 }
@@ -497,17 +519,32 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, );
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return;
+    }
+
     jclass classAtkWrapper =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
-    JAW_CHECK_NULL(classAtkWrapper, );
+    if (!classAtkWrapper) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classAtkWrapper, "register_property_change_listener",
         "(Ljavax/accessibility/AccessibleContext;)V");
-    JAW_CHECK_NULL(jmid, );
+    if (!jmid) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    };
     jobject ac = (*jniEnv)->NewGlobalRef(jniEnv, jaw_obj->acc_context);
-    JAW_CHECK_NULL(ac, );
+    if (!ac) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     (*jniEnv)->CallStaticVoidMethod(jniEnv, classAtkWrapper, jmid, ac);
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
@@ -519,17 +556,33 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
         return FALSE;
     }
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAccessibleRelation =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRelation");
-    JAW_CHECK_NULL(classAccessibleRelation, FALSE);
+    if (!classAccessibleRelation) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
 
     jfieldID jfid = (*jniEnv)->GetStaticFieldID(jniEnv, classAccessibleRelation,
                                                 strKey, "Ljava/lang/String;");
-    JAW_CHECK_NULL(jfid, FALSE);
+    if (!jfid) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
 
     jstring jConstKey =
         (*jniEnv)->GetStaticObjectField(jniEnv, classAccessibleRelation, jfid);
+    if (!jConstKey) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
 
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     // jKey and jConstKey may be null
     return (*jniEnv)->IsSameObject(jniEnv, jKey, jConstKey);
 }

@@ -370,11 +370,9 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
         jniEnv, atk_action, jmid, (jint)i, (jstring)description);
     (*jniEnv)->DeleteGlobalRef(
         jniEnv, atk_action); // deleting ref that was created in JAW_GET_ACTION
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    if (!jisset) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
+    JAW_CHECK_NULL(jisset, FALSE);
 
     return jisset;
 }

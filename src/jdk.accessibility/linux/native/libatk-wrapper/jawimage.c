@@ -65,16 +65,31 @@ gpointer jaw_image_data_init(jobject ac) {
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
+
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
+
     jclass classImage =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkImage");
-    JAW_CHECK_NULL(classImage, NULL);
+    if (!classImage) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
+
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classImage, "create_atk_image",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkImage;");
-    JAW_CHECK_NULL(jmid, NULL);
+    if (!jmid) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
+
     jobject jatk_image =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classImage, jmid, ac);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     JAW_CHECK_NULL(jatk_image, NULL);
     data->atk_image = (*jniEnv)->NewGlobalRef(jniEnv, jatk_image);
 
@@ -122,6 +137,14 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
 
     JAW_GET_IMAGE(image, );
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_image); // deleting ref that was created in JAW_GET_IMAGE
+        g_warning("Failed to create a new local reference frame");
+        return;
+    }
+
     (*x) = -1;
     (*y) = -1;
 
@@ -129,32 +152,59 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkImage");
     if (!classAtkImage) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkImage, "get_image_position", "(I)Ljava/awt/Point;");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobject jpoint =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_image, jmid, (jint)coord_type);
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
-    JAW_CHECK_NULL(jpoint, );
-
+    if (!jpoint) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jclass classPoint = (*jniEnv)->FindClass(jniEnv, "java/awt/Point");
-    JAW_CHECK_NULL(classPoint, );
+    if (!classPoint) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jfieldID jfidX = (*jniEnv)->GetFieldID(jniEnv, classPoint, "x", "I");
-    JAW_CHECK_NULL(jfidX, );
+    if (!jfidX) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jfieldID jfidY = (*jniEnv)->GetFieldID(jniEnv, classPoint, "y", "I");
-    JAW_CHECK_NULL(jfidY, );
+    if (!jfidY) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jint jx = (*jniEnv)->GetIntField(jniEnv, jpoint, jfidX);
-    JAW_CHECK_NULL(jx, );
+    if (!jx) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jint jy = (*jniEnv)->GetIntField(jniEnv, jpoint, jfidY);
-    JAW_CHECK_NULL(jy, );
+    if (!jy) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
 
     (*x) = (gint)jx;
     (*y) = (gint)jy;
+
+    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 static const gchar *jaw_image_get_image_description(AtkImage *image) {
@@ -168,20 +218,33 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
 
     JAW_GET_IMAGE(image, NULL);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_image); // deleting ref that was created in JAW_GET_IMAGE
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
+
     jclass classAtkImage =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkImage");
     if (!classAtkImage) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkImage, "get_image_description", "()Ljava/lang/String;");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jstring jstr = (*jniEnv)->CallObjectMethod(jniEnv, atk_image, jmid);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     JAW_CHECK_NULL(jstr, NULL);
 
     if (data->jstrImageDescription != NULL) {
@@ -209,6 +272,15 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
     }
 
     JAW_GET_IMAGE(image, );
+
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_image); // deleting ref that was created in JAW_GET_IMAGE
+        g_warning("Failed to create a new local reference frame");
+        return;
+    }
+
     (*width) = -1;
     (*height) = -1;
 
@@ -216,30 +288,51 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkImage");
     if (!classAtkImage) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkImage, "get_image_size", "()Ljava/awt/Dimension;");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobject jdimension = (*jniEnv)->CallObjectMethod(jniEnv, atk_image, jmid);
+    if (!jdimension) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
-    JAW_CHECK_NULL(jdimension, );
 
     jclass classDimension = (*jniEnv)->FindClass(jniEnv, "java/awt/Dimension");
-    JAW_CHECK_NULL(classDimension, );
+    if (!classDimension) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jfieldID jfidWidth =
         (*jniEnv)->GetFieldID(jniEnv, classDimension, "width", "I");
-    JAW_CHECK_NULL(jfidWidth, );
+    if (!jfidWidth) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jfieldID jfidHeight =
         (*jniEnv)->GetFieldID(jniEnv, classDimension, "height", "I");
-    JAW_CHECK_NULL(jfidHeight, );
+    if (!jfidHeight) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jint jwidth = (*jniEnv)->GetIntField(jniEnv, jdimension, jfidWidth);
-    JAW_CHECK_NULL(jwidth, );
+    if (!jwidth) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jint jheight = (*jniEnv)->GetIntField(jniEnv, jdimension, jfidHeight);
-    JAW_CHECK_NULL(jheight, );
+    if (!jheight) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
 
     (*width) = (gint)jwidth;
     (*height) = (gint)jheight;

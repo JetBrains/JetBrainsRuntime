@@ -81,18 +81,31 @@ gpointer jaw_editable_text_data_init(jobject ac) {
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
 
     jclass classEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
-    JAW_CHECK_NULL(classEditableText, NULL);
+    if (!classEditableText) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classEditableText, "create_atk_editable_text",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkEditableText;");
-    JAW_CHECK_NULL(jmid, NULL);
+    if (!jmid) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jobject jatk_editable_text =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classEditableText, jmid, ac);
-    JAW_CHECK_NULL(jatk_editable_text, NULL);
+    if (!jatk_editable_text) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     data->atk_editable_text =
         (*jniEnv)->NewGlobalRef(jniEnv, jatk_editable_text);
 
@@ -129,10 +142,20 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
 
     JAW_GET_EDITABLETEXT(text, );
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_editable_text); // deleting ref that was created in
+                                // JAW_GET_EDITABLETEXT
+        g_warning("Failed to create a new local reference frame");
+        return;
+    }
+
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
     if (!classAtkEditableText) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid =
@@ -140,15 +163,18 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
                                "set_text_contents", "(Ljava/lang/String;)V");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, string);
     if (!jstr) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, jstr);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
@@ -163,26 +189,41 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
 
     JAW_GET_EDITABLETEXT(text, );
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_editable_text); // deleting ref that was created in
+                                // JAW_GET_EDITABLETEXT
+        g_warning("Failed to create a new local reference frame");
+        return;
+    }
+
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
     if (!classAtkEditableText) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkEditableText, "insert_text", "(Ljava/lang/String;I)V");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, string);
     if (!jstr) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, jstr,
                               (jint)*position);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     *position = *position + length;
     atk_text_set_caret_offset(ATK_TEXT(jaw_obj), *position);
 }
@@ -199,21 +240,33 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
 
     JAW_GET_EDITABLETEXT(text, );
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_editable_text); // deleting ref that was created in
+                                // JAW_GET_EDITABLETEXT
+        g_warning("Failed to create a new local reference frame");
+        return;
+    }
+
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
     if (!classAtkEditableText) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
                                             "copy_text", "(II)V");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)start_pos,
                               (jint)end_pos);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
@@ -228,21 +281,33 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
 
     JAW_GET_EDITABLETEXT(text, );
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_editable_text); // deleting ref that was created in
+                                // JAW_GET_EDITABLETEXT
+        g_warning("Failed to create a new local reference frame");
+        return;
+    }
+
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
     if (!classAtkEditableText) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
                                             "cut_text", "(II)V");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)start_pos,
                               (jint)end_pos);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
@@ -257,21 +322,33 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
 
     JAW_GET_EDITABLETEXT(text, );
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_editable_text); // deleting ref that was created in
+                                // JAW_GET_EDITABLETEXT
+        g_warning("Failed to create a new local reference frame");
+        return;
+    }
+
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
     if (!classAtkEditableText) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
                                             "delete_text", "(II)V");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)start_pos,
                               (jint)end_pos);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
@@ -285,20 +362,32 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
 
     JAW_GET_EDITABLETEXT(text, );
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_editable_text); // deleting ref that was created in
+                                // JAW_GET_EDITABLETEXT
+        g_warning("Failed to create a new local reference frame");
+        return;
+    }
+
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
     if (!classAtkEditableText) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
                                             "paste_text", "(I)V");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)position);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 static gboolean
@@ -315,10 +404,20 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
 
     JAW_GET_EDITABLETEXT(text, FALSE);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_editable_text); // deleting ref that was created in
+                                // JAW_GET_EDITABLETEXT
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAtkEditableText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
     if (!classAtkEditableText) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
@@ -326,11 +425,17 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
         "(Ljavax/swing/text/AttributeSet;II)Z");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_editable_text, jmid, (jobject)attrib_set,
         (jint)start_offset, (jint)end_offset);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
+    JAW_CHECK_NULL(jresult, FALSE);
+
     return jresult;
 }

@@ -129,22 +129,35 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
 
     JAW_GET_HYPERLINK(atk_hyperlink, NULL);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
+
     jclass classAtkHyperlink =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHyperlink");
     if (!classAtkHyperlink) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkHyperlink,
                                             "get_uri", "(I)Ljava/lang/String;");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jstring jstr =
         (*jniEnv)->CallObjectMethod(jniEnv, jhyperlink, jmid, (jint)i);
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
-    JAW_CHECK_NULL(jstr, NULL);
+    if (!jstr) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     if (jaw_hyperlink->jstrUri != NULL) {
         if (jaw_hyperlink->uri != NULL) {
@@ -157,6 +170,9 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     jaw_hyperlink->jstrUri = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     jaw_hyperlink->uri = (gchar *)(*jniEnv)->GetStringUTFChars(
         jniEnv, jaw_hyperlink->jstrUri, NULL);
+
+    (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jaw_hyperlink->uri;
 }
@@ -182,10 +198,19 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
 
     JAW_GET_HYPERLINK(atk_hyperlink, NULL);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
+
     jclass classAtkHyperlink =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHyperlink");
     if (!classAtkHyperlink) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid =
@@ -193,10 +218,14 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
                                "(I)Ljavax/accessibility/AccessibleContext;");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobject ac = (*jniEnv)->CallObjectMethod(jniEnv, jhyperlink, jmid, (jint)i);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     JAW_CHECK_NULL(ac, NULL);
 
     AtkObject *obj = (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, ac);
@@ -223,20 +252,33 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
 
     JAW_GET_HYPERLINK(atk_hyperlink, -1);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
+        g_warning("Failed to create a new local reference frame");
+        return -1;
+    }
+
     jclass classAtkHyperlink =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHyperlink");
     if (!classAtkHyperlink) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkHyperlink,
                                             "get_end_index", "()I");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
     }
     jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, jmid);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     JAW_CHECK_NULL(jindex, -1);
 
     return jindex;
@@ -258,20 +300,33 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
 
     JAW_GET_HYPERLINK(atk_hyperlink, -1);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
+        g_warning("Failed to create a new local reference frame");
+        return -1;
+    }
+
     jclass classAtkHyperlink =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHyperlink");
     if (!classAtkHyperlink) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkHyperlink,
                                             "get_start_index", "()I");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
     }
     jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, jmid);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     JAW_CHECK_NULL(jindex, -1);
 
     return jindex;
@@ -287,20 +342,33 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
 
     JAW_GET_HYPERLINK(atk_hyperlink, FALSE);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAtkHyperlink =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHyperlink");
     if (!classAtkHyperlink) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkHyperlink, "is_valid", "()Z");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jboolean jvalid = (*jniEnv)->CallBooleanMethod(jniEnv, jhyperlink, jmid);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     JAW_CHECK_NULL(jvalid, FALSE);
 
     return jvalid;
@@ -320,20 +388,33 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
 
     JAW_GET_HYPERLINK(atk_hyperlink, 0);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
+        g_warning("Failed to create a new local reference frame");
+        return 0;
+    }
+
     jclass classAtkHyperlink =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHyperlink");
     if (!classAtkHyperlink) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkHyperlink,
                                             "get_n_anchors", "()I");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
     jint janchors = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, jmid);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     JAW_CHECK_NULL(janchors, 0);
 
     return janchors;
