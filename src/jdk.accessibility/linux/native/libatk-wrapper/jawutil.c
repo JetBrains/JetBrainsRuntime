@@ -266,6 +266,7 @@ JNIEnv *jaw_util_get_jni_env(void) {
         JavaVMAttachArgs args;
         args.version = JNI_VERSION_1_6;
         args.name = "JavaAtkWrapper-JNI-Attached-Thread";
+        args.group = NULL;
         res =
             (*cachedJVM)
                 ->AttachCurrentThreadAsDaemon(cachedJVM, (void **)&env, &args);
