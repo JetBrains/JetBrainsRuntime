@@ -50,13 +50,6 @@ public class VKDrawImage extends DrawImage {
         // punt to the MediaLib-based transformImage() in the superclass if:
         //     - bicubic interpolation is specified
         //     - a background color is specified and will be used
-        //     - the source surface is neither a texture nor render-to-texture
-        //       surface, and a non-default interpolation hint is specified
-        //       (we can only control the filtering for texture->surface
-        //       copies)
-        //         REMIND: we should tweak the sw->texture->surface
-        //         transform case to handle filtering appropriately
-        //         (see 4841762)...
         //     - an appropriate TransformBlit primitive could not be found
         if (interpType != AffineTransformOp.TYPE_BICUBIC) {
             SurfaceData dstData = sg.surfaceData;
@@ -66,12 +59,7 @@ public class VKDrawImage extends DrawImage {
                             sg.imageComp,
                             bgColor);
 
-            if (srcData != null &&
-                    !isBgOperation(srcData, bgColor) &&
-                    (srcData.getSurfaceType() == VKSurfaceData.VKTexture ||
-                            srcData.getSurfaceType() == VKSurfaceData.VKSurfaceRTT ||
-                            interpType == AffineTransformOp.TYPE_NEAREST_NEIGHBOR))
-            {
+            if (srcData != null && !isBgOperation(srcData, bgColor)) {
                 SurfaceType srcType = srcData.getSurfaceType();
                 SurfaceType dstType = dstData.getSurfaceType();
                 TransformBlit blit = TransformBlit.getFromCache(srcType,
