@@ -215,10 +215,10 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     assert(reference != -1);
 
     JawImpl *jaw_impl = (JawImpl *)reference;
-    if (jaw_impl == NULL || jaw_impl == jaw_impl_default) {
+    if (jaw_impl != NULL && jaw_impl == jaw_impl_default) {
         return jaw_impl; // No leak of jaw_impl_default
     }
-    g_object_ref(G_OBJECT(jaw_impl_default));
+    g_object_unref(G_OBJECT(jaw_impl_default));
 
     return jaw_impl;
 }
