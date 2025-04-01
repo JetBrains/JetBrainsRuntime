@@ -56,40 +56,9 @@ import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_PS30;
 public abstract class VKSurfaceData extends SurfaceData
         implements AccelSurface {
 
-    /**
-     * Pixel formats
-     */
-    public static final int PF_INT_ARGB        = 0;
-    public static final int PF_INT_ARGB_PRE    = 1;
-    public static final int PF_INT_RGB         = 2;
-    public static final int PF_INT_RGBX        = 3;
-    public static final int PF_INT_BGR         = 4;
-    public static final int PF_INT_BGRX        = 5;
-    public static final int PF_USHORT_565_RGB  = 6;
-    public static final int PF_USHORT_555_RGB  = 7;
-    public static final int PF_USHORT_555_RGBX = 8;
-    public static final int PF_BYTE_GRAY       = 9;
-    public static final int PF_USHORT_GRAY     = 10;
-    public static final int PF_3BYTE_BGR       = 11;
-    /**
-     * SurfaceTypes
-     */
-
-    private static final String DESC_VK_SURFACE = "VK Surface";
-    private static final String DESC_VK_SURFACE_RTT =
-            "VK Surface (render-to-texture)";
-    private static final String DESC_VK_TEXTURE = "VK Texture";
-
-
     // We want non-premultiplied alpha to prevent precision loss, so use PixelConverter.Argb
     // See also VKUtil_DecodeJavaColor.
-    static final SurfaceType VKSurface =
-            SurfaceType.Any.deriveSubType(DESC_VK_SURFACE,
-                    PixelConverter.Argb.instance);
-    static final SurfaceType VKSurfaceRTT =
-            VKSurface.deriveSubType(DESC_VK_SURFACE_RTT);
-    static final SurfaceType VKTexture =
-            SurfaceType.Any.deriveSubType(DESC_VK_TEXTURE);
+    static final SurfaceType VKSurface = SurfaceType.Any.deriveSubType("VK Surface", PixelConverter.Argb.instance);
 
     protected static VKRenderer vkRenderPipe;
     protected static PixelToParallelogramConverter vkTxRenderPipe;
@@ -116,13 +85,10 @@ public abstract class VKSurfaceData extends SurfaceData
 
     private final VKFormat format;
     private VKGraphicsConfig gc;
+    protected double scale;
     protected int width;
     protected int height;
-    protected int type;
-    // these fields are set from the native code when the surface is
-    // initialized
-    private int nativeWidth;
-    private int nativeHeight;
+    private int type;
 
     protected VKSurfaceData(VKFormat format, int transparency, int type) {
         super(format.getSurfaceType(transparency), format.getFormatModel(transparency).getColorModel());
@@ -132,6 +98,16 @@ public abstract class VKSurfaceData extends SurfaceData
 
     public VKFormat getFormat() {
         return format;
+    }
+
+    @Override
+    public double getDefaultScaleX() {
+        return scale;
+    }
+
+    @Override
+    public double getDefaultScaleY() {
+        return scale;
     }
 
     /**
@@ -176,16 +152,9 @@ public abstract class VKSurfaceData extends SurfaceData
         return getSnapshot(x, y, w, h).getRaster().createTranslatedChild(x, y);
     }
 
-
-
+    @Override
     public Rectangle getNativeBounds() {
-        VKRenderQueue rq = VKRenderQueue.getInstance();
-        rq.lock();
-        try {
-            return new Rectangle(nativeWidth, nativeHeight);
-        } finally {
-            rq.unlock();
-        }
+        return new Rectangle(width, height);
     }
 
     public void validatePipe(SunGraphics2D sg2d) {
@@ -299,9 +268,8 @@ public abstract class VKSurfaceData extends SurfaceData
     }
 
     protected int revalidate(VKGraphicsConfig gc) {
-        if (gc.getFormat() != format) {
-            throw new IllegalArgumentException("Wrong GC format, expected " + format + ", got " + gc.getFormat());
-        } else if (this.gc == gc) return VolatileImage.IMAGE_OK;
+        if (gc.getFormat() != format) return VolatileImage.IMAGE_INCOMPATIBLE;
+        else if (this.gc == gc) return VolatileImage.IMAGE_OK;
         // TODO proxy cache needs to be cleared for this surface data?
         setBlitProxyCache(gc.getGPU().getSurfaceDataProxyCache());
         this.gc = gc;
