@@ -370,6 +370,8 @@ public class AtkWrapper {
                     default:
                         break;
                 }
+            } else if (e instanceof KeyEvent keyEvent) {
+                AtkWrapper.dispatchKeyEvent(new AtkKeyEvent(keyEvent));
             }
         }
     };
@@ -739,18 +741,8 @@ public class AtkWrapper {
         toolkit.addAWTEventListener(globalListener,
                 AWTEvent.WINDOW_EVENT_MASK |
                         AWTEvent.FOCUS_EVENT_MASK |
-                        AWTEvent.CONTAINER_EVENT_MASK);
-        if (toolkit.getSystemEventQueue() != null) {
-            // TODO: Remove the replacement of the existing EventQueue
-            toolkit.getSystemEventQueue().push(new EventQueue() {
-                public void dispatchEvent(AWTEvent e) {
-                    if (e instanceof KeyEvent keyEvent) {
-                        AtkWrapper.dispatchKeyEvent(new AtkKeyEvent(keyEvent));
-                    }
-                    super.dispatchEvent(e);
-                }
-            });
-        }
+                        AWTEvent.CONTAINER_EVENT_MASK|
+                        AWTEvent.KEY_EVENT_MASK);
     }
 
     public static void main(String args[]) {
