@@ -232,25 +232,9 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     return (JawImpl *)new_reference;
 }
 
+// todo: replace
 JawImpl *jaw_impl_get_instance_from_jaw(JNIEnv *jniEnv, jobject ac) {
-    JAW_DEBUG_C("%p, %p", jniEnv, ac);
-
-    if (!jniEnv || !ac) {
-        g_warning(
-            "Null argument passed to function jaw_impl_get_instance_from_jaw");
-        return NULL;
-    }
-
-    jclass classWrapper =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
-    JAW_CHECK_NULL(classWrapper, NULL);
-    jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classWrapper, "get_native_resources",
-        "(Ljavax/accessibility/AccessibleContext;)J");
-    JAW_CHECK_NULL(jmid, NULL);
-    jlong ptr = (*jniEnv)->CallStaticLongMethod(jniEnv, classWrapper, jmid, ac);
-    JAW_CHECK_NULL(ptr, NULL);
-    return (JawImpl *)(uintptr_t)ptr;
+    return jaw_impl_find_instance(jniEnv, ac);
 }
 
 // JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
