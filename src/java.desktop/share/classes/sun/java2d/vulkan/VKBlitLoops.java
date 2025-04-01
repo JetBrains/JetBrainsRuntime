@@ -556,6 +556,7 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
      * See decodeSrcType() in VKBlitLoops.c
      */
     private int encodeSrcType(SurfaceData src, VKSurfaceData dst) {
+        if (src.getNativeOps() == 0) return -1; // No native raster info - needs a staged blit.
         // We assume that the 4-byte sampled format is always supported.
         if (src.getColorModel() instanceof DirectColorModel dcm) {
             if (dcm.getTransferType() == DataBuffer.TYPE_INT) {
