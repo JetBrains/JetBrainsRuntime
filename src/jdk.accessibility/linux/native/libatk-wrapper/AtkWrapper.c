@@ -784,6 +784,7 @@ static gboolean signal_emit_handler(gpointer p) {
     CallbackPara *para = (CallbackPara *)p;
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
+    JAW_CHECK_NULL(jniEnv, FALSE);
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("Failed to create a new local reference frame");
         return FALSE;

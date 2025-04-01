@@ -108,18 +108,31 @@ gpointer jaw_component_data_init(jobject ac) {
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return 0;
+    }
 
     jclass classComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
-    JAW_CHECK_NULL(classComponent, NULL);
+    if (!classComponent) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classComponent, "create_atk_component",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkComponent;");
-    JAW_CHECK_NULL(jmid, NULL);
+    if (!jmid) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jobject jatk_component =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classComponent, jmid, ac);
-    JAW_CHECK_NULL(jatk_component, NULL);
+    if (!jatk_component) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     data->atk_component = (*jniEnv)->NewGlobalRef(jniEnv, jatk_component);
 
     return data;
@@ -156,23 +169,41 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
     }
 
     JAW_GET_COMPONENT(component, FALSE);
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_component); // deleting ref that was created in
+                            // JAW_GET_COMPONENT
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
 
     jclass classAtkComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
     if (!classAtkComponent) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv, atk_component); // deleting ref that was created in
+                                    // JAW_GET_COMPONENT
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkComponent, "contains", "(III)Z");
     if (!jmid) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv, atk_component); // deleting ref that was created in
+                                    // JAW_GET_COMPONENT
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jboolean jcontains = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, jmid, (jint)x, (jint)y, (jint)coord_type);
-    // deleting ref that was created in JAW_GET_COMPONENT
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+
+    (*jniEnv)->DeleteGlobalRef(
+        jniEnv,
+        atk_component); // deleting ref that was created in JAW_GET_COMPONENT
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     JAW_CHECK_NULL(jcontains, FALSE);
 
     return jcontains;
@@ -205,24 +236,43 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
 
     JAW_GET_COMPONENT(component, NULL);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_component); // deleting ref that was created in
+                            // JAW_GET_COMPONENT
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAtkComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
     if (!classAtkComponent) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv, atk_component); // deleting ref that was created in
+                                    // JAW_GET_COMPONENT
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkComponent, "get_accessible_at_point",
         "(III)Ljavax/accessibility/AccessibleContext;");
     if (!jmid) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv, atk_component); // deleting ref that was created in
+                                    // JAW_GET_COMPONENT
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobject child_ac = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_component, jmid, (jint)x, (jint)y, (jint)coord_type);
-    // deleting ref that was created in JAW_GET_COMPONENT
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-    JAW_CHECK_NULL(child_ac, NULL);
+    (*jniEnv)->DeleteGlobalRef(
+        jniEnv,
+        atk_component); // deleting ref that was created in JAW_GET_COMPONENT
+    if (child_ac) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(jniEnv, child_ac);
 
@@ -232,6 +282,8 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
     if (jaw_impl) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
 }
@@ -255,45 +307,73 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
 
     JAW_GET_COMPONENT(component, );
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_component); // deleting ref that was created in
+                            // JAW_GET_COMPONENT
+        g_warning("Failed to create a new local reference frame");
+        return;
+    }
+
     jclass classAtkComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
     if (!classAtkComponent) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkComponent, "get_extents", "(I)Ljava/awt/Rectangle;");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobject jrectangle = (*jniEnv)->CallObjectMethod(jniEnv, atk_component,
                                                      jmid, (jint)coord_type);
     // deleting ref that was created in JAW_GET_COMPONENT
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-    JAW_CHECK_NULL(jrectangle, );
 
     if (jrectangle == NULL) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         JAW_DEBUG_I("jrectangle == NULL");
         return;
     }
 
     jclass classRectangle = (*jniEnv)->FindClass(jniEnv, "java/awt/Rectangle");
-    JAW_CHECK_NULL(classRectangle, );
+    if (!classRectangle) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jfieldID jfidX = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "x", "I");
-    JAW_CHECK_NULL(jfidX, );
+    if (!jfidX) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jfieldID jfidY = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "y", "I");
-    JAW_CHECK_NULL(jfidY, );
+    if (!jfidY) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jfieldID jfidW =
         (*jniEnv)->GetFieldID(jniEnv, classRectangle, "width", "I");
-    JAW_CHECK_NULL(jfidW, );
+    if (!jfidW) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    };
     jfieldID jfidH =
         (*jniEnv)->GetFieldID(jniEnv, classRectangle, "height", "I");
-    JAW_CHECK_NULL(jfidH, );
+    if (!jfidH) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     (*x) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, jfidX);
     (*y) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, jfidY);
     (*width) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, jfidW);
     (*height) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, jfidH);
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
@@ -310,24 +390,39 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
 
     JAW_GET_COMPONENT(component, FALSE);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_component); // deleting ref that was created in
+                            // JAW_GET_COMPONENT
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAtkComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
     if (!classAtkComponent) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkComponent,
                                             "set_extents", "(IIIII)Z");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jboolean assigned = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, jmid, (jint)x, (jint)y, (jint)width,
         (jint)height, (jint)coord_type);
-    // deleting ref that was created in JAW_GET_COMPONENT
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+
+    (*jniEnv)->DeleteGlobalRef(
+        jniEnv,
+        atk_component); // deleting ref that was created in JAW_GET_COMPONENT
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     JAW_CHECK_NULL(assigned, FALSE);
+
     return assigned;
 }
 
@@ -342,22 +437,37 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
 
     JAW_GET_COMPONENT(component, FALSE);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_component); // deleting ref that was created in
+                            // JAW_GET_COMPONENT
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAtkComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
     if (!classAtkComponent) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkComponent, "grab_focus", "()Z");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jboolean jresult =
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_component, jmid);
-    // deleting ref that was created in JAW_GET_COMPONENT
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+
+    (*jniEnv)->DeleteGlobalRef(
+        jniEnv,
+        atk_component); // deleting ref that was created in JAW_GET_COMPONENT
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     JAW_CHECK_NULL(jresult, FALSE);
     return jresult;
 }
@@ -373,22 +483,36 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
 
     JAW_GET_COMPONENT(component, 0);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_component); // deleting ref that was created in
+                            // JAW_GET_COMPONENT
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAtkComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
     if (!classAtkComponent) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkComponent, "get_layer", "()I");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jint jlayer = (*jniEnv)->CallIntMethod(jniEnv, atk_component, jmid);
-    // deleting ref that was created in JAW_GET_COMPONENT
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-    JAW_CHECK_NULL(jlayer, 0);
 
+    (*jniEnv)->DeleteGlobalRef(
+        jniEnv,
+        atk_component); // deleting ref that was created in JAW_GET_COMPONENT
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
+    JAW_CHECK_NULL(jlayer, 0);
     return (AtkLayer)jlayer;
 }
