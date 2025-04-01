@@ -796,10 +796,11 @@ static gboolean signal_emit_handler(gpointer p) {
     if (para->signal_id ==
         org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED) {
         pthread_mutex_lock(&jaw_vdc_dup_mutex);
-        if (jaw_vdc_last_ac == para->ac)
+        if ((*jniEnv)->IsSameObject(jniEnv, jaw_vdc_last_ac, para->ac)) {
             /* So we will be sending the visible data changed event. If any
-             * other comes, we will want to send it  */
+            * other comes, we will want to send it  */
             jaw_vdc_last_ac = NULL;
+        }
         pthread_mutex_unlock(&jaw_vdc_dup_mutex);
     }
 
@@ -1075,14 +1076,13 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
          * event, so we want to sent it again */
         jaw_vdc_last_ac = NULL;
     } else {
-        if (jaw_vdc_last_ac == jAccContext) {
+        if ((*jniEnv)->IsSameObject(jniEnv, jaw_vdc_last_ac, jAccContext)) {
             /* We have already queued to send one and nothing happened in
              * between, this one is really useless */
             pthread_mutex_unlock(&jaw_vdc_dup_mutex);
             return;
         }
-
-        jaw_vdc_last_ac = jAccContext;
+        jaw_vdc_last_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
     }
     pthread_mutex_unlock(&jaw_vdc_dup_mutex);
 
