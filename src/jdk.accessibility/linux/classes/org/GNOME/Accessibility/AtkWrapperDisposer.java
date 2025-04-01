@@ -116,9 +116,25 @@ public class AtkWrapperDisposer implements Runnable {
                 if (nativeReference != -1) {
                     PhantomReference<AccessibleContext> phantomReference = new PhantomReference<>(ac, queue);
                     phantomMap.put(phantomReference, nativeReference);
+                    weakHashMap.put(ac, nativeReference);
                 }
-                weakHashMap.put(ac, nativeReference);
             }
+        }
+    }
+
+    // todo: add documentation
+    public long addRecord(AccessibleContext ac, long nativeRef) {
+        synchronized (lock) {
+            if (!weakHashMap.containsKey(ac)) {
+                long nativeReference = nativeRef;
+                if (nativeReference != -1) {
+                    PhantomReference<AccessibleContext> phantomReference = new PhantomReference<>(ac, queue);
+                    phantomMap.put(phantomReference, nativeReference);
+                    weakHashMap.put(ac, nativeReference);
+                }
+                return nativeReference;
+            }
+            return weakHashMap.get(ac);
         }
     }
 
@@ -136,20 +152,5 @@ public class AtkWrapperDisposer implements Runnable {
             }
         }
         return -1;
-    }
-
-    // TODO: add documentation
-    public long getRecordWithDefaultReference(AccessibleContext ac, long nativeReference) {
-        synchronized (lock) {
-            if (weakHashMap.containsKey(ac)) {
-                return weakHashMap.get(ac);
-            }
-            if (nativeReference != -1) {
-                PhantomReference<AccessibleContext> phantomReference = new PhantomReference<>(ac, queue);
-                phantomMap.put(phantomReference, nativeReference);
-            }
-            weakHashMap.put(ac, nativeReference);
-        }
-        return nativeReference;
     }
 }

@@ -769,8 +769,8 @@ public class AtkWrapper {
         return AtkWrapperDisposer.getInstance().getRecord(ac);
     }
 
-    private static long get_or_add_native_resources(AccessibleContext ac, long nativeRef) {
-        return AtkWrapperDisposer.getInstance().getRecordWithDefaultReference(ac, nativeRef);
+    private static long add_native_resources(AccessibleContext ac, long nativeRef) {
+        return AtkWrapperDisposer.getInstance().addRecord(ac, nativeRef);
     }
 
     private static void register_property_change_listener(AccessibleContext ac) {

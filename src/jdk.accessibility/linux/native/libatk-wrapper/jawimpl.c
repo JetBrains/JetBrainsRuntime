@@ -204,23 +204,32 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
     JAW_CHECK_NULL(classAtkWrapper, NULL);
 
-    JawImpl *jaw_impl_default = jaw_impl_create_instance(jniEnv, ac);
-
-    jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classAtkWrapper, "get_or_add_native_resources",
-        "(Ljavax/accessibility/AccessibleContext;J)J");
+    jmethodID jmid_get_native_resources = (*jniEnv)->GetStaticMethodID(
+        jniEnv, classAtkWrapper, "get_native_resources",
+        "(Ljavax/accessibility/AccessibleContext;)J");
 
     jlong reference = (*jniEnv)->CallStaticLongMethod(
-        jniEnv, classAtkWrapper, jmid, ac, (jlong)jaw_impl_default);
-    assert(reference != -1);
+        jniEnv, classAtkWrapper, jmid_get_native_resources, ac);
 
-    JawImpl *jaw_impl = (JawImpl *)reference;
-    if (jaw_impl != NULL && jaw_impl == jaw_impl_default) {
-        return jaw_impl; // No leak of jaw_impl_default
+    if (reference != -1) {
+        return (JawImpl *)reference;
     }
-    g_object_unref(G_OBJECT(jaw_impl_default));
 
-    return jaw_impl;
+    JawImpl *jaw_impl = jaw_impl_create_instance(jniEnv, ac);
+
+    jmethodID jmid_add_native_resources = (*jniEnv)->GetStaticMethodID(
+        jniEnv, classAtkWrapper, "add_native_resources",
+        "(Ljavax/accessibility/AccessibleContext;J)J");
+
+    jlong new_reference = (*jniEnv)->CallStaticLongMethod(
+        jniEnv, classAtkWrapper, jmid_add_native_resources, ac,
+        (jlong)jaw_impl);
+
+    if (new_reference != (jlong)jaw_impl) {
+        g_object_unref(jaw_impl);
+    }
+
+    return (JawImpl *)new_reference;
 }
 
 JawImpl *jaw_impl_get_instance_from_jaw(JNIEnv *jniEnv, jobject ac) {
