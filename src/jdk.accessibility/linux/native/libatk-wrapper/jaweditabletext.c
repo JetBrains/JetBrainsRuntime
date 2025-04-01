@@ -109,6 +109,8 @@ gpointer jaw_editable_text_data_init(jobject ac) {
     data->atk_editable_text =
         (*jniEnv)->NewGlobalRef(jniEnv, jatk_editable_text);
 
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     return data;
 }
 
@@ -431,11 +433,13 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_editable_text, jmid, (jobject)attrib_set,
         (jint)start_offset, (jint)end_offset);
-
+    if (!jresult) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    JAW_CHECK_NULL(jresult, FALSE);
 
     return jresult;
 }

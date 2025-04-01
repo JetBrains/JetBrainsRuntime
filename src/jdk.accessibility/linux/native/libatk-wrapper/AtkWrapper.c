@@ -763,10 +763,10 @@ static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
+    gchar *result = g_strdup(nativeStr);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    gchar *result = g_strdup(nativeStr);
     return result;
 }
 
@@ -798,7 +798,7 @@ static gboolean signal_emit_handler(gpointer p) {
         pthread_mutex_lock(&jaw_vdc_dup_mutex);
         if ((*jniEnv)->IsSameObject(jniEnv, jaw_vdc_last_ac, para->ac)) {
             /* So we will be sending the visible data changed event. If any
-            * other comes, we will want to send it  */
+             * other comes, we will want to send it  */
             jaw_vdc_last_ac = NULL;
         }
         pthread_mutex_unlock(&jaw_vdc_dup_mutex);
@@ -1132,15 +1132,15 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     case org_GNOME_Accessibility_AtkSignal_OBJECT_CHILDREN_CHANGED_ADD: {
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
         if (!child_ac) {
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             queue_free_callback_para(para);
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
         if (child_impl == NULL) {
             JAW_DEBUG_I("child_impl == NULL");
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             queue_free_callback_para(para);
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
         g_object_ref(child_impl);
@@ -1150,14 +1150,15 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     case org_GNOME_Accessibility_AtkSignal_OBJECT_ACTIVE_DESCENDANT_CHANGED: {
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
         if (!child_ac) {
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             queue_free_callback_para(para);
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+            return;
         }
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
         if (child_impl == NULL) {
             JAW_DEBUG_I("child_impl == NULL");
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             queue_free_callback_para(para);
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
         g_object_ref(child_impl);
@@ -1166,9 +1167,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     }
     }
 
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     jni_main_idle_add(signal_emit_handler,
                       para); // calls `queue_free_callback_para`
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 static gboolean object_state_change_handler(gpointer p) {
@@ -1335,9 +1336,9 @@ static gboolean key_dispatch_handler(gpointer p) {
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkKeyEvent");
     if (!classAtkKeyEvent) {
         // Unknown event type: clean up and exit
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         g_free(event);
         queue_free_callback_para_event(para);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return G_SOURCE_REMOVE;
     }
 
@@ -1345,18 +1346,18 @@ static gboolean key_dispatch_handler(gpointer p) {
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "type", "I");
     if (!jfidType) {
         // Unknown event type: clean up and exit
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         g_free(event);
         queue_free_callback_para_event(para);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return G_SOURCE_REMOVE;
     }
 
     jint type = (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidType);
     if (!type) {
         // Unknown event type: clean up and exit
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         g_free(event);
         queue_free_callback_para_event(para);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return G_SOURCE_REMOVE;
     }
 
@@ -1364,9 +1365,9 @@ static gboolean key_dispatch_handler(gpointer p) {
         jniEnv, classAtkKeyEvent, "ATK_KEY_EVENT_PRESSED", "I");
     if (!jfidTypePressed) {
         // Unknown event type: clean up and exit
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         g_free(event);
         queue_free_callback_para_event(para);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return G_SOURCE_REMOVE;
     }
 
@@ -1374,9 +1375,9 @@ static gboolean key_dispatch_handler(gpointer p) {
         jniEnv, classAtkKeyEvent, "ATK_KEY_EVENT_RELEASED", "I");
     if (!jfidTypeReleased) {
         // Unknown event type: clean up and exit
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         g_free(event);
         queue_free_callback_para_event(para);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return G_SOURCE_REMOVE;
     }
 
@@ -1392,9 +1393,9 @@ static gboolean key_dispatch_handler(gpointer p) {
         event->type = ATK_KEY_EVENT_RELEASE;
     } else {
         // Unknown event type: clean up and exit
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         g_free(event);
         queue_free_callback_para_event(para);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return G_SOURCE_REMOVE;
     }
 

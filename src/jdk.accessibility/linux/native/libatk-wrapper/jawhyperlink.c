@@ -222,16 +222,18 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
         return NULL;
     }
     jobject ac = (*jniEnv)->CallObjectMethod(jniEnv, jhyperlink, jmid, (jint)i);
-
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    JAW_CHECK_NULL(ac, NULL);
-
+    if (!ac) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     AtkObject *obj = (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, ac);
     // From documentation of the `atk_hyperlink_get_object`:
     // The returned data is owned by the instance (transfer none), so we don't
     // ref the obj before returning it.
+
+    (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return obj;
 }
@@ -275,11 +277,14 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
         return -1;
     }
     jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, jmid);
+    if (!jindex) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return -1;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    JAW_CHECK_NULL(jindex, -1);
 
     return jindex;
 }
@@ -323,11 +328,14 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
         return -1;
     }
     jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, jmid);
+    if (!jindex) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return -1;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    JAW_CHECK_NULL(jindex, -1);
 
     return jindex;
 }
@@ -365,11 +373,14 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
         return FALSE;
     }
     jboolean jvalid = (*jniEnv)->CallBooleanMethod(jniEnv, jhyperlink, jmid);
+    if (!jvalid) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    JAW_CHECK_NULL(jvalid, FALSE);
 
     return jvalid;
 }
@@ -411,11 +422,14 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
         return 0;
     }
     jint janchors = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, jmid);
+    if (!janchors) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    JAW_CHECK_NULL(janchors, 0);
 
     return janchors;
 }

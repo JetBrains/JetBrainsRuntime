@@ -214,11 +214,14 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
         return 0;
     }
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, jmid);
+    if (!ret) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return 0;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    JAW_CHECK_NULL(ret, 0);
 
     return ret;
 }
@@ -266,11 +269,14 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
     }
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, jmid,
                                               (jint)char_index);
+    if (!ret) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return -1;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    JAW_CHECK_NULL(ret, -1);
 
     return ret;
 }

@@ -89,9 +89,14 @@ gpointer jaw_image_data_init(jobject ac) {
 
     jobject jatk_image =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classImage, jmid, ac);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-    JAW_CHECK_NULL(jatk_image, NULL);
+    if (!jatk_image) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
+
     data->atk_image = (*jniEnv)->NewGlobalRef(jniEnv, jatk_image);
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data;
 }
@@ -241,11 +246,11 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
         return NULL;
     }
     jstring jstr = (*jniEnv)->CallObjectMethod(jniEnv, atk_image, jmid);
-
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    JAW_CHECK_NULL(jstr, NULL);
+    if (!jstr) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     if (data->jstrImageDescription != NULL) {
         if (data->image_description != NULL) {
@@ -258,6 +263,9 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
     data->jstrImageDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     data->image_description = (gchar *)(*jniEnv)->GetStringUTFChars(
         jniEnv, data->jstrImageDescription, NULL);
+
+    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->image_description;
 }

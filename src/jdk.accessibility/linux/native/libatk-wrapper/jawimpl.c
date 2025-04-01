@@ -259,23 +259,6 @@ JawImpl *jaw_impl_get_instance_from_jaw(JNIEnv *jniEnv, jobject ac) {
     return jaw_impl_find_instance(jniEnv, ac);
 }
 
-// JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
-//     JAW_DEBUG_C("%p, %p", jniEnv, ac);
-//
-//     if (!jniEnv || !ac) {
-//         g_warning("Null argument passed to function");
-//         return NULL;
-//     }
-//
-//     JawImpl *jaw_impl = object_table_lookup(jniEnv, ac);
-//     if (jaw_impl == NULL) {
-//         JAW_DEBUG_I("jaw_impl == NULL");
-//         return NULL;
-//     }
-//
-//     return jaw_impl;
-// }
-
 static void jaw_impl_class_intern_init(gpointer klass, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", klass, data);
 

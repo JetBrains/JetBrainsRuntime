@@ -113,6 +113,8 @@ gpointer jaw_action_data_init(jobject ac) {
 
     data->atk_action = (*jniEnv)->NewGlobalRef(jniEnv, jatk_action);
 
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     return data;
 }
 
@@ -253,10 +255,19 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
         return 0;
     }
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_action, jmid);
+    if (!ret) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_action); // deleting ref that was created in JAW_GET_ACTION
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return 0;
+    }
+
     (*jniEnv)->DeleteGlobalRef(
-        jniEnv, atk_action); // deleting ref that was created in JAW_GET_ACTION
+        jniEnv,
+        atk_action); // deleting ref that was created in JAW_GET_ACTION
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-    JAW_CHECK_NULL(ret, 0);
+
     return ret;
 }
 
@@ -299,10 +310,10 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
     }
     jstring jstr =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_action, jmid, (jint)i);
-
-    (*jniEnv)->DeleteGlobalRef(
-        jniEnv, atk_action); // deleting ref that was created in JAW_GET_ACTION
     if (!jstr) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_action); // deleting ref that was created in JAW_GET_ACTION
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -322,7 +333,8 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         data->action_description = (gchar *)(*jniEnv)->GetStringUTFChars(
             jniEnv, data->jstrActionDescription, NULL);
     }
-
+    (*jniEnv)->DeleteGlobalRef(
+        jniEnv, atk_action); // deleting ref that was created in JAW_GET_ACTION
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->action_description;
@@ -368,11 +380,18 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
     }
     jboolean jisset = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_action, jmid, (jint)i, (jstring)description);
-    (*jniEnv)->DeleteGlobalRef(
-        jniEnv, atk_action); // deleting ref that was created in JAW_GET_ACTION
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+    if (!jisset) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_action); // deleting ref that was created in JAW_GET_ACTION
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
 
-    JAW_CHECK_NULL(jisset, FALSE);
+    (*jniEnv)->DeleteGlobalRef(
+        jniEnv,
+        atk_action); // deleting ref that was created in JAW_GET_ACTION
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jisset;
 }
@@ -420,6 +439,9 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         jniEnv, atk_action); // deleting ref that was created in JAW_GET_ACTION
 
     if (!jstr) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_action); // deleting ref that was created in JAW_GET_ACTION
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -433,7 +455,10 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     data->localized_name = (gchar *)(*jniEnv)->GetStringUTFChars(
         jniEnv, data->jstrLocalizedName, NULL);
 
+    (*jniEnv)->DeleteGlobalRef(
+        jniEnv, atk_action); // deleting ref that was created in JAW_GET_ACTION
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     return data->localized_name;
 }
 
@@ -476,9 +501,10 @@ static const gchar *jaw_action_get_keybinding(AtkAction *action, gint i) {
     }
     jstring jstr =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_action, jmid, (jint)i);
-    (*jniEnv)->DeleteGlobalRef(
-        jniEnv, atk_action); // deleting ref that was created in JAW_GET_ACTION
     if (!jstr) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_action); // deleting ref that was created in JAW_GET_ACTION
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -494,6 +520,8 @@ static const gchar *jaw_action_get_keybinding(AtkAction *action, gint i) {
     data->action_keybinding = (gchar *)(*jniEnv)->GetStringUTFChars(
         jniEnv, data->jstrActionKeybinding, NULL);
 
+    (*jniEnv)->DeleteGlobalRef(
+        jniEnv, atk_action); // deleting ref that was created in JAW_GET_ACTION
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->action_keybinding;

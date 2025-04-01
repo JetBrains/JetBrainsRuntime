@@ -69,18 +69,36 @@ gpointer jaw_selection_data_init(jobject ac) {
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
+
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
+
     jclass classSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    JAW_CHECK_NULL(classSelection, NULL);
+    if (!classSelection) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classSelection, "create_atk_selection",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkSelection;");
-    JAW_CHECK_NULL(jmid, NULL);
+    if (!jmid) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jobject jatk_selection =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classSelection, jmid, ac);
-    JAW_CHECK_NULL(jatk_selection, NULL);
+    if (!jatk_selection) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
+
     data->atk_selection = (*jniEnv)->NewGlobalRef(jniEnv, jatk_selection);
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data;
 }
@@ -115,22 +133,39 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
 
     JAW_GET_SELECTION(selection, FALSE);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_selection); // deleting ref that was created in
+                            // JAW_GET_SELECTION
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
     if (!classAtkSelection) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
                                             "add_selection", "(I)Z");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jboolean jbool =
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid, (jint)i);
+    if (!jbool) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    JAW_CHECK_NULL(jbool, FALSE);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jbool;
 }
@@ -146,21 +181,38 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
 
     JAW_GET_SELECTION(selection, FALSE);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_selection); // deleting ref that was created in
+                            // JAW_GET_SELECTION
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
     if (!classAtkSelection) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
                                             "clear_selection", "()Z");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid);
+    if (!jbool) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    JAW_CHECK_NULL(jbool, FALSE);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jbool;
 }
@@ -189,10 +241,20 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
 
     JAW_GET_SELECTION(selection, NULL);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_selection); // deleting ref that was created in
+                            // JAW_GET_SELECTION
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
+
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
     if (!classAtkSelection) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid =
@@ -200,12 +262,16 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
                                "(I)Ljavax/accessibility/AccessibleContext;");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobject child_ac =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_selection, jmid, (jint)i);
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    JAW_CHECK_NULL(child_ac, NULL);
+    if (!child_ac) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     AtkObject *obj =
         (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, child_ac);
@@ -216,6 +282,9 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
     if (obj) {
         g_object_ref(G_OBJECT(obj));
     }
+
+    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return obj;
 }
@@ -231,21 +300,38 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
 
     JAW_GET_SELECTION(selection, 0);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_selection); // deleting ref that was created in
+                            // JAW_GET_SELECTION
+        g_warning("Failed to create a new local reference frame");
+        return 0;
+    }
+
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
     if (!classAtkSelection) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
                                             "get_selection_count", "()I");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
     jint jcount = (*jniEnv)->CallIntMethod(jniEnv, atk_selection, jmid);
+    if (!jcount) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return 0;
+    }
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    JAW_CHECK_NULL(jcount, 0);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return (gint)jcount;
 }
@@ -262,22 +348,39 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
 
     JAW_GET_SELECTION(selection, FALSE);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_selection); // deleting ref that was created in
+                            // JAW_GET_SELECTION
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
     if (!jniEnv) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
                                             "is_child_selected", "(I)Z");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jboolean jbool =
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid, (jint)i);
+    if (!jbool) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    JAW_CHECK_NULL(jbool, FALSE);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jbool;
 }
@@ -294,22 +397,39 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
 
     JAW_GET_SELECTION(selection, FALSE);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_selection); // deleting ref that was created in
+                            // JAW_GET_SELECTION
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
     if (!classAtkSelection) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
                                             "remove_selection", "(I)Z");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jboolean jbool =
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid, (jint)i);
+    if (!jbool) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    JAW_CHECK_NULL(jbool, FALSE);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jbool;
 }
@@ -325,21 +445,38 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
 
     JAW_GET_SELECTION(selection, FALSE);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            atk_selection); // deleting ref that was created in
+                            // JAW_GET_SELECTION
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
     if (!classAtkSelection) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
                                             "select_all_selection", "()Z");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid);
+    if (!jbool) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    JAW_CHECK_NULL(jbool, FALSE);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jbool;
 }

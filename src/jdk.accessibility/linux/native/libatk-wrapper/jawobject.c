@@ -286,14 +286,17 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
     }
     jobject jparent =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, atkObject, jmid, ac);
-
-    (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    JAW_CHECK_NULL(jparent, NULL);
+    if (!jparent) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     AtkObject *parent_obj =
         (AtkObject *)jaw_impl_find_instance(jniEnv, jparent);
+
+    (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     if (parent_obj != NULL) {
         return parent_obj;
@@ -631,11 +634,14 @@ static gint jaw_object_get_n_children(AtkObject *atk_obj) {
         return 0;
     }
     jint count = (*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
+    if (!count) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return 0;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    JAW_CHECK_NULL(count, 0);
 
     return (gint)count;
 }
@@ -681,11 +687,14 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
         return -1;
     }
     jint index = (*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
+    if (!index) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return -1;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    JAW_CHECK_NULL(index, -1);
 
     return (gint)index;
 }
@@ -738,20 +747,20 @@ static gboolean is_collapsed_java_state(JNIEnv *jniEnv, jobject jobj) {
     jfieldID jfid =
         (*jniEnv)->GetStaticFieldID(jniEnv, classAccessibleState, "COLLAPSED",
                                     "Ljavax/accessibility/AccessibleState;");
-    if (!classAccessibleState) {
+    if (!jfid) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jobject jstate =
         (*jniEnv)->GetStaticObjectField(jniEnv, classAccessibleState, jfid);
 
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
     // jobj and jstate may be null
     if ((*jniEnv)->IsSameObject(jniEnv, jobj, jstate)) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return TRUE;
     }
 
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     return FALSE;
 }
 #endif
@@ -809,6 +818,7 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
             (*jniEnv)->GetObjectArrayElement(jniEnv, jstate_arr, i);
 #if !ATK_CHECK_VERSION(2, 38, 0)
         if (jstate && is_collapsed_java_state(jniEnv, jstate)) {
+            (*jniEnv)->DeleteLocalRef(jniEnv, jstate);
             continue;
         }
 #endif
@@ -818,6 +828,7 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
         if (state_type == ATK_STATE_ENABLED) {
             atk_state_set_add_state(state_set, ATK_STATE_SENSITIVE);
         }
+        (*jniEnv)->DeleteLocalRef(jniEnv, jstate);
     }
 
     g_object_ref(G_OBJECT(state_set));
@@ -940,6 +951,8 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         return NULL;
     }
 
+    (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
+
     jsize jarr_size = (*jniEnv)->GetArrayLength(jniEnv, jwrap_key_target_arr);
     if (!jarr_size) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -970,31 +983,34 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         jobject jwrap_key_target =
             (*jniEnv)->GetObjectArrayElement(jniEnv, jwrap_key_target_arr, i);
         if (!jwrap_key_target) {
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            return NULL;
+            continue;
         }
         jstring jrel_key =
             (*jniEnv)->GetObjectField(jniEnv, jwrap_key_target, fIdKey);
         if (!jrel_key) {
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            return NULL;
+            (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
+            continue;
         }
         AtkRelationType rel_type =
             jaw_impl_get_atk_relation_type(jniEnv, jrel_key);
         if (!rel_type) {
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            return NULL;
+            (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
+            (*jniEnv)->DeleteLocalRef(jniEnv, jrel_key);
+            continue;
         }
         jobjectArray jtarget_arr =
             (*jniEnv)->GetObjectField(jniEnv, jwrap_key_target, fIdRelations);
         if (!jtarget_arr) {
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            return NULL;
+            (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
+            (*jniEnv)->DeleteLocalRef(jniEnv, jrel_key);
+            continue;
         }
         jsize jtarget_size = (*jniEnv)->GetArrayLength(jniEnv, jtarget_arr);
         if (!jtarget_size) {
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            return NULL;
+            (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
+            (*jniEnv)->DeleteLocalRef(jniEnv, jrel_key);
+            (*jniEnv)->DeleteLocalRef(jniEnv, jtarget_arr);
+            continue;
         }
 
         jsize j;
@@ -1002,18 +1018,23 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
             jobject jtarget =
                 (*jniEnv)->GetObjectArrayElement(jniEnv, jtarget_arr, j);
             if (!jtarget) {
-                (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-                return NULL;
+                continue;
             }
             JawImpl *target_obj =
                 jaw_impl_get_instance_from_jaw(jniEnv, jtarget);
-            if (target_obj == NULL)
+            if (target_obj == NULL) {
                 g_warning(
                     "jaw_object_ref_relation_set: target_obj == NULL occurs\n");
-            else
+            } else {
                 atk_object_add_relationship(atk_obj, rel_type,
                                             ATK_OBJECT(target_obj));
+            }
+            (*jniEnv)->DeleteLocalRef(jniEnv, jtarget);
         }
+
+        (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jrel_key);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jtarget_arr);
     }
 
     if (atk_obj->relation_set == NULL) {

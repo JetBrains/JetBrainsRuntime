@@ -303,17 +303,28 @@ static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
         return NULL;
     }
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
+
     jclass classAccessibleRole =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRole");
-    JAW_CHECK_NULL(classAccessibleRole, NULL);
+    if (!classAccessibleRole) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jfieldID jfid =
         (*jniEnv)->GetStaticFieldID(jniEnv, classAccessibleRole, roleName,
                                     "Ljavax/accessibility/AccessibleRole;");
-    JAW_CHECK_NULL(jfid, NULL);
+    if (!jfid) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jobject jrole =
         (*jniEnv)->GetStaticObjectField(jniEnv, classAccessibleRole, jfid);
 
-    return jrole;
+    return (*jniEnv)->PopLocalFrame(jniEnv, jrole);
 }
 
 static gboolean jaw_util_is_java_acc_role(JNIEnv *jniEnv, jobject acc_role,

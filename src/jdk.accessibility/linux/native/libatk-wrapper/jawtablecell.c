@@ -139,10 +139,20 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
 
     JAW_GET_TABLECELL(cell, NULL);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            jatk_table_cell); // deleting ref that was created in
+                              // JAW_GET_TABLECELL
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
+
     jclass classAtkTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     if (!classAtkTableCell) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid =
@@ -150,11 +160,15 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
                                "()Ljavax/accessibility/AccessibleTable;");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, jatk_table_cell, jmid);
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
-    JAW_CHECK_NULL(jac, NULL);
+    if (!jac) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(jniEnv, jac);
     // From the documentation of the `atk_table_cell_get_table`:
@@ -163,6 +177,8 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
     if (jaw_impl) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
 }
@@ -203,10 +219,15 @@ static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     if (!classAtkTableCell) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
+
     getPosition(jniEnv, jatk_table_cell, classAtkTableCell, row, column);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     return TRUE;
 }
 
@@ -220,9 +241,14 @@ static void getRowSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
     jfieldID id_row_span =
         (*jniEnv)->GetFieldID(jniEnv, classAtkTableCell, "rowSpan", "I");
     JAW_CHECK_NULL(id_row_span, );
+
     jint jrow_span =
         (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, id_row_span);
     JAW_CHECK_NULL(jrow_span, );
+
+    // clean up:
+    // id_row_span is regular C pointer type, jrow_span is a primitive type
+
     (*row_span) = (gint)jrow_span;
 }
 
@@ -235,9 +261,14 @@ static void getColumnSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
     jfieldID id_column_span =
         (*jniEnv)->GetFieldID(jniEnv, classAtkTableCell, "columnSpan", "I");
     JAW_CHECK_NULL(id_column_span, );
+
     jint jcolumn_span =
         (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, id_column_span);
     JAW_CHECK_NULL(jcolumn_span, );
+
+    // clean up:
+    // id_row_span is regular C pointer type, jrow_span is a primitive type
+
     (*column_span) = (gint)jcolumn_span;
 }
 
@@ -255,16 +286,30 @@ static gboolean jaw_table_cell_get_row_column_span(AtkTableCell *cell,
 
     JAW_GET_TABLECELL(cell, FALSE);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            jatk_table_cell); // deleting ref that was created in
+                              // JAW_GET_TABLECELL
+        g_warning("Failed to create a new local reference frame");
+        return FALSE;
+    }
+
     jclass classAtkTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     if (!classAtkTableCell) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
+
     getPosition(jniEnv, jatk_table_cell, classAtkTableCell, row, column);
     getRowSpan(jniEnv, jatk_table_cell, classAtkTableCell, row_span);
     getColumnSpan(jniEnv, jatk_table_cell, classAtkTableCell, column_span);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     return TRUE;
 }
 
@@ -279,15 +324,26 @@ static gint jaw_table_cell_get_row_span(AtkTableCell *cell) {
 
     JAW_GET_TABLECELL(cell, 0);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            jatk_table_cell); // deleting ref that was created in
+                              // JAW_GET_TABLECELL
+        g_warning("Failed to create a new local reference frame");
+        return 0;
+    }
+
     gint row_span = -1;
     jclass classAtkTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     if (!classAtkTableCell) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
     getRowSpan(jniEnv, jatk_table_cell, classAtkTableCell, &row_span);
     (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     return row_span;
 }
 
@@ -302,15 +358,28 @@ static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
 
     JAW_GET_TABLECELL(cell, 0);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            jatk_table_cell); // deleting ref that was created in
+                              // JAW_GET_TABLECELL
+        g_warning("Failed to create a new local reference frame");
+        return 0;
+    }
+
     gint column_span = -1;
     jclass classAtkTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     if (!classAtkTableCell) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
     getColumnSpan(jniEnv, jatk_table_cell, classAtkTableCell, &column_span);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     return column_span;
 }
 
@@ -334,10 +403,20 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
 
     JAW_GET_TABLECELL(cell, NULL);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            jatk_table_cell); // deleting ref that was created in
+                              // JAW_GET_TABLECELL
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
+
     jclass classAtkTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     if (!classAtkTableCell) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
@@ -345,12 +424,17 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
         "()[Ljavax/accessibility/AccessibleContext;");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobjectArray ja_ac = (jobjectArray)(*jniEnv)->CallObjectMethod(
         jniEnv, jatk_table_cell, jmid);
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
-    JAW_CHECK_NULL(ja_ac, NULL);
+    if (!ja_ac) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
+
     jsize length = (*jniEnv)->GetArrayLength(jniEnv, ja_ac);
     GPtrArray *result = g_ptr_array_sized_new((guint)length);
     for (int i = 0; i < length; i++) {
@@ -360,13 +444,19 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
             g_ptr_array_add(result, jaw_impl);
 
             // FIXME: is it true that the caller is responsible for freeing not
-            // only GPtrArray but all its elements? From the documentation of
-            // the `atk_table_cell_get_column_header_cells`: "The caller of the
-            // method takes ownership of the returned data, and is responsible
-            // for freeing it." (transfer full)
+            //  only GPtrArray but all its elements? From the documentation of
+            //  the `atk_table_cell_get_column_header_cells`: "The caller of the
+            //  method takes ownership of the returned data, and is responsible
+            //  for freeing it." (transfer full)
             g_object_ref(G_OBJECT(jaw_impl));
         }
+
+        (*jniEnv)->DeleteLocalRef(jniEnv, jac);
     }
+
+    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     return result;
 }
 
@@ -390,10 +480,20 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
 
     JAW_GET_TABLECELL(cell, NULL);
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(
+            jniEnv,
+            jatk_table_cell); // deleting ref that was created in
+                              // JAW_GET_TABLECELL
+        g_warning("Failed to create a new local reference frame");
+        return NULL;
+    }
+
     jclass classAtkTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     if (!classAtkTableCell) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
@@ -401,15 +501,21 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
         "()[Ljavax/accessibility/AccessibleContext;");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobjectArray ja_ac = (jobjectArray)(*jniEnv)->CallObjectMethod(
         jniEnv, jatk_table_cell, jmid);
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
-    JAW_CHECK_NULL(ja_ac, NULL);
+    if (!ja_ac) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
+
     jsize length = (*jniEnv)->GetArrayLength(jniEnv, ja_ac);
     GPtrArray *result = g_ptr_array_sized_new((guint)length);
     JAW_CHECK_NULL(result, NULL);
+
     for (int i = 0; i < length; i++) {
         jobject jac = (*jniEnv)->GetObjectArrayElement(jniEnv, ja_ac, i);
         JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(jniEnv, jac);
@@ -423,6 +529,12 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
             // for freeing it." (transfer full)
             g_object_ref(G_OBJECT(jaw_impl));
         }
+
+        (*jniEnv)->DeleteLocalRef(jniEnv, jac);
     }
+
+    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     return result;
 }
