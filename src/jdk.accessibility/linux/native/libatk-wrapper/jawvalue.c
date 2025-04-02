@@ -37,7 +37,7 @@ typedef struct _ValueData {
 } ValueData;
 
 #define JAW_GET_VALUE(obj, def_ret)                                            \
-    JAW_GET_OBJ_IFACE(obj, INTERFACE_VALUE, ValueData, atk_value, jniEnv,         \
+    JAW_GET_OBJ_IFACE(obj, INTERFACE_VALUE, ValueData, atk_value, jniEnv,      \
                       atk_value, def_ret)
 
 void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
@@ -314,7 +314,7 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkValue, "set_value",
-                                         "(Ljava/lang/Number;)V");
+                                            "(Ljava/lang/Number;)V");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -351,15 +351,15 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    jmethodID jmidMin =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkValue, "get_minimum_value", "()D");
+    jmethodID jmidMin = (*jniEnv)->GetMethodID(jniEnv, classAtkValue,
+                                               "get_minimum_value", "()D");
     if (!jmidMin) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    jmethodID jmidMax =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkValue, "get_maximum_value", "()D");
+    jmethodID jmidMax = (*jniEnv)->GetMethodID(jniEnv, classAtkValue,
+                                               "get_maximum_value", "()D");
     if (!jmidMax) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);

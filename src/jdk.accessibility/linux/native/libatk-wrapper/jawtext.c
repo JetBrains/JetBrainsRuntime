@@ -316,10 +316,12 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
         return NULL;
     }
 
+    gchar *result = jaw_text_get_gtext_from_jstr(jniEnv, jstr);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    return jaw_text_get_gtext_from_jstr(jniEnv, jstr);
+    return result;
 }
 
 static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
@@ -432,11 +434,13 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
         return NULL;
     }
 
+    gchar *result = jaw_text_get_gtext_from_string_seq(
+        jniEnv, jStrSeq, start_offset, end_offset);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    return jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq, start_offset,
-                                              end_offset);
+    return result;
 }
 
 /**
@@ -501,11 +505,13 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
         return NULL;
     }
 
+    char *result = jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq,
+                                                      start_offset, end_offset);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    return jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq, start_offset,
-                                              end_offset);
+    return result;
 }
 
 /**
@@ -571,11 +577,13 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
         return NULL;
     }
 
+    char *result = jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq,
+                                                      start_offset, end_offset);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    return jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq, start_offset,
-                                              end_offset);
+    return result;
 }
 
 /**
@@ -672,11 +680,13 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
         return NULL;
     }
 
+    char *result = jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq,
+                                                      start_offset, end_offset);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    return jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq, start_offset,
-                                              end_offset);
+    return result;
 }
 
 static gint jaw_text_get_caret_offset(AtkText *text) {
@@ -774,10 +784,10 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
         return;
     }
 
+    jaw_util_get_rect_info(jniEnv, jrect, x, y, width, height);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    jaw_util_get_rect_info(jniEnv, jrect, x, y, width, height);
 }
 
 static gint jaw_text_get_character_count(AtkText *text) {
@@ -923,11 +933,11 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
     jaw_util_get_rect_info(jniEnv, jrect, &(rect->x), &(rect->y),
                            &(rect->width), &(rect->height));
+
+    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 static gint jaw_text_get_n_selections(AtkText *text) {
@@ -1057,9 +1067,11 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
         return NULL;
     }
 
+    gchar *result = jaw_text_get_gtext_from_jstr(jniEnv, jStr);
+
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    return jaw_text_get_gtext_from_jstr(jniEnv, jStr);
+    return result;
 }
 
 static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
