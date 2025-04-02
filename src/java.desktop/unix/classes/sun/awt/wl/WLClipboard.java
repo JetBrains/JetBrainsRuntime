@@ -61,19 +61,20 @@ public final class WLClipboard extends SunClipboard {
     // false otherwise (the regular clipboard).
     private final boolean isPrimary; // used by native
 
+    private final Object dataLock = new Object();
     // A handle to the native clipboard representation, 0 if not available.
-    private long clipboardNativePtr;     // guarded by 'this'
-    private long ourOfferNativePtr;      // guarded by 'this'
+    private long clipboardNativePtr;     // guarded by dataLock
+    private long ourOfferNativePtr;      // guarded by dataLock
 
     // The list of numeric format IDs the current clipboard is available in;
     // could be null or empty.
-    private List<Long> clipboardFormats; // guarded by 'this'
+    private List<Long> clipboardFormats; // guarded by dataLock
 
     // The "current" list formats for the new clipboard contents that is about
     // to be received from Wayland. Could be empty, but never null.
-    private List<Long> newClipboardFormats = new ArrayList<>(INITIAL_MIME_FORMATS_COUNT); // guarded by 'this'
+    private List<Long> newClipboardFormats = new ArrayList<>(INITIAL_MIME_FORMATS_COUNT); // guarded by dataLock
 
-    private static Thread clipboardDispatcherThread;
+    private static final Thread clipboardDispatcherThread;
     static {
         initIDs();
         dataOfferQueuePtr = createDataOfferQueue();
@@ -175,11 +176,15 @@ public final class WLClipboard extends SunClipboard {
                     log.fine("Clipboard: Offering new contents (" + contents + ") in these MIME formats: " + Arrays.toString(mime));
                 }
 
-                synchronized (this) {
+                synchronized (dataLock) {
                     if (ourOfferNativePtr != 0) {
                         cancelOffer(ourOfferNativePtr);
+                        ourOfferNativePtr = 0;
                     }
-                    ourOfferNativePtr = offerData(eventSerial, mime, contents, dataOfferQueuePtr);
+                }
+                long newOfferPtr = offerData(eventSerial, mime, contents, dataOfferQueuePtr);
+                synchronized (dataLock) {
+                    ourOfferNativePtr = newOfferPtr;
                 }
 
                 // Once we have offered the data, someone may come back and ask to provide them.
@@ -252,7 +257,7 @@ public final class WLClipboard extends SunClipboard {
      */
     @Override
     protected long[] getClipboardFormats() {
-        synchronized (this) {
+        synchronized (dataLock) {
             if (clipboardFormats != null && !clipboardFormats.isEmpty()) {
                 long[] res = new long[clipboardFormats.size()];
                 for (int i = 0; i < res.length; i++) {
@@ -274,7 +279,25 @@ public final class WLClipboard extends SunClipboard {
      */
     @Override
     protected byte[] getClipboardData(long format) throws IOException {
-        synchronized (this) {
+        int fd = getClipboardFDIn(format);
+        if (fd >= 0) {
+            FileDescriptor javaFD = new FileDescriptor();
+            jdk.internal.access.SharedSecrets.getJavaIOFileDescriptorAccess().set(javaFD, fd);
+            try (var in = new FileInputStream(javaFD)) {
+                byte[] bytes = readAllBytesFrom(in);
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("Clipboard: read data from " + fd + ": "
+                            + (bytes != null ? bytes.length : 0) + " bytes");
+                }
+                return bytes;
+            }
+        }
+
+        return null;
+    }
+
+    private int getClipboardFDIn(long format) {
+        synchronized (dataLock) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine("Clipboard: requested content of clipboard with handle "
                         + clipboardNativePtr + " in format " + format);
@@ -286,21 +309,10 @@ public final class WLClipboard extends SunClipboard {
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
                     log.fine("Clipboard: will read data from " + fd + " in format " + mime);
                 }
-                if (fd >= 0) {
-                    FileDescriptor javaFD = new FileDescriptor();
-                    jdk.internal.access.SharedSecrets.getJavaIOFileDescriptorAccess().set(javaFD, fd);
-                    try (var in = new FileInputStream(javaFD)) {
-                        byte[] bytes = readAllBytesFrom(in);
-                        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                            log.fine("Clipboard: read data from " + fd + ": "
-                                    + (bytes != null ? bytes.length : 0) + " bytes");
-                        }
-                        return bytes;
-                    }
-                }
+                return fd;
             }
         }
-        return null;
+        return -1;
     }
 
     /**
@@ -321,7 +333,7 @@ public final class WLClipboard extends SunClipboard {
             log.fine("Clipboard: new format is available for " + nativePtr + ": " + mime);
         }
 
-        synchronized (this) {
+        synchronized (dataLock) {
             newClipboardFormats.add(format);
         }
     }
@@ -342,7 +354,7 @@ public final class WLClipboard extends SunClipboard {
             log.fine("Clipboard: new clipboard is available: " + newClipboardNativePtr);
         }
 
-        synchronized (this) {
+        synchronized (dataLock) {
             long oldClipboardNativePtr = clipboardNativePtr;
             if (oldClipboardNativePtr != 0) {
                 // "The client must destroy the previous selection data_offer, if any, upon receiving this event."
@@ -352,13 +364,13 @@ public final class WLClipboard extends SunClipboard {
             clipboardNativePtr = newClipboardNativePtr; // Could be NULL
 
             newClipboardFormats = new ArrayList<>(INITIAL_MIME_FORMATS_COUNT);
-
-            notifyOfNewFormats(getClipboardFormats());
         }
+
+        notifyOfNewFormats(getClipboardFormats());
     }
 
     private void handleOfferCancelled(long offerNativePtr) {
-        synchronized (this) {
+        synchronized (dataLock) {
             assert offerNativePtr == ourOfferNativePtr;
             ourOfferNativePtr = 0;
         }
