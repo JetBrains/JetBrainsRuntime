@@ -111,5 +111,8 @@
 
 ############################################################################
 
-java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
-java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-8542 windows-all timeout
+java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-8542 windows-all
+java/awt/Graphics2D/TextPerf.java JBR-8541 linux-all,windows-all
+java/awt/MenuItem/EnableTest.java JBR-8543 windows-all
+
+jb/build/ResolveSymbolsTest/ResolveSymbolsRealEnv.java JBR-8544 linux-all
