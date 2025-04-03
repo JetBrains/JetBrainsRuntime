@@ -34,7 +34,9 @@
 
 struct VKRenderingContext {
     VKSDOps*        surface;
+
     VKTransform     transform;
+    uint64_t        transformModCount;
 
     // We keep this color separately from renderColor,
     // because we need consistent state when switching between XOR and alpha
