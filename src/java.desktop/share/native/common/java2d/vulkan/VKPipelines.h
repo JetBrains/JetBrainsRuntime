@@ -25,6 +25,7 @@
 #define VKPipelines_h_Included
 
 #include "VKComposites.h"
+#include "VKSamplers.h"
 #include "VKTypes.h"
 #include "VKUtil.h"
 
@@ -73,15 +74,11 @@ struct VKPipelineContext {
     VKDevice*                   device;
     VkPipelineLayout            colorPipelineLayout;
     VkDescriptorSetLayout       textureDescriptorSetLayout;
-    VkDescriptorSetLayout       samplerDescriptorSetLayout;
     VkPipelineLayout            texturePipelineLayout;
     VkDescriptorSetLayout       maskFillDescriptorSetLayout;
     VkPipelineLayout            maskFillPipelineLayout;
 
-    VkDescriptorPool            samplerDescriptorPool;
-    VkDescriptorSet             linearRepeatSamplerDescriptorSet;
-    VkSampler                   linearRepeatSampler;
-
+    VKSamplers                  samplers;
     struct VKShaders*           shaders;
     ARRAY(VKRenderPassContext*) renderPassContexts;
 };
