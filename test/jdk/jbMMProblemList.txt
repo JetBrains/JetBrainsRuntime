@@ -8,6 +8,8 @@ java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
 java/awt/Frame/FramesGC/FramesGC.java 8079069,JBR-6057 macosx-all,windows-all
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
+java/awt/GraphicsDevice/DisplayModes/UnknownRefrshRateTest.java JBR-6336 macosx-all
+java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-all
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
 java/awt/dnd/MissedDragEnterTest.java JBR-6091 windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117 linux-all
@@ -113,6 +115,9 @@ javax/swing/JButton/8151303/PressedIconTest.java JBR-5210,JBR-5510 windows-all,l
 javax/swing/JComponent/7154030/bug7154030.java JBR-5510 linux-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5510 linux-all
+javax/swing/JFileChooser/4966171/bug4966171.java JBR-8534 windows-x64
+javax/swing/JFileChooser/FileChooserListenerLeak.java JBR-8534 windows-x64
+javax/swing/JFileChooser/JFileChooserFontReset.java JBR-8534 windows-x64
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-5510,JBR-6160 linux-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java JBR-5510 linux-all
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,linux-all
@@ -134,7 +139,6 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128,8253184,JBR-5510 macosx-all,windows-all,linux-all
 javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-all
-javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-5510 linux-all
 javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5510,JBR-5951 linux-all,windows-x64
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java 8265770,8273312,JBR-5510 windows-all,macosx-all,linux-all
