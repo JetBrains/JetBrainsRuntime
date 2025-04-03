@@ -526,16 +526,10 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     .m11 = m11, .m02 = m02, .m12 = m12
                 };
 
-                if (VKRenderer_GetContext()->surface != NULL &&
-                    VK_IS_NEQ_TRANSFORM(&VKRenderer_GetContext()->transform, &transform))
-                {
-                  // TODO: Consider replacing this with setting a new transform
-                  //  in VKRenderingContext and increment transformModCount,
-                  //  then check for changed transform modification counter in
-                  //  VKRenderer_Validate, do VKRenderer_FlushDraw and push
-                  //  new constants into the shader
-                  VKRenderer_FlushSurface(VKRenderer_GetContext()->surface);
-                  VKRenderer_GetContext()->transform = transform;
+                VKRenderingContext* context = VKRenderer_GetContext();
+                if (VK_IS_NEQ_TRANSFORM(&context->transform, &transform)) {
+                    context->transform = transform;
+                    context->transformModCount++;
                 }
             }
             break;
@@ -543,11 +537,10 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             {
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: RESET_TRANSFORM");
-                if (VKRenderer_GetContext()->surface != NULL &&
-                    VK_IS_NEQ_TRANSFORM(&VKRenderer_GetContext()->transform, &VK_ID_TRANSFORM))
-                {
-                  VKRenderer_FlushSurface(VKRenderer_GetContext()->surface);
-                  VKRenderer_GetContext()->transform = VK_ID_TRANSFORM;
+                VKRenderingContext* context = VKRenderer_GetContext();
+                if (VK_IS_NEQ_TRANSFORM(&context->transform, &VK_ID_TRANSFORM)) {
+                    context->transform = VK_ID_TRANSFORM;
+                    context->transformModCount++;
                 }
             }
             break;
