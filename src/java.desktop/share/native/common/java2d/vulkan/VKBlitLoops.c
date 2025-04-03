@@ -102,7 +102,7 @@ static void VKTexturePoolTexture_Dispose(VKDevice* device, void* ctx) {
 
 static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
                                               VKSDOps *dstOps,
-                                              const SurfaceDataRasInfo *srcInfo, jshort srctype,
+                                              const SurfaceDataRasInfo *srcInfo, jshort srctype, jint hint,
                                               int dx1, int dy1, int dx2, int dy2) {
     VKSDOps* surface = context->surface;
     VKDevice* device = surface->device;
@@ -121,8 +121,8 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
 
     BlitSrcType type = decodeSrcType(device, srctype);
     VKTexturePoolHandle* hnd = VKTexturePool_GetTexture(device->texturePool, sw, sh, type.format);
-    double u = (double)sw / VKTexturePoolHandle_GetActualWidth(hnd);
-    double v = (double)sh / VKTexturePoolHandle_GetActualHeight(hnd);
+    double u = (double)sw;
+    double v = (double)sh;
 
     ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx1, dy1, 0.0f, 0.0f};
     ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx2, dy1, u, 0.0f};
@@ -181,14 +181,14 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
 
     VKImage* src = VKTexturePoolHandle_GetTexture(hnd);
     VkDescriptorSet srcDescriptorSet = VKImage_GetDescriptorSet(device, src, type.format, type.swizzle);
-    VKRenderer_TextureRender(srcDescriptorSet, renderVertexBuffer->handle, 4);
+    VKRenderer_TextureRender(srcDescriptorSet, renderVertexBuffer->handle, 4, hint, SAMPLER_WRAP_BORDER);
 
     VKRenderer_FlushSurface(dstOps);
     VKRenderer_DisposeOnPrimaryComplete(device->renderer, VKTexturePoolTexture_Dispose, hnd);
     VKRenderer_DisposeOnPrimaryComplete(device->renderer, VKBuffer_Dispose, buffer);
 }
 
-static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VkBool32 srcOpaque,
+static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VkBool32 srcOpaque, jint hint,
                                    int sx1, int sy1, int sx2, int sy2,
                                    double dx1, double dy1, double dx2, double dy2)
 {
@@ -205,10 +205,10 @@ static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, Vk
      *    (p4)---------(p3)
      */
 
-    double u1 = (double)sx1 / src->extent.width;
-    double v1 = (double)sy1 / src->extent.height;
-    double u2 = (double)sx2 / src->extent.width;
-    double v2 = (double)sy2 / src->extent.height;
+    double u1 = (double)sx1;
+    double v1 = (double)sy1;
+    double u2 = (double)sx2;
+    double v2 = (double)sy2;
 
     ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx1, dy1, u1, v1};
     ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx2, dy1, u2, v1};
@@ -240,7 +240,7 @@ static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, Vk
                                                                   VK_COMPONENT_SWIZZLE_IDENTITY,
                                                                   VK_COMPONENT_SWIZZLE_ONE);
     VkDescriptorSet srcDescriptorSet = VKImage_GetDescriptorSet(device, src, src->format, srcOpaque ? OPAQUE_SWIZZLE : 0);
-    VKRenderer_TextureRender(srcDescriptorSet, renderVertexBuffer->handle, 4);
+    VKRenderer_TextureRender(srcDescriptorSet, renderVertexBuffer->handle, 4, hint, SAMPLER_WRAP_BORDER);
 
     VKRenderer_FlushSurface(context->surface);
     VKRenderer_DisposeOnPrimaryComplete(device->renderer, VKBuffer_Dispose, renderVertexBuffer);
@@ -386,7 +386,7 @@ void VKBlitLoops_IsoBlit(JNIEnv *env, jlong pSrcOps, jboolean xform, jint hint,
 
         if (sx2 > sx1 && sy2 > sy1) {
             VKRenderer_FlushRenderPass(srcOps);
-            VKBlitTextureToTexture(context, srcOps->image, srcOpaque,
+            VKBlitTextureToTexture(context, srcOps->image, srcOpaque, hint,
                                    sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
         }
     }
@@ -477,7 +477,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
                 dstY2 += dy * (dh / sh);
             }
 
-            VKBlitSwToTextureViaPooledTexture(context, dstOps, &srcInfo, srctype,
+            VKBlitSwToTextureViaPooledTexture(context, dstOps, &srcInfo, srctype, hint,
                                               (int)dstX1, (int)dstY1,
                                               (int)dstX2, (int)dstY2);
         }
