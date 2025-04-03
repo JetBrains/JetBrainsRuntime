@@ -42,6 +42,7 @@ public final class GetGraphicsStressTest {
         // Will run the test no more than 20 seconds
         for (int i = 0; i < 4; i++) {
             endtime = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            System.out.println("END TIME: " + endtime);
             test();
         }
         /*
@@ -59,33 +60,53 @@ public final class GetGraphicsStressTest {
 
         Thread thread1 = new Thread(() -> {
             while (!isComplete()) {
+                System.out.println("Thread1 is not completed");
+                long t1 = System.nanoTime();
                 f.removeNotify();
                 f.addNotify();
+                long t2 = System.nanoTime();
+                long t = t2 - t1;
+                System.out.println("Thread1, step: " + t);
             }
         });
         Thread thread2 = new Thread(() -> {
             while (!isComplete()) {
+                System.out.println("Thread2 is not completed");
+                long t1 = System.nanoTime();
                 Graphics g = f.getGraphics();
                 if (g != null) {
                     g.dispose();
                 }
+                long t2 = System.nanoTime();
+                long t = t2 - t1;
+                System.out.println("Thread2, step: " + t);
             }
         });
         Thread thread3 = new Thread(() -> {
             while (!isComplete()) {
+                System.out.println("Thread3 is not completed");
+                long t1 = System.nanoTime();
                 Graphics g = f.getGraphics();
                 if (g != null) {
                     g.dispose();
                 }
+                long t2 = System.nanoTime();
+                long t = t2 - t1;
+                System.out.println("Thread3, step: " + t);
             }
         });
         Thread thread4 = new Thread(() -> {
             while (!isComplete()) {
+                System.out.println("Thread4 is not completed");
+                long t1 = System.nanoTime();
                 Graphics g = f.getGraphics();
                 if (g != null) {
                     g.drawLine(0, 0, 4, 4); // just in case...
                     g.dispose();
                 }
+                long t2 = System.nanoTime();
+                long t = t2 - t1;
+                System.out.println("Thread4, step: " + t);
             }
         });
         thread1.start();
