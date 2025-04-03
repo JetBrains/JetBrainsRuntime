@@ -394,21 +394,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 }
 
 - (void) postNeedsDisplay {
-    // use dispatch-async to make it more immediate than Runloop:
     [self retain];
-    // More smooth during resize:
-    if (1) {
-        [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
-                                                 block:^(){
-            [self setNeedsDisplay];
-            [self release];
-        }];
-    } else {
-        [ThreadUtilities criticalDispatchOnMainThreadASAP:^() {
-            [self setNeedsDisplay];
-            [self release];
-        }];
-    }
+    [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+                                             block:^(){
+        [self setNeedsDisplay];
+        [self release];
+    }];
 }
 
 - (void)startRedrawIfNeeded {
@@ -424,7 +415,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             [self.ctx startRedraw:self];
         }
     } else {
-        [self postNeedsDisplay];
+        [self setNeedsDisplay];
     }
 }
 
@@ -632,10 +623,9 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
     // during screen-2-screen moving.
 
     // Ensure main thread changes the MTLLayer instance later:
-    [layer retain];
-    [ThreadUtilities criticalDispatchOnMainThreadASAP:^(){
+    [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+                                             block:^(){
         layer.contentsScale = scale;
-        [layer release];
     }];
     JNI_COCOA_EXIT(env);
 }
@@ -677,10 +667,9 @@ Java_sun_java2d_metal_MTLLayer_nativeSetOpaque
 
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     // Ensure main thread changes the MTLLayer instance later:
-    [layer retain];
-    [ThreadUtilities criticalDispatchOnMainThreadASAP:^(){
+    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // critical
+                                          block:^(){
         [layer setOpaque:(opaque == JNI_TRUE)];
-        [layer release];
     }];
     JNI_COCOA_EXIT(env);
 }

@@ -71,9 +71,8 @@
 // Updates back buffer size of the layer if it's an OpenGL/Metal layer
 // including all OpenGL/Metal sublayers
 + (void) repaintLayersRecursively:(CALayer*)aLayer {
-    if ([aLayer isKindOfClass:[CAMetalLayer class]]) {
-        [aLayer postNeedsDisplay];
-    } else if ([aLayer isKindOfClass:[CAOpenGLLayer class]]) {
+    if ([aLayer isKindOfClass:[CAOpenGLLayer class]] ||
+        [aLayer isKindOfClass:[CAMetalLayer class]]) {
         [aLayer setNeedsDisplay];
     }
     for(CALayer *child in aLayer.sublayers) {

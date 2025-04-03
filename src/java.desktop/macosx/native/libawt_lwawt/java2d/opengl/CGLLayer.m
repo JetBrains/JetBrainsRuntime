@@ -226,11 +226,10 @@ Java_sun_java2d_opengl_CGLLayer_nativeSetScale
     // in one call on appkit, otherwise we'll get window's contents blinking,
     // during screen-2-screen moving.
 
-    // Ensure main thread changes the MTLLayer instance later:
-    [layer retain];
-    [ThreadUtilities criticalDispatchOnMainThreadASAP:^(){
+    // Ensure main thread changes the CGLLayer instance later:
+    [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+                                             block:^(){
         layer.contentsScale = scale;
-        [layer release];
     }];
     JNI_COCOA_EXIT(env);
 }
