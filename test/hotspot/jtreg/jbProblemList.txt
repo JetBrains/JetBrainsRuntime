@@ -97,6 +97,7 @@ compiler/compilercontrol/jcmd/ClearDirectivesFileStackTest.java 8225370 generic-
 compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
 
 compiler/runtime/Test8168712.java 8211769,8211771 generic-ppc64,generic-ppc64le,linux-s390x
+compiler/linkage/TestLinkageErrorInGenerateOopMap.java JBR-8524 windows-aarch64
 compiler/loopopts/TestUnreachableInnerLoop.java 8288981 linux-s390x
 
 compiler/rtm/locking/TestRTMAbortRatio.java 8183263 generic-x64,generic-i586
@@ -111,6 +112,7 @@ compiler/rtm/locking/TestUseRTMDeopt.java 8183263 generic-x64,generic-i586
 compiler/rtm/locking/TestUseRTMXendForLockBusy.java 8183263 generic-x64,generic-i586
 compiler/rtm/print/TestPrintPreciseRTMLockingStatistics.java 8183263 generic-x64,generic-i586
 
+compiler/c2/aarch64/TestTrampoline.java JBR-8520 windows-aarch64
 compiler/c2/Test8004741.java 8235801 generic-all
 compiler/c2/irTests/TestDuplicateBackedge.java 8318904 generic-all
 
@@ -134,6 +136,7 @@ compiler/floatingpoint/TestSubnormalDouble.java 8317810 generic-i586
 compiler/codecache/CodeCacheFullCountTest.java 8332954 generic-all
 
 compiler/interpreter/Test6833129.java 8335266 generic-i586
+compiler/whitebox/ForceNMethodSweepTest.java JBR-8530 windows-x64
 
 #############################################################################
 
@@ -168,10 +171,12 @@ gc/shenandoah/TestEvilSyncBug.java#generational 8345501 generic-all
 # :hotspot_runtime
 
 runtime/jni/daemonDestroy/TestDaemonDestroy.java JBR-6261 windows-all
+runtime/jni/nativeStack/TestNativeStack.java JBR-8521 windows-aarch64
 runtime/jni/terminatedThread/TestTerminatedThread.java 8317789 aix-ppc64
 runtime/cds/CheckDefaultArchiveFile.java JBR-4227 generic-all
 runtime/handshake/HandshakeSuspendExitTest.java 8318631 generic-all
-runtime/Monitor/SyncOnValueBasedClassTest.java 8340995 linux-s390x
+runtime/modules/ClassLoaderNoUnnamedModuleTest.java JBR-8516 windows-aarch64
+runtime/Monitor/SyncOnValueBasedClassTest.java 8340995,JBR-8517 linux-s390x,windows-aarch64
 runtime/os/TestTracePageSizes.java#no-options 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#explicit-large-page-size 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#compiler-options 8267460 linux-aarch64
@@ -179,11 +184,15 @@ runtime/os/TestTracePageSizes.java#G1 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#Parallel 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#Serial 8267460 linux-aarch64
 runtime/os/windows/TestAvailableProcessors.java JBR-8182 windows-all
-runtime/ErrorHandling/CreateCoredumpOnCrash.java 8267433,JBR-7917 macosx-x64,macosx-all
+runtime/ErrorHandling/CreateCoredumpOnCrash.java 8267433,JBR-7917,JBR-8528 macosx-x64,macosx-all,windows-aarch64
+runtime/Safepoint/TestAbortOnVMOperationTimeout.java JBR-8524 windows-aarch64
+runtime/Safepoint/TestAbortVMOnSafepointTimeout.java JBR-8524 windows-aarch64
 runtime/StackGuardPages/TestStackGuardPages.java 8303612 linux-all 8293452
 runtime/StackGuardPages/TestStackGuardPagesNative.java 8303612 linux-all
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315 linux-ppc64le
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315,JBR-6289 linux-ppc64le,windows-aarch64
+runtime/ErrorHandling/TestAbortVmOnException.java JBR-8514 windows-aarch64
+runtime/ErrorHandling/UncaughtNativeExceptionTest.java JBR-8515 windows-aarch64
 runtime/NMT/CheckForProperDetailStackTrace.java 8347002 linux-all
 runtime/NMT/VirtualAllocCommitMerge.java 8309698 linux-s390x
 
@@ -194,9 +203,13 @@ containers/docker/TestJcmd.java 8278102 linux-all
 runtime/memory/ReserveMemory.java initial_run windows-aarch64
 runtime/memory/ReadFromNoaccessArea.java initial_run windows-aarch64
 
+runtime/cds/appcds/CommandLineFlagCombo.java JBR-6616 windows-aarch64
+runtime/cds/appcds/complexURI/ComplexURITest.java JBR-6616 windows-aarch64
 runtime/cds/appcds/methodHandles/MethodHandlesInvokersTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesCastFailureTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesGeneralTest.java initial_run generic-all
+runtime/cds/appcds/TestDumpClassListSource.java JBR-6616 windows-aarch64
+runtime/cds/appcds/TransformInterfaceOfLambda.java JBR-6616 windows-aarch64
 runtime/ReservedStack/ReservedStackTestCompiler.java initial_run windows-aarch64
 runtime/cds/appcds/dynamicArchive/CDSStreamTestDriver.java initial_run generic-all
 runtime/ReservedStack/ReservedStackTest.java initial_run windows-aarch64
@@ -224,17 +237,19 @@ serviceability/jvmti/ModuleAwareAgents/ThreadStart/MAAThreadStart.java 8225354 w
 serviceability/jvmti/events/MonitorWaited/monitorwaited01/monitorwaited01.java JBR-8420 windows-all
 serviceability/jvmti/vthread/GetThreadStateMountedTest/GetThreadStateMountedTest.java 8318090,8318729 generic-all
 serviceability/jvmti/vthread/GetSetLocalTest/GetSetLocalTest.java 8286836 generic-all
-serviceability/jvmti/RedefineClasses/RedefineSharedClassJFR.java JBR-6245 generic-all
+serviceability/jvmti/RedefineClasses/RedefineSharedClass.java JBR-8518 windows-aarch64
+serviceability/jvmti/RedefineClasses/RedefineSharedClassJFR.java JBR-8518 windows-aarch64
 serviceability/jvmti/vthread/CarrierThreadEventNotification/CarrierThreadEventNotification.java 8333681 generic-all
+serviceability/jvmti/vthread/ToggleNotifyJvmtiTest/ToggleNotifyJvmtiTest.java JBR-8549 windows-aarch64
 serviceability/dcmd/gc/RunFinalizationTest.java 8227120 generic-all
 
-serviceability/sa/ClhsdbCDSCore.java              8267433,8318754 macosx-x64,macosx-aarch64
-serviceability/sa/ClhsdbFindPC.java#xcomp-core    8267433,8318754,JBR-6259 macosx-x64,macosx-aarch64,windows-aarch64
-serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8267433,8318754,JBR-6259 macosx-x64,macosx-aarch64,linux_aarch64,windows-aarch64
-serviceability/sa/ClhsdbPmap.java#core            8267433,8318754,JBR-6259 macosx-x64,macosx-aarch64,windows-aarch64
-serviceability/sa/ClhsdbPstack.java#core          8267433,8318754,JBR-6259 macosx-x64,macosx-aarch64,windows-aarch64
-serviceability/sa/TestJmapCore.java               8267433,8318754 macosx-x64,macosx-aarch64
-serviceability/sa/TestJmapCoreMetaspace.java      8267433,8318754 macosx-x64,macosx-aarch64
+serviceability/sa/ClhsdbCDSCore.java              8318754,JBR-6259 macosx-aarch64,windows-aarch64
+serviceability/sa/ClhsdbFindPC.java#xcomp-core    8318754,JBR-6259 macosx-aarch64,windows-aarch64
+serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8318754,JBR-6259 macosx-aarch64,windows-aarch64
+serviceability/sa/ClhsdbPmap.java#core            8318754,JBR-6259 macosx-aarch64,windows-aarch64
+serviceability/sa/ClhsdbPstack.java#core          8318754,JBR-6259 macosx-aarch64,windows-aarch64
+serviceability/sa/TestJmapCore.java               8318754 macosx-aarch64
+serviceability/sa/TestJmapCoreMetaspace.java      8318754 macosx-aarch64
 
 serviceability/jvmti/stress/StackTrace/NotSuspended/GetStackTraceNotSuspendedStressTest.java 8315980 linux-all,windows-x64
 
@@ -260,6 +275,7 @@ serviceability/sa/ClhsdbPstack.java#id1 initial_run generic-aarch64
 serviceability/sa/ClhsdbPmap.java#id1 initial_run generic-all
 serviceability/sa/ClhsdbWhere.java initial_run windows-aarch64
 serviceability/sa/ClhsdbDumpheap.java initial_run windows-aarch64
+serviceability/sa/ClhsdbThreadContext.java JBR-6260 windows-aarch64
 
 #############################################################################
 
@@ -281,6 +297,7 @@ vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded005
 
 vmTestbase/nsk/jdb/options/listconnectors/listconnectors001/listconnectors001.java initial_run windows-all
 
+vmTestbase/nsk/jdi/Event/_itself_/event001/TestDescription.java JBR-8550 windows-all
 vmTestbase/nsk/jdi/LaunchingConnector/launch/launch001/TestDescription.java initial_run windows-all
 vmTestbase/nsk/jdi/LaunchingConnector/launch/launch003/TestDescription.java initial_run windows-all
 vmTestbase/nsk/jdi/LaunchingConnector/launchnosuspend/launchnosuspend001/TestDescription.java initial_run windows-all
@@ -320,6 +337,7 @@ vmTestbase/vm/mlvm/meth/stress/compiler/deoptimize/Test.java#id1 8324756 generic
 
 vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
 
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi001/Multi001.java JBR-8545, windows-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi005/TestDescription.java 8076494 windows-x64
 
 vmTestbase/nsk/monitoring/ThreadMXBean/findMonitorDeadlockedThreads/find006/TestDescription.java 8310144 macosx-aarch64
