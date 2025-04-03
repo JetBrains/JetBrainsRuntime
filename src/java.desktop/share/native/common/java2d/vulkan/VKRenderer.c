@@ -1363,7 +1363,8 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans) {
     }
 }
 
-void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexBuffer, uint32_t vertexNum) {
+void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexBuffer, uint32_t vertexNum,
+                              jint filter, VKSamplerWrap wrap) {
     // VKRenderer_Validate was called by VKBlitLoops. TODO refactor this.
     VKSDOps* surface = (VKSDOps*)context.surface;
     VKRenderPass* renderPass = surface->renderPass;
@@ -1377,7 +1378,8 @@ void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexB
     VkBuffer vertexBuffers[] = {vertexBuffer};
     VkDeviceSize offsets[] = {0};
     device->vkCmdBindVertexBuffers(cb, 0, 1, vertexBuffers, offsets);
-    VkDescriptorSet descriptorSets[] = { srcDescriptorSet, device->renderer->pipelineContext->linearRepeatSamplerDescriptorSet };
+    VkDescriptorSet descriptorSets[] = { srcDescriptorSet,
+        VKSamplers_GetDescriptorSet(device, &device->renderer->pipelineContext->samplers, filter, wrap) };
     device->vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     device->renderer->pipelineContext->texturePipelineLayout, 0, 2, descriptorSets, 0, NULL);
     device->vkCmdDraw(cb, vertexNum, 1, 0, 0);
