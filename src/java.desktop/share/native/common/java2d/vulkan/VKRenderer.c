@@ -158,6 +158,7 @@ struct VKRenderPass {
 
     VKPipelineDescriptor state;
     uint64_t             lastTimestamp; // When was this surface last used?
+    uint64_t             transformModCount; // Just a tag to detect when transform was changed.
     uint64_t             clipModCount; // Just a tag to detect when clip was changed.
     VkBool32             pendingFlush    : 1;
     VkBool32             pendingCommands : 1;
@@ -169,7 +170,8 @@ struct VKRenderPass {
 // which is only called from queue flusher thread, no need for synchronization.
 static VKRenderingContext context = {
         .surface = NULL,
-        .transform = {1.0, 0.0, 0.0,0.0, 1.0, 0.0},
+        .transform = VK_ID_TRANSFORM,
+        .transformModCount = 1,
         .color = {},
         .renderColor = {},
         .composite = ALPHA_COMPOSITE_SRC_OVER,
@@ -648,6 +650,7 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     surface->renderPass->state.composite = NO_COMPOSITE;
     surface->renderPass->state.shader = NO_SHADER;
+    surface->renderPass->transformModCount = 0;
     surface->renderPass->firstVertex = 0;
     surface->renderPass->vertexCount = 0;
     surface->renderPass->vertexBufferWriting = (BufferWritingState) {NULL, 0, VK_FALSE};
@@ -732,6 +735,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
                 .shader = NO_SHADER
             },
             .lastTimestamp = 0,
+            .transformModCount = 0,
             .clipModCount = 0,
             .pendingFlush = VK_FALSE,
             .pendingCommands = VK_FALSE,
@@ -859,24 +863,6 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
             .maxDepth = 1.0f
     };
     device->vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-    // Calculate user to device transform
-    VKTransform transform = {
-        2.0f/viewport.width, 0.0f,                 -1.0f,
-        0.0f,                2.0f/viewport.height, -1.0f
-    };
-
-    // Combine it with user transform
-    VKUtil_ConcatenateTransform(&transform, &context.transform);
-
-    device->vkCmdPushConstants(
-            commandBuffer,
-            renderer->pipelineContext->colorPipelineLayout, // TODO what if our pipeline layout differs?
-            VK_SHADER_STAGE_VERTEX_BIT,
-            0,
-            sizeof(VKTransform),
-            &transform
-    );
 
     surface->renderPass->pendingCommands = VK_TRUE;
     J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_BeginRenderPass(%p)", surface);
@@ -1155,6 +1141,30 @@ static BufferWritingState VKRenderer_AllocateMaskFillBytes(const VKRenderingCont
     return state;
 }
 
+static void VKRenderer_ValidateTransform() {
+    assert(context.surface != NULL);
+    VKSDOps* surface = context.surface;
+    VKRenderPass* renderPass = surface->renderPass;
+    if (renderPass->transformModCount != context.transformModCount) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_ValidateTransform: updating transform");
+        VKRenderer_FlushDraw(surface);
+        renderPass->transformModCount = context.transformModCount;
+        // Calculate user to device transform.
+        VKTransform transform = {
+            2.0f / (float) surface->image->extent.width, 0.0f, -1.0f,
+            0.0f, 2.0f / (float) surface->image->extent.height, -1.0f
+        };
+        // Combine it with user transform.
+        VKUtil_ConcatenateTransform(&transform, &context.transform);
+        // Push the transform into shader.
+        surface->device->vkCmdPushConstants(
+                renderPass->commandBuffer,
+                surface->device->renderer->pipelineContext->colorPipelineLayout, // TODO what if our pipeline layout differs?
+                VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VKTransform), &transform
+        );
+    }
+}
+
 /**
  * Setup stencil attachment according to the context clip state.
  * If there is a clip shape, attachment is cleared with "fail" value and then
@@ -1167,6 +1177,7 @@ static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
     VKRenderPass* renderPass = surface->renderPass;
     VkCommandBuffer cb = renderPass->commandBuffer;
     VKRenderer_FlushDraw(surface);
+    VKRenderer_ValidateTransform();
 
     // Clear stencil attachment.
     VkClearAttachment clearAttachment = {
@@ -1267,6 +1278,9 @@ VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, Alph
             renderPass->state.shader = NO_SHADER;
         }
     }
+
+    // Validate current transform.
+    VKRenderer_ValidateTransform();
 
     // Validate current pipeline.
     if (renderPass->state.shader != shader ||
