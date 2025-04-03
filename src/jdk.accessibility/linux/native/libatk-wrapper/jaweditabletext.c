@@ -23,6 +23,25 @@
 #include <atk/atk.h>
 #include <glib.h>
 
+/**
+ * (From Atk documentation)
+ *
+ * AtkEditableText:
+ *
+ * The ATK interface implemented by components containing user-editable text
+ * content.
+ *
+ * #AtkEditableText should be implemented by UI components which
+ * contain text which the user can edit, via the #AtkObject
+ * corresponding to that component (see #AtkObject).
+ *
+ * #AtkEditableText is a subclass of #AtkText, and as such, an object
+ * which implements #AtkEditableText is by definition an #AtkText
+ * implementor as well.
+ *
+ * See [iface@AtkText]
+ */
+
 static void jaw_editable_text_set_text_contents(AtkEditableText *text,
                                                 const gchar *string);
 static void jaw_editable_text_insert_text(AtkEditableText *text,
@@ -49,13 +68,21 @@ typedef struct _EditableTextData {
     JAW_GET_OBJ_IFACE(text, INTERFACE_EDITABLE_TEXT, EditableTextData,         \
                       atk_editable_text, jniEnv, atk_editable_text, def_ret)
 
+/**
+ * AtkEditableTextIface:
+ * @set_run_attributes:
+ * @set_text_contents:
+ * @copy_text:
+ * @cut_text:
+ * @delete_text:
+ * @paste_text:
+ **/
 void jaw_editable_text_interface_init(AtkEditableTextIface *iface,
                                       gpointer data) {
     JAW_DEBUG_ALL("%p,%p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function "
-                  "jaw_editable_text_interface_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -72,8 +99,7 @@ gpointer jaw_editable_text_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning(
-            "Null argument passed to function jaw_editable_text_data_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -82,7 +108,8 @@ gpointer jaw_editable_text_data_init(jobject ac) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -118,8 +145,7 @@ void jaw_editable_text_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning(
-            "Null argument passed to function jaw_editable_text_data_finalize");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -137,8 +163,7 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
     JAW_DEBUG_C("%p, %s", text, string);
 
     if (!text || !string) {
-        g_warning("Null argument passed to function "
-                  "jaw_editable_text_set_text_contents");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -149,7 +174,8 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
             jniEnv,
             atk_editable_text); // deleting ref that was created in
                                 // JAW_GET_EDITABLETEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -174,7 +200,9 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, jstr);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
@@ -184,8 +212,7 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
     JAW_DEBUG_C("%p, %s, %d, %p", text, string, length, position);
 
     if (!text || !string || !position) {
-        g_warning(
-            "Null argument passed to function jaw_editable_text_insert_text");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -196,7 +223,8 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
             jniEnv,
             atk_editable_text); // deleting ref that was created in
                                 // JAW_GET_EDITABLETEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -223,11 +251,11 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, jstr,
                               (jint)*position);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
     *position = *position + length;
     atk_text_set_caret_offset(ATK_TEXT(jaw_obj), *position);
+
+    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
@@ -235,8 +263,7 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
     JAW_DEBUG_C("%p, %d, %d", text, start_pos, end_pos);
 
     if (!text) {
-        g_warning(
-            "Null argument passed to function jaw_editable_text_copy_text");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -247,7 +274,8 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
             jniEnv,
             atk_editable_text); // deleting ref that was created in
                                 // JAW_GET_EDITABLETEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -265,8 +293,10 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)start_pos,
                               (jint)end_pos);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
@@ -276,8 +306,7 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
     JAW_DEBUG_C("%p, %d, %d", text, start_pos, end_pos);
 
     if (!text) {
-        g_warning(
-            "Null argument passed to function jaw_editable_text_cut_text");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -288,7 +317,8 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
             jniEnv,
             atk_editable_text); // deleting ref that was created in
                                 // JAW_GET_EDITABLETEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -306,8 +336,10 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)start_pos,
                               (jint)end_pos);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
@@ -317,8 +349,7 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
     JAW_DEBUG_C("%p, %d, %d", text, start_pos, end_pos);
 
     if (!text) {
-        g_warning(
-            "Null argument passed to function jaw_editable_text_delete_text");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -329,7 +360,8 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
             jniEnv,
             atk_editable_text); // deleting ref that was created in
                                 // JAW_GET_EDITABLETEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -347,8 +379,10 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)start_pos,
                               (jint)end_pos);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
@@ -357,8 +391,7 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
     JAW_DEBUG_C("%p, %d", text, position);
 
     if (!text) {
-        g_warning(
-            "Null argument passed to function jaw_editable_text_paste_text");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -369,7 +402,8 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
             jniEnv,
             atk_editable_text); // deleting ref that was created in
                                 // JAW_GET_EDITABLETEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -387,7 +421,9 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)position);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
@@ -399,8 +435,7 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
     JAW_DEBUG_C("%p, %p, %d, %d", text, attrib_set, start_offset, end_offset);
 
     if (!text || !attrib_set) {
-        g_warning("Null argument passed to function "
-                  "jaw_editable_text_set_run_attributes");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -411,7 +446,8 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
             jniEnv,
             atk_editable_text); // deleting ref that was created in
                                 // JAW_GET_EDITABLETEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -433,11 +469,7 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_editable_text, jmid, (jobject)attrib_set,
         (jint)start_offset, (jint)end_offset);
-    if (!jresult) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 

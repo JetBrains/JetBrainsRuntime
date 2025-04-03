@@ -35,14 +35,9 @@ extern "C" {
 #endif
 
 static void jaw_impl_class_init(JawImplClass *klass);
-// static void			jaw_impl_init				(JawImpl
-// *impl);
 static void jaw_impl_dispose(GObject *gobject);
 static void jaw_impl_finalize(GObject *gobject);
-
 static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface);
-
-/* AtkObject */
 static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data);
 
 typedef struct _JawInterfaceInfo {
@@ -60,7 +55,7 @@ static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
     JAW_DEBUG_C("%p, %p, %u", jniEnv, jaw_obj, tflag);
 
     if (!jniEnv || !jaw_obj) {
-        g_warning("Null argument passed to function aggregate_interface");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -161,7 +156,7 @@ JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG_C("%p, %p", jniEnv, ac);
 
     if (!ac || !jniEnv) {
-        g_warning("Null argument passed to function jaw_impl_create_instance");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -196,22 +191,23 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG_C("%p, %p", jniEnv, ac);
 
     if (!ac || !jniEnv) {
-        g_warning("Null argument passed to function jaw_impl_find_instance");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
+    // Check if there is JawImpl associated with the accessible context
     jclass classAtkWrapper =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
     if (!classAtkWrapper) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-
     jmethodID jmid_get_native_resources = (*jniEnv)->GetStaticMethodID(
         jniEnv, classAtkWrapper, "get_native_resources",
         "(Ljavax/accessibility/AccessibleContext;)J");
@@ -221,14 +217,12 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     }
     jlong reference = (*jniEnv)->CallStaticLongMethod(
         jniEnv, classAtkWrapper, jmid_get_native_resources, ac);
-    if (!reference) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
+    // If a valid reference exists, return the existing JawImpl instance
     if (reference != -1) {
         return (JawImpl *)reference;
     }
 
+    // No existing instance found, create a new one
     JawImpl *jaw_impl = jaw_impl_create_instance(jniEnv, ac);
 
     jmethodID jmid_add_native_resources = (*jniEnv)->GetStaticMethodID(
@@ -241,10 +235,7 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     jlong new_reference = (*jniEnv)->CallStaticLongMethod(
         jniEnv, classAtkWrapper, jmid_add_native_resources, ac,
         (jlong)jaw_impl);
-    if (!new_reference) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
+
     if (new_reference != (jlong)jaw_impl) {
         g_object_unref(jaw_impl);
     }
@@ -252,11 +243,6 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return (JawImpl *)new_reference;
-}
-
-// todo: replace
-JawImpl *jaw_impl_get_instance_from_jaw(JNIEnv *jniEnv, jobject ac) {
-    return jaw_impl_find_instance(jniEnv, ac);
 }
 
 static void jaw_impl_class_intern_init(gpointer klass, gpointer data) {
@@ -395,7 +381,7 @@ static void jaw_impl_class_init(JawImplClass *klass) {
     JAW_DEBUG_ALL("%p", klass);
 
     if (!klass) {
-        g_warning("Null argument passed to function jaw_impl_class_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -423,7 +409,7 @@ static void jaw_impl_finalize(GObject *gobject) {
     JAW_DEBUG_ALL("%p", gobject);
 
     if (!gobject) {
-        g_warning("Null argument passed to function jaw_impl_finalize");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -466,22 +452,23 @@ static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface) {
     JAW_DEBUG_C("%p, %u", jaw_obj, iface);
 
     if (!jaw_obj) {
-        g_warning(
-            "Null argument passed to function jaw_impl_get_interface_data");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
     JawImpl *jaw_impl = (JawImpl *)jaw_obj;
     JAW_CHECK_NULL(jaw_obj, NULL);
 
-    if (jaw_impl == NULL || jaw_impl->ifaceTable == NULL)
+    if (jaw_impl == NULL || jaw_impl->ifaceTable == NULL) {
         return NULL;
+    }
 
     JawInterfaceInfo *info =
         g_hash_table_lookup(jaw_impl->ifaceTable, GUINT_TO_POINTER(iface));
 
-    if (info != NULL)
+    if (info != NULL) {
         return info->data;
+    }
 
     return NULL;
 }
@@ -490,8 +477,7 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
     JAW_DEBUG_C("%p, %p", atk_obj, data);
 
     if (!atk_obj) {
-        g_warning(
-            "jaw_impl_initialize: Null argument atk_obj passed to function");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -503,7 +489,8 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
     JAW_CHECK_NULL(jniEnv, );
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -525,7 +512,9 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     (*jniEnv)->CallStaticVoidMethod(jniEnv, classAtkWrapper, jmid, ac);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
@@ -535,12 +524,13 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
     JAW_DEBUG_C("%p, %p, %s", jniEnv, jKey, strKey);
 
     if (!jniEnv || !strKey) {
-        g_warning("Null argument passed to function is_java_relation_key");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -565,9 +555,12 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
         return FALSE;
     }
 
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     // jKey and jConstKey may be null
-    return (*jniEnv)->IsSameObject(jniEnv, jKey, jConstKey);
+    jboolean result = (*jniEnv)->IsSameObject(jniEnv, jKey, jConstKey);
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
+    return result;
 }
 
 AtkRelationType jaw_impl_get_atk_relation_type(JNIEnv *jniEnv,

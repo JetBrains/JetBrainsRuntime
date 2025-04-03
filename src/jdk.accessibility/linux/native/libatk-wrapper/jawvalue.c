@@ -44,19 +44,22 @@ void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function jaw_value_interface_init");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
     iface->get_current_value = jaw_value_get_current_value;
-    // deprecated: iface->get_maximum_value
-    // deprecated: iface->get_minimum_value
-    // deprecated: iface->set_current_value
-    // deprecated: iface->get_minimum_increment
-    // TODO: get_value_and_text
+    iface->get_maximum_value = NULL; // deprecated: iface->get_maximum_value
+    iface->get_minimum_value = NULL; // deprecated: iface->get_minimum_value
+    iface->set_current_value = NULL; // deprecated: iface->set_current_value
+    iface->get_minimum_increment =
+        NULL;                  // deprecated: iface->get_minimum_increment
+    iface->get_value_and_text = NULL; // TODO: get_value_and_text
     iface->get_range = jaw_value_get_range;
     iface->get_increment = jaw_value_get_increment;
-    // TODO: missing java support for iface->get_sub_ranges
+    iface->get_sub_ranges =
+        NULL; // TODO: missing java support for iface->get_sub_ranges
     iface->set_value = jaw_value_set_value;
 }
 
@@ -64,7 +67,7 @@ gpointer jaw_value_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function jaw_value_data_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -72,7 +75,8 @@ gpointer jaw_value_data_init(jobject ac) {
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -107,7 +111,7 @@ void jaw_value_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function jaw_value_data_finalize");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -123,18 +127,19 @@ void jaw_value_data_finalize(gpointer p) {
     }
 }
 
-static void get_g_value_from_java_number(JNIEnv *jniEnv, jobject jnumber,
-                                         GValue *value) {
+static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
+                                                 jobject jnumber,
+                                                 GValue *value) {
     JAW_DEBUG_C("%p, %p, %p", jniEnv, jnumber, value);
 
     if (!jniEnv || !value) {
-        g_warning(
-            "Null argument passed to function get_g_value_from_java_number");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -241,12 +246,21 @@ static void get_g_value_from_java_number(JNIEnv *jniEnv, jobject jnumber,
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ * jaw_value_get_current_value:
+ * @obj: a GObject instance that implements AtkValueIface
+ * @value: (out): a #GValue representing the current accessible value
+ *
+ * Gets the value of this object.
+ *
+ * Deprecated in atk: Since 2.12. Use atk_value_get_value_and_text()
+ * instead.
+ **/
 static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
     JAW_DEBUG_C("%p, %p", obj, value);
 
     if (!obj || !value) {
-        g_warning(
-            "Null argument passed to function jaw_value_get_current_value");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -257,7 +271,8 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_value); // deleting ref that was created in JAW_GET_VALUE
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -285,14 +300,29 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    get_g_value_from_java_number(jniEnv, jnumber, value);
+    private_get_g_value_from_java_number(jniEnv, jnumber, value);
 }
 
+/**
+ * atk_value_set_value:
+ * @obj: a GObject instance that implements AtkValueIface
+ * @new_value: a double which is the desired new accessible value.
+ *
+ * Sets the value of this object.
+ *
+ * This method is intended to provide a way to change the value of the
+ * object. In any case, it is possible that the value can't be
+ * modified (ie: a read-only component). If the value changes due this
+ * call, it is possible that the text could change, and will trigger
+ * an #AtkValue::value-changed signal emission.
+ *
+ * Since: 2.12
+ **/
 static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
     JAW_DEBUG_C("%p, %lf", obj, value);
 
     if (!obj) {
-        g_warning("Null argument passed to function jaw_value_set_value");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -302,7 +332,8 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_value); // deleting ref that was created in JAW_GET_VALUE
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -326,11 +357,23 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ * jaw_value_get_range:
+ * @obj: a GObject instance that implements AtkValueIface
+ *
+ * Gets the range of this object.
+ *
+ * Returns: (nullable) (transfer full): a newly allocated #AtkRange
+ * that represents the minimum, maximum and descriptor (if available)
+ * of @obj. NULL if that range is not defined.
+ *
+ * In Atk Since: 2.12
+ **/
 static AtkRange *jaw_value_get_range(AtkValue *obj) {
     JAW_DEBUG_C("%p", obj);
 
     if (!obj) {
-        g_warning("Null argument passed to function jaw_value_get_range");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -340,7 +383,8 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_value); // deleting ref that was created in JAW_GET_VALUE
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -369,21 +413,32 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
         (gdouble)(*jniEnv)->CallDoubleMethod(jniEnv, atk_value, jmidMin),
         (gdouble)(*jniEnv)->CallDoubleMethod(jniEnv, atk_value, jmidMax),
         NULL); // NULL description
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     return ret;
 }
 
-/*
- * Gets the minimum increment by which the value of this object may be changed.
- * If zero, the minimum increment is undefined, which may mean that it is
- * limited only by the floating point precision of the platform.
- */
+/**
+ * jaw_value_get_increment:
+ * @obj: a GObject instance that implements AtkValueIface
+ *
+ * Gets the minimum increment by which the value of this object may be
+ * changed.  If zero, the minimum increment is undefined, which may
+ * mean that it is limited only by the floating point precision of the
+ * platform.
+ *
+ * Return value: the minimum increment by which the value of this
+ * object may be changed. zero if undefined.
+ *
+ * In atk Since: 2.12
+ **/
 static gdouble jaw_value_get_increment(AtkValue *obj) {
     JAW_DEBUG_C("%p", obj);
 
     if (!obj) {
-        g_warning("Null argument passed to function jaw_value_get_increment");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
 
@@ -393,7 +448,8 @@ static gdouble jaw_value_get_increment(AtkValue *obj) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_value); // deleting ref that was created in JAW_GET_VALUE
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -412,11 +468,6 @@ static gdouble jaw_value_get_increment(AtkValue *obj) {
         return 0;
     }
     gdouble ret = (*jniEnv)->CallDoubleMethod(jniEnv, atk_value, jmid);
-    if (!ret) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

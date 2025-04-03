@@ -122,7 +122,14 @@ public class AtkWrapperDisposer implements Runnable {
         }
     }
 
-    // todo: add documentation
+    /**
+     * Associates a native resource with an AccessibleContext using a specified native reference.
+     * If the context is not already registered, it stores the given native reference in the mapping.
+     *
+     * @param ac        The AccessibleContext to associate with a native resource.
+     * @param nativeRef The native resource reference to associate with the AccessibleContext.
+     * @return The native reference associated with the AccessibleContext, either newly stored or previously mapped.
+     */
     public long addRecord(AccessibleContext ac, long nativeRef) {
         synchronized (lock) {
             if (!weakHashMap.containsKey(ac)) {
@@ -140,10 +147,11 @@ public class AtkWrapperDisposer implements Runnable {
 
     /**
      * Retrieves the native resource associated with the given AccessibleContext.
-     * If no record exists, a new one is created and returned.
+     * If no record exists, returns -1.
      *
      * @param ac The AccessibleContext whose native resource is requested.
-     * @return The native resource pointer associated with the given AccessibleContext.
+     * @return The native resource pointer associated with the given AccessibleContext,
+     * or -1 if no record exists.
      */
     public long getRecord(AccessibleContext ac) {
         synchronized (lock) {

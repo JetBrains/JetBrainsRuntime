@@ -22,57 +22,70 @@
 #include <atk/atk.h>
 #include <glib.h>
 
+/**
+ * (From Atk documentation)
+ *
+ * AtkText:
+ *
+ * The ATK interface implemented by components with text content.
+ *
+ * #AtkText should be implemented by #AtkObjects on behalf of widgets
+ * that have text content which is either attributed or otherwise
+ * non-trivial.  #AtkObjects whose text content is simple,
+ * unattributed, and very brief may expose that content via
+ * #atk_object_get_name instead; however if the text is editable,
+ * multi-line, typically longer than three or four words, attributed,
+ * selectable, or if the object already uses the 'name' ATK property
+ * for other information, the #AtkText interface should be used to
+ * expose the text content.  In the case of editable text content,
+ * #AtkEditableText (a subtype of the #AtkText interface) should be
+ * implemented instead.
+ *
+ *  #AtkText provides not only traversal facilities and change
+ * notification for text content, but also caret tracking and glyph
+ * bounding box calculations.  Note that the text strings are exposed
+ * as UTF-8, and are therefore potentially multi-byte, and
+ * caret-to-byte offset mapping makes no assumptions about the
+ * character length; also bounding box glyph-to-offset mapping may be
+ * complex for languages which use ligatures.
+ */
+
 static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
                                 gint end_offset);
-
 static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset);
-
 static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
                                           AtkTextBoundary boundary_type,
                                           gint *start_offset, gint *end_offset);
-
 static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
                                               AtkTextBoundary boundary_type,
                                               gint *start_offset,
                                               gint *end_offset);
-
 static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
                                              AtkTextBoundary boundary_type,
                                              gint *start_offset,
                                              gint *end_offset);
-
 static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
                                             AtkTextGranularity granularity,
                                             gint *start_offset,
                                             gint *end_offset);
-
 static gint jaw_text_get_caret_offset(AtkText *text);
-
 static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
                                            gint *y, gint *width, gint *height,
                                            AtkCoordType coords);
-
 static gint jaw_text_get_character_count(AtkText *text);
-
 static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
                                          AtkCoordType coords);
 static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
                                        gint end_offset, AtkCoordType coord_type,
                                        AtkTextRectangle *rect);
-
 static gint jaw_text_get_n_selections(AtkText *text);
-
 static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
                                      gint *start_offset, gint *end_offset);
-
 static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
                                        gint end_offset);
-
 static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num);
-
 static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
                                        gint start_offset, gint end_offset);
-
 static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset);
 
 typedef struct _TextData {
@@ -89,7 +102,7 @@ void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function jaw_text_interface_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -100,9 +113,11 @@ void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
     iface->get_text_before_offset = jaw_text_get_text_before_offset;
     iface->get_string_at_offset = jaw_text_get_string_at_offset;
     iface->get_caret_offset = jaw_text_get_caret_offset;
-    // TODO: iface->get_run_attributes by iterating getCharacterAttribute or
-    // using getTextSequenceAt with ATTRIBUTE_RUN
-    // TODO: iface->get_default_attributes
+    iface->get_run_attributes =
+        NULL; // TODO: iface->get_run_attributes by iterating
+              // getCharacterAttribute or using getTextSequenceAt with
+              // ATTRIBUTE_RUN
+    iface->get_default_attributes = NULL; // TODO: iface->get_default_attributes
     iface->get_character_extents = jaw_text_get_character_extents;
     iface->get_character_count = jaw_text_get_character_count;
     iface->get_offset_at_point = jaw_text_get_offset_at_point;
@@ -113,20 +128,38 @@ void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
     iface->set_selection = jaw_text_set_selection;
     iface->set_caret_offset = jaw_text_set_caret_offset;
 
+    /*
+     * signal handlers
+     */
+    // iface->text_changed implemented by atk
+    // iface->text_caret_moved implemented by atk
+    // iface->text_selection_changed implemented bt atk
+    // iface->text_attributes_changed implemented by atk
     iface->get_range_extents = jaw_text_get_range_extents;
-    // TODO: iface->get_bounded_ranges from getTextBounds
-    // TODO: iface->get_string_at_offset
+    iface->get_bounded_ranges =
+        NULL; // TODO: iface->get_bounded_ranges from getTextBounds
+    iface->get_string_at_offset = NULL; // TODO: iface->get_string_at_offset
 
-    // TODO: missing java support for:
-    // iface->scroll_substring_to
-    // iface->scroll_substring_to_point
+    /*
+     * Scrolls this text range so it becomes visible on the screen.
+     *
+     * scroll_substring_to lets the implementation compute an appropriate target
+     * position on the screen, with type used as a positioning hint.
+     *
+     * scroll_substring_to_point lets the client specify a precise target
+     * position on the screen for the top-left of the substring.
+     *
+     * Since ATK 2.32
+     */
+    iface->scroll_substring_to = NULL;       // missing java support
+    iface->scroll_substring_to_point = NULL; // missing java support
 }
 
 gpointer jaw_text_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function jaw_text_data_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -134,7 +167,8 @@ gpointer jaw_text_data_init(jobject ac) {
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -170,7 +204,7 @@ void jaw_text_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function jaw_text_data_finalize");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -195,12 +229,12 @@ void jaw_text_data_finalize(gpointer p) {
     }
 }
 
-static gchar *jaw_text_get_gtext_from_jstr(JNIEnv *jniEnv, jstring jstr) {
+static gchar *private_jaw_text_get_gtext_from_jstr(JNIEnv *jniEnv,
+                                                   jstring jstr) {
     JAW_DEBUG_C("%p, %p", jniEnv, jstr);
 
     if (!jniEnv || !jstr) {
-        g_warning(
-            "Null argument passed to function jaw_text_get_gtext_from_jstr");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -212,18 +246,18 @@ static gchar *jaw_text_get_gtext_from_jstr(JNIEnv *jniEnv, jstring jstr) {
     return text;
 }
 
-static gchar *jaw_text_get_gtext_from_string_seq(JNIEnv *jniEnv,
-                                                 jobject jStrSeq,
-                                                 gint *start_offset,
-                                                 gint *end_offset) {
+static gchar *private_jaw_text_get_gtext_from_string_seq(JNIEnv *jniEnv,
+                                                         jobject jStrSeq,
+                                                         gint *start_offset,
+                                                         gint *end_offset) {
     if (!jniEnv || !start_offset || !end_offset) {
-        g_warning("Null argument passed to function "
-                  "jaw_text_get_gtext_from_string_seq");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -256,31 +290,36 @@ static gchar *jaw_text_get_gtext_from_string_seq(JNIEnv *jniEnv,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    jint jStart = (*jniEnv)->GetIntField(jniEnv, jStrSeq, jfidStart);
-    if (!jStart) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jint jEnd = (*jniEnv)->GetIntField(jniEnv, jStrSeq, jfidEnd);
-    if (!jEnd) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
 
-    (*start_offset) = (gint)jStart;
-    (*end_offset) = (gint)jEnd;
+    (*start_offset) = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, jfidStart);
+    (*end_offset) = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, jfidEnd);
+
+    gchar *result = private_jaw_text_get_gtext_from_jstr(jniEnv, jStr);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    return jaw_text_get_gtext_from_jstr(jniEnv, jStr);
+    return result;
 }
 
+/**
+ * atk_text_get_text:
+ * @text: an #AtkText
+ * @start_offset: a starting character offset within @text
+ * @end_offset: an ending character offset within @text, or -1 for the end of
+ *the string.
+ *
+ * Gets the specified text.
+ *
+ * Returns: a newly allocated string containing the text from @start_offset up
+ *          to, but not including @end_offset. Use g_free() to free the returned
+ *          string.
+ **/
 static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
                                 gint end_offset) {
     JAW_DEBUG_C("%p, %d, %d", text, start_offset, end_offset);
 
     if (!text) {
-        g_warning("Null argument passed to function jaw_text_get_text");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -290,7 +329,8 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -316,7 +356,7 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
         return NULL;
     }
 
-    gchar *result = jaw_text_get_gtext_from_jstr(jniEnv, jstr);
+    gchar *result = private_jaw_text_get_gtext_from_jstr(jniEnv, jstr);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -324,12 +364,20 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
     return result;
 }
 
+/**
+ * jaw_text_get_character_at_offset:
+ * @text: an #AtkText
+ * @offset: a character offset within @text
+ *
+ * Gets the specified text.
+ *
+ * Returns: the character at @offset or 0 in the case of failure.
+ **/
 static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
     JAW_DEBUG_C("%p, %d", text, offset);
 
     if (!text) {
-        g_warning("Null argument passed to function "
-                  "jaw_text_get_character_at_offset");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
 
@@ -339,7 +387,8 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -396,8 +445,7 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning(
-            "Null argument passed to function jaw_text_get_text_after_offset");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -407,7 +455,8 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -434,7 +483,7 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    gchar *result = jaw_text_get_gtext_from_string_seq(
+    gchar *result = private_jaw_text_get_gtext_from_string_seq(
         jniEnv, jStrSeq, start_offset, end_offset);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
@@ -467,8 +516,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning(
-            "Null argument passed to function jaw_text_get_text_at_offset");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -478,7 +526,8 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -505,8 +554,8 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    char *result = jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq,
-                                                      start_offset, end_offset);
+    char *result = private_jaw_text_get_gtext_from_string_seq(
+        jniEnv, jStrSeq, start_offset, end_offset);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -539,8 +588,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning(
-            "Null argument passed to function jaw_text_get_text_before_offset");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -550,7 +598,8 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -577,8 +626,8 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    char *result = jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq,
-                                                      start_offset, end_offset);
+    char *result = private_jaw_text_get_gtext_from_string_seq(
+        jniEnv, jStrSeq, start_offset, end_offset);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -642,8 +691,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning(
-            "jaw_text_get_text_after_offset: Null argument passed to function");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -653,7 +701,8 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -680,8 +729,8 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    char *result = jaw_text_get_gtext_from_string_seq(jniEnv, jStrSeq,
-                                                      start_offset, end_offset);
+    char *result = private_jaw_text_get_gtext_from_string_seq(
+        jniEnv, jStrSeq, start_offset, end_offset);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -689,22 +738,33 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
     return result;
 }
 
+/**
+ * jaw_text_get_caret_offset:
+ * @text: an #AtkText
+ *
+ * Gets the offset of the position of the caret (cursor).
+ *
+ * Returns: the character offset of the position of the caret or -1 if
+ *          the caret is not located inside the element or in the case of
+ *          any other failure.
+ **/
 static gint jaw_text_get_caret_offset(AtkText *text) {
     JAW_DEBUG_C("%p", text);
 
     if (!text) {
-        g_warning("Null argument passed to function jaw_text_get_caret_offset");
-        return 0;
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        return -1;
     }
 
-    JAW_GET_TEXT(text, 0);
+    JAW_GET_TEXT(text, -1);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
-        return 0;
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
+        return -1;
     }
 
     jclass classAtkText =
@@ -712,21 +772,16 @@ static gint jaw_text_get_caret_offset(AtkText *text) {
     if (!classAtkText) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
+        return -1;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkText, "get_caret_offset", "()I");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
+        return -1;
     }
     jint joffset = (*jniEnv)->CallIntMethod(jniEnv, atk_text, jmid);
-    if (!joffset) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -734,6 +789,24 @@ static gint jaw_text_get_caret_offset(AtkText *text) {
     return (gint)joffset;
 }
 
+/**
+ * jaw_text_get_character_extents:
+ * @text: an #AtkText
+ * @offset: The offset of the text character for which bounding information is
+ *required.
+ * @x: (out) (optional): Pointer for the x coordinate of the bounding box
+ * @y: (out) (optional): Pointer for the y coordinate of the bounding box
+ * @width: (out) (optional): Pointer for the width of the bounding box
+ * @height: (out) (optional): Pointer for the height of the bounding box
+ * @coords: specify whether coordinates are relative to the screen or widget
+ *window
+ *
+ * If the extent can not be obtained (e.g. missing support), all of x, y, width,
+ * height are set to -1.
+ *
+ * Get the bounding box containing the glyph representing the character at
+ *     a particular text offset.
+ **/
 static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
                                            gint *y, gint *width, gint *height,
                                            AtkCoordType coords) {
@@ -741,8 +814,7 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
                 coords);
 
     if (!text || !x || !y || !width || !height) {
-        g_warning(
-            "Null argument passed to function jaw_text_get_character_extents");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -757,7 +829,8 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -790,44 +863,47 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ * jaw_text_get_character_count:
+ * @text: an #AtkText
+ *
+ * Gets the character count.
+ *
+ * Returns: the number of characters or -1 in case of failure.
+ **/
 static gint jaw_text_get_character_count(AtkText *text) {
     JAW_DEBUG_C("%p", text);
 
     if (!text) {
-        g_warning(
-            "Null argument passed to function jaw_text_get_character_count");
-        return 0;
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        return -1;
     }
 
-    JAW_GET_TEXT(text, 0);
+    JAW_GET_TEXT(text, -1);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
-        return 0;
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
+        return -1;
     }
 
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-        return 0;
+        return -1;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkText,
                                             "get_character_count", "()I");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
+        return -1;
     }
     jint jcount = (*jniEnv)->CallIntMethod(jniEnv, atk_text, jmid);
-    if (!jcount) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -835,13 +911,27 @@ static gint jaw_text_get_character_count(AtkText *text) {
     return (gint)jcount;
 }
 
+/**
+ * jaw_text_get_offset_at_point:
+ * @text: an #AtkText
+ * @x: screen x-position of character
+ * @y: screen y-position of character
+ * @coords: specify whether coordinates are relative to the screen or
+ * widget window
+ *
+ * Gets the offset of the character located at coordinates @x and @y. @x and @y
+ * are interpreted as being relative to the screen or this widget's window
+ * depending on @coords.
+ *
+ * Returns: the offset to the character which is located at  the specified
+ *          @x and @y coordinates of -1 in case of failure.
+ **/
 static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
                                          AtkCoordType coords) {
     JAW_DEBUG_C("%p, %d, %d, %d", text, x, y, coords);
 
     if (!text) {
-        g_warning(
-            "Null argument passed to function jaw_text_get_offset_at_point");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
 
@@ -851,7 +941,8 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -871,11 +962,6 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
     }
     jint joffset = (*jniEnv)->CallIntMethod(jniEnv, atk_text, jmid, (jint)x,
                                             (jint)y, (jint)coords);
-    if (!joffset) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -883,6 +969,25 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
     return (gint)joffset;
 }
 
+/**
+ * jaw_text_get_range_extents:
+ * @text: an #AtkText
+ * @start_offset: The offset of the first text character for which boundary
+ *        information is required.
+ * @end_offset: The offset of the text character after the last character
+ *        for which boundary information is required.
+ * @coord_type: Specify whether coordinates are relative to the screen or widget
+ *window.
+ * @rect: (out): A pointer to a AtkTextRectangle which is filled in by this
+ *function.
+ *
+ * Get the bounding box for text within the specified range.
+ *
+ * If the extents can not be obtained (e.g. or missing support), the rectangle
+ * fields are set to -1.
+ *
+ * In Atk Since: 1.3
+ **/
 static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
                                        gint end_offset, AtkCoordType coord_type,
                                        AtkTextRectangle *rect) {
@@ -890,8 +995,7 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
                 coord_type, rect);
 
     if (!text || !rect) {
-        g_warning(
-            "Null argument passed to function jaw_text_get_range_extents");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -906,7 +1010,8 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -940,11 +1045,19 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ * jaw_text_get_n_selections:
+ * @text: an #AtkText
+ *
+ * Gets the number of selected regions.
+ *
+ * Returns: The number of selected regions, or -1 in the case of failure.
+ **/
 static gint jaw_text_get_n_selections(AtkText *text) {
     JAW_DEBUG_C("%p", text);
 
     if (!text) {
-        g_warning("Null argument passed to function jaw_text_get_n_selections");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
 
@@ -954,7 +1067,8 @@ static gint jaw_text_get_n_selections(AtkText *text) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -973,11 +1087,6 @@ static gint jaw_text_get_n_selections(AtkText *text) {
         return 0;
     }
     jint jselections = (*jniEnv)->CallIntMethod(jniEnv, atk_text, jmid);
-    if (!jselections) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -985,13 +1094,31 @@ static gint jaw_text_get_n_selections(AtkText *text) {
     return (gint)jselections;
 }
 
+/**
+ * jaw_text_get_selection:
+ * @text: an #AtkText
+ * @selection_num: The selection number.  The selected regions are
+ * assigned numbers that correspond to how far the region is from the
+ * start of the text.  The selected region closest to the beginning
+ * of the text region is assigned the number 0, etc.  Note that adding,
+ * moving or deleting a selected region can change the numbering.
+ * @start_offset: (out): passes back the starting character offset of the
+ *selected region
+ * @end_offset: (out): passes back the ending character offset (offset
+ *immediately past) of the selected region
+ *
+ * Gets the text from the specified selection.
+ *
+ * Returns: a newly allocated string containing the selected text. Use g_free()
+ *          to free the returned string.
+ **/
 static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
                                      gint *start_offset, gint *end_offset) {
     JAW_DEBUG_C("%p, %d, %p, %p", text, selection_num, start_offset,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning("Null argument passed to function jaw_text_get_selection");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -1001,7 +1128,8 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -1031,7 +1159,10 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
 
     jclass classStringSeq = (*jniEnv)->FindClass(
         jniEnv, "org/GNOME/Accessibility/AtkText$StringSequence");
-    JAW_CHECK_NULL(classStringSeq, NULL);
+    if (!classStringSeq) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jfieldID jfidStr = (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "str",
                                              "Ljava/lang/String;");
     if (!jfidStr) {
@@ -1056,30 +1187,33 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    *start_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, jfidStart);
-    if (!start_offset) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    *end_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, jfidEnd);
-    if (!end_offset) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
 
-    gchar *result = jaw_text_get_gtext_from_jstr(jniEnv, jStr);
+    *start_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, jfidStart);
+    *end_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, jfidEnd);
+
+    gchar *result = private_jaw_text_get_gtext_from_jstr(jniEnv, jStr);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return result;
 }
 
+/**
+ * jaw_text_add_selection:
+ * @text: an #AtkText
+ * @start_offset: the starting character offset of the selected region
+ * @end_offset: the offset of the first character after the selected region.
+ *
+ * Adds a selection bounded by the specified offsets.
+ *
+ * Returns: %TRUE if successful, %FALSE otherwise
+ **/
 static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
                                        gint end_offset) {
     JAW_DEBUG_C("%p, %d, %d", text, start_offset, end_offset);
 
     if (!text) {
-        g_warning("Null argument passed to function jaw_text_add_selection");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -1089,7 +1223,8 @@ static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -1109,11 +1244,6 @@ static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
     }
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_text, jmid, (jint)start_offset, (jint)end_offset);
-    if (!jresult) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -1121,11 +1251,24 @@ static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
     return jresult;
 }
 
+/**
+ * jaw_text_remove_selection:
+ * @text: an #AtkText
+ * @selection_num: The selection number.  The selected regions are
+ * assigned numbers that correspond to how far the region is from the
+ * start of the text.  The selected region closest to the beginning
+ * of the text region is assigned the number 0, etc.  Note that adding,
+ * moving or deleting a selected region can change the numbering.
+ *
+ * Removes the specified selection.
+ *
+ * Returns: %TRUE if successful, %FALSE otherwise
+ **/
 static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
     JAW_DEBUG_C("%p, %d", text, selection_num);
 
     if (!text) {
-        g_warning("Null argument passed to function jaw_text_remove_selection");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -1135,7 +1278,8 @@ static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -1155,11 +1299,6 @@ static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
     }
     jboolean jresult = (*jniEnv)->CallBooleanMethod(jniEnv, atk_text, jmid,
                                                     (jint)selection_num);
-    if (!jresult) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -1167,13 +1306,29 @@ static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
     return jresult;
 }
 
+/**
+ * jaw_text_set_selection:
+ * @text: an #AtkText
+ * @selection_num: The selection number.  The selected regions are
+ * assigned numbers that correspond to how far the region is from the
+ * start of the text.  The selected region closest to the beginning
+ * of the text region is assigned the number 0, etc.  Note that adding,
+ * moving or deleting a selected region can change the numbering.
+ * @start_offset: the new starting character offset of the selection
+ * @end_offset: the new end position of (e.g. offset immediately past)
+ * the selection
+ *
+ * Changes the start and end offset of the specified selection.
+ *
+ * Returns: %TRUE if successful, %FALSE otherwise
+ **/
 static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
                                        gint start_offset, gint end_offset) {
     JAW_DEBUG_C("%p, %d, %d, %d", text, selection_num, start_offset,
                 end_offset);
 
     if (!text) {
-        g_warning("Null argument passed to function jaw_text_set_selection");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -1183,7 +1338,8 @@ static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -1204,11 +1360,6 @@ static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_text, jmid, (jint)selection_num, (jint)start_offset,
         (jint)end_offset);
-    if (!jresult) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -1216,11 +1367,36 @@ static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
     return jresult;
 }
 
+/**
+ * jaw_text_set_caret_offset:
+ * @text: an #AtkText
+ * @offset: the character offset of the new caret position
+ *
+ * Sets the caret (cursor) position to the specified @offset.
+ *
+ * In the case of rich-text content, this method should either grab focus
+ * or move the sequential focus navigation starting point (if the application
+ * supports this concept) as if the user had clicked on the new caret position.
+ * Typically, this means that the target of this operation is the node
+ *containing the new caret position or one of its ancestors. In other words,
+ *after this method is called, if the user advances focus, it should move to the
+ *first focusable node following the new caret position.
+ *
+ * Calling this method should also scroll the application viewport in a way
+ * that matches the behavior of the application's typical caret motion or tab
+ * navigation as closely as possible. This also means that if the application's
+ * caret motion or focus navigation does not trigger a scroll operation, this
+ * method should not trigger one either. If the application does not have a
+ *caret motion or focus navigation operation, this method should try to scroll
+ *the new caret position into view while minimizing unnecessary scroll motion.
+ *
+ * Returns: %TRUE if successful, %FALSE otherwise.
+ **/
 static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
     JAW_DEBUG_C("%p, %d", text, offset);
 
     if (!text) {
-        g_warning("Null argument passed to function jaw_text_set_caret_offset");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -1230,7 +1406,8 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -1250,11 +1427,6 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
     }
     jboolean jresult =
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_text, jmid, (jint)offset);
-    if (!jresult) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

@@ -24,6 +24,27 @@
 #include <glib-object.h>
 #include <glib.h>
 
+/**
+ * (From Atk documentation)
+ *
+ * AtkComponent:
+ *
+ * The ATK interface provided by UI components
+ * which occupy a physical area on the screen.
+ * which the user can activate/interact with.
+ *
+ * #AtkComponent should be implemented by most if not all UI elements
+ * with an actual on-screen presence, i.e. components which can be
+ * said to have a screen-coordinate bounding box.  Virtually all
+ * widgets will need to have #AtkComponent implementations provided
+ * for their corresponding #AtkObject class.  In short, only UI
+ * elements which are *not* GUI elements will omit this ATK interface.
+ *
+ * A possible exception might be textual information with a
+ * transparent background, in which case text glyph bounding box
+ * information is provided by #AtkText.
+ */
+
 static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
                                        AtkCoordType coord_type);
 
@@ -41,7 +62,6 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
 
 static gboolean jaw_component_grab_focus(AtkComponent *component);
 static AtkLayer jaw_component_get_layer(AtkComponent *component);
-/*static gin jaw_component_get_mdi_zorder(AtkComponent		*component); */
 
 typedef struct _ComponentData {
     jobject atk_component;
@@ -73,34 +93,35 @@ void jaw_component_interface_init(AtkComponentIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p,%p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function "
-                  "jaw_component_interface_init in jawcomponent.c");
+        g_warning("%s: Null argument passed to function", G_STRFUNC);
         return;
     }
 
-    // deprecated: iface->add_focus_handler
     iface->contains = jaw_component_contains;
-    iface->ref_accessible_at_point = jaw_component_ref_accessible_at_point;
-    iface->get_extents = jaw_component_get_extents;
-    // done by atk: iface->get_position
-    // done by atk: iface->get_size
-    iface->grab_focus = jaw_component_grab_focus;
-    // deprecated: iface->remove_focus_handler
-    iface->set_extents = jaw_component_set_extents;
-    // TODO: iface->set_position similar to set_extents
-    // TODO: iface->set_size similar to set_extents
+    iface->get_alpha = NULL; // TODO: missing java support for iface->get_alpha
     iface->get_layer = jaw_component_get_layer;
+    iface->get_extents = jaw_component_get_extents;
     iface->get_mdi_zorder = NULL; /* TODO: jaw_component_get_mdi_zorder;*/
-    // TODO: missing java support for iface->get_alpha
-    // TODO: missing java support for iface->scroll_to
-    // TODO: missing java support for iface->scroll_to_point
+    // done by atk: iface->get_position (atk_component_real_get_position)
+    // done by atk: iface->get_size (atk_component_real_get_size)
+    iface->grab_focus = jaw_component_grab_focus;
+    iface->ref_accessible_at_point = jaw_component_ref_accessible_at_point;
+    iface->remove_focus_handler =
+        NULL;                // deprecated: iface->remove_focus_handler
+    iface->scroll_to = NULL; // TODO: missing java support for iface->scroll_to
+    iface->scroll_to_point =
+        NULL; // TODO: missing java support for iface->scroll_to_point
+    iface->set_extents = jaw_component_set_extents;
+    iface->set_position =
+        NULL;               // TODO: iface->set_position similar to set_extents
+    iface->set_size = NULL; // TODO: iface->set_size similar to set_extents
 }
 
 gpointer jaw_component_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function jaw_component_data_init");
+        g_warning("%s: Null argument passed to function", G_STRFUNC);
         return NULL;
     }
 
@@ -109,7 +130,8 @@ gpointer jaw_component_data_init(jobject ac) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -144,8 +166,7 @@ void jaw_component_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function "
-                  "jaw_component_data_finalize in jawcomponent.c");
+        g_warning("%s: Null argument passed to function", G_STRFUNC);
         return;
     }
 
@@ -160,13 +181,29 @@ void jaw_component_data_finalize(gpointer p) {
     }
 }
 
+/**
+ * jaw_component_contains:
+ * @component: the #AtkComponent
+ * @x: x coordinate
+ * @y: y coordinate
+ * @coord_type: specifies whether the coordinates are relative to the screen
+ * or to the components top level window
+ *
+ * Checks whether the specified point is within the extent of the @component.
+ *
+ * Toolkit implementor note: ATK provides a default implementation for
+ * this virtual method. In general there are little reason to
+ * re-implement it.
+ *
+ * Returns: %TRUE or %FALSE indicating whether the specified point is within
+ * the extent of the @component or not
+ **/
 static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
                                        AtkCoordType coord_type) {
     JAW_DEBUG_C("%p, %d, %d, %d", component, x, y, coord_type);
 
     if (!component) {
-        g_warning("Null argument passed to function jaw_component_contains in "
-                  "jawcomponent.c");
+        g_warning("%s: Null argument passed to function", G_STRFUNC);
         return FALSE;
     }
 
@@ -176,7 +213,8 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
             jniEnv,
             atk_component); // deleting ref that was created in
                             // JAW_GET_COMPONENT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -196,11 +234,6 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
     }
     jboolean jcontains = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, jmid, (jint)x, (jint)y, (jint)coord_type);
-    if (!jcontains) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -228,8 +261,7 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
     JAW_DEBUG_C("%p, %d, %d, %d", component, x, y, coord_type);
 
     if (!component) {
-        g_warning("Null argument passed to function "
-                  "jaw_component_ref_accessible_at_point in jawcomponent.c");
+        g_warning("%s: Null argument passed to function ", G_STRFUNC);
         return NULL;
     }
 
@@ -240,7 +272,8 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
             jniEnv,
             atk_component); // deleting ref that was created in
                             // JAW_GET_COMPONENT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -267,9 +300,9 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
         return NULL;
     }
 
-    JawImpl *jaw_impl = jaw_impl_get_instance_from_jaw(jniEnv, child_ac);
+    JawImpl *jaw_impl = jaw_impl_find_instance(jniEnv, child_ac);
 
-    // From the documentation of the `atk_component_ref_accessible_at_point`:
+    // From the documentation of the `ref_accessible_at_point`:
     // "The caller of the method takes ownership of the returned data, and is
     // responsible for freeing it." (transfer full)
     if (jaw_impl) {
@@ -282,6 +315,22 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
     return ATK_OBJECT(jaw_impl);
 }
 
+/**
+ * jaw_component_get_extents:
+ * @component: an #AtkComponent
+ * @x: (out) (optional): address of #gint to put x coordinate
+ * @y: (out) (optional): address of #gint to put y coordinate
+ * @width: (out) (optional): address of #gint to put width
+ * @height: (out) (optional): address of #gint to put height
+ * @coord_type: specifies whether the coordinates are relative to the screen
+ * or to the components top level window
+ *
+ * Gets the rectangle which gives the extent of the @component.
+ *
+ * If the extent can not be obtained (e.g. a non-embedded plug or missing
+ * support), all of x, y, width, height are set to -1.
+ *
+ **/
 static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
                                       gint *width, gint *height,
                                       AtkCoordType coord_type) {
@@ -289,8 +338,7 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
                 coord_type);
 
     if (!component || !x || !y || !width || !height) {
-        g_warning("Null argument passed to function jaw_component_get_extents "
-                  "in jawcomponent.c");
+        g_warning("%s: Null argument passed to function", G_STRFUNC);
         return;
     }
 
@@ -306,7 +354,8 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
             jniEnv,
             atk_component); // deleting ref that was created in
                             // JAW_GET_COMPONENT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -326,7 +375,7 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
     }
     jobject jrectangle = (*jniEnv)->CallObjectMethod(jniEnv, atk_component,
                                                      jmid, (jint)coord_type);
-    if (jrectangle == NULL) {
+    if (!jrectangle) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         JAW_DEBUG_I("jrectangle == NULL");
@@ -362,6 +411,7 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     (*x) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, jfidX);
     (*y) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, jfidY);
     (*width) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, jfidW);
@@ -370,6 +420,20 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ * jaw_component_set_extents:
+ * @component: an #AtkComponent
+ * @x: x coordinate
+ * @y: y coordinate
+ * @width: width to set for @component
+ * @height: height to set for @component
+ * @coord_type: specifies whether the coordinates are relative to the screen
+ * or to the components top level window
+ *
+ * Sets the extents of @component.
+ *
+ * Returns: %TRUE or %FALSE whether the extents were set or not
+ **/
 static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
                                           gint y, gint width, gint height,
                                           AtkCoordType coord_type) {
@@ -377,8 +441,7 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
                 coord_type);
 
     if (!component) {
-        g_warning("Null argument passed to function jaw_component_set_extents "
-                  "in jawcomponent.c");
+        g_warning("%s: Null argument passed to function", G_STRFUNC);
         return FALSE;
     }
 
@@ -389,7 +452,8 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
             jniEnv,
             atk_component); // deleting ref that was created in
                             // JAW_GET_COMPONENT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -410,11 +474,6 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
     jboolean assigned = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, jmid, (jint)x, (jint)y, (jint)width,
         (jint)height, (jint)coord_type);
-    if (!assigned) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -422,12 +481,19 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
     return assigned;
 }
 
+/**
+ * jaw_component_grab_focus:
+ * @component: an #AtkComponent
+ *
+ * Grabs focus for this @component.
+ *
+ * Returns: %TRUE if successful, %FALSE otherwise.
+ **/
 static gboolean jaw_component_grab_focus(AtkComponent *component) {
     JAW_DEBUG_C("%p", component);
 
     if (!component) {
-        g_warning("Null argument passed to function jaw_component_grab_focus "
-                  "in jawcomponent.c");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -438,7 +504,8 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
             jniEnv,
             atk_component); // deleting ref that was created in
                             // JAW_GET_COMPONENT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -458,11 +525,6 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
     }
     jboolean jresult =
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_component, jmid);
-    if (!jresult) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -470,12 +532,20 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
     return jresult;
 }
 
+/**
+ * jaw_component_get_layer:
+ * @component: an #AtkComponent
+ *
+ * Gets the layer of the component.
+ *
+ * Returns: an #AtkLayer which is the layer of the component, 0 if an error
+ *happened.
+ **/
 static AtkLayer jaw_component_get_layer(AtkComponent *component) {
     JAW_DEBUG_C("%p", component);
 
     if (!component) {
-        g_warning("Null argument passed to function jaw_component_get_layer in "
-                  "jawcomponent.c");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
 
@@ -486,8 +556,9 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
             jniEnv,
             atk_component); // deleting ref that was created in
                             // JAW_GET_COMPONENT
-        g_warning("Failed to create a new local reference frame");
-        return FALSE;
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
+        return 0;
     }
 
     jclass classAtkComponent =
@@ -495,21 +566,16 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
     if (!classAtkComponent) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
+        return 0;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkComponent, "get_layer", "()I");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
+        return 0;
     }
     jint jlayer = (*jniEnv)->CallIntMethod(jniEnv, atk_component, jmid);
-    if (!jlayer) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

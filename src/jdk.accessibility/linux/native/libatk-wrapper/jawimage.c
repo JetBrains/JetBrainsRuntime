@@ -22,6 +22,29 @@
 #include <atk/atk.h>
 #include <glib.h>
 
+/**
+ * (From Atk documentation)
+ *
+ * AtkImage:
+ *
+ * The ATK Interface implemented by components
+ *  which expose image or pixmap content on-screen.
+ *
+ * #AtkImage should be implemented by #AtkObject subtypes on behalf of
+ * components which display image/pixmap information onscreen, and
+ * which provide information (other than just widget borders, etc.)
+ * via that image content.  For instance, icons, buttons with icons,
+ * toolbar elements, and image viewing panes typically should
+ * implement #AtkImage.
+ *
+ * #AtkImage primarily provides two types of information: coordinate
+ * information (useful for screen review mode of screenreaders, and
+ * for use by onscreen magnifiers), and descriptive information.  The
+ * descriptive information is provided for alternative, text-only
+ * presentation of the most significant information present in the
+ * image.
+ */
+
 static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
                                          AtkCoordType coord_type);
 static const gchar *jaw_image_get_image_description(AtkImage *image);
@@ -38,11 +61,19 @@ typedef struct _ImageData {
     JAW_GET_OBJ_IFACE(image, INTERFACE_IMAGE, ImageData, atk_image, jniEnv,    \
                       atk_image, def_ret)
 
+/**
+ * AtkImageIface:
+ * @get_image_position:
+ * @get_image_description:
+ * @get_image_size
+ * @set_image_description:
+ * @get_image_locale:
+ **/
 void jaw_image_interface_init(AtkImageIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function jaw_image_interface_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -50,14 +81,15 @@ void jaw_image_interface_init(AtkImageIface *iface, gpointer data) {
     iface->get_image_description = jaw_image_get_image_description;
     iface->get_image_size = jaw_image_get_image_size;
     iface->set_image_description = NULL; /* TODO */
-    // TODO: iface->get_image_locale from AccessibleContext.getLocale()
+    iface->get_image_locale = NULL;      // TODO: iface->get_image_locale from
+                                         // AccessibleContext.getLocale()
 }
 
 gpointer jaw_image_data_init(jobject ac) {
     JAW_DEBUG_C("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function jaw_image_data_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -67,7 +99,8 @@ gpointer jaw_image_data_init(jobject ac) {
     JAW_CHECK_NULL(jniEnv, NULL);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -105,7 +138,7 @@ void jaw_image_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning("Null argument passed to function jaw_image_data_finalize");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -135,8 +168,7 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
     JAW_DEBUG_C("%p, %p, %p, %d", image, x, y, coord_type);
 
     if (!image || !x || !y) {
-        g_warning(
-            "Null argument passed to function jaw_image_get_image_position");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -146,7 +178,8 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_image); // deleting ref that was created in JAW_GET_IMAGE
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -192,21 +225,9 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-    jint jx = (*jniEnv)->GetIntField(jniEnv, jpoint, jfidX);
-    if (!jx) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jint jy = (*jniEnv)->GetIntField(jniEnv, jpoint, jfidY);
-    if (!jy) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
 
-    (*x) = (gint)jx;
-    (*y) = (gint)jy;
+    (*x) = (gint)(*jniEnv)->GetIntField(jniEnv, jpoint, jfidX);
+    (*y) = (gint)(*jniEnv)->GetIntField(jniEnv, jpoint, jfidY);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -216,8 +237,7 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
     JAW_DEBUG_C("%p", image);
 
     if (!image) {
-        g_warning(
-            "Null argument passed to function jaw_image_get_image_description");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -227,7 +247,8 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_image); // deleting ref that was created in JAW_GET_IMAGE
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -275,7 +296,7 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
     JAW_DEBUG_C("%p, %p, %p", image, width, height);
 
     if (!image || !width || !height) {
-        g_warning("Null argument passed to function jaw_image_get_image_size");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -285,7 +306,8 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_image); // deleting ref that was created in JAW_GET_IMAGE
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -312,6 +334,7 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
 
     jclass classDimension = (*jniEnv)->FindClass(jniEnv, "java/awt/Dimension");
@@ -331,17 +354,9 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-    jint jwidth = (*jniEnv)->GetIntField(jniEnv, jdimension, jfidWidth);
-    if (!jwidth) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jint jheight = (*jniEnv)->GetIntField(jniEnv, jdimension, jfidHeight);
-    if (!jheight) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
 
-    (*width) = (gint)jwidth;
-    (*height) = (gint)jheight;
+    (*width) = (gint)(*jniEnv)->GetIntField(jniEnv, jdimension, jfidWidth);
+    (*height) = (gint)(*jniEnv)->GetIntField(jniEnv, jdimension, jfidHeight);
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }

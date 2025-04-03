@@ -22,10 +22,25 @@
 #include "jawutil.h"
 #include <glib.h>
 
+/**
+ * (From Atk documentation)
+ *
+ * AtkHyperlink:
+ *
+ * An ATK object which encapsulates a link or set of links in a hypertext
+ * document.
+ *
+ * An ATK object which encapsulates a link or set of links (for
+ * instance in the case of client-side image maps) in a hypertext
+ * document.  It may implement the AtkAction interface.  AtkHyperlink
+ * may also be used to refer to inline embedded content, since it
+ * allows specification of a start and end offset within the host
+ * AtkHypertext object.
+ */
+
 static void jaw_hyperlink_dispose(GObject *gobject);
 static void jaw_hyperlink_finalize(GObject *gobject);
 
-/* AtkObject */
 static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i);
 static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink, gint i);
 static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink);
@@ -48,11 +63,24 @@ JawHyperlink *jaw_hyperlink_new(jobject jhyperlink) {
     return jaw_hyperlink;
 }
 
+/**
+ * _AtkHyperlinkClass:
+ * @get_uri:
+ * @get_object:
+ * @get_end_index:
+ * @get_start_index:
+ * @is_valid:
+ * @get_n_anchors:
+ * @link_state:
+ * @is_selected_link:
+ * @link_activated -- The signal link-activated is emitted when a link is
+ *activated.
+ **/
 static void jaw_hyperlink_class_init(JawHyperlinkClass *klass) {
     JAW_DEBUG_ALL("%p", klass);
 
     if (!klass) {
-        g_warning("Null argument passed to function jaw_hyperlink_class_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -67,8 +95,11 @@ static void jaw_hyperlink_class_init(JawHyperlinkClass *klass) {
     atk_hyperlink_class->get_start_index = jaw_hyperlink_get_start_index;
     atk_hyperlink_class->is_valid = jaw_hyperlink_is_valid;
     atk_hyperlink_class->get_n_anchors = jaw_hyperlink_get_n_anchors;
-    // TODO: missing java support for atk_hyperlink_class->link_state
-    // TODO: missing java support for atk_hyperlink_class->is_selected_link
+    atk_hyperlink_class->link_state =
+        NULL; // TODO: missing java support for atk_hyperlink_class->link_state
+    atk_hyperlink_class->is_selected_link =
+        NULL; // TODO: missing java support for
+              // atk_hyperlink_class->is_selected_link
 }
 
 static void jaw_hyperlink_init(JawHyperlink *link) {
@@ -79,7 +110,7 @@ static void jaw_hyperlink_dispose(GObject *gobject) {
     JAW_DEBUG_ALL("%p", gobject);
 
     if (!gobject) {
-        g_warning("Null argument passed to function jaw_hyperlink_dispose");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -91,7 +122,7 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
     JAW_DEBUG_ALL("%p", gobject);
 
     if (!gobject) {
-        g_warning("Null argument passed to function jaw_hyperlink_finalize");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -119,11 +150,23 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
     G_OBJECT_CLASS(jaw_hyperlink_parent_class)->finalize(gobject);
 }
 
+/**
+ * jaw_hyperlink_get_uri:
+ * @link_: an #AtkHyperlink
+ * @i: a (zero-index) integer specifying the desired anchor
+ *
+ * Get a the URI associated with the anchor specified
+ * by @i of @link_.
+ *
+ * Multiple anchors are primarily used by client-side image maps.
+ *
+ * Returns: a string specifying the URI
+ **/
 static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     JAW_DEBUG_C("%p, %d", atk_hyperlink, i);
 
     if (!atk_hyperlink) {
-        g_warning("Null argument passed to function jaw_hyperlink_get_uri");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -133,7 +176,8 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -192,7 +236,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
     JAW_DEBUG_C("%p, %d", atk_hyperlink, i);
 
     if (!atk_hyperlink) {
-        g_warning("Null argument passed to function jaw_hyperlink_get_object");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -202,7 +246,8 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -227,7 +272,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    AtkObject *obj = (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, ac);
+    AtkObject *obj = (AtkObject *)jaw_impl_find_instance(jniEnv, ac);
     // From documentation of the `atk_hyperlink_get_object`:
     // The returned data is owned by the instance (transfer none), so we don't
     // ref the obj before returning it.
@@ -238,28 +283,33 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
     return obj;
 }
 
-/*
- * Gets the ending character offset of the text range.
+/**
+ * atk_hyperlink_get_end_index:
+ * @link_: an #AtkHyperlink
  *
- * Returns -1 if an error occurred.
- */
+ * Gets the index with the hypertext document at which this link ends.
+ *
+ * Returns: the index with the hypertext document at which this link ends, 0 if
+ *an error happened.
+ **/
 static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
 
     if (!atk_hyperlink) {
         g_warning(
             "Null argument passed to function jaw_hyperlink_get_end_index");
-        return -1;
+        return 0;
     }
 
-    JAW_GET_HYPERLINK(atk_hyperlink, -1);
+    JAW_GET_HYPERLINK(atk_hyperlink, 0);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
-        g_warning("Failed to create a new local reference frame");
-        return -1;
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
+        return 0;
     }
 
     jclass classAtkHyperlink =
@@ -267,21 +317,16 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
     if (!classAtkHyperlink) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return -1;
+        return 0;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkHyperlink,
                                             "get_end_index", "()I");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return -1;
+        return 0;
     }
     jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, jmid);
-    if (!jindex) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return -1;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -289,28 +334,33 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
     return jindex;
 }
 
-/*
- * Gets the starting character offset of the text range.
+/**
+ * jaw_hyperlink_get_start_index:
+ * @link_: an #AtkHyperlink
  *
- * Returns -1 is an error occurred.
- */
+ * Gets the index with the hypertext document at which this link begins.
+ *
+ * Returns: the index with the hypertext document at which this link begins, 0
+ *if an error happened
+ **/
 static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
 
     if (!atk_hyperlink) {
         g_warning(
             "Null argument passed to function jaw_hyperlink_get_start_index");
-        return -1;
+        return 0;
     }
 
-    JAW_GET_HYPERLINK(atk_hyperlink, -1);
+    JAW_GET_HYPERLINK(atk_hyperlink, 0);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
-        g_warning("Failed to create a new local reference frame");
-        return -1;
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
+        return 0;
     }
 
     jclass classAtkHyperlink =
@@ -318,21 +368,16 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
     if (!classAtkHyperlink) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return -1;
+        return 0;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkHyperlink,
                                             "get_start_index", "()I");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return -1;
+        return 0;
     }
     jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, jmid);
-    if (!jindex) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return -1;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -340,11 +385,21 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
     return jindex;
 }
 
+/**
+ * jaw_hyperlink_is_valid:
+ * @link_: an #AtkHyperlink
+ *
+ * Since the document that a link is associated with may have changed
+ * this method returns %TRUE if the link is still valid (with
+ * respect to the document it references) and %FALSE otherwise.
+ *
+ * Returns: whether or not this link is still valid
+ **/
 static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
 
     if (!atk_hyperlink) {
-        g_warning("Null argument passed to function jaw_hyperlink_is_valid");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -354,7 +409,8 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -373,11 +429,6 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
         return FALSE;
     }
     jboolean jvalid = (*jniEnv)->CallBooleanMethod(jniEnv, jhyperlink, jmid);
-    if (!jvalid) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -386,8 +437,13 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
 }
 
 /**
- * Gets the total number of anchors.
- */
+ * jaw_hyperlink_get_n_anchors:
+ * @link_: an #AtkHyperlink
+ *
+ * Gets the number of anchors associated with this hyperlink.
+ *
+ * Returns: the number of anchors associated with this hyperlink
+ **/
 static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
     JAW_DEBUG_C("%p", atk_hyperlink);
 
@@ -403,7 +459,8 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -422,11 +479,6 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
         return 0;
     }
     jint janchors = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, jmid);
-    if (!janchors) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

@@ -25,6 +25,36 @@
 #include <atk/atk.h>
 #include <glib.h>
 
+/**
+ * (From Atk documentation)
+ *
+ * AtkObject:
+ *
+ * The base object class for the Accessibility Toolkit API.
+ *
+ * This class is the primary class for accessibility support via the
+ * Accessibility ToolKit (ATK).  Objects which are instances of
+ * #AtkObject (or instances of AtkObject-derived types) are queried
+ * for properties which relate basic (and generic) properties of a UI
+ * component such as name and description.  Instances of #AtkObject
+ * may also be queried as to whether they implement other ATK
+ * interfaces (e.g. #AtkAction, #AtkComponent, etc.), as appropriate
+ * to the role which a given UI component plays in a user interface.
+ *
+ * All UI components in an application which provide useful
+ * information or services to the user must provide corresponding
+ * #AtkObject instances on request (in GTK+, for instance, usually on
+ * a call to #gtk_widget_get_accessible ()), either via ATK support
+ * built into the toolkit for the widget class or ancestor class, or
+ * in the case of custom widgets, if the inherited #AtkObject
+ * implementation is insufficient, via instances of a new #AtkObject
+ * subclass.
+ *
+ * See [class@AtkObjectFactory], [class@AtkRegistry].  (GTK+ users see also
+ * #GtkAccessible).
+ *
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,18 +63,13 @@ static void jaw_object_initialize(AtkObject *jaw_obj, gpointer data);
 static void jaw_object_dispose(GObject *gobject);
 static void jaw_object_finalize(GObject *gobject);
 
-/* AtkObject */
 static const gchar *jaw_object_get_name(AtkObject *atk_obj);
 static const gchar *jaw_object_get_description(AtkObject *atk_obj);
-
 static gint jaw_object_get_n_children(AtkObject *atk_obj);
-
 static gint jaw_object_get_index_in_parent(AtkObject *atk_obj);
-
 static AtkRole jaw_object_get_role(AtkObject *atk_obj);
 static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj);
 static AtkObject *jaw_object_get_parent(AtkObject *obj);
-
 static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name);
 static void jaw_object_set_description(AtkObject *atk_obj,
                                        const gchar *description);
@@ -55,7 +80,6 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj);
 static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i);
 
 static gpointer parent_class = NULL;
-// static JawObject *jaw_object_table_lookup(JNIEnv *jniEnv, jobject ac);
 
 enum {
     ACTIVATE,
@@ -91,7 +115,7 @@ static void jaw_object_class_init(JawObjectClass *klass) {
     JAW_DEBUG_ALL("%p", klass);
 
     if (!klass) {
-        g_warning("Null argument passed to function jaw_object_class_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -111,14 +135,15 @@ static void jaw_object_class_init(JawObjectClass *klass) {
     atk_class->ref_relation_set = jaw_object_ref_relation_set;
     atk_class->get_role = jaw_object_get_role;
     // Done by atk: atk_class->get_layer
-    // TODO: missing java support for atk_class->get_mdi_zorder
+    atk_class->get_mdi_zorder =
+        NULL; // TODO: missing java support for atk_class->get_mdi_zorder
     atk_class->ref_state_set = jaw_object_ref_state_set;
     atk_class->set_name = jaw_object_set_name;
     atk_class->set_description = jaw_object_set_description;
     atk_class->set_parent = jaw_object_set_parent;
     atk_class->set_role = jaw_object_set_role;
     atk_class->initialize = jaw_object_initialize;
-    // TODO: atk_class->get_attributes
+    atk_class->get_attributes = NULL; // TODO: atk_class->get_attributes
     atk_class->get_object_locale = jaw_object_get_object_locale;
 
     jaw_window_signals[ACTIVATE] = jaw_window_add_signal("activate", klass);
@@ -138,7 +163,7 @@ static void jaw_object_initialize(AtkObject *atk_obj, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", atk_obj, data);
 
     if (!atk_obj) {
-        g_warning("Null argument passed to function jaw_object_initialize");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -149,8 +174,7 @@ gpointer jaw_object_get_interface_data(JawObject *jaw_obj, guint iface) {
     JAW_DEBUG_C("%p, %u", jaw_obj, iface);
 
     if (!jaw_obj) {
-        g_warning(
-            "Null argument passed to function jaw_object_get_interface_data");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -166,7 +190,7 @@ static void jaw_object_init(JawObject *object) {
     JAW_DEBUG_ALL("%p", object);
 
     if (!object) {
-        g_warning("Null argument passed to function jaw_object_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -181,11 +205,9 @@ static void jaw_object_dispose(GObject *gobject) {
     JAW_DEBUG_C("%p", gobject);
 
     if (!gobject) {
-        g_warning("Null argument passed to function jaw_object_dispose");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
-
-    /* Customized dispose code */
 
     /* Chain up to parent's dispose method */
     G_OBJECT_CLASS(jaw_object_parent_class)->dispose(gobject);
@@ -195,7 +217,7 @@ static void jaw_object_finalize(GObject *gobject) {
     JAW_DEBUG_ALL("%p", gobject);
 
     if (!gobject) {
-        g_warning("Null argument passed to function jaw_object_finalize");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -245,11 +267,20 @@ static void jaw_object_finalize(GObject *gobject) {
     G_OBJECT_CLASS(jaw_object_parent_class)->finalize(gobject);
 }
 
+/**
+ * jaw_object_get_parent:
+ * @accessible: an #AtkObject
+ *
+ * Gets the accessible parent of the accessible.
+ *
+ * Returns: (transfer none): an #AtkObject representing the accessible
+ * parent of the accessible
+ **/
 static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
     JAW_DEBUG_C("%p", atk_obj);
 
     if (!atk_obj) {
-        g_warning("Null argument passed to function jaw_object_get_parent");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -264,7 +295,8 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             ac); // deleting ref that was created in JAW_GET_OBJECT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -307,11 +339,20 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
     return NULL;
 }
 
+/**
+ * jaw_object_set_parent:
+ * @accessible: an #AtkObject
+ *
+ * Gets the accessible parent of the accessible.
+ *
+ * Returns: (transfer none): an #AtkObject representing the accessible
+ * parent of the accessible
+ **/
 static void jaw_object_set_parent(AtkObject *atk_obj, AtkObject *parent) {
     JAW_DEBUG_C("%p, %p", atk_obj, parent);
 
     if (!atk_obj || !parent) {
-        g_warning("Null argument passed to function jaw_object_set_parent");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -321,7 +362,8 @@ static void jaw_object_set_parent(AtkObject *atk_obj, AtkObject *parent) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             ac); // deleting ref that was created in JAW_GET_OBJECT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -358,17 +400,24 @@ static void jaw_object_set_parent(AtkObject *atk_obj, AtkObject *parent) {
     }
     (*jniEnv)->CallStaticVoidMethod(jniEnv, atkObject, jmid, ac, pa);
 
-    // FIXME do we need to emit the signal 'children-changed::add'?
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     (*jniEnv)->DeleteGlobalRef(jniEnv, pa);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ * jaw_object_get_name:
+ * @role: The #AtkRole whose name is required
+ *
+ * Gets the description string describing the #AtkRole @role.
+ *
+ * Returns: the string describing the AtkRole
+ */
 static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
     JAW_DEBUG_C("%p", atk_obj);
 
     if (!atk_obj) {
-        g_warning("Null argument passed to function jaw_object_get_name");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -397,7 +446,8 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             ac); // deleting ref that was created in JAW_GET_OBJECT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -449,11 +499,21 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
     return atk_obj->name;
 }
 
+/**
+ * jaw_object_set_name:
+ * @accessible: an #AtkObject
+ * @name: a character string to be set as the accessible name
+ *
+ * Sets the accessible name of the accessible. You can't set the name
+ * to NULL. This is reserved for the initial value. In this aspect
+ * NULL is similar to ATK_ROLE_UNKNOWN. If you want to set the name to
+ * a empty value you can use "".
+ **/
 static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
     JAW_DEBUG_C("%p, %s", atk_obj, name);
 
     if (!atk_obj || !name) {
-        g_warning("Null argument passed to function jaw_object_set_name");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -463,7 +523,8 @@ static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             ac); // deleting ref that was created in JAW_GET_OBJECT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -492,12 +553,21 @@ static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ * jaw_object_get_description:
+ * @accessible: an #AtkObject
+ *
+ * Gets the accessible description of the accessible.
+ *
+ * Returns: a character string representing the accessible description
+ * of the accessible.
+ *
+ **/
 static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
     JAW_DEBUG_C("%p", atk_obj);
 
     if (!atk_obj) {
-        g_warning(
-            "Null argument passed to function jaw_object_get_description");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -507,7 +577,8 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             ac); // deleting ref that was created in JAW_GET_OBJECT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -555,13 +626,22 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
     return atk_obj->description;
 }
 
+/**
+ * jaw_object_set_description:
+ * @accessible: an #AtkObject
+ * @description: a character string to be set as the accessible description
+ *
+ * Sets the accessible description of the accessible. You can't set
+ * the description to NULL. This is reserved for the initial value. In
+ * this aspect NULL is similar to ATK_ROLE_UNKNOWN. If you want to set
+ * the name to a empty value you can use "".
+ **/
 static void jaw_object_set_description(AtkObject *atk_obj,
                                        const gchar *description) {
     JAW_DEBUG_C("%p, %s", atk_obj, description);
 
     if (!atk_obj) {
-        g_warning(
-            "Null argument passed to function jaw_object_set_description");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -571,7 +651,8 @@ static void jaw_object_set_description(AtkObject *atk_obj,
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             ac); // deleting ref that was created in JAW_GET_OBJECT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
@@ -600,11 +681,20 @@ static void jaw_object_set_description(AtkObject *atk_obj,
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ * jaw_object_get_n_children:
+ * @accessible: an #AtkObject
+ *
+ * Gets the number of accessible children of the accessible.
+ *
+ * Returns: an integer representing the number of accessible children
+ * of the accessible.
+ **/
 static gint jaw_object_get_n_children(AtkObject *atk_obj) {
     JAW_DEBUG_C("%p", atk_obj);
 
     if (!atk_obj) {
-        g_warning("Null argument passed to function jaw_object_get_n_children");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
 
@@ -614,7 +704,8 @@ static gint jaw_object_get_n_children(AtkObject *atk_obj) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             ac); // deleting ref that was created in JAW_GET_OBJECT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -634,11 +725,6 @@ static gint jaw_object_get_n_children(AtkObject *atk_obj) {
         return 0;
     }
     jint count = (*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
-    if (!count) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -646,12 +732,20 @@ static gint jaw_object_get_n_children(AtkObject *atk_obj) {
     return (gint)count;
 }
 
+/**
+ * jaw_object_get_index_in_parent:
+ * @accessible: an #AtkObject
+ *
+ * Gets the 0-based index of this accessible in its parent; returns -1 if the
+ * accessible does not have an accessible parent.
+ *
+ * Returns: an integer which is the index of the accessible in its parent
+ **/
 static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
     JAW_DEBUG_C("%p", atk_obj);
 
     if (!atk_obj) {
-        g_warning(
-            "Null argument passed to function jaw_object_get_index_in_parent");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return -1;
     }
 
@@ -667,7 +761,8 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             ac); // deleting ref that was created in JAW_GET_OBJECT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return -1;
     }
 
@@ -687,11 +782,6 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
         return -1;
     }
     jint index = (*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, ac);
-    if (!index) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return -1;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -699,11 +789,19 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
     return (gint)index;
 }
 
+/**
+ * jaw_object_get_role:
+ * @accessible: an #AtkObject
+ *
+ * Gets the role of the accessible.
+ *
+ * Returns: an #AtkRole which is the role of the accessible
+ **/
 static AtkRole jaw_object_get_role(AtkObject *atk_obj) {
     JAW_DEBUG_C("%p", atk_obj);
 
     if (!atk_obj) {
-        g_warning("Null argument passed to function jaw_object_get_role");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return ATK_ROLE_INVALID;
     }
 
@@ -721,11 +819,18 @@ static AtkRole jaw_object_get_role(AtkObject *atk_obj) {
     return role;
 }
 
+/**
+ * jaw_object_set_role:
+ * @accessible: an #AtkObject
+ * @role: an #AtkRole to be set as the role
+ *
+ * Sets the role of the accessible.
+ **/
 static void jaw_object_set_role(AtkObject *atk_obj, AtkRole role) {
     JAW_DEBUG_C("%p, %d", atk_obj, role);
 
     if (!atk_obj) {
-        g_warning("Null argument passed to function jaw_object_set_role");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -735,7 +840,8 @@ static void jaw_object_set_role(AtkObject *atk_obj, AtkRole role) {
 #if !ATK_CHECK_VERSION(2, 38, 0)
 static gboolean is_collapsed_java_state(JNIEnv *jniEnv, jobject jobj) {
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
     jclass classAccessibleState =
@@ -765,11 +871,21 @@ static gboolean is_collapsed_java_state(JNIEnv *jniEnv, jobject jobj) {
 }
 #endif
 
+/**
+ * atk_object_ref_state_set:
+ * @accessible: an #AtkObject
+ *
+ * Gets a reference to the state set of the accessible; the caller must
+ * unreference it when it is no longer needed.
+ *
+ * Returns: (transfer full): a reference to an #AtkStateSet which is the state
+ * set of the accessible
+ **/
 static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
     JAW_DEBUG_C("%p", atk_obj);
 
     if (!atk_obj) {
-        g_warning("Null argument passed to function jaw_object_ref_state_set");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -779,7 +895,8 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             ac); // deleting ref that was created in JAW_GET_OBJECT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -831,7 +948,7 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
         (*jniEnv)->DeleteLocalRef(jniEnv, jstate);
     }
 
-    g_object_ref(G_OBJECT(state_set));
+    g_object_ref(G_OBJECT(state_set)); // because transfer full
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -839,12 +956,21 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
     return state_set;
 }
 
+/**
+ * jaw_object_get_object_locale:
+ * @accessible: an #AtkObject
+ *
+ * Gets a UTF-8 string indicating the POSIX-style LC_MESSAGES locale
+ * of @accessible.
+ *
+ * Returns: a UTF-8 string indicating the POSIX-style LC_MESSAGES
+ *          locale of @accessible.
+ **/
 static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
     JAW_DEBUG_C("%p", atk_obj);
 
     if (!atk_obj) {
-        g_warning(
-            "Null argument passed to function jaw_object_get_object_locale");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -854,7 +980,8 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             ac); // deleting ref that was created in JAW_GET_OBJECT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -903,12 +1030,20 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
     return jaw_obj->locale;
 }
 
+/**
+ * jaw_object_ref_relation_set:
+ * @accessible: an #AtkObject
+ *
+ * Gets the #AtkRelationSet associated with the object.
+ *
+ * Returns: (transfer full) : an #AtkRelationSet representing the relation set
+ * of the object.
+ **/
 static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
     JAW_DEBUG_C("%p)", atk_obj);
 
     if (!atk_obj) {
-        g_warning(
-            "Null argument passed to function jaw_object_ref_relation_set");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -918,7 +1053,8 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             ac); // deleting ref that was created in JAW_GET_OBJECT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -1020,8 +1156,7 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
             if (!jtarget) {
                 continue;
             }
-            JawImpl *target_obj =
-                jaw_impl_get_instance_from_jaw(jniEnv, jtarget);
+            JawImpl *target_obj = jaw_impl_find_instance(jniEnv, jtarget);
             if (target_obj == NULL) {
                 g_warning(
                     "jaw_object_ref_relation_set: target_obj == NULL occurs\n");
@@ -1041,7 +1176,7 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    if (G_OBJECT(atk_obj->relation_set) != NULL) {
+    if (G_OBJECT(atk_obj->relation_set) != NULL) { // because transfer full
         g_object_ref(atk_obj->relation_set);
     }
 
@@ -1057,14 +1192,14 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
  *
  * Gets a reference to the specified accessible child of the object.
  *
- * Returns: (transfer none): an #AtkObject representing the specified
+ * Returns: an #AtkObject representing the specified
  * accessible child of the accessible.
  **/
 static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
     JAW_DEBUG_C("%p, %d", atk_obj, i);
 
     if (!atk_obj) {
-        g_warning("Null argument passed to function jaw_object_ref_child");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -1074,7 +1209,8 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             ac); // deleting ref that was created in JAW_GET_OBJECT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -1102,8 +1238,7 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
         return NULL;
     }
 
-    AtkObject *obj =
-        (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, child_ac);
+    AtkObject *obj = (AtkObject *)jaw_impl_find_instance(jniEnv, child_ac);
     // From the documentation of `ref_child` in AtkObject
     // (https://docs.gtk.org/atk/vfunc.Object.ref_child.html): The returned data
     // is owned by the instance, so the object is not referenced before being

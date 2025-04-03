@@ -23,6 +23,24 @@
 #include <atk/atk.h>
 #include <glib.h>
 
+/**
+ * (From Atk documentation)
+ *
+ * AtkHypertext:
+ *
+ * The ATK interface which provides standard mechanism for manipulating
+ * hyperlinks.
+ *
+ * An interface used for objects which implement linking between
+ * multiple resource or content locations, or multiple 'markers'
+ * within a single document.  A Hypertext instance is associated with
+ * one or more Hyperlinks, which are associated with particular
+ * offsets within the Hypertext's included content.  While this
+ * interface is derived from Text, there is no requirement that
+ * Hypertext instances have textual content; they may implement Image
+ * as well, and Hyperlinks need not have non-zero text offsets.
+ */
+
 static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
                                             gint link_index);
 static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext);
@@ -37,10 +55,15 @@ typedef struct _HypertextData {
     JAW_GET_OBJ_IFACE(hypertext, INTERFACE_HYPERTEXT, HypertextData,           \
                       atk_hypertext, jniEnv, atk_hypertext, def_ret)
 
+/**
+ * AtkHypertextIface:
+ * @get_link:
+ * @get_n_links:
+ * @get_link_index:
+ **/
 void jaw_hypertext_interface_init(AtkHypertextIface *iface, gpointer data) {
     if (!iface) {
-        g_warning(
-            "Null argument passed to function jaw_hypertext_interface_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -53,7 +76,7 @@ gpointer jaw_hypertext_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function jaw_hypertext_data_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -63,7 +86,8 @@ gpointer jaw_hypertext_data_init(jobject ac) {
     JAW_CHECK_NULL(jniEnv, NULL);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -87,8 +111,11 @@ gpointer jaw_hypertext_data_init(jobject ac) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
+
     data->atk_hypertext = (*jniEnv)->NewGlobalRef(jniEnv, jatk_hypertext);
+
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
     return data;
 }
 
@@ -96,8 +123,7 @@ void jaw_hypertext_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (!p) {
-        g_warning(
-            "Null argument passed to function jaw_hypertext_data_finalize");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -129,7 +155,7 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     JAW_DEBUG_C("%p, %d", hypertext, link_index);
 
     if (!hypertext) {
-        g_warning("Null argument passed to function jaw_hypertext_get_link");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -140,7 +166,8 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
             jniEnv,
             atk_hypertext); // deleting ref that was created in
                             // JAW_GET_HYPERTEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -177,14 +204,19 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     return ATK_HYPERLINK(jaw_hyperlink);
 }
 
-/*
+/**
+ * jaw_hypertext_get_n_links:
+ * @hypertext: an #AtkHypertext
+ *
  * Gets the number of links within this hypertext document.
- */
+ *
+ * Returns: the number of links within this hypertext document
+ **/
 static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
     JAW_DEBUG_C("%p", hypertext);
 
     if (!hypertext) {
-        g_warning("Null argument passed to function jaw_hypertext_get_n_links");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
 
@@ -195,7 +227,8 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
             jniEnv,
             atk_hypertext); // deleting ref that was created in
                             // JAW_GET_HYPERTEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -214,11 +247,6 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
         return 0;
     }
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, jmid);
-    if (!ret) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -226,19 +254,23 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
     return ret;
 }
 
-/*
- * Gets the index into the array of hyperlinks that is associated with the
- * character specified by char-index.
+/**
+ * jaw_hypertext_get_link_index:
+ * @hypertext: an #AtkHypertext
+ * @char_index: a character index
  *
- * Returns -1 if an error occurred.
- */
+ * Gets the index into the array of hyperlinks that is associated with
+ * the character specified by @char_index.
+ *
+ * Returns: an index into the array of hyperlinks in @hypertext,
+ * or -1 if there is no hyperlink associated with this character.
+ **/
 static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
                                          gint char_index) {
     JAW_DEBUG_C("%p, %d", hypertext, char_index);
 
     if (!hypertext) {
-        g_warning(
-            "Null argument passed to function jaw_hypertext_get_link_index");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return -1;
     }
 
@@ -249,7 +281,8 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
             jniEnv,
             atk_hypertext); // deleting ref that was created in
                             // JAW_GET_HYPERTEXT
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return -1;
     }
 
@@ -269,11 +302,6 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
     }
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, jmid,
                                               (jint)char_index);
-    if (!ret) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return -1;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

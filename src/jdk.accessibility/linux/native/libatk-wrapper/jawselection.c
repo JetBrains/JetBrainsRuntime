@@ -22,6 +22,26 @@
 #include <atk/atk.h>
 #include <glib.h>
 
+/**
+ * (From Atk documentation)
+ *
+ * AtkSelection:
+ *
+ * The ATK interface implemented by container objects whose #AtkObject children
+ * can be selected.
+ *
+ * #AtkSelection should be implemented by UI components with children
+ * which are exposed by #atk_object_ref_child and
+ * #atk_object_get_n_children, if the use of the parent UI component
+ * ordinarily involves selection of one or more of the objects
+ * corresponding to those #AtkObject children - for example,
+ * selectable lists.
+ *
+ * Note that other types of "selection" (for instance text selection)
+ * are accomplished a other ATK interfaces - #AtkSelection is limited
+ * to the selection/deselection of children.
+ */
+
 static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i);
 static gboolean jaw_selection_clear_selection(AtkSelection *selection);
 static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i);
@@ -39,11 +59,21 @@ typedef struct _SelectionData {
     JAW_GET_OBJ_IFACE(selection, INTERFACE_SELECTION, SelectionData,           \
                       atk_selection, jniEnv, atk_selection, def_ret)
 
+/**
+ * AtkSelectionIface:
+ * @add_selection:
+ * @clear_selection:
+ * @ref_selection:
+ * @get_selection_count:
+ * @is_child_selected:
+ * @remove_selection:
+ * @select_all_selection:
+ **/
 void jaw_selection_interface_init(AtkSelectionIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
     if (!iface) {
-        g_warning("Null argument passed to function");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
@@ -60,7 +90,7 @@ gpointer jaw_selection_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
     if (!ac) {
-        g_warning("Null argument passed to function jaw_selection_data_init");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -71,7 +101,8 @@ gpointer jaw_selection_data_init(jobject ac) {
     JAW_CHECK_NULL(jniEnv, NULL);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -122,6 +153,16 @@ void jaw_selection_data_finalize(gpointer p) {
     }
 }
 
+/**
+ * jaw_selection_add_selection:
+ * @selection: a #GObject instance that implements AtkSelectionIface
+ * @i: a #gint specifying the child index.
+ *
+ * Adds the specified accessible child of the object to the
+ * object's selection.
+ *
+ * Returns: TRUE if success, FALSE otherwise.
+ **/
 static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
 
@@ -138,7 +179,8 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
             jniEnv,
             atk_selection); // deleting ref that was created in
                             // JAW_GET_SELECTION
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -158,11 +200,6 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
     }
     jboolean jbool =
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid, (jint)i);
-    if (!jbool) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -170,6 +207,15 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
     return jbool;
 }
 
+/**
+ * jaw_selection_clear_selection:
+ * @selection: a #GObject instance that implements AtkSelectionIface
+ *
+ * Clears the selection in the object so that no children in the object
+ * are selected.
+ *
+ * Returns: TRUE if success, FALSE otherwise.
+ **/
 static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
 
@@ -186,7 +232,8 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
             jniEnv,
             atk_selection); // deleting ref that was created in
                             // JAW_GET_SELECTION
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -205,11 +252,6 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
         return FALSE;
     }
     jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid);
-    if (!jbool) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -246,7 +288,8 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
             jniEnv,
             atk_selection); // deleting ref that was created in
                             // JAW_GET_SELECTION
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -273,10 +316,9 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
         return NULL;
     }
 
-    AtkObject *obj =
-        (AtkObject *)jaw_impl_get_instance_from_jaw(jniEnv, child_ac);
+    AtkObject *obj = (AtkObject *)jaw_impl_find_instance(jniEnv, child_ac);
 
-    // From the documentation of the `atk_selection_ref_selection`:
+    // From the documentation of the `ref_selection`:
     // "The caller of the method takes ownership of the returned data, and is
     // responsible for freeing it." (transfer full)
     if (obj) {
@@ -293,8 +335,7 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
 
     if (!selection) {
-        g_warning("Null argument passed to function "
-                  "jaw_selection_get_selection_count");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
 
@@ -305,7 +346,8 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
             jniEnv,
             atk_selection); // deleting ref that was created in
                             // JAW_GET_SELECTION
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
@@ -324,11 +366,6 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
         return 0;
     }
     jint jcount = (*jniEnv)->CallIntMethod(jniEnv, atk_selection, jmid);
-    if (!jcount) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -353,7 +390,8 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
             jniEnv,
             atk_selection); // deleting ref that was created in
                             // JAW_GET_SELECTION
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -373,11 +411,6 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
     }
     jboolean jbool =
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid, (jint)i);
-    if (!jbool) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -402,7 +435,8 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
             jniEnv,
             atk_selection); // deleting ref that was created in
                             // JAW_GET_SELECTION
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -422,11 +456,6 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
     }
     jboolean jbool =
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid, (jint)i);
-    if (!jbool) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -438,8 +467,7 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
 
     if (!selection) {
-        g_warning("Null argument passed to function "
-                  "jaw_selection_select_all_selection");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -450,7 +478,8 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
             jniEnv,
             atk_selection); // deleting ref that was created in
                             // JAW_GET_SELECTION
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return FALSE;
     }
 
@@ -469,11 +498,6 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
         return FALSE;
     }
     jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid);
-    if (!jbool) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

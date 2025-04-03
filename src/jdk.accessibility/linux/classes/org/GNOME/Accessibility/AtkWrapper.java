@@ -35,86 +35,7 @@ public class AtkWrapper {
     private static final PlatformLogger log = PlatformLogger.getLogger("org.GNOME.Accessibility.AtkWrapper");
     private static boolean accessibilityEnabled = false;
 
-    private static void initAtk() {
-        System.loadLibrary("atk-wrapper");
-        if (!AtkWrapper.initNativeLibrary()) {
-            throw new IllegalStateException("Accessibility is disabled due to an error in initNativeLibrary.");
-        }
-        if (!AtkWrapper.loadAtkBridge()) {
-            throw new IllegalStateException("Accessibility is disabled due to an error in loadAtkBridge.");
-
-        }
-        accessibilityEnabled = true;
-    }
-
-    private static String findXPropPath() {
-        String pathEnv = System.getenv().get("PATH");
-        if (pathEnv != null) {
-            String pathSeparator = File.pathSeparator;
-            java.util.List<String> paths = Arrays.asList(pathEnv.split(File.pathSeparator));
-            for (String path : paths) {
-                File xpropFile = new File(path, "xprop");
-                if (xpropFile.exists()) {
-                    return xpropFile.getAbsolutePath();
-                }
-            }
-        }
-        return null;
-    }
-
-    static {
-        try {
-            String xpropPath = findXPropPath();
-            if (xpropPath == null) {
-                throw new RuntimeException("No xprop found");
-            }
-            ProcessBuilder builder = new ProcessBuilder(xpropPath, "-root");
-            Process p = builder.start();
-            BufferedReader b = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            String result;
-            while ((result = b.readLine()) != null) {
-                if (result.indexOf("AT_SPI_IOR") >= 0 || result.indexOf("AT_SPI_BUS") >= 0) {
-                    initAtk();
-                    break;
-                }
-            }
-
-            if (!accessibilityEnabled) {
-                builder = new ProcessBuilder("dbus-send", "--session", "--dest=org.a11y.Bus", "--print-reply", "/org/a11y/bus", "org.a11y.Bus.GetAddress");
-                p = builder.start();
-                var ignoredOutput = p.getInputStream();
-                while (ignoredOutput.skip(Long.MAX_VALUE) == Long.MAX_VALUE) ;
-                p.waitFor();
-                if (p.exitValue() == 0)
-                    initAtk();
-            }
-        } catch (Exception e) {
-            accessibilityEnabled = false;
-            if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
-                log.severe("Error during ATK accessibility initialization: ", e);
-            }
-        }
-    }
-
-    /**
-     * winAdapter
-     * <p>
-     * <http://docs.oracle.com/javase/8/docs/api/java/awt/event/WindowAdapter.html>
-     * <http://docs.oracle.com/javase/8/docs/api/java/awt/event/WindowEvent.html>
-     */
-    private final WindowAdapter winAdapter = new WindowAdapter() {
-
-        /**
-         * windowActivated:
-         *                    Invoked when a Window becomes the active Window.
-         *                    Only a Frame or a Dialog can be the active Window. The
-         *                    native windowing system may denote the active Window
-         *                    or its children with special decorations, such as a
-         *                    highlighted title bar. The active Window is always either
-         *                    the focused Window, or the first Frame or Dialog that is
-         *                    an owner of the focused Window.
-         * @param e A WindowEvent object
-         */
+    private final WindowAdapter windowAdapter = new WindowAdapter() {
         public void windowActivated(WindowEvent e) {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
@@ -124,17 +45,6 @@ public class AtkWrapper {
             }
         }
 
-        /**
-         * windowDeactivated:
-         *                    Invoked when a Window is no longer the active Window.
-         *                    Only a Frame or a Dialog can be the active Window. The
-         *                    native windowing system may denote the active Window
-         *                    or its children with special decorations, such as a
-         *                    highlighted title bar. The active Window is always either
-         *                    the focused Window, or the first Frame or Dialog that is
-         *                    an owner of the focused Window.
-         * @param e A WindowEvent object
-         */
         public void windowDeactivated(WindowEvent e) {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
@@ -144,12 +54,6 @@ public class AtkWrapper {
             }
         }
 
-        /**
-         * windowStateChanged:
-         *                     Invoked when a window state is changed.
-         *
-         * @param e A WindowEvent object
-         */
         public void windowStateChanged(WindowEvent e) {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
@@ -162,11 +66,6 @@ public class AtkWrapper {
             }
         }
 
-        /**
-         * windowDeiconified:
-         *                   Invoked when a window is deiconified.
-         * @param e A WindowEvent instance
-         */
         public void windowDeiconified(WindowEvent e) {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
@@ -176,11 +75,6 @@ public class AtkWrapper {
             }
         }
 
-        /**
-         *  windowIconified:
-         *                  Invoked when a window is iconified.
-         * @param e A WindowEvent instance
-         */
         public void windowIconified(WindowEvent e) {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
@@ -190,10 +84,6 @@ public class AtkWrapper {
             }
         }
 
-        /**
-         *  windowOpened
-         * @param e A WindowEvent object
-         */
         public void windowOpened(WindowEvent e) {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
@@ -204,11 +94,6 @@ public class AtkWrapper {
             }
         }
 
-        /**
-         * windowClosed:
-         *              Invoked when a window has been closed.
-         * @param e A WindowEvent object
-         */
         public void windowClosed(WindowEvent e) {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
@@ -219,11 +104,6 @@ public class AtkWrapper {
             }
         }
 
-        /**
-         * windowClosing:
-         *              Invoked when a window is in the process of being closed.
-         * @param e A WindowEvent object
-         */
         public void windowClosing(WindowEvent e) {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
@@ -234,29 +114,15 @@ public class AtkWrapper {
             }
         }
 
-        /**
-         * windowGainedFocus:
-         *                   Invoked when the Window is set to be the focused Window,
-         *                   which means that the Window, or one of its subcomponents,
-         *                   will receive keyboard events.
-         * @param e A WindowEvent object
-         */
         public void windowGainedFocus(WindowEvent e) {
         }
 
         public void windowLostFocus(WindowEvent e) {
         }
-    }; // Close WindowAdapter brace
+    };
 
 
     private final ComponentAdapter componentAdapter = new ComponentAdapter() {
-
-        /**
-         *  componentResized
-         *   *             Invoked when the component's size changes and emits
-         *                  a "bounds-changed" signal.
-         * @param e a ComponentEvent object
-         */
         public void componentResized(ComponentEvent e) {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
@@ -266,13 +132,6 @@ public class AtkWrapper {
             }
         }
 
-        /**
-         * componentMoved:
-         *                Invoked when the component's position changes and emits
-         *                a "bounds-changed" signal.
-         *
-         * @param e a ComponentEvent object
-         */
         public void componentMoved(ComponentEvent e) {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
@@ -282,10 +141,6 @@ public class AtkWrapper {
             }
         }
 
-        /**
-         *  componentShown
-         * @param e A ComponentEvent object
-         */
         public void componentShown(ComponentEvent e) {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
@@ -295,11 +150,6 @@ public class AtkWrapper {
             }
         }
 
-        /**
-         * componentHidden:
-         *                 Invoked when the component has been made invisible.
-         * @param e A ComponentEvent object
-         */
         public void componentHidden(ComponentEvent e) {
             Object o = e.getSource();
             if (o instanceof Accessible accessible) {
@@ -310,24 +160,6 @@ public class AtkWrapper {
         }
     };
 
-
-    /**
-     * isToplevel
-     *
-     * @param o an instance
-     * @return true if instance is of a window, frame or dialogue object
-     * false otherwise.
-     */
-    private static boolean isToplevel(Object o) {
-        boolean isToplevel = false;
-        if (o instanceof java.awt.Window ||
-                o instanceof java.awt.Frame ||
-                o instanceof java.awt.Dialog) {
-            isToplevel = true;
-        }
-        return isToplevel;
-    }
-
     private final AWTEventListener globalListener = new AWTEventListener() {
         private boolean firstEvent = true;
 
@@ -336,9 +168,9 @@ public class AtkWrapper {
                 switch (e.getID()) {
                     case WindowEvent.WINDOW_OPENED:
                         Window win = windowEvent.getWindow();
-                        win.addWindowListener(winAdapter);
-                        win.addWindowStateListener(winAdapter);
-                        win.addWindowFocusListener(winAdapter);
+                        win.addWindowListener(windowAdapter);
+                        win.addWindowStateListener(windowAdapter);
+                        win.addWindowFocusListener(windowAdapter);
                         break;
                     case WindowEvent.WINDOW_LOST_FOCUS:
                         AtkWrapper.dispatchFocusEvent(null);
@@ -376,87 +208,10 @@ public class AtkWrapper {
         }
     };
 
-    private static AccessibleContext oldSourceContext = null;
-    private static AccessibleContext savedSourceContext = null;
-    private static AccessibleContext oldPaneContext = null;
-
-    /**
-     * dispatchFocusEvent
-     *
-     * @param eventSource An instance of the event source object.
-     */
-    private static void dispatchFocusEvent(Object eventSource) {
-        if (eventSource == null) {
-            oldSourceContext = null;
-            return;
-        }
-
-        AccessibleContext ctx;
-
-        try {
-            if (eventSource instanceof AccessibleContext accessibleContext) {
-                ctx = accessibleContext;
-            } else if (eventSource instanceof Accessible accessible) {
-                ctx = accessible.getAccessibleContext();
-            } else {
-                return;
-            }
-
-            if (ctx == oldSourceContext) {
-                return;
-            }
-
-            if (oldSourceContext != null) {
-                AccessibleRole role = oldSourceContext.getAccessibleRole();
-                if (role == AccessibleRole.MENU || role == AccessibleRole.MENU_ITEM) {
-                    String jrootpane = "javax.swing.JRootPane$AccessibleJRootPane";
-                    String name = ctx.getClass().getName();
-
-                    if (jrootpane.compareTo(name) == 0) {
-                        oldPaneContext = ctx;
-                        return;
-                    }
-                }
-                savedSourceContext = ctx;
-            } else if (oldPaneContext == ctx) {
-                ctx = savedSourceContext;
-            } else {
-                savedSourceContext = ctx;
-            }
-
-            oldSourceContext = ctx;
-            AccessibleRole role = ctx.getAccessibleRole();
-            if (role == AccessibleRole.PAGE_TAB_LIST) {
-                AccessibleSelection accSelection = ctx.getAccessibleSelection();
-
-                if (accSelection != null && accSelection.getAccessibleSelectionCount() > 0) {
-                    Object child = accSelection.getAccessibleSelection(0);
-                    if (child instanceof AccessibleContext accessibleContext) {
-                        ctx = accessibleContext;
-                    } else if (child instanceof Accessible accessible) {
-                        ctx = accessible.getAccessibleContext();
-                    } else {
-                        return;
-                    }
-                }
-            }
-            AtkWrapperDisposer.getInstance().addRecord(ctx);
-            focusNotify(ctx);
-        } catch (Exception e) {
-            if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
-                log.severe("Error in dispatchFocusEvent: ", e);
-            }
-        }
-    }
-
     private final Toolkit toolkit = Toolkit.getDefaultToolkit();
 
     private static PropertyChangeListener propertyChangeListener = new PropertyChangeListener() {
 
-        /**
-         * propertyChange:
-         * @param e An instance of the PropertyChangeEvent object.
-         */
         public void propertyChange(PropertyChangeEvent e) {
             Object o = e.getSource();
             AccessibleContext ac;
@@ -681,6 +436,170 @@ public class AtkWrapper {
         }
     };
 
+    /**
+     * AtkWrapper is service provider that adds an assistive technology feature
+     * using assistive_technologies property, so constructor is public
+     */
+    public AtkWrapper() {
+        if (!accessibilityEnabled) {
+            throw new IllegalStateException("AtkWrapper not initialized due to disabled accessibility.");
+        }
+
+        toolkit.addAWTEventListener(globalListener,
+                AWTEvent.WINDOW_EVENT_MASK |
+                        AWTEvent.FOCUS_EVENT_MASK |
+                        AWTEvent.CONTAINER_EVENT_MASK |
+                        AWTEvent.KEY_EVENT_MASK);
+    }
+
+    public static void main(String args[]) {
+        new AtkWrapper();
+    }
+
+    static {
+        try {
+            String xpropPath = findXPropPath();
+            if (xpropPath == null) {
+                throw new RuntimeException("No xprop found");
+            }
+            ProcessBuilder builder = new ProcessBuilder(xpropPath, "-root");
+            Process p = builder.start();
+            BufferedReader b = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            String result;
+            while ((result = b.readLine()) != null) {
+                if (result.indexOf("AT_SPI_IOR") >= 0 || result.indexOf("AT_SPI_BUS") >= 0) {
+                    initAtk();
+                    break;
+                }
+            }
+
+            if (!accessibilityEnabled) {
+                builder = new ProcessBuilder("dbus-send", "--session", "--dest=org.a11y.Bus", "--print-reply", "/org/a11y/bus", "org.a11y.Bus.GetAddress");
+                p = builder.start();
+                var ignoredOutput = p.getInputStream();
+                while (ignoredOutput.skip(Long.MAX_VALUE) == Long.MAX_VALUE) ;
+                p.waitFor();
+                if (p.exitValue() == 0)
+                    initAtk();
+            }
+        } catch (Exception e) {
+            accessibilityEnabled = false;
+            if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
+                log.severe("Error during ATK accessibility initialization: ", e);
+            }
+        }
+    }
+
+    private static void initAtk() {
+        System.loadLibrary("atk-wrapper");
+        if (!AtkWrapper.initNativeLibrary()) {
+            throw new IllegalStateException("Accessibility is disabled due to an error in initNativeLibrary.");
+        }
+        if (!AtkWrapper.loadAtkBridge()) {
+            throw new IllegalStateException("Accessibility is disabled due to an error in loadAtkBridge.");
+
+        }
+        accessibilityEnabled = true;
+    }
+
+    private static String findXPropPath() {
+        String pathEnv = System.getenv().get("PATH");
+        if (pathEnv != null) {
+            String pathSeparator = File.pathSeparator;
+            java.util.List<String> paths = Arrays.asList(pathEnv.split(File.pathSeparator));
+            for (String path : paths) {
+                File xpropFile = new File(path, "xprop");
+                if (xpropFile.exists()) {
+                    return xpropFile.getAbsolutePath();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static boolean isToplevel(Object o) {
+        boolean isToplevel = false;
+        if (o instanceof java.awt.Window ||
+                o instanceof java.awt.Frame ||
+                o instanceof java.awt.Dialog) {
+            isToplevel = true;
+        }
+        return isToplevel;
+    }
+
+    // Previously focused accessible context
+    private static AccessibleContext oldSourceContext = null;
+
+    // Last saved focused accessible context (excluding JRootPane)
+    private static AccessibleContext savedSourceContext = null;
+
+    // Previously focused JRootPane's AccessibleContext
+    private static AccessibleContext oldPaneContext = null;
+
+    private static void dispatchFocusEvent(Object eventSource) {
+        if (eventSource == null) {
+            oldSourceContext = null;
+            return;
+        }
+
+        AccessibleContext eventSourceContext;
+
+        try {
+            if (eventSource instanceof AccessibleContext accessibleContext) {
+                eventSourceContext = accessibleContext;
+            } else if (eventSource instanceof Accessible accessible) {
+                eventSourceContext = accessible.getAccessibleContext();
+            } else {
+                return;
+            }
+
+            if (eventSourceContext == oldSourceContext) {
+                return;
+            }
+
+            if (oldSourceContext != null) {
+                AccessibleRole role = oldSourceContext.getAccessibleRole();
+                if (role == AccessibleRole.MENU || role == AccessibleRole.MENU_ITEM) {
+                    String jrootpane = "javax.swing.JRootPane$AccessibleJRootPane";
+                    String name = eventSourceContext.getClass().getName();
+
+                    if (jrootpane.compareTo(name) == 0) {
+                        oldPaneContext = eventSourceContext;
+                        return;
+                    }
+                }
+                savedSourceContext = eventSourceContext;
+            } else if (oldPaneContext == eventSourceContext) {
+                eventSourceContext = savedSourceContext;
+            } else {
+                savedSourceContext = eventSourceContext;
+            }
+
+            oldSourceContext = eventSourceContext;
+            AccessibleRole role = eventSourceContext.getAccessibleRole();
+            if (role == AccessibleRole.PAGE_TAB_LIST) {
+                AccessibleSelection accSelection = eventSourceContext.getAccessibleSelection();
+                if (accSelection != null && accSelection.getAccessibleSelectionCount() > 0) {
+                    Object child = accSelection.getAccessibleSelection(0);
+                    if (child instanceof AccessibleContext accessibleContext) {
+                        eventSourceContext = accessibleContext;
+                    } else if (child instanceof Accessible accessible) {
+                        eventSourceContext = accessible.getAccessibleContext();
+                    } else {
+                        return;
+                    }
+                }
+            }
+            AtkWrapperDisposer.getInstance().addRecord(eventSourceContext);
+            focusNotify(eventSourceContext);
+        } catch (Exception e) {
+            if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
+                log.severe("Error in dispatchFocusEvent: ", e);
+            }
+        }
+    }
+
+
     private native static boolean initNativeLibrary();
 
     private native static boolean loadAtkBridge();
@@ -722,45 +641,28 @@ public class AtkWrapper {
 
     private native static void dispatchKeyEvent(AtkKeyEvent e);
 
-    // FIXME: no usages
-    private static void printLog(String msg) {
-        if (log.isLoggable(PlatformLogger.Level.INFO)) {
-            log.info(msg);
-        }
-    }
-
-    /**
-     * AtkWrapper is service provider that adds an assistive technology feature
-     * using assistive_technologies property, so constructor is public
-     */
-    public AtkWrapper() {
-        if (!accessibilityEnabled) {
-            throw new IllegalStateException("AtkWrapper not initialized due to disabled accessibility.");
-        }
-
-        toolkit.addAWTEventListener(globalListener,
-                AWTEvent.WINDOW_EVENT_MASK |
-                        AWTEvent.FOCUS_EVENT_MASK |
-                        AWTEvent.CONTAINER_EVENT_MASK|
-                        AWTEvent.KEY_EVENT_MASK);
-    }
-
-    public static void main(String args[]) {
-        new AtkWrapper();
-    }
 
     // JNI upcalls section
 
     /**
-     * returns -1 if it was not difined
+     * Retrieves the native resource associated with the given AccessibleContext.
      *
-     * @param ac
-     * @return
+     * @param ac The AccessibleContext whose native resource is requested.
+     * @return The native resource pointer associated with the given AccessibleContext,
+     * or -1 if no record exists.
      */
     private static long get_native_resources(AccessibleContext ac) {
         return AtkWrapperDisposer.getInstance().getRecord(ac);
     }
 
+    /**
+     * Associates a given native resource reference with an AccessibleContext.
+     *
+     * @param ac        The AccessibleContext to associate with a native resource.
+     * @param nativeRef The native resource reference to associate with the AccessibleContext.
+     * @return The native reference associated with the AccessibleContext,
+     * either newly stored or previously mapped.
+     */
     private static long add_native_resources(AccessibleContext ac, long nativeRef) {
         return AtkWrapperDisposer.getInstance().addRecord(ac, nativeRef);
     }

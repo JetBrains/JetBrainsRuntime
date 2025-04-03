@@ -32,9 +32,7 @@
 extern "C" {
 #endif
 
-/* AtkUtil */
 static void jaw_util_class_init(JawUtilClass *klass, void *klass_data);
-
 static guint jaw_util_add_key_event_listener(AtkKeySnoopFunc listener,
                                              gpointer data);
 static void jaw_util_remove_key_event_listener(guint remove_listener);
@@ -42,9 +40,15 @@ static AtkObject *jaw_util_get_root(void);
 static const gchar *jaw_util_get_toolkit_name(void);
 static const gchar *jaw_util_get_toolkit_version(void);
 
-static GHashTable *key_listener_list = NULL;
-
 static JavaVM *cachedJVM = NULL;
+
+typedef struct _JawKeyListenerInfo {
+    AtkKeySnoopFunc listener;
+    gpointer data; // data that should be sent to the listener
+} JawKeyListenerInfo;
+
+// Maps unique keys to `JawKeyListenerInfo`
+static GHashTable *key_listener_list = NULL;
 
 GType jaw_util_get_type(void) {
     JAW_DEBUG_ALL("");
@@ -86,16 +90,21 @@ static void jaw_util_class_init(JawUtilClass *kclass, void *klass_data) {
     atk_class->get_toolkit_version = jaw_util_get_toolkit_version;
 }
 
-typedef struct _JawKeyListenerInfo {
-    AtkKeySnoopFunc listener;
-    gpointer data;
-} JawKeyListenerInfo;
-
+/**
+ * Notifies a key event to the registered key listener.
+ *
+ * @param key
+ * @param value Pointer to the `JawKeyListenerInfo`
+ * @param data Pointer to the `AtkKeyEventStruct`
+ *
+ * @return TRUE if the listener processes the event successfully,
+ *         FALSE if any argument is null or the listener returns FALSE.
+ */
 static gboolean notify_hf(gpointer key, gpointer value, gpointer data) {
     JAW_DEBUG_C("%p, %p, %p", key, value, data);
 
-    if (!key || !value || !data) {
-        g_warning("Null argument passed to function notify_hf");
+    if (!value || !data) {
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -115,25 +124,31 @@ static gboolean notify_hf(gpointer key, gpointer value, gpointer data) {
     return (*func)(key_event, func_data) ? TRUE : FALSE;
 }
 
+/**
+ * Inserts key value pair into a hash table.
+ *
+ * @param key Pointer to the hash table's key
+ * @param value Pointer to the associated value
+ * @param data Pointer to the `GHashTable`
+ */
 static void insert_hf(gpointer key, gpointer value, gpointer data) {
     JAW_DEBUG_C("%p, %p, %p", key, value, data);
 
     if (!key || !value || !data) {
-        g_warning("Null argument passed to function insert_hf");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
-    GHashTable *new_table = (GHashTable *)data;
-    JAW_CHECK_NULL(new_table, );
-    g_hash_table_insert(new_table, key, value);
+    GHashTable *hash_table = (GHashTable *)data;
+    JAW_CHECK_NULL(hash_table, );
+    g_hash_table_insert(hash_table, key, value);
 }
 
 gboolean jaw_util_dispatch_key_event(AtkKeyEventStruct *event) {
     JAW_DEBUG_C("%p", event);
 
     if (!event) {
-        g_warning(
-            "Null argument passed to function jaw_util_dispatch_key_event");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -151,13 +166,24 @@ gboolean jaw_util_dispatch_key_event(AtkKeyEventStruct *event) {
     return (consumed > 0) ? TRUE : FALSE;
 }
 
+/**
+ * jaw_util_add_key_event_listener:
+ * @listener: the listener to notify
+ * @data: a #gpointer that points to a block of data that should be sent to the
+ *registered listeners, along with the event notification, when it occurs.
+ *
+ * Adds the specified function to the list of functions to be called
+ *        when a key event occurs.  The @data element will be passed to the
+ *        #AtkKeySnoopFunc (@listener) as the @func_data param, on notification.
+ *
+ * Returns: added event listener id, or 0 on failure.
+ **/
 static guint jaw_util_add_key_event_listener(AtkKeySnoopFunc listener,
                                              gpointer data) {
     JAW_DEBUG_C("%p, %p", listener, data);
 
     if (!listener) {
-        g_warning(
-            "Null argument passed to function jaw_util_add_key_event_listener");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
 
@@ -177,6 +203,15 @@ static guint jaw_util_add_key_event_listener(AtkKeySnoopFunc listener,
     return key;
 }
 
+/**
+ * jaw_util_remove_key_event_listener:
+ * @listener_id: the id of the event listener to remove
+ *
+ * @listener_id is the value returned by #atk_add_key_event_listener
+ * when you registered that event listener.
+ *
+ * Removes the specified event listener.
+ **/
 static void jaw_util_remove_key_event_listener(guint remove_listener) {
     JAW_DEBUG_C("%u", remove_listener);
     gpointer *value = g_hash_table_lookup(key_listener_list,
@@ -187,6 +222,14 @@ static void jaw_util_remove_key_event_listener(guint remove_listener) {
     g_hash_table_remove(key_listener_list, GUINT_TO_POINTER(remove_listener));
 }
 
+/**
+ * jaw_util_get_root:
+ *
+ * Gets the root accessible container for the current application.
+ *
+ * Returns: (transfer none): the root accessible container for the current
+ * application
+ **/
 static AtkObject *jaw_util_get_root(void) {
     JAW_DEBUG_C("");
     static JawToplevel *root = NULL;
@@ -197,23 +240,38 @@ static AtkObject *jaw_util_get_root(void) {
     return ATK_OBJECT(root);
 }
 
+/**
+ * jaw_util_get_toolkit_name:
+ *
+ * Gets name string for the GUI toolkit implementing ATK for this application.
+ *
+ * Returns: name string for the GUI toolkit implementing ATK for this
+ *application
+ **/
 static const gchar *jaw_util_get_toolkit_name(void) {
     JAW_DEBUG_C("");
     return "J2SE-access-bridge";
 }
 
+/**
+ * jaw_util_get_toolkit_version:
+ *
+ * Gets version string for the GUI toolkit implementing ATK for this
+ *application.
+ *
+ * Returns: version string for the GUI toolkit implementing ATK for this
+ *application
+ **/
 static const gchar *jaw_util_get_toolkit_version(void) {
     JAW_DEBUG_C("");
     return "1.0";
 }
 
-/* static functions */
 guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
     JAW_DEBUG_C("%p, %p", jniEnv, jObj);
 
     if (!jniEnv) {
-        g_warning(
-            "Null argument passed to function jaw_util_get_tflag_from_jobj");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return -1;
     }
 
@@ -251,7 +309,7 @@ JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *jvm, void *reserve) {
 
 JNIEnv *jaw_util_get_jni_env(void) {
     if (cachedJVM == NULL) {
-        g_printerr("jaw_util_get_jni_env: cachedJVM is NULL");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -298,13 +356,13 @@ void jaw_util_detach(void) {
 static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
                                           const gchar *roleName) {
     if (!jniEnv || !roleName) {
-        g_warning(
-            "Null argument passed to function jaw_util_get_java_acc_role");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return NULL;
     }
 
@@ -330,7 +388,7 @@ static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
 static gboolean jaw_util_is_java_acc_role(JNIEnv *jniEnv, jobject acc_role,
                                           const gchar *roleName) {
     if (!jniEnv || !roleName) {
-        g_warning("Null argument passed to function jaw_util_is_java_acc_role");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -348,8 +406,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     JAW_DEBUG_C("%p", jAccessibleContext);
 
     if (!jAccessibleContext) {
-        g_warning("Null argument passed to function "
-                  "jaw_util_get_atk_role_from_AccessibleContext");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return ATK_ROLE_UNKNOWN;
     }
 
@@ -357,245 +414,411 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     if (jniEnv == NULL) {
         return ATK_ROLE_UNKNOWN;
     }
+
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
+        return ATK_ROLE_UNKNOWN;
+    }
+
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
-    JAW_CHECK_NULL(atkObject, ATK_ROLE_UNKNOWN);
+    if (!atkObject) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return ATK_ROLE_UNKNOWN;
+    }
     jmethodID jmidgar = (*jniEnv)->GetStaticMethodID(
         jniEnv, atkObject, "get_accessible_role",
         "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/"
         "AccessibleRole;");
-    JAW_CHECK_NULL(jmidgar, ATK_ROLE_UNKNOWN);
+    if (!jmidgar) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return ATK_ROLE_UNKNOWN;
+    }
     jobject ac_role = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, atkObject, jmidgar, jAccessibleContext);
-    JAW_CHECK_NULL(ac_role, ATK_ROLE_UNKNOWN);
+    if (!ac_role) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return ATK_ROLE_UNKNOWN;
+    }
     jclass classAccessibleRole =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRole");
-    JAW_CHECK_NULL(classAccessibleRole, ATK_ROLE_UNKNOWN);
-
-    if (!(*jniEnv)->IsInstanceOf(jniEnv, ac_role, classAccessibleRole))
-        return ATK_ROLE_INVALID;
-
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "ALERT"))
-        return ATK_ROLE_ALERT;
-
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "AWT_COMPONENT"))
+    if (!classAccessibleRole) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_UNKNOWN;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "CANVAS"))
+    if (!(*jniEnv)->IsInstanceOf(jniEnv, ac_role, classAccessibleRole)) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return ATK_ROLE_INVALID;
+    }
+
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "ALERT")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return ATK_ROLE_ALERT;
+    }
+
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "AWT_COMPONENT")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return ATK_ROLE_UNKNOWN;
+    }
+
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "CANVAS")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_CANVAS;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "CHECK_BOX"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "CHECK_BOX")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_CHECK_BOX;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "COLOR_CHOOSER"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "COLOR_CHOOSER")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_COLOR_CHOOSER;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "COLUMN_HEADER"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "COLUMN_HEADER")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_COLUMN_HEADER;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "COMBO_BOX"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "COMBO_BOX")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_COMBO_BOX;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "DATE_EDITOR"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "DATE_EDITOR")) {
         return ATK_ROLE_DATE_EDITOR;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "DESKTOP_ICON"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "DESKTOP_ICON")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_DESKTOP_ICON;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "DESKTOP_PANE"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "DESKTOP_PANE")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_DESKTOP_FRAME;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "DIALOG"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "DIALOG")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_DIALOG;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "DIRECTORY_PANE"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "DIRECTORY_PANE")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_DIRECTORY_PANE;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "EDITBAR"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "EDITBAR")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_EDITBAR;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "FILE_CHOOSER"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "FILE_CHOOSER")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_FILE_CHOOSER;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "FILLER"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "FILLER")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_FILLER;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "FONT_CHOOSER"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "FONT_CHOOSER")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_FONT_CHOOSER;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "FOOTER"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "FOOTER")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_FOOTER;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "FRAME"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "FRAME")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_FRAME;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "GLASS_PANE"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "GLASS_PANE")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_GLASS_PANE;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "GROUP_BOX"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "GROUP_BOX")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_PANEL;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "HEADER"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "HEADER")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_HEADER;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "HTML_CONTAINER"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "HTML_CONTAINER")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_HTML_CONTAINER;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "HYPERLINK"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "HYPERLINK")) {
         return ATK_ROLE_LINK;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "ICON"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "ICON")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_ICON;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "INTERNAL_FRAME"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "INTERNAL_FRAME")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_INTERNAL_FRAME;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "LABEL"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "LABEL")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_LABEL;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "LAYERED_PANE"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "LAYERED_PANE")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_LAYERED_PANE;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "LIST"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "LIST")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_LIST;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "LIST_ITEM"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "LIST_ITEM")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_LIST_ITEM;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "MENU"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "MENU")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_MENU;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "MENU_BAR"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "MENU_BAR")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_MENU_BAR;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "MENU_ITEM"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "MENU_ITEM")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_MENU_ITEM;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "OPTION_PANE"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "OPTION_PANE")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_OPTION_PANE;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PAGE_TAB"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PAGE_TAB")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_PAGE_TAB;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PAGE_TAB_LIST"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PAGE_TAB_LIST")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_PAGE_TAB_LIST;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PANEL"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PANEL")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_PANEL;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PARAGRAPH"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PARAGRAPH")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_PARAGRAPH;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PASSWORD_TEXT"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PASSWORD_TEXT")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_PASSWORD_TEXT;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "POPUP_MENU"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "POPUP_MENU")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_POPUP_MENU;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PROGRESS_BAR"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PROGRESS_BAR")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_PROGRESS_BAR;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PUSH_BUTTON"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "PUSH_BUTTON")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_PUSH_BUTTON;
+    }
 
     if (jaw_util_is_java_acc_role(jniEnv, ac_role, "RADIO_BUTTON")) {
+
         jmethodID jmidgap = (*jniEnv)->GetStaticMethodID(
             jniEnv, atkObject, "get_accessible_parent",
             "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/"
             "AccessibleContext;");
-        JAW_CHECK_NULL(jmidgap, ATK_ROLE_UNKNOWN);
-        jobject jparent = (*jniEnv)->CallStaticObjectMethod(
-            jniEnv, atkObject, jmidgap, jAccessibleContext);
-        if (!jparent)
-            return ATK_ROLE_RADIO_BUTTON;
-        jobject parent_role = (*jniEnv)->CallStaticObjectMethod(
-            jniEnv, atkObject, jmidgar, jparent);
-        JAW_CHECK_NULL(parent_role, ATK_ROLE_UNKNOWN);
-        if (jaw_util_is_java_acc_role(jniEnv, parent_role, "MENU"))
-            return ATK_ROLE_RADIO_MENU_ITEM;
+        if (!jmidgap) {
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+            return ATK_ROLE_UNKNOWN;
+        }
 
+        jobject jparent = (*jniEnv)->CallStaticObjectMethod(
+            jniEnv, atkObject, jmidgap, jAccessibleContext); // must be deleted
+        if (!jparent) {
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+            return ATK_ROLE_RADIO_BUTTON;
+        }
+
+        jobject parent_role = (*jniEnv)->CallStaticObjectMethod(
+            jniEnv, atkObject, jmidgar, jparent); // must be deleted
+        if (!parent_role) {
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+            return ATK_ROLE_UNKNOWN;
+        }
+        if (jaw_util_is_java_acc_role(jniEnv, parent_role, "MENU")) {
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+            return ATK_ROLE_RADIO_MENU_ITEM;
+        }
+
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_RADIO_BUTTON;
     }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "ROOT_PANE"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "ROOT_PANE")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_ROOT_PANE;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "ROW_HEADER"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "ROW_HEADER")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_ROW_HEADER;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "RULER"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "RULER")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_RULER;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SCROLL_BAR"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SCROLL_BAR")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_SCROLL_BAR;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SCROLL_PANE"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SCROLL_PANE")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_SCROLL_PANE;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SEPARATOR"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SEPARATOR")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_SEPARATOR;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SLIDER"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SLIDER")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_SLIDER;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SPIN_BOX"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SPIN_BOX")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_SPIN_BUTTON;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SPLIT_PANE"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SPLIT_PANE")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_SPLIT_PANE;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "STATUS_BAR"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "STATUS_BAR")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_STATUSBAR;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SWING_COMPONENT"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "SWING_COMPONENT")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_UNKNOWN;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "TABLE"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "TABLE")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_TABLE;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "TEXT"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "TEXT")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_TEXT;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "TOGGLE_BUTTON"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "TOGGLE_BUTTON")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_TOGGLE_BUTTON;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "TOOL_BAR"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "TOOL_BAR")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_TOOL_BAR;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "TOOL_TIP"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "TOOL_TIP")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_TOOL_TIP;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "TREE"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "TREE")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_TREE;
+    }
 
     if (jaw_util_is_java_acc_role(jniEnv, ac_role, "UNKNOWN")) {
         jmethodID jmidgap = (*jniEnv)->GetStaticMethodID(
             jniEnv, atkObject, "get_accessible_parent",
             "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/"
             "AccessibleContext;");
-        JAW_CHECK_NULL(jmidgap, ATK_ROLE_UNKNOWN);
+        if (!jmidgap) {
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+            return ATK_ROLE_UNKNOWN;
+        }
         jobject jparent = (*jniEnv)->CallStaticObjectMethod(
-            jniEnv, atkObject, jmidgap, jAccessibleContext);
-
+            jniEnv, atkObject, jmidgap, jAccessibleContext); // must be deleted
         if (jparent == NULL) {
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return ATK_ROLE_APPLICATION;
         }
+
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
         return ATK_ROLE_UNKNOWN;
     }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "VIEWPORT"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "VIEWPORT")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_VIEWPORT;
+    }
 
-    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "WINDOW"))
+    if (jaw_util_is_java_acc_role(jniEnv, ac_role, "WINDOW")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_WINDOW;
+    }
 
     jmethodID jmideic = (*jniEnv)->GetStaticMethodID(
         jniEnv, atkObject, "equals_ignore_case_locale_with_role",
         "(Ljavax/accessibility/AccessibleRole;)Z");
-    JAW_CHECK_NULL(jmideic, ATK_ROLE_UNKNOWN);
-    if ((*jniEnv)->CallStaticBooleanMethod(jniEnv, atkObject, jmideic, ac_role))
+    if (!jmideic) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return ATK_ROLE_UNKNOWN;
+    }
+    if ((*jniEnv)->CallStaticBooleanMethod(jniEnv, atkObject, jmideic,
+                                           ac_role)) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_PARAGRAPH;
+    }
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_ROLE_UNKNOWN; /* ROLE_EXTENDED */
 }
@@ -603,22 +826,41 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
 static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
                                    const gchar *strState) {
     if (!jniEnv || !strState) {
-        g_warning("Null argument passed to function is_same_java_state");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
+
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
+        return FALSE;
+    }
+
     jclass classAccessibleState =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleState");
-    JAW_CHECK_NULL(classAccessibleState, FALSE);
+    if (!classAccessibleState) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
     jfieldID jfid =
         (*jniEnv)->GetStaticFieldID(jniEnv, classAccessibleState, strState,
                                     "Ljavax/accessibility/AccessibleState;");
-    JAW_CHECK_NULL(jfid, FALSE);
+    if (!jfid) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
     jobject jstate =
         (*jniEnv)->GetStaticObjectField(jniEnv, classAccessibleState, jfid);
-
+    if (!jstate) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
     if ((*jniEnv)->IsSameObject(jniEnv, jobj, jstate)) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return TRUE;
     }
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return FALSE;
 }
@@ -626,8 +868,7 @@ static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
 AtkStateType jaw_util_get_atk_state_type_from_java_state(JNIEnv *jniEnv,
                                                          jobject jobj) {
     if (!jniEnv) {
-        g_warning("Null argument passed to function "
-                  "jaw_util_get_atk_state_type_from_java_state");
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return ATK_STATE_INVALID;
     }
 
@@ -729,29 +970,51 @@ void jaw_util_get_rect_info(JNIEnv *jniEnv, jobject jrect, gint *x, gint *y,
                             gint *width, gint *height) {
     JAW_DEBUG_C("%p, %p, %p, %p, %p, %p", jniEnv, jrect, x, y, width, height);
 
-    if (!jniEnv || !x || !y || !width || !height) {
-        g_warning("Null argument passed to function jaw_util_get_rect_info");
+    if (!jniEnv || !x || !y || !width || !height || !jrect) {
+        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        return;
+    }
+
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return;
     }
 
     jclass classRectangle = (*jniEnv)->FindClass(jniEnv, "java/awt/Rectangle");
-    JAW_CHECK_NULL(classRectangle, );
+    if (!classRectangle) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jfieldID jfidX = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "x", "I");
-    JAW_CHECK_NULL(jfidX, );
+    if (!jfidX) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jfieldID jfidY = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "y", "I");
-    JAW_CHECK_NULL(jfidY, );
+    if (!jfidY) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jfieldID jfidWidth =
         (*jniEnv)->GetFieldID(jniEnv, classRectangle, "width", "I");
-    JAW_CHECK_NULL(jfidWidth, );
+    if (!jfidWidth) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
     jfieldID jfidHeight =
         (*jniEnv)->GetFieldID(jniEnv, classRectangle, "height", "I");
-    JAW_CHECK_NULL(jfidHeight, );
+    if (!jfidHeight) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
 
-    JAW_CHECK_NULL(jrect, );
     (*x) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, jfidX);
     (*y) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, jfidY);
     (*width) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, jfidWidth);
     (*height) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, jfidHeight);
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 #ifdef __cplusplus

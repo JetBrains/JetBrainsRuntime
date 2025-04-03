@@ -121,17 +121,6 @@ public class AtkAction {
         return true;
     }
 
-    /**
-     * @param i an integer holding the index of the name of
-     *          the accessible.
-     * @return the localized name of the object or otherwise,
-     * null if the "action" object does not have a
-     * name (really, java's AccessibleAction class
-     * does not provide
-     * a getter for an AccessibleAction
-     * name so a getter from the AcccessibleContext
-     * class is one way to work around that)
-     */
     private String get_localized_name(int i) {
         if (i < 0) {
             return null;
@@ -159,20 +148,5 @@ public class AtkAction {
             descriptions[i] = "";
             return descriptions[i];
         }, null);
-    }
-
-    /*
-     * Gets the keybinding which can be used to activate the action, if one exists.
-     * The string returned should contain localized, human-readable, key sequences
-     * as they would appear when displayed on screen.
-     * It must be in the format "mnemonic;sequence;shortcut".
-     *
-     * @return null if there is no keybinding
-     */
-    private String get_keybinding(int index) {
-        // TODO: implement
-        //  There is no dependency between javax.accessibility.AccessibleAction and keybindings,
-        //  so there is no way to return the correct keybinding based on AccessibleContext.
-        return null;
     }
 }
