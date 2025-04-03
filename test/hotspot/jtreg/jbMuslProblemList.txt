@@ -4,6 +4,7 @@
 
 runtime/8176717/TestInheritFD.java JBR-6974 linux-all
 runtime/ErrorHandling/CreateCoredumpOnCrash.java JBR-7917 linux-all
+runtime/Thread/ThreadCountLimit.java#id0 JBR-7974 linux-all
 
 #############################################################################
 
@@ -12,6 +13,9 @@ runtime/ErrorHandling/CreateCoredumpOnCrash.java JBR-7917 linux-all
 serviceability/dcmd/framework/HelpTest.java JBR-6974 linux-all
 serviceability/dcmd/framework/InvalidCommandTest.java JBR-6974 linux-all
 serviceability/dcmd/framework/VMVersionTest.java JBR-6974 linux-all
+serviceability/dcmd/vm/SystemDumpMapTest.java JBR-7976 linux-all
+serviceability/dcmd/vm/SystemMapTest.java#zgc JBR-7976 linux-all
+serviceability/dcmd/vm/SystemMapTest.java#normal JBR-7976 linux-all
 serviceability/tmtools/jstat/GcCapacityTest.java JBR-6974 linux-all
 serviceability/tmtools/jstat/GcCauseTest01.java JBR-6974 linux-all
 serviceability/tmtools/jstat/GcCauseTest02.java JBR-6974 linux-all

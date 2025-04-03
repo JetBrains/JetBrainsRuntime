@@ -49,13 +49,19 @@
 
 # :hotspot_gc
 
+gc/shenandoah/generational/TestOldGrowthTriggers.java JBR-8019 linux-all,windows-all
+
 #############################################################################
 
 # :hotspot_runtime
 
+runtime/Unsafe/RangeCheck.java JBR-8529 windows-aarch64
+
 #############################################################################
 
 # :hotspot_serviceability
+
+serviceability/sa/ClhsdbInspect.java JBR-6351 windows-aarch64
 
 #############################################################################
 
