@@ -433,24 +433,9 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
     result = device->vkCreateDescriptorSetLayout(device->handle, &textureDescriptorSetLayoutCreateInfo, NULL, &pipelines->textureDescriptorSetLayout);
     VK_IF_ERROR(result) return result;
 
-    VkDescriptorSetLayoutBinding samplerLayoutBinding = {
-        .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-        .pImmutableSamplers = NULL
-};
-    VkDescriptorSetLayoutCreateInfo samplerDescriptorSetLayoutCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = 1,
-        .pBindings = &samplerLayoutBinding
-};
-    result = device->vkCreateDescriptorSetLayout(device->handle, &samplerDescriptorSetLayoutCreateInfo, NULL, &pipelines->samplerDescriptorSetLayout);
-    VK_IF_ERROR(result) return result;
-
     VkDescriptorSetLayout textureDescriptorSetLayouts[] = {
         pipelines->textureDescriptorSetLayout,
-        pipelines->samplerDescriptorSetLayout
+        pipelines->samplers.descriptorSetLayout
     };
     createInfo.setLayoutCount = 2;
     createInfo.pSetLayouts = textureDescriptorSetLayouts;
@@ -486,6 +471,12 @@ VKPipelineContext* VKPipelines_CreateContext(VKDevice* device) {
     VK_RUNTIME_ASSERT(pipelineContext);
     pipelineContext->device = device;
 
+    pipelineContext->samplers = VKSamplers_Create(device);
+    if (pipelineContext->samplers.descriptorPool == VK_NULL_HANDLE) {
+        VKPipelines_DestroyContext(pipelineContext);
+        return NULL;
+    }
+
     pipelineContext->shaders = VKPipelines_CreateShaders(device);
     if (pipelineContext->shaders == NULL) {
         VKPipelines_DestroyContext(pipelineContext);
@@ -496,62 +487,6 @@ VKPipelineContext* VKPipelines_CreateContext(VKDevice* device) {
         VKPipelines_DestroyContext(pipelineContext);
         return NULL;
     }
-
-    // Create descriptor pool.
-    VkDescriptorPoolSize poolSize = {
-        .type = VK_DESCRIPTOR_TYPE_SAMPLER,
-        .descriptorCount = 1
-    };
-    VkDescriptorPoolCreateInfo poolInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .poolSizeCount = 1,
-        .pPoolSizes = &poolSize,
-        .maxSets = 1
-    };
-    VK_IF_ERROR(device->vkCreateDescriptorPool(device->handle, &poolInfo, NULL, &pipelineContext->samplerDescriptorPool)) {
-        VKPipelines_DestroyContext(pipelineContext);
-        return NULL;
-    }
-
-    // Create sampler.
-    VkSamplerCreateInfo samplerCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-            .magFilter = VK_FILTER_LINEAR,
-            .minFilter = VK_FILTER_LINEAR,
-            .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT
-    };
-    VK_IF_ERROR(device->vkCreateSampler(device->handle, &samplerCreateInfo, NULL, &pipelineContext->linearRepeatSampler)) {
-        VKPipelines_DestroyContext(pipelineContext);
-        return NULL;
-    }
-
-    // Create sampler descriptor set.
-    VkDescriptorSetAllocateInfo samplerDescriptorSetAllocateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool = pipelineContext->samplerDescriptorPool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &pipelineContext->samplerDescriptorSetLayout
-    };
-    VK_IF_ERROR(device->vkAllocateDescriptorSets(device->handle, &samplerDescriptorSetAllocateInfo,
-                                                 &pipelineContext->linearRepeatSamplerDescriptorSet)) {
-        VKPipelines_DestroyContext(pipelineContext);
-        return NULL;
-    }
-    VkDescriptorImageInfo samplerImageInfo = {
-        .sampler = pipelineContext->linearRepeatSampler
-    };
-    VkWriteDescriptorSet descriptorWrites = {
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = pipelineContext->linearRepeatSamplerDescriptorSet,
-        .dstBinding = 0,
-        .dstArrayElement = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-        .descriptorCount = 1,
-        .pImageInfo = &samplerImageInfo
-    };
-    device->vkUpdateDescriptorSets(device->handle, 1, &descriptorWrites, 0, NULL);
 
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_CreateContext(%p)", pipelineContext);
     return pipelineContext;
@@ -568,15 +503,14 @@ void VKPipelines_DestroyContext(VKPipelineContext* pipelineContext) {
     ARRAY_FREE(pipelineContext->renderPassContexts);
 
     VKPipelines_DestroyShaders(device, pipelineContext->shaders);
-    device->vkDestroyDescriptorPool(device->handle, pipelineContext->samplerDescriptorPool, NULL);
-    device->vkDestroySampler(device->handle, pipelineContext->linearRepeatSampler, NULL);
 
     device->vkDestroyPipelineLayout(device->handle, pipelineContext->colorPipelineLayout, NULL);
     device->vkDestroyPipelineLayout(device->handle, pipelineContext->texturePipelineLayout, NULL);
     device->vkDestroyDescriptorSetLayout(device->handle, pipelineContext->textureDescriptorSetLayout, NULL);
-    device->vkDestroyDescriptorSetLayout(device->handle, pipelineContext->samplerDescriptorSetLayout, NULL);
     device->vkDestroyPipelineLayout(device->handle, pipelineContext->maskFillPipelineLayout, NULL);
     device->vkDestroyDescriptorSetLayout(device->handle, pipelineContext->maskFillDescriptorSetLayout, NULL);
+
+    VKSamplers_Destroy(device, pipelineContext->samplers);
 
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_DestroyContext(%p)", pipelineContext);
     free(pipelineContext);
