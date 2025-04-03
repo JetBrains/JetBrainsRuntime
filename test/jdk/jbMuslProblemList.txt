@@ -10,3 +10,5 @@ javax/swing/border/Test4129681.java JBR-7787 linux-all
 javax/swing/JFrame/JFrameBackgroundRefreshTest.java JBR-7471 linux-all
 javax/swing/JRadioButton/bug4823809.java JBR-7788 linux-all
 javax/swing/text/html/StyleSheet/bug4476002.java JBR-7498 linux-aarch64
+
+jb/build/ResolveSymbolsTest/ResolveSymbolsRealEnv.java JBR-8544 linux-all
