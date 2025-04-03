@@ -3802,6 +3802,12 @@ const Type* SuperWord::container_type(Node* n) {
   }
   const Type* t = _igvn.type(n);
   if (t->basic_type() == T_INT) {
+    // Float to half float conversion may be succeeded by a conversion from
+    // half float to float, in such a case back propagation of narrow type (SHORT)
+    // may not be possible.
+    if (n->Opcode() == Op_ConvF2HF) {
+      return TypeInt::SHORT;
+    }
     // A narrow type of arithmetic operations will be determined by
     // propagating the type of memory operations.
     return TypeInt::INT;
