@@ -1079,9 +1079,11 @@ translateKeycodeToKeysym(uint32_t keycode, enum TranslateKeycodeType type) {
 }
 
 static bool
-isKeySymTyped(xkb_keysym_t keysym) {
-    uint32_t codepoint = xkb.keysym_to_utf32(keysym);
-    return !(codepoint < 0x20 || codepoint == 0x7F);
+isFunctionKeysym(xkb_keysym_t keysym) {
+    // https://www.x.org/releases/current/doc/xproto/x11protocol.html#keysym_encoding
+    // https://www.x.org/releases/X11R7.7/doc/kbproto/xkbproto.html#New_KeySyms
+    // I think it's enough to check if the keysym belongs to the "Keyboard" set of function keys.
+    return keysym >= 0xff00 && keysym <= 0xffff;
 }
 
 static unsigned
@@ -1355,7 +1357,7 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
 
     bool reportQwerty = keyboard.reportNonAsciiAsQwerty && !keyboard.asciiCapable && qwertyKeysym <= 0x7f;
 
-    if (!isKeySymTyped(actualKeysym) && actualKeysym != noModsKeysym) {
+    if (isFunctionKeysym(actualKeysym) && actualKeysym != noModsKeysym) {
         // Emulating pressing a function key, for example AltGr+F being mapped to Right on German Neo 2
         modifiers &= ~consumedModifiers;
         reportedKeysym = actualKeysym;
