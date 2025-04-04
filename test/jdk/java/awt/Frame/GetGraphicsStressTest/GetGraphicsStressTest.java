@@ -42,8 +42,12 @@ public final class GetGraphicsStressTest {
         // Will run the test no more than 20 seconds
         for (int i = 0; i < 4; i++) {
             endtime = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-            System.out.println("END TIME: " + endtime);
+            System.out.println("Run test #" + i + " with endTime = " + endtime);
+            long t1 = System.nanoTime();
             test();
+            long t2 = System.nanoTime();
+            double t = (t2 - t1) / 1_000_000.0;
+            System.out.println("Test #" + i + " took " + t + " ms");
         }
         /*
          * This test needs to give the desktop time to recover to avoid
