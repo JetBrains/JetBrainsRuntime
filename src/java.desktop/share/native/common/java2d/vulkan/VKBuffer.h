@@ -51,6 +51,13 @@ struct VKTexelBuffer {
     VkDescriptorSet descriptorSet;
 };
 
+typedef struct {
+    void* data;
+    size_t x1, y1, w, h;
+    size_t scanStride;
+    size_t pixelStride;
+} VKBuffer_RasterInfo;
+
 /**
  * Create buffers, allocate a memory page and bind them together.
  * 'pageSize' can be 0, meaning that page size is calculated based on buffer memory requirements.
@@ -78,8 +85,11 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
                           VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 
 // TODO usage of this function is suboptimal, we need to avoid creating one-time buffers.
-VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize bufferSize,
+VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* data, VkDeviceSize dataSize,
                                   VkPipelineStageFlags stage, VkAccessFlags access);
+
+VKBuffer* VKBuffer_CreateFromRaster(VKDevice* device, VKBuffer_RasterInfo info,
+                                    VkPipelineStageFlags stage, VkAccessFlags access);
 
 // TODO usage of this function is suboptimal, we need to avoid destroying individual buffers.
 void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer);

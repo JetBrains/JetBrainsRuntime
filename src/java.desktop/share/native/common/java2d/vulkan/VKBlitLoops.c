@@ -134,19 +134,18 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
     VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
     ARRAY_FREE(vertices);
 
-    const char *raster = srcInfo->rasBase;
-    raster += (uint32_t)srcInfo->bounds.y1 * (uint32_t)srcInfo->scanStride + (uint32_t)srcInfo->bounds.x1 * (uint32_t)srcInfo->pixelStride;
     J2dTraceLn4(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
                 dw, dh, dx1, dy1);
-    uint32_t dataSize = sw * sh * srcInfo->pixelStride;
-    char* data = malloc(dataSize);
-    // copy src pixels inside src bounds to buff
-    for (int row = 0; row < sh; row++) {
-        memcpy(data + (row * sw * srcInfo->pixelStride), raster, sw * srcInfo->pixelStride);
-        raster += (uint32_t)srcInfo->scanStride;
-    }
-    VKBuffer *buffer = VKBuffer_CreateFromData(device, data, dataSize, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
-    free(data);
+    VKBuffer *buffer =
+            VKBuffer_CreateFromRaster(device, (VKBuffer_RasterInfo){
+                .data = srcInfo->rasBase,
+                .x1 = srcInfo->bounds.x1,
+                .y1 = srcInfo->bounds.y1,
+                .w = sw,
+                .h = sh,
+                .pixelStride = srcInfo->pixelStride,
+                .scanStride = srcInfo->scanStride
+                }, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
 
     VkCommandBuffer cb = VKRenderer_Record(device->renderer);
     {
