@@ -6,7 +6,7 @@ import java.awt.*;
  */
 public class GetGraphicsStressTestSimplified {
 
-    private static final int ITERATIONS = 100000;
+    private static final int ITERATIONS = 1_000_000;
 
     public static void main(String[] args) {
         Frame f = new Frame();
