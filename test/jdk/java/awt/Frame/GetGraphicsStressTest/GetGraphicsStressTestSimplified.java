@@ -1,5 +1,9 @@
 import java.awt.*;
 
+/**
+ * @test
+ * @key headful
+ */
 public class GetGraphicsStressTestSimplified {
 
     private static final int ITERATIONS = 100000;
