@@ -436,11 +436,7 @@ public class AtkWrapper {
         }
     };
 
-    /**
-     * AtkWrapper is service provider that adds an assistive technology feature
-     * using assistive_technologies property, so constructor is public
-     */
-    public AtkWrapper() {
+    AtkWrapper() {
         if (!accessibilityEnabled) {
             throw new IllegalStateException("AtkWrapper not initialized due to disabled accessibility.");
         }
