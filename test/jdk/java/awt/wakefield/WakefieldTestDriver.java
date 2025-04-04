@@ -102,6 +102,7 @@ public class WakefieldTestDriver {
 
         final String socketName = SOCKET_NAME_PREFIX + ProcessHandle.current().pid();
         final Process westonProcess = launchWeston(nScreens, screenWidth, screenHeight, socketName);
+        Thread.sleep(1000);
         try {
             System.out.println("Running test with WAYLAND_DISPLAY=" + socketName);
             final ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(jvmArgs);
