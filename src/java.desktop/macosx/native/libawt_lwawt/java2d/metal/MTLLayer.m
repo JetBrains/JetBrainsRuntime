@@ -415,7 +415,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             [self.ctx startRedraw:self];
         }
     } else {
-        [self setNeedsDisplay];
+        [self postNeedsDisplay];
     }
 }
 
