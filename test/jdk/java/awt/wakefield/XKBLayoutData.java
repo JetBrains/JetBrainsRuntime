@@ -95,7 +95,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_PERIOD, new KeyDescriptor(KeyEvent.VK_PERIOD, KeyEvent.VK_PERIOD, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(".", false, 0), new KeySymDescriptor(">", false, 1))));
             layout.keys.put(KeyEvent.VK_SLASH, new KeyDescriptor(KeyEvent.VK_SLASH, KeyEvent.VK_SLASH, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("/", false, 0), new KeySymDescriptor("?", false, 1))));
             layout.keys.put(KeyEvent.VK_MULTIPLY, new KeyDescriptor(KeyEvent.VK_MULTIPLY, KeyEvent.VK_MULTIPLY, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("*", false, 0), new KeySymDescriptor("*", false, 1), new KeySymDescriptor("*", false, 128), new KeySymDescriptor("*", false, 129), new KeySymDescriptor("", false, 12))));
-            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_SPACE, new KeyDescriptor(KeyEvent.VK_SPACE, KeyEvent.VK_SPACE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(" ", false, 0))));
             layout.keys.put(KeyEvent.VK_CAPS_LOCK, new KeyDescriptor(KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F1, new KeyDescriptor(KeyEvent.VK_F1, KeyEvent.VK_F1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
@@ -127,7 +127,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_F12, new KeyDescriptor(KeyEvent.VK_F12, KeyEvent.VK_F12, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
             layout.keys.put(KeyEvent.VK_DIVIDE, new KeyDescriptor(KeyEvent.VK_DIVIDE, KeyEvent.VK_DIVIDE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("/", false, 0), new KeySymDescriptor("/", false, 1), new KeySymDescriptor("/", false, 128), new KeySymDescriptor("/", false, 129), new KeySymDescriptor("", false, 12))));
             layout.keys.put(KeyEvent.VK_PRINTSCREEN, new KeyDescriptor(KeyEvent.VK_PRINTSCREEN, KeyEvent.VK_PRINTSCREEN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 8))));
-            layout.keys.put(KeyEvent.VK_ALT_GRAPH, new KeyDescriptor(KeyEvent.VK_ALT_GRAPH, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_ALT_GRAPH, new KeyDescriptor(KeyEvent.VK_ALT_GRAPH, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_HOME, new KeyDescriptor(KeyEvent.VK_HOME, KeyEvent.VK_HOME, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_UP, new KeyDescriptor(KeyEvent.VK_UP, KeyEvent.VK_UP, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_PAGE_UP, new KeyDescriptor(KeyEvent.VK_PAGE_UP, KeyEvent.VK_PAGE_UP, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
@@ -150,7 +150,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_F20, new KeyDescriptor(KeyEvent.VK_F20, KeyEvent.VK_F20, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F21, new KeyDescriptor(KeyEvent.VK_F21, KeyEvent.VK_F21, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F22, new KeyDescriptor(KeyEvent.VK_F22, KeyEvent.VK_F22, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
-            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 65))));
             layouts.add(layout);
         }
 
@@ -188,10 +188,10 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_A, new KeyDescriptor(KeyEvent.VK_A, KeyEvent.VK_A, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("a", false, 0), new KeySymDescriptor("A", false, 1), new KeySymDescriptor("\u00e1", false, 128), new KeySymDescriptor("\u00c1", false, 129))));
             layout.keys.put(KeyEvent.VK_S, new KeyDescriptor(KeyEvent.VK_S, KeyEvent.VK_S, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("s", false, 0), new KeySymDescriptor("S", false, 1), new KeySymDescriptor("\u00df", false, 128), new KeySymDescriptor("\u00a7", false, 129))));
             layout.keys.put(KeyEvent.VK_D, new KeyDescriptor(KeyEvent.VK_D, KeyEvent.VK_D, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("d", false, 0), new KeySymDescriptor("D", false, 1), new KeySymDescriptor("\u00f0", false, 128), new KeySymDescriptor("\u00d0", false, 129))));
-            layout.keys.put(KeyEvent.VK_F, new KeyDescriptor(KeyEvent.VK_F, KeyEvent.VK_F, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("f", false, 0), new KeySymDescriptor("F", false, 1), new KeySymDescriptor("f", false, 128), new KeySymDescriptor("F", false, 129))));
+            layout.keys.put(KeyEvent.VK_F, new KeyDescriptor(KeyEvent.VK_F, KeyEvent.VK_F, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("f", false, 0), new KeySymDescriptor("F", false, 1), new KeySymDescriptor("\u00eb", false, 128), new KeySymDescriptor("\u00cb", false, 129))));
             layout.keys.put(KeyEvent.VK_G, new KeyDescriptor(KeyEvent.VK_G, KeyEvent.VK_G, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("g", false, 0), new KeySymDescriptor("G", false, 1), new KeySymDescriptor("g", false, 128), new KeySymDescriptor("G", false, 129))));
             layout.keys.put(KeyEvent.VK_H, new KeyDescriptor(KeyEvent.VK_H, KeyEvent.VK_H, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("h", false, 0), new KeySymDescriptor("H", false, 1), new KeySymDescriptor("h", false, 128), new KeySymDescriptor("H", false, 129))));
-            layout.keys.put(KeyEvent.VK_J, new KeyDescriptor(KeyEvent.VK_J, KeyEvent.VK_J, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("j", false, 0), new KeySymDescriptor("J", false, 1), new KeySymDescriptor("j", false, 128), new KeySymDescriptor("J", false, 129))));
+            layout.keys.put(KeyEvent.VK_J, new KeyDescriptor(KeyEvent.VK_J, KeyEvent.VK_J, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("j", false, 0), new KeySymDescriptor("J", false, 1), new KeySymDescriptor("\u00ef", false, 128), new KeySymDescriptor("\u00cf", false, 129))));
             layout.keys.put(KeyEvent.VK_K, new KeyDescriptor(KeyEvent.VK_K, KeyEvent.VK_K, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("k", false, 0), new KeySymDescriptor("K", false, 1), new KeySymDescriptor("\u0153", false, 128), new KeySymDescriptor("\u0152", false, 129))));
             layout.keys.put(KeyEvent.VK_L, new KeyDescriptor(KeyEvent.VK_L, KeyEvent.VK_L, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("l", false, 0), new KeySymDescriptor("L", false, 1), new KeySymDescriptor("\u00f8", false, 128), new KeySymDescriptor("\u00d8", false, 129))));
             layout.keys.put(KeyEvent.VK_SEMICOLON, new KeyDescriptor(KeyEvent.VK_SEMICOLON, KeyEvent.VK_SEMICOLON, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(";", false, 0), new KeySymDescriptor(":", false, 1), new KeySymDescriptor("\u00b6", false, 128), new KeySymDescriptor("\u00b0", false, 129))));
@@ -200,17 +200,17 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_SHIFT, new KeyDescriptor(KeyEvent.VK_SHIFT, KeyEvent.VK_SHIFT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_BACK_SLASH, new KeyDescriptor(KeyEvent.VK_BACK_SLASH, KeyEvent.VK_BACK_SLASH, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\\", false, 0), new KeySymDescriptor("|", false, 1), new KeySymDescriptor("\u00ac", false, 128), new KeySymDescriptor("\u00a6", false, 129))));
             layout.keys.put(KeyEvent.VK_Z, new KeyDescriptor(KeyEvent.VK_Z, KeyEvent.VK_Z, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("z", false, 0), new KeySymDescriptor("Z", false, 1), new KeySymDescriptor("\u00e6", false, 128), new KeySymDescriptor("\u00c6", false, 129))));
-            layout.keys.put(KeyEvent.VK_X, new KeyDescriptor(KeyEvent.VK_X, KeyEvent.VK_X, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("x", false, 0), new KeySymDescriptor("X", false, 1), new KeySymDescriptor("x", false, 128), new KeySymDescriptor("X", false, 129))));
+            layout.keys.put(KeyEvent.VK_X, new KeyDescriptor(KeyEvent.VK_X, KeyEvent.VK_X, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("x", false, 0), new KeySymDescriptor("X", false, 1), new KeySymDescriptor("\u00b7", false, 128), new KeySymDescriptor("/", true, 129))));
             layout.keys.put(KeyEvent.VK_C, new KeyDescriptor(KeyEvent.VK_C, KeyEvent.VK_C, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("c", false, 0), new KeySymDescriptor("C", false, 1), new KeySymDescriptor("\u00a9", false, 128), new KeySymDescriptor("\u00a2", false, 129))));
             layout.keys.put(KeyEvent.VK_V, new KeyDescriptor(KeyEvent.VK_V, KeyEvent.VK_V, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("v", false, 0), new KeySymDescriptor("V", false, 1), new KeySymDescriptor("v", false, 128), new KeySymDescriptor("V", false, 129))));
             layout.keys.put(KeyEvent.VK_B, new KeyDescriptor(KeyEvent.VK_B, KeyEvent.VK_B, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("b", false, 0), new KeySymDescriptor("B", false, 1), new KeySymDescriptor("b", false, 128), new KeySymDescriptor("B", false, 129))));
             layout.keys.put(KeyEvent.VK_N, new KeyDescriptor(KeyEvent.VK_N, KeyEvent.VK_N, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("n", false, 0), new KeySymDescriptor("N", false, 1), new KeySymDescriptor("\u00f1", false, 128), new KeySymDescriptor("\u00d1", false, 129))));
-            layout.keys.put(KeyEvent.VK_M, new KeyDescriptor(KeyEvent.VK_M, KeyEvent.VK_M, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("m", false, 0), new KeySymDescriptor("M", false, 1), new KeySymDescriptor("\u00b5", false, 128), new KeySymDescriptor("\u00b5", false, 129))));
+            layout.keys.put(KeyEvent.VK_M, new KeyDescriptor(KeyEvent.VK_M, KeyEvent.VK_M, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("m", false, 0), new KeySymDescriptor("M", false, 1), new KeySymDescriptor("\u00b5", false, 128), new KeySymDescriptor("\u00b1", false, 129))));
             layout.keys.put(KeyEvent.VK_COMMA, new KeyDescriptor(KeyEvent.VK_COMMA, KeyEvent.VK_COMMA, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(",", false, 0), new KeySymDescriptor("<", false, 1), new KeySymDescriptor("\u00e7", false, 128), new KeySymDescriptor("\u00c7", false, 129))));
             layout.keys.put(KeyEvent.VK_PERIOD, new KeyDescriptor(KeyEvent.VK_PERIOD, KeyEvent.VK_PERIOD, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(".", false, 0), new KeySymDescriptor(">", false, 1), new KeySymDescriptor("\u02d9", true, 128), new KeySymDescriptor("\u02c7", true, 129))));
             layout.keys.put(KeyEvent.VK_SLASH, new KeyDescriptor(KeyEvent.VK_SLASH, KeyEvent.VK_SLASH, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("/", false, 0), new KeySymDescriptor("?", false, 1), new KeySymDescriptor("\u00bf", false, 128), new KeySymDescriptor("\u0309", true, 129))));
             layout.keys.put(KeyEvent.VK_MULTIPLY, new KeyDescriptor(KeyEvent.VK_MULTIPLY, KeyEvent.VK_MULTIPLY, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("*", false, 0), new KeySymDescriptor("*", false, 1), new KeySymDescriptor("*", false, 128), new KeySymDescriptor("*", false, 129), new KeySymDescriptor("", false, 12))));
-            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_SPACE, new KeyDescriptor(KeyEvent.VK_SPACE, KeyEvent.VK_SPACE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(" ", false, 0))));
             layout.keys.put(KeyEvent.VK_CAPS_LOCK, new KeyDescriptor(KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F1, new KeyDescriptor(KeyEvent.VK_F1, KeyEvent.VK_F1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
@@ -265,7 +265,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_F20, new KeyDescriptor(KeyEvent.VK_F20, KeyEvent.VK_F20, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F21, new KeyDescriptor(KeyEvent.VK_F21, KeyEvent.VK_F21, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F22, new KeyDescriptor(KeyEvent.VK_F22, KeyEvent.VK_F22, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
-            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 65))));
             layouts.add(layout);
         }
 
@@ -318,14 +318,14 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_X, new KeyDescriptor(KeyEvent.VK_X, KeyEvent.VK_X, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("x", false, 0), new KeySymDescriptor("X", false, 1), new KeySymDescriptor("\u0153", false, 128), new KeySymDescriptor("\u0152", false, 129))));
             layout.keys.put(KeyEvent.VK_C, new KeyDescriptor(KeyEvent.VK_C, KeyEvent.VK_C, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("c", false, 0), new KeySymDescriptor("C", false, 1), new KeySymDescriptor("\u00a9", false, 128), new KeySymDescriptor("\u00a2", false, 129))));
             layout.keys.put(KeyEvent.VK_V, new KeyDescriptor(KeyEvent.VK_V, KeyEvent.VK_V, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("v", false, 0), new KeySymDescriptor("V", false, 1), new KeySymDescriptor("\u00ae", false, 128), new KeySymDescriptor("\u2122", false, 129))));
-            layout.keys.put(KeyEvent.VK_B, new KeyDescriptor(KeyEvent.VK_B, KeyEvent.VK_B, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("b", false, 0), new KeySymDescriptor("B", false, 1), new KeySymDescriptor("b", false, 128), new KeySymDescriptor("B", false, 129))));
+            layout.keys.put(KeyEvent.VK_B, new KeyDescriptor(KeyEvent.VK_B, KeyEvent.VK_B, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("b", false, 0), new KeySymDescriptor("B", false, 1), new KeySymDescriptor("\u00b7", false, 128), new KeySymDescriptor("/", true, 129))));
             layout.keys.put(KeyEvent.VK_N, new KeyDescriptor(KeyEvent.VK_N, KeyEvent.VK_N, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("n", false, 0), new KeySymDescriptor("N", false, 1), new KeySymDescriptor("\u00f1", false, 128), new KeySymDescriptor("\u00d1", false, 129))));
-            layout.keys.put(KeyEvent.VK_M, new KeyDescriptor(KeyEvent.VK_M, KeyEvent.VK_M, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("m", false, 0), new KeySymDescriptor("M", false, 1), new KeySymDescriptor("\u00b5", false, 128), new KeySymDescriptor("\u00b5", false, 129))));
+            layout.keys.put(KeyEvent.VK_M, new KeyDescriptor(KeyEvent.VK_M, KeyEvent.VK_M, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("m", false, 0), new KeySymDescriptor("M", false, 1), new KeySymDescriptor("\u00b5", false, 128), new KeySymDescriptor("\u00b1", false, 129))));
             layout.keys.put(KeyEvent.VK_COMMA, new KeyDescriptor(KeyEvent.VK_COMMA, KeyEvent.VK_COMMA, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(",", false, 0), new KeySymDescriptor("<", false, 1), new KeySymDescriptor("\u00e7", false, 128), new KeySymDescriptor("\u00c7", false, 129))));
             layout.keys.put(KeyEvent.VK_PERIOD, new KeyDescriptor(KeyEvent.VK_PERIOD, KeyEvent.VK_PERIOD, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(".", false, 0), new KeySymDescriptor(">", false, 1), new KeySymDescriptor("\u02d9", true, 128), new KeySymDescriptor("\u02c7", true, 129))));
             layout.keys.put(KeyEvent.VK_SLASH, new KeyDescriptor(KeyEvent.VK_SLASH, KeyEvent.VK_SLASH, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("/", false, 0), new KeySymDescriptor("?", false, 1), new KeySymDescriptor("\u00bf", false, 128), new KeySymDescriptor("\u0309", true, 129))));
             layout.keys.put(KeyEvent.VK_MULTIPLY, new KeyDescriptor(KeyEvent.VK_MULTIPLY, KeyEvent.VK_MULTIPLY, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("*", false, 0), new KeySymDescriptor("*", false, 1), new KeySymDescriptor("*", false, 128), new KeySymDescriptor("*", false, 129), new KeySymDescriptor("", false, 12))));
-            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_SPACE, new KeyDescriptor(KeyEvent.VK_SPACE, KeyEvent.VK_SPACE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(" ", false, 0))));
             layout.keys.put(KeyEvent.VK_CAPS_LOCK, new KeyDescriptor(KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F1, new KeyDescriptor(KeyEvent.VK_F1, KeyEvent.VK_F1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
@@ -380,7 +380,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_F20, new KeyDescriptor(KeyEvent.VK_F20, KeyEvent.VK_F20, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F21, new KeyDescriptor(KeyEvent.VK_F21, KeyEvent.VK_F21, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F22, new KeyDescriptor(KeyEvent.VK_F22, KeyEvent.VK_F22, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
-            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 65))));
             layouts.add(layout);
         }
 
@@ -440,7 +440,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_PERIOD, new KeyDescriptor(KeyEvent.VK_PERIOD, KeyEvent.VK_PERIOD, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(".", false, 0), new KeySymDescriptor(":", false, 1), new KeySymDescriptor("\u2026", false, 128), new KeySymDescriptor("\u00f7", false, 129))));
             layout.keys.put(KeyEvent.VK_SLASH, new KeyDescriptor(KeyEvent.VK_SLASH, KeyEvent.VK_MINUS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("-", false, 0), new KeySymDescriptor("_", false, 1), new KeySymDescriptor("\u2013", false, 128), new KeySymDescriptor("\u2014", false, 129))));
             layout.keys.put(KeyEvent.VK_MULTIPLY, new KeyDescriptor(KeyEvent.VK_MULTIPLY, KeyEvent.VK_MULTIPLY, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("*", false, 0), new KeySymDescriptor("*", false, 1), new KeySymDescriptor("*", false, 128), new KeySymDescriptor("*", false, 129), new KeySymDescriptor("", false, 12))));
-            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_SPACE, new KeyDescriptor(KeyEvent.VK_SPACE, KeyEvent.VK_SPACE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(" ", false, 0))));
             layout.keys.put(KeyEvent.VK_CAPS_LOCK, new KeyDescriptor(KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F1, new KeyDescriptor(KeyEvent.VK_F1, KeyEvent.VK_F1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
@@ -495,7 +495,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_F20, new KeyDescriptor(KeyEvent.VK_F20, KeyEvent.VK_F20, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F21, new KeyDescriptor(KeyEvent.VK_F21, KeyEvent.VK_F21, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F22, new KeyDescriptor(KeyEvent.VK_F22, KeyEvent.VK_F22, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
-            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 65))));
             layouts.add(layout);
         }
 
@@ -555,7 +555,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_PERIOD, new KeyDescriptor(KeyEvent.VK_PERIOD, KeyEvent.VK_COLON, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(":", false, 0), new KeySymDescriptor("/", false, 1), new KeySymDescriptor("\u00b7", false, 128), new KeySymDescriptor("\u00f7", false, 129))));
             layout.keys.put(KeyEvent.VK_SLASH, new KeyDescriptor(KeyEvent.VK_SLASH, KeyEvent.VK_EXCLAMATION_MARK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("!", false, 0), new KeySymDescriptor("\u00a7", false, 1), new KeySymDescriptor("\u0323", true, 128), new KeySymDescriptor("\u02d9", true, 129))));
             layout.keys.put(KeyEvent.VK_MULTIPLY, new KeyDescriptor(KeyEvent.VK_MULTIPLY, KeyEvent.VK_MULTIPLY, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("*", false, 0), new KeySymDescriptor("*", false, 1), new KeySymDescriptor("*", false, 128), new KeySymDescriptor("*", false, 129), new KeySymDescriptor("", false, 12))));
-            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_SPACE, new KeyDescriptor(KeyEvent.VK_SPACE, KeyEvent.VK_SPACE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(" ", false, 0))));
             layout.keys.put(KeyEvent.VK_CAPS_LOCK, new KeyDescriptor(KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F1, new KeyDescriptor(KeyEvent.VK_F1, KeyEvent.VK_F1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
@@ -610,7 +610,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_F20, new KeyDescriptor(KeyEvent.VK_F20, KeyEvent.VK_F20, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F21, new KeyDescriptor(KeyEvent.VK_F21, KeyEvent.VK_F21, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F22, new KeyDescriptor(KeyEvent.VK_F22, KeyEvent.VK_F22, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
-            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 65))));
             layouts.add(layout);
         }
 
@@ -670,7 +670,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_PERIOD, new KeyDescriptor(KeyEvent.VK_PERIOD, KeyEvent.VK_PERIOD, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(".", false, 0), new KeySymDescriptor(":", false, 1), new KeySymDescriptor("\u00b7", false, 128), new KeySymDescriptor("\u00f7", false, 129))));
             layout.keys.put(KeyEvent.VK_SLASH, new KeyDescriptor(KeyEvent.VK_SLASH, KeyEvent.VK_MINUS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("-", false, 0), new KeySymDescriptor("_", false, 1), new KeySymDescriptor("\u0323", true, 128), new KeySymDescriptor("\u02d9", true, 129))));
             layout.keys.put(KeyEvent.VK_MULTIPLY, new KeyDescriptor(KeyEvent.VK_MULTIPLY, KeyEvent.VK_MULTIPLY, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("*", false, 0), new KeySymDescriptor("*", false, 1), new KeySymDescriptor("*", false, 128), new KeySymDescriptor("*", false, 129), new KeySymDescriptor("", false, 12))));
-            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_SPACE, new KeyDescriptor(KeyEvent.VK_SPACE, KeyEvent.VK_SPACE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(" ", false, 0))));
             layout.keys.put(KeyEvent.VK_CAPS_LOCK, new KeyDescriptor(KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F1, new KeyDescriptor(KeyEvent.VK_F1, KeyEvent.VK_F1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
@@ -725,7 +725,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_F20, new KeyDescriptor(KeyEvent.VK_F20, KeyEvent.VK_F20, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F21, new KeyDescriptor(KeyEvent.VK_F21, KeyEvent.VK_F21, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F22, new KeyDescriptor(KeyEvent.VK_F22, KeyEvent.VK_F22, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
-            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 65))));
             layouts.add(layout);
         }
 
@@ -785,7 +785,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_PERIOD, new KeyDescriptor(KeyEvent.VK_PERIOD, KeyEvent.getExtendedKeyCodeForChar(1102), KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("\u044e", false, 0), new KeySymDescriptor("\u042e", false, 1))));
             layout.keys.put(KeyEvent.VK_SLASH, new KeyDescriptor(KeyEvent.VK_SLASH, KeyEvent.VK_PERIOD, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(".", false, 0), new KeySymDescriptor(",", false, 1))));
             layout.keys.put(KeyEvent.VK_MULTIPLY, new KeyDescriptor(KeyEvent.VK_MULTIPLY, KeyEvent.VK_MULTIPLY, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("*", false, 0), new KeySymDescriptor("*", false, 1), new KeySymDescriptor("*", false, 128), new KeySymDescriptor("*", false, 129), new KeySymDescriptor("", false, 12))));
-            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_SPACE, new KeyDescriptor(KeyEvent.VK_SPACE, KeyEvent.VK_SPACE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(" ", false, 0))));
             layout.keys.put(KeyEvent.VK_CAPS_LOCK, new KeyDescriptor(KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F1, new KeyDescriptor(KeyEvent.VK_F1, KeyEvent.VK_F1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
@@ -817,7 +817,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_F12, new KeyDescriptor(KeyEvent.VK_F12, KeyEvent.VK_F12, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
             layout.keys.put(KeyEvent.VK_DIVIDE, new KeyDescriptor(KeyEvent.VK_DIVIDE, KeyEvent.VK_DIVIDE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("/", false, 0), new KeySymDescriptor("/", false, 1), new KeySymDescriptor("/", false, 128), new KeySymDescriptor("/", false, 129), new KeySymDescriptor("", false, 12))));
             layout.keys.put(KeyEvent.VK_PRINTSCREEN, new KeyDescriptor(KeyEvent.VK_PRINTSCREEN, KeyEvent.VK_PRINTSCREEN, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 8))));
-            layout.keys.put(KeyEvent.VK_ALT_GRAPH, new KeyDescriptor(KeyEvent.VK_ALT_GRAPH, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_ALT_GRAPH, new KeyDescriptor(KeyEvent.VK_ALT_GRAPH, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_HOME, new KeyDescriptor(KeyEvent.VK_HOME, KeyEvent.VK_HOME, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_UP, new KeyDescriptor(KeyEvent.VK_UP, KeyEvent.VK_UP, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_PAGE_UP, new KeyDescriptor(KeyEvent.VK_PAGE_UP, KeyEvent.VK_PAGE_UP, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
@@ -840,7 +840,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_F20, new KeyDescriptor(KeyEvent.VK_F20, KeyEvent.VK_F20, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F21, new KeyDescriptor(KeyEvent.VK_F21, KeyEvent.VK_F21, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F22, new KeyDescriptor(KeyEvent.VK_F22, KeyEvent.VK_F22, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
-            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 65))));
             layouts.add(layout);
         }
 
@@ -900,7 +900,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_PERIOD, new KeyDescriptor(KeyEvent.VK_PERIOD, KeyEvent.VK_PERIOD, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(".", false, 0), new KeySymDescriptor(":", false, 1), new KeySymDescriptor(">", false, 128))));
             layout.keys.put(KeyEvent.VK_SLASH, new KeyDescriptor(KeyEvent.VK_SLASH, KeyEvent.VK_MINUS, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("-", false, 0), new KeySymDescriptor("_", false, 1), new KeySymDescriptor("\u2014", false, 128), new KeySymDescriptor("\u2013", false, 129))));
             layout.keys.put(KeyEvent.VK_MULTIPLY, new KeyDescriptor(KeyEvent.VK_MULTIPLY, KeyEvent.VK_MULTIPLY, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("*", false, 0), new KeySymDescriptor("*", false, 1), new KeySymDescriptor("*", false, 128), new KeySymDescriptor("*", false, 129), new KeySymDescriptor("", false, 12))));
-            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1))));
+            layout.keys.put(KeyEvent.VK_ALT, new KeyDescriptor(KeyEvent.VK_ALT, KeyEvent.VK_ALT, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_SPACE, new KeyDescriptor(KeyEvent.VK_SPACE, KeyEvent.VK_SPACE, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor(" ", false, 0))));
             layout.keys.put(KeyEvent.VK_CAPS_LOCK, new KeyDescriptor(KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_CAPS_LOCK, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F1, new KeyDescriptor(KeyEvent.VK_F1, KeyEvent.VK_F1, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 1), new KeySymDescriptor("", false, 128), new KeySymDescriptor("", false, 129), new KeySymDescriptor("", false, 12))));
@@ -955,7 +955,7 @@ public class XKBLayoutData {
             layout.keys.put(KeyEvent.VK_F20, new KeyDescriptor(KeyEvent.VK_F20, KeyEvent.VK_F20, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F21, new KeyDescriptor(KeyEvent.VK_F21, KeyEvent.VK_F21, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
             layout.keys.put(KeyEvent.VK_F22, new KeyDescriptor(KeyEvent.VK_F22, KeyEvent.VK_F22, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
-            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0))));
+            layout.keys.put(KeyEvent.VK_F23, new KeyDescriptor(KeyEvent.VK_F23, KeyEvent.VK_F23, KeyEvent.VK_UNDEFINED, List.of(new KeySymDescriptor("", false, 0), new KeySymDescriptor("", false, 65))));
             layouts.add(layout);
         }
     }
