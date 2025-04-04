@@ -33,6 +33,12 @@ public final class AtkProvider extends AccessibilityProvider {
     }
 
     public void activate() {
-        new AtkWrapper();
+        if (isEnabled()) {
+            new AtkWrapper();
+        }
+    }
+
+    private boolean isEnabled() {
+        return !java.lang.Boolean.parseBoolean(System.getProperty("linux.jdk.accessibility.atkwrapper.block", "true"));
     }
 }
