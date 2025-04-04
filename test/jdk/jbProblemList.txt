@@ -237,6 +237,7 @@ java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java JBR-4275,JB
 java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java 7188711,8253184 linux-all,windows-all
 java/awt/FullScreen/UninitializedDisplayModeChangeTest/UninitializedDisplayModeChangeTest.java 7188711,8273617,JBR-4880,8253184 macosx-all,linux-all,windows-all
 java/awt/Focus/8013611/JDK8013611.java 8175366 windows-all,macosx-all
+java/awt/Focus/6378278/InputVerifierTest.java JBR-5799 windows-all
 java/awt/Focus/6981400/Test1.java 8029675,JBR-5510 windows-all,macosx-all,linux-5.18.2-arch1-1
 java/awt/Focus/6981400/Test3.java 8173264 generic-all
 java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java JBR-4997,JBR-5729 windows-all,linux-all
@@ -265,6 +266,7 @@ java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.j
 java/awt/Frame/FramesGC/FramesGC.java 8079069 macosx-all
 java/awt/Frame/FrameVisible/FrameContentAppearanceTest.java JBR-5838 macosx-x64
 java/awt/ScrollPane/ScrollPanePreferredSize/ScrollPanePreferredSize.java 8253184 windows-all
+java/awt/ScrollPane/ScrollPaneWindowsTest.java JBR-6944 windows-all
 java/awt/TrayIcon/8072769/bug8072769.java JBR-6913 windows-all
 java/awt/TrayIcon/ActionCommand/ActionCommand.java 8150540,JBR-3107 windows-all,linux-all
 java/awt/TrayIcon/ActionEventMask/ActionEventMask.java 8150540,8242801,8295300,JBR-3107 windows-all,macosx-all,linux-all
@@ -655,7 +657,7 @@ java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java 8233568,JBR-5583 macosx-a
 java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java 8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java 8233568 macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java 8233568 macosx-all
-java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720 windows-all
+java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720,JBR-6931 windows-all,linux-aarch64
 java/awt/Paint/ComponentIsNotDrawnAfterRemoveAddTest/ComponentIsNotDrawnAfterRemoveAddTest.java 8253184 windows-all
 java/awt/Paint/ListRepaint.java JBR-5060 linux-all
 java/awt/Paint/PaintNativeOnUpdate.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -914,6 +916,7 @@ javax/swing/JComboBox/6406264/bug6406264.java JBR-5210,JBR-5510 windows-all,linu
 javax/swing/JComboBox/6607130/bug6607130.java JBR-5799 windows-x64
 javax/swing/JComboBox/bug4890345.java JBR-5799 windows-all
 javax/swing/JComboBox/bug4924758.java JBR-5846 windows-all
+javax/swing/JComboBox/bug4996503.java JBR-5799 windows-aarch64
 javax/swing/JComboBox/bug5029504.java JBR-5799 windows-all
 javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java JBR-5210 windows-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
@@ -940,6 +943,7 @@ javax/swing/JPopupMenu/6415145/bug6415145.java 8197552 windows-all
 javax/swing/JPopupMenu/6495920/bug6495920.java JBR-6928 linux-all
 javax/swing/JPopupMenu/6515446/bug6515446.java 8197552,JBR-6531 windows-all,linux-all
 javax/swing/JPopupMenu/6544309/bug6544309.java JBR-6532 windows-all,linux-all
+javax/swing/JPopupMenu/8173739/TestPopupMenu.java JBR-6959 linux-aarch64
 javax/swing/JRadioButton/8033699/bug8033699.java 8197552 windows-all
 javax/swing/JRadioButton/8075609/bug8075609.java 8197552,8266085,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java 8197552,8266085 windows-all
@@ -1111,7 +1115,8 @@ jdk/incubator/vector/LoadJsvmlTest.java                         8305390 windows-
 
 # jdk_jfr
 
-jdk/jfr/event/compiler/TestCodeSweeper.java                     8225209 generic-all
+jdk/jfr/event/compiler/TestCodeSweeper.java                     8338127 generic-all
+jdk/jfr/event/oldobject/TestShenandoah.java                     8342951 generic-all
 jdk/jfr/startupargs/TestStartName.java                          8214685 windows-x64
 jdk/jfr/startupargs/TestStartDuration.java                      8214685 windows-x64
 jdk/jfr/jvm/TestWaste.java                                      8282427 generic-all
