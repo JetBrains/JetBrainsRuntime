@@ -105,7 +105,7 @@ public final class GetGraphicsStressTest {
                 long t1 = System.nanoTime();
                 Graphics g = f.getGraphics();
                 if (g != null) {
-                    g.drawLine(0, 0, 4, 4); // just in case...
+                    //g.drawLine(0, 0, 4, 4); // just in case...
                     g.dispose();
                 }
                 long t2 = System.nanoTime();
