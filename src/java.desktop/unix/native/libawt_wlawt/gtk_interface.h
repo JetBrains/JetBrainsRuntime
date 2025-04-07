@@ -440,8 +440,8 @@ static const gint DEFAULT    = 1 << 10;
 
 typedef enum
 {
-  GTK_ANY,
-  GTK_3
+  GTK_ANY = 0,
+  GTK_3   = 3
 } GtkVersion;
 
 typedef enum {
