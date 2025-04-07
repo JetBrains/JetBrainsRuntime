@@ -58,7 +58,7 @@ typedef struct _ImageData {
 } ImageData;
 
 #define JAW_GET_IMAGE(image, def_ret)                                          \
-    JAW_GET_OBJ_IFACE(image, INTERFACE_IMAGE, ImageData, atk_image, jniEnv,    \
+    JAW_GET_OBJ_IFACE(image, org_GNOME_Accessibility_AtkInterface_INTERFACE_IMAGE, ImageData, atk_image, jniEnv,    \
                       atk_image, def_ret)
 
 /**

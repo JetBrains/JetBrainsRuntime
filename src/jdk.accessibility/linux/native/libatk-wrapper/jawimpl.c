@@ -69,84 +69,84 @@ static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
 
     jaw_impl->ifaceTable = g_hash_table_new(NULL, NULL);
 
-    if (tflag & INTERFACE_ACTION) {
+    if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_ACTION) {
         JawInterfaceInfo *info = g_new(JawInterfaceInfo, 1);
         info->data = jaw_action_data_init(ac);
         info->finalize = jaw_action_data_finalize;
-        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)INTERFACE_ACTION,
+        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)org_GNOME_Accessibility_AtkInterface_INTERFACE_ACTION,
                             (gpointer)info);
     }
 
-    if (tflag & INTERFACE_COMPONENT) {
+    if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_COMPONENT) {
         JawInterfaceInfo *info = g_new(JawInterfaceInfo, 1);
         info->data = jaw_component_data_init(ac);
         info->finalize = jaw_component_data_finalize;
-        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)INTERFACE_COMPONENT,
+        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)org_GNOME_Accessibility_AtkInterface_INTERFACE_COMPONENT,
                             (gpointer)info);
     }
 
-    if (tflag & INTERFACE_TEXT) {
+    if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_TEXT) {
         JawInterfaceInfo *info = g_new(JawInterfaceInfo, 1);
         info->data = jaw_text_data_init(ac);
         info->finalize = jaw_text_data_finalize;
-        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)INTERFACE_TEXT,
+        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)org_GNOME_Accessibility_AtkInterface_INTERFACE_TEXT,
                             (gpointer)info);
     }
 
-    if (tflag & INTERFACE_EDITABLE_TEXT) {
+    if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_EDITABLE_TEXT) {
         JawInterfaceInfo *info = g_new(JawInterfaceInfo, 1);
         info->data = jaw_editable_text_data_init(ac);
         info->finalize = jaw_editable_text_data_finalize;
         g_hash_table_insert(jaw_impl->ifaceTable,
-                            (gpointer)INTERFACE_EDITABLE_TEXT, (gpointer)info);
+                            (gpointer)org_GNOME_Accessibility_AtkInterface_INTERFACE_EDITABLE_TEXT, (gpointer)info);
     }
 
-    if (tflag & INTERFACE_HYPERTEXT) {
+    if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_HYPERTEXT) {
         JawInterfaceInfo *info = g_new(JawInterfaceInfo, 1);
         info->data = jaw_hypertext_data_init(ac);
         info->finalize = jaw_hypertext_data_finalize;
-        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)INTERFACE_HYPERTEXT,
+        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)org_GNOME_Accessibility_AtkInterface_INTERFACE_HYPERTEXT,
                             (gpointer)info);
     }
 
-    if (tflag & INTERFACE_IMAGE) {
+    if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_IMAGE) {
         JawInterfaceInfo *info = g_new(JawInterfaceInfo, 1);
         info->data = jaw_image_data_init(ac);
         info->finalize = jaw_image_data_finalize;
-        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)INTERFACE_IMAGE,
+        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)org_GNOME_Accessibility_AtkInterface_INTERFACE_IMAGE,
                             (gpointer)info);
     }
 
-    if (tflag & INTERFACE_SELECTION) {
+    if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_SELECTION) {
         JawInterfaceInfo *info = g_new(JawInterfaceInfo, 1);
         info->data = jaw_selection_data_init(ac);
         info->finalize = jaw_selection_data_finalize;
-        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)INTERFACE_SELECTION,
+        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)org_GNOME_Accessibility_AtkInterface_INTERFACE_SELECTION,
                             (gpointer)info);
     }
 
-    if (tflag & INTERFACE_VALUE) {
+    if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_VALUE) {
         JawInterfaceInfo *info = g_new(JawInterfaceInfo, 1);
         info->data = jaw_value_data_init(ac);
         info->finalize = jaw_value_data_finalize;
-        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)INTERFACE_VALUE,
+        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)org_GNOME_Accessibility_AtkInterface_INTERFACE_VALUE,
                             (gpointer)info);
     }
 
-    if (tflag & INTERFACE_TABLE) {
+    if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE) {
         JawInterfaceInfo *info = g_new(JawInterfaceInfo, 1);
         info->data = jaw_table_data_init(ac);
         info->finalize = jaw_table_data_finalize;
-        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)INTERFACE_TABLE,
+        g_hash_table_insert(jaw_impl->ifaceTable, (gpointer)org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE,
                             (gpointer)info);
     }
 
-    if (tflag & INTERFACE_TABLE_CELL) {
+    if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE_CELL) {
         JawInterfaceInfo *info = g_new(JawInterfaceInfo, 1);
         info->data = jaw_table_cell_data_init(ac);
         info->finalize = jaw_table_cell_data_finalize;
         g_hash_table_insert(jaw_impl->ifaceTable,
-                            (gpointer)INTERFACE_TABLE_CELL, (gpointer)info);
+                            (gpointer)org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE_CELL, (gpointer)info);
     }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -332,39 +332,39 @@ GType jaw_impl_get_type(guint tflag) {
 
         type = g_type_register_static(JAW_TYPE_OBJECT, className, &tinfo, 0);
 
-        if (tflag & INTERFACE_ACTION)
+        if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_ACTION)
             g_type_add_interface_static(type, ATK_TYPE_ACTION,
                                         &atk_action_info);
 
-        if (tflag & INTERFACE_COMPONENT)
+        if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_COMPONENT)
             g_type_add_interface_static(type, ATK_TYPE_COMPONENT,
                                         &atk_component_info);
 
-        if (tflag & INTERFACE_TEXT)
+        if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_TEXT)
             g_type_add_interface_static(type, ATK_TYPE_TEXT, &atk_text_info);
 
-        if (tflag & INTERFACE_EDITABLE_TEXT)
+        if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_EDITABLE_TEXT)
             g_type_add_interface_static(type, ATK_TYPE_EDITABLE_TEXT,
                                         &atk_editable_text_info);
 
-        if (tflag & INTERFACE_HYPERTEXT)
+        if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_HYPERTEXT)
             g_type_add_interface_static(type, ATK_TYPE_HYPERTEXT,
                                         &atk_hypertext_info);
 
-        if (tflag & INTERFACE_IMAGE)
+        if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_IMAGE)
             g_type_add_interface_static(type, ATK_TYPE_IMAGE, &atk_image_info);
 
-        if (tflag & INTERFACE_SELECTION)
+        if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_SELECTION)
             g_type_add_interface_static(type, ATK_TYPE_SELECTION,
                                         &atk_selection_info);
 
-        if (tflag & INTERFACE_VALUE)
+        if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_VALUE)
             g_type_add_interface_static(type, ATK_TYPE_VALUE, &atk_value_info);
 
-        if (tflag & INTERFACE_TABLE)
+        if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE)
             g_type_add_interface_static(type, ATK_TYPE_TABLE, &atk_table_info);
 
-        if (tflag & INTERFACE_TABLE_CELL)
+        if (tflag & org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE_CELL)
             g_type_add_interface_static(type, ATK_TYPE_TABLE_CELL,
                                         &atk_table_cell_info);
 

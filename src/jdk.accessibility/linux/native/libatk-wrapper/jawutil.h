@@ -24,6 +24,7 @@
 #include <jni.h>
 #include <time.h>
 #include <unistd.h>
+#include <AtkInterface.h>
 
 extern int jaw_debug;
 extern FILE *jaw_log_file;
@@ -70,21 +71,6 @@ extern time_t jaw_start_time;
     } while (0)
 
 G_BEGIN_DECLS
-
-#define INTERFACE_ACTION 0x00000001
-#define INTERFACE_COMPONENT 0x00000002
-#define INTERFACE_DOCUMENT 0x00000004
-#define INTERFACE_EDITABLE_TEXT 0x00000008
-#define INTERFACE_HYPERLINK 0x00000010
-#define INTERFACE_HYPERTEXT 0x00000020
-#define INTERFACE_IMAGE 0x00000040
-#define INTERFACE_SELECTION 0x00000080
-#define INTERFACE_STREAMABLE_CONTENT 0x00000100
-#define INTERFACE_TABLE 0x00000200
-#define INTERFACE_TABLE_CELL 0x00000400
-#define INTERFACE_TEXT 0x00000800
-#define INTERFACE_VALUE 0x00001000
-#define INTERFACE_MASK 0x00001fff
 
 #define JAW_TYPE_UTIL (jaw_util_get_type())
 #define JAW_UTIL(obj)                                                          \

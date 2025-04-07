@@ -37,7 +37,7 @@ typedef struct _ValueData {
 } ValueData;
 
 #define JAW_GET_VALUE(obj, def_ret)                                            \
-    JAW_GET_OBJ_IFACE(obj, INTERFACE_VALUE, ValueData, atk_value, jniEnv,      \
+    JAW_GET_OBJ_IFACE(obj, org_GNOME_Accessibility_AtkInterface_INTERFACE_VALUE, ValueData, atk_value, jniEnv,      \
                       atk_value, def_ret)
 
 void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {

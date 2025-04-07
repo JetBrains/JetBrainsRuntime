@@ -52,7 +52,7 @@ typedef struct _HypertextData {
 } HypertextData;
 
 #define JAW_GET_HYPERTEXT(hypertext, def_ret)                                  \
-    JAW_GET_OBJ_IFACE(hypertext, INTERFACE_HYPERTEXT, HypertextData,           \
+    JAW_GET_OBJ_IFACE(hypertext, org_GNOME_Accessibility_AtkInterface_INTERFACE_HYPERTEXT, HypertextData,           \
                       atk_hypertext, jniEnv, atk_hypertext, def_ret)
 
 /**
