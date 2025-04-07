@@ -95,8 +95,9 @@ typedef struct _TextData {
 } TextData;
 
 #define JAW_GET_TEXT(text, def_ret)                                            \
-    JAW_GET_OBJ_IFACE(text, org_GNOME_Accessibility_AtkInterface_INTERFACE_TEXT, TextData, atk_text, jniEnv,        \
-                      atk_text, def_ret)
+    JAW_GET_OBJ_IFACE(text,                                                    \
+                      org_GNOME_Accessibility_AtkInterface_INTERFACE_TEXT,     \
+                      TextData, atk_text, jniEnv, atk_text, def_ret)
 
 void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);

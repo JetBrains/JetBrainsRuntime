@@ -20,11 +20,11 @@
 #ifndef _JAW_UTIL_H_
 #define _JAW_UTIL_H_
 
+#include <AtkInterface.h>
 #include <atk/atk.h>
 #include <jni.h>
 #include <time.h>
 #include <unistd.h>
-#include <AtkInterface.h>
 
 extern int jaw_debug;
 extern FILE *jaw_log_file;

@@ -68,8 +68,9 @@ typedef struct _ActionData {
 } ActionData;
 
 #define JAW_GET_ACTION(action, def_ret)                                        \
-    JAW_GET_OBJ_IFACE(action, org_GNOME_Accessibility_AtkInterface_INTERFACE_ACTION, ActionData, atk_action,        \
-                      jniEnv, atk_action, def_ret)
+    JAW_GET_OBJ_IFACE(action,                                                  \
+                      org_GNOME_Accessibility_AtkInterface_INTERFACE_ACTION,   \
+                      ActionData, atk_action, jniEnv, atk_action, def_ret)
 
 /**
  * AtkActionIface:

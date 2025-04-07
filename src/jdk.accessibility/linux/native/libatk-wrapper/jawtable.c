@@ -98,8 +98,9 @@ typedef struct _TableData {
 } TableData;
 
 #define JAW_GET_TABLE(table, def_ret)                                          \
-    JAW_GET_OBJ_IFACE(table, org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE, TableData, atk_table, jniEnv,    \
-                      atk_table, def_ret)
+    JAW_GET_OBJ_IFACE(table,                                                   \
+                      org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE,    \
+                      TableData, atk_table, jniEnv, atk_table, def_ret)
 
 void jaw_table_interface_init(AtkTableIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
@@ -243,7 +244,8 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
         JAW_DEBUG_I("jaw_obj == NULL");
         return NULL;
     }
-    TableData *data = jaw_object_get_interface_data(jaw_obj, org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE);
+    TableData *data = jaw_object_get_interface_data(
+        jaw_obj, org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE);
     JAW_CHECK_NULL(data, NULL);
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);

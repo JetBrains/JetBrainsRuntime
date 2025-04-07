@@ -68,8 +68,9 @@ typedef struct _ComponentData {
 } ComponentData;
 
 #define JAW_GET_COMPONENT(component, def_ret)                                  \
-    JAW_GET_OBJ_IFACE(component, org_GNOME_Accessibility_AtkInterface_INTERFACE_COMPONENT, ComponentData,           \
-                      atk_component, jniEnv, atk_component, def_ret)
+    JAW_GET_OBJ_IFACE(                                                         \
+        component, org_GNOME_Accessibility_AtkInterface_INTERFACE_COMPONENT,   \
+        ComponentData, atk_component, jniEnv, atk_component, def_ret)
 
 /*
  * Atk.Component Methods

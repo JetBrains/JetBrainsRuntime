@@ -65,8 +65,10 @@ typedef struct _EditableTextData {
 } EditableTextData;
 
 #define JAW_GET_EDITABLETEXT(text, def_ret)                                    \
-    JAW_GET_OBJ_IFACE(text, org_GNOME_Accessibility_AtkInterface_INTERFACE_EDITABLE_TEXT, EditableTextData,         \
-                      atk_editable_text, jniEnv, atk_editable_text, def_ret)
+    JAW_GET_OBJ_IFACE(                                                         \
+        text, org_GNOME_Accessibility_AtkInterface_INTERFACE_EDITABLE_TEXT,    \
+        EditableTextData, atk_editable_text, jniEnv, atk_editable_text,        \
+        def_ret)
 
 /**
  * AtkEditableTextIface:

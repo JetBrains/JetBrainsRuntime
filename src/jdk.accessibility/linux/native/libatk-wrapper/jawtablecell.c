@@ -55,8 +55,9 @@ typedef struct _TableCellData {
 } TableCellData;
 
 #define JAW_GET_TABLECELL(cell, def_ret)                                       \
-    JAW_GET_OBJ_IFACE(cell, org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE_CELL, TableCellData,               \
-                      atk_table_cell, jniEnv, jatk_table_cell, def_ret)
+    JAW_GET_OBJ_IFACE(                                                         \
+        cell, org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE_CELL,       \
+        TableCellData, atk_table_cell, jniEnv, jatk_table_cell, def_ret)
 
 /**
  * AtkTableCellIface:

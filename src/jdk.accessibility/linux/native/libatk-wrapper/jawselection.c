@@ -56,8 +56,9 @@ typedef struct _SelectionData {
 } SelectionData;
 
 #define JAW_GET_SELECTION(selection, def_ret)                                  \
-    JAW_GET_OBJ_IFACE(selection, org_GNOME_Accessibility_AtkInterface_INTERFACE_SELECTION, SelectionData,           \
-                      atk_selection, jniEnv, atk_selection, def_ret)
+    JAW_GET_OBJ_IFACE(                                                         \
+        selection, org_GNOME_Accessibility_AtkInterface_INTERFACE_SELECTION,   \
+        SelectionData, atk_selection, jniEnv, atk_selection, def_ret)
 
 /**
  * AtkSelectionIface:
