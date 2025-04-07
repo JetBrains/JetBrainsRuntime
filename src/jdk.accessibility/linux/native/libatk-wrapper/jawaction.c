@@ -480,9 +480,11 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         return NULL;
     }
 
-    if (data->localized_name != NULL && data->jstrLocalizedName != NULL) {
-        (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrLocalizedName,
-                                         data->localized_name);
+    if (data->jstrLocalizedName != NULL) {
+        if (data->localized_name != NULL) {
+            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrLocalizedName,
+                                             data->localized_name);
+        }
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrLocalizedName);
     }
     data->jstrLocalizedName = (*jniEnv)->NewGlobalRef(jniEnv, jstr);

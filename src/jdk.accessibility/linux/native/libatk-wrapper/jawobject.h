@@ -39,6 +39,10 @@ G_BEGIN_DECLS
 typedef struct _JawObject JawObject;
 typedef struct _JawObjectClass JawObjectClass;
 
+/**
+ * JawObject:
+ * A base structure wrapping an AtkObject.
+ **/
 struct _JawObject {
     AtkObject parent;
 

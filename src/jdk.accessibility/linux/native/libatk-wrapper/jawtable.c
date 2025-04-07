@@ -212,7 +212,7 @@ void jaw_table_data_finalize(gpointer p) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
         data->jstrDescription = NULL;
     }
-    if (data && data->atk_table) {
+    if (data->atk_table) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_table);
         data->atk_table = NULL;
     }
@@ -288,7 +288,7 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
     // From the documentation of the `ref_at`:
     // "The caller of the method takes ownership of the returned data, and is
     // responsible for freeing it." (transfer full)
-    if (G_OBJECT(jaw_impl) != NULL) {
+    if (jaw_impl != NULL) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
 
@@ -1113,7 +1113,7 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
     }
     jintArray jcolumnArray =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_table, jmid);
-    if (!jmid) {
+    if (!jcolumnArray) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;

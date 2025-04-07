@@ -98,19 +98,19 @@ void jaw_component_interface_init(AtkComponentIface *iface, gpointer data) {
     }
 
     iface->contains = jaw_component_contains;
-    iface->get_alpha = NULL; // TODO: missing java support for iface->get_alpha
+    iface->get_alpha = NULL; // missing java support for iface->get_alpha
     iface->get_layer = jaw_component_get_layer;
     iface->get_extents = jaw_component_get_extents;
-    iface->get_mdi_zorder = NULL; /* TODO: jaw_component_get_mdi_zorder;*/
+    iface->get_mdi_zorder = NULL; // TODO: jaw_component_get_mdi_zorder;
     // done by atk: iface->get_position (atk_component_real_get_position)
     // done by atk: iface->get_size (atk_component_real_get_size)
     iface->grab_focus = jaw_component_grab_focus;
     iface->ref_accessible_at_point = jaw_component_ref_accessible_at_point;
     iface->remove_focus_handler =
         NULL;                // deprecated: iface->remove_focus_handler
-    iface->scroll_to = NULL; // TODO: missing java support for iface->scroll_to
+    iface->scroll_to = NULL; // missing java support for iface->scroll_to
     iface->scroll_to_point =
-        NULL; // TODO: missing java support for iface->scroll_to_point
+        NULL; // missing java support for iface->scroll_to_point
     iface->set_extents = jaw_component_set_extents;
     iface->set_position =
         NULL;               // TODO: iface->set_position similar to set_extents
@@ -304,7 +304,8 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
 
     // From the documentation of the `ref_accessible_at_point`:
     // "The caller of the method takes ownership of the returned data, and is
-    // responsible for freeing it." (transfer full)
+    // responsible for freeing it." (transfer full annotation), so
+    // we have to ref the `jaw_impl`
     if (jaw_impl) {
         g_object_ref(G_OBJECT(jaw_impl));
     }

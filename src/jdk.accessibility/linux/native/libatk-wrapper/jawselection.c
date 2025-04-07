@@ -331,6 +331,15 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
     return obj;
 }
 
+/**
+ * jaw_selection_get_selection_count:
+ * @selection: a #GObject instance that implements AtkSelectionIface
+ *
+ * Gets the number of accessible children currently selected.
+ *
+ * Returns: a gint representing the number of items selected, or 0
+ * if @selection does not implement this interface.
+ **/
 static gint jaw_selection_get_selection_count(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
 
@@ -373,6 +382,16 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
     return (gint)jcount;
 }
 
+/**
+ * jaw_selection_is_child_selected:
+ * @selection: a #GObject instance that implements AtkSelectionIface
+ * @i: a #gint specifying the child index.
+ *
+ * Determines if the current child of this object is selected
+ *
+ * Returns: a gboolean representing the specified child is selected, or 0
+ * if @selection does not implement this interface.
+ **/
 static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
                                                 gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
@@ -418,6 +437,16 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
     return jbool;
 }
 
+/**
+ * jaw_selection_remove_selection:
+ * @selection: a #GObject instance that implements AtkSelectionIface
+ * @i: a #gint specifying the index in the selection set.  (e.g. the
+ * ith selection as opposed to the ith child).
+ *
+ * Removes the specified child of the object from the object's selection.
+ *
+ * Returns: TRUE if success, FALSE otherwise.
+ **/
 static gboolean jaw_selection_remove_selection(AtkSelection *selection,
                                                gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
@@ -463,6 +492,15 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
     return jbool;
 }
 
+/**
+ * jaw_selection_select_all_selection:
+ * @selection: a #GObject instance that implements AtkSelectionIface
+ *
+ * Causes every child of the object to be selected if the object
+ * supports multiple selections.
+ *
+ * Returns: TRUE if success, FALSE otherwise.
+ **/
 static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
 

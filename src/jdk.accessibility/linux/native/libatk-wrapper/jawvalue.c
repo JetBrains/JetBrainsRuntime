@@ -59,7 +59,7 @@ void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
     iface->get_range = jaw_value_get_range;
     iface->get_increment = jaw_value_get_increment;
     iface->get_sub_ranges =
-        NULL; // TODO: missing java support for iface->get_sub_ranges
+        NULL; // missing java support for iface->get_sub_ranges
     iface->set_value = jaw_value_set_value;
 }
 

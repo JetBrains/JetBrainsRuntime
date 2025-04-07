@@ -19,10 +19,10 @@
  */
 
 #include "AtkWrapper.h"
+#include "AtkSignal.h"
 #include "jawimpl.h"
 #include "jawtoplevel.h"
 #include "jawutil.h"
-#include "org_GNOME_Accessibility_AtkSignal.h"
 #include <X11/Xlib.h>
 #include <atk-bridge.h>
 #include <glib.h>
@@ -227,7 +227,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_releaseNativeResources(
     if (jaw_impl == NULL) {
         return;
     }
-    g_object_unref(jaw_impl);
+    g_object_unref(G_OBJECT(jaw_impl));
 }
 
 static CallbackPara *alloc_callback_para(JNIEnv *jniEnv, jobject ac) {
@@ -883,7 +883,7 @@ static gboolean signal_emit_handler(gpointer p) {
         g_signal_emit_by_name(atk_obj, "children_changed::add", child_index,
                               para->child_impl);
 
-        if (G_OBJECT(atk_obj) != NULL) {
+        if (atk_obj != NULL) {
             g_object_ref(G_OBJECT(atk_obj));
         }
         break;
@@ -908,7 +908,7 @@ static gboolean signal_emit_handler(gpointer p) {
         g_signal_emit_by_name(atk_obj, "children_changed::remove", child_index,
                               child_impl);
 
-        if (G_OBJECT(atk_obj) != NULL) {
+        if (atk_obj != NULL) {
             g_object_unref(G_OBJECT(atk_obj));
         }
         break;
@@ -1106,11 +1106,11 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     para->signal_id = (gint)id;
     para->args = global_args;
 
-    // FIXME: there is no TEXT_PROPERTY_CHANGED_REPLACE case
     switch (para->signal_id) {
     case org_GNOME_Accessibility_AtkSignal_TEXT_CARET_MOVED:
     case org_GNOME_Accessibility_AtkSignal_TEXT_PROPERTY_CHANGED_INSERT:
     case org_GNOME_Accessibility_AtkSignal_TEXT_PROPERTY_CHANGED_DELETE:
+    case org_GNOME_Accessibility_AtkSignal_TEXT_PROPERTY_CHANGED_REPLACE:
     case org_GNOME_Accessibility_AtkSignal_OBJECT_CHILDREN_CHANGED_REMOVE:
     case org_GNOME_Accessibility_AtkSignal_OBJECT_SELECTION_CHANGED:
     case org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED:
@@ -1143,7 +1143,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
-        g_object_ref(child_impl);
+        g_object_ref(G_OBJECT(child_impl));
         para->child_impl = child_impl;
         break;
     }
@@ -1161,7 +1161,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
-        g_object_ref(child_impl);
+        g_object_ref(G_OBJECT(child_impl));
         para->child_impl = child_impl;
         break;
     }

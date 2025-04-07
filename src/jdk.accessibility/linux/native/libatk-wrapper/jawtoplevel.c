@@ -103,6 +103,16 @@ static void jaw_toplevel_object_finalize(GObject *obj) {
     }
 }
 
+/**
+ * jaw_toplevel_get_name:
+ * @obj: an #AtkObject
+ *
+ * Gets the accessible name of the obj.
+ *
+ * Returns: a character string representing the accessible name of the object:
+ * the name of the first named child of the object, and if no such child exists,
+ * returns 'Java Application'.
+ **/
 static const gchar *jaw_toplevel_get_name(AtkObject *obj) {
     JAW_DEBUG_C("%p", obj);
 
@@ -113,8 +123,9 @@ static const gchar *jaw_toplevel_get_name(AtkObject *obj) {
 
     gint n_accessible_children = atk_object_get_n_accessible_children(obj);
     for (gint i = 0; i < n_accessible_children; i++) {
-        // the caller of the method takes ownership of the returned data, and is
-        // responsible for freeing it.
+        // The caller of the method `atk_object_ref_accessible_child` takes
+        // ownership of the returned data, and is responsible for freeing it, so
+        // child must be freed.
         AtkObject *child = atk_object_ref_accessible_child(obj, i);
         if (child != NULL) {
             const gchar *name = atk_object_get_name(child);
@@ -129,6 +140,16 @@ static const gchar *jaw_toplevel_get_name(AtkObject *obj) {
     return "Java Application";
 }
 
+/**
+ * jaw_toplevel_get_description:
+ * @accessible: an #AtkObject
+ *
+ * Gets the accessible description of the accessible.
+ *
+ * Returns: a character string representing the accessible description
+ * of the accessible.
+ *
+ **/
 static const gchar *jaw_toplevel_get_description(AtkObject *obj) {
     JAW_DEBUG_C("%p", obj);
 
@@ -140,6 +161,15 @@ static const gchar *jaw_toplevel_get_description(AtkObject *obj) {
     return "Accessible Java application";
 }
 
+/**
+ * jaw_toplevel_get_n_children:
+ * @obj: an #AtkObject
+ *
+ * Gets the number of accessible children of the obj.
+ *
+ * Returns: an integer representing the number of accessible children
+ * of the obj.
+ **/
 static gint jaw_toplevel_get_n_children(AtkObject *obj) {
     JAW_DEBUG_C("%p", obj);
 
@@ -156,6 +186,15 @@ static gint jaw_toplevel_get_n_children(AtkObject *obj) {
     return n;
 }
 
+/**
+ * jaw_toplevel_get_index_in_parent:
+ * @obj: an #AtkObject
+ *
+ * Gets the 0-based index of this obj in its parent; returns -1 if the
+ * obj does not have an accessible parent.
+ *
+ * Returns: an integer which is the index of the obj in its parent
+ **/
 static gint jaw_toplevel_get_index_in_parent(AtkObject *obj) {
     JAW_DEBUG_C("%p", obj);
 
@@ -164,14 +203,19 @@ static gint jaw_toplevel_get_index_in_parent(AtkObject *obj) {
         return -1;
     }
 
-    JawToplevel *jaw_toplevel = JAW_TOPLEVEL(obj);
-    JAW_CHECK_NULL(jaw_toplevel, -1);
-    JAW_CHECK_NULL(jaw_toplevel->windows, -1);
-    gint i = g_list_index(jaw_toplevel->windows, obj);
-
-    return i;
+    // toplevel object does not have parent
+    return -1;
 }
 
+/**
+ * jaw_toplevel_get_role:
+ * @obj: an #AtkObject
+ *
+ * Gets the role of the accessible.
+ *
+ * Returns: an #AtkRole which is the role of the obj (`ATK_ROLE_APPLICATION` for
+ * toplevel object)
+ **/
 static AtkRole jaw_toplevel_get_role(AtkObject *obj) {
     JAW_DEBUG_C("%p", obj);
 
@@ -183,6 +227,18 @@ static AtkRole jaw_toplevel_get_role(AtkObject *obj) {
     return ATK_ROLE_APPLICATION;
 }
 
+/**
+ * atk_object_ref_accessible_child:
+ * @obj: an #AtkObject
+ * @i: a gint representing the position of the child, starting from 0
+ *
+ * Gets a reference to the specified accessible child of the object.
+ * The accessible children are 0-based so the first accessible child is
+ * at index 0, the second at index 1 and so on.
+ *
+ * Returns: (transfer full): an #AtkObject representing the specified
+ * accessible child of the obj.
+ **/
 static AtkObject *jaw_toplevel_ref_child(AtkObject *obj, gint i) {
     JAW_DEBUG_C("%p, %d", obj, i);
 
@@ -196,12 +252,24 @@ static AtkObject *jaw_toplevel_ref_child(AtkObject *obj, gint i) {
     JAW_CHECK_NULL(jaw_toplevel->windows, NULL);
     AtkObject *child = (AtkObject *)g_list_nth_data(jaw_toplevel->windows, i);
 
-    if (G_OBJECT(child) != NULL)
+    // The caller of the `jaw_toplevel_ref_child` will be responsible for
+    // freeing the 'child' (because of transfer full annotation)
+    if (child != NULL) {
         g_object_ref(G_OBJECT(child));
+    }
 
     return child;
 }
 
+/**
+ * atk_object_get_parent:
+ * @obj: an #AtkObject
+ *
+ * Gets the accessible parent of the accessible.
+ *
+ * Returns: (transfer none): an #AtkObject representing the accessible
+ * parent of the obj
+ **/
 static AtkObject *jaw_toplevel_get_parent(AtkObject *obj) {
     JAW_DEBUG_C("%p", obj);
 
@@ -211,6 +279,8 @@ static AtkObject *jaw_toplevel_get_parent(AtkObject *obj) {
 
     return NULL;
 }
+
+// JawToplevel methods
 
 gint jaw_toplevel_add_window(JawToplevel *toplevel, AtkObject *child) {
     JAW_DEBUG_C("%p, %p", toplevel, child);
@@ -239,7 +309,6 @@ gint jaw_toplevel_remove_window(JawToplevel *toplevel, AtkObject *child) {
     }
 
     gint index = -1;
-
     if (toplevel->windows != NULL &&
         (index = g_list_index(toplevel->windows, child)) == -1) {
         return index;

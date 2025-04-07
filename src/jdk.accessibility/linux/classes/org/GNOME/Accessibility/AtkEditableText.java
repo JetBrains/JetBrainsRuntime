@@ -61,8 +61,9 @@ public class AtkEditableText extends AtkText {
         if (acc_edt_text == null)
             return;
 
-        if (position < 0)
+        if (position < 0) {
             position = 0;
+        }
         final int rightPosition = position;
         AtkUtil.invokeInSwing(() -> {
             acc_edt_text.insertTextAtIndex(rightPosition, s);
@@ -126,8 +127,6 @@ public class AtkEditableText extends AtkText {
      * @param start the start index of the text as an int
      * @param end   the end index for the text as an int
      * @return whether set_run_attributes was called
-     * TODO return is a bit presumptious. This should ideally include a check for whether
-     *      attributes were set.
      */
     private boolean set_run_attributes(AttributeSet as, int start, int end) {
         AccessibleEditableText acc_edt_text = _acc_edt_text.get();

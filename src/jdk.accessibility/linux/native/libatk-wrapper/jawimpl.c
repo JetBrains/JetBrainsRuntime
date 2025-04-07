@@ -237,7 +237,7 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
         (jlong)jaw_impl);
 
     if (new_reference != (jlong)jaw_impl) {
-        g_object_unref(jaw_impl);
+        g_object_unref(G_OBJECT(jaw_impl));
     }
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -550,10 +550,6 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
 
     jstring jConstKey =
         (*jniEnv)->GetStaticObjectField(jniEnv, classAccessibleRelation, jfid);
-    if (!jConstKey) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
 
     // jKey and jConstKey may be null
     jboolean result = (*jniEnv)->IsSameObject(jniEnv, jKey, jConstKey);

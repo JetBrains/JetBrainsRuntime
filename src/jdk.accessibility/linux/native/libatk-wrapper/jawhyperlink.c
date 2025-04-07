@@ -96,9 +96,9 @@ static void jaw_hyperlink_class_init(JawHyperlinkClass *klass) {
     atk_hyperlink_class->is_valid = jaw_hyperlink_is_valid;
     atk_hyperlink_class->get_n_anchors = jaw_hyperlink_get_n_anchors;
     atk_hyperlink_class->link_state =
-        NULL; // TODO: missing java support for atk_hyperlink_class->link_state
+        NULL; // missing java support for atk_hyperlink_class->link_state
     atk_hyperlink_class->is_selected_link =
-        NULL; // TODO: missing java support for
+        NULL; // missing java support for
               // atk_hyperlink_class->is_selected_link
 }
 
@@ -127,6 +127,7 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
     }
 
     JawHyperlink *jaw_hyperlink = JAW_HYPERLINK(gobject);
+    JAW_CHECK_NULL(jaw_hyperlink, );
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, );
@@ -273,9 +274,10 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
         return NULL;
     }
     AtkObject *obj = (AtkObject *)jaw_impl_find_instance(jniEnv, ac);
+
     // From documentation of the `atk_hyperlink_get_object`:
-    // The returned data is owned by the instance (transfer none), so we don't
-    // ref the obj before returning it.
+    // The returned data is owned by the instance (transfer none annotation), so
+    // we don't ref the obj before returning it,
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

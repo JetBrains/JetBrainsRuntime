@@ -556,10 +556,10 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
             g_ptr_array_add(result, jaw_impl);
 
             // FIXME: is it true that the caller is responsible for freeing not
-            // only GPtrArray but all its elements? From the documentation of
-            // the `atk_table_cell_get_row_header_cells`: "The caller of the
-            // method takes ownership of the returned data, and is responsible
-            // for freeing it." (transfer full)
+            //  only GPtrArray but all its elements? From the documentation of
+            //  the `atk_table_cell_get_row_header_cells`: "The caller of the
+            //  method takes ownership of the returned data, and is responsible
+            //  for freeing it." (transfer full)
             g_object_ref(G_OBJECT(jaw_impl));
         }
 

@@ -134,9 +134,9 @@ static void jaw_object_class_init(JawObjectClass *klass) {
     atk_class->get_index_in_parent = jaw_object_get_index_in_parent;
     atk_class->ref_relation_set = jaw_object_ref_relation_set;
     atk_class->get_role = jaw_object_get_role;
-    // Done by atk: atk_class->get_layer
+    // atk_class->get_layer is done by atk
     atk_class->get_mdi_zorder =
-        NULL; // TODO: missing java support for atk_class->get_mdi_zorder
+        NULL; // missing java support for atk_class->get_mdi_zorder
     atk_class->ref_state_set = jaw_object_ref_state_set;
     atk_class->set_name = jaw_object_set_name;
     atk_class->set_description = jaw_object_set_description;
@@ -259,7 +259,7 @@ static void jaw_object_finalize(GObject *gobject) {
         jaw_obj->jstrLocale = NULL;
     }
 
-    if (G_OBJECT(jaw_obj->state_set) != NULL) {
+    if (jaw_obj->state_set != NULL) {
         g_object_unref(G_OBJECT(jaw_obj->state_set));
     }
 
@@ -432,7 +432,7 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
             AtkObject *child = atk_selection_ref_selection(selection, 0);
             if (child != NULL) {
                 const gchar *name = atk_object_get_name(child);
-                g_object_unref(child);
+                g_object_unref(G_OBJECT(child));
                 if (name)
                     JAW_DEBUG_C("-> %s", name);
                 return name;
@@ -1176,8 +1176,8 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    if (G_OBJECT(atk_obj->relation_set) != NULL) { // because transfer full
-        g_object_ref(atk_obj->relation_set);
+    if (atk_obj->relation_set != NULL) { // because transfer full
+        g_object_ref(G_OBJECT(atk_obj->relation_set));
     }
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -1248,7 +1248,7 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
     // freeing it. `atk_object_ref_accessible_child` does not reference the
     // object. Therefore, I assume that `ref_child` should reference the object.
     if (obj) {
-        g_object_ref(obj);
+        g_object_ref(G_OBJECT(obj));
     }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);

@@ -107,6 +107,7 @@ gpointer jaw_editable_text_data_init(jobject ac) {
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
+
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -150,7 +151,10 @@ void jaw_editable_text_data_finalize(gpointer p) {
     }
 
     EditableTextData *data = (EditableTextData *)p;
+    JAW_CHECK_NULL(data, );
+
     JNIEnv *jniEnv = jaw_util_get_jni_env();
+    JAW_CHECK_NULL(jniEnv, );
 
     if (data && data->atk_editable_text) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_editable_text);
@@ -428,6 +432,16 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ *jaw_editable_text_set_run_attributes:
+ *@text: an #AtkEditableText
+ *@attrib_set: an #AtkAttributeSet
+ *@start_offset: start of range in which to set attributes
+ *@end_offset: end of range in which to set attributes
+ *
+ *Returns: %TRUE if attributes successfully set for the specified
+ *range, otherwise %FALSE
+ **/
 static gboolean
 jaw_editable_text_set_run_attributes(AtkEditableText *text,
                                      AtkAttributeSet *attrib_set,

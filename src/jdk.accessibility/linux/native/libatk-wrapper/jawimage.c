@@ -80,9 +80,9 @@ void jaw_image_interface_init(AtkImageIface *iface, gpointer data) {
     iface->get_image_position = jaw_image_get_image_position;
     iface->get_image_description = jaw_image_get_image_description;
     iface->get_image_size = jaw_image_get_image_size;
-    iface->set_image_description = NULL; /* TODO */
+    iface->set_image_description = NULL; // TODO: iface->set_image_description
     iface->get_image_locale = NULL;      // TODO: iface->get_image_locale from
-                                         // AccessibleContext.getLocale()
+                                         //  AccessibleContext.getLocale()
 }
 
 gpointer jaw_image_data_init(jobject ac) {
@@ -157,7 +157,7 @@ void jaw_image_data_finalize(gpointer p) {
         data->jstrImageDescription = NULL;
     }
 
-    if (data && data->atk_image) {
+    if (data->atk_image) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_image);
         data->atk_image = NULL;
     }

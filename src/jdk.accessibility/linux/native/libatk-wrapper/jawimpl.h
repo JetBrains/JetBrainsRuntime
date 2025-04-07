@@ -47,11 +47,15 @@ G_BEGIN_DECLS
 typedef struct _JawImpl JawImpl;
 typedef struct _JawImplClass JawImplClass;
 
+/**
+ * JawImpl:
+ * A subclass of JawObject that represents an implementation
+ * of an accessibility object.
+ **/
 struct _JawImpl {
     JawObject parent;
 
     GHashTable *ifaceTable;
-    gint hash_key;
     unsigned tflag;
 };
 
