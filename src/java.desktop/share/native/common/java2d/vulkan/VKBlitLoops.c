@@ -109,8 +109,6 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
 
     const int sw = srcInfo->bounds.x2 - srcInfo->bounds.x1;
     const int sh = srcInfo->bounds.y2 - srcInfo->bounds.y1;
-    const int dw = dx2 - dx1;
-    const int dh = dy2 - dy1;
 
     ARRAY(VKTxVertex) vertices = ARRAY_ALLOC(VKTxVertex, 4);
     /*
@@ -135,7 +133,7 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
     ARRAY_FREE(vertices);
 
     J2dTraceLn4(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
-                dw, dh, dx1, dy1);
+                (dx2 - dx1), (dy2 - dy1), dx1, dy1);
     VKBuffer *buffer =
             VKBuffer_CreateFromRaster(device, (VKBuffer_RasterInfo){
                 .data = srcInfo->rasBase,

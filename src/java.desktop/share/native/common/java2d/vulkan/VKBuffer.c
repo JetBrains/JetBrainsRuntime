@@ -267,7 +267,6 @@ static void VKBuffer_CopyBuffer(VKDevice* device, VKBuffer* srcBuffer, VKBuffer*
                                          0, NULL);
         }
     }
-    VKRenderer_Flush(device->renderer);
 }
 
 void VKBuffer_Dispose(VKDevice* device, void* ctx) {
