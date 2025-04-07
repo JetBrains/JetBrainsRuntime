@@ -203,6 +203,7 @@ serviceability/sa/ClhsdbFindPC.java#xcomp-core 8294316,8267433,JBR-6259 macosx-x
 serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8294316,8267433,JBR-6259 macosx-x64,linux_aarch64,windows-aarch64
 
 serviceability/sa/ClhsdbJdis.java initial_run windows-aarch64
+serviceability/sa/ClhsdbJstack.java#id0 JBR-8573 windows-aarch64
 serviceability/sa/ClhsdbJstack.java#id1 initial_run windows-aarch64
 serviceability/sa/ClhsdbPmap.java#core 8294316,8267433,JBR-6259 macosx-x64,windows-aarch64
 serviceability/sa/ClhsdbPmap.java#id1 initial_run generic-all
