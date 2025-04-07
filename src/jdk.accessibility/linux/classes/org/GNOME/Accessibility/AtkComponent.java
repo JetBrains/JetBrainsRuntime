@@ -33,6 +33,9 @@ public class AtkComponent {
 
     private AtkComponent(AccessibleContext ac) {
         super();
+
+        assert EventQueue.isDispatchThread();
+
         this._ac = new WeakReference<AccessibleContext>(ac);
         this._acc_component = new WeakReference<AccessibleComponent>(ac.getAccessibleComponent());
     }

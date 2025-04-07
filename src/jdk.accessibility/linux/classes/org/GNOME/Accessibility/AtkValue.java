@@ -22,6 +22,7 @@ package org.GNOME.Accessibility;
 
 import javax.accessibility.*;
 import java.lang.ref.WeakReference;
+import java.awt.EventQueue;
 
 public class AtkValue {
 
@@ -29,6 +30,9 @@ public class AtkValue {
 
     private AtkValue(AccessibleContext ac) {
         super();
+
+        assert EventQueue.isDispatchThread();
+
         this._acc_value = new WeakReference<AccessibleValue>(ac.getAccessibleValue());
     }
 

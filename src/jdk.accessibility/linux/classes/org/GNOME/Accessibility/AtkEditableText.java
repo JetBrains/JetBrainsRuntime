@@ -24,6 +24,7 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import javax.swing.text.*;
 import java.lang.ref.WeakReference;
+import java.awt.EventQueue;
 
 public class AtkEditableText extends AtkText {
 
@@ -31,6 +32,9 @@ public class AtkEditableText extends AtkText {
 
     private AtkEditableText(AccessibleContext ac) {
         super(ac);
+
+        assert EventQueue.isDispatchThread();
+
         _acc_edt_text = new WeakReference<AccessibleEditableText>(ac.getAccessibleEditableText());
     }
 

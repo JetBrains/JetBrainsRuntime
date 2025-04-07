@@ -25,6 +25,7 @@ import java.lang.ref.WeakReference;
 
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.EventQueue;
 
 public class AtkAction {
 
@@ -36,6 +37,9 @@ public class AtkAction {
 
     private AtkAction(AccessibleContext ac) {
         super();
+
+        assert EventQueue.isDispatchThread();
+
         this._ac = new WeakReference<AccessibleContext>(ac);
         AccessibleAction acc_action = ac.getAccessibleAction();
         this._acc_action = new WeakReference<AccessibleAction>(acc_action);

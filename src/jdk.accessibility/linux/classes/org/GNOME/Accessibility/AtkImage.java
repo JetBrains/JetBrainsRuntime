@@ -24,6 +24,7 @@ import java.awt.Point;
 import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.lang.ref.WeakReference;
+import java.awt.EventQueue;
 
 public class AtkImage {
 
@@ -32,6 +33,9 @@ public class AtkImage {
 
     private AtkImage(AccessibleContext ac) {
         super();
+
+        assert EventQueue.isDispatchThread();
+
         this._ac = new WeakReference<AccessibleContext>(ac);
         this._acc_icons = new WeakReference<AccessibleIcon[]>(ac.getAccessibleIcon());
     }

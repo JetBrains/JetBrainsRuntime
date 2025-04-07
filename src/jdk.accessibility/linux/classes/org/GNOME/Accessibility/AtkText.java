@@ -24,6 +24,7 @@ import java.text.*;
 import java.awt.Rectangle;
 import java.awt.Point;
 import java.lang.ref.WeakReference;
+import java.awt.EventQueue;
 
 public class AtkText {
 
@@ -36,6 +37,9 @@ public class AtkText {
 
     protected AtkText(AccessibleContext ac) {
         super();
+
+        assert EventQueue.isDispatchThread();
+
         this._ac = new WeakReference<AccessibleContext>(ac);
         this._acc_text = new WeakReference<AccessibleText>(ac.getAccessibleText());
         this._acc_edt_text = new WeakReference<AccessibleEditableText>(ac.getAccessibleEditableText());

@@ -22,6 +22,7 @@ package org.GNOME.Accessibility;
 
 import javax.accessibility.*;
 import java.lang.ref.WeakReference;
+import java.awt.EventQueue;
 
 public class AtkTable {
 
@@ -29,6 +30,8 @@ public class AtkTable {
     private WeakReference<AccessibleTable> _acc_table;
 
     private AtkTable(AccessibleContext ac) {
+        assert EventQueue.isDispatchThread();
+
         this._ac = new WeakReference<AccessibleContext>(ac);
         this._acc_table = new WeakReference<AccessibleTable>(ac.getAccessibleTable());
     }

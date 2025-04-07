@@ -21,6 +21,7 @@ package org.GNOME.Accessibility;
 
 import javax.accessibility.*;
 import java.lang.ref.WeakReference;
+import java.awt.EventQueue;
 
 public class AtkSelection {
 
@@ -29,6 +30,9 @@ public class AtkSelection {
 
     private AtkSelection(AccessibleContext ac) {
         super();
+
+        assert EventQueue.isDispatchThread();
+
         this._ac = new WeakReference<AccessibleContext>(ac);
         this._acc_selection = new WeakReference<AccessibleSelection>(ac.getAccessibleSelection());
     }

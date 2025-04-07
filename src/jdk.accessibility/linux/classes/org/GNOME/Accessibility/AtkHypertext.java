@@ -21,6 +21,7 @@ package org.GNOME.Accessibility;
 
 import javax.accessibility.*;
 import java.lang.ref.WeakReference;
+import java.awt.EventQueue;
 
 public class AtkHypertext extends AtkText {
 
@@ -28,6 +29,8 @@ public class AtkHypertext extends AtkText {
 
     private AtkHypertext(AccessibleContext ac) {
         super(ac);
+
+        assert EventQueue.isDispatchThread();
 
         AccessibleText ac_text = ac.getAccessibleText();
         if (ac_text instanceof AccessibleHypertext accessibleHypertext) {
