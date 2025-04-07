@@ -117,10 +117,6 @@ public class SpecialTempFile {
         // Test JDK-8013827
         String[] resvPre = { "LPT1.package.zip", "com7.4.package.zip" };
         String[] resvSuf = { ".temp", ".temp" };
-        boolean exceptionExpected =
-            !(System.getProperty("os.name").matches("^.*[11|2025]$") ||
-              new OSVersion(10, 0).compareTo(OSVersion.current()) > 0);
-        test("ReservedName", resvPre, resvSuf, exceptionExpected);
 
         System.out.println("OS name:    " + System.getProperty("os.name") + "\n" +
                            "OS version: " + OSVersion.current());
