@@ -1458,10 +1458,8 @@ static gboolean key_dispatch_handler(gpointer p) {
     jfieldID jfidKeyval =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "keyval", "I");
     if (jfidKeyval) {
-        jint jkeyval = (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidKeyval);
-        if (jkeyval) {
-            event->keyval = (guint)jkeyval;
-        }
+        event->keyval =
+            (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidKeyval);
     }
 
     // string
@@ -1481,22 +1479,16 @@ static gboolean key_dispatch_handler(gpointer p) {
     jfieldID jfidKeycode =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "keycode", "I");
     if (jfidKeycode) {
-        gint keycode =
+        event->keycode =
             (gint)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidKeycode);
-        if (keycode) {
-            event->keycode = keycode;
-        }
     }
 
     // timestamp
     jfieldID jfidTimestamp =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "timestamp", "I");
     if (jfidTimestamp) {
-        guint32 timestamp = (guint32)(*jniEnv)->GetIntField(
-            jniEnv, jAtkKeyEvent, jfidTimestamp);
-        if (timestamp) {
-            event->timestamp = timestamp;
-        }
+        event->timestamp = (guint32)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent,
+                                                           jfidTimestamp);
     }
 
     jaw_util_dispatch_key_event(event);

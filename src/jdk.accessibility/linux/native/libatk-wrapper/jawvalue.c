@@ -54,7 +54,7 @@ void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
     iface->get_minimum_value = NULL; // deprecated: iface->get_minimum_value
     iface->set_current_value = NULL; // deprecated: iface->set_current_value
     iface->get_minimum_increment =
-        NULL;                  // deprecated: iface->get_minimum_increment
+        NULL; // deprecated: iface->get_minimum_increment
     iface->get_value_and_text = NULL; // TODO: get_value_and_text
     iface->get_range = jaw_value_get_range;
     iface->get_increment = jaw_value_get_increment;
