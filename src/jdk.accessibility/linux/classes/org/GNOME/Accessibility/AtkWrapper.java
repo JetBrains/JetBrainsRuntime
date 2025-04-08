@@ -34,6 +34,7 @@ import sun.util.logging.PlatformLogger;
 public class AtkWrapper {
     private static final PlatformLogger log = PlatformLogger.getLogger("org.GNOME.Accessibility.AtkWrapper");
     private static boolean accessibilityEnabled = false;
+    private static boolean nativeLibraryInited = false;
 
     private final WindowAdapter windowAdapter = new WindowAdapter() {
         public void windowActivated(WindowEvent e) {
@@ -480,38 +481,41 @@ public class AtkWrapper {
             String result;
             while ((result = b.readLine()) != null) {
                 if (result.indexOf("AT_SPI_IOR") >= 0 || result.indexOf("AT_SPI_BUS") >= 0) {
-                    initAtk();
+                    if (AtkWrapper.initNativeLibrary()) {
+                        nativeLibraryInited = true;
+                    }
                     break;
                 }
             }
 
-            if (!accessibilityEnabled) {
+            if (!nativeLibraryInited) {
                 builder = new ProcessBuilder("dbus-send", "--session", "--dest=org.a11y.Bus", "--print-reply", "/org/a11y/bus", "org.a11y.Bus.GetAddress");
                 p = builder.start();
                 var ignoredOutput = p.getInputStream();
                 while (ignoredOutput.skip(Long.MAX_VALUE) == Long.MAX_VALUE) ;
                 p.waitFor();
-                if (p.exitValue() == 0)
-                    initAtk();
+                if (p.exitValue() == 0) {
+                    if (AtkWrapper.initNativeLibrary()) {
+                        nativeLibraryInited = true;
+                    }
+                }
             }
+
+            if (!nativeLibraryInited) {
+                throw new IllegalStateException("Accessibility is disabled due to an error in initNativeLibrary.");
+            }
+
+            if (!AtkWrapper.loadAtkBridge()) {
+                throw new IllegalStateException("Accessibility is disabled due to an error in loadAtkBridge.");
+            }
+
+            accessibilityEnabled = true;
+
         } catch (Exception e) {
-            accessibilityEnabled = false;
             if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
                 log.severe("Error during ATK accessibility initialization: ", e);
             }
         }
-    }
-
-    private static void initAtk() {
-        System.loadLibrary("atk-wrapper");
-        if (!AtkWrapper.initNativeLibrary()) {
-            throw new IllegalStateException("Accessibility is disabled due to an error in initNativeLibrary.");
-        }
-        if (!AtkWrapper.loadAtkBridge()) {
-            throw new IllegalStateException("Accessibility is disabled due to an error in loadAtkBridge.");
-
-        }
-        accessibilityEnabled = true;
     }
 
     private static String findXPropPath() {
