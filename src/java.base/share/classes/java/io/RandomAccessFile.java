@@ -694,7 +694,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 array[0] = (byte) b;
                 ByteBuffer buffer = ByteBuffer.wrap(array);
                 do {
-                    channel.write(buffer);
+                    try {
+                        channel.write(buffer);
+                    } catch (java.nio.channels.NonWritableChannelException err) {
+                        throw new IOException("Bad file descriptor", err);
+                    }
                 } while (buffer.hasRemaining());
             }
         } finally {
@@ -740,7 +744,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 try {
                     ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
                     do {
-                        channel.write(buffer);
+                        try {
+                            channel.write(buffer);
+                        } catch (java.nio.channels.NonWritableChannelException err) {
+                            throw new IOException("Bad file descriptor", err);
+                        }
                     } while (buffer.hasRemaining());
                 } catch (OutOfMemoryError e) {
                     // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
