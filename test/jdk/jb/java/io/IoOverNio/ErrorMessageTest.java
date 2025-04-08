@@ -100,6 +100,21 @@ public class ErrorMessageTest {
     }
 
     @Test
+    public void randomAccessFileWrongOperations() throws Exception {
+        File f = temporaryFolder.newFile();
+        try (RandomAccessFile readOnly = new RandomAccessFile(f, "r")) {
+            test(
+                    new IOException("Bad file descriptor"),
+                    () -> readOnly.write(1)
+            );
+            test(
+                    new IOException("Bad file descriptor"),
+                    () -> readOnly.write(new byte[1])
+            );
+        }
+    }
+
+    @Test
     public void accessDenied() throws Exception {
         File f;
         if (IS_WINDOWS) {
