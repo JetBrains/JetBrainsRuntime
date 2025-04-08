@@ -41,20 +41,20 @@ import java.lang.ref.WeakReference;
 /**
  * Provides caret tracking support for assistive tools that don't work with Java Access Bridge.
  * Specifically, it's targeted for the built-in Windows Magnifier.
- * This class listens to caret change events of a currently focused JTextComponent and forwards them to the native code,
- * which in turn sends them as Win32 IAccessible events.
+ * This class listens to caret change events of the currently focused JTextComponent
+ * and forwards them to the native code, which then sends them as Win32 IAccessible events.
  * <p>
- * A typical high-level scenario of interaction with the magnifier:
+ * A typical high-level scenario of the interaction with the magnifier:
  * <ol>
  * <li>Magnifier sends a WM_GETOBJECT window message to get accessible content of the window.</li>
  * <li>The message is handled in AwtComponent native class (awt_Component.cpp),
  *     which calls {@link #startCaretNotifier}.</li>
  * <li>We start listening for keyboard focus change events.</li>
  * <li>If at some point focus gets to a {@link JTextComponent}, we subscribe to its caret events.</li>
- * <li>When caret changes, we need to move the magnifier viewport to the new caret location.
- *     To achieve this, we create a Win32 IAccessible object for the caret (see AccessibleCaret.cpp),
+ * <li>When the caret changes, we need to move the magnifier viewport to the new caret location.
+ *     To achieve this, we create a Win32 IAccessible object for the caret (see AccessibleCaret.cpp)
  *     and send an event that its location was changed (EVENT_OBJECT_LOCATIONCHANGE).</li>
- * <li>Magnifier receives this event and sends WM_GETOBJECT message with OBJID_CARET argument
+ * <li>Magnifier receives this event and sends the WM_GETOBJECT message with the OBJID_CARET argument
  *     to get the caret object and its location property. After that, it moves the viewport to the returned location.
  * </li>
  * <li>When the {@link JTextComponent} loses focus, we stop listening to caret events
@@ -63,12 +63,12 @@ import java.lang.ref.WeakReference;
  * </p>
  * <p>
  * The feature is enabled by default
- * and can be disabled by setting sun.awt.windows.use.native.caret.accessibility.events property to false.
+ * and can be disabled by setting the sun.awt.windows.use.native.caret.accessibility.events property to false.
  * </p>
  */
-@SuppressWarnings("unused") // Used from the native through JNI.
+@SuppressWarnings("unused") // Used from the native side through JNI.
 class AccessibleCaretLocationNotifier implements PropertyChangeListener, CaretListener {
-    private static AccessibleCaretLocationNotifier caretNotifier;
+    private volatile static AccessibleCaretLocationNotifier caretNotifier;
     private static final boolean nativeCaretEventsEnabled =
             Boolean.parseBoolean(System.getProperty("sun.awt.windows.use.native.caret.accessibility.events", "true"));
 
@@ -79,11 +79,13 @@ class AccessibleCaretLocationNotifier implements PropertyChangeListener, CaretLi
     public static void startCaretNotifier(long hwnd) {
         if (nativeCaretEventsEnabled && caretNotifier == null) {
             SwingUtilities.invokeLater(() -> {
-                caretNotifier = new AccessibleCaretLocationNotifier(hwnd);
-                KeyboardFocusManager cfm = KeyboardFocusManager.getCurrentKeyboardFocusManager();
-                cfm.addPropertyChangeListener("focusOwner", caretNotifier);
-                if (cfm.getFocusOwner() instanceof JTextComponent textComponent) {
-                    caretNotifier.propertyChange(new PropertyChangeEvent(caretNotifier, "focusOwner", null, textComponent));
+                if (caretNotifier == null) {
+                    caretNotifier = new AccessibleCaretLocationNotifier(hwnd);
+                    KeyboardFocusManager cfm = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+                    cfm.addPropertyChangeListener("focusOwner", caretNotifier);
+                    if (cfm.getFocusOwner() instanceof JTextComponent textComponent) {
+                        caretNotifier.propertyChange(new PropertyChangeEvent(caretNotifier, "focusOwner", null, textComponent));
+                    }
                 }
             });
         }
@@ -95,7 +97,6 @@ class AccessibleCaretLocationNotifier implements PropertyChangeListener, CaretLi
 
     private static native void updateNativeCaretLocation(long hwnd, int x, int y, int width, int height);
     private static native void releaseNativeCaret(long hwnd);
-    private static native void notifyFocusedWindowChanged(long hwnd);
 
     @Override
     public void propertyChange(PropertyChangeEvent e) {
@@ -106,7 +107,6 @@ class AccessibleCaretLocationNotifier implements PropertyChangeListener, CaretLi
                 long hwnd = wp.getHWnd();
                 if (currentHwnd != hwnd) {
                     currentHwnd = hwnd;
-                    notifyFocusedWindowChanged(currentHwnd);
                 }
             }
         }
@@ -125,7 +125,7 @@ class AccessibleCaretLocationNotifier implements PropertyChangeListener, CaretLi
         if (newFocusedComponent instanceof JTextComponent textComponent) {
             currentFocusedComponent = new WeakReference<>(textComponent);
             textComponent.addCaretListener(this);
-            // Trigger caret event when the text component receives focus to notify about the initial caret location.
+            // Trigger the caret event when the text component receives focus to notify about the initial caret location
             caretUpdate(new CaretEvent(textComponent) {
                 // Dot and mark won't be used, so we can set any values.
                 @Override

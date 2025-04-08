@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,19 @@
 */
 AccessibleCaret::AccessibleCaret()
     : m_refCount(1), m_x(0), m_y(0), m_width(0), m_height(0) {
+    InitializeCriticalSection(&m_caretLocationLock);
 }
 
-AccessibleCaret *AccessibleCaret::instance = NULL;
+AccessibleCaret* AccessibleCaret::createInstance() {
+    return new AccessibleCaret();
+}
 
-bool AccessibleCaret::isCaretUsed = false;
+AccessibleCaret::~AccessibleCaret() {
+    DeleteCriticalSection(&m_caretLocationLock);
+}
+
+AccessibleCaret *AccessibleCaret::instance = nullptr;
+
 
 // IUnknown methods
 IFACEMETHODIMP_(ULONG) AccessibleCaret::AddRef() {
@@ -48,7 +56,7 @@ IFACEMETHODIMP_(ULONG) AccessibleCaret::Release() {
 }
 
 IFACEMETHODIMP AccessibleCaret::QueryInterface(REFIID riid, void **ppInterface) {
-    if (ppInterface == NULL) {
+    if (ppInterface == nullptr) {
         return E_POINTER;
     }
 
@@ -58,7 +66,7 @@ IFACEMETHODIMP AccessibleCaret::QueryInterface(REFIID riid, void **ppInterface) 
         return S_OK;
     }
 
-    *ppInterface = NULL;
+    *ppInterface = nullptr;
     return E_NOINTERFACE;
 }
 
@@ -84,15 +92,15 @@ IFACEMETHODIMP AccessibleCaret::Invoke(DISPID dispidMember, REFIID riid, LCID lc
 
 // IAccessible methods
 IFACEMETHODIMP AccessibleCaret::get_accParent(IDispatch **ppdispParent) {
-    if (ppdispParent == NULL) {
+    if (ppdispParent == nullptr) {
         return E_POINTER;
     }
-    *ppdispParent = NULL;
-    return S_OK;
+    *ppdispParent = nullptr;
+    return S_FALSE;
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accChildCount(long *pcountChildren) {
-    if (pcountChildren == NULL) {
+    if (pcountChildren == nullptr) {
         return E_POINTER;
     }
     *pcountChildren = 0;
@@ -100,12 +108,15 @@ IFACEMETHODIMP AccessibleCaret::get_accChildCount(long *pcountChildren) {
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accChild(VARIANT varChild, IDispatch **ppdispChild) {
-    *ppdispChild = NULL;
+    if (ppdispChild == nullptr) {
+        return E_POINTER;
+    }
+    *ppdispChild = nullptr;
     return S_FALSE;
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accName(VARIANT varChild, BSTR *pszName) {
-    if (pszName == NULL) {
+    if (pszName == nullptr) {
         return E_POINTER;
     }
     *pszName = SysAllocString(L"Edit"); // Same name as the system caret.
@@ -113,15 +124,15 @@ IFACEMETHODIMP AccessibleCaret::get_accName(VARIANT varChild, BSTR *pszName) {
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accValue(VARIANT varChild, BSTR *pszValue) {
-    return E_NOTIMPL;
+    return DISP_E_MEMBERNOTFOUND;
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accDescription(VARIANT varChild, BSTR *pszDescription) {
-    return E_NOTIMPL;
+    return S_FALSE;
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accRole(VARIANT varChild, VARIANT *pvarRole) {
-    if (pvarRole == NULL) {
+    if (pvarRole == nullptr) {
         return E_POINTER;
     }
 
@@ -131,7 +142,7 @@ IFACEMETHODIMP AccessibleCaret::get_accRole(VARIANT varChild, VARIANT *pvarRole)
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accState(VARIANT varChild, VARIANT *pvarState) {
-    if (pvarState == NULL) {
+    if (pvarState == nullptr) {
         return E_POINTER;
     }
 
@@ -141,59 +152,64 @@ IFACEMETHODIMP AccessibleCaret::get_accState(VARIANT varChild, VARIANT *pvarStat
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accHelp(VARIANT varChild, BSTR *pszHelp) {
-    return E_NOTIMPL;
+    return S_FALSE;
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accHelpTopic(BSTR *pszHelpFile, VARIANT varChild, long *pidTopic) {
-    return E_NOTIMPL;
+    return S_FALSE;
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accKeyboardShortcut(VARIANT varChild, BSTR *pszKeyboardShortcut) {
-    return E_NOTIMPL;
+    return S_FALSE;
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accFocus(VARIANT *pvarChild) {
-    pvarChild->vt = VT_I4;
-    pvarChild->lVal = CHILDID_SELF;
+    if (pvarChild == nullptr) {
+        return E_POINTER;
+    }
+
+    pvarChild->vt = VT_EMPTY;
     return S_OK;
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accSelection(VARIANT *pvarChildren) {
-    return E_NOTIMPL;
+    return DISP_E_MEMBERNOTFOUND;
 }
 
 IFACEMETHODIMP AccessibleCaret::get_accDefaultAction(VARIANT varChild, BSTR *pszDefaultAction) {
-    return E_NOTIMPL;
+    return S_FALSE;
 }
 
 IFACEMETHODIMP AccessibleCaret::accSelect(long flagsSelect, VARIANT varChild) {
-    return E_NOTIMPL;
+    return DISP_E_MEMBERNOTFOUND;
 }
 
 IFACEMETHODIMP AccessibleCaret::accLocation(long *pxLeft, long *pyTop, long *pcxWidth, long *pcyHeight,
                                             VARIANT varChild) {
-    if (pxLeft == NULL || pyTop == NULL || pcxWidth == NULL || pcyHeight == NULL) {
+    if (pxLeft == nullptr || pyTop == nullptr || pcxWidth == nullptr || pcyHeight == nullptr) {
         return E_POINTER;
     }
-    isCaretUsed = true;
 
+    EnterCriticalSection(&m_caretLocationLock);
     *pxLeft = m_x;
     *pyTop = m_y;
     *pcxWidth = m_width;
     *pcyHeight = m_height;
+    LeaveCriticalSection(&m_caretLocationLock);
+    
     return S_OK;
 }
 
 IFACEMETHODIMP AccessibleCaret::accNavigate(long navDir, VARIANT varStart, VARIANT *pvarEndUpAt) {
-    return E_NOTIMPL;
+    return DISP_E_MEMBERNOTFOUND;
 }
 
 IFACEMETHODIMP AccessibleCaret::accHitTest(long xLeft, long yTop, VARIANT *pvarChild) {
-    return E_NOTIMPL;
+    return DISP_E_MEMBERNOTFOUND;
 }
 
 IFACEMETHODIMP AccessibleCaret::accDoDefaultAction(VARIANT varChild) {
-    return E_NOTIMPL;
+    return DISP_E_MEMBERNOTFOUND;
 }
 
 IFACEMETHODIMP AccessibleCaret::put_accName(VARIANT varChild, BSTR szName) {
@@ -201,14 +217,16 @@ IFACEMETHODIMP AccessibleCaret::put_accName(VARIANT varChild, BSTR szName) {
 }
 
 IFACEMETHODIMP AccessibleCaret::put_accValue(VARIANT varChild, BSTR szValue) {
-    return E_NOTIMPL;
+    return DISP_E_MEMBERNOTFOUND;
 }
 
 void AccessibleCaret::setLocation(long x, long y, long width, long height) {
+    EnterCriticalSection(&m_caretLocationLock);
     m_x = x;
     m_y = y;
     m_width = width;
     m_height = height;
+    LeaveCriticalSection(&m_caretLocationLock);
 }
 
 
@@ -222,8 +240,8 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_AccessibleCaretLocationNotifier_upda
     JNIEnv *env, jclass jClass,
     jlong jHwnd, jint x, jint y, jint width, jint height) {
     HWND hwnd = reinterpret_cast<HWND>(jHwnd);
-    if (AccessibleCaret::instance == NULL) {
-        AccessibleCaret::instance = new AccessibleCaret();
+    if (AccessibleCaret::instance == nullptr) {
+        AccessibleCaret::instance = AccessibleCaret::createInstance();
         // Notify with Object ID "OBJID_CARET".
         // After that, an assistive tool will send a WM_GETOBJECT message with this ID,
         // and we can return the caret instance.
@@ -241,30 +259,12 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_AccessibleCaretLocationNotifier_upda
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_AccessibleCaretLocationNotifier_releaseNativeCaret(
     JNIEnv *env, jclass jClass, jlong jHwnd) {
-    if (AccessibleCaret::instance != NULL) {
+    if (AccessibleCaret::instance != nullptr) {
         HWND hwnd = reinterpret_cast<HWND>(jHwnd);
         AccessibleCaret::instance->Release();
-        AccessibleCaret::instance = NULL;
+        AccessibleCaret::instance = nullptr;
         NotifyWinEvent(EVENT_OBJECT_HIDE, hwnd, OBJID_CARET, CHILDID_SELF);
         NotifyWinEvent(EVENT_OBJECT_DESTROY, hwnd, OBJID_CARET, CHILDID_SELF);
-    }
-}
-
-/*
- * Class:     sun_awt_windows_AccessibleCaretLocationNotifier
- * Method:    notifyFocusedWindowChanged
- * Signature: (J)V
- */
-JNIEXPORT void JNICALL Java_sun_awt_windows_AccessibleCaretLocationNotifier_notifyFocusedWindowChanged(
-    JNIEnv *env, jclass jClass, jlong jHwnd) {
-    HWND hwnd = reinterpret_cast<HWND>(jHwnd);
-    // This is a workaround to make sure the foreground window is set to the actual focused window.
-    // Otherwise, in some cases, e.g., when opening a popup,
-    // the root frame can still stay as the foreground window instead of the popup,
-    // and Magnifier will be focused on it instead of the popup.
-    // We only do it if the caret object is actually used to minimize risks.
-    if (AccessibleCaret::isCaretUsed && ::GetForegroundWindow() != hwnd) {
-        ::SetForegroundWindow(hwnd);
     }
 }
 } /* extern "C" */
