@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,8 @@
 
 class AccessibleCaret : public IAccessible {
 public:
-    AccessibleCaret();
-
+    static AccessibleCaret *createInstance();
     static AccessibleCaret *instance;
-    static bool isCaretUsed;
 
     // IUnknown methods.
     IFACEMETHODIMP_(ULONG) AddRef();
@@ -73,8 +71,12 @@ public:
     void setLocation(long x, long y, long width, long height);
 
 private:
+    AccessibleCaret();
+    ~AccessibleCaret();
+
     ULONG m_refCount;
     int m_x, m_y, m_width, m_height;
+    CRITICAL_SECTION m_caretLocationLock;
 };
 
 #endif //ACCESSIBLECARET_H

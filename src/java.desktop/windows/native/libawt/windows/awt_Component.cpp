@@ -2081,17 +2081,17 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           DWORD objId = static_cast<DWORD>(static_cast<DWORD_PTR>(lParam));
           if (objId == OBJID_CLIENT) {
               JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
-              if (env != NULL) {
+              if (env != nullptr) {
                   jclass cls = env->FindClass("sun/awt/windows/AccessibleCaretLocationNotifier");
-                  if (cls != NULL) {
+                  if (cls != nullptr) {
                       jmethodID mid = env->GetStaticMethodID(cls, "startCaretNotifier", "(J)V");
-                      if (mid != NULL) {
+                      if (mid != nullptr) {
                           env->CallStaticVoidMethod(cls, mid, reinterpret_cast<jlong>(GetHWnd()));
                       }
                   }
               }
           } else if (objId == OBJID_CARET) {
-              if (AccessibleCaret::instance != NULL) {
+              if (AccessibleCaret::instance != nullptr) {
                   retValue = LresultFromObject(IID_IAccessible, wParam, AccessibleCaret::instance);
                   mr = mrConsume;
               }
