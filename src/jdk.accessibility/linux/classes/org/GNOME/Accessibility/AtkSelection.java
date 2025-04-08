@@ -73,10 +73,13 @@ public class AtkSelection {
             return null;
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            Accessible sel = acc_selection.getAccessibleSelection(i);
-            if (sel == null)
+            Accessible selection = acc_selection.getAccessibleSelection(i);
+            if (selection == null) {
                 return null;
-            return sel.getAccessibleContext();
+            }
+            AccessibleContext accessibleContext = selection.getAccessibleContext();
+            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            return accessibleContext;
         }, null);
     }
 

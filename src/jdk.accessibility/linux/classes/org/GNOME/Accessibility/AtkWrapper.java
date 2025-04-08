@@ -232,6 +232,13 @@ public class AtkWrapper {
             if (propertyName.equals(AccessibleContext.ACCESSIBLE_CARET_PROPERTY)) {
                 Object[] args = new Object[1];
                 args[0] = newValue;
+
+                if (newValue instanceof AccessibleContext accessibleContext) {
+                    AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                } else if (newValue instanceof Accessible accessible) {
+                    AtkWrapperDisposer.getInstance().addRecord(accessible.getAccessibleContext());
+                }
+
                 emitSignal(ac, AtkSignal.TEXT_CARET_MOVED, args);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_TEXT_PROPERTY)) {
                 /**
@@ -296,6 +303,9 @@ public class AtkWrapper {
                     Object[] args = new Object[2];
                     args[0] = Integer.valueOf(child_ac.getAccessibleIndexInParent());
                     args[1] = child_ac;
+
+                    AtkWrapperDisposer.getInstance().addRecord(child_ac);
+
                     emitSignal(ac, AtkSignal.OBJECT_CHILDREN_CHANGED_ADD, args);
                 } else if (oldValue != null && newValue == null) { //child removed
                     AccessibleContext child_ac;
@@ -307,6 +317,9 @@ public class AtkWrapper {
                     Object[] args = new Object[2];
                     args[0] = Integer.valueOf(child_ac.getAccessibleIndexInParent());
                     args[1] = child_ac;
+
+                    AtkWrapperDisposer.getInstance().addRecord(child_ac);
+
                     emitSignal(ac, AtkSignal.OBJECT_CHILDREN_CHANGED_REMOVE, args);
                 }
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY)) {
@@ -329,6 +342,9 @@ public class AtkWrapper {
                 }
                 Object[] args = new Object[1];
                 args[0] = child_ac;
+
+                AtkWrapperDisposer.getInstance().addRecord(child_ac);
+
                 emitSignal(ac, AtkSignal.OBJECT_ACTIVE_DESCENDANT_CHANGED, args);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_SELECTION_PROPERTY)) {
                 boolean isTextEvent = false;
@@ -600,11 +616,9 @@ public class AtkWrapper {
 
     private native static boolean loadAtkBridge();
 
-    native static long createJawImplNativeResource(AccessibleContext ac);
+    native static long createNativeResources(AccessibleContext ac);
 
-    native static void releaseJawImplNativeResource(long ref);
-
-    native static boolean checkJawImplNativeResource(long ref);
+    native static void releaseNativeResources(long ref);
 
     private native static void focusNotify(AccessibleContext ac);
 
@@ -641,29 +655,6 @@ public class AtkWrapper {
 
 
     // JNI upcalls section
-
-    /**
-     * Retrieves the native resource associated with the given AccessibleContext.
-     *
-     * @param ac The AccessibleContext whose native resource is requested.
-     * @return The native resource pointer associated with the given AccessibleContext,
-     * or -1 if no record exists.
-     */
-    private static long get_native_resources(AccessibleContext ac) {
-        return AtkWrapperDisposer.getInstance().getRecord(ac);
-    }
-
-    /**
-     * Associates a given native resource reference with an AccessibleContext.
-     *
-     * @param ac        The AccessibleContext to associate with a native resource.
-     * @param nativeRef The native resource reference to associate with the AccessibleContext.
-     * @return The native reference associated with the AccessibleContext,
-     * either newly stored or previously mapped.
-     */
-    private static long add_native_resources(AccessibleContext ac, long nativeRef) {
-        return AtkWrapperDisposer.getInstance().addRecord(ac, nativeRef);
-    }
 
     private static void register_property_change_listener(AccessibleContext ac) {
         if (ac != null) {

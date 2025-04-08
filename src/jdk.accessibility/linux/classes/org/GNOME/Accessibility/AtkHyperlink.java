@@ -65,8 +65,11 @@ public class AtkHyperlink {
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             Object anchor = acc_hyperlink.getAccessibleActionAnchor(i);
-            if (anchor instanceof Accessible accessible)
-                return accessible.getAccessibleContext();
+            if (anchor instanceof Accessible accessible) {
+                AccessibleContext accessibleContext = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                return accessibleContext;
+            }
             return null;
         }, null);
     }

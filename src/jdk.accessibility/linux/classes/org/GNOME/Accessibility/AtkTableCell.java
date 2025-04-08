@@ -89,7 +89,9 @@ public class AtkTableCell {
                 int length = iteration.getAccessibleColumnCount();
                 AccessibleContext[] result = new AccessibleContext[length];
                 for (int i = 0; i < length; i++) {
-                    result[i] = iteration.getAccessibleAt(0, i).getAccessibleContext();
+                    AccessibleContext accessibleContext = iteration.getAccessibleAt(0, i).getAccessibleContext();
+                    AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                    result[i] = accessibleContext;
                 }
                 return result;
             }
@@ -110,7 +112,9 @@ public class AtkTableCell {
                 int length = iteration.getAccessibleRowCount();
                 AccessibleContext[] result = new AccessibleContext[length];
                 for (int i = 0; i < length; i++) {
-                    result[i] = iteration.getAccessibleAt(i, 0).getAccessibleContext();
+                    AccessibleContext accessibleContext = iteration.getAccessibleAt(0, i).getAccessibleContext();
+                    AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                    result[i] = accessibleContext;
                 }
                 return result;
             }

@@ -41,10 +41,16 @@ import sun.awt.util.ThreadGroupUtils;
 
 /**
  * Manages the association between an AccessibleContext
- * and a JawImpl native resource. Can be used to create such
+ * and native resources. Can be used to create such
  * associations and ensures that the native resource associated
  * with the AccessibleContext is released when the AccessibleContext
  * is garbage collected.
+ * <p>
+ * Java classes are fully responsible for creating associations between
+ * an AccessibleContext and native resources. For example, when a JNI upcall method
+ * returns an AccessibleContext, native assumes that the corresponding native resource
+ * has already been created and the association between the AccessibleContext and the
+ * native resource exists.
  */
 @SuppressWarnings("removal")
 public class AtkWrapperDisposer implements Runnable {
@@ -96,7 +102,7 @@ public class AtkWrapperDisposer implements Runnable {
                 synchronized (lock) {
                     nativeReference = phantomMap.remove(obj);
                 }
-                AtkWrapper.releaseJawImplNativeResource(nativeReference);
+                AtkWrapper.releaNativeResources(nativeReference);
                 obj.clear();
                 obj = null;
             } catch (Exception e) {
@@ -108,15 +114,14 @@ public class AtkWrapperDisposer implements Runnable {
     /**
      * Associates an AccessibleContext with a newly created native resource. If the AccessibleContext
      * is not already registered, a new native resource pointer is created using
-     * {@link AtkWrapper#createNativeResources} (that creates JawImpl obj and returns its reference),
-     * and the association is stored.
+     * {@link AtkWrapper#createNativeResources}
      *
      * @param ac The AccessibleContext to associate with a native resource.
      */
     public void addRecord(AccessibleContext ac) {
         synchronized (lock) {
             if (!weakHashMap.containsKey(ac)) {
-                long nativeReference = AtkWrapper.createJawImplNativeResource(ac);
+                long nativeReference = AtkWrapper.createNativeResources(ac);
                 if (nativeReference != -1) {
                     PhantomReference<AccessibleContext> phantomReference = new PhantomReference<>(ac, queue);
                     phantomMap.put(phantomReference, nativeReference);
@@ -126,29 +131,16 @@ public class AtkWrapperDisposer implements Runnable {
         }
     }
 
-    /**
-     * Associates a native resource with an AccessibleContext. If the context is not already registered,
-     * the given nativeRef is stored in the mapping. The method is responsible to check if nativeRef
-     * references to valid JawImpl obj.
-     *
-     * @param ac        The AccessibleContext to associate with a native resource.
-     * @param nativeRef The native resource reference to associate with the AccessibleContext.
-     * @return The native reference associated with the AccessibleContext, or -1 if the native reference
-     *         is invalid and the association cannot be created.
-     */
-    public long addRecord(AccessibleContext ac, long nativeRef) {
+    private long getRecord(AccessibleContext ac) {
         synchronized (lock) {
-            if (!weakHashMap.containsKey(ac)) {
-                if (!AtkWrapper.checkJawImplNativeResource(nativeRef)) {
-                    return -1;
-                }
-                PhantomReference<AccessibleContext> phantomReference = new PhantomReference<>(ac, queue);
-                phantomMap.put(phantomReference, nativeRef);
-                weakHashMap.put(ac, nativeRef);
+            if (weakHashMap.containsKey(ac)) {
+                return weakHashMap.get(ac);
             }
-            return weakHashMap.get(ac);
         }
+        return -1;
     }
+
+    // JNI upcalls section
 
     /**
      * Retrieves the native resource associated with the given AccessibleContext.
@@ -158,12 +150,7 @@ public class AtkWrapperDisposer implements Runnable {
      * @return The native resource pointer associated with the given AccessibleContext,
      * or -1 if no record exists.
      */
-    public long getRecord(AccessibleContext ac) {
-        synchronized (lock) {
-            if (weakHashMap.containsKey(ac)) {
-                return weakHashMap.get(ac);
-            }
-        }
-        return -1;
+    private static long get_resource(AccessibleContext ac) {
+        return AtkWrapperDisposer.getInstance().getRecord(ac);
     }
 }

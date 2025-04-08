@@ -51,9 +51,12 @@ public class AtkTable {
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             Accessible accessible = acc_table.getAccessibleAt(row, column);
-            if (accessible != null)
-                return accessible.getAccessibleContext();
-            return null;
+            if (accessible == null) {
+                return null;
+            }
+            AccessibleContext accessibleContext = accessible.getAccessibleContext();
+            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            return accessibleContext;
         }, null);
     }
 
@@ -148,9 +151,12 @@ public class AtkTable {
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             Accessible accessible = acc_table.getAccessibleCaption();
-            if (accessible != null)
-                return accessible.getAccessibleContext();
-            return null;
+            if (accessible == null) {
+                return null;
+            }
+            AccessibleContext accessibleContext = accessible.getAccessibleContext();
+            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            return accessibleContext;
         }, null);
     }
 
@@ -247,8 +253,12 @@ public class AtkTable {
             AccessibleTable accessibleTable = acc_table.getAccessibleColumnHeader();
             if (accessibleTable != null) {
                 Accessible accessible = accessibleTable.getAccessibleAt(0, column);
-                if (accessible != null)
-                    return accessible.getAccessibleContext();
+                if (accessible == null) {
+                    return null;
+                }
+                AccessibleContext accessibleContext = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                return accessibleContext;
             }
             return null;
         }, null);
@@ -263,8 +273,12 @@ public class AtkTable {
             AccessibleTable accessibleTable = acc_table.getAccessibleRowHeader();
             if (accessibleTable != null) {
                 Accessible accessible = accessibleTable.getAccessibleAt(row, 0);
-                if (accessible != null)
-                    return accessible.getAccessibleContext();
+                if (accessible == null) {
+                    return null;
+                }
+                AccessibleContext accessibleContext = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                return accessibleContext;
             }
             return null;
         }, null);
@@ -277,9 +291,12 @@ public class AtkTable {
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             Accessible accessible = acc_table.getAccessibleSummary();
-            if (accessible != null)
-                return accessible.getAccessibleContext();
-            return null;
+            if (accessible == null) {
+                return null;
+            }
+            AccessibleContext accessibleContext = accessible.getAccessibleContext();
+            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            return accessibleContext;
         }, null);
     }
 

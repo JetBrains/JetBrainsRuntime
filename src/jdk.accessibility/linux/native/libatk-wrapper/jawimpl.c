@@ -223,14 +223,14 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     }
 
     // Check if there is JawImpl associated with the accessible context
-    jclass classAtkWrapper =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
+    jclass classAtkWrapper = (*jniEnv)->FindClass(
+        jniEnv, "org/GNOME/Accessibility/AtkWrapperDisposer");
     if (!classAtkWrapper) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid_get_native_resources = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classAtkWrapper, "get_native_resources",
+        jniEnv, classAtkWrapper, "get_resource",
         "(Ljavax/accessibility/AccessibleContext;)J");
     if (!jmid_get_native_resources) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -238,32 +238,13 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     }
     jlong reference = (*jniEnv)->CallStaticLongMethod(
         jniEnv, classAtkWrapper, jmid_get_native_resources, ac);
+
     // If a valid reference exists, return the existing JawImpl instance
     if (reference != -1) {
         return (JawImpl *)reference;
     }
 
-    // No existing instance found, create a new one
-    JawImpl *jaw_impl = jaw_impl_create_instance(jniEnv, ac);
-
-    jmethodID jmid_add_native_resources = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classAtkWrapper, "add_native_resources",
-        "(Ljavax/accessibility/AccessibleContext;J)J");
-    if (!jmid_add_native_resources) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jlong new_reference = (*jniEnv)->CallStaticLongMethod(
-        jniEnv, classAtkWrapper, jmid_add_native_resources, ac,
-        (jlong)jaw_impl);
-
-    if (new_reference != (jlong)jaw_impl) {
-        g_object_unref(G_OBJECT(jaw_impl));
-    }
-
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    return (JawImpl *)new_reference;
+    return NULL;
 }
 
 static void jaw_impl_class_intern_init(gpointer klass, gpointer data) {

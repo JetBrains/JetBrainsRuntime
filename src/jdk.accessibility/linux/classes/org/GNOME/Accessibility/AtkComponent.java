@@ -162,9 +162,12 @@ public class AtkComponent {
                     return null;
 
                 Accessible accessible = acc_component.getAccessibleAt(new Point(x - p.x, y - p.y));
-                if (accessible == null)
+                if (accessible == null) {
                     return null;
-                return accessible.getAccessibleContext();
+                }
+                AccessibleContext accessibleContext = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                return accessibleContext;
             }
             return null;
         }, null);

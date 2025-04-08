@@ -135,11 +135,14 @@ public class AtkObject {
 
     private static AccessibleContext get_accessible_parent(AccessibleContext ac) {
         return AtkUtil.invokeInSwingAndWait(() -> {
-            Accessible father = ac.getAccessibleParent();
-            if (father != null)
-                return father.getAccessibleContext();
-            else
+            Accessible parent = ac.getAccessibleParent();
+            if (parent == null) {
                 return null;
+            }
+            AccessibleContext accessibleContext = parent.getAccessibleContext();
+            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            return accessibleContext;
+
         }, null);
     }
 
@@ -236,7 +239,8 @@ public class AtkObject {
         }, null);
     }
 
-    private record WrapKeyAndTarget(String key, AccessibleContext[] relations) {}
+    private record WrapKeyAndTarget(String key, AccessibleContext[] relations) {
+    }
 
     private static WrapKeyAndTarget[] get_array_accessible_relation(AccessibleContext ac) {
         WrapKeyAndTarget[] d = new WrapKeyAndTarget[0];
@@ -267,10 +271,12 @@ public class AtkObject {
     private static AccessibleContext get_accessible_child(AccessibleContext ac, int i) {
         return AtkUtil.invokeInSwingAndWait(() -> {
             Accessible child = ac.getAccessibleChild(i);
-            if (child == null)
+            if (child == null) {
                 return null;
-            else
-                return child.getAccessibleContext();
+            }
+            AccessibleContext accessibleContext = child.getAccessibleContext();
+            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            return accessibleContext;
         }, null);
     }
 

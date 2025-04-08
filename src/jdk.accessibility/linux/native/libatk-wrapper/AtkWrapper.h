@@ -25,32 +25,21 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void);
 
 /*
  * Class:     org_GNOME_Accessibility_AtkWrapper
- * Method:    createJawImplNativeResource
- * Signature: (Ljavax/accessibility/AccessibleContext;)J
+ * Method:    createNativeResources
+ * Signature: (Ljavax/accessibility/AccessibleContext;)V
  */
 JNIEXPORT jlong JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_createJawImplNativeResource(JNIEnv *,
-                                                                    jclass,
-                                                                    jobject);
+Java_org_GNOME_Accessibility_AtkWrapper_createNativeResources(JNIEnv *, jclass,
+                                                              jobject);
 
 /*
  * Class:     org_GNOME_Accessibility_AtkWrapper
- * Method:    releaseJawImplNativeResource
- * Signature: (J)V
+ * Method:    releaseNativeResources
+ * Signature: (Ljavax/accessibility/AccessibleContext;)V
  */
 JNIEXPORT void JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_releaseJawImplNativeResource(JNIEnv *,
-                                                                     jclass,
-                                                                     jlong);
-
-/*
- * Class:     org_GNOME_Accessibility_AtkWrapper
- * Method:    checkJawImplNativeResource
- * Signature: (J)Z
- */
-JNIEXPORT jboolean JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_checkJawImplNativeResource(
-    JNIEnv *jniEnv, jclass jClass, jlong reference);
+Java_org_GNOME_Accessibility_AtkWrapper_releaseNativeResources(JNIEnv *, jclass,
+                                                               jlong);
 
 /*
  * Class:     org_GNOME_Accessibility_AtkWrapper
