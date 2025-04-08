@@ -40,18 +40,21 @@ import jdk.internal.misc.InnocuousThread;
 import sun.awt.util.ThreadGroupUtils;
 
 /**
- * Manages the disposal of native resources associated with AccessibleContext.
- * It uses PhantomReference to track object deallocation and automatically release related native resources.
+ * Manages the association between an AccessibleContext
+ * and a JawImpl native resource. Can be used to create such
+ * associations and ensures that the native resource associated
+ * with the AccessibleContext is released when the AccessibleContext
+ * is garbage collected.
  */
 @SuppressWarnings("removal")
 public class AtkWrapperDisposer implements Runnable {
     // Reference queue that holds objects ready for garbage collection
     private static final ReferenceQueue<AccessibleContext> queue = new ReferenceQueue<>();
 
-    // Map storing PhantomReferences and their associated native resource pointer
+    // Maps PhantomReferences and their associated native resource pointer
     private static final Map<PhantomReference<AccessibleContext>, Long> phantomMap = new HashMap<>();
 
-    // WeakHashMap that associates AccessibleContext object with native resource pointer
+    // Maps AccessibleContext object with native resource pointer
     private static final WeakHashMap<AccessibleContext, Long> weakHashMap = new WeakHashMap<>();
 
     private static final Object lock = new Object();
@@ -61,8 +64,7 @@ public class AtkWrapperDisposer implements Runnable {
     }
 
     private void init() {
-        String name = "Atk Wrapper Disposer";
-        Thread t = InnocuousThread.newThread(name, INSTANCE, Thread.MAX_PRIORITY);
+        Thread t = InnocuousThread.newThread("Atk Wrapper Disposer", INSTANCE, Thread.MAX_PRIORITY);
         t.setContextClassLoader(null);
         t.setDaemon(true);
         t.start();
@@ -81,19 +83,20 @@ public class AtkWrapperDisposer implements Runnable {
     }
 
     /**
-     * Monitors the reference queue and releases native resources
-     * when an associated AccessibleContext is garbage collected.
+     * Monitors the reference queue and releases native resources when an associated
+     * AccessibleContext is garbage collected. The native resource is released using
+     * {@link AtkWrapper#releaseNativeResources}.
      */
     public void run() {
         while (true) {
             try {
-                // When an AccessibleContext is freed, release associated native resources
+                // When an AccessibleContext is freed, release the associated native resource
                 Reference<? extends AccessibleContext> obj = queue.remove();
                 long nativeReference;
                 synchronized (lock) {
                     nativeReference = phantomMap.remove(obj);
                 }
-                AtkWrapper.releaseNativeResources(nativeReference);
+                AtkWrapper.releaseJawImplNativeResource(nativeReference);
                 obj.clear();
                 obj = null;
             } catch (Exception e) {
@@ -103,16 +106,17 @@ public class AtkWrapperDisposer implements Runnable {
     }
 
     /**
-     * Associates a native resource with an AccessibleContext.
-     * If the context is not already registered, gets a new native resource pointer
-     * and stores the mapping.
+     * Associates an AccessibleContext with a newly created native resource. If the AccessibleContext
+     * is not already registered, a new native resource pointer is created using
+     * {@link AtkWrapper#createNativeResources} (that creates JawImpl obj and returns its reference),
+     * and the association is stored.
      *
      * @param ac The AccessibleContext to associate with a native resource.
      */
     public void addRecord(AccessibleContext ac) {
         synchronized (lock) {
             if (!weakHashMap.containsKey(ac)) {
-                long nativeReference = AtkWrapper.createNativeResources(ac);
+                long nativeReference = AtkWrapper.createJawImplNativeResource(ac);
                 if (nativeReference != -1) {
                     PhantomReference<AccessibleContext> phantomReference = new PhantomReference<>(ac, queue);
                     phantomMap.put(phantomReference, nativeReference);
@@ -123,23 +127,24 @@ public class AtkWrapperDisposer implements Runnable {
     }
 
     /**
-     * Associates a native resource with an AccessibleContext using a specified native reference.
-     * If the context is not already registered, it stores the given native reference in the mapping.
+     * Associates a native resource with an AccessibleContext. If the context is not already registered,
+     * the given nativeRef is stored in the mapping. The method is responsible to check if nativeRef
+     * references to valid JawImpl obj.
      *
      * @param ac        The AccessibleContext to associate with a native resource.
      * @param nativeRef The native resource reference to associate with the AccessibleContext.
-     * @return The native reference associated with the AccessibleContext, either newly stored or previously mapped.
+     * @return The native reference associated with the AccessibleContext, or -1 if the native reference
+     *         is invalid and the association cannot be created.
      */
     public long addRecord(AccessibleContext ac, long nativeRef) {
         synchronized (lock) {
             if (!weakHashMap.containsKey(ac)) {
-                long nativeReference = nativeRef;
-                if (nativeReference != -1) {
-                    PhantomReference<AccessibleContext> phantomReference = new PhantomReference<>(ac, queue);
-                    phantomMap.put(phantomReference, nativeReference);
-                    weakHashMap.put(ac, nativeReference);
+                if (!AtkWrapper.checkJawImplNativeResource(nativeRef)) {
+                    return -1;
                 }
-                return nativeReference;
+                PhantomReference<AccessibleContext> phantomReference = new PhantomReference<>(ac, queue);
+                phantomMap.put(phantomReference, nativeRef);
+                weakHashMap.put(ac, nativeRef);
             }
             return weakHashMap.get(ac);
         }

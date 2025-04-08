@@ -208,7 +208,7 @@ typedef struct _CallbackParaEvent {
 } CallbackParaEvent;
 
 JNIEXPORT jlong JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_createNativeResources(JNIEnv *jniEnv,
+Java_org_GNOME_Accessibility_AtkWrapper_createJawImplNativeResource(JNIEnv *jniEnv,
                                                               jclass jClass,
                                                               jobject ac) {
     JawImpl *jaw_impl = jaw_impl_create_instance(jniEnv, ac);
@@ -220,7 +220,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_createNativeResources(JNIEnv *jniEnv,
 }
 
 JNIEXPORT void JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_releaseNativeResources(
+Java_org_GNOME_Accessibility_AtkWrapper_releaseJawImplNativeResource(
     JNIEnv *jniEnv, jclass jClass, jlong reference) {
     JawImpl *jaw_impl = (JawImpl *)reference;
     JAW_DEBUG_C("%p", jaw_impl);
@@ -228,6 +228,18 @@ Java_org_GNOME_Accessibility_AtkWrapper_releaseNativeResources(
         return;
     }
     g_object_unref(G_OBJECT(jaw_impl));
+}
+
+JNIEXPORT jboolean JNICALL
+Java_org_GNOME_Accessibility_AtkWrapper_checkJawImplNativeResource(JNIEnv *jniEnv,
+                                                             jclass jClass,
+                                                             jlong reference) {
+    JawImpl *jaw_impl = (JawImpl *)reference;
+    JAW_DEBUG_C("%p", jaw_impl);
+    if (jaw_impl == NULL) {
+        return JNI_FALSE;
+    }
+    return JNI_TRUE;
 }
 
 static CallbackPara *alloc_callback_para(JNIEnv *jniEnv, jobject ac) {

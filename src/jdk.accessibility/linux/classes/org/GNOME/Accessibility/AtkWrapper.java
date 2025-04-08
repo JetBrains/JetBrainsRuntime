@@ -600,9 +600,11 @@ public class AtkWrapper {
 
     private native static boolean loadAtkBridge();
 
-    native static long createNativeResources(AccessibleContext ac);
+    native static long createJawImplNativeResource(AccessibleContext ac);
 
-    native static void releaseNativeResources(long ref);
+    native static void releaseJawImplNativeResource(long ref);
+
+    native static boolean checkJawImplNativeResource(long ref);
 
     private native static void focusNotify(AccessibleContext ac);
 
