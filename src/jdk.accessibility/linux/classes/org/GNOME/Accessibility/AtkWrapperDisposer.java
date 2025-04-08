@@ -30,14 +30,10 @@ import java.util.*;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.PhantomReference;
-import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Hashtable;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.Collections;
 
 import jdk.internal.misc.InnocuousThread;
-import sun.awt.util.ThreadGroupUtils;
+import sun.util.logging.PlatformLogger;
 
 /**
  * Manages the association between an AccessibleContext
