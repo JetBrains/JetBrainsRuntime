@@ -43,7 +43,8 @@ import java.awt.EventQueue;
  */
 public class AtkObject {
 
-    private AtkObject() {}
+    private AtkObject() {
+    }
 
     /**
      * Returns the JMenuItem accelerator. Similar implementation is used on
@@ -51,7 +52,7 @@ public class AtkObject {
      * on Windows, see AccessBridge.getAccelerator(AccessibleContext) in OpenJDK.
      */
     private static String getAcceleratorText(AccessibleContext ac) {
-        assert(EventQueue.isDispatchThread());
+        assert (EventQueue.isDispatchThread());
 
         String accText = "";
         Accessible parent = ac.getAccessibleParent();

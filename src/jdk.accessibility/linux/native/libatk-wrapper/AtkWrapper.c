@@ -395,6 +395,7 @@ static void callback_para_event_process_frees(void) {
 static gboolean focus_notify_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
+    JAW_CHECK_NULL(para, FALSE);
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     atk_object_notify_state_change(atk_obj, ATK_STATE_FOCUSED, 1);
@@ -426,8 +427,11 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_focusNotify(
 static gboolean window_open_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    gboolean is_toplevel = para->is_toplevel;
+    JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    JAW_CHECK_NULL(atk_obj, FALSE);
+
+    gboolean is_toplevel = para->is_toplevel;
 
     if (!g_strcmp0(atk_role_get_name(atk_object_get_role(atk_obj)),
                    "redundant object")) {
@@ -479,8 +483,11 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowOpen(
 static gboolean window_close_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    gboolean is_toplevel = para->is_toplevel;
+    JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    JAW_CHECK_NULL(atk_obj, FALSE);
+
+    gboolean is_toplevel = para->is_toplevel;
 
     if (!g_strcmp0(atk_role_get_name(atk_object_get_role(atk_obj)),
                    "redundant object")) {
@@ -533,7 +540,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowClose(
 static gboolean window_minimize_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
+    JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    JAW_CHECK_NULL(atk_obj, FALSE);
 
     g_signal_emit_by_name(atk_obj, "minimize");
 
@@ -564,7 +573,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowMinimize(
 static gboolean window_maximize_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
+    JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    JAW_CHECK_NULL(atk_obj, FALSE);
 
     g_signal_emit_by_name(atk_obj, "maximize");
 
@@ -595,7 +606,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowMaximize(
 static gboolean window_restore_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
+    JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    JAW_CHECK_NULL(atk_obj, FALSE);
 
     g_signal_emit_by_name(atk_obj, "restore");
 
@@ -626,7 +639,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowRestore(
 static gboolean window_activate_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
+    JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    JAW_CHECK_NULL(atk_obj, FALSE);
 
     g_signal_emit_by_name(atk_obj, "activate");
 
@@ -657,7 +672,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowActivate(
 static gboolean window_deactivate_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
+    JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    JAW_CHECK_NULL(atk_obj, FALSE);
 
     g_signal_emit_by_name(atk_obj, "deactivate");
 
@@ -688,7 +705,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowDeactivate(
 static gboolean window_state_change_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
+    JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    JAW_CHECK_NULL(atk_obj, FALSE);
 
     g_signal_emit_by_name(atk_obj, "state-change", 0, 0);
 
@@ -794,7 +813,7 @@ static jobject jaw_vdc_last_ac = NULL;
 static gboolean signal_emit_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-
+    JAW_CHECK_NULL(para, FALSE);
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, FALSE);
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
@@ -1187,6 +1206,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
 static gboolean object_state_change_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
+JAW_CHECK_NULL(para, FALSE);
 
     atk_object_notify_state_change(ATK_OBJECT(para->jaw_impl), para->atk_state,
                                    para->state_value);
@@ -1224,7 +1244,9 @@ Java_org_GNOME_Accessibility_AtkWrapper_objectStateChange(JNIEnv *jniEnv,
 static gboolean component_added_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
+    JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    JAW_CHECK_NULL(atk_obj, FALSE);
 
     if (atk_object_get_role(atk_obj) == ATK_ROLE_TOOL_TIP) {
         atk_object_notify_state_change(atk_obj, ATK_STATE_SHOWING, 1);
@@ -1254,7 +1276,9 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_componentAdded(
 static gboolean component_removed_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
+    JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    JAW_CHECK_NULL(atk_obj, FALSE);
 
     if (atk_obj == NULL) {
         JAW_DEBUG_I("atk_obj == NULL");
@@ -1291,7 +1315,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_componentRemoved(
 static gboolean bounds_changed_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
+    JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    JAW_CHECK_NULL(atk_obj, FALSE);
+
     AtkRectangle rect;
 
     if (atk_obj == NULL) {
@@ -1329,6 +1356,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_boundsChanged(
 static gboolean key_dispatch_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackParaEvent *para = (CallbackParaEvent *)p;
+    JAW_CHECK_NULL(para, FALSE);
     jobject jAtkKeyEvent = para->global_event;
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (jniEnv == NULL) {
