@@ -475,6 +475,7 @@ public class AtkWrapper {
             if (xpropPath == null) {
                 throw new RuntimeException("No xprop found");
             }
+            System.loadLibrary("atk-wrapper");
             ProcessBuilder builder = new ProcessBuilder(xpropPath, "-root");
             Process p = builder.start();
             BufferedReader b = new BufferedReader(new InputStreamReader(p.getInputStream()));
