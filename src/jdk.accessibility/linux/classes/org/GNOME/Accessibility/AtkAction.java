@@ -80,7 +80,7 @@ public class AtkAction {
     }
 
     private boolean do_action(int i) {
-        if (i < 0) {
+        if (i < 0 || i >= nactions) {
             return false;
         }
         AccessibleAction acc_action = _acc_action.get();
@@ -98,14 +98,11 @@ public class AtkAction {
     }
 
     private String get_description(int i) {
-        if (i < 0) {
+        if (i < 0 || i >= nactions) {
             return null;
         }
         AccessibleAction acc_action = _acc_action.get();
-        if (acc_action == null)
-            return null;
-
-        if (i >= nactions) {
+        if (acc_action == null) {
             return null;
         }
         if (descriptions[i] != null) {
@@ -118,7 +115,7 @@ public class AtkAction {
     }
 
     private boolean set_description(int i, String description) {
-        if (i >= nactions || i < 0) {
+        if (i < 0 || i >= nactions) {
             return false;
         }
         descriptions[i] = description;
@@ -126,17 +123,14 @@ public class AtkAction {
     }
 
     private String get_localized_name(int i) {
-        if (i < 0) {
+        if (i < 0 || i >= nactions) {
             return null;
         }
         AccessibleContext ac = _ac.get();
         if (ac == null)
             return null;
         AccessibleAction acc_action = _acc_action.get();
-        if (acc_action == null)
-            return null;
-
-        if (i >= nactions) {
+        if (acc_action == null) {
             return null;
         }
         if (descriptions[i] != null) {
