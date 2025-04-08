@@ -1,8 +1,11 @@
+java/awt/Desktop/DesktopGtkLoadTest/DesktopGtkLoadTest.java JBR-8572 linux-6.8.0-1026-aws
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8262 linux-all
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-8264 linux-x64
-javax/swing/AbstractDocument/bug4549069.java JBR-8267-aarch64
+
+javax/swing/AbstractDocument/bug4549069.java JBR-8267 linux-6.8.0-1026-aws
+javax/swing/JDesktopPane/TestDesktopManagerNPE.java JBR-8449 linux-x64
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520 linux-all
 javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-8265 linux-all
@@ -11,9 +14,12 @@ javax/swing/JEditorPane/bug4325606.java JBR-8267 linux-aarch64
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-7530 linux-all
 javax/swing/JInternalFrame/bug5009724.java JBR-7087 linux-all
+javax/swing/JMenu/JMenuSelectedColorTest.java JBR-8551 linux-all
 javax/swing/JPopupMenu/7156657/bug7156657.java JBR-8210 linux-all
 javax/swing/JRadioButton/bug4823809.java JBR-7774 linux-all
+javax/swing/JSlider/TestJSliderRendering.java JBR-8551 linux-all
 javax/swing/JTabbedPane/6495408/bug6495408.java JBR-8267 linux-aarch64
+javax/swing/JToolTip/TestTooltipBackgroundColor.java JBR-8551 linux-all
 javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-8274 linux-all
 javax/swing/text/html/CSS/bug8234913.java JBR-8306 linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-8304 linux-all
