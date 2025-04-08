@@ -129,7 +129,7 @@ java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java JBR-5809 linux-all
 java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayoutTraversalTest.java JBR-5210 windows-all
 java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
-java/awt/Focus/InactiveFocusRace.java 8023263 linux-all
+java/awt/Focus/InactiveFocusRace.java 8023263,JBR-8586 linux-all,windows-x64
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
 java/awt/Focus/LabelScrollBarFocus.java JBR-8027 linux-all
@@ -138,6 +138,7 @@ java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java JBR-5178 windows-all
 java/awt/Focus/VetoableChangeListenerLoopTest.java JBR-5785 linux-all
 java/awt/Frame/7024749/bug7024749.java JBR-5210 windows-all
 java/awt/Frame/8158918/SetExtendedState.java JBR-6408 linux-all
+java/awt/Frame/DisposeParentGC/DisposeParentGC.java JBR-7300 linux-all
 java/awt/Frame/DisposeTest.java JBR-7937 macosx-aarch64
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MaximizeUndecoratedTest.java JBR-8064 linux-all
@@ -575,7 +576,7 @@ java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 71244
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java 8157170,8253184 macosx-all,windows-all
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java 8253184 windows-all
 java/awt/MouseInfo/ComponentMousePositionTest.java 8253184 windows-all
-java/awt/MouseInfo/ContainerResizeMousePositionTest.java JBR-7881 macosx-all
+java/awt/MouseInfo/ContainerResizeMousePositionTest.java JBR-7881,JBR-7915 macosx-all,linux-aarch64
 java/awt/MouseInfo/JContainerMousePositionTest.java 8253184 windows-all
 java/awt/Modal/ToFront/DialogToFrontAppModalTest.java 8253184 windows-all
 java/awt/Modal/ToFront/DialogToFrontDocModalTest.java 8253184 windows-all
@@ -962,6 +963,8 @@ javax/sound/sampled/Mixers/BogusMixers.java JBR-4455 linux-aarch64
 
 ############################################################################
 
+javax/imageio/plugins/bmp/BMPSubsamplingTest.java JBR-8560 generic-all
+javax/imageio/plugins/bmp/NoExtraBytesTest.java JBR-8560 generic-all
 javax/imageio/plugins/external_plugin_tests/TestClassPathPlugin.sh JBR-5363 windows-all
 
 # jdk_swing
@@ -1077,7 +1080,7 @@ javax/swing/JSplitPane/4885629/bug4885629.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JTabbedPane/4361477/bug4361477.java JBR-5932 linux-all
 javax/swing/JTabbedPane/8007563/Test8007563.java 8051591 generic-all
 javax/swing/JTabbedPane/4624207/bug4624207.java 8064922,8197552,JBR-6235 macosx-all,windows-all,linux-all 8064922:macosx-all, 8197552:windows-all
-javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java 8253184 windows-all
+javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java 8253184,JBR-8498 windows-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4
 javax/swing/JToggleButton/TestSelectedKey.java JBR-5846 windows-all
 javax/swing/JToolBar/4529206/bug4529206.java JBR-5387 linux-all
 javax/swing/JToolTip/6219960/bug6219960.java 8253184 windows-all
