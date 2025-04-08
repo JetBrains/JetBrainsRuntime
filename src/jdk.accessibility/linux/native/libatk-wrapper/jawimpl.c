@@ -522,6 +522,15 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ * Checks if the given jKey (name of the relation) matches the value of static
+ * field in AccessibleRelation identified by strKey.
+ *
+ * @param jniEnv JNI environment pointer
+ * @param jKey   key of AccessibleRelation, the name of the relation
+ * @param strKey name of the static AccessibleRelation field
+ * @return       TRUE if jKey equals the corresponding static field, FALSE otherwise
+ */
 static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
                                      const gchar *strKey) {
     JAW_DEBUG_C("%p, %p, %s", jniEnv, jKey, strKey);
@@ -562,6 +571,15 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
     return result;
 }
 
+/**
+ * Compares the given key of Java AccessibleRelation (jrel_key) with some of
+ * AccessibleRelation fields. If a match is found, returns the
+ * corresponding AtkRelationType; otherwise, returns ATK_RELATION_NULL.
+ *
+ * @param jniEnv   JNI environment pointer
+ * @param jrel_key key of AccessibleRelation, the name of the relation
+ * @return         Corresponding AtkRelationType or ATK_RELATION_NULL
+ */
 AtkRelationType jaw_impl_get_atk_relation_type(JNIEnv *jniEnv,
                                                jstring jrel_key) {
     JAW_DEBUG_C("%p, %p", jniEnv, jrel_key);
