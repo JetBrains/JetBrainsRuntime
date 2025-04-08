@@ -53,8 +53,11 @@ public class ResolveSymbolsRealEnv extends ResolveSymbolsTestBase {
      * 	"/lib/x86_64-linux-gnu/libpcre2-8.so.0" and "/lib64/ld-linux-x86-64.so.2"
      */
     private List<Path> getDependencies(Path path) throws IOException, InterruptedException {
-        Process process = Runtime.getRuntime().exec("ldd " + path);
-
+        String jvmDir = Path.of(System.getProperty("java.home")).resolve("lib").resolve("server").toString();
+        ProcessBuilder pb = new ProcessBuilder("ldd", path.toString());
+        // Many libraries depend on libjvm.so, but it is not loaded by the normal rules of ld.so
+        pb.environment().put("LD_LIBRARY_PATH", jvmDir);
+        Process process = pb.start();
         List<Path> result = new BufferedReader(new InputStreamReader(process.getInputStream()))
                 .lines()
                 .map(line -> {
@@ -74,7 +77,14 @@ public class ResolveSymbolsRealEnv extends ResolveSymbolsTestBase {
                 .toList();
 
         if (process.waitFor() != 0) {
-            return null;
+            // Musl-based ldd will exit with an error when it couldn't find a library or symbol.
+            // As long as the stdout parsed above has produced some results, this is fine.
+            // Log stderr here for debugging purposes.
+            System.out.printf("'ldd %s' exited with an error %d\n", path, process.exitValue());
+            System.out.println("ldd's stderr follows:");
+            System.out.println(">>>");
+            new BufferedReader(new InputStreamReader(process.getErrorStream())).lines().forEach(System.out::println);
+            System.out.println(">>>");
         }
 
         return result;
