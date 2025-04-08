@@ -130,7 +130,7 @@ class IoOverNioFileSystem extends FileSystem {
                 // and this check happens there before calling GetFileAttributesW.
                 return (ACCESS_READ == access || ACCESS_EXECUTE == access) && enable;
             } else {
-                // A new behavior for java.io.File was introduced in commit 9477c705c0bd5ce2d445abb5ca44d46656fc315f
+                // A new behavior for java.io.File was introduced in the issue 8024695
                 f = FileSystem.getCWD();
             }
         }
@@ -594,8 +594,8 @@ class IoOverNioFileSystem extends FileSystem {
     private int getBooleanAttributes0(File f) {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs(f.getPath());
         if (nioFs != null) {
-            if (true && f.getPath().isEmpty()) {
-                // A new behavior for java.io.File was introduced in commit 9477c705c0bd5ce2d445abb5ca44d46656fc315f
+            if (f.getPath().isEmpty()) {
+                // A new behavior for java.io.File was introduced in issue 8024695.
                 int mask = getBooleanAttributes0(FileSystem.getCWD());
                 if (getSeparator() == '/') {
                     // new File("") is never treated as hidden in Unix, whatever name a canonicalized path would have.
@@ -684,7 +684,7 @@ class IoOverNioFileSystem extends FileSystem {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs(f.getPath());
         if (nioFs != null) {
             if (f.getPath().isEmpty()) {
-                // A new behavior for java.io.File was introduced in commit 9477c705c0bd5ce2d445abb5ca44d46656fc315f
+                // A new behavior for java.io.File was introduced in issue 8024695.
                 f = FileSystem.getCWD();
             }
 
@@ -933,7 +933,7 @@ class IoOverNioFileSystem extends FileSystem {
         if (nioFs != null) {
             String pathStr = f.getPath();
             if (pathStr.isEmpty()) {
-                // A new behavior for java.io.File was introduced in commit 9477c705c0bd5ce2d445abb5ca44d46656fc315f
+                // A new behavior for java.io.File was introduced in issue 8024695.
                 pathStr = FileSystem.getCWD().getPath();
             }
 
