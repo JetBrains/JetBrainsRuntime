@@ -20,7 +20,18 @@
 package org.GNOME.Accessibility;
 
 public interface AtkCoordType {
+    /**
+     * Coordinates are relative to the screen.
+     */
     int SCREEN = 0;
+
+    /**
+     * Coordinates are relative to the component's toplevel window.
+     */
     int WINDOW = 1;
+
+    /**
+     * Coordinates are relative to the component's immediate parent.
+     */
     int PARENT = 2;
 }

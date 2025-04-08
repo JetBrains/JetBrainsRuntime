@@ -61,12 +61,24 @@ public class AtkComponent {
         return null;
     }
 
-    // Return the position of the object relative to the coordinate type
+    /**
+     * Return the position of the object relative to the coordinate type
+     * 0 - Coordinates are relative to the screen.
+     * 1 - Coordinates are relative to the component's toplevel window.
+     * 2 - Coordinates are relative to the component's immediate parent.
+     *
+     * @param ac
+     * @param acc_component
+     * @param coord_type
+     * @return
+     */
     public static Point getComponentOrigin(AccessibleContext ac, AccessibleComponent acc_component, int coord_type) {
         assert EventQueue.isDispatchThread();
 
-        if (coord_type == AtkCoordType.SCREEN)
+        if (coord_type == AtkCoordType.SCREEN) {
+            // Returns the location of the object on the screen.
             return acc_component.getLocationOnScreen();
+        }
 
         if (coord_type == AtkCoordType.WINDOW) {
             Point win_p = getWindowLocation(ac);
@@ -79,8 +91,12 @@ public class AtkComponent {
             return p;
         }
 
-        if (coord_type == AtkCoordType.PARENT)
+        if (coord_type == AtkCoordType.PARENT) {
+            // Gets the location of the object relative to the parent
+            // in the form of a point specifying the object's top-left
+            // corner in the screen's coordinate space.
             return acc_component.getLocation();
+        }
 
         return null;
     }
@@ -186,6 +202,9 @@ public class AtkComponent {
         }, false);
     }
 
+    /**
+     * Set component bounds
+     */
     private boolean set_extents(int x, int y, int width, int height, int coord_type) {
         AccessibleContext ac = _ac.get();
         if (ac == null)
@@ -196,7 +215,7 @@ public class AtkComponent {
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_component.isVisible()) {
-                Point p = getParentOrigin(ac, acc_component, coord_type);
+                Point p = getComponentOrigin(ac, acc_component, coord_type);
                 if (p == null)
                     return false;
 
@@ -207,20 +226,27 @@ public class AtkComponent {
         }, false);
     }
 
+    /**
+     * Gets the rectangle based on coord_type
+     *
+     * @param coord_type AtkCoordType
+     * @return
+     */
     private Rectangle get_extents(int coord_type) {
         AccessibleContext ac = _ac.get();
-        if (ac == null)
+        if (ac == null) {
             return null;
+        }
         AccessibleComponent acc_component = _acc_component.get();
-        if (acc_component == null)
+        if (acc_component == null) {
             return null;
-
+        }
         return AtkUtil.invokeInSwingAndWait(() -> {
             if (acc_component.isVisible()) {
                 Rectangle rect = acc_component.getBounds();
                 if (rect == null)
                     return null;
-                Point p = getParentOrigin(ac, acc_component, coord_type);
+                Point p = getComponentOrigin(ac, acc_component, coord_type);
                 if (p == null)
                     return null;
 
@@ -232,6 +258,11 @@ public class AtkComponent {
         }, null);
     }
 
+    /**
+     * Gets the AtkLayer of the component based on AccessibleRole.
+     *
+     * @return an int representing the AtkLayer of the component, or AtkLayer.INVALID if an error occurs
+     */
     private int get_layer() {
         AccessibleContext ac = _ac.get();
         if (ac == null)
