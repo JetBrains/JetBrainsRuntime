@@ -137,7 +137,6 @@ javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5510,JBR-5951 linux-all,wi
 javax/swing/text/html/StyleSheet/bug4936917.java JBR-899,JBR-5510 windows-all,linux-all
 jb/java/awt/MouseInfo/GetPointerInfoTest.java nobug linux-all
 jb/java/awt/Window/WindowEventsOnPopupShowing.java JBR-7744 linux-x64
-jb/java/awt/Window/ZOrderOnModalDialogActivation.java JBR-5714 windows-all,linux-x64
 
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,windows-all
 sun/java2d/GdiRendering/InsetClipping.java 7124403,JBR-5510 windows-x64,macosx-all,linux-all
