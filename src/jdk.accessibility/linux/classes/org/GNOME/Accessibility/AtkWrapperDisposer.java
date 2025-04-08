@@ -65,6 +65,7 @@ public class AtkWrapperDisposer implements Runnable {
 
     private static final Object lock = new Object();
     private static AtkWrapperDisposer INSTANCE = null;
+    private static final PlatformLogger log = PlatformLogger.getLogger("org.GNOME.Accessibility.AtkWrapperDisposer");
 
     private AtkWrapperDisposer() {
     }
@@ -106,7 +107,9 @@ public class AtkWrapperDisposer implements Runnable {
                 obj.clear();
                 obj = null;
             } catch (Exception e) {
-                System.out.println("Exception while removing reference.");
+                if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
+                    log.severe("Exception while removing reference: ", e);
+                }
             }
         }
     }
