@@ -102,7 +102,7 @@ public class AtkWrapperDisposer implements Runnable {
                 synchronized (lock) {
                     nativeReference = phantomMap.remove(obj);
                 }
-                AtkWrapper.releaNativeResources(nativeReference);
+                AtkWrapper.releaseNativeResources(nativeReference);
                 obj.clear();
                 obj = null;
             } catch (Exception e) {
