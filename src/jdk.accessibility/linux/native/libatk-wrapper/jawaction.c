@@ -229,6 +229,8 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
         return FALSE;
     }
 
+    // FIXME: it would be an improvement to cache the class and method references we use in the native code,
+    //  so that the lookups wouldn't happen each time.
     jclass classAtkAction =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
     if (!classAtkAction) {
