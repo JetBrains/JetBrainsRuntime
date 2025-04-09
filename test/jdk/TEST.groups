@@ -1146,7 +1146,10 @@ jdk_swing_wayland= \
     -javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java \
     -javax/swing/JInternalFrame/8146321/JInternalFrameIconTest.java \
     -javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java \
+    -javax/swing/JInternalFrame/bug4215380.java \
     -javax/swing/JInternalFrame/bug4309079.java \
+    -javax/swing/JInternalFrame/bug4321312.java \
+    -javax/swing/JInternalFrame/bug4322726.java \
     -javax/swing/JInternalFrame/bug4732229.java \
     -javax/swing/JInternalFrame/Ctrli.java \
     -javax/swing/JInternalFrame/JInternalFrameTest.java \
