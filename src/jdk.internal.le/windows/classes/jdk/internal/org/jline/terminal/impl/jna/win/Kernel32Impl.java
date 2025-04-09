@@ -44,9 +44,6 @@ public class Kernel32Impl implements Kernel32 {
     public native Pointer GetStdHandle(int nStdHandle);
 
     @Override
-    public native int GetConsoleOutputCP();
-
-    @Override
     public native void FillConsoleOutputCharacter(Pointer in_hConsoleOutput, char in_cCharacter, int in_nLength, COORD in_dwWriteCoord, IntByReference out_lpNumberOfCharsWritten) throws LastErrorException;
 
     @Override
