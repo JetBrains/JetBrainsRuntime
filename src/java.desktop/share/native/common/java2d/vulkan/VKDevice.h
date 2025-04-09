@@ -40,7 +40,6 @@ typedef struct {
 
 typedef struct {
     VKSampledSrcType table[1 << sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_BITS];
-    jint caps;
 } VKSampledSrcTypes;
 
 struct VKDevice {
@@ -54,6 +53,7 @@ struct VKDevice {
     VkQueue              queue;
     VKSampledSrcTypes    sampledSrcTypes;
     ARRAY(jint)          supportedFormats;
+    jint caps;
 
     VKAllocator*     allocator;
     VKRenderer*      renderer;

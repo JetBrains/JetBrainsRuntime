@@ -1044,7 +1044,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public void sync() {
-        if(VKEnv.isVulkanEnabled()) {
+        if(VKEnv.isPresentationEnabled()) {
             VKRenderQueue.sync();
         }
         flushImpl();
