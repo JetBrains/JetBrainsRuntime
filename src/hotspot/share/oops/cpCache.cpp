@@ -600,6 +600,16 @@ Method* ConstantPoolCacheEntry::get_interesting_method_entry() {
 // Enhanced RedefineClasses() API support (DCEVM):
 // Clear cached entry, let it be re-resolved
 void ConstantPoolCacheEntry::clear_entry() {
+
+  if (is_method_entry() && indices() != constant_pool_index()) {
+    Method* old_method = get_interesting_method_entry();
+    if (old_method != nullptr && old_method->is_old() && old_method->is_deleted()) {
+      // clean up entries with deleted methods
+      initialize_entry(constant_pool_index());
+      return;
+    }
+  }
+
   // Always clear for invokehandle/invokedynamic to re-resolve them
   bool clearData = bytecode_1() == Bytecodes::_invokehandle || bytecode_1() == Bytecodes::_invokedynamic;
   _indices = constant_pool_index();
