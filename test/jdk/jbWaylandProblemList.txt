@@ -1,4 +1,3 @@
-java/awt/Desktop/DesktopGtkLoadTest/DesktopGtkLoadTest.java JBR-8572 linux-6.8.0-1026-aws
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8262 linux-all
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
