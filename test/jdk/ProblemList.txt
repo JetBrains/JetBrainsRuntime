@@ -835,6 +835,7 @@ java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java 8258103 linux-all
 java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-x64
 java/awt/Frame/SizeMinimizedTest.java 8305915 linux-x64
 java/awt/PopupMenu/PopupHangTest.java 8340022 windows-all
+java/awt/Focus/InactiveFocusRace.java 8023263 linux-all
 java/awt/dnd/WinMoveFileToShellTest.java 8341665 windows-all
 
 
