@@ -24,8 +24,6 @@
  * questions.
  */
 
-#ifndef HEADLESS
-
 #include <assert.h>
 #include <string.h>
 #include "VKUtil.h"
@@ -1432,5 +1430,3 @@ void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
     vs[0] = p1; vs[1] = p3; vs[2] = p2;
     vs[3] = p1; vs[4] = p3; vs[5] = p4;
 }
-
-#endif /* !HEADLESS */
