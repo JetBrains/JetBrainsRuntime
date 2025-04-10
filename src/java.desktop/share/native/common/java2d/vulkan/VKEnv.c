@@ -118,7 +118,7 @@ static VkBool32 debugCallback(
 const char* VKFunctionTable_InitGlobal(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKFunctionTableGlobal* table);
 const char* VKFunctionTable_InitInstance(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKEnv* instance);
 
-static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
+static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPlatformData* platformData) {
     if (vkGetInstanceProcAddr == NULL) return NULL;
 
     VKFunctionTableGlobal table;
@@ -169,10 +169,10 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
     ARRAY(pchar) enabledLayers     = NULL;
     ARRAY(pchar) enabledExtensions = NULL;
     void *pNext = NULL;
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    ARRAY_PUSH_BACK(enabledExtensions) = VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME;
-#endif
     ARRAY_PUSH_BACK(enabledExtensions) = VK_KHR_SURFACE_EXTENSION_NAME;
+    if (platformData != NULL && platformData->surfaceExtensionName != NULL) {
+        ARRAY_PUSH_BACK(enabledExtensions) = platformData->surfaceExtensionName;
+    }
 
     // Check required layers & extensions.
     for (uint32_t i = 0; i < ARRAY_SIZE(enabledExtensions); i++) {
@@ -241,7 +241,9 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
         ARRAY_FREE(enabledExtensions);
         return NULL;
     }
-    *vk = (VKEnv) {};
+    *vk = (VKEnv) {
+        .platformData = platformData
+    };
 
     VkApplicationInfo applicationInfo = {
             .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -259,9 +261,9 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
             .flags = 0,
             .pApplicationInfo = &applicationInfo,
             .enabledLayerCount = ARRAY_SIZE(enabledLayers),
-            .ppEnabledLayerNames = (const char *const *) enabledLayers,
+            .ppEnabledLayerNames = enabledLayers,
             .enabledExtensionCount = ARRAY_SIZE(enabledExtensions),
-            .ppEnabledExtensionNames = (const char *const *) enabledExtensions
+            .ppEnabledExtensionNames = enabledExtensions
     };
 
     VK_IF_ERROR(table.vkCreateInstance(&instanceCreateInfo, NULL, &vk->instance)) {
@@ -275,13 +277,9 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
     ARRAY_FREE(enabledExtensions);
 
     missingAPI = VKFunctionTable_InitInstance(vkGetInstanceProcAddr, vk);
-    if (missingAPI != NULL) {}
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    else if (vk->vkGetPhysicalDeviceWaylandPresentationSupportKHR == NULL)
-        missingAPI = "vkGetPhysicalDeviceWaylandPresentationSupportKHR";
-    else if (vk->vkCreateWaylandSurfaceKHR == NULL)
-        missingAPI = "vkCreateWaylandSurfaceKHR";
-#endif
+    if (missingAPI == NULL && vk->platformData != NULL && vk->platformData->checkMissingAPI != NULL) {
+        missingAPI = vk->platformData->checkMissingAPI(vk);
+    }
     if (missingAPI != NULL) {
         J2dRlsTraceLn1(J2D_TRACE_ERROR, "Vulkan: Required API is missing: %s", missingAPI)
         VKEnv_Destroy(vk);
@@ -347,7 +345,7 @@ static jobjectArray createJavaGPUs(JNIEnv *env, VKEnv* vk) {
         (*env)->SetIntArrayRegion(env, supportedFormats, 0, ARRAY_SIZE(vk->devices[i].supportedFormats), vk->devices[i].supportedFormats);
         jobject device = (*env)->NewObject(env, deviceClass, deviceConstructor,
                                            ptr_to_jlong(&vk->devices[i]), name, vk->devices[i].type,
-                                           vk->devices[i].sampledSrcTypes.caps, supportedFormats);
+                                           vk->devices[i].caps, supportedFormats);
         if (device == NULL) return NULL;
         (*env)->SetObjectArrayElement(env, deviceArray, i, device);
     }
@@ -355,7 +353,7 @@ static jobjectArray createJavaGPUs(JNIEnv *env, VKEnv* vk) {
 }
 
 static VKEnv* instance = NULL;
-VKEnv* VKEnv_GetInstance() {
+JNIEXPORT VKEnv* VKEnv_GetInstance() {
     return instance;
 }
 
@@ -365,23 +363,20 @@ VKEnv* VKEnv_GetInstance() {
  * Signature: (J)[Lsun/java2d/vulkan/VKDevice;
  */
 JNIEXPORT jobjectArray JNICALL
-Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv *env, jclass wlge, jlong nativePtr) {
+Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv* env, jclass vkenv, jlong platformData) {
 #ifdef DEBUG
     // Init random for debug-related validation tricks.
-    srand(nativePtr);
+    srand(platformData);
 #endif
 
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = vulkanLibOpen();
     if (vkGetInstanceProcAddr == NULL) return NULL;
 
-    VKEnv* vk = VKEnv_Create(vkGetInstanceProcAddr);
+    VKEnv* vk = VKEnv_Create(vkGetInstanceProcAddr, jlong_to_ptr(platformData));
     if (vk == NULL) {
         vulkanLibClose();
         return NULL;
     }
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    vk->waylandDisplay = (struct wl_display*) jlong_to_ptr(nativePtr);
-#endif
 
     if (!VKEnv_FindDevices(vk)) {
         VKEnv_Destroy(vk);
@@ -398,9 +393,4 @@ Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv *env, jclass wlge, jlong nativePt
 
     instance = vk;
     return deviceArray;
-}
-
-JNIEXPORT void JNICALL JNI_OnUnload(__attribute__((unused)) JavaVM *vm, __attribute__((unused)) void *reserved) {
-    VKEnv_Destroy(instance);
-    vulkanLibClose();
 }
