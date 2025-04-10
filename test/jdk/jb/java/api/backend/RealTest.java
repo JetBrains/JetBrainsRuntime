@@ -23,13 +23,13 @@
 
 /*
  * @test
- * @modules java.base/com.jetbrains.internal:+open
+ * @modules java.base/com.jetbrains.internal.jbrapi:+open
  * @build com.jetbrains.* com.jetbrains.test.api.Real com.jetbrains.test.jbr.Real
- * @run main/othervm -Djetbrains.runtime.api.extendRegistry=true RealTest
+ * @run main/othervm -Djetbrains.runtime.api.verbose=true -Djetbrains.runtime.api.verifyBytecode=true -Djetbrains.runtime.api.extendRegistry=true RealTest
  */
 
 import com.jetbrains.Extensions;
-import com.jetbrains.internal.JBRApi;
+import com.jetbrains.internal.jbrapi.JBRApi;
 
 import java.util.ArrayList;
 import java.util.List;
