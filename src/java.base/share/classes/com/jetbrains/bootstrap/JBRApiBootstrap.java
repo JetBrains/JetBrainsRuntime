@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2023 JetBrains s.r.o.
+ * Copyright 2025 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 
 package com.jetbrains.bootstrap;
 
-import com.jetbrains.internal.JBRApi;
+import com.jetbrains.internal.jbrapi.JBRApi;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Map;
