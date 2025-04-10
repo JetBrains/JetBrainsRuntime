@@ -63,7 +63,6 @@ ifeq ($(call isTargetOs, macosx), true)
       sun/awt/wl \
       sun/java2d/wl \
       sun/java2d/x11 \
-      sun/java2d/vulkan \
       sun/java2d/jules \
       sun/java2d/xr \
       com/sun/java/swing/plaf/gtk \
@@ -127,6 +126,10 @@ endif
 
 ifeq ($(call isTargetOs, windows macosx), false)
   EXCLUDE_FILES += sun/awt/AWTCharset.java
+endif
+
+ifneq ($(VULKAN_ENABLED), true)
+  EXCLUDES += sun/java2d/vulkan
 endif
 
 # These files do not appear in the build result of the old build. This
