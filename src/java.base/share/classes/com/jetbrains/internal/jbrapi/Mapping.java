@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 JetBrains s.r.o.
+ * Copyright 2023-2025 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,19 +23,19 @@
  * questions.
  */
 
-package com.jetbrains.internal;
+package com.jetbrains.internal.jbrapi;
 
-import jdk.internal.org.objectweb.asm.Label;
-import jdk.internal.org.objectweb.asm.MethodVisitor;
-
+import java.lang.classfile.CodeBuilder;
+import java.lang.classfile.Label;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static jdk.internal.org.objectweb.asm.Opcodes.*;
-import static jdk.internal.org.objectweb.asm.Type.getInternalName;
+import static com.jetbrains.internal.jbrapi.BytecodeUtils.*;
 
 /**
  * Mapping defines conversion of parameters and return types between source and destination method.
@@ -55,18 +55,18 @@ abstract class Mapping {
     }
 
     void convert(AccessContext.Method context) {
-        MethodVisitor m = context.writer;
-        Label skipConvert = new Label();
-        m.visitInsn(DUP);
-        m.visitJumpInsn(IFNULL, skipConvert);
+        CodeBuilder m = context.writer;
+        Label skipConvert = m.newLabel();
+        m.dup()
+         .ifnull(skipConvert);
         convertNonNull(context);
-        m.visitLabel(skipConvert);
+        m.labelBinding(skipConvert);
     }
 
     abstract void convertNonNull(AccessContext.Method context);
 
     void cast(AccessContext.Method context) {
-        if (context.access().canAccess(to)) context.writer.visitTypeInsn(CHECKCAST, getInternalName(to));
+        if (context.access().canAccess(to)) context.writer.checkcast(desc(to));
     }
 
     abstract Mapping inverse();
@@ -141,6 +141,26 @@ abstract class Mapping {
         }
     }
 
+    static class Cast extends Nesting {
+        private Cast(Mapping component) {
+            super(component.from, component.to, component);
+        }
+        static Mapping wrap(Mapping m) {
+            return m == null || m instanceof Cast ? m : new Cast(m);
+        }
+        @Override
+        void convert(AccessContext.Method context) {
+            if (context.access().canAccess(from)) context.writer.checkcast(desc(from));
+            component.convert(context);
+        }
+        @Override
+        void convertNonNull(AccessContext.Method context) { convert(context); }
+        @Override
+        Mapping inverse() { return wrap(component.inverse()); }
+        @Override
+        public String toString() { return component.toString(); }
+    }
+
     static class Array extends Nesting {
         private Array(Mapping component) {
             super(component.from.arrayType(), component.to.arrayType(), component);
@@ -157,38 +177,37 @@ abstract class Mapping {
         @Override
         void convertNonNull(AccessContext.Method context) {
             final int TEMP_COUNTER_SLOT = 1; // Warning! We overwrite 1st local slot.
-            MethodVisitor m = context.writer;
-            Label loopStart = new Label(), loopEnd = new Label();
+            CodeBuilder m = context.writer;
             // Stack: fromArray -> toArray, fromArray, i=length
-            if (!context.access().canAccess(from)) m.visitTypeInsn(CHECKCAST, "[Ljava/lang/Object;");
-            m.visitInsn(DUP);
-            m.visitInsn(ARRAYLENGTH);
+            if (!context.access().canAccess(from)) m.checkcast(OBJECT_ARRAY_DESC);
+            m.dup()
+             .arraylength();
             if (context.access().canAccess(to)) {
-                m.visitTypeInsn(ANEWARRAY, getInternalName(Objects.requireNonNull(to.componentType())));
+                m.anewarray(desc(to.componentType()));
             } else context.invokeDynamic(MethodHandles.arrayConstructor(to));
-            m.visitInsn(SWAP);
-            m.visitInsn(DUP);
-            m.visitInsn(ARRAYLENGTH);
+            m.swap()
+             .dup()
+             .arraylength();
             // Check loop conditions
-            m.visitLabel(loopStart);
-            m.visitInsn(DUP);
-            m.visitJumpInsn(IFLE, loopEnd);
+            Label loopStart = m.newBoundLabel(), loopEnd = m.newLabel();
+            m.dup()
+             .ifle(loopEnd);
             // Stack: toArray, fromArray, i -> toArray, fromArray, i, toArray, i, from
-            m.visitVarInsn(ISTORE, TEMP_COUNTER_SLOT);
-            m.visitInsn(DUP2);
-            m.visitIincInsn(TEMP_COUNTER_SLOT, -1);
-            m.visitVarInsn(ILOAD, TEMP_COUNTER_SLOT);
-            m.visitInsn(DUP_X2);
-            m.visitInsn(DUP_X1);
-            m.visitInsn(AALOAD);
+            m.istore(TEMP_COUNTER_SLOT)
+             .dup2()
+             .iinc(TEMP_COUNTER_SLOT, -1)
+             .iload(TEMP_COUNTER_SLOT)
+             .dup_x2()
+             .dup_x1()
+             .aaload();
             // Stack from -> to
             component.convert(context);
             // Stack: toArray, fromArray, i, toArray, i, to -> toArray, fromArray, i
-            m.visitInsn(AASTORE);
-            m.visitJumpInsn(GOTO, loopStart);
-            m.visitLabel(loopEnd);
+            m.aastore()
+             .goto_(loopStart)
+             .labelBinding(loopEnd);
             // Stack: toArray, fromArray, i -> toArray
-            m.visitInsn(POP2);
+            m.pop2();
         }
         @Override
         Mapping inverse() { return new Array(component.inverse()); }
@@ -207,7 +226,7 @@ abstract class Mapping {
             context.addDependency(toProxy);
             MethodType mt;
             if (JBRApi.EXTENSIONS_ENABLED) {
-                context.writer.visitVarInsn(ALOAD, 0);
+                context.writer.aload(0);
                 mt = MethodType.methodType(to, from, long[].class);
             } else {
                 mt = MethodType.methodType(to, from);
@@ -216,8 +235,7 @@ abstract class Mapping {
         }
         void extractNonNull(AccessContext.Method context) {
             context.addDependency(fromProxy);
-            context.writer.visitMethodInsn(INVOKEINTERFACE,
-                    "com/jetbrains/exported/JBRApiSupport$Proxy", "$getProxyTarget", "()Ljava/lang/Object;", true);
+            context.writer.invokeinterface(PROXY_INTERFACE_DESC, "$getProxyTarget", GET_PROXY_TARGET_DESC);
         }
         @Override
         public boolean equals(Object o) {
@@ -274,18 +292,18 @@ abstract class Mapping {
         }
         @Override
         void convert(AccessContext.Method context) {
-            Label elseBranch = new Label(), afterBranch = new Label();
-            MethodVisitor m = context.writer;
-            m.visitInsn(DUP);
-            m.visitJumpInsn(IFNULL, afterBranch);
-            m.visitInsn(DUP);
-            m.visitTypeInsn(INSTANCEOF, "com/jetbrains/exported/JBRApiSupport$Proxy");
-            m.visitJumpInsn(IFEQ, elseBranch);
+            CodeBuilder m = context.writer;
+            Label elseBranch = m.newLabel(), afterBranch = m.newLabel();
+            m.dup()
+             .ifnull(afterBranch)
+             .dup()
+             .instanceOf(PROXY_INTERFACE_DESC)
+             .ifeq(elseBranch);
             extractNonNull(context);
-            m.visitJumpInsn(GOTO, afterBranch);
-            m.visitLabel(elseBranch);
+            m.goto_(afterBranch)
+             .labelBinding(elseBranch);
             wrapNonNull(context);
-            m.visitLabel(afterBranch);
+            m.labelBinding(afterBranch);
             cast(context); // Explicitly cast to result type after non-null branch
         }
         @Override
@@ -299,6 +317,9 @@ abstract class Mapping {
     }
 
     private static class CustomOptional extends Nesting {
+        private static final ClassDesc OPTIONAL_DESC = desc(Optional.class);
+        private static final MethodTypeDesc OR_ELSE_DESC = desc(Object.class, Object.class);
+        private static final MethodTypeDesc OF_NULLABLE_DESC = desc(Optional.class, Object.class);
         private CustomOptional(Mapping component) {
             super(Optional.class, Optional.class, component);
         }
@@ -308,11 +329,11 @@ abstract class Mapping {
         }
         @Override
         void convertNonNull(AccessContext.Method context) {
-            MethodVisitor m = context.writer;
-            m.visitInsn(ACONST_NULL);
-            m.visitMethodInsn(INVOKEVIRTUAL, "java/util/Optional", "orElse", "(Ljava/lang/Object;)Ljava/lang/Object;", false);
+            CodeBuilder m = context.writer;
+            m.aconst_null()
+             .invokevirtual(OPTIONAL_DESC, "orElse", OR_ELSE_DESC);
             component.convert(context);
-            m.visitMethodInsn(INVOKESTATIC, "java/util/Optional", "ofNullable", "(Ljava/lang/Object;)Ljava/util/Optional;", false);
+            m.invokestatic(OPTIONAL_DESC, "ofNullable", OF_NULLABLE_DESC);
         }
         @Override
         Mapping inverse() { return new CustomOptional(component.inverse()); }
@@ -344,7 +365,7 @@ abstract class Mapping {
                 for (int i = 0;; i++) {
                     if ((i < tvs.length) ^ tpIterator.hasNext()) throw new RuntimeException("Number of type parameters doesn't match");
                     if (i >= tvs.length) break;
-                    tvMappings.put(tvs[i], tpIterator.next());
+                    tvMappings.put(tvs[i], Cast.wrap(tpIterator.next()));
                 }
             }
             initTypeParameters(type.getGenericSuperclass());
@@ -376,23 +397,23 @@ abstract class Mapping {
         }
 
         private Mapping getMapping(Type userType) {
-            if (userType instanceof Class<?> t) {
-                return getMapping(t, null);
-            } else if (userType instanceof GenericArrayType t) {
-                return Array.wrap(getMapping(t.getGenericComponentType()));
-            } else if (userType instanceof ParameterizedType t) {
-                return getMapping(t);
-            } else if (userType instanceof TypeVariable<?> t) {
-                Mapping tvMapping = tvMappings.get(t);
-                if (tvMapping != null) return tvMapping;
-                Type[] bounds = t.getBounds();
-                return getMapping(bounds.length > 0 ? bounds[0] : Object.class);
-            } else if (userType instanceof WildcardType t) {
-                Type[] bounds = t.getUpperBounds();
-                return getMapping(bounds.length > 0 ? bounds[0] : Object.class);
-            } else {
-                throw new RuntimeException("Unknown type kind: " + userType.getClass());
-            }
+            return switch (userType) {
+                case Class<?> t -> getMapping(t, null);
+                case GenericArrayType t -> Array.wrap(getMapping(t.getGenericComponentType()));
+                case ParameterizedType t -> getMapping(t);
+                case TypeVariable<?> t -> {
+                    Mapping tvMapping = tvMappings.get(t);
+                    if (tvMapping != null) yield tvMapping;
+                    Type[] bounds = t.getBounds();
+                    yield getMapping(bounds.length > 0 ? bounds[0] : Object.class);
+                }
+                case WildcardType t -> {
+                    Type[] bounds = t.getUpperBounds();
+                    yield getMapping(bounds.length > 0 ? bounds[0] : Object.class);
+                }
+                case null, default -> throw new RuntimeException("Unknown type kind: " +
+                        (userType == null ? null : userType.getClass()));
+            };
         }
 
         private Mapping getMapping(ParameterizedType userType) {
