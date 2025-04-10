@@ -39,6 +39,14 @@
 #endif
 static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 2, 0);
 
+typedef const char* (*VKPlatform_CheckMissingAPI)(VKEnv* vk);
+typedef VkBool32 (*VKPlatform_CheckPresentationSupport)(VKEnv* vk, VkPhysicalDevice device, uint32_t queueFamily);
+typedef struct {
+    const char*                         surfaceExtensionName;
+    VKPlatform_CheckMissingAPI          checkMissingAPI;
+    VKPlatform_CheckPresentationSupport checkPresentationSupport;
+} VKPlatformData;
+
 typedef struct {
 #define GLOBAL_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
 #include "VKFunctionTable.inl"
@@ -54,9 +62,7 @@ struct VKEnv {
     VkDebugUtilsMessengerEXT debugMessenger;
 #endif
 
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    struct wl_display* waylandDisplay;
-#endif
+    VKPlatformData* platformData;
 
 #define INSTANCE_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
 #define OPTIONAL_INSTANCE_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
