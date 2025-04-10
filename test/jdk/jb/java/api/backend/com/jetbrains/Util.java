@@ -23,7 +23,7 @@
 
 package com.jetbrains;
 
-import com.jetbrains.internal.JBRApi;
+import com.jetbrains.internal.jbrapi.JBRApi;
 
 import java.io.*;
 import java.lang.reflect.Field;
@@ -61,7 +61,7 @@ public class Util {
         var repo = getProxyRepository();
         if (getProxy == null) {
             getProxy = repo.getClass()
-                    .getDeclaredMethod("getProxy", Class.class, Class.forName("com.jetbrains.internal.Mapping").arrayType());
+                    .getDeclaredMethod("getProxy", Class.class, Class.forName("com.jetbrains.internal.jbrapi.Mapping").arrayType());
             getProxy.setAccessible(true);
         }
         return getProxy.invoke(repo, interFace, null);
