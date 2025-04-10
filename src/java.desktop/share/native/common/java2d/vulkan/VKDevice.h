@@ -29,6 +29,7 @@
 #include "sun_java2d_vulkan_VKSwToSurfaceBlit.h"
 #include "VKTexturePool.h"
 #include "VKUtil.h"
+#include "VKFunctionTable.h"
 
 /**
  * Description of a sampled source type bound to a specific format, supported on the device.
@@ -40,7 +41,6 @@ typedef struct {
 
 typedef struct {
     VKSampledSrcType table[1 << sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_BITS];
-    jint caps;
 } VKSampledSrcTypes;
 
 struct VKDevice {
@@ -54,13 +54,13 @@ struct VKDevice {
     VkQueue              queue;
     VKSampledSrcTypes    sampledSrcTypes;
     ARRAY(jint)          supportedFormats;
+    jint caps;
 
     VKAllocator*     allocator;
     VKRenderer*      renderer;
     VKTexturePool*   texturePool;
 
-#define DEVICE_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
-#include "VKFunctionTable.inl"
+    DEVICE_FUNCTION_TABLE(DECL_PFN)
 };
 
 #endif //VKDevice_h_Included
