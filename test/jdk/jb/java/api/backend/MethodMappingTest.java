@@ -23,9 +23,9 @@
 
 /*
  * @test
- * @modules java.base/com.jetbrains.internal:+open
+ * @modules java.base/com.jetbrains.internal.jbrapi:+open
  * @build com.jetbrains.* com.jetbrains.test.api.MethodMapping com.jetbrains.test.jbr.MethodMapping
- * @run main/othervm -Djetbrains.runtime.api.extendRegistry=true MethodMappingTest
+ * @run main/othervm -Djetbrains.runtime.api.verbose=true -Djetbrains.runtime.api.verifyBytecode=true -Djetbrains.runtime.api.extendRegistry=true MethodMappingTest
  */
 
 import java.util.Map;
