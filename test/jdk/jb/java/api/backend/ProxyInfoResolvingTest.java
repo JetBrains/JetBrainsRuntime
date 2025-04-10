@@ -23,9 +23,9 @@
 
 /*
  * @test
- * @modules java.base/com.jetbrains.internal:+open
+ * @modules java.base/com.jetbrains.internal.jbrapi:+open
  * @build com.jetbrains.* com.jetbrains.test.api.ProxyInfoResolving com.jetbrains.test.jbr.ProxyInfoResolving
- * @run main/othervm -Djetbrains.runtime.api.extendRegistry=true ProxyInfoResolvingTest
+ * @run main/othervm -Djetbrains.runtime.api.verbose=true -Djetbrains.runtime.api.verifyBytecode=true -Djetbrains.runtime.api.extendRegistry=true ProxyInfoResolvingTest
  */
 
 import java.util.Map;
