@@ -228,7 +228,8 @@ module java.base {
         jdk.jshell,
         jdk.nio.mapmode,
         jdk.unsupported,
-        jdk.internal.vm.ci;
+        jdk.internal.vm.ci,
+        jdk.accessibility;
     exports jdk.internal.module to
         java.instrument,
         java.management.rmi,
@@ -384,7 +385,8 @@ module java.base {
     exports sun.util.logging to
         java.desktop,
         java.logging,
-        java.prefs;
+        java.prefs,
+        jdk.accessibility;
     exports sun.util.resources to
         jdk.localedata;
 
