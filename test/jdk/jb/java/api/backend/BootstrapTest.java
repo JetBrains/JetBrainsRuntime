@@ -24,8 +24,8 @@
 /*
  * @test
  * @build com.jetbrains.JBR
- * @run main BootstrapTest new
- * @run main BootstrapTest old
+ * @run main/othervm -Djetbrains.runtime.api.verbose=true -Djetbrains.runtime.api.verifyBytecode=true BootstrapTest new
+ * @run main/othervm -Djetbrains.runtime.api.verbose=true -Djetbrains.runtime.api.verifyBytecode=true BootstrapTest old
  */
 
 import com.jetbrains.JBR;
