@@ -38,11 +38,11 @@ import java.util.stream.Stream;
  */
 public class VKGPU {
 
-    @Native public static final int FORMAT_PRESENTABLE_BIT = 0x80000000; // Considered always supported.
-    @Native public static final int SAMPLED_CAP_4BYTE_BIT = 0; // Considered always supported.
-    @Native public static final int SAMPLED_CAP_3BYTE_BIT = 1;
-    @Native public static final int SAMPLED_CAP_565_BIT   = 2;
-    @Native public static final int SAMPLED_CAP_555_BIT   = 4;
+    @Native public static final int CAP_PRESENTABLE_BIT = 0x80000000;
+    @Native public static final int CAP_SAMPLED_4BYTE_BIT = 0; // Considered always supported.
+    @Native public static final int CAP_SAMPLED_3BYTE_BIT = 1;
+    @Native public static final int CAP_SAMPLED_565_BIT   = 2;
+    @Native public static final int CAP_SAMPLED_555_BIT   = 4;
 
     private boolean initialized;
 
@@ -50,7 +50,7 @@ public class VKGPU {
     private final long nativeHandle;
     private final String name;
     private final Type type;
-    private final int sampledCaps;
+    private final int caps;
     private final List<VKGraphicsConfig> offscreenGraphicsConfigs, presentableGraphicsConfigs;
 
     private static native void init(long nativeHandle);
@@ -61,21 +61,21 @@ public class VKGPU {
      * Fresh devices are created in uninitialized state. They can be queried for their properties
      * but cannot be used for rendering until initialized via getNativeHandle().
      */
-    private VKGPU(long nativeHandle, String name, int type, int sampledCaps, int[] supportedFormats) {
+    private VKGPU(long nativeHandle, String name, int type, int caps, int[] supportedFormats) {
         this.nativeHandle = nativeHandle;
         this.name = name;
         this.type = Type.VALUES[type];
-        this.sampledCaps = sampledCaps;
+        this.caps = caps;
         offscreenGraphicsConfigs = new ArrayList<>();
         presentableGraphicsConfigs = new ArrayList<>();
         VKFormat[] allFormats = VKFormat.values();
         for (int supportedFormat : supportedFormats) {
-            int formatValue = supportedFormat & ~FORMAT_PRESENTABLE_BIT;
+            int formatValue = supportedFormat & ~CAP_PRESENTABLE_BIT;
             for (VKFormat format : allFormats) {
                 if (formatValue == format.getValue(Transparency.TRANSLUCENT)) {
                     VKOffscreenGraphicsConfig gc = new VKOffscreenGraphicsConfig(this, format);
                     offscreenGraphicsConfigs.add(gc);
-                    if ((supportedFormat & FORMAT_PRESENTABLE_BIT) != 0) presentableGraphicsConfigs.add(gc);
+                    if ((supportedFormat & caps & CAP_PRESENTABLE_BIT) != 0) presentableGraphicsConfigs.add(gc);
                     break;
                 }
             }
@@ -94,8 +94,8 @@ public class VKGPU {
         return presentableGraphicsConfigs.stream();
     }
 
-    public int getSampledCaps() {
-        return sampledCaps;
+    public int getCaps() {
+        return caps;
     }
 
     /**
