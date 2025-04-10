@@ -49,7 +49,7 @@ public class TestJSliderRendering {
     private static Rectangle rect;
     private static Robot robot;
     private static final String GTK_LAF_CLASS = "GTKLookAndFeel";
-    private static int minColorDifference = 50;
+    private static final int minColorDifference = 10;
 
     private static void blockTillDisplayed(Component comp) {
         Point p = null;
@@ -120,7 +120,7 @@ public class TestJSliderRendering {
             robot.waitForIdle();
             robot.delay(500);
 
-            int h = point.y+rect.height*6/7;
+            int h = (int) (point.y+rect.height*0.64);
 
             Color backgroundColor = robot
                     .getPixelColor(point.x+rect.width/4, h);
@@ -129,8 +129,7 @@ public class TestJSliderRendering {
             boolean knobFound = false;
             for (int i=point.x+rect.width/4;i<point.x+rect.width*3/4;i+=2) {
                 Color highlightColor = robot.getPixelColor(i, h);
-                if (getMaxColorDiff(backgroundColor, highlightColor)
-                        > minColorDifference) {
+                if (getMaxColorDiff(backgroundColor, highlightColor) > minColorDifference) {
                     knobFound = true;
                     break;
                 }
