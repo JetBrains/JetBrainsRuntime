@@ -301,7 +301,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             System.exit(0);
         });
     }
-    
+
     /**
      * If more than this amount milliseconds has passed since the same mouse button click,
      * the next click is considered separate and not part of multi-click event.
@@ -1046,7 +1046,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public void sync() {
-        if(VKEnv.isVulkanEnabled()) {
+        if(VKEnv.isPresentationEnabled()) {
             VKRenderQueue.sync();
         }
         flushImpl();

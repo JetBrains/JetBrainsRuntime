@@ -35,8 +35,9 @@ m4_include([lib-std.m4])
 m4_include([lib-x11.m4])
 m4_include([lib-speechd.m4])
 m4_include([lib-nvdacontrollerclient.m4])
-m4_include([lib-wayland.m4])
 m4_include([lib-dbus.m4])
+m4_include([lib-vulkan.m4])
+m4_include([lib-wayland.m4])
 m4_include([lib-tests.m4])
 
 ################################################################################
@@ -50,22 +51,22 @@ AC_DEFUN_ONCE([LIB_DETERMINE_DEPENDENCIES],
     NEEDS_LIB_X11=false
     NEEDS_LIB_SPEECHD=false
     NEEDS_LIB_WAYLAND=false
-    SUPPORTS_LIB_VULKAN=false
   elif test "x$ENABLE_HEADLESS_ONLY" = xtrue; then
     # All other instances need X11, even if building headless only, libawt still
     # needs X11 headers.
     NEEDS_LIB_X11=true
     NEEDS_LIB_SPEECHD=false
     NEEDS_LIB_WAYLAND=false
-    SUPPORTS_LIB_VULKAN=false
   else
     # All other instances need X11 and wayland, even if building headless only, libawt still
     # needs X11 headers.
     NEEDS_LIB_X11=true
     NEEDS_LIB_SPEECHD=true
     NEEDS_LIB_WAYLAND=true
-    SUPPORTS_LIB_VULKAN=true
   fi
+
+  # Vulkan is not built by default
+  NEEDS_LIB_VULKAN=false
 
   # Check if fontconfig is needed
   if test "x$OPENJDK_TARGET_OS" = xwindows || test "x$OPENJDK_TARGET_OS" = xmacosx; then
@@ -153,6 +154,7 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBRARIES],
   LIB_SETUP_X11
   LIB_SETUP_SPEECHD
   LIB_SETUP_NVDACONTROLLERCLIENT
+  LIB_SETUP_VULKAN
   LIB_SETUP_WAYLAND
   LIB_SETUP_DBUS
   LIB_TESTS_SETUP_GTEST
