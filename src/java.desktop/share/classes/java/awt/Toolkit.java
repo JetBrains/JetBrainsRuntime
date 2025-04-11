@@ -1290,8 +1290,14 @@ public abstract class Toolkit {
     @SuppressWarnings("restricted")
     static void loadLibraries() {
         if (!loaded) {
-            System.loadLibrary("awt");
-            loaded = true;
+            try {
+                System.loadLibrary("awt");
+                loaded = true;
+            } catch (UnsatisfiedLinkError e) {
+                AWTError error = new AWTError("Failed to initialize the window toolkit: " + e.getMessage());
+                error.initCause(e);
+                throw error;
+            }
         }
     }
 
