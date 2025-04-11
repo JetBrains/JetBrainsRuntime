@@ -27,7 +27,6 @@ import jdk.test.lib.dcmd.PidJcmdExecutor;
 import jdk.test.lib.dcmd.MainClassJcmdExecutor;
 import jdk.test.lib.dcmd.FileJcmdExecutor;
 import jdk.test.lib.dcmd.JMXExecutor;
-import nsk.share.jdi.ArgumentHandler;
 
 import org.testng.annotations.Test;
 
@@ -37,6 +36,7 @@ import org.testng.annotations.Test;
  * @summary Test of diagnostic command VM.version (tests all DCMD executors)
  * @library /test/lib
  *          /vmTestbase
+ * @requires vm.flagless
  * @modules java.base/jdk.internal.misc
  *          java.base/jdk.internal.module
  *          java.compiler
