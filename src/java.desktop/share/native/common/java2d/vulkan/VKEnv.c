@@ -27,6 +27,7 @@
 #include <dlfcn.h>
 #include <string.h>
 #include "VKUtil.h"
+#include "VKCapabilityUtil.h"
 #include "VKEnv.h"
 #include "VKDevice.h"
 
@@ -128,70 +129,73 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
         return NULL;
     }
 
+    // Query API version.
     uint32_t apiVersion = 0;
-
     VK_IF_ERROR(table.vkEnumerateInstanceVersion(&apiVersion)) return NULL;
-
     J2dRlsTraceLn3(J2D_TRACE_INFO, "Vulkan: Available (%d.%d.%d)",
                  VK_API_VERSION_MAJOR(apiVersion),
                  VK_API_VERSION_MINOR(apiVersion),
                  VK_API_VERSION_PATCH(apiVersion))
 
-    if (apiVersion < REQUIRED_VULKAN_VERSION) {
-        J2dRlsTraceLn3(J2D_TRACE_ERROR, "Vulkan: Unsupported version. Required at least (%d.%d.%d)",
-                     VK_API_VERSION_MAJOR(REQUIRED_VULKAN_VERSION),
-                     VK_API_VERSION_MINOR(REQUIRED_VULKAN_VERSION),
-                     VK_API_VERSION_PATCH(REQUIRED_VULKAN_VERSION))
+    // Query supported layers.
+    uint32_t layerCount;
+    VK_IF_ERROR(table.vkEnumerateInstanceLayerProperties(&layerCount, NULL)) return NULL;
+    VkLayerProperties allLayers[layerCount];
+    VK_IF_ERROR(table.vkEnumerateInstanceLayerProperties(&layerCount, allLayers)) return NULL;
+
+    // Query supported extensions.
+    uint32_t extensionCount;
+    VK_IF_ERROR(table.vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, NULL)) return NULL;
+    VkExtensionProperties allExtensions[extensionCount];
+    VK_IF_ERROR(table.vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, allExtensions)) return NULL;
+
+    // Log layers and extensions.
+    VKNamedEntry_LogAll("instance layers", allLayers[0].layerName, layerCount, sizeof(VkLayerProperties));
+    VKNamedEntry_LogAll("instance extensions", allExtensions[0].extensionName, extensionCount, sizeof(VkExtensionProperties));
+
+    // Check API version.
+    ARRAY(pchar) errors = NULL;
+    if (apiVersion < REQUIRED_VULKAN_VERSION) ARRAY_PUSH_BACK(errors) = "Unsupported API version";
+
+    // Check layers.
+    VKNamedEntry* layers = NULL;
+#ifdef DEBUG
+    DEF_NAMED_ENTRY(layers, VK_KHR_VALIDATION_LAYER);
+#endif
+    VKNamedEntry_Match(layers, allLayers[0].layerName, layerCount, sizeof(VkLayerProperties));
+    VKNamedEntry_LogFound(layers);
+
+    // Check extensions.
+    pchar PLATFORM_SURFACE_EXTENSION_NAME = platformData != NULL && platformData->surfaceExtensionName != NULL ?
+        platformData->surfaceExtensionName : NULL;
+    VKNamedEntry* extensions = NULL;
+    DEF_NAMED_ENTRY(extensions, PLATFORM_SURFACE_EXTENSION);
+    DEF_NAMED_ENTRY(extensions, VK_KHR_SURFACE_EXTENSION);
+#ifdef DEBUG
+    DEF_NAMED_ENTRY(extensions, VK_EXT_DEBUG_UTILS_EXTENSION);
+#endif
+    VKNamedEntry_Match(extensions, allExtensions[0].extensionName, extensionCount, sizeof(VkExtensionProperties));
+    VKNamedEntry_LogFound(extensions);
+
+    // Check found errors.
+    if (errors != NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "    Vulkan is not supported:")
+        VKCapabilityUtil_LogErrors(J2D_TRACE_ERROR, errors);
+        ARRAY_FREE(errors);
         return NULL;
     }
 
-    uint32_t extensionsCount;
-    // Get the number of extensions and layers
-    VK_IF_ERROR(table.vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, NULL)) return NULL;
-    VkExtensionProperties extensions[extensionsCount];
-    VK_IF_ERROR(table.vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, extensions)) return NULL;
-
-    uint32_t layersCount;
-    VK_IF_ERROR(table.vkEnumerateInstanceLayerProperties(&layersCount, NULL)) return NULL;
-    VkLayerProperties layers[layersCount];
-    VK_IF_ERROR(table.vkEnumerateInstanceLayerProperties(&layersCount, layers)) return NULL;
-
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported instance layers:")
-    for (uint32_t i = 0; i < layersCount; i++) {
-        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "        %s", (char *) layers[i].layerName)
-    }
-
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported instance extensions:")
-    for (uint32_t i = 0; i < extensionsCount; i++) {
-        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "        %s", (char *) extensions[i].extensionName)
-    }
-
-    ARRAY(pchar) enabledLayers     = NULL;
-    ARRAY(pchar) enabledExtensions = NULL;
-    void *pNext = NULL;
-    ARRAY_PUSH_BACK(enabledExtensions) = VK_KHR_SURFACE_EXTENSION_NAME;
-    if (platformData != NULL && platformData->surfaceExtensionName != NULL) {
-        ARRAY_PUSH_BACK(enabledExtensions) = platformData->surfaceExtensionName;
-    }
-
-    // Check required layers & extensions.
-    for (uint32_t i = 0; i < ARRAY_SIZE(enabledExtensions); i++) {
-        int notFound = 1;
-        for (uint32_t j = 0; j < extensionsCount; j++) {
-            if (strcmp(extensions[j].extensionName, enabledExtensions[i]) == 0) {
-                notFound = 0;
-                break;
-            }
-        }
-        if (notFound) {
-            J2dRlsTraceLn1(J2D_TRACE_ERROR, "Vulkan: Required extension %s not found", enabledExtensions[i])
-            ARRAY_FREE(enabledLayers);
-            ARRAY_FREE(enabledExtensions);
-            return NULL;
-        }
+    // Check presentation support.
+    VkBool32 presentationSupported;
+    if (VK_KHR_SURFACE_EXTENSION.found && (PLATFORM_SURFACE_EXTENSION.found || PLATFORM_SURFACE_EXTENSION_NAME == NULL)) {
+        presentationSupported = VK_TRUE;
+    } else {
+        presentationSupported = VK_FALSE;
+        VK_KHR_SURFACE_EXTENSION.found = PLATFORM_SURFACE_EXTENSION.found = NULL;
     }
 
     // Configure validation
+    void *pNext = NULL;
 #ifdef DEBUG
     VkValidationFeatureEnableEXT enables[] = {
 //            VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT,
@@ -200,50 +204,31 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
 //            VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT,
             VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT
     };
-
-    VkValidationFeaturesEXT features = {};
-    features.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-    features.enabledValidationFeatureCount = SARRAY_COUNT_OF(enables);
-    features.pEnabledValidationFeatures = enables;
-
-    // Includes the validation features into the instance creation process
-
-    int foundDebugLayer = 0;
-    for (uint32_t i = 0; i < layersCount; i++) {
-        if (strcmp((char *) layers[i].layerName, "VK_LAYER_KHRONOS_validation") == 0) {
-            foundDebugLayer = 1;
-            break;
-        }
-        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "        %s", (char *) layers[i].layerName)
-    }
-    int foundDebugExt = 0;
-    for (uint32_t i = 0; i < extensionsCount; i++) {
-        if (strcmp((char *) extensions[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
-            foundDebugExt = 1;
-            break;
-        }
-    }
-
-    if (foundDebugLayer && foundDebugExt) {
-        ARRAY_PUSH_BACK(enabledLayers) = "VK_LAYER_KHRONOS_validation";
-        ARRAY_PUSH_BACK(enabledExtensions) = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+    VkValidationFeaturesEXT features = {
+        .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
+        .enabledValidationFeatureCount = SARRAY_COUNT_OF(enables),
+        .pEnabledValidationFeatures = enables
+    };
+    if (VK_KHR_VALIDATION_LAYER.found && VK_EXT_DEBUG_UTILS_EXTENSION.found) {
         pNext = &features;
     } else {
-        J2dRlsTraceLn2(J2D_TRACE_WARNING, "Vulkan: %s and %s are not supported",
-                   "VK_LAYER_KHRONOS_validation", VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+        VK_KHR_VALIDATION_LAYER.found = VK_EXT_DEBUG_UTILS_EXTENSION.found = NULL;
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "    Vulkan validation is not supported")
     }
 #endif
 
     VKEnv* vk = malloc(sizeof(VKEnv));
     if (vk == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VKEnv")
-        ARRAY_FREE(enabledLayers);
-        ARRAY_FREE(enabledExtensions);
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "    Cannot allocate VKEnv")
         return NULL;
     }
     *vk = (VKEnv) {
-        .platformData = platformData
+        .platformData = platformData,
+        .presentationSupported = presentationSupported
     };
+
+    ARRAY(pchar) enabledLayers = VKNamedEntry_CollectNames(layers);
+    ARRAY(pchar) enabledExtensions = VKNamedEntry_CollectNames(extensions);
 
     VkApplicationInfo applicationInfo = {
             .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -290,7 +275,7 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
 
     // Create debug messenger
 #if defined(DEBUG)
-    if (foundDebugLayer && foundDebugExt && pNext) {
+    if (VK_KHR_VALIDATION_LAYER.found && VK_EXT_DEBUG_UTILS_EXTENSION.found && pNext) {
         VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfo = {
                 .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
                 .flags =           0,
@@ -316,10 +301,10 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice);
 static VkBool32 VKEnv_FindDevices(VKEnv* vk) {
     uint32_t count;
     VK_IF_ERROR(vk->vkEnumeratePhysicalDevices(vk->instance, &count, NULL)) return JNI_FALSE;
-    J2dRlsTraceLn1(J2D_TRACE_INFO, "Vulkan: Found %d physical devices:", count)
     VkPhysicalDevice physicalDevices[count];
     VK_IF_ERROR(vk->vkEnumeratePhysicalDevices(vk->instance, &count, physicalDevices)) return JNI_FALSE;
     ARRAY_ENSURE_CAPACITY(vk->devices, count);
+    J2dRlsTraceLn1(J2D_TRACE_INFO, "Vulkan: Found %d physical devices:", count)
     for (uint32_t i = 0; i < count; i++) {
         VKDevice_CheckAndAdd(vk, physicalDevices[i]);
     }

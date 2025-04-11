@@ -63,6 +63,7 @@ struct VKEnv {
 #endif
 
     VKPlatformData* platformData;
+    VkBool32 presentationSupported;
 
 #define INSTANCE_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
 #define OPTIONAL_INSTANCE_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
