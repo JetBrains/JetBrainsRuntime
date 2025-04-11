@@ -44,22 +44,24 @@ ENTRY(__VA_ARGS__, vkGetPhysicalDeviceMemoryProperties); \
 ENTRY(__VA_ARGS__, vkGetPhysicalDeviceFeatures2); \
 ENTRY(__VA_ARGS__, vkGetPhysicalDeviceProperties2); \
 ENTRY(__VA_ARGS__, vkGetPhysicalDeviceQueueFamilyProperties); \
-ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfaceCapabilitiesKHR); \
-ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfaceFormatsKHR); \
 ENTRY(__VA_ARGS__, vkGetPhysicalDeviceFormatProperties); \
-ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfacePresentModesKHR); \
 ENTRY(__VA_ARGS__, vkEnumerateDeviceLayerProperties); \
 ENTRY(__VA_ARGS__, vkEnumerateDeviceExtensionProperties); \
 ENTRY(__VA_ARGS__, vkCreateDevice); \
-ENTRY(__VA_ARGS__, vkDestroySurfaceKHR); \
 ENTRY(__VA_ARGS__, vkGetDeviceProcAddr); \
+
+#define SURFACE_INSTANCE_FUNCTION_TABLE(ENTRY, ...) \
+ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfaceCapabilitiesKHR); \
+ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfaceFormatsKHR); \
+ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfacePresentModesKHR); \
+ENTRY(__VA_ARGS__, vkDestroySurfaceKHR); \
 
 #if defined(DEBUG)
 #define DEBUG_INSTANCE_FUNCTION_TABLE(ENTRY, ...) \
 ENTRY(__VA_ARGS__, vkCreateDebugUtilsMessengerEXT); \
 ENTRY(__VA_ARGS__, vkDestroyDebugUtilsMessengerEXT);
 #else
-#define DEBUG_INSTANCE_FUNCTION_TABLE(ENTRY)
+#define DEBUG_INSTANCE_FUNCTION_TABLE(ENTRY, ...)
 #endif
 
 // Device functions.
@@ -71,9 +73,6 @@ ENTRY(__VA_ARGS__, vkCreatePipelineLayout); \
 ENTRY(__VA_ARGS__, vkDestroyPipelineLayout); \
 ENTRY(__VA_ARGS__, vkCreateGraphicsPipelines); \
 ENTRY(__VA_ARGS__, vkDestroyPipeline); \
-ENTRY(__VA_ARGS__, vkCreateSwapchainKHR); \
-ENTRY(__VA_ARGS__, vkDestroySwapchainKHR); \
-ENTRY(__VA_ARGS__, vkGetSwapchainImagesKHR); \
 ENTRY(__VA_ARGS__, vkCreateImageView); \
 ENTRY(__VA_ARGS__, vkCreateFramebuffer); \
 ENTRY(__VA_ARGS__, vkCreateCommandPool); \
@@ -88,11 +87,9 @@ ENTRY(__VA_ARGS__, vkCreateFence); \
 ENTRY(__VA_ARGS__, vkGetDeviceQueue); \
 ENTRY(__VA_ARGS__, vkWaitForFences); \
 ENTRY(__VA_ARGS__, vkResetFences); \
-ENTRY(__VA_ARGS__, vkAcquireNextImageKHR); \
 ENTRY(__VA_ARGS__, vkResetCommandBuffer); \
 ENTRY(__VA_ARGS__, vkQueueSubmit); \
 ENTRY(__VA_ARGS__, vkQueueWaitIdle); \
-ENTRY(__VA_ARGS__, vkQueuePresentKHR); \
 ENTRY(__VA_ARGS__, vkBeginCommandBuffer); \
 ENTRY(__VA_ARGS__, vkCmdBlitImage); \
 ENTRY(__VA_ARGS__, vkCmdPipelineBarrier); \
@@ -140,6 +137,13 @@ ENTRY(__VA_ARGS__, vkCmdPushConstants); \
 ENTRY(__VA_ARGS__, vkCmdCopyBufferToImage); \
 ENTRY(__VA_ARGS__, vkCmdCopyImageToBuffer); \
 ENTRY(__VA_ARGS__, vkCmdCopyBuffer); \
+
+#define SWAPCHAIN_DEVICE_FUNCTION_TABLE(ENTRY, ...) \
+ENTRY(__VA_ARGS__, vkCreateSwapchainKHR); \
+ENTRY(__VA_ARGS__, vkDestroySwapchainKHR); \
+ENTRY(__VA_ARGS__, vkGetSwapchainImagesKHR); \
+ENTRY(__VA_ARGS__, vkAcquireNextImageKHR); \
+ENTRY(__VA_ARGS__, vkQueuePresentKHR); \
 
 // Utilities for working with function pointers.
 
