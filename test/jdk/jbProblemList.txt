@@ -139,6 +139,8 @@ java/awt/FileDialog/8003399/bug8003399.java JBR-6930 windows-all
 java/awt/FileDialog/8017487/bug8017487.java JBR-8144 windows-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
+java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
+java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java JBR-5178 windows-all
 java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java JBR-5809 linux-all
@@ -146,8 +148,7 @@ java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayout
 java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
 java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java JBR-7311 linux-x86
-java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
-java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
+java/awt/Focus/LabelScrollBarFocus.java JBR-8027 linux-6.8.0-1026-aws
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 8169110 linux-all
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java JBR-5178 windows-all
 java/awt/Focus/VetoableChangeListenerLoopTest.java JBR-5785 linux-all
@@ -1420,6 +1421,7 @@ jb/javax/swing/JComboBox/ComboBoxTransparentTittleBarTest.java JBR-5432,JBR-4875
 jb/javax/swing/JDialog/JDialog186.java JBR-5210 windows-all
 jb/javax/swing/JDialog/JDialog392.java JBR-4941 macosx-all,linux-all
 jb/javax/swing/JDialog/JDialog705.java JBR-4934 generic-all
+jb/javax/swing/JDialog/JDialog1054.java JBR-5004 macosx-x64,windows-x64
 jb/javax/swing/JEditorPane/ZeroMargin.java JBR-2256 generic-all
 jb/javax/swing/JPopupMenu/JPopupMenuOutOfWindowTest.java JBR-6682 windows-all,linux-all
 
