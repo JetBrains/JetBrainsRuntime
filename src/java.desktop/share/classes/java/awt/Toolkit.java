@@ -1378,14 +1378,20 @@ public abstract class Toolkit {
     @SuppressWarnings("removal")
     static void loadLibraries() {
         if (!loaded) {
-            java.security.AccessController.doPrivileged(
-                new java.security.PrivilegedAction<Void>() {
-                    public Void run() {
-                        System.loadLibrary("awt");
-                        return null;
-                    }
-                });
-            loaded = true;
+            try {
+                java.security.AccessController.doPrivileged(
+                    new java.security.PrivilegedAction<Void>() {
+                        public Void run() {
+                            System.loadLibrary("awt");
+                            return null;
+                        }
+                    });
+                loaded = true;
+            } catch (UnsatisfiedLinkError e) {
+                AWTError error = new AWTError("Failed to initialize the window toolkit: " + e.getMessage());
+                error.initCause(e);
+                throw error;
+            }
         }
     }
 
