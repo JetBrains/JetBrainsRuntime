@@ -546,7 +546,7 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
     }
 
     private static boolean hasCap(VKSurfaceData dst, int cap) {
-        return (dst.getGraphicsConfig().getGPU().getCaps() & cap) != 0;
+        return dst.getGraphicsConfig().getGPU().hasCap(cap);
     }
 
     /**
