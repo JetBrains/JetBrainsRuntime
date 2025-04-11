@@ -100,7 +100,7 @@ public class ServiceDlgPageRangeTest {
         } catch (InterruptedException e) {
             if (!testPassed && testGeneratedInterrupt) {
                 throw new RuntimeException("PageRanges option is not disabled "
-                        + "for for Non serv-formatted flvrs");
+                        + "for Non serv-formatted flvrs");
             }
         }
         if (!testGeneratedInterrupt) {
