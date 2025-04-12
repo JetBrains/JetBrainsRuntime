@@ -1526,17 +1526,17 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne
         }
       } else {
         FieldInfo internal_field = holder->field(fd->index());
-        InstanceKlass* old_klass = InstanceKlass::cast(holder->old_version());
-        int java_fields_count = old_klass->java_fields_count();
+        InstanceKlass* maybe_old_klass = holder->is_redefining() ? InstanceKlass::cast(holder->old_version()) : holder;
+        int java_fields_count = maybe_old_klass->java_fields_count();
         int num_injected;
-        const InjectedField* const injected = JavaClasses::get_injected(old_klass->name(), &num_injected);
+        const InjectedField* const injected = JavaClasses::get_injected(maybe_old_klass->name(), &num_injected);
         for (int i = java_fields_count; i < java_fields_count+num_injected; i++) {
-          FieldInfo old_field = old_klass->field(i);
-          if (old_field.field_flags().is_injected() &&
+          FieldInfo maybe_old_field = maybe_old_klass->field(i);
+          if (maybe_old_field.field_flags().is_injected() &&
               internal_field.field_flags().is_injected() &&
-              old_field.lookup_symbol(old_field.name_index()) == internal_field.lookup_symbol(internal_field.name_index())) {
-            copy(old_field.offset(), type2aelembytes(Signature::basic_type(internal_field.signature_injected_dcevm())));
-            if (old_field.offset() < internal_field.offset()) {
+              maybe_old_field.lookup_symbol(maybe_old_field.name_index()) == internal_field.lookup_symbol(internal_field.name_index())) {
+            copy(maybe_old_field.offset(), type2aelembytes(Signature::basic_type(internal_field.signature_injected_dcevm())));
+            if (maybe_old_field.offset() < internal_field.offset()) {
               _copy_backwards = true;
             }
             break;
