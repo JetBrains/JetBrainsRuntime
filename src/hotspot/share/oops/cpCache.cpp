@@ -888,6 +888,11 @@ void ConstantPoolCache::clear_entries() {
   if (_resolved_method_entries != nullptr) {
     for (int i = 0; i < _resolved_method_entries->length(); i++) {
       ResolvedMethodEntry *method_entry = resolved_method_entry_at(i);
+      Method* old_method = method_entry->method();
+      if (old_method != nullptr && old_method->is_old() && old_method->is_deleted()) {
+        method_entry->reset_entry();
+        continue;
+      }
       method_entry->clear_entry();
     }
   }
