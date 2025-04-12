@@ -121,21 +121,16 @@ jbr_name_postfix=""
 
 case "$bundle_type" in
   "jcef")
-    do_reset_changes=1
     jbr_name_postfix="_${bundle_type}"
-    jbrsdk_name_postfix="_${bundle_type}"
     do_maketest=1
     ;;
   "nomod" | "")
     bundle_type=""
-    jbrsdk_name_postfix="_${bundle_type}"
     ;;
   "nomodft" | "")
     jbr_name_postfix="_ft"
-    jbrsdk_name_postfix="_ft"
     ;;
   "fd")
-    do_reset_changes=1
     jbr_name_postfix="_${bundle_type}"
     WITH_DEBUG_LEVEL="--with-debug-level=fastdebug"
     RELEASE_NAME=linux-x86_64-server-fastdebug
