@@ -1218,6 +1218,7 @@ jdk_swing_wayland= \
     -javax/swing/JPopupMenu/4966112/bug4966112.java \
     -javax/swing/JPopupMenu/6415145/bug6415145.java \
     -javax/swing/JPopupMenu/6495920/bug6495920.java \
+    -javax/swing/JPopupMenu/7156657/bug7156657.java \
     -javax/swing/JPopupMenu/8147521/PopupMenuTest.java \
     -javax/swing/JPopupMenu/8173739/TestPopupMenu.java \
     -javax/swing/JMenuItem/JActionCommandTest.java \
