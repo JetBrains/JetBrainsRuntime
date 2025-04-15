@@ -227,15 +227,15 @@ public class CompositeFont extends Font2D {
     }
 
     int decodeSlot(int glyphCode) {
-        return glyphCode & slotMask;
+        return glyphCode == CharToGlyphMapper.INVISIBLE_GLYPH_ID ? 0 : glyphCode & slotMask;
     }
 
     int decodeGlyphCode(int glyphCode) {
-        return glyphCode >>> slotShift;
+        return glyphCode == CharToGlyphMapper.INVISIBLE_GLYPH_ID ? glyphCode : glyphCode >>> slotShift;
     }
 
     int compositeGlyphCode(int slot, int glyphCode) {
-        return (glyphCode << slotShift) | (slot & slotMask);
+        return glyphCode == CharToGlyphMapper.INVISIBLE_GLYPH_ID ? glyphCode : (glyphCode << slotShift) | (slot & slotMask);
     }
 
     /* This is used for deferred initialisation, so that the components of
