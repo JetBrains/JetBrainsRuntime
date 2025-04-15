@@ -923,13 +923,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return null;
     }
 
-    @Override
-    public synchronized void addPropertyChangeListener(String name, PropertyChangeListener pcl) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.addPropertyChangeListener()");
-        }
-    }
-
     /**
      * @see SunToolkit#needsXEmbedImpl
      */
