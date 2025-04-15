@@ -50,12 +50,14 @@ public class CCharToGlyphMapper extends CharToGlyphMapper {
 
     public boolean canDisplay(char ch) {
         int glyph = charToGlyph(ch, false);
-        return glyph != missingGlyph;
+        // Ignore "hot-substituted" unicodes (placeholder glyphs equal to the negative unicode).
+        return glyph != missingGlyph && glyph != -(int)ch;
     }
 
     public boolean canDisplay(int cp) {
         int glyph = charToGlyph(cp, false);
-        return glyph != missingGlyph;
+        // Ignore "hot-substituted" unicodes (placeholder glyphs equal to the negative unicode).
+        return glyph != missingGlyph && glyph != -cp;
     }
 
     public synchronized boolean charsToGlyphsNS(int count,
