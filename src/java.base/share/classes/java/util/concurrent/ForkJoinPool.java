@@ -2149,7 +2149,7 @@ public class ForkJoinPool extends AbstractExecutorService {
                         if (deadline != 0L && TIMEOUT_SLOP >
                             deadline - System.currentTimeMillis()) {
                             long sp = w.stackPred & LMASK, c = ctl;
-                            long nc = sp | (UMASK & (c - TC_UNIT));
+                            long nc = sp | (c & RC_MASK) | ((c - TC_UNIT) & TC_MASK);
                             if (((int)c & SMASK) == (active & SMASK) &&
                                 compareAndSetCtl(c, nc)) {
                                 w.source = DEREGISTERED;
