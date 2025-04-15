@@ -1760,7 +1760,7 @@ public class ForkJoinPool extends AbstractExecutorService {
             int sp = (int)c & ~INACTIVE;
             if ((sp & SMASK) == (cfg & SMASK) &&
                 compareAndSetCtl(c, ((pred & SP_MASK) |
-                                     (UC_MASK & (c - TC_UNIT))))) {
+                                     (c & RC_MASK) | ((c - TC_UNIT) & TC_MASK)))) {
                 w.config = cfg;  // add sentinel for deregisterWorker
                 w.phase = sp;
                 return true;
