@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,6 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
     public static final int BLOCKSZ = 256;
     public static final int MAXUNICODE = NBLOCKS*BLOCKSZ;
 
-
     CompositeFont font;
     CharToGlyphMapper[] slotMappers;
     int[][] glyphMaps;
@@ -67,7 +66,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
         }
     }
 
-    private int getCachedGlyphCode(int unicode) {
+    int getCachedGlyphCode(int unicode) {
         if (unicode >= MAXUNICODE) {
             return UNINITIALIZED_GLYPH;
         }
@@ -80,7 +79,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
 
     void setCachedGlyphCode(int unicode, int glyphCode) {
         if (unicode >= MAXUNICODE) {
-            return;
+            return; // don't cache surrogates
         }
         int index0 = unicode >> 8;
         if (glyphMaps[index0] == null) {
@@ -101,16 +100,18 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
         return mapper;
     }
 
-    protected int convertToGlyph(int unicode) {
-        return convertToGlyph(unicode, 0);
-    }
-
-    protected int convertToGlyph(int unicode, int variationSelector) {
-
+    int getGlyph(int unicode, int variationSelector, boolean raw) {
+        if (!raw && FontUtilities.isDefaultIgnorable(unicode)) {
+            return INVISIBLE_GLYPH_ID;
+        }
+        int glyphCode;
+        if (variationSelector == 0 && (glyphCode = getCachedGlyphCode(unicode)) != UNINITIALIZED_GLYPH) {
+            return glyphCode;
+        }
         for (int slot = 0; slot < font.numSlots; slot++) {
             if (!hasExcludes || !font.isExcludedChar(slot, unicode)) {
                 CharToGlyphMapper mapper = getSlotMapper(slot);
-                int glyphCode = mapper.charToVariationGlyph(unicode, variationSelector);
+                glyphCode = mapper.charToVariationGlyphRaw(unicode, variationSelector);
                 if (glyphCode != mapper.getMissingGlyphCode()) {
                     glyphCode = font.compositeGlyphCode(slot, glyphCode);
                     if (variationSelector == 0) {
@@ -120,18 +121,21 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
                 }
             }
         }
+        if (variationSelector != 0) {
+            // Fallback to base glyph if variation was not found.
+            return getGlyph(unicode, 0, raw);
+        }
         return missingGlyph;
     }
 
     @Override
+    public int charToVariationGlyphRaw(int unicode, int variationSelector) {
+        return getGlyph(unicode, variationSelector, true);
+    }
+
+    @Override
     public int charToVariationGlyph(int unicode, int variationSelector) {
-        if (variationSelector == 0) {
-            return charToGlyph(unicode);
-        } else {
-            int glyph = convertToGlyph(unicode, variationSelector);
-            // Fallback to base glyph if variation was not found.
-            return glyph != missingGlyph ? glyph : charToGlyph(unicode);
-        }
+        return getGlyph(unicode, variationSelector, false);
     }
 
     public int getNumGlyphs() {
@@ -156,12 +160,13 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
         return numGlyphs;
     }
 
-    public int charToGlyph(int unicode) {
+    public int charToGlyphRaw(int unicode) {
+        int glyphCode = getGlyph(unicode, 0, true);
+        return glyphCode;
+    }
 
-        int glyphCode = getCachedGlyphCode(unicode);
-        if (glyphCode == UNINITIALIZED_GLYPH) {
-            glyphCode = convertToGlyph(unicode);
-        }
+    public int charToGlyph(int unicode) {
+        int glyphCode = getGlyph(unicode, 0, false);
         return glyphCode;
     }
 
@@ -177,11 +182,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
     }
 
     public int charToGlyph(char unicode) {
-
-        int glyphCode  = getCachedGlyphCode(unicode);
-        if (glyphCode == UNINITIALIZED_GLYPH) {
-            glyphCode = convertToGlyph(unicode);
-        }
+        int glyphCode = getGlyph(unicode, 0, false);
         return glyphCode;
     }
 
