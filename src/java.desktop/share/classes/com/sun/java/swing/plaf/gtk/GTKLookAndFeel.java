@@ -290,12 +290,19 @@ public class GTKLookAndFeel extends SynthLookAndFeel {
     private void installPropertyChangeListeners() {
         if(!pclInstalled) {
             Toolkit kit = Toolkit.getDefaultToolkit();
-            WeakPCL pcl = new WeakPCL(this, kit, "gnome.Net/ThemeName");
-            kit.addPropertyChangeListener(pcl.getKey(), pcl);
-            pcl = new WeakPCL(this, kit, "gnome.Gtk/FontName");
-            kit.addPropertyChangeListener(pcl.getKey(), pcl);
-            pcl = new WeakPCL(this, kit, "gnome.Xft/DPI");
-            kit.addPropertyChangeListener(pcl.getKey(), pcl);
+            WeakPCL pcl;
+            if (isWayland) {
+                pcl = new WeakPCL(this, kit, "awt.os.theme.isDark");
+                kit.addPropertyChangeListener(pcl.getKey(), pcl);
+            } else {
+                // These properties are only available from the X server
+                pcl = new WeakPCL(this, kit, "gnome.Net/ThemeName");
+                kit.addPropertyChangeListener(pcl.getKey(), pcl);
+                pcl = new WeakPCL(this, kit, "gnome.Gtk/FontName");
+                kit.addPropertyChangeListener(pcl.getKey(), pcl);
+                pcl = new WeakPCL(this, kit, "gnome.Xft/DPI");
+                kit.addPropertyChangeListener(pcl.getKey(), pcl);
+            }
 
             flushUnreferenced();
             pclInstalled = true;
@@ -1541,7 +1548,7 @@ public class GTKLookAndFeel extends SynthLookAndFeel {
                          * the UIDefaults reads them and this event causes
                          * those to be reinitialised.
                          */
-                        if ("gnome.Net/ThemeName".equals(name)) {
+                        if ("gnome.Net/ThemeName".equals(name) || "awt.os.theme.isDark".equals(name)) {
                             GTKEngine.INSTANCE.themeChanged();
                             GTKIconFactory.resetIcons();
                         }
