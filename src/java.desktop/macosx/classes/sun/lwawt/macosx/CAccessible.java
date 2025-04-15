@@ -272,7 +272,11 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     // Notify macOS Accessibility Zoom to move focus to the new caret location.
                     execute(ptr -> updateZoomCaretFocus(ptr));
                 } else if (name.equals(ACCESSIBLE_TEXT_PROPERTY)) {
-                    execute(ptr -> valueChanged(ptr));
+                    AccessibleContext thisAC = accessible.getAccessibleContext();
+                    Accessible parentAccessible = thisAC.getAccessibleParent();
+                    if (!(parentAccessible instanceof JSpinner.NumberEditor)) {
+                        execute(ptr -> valueChanged(ptr));
+                    }
                 } else if (name.equals(ACCESSIBLE_SELECTION_PROPERTY)) {
                     if (timer != null) {
                         timer.stop();
