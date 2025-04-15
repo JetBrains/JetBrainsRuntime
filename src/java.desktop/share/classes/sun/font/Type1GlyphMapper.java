@@ -90,10 +90,21 @@ public final class Type1GlyphMapper extends CharToGlyphMapper {
     }
 
     public int charToGlyph(int ch) {
+        int glyph = charToGlyph(ch, false);
+        return glyph;
+    }
+
+    public int charToGlyphRaw(int ch) {
+        int glyph = charToGlyph(ch, true);
+        return glyph;
+    }
+
+    private int charToGlyph(int ch, boolean raw) {
         if (ch < 0 || ch > 0xffff) {
             return missingGlyph;
         } else {
-            if (FontUtilities.isDefaultIgnorable(ch) || isIgnorableWhitespace(ch)) {
+            if (!raw && (FontUtilities.isDefaultIgnorable(ch) ||
+                         isIgnorableWhitespace(ch))) {
                 return INVISIBLE_GLYPH_ID;
             }
             try {
