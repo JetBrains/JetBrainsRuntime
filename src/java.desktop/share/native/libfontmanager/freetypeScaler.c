@@ -730,7 +730,9 @@ Java_sun_font_FreetypeFontScaler_createScalerContextNative(
         return (jlong) 0;
     }
     (*env)->GetDoubleArrayRegion(env, matrix, 0, 4, dmat);
-    ptsz = euclidianDistance(dmat[0], dmat[1]); //i.e. x-size
+    double ptszx = euclidianDistance(dmat[0], dmat[1]);
+    double ptszy = euclidianDistance(dmat[2], dmat[3]);
+    ptsz = ptszx < ptszy ? ptszx : ptszy;
     if (ptsz < 1.0) {
         //text can not be smaller than 1 point
         ptsz = 1.0;
