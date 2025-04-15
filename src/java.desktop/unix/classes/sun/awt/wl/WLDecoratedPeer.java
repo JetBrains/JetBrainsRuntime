@@ -154,4 +154,10 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
             return super.cursorAt(x, y);
         }
     }
+
+    @Override
+    public void dispose() {
+        decoration.dispose();
+        super.dispose();
+    }
 }
