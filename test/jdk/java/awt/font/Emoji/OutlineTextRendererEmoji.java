@@ -26,6 +26,8 @@
  * @key headful
  * @bug 8269806
  * @summary Checks that emoji rendered via glyph cache and bypassing it look similar.
+ * @run main/othervm -Dsun.font.layout.ffm=true OutlineTextRendererEmoji
+ * @run main/othervm -Dsun.font.layout.ffm=false OutlineTextRendererEmoji
  */
 
 import javax.imageio.ImageIO;
