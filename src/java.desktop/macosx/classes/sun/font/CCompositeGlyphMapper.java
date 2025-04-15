@@ -33,30 +33,23 @@ public final class CCompositeGlyphMapper extends CompositeGlyphMapper {
     }
 
     @Override
-    public int charToVariationGlyph(int unicode, int variationSelector) {
-        if (variationSelector == 0) {
-            return charToGlyph(unicode);
-        } else {
-            int glyph = convertToGlyph(unicode, variationSelector);
-            if (glyph == missingGlyph) glyph = charToGlyph(unicode);
-            return glyph;
+    int getGlyph(int unicode, int variationSelector, boolean raw) {
+        if (!raw && FontUtilities.isDefaultIgnorable(unicode)) {
+            return INVISIBLE_GLYPH_ID;
         }
-    }
-
-    @Override
-    protected int convertToGlyph(int unicode) {
-        int glyph = convertToGlyph(unicode, 0);
-        setCachedGlyphCode(unicode, glyph);
-        return glyph;
-    }
-
-    @Override
-    protected int convertToGlyph(int unicode, int variationSelector) {
+        int glyphCode;
+        if (variationSelector == 0 && (glyphCode = getCachedGlyphCode(unicode)) != UNINITIALIZED_GLYPH) {
+            return glyphCode;
+        }
         CCompositeFont compositeFont = (CCompositeFont) font;
         CFont mainFont = (CFont) font.getSlotFont(0);
         String[] fallbackFontInfo = new String[2];
-        int glyphCode = nativeCodePointToGlyph(mainFont.getNativeFontPtr(), unicode, variationSelector, fallbackFontInfo);
+        glyphCode = nativeCodePointToGlyph(mainFont.getNativeFontPtr(), unicode, variationSelector, fallbackFontInfo);
         if (glyphCode == missingGlyph) {
+            if (variationSelector != 0) {
+                // Fallback to base glyph if variation was not found.
+                return getGlyph(unicode, 0, raw);
+            }
             return missingGlyph;
         }
         String fallbackFontName = fallbackFontInfo[0];

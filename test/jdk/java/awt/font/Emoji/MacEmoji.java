@@ -29,7 +29,8 @@
  *          representation when rendered to different types of images,
  *          including an accelerated (OpenGL or Metal) surface.
  * @requires (os.family == "mac")
- * @run main/othervm -Dsun.java2d.uiScale=1 MacEmoji
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.font.layout.ffm=true MacEmoji
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.font.layout.ffm=false MacEmoji
  */
 
 import java.awt.*;
