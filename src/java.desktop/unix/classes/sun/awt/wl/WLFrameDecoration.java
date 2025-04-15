@@ -26,12 +26,28 @@ package sun.awt.wl;
 
 import sun.swing.SwingUtilities2;
 
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.AlphaComposite;
+import java.awt.Color;
+import java.awt.Composite;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.Toolkit;
+import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.function.Supplier;
 
-public class WLFrameDecoration {
+public class WLFrameDecoration implements PropertyChangeListener {
     private static final int HEIGHT = 30;
     private static final int BUTTON_ICON_SIZE = 4;
     private static final int BUTTON_CIRCLE_SIZE = 10;
@@ -53,7 +69,11 @@ public class WLFrameDecoration {
     private static final int SIGNIFICANT_DRAG_DISTANCE = 4;
     private static final int RESIZE_EDGE_THICKNESS = 5;
 
-    private static volatile boolean isDarkTheme = false;
+    private static volatile boolean isDarkTheme;
+    static {
+        Object isDarkThemeProp = Toolkit.getDefaultToolkit().getDesktopProperty("awt.os.theme.isDark");
+        isDarkTheme = isDarkThemeProp instanceof Boolean ? (Boolean) isDarkThemeProp : false;
+    }
 
     private static final int XDG_TOPLEVEL_RESIZE_EDGE_TOP = 1;
     private static final int XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM = 2;
@@ -99,6 +119,7 @@ public class WLFrameDecoration {
             closeButton = new ButtonState(this::getCloseButtonCenter, peer::postWindowClosing);
             maximizeButton = showMaximize ? new ButtonState(this::getMaximizeButtonCenter, this::toggleMaximizedState) : null;
             minimizeButton = showMinimize ? new ButtonState(this::getMinimizeButtonCenter, this::minimizeWindow) : null;
+            WLToolkit.getDefaultToolkit().addPropertyChangeListener("awt.os.theme.isDark", this);
         }
     }
 
@@ -157,11 +178,6 @@ public class WLFrameDecoration {
         return isDarkTheme;
     }
 
-    private static void updateTheme() {
-        Boolean isDark = (Boolean) Toolkit.getDefaultToolkit().getDesktopProperty("awt.os.theme.isDark");
-        isDarkTheme = isDark != null && isDark;
-    }
-
     private static Color getBackgroundColor(boolean isActive) {
         if (isActive) {
             return isDarkTheme() ? ACTIVE_BACKGROUND_DARK : ACTIVE_BACKGROUND;
@@ -198,7 +214,6 @@ public class WLFrameDecoration {
         if (width <= 0 || height <= 0) return;
         Graphics2D g2d = (Graphics2D) g.create(0, 0, width, HEIGHT);
         try {
-            updateTheme();
             doPaint(g2d);
         } finally {
             g2d.dispose();
@@ -446,6 +461,21 @@ public class WLFrameDecoration {
             return Cursor.getDefaultCursor();
         }
         return null;
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if ("awt.os.theme.isDark".equals(evt.getPropertyName())) {
+            Object newValue = evt.getNewValue();
+            if (newValue != null) {
+                isDarkTheme = (Boolean) newValue;
+                peer.notifyClientDecorationsChanged();
+            }
+        }
+    }
+
+    public void dispose() {
+        WLToolkit.getDefaultToolkit().removePropertyChangeListener("awt.os.theme.isDark", this);
     }
 
     private static class ButtonState {
