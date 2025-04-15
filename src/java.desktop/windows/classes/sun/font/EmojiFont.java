@@ -252,8 +252,10 @@ public class EmojiFont extends Font2D {
             return EmojiFont.this.getNumGlyphs();
         }
 
-        @Override
-        public int charToVariationGlyph(int unicode, int variationSelector) {
+        private int getGlyph(int unicode, int variationSelector, boolean raw) {
+            if (!raw && FontUtilities.isDefaultIgnorable(unicode)) {
+                return INVISIBLE_GLYPH_ID;
+            }
             boolean slot = getSlot(unicode, variationSelector);
             CharToGlyphMapper mapper = slot ? emoji : symbol;
             if (mapper != null) {
@@ -274,12 +276,27 @@ public class EmojiFont extends Font2D {
 
         @Override
         public int charToGlyph(int unicode) {
-            return charToVariationGlyph(unicode, 0);
+            return getGlyph(unicode, 0, false);
         }
 
         @Override
         public int charToGlyph(char unicode) {
-            return charToGlyph((int) unicode);
+            return getGlyph(unicode, 0, false);
+        }
+
+        @Override
+        public int charToGlyphRaw(int unicode) {
+            return getGlyph(unicode, 0, true);
+        }
+
+        @Override
+        public int charToVariationGlyph(int unicode, int variationSelector) {
+            return getGlyph(unicode, variationSelector, false);
+        }
+
+        @Override
+        public int charToVariationGlyphRaw(int unicode, int variationSelector) {
+            return getGlyph(unicode, variationSelector, true);
         }
     }
 }
