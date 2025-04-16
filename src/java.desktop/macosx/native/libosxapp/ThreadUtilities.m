@@ -37,9 +37,6 @@
         return;                     \
     }
 
-#define RUN_BLOCK_IF_MAIN(block)    \
-    RUN_BLOCK_IF([NSThread isMainThread], block)
-
 /* Returns the MainThread latency threshold in milliseconds
  * used to detect slow operations that may cause high latencies or delays.
  * If negative, the MainThread monitor is disabled */
@@ -340,7 +337,7 @@ AWT_ASSERT_APPKIT_THREAD;
 + (void)performOnMainThreadNowOrLater:(BOOL)useJavaModes
                                 block:(void (^)())block
 {
-    RUN_BLOCK_IF_MAIN(block);
+    RUN_BLOCK_IF([NSThread isMainThread], block);
 
     [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
                            waitUntilDone:NO useJavaModes:useJavaModes];
@@ -362,7 +359,7 @@ AWT_ASSERT_APPKIT_THREAD;
                       useJavaModes:(BOOL)useJavaModes
                              block:(void (^)())block
 {
-    RUN_BLOCK_IF_MAIN(block);
+    RUN_BLOCK_IF([NSThread isMainThread] && wait, block);
 
     [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
                            waitUntilDone:wait useJavaModes:useJavaModes];
@@ -443,7 +440,7 @@ AWT_ASSERT_APPKIT_THREAD;
                          waitUntilDone:(BOOL)wait
                           useJavaModes:(BOOL)useJavaModes
 {
-    const BOOL invokeDirect = NSThread.isMainThread && wait;
+    const BOOL invokeDirect = [NSThread isMainThread] && wait;
     const BOOL doWait = !invokeDirect && wait;
     const BOOL blockingEDT = doWait && isEventDispatchThread();
 
