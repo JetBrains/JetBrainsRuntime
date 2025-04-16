@@ -189,11 +189,9 @@ public class DefaultAgentFilterTest {
 
     private static void testDefaultAgent(String propertyFile, int port) throws Exception {
         String propFile = System.getProperty("test.src") + File.separator + propertyFile;
-        List<String> pbArgs = new ArrayList<>(Arrays.asList(
-                "-cp",
-                System.getProperty("test.class.path"),
-                "-XX:+UsePerfData"
-        ));
+        List<String> pbArgs = new ArrayList<>();
+        pbArgs.add("-XX:+UsePerfData");
+
         String[] args = new String[]{
             "-Dcom.sun.management.jmxremote.port=" + port,
             "-Dcom.sun.management.jmxremote.authenticate=false",
@@ -203,7 +201,7 @@ public class DefaultAgentFilterTest {
         pbArgs.addAll(Arrays.asList(args));
         pbArgs.add(TEST_APP_NAME);
 
-        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(
+        ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(
                 pbArgs.toArray(new String[pbArgs.size()])
         );
 
