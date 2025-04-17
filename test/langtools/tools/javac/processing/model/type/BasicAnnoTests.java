@@ -586,4 +586,8 @@ public class BasicAnnoTests extends JavacTestingAbstractProcessor {
     @Test(posn=4, annoType = TB.class, expect = "100")
     class Inner100<T extends Inner100<@TB(100) T>> {
     }
+
+    @Test(posn=1, annoType=TA.class, expect="130")
+    @Test(posn=23, annoType=TA.class, expect="131")
+    public Map<@TA(130) String, @TA(131) String> f130;
 }
