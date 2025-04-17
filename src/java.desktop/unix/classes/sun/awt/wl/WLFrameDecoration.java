@@ -27,6 +27,7 @@ package sun.awt.wl;
 import sun.swing.SwingUtilities2;
 
 import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Cursor;
@@ -66,6 +67,17 @@ public class WLFrameDecoration implements PropertyChangeListener {
     private static final Color ACTIVE_FOREGROUND_DARK = new Color(0xf7f7f7);
     private static final Color INACTIVE_FOREGROUND = Color.gray;
     private static final Color INACTIVE_FOREGROUND_DARK = new Color(0xb5b5b5);
+
+    private static final Color ACTIVE_BACKGROUND_TOP = new Color(0xfbfbfb);
+    private static final Color ACTIVE_BACKGROUND_TOP_DARK = new Color(0x313131);
+    private static final Color INACTIVE_BACKGROUND_TOP = new Color(0xfefefe);
+    private static final Color INACTIVE_BACKGROUND_TOP_DARK = new Color(0x3a3a3a);
+    private static final Color ACTIVE_BORDER = new Color(0x9e9e9e);
+    private static final Color ACTIVE_BORDER_DARK = new Color(0x080808);
+    private static final Color INACTIVE_BORDER = new Color(0xbcbcbc);
+    private static final Color INACTIVE_BORDER_DARK = new Color(0x121212);
+
+    private static final int BORDER_WIDTH = 1;
     private static final int SIGNIFICANT_DRAG_DISTANCE = 4;
     private static final int RESIZE_EDGE_THICKNESS = 5;
 
@@ -126,7 +138,7 @@ public class WLFrameDecoration implements PropertyChangeListener {
     public Insets getInsets() {
         return isUndecorated
                 ? new Insets(0, 0, 0, 0)
-                : new Insets(HEIGHT, 0, 0, 0);
+                : new Insets(HEIGHT + BORDER_WIDTH, BORDER_WIDTH, BORDER_WIDTH, BORDER_WIDTH);
     }
 
     public Rectangle getBounds() {
@@ -186,6 +198,22 @@ public class WLFrameDecoration implements PropertyChangeListener {
         }
     }
 
+    private static Color getBackgroundTopColor(boolean isActive) {
+        if (isActive) {
+            return isDarkTheme() ? ACTIVE_BACKGROUND_TOP_DARK : ACTIVE_BACKGROUND_TOP;
+        } else {
+            return isDarkTheme() ? INACTIVE_BACKGROUND_TOP_DARK : INACTIVE_BACKGROUND_TOP;
+        }
+    }
+
+    private static Color getBorderColor(boolean isActive) {
+        if (isActive) {
+            return isDarkTheme() ? ACTIVE_BORDER_DARK : ACTIVE_BORDER;
+        } else {
+            return isDarkTheme() ? INACTIVE_BORDER_DARK : INACTIVE_BORDER;
+        }
+    }
+
     private static Color getIconBackground() {
         return isDarkTheme() ? ICON_BACKGROUND_DARK : ICON_BACKGROUND;
     }
@@ -212,6 +240,16 @@ public class WLFrameDecoration implements PropertyChangeListener {
         int width = peer.getWidth();
         int height = peer.getHeight();
         if (width <= 0 || height <= 0) return;
+        {
+            Graphics2D g2d = (Graphics2D) g.create();
+            try {
+                g2d.setColor(getBorderColor(active));
+                g2d.setStroke(new BasicStroke(BORDER_WIDTH));
+                g2d.drawRect(0, 0, width - BORDER_WIDTH, height - BORDER_WIDTH);
+            } finally {
+                g2d.dispose();
+            }
+        }
         Graphics2D g2d = (Graphics2D) g.create(0, 0, width, HEIGHT);
         try {
             doPaint(g2d);
@@ -241,9 +279,38 @@ public class WLFrameDecoration implements PropertyChangeListener {
             g.fillRect(0, 0, width, HEIGHT);
             g.setComposite(originalComposite);
             int radius = WLRoundedCornersManager.roundCornerRadiusFor(WLRoundedCornersManager.RoundedCornerKind.DEFAULT);
+            // The title bar
             g.fillRoundRect(0, 0, width, HEIGHT + radius + 1, radius, radius);
+
+            // The top bevel of the title bar
+            g.setColor(getBackgroundTopColor(active));
+            g.drawLine(radius / 2, 1, width - radius / 2, 1);
+            g.drawArc(1, 1, (radius - 1), (radius - 1), 90, 60);
+            g.drawArc(width - radius, 1, (radius - 1), (radius - 1), 45, 45);
+
+            // The border
+            var oldStroke = g.getStroke();
+            g.setColor(getBorderColor(active));
+            g.setStroke(new BasicStroke(BORDER_WIDTH));
+            g.drawRoundRect(0, 0, width - BORDER_WIDTH, HEIGHT + radius + 1, radius, radius);
+            g.setStroke(oldStroke);
+            g.drawLine(0, HEIGHT - 1, width, HEIGHT - 1);
         } else {
+            // The title bar
+            g.setColor(getBackgroundColor(active));
             g.fillRect(0, 0, width, HEIGHT);
+
+            // The top bevel of the title bar
+            g.setColor(getBackgroundTopColor(active));
+            g.drawLine(BORDER_WIDTH, BORDER_WIDTH, width - BORDER_WIDTH, BORDER_WIDTH);
+            g.drawLine(BORDER_WIDTH, BORDER_WIDTH, BORDER_WIDTH, HEIGHT - BORDER_WIDTH);
+
+            // The border
+            var oldStroke = g.getStroke();
+            g.setColor(getBorderColor(active));
+            g.setStroke(new BasicStroke(BORDER_WIDTH));
+            g.drawRect(0, 0, width - BORDER_WIDTH, HEIGHT - BORDER_WIDTH);
+            g.setStroke(oldStroke);
         }
         paintTitle(g, title, foregroundColor, width);
 
