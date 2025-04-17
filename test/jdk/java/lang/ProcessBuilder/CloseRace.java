@@ -23,10 +23,12 @@
 
 /**
  * @test
- * @bug 8024521
+ * @bug 8024521 8315721
  * @summary Closing ProcessPipeInputStream at the time the process exits is racy
  *          and leads to data corruption. Run this test manually (as
  *          an ordinary java program) with  -Xmx8M  to repro bug 8024521.
+ * @comment Don't allow -Xcomp, it disturbs the timing
+ * @requires (vm.compMode != "Xcomp")
  * @run main/othervm -Xmx8M -Dtest.duration=2 CloseRace
  */
 
