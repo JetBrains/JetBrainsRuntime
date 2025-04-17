@@ -1206,6 +1206,10 @@ public non-sealed class KeyEvent extends InputEvent {
                     ev.rawCode = rawCode;
                 }
 
+                public long getRawCode(KeyEvent ev) {
+                    return ev.rawCode;
+                }
+
                 public void setPrimaryLevelUnicode(KeyEvent ev,
                                                    long primaryLevelUnicode) {
                     ev.primaryLevelUnicode = primaryLevelUnicode;
