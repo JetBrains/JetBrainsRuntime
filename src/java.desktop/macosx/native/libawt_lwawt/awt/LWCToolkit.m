@@ -602,6 +602,12 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_doAWTRunLoopImpl
     jboolean result = JNI_TRUE;
 JNI_COCOA_ENTER(env);
 
+    /* defensive programming (should not happen) */
+    if ([ThreadUtilities blockingMainThread]) {
+        NSLog(@"LWCToolkit_doAWTRunLoopImpl: invalid state: blockingMainThread = YES !");
+        return JNI_FALSE;
+    }
+
     AWTRunLoopObject* mediatorObject = (AWTRunLoopObject*)jlong_to_ptr(mediator);
 
     if (mediatorObject == nil) {
@@ -612,7 +618,7 @@ JNI_COCOA_ENTER(env);
      * 2025.02: infinite timeout means possible deadlocks or freezes may happen.
      * To ensure responsiveness, infinite is limited to a huge delay (~10s)
      */
-    if (timeoutSeconds < WAIT_TIMEOUT_LIMIT) {
+    if ((timeoutSeconds <= 0.0) || (timeoutSeconds > WAIT_TIMEOUT_LIMIT)) {
         timeoutSeconds = WAIT_TIMEOUT_LIMIT;
     }
 
@@ -698,6 +704,17 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isBlockingEventDispa
 
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    isBlockingMainThread
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isBlockingMainThread
+        (JNIEnv *env, jclass clz)
+{
+    return [ThreadUtilities blockingMainThread];
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
  * Method:    getThreadTraceContexts
  * Signature: (Ljava/lang/String)
  */
@@ -713,19 +730,6 @@ JNI_COCOA_ENTER(env);
     [result release];
     return javaString;
 
-JNI_COCOA_EXIT(env);
-}
-
-/*
- * Class:     sun_lwawt_macosx_LWCToolkit
- * Method:    isWithinPowerTransition
- * Signature: ()Z
- */
-JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isWithinPowerTransition
-        (JNIEnv *env, jclass clz)
-{
-JNI_COCOA_ENTER(env);
-    return [ThreadUtilities isWithinPowerTransition:PWM_TRANSITION_PERIOD] ? JNI_TRUE : JNI_FALSE;
 JNI_COCOA_EXIT(env);
 }
 
