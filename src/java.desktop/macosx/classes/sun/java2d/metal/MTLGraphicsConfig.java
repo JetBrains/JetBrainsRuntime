@@ -80,6 +80,8 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     private final Object disposerReferent = new Object();
     private final int maxTextureSize;
 
+    public static native void displayReconfigurationDone();
+
     private static native long getMTLConfigInfo(int displayID, String mtlShadersLib);
 
     /**
