@@ -731,7 +731,7 @@ public final class LWCToolkit extends LWToolkit {
 
     public static <T> T invokeAndWait(final Callable<T> callable,
                                       Component component) throws Exception {
-        return invokeAndWait(callable, component, -1);
+        return invokeAndWait(callable, component, 0);
     }
 
     public static <T> T invokeAndWait(final Callable<T> callable, Component component, int timeoutSeconds) throws Exception {
@@ -783,7 +783,7 @@ public final class LWCToolkit extends LWToolkit {
         invokeAndWait(runnable, component, false, 0.0);
     }
 
-    /* 25.01.25: keep public methods with (int timeoutSeconds) */
+    /* 25.04: keep public methods with (int timeoutSeconds) */
     @Deprecated(since = "25")
     public static void invokeAndWait(Runnable runnable, Component component, int timeoutSeconds)
             throws InvocationTargetException
@@ -798,7 +798,7 @@ public final class LWCToolkit extends LWToolkit {
         invokeAndWait(runnable, component, processEvents, timeout);
     }
 
-    /* 25.01.25: added public methods with (double timeoutSeconds) to have timeouts between 0.0 and 1.0 */
+    /* 25.04: added public methods with (double timeoutSeconds) to have more precise timeouts */
 
     public static void invokeAndWait(Runnable runnable, Component component, double timeoutSeconds)
             throws InvocationTargetException
@@ -870,9 +870,9 @@ public final class LWCToolkit extends LWToolkit {
 
     private static native boolean isBlockingEventDispatchThread();
 
-    static native String getThreadTraceContexts();
+    public static native boolean isBlockingMainThread();
 
-    static native boolean isWithinPowerTransition();
+    static native String getThreadTraceContexts();
 
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {
@@ -1049,7 +1049,7 @@ public final class LWCToolkit extends LWToolkit {
     static native long createAWTRunLoopMediator();
     /**
      * Method to run a nested run-loop. The nested loop is spinned in the javaRunLoop mode, so selectors sent
-     * by [JNFRunLoop performOnMainThreadWaiting] are processed.
+     * by [ThreadUtilities performOnMainThreadWaiting] are processed.
      * @param mediator a native pointer to the mediator object created by createAWTRunLoopMediator
      * @param processEvents if true - dispatches event while in the nested loop. Used in DnD.
      *                      Additional attention is needed when using this feature as we short-circuit normal event
@@ -1063,7 +1063,7 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     /**
-     * Starts run-loop with the provided timeout. Use (<=0.0) for the infinite value.
+     * Starts run-loop with the provided timeout. Use (<= 0.0) for the infinite value.
      */
     static boolean doAWTRunLoop(long mediator, boolean processEvents, double timeoutSeconds) {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {

@@ -191,7 +191,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_blitTexture: skip drawable [skip blit] nextDrawableCount = %d",
                               CACurrentMediaTime(), self.nextDrawableCount);
             }
-            [self startRedraw];
+            [self startRedrawIfNeeded];
             return;
         }
 
@@ -371,7 +371,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 }
 
 - (void) blitCallback {
-
+    AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     GET_MTL_LAYER_CLASS();
     DECLARE_METHOD(jm_drawInMTLContext, jc_JavaLayer, "drawInMTLContext", "()V");
@@ -395,10 +395,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
 - (void)startRedrawIfNeeded {
     AWT_ASSERT_APPKIT_THREAD;
-    if (isDisplaySyncEnabled()) {
-        if (self.redrawCount == 0) {
-            [self.ctx startRedraw:self];
-        }
+    if (isDisplaySyncEnabled() && (self.redrawCount == 0)) {
+        [self.ctx startRedraw:self];
     }
 }
 
