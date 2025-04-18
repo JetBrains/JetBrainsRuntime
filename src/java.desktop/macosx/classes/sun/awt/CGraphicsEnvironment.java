@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,7 @@ import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 import sun.java2d.MacOSFlags;
 import sun.java2d.SunGraphicsEnvironment;
+import sun.java2d.metal.MTLGraphicsConfig;
 import sun.util.logging.PlatformLogger;
 
 /**
@@ -155,7 +156,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         }
 
         /* Populate the device table */
-        rebuildDevices();
+        initDevices();
 
         if (LogDisplay.ENABLED) {
             for (CGraphicsDevice gd : devices.values()) {
@@ -175,11 +176,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         return mtlShadersLib;
     }
 
-    /**
-     * Updates the list of devices and notify listeners.
-     */
-    private void rebuildDevices() {
-        initDevices();
+    private void doNotifyListeners() {
         // Do not notify devices, this was already done in initDevices.
         displayChanger.notifyListeners();
     }
@@ -188,7 +185,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      * Called by the CoreGraphics Display Reconfiguration Callback.
      *
      * @param displayId CoreGraphics displayId
-     * @param removed   true if displayId was removed, false otherwise.
+     * @param flags CGDisplayChangeSummaryFlags flags as integer
      */
     void _displayReconfiguration(int displayId, int flags) {
         // See CGDisplayChangeSummaryFlags
@@ -204,10 +201,32 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         // monitors are not added nor removed, but when the video card is
         // switched to/from the discrete video card, so we should try to map the
         // old to the new devices.
-        rebuildDevices();
+        initDevices();
         if (log != null && log != LogDisplay.REMOVED) {
             CGraphicsDevice gd = devices.get(displayId);
             log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+        }
+    }
+
+    /**
+     * Called by the CoreGraphics Display Reconfiguration Callback (once all displays processed = finished)
+     */
+    void _displayReconfigurationFinished() {
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("CGraphicsEnvironment._displayReconfigurationFinished(): enter");
+        }
+        try {
+            doNotifyListeners();
+        } catch (Exception e) {
+            logger.severe("CGraphicsEnvironment._displayReconfigurationFinished: exception occurred: ", e);
+        } finally {
+            // notify the metal pipeline after processing listeners:
+            if (CGraphicsEnvironment.usingMetalPipeline()) {
+                MTLGraphicsConfig.displayReconfigurationDone();
+            }
+        }
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("_displayReconfigurationFinished(): exit");
         }
     }
 
