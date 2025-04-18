@@ -271,10 +271,8 @@ public class WLFrameDecoration implements PropertyChangeListener {
                 && !peer.isFullscreen()) {
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
-            Composite originalComposite = g.getComposite();
-            g.setComposite(AlphaComposite.Clear);
-            g.fillRect(0, 0, width, HEIGHT);
-            g.setComposite(originalComposite);
+            g.setBackground(new Color(0, true));
+            g.clearRect(0, 0, width, HEIGHT);
             int radius = WLRoundedCornersManager.roundCornerRadiusFor(WLRoundedCornersManager.RoundedCornerKind.DEFAULT);
             // The title bar
             g.fillRoundRect(0, 0, width, HEIGHT + radius + 1, radius, radius);
