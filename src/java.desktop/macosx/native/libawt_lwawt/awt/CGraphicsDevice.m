@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,7 @@ static NSInteger architecture = -1;
 /*
  * Convert the mode string to the more convenient bits per pixel value
  */
-int getBPPFromModeString(CFStringRef mode)
+static int getBPPFromModeString(CFStringRef mode)
 {
     if ((CFStringCompare(mode, CFSTR(kIO30BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo)) {
         // This is a strange mode, where we using 10 bits per RGB component and pack it into 32 bits
@@ -57,11 +57,105 @@ int getBPPFromModeString(CFStringRef mode)
     else if (CFStringCompare(mode, CFSTR(IO8BitIndexedPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
         return 8;
     }
-
     return 0;
 }
 
-static BOOL isValidDisplayMode(CGDisplayModeRef mode) {
+void dumpDisplayInfo(jint displayID)
+{
+    // Returns a Boolean value indicating whether a display is active.
+    jint displayIsActive = CGDisplayIsActive(displayID);
+
+    // Returns a Boolean value indicating whether a display is always in a mirroring set.
+    jint displayIsalwaysInMirrorSet = CGDisplayIsAlwaysInMirrorSet(displayID);
+
+    // Returns a Boolean value indicating whether a display is sleeping (and is therefore not drawable).
+    jint displayIsAsleep = CGDisplayIsAsleep(displayID);
+
+    // Returns a Boolean value indicating whether a display is built-in, such as the internal display in portable systems.
+    jint displayIsBuiltin = CGDisplayIsBuiltin(displayID);
+
+    // Returns a Boolean value indicating whether a display is in a mirroring set.
+    jint displayIsInMirrorSet = CGDisplayIsInMirrorSet(displayID);
+
+    // Returns a Boolean value indicating whether a display is in a hardware mirroring set.
+    jint displayIsInHWMirrorSet = CGDisplayIsInHWMirrorSet(displayID);
+
+    // Returns a Boolean value indicating whether a display is the main display.
+    jint displayIsMain = CGDisplayIsMain(displayID);
+
+    // Returns a Boolean value indicating whether a display is connected or online.
+    jint displayIsOnline = CGDisplayIsOnline(displayID);
+
+    // Returns a Boolean value indicating whether a display is running in a stereo graphics mode.
+    jint displayIsStereo = CGDisplayIsStereo(displayID);
+
+    // For a secondary display in a mirroring set, returns the primary display.
+    CGDirectDisplayID displayMirrorsDisplay = CGDisplayMirrorsDisplay(displayID);
+
+    // Returns the primary display in a hardware mirroring set.
+    CGDirectDisplayID displayPrimaryDisplay = CGDisplayPrimaryDisplay(displayID);
+
+    // Returns the width and height of a display in millimeters.
+    CGSize size = CGDisplayScreenSize(displayID);
+
+    NSLog(@"CGDisplay[%d]{\n"
+           "displayIsActive=%d\n"
+           "displayIsalwaysInMirrorSet=%d\n"
+           "displayIsAsleep=%d\n"
+           "displayIsBuiltin=%d\n"
+           "displayIsInMirrorSet=%d\n"
+           "displayIsInHWMirrorSet=%d\n"
+           "displayIsMain=%d\n"
+           "displayIsOnline=%d\n"
+           "displayIsStereo=%d\n"
+           "displayMirrorsDisplay=%d\n"
+           "displayPrimaryDisplay=%d\n"
+           "displayScreenSizey=[%.1lf %.1lf]\n",
+           displayID,
+           displayIsActive,
+           displayIsalwaysInMirrorSet,
+           displayIsAsleep,
+           displayIsBuiltin,
+           displayIsInMirrorSet,
+           displayIsInHWMirrorSet,
+           displayIsMain,
+           displayIsOnline,
+           displayIsStereo,
+           displayMirrorsDisplay,
+           displayPrimaryDisplay,
+           size.width, size.height
+    );
+
+    // CGDisplayCopyDisplayMode can return NULL if displayID is invalid
+    CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayID);
+    if (mode != NULL) {
+        // Getting Information About a Display Mode
+        jint h = -1, w = -1, bpp = -1;
+        jdouble refreshRate = 0.0;
+
+        // Returns the width of the specified display mode.
+        w = CGDisplayModeGetWidth(mode);
+
+        // Returns the height of the specified display mode.
+        h = CGDisplayModeGetHeight(mode);
+
+        // Returns the pixel encoding of the specified display mode.
+        // Deprecated
+        CFStringRef currentBPP = CGDisplayModeCopyPixelEncoding(mode);
+        bpp = getBPPFromModeString(currentBPP);
+        CFRelease(currentBPP);
+
+        // Returns the refresh rate of the specified display mode.
+        refreshRate = CGDisplayModeGetRefreshRate(mode);
+
+        NSLog(@"CGDisplayMode[%d]: w=%d, h=%d, bpp=%d, freq=%.2lf hz",
+              displayID, w, h, bpp, refreshRate);
+
+        CGDisplayModeRelease(mode);
+    }
+}
+
+BOOL isValidDisplayMode(CGDisplayModeRef mode) {
     if (!CGDisplayModeIsUsableForDesktopGUI(mode)) {
         return NO;
     }
@@ -184,7 +278,7 @@ static jobject createJavaDisplayMode(CGDisplayModeRef mode, JNIEnv *env) {
     jint h = DEFAULT_DEVICE_HEIGHT, w = DEFAULT_DEVICE_WIDTH, bpp = 0, refrate = 0;
     JNI_COCOA_ENTER(env);
     BOOL isDisplayModeDefault = NO;
-    if (mode) {
+    if (mode != NULL) {
         CFStringRef currentBPP = CGDisplayModeCopyPixelEncoding(mode);
         bpp = getBPPFromModeString(currentBPP);
         CFRelease(currentBPP);
@@ -342,10 +436,9 @@ JNI_COCOA_ENTER(env);
         configureDisplayLock = [[NSLock alloc] init];
     });
 
+    // Avoid reentrance and ensure consistency between the best mode and ConfigureDisplay transaction:
+    [configureDisplayLock lock];
     @try {
-        // Avoid reentrance and ensure consistency between the best mode and ConfigureDisplay transaction:
-        [configureDisplayLock lock];
-
         if (TRACE_DISPLAY_CHANGE_CONF) {
             NSLog(@"nativeSetDisplayMode: displayID: %d w:%d h:%d bpp: %d refrate:%d", displayID, w, h, bpp, refrate);
         }
@@ -411,7 +504,9 @@ JNI_COCOA_ENTER(env);
     // CGDisplayCopyDisplayMode can return NULL if displayID is invalid
     CGDisplayModeRef currentMode = CGDisplayCopyDisplayMode(displayID);
     ret = createJavaDisplayMode(currentMode, env);
-    CGDisplayModeRelease(currentMode);
+    if (currentMode != NULL) {
+        CGDisplayModeRelease(currentMode);
+    }
 JNI_COCOA_EXIT(env);
     return ret;
 }
