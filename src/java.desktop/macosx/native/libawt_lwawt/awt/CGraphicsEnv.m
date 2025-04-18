@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,10 @@
 #import "ThreadUtilities.h"
 
 #define MAX_DISPLAYS 64
+
+static const BOOL TRACE_DISPLAY_CALLBACKS = NO;
+
+extern void dumpDisplayInfo(jint displayID);
 
 /*
  * Class:     sun_awt_CGraphicsEnvironment
@@ -109,25 +113,78 @@ Java_sun_awt_CGraphicsEnvironment_getMainDisplayID
  * Post the display reconfiguration event.
  */
 static void displaycb_handle
-(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
+(CGDirectDisplayID displayId, CGDisplayChangeSummaryFlags flags, void *userInfo)
 {
-    if (flags == kCGDisplayBeginConfigurationFlag) return;
+AWT_ASSERT_APPKIT_THREAD;
+JNI_COCOA_ENTER(env);
 
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
+    if (TRACE_DISPLAY_CALLBACKS) {
+        NSLog(@"CGraphicsEnv::displaycb_handle(displayId: %d, flags: %d, userInfo: %p)",
+              displayId, flags, userInfo);
+    }
 
-        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-        jobject cgeRef = (jobject)userInfo;
+    /*
+     * RunLoop interactions with callbacks means several RunLoop iterations may be needed to run these callbacks
+     * within dispatch_queue (RunLoopBeforeSources -> RunLoopExit)
+     */
+    const jobject cgeRef = (jobject)userInfo;
 
+    if (flags == kCGDisplayBeginConfigurationFlag) {
+        /*
+         * During the Reconfigure transaction consituted by
+         * [Begin(each displayID) ... -> Finished(each displayID) callbacks]
+         * run by RunLoop (__CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__),
+         * the begin and finished loops are running callbacks for each displayID which can not modify the RunLoop state
+         * during the complete [Begin -> END] reconfigure transaction
+         * ie appkit thread can not wait ie LWCToolkit.invokeAndWait(task, target ...) is forbidden.
+         */
+        // Avoid LWCToolkit.invokeAndWait() calls since first Begin(each displayID) callback:
+        [ThreadUtilities setBlockingMainThread:true];
+        return;
+    }
+
+    // Processing display changes (Finished called by _displayReconfigurationFinished):
+
+    // first register Main RunLoop callback to ensure blockingMainThread = false anyway:
+    if ([ThreadUtilities hasMainThreadRunLoopCallback:MAIN_CALLBACK_CGDISPLAY_RECONFIGURE] == NO) {
+        // avoid creating block if not needed:
+        [ThreadUtilities registerMainThreadRunLoopCallback:MAIN_CALLBACK_CGDISPLAY_RECONFIGURE
+                                                     block:^()
+        {
+            @try {
+                JNIEnv *env = [ThreadUtilities getJNIEnv];
+                jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
+                if (graphicsEnv == NULL) return; // ref already GC'd
+                DECLARE_CLASS(jc_CGraphicsEnvironment, "sun/awt/CGraphicsEnvironment");
+                DECLARE_METHOD(jm_displayReconfigurationFinished,
+                               jc_CGraphicsEnvironment, "_displayReconfigurationFinished", "()V");
+                (*env)->CallVoidMethod(env, graphicsEnv, jm_displayReconfigurationFinished);
+                (*env)->DeleteLocalRef(env, graphicsEnv);
+                CHECK_EXCEPTION();
+            } @finally {
+                // Allow LWCToolkit.invokeAndWait() once Finished callbacks:
+                [ThreadUtilities setBlockingMainThread:false];
+            }
+        }];
+    }
+    if (TRACE_DISPLAY_CALLBACKS) {
+        dumpDisplayInfo(displayId);
+    }
+
+    // braces to reduce variable scope
+    {
+        JNIEnv *env = [ThreadUtilities getJNIEnv];
         jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
         if (graphicsEnv == NULL) return; // ref already GC'd
         DECLARE_CLASS(jc_CGraphicsEnvironment, "sun/awt/CGraphicsEnvironment");
         DECLARE_METHOD(jm_displayReconfiguration,
                 jc_CGraphicsEnvironment, "_displayReconfiguration","(II)V");
         (*env)->CallVoidMethod(env, graphicsEnv, jm_displayReconfiguration,
-                (jint) display, (jint) flags);
+                               (jint) displayId, (jint) flags);
         (*env)->DeleteLocalRef(env, graphicsEnv);
         CHECK_EXCEPTION();
-    }];
+    }
+JNI_COCOA_EXIT(env);
 }
 
 /*
