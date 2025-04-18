@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,15 @@
 // Constant from
 // https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
 #define MTL_GPU_FAMILY_MAC_TXT_SIZE 16384
+
+typedef enum {
+    MTLDCM_SYSTEM_UNDEFINED,
+    MTLDCM_SYSTEM_SLEEP,
+    MTLDCM_SYSTEM_WAKEUP,
+    MTLDCM_DISPLAY_SLEEP,
+    MTLDCM_DISPLAY_WAKEUP,
+    MTLDCM_DISPLAY_RECONFIGURE
+} MTLContextStoreNotification;
 
 /**
  * The MTLCommandBufferWrapper class contains command buffer and
@@ -110,11 +119,12 @@
 + (MTLContext*) setSurfacesEnv:(JNIEnv*)env src:(jlong)pSrc dst:(jlong)pDst;
 
 + (NSMutableDictionary*) contextStore;
++ (void) processContextStoreNotification:(MTLContextStoreNotification)notification;
+
 + (MTLContext*) createContextWithDeviceIfAbsent:(jint)displayID shadersLib:(NSString*)mtlShadersLib;
 - (id)initWithDevice:(id<MTLDevice>)device shadersLib:(NSString*)mtlShadersLib;
 - (void)dealloc;
 
-- (NSArray<NSNumber*>*)getDisplayLinkDisplayIds;
 - (void)handleDisplayLink:(BOOL)enabled displayID:(jint)displayID source:(const char*)src;
 - (void)createDisplayLinkIfAbsent: (jint)displayID;
 
