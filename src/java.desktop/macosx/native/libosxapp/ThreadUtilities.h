@@ -127,25 +127,46 @@ do {                                  \
 #endif /* AWT_THREAD_ASSERTS */
 // --------------------------------------------------------------------------
 
+/* bit flag to coalesce CGDisplayReconfigureCallbacks */
+#define MAIN_CALLBACK_CGDISPLAY_RECONFIGURE  1
+
+@interface RunLoopCallbackQueue : NSObject
+
+@property(readwrite, atomic) u_long coalesingflags;
+@property(retain) NSMutableArray* queue;
+
++ (RunLoopCallbackQueue*) shared;
+
+- (id) init;
+- (void) dealloc;
+
+- (BOOL)hasCallback:(u_long)bit;
+
+- (BOOL)addCallback:(u_long)bit block:(void (^)())block;
+- (void)processQueuedCallbacks;
+@end
+
+
 @interface ThreadTraceContext : NSObject <NSCopying>
-    @property (readwrite, atomic) BOOL sleep;
-    @property (readwrite, atomic) BOOL useJavaModes;
-    @property (readwrite, atomic) long actionId;
-    @property (readwrite, atomic) char* operation;
-    @property (readwrite, atomic) CFTimeInterval timestamp;
-    @property (readwrite, atomic, retain) NSString* threadName;
-    @property (readwrite, atomic, retain) NSString* caller;
-    @property (readwrite, atomic, retain) NSString* callStack;
 
-    /* autorelease in init and copy */
-    - (id)init;
-    - (void)reset;
-    - (void)updateThreadState:(BOOL)sleepValue;
+@property (readwrite, atomic) BOOL sleep;
+@property (readwrite, atomic) BOOL useJavaModes;
+@property (readwrite, atomic) long actionId;
+@property (readwrite, atomic) const char* operation;
+@property (readwrite, atomic) CFTimeInterval timestamp;
+@property (readwrite, atomic, retain) NSString* threadName;
+@property (readwrite, atomic, retain) NSString* caller;
+@property (readwrite, atomic, retain) NSString* callStack;
 
-    - (void)set:(long)pActionId operation:(char*)pOperation useJavaModes:(BOOL)pUseJavaModes
-                caller:(NSString *)pCaller callstack:(NSString *)pCallStack;
+/* autorelease in init and copy */
+- (id)init:(NSString*)threadName;
+- (void)reset;
+- (void)updateThreadState:(BOOL)sleepValue;
 
-    - (const char*)identifier;
+- (void)set:(long)pActionId operation:(const char*)pOperation useJavaModes:(BOOL)pUseJavaModes
+            caller:(NSString *)pCaller callstack:(NSString *)pCallStack;
+
+- (const char*)identifier;
 @end
 
 
@@ -176,20 +197,24 @@ __attribute__((visibility("default")))
 + (NSString*)criticalRunLoopMode;
 + (NSString*)javaRunLoopMode;
 
++ (void)setBlockingMainThread:(BOOL)value;
++ (BOOL)blockingMainThread;
+
+/* internal special RunLoop callbacks */
++ (void)registerMainThreadRunLoopCallback:(u_long)coalesingBit block:(void (^)())block;
+
+/* native thread tracing */
 + (ThreadTraceContext*)getTraceContext;
 + (void)removeTraceContext;
 + (void)resetTraceContext;
 
 + (ThreadTraceContext*)recordTraceContext;
 + (ThreadTraceContext*)recordTraceContext:(NSString*)prefix;
-+ (ThreadTraceContext*)recordTraceContext:(NSString*)prefix actionId:(long)actionId useJavaModes:(BOOL)useJavaModes operation:(char*) operation;
++ (ThreadTraceContext*)recordTraceContext:(NSString*)prefix actionId:(long)actionId useJavaModes:(BOOL)useJavaModes operation:(const char*)pOperation;
 
-+ (void)dumpThreadTraceContext;
++ (void)dumpThreadTraceContext:(const char*)pOperation;
 
 + (NSString*)getThreadTraceContexts;
-
-+ (void)registerForSystemAndScreenNotifications;
-+ (BOOL)isWithinPowerTransition:(double)periodInSeconds;
 @end
 
 JNIEXPORT void OSXAPP_SetJavaVM(JavaVM *vm);
