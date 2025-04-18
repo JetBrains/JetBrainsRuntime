@@ -25,22 +25,37 @@
 package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
+import sun.java2d.SunGraphics2D;
 
+import javax.swing.JRootPane;
+import javax.swing.RootPaneContainer;
+import java.awt.AlphaComposite;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dialog;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GraphicsConfiguration;
 import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.awt.SystemColor;
 import java.awt.Window;
 import java.awt.event.WindowEvent;
+import java.awt.geom.Path2D;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;
 
 public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     private static Font defaultFont;
     private Dialog blocker;
+
+    public static final String WINDOW_CORNER_RADIUS = "apple.awt.windowCornerRadius";
+
+    private WLRoundedCornersManager.RoundedCornerKind roundedCornerKind = WLRoundedCornersManager.RoundedCornerKind.DEFAULT; // guarded by dataLock
+    private Path2D.Double topLeftMask;      // guarded by dataLock
+    private Path2D.Double topRightMask;     // guarded by dataLock
+    private Path2D.Double bottomLeftMask;   // guarded by dataLock
+    private Path2D.Double bottomRightMask;  // guarded by dataLock
+    private SunGraphics2D graphics;         // guarded by dataLock
 
     static synchronized Font getDefaultFont() {
         if (null == defaultFont) {
@@ -60,6 +75,16 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
         }
         if (!target.isForegroundSet()) {
             target.setForeground(SystemColor.windowText);
+        }
+
+        if (target instanceof RootPaneContainer) {
+            JRootPane rootpane = ((RootPaneContainer)target).getRootPane();
+            if (rootpane != null) {
+                Object roundedCornerKind = rootpane.getClientProperty(WINDOW_CORNER_RADIUS);
+                if (roundedCornerKind != null) {
+                    setRoundedCornerKind(WLRoundedCornersManager.roundedCornerKindFrom(roundedCornerKind));
+                }
+            }
         }
     }
 
@@ -154,6 +179,9 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
 
     @Override
     public void updateWindow() {
+        if (roundedCornersRequested() && canPaintRoundedCorners()) {
+            paintRoundCorners();
+        }
         commitToServer();
     }
 
@@ -161,6 +189,18 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     public GraphicsConfiguration getAppropriateGraphicsConfiguration(
             GraphicsConfiguration gc) {
         return gc;
+    }
+
+    @Override
+    public void dispose() {
+        resetCornerMasks();
+        super.dispose();
+    }
+
+    @Override
+    void updateSurfaceData() {
+        resetCornerMasks();
+        super.updateSurfaceData();
     }
 
     private Window getWindow() {
@@ -181,6 +221,102 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
         if (nativeFocusTarget != null &&
                 WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow() == nativeFocusTarget) {
             WLToolkit.postPriorityEvent(new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS));
+        }
+    }
+
+    private boolean canPaintRoundedCorners() {
+        int roundedCornerSize = WLRoundedCornersManager.roundCornerRadiusFor(roundedCornerKind);
+        // Note: You would normally get a transparency-capable color model when using
+        // the default graphics configuration
+        return surfaceData.getColorModel().hasAlpha()
+                && getWidth() > roundedCornerSize * 2
+                && getHeight() > roundedCornerSize * 2;
+    }
+
+    protected boolean roundedCornersRequested() {
+        synchronized (dataLock) {
+            return roundedCornerKind == WLRoundedCornersManager.RoundedCornerKind.FULL
+                    || roundedCornerKind == WLRoundedCornersManager.RoundedCornerKind.SMALL;
+        }
+    }
+
+    WLRoundedCornersManager.RoundedCornerKind getRoundedCornerKind() {
+        synchronized (dataLock) {
+            return roundedCornerKind;
+        }
+    }
+
+    void setRoundedCornerKind(WLRoundedCornersManager.RoundedCornerKind kind) {
+        synchronized (dataLock) {
+            if (roundedCornerKind != kind) {
+                roundedCornerKind = kind;
+                resetCornerMasks();
+            }
+        }
+    }
+
+    private void createCornerMasks() {
+        if (graphics == null) {
+            graphics = new SunGraphics2D(surfaceData, Color.WHITE, Color.BLACK, null);
+            graphics.setComposite(AlphaComposite.Clear);
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            graphics.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+        }
+
+        if (topLeftMask == null) {
+            createCornerMasks(WLRoundedCornersManager.roundCornerRadiusFor(roundedCornerKind));
+        }
+    }
+
+    private void resetCornerMasks() {
+        synchronized (dataLock) {
+            if (graphics != null) graphics.dispose();
+            graphics = null;
+            topLeftMask = null;
+            topRightMask = null;
+            bottomLeftMask = null;
+            bottomRightMask = null;
+        }
+    }
+
+    private void createCornerMasks(int size) {
+        int w = getWidth();
+        int h = getHeight();
+
+        topLeftMask = new Path2D.Double();
+        topLeftMask.moveTo(0, 0);
+        topLeftMask.lineTo(size, 0);
+        topLeftMask.quadTo(0, 0, 0, size);
+        topLeftMask.closePath();
+
+        topRightMask = new Path2D.Double();
+        topRightMask.moveTo(w - size, 0);
+        topRightMask.quadTo(w, 0, w, size);
+        topRightMask.lineTo(w, 0);
+        topRightMask.closePath();
+
+        bottomLeftMask = new Path2D.Double();
+        bottomLeftMask.moveTo(0, h - size);
+        bottomLeftMask.quadTo(0, h, size, h);
+        bottomLeftMask.lineTo(0, h);
+        bottomLeftMask.closePath();
+
+        bottomRightMask = new Path2D.Double();
+        bottomRightMask.moveTo(w - size, h);
+        bottomRightMask.quadTo(w, h, w, h - size);
+        bottomRightMask.lineTo(w, h);
+        bottomRightMask.closePath();
+    }
+
+    private void paintRoundCorners() {
+        synchronized (dataLock) {
+            createCornerMasks();
+
+            graphics.fill(topLeftMask);
+            graphics.fill(topRightMask);
+            graphics.fill(bottomLeftMask);
+            graphics.fill(bottomRightMask);
         }
     }
 }
