@@ -55,11 +55,12 @@
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
 extern BOOL MTLLayer_isExtraRedrawEnabled();
-extern int getBPPFromModeString(CFStringRef mode);
+extern void dumpDisplayInfo(jint displayID);
+extern BOOL isValidDisplayMode(CGDisplayModeRef mode);
 
 #define STATS_CVLINK        0
 
-#define TRACE_PWM_NOTIF     0
+#define TRACE_NOTIF         0
 
 #define TRACE_CVLINK        0
 #define TRACE_CVLINK_WARN   0
@@ -77,10 +78,6 @@ extern int getBPPFromModeString(CFStringRef mode);
         J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "CVDisplayLink[%s - %s][%p]: OK",     \
                      op, (source != nil) ? source : "", dl);                            \
     }                                                                                   \
-}
-
-boolean_t mtlc_IsDisplayReallyActive(CGDirectDisplayID displayID) {
-    return CGDisplayIsActive(displayID) & !CGDisplayIsAsleep(displayID) && CGDisplayIsOnline(displayID);
 }
 
 /* 60 fps typically => exponential smoothing on 0.5s */
@@ -107,8 +104,26 @@ typedef struct {
     CFTimeInterval      lastDisplayLinkTime;
     CFTimeInterval      avgDisplayLinkTime;
     CFTimeInterval      lastStatTime;
-
 } MTLDisplayLinkState;
+
+/* debugging helper functions */
+static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification notification) {
+#undef CASE_MTL_OP
+#define CASE_MTL_OP(X) \
+    case MTLDCM_##X:   \
+    return #X;
+
+    switch (notification) {
+        CASE_MTL_OP(SYSTEM_SLEEP)
+        CASE_MTL_OP(SYSTEM_WAKEUP)
+        CASE_MTL_OP(DISPLAY_SLEEP)
+        CASE_MTL_OP(DISPLAY_WAKEUP)
+        CASE_MTL_OP(DISPLAY_RECONFIGURE)
+        default:
+            return "";
+    }
+#undef CASE_MTL_OP
+}
 
 @implementation MTLCommandBufferWrapper {
     id<MTLCommandBuffer> _commandBuffer;
@@ -194,69 +209,42 @@ typedef struct {
 extern void initSamplers(id<MTLDevice> device);
 
 + (void)mtlc_systemOrScreenWillSleep:(NSNotification*)notification {
-    if (TRACE_PWM_NOTIF) {
+    if (TRACE_NOTIF) {
         NSLog(@"MTLContext_systemOrScreenWillSleep[%@]", [notification name]);
     }
     if (isDisplaySyncEnabled()) {
-        [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
-                                         block:^(){
-
-            for (MTLContext *mtlc in [MTLContext.contextStore allValues]) {
-                const NSArray<NSNumber*> *displayIDs = [mtlc getDisplayLinkDisplayIds]; // old ids
-                if (TRACE_PWM_NOTIF) {
-                    NSLog(@"MTLContext_systemOrScreenWillSleep: ctx=%p (%d displayLinks)",
-                          mtlc, (int) displayIDs.count);
-                }
-                for (NSNumber* displayIDVal in displayIDs) {
-                    const jint displayID = [displayIDVal intValue];
-                    const BOOL active = mtlc_IsDisplayReallyActive(displayID);
-
-                    if (TRACE_PWM_NOTIF) {
-                        NSLog(@"MTLContext_systemOrScreenWillSleep: displayId=%d active=%d", displayID, active);
-                    }
-                    if (TRACE_DISPLAY) {
-                        [MTLContext dumpDisplayInfo:displayID];
-                    }
-                    if ((notification.name == NSWorkspaceWillSleepNotification)|| !active) {
-                         [mtlc destroyDisplayLink:displayID];
-                    }
-                }
-            }
-        }];
+        MTLContextStoreNotification ctxNotif = MTLDCM_SYSTEM_UNDEFINED;
+        if (notification.name == NSWorkspaceWillSleepNotification) {
+            ctxNotif = MTLDCM_SYSTEM_SLEEP;
+        } else if (notification.name == NSWorkspaceWillSleepNotification) {
+            ctxNotif = MTLDCM_DISPLAY_SLEEP;
+        }
+        if (ctxNotif != MTLDCM_SYSTEM_UNDEFINED) {
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+                                         block:^() {
+                 [MTLContext processContextStoreNotification:ctxNotif];
+            }];
+        }
     }
 }
 
 + (void)mtlc_systemOrScreenDidWake:(NSNotification*)notification {
-    if (TRACE_PWM_NOTIF) {
+    if (TRACE_NOTIF) {
         NSLog(@"MTLContext_systemOrScreenDidWake[%@]", [notification name]);
     }
     if (isDisplaySyncEnabled()) {
-        [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
-                                         block:^(){
-
-            for (MTLContext *mtlc in [MTLContext.contextStore allValues]) {
-                const NSArray<NSNumber*>* displayIDs = [mtlc getDisplayLinkDisplayIds]; // old ids
-                if (TRACE_PWM_NOTIF) {
-                    NSLog(@"MTLContext_systemOrScreenDidWake: ctx=%p (%d displayLinks)",
-                          mtlc, (int)displayIDs.count);
-                }
-                for (NSNumber* displayIDVal in displayIDs) {
-                    const jint displayID = [displayIDVal intValue];
-                    const BOOL active = mtlc_IsDisplayReallyActive(displayID);
-
-                    if (TRACE_PWM_NOTIF) {
-                        NSLog(@"MTLContext_systemOrScreenDidWake: displayId=%d active=%d", displayID, active);
-                    }
-                    if (TRACE_DISPLAY) {
-                        [MTLContext dumpDisplayInfo:displayID];
-                    }
-                    if (active) {
-                        // (if needed will start a new display link thread):
-                        [mtlc createDisplayLinkIfAbsent:displayID];
-                    }
-                }
-            }
-        }];
+        MTLContextStoreNotification ctxNotif = MTLDCM_SYSTEM_UNDEFINED;
+        if (notification.name == NSWorkspaceDidWakeNotification) {
+            ctxNotif = MTLDCM_SYSTEM_WAKEUP;
+        } else if (notification.name == NSWorkspaceScreensDidWakeNotification) {
+            ctxNotif = MTLDCM_DISPLAY_WAKEUP;
+        }
+        if (ctxNotif != MTLDCM_SYSTEM_UNDEFINED) {
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+                                         block:^() {
+                 [MTLContext processContextStoreNotification:ctxNotif];
+            }];
+        }
     }
 }
 
@@ -265,15 +253,17 @@ extern void initSamplers(id<MTLDevice> device);
     if (!notificationRegistered) {
         notificationRegistered = true;
 
-        NSNotificationCenter *ctr = [[NSWorkspace sharedWorkspace] notificationCenter];
-        Class clz = [MTLContext class];
+        if (isDisplaySyncEnabled()) {
+            NSNotificationCenter *ctr = [[NSWorkspace sharedWorkspace] notificationCenter];
+            Class clz = [MTLContext class];
 
-        [ctr addObserver:clz selector:@selector(mtlc_systemOrScreenWillSleep:) name:NSWorkspaceWillSleepNotification object:nil];
-        [ctr addObserver:clz selector:@selector(mtlc_systemOrScreenDidWake:) name:NSWorkspaceDidWakeNotification object:nil];
+            [ctr addObserver:clz selector:@selector(mtlc_systemOrScreenWillSleep:) name:NSWorkspaceWillSleepNotification object:nil];
+            [ctr addObserver:clz selector:@selector(mtlc_systemOrScreenDidWake:) name:NSWorkspaceDidWakeNotification object:nil];
 
-        // NSWorkspaceScreensDidWakeNotification is first sent:
-        [ctr addObserver:clz selector:@selector(mtlc_systemOrScreenWillSleep:) name:NSWorkspaceScreensDidSleepNotification object:nil];
-        [ctr addObserver:clz selector:@selector(mtlc_systemOrScreenDidWake:) name:NSWorkspaceScreensDidWakeNotification object:nil];
+            // NSWorkspaceScreensDidWakeNotification is first sent:
+            [ctr addObserver:clz selector:@selector(mtlc_systemOrScreenWillSleep:) name:NSWorkspaceScreensDidSleepNotification object:nil];
+            [ctr addObserver:clz selector:@selector(mtlc_systemOrScreenDidWake:) name:NSWorkspaceScreensDidWakeNotification object:nil];
+        }
     }
 }
 
@@ -289,7 +279,82 @@ extern void initSamplers(id<MTLDevice> device);
     return _contextStore;
 }
 
++ (void) processContextStoreNotification:(MTLContextStoreNotification)notification {
+    AWT_ASSERT_APPKIT_THREAD;
+    if (isDisplaySyncEnabled()) {
+        const char* name = mtlContextStoreNotificationToStr(notification);
+        if (TRACE_NOTIF) {
+            NSLog(@"MTLContext_processContextStoreNotification[%s]: enter", name);
+        }
+
+        for (MTLContext *mtlc in [MTLContext.contextStore allValues]) {
+            const NSArray<NSNumber*>* displayIDs = [mtlc getDisplayLinkDisplayIds]; // old ids
+            if (TRACE_NOTIF) {
+                NSLog(@"MTLContext_processContextStoreNotification[%s]: ctx=%p (%d displayLinks)",
+                      name, mtlc, (int)displayIDs.count);
+            }
+            for (NSNumber* displayIDVal in displayIDs) {
+                const jint displayID = [displayIDVal intValue];
+                // CGDisplayIsActive is not always reliable:
+                BOOL active = CGDisplayIsActive(displayID) ? YES : NO;
+
+                if (active) {
+                    // Ensure mode is really valid:
+                    // CGDisplayCopyDisplayMode can return NULL if displayID is invalid
+                    CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayID);
+                    if (mode != NULL) {
+                        active = isValidDisplayMode(mode);
+                        CGDisplayModeRelease(mode);
+                    }
+                }
+                if (TRACE_NOTIF) {
+                    NSLog(@"MTLContext_processContextStoreNotification[%s]: displayId=%d active=%d",
+                          name, displayID, active);
+                }
+                if (TRACE_DISPLAY) {
+                    dumpDisplayInfo(displayID);
+                }
+
+                switch (notification) {
+                    case MTLDCM_SYSTEM_SLEEP:
+                        // kill all CVDisplayLinks:
+                        [mtlc destroyDisplayLink:displayID];
+                        break;
+                    case MTLDCM_DISPLAY_SLEEP:
+                        if (!active) {
+                            // kill CVDisplayLinks for inactive displays:
+                            [mtlc destroyDisplayLink:displayID];
+                        }
+                        break;
+                    case MTLDCM_SYSTEM_WAKEUP:
+                    case MTLDCM_DISPLAY_WAKEUP:
+                        if (active) {
+                            // (if needed will start a new display link thread):
+                            [mtlc createDisplayLinkIfAbsent:displayID];
+                        }
+                        break;
+                    case MTLDCM_DISPLAY_RECONFIGURE:
+                        if (active) {
+                            // (if needed will start a new display link thread):
+                            [mtlc createDisplayLinkIfAbsent:displayID];
+                        } else {
+                            // kill CVDisplayLinks for inactive displays:
+                            [mtlc destroyDisplayLink:displayID];
+                        }
+                        break;
+                    default:
+                        NSLog(@"Unsupported notification : %d", notification);
+                }
+            }
+            if (TRACE_NOTIF) {
+                NSLog(@"MTLContext_processContextStoreNotification[%s]: exit", name);
+            }
+        }
+    }
+}
+
 + (MTLContext*) createContextWithDeviceIfAbsent:(jint)displayID shadersLib:(NSString*)mtlShadersLib {
+    AWT_ASSERT_APPKIT_THREAD;
     // Initialization code here.
     // note: the device reference is NS_RETURNS_RETAINED, should be released by the caller:
     bool shouldReleaseDevice = true;
@@ -326,8 +391,7 @@ extern void initSamplers(id<MTLDevice> device);
             [mtlc release];
             J2dRlsTraceLn(J2D_TRACE_INFO,
                           "MTLContext_createContextWithDeviceIfAbsent: new context(%p) for display=%d device=\"%s\" "
-                          "retainCount=%d", mtlc, displayID, [mtlc.device.name UTF8String],
-                          mtlc.retainCount);
+                          "retainCount=%d", mtlc, displayID, [mtlc.device.name UTF8String], mtlc.retainCount);
         }
     } else {
         if (![mtlc.shadersLib isEqualToString:mtlShadersLib]) {
@@ -340,8 +404,7 @@ extern void initSamplers(id<MTLDevice> device);
         [mtlc retain];
         J2dRlsTraceLn(J2D_TRACE_INFO,
                       "MTLContext_createContextWithDeviceIfAbsent: reuse context(%p) for display=%d device=\"%s\" "
-                      "retainCount=%d", mtlc, displayID, [mtlc.device.name UTF8String],
-                      mtlc.retainCount);
+                      "retainCount=%d", mtlc, displayID, [mtlc.device.name UTF8String], mtlc.retainCount);
     }
     if (shouldReleaseDevice) {
         [device release];
@@ -352,6 +415,7 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 + (void) releaseContext:(MTLContext*) mtlc {
+    AWT_ASSERT_APPKIT_THREAD;
     id<NSCopying> deviceID = nil;
     if (@available(macOS 10.13, *)) {
         deviceID = @(mtlc.device.registryID);
@@ -377,6 +441,7 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 - (id)initWithDevice:(id<MTLDevice>)mtlDevice shadersLib:(NSString*)mtlShadersLib {
+    AWT_ASSERT_APPKIT_THREAD;
     self = [super init];
     if (self) {
         device = mtlDevice;
@@ -424,112 +489,19 @@ extern void initSamplers(id<MTLDevice> device);
     return self;
 }
 
-+ (void)dumpDisplayInfo: (jint)displayID {
-    // Returns a Boolean value indicating whether a display is active.
-    jint displayIsActive = CGDisplayIsActive(displayID);
-
-    // Returns a Boolean value indicating whether a display is always in a mirroring set.
-    jint displayIsalwaysInMirrorSet = CGDisplayIsAlwaysInMirrorSet(displayID);
-
-    // Returns a Boolean value indicating whether a display is sleeping (and is therefore not drawable).
-    jint displayIsAsleep = CGDisplayIsAsleep(displayID);
-
-    // Returns a Boolean value indicating whether a display is built-in, such as the internal display in portable systems.
-    jint displayIsBuiltin = CGDisplayIsBuiltin(displayID);
-
-    // Returns a Boolean value indicating whether a display is in a mirroring set.
-    jint displayIsInMirrorSet = CGDisplayIsInMirrorSet(displayID);
-
-    // Returns a Boolean value indicating whether a display is in a hardware mirroring set.
-    jint displayIsInHWMirrorSet = CGDisplayIsInHWMirrorSet(displayID);
-
-    // Returns a Boolean value indicating whether a display is the main display.
-    jint displayIsMain = CGDisplayIsMain(displayID);
-
-    // Returns a Boolean value indicating whether a display is connected or online.
-    jint displayIsOnline = CGDisplayIsOnline(displayID);
-
-    // Returns a Boolean value indicating whether a display is running in a stereo graphics mode.
-    jint displayIsStereo = CGDisplayIsStereo(displayID);
-
-    // For a secondary display in a mirroring set, returns the primary display.
-    CGDirectDisplayID displayMirrorsDisplay = CGDisplayMirrorsDisplay(displayID);
-
-    // Returns the primary display in a hardware mirroring set.
-    CGDirectDisplayID displayPrimaryDisplay = CGDisplayPrimaryDisplay(displayID);
-
-    // Returns the width and height of a display in millimeters.
-    CGSize size = CGDisplayScreenSize(displayID);
-
-    NSLog(@"CGDisplay[%d]{\n"
-           "displayIsActive=%d\n"
-           "displayIsalwaysInMirrorSet=%d\n"
-           "displayIsAsleep=%d\n"
-           "displayIsBuiltin=%d\n"
-           "displayIsInMirrorSet=%d\n"
-           "displayIsInHWMirrorSet=%d\n"
-           "displayIsMain=%d\n"
-           "displayIsOnline=%d\n"
-           "displayIsStereo=%d\n"
-           "displayMirrorsDisplay=%d\n"
-           "displayPrimaryDisplay=%d\n"
-           "displayScreenSizey=[%.1lf %.1lf]\n",
-           displayID,
-           displayIsActive,
-           displayIsalwaysInMirrorSet,
-           displayIsAsleep,
-           displayIsBuiltin,
-           displayIsInMirrorSet,
-           displayIsInHWMirrorSet,
-           displayIsMain,
-           displayIsOnline,
-           displayIsStereo,
-           displayMirrorsDisplay,
-           displayPrimaryDisplay,
-           size.width, size.height
-    );
-
-    // CGDisplayCopyDisplayMode can return NULL if displayID is invalid
-    CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayID);
-    if (mode) {
-        // Getting Information About a Display Mode
-        jint h = -1, w = -1, bpp = -1;
-        jdouble refreshRate = 0.0;
-
-        // Returns the width of the specified display mode.
-        w = CGDisplayModeGetWidth(mode);
-
-        // Returns the height of the specified display mode.
-        h = CGDisplayModeGetHeight(mode);
-
-        // Returns the pixel encoding of the specified display mode.
-        // Deprecated
-        CFStringRef currentBPP = CGDisplayModeCopyPixelEncoding(mode);
-        bpp = getBPPFromModeString(currentBPP);
-        CFRelease(currentBPP);
-
-        // Returns the refresh rate of the specified display mode.
-        refreshRate = CGDisplayModeGetRefreshRate(mode);
-
-        NSLog(@"CGDisplayMode[%d]: w=%d, h=%d, bpp=%d, freq=%.2lf hz",
-              displayID, w, h, bpp, refreshRate);
-
-        CGDisplayModeRelease(mode);
-    }
-}
-
 - (NSArray<NSNumber*>*)getDisplayLinkDisplayIds {
     return [_displayLinkStates allKeys];
 }
 
 - (void)createDisplayLinkIfAbsent: (jint)displayID {
-    if (isDisplaySyncEnabled()) {
+    AWT_ASSERT_APPKIT_THREAD;
+    if (_displayLinkStates != nil) {
         MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
         if ((dlState != nil) && (dlState->displayLink != nil)) {
             return;
         }
         if (TRACE_DISPLAY) {
-            [MTLContext dumpDisplayInfo:displayID];
+            dumpDisplayInfo(displayID);
         }
         CVDisplayLinkRef _displayLink;
         if (TRACE_CVLINK) {
@@ -543,7 +515,7 @@ extern void initSamplers(id<MTLDevice> device);
             J2dRlsTraceLn(J2D_TRACE_ERROR,
                           "MTLContext_createDisplayLinkIfAbsent: Failed to initialize CVDisplayLink.");
         } else {
-            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLContext_destroyDisplayLinkMTLContext_createDisplayLinkIfAbsent["
+            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLContext_createDisplayLinkIfAbsent["
                                           "ctx=%p displayID=%d] displayLink=%p",
                                           self, displayID, _displayLink);
             bool isNewDisplayLink = false;
@@ -595,7 +567,8 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 - (void)destroyDisplayLink: (jint)displayID {
-    if (isDisplaySyncEnabled()) {
+    AWT_ASSERT_APPKIT_THREAD;
+    if (_displayLinkStates != nil) {
         MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
         if (dlState == nil) {
             return;
@@ -620,17 +593,21 @@ extern void initSamplers(id<MTLDevice> device);
         // Release display link thread:
         CVDisplayLinkRelease(_displayLink);
         dlState->displayLink = nil;
+        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLContext_destroyDisplayLink["
+                                      "ctx=%p displayID=%d] done",
+                                      self, displayID);
     }
 }
 
 - (void)handleDisplayLink: (BOOL)enabled displayID:(jint)displayID source:(const char*)src {
+    AWT_ASSERT_APPKIT_THREAD;
     MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
     if (dlState == nil) {
         return;
     }
     CVDisplayLinkRef _displayLink = dlState->displayLink;
     if (_displayLink == nil) {
-        if (TRACE_CVLINK) {
+        if (TRACE_CVLINK_DEBUG) {
             J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLContext_handleDisplayLink[%s]: "
                                              "displayLink is nil (disabled).", src);
         }
@@ -1031,7 +1008,6 @@ extern void initSamplers(id<MTLDevice> device);
 
 - (void) redraw:(NSNumber*)displayIDNumber {
     AWT_ASSERT_APPKIT_THREAD;
-    const CFTimeInterval now = CACurrentMediaTime();
 
     const jint displayID = [displayIDNumber intValue];
     MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
@@ -1042,6 +1018,7 @@ extern void initSamplers(id<MTLDevice> device);
      * Avoid repeated invocations by UIKit Main Thread
      * if blocked while many mtlDisplayLinkCallback() are dispatched
      */
+    const CFTimeInterval now = CACurrentMediaTime();
     const CFTimeInterval elapsed = (dlState->lastRedrawTime != 0.0) ? (now - dlState->lastRedrawTime) : -1.0;
 
     CFTimeInterval threshold = (dlState->avgDisplayLinkSamples >= 10) ?
@@ -1086,7 +1063,7 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* nowTime, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext) {
-    JNI_COCOA_ENTER(env);
+    JNI_COCOA_ENTER();
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext_mtlDisplayLinkCallback: ctx=%p", displayLinkContext);
 
         MTLDisplayLinkState *dlState = (__bridge MTLDisplayLinkState*) displayLinkContext;
@@ -1118,25 +1095,18 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
             }
         }
 
-        const BOOL active = mtlc_IsDisplayReallyActive(displayID);
-        if (TRACE_CVLINK_DEBUG) {
-            NSLog(@"MTLContext_mtlDisplayLinkCallback: ctx=%p displayID=%d active=%d (display link = %p)",
-                  mtlc, displayID, active, dlState->displayLink);
-        }
-        if (!active) {
-            if (TRACE_CVLINK) {
-                NSLog(@"MTLContext_mtlDisplayLinkCallback: displayId=%d active=%d "
-                      "=> destroyDisplayLink", displayID, active);
+        /* defensive programming (should not happen) */
+        if ([ThreadUtilities blockingMainThread]) {
+            if (TRACE_CVLINK_WARN) {
+                NSLog(@"MTLContext_mtlDisplayLinkCallback: ctx=%p - invalid state: blockingMainThread = YES !",
+                      displayLinkContext);
             }
-            if (TRACE_DISPLAY) {
-                [MTLContext dumpDisplayInfo:displayID];
-            }
-            [mtlc destroyDisplayLink:displayID];
-        } else {
-            [ThreadUtilities performOnMainThread:@selector(redraw:) on:mtlc withObject:@(displayID)
-                                   waitUntilDone:NO useJavaModes:NO]; // critical
+            return kCVReturnError;
         }
-    JNI_COCOA_EXIT(env);
+
+        [ThreadUtilities performOnMainThread:@selector(redraw:) on:mtlc withObject:@(displayID)
+                               waitUntilDone:NO useJavaModes:NO]; // critical
+    JNI_COCOA_EXIT();
     return kCVReturnSuccess;
 }
 
@@ -1191,6 +1161,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 }
 
 - (void)haltRedraw {
+    AWT_ASSERT_APPKIT_THREAD;
     if (_displayLinkStates != nil) {
         if (TRACE_CVLINK) {
             J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLContext_haltRedraw: ctx=%p", self);
@@ -1202,7 +1173,12 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
             [_layers removeAllObjects];
         }
         if (_displayLinkStates.count > 0) {
-            for (NSNumber* displayIDVal in [self getDisplayLinkDisplayIds]) {
+            const NSArray<NSNumber*>* displayIDs = [self getDisplayLinkDisplayIds]; // old ids
+            if (TRACE_CVLINK) {
+                NSLog(@"MTLContext_haltRedraw: ctx=%p (%d displayLinks)",
+                      self, (int) displayIDs.count);
+            }
+            for (NSNumber* displayIDVal in displayIDs) {
                 const jint displayID = [displayIDVal intValue];
                 [self destroyDisplayLink:displayID];
 
