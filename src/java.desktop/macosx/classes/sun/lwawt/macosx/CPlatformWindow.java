@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1192,8 +1192,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 new GetPropertyAction(invokeLaterKey));
         final int result;
         if (invokeLaterArg == null) {
-            // default = 'enabled' to avoid any potential freeze (safe) until better solution:
-            result = INVOKE_LATER_ENABLED;
+            // default = 'false':
+            result = INVOKE_LATER_DISABLED;
         } else {
             switch (invokeLaterArg.toLowerCase()) {
                 default:
@@ -1215,28 +1215,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return result;
     }
 
-    @SuppressWarnings("removal")
-    private final static boolean INVOKE_LATER_USE_PWM = getInvokeLaterUsePWM();
-
-    private static boolean getInvokeLaterUsePWM() {
-        final String usePwmKey = "awt.mac.flushBuffers.pwm";
-        @SuppressWarnings("removal")
-        final String usePwmArg = AccessController.doPrivileged(
-                new GetPropertyAction(usePwmKey));
-        final boolean result;
-        if (usePwmArg == null) {
-            // default = 'false':
-            result = false;
-        } else {
-            result = "true".equalsIgnoreCase(usePwmArg);
-            logger.info("CPlatformWindow: property \"{0}={1}\", using usePWM={2}.",
-                    usePwmKey, usePwmArg, result);
-        }
-        return result;
-    }
+    private final static long NANOS_PER_SEC = 1000000000L;
     /* 10s period arround reference times (sleep/wake-up...)
      * to ensure all displays are awaken properly */
-    private final static long NANOS_PER_SEC = 1000000000L;
     private final static long STATE_CHANGE_PERIOD = 10L * NANOS_PER_SEC;
 
     private final AtomicBoolean mirroringState = new AtomicBoolean(false);
@@ -1244,22 +1225,35 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private final AtomicLong mirroringDisablingTime = new AtomicLong(0L);
 
     // Specific class needed to get obvious stack traces:
-    private final class EmptyRunnable implements Runnable {
+    private final static class EmptyRunnable implements Runnable {
+
+        private final String identifier;
+
+        EmptyRunnable(final String identifier) {
+            this.identifier = identifier;
+        }
+
         @Override
         public void run() {
             // Posting an empty to flush the EventQueue without blocking the main thread
             if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                logger.fine("CPlatformWindow.flushBuffers: run() invoked on {0}",
-                        getIdentifier(target));
+                logger.fine("CPlatformWindow.flushBuffers: run() invoked on target: {0}", identifier);
             }
         }
     };
-    private final EmptyRunnable emptyTask = new EmptyRunnable();
 
     void flushBuffers() {
         // Only 1 usage by deliverMoveResizeEvent():
         //                          System-dependent appearance optimization.
         //                          May be blocking so postpone this event processing:
+
+        // Test only to validate LWCToolkit self-defense against freezes:
+        final boolean checkLWCToolkitBlockingMainGuard = false;
+
+        if (!checkLWCToolkitBlockingMainGuard && LWCToolkit.isBlockingMainThread()) {
+            logger.fine("Blocked main thread, skip flushBuffers().");
+            return;
+        }
 
         if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
             // use the system property 'awt.mac.flushBuffers.invokeLater' to true/auto (default: auto)
@@ -1276,7 +1270,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
                     // JBR-5497: force using invokeLater() when computer returns from sleep or displayChanged()
                     // (mirroring case especially) to avoid deadlocks until solved definitely:
-
                     boolean mirroring = false;
                     if (peer != null) {
                         final GraphicsDevice device = peer.getGraphicsConfiguration().getDevice();
@@ -1326,39 +1319,30 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                     useInvokeLater = true;
                     break;
             }
-            if (!useInvokeLater && INVOKE_LATER_USE_PWM) {
-                // If the system property 'awt.mac.flushBuffers.pwm' is true,
-                // invokeLater is enforced during power transitions.
-                final boolean inTransition = LWCToolkit.isWithinPowerTransition();
-                if (inTransition) {
-                    logger.fine("CPlatformWindow.flushBuffers[pwm]: inTransition = true");
-                    useInvokeLater = true;
-                }
-            }
             try {
+                final String identifier = logger.isLoggable(PlatformLogger.Level.FINE) ? getIdentifier(target) : null;
+                final EmptyRunnable emptyTask = new EmptyRunnable(identifier);
+
                 // check invokeAndWait: KO (operations require AWTLock and main thread)
-                // => use invokeLater as it is an empty event to force refresh ASAP
+                // => use invokeLater as it is an empty event to force refresh
                 if (useInvokeLater) {
                     LWCToolkit.invokeLater(emptyTask, target);
                 } else {
-                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                        logger.fine("CPlatformWindow.flushBuffers: enter " +
-                                "LWCToolkit.invokeAndWait(emptyTask) on target = {0}",
-                                getIdentifier(target));
-                    }
-
-                    /* Ensure >500ms = 666ms timeout to avoid any deadlock among
+                    /* Ensure >3000ms = 3.666ms timeout to avoid any deadlock among
                      * appkit, EDT, Flusher & a11y threads, locks
                      * and various synchronization patterns... */
-                    final double timeoutSeconds = 0.666; // seconds
+                    final double timeoutSeconds = 3.666; // seconds
 
-                    // FUCK: appKit is calling this method !
+                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                        logger.fine("CPlatformWindow.flushBuffers: enter " +
+                                        "LWCToolkit.invokeAndWait(emptyTask) on target = {0}", identifier);
+                    }
+
                     LWCToolkit.invokeAndWait(emptyTask, target, timeoutSeconds);
 
                     if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                         logger.fine("CPlatformWindow.flushBuffers: exit  " +
-                                "LWCToolkit.invokeAndWait(emptyTask) on target = {0}",
-                                getIdentifier(target));
+                                        "LWCToolkit.invokeAndWait(emptyTask) on target = {0}", identifier);
                     }
                 }
             } catch (InvocationTargetException ite) {
@@ -1411,6 +1395,10 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     /* native call by AWTWindow._deliverMoveResizeEvent() */
     protected void deliverMoveResizeEvent(int x, int y, int width, int height,
                                         boolean byUser) {
+
+        /* Test only to generate more appkit freezes */
+        final boolean bypassToHaveMoreFreezes = false;
+
         AtomicBoolean ref = new AtomicBoolean();
         execute(ptr -> {
             ref.set(CWrapper.NSWindow.isZoomed(ptr));
@@ -1429,10 +1417,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             }
 
             // System-dependent appearance optimization.
-            if ((byUser && !oldB.getSize().equals(nativeBounds.getSize()))
+            if (bypassToHaveMoreFreezes
+                    || (byUser && !oldB.getSize().equals(nativeBounds.getSize()))
                     || isFullScreenAnimationOn) {
-
-                // May be blocking so postpone this event processing:
                 flushBuffers();
             }
         }
