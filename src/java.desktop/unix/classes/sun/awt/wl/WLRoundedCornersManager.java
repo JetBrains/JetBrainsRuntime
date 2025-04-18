@@ -74,13 +74,13 @@ public class WLRoundedCornersManager implements RoundedCornersManager {
     @Override
     public void setRoundedCorners(Window window, Object params) {
         Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
-        if (peer instanceof WLComponentPeer) {
+        if (peer instanceof WLWindowPeer) {
             RoundedCornerKind kind = roundedCornerKindFrom(params);
-            ((WLComponentPeer) peer).setRoundedCornerKind(kind);
+            ((WLWindowPeer) peer).setRoundedCornerKind(kind);
         } else if (window instanceof RootPaneContainer) {
             JRootPane rootpane = ((RootPaneContainer)window).getRootPane();
             if (rootpane != null) {
-                rootpane.putClientProperty(WLComponentPeer.WINDOW_CORNER_RADIUS, params);
+                rootpane.putClientProperty(WLWindowPeer.WINDOW_CORNER_RADIUS, params);
             }
         }
     }
