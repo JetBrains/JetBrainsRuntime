@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,4 +110,15 @@ Java_sun_java2d_metal_MTLGraphicsConfig_nativeGetMaxTextureSize
     J2dTraceLn(J2D_TRACE_INFO, "MTLGraphicsConfig_nativeGetMaxTextureSize");
 
     return (jint)MTL_GPU_FAMILY_MAC_TXT_SIZE;
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_metal_MTLGraphicsConfig_displayReconfigurationDone
+(JNIEnv *env, jclass mtlgc)
+{
+    JNI_COCOA_ENTER(env);
+
+    [MTLContext processContextStoreNotification:MTLDCM_DISPLAY_RECONFIGURE];
+
+    JNI_COCOA_EXIT(env);
 }
