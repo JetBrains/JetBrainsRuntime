@@ -245,7 +245,7 @@ public class WLFrameDecoration implements PropertyChangeListener {
             try {
                 g2d.setColor(getBorderColor(active));
                 g2d.setStroke(new BasicStroke(BORDER_WIDTH));
-                g2d.drawRect(0, HEIGHT - 1, width - BORDER_WIDTH, height - BORDER_WIDTH - HEIGHT);
+                g2d.drawRect(0, 0, width - BORDER_WIDTH, height - BORDER_WIDTH);
             } finally {
                 g2d.dispose();
             }
@@ -274,12 +274,11 @@ public class WLFrameDecoration implements PropertyChangeListener {
                 && !peer.isFullscreen()) {
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+            Composite originalComposite = g.getComposite();
+            g.setComposite(AlphaComposite.Clear);
+            g.fillRect(0, 0, width, HEIGHT);
+            g.setComposite(originalComposite);
             int radius = WLRoundedCornersManager.roundCornerRadiusFor(WLRoundedCornersManager.RoundedCornerKind.DEFAULT);
-//            Composite originalComposite = g.getComposite();
-//            g.setComposite(AlphaComposite.Clear);
-//            g.fillRoundRect(0, 0, width, HEIGHT + radius + 1, radius, radius);
-//            g.setComposite(originalComposite);
-
             // The title bar
             g.fillRoundRect(0, 0, width, HEIGHT + radius + 1, radius, radius);
 
