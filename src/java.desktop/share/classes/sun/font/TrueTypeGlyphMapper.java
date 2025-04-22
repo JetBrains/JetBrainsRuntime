@@ -57,8 +57,8 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
         return numGlyphs;
     }
 
-    private char getGlyphFromCMAP(int charCode, boolean raw) {
-        if (!raw && FontUtilities.isDefaultIgnorable(charCode)) {
+    private char getGlyphFromCMAP(int charCode) {
+        if (FontUtilities.isDefaultIgnorable(charCode)) {
             return INVISIBLE_GLYPH_ID;
         }
         try {
@@ -80,11 +80,11 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
         }
     }
 
-    private char getGlyphFromCMAP(int charCode, int variationSelector, boolean raw) {
+    private char getGlyphFromCMAP(int charCode, int variationSelector) {
         if (variationSelector == 0) {
-            return getGlyphFromCMAP(charCode, raw);
+            return getGlyphFromCMAP(charCode);
         }
-        if (!raw && FontUtilities.isDefaultIgnorable(charCode)) {
+        if (FontUtilities.isDefaultIgnorable(charCode)) {
             return INVISIBLE_GLYPH_ID;
         }
         try {
@@ -122,30 +122,19 @@ public class TrueTypeGlyphMapper extends CharToGlyphMapper {
         cmap = CMap.theNullCmap;
     }
 
-    public int charToGlyphRaw(int unicode) {
-        int glyph = getGlyphFromCMAP(unicode, true);
-        return glyph;
-    }
-
-    @Override
-    public int charToVariationGlyphRaw(int unicode, int variationSelector) {
-        int glyph = getGlyphFromCMAP(unicode, variationSelector, true);
-        return glyph;
-    }
-
     public int charToGlyph(char unicode) {
-        int glyph = getGlyphFromCMAP(unicode, false);
+        int glyph = getGlyphFromCMAP(unicode);
         return glyph;
     }
 
     public int charToGlyph(int unicode) {
-        int glyph = getGlyphFromCMAP(unicode, false);
+        int glyph = getGlyphFromCMAP(unicode);
         return glyph;
     }
 
     @Override
     public int charToVariationGlyph(int unicode, int variationSelector) {
-        int glyph = getGlyphFromCMAP(unicode, variationSelector, false);
+        int glyph = getGlyphFromCMAP(unicode, variationSelector);
         return glyph;
     }
 

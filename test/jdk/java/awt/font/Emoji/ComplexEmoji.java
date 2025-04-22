@@ -26,8 +26,6 @@
  * @key headful
  * @bug 8269806
  * @summary Checks that complex emoji are rendered with proper shaping.
- * @run main/othervm -Dsun.font.layout.ffm=true ComplexEmoji
- * @run main/othervm -Dsun.font.layout.ffm=false ComplexEmoji
  */
 
 import javax.imageio.ImageIO;
