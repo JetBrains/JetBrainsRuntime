@@ -688,6 +688,7 @@ java/awt/xembed/server/RunTestXEmbed.java 7034201 linux-all
 java/awt/Modal/ModalFocusTransferTests/FocusTransferDialogsDocModalTest.java 8164473 linux-all
 java/awt/Frame/DecoratedFrameInsets/DecoratedFrameInsetsTest.java JBR-5205 linux-5.4.0-1103-aws
 java/awt/Frame/DisposeParentGC/DisposeParentGC.java 8079786 macosx-all
+java/awt/Frame/DisposeTest.java JBR-7937 macosx-aarch64
 
 java/awt/GraphicsDevice/CheckDisplayModes.java 8266242,JBR-8183 macosx-aarch64,macosx-x64
 java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223,8274106 macosx-all,linux-all,windows-all
@@ -1126,6 +1127,7 @@ javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8253184,JBR
 javax/swing/plaf/synth/7158712/bug7158712.java JBR-125,8322653 linux-all,windows-all,macosx-all
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8253184,JBR-5510,JBR-803 windows-all,linux-all,macosx-all
 javax/swing/plaf/synth/SynthScrollbarThumbPainter/SynthScrollbarThumbPainterTest.java 8253184 windows-all
+javax/swing/plaf/synth/Test6660049.java JBR-8397 windows-all
 javax/swing/plaf/synth/Test8043627.java JBR-5767 windows-all
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java JBR-5510,JBR-6546 linux-5.18.2-arch1-1,windows-x64
@@ -1323,6 +1325,7 @@ java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335 linux-a
 java/awt/Focus/RequestOnCompWithNullParent/RequestOnCompWithNullParent1.java JBR-6507 linux-all
 java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java JBR-6052 macosx-all,linux-all
 java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java 8258103,8253184 linux-all,windows-all
+java/awt/List/HandlingKeyEventIfMousePressedTest.java 6848358 macosx-all,windows-all
 
 com/sun/jndi/dns/ConfigTests/Timeout.java 8220213 generic-all
 
@@ -1511,7 +1514,7 @@ javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-5510 linux-5.18.2-arch1-1
 jb/java/awt/Focus/BrokenTraversalAWT.java JBR-5799 windows-all
 jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728 linux-all,windows-x64
 jb/java/awt/Focus/ContextMenuAfterPopup.java JBR-5799 windows-all
-jb/java/awt/Focus/FileDialogClosing.java JBR-8309 macosx-x64
+jb/java/awt/Focus/FileDialogClosing.java JBR-8309 macosx-x64,windows-all
 jb/java/awt/Focus/FocusTraversalOrderTest.java JBR-6060 generic-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java JBR-6394 linux-5.18.2-arch1-1,windows-all

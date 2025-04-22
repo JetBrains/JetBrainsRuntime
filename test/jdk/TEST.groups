@@ -815,6 +815,7 @@ jdk_awt_wayland = \
     -java/awt/Clipboard/LostOwnershipChainTest/SystemClipboardTest.java \
     -java/awt/ColorClass/AlphaColorTest.java \
     -java/awt/Component/7097771 \
+    -java/awt/Component/ComponentEventTest.java \
     -java/awt/Component/ComponentRedrawnTest.java \
     -java/awt/Component/DimensionEncapsulation \
     -java/awt/Component/F10TopToplevel \
@@ -945,6 +946,7 @@ jdk_awt_wayland = \
     -java/awt/Focus/InputVerifierTest3 \
     -java/awt/Focus/KeyEventForBadFocusOwnerTest \
     -java/awt/Focus/LabelScrollBarFocus.java \
+    -java/awt/MenuShortcut/ActionCommandTest.java \
     -java/awt/Focus/ModalBlockedStealsFocusTest \
     -java/awt/Focus/ModalDialogActivationTest \
     -java/awt/Focus/ModalDialogInFocusEventTest.java \
@@ -1287,6 +1289,7 @@ jdk_swing_wayland= \
     -javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java \
     -javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java \
     -javax/swing/KeyboardManager/8013370/Test8013370.java \
+    -javax/swing/KeyboardManager/bug4345798.java \
     -javax/swing/LookAndFeel/8145547/DemandGTK.java \
     -javax/swing/LookAndFeel/8146276/NimbusGlueTest.java \
     -javax/swing/LookAndFeel/SystemLookAndFeel/SystemLookAndFeelTest.java \
