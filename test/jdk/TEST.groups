@@ -1196,6 +1196,7 @@ jdk_swing_wayland= \
     -javax/swing/JMenu/bug4140643.java \
     -javax/swing/JMenu/bug4767393.java \
     -javax/swing/JMenu/bug5013739.java \
+    -javax/swing/JMenu/JMenuSelectedColorTest.java \
     -javax/swing/JMenu/PopupReferenceMemoryLeak.java \
     -javax/swing/JMenu/TestDisabledMenuForegroundColor.java \
     -javax/swing/JMenu/TestUngrab.java \
@@ -1307,6 +1308,7 @@ jdk_swing_wayland= \
     -javax/swing/JToolTip/4846413/bug4846413.java \
     -javax/swing/JToolTip/6219960/bug6219960.java \
     -javax/swing/JToolTip/bug5047379.java \
+    -javax/swing/JToolTip/TestTooltipBackgroundColor.java \
     -javax/swing/JTree/4518432/JTreeNodeCopyPasteTest.java \
     -javax/swing/JTree/4618767/JTreeSelectedElementTest.java \
     -javax/swing/JTree/4633594/JTreeFocusTest.java \
