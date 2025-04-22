@@ -1323,6 +1323,7 @@ java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java JBR-6335 linux-a
 java/awt/Focus/RequestOnCompWithNullParent/RequestOnCompWithNullParent1.java JBR-6507 linux-all
 java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java JBR-6052 macosx-all,linux-all
 java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java 8258103,8253184 linux-all,windows-all
+java/awt/List/HandlingKeyEventIfMousePressedTest.java 6848358 macosx-all,windows-all
 
 com/sun/jndi/dns/ConfigTests/Timeout.java 8220213 generic-all
 
@@ -1511,7 +1512,7 @@ javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-5510 linux-5.18.2-arch1-1
 jb/java/awt/Focus/BrokenTraversalAWT.java JBR-5799 windows-all
 jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728 linux-all,windows-x64
 jb/java/awt/Focus/ContextMenuAfterPopup.java JBR-5799 windows-all
-jb/java/awt/Focus/FileDialogClosing.java JBR-8309 macosx-x64
+jb/java/awt/Focus/FileDialogClosing.java JBR-8309 macosx-x64,windows-all
 jb/java/awt/Focus/FocusTraversalOrderTest.java JBR-6060 generic-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java JBR-6394 linux-5.18.2-arch1-1,windows-all
