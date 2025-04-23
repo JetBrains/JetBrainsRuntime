@@ -43,10 +43,11 @@ public class WLPopupMoves {
 
     private static JFrame frame;
     private static JWindow popup;
+    private static Dimension frameSize;
 
     private static void createAndShowUI() {
         frame = new JFrame("WLPopupMoves Test");
-        frame.setSize(300, 200);
+        frame.setSize(frameSize);
         frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
         frame.setVisible(true);
     }
@@ -69,8 +70,19 @@ public class WLPopupMoves {
 
         Robot robot = new Robot();
 
+        // If popup is placed near screen's edge, its location may be distorted by the server.
+        // Having the popup's parent fill the entire screen will reduce the risk of that.
+        // NB: the popup cannot be located outside parent's bounds; this is enforced by the toolkit.
+        frameSize = toolkit.getScreenSize();
+        if (frameSize.width < 200 || frameSize.height < 200) {
+            System.out.printf("The screen '%s' is too small for this test. Exiting...", frameSize);
+            return;
+        }
+
         SwingUtilities.invokeAndWait(WLPopupMoves::createAndShowUI);
         pause(robot);
+
+        frameSize = frame.getSize(); // get the real size after showing
 
         SwingUtilities.invokeAndWait(WLPopupMoves::initPopup);
         pause(robot);
@@ -97,8 +109,8 @@ public class WLPopupMoves {
             pause(robot);
             verifyBounds("Popup position (100, 100) after robot's pause\n", 100, 100, w, h, tolerance);
 
-            int x1 = (int) (toolkit.getScreenSize().width / (2 * uiScale));
-            int y1 = (int) (toolkit.getScreenSize().height / (2 * uiScale));
+            int x1 = (int) (frameSize.width / (2 * uiScale));
+            int y1 = (int) (frameSize.height / (2 * uiScale));
             System.out.printf("Set popup to (%d, %d)\n", x1, y1);
             SwingUtilities.invokeAndWait(() -> {
                 popup.setBounds(x1, y1, w, h);
@@ -107,8 +119,8 @@ public class WLPopupMoves {
             pause(robot);
             verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x1, y1), x1, y1, w, h, tolerance);
 
-            int x2 = (int) (toolkit.getScreenSize().width / uiScale - 10 - w);
-            int y2 = (int) (toolkit.getScreenSize().height / uiScale - 10 - h);
+            int x2 = (int) (frameSize.width / uiScale - 10 - w);
+            int y2 = (int) (frameSize.height / uiScale - 10 - h);
             System.out.printf("Set popup to (%d, %d). (to the bottom right corner) \n", x2, y2);
             SwingUtilities.invokeAndWait(() -> {
                 popup.setBounds(x2, y2, w, h);
@@ -116,22 +128,6 @@ public class WLPopupMoves {
             verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x2, y2), x2, y2, w, h, tolerance);
             pause(robot);
             verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x2, y2), x2, y2, w, h, tolerance);
-
-            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            GraphicsDevice device = ge.getDefaultScreenDevice();
-            GraphicsConfiguration gc = device.getDefaultConfiguration();
-            Insets insets = toolkit.getScreenInsets(gc);
-            int x3 = (int) (toolkit.getScreenSize().width / uiScale - 10 - insets.right);
-            int y3 = (int) (toolkit.getScreenSize().height / uiScale - 10 - insets.bottom);
-            System.out.printf("Set popup to (%d, %d). (to the bottom right corner) \n", x3, y3);
-            SwingUtilities.invokeAndWait(() -> {
-                popup.setBounds(x2, y2, w, h);
-            });
-            int x3Relocated = x3 - w;
-            int y3Relocated = y3 - h;
-            verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x3, y3), x3Relocated, y3Relocated, w, h, tolerance);
-            pause(robot);
-            verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x3, y3), x3Relocated, y3Relocated, w, h, tolerance);
         } finally {
             SwingUtilities.invokeAndWait(frame::dispose);
         }
