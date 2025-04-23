@@ -316,13 +316,36 @@ public class WLComponentPeer implements ComponentPeer {
         return new Point(x, y);
     }
 
+    static void moveToOverlap(Rectangle what, Rectangle where) {
+        if (what.getMaxX() <= where.getMinX()) {
+            what.x += where.getMaxX() - what.getMaxX() + 1;
+        }
+        if (what.getMinX() >= where.getMaxX()) {
+            what.x -= what.getMinX() - where.getMaxX() + 1;
+        }
+        if (what.getMaxY() <= where.getMinY()) {
+            what.y += where.getMaxY() - what.getMaxY() + 1;
+        }
+        if (what.getMinY() >= where.getMaxY()) {
+            what.y -= what.getMinY() - where.getMaxY() + 1;
+        }
+        assert what.intersects(where);
+    }
+
     Point nativeLocationForPopup(Window popup, Component popupParent, Window toplevel) {
         // We need to provide popup's "parent" location relative to the surface this parent is painted upon:
         Point parentLocation = javaUnitsToSurfaceUnits(getRelativeLocation(popupParent, toplevel));
 
         // Offset is relative to the top-left corner of the "parent".
         Point offsetFromParent = javaUnitsToSurfaceUnits(popup.getLocation());
-        return new Point(parentLocation.x + offsetFromParent.x, parentLocation.y + offsetFromParent.y);
+        var popupBounds = new Rectangle(parentLocation.x + offsetFromParent.x, parentLocation.y + offsetFromParent.y, getBufferWidth(), getBufferHeight());
+        Rectangle toplevelBounds = new Rectangle(toplevel.getSize());
+        if (!toplevelBounds.intersects(popupBounds)) {
+            // Many Wayland compositors will immediately send popup_done to a popup that attempts to
+            // go outside of the parent surface's bounds.
+            moveToOverlap(popupBounds, toplevelBounds);
+        }
+        return popupBounds.getLocation();
     }
 
     protected void wlSetVisible(boolean v) {
@@ -432,6 +455,7 @@ public class WLComponentPeer implements ComponentPeer {
             Window popup = (Window) target;
             final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
             final Window toplevel = getToplevelFor(popupParent);
+            // TODO: restrict target's location if it goes outside of toplevel's bounds
             Point nativeLocation = nativeLocationForPopup(popup, popupParent, toplevel);
             nativeRepositionWLPopup(nativePtr, surfaceWidth, surfaceHeight, nativeLocation.x, nativeLocation.y);
         }
@@ -1758,9 +1782,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     void notifyPopupDone() {
         assert(targetIsWlPopup());
-        setVisible(false);
-        // TODO: may need a better way of notifying interested components about popup disappearance
-        WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_CLOSING));
+        target.setVisible(false);
     }
 
     private WLGraphicsDevice getGraphicsDevice() {
