@@ -76,6 +76,7 @@ public class bug4382876 {
                     upFail = true;
                 }
             });
+            r.keyRelease(KeyEvent.VK_PAGE_UP);
             if (upFail) {
                 writeFailImage();
                 throw new RuntimeException("Slider value did NOT change with PAGE_UP");
@@ -87,6 +88,7 @@ public class bug4382876 {
                     downFail = true;
                 }
             });
+            r.keyRelease(KeyEvent.VK_PAGE_DOWN);
             if (downFail) {
                 writeFailImage();
                 throw new RuntimeException("Slider value did NOT change with PAGE_DOWN");
