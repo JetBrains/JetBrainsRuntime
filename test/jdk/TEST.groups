@@ -978,7 +978,9 @@ jdk_awt_wayland = \
     -java/awt/FullScreen/TranslucentWindow \
     -java/awt/grab \
     -java/awt/Graphics/DrawOvalTest.java \
+    -java/awt/Graphics/GDIResourceExhaustionTest.java \
     -java/awt/Graphics/LCDTextAndGraphicsState.java \
+    -java/awt/Graphics/NativeWin32Clear.java \
     -java/awt/Graphics/TextAAHintsTest.java \
     -java/awt/Graphics/XORPaint.java \
     -java/awt/Graphics2D/CopyAreaOOB.java \
