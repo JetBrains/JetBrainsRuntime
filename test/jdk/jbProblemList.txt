@@ -1178,6 +1178,7 @@ java/awt/TextArea/OverScrollTest/OverScrollTest.java 8253184 windows-all
 java/awt/TextArea/ScrollbarIntersectionTest/ScrollbarIntersectionTest.java 8253184 windows-all
 java/awt/TextArea/TextAreaCursorTest/HoveringAndDraggingTest.java 8024986 macosx-all,linux-all
 java/awt/TextArea/TextAreaTwicePack/TextAreaTwicePack.java 8253184 windows-all
+java/awt/TextComponent/SelectionAndCaretColor.java 7017622 linux-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java 8253184 windows-all
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter.java 8254841 macosx-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289 windows-all
