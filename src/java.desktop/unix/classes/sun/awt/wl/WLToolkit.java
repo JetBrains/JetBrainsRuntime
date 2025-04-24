@@ -156,8 +156,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     private static boolean initialized = false;
     private static Thread toolkitThread;
-    private final WLClipboard clipboard;
-    private final WLClipboard selection;
+    private static WLClipboard clipboard;
+    private static WLClipboard selection;
 
     private static Cursor currentCursor;
 
@@ -199,6 +199,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
             clipboard = new WLClipboard("System", false);
             selection = selectionClipboard;
+
+            WLDataDevice.getInstance().initialize(clipboard, selection);
         } else {
             clipboard = null;
             selection = null;
