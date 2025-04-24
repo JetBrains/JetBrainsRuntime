@@ -377,6 +377,7 @@ sun/java2d/DirectX/OpaqueImageToSurfaceBlitTest/OpaqueImageToSurfaceBlitTest.jav
 sun/java2d/DirectX/OverriddenInsetsTest/OverriddenInsetsTest.java 8196102 generic-all
 sun/java2d/DirectX/RenderingToCachedGraphicsTest/RenderingToCachedGraphicsTest.java 8196180,8252812 windows-all,macosx-all,linux-all
 
+java/awt/Graphics/XORPaint.java#id1 JBR-8642 macosx-aarch64
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 generic-all
@@ -1020,6 +1021,7 @@ javax/swing/JLabel/6596966/bug6596966.java 8197552 windows-all
 javax/swing/JLabel/7004134/bug7004134.java JBR-5437 linux-all
 javax/swing/JLabel/bug4822331.java JBR-7422 windows-all
 javax/swing/JList/6462008/bug6462008.java JBR-8063 windows-all
+javax/swing/JList/bug4251306.java JBR-8648 windows-all
 javax/swing/JMenu/4213634/bug4213634.java 8197552,JBR-8056 windows-all
 javax/swing/JMenu/4515762/bug4515762.java 8197552 windows-all
 javax/swing/JMenu/4692443/bug4692443.java JBR-6093 windows-all
@@ -1357,6 +1359,7 @@ javax/swing/SwingUtilities/7146377/bug7146377.java                              
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880,JBR-6683 windows-all,linux-all
 java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java JBR-4880,JBR-5706 windows-all,linux-all
 java/awt/event/KeyEvent/KeyCharTest/KeyCharTest.java JBR-4880 windows-all
+java/awt/event/KeyEvent/KeyPressedModifiers.java JBR-8647 windows-all
 java/awt/Frame/LayoutOnMaximizeTest/LayoutOnMaximizeTest.java JBR-4880 windows-all
 java/awt/Frame/MiscUndecorated/UndecoratedInitiallyIconified.java JBR-4880 windows-all
 java/awt/FullScreen/SetFSWindow/FSFrame.java 8253184 windows-all
@@ -1435,7 +1438,7 @@ javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-6465 windows-all
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5510,JBR-5951 linux-5.18.2-arch1-1,windows-x64
 jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5819 macosx-all,windows-all
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-5345 windows-x64
-jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-5345 windows-x64
+jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-5345 windows-all
 jb/java/awt/CustomTitleBar/JDialogNativeControlsTest.java JBR-5345 windows-x64
 jb/java/awt/CustomTitleBar/HitTestClientArea.java JBR-6675 windows-all
 jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-5465,JBR-5550 windows-all
@@ -1444,7 +1447,7 @@ jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-5828 windows-all
 jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5345 windows-all
 jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-6914 windows-all
 jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5345,JBR-6835 windows-all,macosx-all
-jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5345 windows-x64
+jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5345 windows-all
 jb/java/awt/CustomTitleBar/WindowResizeTest.java JBR-5592 windows-all
 sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5510 linux-5.18.2-arch1-1
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5510 linux-5.18.2-arch1-1
