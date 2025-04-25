@@ -1498,6 +1498,7 @@ java/awt/font/Rotate/RotatedFontTest.java JBR-6760 linux-i386
 java/awt/font/Outline/OutlineInvarianceTest.java JBR-6760 linux-i386
 java/awt/font/GlyphVector/TestLayoutFlags.java JBR-6760 linux-i386
 java/awt/font/GlyphVector/GetGlyphCharIndexTest.java JBR-6760 linux-i386
+java/awt/font/GlyphVector/GlyphVectorGsubTest.java JBR-8655 generic-all
 java/awt/font/LineBreakMeasurer/FRCTest.java JBR-6760 linux-i386
 java/awt/font/LineBreakMeasurer/AllFontsLBM.java JBR-6760 linux-i386
 java/awt/font/LineBreakMeasurer/TestLineBreakWithFontSub.java JBR-6760 linux-i386
