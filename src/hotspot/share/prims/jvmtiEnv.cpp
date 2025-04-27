@@ -90,6 +90,8 @@
  // FIXLATER: hook into JvmtiTrace
 #define TraceJVMTICalls false
 
+static volatile int _active_redefinitions = 0;
+
 JvmtiEnv::JvmtiEnv(jint version) : JvmtiEnvBase(version) {
 }
 
@@ -486,10 +488,14 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
   if (AllowEnhancedClassRedefinition) {
     // MutexLocker sd_mutex(EnhancedRedefineClasses_lock, Monitor::_no_safepoint_check_flag);
     // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
+    Atomic::add(&_active_redefinitions, 1);
     CompileBroker::stopCompilationBeforeEnhancedRedefinition();
     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
     VMThread::execute(&op);
-    CompileBroker::releaseCompilationAfterEnhancedRedefinition();
+    Atomic::sub(&_active_redefinitions, 1);
+    if (_active_redefinitions == 0) {
+      CompileBroker::releaseCompilationAfterEnhancedRedefinition();
+    }
     op_id = op.id();
     error = (op.check_error());
   } else {
