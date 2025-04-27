@@ -27,6 +27,7 @@
 
 #include "memory/allStatic.hpp"
 #include "runtime/handles.hpp"
+#include "classfile/classFileParserDCEVM.hpp"
 
 class ClassFileStream;
 class ClassLoaderData;
@@ -64,7 +65,7 @@ class KlassFactory : AllStatic {
                                            Symbol* name,
                                            ClassLoaderData* loader_data,
                                            const ClassLoadInfo& cl_info,
-                                           const bool pick_newest,
+                                           Old2NewKlassMap* old_2_new_klass_map,
                                            TRAPS);
   static InstanceKlass* check_shared_class_file_load_hook(
                                           InstanceKlass* ik,
