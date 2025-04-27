@@ -86,7 +86,7 @@ InstanceKlass* KlassFactory::check_shared_class_file_load_hook(
                              loader_data,
                              &cl_info,
                              ClassFileParser::BROADCAST, // publicity level
-                             false,
+                             nullptr,
                              CHECK_NULL);
       const ClassInstanceInfo* cl_inst_info = cl_info.class_hidden_info_ptr();
       InstanceKlass* new_ik = parser.create_instance_klass(true, // changed_by_loadhook
@@ -172,7 +172,7 @@ InstanceKlass* KlassFactory::create_from_stream(ClassFileStream* stream,
                                                 Symbol* name,
                                                 ClassLoaderData* loader_data,
                                                 const ClassLoadInfo& cl_info,
-                                                const bool pick_newest,
+                                                Old2NewKlassMap* old_2_new_klass_map,
                                                 TRAPS) {
   assert(stream != nullptr, "invariant");
   assert(loader_data != nullptr, "invariant");
@@ -202,7 +202,7 @@ InstanceKlass* KlassFactory::create_from_stream(ClassFileStream* stream,
                          loader_data,
                          &cl_info,
                          ClassFileParser::BROADCAST, // publicity level
-                         pick_newest,
+                         old_2_new_klass_map,
                          CHECK_NULL);
 
   const ClassInstanceInfo* cl_inst_info = cl_info.class_hidden_info_ptr();
