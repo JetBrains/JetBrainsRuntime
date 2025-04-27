@@ -787,6 +787,7 @@ InstanceKlass* SystemDictionary::resolve_hidden_class_from_stream(
                                                      Handle class_loader,
                                                      const ClassLoadInfo& cl_info,
                                                      InstanceKlass* old_klass,
+                                                     Old2NewKlassMap* old_2_new_klass_map,
                                                      TRAPS) {
 
   EventClassLoad class_load_start_event;
@@ -808,7 +809,7 @@ InstanceKlass* SystemDictionary::resolve_hidden_class_from_stream(
                                                       class_name,
                                                       loader_data,
                                                       cl_info,
-                                                      is_redefining, // pick_newest
+                                                      old_2_new_klass_map, // pick_newest
                                                       CHECK_NULL);
   assert(k != nullptr, "no klass created");
   if (is_redefining && k != nullptr) {
@@ -851,6 +852,7 @@ InstanceKlass* SystemDictionary::resolve_class_from_stream(
                                                      Handle class_loader,
                                                      const ClassLoadInfo& cl_info,
                                                      InstanceKlass* old_klass,
+                                                     Old2NewKlassMap* old_2_new_klass_map,
                                                      TRAPS) {
 
   HandleMark hm(THREAD);
@@ -881,7 +883,7 @@ InstanceKlass* SystemDictionary::resolve_class_from_stream(
 #endif
 
   if (k == nullptr) {
-    k = KlassFactory::create_from_stream(st, class_name, loader_data, cl_info, is_redefining, CHECK_NULL);
+    k = KlassFactory::create_from_stream(st, class_name, loader_data, cl_info, old_2_new_klass_map, CHECK_NULL);
   }
 
   if (is_redefining && k != nullptr) {
@@ -921,11 +923,12 @@ InstanceKlass* SystemDictionary::resolve_from_stream(ClassFileStream* st,
                                                      Handle class_loader,
                                                      const ClassLoadInfo& cl_info,
                                                      InstanceKlass* old_klass,
+                                                     Old2NewKlassMap* old_2_new_klass_map,
                                                      TRAPS) {
   if (cl_info.is_hidden()) {
-    return resolve_hidden_class_from_stream(st, class_name, class_loader, cl_info, old_klass, CHECK_NULL);
+    return resolve_hidden_class_from_stream(st, class_name, class_loader, cl_info, old_klass, old_2_new_klass_map, CHECK_NULL);
   } else {
-    return resolve_class_from_stream(st, class_name, class_loader, cl_info, old_klass, CHECK_NULL);
+    return resolve_class_from_stream(st, class_name, class_loader, cl_info, old_klass, old_2_new_klass_map, CHECK_NULL);
   }
 }
 
@@ -2340,7 +2343,7 @@ Handle SystemDictionary::link_method_handle_constant(Klass* caller,
 
   // call java.lang.invoke.MethodHandleNatives::linkMethodHandleConstant(Class caller, int refKind, Class callee, String name, Object type) -> MethodHandle
   JavaCallArguments args;
-  args.push_oop(Handle(THREAD, caller->newest_version()->java_mirror()));  // the referring class
+  args.push_oop(Handle(THREAD, caller->active_version()->java_mirror()));  // the referring class
   args.push_int(ref_kind);
   args.push_oop(Handle(THREAD, callee->java_mirror()));  // the target class
   args.push_oop(name_str);
