@@ -885,6 +885,7 @@ static jclass jvm_define_class_common(const char *name,
                                                    class_loader,
                                                    cl_info,
                                                    nullptr,
+                                                   nullptr,
                                                    CHECK_NULL);
 
   if (log_is_enabled(Debug, class, resolve)) {
@@ -973,6 +974,7 @@ static jclass jvm_lookup_define_class(jclass lookup, const char *name,
                                                class_loader,
                                                cl_info,
                                                nullptr,
+                                               nullptr,
                                                CHECK_NULL);
 
     if (log_is_enabled(Debug, class, resolve)) {
@@ -989,6 +991,7 @@ static jclass jvm_lookup_define_class(jclass lookup, const char *name,
     ik = SystemDictionary::resolve_from_stream(&st, class_name,
                                                class_loader,
                                                cl_info,
+                                               nullptr,
                                                nullptr,
                                                CHECK_NULL);
 
