@@ -1220,7 +1220,7 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
                                                            name,
                                                            loader_data,
                                                            cl_info,
-                                                           false, // pick_newest
+                                                           nullptr,
                                                            CHECK_NULL);
   result->set_classpath_index(classpath_index);
   return result;

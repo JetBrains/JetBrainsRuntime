@@ -306,10 +306,12 @@ JNI_ENTRY(jclass, jni_DefineClass(JNIEnv *env, const char *name, jobject loaderR
   Handle class_loader (THREAD, JNIHandles::resolve(loaderRef));
   Handle protection_domain;
   ClassLoadInfo cl_info(protection_domain);
-  Klass* k = SystemDictionary::resolve_from_stream(&st, class_name,
+  Klass* k = SystemDictionary::resolve_from_stream(&st,
+                                                   class_name,
                                                    class_loader,
                                                    cl_info,
-                                                   NULL,
+                                                   nullptr,
+                                                   nullptr,
                                                    CHECK_NULL);
 
   if (log_is_enabled(Debug, class, resolve)) {
