@@ -1575,12 +1575,26 @@ bool InstanceKlass::implements_interface(Klass* k) const {
 
 
 // (DCEVM)
-bool InstanceKlass::implements_interface_any_version(Klass* k) const {
-  k = k->newest_version();
-  if (this->newest_version() == k) return true;
+bool InstanceKlass::implements_interface_dcevm(Klass* k, Old2NewKlassMap* old_2_new_klass_map) const {
+  Klass** new_klass = old_2_new_klass_map->get(k);
+  if (new_klass != nullptr) {
+    k = *new_klass;
+  }
+  Klass* this_klass = (Klass*) this;
+  Klass** new_this = old_2_new_klass_map->get(this_klass);
+  if (new_this != nullptr) {
+    this_klass = *new_this;
+  }
+
+  if (this_klass == k) return true;
   assert(k->is_interface(), "should be an interface class");
   for (int i = 0; i < transitive_interfaces()->length(); i++) {
-    if (transitive_interfaces()->at(i)->newest_version() == k) {
+    Klass* ti = (Klass*) transitive_interfaces()->at(i);
+    Klass** new_ti = old_2_new_klass_map->get(ti);
+    if (new_ti != nullptr) {
+      ti = *new_ti;
+    }
+    if (ti == k) {
       return true;
     }
   }

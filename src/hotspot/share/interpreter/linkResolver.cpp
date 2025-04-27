@@ -322,8 +322,8 @@ void LinkResolver::check_klass_accessibility(Klass* ref_klass, Klass* sel_klass,
   Klass* refKlassNewest = ref_klass;
   Klass* baseKlassNewest = base_klass;
   if (AllowEnhancedClassRedefinition) {
-    refKlassNewest = ref_klass->newest_version();
-    baseKlassNewest = base_klass->newest_version();
+    refKlassNewest = ref_klass->active_version();
+    baseKlassNewest = base_klass->active_version();
   }
   Reflection::VerifyClassAccessResults vca_result =
     Reflection::verify_class_access(refKlassNewest, InstanceKlass::cast(baseKlassNewest), true);
@@ -589,7 +589,7 @@ void LinkResolver::check_method_accessability(Klass* ref_klass,
   // to be false (so we'll short-circuit out of these tests).
   if (sel_method->name() == vmSymbols::clone_name() &&
       ( (!AllowEnhancedClassRedefinition && sel_klass == vmClasses::Object_klass()) ||
-        (AllowEnhancedClassRedefinition && sel_klass->newest_version() == vmClasses::Object_klass()->newest_version()) ) &&
+        (AllowEnhancedClassRedefinition && sel_klass->active_version() == vmClasses::Object_klass()->active_version()) ) &&
       resolved_klass->is_array_klass()) {
     // We need to change "protected" to "public".
     assert(flags.is_protected(), "clone not protected?");
@@ -765,7 +765,7 @@ Method* LinkResolver::resolve_method(const LinkInfo& link_info,
                                      Bytecodes::Code code, TRAPS) {
 
   Handle nested_exception;
-  Klass* resolved_klass = link_info.resolved_klass();
+  Klass* resolved_klass = link_info.resolved_klass()->active_version();
 
   // 1. For invokevirtual, cannot call an interface method
   if (code == Bytecodes::_invokevirtual && resolved_klass->is_interface()) {

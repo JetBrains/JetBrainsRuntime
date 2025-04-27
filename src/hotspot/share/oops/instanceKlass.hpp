@@ -38,6 +38,7 @@
 #include "utilities/align.hpp"
 #include "utilities/growableArray.hpp"
 #include "utilities/macros.hpp"
+#include "classfile/classFileParserDCEVM.hpp"
 #if INCLUDE_JFR
 #include "jfr/support/jfrKlassExtension.hpp"
 #endif
@@ -875,8 +876,10 @@ public:
 
   // subclass/subinterface checks
   bool implements_interface(Klass* k) const;
-  bool implements_interface_any_version(Klass* k) const;
   bool is_same_or_direct_interface(Klass* k) const;
+
+  // (DCEVM)
+  bool implements_interface_dcevm(Klass* k, Old2NewKlassMap* old_2_new_klass_map) const;
 
 #ifdef ASSERT
   // check whether this class or one of its superclasses was redefined
