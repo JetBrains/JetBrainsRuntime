@@ -112,6 +112,7 @@ InstanceKlass* JfrClassTransformer::create_new_instance_klass(InstanceKlass* ik,
                              cld,
                              &cl_info,
                              ClassFileParser::INTERNAL, // internal visibility
+                             nullptr,
                              THREAD);
   if (HAS_PENDING_EXCEPTION) {
     log_pending_exception(PENDING_EXCEPTION);
