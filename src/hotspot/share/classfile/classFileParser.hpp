@@ -32,6 +32,7 @@
 #include "oops/instanceKlass.hpp"
 #include "oops/typeArrayOop.hpp"
 #include "utilities/accessFlags.hpp"
+#include "classFileParserDCEVM.hpp"
 
 class Annotations;
 template <typename T>
@@ -199,7 +200,7 @@ class ClassFileParser {
   int _max_bootstrap_specifier_index;  // detects BSS values
 
   // (DCEVM) Enhanced class redefinition
-  const bool _pick_newest;
+  const Old2NewKlassMap* _old_2_new_klass_map;
 
   void parse_stream(const ClassFileStream* const stream, TRAPS);
 
@@ -489,7 +490,13 @@ class ClassFileParser {
 
   void update_class_name(Symbol* new_name);
   // (DCEVM) Enhanced class redefinition
-  inline const Klass* maybe_newest(const Klass* klass) const { return klass != NULL && _pick_newest ? klass->newest_version() : klass; }
+  inline const Klass* maybe_newest(Klass* klass) const {
+    if (klass != nullptr && _old_2_new_klass_map != nullptr) {
+      Klass** new_klass = _old_2_new_klass_map->get(klass);
+      return (new_klass != nullptr)  ? *new_klass : klass;
+    }
+    return klass;
+  }
 
  public:
   ClassFileParser(ClassFileStream* stream,
@@ -497,7 +504,7 @@ class ClassFileParser {
                   ClassLoaderData* loader_data,
                   const ClassLoadInfo* cl_info,
                   Publicity pub_level,
-                  const bool pick_newest,
+                  Old2NewKlassMap* old_2_new_klass_map,
                   TRAPS);
 
   ~ClassFileParser();
