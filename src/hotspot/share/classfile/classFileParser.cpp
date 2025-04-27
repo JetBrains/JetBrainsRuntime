@@ -5274,7 +5274,7 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
                                  ClassLoaderData* loader_data,
                                  const ClassLoadInfo* cl_info,
                                  Publicity pub_level,
-                                 const bool pick_newest,
+                                 Old2NewKlassMap* old_2_new_klass_map,
                                  TRAPS) :
   _stream(stream),
   _class_name(nullptr),
@@ -5335,7 +5335,7 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
   _has_finalizer(false),
   _has_empty_finalizer(false),
   _max_bootstrap_specifier_index(-1),
-  _pick_newest(pick_newest) {
+  _old_2_new_klass_map(old_2_new_klass_map) {
 
   _class_name = name != nullptr ? name : vmSymbols::unknown_class_name();
   _class_name->increment_refcount();
