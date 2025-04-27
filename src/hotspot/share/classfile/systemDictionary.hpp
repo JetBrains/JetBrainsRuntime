@@ -29,6 +29,7 @@
 #include "runtime/handles.hpp"
 #include "runtime/signature.hpp"
 #include "utilities/vmEnums.hpp"
+#include "classfile/classFileParserDCEVM.hpp"
 
 // The dictionary in each ClassLoaderData stores all loaded classes, either
 // initiatied by its class loader or defined by its class loader:
@@ -119,6 +120,7 @@ class SystemDictionary : AllStatic {
                                                          Handle class_loader,
                                                          const ClassLoadInfo& cl_info,
                                                          InstanceKlass* old_klass,
+                                                         Old2NewKlassMap* old_2_new_klass_map,
                                                          TRAPS);
 
   // Resolve a class from stream (called by jni_DefineClass and JVM_DefineClass)
@@ -128,6 +130,7 @@ class SystemDictionary : AllStatic {
                                                   Handle class_loader,
                                                   const ClassLoadInfo& cl_info,
                                                   InstanceKlass* old_klass,
+                                                  Old2NewKlassMap* old_2_new_klass_map,
                                                   TRAPS);
 
   static oop get_system_class_loader_impl(TRAPS);
@@ -140,6 +143,7 @@ class SystemDictionary : AllStatic {
                                             Handle class_loader,
                                             const ClassLoadInfo& cl_info,
                                             InstanceKlass* old_klass,
+                                            Old2NewKlassMap* old_2_new_klass_map,
                                             TRAPS);
 
   // Lookup an already loaded class. If not found null is returned.
