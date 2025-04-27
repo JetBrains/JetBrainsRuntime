@@ -34,6 +34,7 @@
 #include "oops/objArrayOop.hpp"
 #include "gc/shared/gcVMOperations.hpp"
 #include "../../../java.base/unix/native/include/jni_md.h"
+#include "classfile/classFileParserDCEVM.hpp"
 
 //
 // Enhanced class redefiner.
@@ -112,16 +113,19 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   //
   // The result is sotred in _affected_klasses(old definitions) and _new_classes(new definitions) arrays.
   jvmtiError load_new_class_versions(TRAPS);
-  jvmtiError load_new_class_versions_single_step(TRAPS);
+  jvmtiError load_new_class_versions_single_step(Old2NewKlassMap* old_2_new_klass_map, TRAPS);
 
   // Searches for all affected classes and performs a sorting such tha
   // a supertype is always before a subtype.
-  jvmtiError find_sorted_affected_classes(bool do_initial_mark, GrowableArray<Klass*>* prev_affected_klasses, TRAPS);
+  jvmtiError find_sorted_affected_classes(bool do_initial_mark,
+                                          GrowableArray<Klass*>* prev_affected_klasses,
+                                          Old2NewKlassMap* old_2_new_klass_map,
+                                          TRAPS);
 
-  jvmtiError do_topological_class_sorting(TRAPS);
+  jvmtiError do_topological_class_sorting(Old2NewKlassMap* old_2_new_klass_map, TRAPS);
 
   jvmtiError find_class_bytes(InstanceKlass* the_class, const unsigned char **class_bytes, jint *class_byte_count, jboolean *not_changed);
-  int calculate_redefinition_flags(InstanceKlass* new_class);
+  int calculate_redefinition_flags(InstanceKlass* new_class, Old2NewKlassMap* old_2_new_klass_map);
   void calculate_instance_update_information(Klass* new_version);
 
   void rollback();
@@ -149,7 +153,6 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // and in all direct and indirect subclasses.
   void increment_class_counter(Thread* current, InstanceKlass *ik);
 
-
   void flush_dependent_code();
 
   u8 next_id();
@@ -157,14 +160,6 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   static void check_class(InstanceKlass* k_oop);
 
   static void dump_methods();
-
-  // Check that there are no old or obsolete methods
-  class CheckClass : public KlassClosure {
-    Thread* _thread;
-   public:
-    CheckClass(Thread* t) : _thread(t) {}
-    void do_klass(Klass* k);
-  };
 
   // Unevolving classes may point to methods of the_class directly
   // from their constant pool caches, itables, and/or vtables. We

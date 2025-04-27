@@ -562,6 +562,12 @@ void VM_EnhancedRedefineClasses::doit() {
                            // before the stack walk again.
 
   for (int i = 0; i < _new_classes->length(); i++) {
+    Klass *new_class = _new_classes->at(i);
+    new_class->old_version()->set_new_version(new_class);
+  }
+
+  for (int i = 0; i < _new_classes->length(); i++) {
+    Klass* new_class = _new_classes->at(i);
     redefine_single_class(current, _new_classes->at(i));
   }
 
@@ -807,8 +813,8 @@ void VM_EnhancedRedefineClasses::doit_epilogue() {
   _new_classes = nullptr;
   if (_affected_klasses != nullptr) {
     delete _affected_klasses;
+    _affected_klasses = nullptr;
   }
-  _affected_klasses = nullptr;
 
   // Reset the_class_oop to null for error printing.
   _the_class_oop = nullptr;
@@ -859,11 +865,12 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
 
   _affected_klasses = new (mtInternal) GrowableArray<Klass*>(_class_count, mtInternal);
   _new_classes = new (mtInternal) GrowableArray<InstanceKlass*>(_class_count, mtInternal);
+  Old2NewKlassMap old_2_new_klass_map;
 
   ResourceMark rm(THREAD);
 
   // Retrieve an array of all classes that need to be redefined into _affected_klasses
-  jvmtiError err = find_sorted_affected_classes(true, nullptr, THREAD);
+  jvmtiError err = find_sorted_affected_classes(true, nullptr, &old_2_new_klass_map, THREAD);
   if (err != JVMTI_ERROR_NONE) {
     return err;
   }
@@ -873,7 +880,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
   GrowableArray<Klass*>* prev_affected_klasses = new (mtInternal) GrowableArray<Klass*>(_class_count, mtInternal);
 
   do {
-    err = load_new_class_versions_single_step(THREAD);
+    err = load_new_class_versions_single_step(&old_2_new_klass_map, THREAD);
     if (err != JVMTI_ERROR_NONE) {
       delete prev_affected_klasses;
       return err;
@@ -886,7 +893,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
       _affected_klasses->clear();
     }
 
-    err = find_sorted_affected_classes(false, prev_affected_klasses, THREAD);
+    err = find_sorted_affected_classes(false, prev_affected_klasses, &old_2_new_klass_map, THREAD);
     if (err != JVMTI_ERROR_NONE) {
       delete prev_affected_klasses;
       return err;
@@ -900,8 +907,8 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
   for (int i = 0; i < _affected_klasses->length(); i++) {
     Klass* the_class = _affected_klasses->at(i);
     if (the_class != nullptr) {
-      assert (the_class->new_version() != nullptr, "new version must be present");
-      InstanceKlass *new_class(InstanceKlass::cast(the_class->new_version()));
+      assert (old_2_new_klass_map.contains(the_class), "new version must be present");
+      InstanceKlass *new_class(InstanceKlass::cast(*old_2_new_klass_map.get(the_class)));
       new_class->link_class(THREAD);
       if (HAS_PENDING_EXCEPTION) {
         Symbol *ex_name = PENDING_EXCEPTION->klass()->name();
@@ -918,7 +925,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
   return JVMTI_ERROR_NONE;
 }
 
-jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(TRAPS) {
+jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(Old2NewKlassMap* old_2_new_klass_map, TRAPS) {
 
   // thread local state - used to transfer class_being_redefined object to SystemDictonery::resolve_from_stream
   JvmtiThreadState *state = JvmtiThreadState::state_for(JavaThread::current());
@@ -933,8 +940,14 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(TRAPS
     HandleMark hm(THREAD);
     InstanceKlass* the_class = InstanceKlass::cast(_affected_klasses->at(i));
 
-    if (the_class->new_version() != nullptr) {
+    if (old_2_new_klass_map->contains(the_class)) {
       continue;
+    }
+
+    if (the_class->new_version() != nullptr) {
+      // the_class was redefined and now has a new version
+      log_trace(redefine, class, load)("Class redefinition detected: '%s' has a new version.", the_class->name()->as_C_string());
+      _affected_klasses->at_put(i, the_class);
     }
 
     Symbol*  the_class_sym = the_class->name();
@@ -1013,6 +1026,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(TRAPS
                                                 the_class_loader,
                                                 cl_info,
                                                 the_class,
+                                                old_2_new_klass_map,
                                                 THREAD);
 
       if (!HAS_PENDING_EXCEPTION) {
@@ -1039,6 +1053,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(TRAPS
                                                 the_class_loader,
                                                 cl_info,
                                                 the_class,
+                                                old_2_new_klass_map,
                                                 THREAD);
     }
     // Clear class_being_redefined just to be sure.
@@ -1077,7 +1092,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(TRAPS
     the_class->clear_redefinition_flag(Klass::PrimaryRedefine);
 
     InstanceKlass* new_class = k;
-    the_class->set_new_version(new_class);
+    old_2_new_klass_map->put(the_class, new_class);
     _new_classes->append(new_class);
 
     if (the_class == vmClasses::Reference_klass()) {
@@ -1096,7 +1111,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(TRAPS
     if (not_changed) {
       redefinition_flags = Klass::NoRedefinition;
     } else {
-      redefinition_flags = calculate_redefinition_flags(new_class);
+      redefinition_flags = calculate_redefinition_flags(new_class, old_2_new_klass_map);
       if (redefinition_flags >= Klass::RemoveSuperType) {
         return JVMTI_ERROR_UNSUPPORTED_REDEFINITION_HIERARCHY_CHANGED;
       }
@@ -1130,7 +1145,8 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(TRAPS
 }
 
  // Calculated the difference between new and old class  (field change, method change, supertype change, ...).
-int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_class) {
+int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_class,
+                                                             Old2NewKlassMap* old_2_new_klass_map) {
   int result = Klass::NoRedefinition;
   log_debug(redefine, class, load)("Comparing different class versions of class %s",new_class->name()->as_C_string());
 
@@ -1151,7 +1167,8 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
     // Super class changed
     Klass* cur_klass = the_class->super();
     while (cur_klass != nullptr) {
-      if (!new_class->is_subclass_of(cur_klass->newest_version())) {
+      Klass** new_cur_klass = old_2_new_klass_map->get(cur_klass);
+      if (!new_class->is_subclass_of(new_cur_klass != nullptr ? *new_cur_klass : cur_klass)) {
         log_info(redefine, class, load)("removed super class %s", cur_klass->name()->as_C_string());
         result = result | Klass::RemoveSuperType | Klass::ModifyInstances | Klass::ModifyClass;
       }
@@ -1174,7 +1191,7 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
   Array<InstanceKlass*>* old_interfaces = the_class->transitive_interfaces();
   for (i = 0; i < old_interfaces->length(); i++) {
     InstanceKlass* old_interface = InstanceKlass::cast(old_interfaces->at(i));
-    if (!new_class->implements_interface_any_version(old_interface)) {
+    if (!new_class->implements_interface_dcevm(old_interface, old_2_new_klass_map)) {
       result = result | Klass::RemoveSuperType | Klass::ModifyClass;
       log_info(redefine, class, load)("removed interface %s", old_interface->name()->as_C_string());
     }
@@ -1183,7 +1200,7 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
   // Interfaces added?
   Array<InstanceKlass*>* new_interfaces = new_class->transitive_interfaces();
   for (i = 0; i<new_interfaces->length(); i++) {
-    if (!the_class->implements_interface_any_version(new_interfaces->at(i))) {
+    if (!the_class->implements_interface_dcevm(new_interfaces->at(i), old_2_new_klass_map)) {
       result = result | Klass::ModifyClass;
       log_info(redefine, class, load)("added interface %s", new_interfaces->at(i)->name()->as_C_string());
     }
@@ -2286,7 +2303,10 @@ class AffectedKlassClosure : public KlassClosure {
 
 // Find all affected classes by current redefinition (either because of redefine, class hierarchy or interface change).
 // Affected classes are stored in _affected_klasses and parent classes always precedes child class.
-jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(bool do_initial_mark, GrowableArray<Klass*>* prev_affected_klasses, TRAPS) {
+jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(bool do_initial_mark,
+                                                                    GrowableArray<Klass*>* prev_affected_klasses,
+                                                                    Old2NewKlassMap* old_2_new_klass_map,
+                                                                    TRAPS) {
   if (do_initial_mark) {
     for (int i = 0; i < _class_count; i++) {
       InstanceKlass* klass = get_ik(_class_defs[i].klass);
@@ -2316,7 +2336,7 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(bool do_init
   log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());
 
   // Sort the affected klasses such that a supertype is always on a smaller array index than its subtype.
-  jvmtiError result = do_topological_class_sorting(THREAD);
+  jvmtiError result = do_topological_class_sorting(old_2_new_klass_map, THREAD);
 
   if (log_is_enabled(Trace, redefine, class, load)) {
     log_trace(redefine, class, load)("redefine order:");
@@ -2342,7 +2362,7 @@ struct KlassPair {
 // Affected flag is cleared (clear_redefinition_flag(Klass::MarkedAsAffected))
 // For each dependency create a KlassPair instance. Finally, affected classes (_affected_klasses) are sorted according to pairs.
 // TODO - the class file is potentially parsed multiple times - introduce a cache?
-jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(TRAPS) {
+jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(Old2NewKlassMap* old_2_new_klass_map, TRAPS) {
   ResourceMark mark(THREAD);
 
   // Collect dependencies
@@ -2363,7 +2383,7 @@ jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(TRAPS) {
                            klass->class_loader_data(),
                            &cl_info,
                            ClassFileParser::INTERNAL, // publicity level
-                           true,
+                           old_2_new_klass_map,
                            THREAD);
 
     const Klass* super_klass = parser.super_klass();
