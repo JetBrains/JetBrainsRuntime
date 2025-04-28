@@ -222,7 +222,10 @@ java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java 8252
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowRetaining.java 6829264 generic-all
 java/awt/Focus/ShowFrameCheckForegroundTest/ShowFrameCheckForegroundTest.java JBR-5210 windows-all
 java/awt/datatransfer/DragImage/MultiResolutionDragImageTest.java 8080982 generic-all
+java/awt/datatransfer/HTMLTransferConsoleOutputTest.java 8237254,8354505 macosx-all,generic-all
+java/awt/datatransfer/ImageTransferCrashTest.java 8237253,8354505 macosx-all,generic-all
 java/awt/datatransfer/SystemFlavorMap/AddFlavorTest.java 8079268 linux-all
+java/awt/datatransfer/ClipboardPerformanceTest.java 8029022 windows-all
 java/awt/datatransfer/UnicodeTransferTest/UnicodeTransferTest.java 8300704 linux-all
 java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java JBR-5812 linux-all
 java/awt/Toolkit/SecurityTest/SecurityTest2.java JBR-5225 windows-all
@@ -351,8 +354,13 @@ java/awt/Component/RepaintTest.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Component/SetComponentsBounds/SetComponentsBounds.java JBR-4275 linux-all
 java/awt/Component/SetEnabledPerformance/SetEnabledPerformance.java 8165863 macosx-all
 java/awt/Clipboard/PasteNullToTextComponentsTest.java 8234140 macosx-all,windows-all
+java/awt/Clipboard/NoOwnerNoTargetsTest.java 8234140 macosx-all
+java/awt/Clipboard/LostOwnershipChainTest/SystemClipboard2ProcTest.java 8234140 macosx-all
 java/awt/Clipboard/HTMLTransferTest/HTMLTransferTest.java 8017454 macosx-all
+java/awt/Clipboard/ClipboardSecurity.java 8054809 macosx-all
+java/awt/Clipboard/GetAltContentsTest/SystemClipboardTest.java 8234140 macosx-all
 java/awt/Clipboard/ImageTransferTest.java 8030710 generic-all
+java/awt/Clipboard/NoDataConversionFailureTest.java 8234140 macosx-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
