@@ -595,7 +595,12 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
-    private static final boolean checkDesktopGeometry = !"false".equals(System.getProperty("watch.desktop.geometry", "true"));
+    private static boolean checkDesktopGeometry = !"false".equals(System.getProperty("watch.desktop.geometry", "true"));
+    // In case we are for some reason being spammed with display reconfiguration events (KDE?),
+    // we can stop reacting to those events. The current threshold is 20 events/sec.
+    private static final long DISABLE_WATCH_DESKTOP_GEOMETRY_TIME = 1000;
+    private static final long DISABLE_WATCH_DESKTOP_GEOMETRY_EVENT_COUNT = 20;
+    private static long lastDesktopGeometrySequenceTimestamp, lastDesktopGeometrySequenceEventCount;
 
     void init() {
         awtLock();
@@ -842,11 +847,23 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         final XAnyEvent xany = ev.get_xany();
 
         if (xany.get_window() == getDefaultRootWindow()) {
-            if (ev.get_type() == XConstants.ConfigureNotify ||
-                    (checkDesktopGeometry && ev.get_type() == XConstants.PropertyNotify &&
-                            ev.get_xproperty().get_atom() == XWM.XA_NET_DESKTOP_GEOMETRY.getAtom())) // possible DPI change
-            {
+            if (ev.get_type() == XConstants.ConfigureNotify) {
                 dirtyDevices = true;
+            } else if (checkDesktopGeometry && ev.get_type() == XConstants.PropertyNotify &&
+                       ev.get_xproperty().get_atom() == XWM.XA_NET_DESKTOP_GEOMETRY.getAtom()) { // possible DPI change
+                dirtyDevices = true;
+                // Count the number of such events and disable geometry check if we are getting spammed.
+                long time = System.currentTimeMillis();
+                if (time <= lastDesktopGeometrySequenceTimestamp + DISABLE_WATCH_DESKTOP_GEOMETRY_TIME) {
+                    lastDesktopGeometrySequenceEventCount++;
+                    if (lastDesktopGeometrySequenceEventCount >= DISABLE_WATCH_DESKTOP_GEOMETRY_EVENT_COUNT) {
+                        checkDesktopGeometry = false;
+                        System.err.println("XToolkit: too many _NET_DESKTOP_GEOMETRY events, disabling watch.desktop.geometry");
+                    }
+                } else {
+                    lastDesktopGeometrySequenceTimestamp = time;
+                    lastDesktopGeometrySequenceEventCount = 1;
+                }
             } else {
                 final XAtom XA_NET_WORKAREA = XAtom.get("_NET_WORKAREA");
                 final boolean rootWindowWorkareaResized = (ev.get_type() == XConstants.PropertyNotify
