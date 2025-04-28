@@ -356,7 +356,7 @@ typedef struct CGGI_GlyphInfoDescriptor {
 } CGGI_GlyphInfoDescriptor;
 
 typedef struct CGGI_RenderingMode {
-    CGGI_GlyphInfoDescriptor *mainFontDescriptor;
+    CGGI_GlyphInfoDescriptor *glyphDescriptor;
     JRSFontRenderingStyle cgFontMode;
     bool lcdRendering;
     bool subpixelResolution;
@@ -372,7 +372,7 @@ static CGGI_GlyphInfoDescriptor argb =
 static inline CGGI_GlyphInfoDescriptor*
 CGGI_GetGlyphInfoDescriptor(const CGGI_RenderingMode *mode, CTFontRef font)
 {
-    return IsEmojiFont(font) ? &argb : mode->mainFontDescriptor;
+    return IsEmojiFont(font) ? &argb : mode->glyphDescriptor;
 }
 
 static inline CGGI_RenderingMode
@@ -394,14 +394,14 @@ CGGI_GetRenderingMode(const AWTStrike *strike)
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_OFF:
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_ON:
         mode.lcdRendering = false;
-        mode.mainFontDescriptor = &grey;
+        mode.glyphDescriptor = &grey;
         break;
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_LCD_HRGB:
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_LCD_HBGR:
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_LCD_VRGB:
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_LCD_VBGR:
         mode.lcdRendering = true;
-        mode.mainFontDescriptor = &rgb;
+        mode.glyphDescriptor = &rgb;
         break;
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_GASP:
     case sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_DEFAULT:
@@ -414,10 +414,6 @@ CGGI_GetRenderingMode(const AWTStrike *strike)
                 reason:@"Invalid hint value"
                 userInfo:nil];
         @throw e;
-    }
-    if (IsEmojiFont((CTFontRef)strike->fAWTFont->fFont)) {
-        mode.mainFontDescriptor = &argb;
-        mode.subpixelResolution = false;
     }
 
     return mode;
@@ -844,12 +840,15 @@ CGGI_FillImagesForGlyphsWithSizedCanvas(CGGI_GlyphCanvas *canvas,
     CGContextSetFont(canvas->context, strike->fAWTFont->fNativeCGFont);
     JRSFontSetRenderingStyleOnContext(canvas->context, strike->fStyle);
 
+    CTFontRef mainFont = (CTFontRef)strike->fAWTFont->fFont;
+    CGGI_GlyphInfoDescriptor* mainFontDescriptor = CGGI_GetGlyphInfoDescriptor(mode, mainFont);
+
     const bool isMojaveOrAbove = IS_OSX_GT10_13;
     CFIndex i;
     for (i = 0; i < len; i++) {
         GlyphInfo *info = (GlyphInfo *)jlong_to_ptr(glyphInfos[i]);
         if (info != NULL) {
-            CGGI_CreateImageForGlyph(canvas, glyphs[i], info, mode->mainFontDescriptor,
+            CGGI_CreateImageForGlyph(canvas, glyphs[i], info, mainFontDescriptor,
                                      strike, (CTFontRef)strike->fAWTFont->fFont, isMojaveOrAbove);
         } else {
             info = CGGI_CreateImageForUnicode(canvas, strike, mode, uniChars[i], isMojaveOrAbove);
@@ -944,6 +943,7 @@ CGGI_CreateGlyphInfos(jlong *glyphInfos, const AWTStrike *strike,
 
     CTFontRef fontRef = (CTFontRef)font->fFont;
     CGGlyphImages_GetGlyphMetrics(fontRef, &strike->fTx, strike->fSize, bboxCGMode, glyphs, len, bboxes, advances, IS_OSX_GT10_14);
+    CGGI_GlyphInfoDescriptor* mainFontDescriptor = CGGI_GetGlyphInfoDescriptor(mode, fontRef);
 
     size_t maxWidth = 1;
     size_t maxHeight = 1;
@@ -961,7 +961,7 @@ CGGI_CreateGlyphInfos(jlong *glyphInfos, const AWTStrike *strike,
         CGRect bbox = bboxes[i];
 
         GlyphInfo *glyphInfo = CGGI_CreateNewGlyphInfoFrom(advance, bbox, strike,
-                                                           mode->mainFontDescriptor,
+                                                           mainFontDescriptor,
                                                            mode->subpixelResolution);
 
         int w = glyphInfo->width * glyphInfo->subpixelResolutionX;
