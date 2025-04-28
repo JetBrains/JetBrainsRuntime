@@ -146,10 +146,11 @@ public abstract class Poller {
     }
 
     /**
-     * Registers the file descriptor.
+     * Registers the file descriptor to be polled at most once when the file descriptor
+     * is ready for I/O.
      */
     private void register(int fdVal) throws IOException {
-        Thread previous = map.putIfAbsent(fdVal, Thread.currentThread());
+        Thread previous = map.put(fdVal, Thread.currentThread());
         assert previous == null;
         try {
             implRegister(fdVal);
@@ -164,7 +165,7 @@ public abstract class Poller {
      * a Request object to track the request.
      */
     private Request registerAsync(int fdVal) {
-        Thread previous = map.putIfAbsent(fdVal, Thread.currentThread());
+        Thread previous = map.put(fdVal, Thread.currentThread());
         assert previous == null;
         Request request = new Request(fdVal);
         queue.add(request);
@@ -172,14 +173,13 @@ public abstract class Poller {
     }
 
     /**
-     * Deregister the file descriptor, a no-op if already polled.
+     * Deregister the file descriptor so that the file descriptor is not polled.
      */
     private void deregister(int fdVal) {
         Thread previous = map.remove(fdVal);
-        assert previous == null || previous == Thread.currentThread();
-        if (previous != null) {
-            implDeregister(fdVal);
-        }
+        boolean polled = (previous == null);
+        assert polled || previous == Thread.currentThread();
+        implDeregister(fdVal, polled);
     }
 
     /**
@@ -230,14 +230,16 @@ public abstract class Poller {
     }
 
     /**
-     * Register the file descriptor.
+     * Register the file descriptor. The registration is "one shot", meaning it should
+     * be polled at most once.
      */
     abstract void implRegister(int fdVal) throws IOException;
 
     /**
      * Deregister the file descriptor.
+     * @param polled true if the file descriptor has already been polled
      */
-    abstract void implDeregister(int fdVal);
+    abstract void implDeregister(int fdVal, boolean polled);
 
     /**
      * Starts the poller threads.
