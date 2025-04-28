@@ -33,7 +33,6 @@ import sun.awt.image.SunVolatileImage;
 import sun.awt.image.SurfaceManager;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.Surface;
-import sun.java2d.SurfaceManagerFactory;
 import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.hw.AccelGraphicsConfig;
 import sun.java2d.pipe.hw.AccelTypedVolatileImage;
@@ -54,8 +53,9 @@ import static sun.java2d.pipe.hw.AccelSurface.TEXTURE;
  * for most of the methods, including base methods of GraphicsConfiguration class.
  */
 public interface VKGraphicsConfig extends AccelGraphicsConfig,
-        SurfaceManager.ProxiedGraphicsConfig {
+        SurfaceManager.ProxiedGraphicsConfig, SurfaceManager.Factory {
 
+    @Override
     default VolatileSurfaceManager createVolatileManager(SunVolatileImage image,
                                                          Object context) {
         return new VKVolatileSurfaceManager(image, context);

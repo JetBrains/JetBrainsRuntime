@@ -42,9 +42,7 @@ import java.util.ListIterator;
 import java.util.Map;
 
 import sun.java2d.MacOSFlags;
-import sun.java2d.MacosxSurfaceManagerFactory;
 import sun.java2d.SunGraphicsEnvironment;
-import sun.java2d.SurfaceManagerFactory;
 import sun.java2d.metal.MTLGraphicsConfig;
 import sun.util.logging.PlatformLogger;
 
@@ -112,9 +110,6 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
                 metalPipelineEnabled = true;
             }
         }
-
-        // Install the correct surface manager factory.
-        SurfaceManagerFactory.setInstance(new MacosxSurfaceManagerFactory());
     }
 
     /**
