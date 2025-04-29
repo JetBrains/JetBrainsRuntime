@@ -26,6 +26,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include "sun_java2d_vulkan_VKGPU.h"
 #include "VKUtil.h"
 #include "VKAllocator.h"
 #include "VKBuffer.h"
@@ -1244,6 +1245,12 @@ VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, Alph
         renderPass->clipModCount != context.clipModCount) {
         // ALPHA_COMPOSITE_DST keeps destination intact, so don't even bother to change the state.
         if (context.composite == ALPHA_COMPOSITE_DST) return VK_FALSE;
+        // Check whether a logic composite is requested / supported.
+        if (COMPOSITE_GROUP(context.composite) == LOGIC_COMPOSITE_GROUP &&
+            (surface->device->caps & sun_java2d_vulkan_VKGPU_CAP_LOGIC_OP_BIT) == 0) {
+            J2dTraceLn(J2D_TRACE_ERROR, "VKRenderer_Validate: logic composite not supported");
+            return VK_FALSE;
+        }
         VKCompositeMode oldComposite = renderPass->state.composite;
         VkBool32 clipChanged = renderPass->clipModCount != context.clipModCount;
         // Init stencil attachment, if needed.
