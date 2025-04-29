@@ -396,6 +396,11 @@ static void readAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymbolicHo
 
             int uid = [hkNumber intValue];
 
+            // Ignore hotkeys out of range, as well as 0, which is the "invalid value" for intValue
+            if (uid <= 0 || uid >= numSymbolicHotkeys) {
+                continue;
+            }
+
             id hkDesc = hkObj[hkNumber];
             if (![hkDesc isKindOfClass:[NSDictionary class]]) {
                 plog(LL_DEBUG, "hotkey descriptor '%s' isn't instance of NSDictionary (class=%s)", toCString(hkDesc),
@@ -578,15 +583,6 @@ static bool ensureInitializedAndEnabled() {
         bool enabled = state.enabled;
         pthread_mutex_unlock(&state.mutex);
         return enabled;
-    }
-
-    // JBR-8422
-    const NSOperatingSystemVersion macOSVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
-    if (macOSVersion.majorVersion > 15 || (macOSVersion.majorVersion == 15 && macOSVersion.minorVersion >= 4)) {
-        state.initialized = true;
-        state.enabled = false;
-        pthread_mutex_unlock(&state.mutex);
-        return false;
     }
 
     state.initialized = true;
