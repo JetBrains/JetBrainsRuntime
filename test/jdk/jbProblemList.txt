@@ -926,6 +926,7 @@ javax/swing/JComboBox/6236162/bug6236162.java JBR-5210 windows-all
 javax/swing/JComboBox/6406264/bug6406264.java JBR-5210,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JComboBox/6607130/bug6607130.java JBR-5799 windows-x64
 javax/swing/JComboBox/bug4459267.java JBR-8656 windows-x64
+javax/swing/JComboBox/bug4530953.java JBR-8688 windows-x64
 javax/swing/JComboBox/bug4890345.java JBR-5799 windows-all
 javax/swing/JComboBox/bug4924758.java JBR-5846 windows-all
 javax/swing/JComboBox/bug4996503.java JBR-5799 windows-aarch64
