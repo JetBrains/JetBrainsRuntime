@@ -194,6 +194,9 @@ runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315,JBR-6289 linux-ppc6
 runtime/ErrorHandling/TestAbortVmOnException.java JBR-8514 windows-aarch64
 runtime/ErrorHandling/UncaughtNativeExceptionTest.java JBR-8515 windows-aarch64
 runtime/NMT/CheckForProperDetailStackTrace.java 8347002 linux-all
+runtime/NMT/MallocLimitTest.java#compiler-limit-fatal JBR-8524 windows-aarch64
+runtime/NMT/MallocLimitTest.java#global-limit-fatal JBR-8524 windows-aarch64
+runtime/NMT/MallocLimitTest.java#multi-limit JBR-8524 windows-aarch64
 runtime/NMT/VirtualAllocCommitMerge.java 8309698 linux-s390x
 
 applications/jcstress/copy.java 8229852 linux-all
@@ -343,11 +346,6 @@ vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi005/TestDescription
 vmTestbase/nsk/monitoring/ThreadMXBean/findMonitorDeadlockedThreads/find006/TestDescription.java 8310144 macosx-aarch64
 
 ### initial_runs
-
-runtime/cds/appcds/TestDumpClassListSource.java NO_BUG generic_all
-runtime/cds/appcds/CommandLineFlagCombo.java NO_BUG generic_all
-runtime/cds/appcds/dynamicArchive/TestAutoCreateSharedArchiveNoDefaultArchive.java NO_BUG generic_all
-runtime/cds/appcds/dynamicArchive/TestAutoCreateSharedArchiveUpgrade.java NO_BUG generic_all
 
 vmTestbase/nsk/stress/thread/thread008.java initial_run windows-all
 
