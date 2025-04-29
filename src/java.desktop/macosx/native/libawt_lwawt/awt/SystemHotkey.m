@@ -182,6 +182,26 @@ enum ShortcutID {
     Shortcut_ToggleSpeakSelection = 230,
     Shortcut_ToggleSpeakItemUnderPointer = 231,
     Shortcut_ToggleTypingFeedback = 232,
+    Shortcut_MinimizeWindow = 233,
+    Shortcut_ZoomWindow = 235,
+    Shortcut_FillWindow = 237,
+    Shortcut_CenterWindow = 238,
+    Shortcut_RestoreWindow = 239,
+    Shortcut_TileLeftHalf = 240,
+    Shortcut_TileRightHalf = 241,
+    Shortcut_TileTopHalf = 242,
+    Shortcut_TileBottomHalf = 243,
+    Shortcut_TileTopLeftQuarter = 244,
+    Shortcut_TileTopRightQuarter = 245,
+    Shortcut_TileBottomLeftQuarter = 246,
+    Shortcut_TileBottomRightQuarter = 247,
+    Shortcut_ArrangeLeftRight = 248,
+    Shortcut_ArrangeRightLeft = 249,
+    Shortcut_ArrangeTopBottom = 250,
+    Shortcut_ArrangeBottomTop = 251,
+    Shortcut_ArrangeQuarters = 256,
+    Shortcut_FullScreenTileLeft = 257,
+    Shortcut_FullScreenTileRight = 258,
 };
 
 struct SymbolicHotKey {
@@ -207,67 +227,88 @@ struct SymbolicHotKey {
     // Modifier mask using the NSEventModifierFlag* values for this shortcut
     int modifiers;
 
-    // The first major version of macOS that has this shortcut or -1 if unknown.
-    int macOSVersion;
+    // The first version of macOS that has this shortcut or -1 if unknown.
+    int macOSVersionMajor;
+    int macOSVersionMinor;
 };
 
 static const struct SymbolicHotKey defaultSymbolicHotKeys[] = {
-    [Shortcut_FocusMenuBar] = { "FocusMenuBar", "Move focus to the menu bar", YES, 65535, 120, 0x00840000, -1 },
-    [Shortcut_FocusDock] = { "FocusDock", "Move focus to the Dock", YES, 65535, 99, 0x00840000, -1 },
-    [Shortcut_FocusActiveWindow] = { "FocusActiveWindow", "Move focus to active or next window", YES, 65535, 118, 0x00840000, -1 },
-    [Shortcut_FocusToolbar] = { "FocusToolbar", "Move focus to window toolbar", YES, 65535, 96, 0x00840000, -1 },
-    [Shortcut_FocusFloatingWindow] = { "FocusFloatingWindow", "Move focus to floating window", YES, 65535, 97, 0x00840000, -1 },
-    [Shortcut_ToggleKeyboardAccess] = { "ToggleKeyboardAccess", "Turn keyboard access on or off", YES, 65535, 122, 0x00840000, -1 },
-    [Shortcut_ChangeTabMode] = { "ChangeTabMode", "Change the way Tab moves focus", YES, 65535, 98, 0x00840000, -1 },
-    [Shortcut_ToggleZoom] = { "ToggleZoom", "Zoom: Turn zoom on or off", NO, 56, 28, 0x00180000, -1 },
-    [Shortcut_ZoomIn] = { "ZoomIn", "Zoom: Zoom in", NO, 61, 24, 0x00180000, -1 },
-    [Shortcut_ZoomOut] = { "ZoomOut", "Zoom: Zoom out", NO, 45, 27, 0x00180000, -1 },
-    [Shortcut_InvertColors] = { "InvertColors", "Invert colors", YES, 56, 28, 0x001c0000, -1 },
-    [Shortcut_ToggleZoomImageSmoothing] = { "ToggleZoomImageSmoothing", "Zoom: Turn image smoothing on or off", NO, 92, 42, 0x00180000, -1 },
-    [Shortcut_IncreaseContrast] = { "IncreaseContrast", "Increase contrast", NO, 46, 47, 0x001c0000, -1 },
-    [Shortcut_DecreaseContrast] = { "DecreaseContrast", "Decrease contrast", NO, 44, 43, 0x001c0000, -1 },
-    [Shortcut_FocusNextApplicationWindow] = { "FocusNextApplicationWindow", "Move focus to the next window in application", YES, 96, 50, 0x00100000, -1 },
-    [Shortcut_ScreenshotToFile] = { "ScreenshotToFile", "Save picture of screen as a file", YES, 51, 20, 0x00120000, -1 },
-    [Shortcut_ScreenshotToClipboard] = { "ScreenshotToClipboard", "Copy picture of screen to the clipboard", YES, 51, 20, 0x00160000, -1 },
-    [Shortcut_ScreenshotAreaToFile] = { "ScreenshotAreaToFile", "Save picture of selected area as a file", YES, 52, 21, 0x00120000, -1 },
-    [Shortcut_ScreenshotAreaToClipboard] = { "ScreenshotAreaToClipboard", "Copy picture of selected area to the clipboard", YES, 52, 21, 0x00160000, -1 },
-    [Shortcut_ShowAllWindows] = { "ShowAllWindows", "Mission Control", YES, 65535, 126, 0x00840000, -1 },
-    [Shortcut_ShowApplicationWindows] = { "ShowApplicationWindows", "Application windows", YES, 65535, 125, 0x00840000, -1 },
-    [Shortcut_ShowDesktop] = { "ShowDesktop", "Show desktop", YES, 65535, 103, 0x00800000, -1 },
-    [Shortcut_ToggleDockHiding] = { "ToggleDockHiding", "Turn Dock hiding on/off", YES, 100, 2, 0x00180000, -1 },
-    [Shortcut_DecreaseBrightness] = { "DecreaseBrightness", "Decrease display brightness", YES, 65535, 107, 0x00800000, -1 },
-    [Shortcut_IncreaseBrightness] = { "IncreaseBrightness", "Increase display brightness", YES, 65535, 113, 0x00800000, -1 },
-    [Shortcut_FocusStatusMenu] = { "FocusStatusMenu", "Move focus to the status menus", YES, 65535, 100, 0x00840000, -1 },
-    [Shortcut_ToggleVoiceOver] = { "ToggleVoiceOver", "Turn VoiceOver on or off", YES, 65535, 96, 0x00900000, -1 },
-    [Shortcut_SelectPreviousInputSource] = { "SelectPreviousInputSource", "Select the previous input source", YES, 32, 49, 0x00040000, -1 },
-    [Shortcut_SelectNextInputSource] = { "SelectNextInputSource", "Select next source in Input menu", YES, 32, 49, 0x000c0000, -1 },
-    [Shortcut_ShowSpotlight] = { "ShowSpotlight", "Show Spotlight Search", YES, 32, 49, 0x00100000, -1 },
-    [Shortcut_ShowFinderSearch] = { "ShowFinderSearch", "Show Finder search window", YES, 32, 49, 0x00180000, -1 },
-    [Shortcut_SwitchToDesktopLeft] = { "SwitchToDesktopLeft", "Move left a space", NO, 65535, 123, 0x00840000, -1 },
-    [Shortcut_SwitchToDesktopRight] = { "SwitchToDesktopRight", "Move right a space", NO, 65535, 124, 0x00840000, -1 },
-    [Shortcut_SwitchToDesktop1] = { "SwitchToDesktop1", "Switch to Desktop 1", NO, 65535, 18, 0x00040000, -1 },
-    [Shortcut_SwitchToDesktop2] = { "SwitchToDesktop2", "Switch to Desktop 2", NO, 65535, 19, 0x00040000, -1 },
-    [Shortcut_SwitchToDesktop3] = { "SwitchToDesktop3", "Switch to Desktop 3", NO, 65535, 20, 0x00040000, -1 },
-    [Shortcut_SwitchToDesktop4] = { "SwitchToDesktop4", "Switch to Desktop 4", NO, 65535, 21, 0x00040000, -1 },
-    [Shortcut_ShowContextualMenu] = { "ShowContextualMenu", "Show contextual menu", YES, 65535, 36, 0x00040000, 15 },
-    [Shortcut_ShowLaunchpad] = { "ShowLaunchpad", "Show Launchpad", NO, 65535, 65535, 0, -1 },
-    [Shortcut_ShowAccessibilityControls] = { "ShowAccessibilityControls", "Show Accessibility controls", YES, 65535, 96, 0x00980000, -1 },
-    [Shortcut_ShowNotificationCenter] = { "ShowNotificationCenter", "Show Notification Center", NO, 65535, 65535, 0, -1 },
-    [Shortcut_ToggleDoNotDisturb] = { "ToggleDoNotDisturb", "Turn Do Not Disturb on/off", YES, 65535, 65535, 0, -1 },
-    [Shortcut_ToggleZoomFocusFollowing] = { "ToggleZoomFocusFollowing", "Zoom: Turn focus following on or off", NO, 65535, 65535, 0, -1 },
-    [Shortcut_ScreenshotOptions] = { "ScreenshotOptions", "Screenshot and recording options", YES, 53, 23, 0x00120000, -1 },
-    [Shortcut_OpenQuickNote] = { "OpenQuickNote", "Quick note", YES, 113, 12, 0x00800000, -1 },
-    [Shortcut_ToggleStageManager] = { "ToggleStageManager", "Turn Stage Manager on/off", NO, 65535, 65535, 0, -1 },
-    [Shortcut_TogglePresenterOverlayLarge] = { "TogglePresenterOverlayLarge", "Turn Presenter Overlay (large) on or off", YES, 65535, 65535, 0, -1 },
-    [Shortcut_TogglePresenterOverlaySmall] = { "TogglePresenterOverlaySmall", "Turn Presenter Overlay (small) on or off", YES, 65535, 65535, 0, -1 },
-    [Shortcut_ToggleLiveSpeech] = { "ToggleLiveSpeech", "LiveSpeech: Turn Live Speech on or off", YES, 65535, 65535, 0, 14 },
-    [Shortcut_ToggleLiveSpeechVisibility] = { "ToggleLiveSpeechVisibility", "LiveSpeech: Toggle visibility", YES, 65535, 65535, 0, 14 },
-    [Shortcut_PauseOrResumeLiveSpeech] = { "PauseOrResumeLiveSpeech", "LiveSpeech: Pause or resume speech", YES, 65535, 65535, 0, 14 },
-    [Shortcut_CancelLiveSpeech] = { "CancelLiveSpeech", "LiveSpeech: Cancel speech", YES, 65535, 65535, 0, 14 },
-    [Shortcut_ToggleLiveSpeechPhrases] = { "ToggleLiveSpeechPhrases", "LiveSpeech: Hide or show phrases", YES, 65535, 65535, 0, 14 },
-    [Shortcut_ToggleSpeakSelection] = { "ToggleSpeakSelection", "Turn speak selection on or off", YES, 65535, 65535, 0, 14 },
-    [Shortcut_ToggleSpeakItemUnderPointer] = { "ToggleSpeakItemUnderPointer", "Turn speak item under the pointer on or off", YES, 65535, 65535, 0, 14 },
-    [Shortcut_ToggleTypingFeedback] = { "ToggleTypingFeedback", "Turn typing feedback on or off", YES, 65535, 65535, 0, 14 },
+    [Shortcut_FocusMenuBar] = { "FocusMenuBar", "Move focus to the menu bar", YES, 65535, 120, 0x00840000, -1, -1 },
+    [Shortcut_FocusDock] = { "FocusDock", "Move focus to the Dock", YES, 65535, 99, 0x00840000, -1, -1 },
+    [Shortcut_FocusActiveWindow] = { "FocusActiveWindow", "Move focus to active or next window", YES, 65535, 118, 0x00840000, -1, -1 },
+    [Shortcut_FocusToolbar] = { "FocusToolbar", "Move focus to window toolbar", YES, 65535, 96, 0x00840000, -1, -1 },
+    [Shortcut_FocusFloatingWindow] = { "FocusFloatingWindow", "Move focus to floating window", YES, 65535, 97, 0x00840000, -1, -1 },
+    [Shortcut_ToggleKeyboardAccess] = { "ToggleKeyboardAccess", "Turn keyboard access on or off", YES, 65535, 122, 0x00840000, -1, -1 },
+    [Shortcut_ChangeTabMode] = { "ChangeTabMode", "Change the way Tab moves focus", YES, 65535, 98, 0x00840000, -1, -1 },
+    [Shortcut_ToggleZoom] = { "ToggleZoom", "Zoom: Turn zoom on or off", NO, 56, 28, 0x00180000, -1, -1 },
+    [Shortcut_ZoomIn] = { "ZoomIn", "Zoom: Zoom in", NO, 61, 24, 0x00180000, -1, -1 },
+    [Shortcut_ZoomOut] = { "ZoomOut", "Zoom: Zoom out", NO, 45, 27, 0x00180000, -1, -1 },
+    [Shortcut_InvertColors] = { "InvertColors", "Invert colors", YES, 56, 28, 0x001c0000, -1, -1 },
+    [Shortcut_ToggleZoomImageSmoothing] = { "ToggleZoomImageSmoothing", "Zoom: Turn image smoothing on or off", NO, 92, 42, 0x00180000, -1, -1 },
+    [Shortcut_IncreaseContrast] = { "IncreaseContrast", "Increase contrast", NO, 46, 47, 0x001c0000, -1, -1 },
+    [Shortcut_DecreaseContrast] = { "DecreaseContrast", "Decrease contrast", NO, 44, 43, 0x001c0000, -1, -1 },
+    [Shortcut_FocusNextApplicationWindow] = { "FocusNextApplicationWindow", "Move focus to the next window in application", YES, 96, 50, 0x00100000, -1, -1 },
+    [Shortcut_ScreenshotToFile] = { "ScreenshotToFile", "Save picture of screen as a file", YES, 51, 20, 0x00120000, -1, -1 },
+    [Shortcut_ScreenshotToClipboard] = { "ScreenshotToClipboard", "Copy picture of screen to the clipboard", YES, 51, 20, 0x00160000, -1, -1 },
+    [Shortcut_ScreenshotAreaToFile] = { "ScreenshotAreaToFile", "Save picture of selected area as a file", YES, 52, 21, 0x00120000, -1, -1 },
+    [Shortcut_ScreenshotAreaToClipboard] = { "ScreenshotAreaToClipboard", "Copy picture of selected area to the clipboard", YES, 52, 21, 0x00160000, -1, -1 },
+    [Shortcut_ShowAllWindows] = { "ShowAllWindows", "Mission Control", YES, 65535, 126, 0x00840000, -1, -1 },
+    [Shortcut_ShowApplicationWindows] = { "ShowApplicationWindows", "Application windows", YES, 65535, 125, 0x00840000, -1, -1 },
+    [Shortcut_ShowDesktop] = { "ShowDesktop", "Show desktop", YES, 65535, 103, 0x00800000, -1, -1 },
+    [Shortcut_ToggleDockHiding] = { "ToggleDockHiding", "Turn Dock hiding on/off", YES, 100, 2, 0x00180000, -1, -1 },
+    [Shortcut_DecreaseBrightness] = { "DecreaseBrightness", "Decrease display brightness", YES, 65535, 107, 0x00800000, -1, -1 },
+    [Shortcut_IncreaseBrightness] = { "IncreaseBrightness", "Increase display brightness", YES, 65535, 113, 0x00800000, -1, -1 },
+    [Shortcut_FocusStatusMenu] = { "FocusStatusMenu", "Move focus to the status menus", YES, 65535, 100, 0x00840000, -1, -1 },
+    [Shortcut_ToggleVoiceOver] = { "ToggleVoiceOver", "Turn VoiceOver on or off", YES, 65535, 96, 0x00900000, -1, -1 },
+    [Shortcut_SelectPreviousInputSource] = { "SelectPreviousInputSource", "Select the previous input source", YES, 32, 49, 0x00040000, -1, -1 },
+    [Shortcut_SelectNextInputSource] = { "SelectNextInputSource", "Select next source in Input menu", YES, 32, 49, 0x000c0000, -1, -1 },
+    [Shortcut_ShowSpotlight] = { "ShowSpotlight", "Show Spotlight Search", YES, 32, 49, 0x00100000, -1, -1 },
+    [Shortcut_ShowFinderSearch] = { "ShowFinderSearch", "Show Finder search window", YES, 32, 49, 0x00180000, -1, -1 },
+    [Shortcut_SwitchToDesktopLeft] = { "SwitchToDesktopLeft", "Move left a space", NO, 65535, 123, 0x00840000, -1, -1 },
+    [Shortcut_SwitchToDesktopRight] = { "SwitchToDesktopRight", "Move right a space", NO, 65535, 124, 0x00840000, -1, -1 },
+    [Shortcut_SwitchToDesktop1] = { "SwitchToDesktop1", "Switch to Desktop 1", NO, 65535, 18, 0x00040000, -1, -1 },
+    [Shortcut_SwitchToDesktop2] = { "SwitchToDesktop2", "Switch to Desktop 2", NO, 65535, 19, 0x00040000, -1, -1 },
+    [Shortcut_SwitchToDesktop3] = { "SwitchToDesktop3", "Switch to Desktop 3", NO, 65535, 20, 0x00040000, -1, -1 },
+    [Shortcut_SwitchToDesktop4] = { "SwitchToDesktop4", "Switch to Desktop 4", NO, 65535, 21, 0x00040000, -1, -1 },
+    [Shortcut_ShowContextualMenu] = { "ShowContextualMenu", "Show contextual menu", YES, 65535, 36, 0x00040000, 15, 0 },
+    [Shortcut_ShowLaunchpad] = { "ShowLaunchpad", "Show Launchpad", NO, 65535, 65535, 0, -1, -1 },
+    [Shortcut_ShowAccessibilityControls] = { "ShowAccessibilityControls", "Show Accessibility controls", YES, 65535, 96, 0x00980000, -1, -1 },
+    [Shortcut_ShowNotificationCenter] = { "ShowNotificationCenter", "Show Notification Center", NO, 65535, 65535, 0, -1, -1 },
+    [Shortcut_ToggleDoNotDisturb] = { "ToggleDoNotDisturb", "Turn Do Not Disturb on/off", YES, 65535, 65535, 0, -1, -1 },
+    [Shortcut_ToggleZoomFocusFollowing] = { "ToggleZoomFocusFollowing", "Zoom: Turn focus following on or off", NO, 65535, 65535, 0, -1, -1 },
+    [Shortcut_ScreenshotOptions] = { "ScreenshotOptions", "Screenshot and recording options", YES, 53, 23, 0x00120000, -1, -1 },
+    [Shortcut_OpenQuickNote] = { "OpenQuickNote", "Quick note", YES, 113, 12, 0x00800000, -1, -1 },
+    [Shortcut_ToggleStageManager] = { "ToggleStageManager", "Turn Stage Manager on/off", NO, 65535, 65535, 0, -1, -1 },
+    [Shortcut_TogglePresenterOverlayLarge] = { "TogglePresenterOverlayLarge", "Turn Presenter Overlay (large) on or off", YES, 65535, 65535, 0, -1, -1 },
+    [Shortcut_TogglePresenterOverlaySmall] = { "TogglePresenterOverlaySmall", "Turn Presenter Overlay (small) on or off", YES, 65535, 65535, 0, -1, -1 },
+    [Shortcut_ToggleLiveSpeech] = { "ToggleLiveSpeech", "LiveSpeech: Turn Live Speech on or off", YES, 65535, 65535, 0, 14, 0 },
+    [Shortcut_ToggleLiveSpeechVisibility] = { "ToggleLiveSpeechVisibility", "LiveSpeech: Toggle visibility", YES, 65535, 65535, 0, 14, 0 },
+    [Shortcut_PauseOrResumeLiveSpeech] = { "PauseOrResumeLiveSpeech", "LiveSpeech: Pause or resume speech", YES, 65535, 65535, 0, 14, 0 },
+    [Shortcut_CancelLiveSpeech] = { "CancelLiveSpeech", "LiveSpeech: Cancel speech", YES, 65535, 65535, 0, 14, 0 },
+    [Shortcut_ToggleLiveSpeechPhrases] = { "ToggleLiveSpeechPhrases", "LiveSpeech: Hide or show phrases", YES, 65535, 65535, 0, 14, 0 },
+    [Shortcut_ToggleSpeakSelection] = { "ToggleSpeakSelection", "Turn speak selection on or off", YES, 65535, 65535, 0, 14, 0 },
+    [Shortcut_ToggleSpeakItemUnderPointer] = { "ToggleSpeakItemUnderPointer", "Turn speak item under the pointer on or off", YES, 65535, 65535, 0, 14, 0 },
+    [Shortcut_ToggleTypingFeedback] = { "ToggleTypingFeedback", "Turn typing feedback on or off", YES, 65535, 65535, 0, 14, 0 },
+    [Shortcut_MinimizeWindow] = { "MinimizeWindow", "Windows: Minimize", YES, 109, 46, 0x00100000, 15, 4 },
+    [Shortcut_ZoomWindow] = { "ZoomWindow", "Windows: Zoom", YES, 65535, 65535, 0, 15, 4 },
+    [Shortcut_FillWindow] = { "FillWindow", "Windows: Fill", YES, 102, 3, 0x00840000, 15, 4 },
+    [Shortcut_CenterWindow] = { "CenterWindow", "Windows: Center", YES, 99, 8, 0x00840000, 15, 4 },
+    [Shortcut_RestoreWindow] = { "RestoreWindow", "Windows: Return to Previous Size", YES, 114, 15, 0x00840000, 15, 4 },
+    [Shortcut_TileLeftHalf] = { "TileLeftHalf", "Windows: Tile Left Half", YES, 65535, 123, 0x00840000, 15, 4 },
+    [Shortcut_TileRightHalf] = { "TileRightHalf", "Windows: Tile Right Half", YES, 65535, 124, 0x00840000, 15, 4 },
+    [Shortcut_TileTopHalf] = { "TileTopHalf", "Windows: Tile Top Half", YES, 65535, 126, 0x00840000, 15, 4 },
+    [Shortcut_TileBottomHalf] = { "TileBottomHalf", "Windows: Tile Bottom Half", YES, 65535, 125, 0x00840000, 15, 4 },
+    [Shortcut_TileTopLeftQuarter] = { "TileTopLeftQuarter", "Windows: Tile Top-Left Quarter", YES, 65535, 65535, 0, 15, 4 },
+    [Shortcut_TileTopRightQuarter] = { "TileTopRightQuarter", "Windows: Tile Top-Right Quarter", YES, 65535, 65535, 0, 15, 4 },
+    [Shortcut_TileBottomLeftQuarter] = { "TileBottomLeftQuarter", "Windows: Tile Bottom-Left Quarter", YES, 65535, 65535, 0, 15, 4 },
+    [Shortcut_TileBottomRightQuarter] = { "TileBottomRightQuarter", "Windows: Tile Bottom-Right Quarter", YES, 65535, 65535, 0, 15, 4 },
+    [Shortcut_ArrangeLeftRight] = { "ArrangeLeftRight", "Windows: Arrange Left and Right", YES, 65535, 123, 0x00860000, 15, 4 },
+    [Shortcut_ArrangeRightLeft] = { "ArrangeRightLeft", "Windows: Arrange Right and Left", YES, 65535, 124, 0x00860000, 15, 4 },
+    [Shortcut_ArrangeTopBottom] = { "ArrangeTopBottom", "Windows: Arrange Top and Bottom", YES, 65535, 126, 0x00860000, 15, 4 },
+    [Shortcut_ArrangeBottomTop] = { "ArrangeBottomTop", "Windows: Arrange Bottom and Top", YES, 65535, 125, 0x00860000, 15, 4 },
+    [Shortcut_ArrangeQuarters] = { "ArrangeQuarters", "Windows: Arrange in Quarters", YES, 65535, 65535, 0, 15, 4 },
+    [Shortcut_FullScreenTileLeft] = { "FullScreenTileLeft", "Windows: Full-Screen Tile Left", YES, 65535, 65535, 0, 15, 4 },
+    [Shortcut_FullScreenTileRight] = { "FullScreenTileRight", "Windows: Full-Screen Tile Right", YES, 65535, 65535, 0, 15, 4 },
 };
 
 static const int numSymbolicHotkeys = sizeof(defaultSymbolicHotKeys) / sizeof(defaultSymbolicHotKeys[0]);
@@ -485,8 +526,19 @@ static void iterateAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymboli
 
     for (int uid = 0; uid < numSymbolicHotkeys; ++uid) {
         struct SymbolicHotKey* hotkey = &hotkeys[uid];
-        if (!hotkey->enabled) continue;
-        if (hotkey->macOSVersion > macOSVersion.majorVersion) continue;
+
+        if (!hotkey->enabled) {
+            continue;
+        }
+
+        if (hotkey->macOSVersionMajor > macOSVersion.majorVersion ||
+            (hotkey->macOSVersionMajor == macOSVersion.majorVersion && hotkey->macOSVersionMinor > macOSVersion.minorVersion)) {
+            continue;
+        }
+
+        if (hotkey->character == 0xFFFF && hotkey->key == 0xFFFF) {
+            continue;
+        }
 
         char keyCharBuf[64];
         const char *keyCharStr = keyCharBuf;
