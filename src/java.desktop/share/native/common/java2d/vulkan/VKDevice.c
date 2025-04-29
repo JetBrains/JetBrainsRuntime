@@ -320,7 +320,7 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
             .pQueuePriorities = &queuePriority
     };
 
-    VkPhysicalDeviceFeatures features10 = { .logicOp = device->caps & sun_java2d_vulkan_VKGPU_CAP_LOGIC_OP_BIT };
+    VkPhysicalDeviceFeatures features10 = { .logicOp = device->caps & sun_java2d_vulkan_VKGPU_CAP_LOGIC_OP_BIT ? VK_TRUE : VK_FALSE };
     VkPhysicalDeviceVulkan12Features features12 = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             .timelineSemaphore = VK_TRUE
