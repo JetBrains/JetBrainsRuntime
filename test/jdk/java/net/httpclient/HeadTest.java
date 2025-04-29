@@ -111,22 +111,21 @@ public class HeadTest implements HttpServerAdapters {
     @DataProvider(name = "positive")
     public Object[][] positive() {
         return new Object[][] {
+                // HTTP/1.1
                 { httpURI, "GET", HTTP_NOT_MODIFIED, HTTP_1_1  },
                 { httpsURI, "GET", HTTP_NOT_MODIFIED, HTTP_1_1  },
-                { httpURI, "GET", HTTP_NOT_MODIFIED, HttpClient.Version.HTTP_2  },
-                { httpsURI, "GET", HTTP_NOT_MODIFIED, HttpClient.Version.HTTP_2  },
                 { httpURI, "HEAD", HTTP_OK, HTTP_1_1  },
                 { httpsURI, "HEAD", HTTP_OK, HTTP_1_1  },
-                { httpURI, "HEAD", HTTP_OK, HttpClient.Version.HTTP_2  },
-                { httpsURI, "HEAD", HTTP_OK, HttpClient.Version.HTTP_2  },
                 { httpURI + "transfer/", "GET", HTTP_NOT_MODIFIED, HTTP_1_1  },
                 { httpsURI + "transfer/", "GET", HTTP_NOT_MODIFIED, HTTP_1_1  },
-                { httpURI + "transfer/", "GET", HTTP_NOT_MODIFIED, HttpClient.Version.HTTP_2  },
-                { httpsURI + "transfer/", "GET", HTTP_NOT_MODIFIED, HttpClient.Version.HTTP_2  },
                 { httpURI + "transfer/", "HEAD", HTTP_OK, HTTP_1_1  },
                 { httpsURI + "transfer/", "HEAD", HTTP_OK, HTTP_1_1  },
-                { httpURI + "transfer/", "HEAD", HTTP_OK, HttpClient.Version.HTTP_2  },
-                { httpsURI + "transfer/", "HEAD", HTTP_OK, HttpClient.Version.HTTP_2  }
+                // HTTP/2
+                { http2URI, "GET", HTTP_NOT_MODIFIED, HttpClient.Version.HTTP_2  },
+                { https2URI, "GET", HTTP_NOT_MODIFIED, HttpClient.Version.HTTP_2  },
+                { http2URI, "HEAD", HTTP_OK, HttpClient.Version.HTTP_2  },
+                { https2URI, "HEAD", HTTP_OK, HttpClient.Version.HTTP_2  },
+                // HTTP2 forbids transfer-encoding
         };
     }
 
@@ -145,11 +144,9 @@ public class HeadTest implements HttpServerAdapters {
 
         HttpRequest.Builder requestBuilder = HttpRequest
                 .newBuilder(uri)
+                .version(version)
                 .method(method, HttpRequest.BodyPublishers.noBody());
 
-        if (version != null) {
-            requestBuilder.version(version);
-        }
         HttpRequest request = requestBuilder.build();
         out.println("Initial request: " + request.uri());
 
@@ -160,6 +157,7 @@ public class HeadTest implements HttpServerAdapters {
         assertEquals(response.statusCode(), expResp);
         assertEquals(response.body(), "");
         assertEquals(response.headers().firstValue("Content-length").get(), CONTENT_LEN);
+        assertEquals(response.version(), request.version().get());
     }
 
     // -- Infrastructure
@@ -182,7 +180,7 @@ public class HeadTest implements HttpServerAdapters {
         http2TestServer = HttpTestServer.create(HTTP_2);
         http2TestServer.addHandler(new HeadHandler(), "/");
         http2URI = "http://" + http2TestServer.serverAuthority() + "/";
-        https2TestServer = HttpTestServer.create(HTTP_2, SSLContext.getDefault());
+        https2TestServer = HttpTestServer.create(HTTP_2, sslContext);
         https2TestServer.addHandler(new HeadHandler(), "/");
         https2URI = "https://" + https2TestServer.serverAuthority() + "/";
 
