@@ -65,11 +65,11 @@ public class TestCheckedEnsureLocalCapacity {
         }
 
         // No warning
-        ProcessTools.executeTestJvm("-Xcheck:jni",
-                                    "-Djava.library.path=" + Utils.TEST_NATIVE_PATH,
-                                    "TestCheckedEnsureLocalCapacity",
-                                    Integer.toString(testArgs[0][0]),
-                                    Integer.toString(testArgs[0][1])).
+        ProcessTools.executeTestJava("-Xcheck:jni",
+                                     "-Djava.library.path=" + Utils.TEST_NATIVE_PATH,
+                                     "TestCheckedEnsureLocalCapacity",
+                                     Integer.toString(testArgs[0][0]),
+                                     Integer.toString(testArgs[0][1])).
             shouldHaveExitValue(0).
             // check no capacity warning
             stdoutShouldNotMatch(EXCEED_WARNING).
@@ -78,11 +78,11 @@ public class TestCheckedEnsureLocalCapacity {
             reportDiagnosticSummary();
 
         // Warning
-        ProcessTools.executeTestJvm("-Xcheck:jni",
-                                    "-Djava.library.path=" + Utils.TEST_NATIVE_PATH,
-                                    "TestCheckedEnsureLocalCapacity",
-                                    Integer.toString(testArgs[1][0]),
-                                    Integer.toString(testArgs[1][1])).
+        ProcessTools.executeTestJava("-Xcheck:jni",
+                                     "-Djava.library.path=" + Utils.TEST_NATIVE_PATH,
+                                     "TestCheckedEnsureLocalCapacity",
+                                     Integer.toString(testArgs[1][0]),
+                                     Integer.toString(testArgs[1][1])).
             shouldHaveExitValue(0).
             // check for capacity warning
             stdoutShouldMatch(EXCEED_WARNING).

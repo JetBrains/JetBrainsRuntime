@@ -45,7 +45,7 @@ import jdk.test.lib.process.ProcessTools;
 public class DcmdMBeanTestCheckJni {
 
     public static void main(String[] args) throws Exception {
-        OutputAnalyzer out = ProcessTools.executeTestJvm(
+        OutputAnalyzer out = ProcessTools.executeTestJava(
             "-Xcheck:jni",
             DcmdMBeanRunner.class.getName());
         out.shouldNotMatch("WARNING: JNI local refs: \\d+, exceeds capacity: \\d+\\s+" +

@@ -36,10 +36,10 @@ import jdk.test.lib.process.ProcessTools;
 public class Test8062950 {
     private static final String CLASSNAME = "DoesNotExist";
     public static void main(String[] args) throws Exception {
-        ProcessTools.executeTestJvm("-Xcomp",
-                                    "-XX:-TieredCompilation",
-                                    "-XX:-UseOptoBiasInlining",
-                                    CLASSNAME)
+        ProcessTools.executeTestJava("-Xcomp",
+                                     "-XX:-TieredCompilation",
+                                     "-XX:-UseOptoBiasInlining",
+                                     CLASSNAME)
                     .shouldHaveExitValue(1)
                     .shouldContain("Error: Could not find or load main class " + CLASSNAME)
                     .shouldNotContain("A fatal error has been detected")

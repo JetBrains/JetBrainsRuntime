@@ -46,7 +46,7 @@ public class TestCompileOnly {
     }
 
     public static void test(String compileOnlyCommand) throws Exception {
-        OutputAnalyzer output = ProcessTools.executeTestJvm("-XX:CompileOnly=" + compileOnlyCommand, "-version");
+        OutputAnalyzer output = ProcessTools.executeTestJava("-XX:CompileOnly=" + compileOnlyCommand, "-version");
         output.shouldHaveExitValue(0);
     }
 }

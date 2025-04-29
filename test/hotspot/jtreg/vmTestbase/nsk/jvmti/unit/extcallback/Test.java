@@ -41,7 +41,7 @@ import jdk.test.lib.process.ProcessTools;
 public class Test {
 
     public static void main(String[] args) throws Exception {
-        ProcessTools.executeTestJvm("-agentlib:extcallback", Test1.class.getName())
+        ProcessTools.executeTestJava("-agentlib:extcallback", Test1.class.getName())
                     .shouldHaveExitValue(0)
                     .shouldContain("callbackClassUnload called");
     }
