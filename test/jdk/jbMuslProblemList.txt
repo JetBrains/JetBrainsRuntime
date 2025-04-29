@@ -1,4 +1,5 @@
 java/awt/Choice/NonFocusablePopupMenuTest.java JBR-7785 linux-all
+java/awt/font/Emoji/EmojiVariation.java JBR-8717 linux-all
 java/awt/FontMetrics/ExtremeFontSizeTest.java JBR-7823 linux-all
 java/awt/Graphics/XORPaint.java#id2 JBR-7373 linux-x64
 java/awt/Mixing/HWDisappear.java JBR-6818 linux-all
@@ -12,3 +13,4 @@ javax/swing/JRadioButton/bug4823809.java JBR-7788 linux-all
 javax/swing/text/html/StyleSheet/bug4476002.java JBR-7498 linux-aarch64
 
 jb/build/ResolveSymbolsTest/ResolveSymbolsRealEnv.java JBR-8544 linux-all
+jb/java/io/IoOverNio/FileTest.java JBR-8723 linux-all
