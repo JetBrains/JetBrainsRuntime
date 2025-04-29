@@ -3473,21 +3473,21 @@ public class BigDecimal extends Number implements Comparable<BigDecimal> {
                 return "0";
             }
             int trailingZeros = checkScaleNonZero((-(long)scale));
-            StringBuilder buf;
-            if(intCompact!=INFLATED) {
-                buf = new StringBuilder(20+trailingZeros);
-                buf.append(intCompact);
-            } else {
-                String str = intVal.toString();
-                buf = new StringBuilder(str.length()+trailingZeros);
-                buf.append(str);
+            String str = intCompact != INFLATED
+                ? Long.toString(intCompact)
+                : intVal.toString();
+            int len = str.length() + trailingZeros;
+            if (len < 0) {
+                throw new OutOfMemoryError("too large to fit in a String");
             }
-            for (int i = 0; i < trailingZeros; i++) {
+            StringBuilder buf = new StringBuilder(len);
+            buf.append(str);
+            for (; trailingZeros>0; trailingZeros--) {
                 buf.append('0');
             }
             return buf.toString();
         }
-        String str ;
+        String str;
         if(intCompact!=INFLATED) {
             str = Long.toString(Math.abs(intCompact));
         } else {
@@ -3497,11 +3497,11 @@ public class BigDecimal extends Number implements Comparable<BigDecimal> {
     }
 
     /* Returns a digit.digit string */
-    private String getValueString(int signum, String intString, int scale) {
+    private static String getValueString(int signum, String intString, int scale) {
         /* Insert decimal point */
         StringBuilder buf;
         int insertionPoint = intString.length() - scale;
-        if (insertionPoint == 0) {  /* Point goes right before intVal */
+        if (insertionPoint == 0) {  /* Point goes just before intVal */
             return (signum<0 ? "-0." : "0.") + intString;
         } else if (insertionPoint > 0) { /* Point goes inside intVal */
             buf = new StringBuilder(intString);
@@ -3509,9 +3509,13 @@ public class BigDecimal extends Number implements Comparable<BigDecimal> {
             if (signum < 0)
                 buf.insert(0, '-');
         } else { /* We must insert zeros between point and intVal */
-            buf = new StringBuilder(3-insertionPoint + intString.length());
+            int len = (signum < 0 ? 3 : 2) + scale;
+            if (len < 0) {
+                throw new OutOfMemoryError("too large to fit in a String");
+            }
+            buf = new StringBuilder(len);
             buf.append(signum<0 ? "-0." : "0.");
-            for (int i=0; i<-insertionPoint; i++) {
+            for (; insertionPoint<0; insertionPoint++) {  // insertionPoint != MIN_VALUE
                 buf.append('0');
             }
             buf.append(intString);
