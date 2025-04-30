@@ -1089,7 +1089,7 @@ javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-53
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210,JBR-6687 windows-all,linux-5.18.2-arch1-1
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5541 linux-all
-javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952 windows-all
+javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,8340330 windows-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4
 javax/swing/UIDefaults/6795356/TableTest.java JBR-5767 windows-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,JBR-1656 windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -1243,6 +1243,7 @@ java/awt/TextArea/ScrollbarIntersectionTest/ScrollbarIntersectionTest.java 82531
 java/awt/TextArea/TextAreaCaretVisibilityTest/bug7129742.java JBR-5439 linux-all
 java/awt/TextArea/TextAreaCursorTest/HoveringAndDraggingTest.java 8024986 macosx-all,linux-all
 java/awt/TextArea/TextAreaTwicePack/TextAreaTwicePack.java 8253184 windows-all
+java/awt/TextField/CaretPositionTest/CaretPositionTest.java JBR-7887 linux-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java 8253184 windows-all
 java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java JBR-6748 linux-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289 windows-all
@@ -1406,14 +1407,14 @@ javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java 8298124,JBR-5949 ma
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5510,JBR-5951 linux-5.18.2-arch1-1,windows-all
 jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5819 macosx-all,windows-all
-jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-5345 windows-x64
-jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-5345 windows-x64
+jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-5345 windows-all
+jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-5345 windows-all
 jb/java/awt/CustomTitleBar/JDialogNativeControlsTest.java JBR-5345 windows-x64
 jb/java/awt/CustomTitleBar/HitTestClientArea.java JBR-6675 windows-all
 jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-5465,JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465,JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-5828 windows-all
-jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5345 windows-x64
+jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5345 windows-all
 jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-6914 windows-all
 jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5345,JBR-6835 windows-all,macosx-all
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5345 windows-all
