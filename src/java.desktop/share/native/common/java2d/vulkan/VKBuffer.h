@@ -30,14 +30,8 @@
 #include "VKAllocator.h"
 #include "VKUtil.h"
 
-#define ARRAY_TO_VERTEX_BUF(device, vertices)                                           \
-    VKBuffer_CreateFromData(device, vertices, ARRAY_SIZE(vertices)*sizeof (vertices[0]),\
-    VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT)
-
 struct VKBuffer {
     VkBuffer handle;
-    VkPipelineStageFlagBits lastStage;
-    VkAccessFlagBits        lastAccess;
     // Buffer has no ownership over its memory.
     // Provided memory, offset and size must only be used to flush memory writes.
     // Allocation and freeing is done in pages.
@@ -51,13 +45,6 @@ struct VKTexelBuffer {
     VkBufferView view;
     VkDescriptorSet descriptorSet;
 };
-
-typedef struct {
-    void* data;
-    size_t x1, y1, w, h;
-    size_t scanStride;
-    size_t pixelStride;
-} VKBuffer_RasterInfo;
 
 /**
  * Create buffers, allocate a memory page and bind them together.
@@ -81,23 +68,8 @@ VkDescriptorPool VKBuffer_CreateTexelBuffers(VKDevice* device, VkFormat format,
                                              VkDescriptorType descriptorType, VkDescriptorSetLayout descriptorSetLayout,
                                              uint32_t bufferCount, VKBuffer* buffers, VKTexelBuffer* texelBuffers);
 
-// TODO usage of this function is suboptimal, we need to avoid creating individual buffers.
-VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
-                          VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
-
-// TODO usage of this function is suboptimal, we need to avoid creating one-time buffers.
-VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* data, VkDeviceSize dataSize,
-                                  VkPipelineStageFlags stage, VkAccessFlags access);
-
-VKBuffer* VKBuffer_CreateFromRaster(VKDevice* device, VKBuffer_RasterInfo info,
-                                    VkPipelineStageFlags stage, VkAccessFlags access);
-
-// TODO usage of this function is suboptimal, we need to avoid destroying individual buffers.
-void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer);
-
-void VKBuffer_Dispose(VKDevice* device, void* ctx);
-
-void VKBuffer_AddBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
-                         VKBuffer* buffer, VkPipelineStageFlags stage, VkAccessFlags access);
+void VKBuffer_AddBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch, VKBuffer* buffer,
+                         VkPipelineStageFlags srcStage, VkAccessFlags srcAccess,
+                         VkPipelineStageFlags dstStage, VkAccessFlags dstAccess);
 
 #endif // VKBuffer_h_Included
