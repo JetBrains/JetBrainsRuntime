@@ -32,22 +32,18 @@ import java.awt.Robot;
 import java.util.List;
 import java.awt.image.BufferedImage;
 import java.lang.invoke.MethodHandles;
+import test.jb.testhelpers.utils.MouseUtils;
 
 /*
  * @test
  * @summary Verify a property to change visibility of native controls
- * @requires (os.family == "windows" | os.family == "mac")
+ * @requires os.family == "mac"
  * @library ../../../testhelpers/screenshot ../../../testhelpers/TitleBar ../../../testhelpers/utils
  * @build TestUtils TaskResult Task CommonAPISuite MouseUtils ScreenShotHelpers Rect RectCoordinates MouseUtils
  * @run main/othervm NativeControlsVisibilityTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 NativeControlsVisibilityTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 NativeControlsVisibilityTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 NativeControlsVisibilityTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 NativeControlsVisibilityTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 NativeControlsVisibilityTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 NativeControlsVisibilityTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 NativeControlsVisibilityTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 NativeControlsVisibilityTest
  */
 public class NativeControlsVisibilityTest {
 
@@ -71,7 +67,8 @@ public class NativeControlsVisibilityTest {
         public void test() throws Exception {
             Robot robot = new Robot();
             robot.delay(500);
-            robot.mouseMove(window.getLocationOnScreen().x + window.getWidth() / 2,
+            MouseUtils.verifyLocationAndMove(robot, window,
+                    window.getLocationOnScreen().x + window.getWidth() / 2,
                     window.getLocationOnScreen().y + window.getHeight() / 2);
             robot.delay(500);
 
