@@ -54,8 +54,12 @@ abstract public class Task {
         }
         System.out.printf("RUN TEST CASE: %s%n", name);
 
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice gd = ge.getDefaultScreenDevice();
+        GraphicsConfiguration gc = gd.getDefaultConfiguration();
+
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(window.getGraphicsConfiguration());
+        Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(gc);
         int effectiveWidth = screenSize.width - insets.left - insets.right;
         int effectiveHeight = screenSize.height - insets.top - insets.bottom;
 
