@@ -146,6 +146,7 @@ struct VKRenderPass {
     VKRenderPassContext* context;
     ARRAY(VKBuffer)      vertexBuffers;
     ARRAY(VKTexelBuffer) maskFillBuffers;
+    ARRAY(VKSDOps*)      usedSurfaces;
     VkRenderPass         renderPass; // Non-owning.
     VkFramebuffer        framebuffer;
     VkCommandBuffer      commandBuffer;
@@ -156,7 +157,6 @@ struct VKRenderPass {
     VKBufferWritingState maskFillBufferWriting;
 
     VKPipelineDescriptor state;
-    uint64_t             lastTimestamp; // When was this surface last used?
     uint64_t             transformModCount; // Just a tag to detect when the transform was changed.
     uint64_t             clipModCount; // Just a tag to detect when the clip was changed.
     VkBool32             pendingFlush    : 1;
