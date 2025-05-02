@@ -54,6 +54,7 @@ uint32_t VKRenderer_AllocateVertices(uint32_t primitives, uint32_t vertices, siz
         if (writing.state.data == NULL) {
             VKBuffer buffer = VKRenderer_GetVertexBuffer(surface->device->renderer);
             ARRAY_PUSH_BACK(surface->renderPass->vertexBuffers) = buffer;
+            ARRAY_PUSH_BACK(surface->renderPass->flushRanges) = buffer.range;
             surface->renderPass->vertexBufferWriting.data = writing.state.data = buffer.data;
         }
         assert(ARRAY_SIZE(surface->renderPass->vertexBuffers) > 0);
