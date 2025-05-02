@@ -26,9 +26,7 @@ import com.jetbrains.WindowDecorations;
 import test.jb.testhelpers.TitleBar.TaskResult;
 import test.jb.testhelpers.TitleBar.TestUtils;
 
-import java.awt.AWTException;
-import java.awt.Robot;
-import java.awt.Window;
+import java.awt.*;
 import java.util.function.Function;
 
 abstract public class Task {
@@ -54,10 +52,12 @@ abstract public class Task {
             e.printStackTrace();
             return new TaskResult(false, message);
         }
-        init();
         System.out.printf("RUN TEST CASE: %s%n", name);
+
+        init();
         passed = true;
         error = "";
+
         prepareTitleBar();
         window = windowCreator.apply(titleBar);
         System.out.println("Created a window with the custom title bar. Window name: " + window.getName());
