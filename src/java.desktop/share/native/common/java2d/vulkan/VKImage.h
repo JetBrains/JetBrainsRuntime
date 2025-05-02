@@ -59,9 +59,6 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
                         VkImageTiling tiling, VkImageUsageFlags usage, VkSampleCountFlagBits samples,
                         VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback);
 
-void VKImage_LoadBuffer(VKDevice* device, VKImage* image, VKBuffer* buffer,
-                        uint32_t x0, uint32_t y0, uint32_t width, uint32_t height);
-
 void VKImage_Destroy(VKDevice* device, VKImage* image);
 
 VkImageView VKImage_GetView(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle);
