@@ -1326,12 +1326,6 @@ javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java 8298124,JBR-5949 ma
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-6465 windows-all
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5510,JBR-5951 linux-5.18.2-arch1-1,windows-x64
-jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5819 macosx-all,windows-all
-jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-5465,JBR-5550 windows-all
-jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465,JBR-5550 windows-all
-jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-5828 windows-all
-jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-6914 windows-all
-jb/java/awt/CustomTitleBar/WindowResizeTest.java JBR-5592 windows-all
 sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5510 linux-5.18.2-arch1-1
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5510 linux-5.18.2-arch1-1
 sun/java2d/GdiRendering/InsetClipping.java 7124403,JBR-6513 windows-all,macosx-all,linux-all
