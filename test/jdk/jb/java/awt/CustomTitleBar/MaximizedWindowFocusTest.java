@@ -26,15 +26,13 @@ import com.jetbrains.WindowDecorations;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
-import java.awt.Component;
-import java.awt.Frame;
-import java.awt.Point;
-import java.awt.Robot;
+import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import test.jb.testhelpers.utils.MouseUtils;
 
 /*
  * @test
@@ -59,7 +57,7 @@ public class MaximizedWindowFocusTest {
         try {
             SwingUtilities.invokeAndWait(MaximizedWindowFocusTest::initUI);
             robot.delay(1000);
-            clickOn(button);
+            clickOn(button, frame1);
             frame2Focused.get(5, TimeUnit.SECONDS);
         } finally {
             SwingUtilities.invokeAndWait(MaximizedWindowFocusTest::disposeUI);
@@ -95,16 +93,16 @@ public class MaximizedWindowFocusTest {
         if (frame2 != null) frame2.dispose();
     }
 
-    private static void clickAt(int x, int y) {
+    private static void clickAt(Window window, int x, int y) {
         robot.delay(500);
-        robot.mouseMove(x, y);
+        MouseUtils.verifyLocationAndMove(robot, window, x, y);
         robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
         robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
         robot.delay(500);
     }
 
-    private static void clickOn(Component component) {
+    private static void clickOn(Component component, Window window) {
         Point location = component.getLocationOnScreen();
-        clickAt(location.x + component.getWidth() / 2, location.y + component.getHeight() / 2);
+        clickAt(window, location.x + component.getWidth() / 2, location.y + component.getHeight() / 2);
     }
 }
