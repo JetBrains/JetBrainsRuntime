@@ -41,11 +41,12 @@ import java.awt.image.BufferedImage;
 import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.function.Function;
+import test.jb.testhelpers.utils.MouseUtils;
 
 /*
  * @test
  * @summary Detect and check behavior of clicking to native controls
- * @requires (os.family == "windows") | (os.family == "mac")
+ * @requires os.family == "mac"
  * @library ../../../testhelpers/screenshot ../../../testhelpers/TitleBar ../../../testhelpers/utils
  * @build TestUtils TaskResult Task CommonAPISuite MouseUtils ScreenShotHelpers Rect RectCoordinates MouseUtils
  * @run main/othervm FrameNativeControlsTest
@@ -79,12 +80,15 @@ public class FrameNativeControlsTest {
         private final WindowListener windowListener = new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
+                System.out.println("Call detected: windowClosing");
                 closingActionCalled = true;
             }
 
             @Override
             public void windowIconified(WindowEvent e) {
+                System.out.println("Call detected: windowIconified");
                 iconifyingActionCalled = true;
+
 
                 if (window.getName().equals("Frame")) {
                     ((Frame) window).setState(Frame.NORMAL);
@@ -94,6 +98,12 @@ public class FrameNativeControlsTest {
 
                 window.setVisible(true);
                 window.requestFocus();
+            }
+
+            @Override
+            public void windowDeiconified(WindowEvent e) {
+                System.out.println("Call detected: windowDeiconified");
+                deiconifyindActionDetected = true;
             }
         };
 
@@ -139,7 +149,7 @@ public class FrameNativeControlsTest {
         @Override
         public void test() throws Exception {
             robot.delay(500);
-            robot.mouseMove(window.getLocationOnScreen().x + window.getWidth() / 2,
+            MouseUtils.verifyLocationAndMove(robot, window, window.getLocationOnScreen().x + window.getWidth() / 2,
                     window.getLocationOnScreen().y + window.getHeight() / 2);
             robot.delay(500);
 
@@ -151,22 +161,25 @@ public class FrameNativeControlsTest {
                 System.out.println("Error: no controls found");
             }
 
+            int screenX = window.getBounds().x;
+            int screenY = window.getBounds().y;
+            int h = window.getBounds().height;
+            int w = window.getBounds().width;
+            int locationX = window.getLocationOnScreen().x;
+            int locationY = window.getLocationOnScreen().y;
+
             foundControls.forEach(control -> {
                 System.out.println("Using control: " + control);
-                int x = window.getLocationOnScreen().x + control.getX1() + (control.getX2() - control.getX1()) / 2;
-                int y = window.getLocationOnScreen().y + control.getY1() + (control.getY2() - control.getY1()) / 2;
+                int x = locationX + control.getX1() + (control.getX2() - control.getX1()) / 2;
+                int y = locationY + control.getY1() + (control.getY2() - control.getY1()) / 2;
                 System.out.println("Click to (" + x + ", " + y + ")");
 
-                int screenX = window.getBounds().x;
-                int screenY = window.getBounds().y;
-                int h = window.getBounds().height;
-                int w = window.getBounds().width;
-
                 robot.waitForIdle();
-                robot.mouseMove(x, y);
+                MouseUtils.verifyLocationAndMove(robot, window, x, y);
                 robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
                 robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
                 robot.waitForIdle();
+                robot.delay(500);
                 window.setBounds(screenX, screenY, w, h);
                 window.setVisible(true);
                 robot.waitForIdle();

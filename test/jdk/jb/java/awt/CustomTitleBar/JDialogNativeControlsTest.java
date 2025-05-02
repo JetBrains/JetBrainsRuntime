@@ -24,11 +24,9 @@ import com.jetbrains.JBR;
 import util.*;
 import test.jb.testhelpers.screenshot.ScreenShotHelpers;
 import test.jb.testhelpers.screenshot.Rect;
-import test.jb.testhelpers.TitleBar.CommonAPISuite;
 import test.jb.testhelpers.TitleBar.TaskResult;
 import test.jb.testhelpers.TitleBar.TestUtils;
 import test.jb.testhelpers.TitleBar.Task;
-import java.awt.Robot;
 import java.awt.event.InputEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -37,6 +35,7 @@ import java.awt.event.WindowStateListener;
 import java.awt.image.BufferedImage;
 import java.lang.invoke.MethodHandles;
 import java.util.List;
+import test.jb.testhelpers.utils.MouseUtils;
 
 /*
  * @test
@@ -48,11 +47,6 @@ import java.util.List;
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 JDialogNativeControlsTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 JDialogNativeControlsTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 JDialogNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 JDialogNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 JDialogNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 JDialogNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 JDialogNativeControlsTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 JDialogNativeControlsTest
  */
 public class JDialogNativeControlsTest {
 
@@ -113,7 +107,8 @@ public class JDialogNativeControlsTest {
         @Override
         public void test() throws Exception {
             robot.delay(500);
-            robot.mouseMove(window.getLocationOnScreen().x + window.getWidth() / 2,
+            MouseUtils.verifyLocationAndMove(robot, window,
+                    window.getLocationOnScreen().x + window.getWidth() / 2,
                     window.getLocationOnScreen().y + window.getHeight() / 2);
             robot.delay(500);
 
@@ -137,7 +132,7 @@ public class JDialogNativeControlsTest {
                 int w = window.getBounds().width;
 
                 robot.waitForIdle();
-                robot.mouseMove(x, y);
+                MouseUtils.verifyLocationAndMove(robot, window, x, y);
                 robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
                 robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
                 robot.waitForIdle();
