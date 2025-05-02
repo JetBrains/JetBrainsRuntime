@@ -35,10 +35,8 @@ public class TestUtils {
     public static final float TITLE_BAR_HEIGHT = 100;
     public static final Color TITLE_BAR_COLOR = Color.BLUE;
 
-    public static final int DEFAULT_LOCATION_X = 100;
-    public static final int DEFAULT_LOCATION_Y = 100;
-    private static final int DEFAULT_WIDTH = 1200;
-    private static final int DEFAULT_HEIGHT = 600;
+    static final int DEFAULT_WIDTH = 800;
+    static final int DEFAULT_HEIGHT = 600;
 
 
     private static final List<Function<WindowDecorations.CustomTitleBar, Window>> windowCreationFunctions = List.of(
@@ -78,6 +76,7 @@ public class TestUtils {
                 g.fillRect(r.x, r.y, r.width, (int) TITLE_BAR_HEIGHT);
             }
         };
+        frame.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
         frame.setName("Frame");
 
         frame.setTitle("Frame");
@@ -90,6 +89,7 @@ public class TestUtils {
 
     public static JFrame createJFrameWithCustomTitleBar(WindowDecorations.CustomTitleBar titleBar) {
         JFrame frame = new JFrame();
+        frame.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
         frame.setContentPane(new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -110,7 +110,9 @@ public class TestUtils {
     }
 
     public static Dialog createDialogWithCustomTitleBar(WindowDecorations.CustomTitleBar titleBar) {
-        Dialog dialog = new Dialog((Frame) null){
+        Frame frame = new Frame();
+        frame.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        Dialog dialog = new Dialog(frame) {
             @Override
             public void paint(Graphics g) {
                 Rectangle r = g.getClipBounds();
@@ -130,6 +132,7 @@ public class TestUtils {
 
     public static JDialog createJDialogWithCustomTitleBar(WindowDecorations.CustomTitleBar titleBar) {
         JDialog dialog = new JDialog();
+        dialog.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
         dialog.setContentPane(new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -168,7 +171,7 @@ public class TestUtils {
         final int effectiveWidth = (int) (width / uiScale);
         final int effectiveHeight = (int) (height / uiScale);
 
-        if (effectiveWidth < 200 || effectiveHeight < 200) {
+        if (effectiveWidth < DEFAULT_WIDTH || effectiveHeight < DEFAULT_HEIGHT) {
             return false;
         }
         return true;
