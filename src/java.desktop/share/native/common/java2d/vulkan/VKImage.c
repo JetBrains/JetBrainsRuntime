@@ -27,7 +27,6 @@
 #include <assert.h>
 #include "VKUtil.h"
 #include "VKAllocator.h"
-#include "VKBuffer.h" // TODO refactor this
 #include "VKDevice.h"
 #include "VKImage.h"
 
@@ -111,33 +110,6 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
     HASH_MAP_REHASH(image->viewMap, linear_probing, &viewKeyEquals, &viewKeyHash, 1, 10, 0.75);
 
     return image;
-}
-
-// TODO This is an internal API and should not be used from VKImage!
-VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
-void VKImage_LoadBuffer(VKDevice* device, VKImage* image, VKBuffer* buffer,
-                        uint32_t x0, uint32_t y0, uint32_t width, uint32_t height) {
-    VkCommandBuffer cb = VKRenderer_Record(device->renderer);
-    VkBufferImageCopy region = (VkBufferImageCopy){
-            .bufferOffset = 0,
-            .bufferRowLength = 0,
-            .bufferImageHeight = 0,
-            .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .imageSubresource.mipLevel = 0,
-            .imageSubresource.baseArrayLayer = 0,
-            .imageSubresource.layerCount = 1,
-            .imageOffset = {x0, y0, 0},
-            .imageExtent = {
-                    .width = width,
-                    .height = height,
-                    .depth = 1
-            }
-    };
-    J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "VKImage_LoadBuffer(device=%p, commandBuffer=%p, buffer=%p, image=%p)",
-                   device, cb, buffer->handle, image->handle);
-    device->vkCmdCopyBufferToImage(cb, buffer->handle, image->handle,
-                                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                          1, &region);
 }
 
 void VKImage_Destroy(VKDevice* device, VKImage* image) {
