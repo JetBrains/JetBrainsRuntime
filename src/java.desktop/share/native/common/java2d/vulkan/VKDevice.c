@@ -257,6 +257,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     ARRAY_PUSH_BACK(vk->devices) = (VKDevice) {
         .name = deviceName,
         .type = deviceProperties2.properties.deviceType,
+        .nonCoherentAtomSize = deviceProperties2.properties.limits.nonCoherentAtomSize,
         .handle = VK_NULL_HANDLE,
         .physicalDevice = physicalDevice,
         .queueFamily = queueFamily,
