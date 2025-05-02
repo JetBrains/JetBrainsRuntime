@@ -32,6 +32,25 @@ static void VKRenderer_CleanupFramebuffer(VKDevice* device, void* data) {
 }
 
 /**
+ * Flush render passes depending on a given surface.
+ * This function must be called before mutating a surface
+ * because there may be pending render passes reading from that surface.
+ */
+static void VKRenderer_FlushDependentRenderPasses(VKSDOps* surface) {
+    // We're going to clear dependentSurfaces in the end anyway,
+    // so temporarily reset it to NULL to save on removing flushed render passes one-by-one.
+    ARRAY(VKSDOps*) deps = surface->dependentSurfaces;
+    surface->dependentSurfaces = NULL;
+    uint32_t size = (uint32_t) ARRAY_SIZE(deps);
+    if (size > 0) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_FlushDependentRenderPasses(%p): %d", surface, size);
+    for (uint32_t i = 0; i < size; i++) {
+        VKRenderer_FlushRenderPass(deps[i]);
+    }
+    ARRAY_RESIZE(deps, 0);
+    surface->dependentSurfaces = deps;
+}
+
+/**
  * Discard all recorded commands for the render pass.
  */
 static void VKRenderer_DiscardRenderPass(VKSDOps* surface) {
@@ -47,12 +66,18 @@ static void VKRenderer_DiscardRenderPass(VKSDOps* surface) {
 
 void VKRenderer_DestroyRenderPass(VKSDOps* surface) {
     assert(surface != NULL);
-    if (surface->renderPass == NULL) return;
     VKDevice* device = surface->device;
+    // Wait while surface & related resources are being used by the device.
+    if (device != NULL) {
+        VKRenderer_FlushDependentRenderPasses(surface);
+        if (surface->lastTimestamp == device->renderer->writeTimestamp) {
+            VKRenderer_Flush(device->renderer);
+        }
+        VKRenderer_Wait(device->renderer, surface->lastTimestamp);
+    }
+    if (surface->renderPass == NULL) return;
     if (device != NULL && device->renderer != NULL) {
         VKRenderer* renderer = device->renderer;
-        // Wait while surface resources are being used by the device.
-        VKRenderer_Wait(renderer, surface->renderPass->lastTimestamp);
         VKRenderer_DiscardRenderPass(surface);
         // Release resources.
         device->vkDestroyFramebuffer(device->handle, surface->renderPass->framebuffer, NULL);
@@ -92,7 +117,6 @@ VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
                 .composite = NO_COMPOSITE,
                 .shader = NO_SHADER
             },
-            .lastTimestamp = 0,
             .transformModCount = 0,
             .clipModCount = 0,
             .pendingFlush = VK_FALSE,
@@ -155,6 +179,7 @@ static void VKRenderer_InitFramebuffer(VKSDOps* surface) {
  */
 void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL && !surface->renderPass->pendingCommands);
+    VKRenderer_FlushDependentRenderPasses(surface);
     VKRenderer_InitFramebuffer(surface);
     // We may have a pending flush, which is already obsolete.
     surface->renderPass->pendingFlush = VK_FALSE;
@@ -250,8 +275,21 @@ VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface) {
     if(!hasCommands && !clear) return VK_FALSE;
     VKDevice* device = surface->device;
     VKRenderer* renderer = device->renderer;
-    surface->renderPass->lastTimestamp = renderer->writeTimestamp;
     VkCommandBuffer cb = VKRenderer_Record(renderer);
+
+    // Update dependencies on used surfaces.
+    surface->lastTimestamp = renderer->writeTimestamp;
+    for (uint32_t i = 0, surfaces = (uint32_t) ARRAY_SIZE(surface->renderPass->usedSurfaces); i < surfaces; i++) {
+        VKSDOps* usedSurface = surface->renderPass->usedSurfaces[i];
+        usedSurface->lastTimestamp = renderer->writeTimestamp;
+        uint32_t newSize = 0, oldSize = (uint32_t) ARRAY_SIZE(usedSurface->dependentSurfaces);
+        for (uint32_t j = 0; j < oldSize; j++) {
+            VKSDOps* s = usedSurface->dependentSurfaces[j];
+            if (s != surface) usedSurface->dependentSurfaces[newSize++] = s;
+        }
+        if (newSize != oldSize) ARRAY_RESIZE(usedSurface->dependentSurfaces, newSize);
+    }
+    ARRAY_RESIZE(surface->renderPass->usedSurfaces, 0);
 
     // Insert barriers to prepare surface for rendering.
     VkImageMemoryBarrier barriers[2];
@@ -314,8 +352,8 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
 
         VKDevice* device = surface->device;
         VKRenderer* renderer = device->renderer;
-        surface->renderPass->lastTimestamp = renderer->writeTimestamp;
         VkCommandBuffer cb = VKRenderer_Record(renderer);
+        surface->lastTimestamp = renderer->writeTimestamp;
 
         // Acquire swapchain image.
         VkSemaphore acquireSemaphore = VKRenderer_AddPendingSemaphore(renderer);
