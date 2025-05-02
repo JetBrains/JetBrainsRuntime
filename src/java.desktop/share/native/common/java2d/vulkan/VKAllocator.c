@@ -165,9 +165,11 @@ VKMemoryRequirements VKAllocator_ImageRequirements(VKAllocator* allocator, VkIma
     return r;
 }
 
-void VKAllocator_PadToAlignment(VKMemoryRequirements* requirements) {
+void VKAllocator_PadToAlignment(VKAllocator* allocator, VKMemoryRequirements* requirements) {
+    assert(allocator != NULL);
     assert(requirements != NULL);
     VkMemoryRequirements* t = &requirements->requirements.memoryRequirements;
+    if (t->alignment < allocator->device->nonCoherentAtomSize) t->alignment = allocator->device->nonCoherentAtomSize;
     t->size = ((t->size + t->alignment - 1) / t->alignment) * t->alignment;
     requirements->dedicatedRequirements.requiresDedicatedAllocation = VK_FALSE;
     requirements->dedicatedRequirements.prefersDedicatedAllocation = VK_FALSE;
