@@ -37,7 +37,7 @@ public class TestUtils {
 
     public static final int DEFAULT_LOCATION_X = 100;
     public static final int DEFAULT_LOCATION_Y = 100;
-    private static final int DEFAULT_WIDTH = 1200;
+    private static final int DEFAULT_WIDTH = 800;
     private static final int DEFAULT_HEIGHT = 600;
 
 
@@ -90,6 +90,7 @@ public class TestUtils {
 
     public static JFrame createJFrameWithCustomTitleBar(WindowDecorations.CustomTitleBar titleBar) {
         JFrame frame = new JFrame();
+        frame.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
         frame.setContentPane(new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -110,7 +111,9 @@ public class TestUtils {
     }
 
     public static Dialog createDialogWithCustomTitleBar(WindowDecorations.CustomTitleBar titleBar) {
-        Dialog dialog = new Dialog((Frame) null){
+        JFrame frame = new JFrame();
+        frame.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        Dialog dialog = new Dialog(frame) {
             @Override
             public void paint(Graphics g) {
                 Rectangle r = g.getClipBounds();
