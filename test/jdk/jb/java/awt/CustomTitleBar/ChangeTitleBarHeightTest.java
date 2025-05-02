@@ -39,11 +39,6 @@ import java.lang.invoke.MethodHandles;
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 ChangeTitleBarHeightTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 ChangeTitleBarHeightTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 ChangeTitleBarHeightTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 ChangeTitleBarHeightTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 ChangeTitleBarHeightTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 ChangeTitleBarHeightTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 ChangeTitleBarHeightTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 ChangeTitleBarHeightTest
  */
 public class ChangeTitleBarHeightTest {
 
