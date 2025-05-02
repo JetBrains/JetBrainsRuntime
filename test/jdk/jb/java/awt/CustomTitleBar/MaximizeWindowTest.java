@@ -37,6 +37,7 @@ import java.awt.event.InputEvent;
 import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.function.Function;
+import test.jb.testhelpers.utils.MouseUtils;
 
 /*
  * @test
@@ -48,11 +49,6 @@ import java.util.function.Function;
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 MaximizeWindowTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 MaximizeWindowTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 MaximizeWindowTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 MaximizeWindowTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 MaximizeWindowTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 MaximizeWindowTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 MaximizeWindowTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 MaximizeWindowTest
  */
 public class MaximizeWindowTest {
 
@@ -146,7 +142,7 @@ public class MaximizeWindowTest {
         Robot robot = new Robot();
 
         robot.delay(1000);
-        robot.mouseMove(x, y);
+        MouseUtils.verifyLocationAndMove(robot, window, x, y);
         robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
         robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
         robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
