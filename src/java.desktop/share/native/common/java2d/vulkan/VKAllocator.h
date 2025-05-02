@@ -62,7 +62,7 @@ VKMemoryRequirements VKAllocator_ImageRequirements(VKAllocator* allocator, VkIma
  * This also resets dedicated requirement flags, as for dedicated allocations size must
  * be strictly equal to the one returned by resource memory requirements.
  */
-void VKAllocator_PadToAlignment(VKMemoryRequirements* requirements);
+void VKAllocator_PadToAlignment(VKAllocator* allocator, VKMemoryRequirements* requirements);
 
 /**
  * Find memory type with properties not less than requiredProperties and not more than allowedProperties,
