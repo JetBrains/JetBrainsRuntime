@@ -171,7 +171,7 @@ public class TestUtils {
         final int effectiveWidth = (int) (width / uiScale);
         final int effectiveHeight = (int) (height / uiScale);
 
-        if (effectiveWidth < 200 || effectiveHeight < 200) {
+        if (effectiveWidth < DEFAULT_WIDTH || effectiveHeight < DEFAULT_HEIGHT) {
             return false;
         }
         return true;
