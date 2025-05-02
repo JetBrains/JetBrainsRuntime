@@ -67,6 +67,7 @@ static VKBufferWritingState VKRenderer_AllocateMaskFillBytes(uint32_t size) {
         if (state.data == NULL) {
             VKTexelBuffer buffer = VKRenderer_GetMaskFillBuffer(surface->device->renderer);
             ARRAY_PUSH_BACK(surface->renderPass->maskFillBuffers) = buffer;
+            ARRAY_PUSH_BACK(surface->renderPass->flushRanges) = buffer.buffer.range;
             surface->renderPass->maskFillBufferWriting.data = state.data = buffer.buffer.data;
         }
         assert(ARRAY_SIZE(surface->renderPass->maskFillBuffers) > 0);
