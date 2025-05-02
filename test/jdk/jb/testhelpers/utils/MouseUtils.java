@@ -40,9 +40,9 @@ public class MouseUtils {
 
         robot.waitForIdle();
         robot.mouseMove(x, y);
-        robot.delay(50);
+        robot.delay(300);
         robot.mousePress(mask);
-        robot.delay(50);
+        robot.delay(300);
         robot.mouseRelease(mask);
     }
 
