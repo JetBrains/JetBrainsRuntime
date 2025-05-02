@@ -55,12 +55,6 @@ struct VKRenderingContext {
     ARRAY(VKIntVertex) clipSpanVertices;
 };
 
-typedef struct {
-    uint32_t barrierCount;
-    VkPipelineStageFlags srcStages;
-    VkPipelineStageFlags dstStages;
-} VKBarrierBatch;
-
 typedef void (*VKCleanupHandler)(VKDevice *renderer, void* data);
 
 VKRenderer* VKRenderer_Create(VKDevice* device);
@@ -69,6 +63,11 @@ VKRenderer* VKRenderer_Create(VKDevice* device);
  * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
  */
 VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, AlphaType inAlphaType);
+
+/**
+ * Record draw command, if there are any pending vertices in the vertex buffer
+ */
+void VKRenderer_FlushDraw(VKSDOps* surface);
 
 /**
  * Record commands into primary command buffer (outside of a render pass).
@@ -85,6 +84,13 @@ void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* 
 void VKRenderer_AddBufferBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
                                 VKBuffer* buffer, VkPipelineStageFlags stage,
                                 VkAccessFlags access);
+
+/**
+ * Record barrier batches into the primary command buffer.
+ */
+void VKRenderer_RecordBarriers(VKRenderer* renderer,
+                               VkBufferMemoryBarrier* bufferBarriers, VKBarrierBatch* bufferBatch,
+                               VkImageMemoryBarrier* imageBarriers, VKBarrierBatch* imageBatch);
 
 void VKRenderer_CreateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool* descriptorPool, VkDescriptorSet* set);
 
@@ -127,6 +133,8 @@ void VKRenderer_FlushSurface(VKSDOps* surface);
  */
 void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* device);
 
+void VKRenderer_AddSurfaceDependency(VKSDOps* src, VKSDOps* dst);
+
 // Blit operations.
 
 void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexBuffer, uint32_t vertexNum,
@@ -143,9 +151,13 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
 
 void VKRenderer_FillSpans(jint spanCount, jint *spans);
 
-void
-VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
-                    jint maskoff, jint maskscan, jint masklen, uint8_t *mask);
+void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
+                         jint maskoff, jint maskscan, jint masklen, uint8_t *mask);
+
+void VKRenderer_DrawImage(VKImage* image, AlphaType alphaType, VkFormat format,
+                                 VKPackedSwizzle swizzle, jint filter, VKSamplerWrap wrap,
+                                 float sx1, float sy1, float sx2, float sy2,
+                                 float dx1, float dy1, float dx2, float dy2);
 
 VKRenderingContext* VKRenderer_GetContext();
 
