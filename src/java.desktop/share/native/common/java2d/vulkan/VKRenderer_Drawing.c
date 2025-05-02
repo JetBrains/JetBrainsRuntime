@@ -38,10 +38,11 @@ void VKRenderer_FlushDraw(VKSDOps* surface) {
 }
 
 /**
- * Flush vertex buffer writes, push vertex buffers to the pending queue, reset drawing state for the surface.
+ * Flush buffer writes, push buffers to the pending queue, reset the drawing state for the surface.
  */
 void VKRenderer_ResetDrawing(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
+    VKRenderer* renderer = surface->device->renderer;
     surface->renderPass->state.composite = NO_COMPOSITE;
     surface->renderPass->state.shader = NO_SHADER;
     surface->renderPass->transformModCount = 0;
@@ -49,23 +50,18 @@ void VKRenderer_ResetDrawing(VKSDOps* surface) {
     surface->renderPass->vertexCount = 0;
     surface->renderPass->vertexBufferWriting = (VKBufferWritingState) {NULL, 0, VK_FALSE};
     surface->renderPass->maskFillBufferWriting = (VKBufferWritingState) {NULL, 0, VK_FALSE};
-    size_t vertexBufferCount = ARRAY_SIZE(surface->renderPass->vertexBuffers);
-    size_t maskFillBufferCount = ARRAY_SIZE(surface->renderPass->maskFillBuffers);
-    if (vertexBufferCount == 0 && maskFillBufferCount == 0) return;
-    VKRenderer* renderer = surface->device->renderer;
-    VkMappedMemoryRange memoryRanges[vertexBufferCount + maskFillBufferCount];
-    for (uint32_t i = 0; i < vertexBufferCount; i++) {
-        memoryRanges[i] = surface->renderPass->vertexBuffers[i].range;
-        POOL_RETURN(renderer, surface->device->renderer->vertexBufferPool, surface->renderPass->vertexBuffers[i]);
+    if (ARRAY_SIZE(surface->renderPass->flushRanges) > 0) {
+        VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle,
+            ARRAY_SIZE(surface->renderPass->flushRanges), surface->renderPass->flushRanges)) {}
+        ARRAY_RESIZE(surface->renderPass->flushRanges, 0);
     }
-    for (uint32_t i = 0; i < maskFillBufferCount; i++) {
-        memoryRanges[vertexBufferCount + i] = surface->renderPass->maskFillBuffers[i].buffer.range;
-        POOL_RETURN(renderer, surface->device->renderer->maskFillBufferPool, surface->renderPass->maskFillBuffers[i]);
-    }
-    ARRAY_RESIZE(surface->renderPass->vertexBuffers, 0);
-    ARRAY_RESIZE(surface->renderPass->maskFillBuffers, 0);
-    VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle,
-                                                           vertexBufferCount + maskFillBufferCount, memoryRanges)) {}
+#define MOVE_TO_POOL(ARRAY, POOL)                                                              \
+    for (uint32_t i = 0; i < ARRAY_SIZE(surface->renderPass->ARRAY); i++) {                    \
+        POOL_RETURN(renderer, surface->device->renderer->POOL, surface->renderPass->ARRAY[i]); \
+    } ARRAY_RESIZE(surface->renderPass->ARRAY, 0)
+    MOVE_TO_POOL(vertexBuffers, vertexBufferPool);
+    MOVE_TO_POOL(maskFillBuffers, maskFillBufferPool);
+    MOVE_TO_POOL(cleanupQueue, cleanupQueue);
 }
 
 static void VKRenderer_ValidateTransform() {
