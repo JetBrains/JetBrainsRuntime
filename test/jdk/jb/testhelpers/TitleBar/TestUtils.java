@@ -35,10 +35,8 @@ public class TestUtils {
     public static final float TITLE_BAR_HEIGHT = 100;
     public static final Color TITLE_BAR_COLOR = Color.BLUE;
 
-    public static final int DEFAULT_LOCATION_X = 100;
-    public static final int DEFAULT_LOCATION_Y = 100;
-    private static final int DEFAULT_WIDTH = 800;
-    private static final int DEFAULT_HEIGHT = 600;
+    static final int DEFAULT_WIDTH = 800;
+    static final int DEFAULT_HEIGHT = 600;
 
 
     private static final List<Function<WindowDecorations.CustomTitleBar, Window>> windowCreationFunctions = List.of(
@@ -78,6 +76,7 @@ public class TestUtils {
                 g.fillRect(r.x, r.y, r.width, (int) TITLE_BAR_HEIGHT);
             }
         };
+        frame.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
         frame.setName("Frame");
 
         frame.setTitle("Frame");
@@ -133,6 +132,7 @@ public class TestUtils {
 
     public static JDialog createJDialogWithCustomTitleBar(WindowDecorations.CustomTitleBar titleBar) {
         JDialog dialog = new JDialog();
+        dialog.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
         dialog.setContentPane(new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {

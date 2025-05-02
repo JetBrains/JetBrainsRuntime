@@ -26,9 +26,7 @@ import com.jetbrains.WindowDecorations;
 import test.jb.testhelpers.TitleBar.TaskResult;
 import test.jb.testhelpers.TitleBar.TestUtils;
 
-import java.awt.AWTException;
-import java.awt.Robot;
-import java.awt.Window;
+import java.awt.*;
 import java.util.function.Function;
 
 abstract public class Task {
@@ -54,10 +52,22 @@ abstract public class Task {
             e.printStackTrace();
             return new TaskResult(false, message);
         }
-        init();
         System.out.printf("RUN TEST CASE: %s%n", name);
+
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(window.getGraphicsConfiguration());
+        int effectiveWidth = screenSize.width - insets.left - insets.right;
+        int effectiveHeight = screenSize.height - insets.top - insets.bottom;
+
+        if (effectiveWidth <= TestUtils.DEFAULT_WIDTH || effectiveHeight < TestUtils.DEFAULT_HEIGHT) {
+            System.out.println("SKIPPED: environment don't match screen size conditions");
+            return new TaskResult(false, true, "SKIPPED: environment don't match screen size conditions");
+        }
+
+        init();
         passed = true;
         error = "";
+
         prepareTitleBar();
         window = windowCreator.apply(titleBar);
         System.out.println("Created a window with the custom title bar. Window name: " + window.getName());
