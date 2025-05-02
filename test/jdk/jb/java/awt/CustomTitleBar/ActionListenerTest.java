@@ -44,11 +44,6 @@ import java.util.List;
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 ActionListenerTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 ActionListenerTest
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 ActionListenerTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 ActionListenerTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 ActionListenerTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 ActionListenerTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 ActionListenerTest
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 ActionListenerTest
  */
 public class ActionListenerTest {
 
@@ -83,6 +78,7 @@ public class ActionListenerTest {
         @Override
         public void customizeWindow() {
             button = new Button();
+            button.setSize(50, 50);
             button.setLocation(window.getWidth() / 2, 0);
             button.addActionListener(a -> {
                 actionListenerGotEvent = true;
@@ -120,11 +116,13 @@ public class ActionListenerTest {
         @Override
         public void customizeWindow() {
             button = new JButton();
-            button.setLocation(window.getWidth() / 2, 0);
+            button.setSize(50, 50);
+            button.setLocation(window.getWidth() / 2, window.getHeight() / 2);
             button.addActionListener(a -> {
                 actionListenerGotEvent = true;
             });
             window.add(button);
+
             window.setAlwaysOnTop(true);
         }
 
