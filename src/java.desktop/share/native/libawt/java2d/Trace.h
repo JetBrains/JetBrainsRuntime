@@ -190,6 +190,7 @@ J2dTraceImpl(int level, jboolean cr, const char *string, ...);
 #define J2dRlsTraceLn8(level, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) { \
             J2dTraceImpl(level, JNI_TRUE, string, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8); \
         }
+#define J2dRlsTraceLnVar(level, ...) J2dTraceImpl(level, JNI_TRUE, __VA_ARGS__) // TODO https://github.com/openjdk/jdk/pull/24949
 
 #ifdef __cplusplus
 }
