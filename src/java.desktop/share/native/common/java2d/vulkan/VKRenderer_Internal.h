@@ -143,13 +143,15 @@ typedef struct {
  * Rendering-related info attached to the surface.
  */
 struct VKRenderPass {
-    VKRenderPassContext* context;
-    ARRAY(VKBuffer)      vertexBuffers;
-    ARRAY(VKTexelBuffer) maskFillBuffers;
-    ARRAY(VKSDOps*)      usedSurfaces;
-    VkRenderPass         renderPass; // Non-owning.
-    VkFramebuffer        framebuffer;
-    VkCommandBuffer      commandBuffer;
+    VKRenderPassContext*       context;
+    ARRAY(VkMappedMemoryRange) flushRanges;
+    ARRAY(VKBuffer)            vertexBuffers;
+    ARRAY(VKTexelBuffer)       maskFillBuffers;
+    ARRAY(VKCleanupEntry)      cleanupQueue;
+    ARRAY(VKSDOps*)            usedSurfaces;
+    VkRenderPass               renderPass; // Non-owning.
+    VkFramebuffer              framebuffer;
+    VkCommandBuffer            commandBuffer;
 
     uint32_t             firstVertex;
     uint32_t             vertexCount;
