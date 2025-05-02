@@ -66,7 +66,7 @@ VKMemory VKBuffer_CreateBuffers(VKDevice* device, VkBufferUsageFlags usageFlags,
     // Check memory requirements. We aim to create maxBufferCount buffers,
     // but due to implementation-specific alignment requirements this number can be lower (unlikely though).
     VKMemoryRequirements requirements = VKAllocator_BufferRequirements(alloc, buffers[0].handle);
-    VKAllocator_PadToAlignment(&requirements); // Align for array-like allocation.
+    VKAllocator_PadToAlignment(alloc, &requirements); // Align for array-like allocation.
     VkDeviceSize realBufferSize = requirements.requirements.memoryRequirements.size;
     if (pageSize == 0) pageSize = (*bufferCount) * realBufferSize;
     uint32_t realBufferCount = pageSize / realBufferSize;
