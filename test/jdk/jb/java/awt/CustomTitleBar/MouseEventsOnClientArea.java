@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import test.jb.testhelpers.utils.MouseUtils;
 
 /*
  * @test
@@ -48,11 +49,6 @@ import java.util.concurrent.TimeUnit;
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 MouseEventsOnClientArea
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 MouseEventsOnClientArea
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.5 MouseEventsOnClientArea
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0 MouseEventsOnClientArea
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.5 MouseEventsOnClientArea
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.0 MouseEventsOnClientArea
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=3.5 MouseEventsOnClientArea
- * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=4.0 MouseEventsOnClientArea
  */
 public class MouseEventsOnClientArea {
 
@@ -202,7 +198,7 @@ public class MouseEventsOnClientArea {
             BUTTON_MASKS.forEach(mask -> {
                 robot.delay(500);
 
-                robot.mouseMove(x, y);
+                MouseUtils.verifyLocationAndMove(robot, window, x, y);
                 robot.mousePress(mask);
                 robot.mouseRelease(mask);
 
@@ -212,7 +208,7 @@ public class MouseEventsOnClientArea {
             int centerX = contentPanel.getLocationOnScreen().x + contentPanel.getWidth() / 2;
             int centerY = contentPanel.getLocationOnScreen().y + contentPanel.getHeight() / 2;
             robot.delay(500);
-            robot.mouseMove(centerX, centerY);
+            MouseUtils.verifyLocationAndMove(robot, window, centerX, centerY);
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
             robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
             robot.waitForIdle();
@@ -352,7 +348,7 @@ public class MouseEventsOnClientArea {
             BUTTON_MASKS.forEach(mask -> {
                 robot.delay(500);
 
-                robot.mouseMove(x, y);
+                MouseUtils.verifyLocationAndMove(robot, window, x, y);
                 robot.mousePress(mask);
                 robot.mouseRelease(mask);
 
@@ -362,7 +358,7 @@ public class MouseEventsOnClientArea {
             int centerX = contentPanel.getLocationOnScreen().x + contentPanel.getWidth() / 2;
             int centerY = contentPanel.getLocationOnScreen().y + contentPanel.getHeight() / 2;
             robot.delay(500);
-            robot.mouseMove(centerX, centerY);
+            MouseUtils.verifyLocationAndMove(robot, window, centerX, centerY);
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
             robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
             robot.waitForIdle();
