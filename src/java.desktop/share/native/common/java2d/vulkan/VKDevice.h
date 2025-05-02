@@ -48,6 +48,7 @@ struct VKDevice {
     VkPhysicalDevice     physicalDevice;
     char*                name;
     VkPhysicalDeviceType type;
+    VkDeviceSize         nonCoherentAtomSize;
     uint32_t             queueFamily;
     ARRAY(pchar)         enabledLayers;
     ARRAY(pchar)         enabledExtensions;
