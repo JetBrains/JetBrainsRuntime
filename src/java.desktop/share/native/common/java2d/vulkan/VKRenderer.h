@@ -84,13 +84,9 @@ void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* 
 
 // Blit operations.
 
-void VKBlitLoops_IsoBlit(JNIEnv *env,
-                          jlong pSrcOps,
-                          jboolean xform, jint hint,
-                          jint sx1, jint sy1,
-                          jint sx2, jint sy2,
-                          jdouble dx1, jdouble dy1,
-                          jdouble dx2, jdouble dy2); // TODO refactor
+void VKRenderer_IsoBlit(VKSDOps* src, jint filter,
+                        jint sx1, jint sy1, jint sx2, jint sy2,
+                        jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2);
 
 void VKBlitLoops_Blit(JNIEnv *env,
                        jlong pSrcOps,
