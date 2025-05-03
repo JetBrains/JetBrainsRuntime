@@ -617,7 +617,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
     }
 
     @SuppressWarnings("removal")
-    private static final boolean checkDesktopGeometry = !"false".equals(AccessController.doPrivileged(
+    private static boolean checkDesktopGeometry = !"false".equals(AccessController.doPrivileged(
             new sun.security.action.GetPropertyAction("watch.desktop.geometry", "true")));
     // In case we are for some reason being spammed with display reconfiguration events (KDE?),
     // we can stop reacting to those events. The current threshold is 20 events/sec.
