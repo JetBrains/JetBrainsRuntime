@@ -386,6 +386,87 @@ OGLSD_InitFBObject(GLuint *fbobjectID, GLuint *depthID,
     return JNI_TRUE;
 }
 
+void OGLSD_DisposeTextureWrapper(JNIEnv *env, SurfaceDataOps *ops);
+
+JNIEXPORT
+jboolean JNICALL Java_sun_java2d_opengl_OGLSurfaceData_initWithTexture
+    (JNIEnv *env, jobject oglsd, jlong pData, jboolean isOpaque, jlong textureId)
+{
+    OGLSDOps *oglsdo = (OGLSDOps *)jlong_to_ptr(pData);
+    J2dRlsTraceLn(J2D_TRACE_ERROR, "Wrap texture: %d", textureId);
+
+
+    if (oglsdo == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "OGLSurfaceData_initWithTexture: ops are null");
+        return JNI_FALSE;
+    }
+
+    j2d_glBindTexture(GL_TEXTURE_2D, textureId);
+    GLenum error = j2d_glGetError();
+    if (error != GL_NO_ERROR) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR,
+            "OGLSurfaceData_initWithTexture: could not bind texture: id=%d error=%x",
+            textureId, error);
+        return JNI_FALSE;
+    }
+
+    if (!j2d_glIsTexture(textureId)) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "OGLSurfaceData_initWithTexture: textureId is not a valid texture id");
+        j2d_glBindTexture(GL_TEXTURE_2D, 0);
+        return JNI_FALSE;
+    }
+
+    GLsizei width, height;
+    j2d_glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+    j2d_glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+    j2d_glBindTexture(GL_TEXTURE_2D, 0);
+
+    GLint texMax;
+    j2d_glGetIntegerv(GL_MAX_TEXTURE_SIZE, &texMax);
+    if (width >= texMax || height >= texMax || width <= 0 || height <= 0) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR,
+            "OGLSurfaceData_initWithTexture: wrong texture size %d x %d",
+            width, height);
+        return JNI_FALSE;
+    }
+
+    oglsdo->isOpaque = isOpaque;
+    oglsdo->xOffset = 0;
+    oglsdo->yOffset = 0;
+    oglsdo->width = width;
+    oglsdo->height = height;
+    oglsdo->textureID = textureId;
+    oglsdo->textureWidth = width;
+    oglsdo->textureHeight = height;
+    oglsdo->textureTarget = GL_TEXTURE_2D;
+    oglsdo->sdOps.Dispose = OGLSD_DisposeTextureWrapper;
+    // OGLSD_INIT_TEXTURE_FILTER(oglsdo, GL_NEAREST);
+
+    GLuint fbobjectID, depthID;
+    if (!OGLSD_InitFBObject(&fbobjectID, &depthID,
+                            oglsdo->textureID, oglsdo->textureTarget,
+                            oglsdo->textureWidth, oglsdo->textureHeight))
+    {
+        J2dRlsTraceLn(J2D_TRACE_ERROR,
+            "OGLSurfaceData_initFBObject: could not init fbobject");
+        return JNI_FALSE;
+    }
+
+    oglsdo->drawableType = OGLSD_FBOBJECT;
+    // other fields (e.g. width, height) are set in OGLSD_InitTextureObject()
+    oglsdo->fbobjectID = fbobjectID;
+    oglsdo->depthID = depthID;
+
+    OGLSD_SetNativeDimensions(env, oglsdo, width, height);
+
+    oglsdo->activeBuffer = GL_COLOR_ATTACHMENT0_EXT;
+
+    J2dTraceLn(J2D_TRACE_VERBOSE, "OGLSurfaceData_initWithTexture: wrapped texture: w=%d h=%d id=%d", width, height, textureId);
+    oglsdo->isTextureWrapper = 1;
+
+    return JNI_TRUE;
+}
+
 /**
  * Initializes a framebuffer object, using the given width and height as
  * a guide.  See OGLSD_InitTextureObject() and OGLSD_InitFBObject()
@@ -529,6 +610,16 @@ Java_sun_java2d_opengl_OGLSurfaceData_getTextureID
     return (jint)oglsdo->textureID;
 }
 
+JNIEXPORT void JNICALL
+Java_sun_java2d_opengl_OGLSurfaceData_resetTextureId
+    (JNIEnv *env, jobject oglsd,
+     jlong pData)
+{
+    OGLSDOps *oglsdo = (OGLSDOps *)jlong_to_ptr(pData);
+    J2dTraceLn(J2D_TRACE_ERROR, "OGLSurfaceData_resetTextureId: %d", oglsdo->textureID);
+    oglsdo->textureID = 0;
+}
+
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_opengl_OGLSurfaceData_loadNativeRasterWithRects
         (JNIEnv *env, jclass clazz,
@@ -626,16 +717,25 @@ OGLSD_SetNativeDimensions(JNIEnv *env, OGLSDOps *oglsdo,
 void
 OGLSD_Delete(JNIEnv *env, OGLSDOps *oglsdo)
 {
+
     J2dTraceLn(J2D_TRACE_INFO, "OGLSD_Delete: type=%d",
-               oglsdo->drawableType);
+                oglsdo->drawableType);
 
     if (oglsdo->drawableType == OGLSD_TEXTURE) {
         if (oglsdo->textureID != 0) {
+            if(oglsdo->isTextureWrapper) {
+                J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_Delete : Texture %d was not reset!!!!!!!!!", oglsdo->textureID);
+            }
+//            J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_Delete: %d", oglsdo->textureID);
             j2d_glDeleteTextures(1, &oglsdo->textureID);
             oglsdo->textureID = 0;
+        } else {
+            J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_Delete: skipped");
         }
     } else if (oglsdo->drawableType == OGLSD_FBOBJECT) {
         if (oglsdo->textureID != 0) {
+            J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_Delete: %d, texture: %d", oglsdo->textureID, oglsdo->isTextureWrapper);
+
             j2d_glDeleteTextures(1, &oglsdo->textureID);
             oglsdo->textureID = 0;
         }
@@ -663,6 +763,9 @@ void
 OGLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
 {
     OGLSDOps *oglsdo = (OGLSDOps *)ops;
+    if(oglsdo->isTextureWrapper) {
+            J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_Dispose : texture %d", oglsdo->textureID);
+    }
     jobject graphicsConfig = oglsdo->graphicsConfig;
 
     JNU_CallStaticMethodByName(env, NULL, "sun/java2d/opengl/OGLSurfaceData",
@@ -672,6 +775,11 @@ OGLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
     (*env)->DeleteGlobalRef(env, graphicsConfig);
     oglsdo->graphicsConfig = NULL;
 }
+//
+//void OGLSD_Dispose_SharedTexture(JNIEnv *env, SurfaceDataOps *ops) {
+//    OGLSDOps *oglsdo = (OGLSDOps *)ops;
+
+//}
 
 /**
  * This is the implementation of the general surface LockFunc defined in
@@ -709,6 +817,15 @@ OGLSD_Unlock(JNIEnv *env,
              SurfaceDataRasInfo *pRasInfo)
 {
     JNU_ThrowInternalError(env, "OGLSD_Unlock not implemented!");
+}
+
+void
+OGLSD_DisposeTextureWrapper(JNIEnv *env, SurfaceDataOps *ops)
+{
+    OGLSDOps *oglsdo = (OGLSDOps *)ops;
+    if(oglsdo->textureID) {
+        J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_DisposeTextureWrapper : texture %d is reset", oglsdo->textureID);
+    }
 }
 
 #endif /* !HEADLESS */

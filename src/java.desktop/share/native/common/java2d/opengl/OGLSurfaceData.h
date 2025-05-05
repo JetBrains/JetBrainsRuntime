@@ -181,6 +181,7 @@ struct _OGLSDOps {
     GLint                        textureFilter;
     GLuint                       fbobjectID;
     GLuint                       depthID;
+    int                          isTextureWrapper;
 };
 
 /**

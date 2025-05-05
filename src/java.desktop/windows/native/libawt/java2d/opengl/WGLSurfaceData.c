@@ -117,6 +117,7 @@ Java_sun_java2d_opengl_WGLSurfaceData_initOps(JNIEnv *env, jobject wglsd,
         free(wglsdo);
         JNU_ThrowNullPointerException(env, "Config info is null in initOps");
     }
+    oglsdo->isTextureWrapper = 0;
 }
 
 /**

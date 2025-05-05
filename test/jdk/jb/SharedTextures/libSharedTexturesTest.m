@@ -32,7 +32,7 @@ createMTLTextureFromNSData(id <MTLDevice> device, NSData *textureData, NSUIntege
 }
 
 JNIEXPORT jlong JNICALL Java_SharedTexturesTest_createTexture
-        (JNIEnv *env, jclass clazz, jbyteArray byteArray, jint width, jint height) {
+        (JNIEnv *env, jclass clazz, jbyteArray byteArray, jint width, jint height, jint type) {
     @autoreleasepool {
         id <MTLDevice> device = MTLCreateSystemDefaultDevice();
         if (!device) {
@@ -51,7 +51,7 @@ JNIEXPORT jlong JNICALL Java_SharedTexturesTest_createTexture
 }
 
 JNIEXPORT void JNICALL Java_SharedTexturesTest_disposeTexture
-        (JNIEnv *env, jclass clazz, jlong pTexture) {
+        (JNIEnv *env, jclass clazz, jlong pTexture, jint type) {
     id <MTLTexture> texture = (__bridge id <MTLTexture>) (void *) pTexture;
     if (texture != nil) {
         [texture release];

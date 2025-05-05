@@ -37,41 +37,45 @@ import java.awt.Image;
 @JBRApi.Provides("SharedTextures")
 public class SharedTextures {
     public final static int METAL_TEXTURE_TYPE = 1;
-
-    private final int textureType;
+    public final static int OPENGL_TEXTURE_TYPE = 2;
 
     public static SharedTextures create() {
         return new SharedTextures();
     }
 
-    private SharedTextures() {
-        textureType = getTextureTypeImpl();
-        if (textureType == 0) {
-            throw new JBRApi.ServiceNotAvailableException();
-        }
-    }
+    private SharedTextures() {}
 
-    public int getTextureType() {
-        return textureType;
-    }
-
-    public Image wrapTexture(GraphicsConfiguration gc, long texture) {
-        return new TextureWrapperImage(gc, texture);
-    }
-
-    private static int getTextureTypeImpl() {
-        GraphicsConfiguration gc = GraphicsEnvironment
-                .getLocalGraphicsEnvironment()
-                .getDefaultScreenDevice()
-                .getDefaultConfiguration();
+    public int getTextureType(GraphicsConfiguration gc) {
         try {
             if (SunToolkit.isInstanceOf(gc, "sun.java2d.metal.MTLGraphicsConfig")) {
                 return METAL_TEXTURE_TYPE;
+            } else if (SunToolkit.isInstanceOf(gc, "sun.java2d.opengl.WGLGraphicsConfig")) {
+                return OPENGL_TEXTURE_TYPE;
             }
         } catch (Exception e) {
             throw new InternalError("Unexpected exception during reflection", e);
         }
 
         return 0;
+    }
+
+    public int getTextureType() {
+        GraphicsConfiguration gc = GraphicsEnvironment
+                .getLocalGraphicsEnvironment()
+                .getDefaultScreenDevice()
+                .getDefaultConfiguration();
+        return getTextureType(gc);
+    }
+
+    public Image wrapTexture(GraphicsConfiguration gc, long texture) {
+        return new TextureWrapperImage(gc, texture);
+    }
+
+    public long getSharedGLContext(GraphicsConfiguration gc) {
+        return gc.getSharedContext();
+    }
+
+    public int getGLPixelFormat(GraphicsConfiguration gc) {
+        return gc.getPixelFormat();
     }
 }

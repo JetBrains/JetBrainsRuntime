@@ -25,24 +25,19 @@
 
 package sun.java2d.opengl;
 
-import java.awt.AWTException;
-import java.awt.BufferCapabilities;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.ImageCapabilities;
-import java.awt.Transparency;
+import java.awt.*;
 import java.awt.color.ColorSpace;
 import java.awt.image.ColorModel;
 import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
 import java.awt.image.VolatileImage;
 
+import com.jetbrains.desktop.image.TextureWrapperImage;
 import sun.awt.Win32GraphicsConfig;
 import sun.awt.Win32GraphicsDevice;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.SurfaceManager;
+import sun.awt.image.TextureWrapperSurfaceManager;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.awt.windows.WComponentPeer;
 import sun.java2d.Disposer;
@@ -64,7 +59,7 @@ import static sun.java2d.opengl.WGLSurfaceData.WGLVSyncOffScreenSurfaceData;
 
 public final class WGLGraphicsConfig
     extends Win32GraphicsConfig
-    implements OGLGraphicsConfig
+    implements OGLGraphicsConfig, SurfaceManager.TextureWrapperFactory
 {
     protected static boolean wglAvailable;
     private static ImageCapabilities imageCaps = new WGLImageCaps();
@@ -78,9 +73,21 @@ public final class WGLGraphicsConfig
             new SurfaceManager.ProxyCache();
 
     public static native int getDefaultPixFmt(int screennum);
+
+    /**
+     * Returns the shared context for this WGLGraphicsConfig.  This is
+     * @return shared context for this WGLGraphicsConfig, or 0 if none.
+     */
+    @Override
+    public long getSharedContext() {
+        return n_getSharedContext();
+    }
+
+    private native long n_getSharedContext();
     private static native boolean initWGL();
     private static native long getWGLConfigInfo(int screennum, int visualnum);
     private static native int getOGLCapabilities(long configInfo);
+    private static native int getPixelFormat(long configInfo);
 
     static {
         wglAvailable = initWGL();
@@ -246,6 +253,15 @@ public final class WGLGraphicsConfig
         default:
             return null;
         }
+    }
+
+    /**
+     * Returns the pixel format associated with this WGLGraphicsConfig.
+     * @return pixel format associated with this WGLGraphicsConfig, or 0 if
+     */
+    @Override
+    public int getPixelFormat() {
+        return getPixelFormat(pConfigInfo);
     }
 
     @Override
@@ -439,5 +455,18 @@ public final class WGLGraphicsConfig
     public VolatileSurfaceManager createVolatileManager(SunVolatileImage image,
                                                         Object context) {
         return new WGLVolatileSurfaceManager(image, context);
+    }
+
+    @Override
+    public Image wrapTextureImage(long texture) {
+        return new TextureWrapperImage(this, texture);
+    }
+
+    @Override
+    public SurfaceManager createTextureWrapperSurfaceManager(GraphicsConfiguration gc, Image image, long textureId) {
+        if (gc instanceof WGLGraphicsConfig) {
+            return new TextureWrapperSurfaceManager(WGLSurfaceData.createData((WGLGraphicsConfig) gc, image, textureId));
+        }
+        throw new UnsupportedOperationException();
     }
 }

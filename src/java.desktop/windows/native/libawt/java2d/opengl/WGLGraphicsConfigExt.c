@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 JetBrains s.r.o.
+ * Copyright (c) 2004, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,39 +23,39 @@
  * questions.
  */
 
-package sun.awt.image;
+#include <stdlib.h>
+#include <string.h>
 
-import sun.java2d.SurfaceData;
+#include "WGLGraphicsConfig.h"
 
-import java.awt.GraphicsConfiguration;
-import java.awt.ImageCapabilities;
+#include "jni.h"
+#include "jni_util.h"
+#include "jlong.h"
 
+extern HGLRC sharedContext;
 
-public class TextureWrapperSurfaceManager extends SurfaceManager {
-    private SurfaceData sd;
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_opengl_WGLGraphicsConfig_n_1getSharedContext(JNIEnv *env,
+                                                             jobject wglgc)
+{
+    return (jlong)sharedContext;
+}
 
-    public TextureWrapperSurfaceManager(SurfaceData sd) {
-        this.sd = sd;
+JNIEXPORT jint JNICALL
+Java_sun_java2d_opengl_WGLGraphicsConfig_getPixelFormat(JNIEnv *env,
+                                                        jclass wglcl,
+                                                        jlong pConfigInfo)
+{
+    WGLGraphicsConfigInfo *wglinfo =
+        (WGLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
+
+    J2dTraceLn(J2D_TRACE_INFO, "WGLGraphicsConfig_getPixelFormat");
+
+    if (wglinfo == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR,
+                    "WGLGraphicsConfig_getPixelFormat: config info is null");
+        return 0;
     }
 
-    @Override
-    public SurfaceData getPrimarySurfaceData() {
-        return sd;
-    }
-
-    @Override
-    public SurfaceData restoreContents() {
-        return sd;
-    }
-
-    @Override
-    public ImageCapabilities getCapabilities(GraphicsConfiguration gc) {
-        return new ImageCapabilities(true);
-    }
-
-    @Override
-    public synchronized void flush() {
-        sd.flush();
-        sd = null;
-    }
+    return wglinfo->pixfmt;
 }

@@ -22,26 +22,54 @@ import java.awt.*;
  * @run main/othervm/native -Dsun.java2d.uiScale=1 -Dsun.java2d.metal=True --add-exports java.desktop/com.jetbrains.desktop=ALL-UNNAMED SharedTexturesTest
  * @requires (os.family=="mac")
  */
+
+/**
+ * @test
+ * @key headful
+ * @summary The test creates a BufferedImage and makes a texture from its content.
+ *          The texture gets wrapped into a TextureWrapperImage image by SharedTextures JBR API service.
+ *          The TextureWrapperImage is copied into a BufferedImage and VolatileImage and expects that all images have
+ *          the same content.
+ * @library /test/lib
+ * @compile --add-exports java.desktop/com.jetbrains.desktop=ALL-UNNAMED SharedTexturesTest.java
+ * @run main/othervm/native -Dsun.java2d.uiScale=1 -Dsun.java2d.opengl=True --add-exports java.desktop/com.jetbrains.desktop=ALL-UNNAMED SharedTexturesTest
+ * @requires (os.family=="windows")
+ */
+
 public class SharedTexturesTest {
     static {
         System.loadLibrary("SharedTexturesTest");
     }
 
-    public static void main(String[] args) throws IOException {
-        BufferedImage originalImage = createImage();
-        byte[] bytes = getPixelData(originalImage);
+    public static void main(String[] args) throws IOException, InterruptedException {
+        GraphicsConfiguration gc = GraphicsEnvironment
+                .getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
 
-        SharedTextures sharedTexturesService = SharedTextures.create();
-        Asserts.assertEquals(sharedTexturesService.getTextureType(), SharedTextures.METAL_TEXTURE_TYPE);
+        SharedTextures jbrApi = SharedTextures.create();
+        int textureType = jbrApi.getTextureType(gc);
+        if ("True".equals(System.getProperty("sun.java2d.opengl"))) {
+            Asserts.assertEquals(jbrApi.getTextureType(), SharedTextures.OPENGL_TEXTURE_TYPE);
+        } else if ("True".equals(System.getProperty("sun.java2d.metal"))) {
+            Asserts.assertEquals(jbrApi.getTextureType(), SharedTextures.METAL_TEXTURE_TYPE);
+        } else {
+            throw new RuntimeException("The rendering pipeline has to specified explicitly");
+        }
+
+        if (textureType == SharedTextures.OPENGL_TEXTURE_TYPE) {
+            setSharedContext(jbrApi.getSharedGLContext(gc), jbrApi.getGLPixelFormat(gc));
+        }
+        initNative(textureType);
+
+        BufferedImage originalImage = createImage();
+        byte[] bytes = getPixelData(originalImage, TexturePixelLayout.getPixelFormat(textureType));
 
         BufferedImage bufferedImageContent;
         BufferedImage volatileImageContent;
 
         long textureId = createTexture(bytes, originalImage.getWidth(), originalImage.getHeight());
+
         try {
-            GraphicsConfiguration gc = GraphicsEnvironment
-                    .getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
-            Image textureImage = sharedTexturesService.wrapTexture(gc, textureId);
+            Image textureImage = jbrApi.wrapTexture(gc, textureId);
 
             // Create a BufferedImage containing a copy of textureImage
             bufferedImageContent = new BufferedImage(
@@ -116,19 +144,29 @@ public class SharedTexturesTest {
         ImageIO.write(image, formatName, outputFile);
     }
 
-    private native static long createTexture(byte[] data, int width, int height);
+    private static class TexturePixelLayout {
+        int r, g, b, a; // color component indexes
+        private TexturePixelLayout(int r, int g, int b, int a) {this.r = r; this.g = g; this.b = b; this.a = a;}
+        final static TexturePixelLayout RGBA = new TexturePixelLayout(0, 1, 2, 3);
+        final static TexturePixelLayout BGRA = new TexturePixelLayout(2, 1, 0, 3);
+        static TexturePixelLayout getPixelFormat(int textureType) {
+            return switch (textureType) {
+                case SharedTextures.OPENGL_TEXTURE_TYPE -> TexturePixelLayout.RGBA;
+                case SharedTextures.METAL_TEXTURE_TYPE -> TexturePixelLayout.BGRA;
+                default -> throw new RuntimeException("Unexpected texture type: " + textureType);
+            };
+        }
+    }
 
-    private native static void disposeTexture(long textureId);
-
-    private static byte[] getPixelData(BufferedImage image) {
+    private static byte[] getPixelData(BufferedImage image, TexturePixelLayout pixelLayout) {
         byte[] rawPixels = new byte[image.getWidth() * image.getHeight() * 4];
         int[] argbPixels = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
         for (int i = 0; i < argbPixels.length; i++) {
             int argb = argbPixels[i];
-            rawPixels[i * 4] = (byte) (argb & 0xFF);
-            rawPixels[i * 4 + 1] = (byte) ((argb >> 8) & 0xFF);
-            rawPixels[i * 4 + 2] = (byte) ((argb >> 16) & 0xFF);
-            rawPixels[i * 4 + 3] = (byte) ((argb >> 24) & 0xFF);
+            rawPixels[i * 4 + pixelLayout.r] = (byte) ((argb >> 16) & 0xFF); // Red
+            rawPixels[i * 4 + pixelLayout.g] = (byte) ((argb >> 8) & 0xFF);  // Green
+            rawPixels[i * 4 + pixelLayout.b] = (byte) (argb & 0xFF);         // Blue
+            rawPixels[i * 4 + pixelLayout.a] = (byte) ((argb >> 24) & 0xFF); // Alpha
         }
 
         return rawPixels;
@@ -146,4 +184,14 @@ public class SharedTexturesTest {
 
         return count;
     }
+
+    private native static void initNative(int textureType);
+
+    private native static void setSharedContext(long sharedContext, int pixelFormat);
+
+    private native static long createTexture(byte[] data, int width, int height);
+
+    private native static void disposeTexture(long textureId);
+
+    private native static void releaseContext();
 }
