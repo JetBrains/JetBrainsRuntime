@@ -448,4 +448,20 @@ public abstract class GraphicsConfiguration {
         // Overridden in subclasses
         return false;
     }
+
+    /**
+     * sadfafasdf
+     * @return asdasd
+     */
+    public int getPixelFormat() {
+        return -1;
+    }
+
+    /**
+     * sadfafasdf
+     * @return sdfasdf
+     */
+    public long getSharedContext() {
+        return -1;
+    }
 }

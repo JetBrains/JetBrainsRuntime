@@ -698,6 +698,13 @@ Java_sun_java2d_opengl_WGLGraphicsConfig_getDefaultPixFmt(JNIEnv *env,
     return 0;
 }
 
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_opengl_WGLGraphicsConfig_n_1getSharedContext(JNIEnv *env,
+                                                             jobject wglgc)
+{
+    return sharedContext;
+}
+
 JNIEXPORT jint JNICALL
 Java_sun_java2d_opengl_WGLGraphicsConfig_getOGLCapabilities(JNIEnv *env,
                                                             jclass wglgc,
@@ -713,4 +720,23 @@ Java_sun_java2d_opengl_WGLGraphicsConfig_getOGLCapabilities(JNIEnv *env,
     }
 
     return wglinfo->context->caps;
+}
+
+JNIEXPORT jint JNICALL
+Java_sun_java2d_opengl_WGLGraphicsConfig_getPixelFormat(JNIEnv *env,
+                                                        jclass wglcl,
+                                                        jlong pConfigInfo)
+{
+    WGLGraphicsConfigInfo *wglinfo =
+        (WGLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
+
+    J2dTraceLn(J2D_TRACE_INFO, "WGLGraphicsConfig_getPixelFormat");
+
+    if (wglinfo == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR,
+                    "WGLGraphicsConfig_getPixelFormat: config info is null");
+        return 0;
+    }
+
+    return wglinfo->pixfmt;
 }
