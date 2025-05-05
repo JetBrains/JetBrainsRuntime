@@ -66,11 +66,12 @@ def main():
 
     remove_commands(compile_commands, ["ml64.exe"])
 
-    # include_paths = [
-    #     "C:\\\\develop\\\\jetbrainsruntime\\\\build\\\\windows-x86_64-server-release\\\\jdk\\\\include\\\\",
-    # ]
-    #
-    # add_include_paths(compile_commands, include_paths)
+    include_paths = [
+        "C:\\\\develop\\\\jetbrainsruntime\\\\src\\\\java.base\\\\share\\\\native\\\\include",
+        "C:\\\\develop\\\\jetbrainsruntime\\\\src\\\\java.desktop\\\\share\\\\native\\\\libfreetype\\\\include",
+    ]
+
+    add_include_paths(compile_commands, include_paths)
 
 if __name__ == "__main__":
     main()
