@@ -41,6 +41,7 @@ import java.awt.event.MouseEvent;
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
+import test.jb.testhelpers.utils.MouseUtils;
 
 /*
  * @test
@@ -232,7 +233,7 @@ public class HitTestNonClientArea {
             for (Integer mask: BUTTON_MASKS) {
                 robot.waitForIdle();
 
-                robot.mouseMove(initialX, initialY);
+                MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
                 robot.mousePress(mask);
                 robot.mouseRelease(mask);
 
@@ -241,13 +242,13 @@ public class HitTestNonClientArea {
 
             Point initialLocation = window.getLocationOnScreen();
             robot.waitForIdle();
-            robot.mouseMove(initialX, initialY);
+            MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
             for (int i = 0; i < 10; i++) {
                 initialX += 3;
                 initialY += 3;
                 robot.delay(300);
-                robot.mouseMove(initialX, initialY);
+                MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
             }
 
             robot.waitForIdle();

@@ -37,6 +37,7 @@ import java.awt.event.InputEvent;
 import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.function.Function;
+import test.jb.testhelpers.utils.MouseUtils;
 
 /*
  * @test
@@ -141,7 +142,7 @@ public class MaximizeWindowTest {
         Robot robot = new Robot();
 
         robot.delay(1000);
-        robot.mouseMove(x, y);
+        MouseUtils.verifyLocationAndMove(robot, window, x, y);
         robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
         robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
         robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);

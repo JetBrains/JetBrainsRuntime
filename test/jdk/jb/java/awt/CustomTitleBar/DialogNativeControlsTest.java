@@ -35,6 +35,7 @@ import java.awt.event.WindowStateListener;
 import java.awt.image.BufferedImage;
 import java.lang.invoke.MethodHandles;
 import java.util.List;
+import test.jb.testhelpers.utils.MouseUtils;
 
 /*
  * @test
@@ -107,7 +108,7 @@ public class DialogNativeControlsTest {
         @Override
         public void test() throws Exception {
             robot.waitForIdle();
-            robot.mouseMove(window.getLocationOnScreen().x + window.getWidth() / 2,
+            MouseUtils.verifyLocationAndMove(robot, window, window.getLocationOnScreen().x + window.getWidth() / 2,
                     window.getLocationOnScreen().y + window.getHeight() / 2);
             robot.waitForIdle();
 
@@ -131,7 +132,7 @@ public class DialogNativeControlsTest {
                 int w = window.getBounds().width;
 
                 robot.waitForIdle();
-                robot.mouseMove(x, y);
+                MouseUtils.verifyLocationAndMove(robot, window, x, y);
                 robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
                 robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
                 robot.waitForIdle();

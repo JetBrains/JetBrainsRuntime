@@ -40,6 +40,7 @@ import java.awt.image.BufferedImage;
 import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.function.Function;
+import test.jb.testhelpers.utils.MouseUtils;
 
 /*
  * @test
@@ -131,7 +132,7 @@ public class FrameNativeControlsTest {
         @Override
         public void test() throws Exception {
             robot.delay(500);
-            robot.mouseMove(window.getLocationOnScreen().x + window.getWidth() / 2,
+            MouseUtils.verifyLocationAndMove(robot, window, window.getLocationOnScreen().x + window.getWidth() / 2,
                     window.getLocationOnScreen().y + window.getHeight() / 2);
             robot.delay(500);
 
@@ -155,7 +156,7 @@ public class FrameNativeControlsTest {
                 int w = window.getBounds().width;
 
                 robot.waitForIdle();
-                robot.mouseMove(x, y);
+                MouseUtils.verifyLocationAndMove(robot, window, x, y);
                 robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
                 robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
                 robot.waitForIdle();

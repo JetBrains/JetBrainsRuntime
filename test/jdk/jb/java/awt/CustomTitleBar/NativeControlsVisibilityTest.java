@@ -32,6 +32,7 @@ import java.awt.Robot;
 import java.util.List;
 import java.awt.image.BufferedImage;
 import java.lang.invoke.MethodHandles;
+import test.jb.testhelpers.utils.MouseUtils;
 
 /*
  * @test
@@ -66,7 +67,8 @@ public class NativeControlsVisibilityTest {
         public void test() throws Exception {
             Robot robot = new Robot();
             robot.delay(500);
-            robot.mouseMove(window.getLocationOnScreen().x + window.getWidth() / 2,
+            MouseUtils.verifyLocationAndMove(robot, window,
+                    window.getLocationOnScreen().x + window.getWidth() / 2,
                     window.getLocationOnScreen().y + window.getHeight() / 2);
             robot.delay(500);
 
