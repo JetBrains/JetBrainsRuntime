@@ -1,0 +1,2 @@
+sh configure --with-boot-jdk=/cygdrive/c/users/khari/.jdks/openjdk-24.0.1/ --disable-warnings-as-errors --with-toolchain-version=2022 --with-debug-level=release --with-native-debug-symbols=external --with-vulkan --with-vulkan-include=/cygdrive/c/VulkanSDK/1.4.313.0/Include
+#  sh configure --with-boot-jdk=/cygdrive/c/users/khari/.jdks/jbr-21.0.6 --disable-warnings-as-errors --with-toolchain-version=2019 --with-debug-level=fastdebug --with-native-debug-symbols=external
