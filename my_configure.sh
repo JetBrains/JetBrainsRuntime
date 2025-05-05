@@ -1,0 +1,1 @@
+ sh configure --with-boot-jdk=/cygdrive/c/users/khari/.jdks/jbr-21.0.6 --disable-warnings-as-errors --with-toolchain-version=2019 --with-debug-level=fastdebug --with-native-debug-symbols=external
