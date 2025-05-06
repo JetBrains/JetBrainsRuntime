@@ -117,7 +117,7 @@ public class ActionListenerTest {
         public void customizeWindow() {
             button = new JButton();
             button.setSize(50, 50);
-            button.setLocation(window.getWidth() / 2, 0);
+            button.setLocation(window.getWidth() / 2, 50);
             button.addActionListener(a -> {
                 actionListenerGotEvent = true;
             });

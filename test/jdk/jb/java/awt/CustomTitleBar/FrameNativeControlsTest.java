@@ -91,6 +91,12 @@ public class FrameNativeControlsTest {
                 window.setVisible(true);
                 window.requestFocus();
             }
+
+            @Override
+            public void windowDeiconified(WindowEvent e) {
+                System.out.println("Call detected: windowDeiconified");
+                deiconifyindActionDetected = true;
+            }
         };
 
         private final WindowStateListener windowStateListener = new WindowAdapter() {
@@ -165,6 +171,7 @@ public class FrameNativeControlsTest {
                 robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
                 robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
                 robot.waitForIdle();
+                robot.delay(500);
                 window.setBounds(screenX, screenY, w, h);
                 window.setVisible(true);
                 robot.waitForIdle();
