@@ -373,12 +373,13 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint dy      = NEXT_INT(b);
                 jint w       = NEXT_INT(b);
                 jint h       = NEXT_INT(b);
-                jint dsttype = NEXT_INT(b);
-                jlong pSrc   = NEXT_LONG(b);
-                jlong pDst   = NEXT_LONG(b);
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: SURFACE_TO_SW_BLIT");
-                VKBlitLoops_SurfaceToSwBlit(env, pSrc, pDst, dsttype, sx, sy,
-                                            dx, dy, w, h);
+                jint dsttype = NEXT_INT(b); // Unused.
+                VKSDOps* src = NEXT_VK_SURFACE(b);
+                SurfaceDataOps* dst = NEXT_SURFACE(b);
+                J2dRlsTraceLn8(J2D_TRACE_VERBOSE,
+                    "VKRenderQueue_flushBuffer: SURFACE_TO_SW_BLIT (%p) (%d %d %d %d) -> (%p) (%d %d)",
+                    src, sx, sy, w, h, dst, dx, dy);
+                VKBlitLoops_SurfaceToSwBlit(env, src, dst, dsttype, sx, sy, dx, dy, w, h);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_MASK_FILL:
