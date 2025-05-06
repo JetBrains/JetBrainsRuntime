@@ -276,6 +276,12 @@ void VKDevice_Reset(VKDevice* device) {
     ARRAY_FREE(device->enabledExtensions);
     ARRAY_FREE(device->enabledLayers);
     ARRAY_FREE(device->supportedFormats);
+    if (device->vkDestroyDescriptorPool != NULL) {
+        for (uint32_t i = 0; i < ARRAY_SIZE(device->imageDescriptorPools); i++) {
+            device->vkDestroyDescriptorPool(device->handle, device->imageDescriptorPools[i], NULL);
+        }
+    }
+    ARRAY_FREE(device->imageDescriptorPools);
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKDevice_Reset(%s)", device->name);
     free(device->name);
     if (device->vkDestroyDevice != NULL) {
@@ -347,6 +353,7 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
     }
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKDevice_init(%s)", device->name);
 
+    // Init function tables.
     VkBool32 missingAPI = JNI_FALSE;
     DEVICE_FUNCTION_TABLE(CHECK_PROC_ADDR, missingAPI, vk->vkGetDeviceProcAddr, device->handle, device->)
     if (device->caps & CAP_PRESENTABLE_BIT) {
