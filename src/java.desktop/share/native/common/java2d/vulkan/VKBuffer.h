@@ -27,7 +27,8 @@
 #ifndef VKBuffer_h_Included
 #define VKBuffer_h_Included
 
-#include "VKTypes.h"
+#include "VKAllocator.h"
+#include "VKUtil.h"
 
 #define ARRAY_TO_VERTEX_BUF(device, vertices)                                           \
     VKBuffer_CreateFromData(device, vertices, ARRAY_SIZE(vertices)*sizeof (vertices[0]),\
@@ -95,5 +96,8 @@ VKBuffer* VKBuffer_CreateFromRaster(VKDevice* device, VKBuffer_RasterInfo info,
 void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer);
 
 void VKBuffer_Dispose(VKDevice* device, void* ctx);
+
+void VKBuffer_AddBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
+                         VKBuffer* buffer, VkPipelineStageFlags stage, VkAccessFlags access);
 
 #endif // VKBuffer_h_Included
