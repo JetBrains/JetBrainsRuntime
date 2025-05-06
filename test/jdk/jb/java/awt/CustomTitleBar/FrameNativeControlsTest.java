@@ -72,12 +72,15 @@ public class FrameNativeControlsTest {
         private final WindowListener windowListener = new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
+                System.out.println("Call detected: windowClosing");
                 closingActionCalled = true;
             }
 
             @Override
             public void windowIconified(WindowEvent e) {
+                System.out.println("Call detected: windowIconified");
                 iconifyingActionCalled = true;
+
 
                 if (window.getName().equals("Frame")) {
                     ((Frame) window).setState(Frame.NORMAL);
@@ -144,16 +147,18 @@ public class FrameNativeControlsTest {
                 System.out.println("Error: no controls found");
             }
 
+            int screenX = window.getBounds().x;
+            int screenY = window.getBounds().y;
+            int h = window.getBounds().height;
+            int w = window.getBounds().width;
+            int locationX = window.getLocationOnScreen().x;
+            int locationY = window.getLocationOnScreen().y;
+
             foundControls.forEach(control -> {
                 System.out.println("Using control: " + control);
-                int x = window.getLocationOnScreen().x + control.getX1() + (control.getX2() - control.getX1()) / 2;
-                int y = window.getLocationOnScreen().y + control.getY1() + (control.getY2() - control.getY1()) / 2;
+                int x = locationX + control.getX1() + (control.getX2() - control.getX1()) / 2;
+                int y = locationY + control.getY1() + (control.getY2() - control.getY1()) / 2;
                 System.out.println("Click to (" + x + ", " + y + ")");
-
-                int screenX = window.getBounds().x;
-                int screenY = window.getBounds().y;
-                int h = window.getBounds().height;
-                int w = window.getBounds().width;
 
                 robot.waitForIdle();
                 MouseUtils.verifyLocationAndMove(robot, window, x, y);
