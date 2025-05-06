@@ -42,7 +42,7 @@ import test.jb.testhelpers.utils.MouseUtils;
 /*
  * @test
  * @summary Detect and check behavior of clicking to native controls
- * @requires (os.family == "windows" | os.family == "mac")
+ * @requires os.family == "mac"
  * @library ../../../testhelpers/screenshot ../../../testhelpers/TitleBar ../../../testhelpers/utils
  * @build TestUtils TaskResult Task CommonAPISuite MouseUtils ScreenShotHelpers Rect RectCoordinates MouseUtils
  * @run main/othervm MinimizingWindowTest

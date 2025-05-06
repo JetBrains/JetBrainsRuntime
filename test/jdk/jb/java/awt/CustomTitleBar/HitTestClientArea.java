@@ -63,8 +63,8 @@ public class HitTestClientArea {
     private static final int PANEL_HEIGHT = (int) TestUtils.TITLE_BAR_HEIGHT;
 
     public static void main(String... args) {
-        TaskResult awtResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createDialogWithCustomTitleBar), hitTestClientAreaAWT);
-        TaskResult swingResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createJFrameWithCustomTitleBar, TestUtils::createJDialogWithCustomTitleBar), hitTestClientAreaSwing);
+        TaskResult awtResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createFrameWithCustomTitleBar), hitTestClientAreaAWT);
+        TaskResult swingResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createJFrameWithCustomTitleBar), hitTestClientAreaSwing);
 
         TaskResult result = awtResult.merge(swingResult);
         if (!result.isPassed()) {

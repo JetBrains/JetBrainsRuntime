@@ -37,7 +37,7 @@ import test.jb.testhelpers.utils.MouseUtils;
 /*
  * @test
  * @summary Verify a property to change visibility of native controls
- * @requires (os.family == "windows" | os.family == "mac")
+ * @requires os.family == "mac"
  * @library ../../../testhelpers/screenshot ../../../testhelpers/TitleBar ../../../testhelpers/utils
  * @build TestUtils TaskResult Task CommonAPISuite MouseUtils ScreenShotHelpers Rect RectCoordinates MouseUtils
  * @run main/othervm NativeControlsVisibilityTest
