@@ -110,7 +110,7 @@ public class TestUtils {
     }
 
     public static Dialog createDialogWithCustomTitleBar(WindowDecorations.CustomTitleBar titleBar) {
-        JFrame frame = new JFrame();
+        Frame frame = new Frame();
         frame.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
         Dialog dialog = new Dialog(frame) {
             @Override

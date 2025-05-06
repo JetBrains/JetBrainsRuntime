@@ -64,7 +64,7 @@ public class HitTestClientArea {
 
     public static void main(String... args) {
         TaskResult awtResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createDialogWithCustomTitleBar), hitTestClientAreaAWT);
-        TaskResult swingResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createJFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar), hitTestClientAreaSwing);
+        TaskResult swingResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createJFrameWithCustomTitleBar, TestUtils::createJDialogWithCustomTitleBar), hitTestClientAreaSwing);
 
         TaskResult result = awtResult.merge(swingResult);
         if (!result.isPassed()) {
