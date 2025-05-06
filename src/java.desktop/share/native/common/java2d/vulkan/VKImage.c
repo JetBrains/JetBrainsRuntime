@@ -27,10 +27,9 @@
 #include <assert.h>
 #include "VKUtil.h"
 #include "VKAllocator.h"
-#include "VKBuffer.h"
+#include "VKBuffer.h" // TODO refactor this
 #include "VKDevice.h"
 #include "VKImage.h"
-#include "VKRenderer.h"
 
 static size_t viewKeyHash(const void* ptr) {
     const VKImageViewKey* k = ptr;
@@ -114,6 +113,8 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
     return image;
 }
 
+// TODO This is an internal API and should not be used from VKImage!
+VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
 void VKImage_LoadBuffer(VKDevice* device, VKImage* image, VKBuffer* buffer,
                         uint32_t x0, uint32_t y0, uint32_t width, uint32_t height) {
     VkCommandBuffer cb = VKRenderer_Record(device->renderer);
@@ -171,10 +172,54 @@ VkImageView VKImage_GetView(VKDevice* device, VKImage* image, VkFormat format, V
     return VKImage_GetViewInfo(device, image, format, swizzle)->view;
 }
 
+VkDescriptorSetLayout VKRenderer_GetImageDescriptorSetLayout(VKRenderer* renderer);
+
+#define IMAGE_DESCRIPTOR_POOL_SIZE 64
+static VkDescriptorSet VKImage_AllocateDescriptorSet(VKDevice* device, VkDescriptorPool descriptorPool) {
+    VkDescriptorSetLayout descriptorSetLayout = VKRenderer_GetImageDescriptorSetLayout(device->renderer);
+    VkDescriptorSetAllocateInfo allocateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = descriptorPool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &descriptorSetLayout
+    };
+    VkDescriptorSet set;
+    VkResult result = device->vkAllocateDescriptorSets(device->handle, &allocateInfo, &set);
+    if (result == VK_SUCCESS) return set;
+    if (result != VK_ERROR_OUT_OF_POOL_MEMORY && result != VK_ERROR_FRAGMENTED_POOL) {
+        VK_IF_ERROR(result) VK_UNHANDLED_ERROR();
+    }
+    return VK_NULL_HANDLE;
+}
+
+static void VKImage_CreateDescriptorSet(VKDevice* device, VkDescriptorPool* descriptorPool, VkDescriptorSet* set) {
+    for (int i = ARRAY_SIZE(device->imageDescriptorPools) - 1; i >= 0; i--) {
+        *set = VKImage_AllocateDescriptorSet(device, device->imageDescriptorPools[i]);
+        if (*set != VK_NULL_HANDLE) {
+            *descriptorPool = device->imageDescriptorPools[i];
+            return;
+        }
+    }
+    VkDescriptorPoolSize poolSize = {
+        .type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        .descriptorCount = IMAGE_DESCRIPTOR_POOL_SIZE
+    };
+    VkDescriptorPoolCreateInfo poolInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .poolSizeCount = 1,
+        .pPoolSizes = &poolSize,
+        .maxSets = IMAGE_DESCRIPTOR_POOL_SIZE
+    };
+    VK_IF_ERROR(device->vkCreateDescriptorPool(device->handle, &poolInfo, NULL, descriptorPool)) VK_UNHANDLED_ERROR();
+    ARRAY_PUSH_BACK(device->imageDescriptorPools) = *descriptorPool;
+    *set = VKImage_AllocateDescriptorSet(device, *descriptorPool);
+}
+
 VkDescriptorSet VKImage_GetDescriptorSet(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle) {
     VKImageViewInfo* info = VKImage_GetViewInfo(device, image, format, swizzle);
     if (info->descriptorSet == VK_NULL_HANDLE) {
-        VKRenderer_CreateImageDescriptorSet(device->renderer, &info->descriptorPool, &info->descriptorSet);
+        VKImage_CreateDescriptorSet(device, &info->descriptorPool, &info->descriptorSet);
         VkDescriptorImageInfo imageInfo = {
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             .imageView = info->view
@@ -191,4 +236,29 @@ VkDescriptorSet VKImage_GetDescriptorSet(VKDevice* device, VKImage* image, VkFor
         device->vkUpdateDescriptorSets(device->handle, 1, &descriptorWrites, 0, NULL);
     }
     return info->descriptorSet;
+}
+
+void VKImage_AddBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
+                        VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
+    assert(barriers != NULL && batch != NULL && image != NULL);
+    // TODO Even if stage, access and layout didn't change, we may still need a barrier against WaW hazard.
+    if (stage != image->lastStage || access != image->lastAccess || layout != image->layout) {
+        barriers[batch->barrierCount] = (VkImageMemoryBarrier) {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = image->lastAccess,
+            .dstAccessMask = access,
+            .oldLayout = image->layout,
+            .newLayout = layout,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = image->handle,
+            .subresourceRange = { VKUtil_GetFormatGroup(image->format).aspect, 0, 1, 0, 1 }
+        };
+        batch->barrierCount++;
+        batch->srcStages |= image->lastStage;
+        batch->dstStages |= stage;
+        image->lastStage = stage;
+        image->lastAccess = access;
+        image->layout = layout;
+    }
 }
