@@ -24,22 +24,8 @@
  * questions.
  */
 
-#include <string.h>
-#include "jlong.h"
-#include "SurfaceData.h"
-#include "VKUtil.h"
-#include "VKBlitLoops.h"
-#include "VKSurfaceData.h"
-#include "VKRenderer.h"
 #include "GraphicsPrimitiveMgr.h"
-
-
-#include "Trace.h"
-#include "VKImage.h"
-#include "VKBuffer.h"
-#include "VKDevice.h"
-#include "VKTexturePool.h"
-#include "VKUtil.h"
+#include "VKRenderer_Internal.h"
 
 #define SRCTYPE_BITS sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_BITS
 
@@ -95,6 +81,29 @@ static AlphaType getSrcAlphaType(jshort srctype) {
         ALPHA_TYPE_PRE_MULTIPLIED : ALPHA_TYPE_STRAIGHT;
 }
 
+void VKRenderer_DisposeOnPrimaryComplete(VKRenderer* renderer, VKCleanupHandler hnd, void* ctx);
+static void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexBuffer, uint32_t vertexNum,
+                              jint filter, VKSamplerWrap wrap) {
+    // VKRenderer_Validate was called by VKBlitLoops. TODO refactor this.
+    VKSDOps* surface = VKRenderer_GetContext()->surface;
+    VKRenderPass* renderPass = surface->renderPass;
+    VkCommandBuffer cb = renderPass->commandBuffer;
+    VKDevice* device = surface->device;
+
+    // TODO We flush all pending draws and rebind the vertex buffer with the provided one.
+    //      We will make it work with our unified vertex buffer later.
+    VKRenderer_FlushDraw(surface);
+    renderPass->vertexBufferWriting.bound = VK_FALSE;
+    VkBuffer vertexBuffers[] = {vertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    device->vkCmdBindVertexBuffers(cb, 0, 1, vertexBuffers, offsets);
+    VkDescriptorSet descriptorSets[] = { srcDescriptorSet,
+        VKSamplers_GetDescriptorSet(device, &device->renderer->pipelineContext->samplers, filter, wrap) };
+    device->vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    device->renderer->pipelineContext->texturePipelineLayout, 0, 2, descriptorSets, 0, NULL);
+    device->vkCmdDraw(cb, vertexNum, 1, 0, 0);
+}
+
 static void VKTexturePoolTexture_Dispose(VKDevice* device, void* ctx) {
     VKTexturePoolHandle* hnd = (VKTexturePoolHandle*) ctx;
     VKTexturePoolHandle_ReleaseTexture(hnd);
@@ -145,38 +154,25 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
                 .scanStride = srcInfo->scanStride
                 }, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
 
-    VkCommandBuffer cb = VKRenderer_Record(device->renderer);
     {
         VkImageMemoryBarrier barrier;
         VKBarrierBatch barrierBatch = {};
-        VKRenderer_AddImageBarrier(&barrier, &barrierBatch, ((VKImage *) VKTexturePoolHandle_GetTexture(hnd)),
-                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                   VK_ACCESS_TRANSFER_WRITE_BIT,
-                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-        if (barrierBatch.barrierCount > 0) {
-            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
-                                         0, 0, NULL,
-                                         0, NULL,
-                                         barrierBatch.barrierCount, &barrier);
-        }
+        VKImage_AddBarrier(&barrier, &barrierBatch, VKTexturePoolHandle_GetTexture(hnd),
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_ACCESS_TRANSFER_WRITE_BIT,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
     }
     VKImage_LoadBuffer(context->surface->device,
                        VKTexturePoolHandle_GetTexture(hnd), buffer, 0, 0, sw, sh);
     {
         VkImageMemoryBarrier barrier;
         VKBarrierBatch barrierBatch = {};
-        VKRenderer_AddImageBarrier(&barrier, &barrierBatch, ((VKImage *) VKTexturePoolHandle_GetTexture(hnd)),
-                                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                   VK_ACCESS_SHADER_READ_BIT,
-                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-        if (barrierBatch.barrierCount > 0) {
-            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
-                                         0, 0, NULL,
-                                         0, NULL,
-                                         barrierBatch.barrierCount, &barrier);
-        }
+        VKImage_AddBarrier(&barrier, &barrierBatch, VKTexturePoolHandle_GetTexture(hnd),
+                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                           VK_ACCESS_SHADER_READ_BIT,
+                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
     }
 
     VKImage* src = VKTexturePoolHandle_GetTexture(hnd);
@@ -218,21 +214,14 @@ static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, Vk
     VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
     ARRAY_FREE(vertices);
 
-    VkCommandBuffer cb = VKRenderer_Record(device->renderer);
     {
         VkImageMemoryBarrier barrier;
         VKBarrierBatch barrierBatch = {};
-        VKRenderer_AddImageBarrier(&barrier, &barrierBatch, src,
-                                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                   VK_ACCESS_SHADER_READ_BIT,
-                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-        if (barrierBatch.barrierCount > 0) {
-            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
-                                         0, 0, NULL,
-                                         0, NULL,
-                                         barrierBatch.barrierCount, &barrier);
-        }
+        VKImage_AddBarrier(&barrier, &barrierBatch, src,
+                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                           VK_ACCESS_SHADER_READ_BIT,
+                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
     }
 
     static const VKPackedSwizzle OPAQUE_SWIZZLE = VK_PACK_SWIZZLE(VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -568,17 +557,11 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env,
             {
                 VkImageMemoryBarrier barrier;
                 VKBarrierBatch barrierBatch = {};
-                VKRenderer_AddImageBarrier(&barrier, &barrierBatch, image,
-                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                           VK_ACCESS_TRANSFER_READ_BIT,
-                                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-                if (barrierBatch.barrierCount > 0) {
-                    device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
-                                                 0, 0, NULL,
-                                                 0, NULL,
-                                                 barrierBatch.barrierCount, &barrier);
-                }
+                VKImage_AddBarrier(&barrier, &barrierBatch, image,
+                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                   VK_ACCESS_TRANSFER_READ_BIT,
+                                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+                VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
             }
 
             VKBuffer* buffer = VKBuffer_Create(device, bufferSize,
