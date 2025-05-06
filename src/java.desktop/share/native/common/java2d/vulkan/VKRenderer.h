@@ -27,6 +27,7 @@
 #ifndef VKRenderer_h_Included
 #define VKRenderer_h_Included
 
+#include "SurfaceData.h"
 #include "VKTypes.h"
 #include "VKPipelines.h"
 
