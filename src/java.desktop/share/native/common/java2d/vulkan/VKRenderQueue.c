@@ -28,10 +28,10 @@
 #include "sun_java2d_pipe_BufferedOpCodes.h"
 #include "sun_java2d_pipe_BufferedRenderPipe.h"
 #include "sun_java2d_pipe_BufferedTextPipe.h"
+#include "sun_java2d_vulkan_VKBlitLoops.h"
 #include "fontscalerdefs.h"
 #include "Trace.h"
 #include "jlong.h"
-#include "VKBlitLoops.h"
 #include "VKSurfaceData.h"
 #include "VKEnv.h"
 #include "VKRenderer.h"
@@ -794,6 +794,5 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
     VKEnv* vk = VKEnv_GetInstance();
     for (uint32_t i = 0; i < ARRAY_SIZE(vk->devices); i++) {
         VKRenderer_Flush(vk->devices[i].renderer);
-        VKRenderer_DisposePrimaryResources(vk->devices[i].renderer);
     }
 }
