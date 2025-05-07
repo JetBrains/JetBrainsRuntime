@@ -386,6 +386,7 @@ sun/java2d/loops/XORClearRect.java JBR-8718 linux-5.18.2-arch1-1
 java/awt/Graphics/GDIResourceExhaustionTest.java JBR-8719 linux-5.18.2-arch1-1
 java/awt/Graphics/NativeWin32Clear.java JBR-8689 linux-aarch64,linux-5.18.2-arch1-1
 java/awt/Graphics/XORPaint.java#id1 JBR-8642 macosx-aarch64
+java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 generic-all
@@ -597,7 +598,7 @@ java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 71244
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java 8157170,8253184 macosx-all,windows-all
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java 8253184 windows-all
 java/awt/MouseInfo/ComponentMousePositionTest.java 8253184 windows-all
-java/awt/MouseInfo/ContainerResizeMousePositionTest.java JBR-7881,JBR-7915 macosx-all,linux-aarch64
+java/awt/MouseInfo/ContainerResizeMousePositionTest.java JBR-7881 macosx-all
 java/awt/MouseInfo/JContainerMousePositionTest.java 8253184 windows-all
 java/awt/Modal/ToFront/DialogToFrontAppModalTest.java 8253184 windows-all
 java/awt/Modal/ToFront/DialogToFrontDocModalTest.java 8253184 windows-all
@@ -1190,7 +1191,7 @@ java/awt/ColorClass/AlphaColorTest.java JBR-5510 linux-5.18.2-arch1-1
 
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001 linux-all
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java 8265770,8273312,JBR-5510 windows-all,macosx-all,linux-5.18.2-arch1-1
-sanity/client/SwingSet/src/ColorChooserDemoTest.java 8278582,8273312,JBR-5510 windows-all,linux-5.18.2-arch1-1
+sanity/client/SwingSet/src/ColorChooserDemoTest.java 8278582,8273312,JBR-5510 windows-all,linux-all
 sanity/client/SwingSet/src/DialogDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/FrameDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java 8253184 windows-all
@@ -1448,8 +1449,8 @@ javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
 jb/java/awt/wayland/RobotGetOOBPixelsTest.java JBR-8029 linux-all
 jb/java/awt/wayland/RobotGetPixelTest.java JBR-8029 linux-all
 jb/java/awt/wayland/RobotGetPixelsTest.java JBR-8029 linux-all
-jb/java/awt/wayland/VulkanBlitTest.java JBR-8394 linux-5.18.2-arch1-1
-jb/java/awt/wayland/VulkanCompositeTest.java JBR-8394 linux-5.18.2-arch1-1
+jb/java/awt/wayland/VulkanBlitTest.java JBR-8394 linux-5.18.2-arch1-1,linux-5.15.0-1081-aws
+jb/java/awt/wayland/VulkanCompositeTest.java JBR-8394 linux-5.18.2-arch1-1,linux-5.15.0-1081-aws
 jb/java/awt/wayland/VulkanGCCompatibilityTest.java JBR-8394 linux-5.18.2-arch1-1
 jb/java/awt/wayland/VulkanMaskFillTest.java JBR-8394 linux-5.18.2-arch1-1
 jb/java/io/IoOverNio/FileTest.java JBR-8723 linux-5.18.2-arch1-1
@@ -1543,7 +1544,6 @@ com/sun/java/swing/plaf/gtk/bug6492108.java JBR-8021 linux-all
 com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-5510 linux-5.18.2-arch1-1
-java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Toolkit/DesktopProperties/rfe4758438.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java JBR-5765 macosx-all
