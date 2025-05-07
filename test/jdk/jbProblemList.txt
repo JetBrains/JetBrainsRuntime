@@ -1167,9 +1167,8 @@ javax/swing/text/html/StyleSheet/bug4936917.java JBR-899,JBR-5510 windows-all,li
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id0 JBR-5799 windows-all
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-5779 linux-all,macosx-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java JBR-803 windows-all,linux-all,macosx-all
-javax/swing/plaf/synth/7158712/bug7158712.java 8322653 macosx-all
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8253184,JBR-5510,JBR-803 windows-all,linux-5.18.2-arch1-1,linux-all
+javax/swing/plaf/synth/7158712/bug7158712.java 8322653 macosx-all
 javax/swing/plaf/synth/SynthScrollbarThumbPainter/SynthScrollbarThumbPainterTest.java 8253184 windows-all
 javax/swing/plaf/synth/Test6660049.java JBR-8397 windows-x64
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
