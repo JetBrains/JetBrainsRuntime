@@ -887,9 +887,10 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
           $(GIFLIB_CFLAGS) $(LIBJPEG_CFLAGS) $(PNG_CFLAGS) $(LIBZ_CFLAGS), \
       EXTRA_HEADER_DIRS := $(LIBSPLASHSCREEN_HEADER_DIRS), \
       DISABLED_WARNINGS_gcc := sign-compare type-limits unused-result \
-          maybe-uninitialized shift-negative-value implicit-fallthrough, \
+          maybe-uninitialized shift-negative-value implicit-fallthrough  \
+          unused-function, \
       DISABLED_WARNINGS_clang := incompatible-pointer-types deprecated-declarations \
-          $(LIBZ_DISABLED_WARNINGS_CLANG), \
+          unused-function $(LIBZ_DISABLED_WARNINGS_CLANG), \
       DISABLED_WARNINGS_solstudio := E_NEWLINE_NOT_LAST E_DECLARATION_IN_CODE \
           E_STATEMENT_NOT_REACHED, \
       DISABLED_WARNINGS_microsoft := 4018 4244 4267, \
