@@ -1,15 +1,42 @@
 com/sun/java/swing/plaf/gtk/TestFileChooserCtrlASelection.java JBR-8748 linux-all
+com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java JBR-6749 linux-all
 
 java/awt/Choice/NonFocusablePopupMenuTest.java JBR-7785 linux-all
 java/awt/Component/DimensionEncapsulation/DimensionEncapsulation.java JBR-8748 linux-all
 java/awt/Component/InsetsEncapsulation/InsetsEncapsulation.java JBR-8748 linux-all
+java/awt/datatransfer/Independence/IndependenceAWTTest.java JBR-8749 linux-all
+java/awt/datatransfer/Independence/IndependenceSwingTest.java JBR-8749 linux-all
+java/awt/event/ComponentEvent/ListItemEventsTest.java JBR-8750 linux-all
+java/awt/event/MouseEvent/DragMouseEventTest.java JBR-8751 linux-all
+java/awt/FileDialog/MoveToTrashTest.java JBR-8752 linux-all
+java/awt/Focus/TestWindowsLFFocus.java JBR-8759 linux-all
 java/awt/font/Emoji/EmojiVariation.java JBR-8717 linux-all
+java/awt/font/Emoji/OutlineTextRendererEmoji.java JBR-8717 linux-all
+java/awt/font/FontScaling/RotatedScaledFontTest.java JBR-8760 linux-all
+java/awt/font/Rotate/RotatedFontTest.java JBR-8761 linux-all
+java/awt/font/Rotate/TranslatedOutlineTest.java JBR-8762 linux-all
+java/awt/font/TextLayout/FormatCharAdvanceTest.java JBR-8763 linux-all
+java/awt/font/TextLayout/HitTest.java JBR-8764 linux-all
+java/awt/font/TextLayout/TestGetPixelBounds.java JBR-8765 linux-all
+java/awt/font/TextLayout/VisibleAdvance.java JBR-8766 linux-all
 java/awt/FontMetrics/ExtremeFontSizeTest.java JBR-7823 linux-all
+java/awt/Graphics2D/DrawString/RotTransText.java JBR-8767 linux-all
 java/awt/Graphics/XORPaint.java#id2 JBR-7373 linux-x64
+java/awt/Graphics2D/DrawString/RotTransText.java
+java/awt/image/DrawImage/SimpleManagedImage.java JBR-8769 linux-all
+java/awt/image/DrawImage/SimpleUnmanagedImage.java JBR-8769 linux-all
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java JBR-8748 linux-all
+java/awt/Mixing/AWT_Mixing/JListInGlassPaneOverlapping.java JBR-8770 linux-all
+java/awt/Mixing/AWT_Mixing/JListOverlapping.java initial_runs JBR-8770 linux-all
+java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java initial_runs JBR-8770 linux-all
 java/awt/Mixing/HWDisappear.java JBR-6818 linux-all
 java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java JBR-7076 linux-all
+java/awt/PopupMenu/PopupMenuLocation.java JBR-8774 linux-all
+java/awt/PopupMenu/PopupMenuStayOpen.java JBR-8775 linux-all
+java/awt/TextArea/AutoScrollOnSelectAndAppend/AutoScrollOnSelectAndAppend.java JBR-8776 linux-all
+java/awt/TextComponent/MiddleMouseClickPasteTest.java JBR-8777 linux-all
 java/awt/Window/FindOwner/FindOwnerTest.html JBR-7500 linux-all
+java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java JBR-8778 linux-all
 
 javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java JBR-8269 linux-all
 javax/swing/border/Test4129681.java JBR-7787 linux-all
