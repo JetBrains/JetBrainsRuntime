@@ -51,7 +51,7 @@ import jdk.test.lib.Platform;
 
 /**
  * AWT Mixing test for HierarchyBoundsListener ancestors.
- * <p>See <a href="https://bugs.openjdk.java.net/browse/JDK-6768230">CR6768230</a> for details.
+ * <p>See <a href="https://bugs.openjdk.org/browse/JDK-6768230">CR6768230</a> for details.
  */
 /*
  * @test
