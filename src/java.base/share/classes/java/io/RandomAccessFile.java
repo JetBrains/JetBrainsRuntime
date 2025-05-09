@@ -25,37 +25,13 @@
 
 package java.io;
 
-import com.jetbrains.internal.IoOverNio;
+import java.nio.channels.FileChannel;
+
 import jdk.internal.access.JavaIORandomAccessFileAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.Blocker;
 import jdk.internal.util.ByteArray;
 import sun.nio.ch.FileChannelImpl;
-
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Objects;
-
-import java.nio.channels.NonWritableChannelException;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
-import java.nio.file.LinkOption;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
-import java.util.HashSet;
-
-import static com.jetbrains.internal.IoOverNio.DEBUG;
 
 
 /**
@@ -113,16 +89,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
 
     private volatile FileChannel channel;
     private volatile boolean closed;
-
-    private final boolean useNio;
-
-    @SuppressWarnings({
-            "FieldCanBeLocal",
-            "this-escape",  // It immediately converts into a phantom reference.
-    })
-    private final NioChannelCleanable channelCleanable = new NioChannelCleanable(this);
-
-    private final ExternalChannelHolder externalChannelHolder;
 
     /**
      * Creates a random access file stream to read from, and optionally
@@ -301,63 +267,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         if (file.isInvalid()) {
             throw new FileNotFoundException("Invalid file path");
         }
+        fd = new FileDescriptor();
+        fd.attach(this);
         path = name;
-        FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
-        Path nioPath = null;
-        if (nioFs != null) {
-            try {
-                nioPath = nioFs.getPath(path);
-            } catch (InvalidPathException ignored) {
-                // Nothing.
-            }
-        }
-
-        // Two significant differences between the legacy java.io and java.nio.files:
-        // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
-        // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
-        boolean isRegularFile;
-        try {
-            isRegularFile = nioPath != null &&
-                    Files.readAttributes(nioPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).isRegularFile();
-        }
-        catch (NoSuchFileException ignored) {
-            isRegularFile = true;
-        }
-        catch (IOException ignored) {
-            isRegularFile = false;
-        }
-
-        useNio = nioPath != null && isRegularFile;
-        if (useNio) {
-            var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
-                    this, nioFs, file, nioPath, optionsForChannel(imode), channelCleanable);
-            channel = bundle.channel();
-            fd = bundle.fd();
-            externalChannelHolder = bundle.externalChannelHolder();
-        } else {
-            fd = new FileDescriptor();
-            fd.attach(this);
-            open(name, imode);
-            FileCleanable.register(fd);   // open sets the fd, register the cleanup
-            externalChannelHolder = null;
-        }
-        if (DEBUG.writeTraces()) {
-            System.err.printf("Created a RandomAccessFile for %s%n", file);
-        }
-    }
-
-    private static HashSet<OpenOption> optionsForChannel(int imode) {
-        HashSet<OpenOption> options = new HashSet<>(6);
-        options.add(StandardOpenOption.READ);
-        if ((imode & O_RDONLY) == 0) {
-            options.add(StandardOpenOption.WRITE);
-            options.add(StandardOpenOption.CREATE);
-        }
-        if ((imode & O_SYNC) == O_SYNC) options.add(StandardOpenOption.SYNC);
-        if ((imode & O_DSYNC) == O_DSYNC) options.add(StandardOpenOption.DSYNC);
-        if ((imode & O_TEMPORARY) == O_TEMPORARY) options.add(StandardOpenOption.DELETE_ON_CLOSE);
-        IoOverNioOsSpecific.optionsForChannelInRandomAccessFile(options, imode);
-        return options;
+        open(name, imode);
+        FileCleanable.register(fd);   // open sets the fd, register the cleanup
     }
 
     /**
@@ -390,10 +304,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @since 1.4
      */
     public final FileChannel getChannel() {
-        if (externalChannelHolder != null) {
-            return externalChannelHolder.getInterruptibleChannel();
-        }
-
         FileChannel fc = this.channel;
         if (fc == null) {
             synchronized (this) {
@@ -469,20 +379,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     public int read() throws IOException {
         long comp = Blocker.begin();
         try {
-            return implRead();
+            return read0();
         } finally {
             Blocker.end(comp);
-        }
-    }
-
-    private int implRead() throws IOException {
-        if (!useNio) {
-            return read0();
-        } else {
-            ByteBuffer buffer = ByteBuffer.allocate(1);
-            int nRead = channel.read(buffer);
-            buffer.rewind();
-            return nRead == 1 ? (buffer.get() & 0xFF) : -1;
         }
     }
 
@@ -498,23 +397,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     private int readBytes(byte[] b, int off, int len) throws IOException {
         long comp = Blocker.begin();
         try {
-            return implReadBytes(b, off, len);
+            return readBytes0(b, off, len);
         } finally {
             Blocker.end(comp);
-        }
-    }
-
-    private int implReadBytes(byte[] b, int off, int len) throws IOException {
-        if (!useNio) {
-            return readBytes0(b, off, len);
-        } else {
-            try {
-                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                return channel.read(buffer);
-            } catch (OutOfMemoryError e) {
-                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
-                return readBytes0(b, off, len);
-            }
         }
     }
 
@@ -546,17 +431,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      *             {@code b.length - off}
      */
     public int read(byte[] b, int off, int len) throws IOException {
-        if (!useNio) {
-            return readBytes(b, off, len);
-        } else {
-            try {
-                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                return channel.read(buffer);
-            } catch (OutOfMemoryError e) {
-                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
-                return readBytes(b, off, len);
-            }
-        }
+        return readBytes(b, off, len);
     }
 
     /**
@@ -579,17 +454,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      * @throws     NullPointerException If {@code b} is {@code null}.
      */
     public int read(byte[] b) throws IOException {
-        if (!useNio) {
-            return readBytes(b, 0, b.length);
-        } else {
-            try {
-                ByteBuffer buffer = ByteBuffer.wrap(b);
-                return channel.read(buffer);
-            } catch (OutOfMemoryError e) {
-                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
-                return readBytes(b, 0, b.length);
-            }
-        }
+        return readBytes(b, 0, b.length);
     }
 
     /**
@@ -685,26 +550,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     public void write(int b) throws IOException {
         long comp = Blocker.begin();
         try {
-            implWrite(b);
+            write0(b);
         } finally {
             Blocker.end(comp);
-        }
-    }
-
-    private void implWrite(int b) throws IOException {
-        if (!useNio) {
-            write0(b);
-        } else {
-            byte[] array = new byte[1];
-            array[0] = (byte) b;
-            ByteBuffer buffer = ByteBuffer.wrap(array);
-            do {
-                try {
-                    channel.write(buffer);
-                } catch (java.nio.channels.NonWritableChannelException err) {
-                    throw new IOException("Bad file descriptor", err);
-                }
-            } while (buffer.hasRemaining());
         }
     }
 
@@ -721,29 +569,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     private void writeBytes(byte[] b, int off, int len) throws IOException {
         long comp = Blocker.begin();
         try {
-            implWriteBytes(b, off, len);
+            writeBytes0(b, off, len);
         } finally {
             Blocker.end(comp);
-        }
-    }
-
-    private void implWriteBytes(byte[] b, int off, int len) throws IOException {
-        if (!useNio) {
-            writeBytes0(b, off, len);
-        } else {
-            try {
-                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                do {
-                    try {
-                        channel.write(buffer);
-                    } catch (java.nio.channels.NonWritableChannelException err) {
-                        throw new IOException("Bad file descriptor", err);
-                    }
-                } while (buffer.hasRemaining());
-            } catch (OutOfMemoryError e) {
-                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
-                writeBytes0(b, off, len);
-            }
         }
     }
 
@@ -783,15 +611,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
      *             at which the next read or write occurs.
      * @throws     IOException  if an I/O error occurs.
      */
-    public long getFilePointer() throws IOException {
-        if (!useNio) {
-            return getFilePointer0();
-        } else {
-            return channel.position();
-        }
-    }
-
-    private native long getFilePointer0() throws IOException;
+    public native long getFilePointer() throws IOException;
 
     /**
      * Sets the file-pointer offset, measured from the beginning of this
@@ -813,11 +633,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
         }
         long comp = Blocker.begin();
         try {
-            if (!useNio) {
-                seek0(pos);
-            } else {
-                channel.position(pos);
-            }
+            seek0(pos);
         } finally {
             Blocker.end(comp);
         }
@@ -834,11 +650,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     public long length() throws IOException {
         long comp = Blocker.begin();
         try {
-            if (!useNio) {
-                return length0();
-            } else {
-                return channel.size();
-            }
+            return length0();
         } finally {
             Blocker.end(comp);
         }
@@ -868,39 +680,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     public void setLength(long newLength) throws IOException {
         long comp = Blocker.begin();
         try {
-            if (!useNio) {
-                setLength0(newLength);
-            } else {
-                try {
-                    long oldSize = channel.size();
-                    if (newLength < oldSize) {
-                        channel.truncate(newLength);
-                    } else {
-                        long position = channel.position();
-                        channel.position(channel.size());
-                        try {
-                            byte[] buf = new byte[1 << 14];
-                            Arrays.fill(buf, (byte) 0);
-                            long remains = newLength - oldSize;
-                            while (remains > 0) {
-                                ByteBuffer buffer = ByteBuffer.wrap(buf);
-                                int length = (int) Math.min(remains, buf.length);
-                                buffer.limit(length);
-                                int written = channel.write(buffer);
-                                remains -= written;
-                            }
-                        } finally {
-                            try {
-                                channel.position(position);
-                            } catch (IOException ignored) {
-                                // Nothing.
-                            }
-                        }
-                    }
-                } catch (NonWritableChannelException err) {
-                    throw new IOException("setLength failed", err);
-                }
-            }
+            setLength0(newLength);
         } finally {
             Blocker.end(comp);
         }
@@ -942,10 +722,6 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             // possible race with getChannel(), benign since
             // FileChannel.close is final and idempotent
             fc.close();
-        }
-
-        if (externalChannelHolder != null) {
-            externalChannelHolder.close();
         }
 
         fd.closeAll(new Closeable() {
@@ -1457,13 +1233,5 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
                 return new RandomAccessFile(file, mode, true);
             }
         });
-    }
-
-    /**
-     * This method is called by JFR. See {@code RandomAccessFileInstrumentor.java}.
-     */
-    @SuppressWarnings("unused")
-    private boolean ioOverNioInThisThread() {
-        return IoOverNio.isAllowedInThisThread();
     }
 }
