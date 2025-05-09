@@ -78,7 +78,7 @@ class TestGenCollectorPolicy {
       FLAG_SET_ERGO(size_t, InitialHeapSize, 100 * M);
       FLAG_SET_ERGO(size_t, OldSize, 4 * M);
       FLAG_SET_ERGO(size_t, NewSize, 1 * M);
-      FLAG_SET_ERGO(size_t, MaxNewSize, 40 * M);
+      FLAG_SET_ERGO(size_t, MaxNewSize, 50 * M);
       Arguments::set_min_heap_size(40 * M);
 
       ASSERT_NO_FATAL_FAILURE(setter1->execute());
@@ -264,8 +264,8 @@ TEST_OTHER_VM(CollectorPolicy, young_cmd) {
 
   // If NewSize is set on command line, but is larger than the min
   // heap size, it should only be used for initial young size.
-  TestGenCollectorPolicy::SetNewSizeCmd setter_large(40 * M);
-  TestGenCollectorPolicy::CheckYoungInitial checker_large(40 * M);
+  TestGenCollectorPolicy::SetNewSizeCmd setter_large(50 * M);
+  TestGenCollectorPolicy::CheckYoungInitial checker_large(50 * M);
   TestGenCollectorPolicy::TestWrapper::test(&setter_large, &checker_large);
 }
 
