@@ -219,7 +219,7 @@ size_t G1FullGCCompactTask::G1CompactRegionClosureDcevm::apply(oop obj) {
       HeapWord *rescued_obj = NEW_C_HEAP_ARRAY(HeapWord, size, mtInternal);
       Copy::aligned_disjoint_words(obj_addr, rescued_obj, size);
       _rescued_oops_values->append(rescued_obj);
-      debug_only(Copy::fill_to_words(obj_addr, size, 0));
+      DEBUG_ONLY(Copy::fill_to_words(obj_addr, size, 0));
       return size;
     }
 

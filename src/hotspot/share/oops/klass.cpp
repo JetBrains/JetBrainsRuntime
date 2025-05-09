@@ -727,7 +727,7 @@ void Klass::clean_subklass() {
 }
 
 void Klass::remove_from_sibling_list() {
-  debug_only(verify();)
+  DEBUG_ONLY(verify();)
 
   // remove ourselves to superklass' subklass list
   InstanceKlass* super = superklass();
@@ -744,7 +744,7 @@ void Klass::remove_from_sibling_list() {
     }
     sib->set_next_sibling(next_sibling());
   }
-  debug_only(verify();)
+  DEBUG_ONLY(verify();)
 }
 
 void Klass::clean_weak_klass_links(bool unloading_occurred, bool clean_alive_klasses) {

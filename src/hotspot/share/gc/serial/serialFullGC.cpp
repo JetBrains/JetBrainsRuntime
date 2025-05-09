@@ -295,7 +295,7 @@ class Compacter {
       HeapWord *rescued_obj = NEW_C_HEAP_ARRAY(HeapWord, obj_size, mtInternal);
       Copy::aligned_disjoint_words(addr, rescued_obj, obj_size);
       _rescued_oops_values->append(rescued_obj);
-      debug_only(Copy::fill_to_words(addr, obj_size, 0));
+      DEBUG_ONLY(Copy::fill_to_words(addr, obj_size, 0));
       return obj_size;
     }
 
