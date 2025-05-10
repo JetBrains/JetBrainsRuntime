@@ -118,7 +118,7 @@ java/awt/Graphics2D/TextPerf.java JBR-8541 linux-all,windows-all
 java/awt/MenuItem/EnableTest.java JBR-8543 windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
 
-javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,8340330,JBR-6274 windows-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-all
+javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,8340330,JBR-6274 windows-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.4.1,macosx-all
 
 jb/build/ResolveSymbolsTest/ResolveSymbolsRealEnv.java JBR-8544 linux-all
 jb/java/awt/Window/UndecoratedDialogInTransientsChain.java JBR-8710 windows-aarch64
