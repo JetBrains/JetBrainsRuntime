@@ -12,6 +12,7 @@ javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-8265 linux-all
 javax/swing/JEditorPane/bug4325606.java JBR-8267 linux-aarch64
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-7530 linux-all
+javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-8790 linux-all
 javax/swing/JInternalFrame/bug5009724.java JBR-7087 linux-all
 javax/swing/JMenu/JMenuSelectedColorTest.java JBR-8551 linux-all
 javax/swing/JPopupMenu/7156657/bug7156657.java JBR-8210 linux-all
