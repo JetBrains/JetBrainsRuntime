@@ -1108,6 +1108,7 @@ jdk_swing_wayland= \
     -javax/swing/JComboBox/8072767/bug8072767.java \
     -javax/swing/JComboBox/8136998/bug8136998.java \
     -javax/swing/JComboBox/8182031/ComboPopupTest.java \
+    -javax/swing/JComboBox/ComboPopupBug.java \
     -javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java \
     -javax/swing/JComboBox/bug4248128.java \
     -javax/swing/JComboBox/bug4436376.java \

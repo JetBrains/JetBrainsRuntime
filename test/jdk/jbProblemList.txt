@@ -1540,6 +1540,7 @@ jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java JBR-6394 linux-5.18.2-arch1-1
 
 com/sun/java/swing/plaf/gtk/bug6492108.java JBR-8021 linux-all
+com/sun/java/swing/plaf/gtk/TestBackSpaceAction.java JBR-8791 linux-all
 com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-5510 linux-5.18.2-arch1-1
