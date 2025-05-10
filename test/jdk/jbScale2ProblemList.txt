@@ -17,6 +17,7 @@ java/awt/Graphics/XORPaint.java#id1 nobug generic-all
 java/awt/Graphics2D/LargeWindowPaintTest.java#ZGenerational nobug generic-all
 java/awt/Graphics2D/LargeWindowPaintTest.java#ZSinglege nobug generic-all
 java/awt/Graphics2D/LargeWindowPaintTest.java#default nobug generic-all
+java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-10.0
 java/awt/Mouse/8158205/MouseHandCursorTest.java                                     nobug generic-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java nobug generic-all
 java/awt/Paint/PaintNativeOnUpdate.java nobug generic-all
