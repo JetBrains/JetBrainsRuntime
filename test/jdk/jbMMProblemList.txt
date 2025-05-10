@@ -20,6 +20,7 @@ java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-5442 linux-all
 java/awt/PopupMenu/PopupMenuLocation.java 8238720,JBR-5442 windows-all,linux-all
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510,JBR-5442,JBR-6092 windows-all,linux-all,macosx-aarch64
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5442 windows-all,linux-all
+java/awt/Robot/InfiniteLoopException.java JBR-8830 windows-x64
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442 linux-all
 java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
@@ -55,6 +56,7 @@ java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java JBR-5210,JBR-5510 win
 java/awt/dnd/DnDTestWithHIDPI/DragTestWithHIDPI.java NOBUG linux-all
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-5510 linux-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java JBR-5210 windows-all,linux-all
+java/awt/grab/SystemMenuTest.java JBR-8829 windows-x64
 java/awt/Graphics/XORPaint.java#id2 NOBUG linux-all
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all,linux-all
 java/awt/image/multiresolution/MenuMultiresolutionIconTest.java JBR-4880,8253184,JBR-5510 windows-all,linux-all
