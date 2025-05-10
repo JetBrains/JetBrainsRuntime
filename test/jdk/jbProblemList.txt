@@ -694,7 +694,6 @@ java/awt/xembed/server/RunTestXEmbed.java 7034201 linux-all
 java/awt/Modal/ModalFocusTransferTests/FocusTransferDialogsDocModalTest.java 8164473 linux-all
 java/awt/Frame/DecoratedFrameInsets/DecoratedFrameInsetsTest.java JBR-5205 linux-5.4.0-1103-aws
 java/awt/Frame/DisposeParentGC/DisposeParentGC.java 8079786 macosx-all
-java/awt/Frame/DisposeTest.java JBR-7937 macosx-aarch64
 
 java/awt/GraphicsDevice/CheckDisplayModes.java 8266242,JBR-8183 macosx-aarch64,macosx-x64
 java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223,8274106 macosx-all,linux-all,windows-all
@@ -835,6 +834,7 @@ java/net/DatagramSocket/DatagramSocketMulticasting.java         8144003,JBR-8455
 java/net/MulticastSocket/NoLoopbackPackets.java                 7122846 macosx-all
 java/net/MulticastSocket/Promiscuous.java                       8308807,JBR-8455 aix-ppc64,macosx-all
 java/net/MulticastSocket/SetLoopbackModeIPv4.java JBR-8455 macosx-all
+java/net/MulticastSocket/SetOutgoingIf.java JBR-8828 macosx-x64
 java/net/SocketPermission/SocketPermissionTest.java JBR-8455 macosx-all
 java/net/MulticastSocket/SetLoopbackMode.java                   7122846 macosx-all
 
@@ -846,13 +846,14 @@ java/net/ServerSocket/AcceptInheritHandle.java                  8211854 aix-ppc6
 
 # jdk_nio
 
-java/nio/channels/AsynchronousSocketChannel/StressLoopback.java 8211851 aix-ppc64
+java/nio/channels/AsynchronousSocketChannel/StressLoopback.java 8211851,JBR-8817 aix-ppc64,windows-aarch64
 
 java/nio/channels/DatagramChannel/AdaptorMulticasting.java      8144003,JBR-8455,JBR-8456,8308807 macosx-all,aix-ppc64
 java/nio/channels/DatagramChannel/BasicMulticastTests.java      8144003 macosx-all
 java/nio/channels/DatagramChannel/ManySourcesAndTargets.java    8264385 macosx-aarch64
 java/nio/channels/DatagramChannel/MulticastSendReceiveTests.java 8144003 macosx-all
 java/nio/channels/DatagramChannel/Promiscuous.java              8144003 macosx-all
+java/nio/channels/DatagramChannel/PromiscuousIPv6.java JBR-8828 macosx-x64
 java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-all
 
 java/nio/channels/Selector/Wakeup.java                          6963118 windows-all
@@ -981,7 +982,7 @@ javax/swing/plaf/basic/BasicTableHeaderUI/6394566/bug6394566.java JBR-5846 windo
 javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,windows-all
 javax/swing/plaf/basic/BasicTreeUI/8023474/bug8023474.java 8253184 linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510,JBR-8300 windows-all,linux-5.18.2-arch1-1,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4
+javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510,JBR-8300 windows-all,linux-5.18.2-arch1-1,macosx-aarch64
 javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464 windows-all,linux-all,windows-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java 8253184,JBR-5829 windows-all,linux-all
 javax/swing/plaf/windows/6921687/bug6921687.java 8253184 windows-all
@@ -1203,8 +1204,8 @@ tools/launcher/Arrrghs.java JBR-8466 generic-all
 tools/launcher/ChangeDataModel.java JBR-8467 generic-all
 tools/launcher/HelpFlagsTest.java JBR-2053,JBR-8614 windows-all
 tools/launcher/MultipleJRERemoved.java JBR-8468 generic-all
-tools/launcher/Settings.java JBR-8469 macosx-all
-tools/launcher/TestSpecialArgs.java windows-all,linux-6.8.0-1028-aws
+tools/launcher/Settings.java JBR-8469 generic-all
+tools/launcher/TestSpecialArgs.java windows-all,linux-6.8.0-1028-aws,linux-5.15.0-1081-aws
 tools/launcher/VersionCheck.java JBR-2053 windows-all
 
 ############################################################################
@@ -1259,10 +1260,10 @@ jdk/incubator/vector/LoadJsvmlTest.java                         8305390 windows-
 # jdk_jfr
 
 jdk/jfr/event/compiler/TestCodeSweeper.java                     8225209 generic-all
+jdk/jfr/event/runtime/TestDumpReason.java  JBR-8780 windows-aarch64
 jdk/jfr/event/runtime/TestShutdownEvent.java JBR-8781 windows-aarch64
 jdk/jfr/startupargs/TestStartName.java                          8214685 windows-x64
 jdk/jfr/startupargs/TestStartDuration.java                      8214685 windows-x64
-jdk/jfr/jvm/TestDumpOnCrash.java JBR-8780 windows-aarch64
 jdk/jfr/jvm/TestDumpOnCrash.java JBR-8780 windows-aarch64
 jdk/jfr/jvm/TestWaste.java                                      8282427 generic-all
 jdk/jfr/api/consumer/recordingstream/TestOnEvent.java           8255404 linux-x64
@@ -1381,6 +1382,7 @@ com/sun/java/swing/plaf/windows/Test8173145.java                                
 com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                              JBR-4197 windows-all
 
 jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4
+jb/java/awt/event/MouseEvent/MouseMoveEventFallThroughTest.java JBR-8789 windows-all
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/Font/font430.sh                                                         JBR-4956 linux-all
 jb/java/awt/Font/Font467.java                                                       JBR-3960 generic-all
@@ -1449,6 +1451,7 @@ jb/javax/swing/JEditorPane/ZeroMargin.java JBR-2256 generic-all
 jb/javax/swing/JPopupMenu/JPopupMenuOutOfWindowTest.java JBR-6682 windows-all,linux-all
 
 jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
+jb/java/awt/Window/FullScreenTwoFrames.java JBR-8276 macosx-all
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984 macosx-all
 jb/java/awt/Window/RestoreFromFullScreen.java JBR-7764 linux-all
 
