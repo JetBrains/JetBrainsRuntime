@@ -39,7 +39,10 @@ import java.awt.Robot;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.Toolkit;
 import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 
 public class AltGraphModifier {
@@ -53,7 +56,10 @@ public class AltGraphModifier {
         InputEvent.ALT_GRAPH_DOWN_MASK
     };
 
-    static boolean[] modifierPress = new boolean[modifierKeys.length];
+    // 0 is false, 1 is true
+    static final AtomicIntegerArray modifierPress = new AtomicIntegerArray(modifierKeys.length);
+
+    static final AtomicBoolean modifierPressChecked = new AtomicBoolean(false);
 
     static volatile boolean modKeys;
     static int modKeyCount;
@@ -62,6 +68,11 @@ public class AltGraphModifier {
 
     public static void main (String args[]) throws
             InterruptedException, InvocationTargetException, AWTException {
+
+        Toolkit.getDefaultToolkit().addAWTEventListener(
+            awtEvent -> System.out.println("Global KeyEvent listener: " + awtEvent),
+            KeyEvent.KEY_EVENT_MASK
+        );
 
         EventQueue.invokeAndWait(() -> {
             frame = new Frame("Modifier Robot Key BUG");
@@ -76,8 +87,10 @@ public class AltGraphModifier {
                 public void keyPressed(KeyEvent kp){
                     System.out.println(kp);
                     if (modKeys == true) {
+                        modifierPressChecked.set(true);
+
                         for (int i=0; i < modifierKeys.length; i++) {
-                            if (modifierPress[i] == true) {
+                            if (modifierPress.get(i) == 1) {
                                 if ((kp.getModifiersEx() & inputMasks[i]) == inputMasks[i]) {
                                 } else {
                                     failed = true;
@@ -110,17 +123,29 @@ public class AltGraphModifier {
             modKeys = true;
 
             for (modKeyCount = 0; modKeyCount < modifierKeys.length; modKeyCount++) {
+                EventQueue.invokeAndWait(frame::requestFocus);
+                robot.delay(500);
+
                 //Press the Modifier Key
-                modifierPress[modKeyCount] = true;
+                modifierPress.set(modKeyCount, 1);
+                modifierPressChecked.set(false);
                 robot.keyPress(modifierKeys[modKeyCount]);
 
-                frame.requestFocus();
+                EventQueue.invokeAndWait(frame::requestFocus);
                 robot.delay(1000);
 
-                //Press the Modifier Key
-                modifierPress[modKeyCount] = false;
+                //Release the Modifier Key
+                modifierPress.set(modKeyCount, 0);
                 robot.keyRelease(modifierKeys[modKeyCount]);
                 robot.delay(1000);
+
+                if (modifierPressChecked.getAndSet(false) == false) {
+                    System.err.printf(
+                        "Key %s was pressed but hasn't reached the frame.%n",
+                        KeyEvent.getKeyText(modifierKeys[modKeyCount])
+                    );
+                    failed = true;
+                }
             }
         } finally {
             EventQueue.invokeAndWait(() -> {
