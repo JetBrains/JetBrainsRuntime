@@ -87,3 +87,5 @@ serviceability/sa/ClhsdbCDSCore.java initial_run,NOBUG generic-aarch64,macosx-al
 
 vmTestbase/gc/gctests/LargeObjects/large002/TestDescription.java NOBUG linux-all timeout
 vmTestbase/gc/gctests/StringInternSyncWithGC/StringInternSyncWithGC.java NOBUG macosx-all timeout on macstudio
+vmTestbase/jit/escape/AdaptiveBlocking/AdaptiveBlocking001/AdaptiveBlocking001.java JBR-8798 linux-aarch64
+vmTestbase/jit/misctests/JitBug1/JitBug1.java JBR-8801 linux-aarch64,windows-all

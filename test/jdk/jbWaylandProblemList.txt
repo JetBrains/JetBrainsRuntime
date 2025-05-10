@@ -7,6 +7,7 @@ java/awt/event/KeyEvent/FunctionKeyTest.java JBR-7773 linux-all
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-7269 linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520 linux-all
+javax/swing/JComponent/6989617/bug6989617.java JBR-8796 linux-all
 javax/swing/JDesktopPane/TestDesktopManagerNPE.java JBR-8449 linux-x64
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-7140 linux-all
