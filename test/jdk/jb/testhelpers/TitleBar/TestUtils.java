@@ -76,11 +76,11 @@ public class TestUtils {
                 g.fillRect(r.x, r.y, r.width, (int) TITLE_BAR_HEIGHT);
             }
         };
-        frame.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        Rectangle bounds = calculateWindowBounds(frame);
+        frame.setBounds(bounds);
         frame.setName("Frame");
 
         frame.setTitle("Frame");
-        frame.setBounds(calculateWindowBounds(frame));
 
         JBR.getWindowDecorations().setCustomTitleBar(frame, titleBar);
 
@@ -89,7 +89,8 @@ public class TestUtils {
 
     public static JFrame createJFrameWithCustomTitleBar(WindowDecorations.CustomTitleBar titleBar) {
         JFrame frame = new JFrame();
-        frame.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        Rectangle bounds = calculateWindowBounds(frame);
+        frame.setBounds(bounds);
         frame.setContentPane(new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -102,7 +103,6 @@ public class TestUtils {
         frame.setName("JFrame");
 
         frame.setTitle("JFrame");
-        frame.setBounds(calculateWindowBounds(frame));
 
         JBR.getWindowDecorations().setCustomTitleBar(frame, titleBar);
 
@@ -111,7 +111,8 @@ public class TestUtils {
 
     public static Dialog createDialogWithCustomTitleBar(WindowDecorations.CustomTitleBar titleBar) {
         Frame frame = new Frame();
-        frame.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        Rectangle bounds = calculateWindowBounds(frame);
+        frame.setBounds(bounds);
         Dialog dialog = new Dialog(frame) {
             @Override
             public void paint(Graphics g) {
@@ -121,9 +122,7 @@ public class TestUtils {
             }
         };
         dialog.setName("Dialog");
-
         dialog.setTitle("Dialog");
-        dialog.setBounds(calculateWindowBounds(dialog));
 
         JBR.getWindowDecorations().setCustomTitleBar(dialog, titleBar);
 
@@ -132,7 +131,8 @@ public class TestUtils {
 
     public static JDialog createJDialogWithCustomTitleBar(WindowDecorations.CustomTitleBar titleBar) {
         JDialog dialog = new JDialog();
-        dialog.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        Rectangle bounds = calculateWindowBounds(dialog);
+        dialog.setBounds(bounds);
         dialog.setContentPane(new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -145,7 +145,6 @@ public class TestUtils {
         dialog.setName("JDialog");
 
         dialog.setTitle("JDialog");
-        dialog.setBounds(calculateWindowBounds(dialog));
 
         JBR.getWindowDecorations().setCustomTitleBar(dialog, titleBar);
 
@@ -189,7 +188,7 @@ public class TestUtils {
         int maxHeight = (int) ((screenSize.height - scnMax.top - scnMax.bottom) / uiScale);
         int maxWidth = (int) ((screenSize.width - scnMax.left - scnMax.right) / uiScale);
 
-        Rectangle bounds = new Rectangle(scnMax.left + 2, scnMax.top + 2, (int) (maxWidth * 0.95), (int) (maxHeight * 0.95));
+        Rectangle bounds = new Rectangle(scnMax.left, scnMax.top, maxWidth, maxHeight);
         System.out.println("Window bounds: " + bounds);
 
         return bounds;
