@@ -84,7 +84,7 @@ bool frame::safe_for_sender(JavaThread *thread) {
   // So unextended sp must be within the stack but we need not to check
   // that unextended sp >= sp
 
-  bool unextended_sp_safe = (unextended_sp < thread->stack_base());
+  bool unextended_sp_safe = (unextended_sp < thread->stack_base() && unextended_sp >= thread->stack_end());
 
   if (!unextended_sp_safe) {
     return false;
