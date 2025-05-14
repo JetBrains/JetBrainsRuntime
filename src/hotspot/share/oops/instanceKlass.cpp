@@ -4617,15 +4617,19 @@ Method* InstanceKlass::method_with_idnum(int idnum) {
 
 Method* InstanceKlass::method_with_orig_idnum(int idnum) {
   if (idnum >= methods()->length()) {
-    return nullptr;
-  }
-  Method* m = methods()->at(idnum);
-  if (m != nullptr && m->orig_method_idnum() == idnum) {
-    return m;
+    // (DCEVM) The provided idnum may exceed the current number of methods.
+    if (!AllowEnhancedClassRedefinition) {
+      return nullptr;
+    }
+  } else {
+    Method* m = methods()->at(idnum);
+    if (m != nullptr && m->orig_method_idnum() == idnum) {
+      return m;
+    }
   }
   // Obsolete method idnum does not match the original idnum
   for (int index = 0; index < methods()->length(); ++index) {
-    m = methods()->at(index);
+    Method* m = methods()->at(index);
     if (m->orig_method_idnum() == idnum) {
       return m;
     }
