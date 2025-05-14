@@ -64,6 +64,9 @@ class WindowsPath implements Path {
     // paths and has a long path prefix for all paths longer than MAX_PATH.
     private volatile WeakReference<String> pathForWin32Calls;
 
+    // Used for fast string comparison.
+    private volatile WeakReference<byte[]> uppercasePath;
+
     // offsets into name components (computed lazily)
     private volatile Integer[] offsets;
 
@@ -786,23 +789,7 @@ class WindowsPath implements Path {
     public int compareTo(Path obj) {
         if (obj == null)
             throw new NullPointerException();
-        String s1 = path;
-        String s2 = ((WindowsPath)obj).path;
-        int n1 = s1.length();
-        int n2 = s2.length();
-        int min = Math.min(n1, n2);
-        for (int i = 0; i < min; i++) {
-            char c1 = s1.charAt(i);
-            char c2 = s2.charAt(i);
-             if (c1 != c2) {
-                 c1 = Character.toUpperCase(c1);
-                 c2 = Character.toUpperCase(c2);
-                 if (c1 != c2) {
-                     return c1 - c2;
-                 }
-             }
-        }
-        return n1 - n2;
+        return Arrays.compareUnsigned(getUppercasePath(), ((WindowsPath)obj).getUppercasePath());
     }
 
     @Override
@@ -883,6 +870,15 @@ class WindowsPath implements Path {
             CloseHandle(handle);
             throw e;
         }
+    }
+
+    private byte[] getUppercasePath() {
+        byte[] result = uppercasePath != null ? uppercasePath.get() : null;
+        if (result == null) {
+            result = path.toUpperCase().getBytes();
+            uppercasePath = new WeakReference<>(result);
+        }
+        return result;
     }
 
     @Override
