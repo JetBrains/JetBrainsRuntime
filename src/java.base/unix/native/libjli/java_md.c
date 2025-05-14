@@ -782,10 +782,12 @@ JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
         int mode, char *what, int ret)
 {
     char *toolkit_name = getToolkitNameByEnv();
+    fprintf(stderr, "JVMInit: toolkit name=\'%s\' awt_toolkit=%d\n", toolkit_name, _awt_toolkit);
     size_t toolkit_name_size = JLI_StrLen("-Dawt.toolkit.name=") + JLI_StrLen(toolkit_name) + 1;
     char *toolkit_option = (char *)JLI_MemAlloc(toolkit_name_size);
     snprintf(toolkit_option, toolkit_name_size, "-Dawt.toolkit.name=%s", toolkit_name);
     AddOption(toolkit_option, NULL);
+    fprintf(stderr, "JVMInit: toolkit_option=\'%s\'\n", toolkit_option);
 
     ShowSplashScreen();
     return ContinueInNewThread(ifn, threadStackSize, argc, argv, mode, what, ret);
@@ -808,9 +810,11 @@ ProcessPlatformOption(const char *arg)
 {
     if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=WLToolkit") == 0) {
         _awt_toolkit = TK_WAYLAND;
+        fprintf(stderr, "ProcessPlatformOption: Wayland\n");
         return JNI_TRUE;
     } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=XToolkit") == 0) {
         _awt_toolkit = TK_X11;
+        fprintf(stderr, "ProcessPlatformOption: X11\n");
         return JNI_TRUE;
     }
 

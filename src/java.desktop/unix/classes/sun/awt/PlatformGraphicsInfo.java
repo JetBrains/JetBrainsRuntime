@@ -48,6 +48,7 @@ public final class PlatformGraphicsInfo {
         if (toolkitID == TK_UNDEF) {
             String name = System.getProperty("awt.toolkit.name");
             System.err.printf(">>> getToolkitID(): awt.toolkit.name = %s\n", name);
+            (new Exception()).printStackTrace();
             if ("XToolkit".equals(name)) {
                 toolkitID = TK_X11;
             } else if ("WLToolkit".equals(name)) {
