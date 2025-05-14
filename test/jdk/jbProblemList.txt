@@ -327,7 +327,7 @@ java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java 8222328 windows-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java 8222328 windows-all,linux-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java 8165218,8222328 windows-all,macosx-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/Translucent.java 8222328 windows-all,linux-all,macosx-all
-java/awt/Window/AlwaysOnTop/AlwaysOnTopEvenOfWindow.java JBR-6686 linux-aarch64
+java/awt/Window/AlwaysOnTop/AlwaysOnTopEvenOfWindow.java JBR-6686 linux-all
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593,8253184 linux-all,windows-all
 java/awt/Window/AlwaysOnTop/TestAlwaysOnTopBeforeShow.java JBR-6661 windows-all
 java/awt/Window/Grab/GrabTest.java 8253184,JBR-6922 windows-all,linux-all
@@ -1405,14 +1405,14 @@ javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java 8298124,JBR-5949 ma
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5510,JBR-5951 linux-5.18.2-arch1-1,windows-all
 jb/java/awt/CustomTitleBar/ActionListenerTest.java JBR-5819 macosx-all,windows-all
-jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-5345 windows-x64
-jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-5345 windows-x64
+jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-5345 windows-all
+jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-5345 windows-all
 jb/java/awt/CustomTitleBar/JDialogNativeControlsTest.java JBR-5345 windows-x64
 jb/java/awt/CustomTitleBar/HitTestClientArea.java JBR-6675 windows-all
 jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-5465,JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-5465,JBR-5550 windows-all
 jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-5828 windows-all
-jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5345 windows-x64
+jb/java/awt/CustomTitleBar/MinimizingWindowTest.java JBR-5345 windows-all
 jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-6914 windows-all
 jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java JBR-5345,JBR-6835 windows-all,macosx-all
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java JBR-5345 windows-all
@@ -1434,6 +1434,7 @@ javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-5510 linux-5.18.2-arch1-1
 jb/java/awt/Focus/BrokenTraversalAWT.java JBR-5799 windows-all
 jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728 linux-all,windows-x64
 jb/java/awt/Focus/ContextMenuAfterPopup.java JBR-5799 windows-all
+jb/java/awt/Focus/FileDialogClosing.java JBR-8309 macosx-x64,windows-all
 jb/java/awt/Focus/FocusTraversalOrderTest.java JBR-6060 generic-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java JBR-6394 linux-5.18.2-arch1-1,windows-all
