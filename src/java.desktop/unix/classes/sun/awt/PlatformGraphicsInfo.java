@@ -47,14 +47,17 @@ public final class PlatformGraphicsInfo {
     private static int getToolkitID() {
         if (toolkitID == TK_UNDEF) {
             String name = System.getProperty("awt.toolkit.name");
+            System.err.printf(">>> getToolkitID(): awt.toolkit.name = %s\n", name);
             if ("XToolkit".equals(name)) {
                 toolkitID = TK_X11;
-            } if ("WLToolkit".equals(name)) {
+            } else if ("WLToolkit".equals(name)) {
                 toolkitID = TK_WAYLAND;
             } else {
                 toolkitID = TK_X11;
             }
+            System.err.printf(">>> getToolkitID(): toolkitID := %d\n", toolkitID);
         }
+        System.err.printf(">>> getToolkitID(): -> %d\n", toolkitID);
         return toolkitID;
     }
 
@@ -130,14 +133,14 @@ public final class PlatformGraphicsInfo {
     public static String getDefaultHeadlessMessage() {
         return PlatformGraphicsInfo.getToolkitID() == PlatformGraphicsInfo.TK_WAYLAND ?
                 """
-                        
+
                         Could not connect to the Wayland server (check WAYLAND_DISPLAY),
                         or no headful library support was found,
                         but this program performed an operation which requires it,
                         """
                 :
                 """
-                        
+
                         No X11 DISPLAY variable was set,
                         or no headful library support was found,
                         but this program performed an operation which requires it,
