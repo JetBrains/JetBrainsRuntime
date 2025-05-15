@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ typedef struct {
 void call(void* arg) {
     Context* context = (Context*)arg;
     JNIEnv* env;
-    context->jvm->AttachCurrentThread((void**)&env, NULL);
+    context->jvm->AttachCurrentThread((void**)&env, nullptr);
     jclass linkerClass = env->FindClass("java/lang/foreign/Linker");
     jmethodID nativeLinkerMethod = env->GetMethodID(linkerClass, "downcallHandle",
             "(Ljava/lang/foreign/FunctionDescriptor;[Ljava/lang/foreign/Linker$Option;)Ljava/lang/invoke/MethodHandle;");
