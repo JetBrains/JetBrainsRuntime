@@ -156,8 +156,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     private static boolean initialized = false;
     private static Thread toolkitThread;
-    private static WLClipboard clipboard;
-    private static WLClipboard selection;
+    private final WLClipboard clipboard;
+    private final WLClipboard selection;
 
     private static Cursor currentCursor;
 
