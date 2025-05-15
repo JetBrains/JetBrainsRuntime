@@ -20,8 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+import jdk.test.lib.process.ProcessTools;
+
 import java.awt.Frame;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +33,7 @@ import java.util.concurrent.TimeUnit;
  * @bug 8081019
  * @summary Check peer to null in CPlatformWindow.checkZoom() method
  * @author Alexandr Scherbatiy
+ * @library /test/lib
  */
 public class bug8081019 {
 
@@ -66,12 +68,9 @@ public class bug8081019 {
     }
 
     private static void runProcess() throws Exception {
-        String javaPath = System.getProperty("java.home", "");
-        String command = javaPath + File.separator + "bin" + File.separator + "java"
-                + " -Djava.security.manager=allow " + System.getProperty("test.java.opts", "")
-                + " " + bug8081019.class.getName() + " " + RUN_TEST;
-
-        Process process = Runtime.getRuntime().exec(command);
+        ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(
+            "-Djava.security.manager=allow", bug8081019.class.getName(), RUN_TEST);
+        Process process = pb.start();
         boolean processExit = process.waitFor(20, TimeUnit.SECONDS);
 
         dumpStream(process.getErrorStream(), "error stream");

@@ -1203,6 +1203,7 @@ jdk_swing_wayland= \
     -javax/swing/JMenuItem/bug4839464.java \
     -javax/swing/JOptionPane/6428694/bug6428694.java \
     -javax/swing/JOptionPane/7138665/bug7138665.java \
+    -javax/swing/JOptionPane/8081019/bug8081019.java \
     -javax/swing/JPopupMenu/4458079/bug4458079.java \
     -javax/swing/JPopupMenu/4634626/bug4634626.java \
     -javax/swing/JPopupMenu/4760494/bug4760494.java \
