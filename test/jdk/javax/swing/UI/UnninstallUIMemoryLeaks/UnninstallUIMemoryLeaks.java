@@ -224,9 +224,9 @@ public final class UnninstallUIMemoryLeaks {
     }
 
     private static Process runProcess(LookAndFeelInfo laf) throws Exception {
-        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(
+        ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(
                 "-Dswing.defaultlaf=" + laf.getClassName(), "-Xmx9m",
-                "-XX:+HeapDumpOnOutOfMemoryError", System.getProperty("test.java.opts", ""),
+                "-XX:+HeapDumpOnOutOfMemoryError",
                 UnninstallUIMemoryLeaks.class.getSimpleName(), "mark");
         return ProcessTools.startProcess(laf.getName(), pb);
     }
