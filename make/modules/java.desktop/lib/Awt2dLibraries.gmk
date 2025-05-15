@@ -509,7 +509,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBLCMS, \
         common/awt/debug \
         libawt/java2d, \
     HEADERS_FROM_SRC := $(LIBLCMS_HEADERS_FROM_SRC), \
-    DISABLED_WARNINGS_gcc := format-nonliteral type-limits stringop-truncation, \
+    DISABLED_WARNINGS_gcc := format-nonliteral stringop-truncation, \
     DISABLED_WARNINGS_clang := format-nonliteral, \
     DISABLED_WARNINGS_clang_cmstypes.c := unused-but-set-parameter, \
     LDFLAGS := $(LDFLAGS_JDKLIB) \
