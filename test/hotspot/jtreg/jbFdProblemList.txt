@@ -84,8 +84,8 @@ serviceability/sa/ClhsdbInspect.java JBR-6351 windows-aarch64
 # :vmTestbase_*
 
 vmTestbase/jit/escape/AdaptiveBlocking/AdaptiveBlocking001/AdaptiveBlocking001.java JBR-8798 linux-aarch64
-vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi002/TestDescription.java JBR-8743 windows-all
-vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi003/TestDescription.java JBR-8743 windows-all
+vmTestbase/jit/misctests/JitBug1/JitBug1.java JBR-8801 linux-aarch64,windows-all
+vmTestbase/jit/misctests/Pi/Pi.java JBR-8854 linux-aarch64
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi004/TestDescription.java JBR-8744 windows-all
 
 #############################################################################
