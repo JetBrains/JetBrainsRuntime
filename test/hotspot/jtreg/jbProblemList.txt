@@ -189,6 +189,7 @@ runtime/Safepoint/TestAbortOnVMOperationTimeout.java JBR-8524 windows-aarch64
 runtime/Safepoint/TestAbortVMOnSafepointTimeout.java JBR-8524 windows-aarch64
 runtime/StackGuardPages/TestStackGuardPages.java 8303612 linux-all 8293452
 runtime/StackGuardPages/TestStackGuardPagesNative.java 8303612 linux-all
+runtime/stringtable/StringTableCorruptionTest.java JBR-8524 windows-aarch64
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315 linux-ppc64le
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315,JBR-6289 linux-ppc64le,windows-aarch64
 runtime/ErrorHandling/TestAbortVmOnException.java JBR-8514 windows-aarch64
@@ -208,6 +209,7 @@ runtime/memory/ReadFromNoaccessArea.java initial_run windows-aarch64
 
 runtime/cds/appcds/CommandLineFlagCombo.java JBR-6616 windows-aarch64
 runtime/cds/appcds/complexURI/ComplexURITest.java JBR-6616 windows-aarch64
+runtime/cds/appcds/LotsOfSyntheticClasses.java JBR-8823 windows-all
 runtime/cds/appcds/methodHandles/MethodHandlesInvokersTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesCastFailureTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesGeneralTest.java initial_run generic-all
@@ -293,6 +295,8 @@ serviceability/sa/ClhsdbThreadContext.java JBR-6260 windows-aarch64
 
 #############################################################################
 
+vmTestbase/gc/gctests/SoftReference/soft001/soft001.java JBR-8802 linux-all
+
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isCollectionUsageThresholdExceeded/isexceeded003/TestDescription.java 8153598 generic-all
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded002/TestDescription.java 8153598 generic-all
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded004/TestDescription.java 8153598 generic-all
@@ -304,7 +308,7 @@ vmTestbase/nsk/jdi/Event/_itself_/event001/TestDescription.java JBR-8550 windows
 vmTestbase/nsk/jdi/LaunchingConnector/launch/launch001/TestDescription.java initial_run windows-all
 vmTestbase/nsk/jdi/LaunchingConnector/launch/launch003/TestDescription.java initial_run windows-all
 vmTestbase/nsk/jdi/LaunchingConnector/launchnosuspend/launchnosuspend001/TestDescription.java initial_run windows-all
-
+vmTestbase/nsk/jdi/MethodExitRequest/addClassFilter_rt/filter_rt001/TestDescription.java JBR-7585 macosx-all,linux-all
 vmTestbase/nsk/jdi/ThreadReference/stop/stop001/TestDescription.java 7034630 generic-all
 vmTestbase/nsk/jdi/ReferenceType/instances/instances002/instances002.java initial_run linux-all
 
@@ -341,6 +345,8 @@ vmTestbase/vm/mlvm/meth/stress/compiler/deoptimize/Test.java#id1 8324756 generic
 vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
 
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi001/Multi001.java JBR-8545, windows-all
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi002/TestDescription.java JBR-8743 windows-all
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi003/TestDescription.java JBR-8743 windows-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi005/TestDescription.java 8076494 windows-x64
 
 vmTestbase/nsk/monitoring/ThreadMXBean/findMonitorDeadlockedThreads/find006/TestDescription.java 8310144 macosx-aarch64
