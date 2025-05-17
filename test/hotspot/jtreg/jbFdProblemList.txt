@@ -51,7 +51,7 @@ compiler/c2/TestVerifyConstraintCasts.java 8355574,JBR-8714 generic-all,linux-aa
 
 # :hotspot_gc
 
-gc/shenandoah/generational/TestOldGrowthTriggers.java JBR-8019 linux-all,windows-all,macosx-13.7.3
+gc/shenandoah/generational/TestOldGrowthTriggers.java JBR-8019 linux-all,windows-all,macosx-13.7.3,macosx-13.7.5
 gc/stress/gcold/TestGCOldWithShenandoah.java#aggressive JBR-8563 windows-aarch64
 
 #############################################################################
@@ -62,6 +62,7 @@ runtime/ErrorHandling/AccessZeroNKlassHitsProtectionZone.java#coh_no_cds JBR-661
 runtime/ErrorHandling/AccessZeroNKlassHitsProtectionZone.java#no_coh_cds JBR-6616 windows-aarch64
 runtime/ErrorHandling/AccessZeroNKlassHitsProtectionZone.java#no_coh_no_cds JBR-6616 windows-aarch64
 runtime/ErrorHandling/ErrorFileOverwriteTest.java JBR-8524 windows-aarch64
+runtime/ErrorHandling/ShowEventsOnCrashTest.java JBR-8524 windows-aarch64
 runtime/ErrorHandling/ShowRegistersOnAssertTest.java JBR-8524 windows-aarch64
 runtime/stringtable/StringTableCorruptionTest.java JBR-8524 windows-aarch64
 runtime/Unsafe/RangeCheck.java JBR-8529 windows-aarch64
