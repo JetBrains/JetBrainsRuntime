@@ -598,7 +598,7 @@ java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java 71244
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java 8157170,8253184 macosx-all,windows-all
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java 8253184 windows-all
 java/awt/MouseInfo/ComponentMousePositionTest.java 8253184 windows-all
-java/awt/MouseInfo/ContainerResizeMousePositionTest.java JBR-7881 macosx-all
+java/awt/MouseInfo/ContainerResizeMousePositionTest.java JBR-7881,JBR-7915 macosx-all,linux-all
 java/awt/MouseInfo/JContainerMousePositionTest.java 8253184 windows-all
 java/awt/Modal/ToFront/DialogToFrontAppModalTest.java 8253184 windows-all
 java/awt/Modal/ToFront/DialogToFrontDocModalTest.java 8253184 windows-all
@@ -1015,7 +1015,7 @@ javax/swing/plaf/basic/BasicTableHeaderUI/6394566/bug6394566.java JBR-5846 windo
 javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,windows-all
 javax/swing/plaf/basic/BasicTreeUI/8023474/bug8023474.java 8253184 linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510,JBR-8300 windows-all,linux-5.18.2-arch1-1,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.4.1
+javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510,JBR-8300 windows-all,linux-5.18.2-arch1-1,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-14.7.5,macosx-15.4.1
 javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/nimbus/TestNimbusOverride.java 8253184,JBR-5829 windows-all,linux-all
 javax/swing/plaf/nimbus/TestNimbusTabbedPaneIconPosition.java JBR-8718 linux-5.18.2-arch1-1
@@ -1046,7 +1046,7 @@ javax/swing/JComboBox/bug4924758.java JBR-5846 windows-all
 javax/swing/JComboBox/bug4996503.java JBR-5799 windows-aarch64
 javax/swing/JComboBox/bug5029504.java JBR-5799 windows-all
 javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java JBR-5210 windows-all
-javax/swing/JComboBox/EditableComboBoxPopupPos.java JBR-8793 windows-x64
+javax/swing/JComboBox/EditableComboBoxPopupPos.java JBR-8793 windows-all
 javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-8270 linux-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -1469,6 +1469,8 @@ jb/sun/awt/macos/NationalLayoutTest/Layout_SPANISH_ISO.java JBR-4933 macosx-all
 jb/sun/awt/macos/NationalLayoutTest/Layout_US_INTERNATIONAL_PC.java JBR-4933 macosx-all
 
 jb/sun/lwawt/macosx/NSEvent/nsevent422.sh JBR-5333 macosx-all
+
+jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
 
 jb/javax/swing/JComboBox/ComboBoxTransparentTittleBarTest.java JBR-5432,JBR-4875 windows-all,macosx-all
 jb/javax/swing/JDialog/JDialog186.java JBR-5210 windows-all
