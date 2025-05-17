@@ -1,4 +1,5 @@
 java/awt/Choice/ChoiceHandleMouseEvent_2.java JBR-7174 windows-all
+java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java JBR-64 windows-all
 java/awt/Choice/SelectItem/SelectCurrentItemTest.java JBR-8333 windows-all
 java/awt/Choice/SelectItem/SelectNewItemTest.java JBR-8387 windows-x64
 java/awt/Graphics/XORPaint.java#id0 JBR-7499 windows-x64
@@ -29,6 +30,8 @@ javax/swing/JComboBox/6559152/bug6559152.java JBR-5397,JBR-7382 macosx-all,windo
 javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java JBR-5210 windows-all
 javax/swing/JComboBox/bug4996503.java JBR-7412 windows-x64
 javax/swing/JComboBox/EditableComboBoxPopupPos.java JBR-7383 windows-x64
+javax/swing/JFileChooser/4966171/bug4966171.java JBR-8855 windows-x64
+javax/swing/JFileChooser/FileChooserListenerLeak.java JBR-8855 windows-x64
 javax/swing/JInternalFrame/Test6505027.java         nobug macosx-all,linux-all,windows-all
 javax/swing/JMenuBar/MenuBarRTLBug.java JBR-7385 windows-x64
 javax/swing/JPopupMenu/4634626/bug4634626.java      nobug macosx-all,linux-all,windows-all
