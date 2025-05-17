@@ -37,7 +37,6 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.nio.file.spi.FileSystemProvider;
-import java.util.Arrays;
 import java.util.Objects;
 
 import jdk.internal.access.JavaLangAccess;
@@ -719,7 +718,23 @@ class UnixPath implements Path {
 
     @Override
     public int compareTo(Path other) {
-        return Arrays.compareUnsigned(path, ((UnixPath) other).path);
+        int len1 = path.length;
+        int len2 = ((UnixPath) other).path.length;
+
+        int n = Math.min(len1, len2);
+        byte v1[] = path;
+        byte v2[] = ((UnixPath) other).path;
+
+        int k = 0;
+        while (k < n) {
+            int c1 = v1[k] & 0xff;
+            int c2 = v2[k] & 0xff;
+            if (c1 != c2) {
+                return c1 - c2;
+            }
+           k++;
+        }
+        return len1 - len2;
     }
 
     @Override
