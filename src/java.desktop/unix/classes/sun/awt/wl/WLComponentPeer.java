@@ -410,13 +410,7 @@ public class WLComponentPeer implements ComponentPeer {
         // which may result in visual artifacts.
         int surfaceWidth = wlSize.getSurfaceWidth();
         int surfaceHeight = wlSize.getSurfaceHeight();
-        Dimension minSize = getMinimumSize();
-        if (target.isMinimumSizeSet()) {
-            Dimension targetMinSize = target.getMinimumSize();
-            minSize.width = Math.max(minSize.width, targetMinSize.width);
-            minSize.height = Math.max(minSize.height, targetMinSize.height);
-        }
-        Dimension surfaceMinSize = javaUnitsToSurfaceSize(constrainSize(minSize));
+        Dimension surfaceMinSize = javaUnitsToSurfaceSize(constrainSize(target.getMinimumSize()));
         Dimension maxSize = target.isMaximumSizeSet() ? target.getMaximumSize() : null;
         Dimension surfaceMaxSize = maxSize != null ? javaUnitsToSurfaceSize(constrainSize(maxSize)) : null;
 
