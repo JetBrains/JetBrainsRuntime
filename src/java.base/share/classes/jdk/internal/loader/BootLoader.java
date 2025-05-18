@@ -41,7 +41,6 @@ import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
-import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.JavaLangAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.module.Modules;
@@ -144,19 +143,17 @@ public class BootLoader {
     /**
      * Loads a native library from the system library path.
      */
-    @SuppressWarnings({"try", "removal"})
+    @SuppressWarnings("removal")
     public static void loadLibrary(String name) {
-        try (var ignored = IoOverNio.disableInThisThread()) {
-            if (System.getSecurityManager() == null) {
-                BootLoader.getNativeLibraries().loadLibrary(name);
-            } else {
-                AccessController.doPrivileged(new java.security.PrivilegedAction<>() {
-                    public Void run() {
-                        BootLoader.getNativeLibraries().loadLibrary(name);
-                        return null;
-                    }
-                });
-            }
+        if (System.getSecurityManager() == null) {
+            BootLoader.getNativeLibraries().loadLibrary(name);
+        } else {
+            AccessController.doPrivileged(new java.security.PrivilegedAction<>() {
+                public Void run() {
+                    BootLoader.getNativeLibraries().loadLibrary(name);
+                    return null;
+                }
+            });
         }
     }
 

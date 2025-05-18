@@ -57,7 +57,6 @@ import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
-import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.VM;
 import jdk.internal.module.ModulePatcher.PatchedModuleReader;
@@ -736,15 +735,13 @@ public class BuiltinClassLoader
      *
      * @return the resulting Class or {@code null} if not found
      */
-    @SuppressWarnings({"removal", "try"})
+    @SuppressWarnings("removal")
     private Class<?> findClassInModuleOrNull(LoadedModule loadedModule, String cn) {
-        try (var ignored = IoOverNio.disableInThisThread()) {
-            if (System.getSecurityManager() == null) {
-                return defineClass(cn, loadedModule);
-            } else {
-                PrivilegedAction<Class<?>> pa = () -> defineClass(cn, loadedModule);
-                return AccessController.doPrivileged(pa);
-            }
+        if (System.getSecurityManager() == null) {
+            return defineClass(cn, loadedModule);
+        } else {
+            PrivilegedAction<Class<?>> pa = () -> defineClass(cn, loadedModule);
+            return AccessController.doPrivileged(pa);
         }
     }
 
@@ -753,37 +750,35 @@ public class BuiltinClassLoader
      *
      * @return the resulting Class or {@code null} if not found
      */
-    @SuppressWarnings({"removal", "try"})
+    @SuppressWarnings("removal")
     private Class<?> findClassOnClassPathOrNull(String cn) {
         String path = cn.replace('.', '/').concat(".class");
-        try (var ignored = IoOverNio.disableInThisThread()) {
-            if (System.getSecurityManager() == null) {
-                Resource res = ucp.getResource(path, false);
-                if (res != null) {
-                    try {
-                        return defineClass(cn, res);
-                    } catch (IOException ioe) {
-                        // TBD on how I/O errors should be propagated
-                    }
+        if (System.getSecurityManager() == null) {
+            Resource res = ucp.getResource(path, false);
+            if (res != null) {
+                try {
+                    return defineClass(cn, res);
+                } catch (IOException ioe) {
+                    // TBD on how I/O errors should be propagated
                 }
-                return null;
-            } else {
-                // avoid use of lambda here
-                PrivilegedAction<Class<?>> pa = new PrivilegedAction<>() {
-                    public Class<?> run() {
-                        Resource res = ucp.getResource(path, false);
-                        if (res != null) {
-                            try {
-                                return defineClass(cn, res);
-                            } catch (IOException ioe) {
-                                // TBD on how I/O errors should be propagated
-                            }
-                        }
-                        return null;
-                    }
-                };
-                return AccessController.doPrivileged(pa);
             }
+            return null;
+        } else {
+            // avoid use of lambda here
+            PrivilegedAction<Class<?>> pa = new PrivilegedAction<>() {
+                public Class<?> run() {
+                    Resource res = ucp.getResource(path, false);
+                    if (res != null) {
+                        try {
+                            return defineClass(cn, res);
+                        } catch (IOException ioe) {
+                            // TBD on how I/O errors should be propagated
+                        }
+                    }
+                    return null;
+                }
+            };
+            return AccessController.doPrivileged(pa);
         }
     }
 

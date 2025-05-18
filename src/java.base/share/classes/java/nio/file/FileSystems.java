@@ -36,7 +36,6 @@ import java.util.Map;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
-import com.jetbrains.internal.IoOverNio;
 import jdk.internal.loader.ClassLoaders;
 import jdk.internal.misc.VM;
 import sun.nio.fs.DefaultFileSystemProvider;
@@ -96,14 +95,7 @@ public final class FileSystems {
         static final FileSystem defaultFileSystem = defaultFileSystem();
 
         // returns default file system
-        @SuppressWarnings("try")
         private static FileSystem defaultFileSystem() {
-            try (var ignored = IoOverNio.disableInThisThread()) {
-                return defaultFileSystem0();
-            }
-        }
-
-        private static FileSystem defaultFileSystem0() {
             // load default provider
             @SuppressWarnings("removal")
             FileSystemProvider provider = AccessController

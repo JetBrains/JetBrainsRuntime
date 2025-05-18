@@ -26,7 +26,6 @@
  * @bug 8164705 8209901
  * @library /test/lib
  * @summary check jdk.filepermission.canonicalize
- * @run main/othervm -Djbr.java.io.use.nio=false Flag
  */
 
 import jdk.test.lib.process.Proc;
@@ -47,7 +46,6 @@ public class Flag {
                     .prop("java.security.manager", "")
                     .prop("java.security.policy", policy)
                     .prop("jdk.io.permissionsUseCanonicalPath", "true")
-                    .prop("jbr.java.io.use.nio", "false")
                     .args("run", "true", "true")
                     .start()
                     .waitFor(0);
@@ -55,7 +53,6 @@ public class Flag {
                     .prop("java.security.manager", "")
                     .prop("java.security.policy", policy)
                     .secprop("jdk.io.permissionsUseCanonicalPath", "true")
-                    .prop("jbr.java.io.use.nio", "false")
                     .args("run", "true", "true")
                     .start()
                     .waitFor(0);
@@ -64,7 +61,6 @@ public class Flag {
                     .prop("java.security.policy", policy)
                     .secprop("jdk.io.permissionsUseCanonicalPath", "false")
                     .prop("jdk.io.permissionsUseCanonicalPath", "true")
-                    .prop("jbr.java.io.use.nio", "false")
                     .args("run", "true", "true")
                     .start()
                     .waitFor(0);
@@ -74,7 +70,6 @@ public class Flag {
                     .prop("java.security.manager", "")
                     .prop("java.security.policy", policy)
                     .prop("jdk.io.permissionsUseCanonicalPath", "false")
-                    .prop("jbr.java.io.use.nio", "false")
                     .args("run", "false", "true")
                     .start()
                     .waitFor(0);
@@ -82,7 +77,6 @@ public class Flag {
                     .prop("java.security.manager", "")
                     .prop("java.security.policy", policy)
                     .secprop("jdk.io.permissionsUseCanonicalPath", "false")
-                    .prop("jbr.java.io.use.nio", "false")
                     .args("run", "false", "true")
                     .start()
                     .waitFor(0);
@@ -91,14 +85,12 @@ public class Flag {
                     .prop("java.security.policy", policy)
                     .secprop("jdk.io.permissionsUseCanonicalPath", "true")
                     .prop("jdk.io.permissionsUseCanonicalPath", "false")
-                    .prop("jbr.java.io.use.nio", "false")
                     .args("run", "false", "true")
                     .start()
                     .waitFor(0);
             Proc.create("Flag")
                     .prop("java.security.manager", "")
                     .prop("java.security.policy", policy)
-                    .prop("jbr.java.io.use.nio", "false")
                     .args("run", "false", "true")
                     .start()
                     .waitFor(0);
