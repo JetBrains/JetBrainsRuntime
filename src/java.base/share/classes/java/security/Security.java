@@ -31,7 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.io.*;
 import java.net.URL;
 
-import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.JavaSecurityPropertiesAccess;
 import jdk.internal.event.EventHelper;
 import jdk.internal.event.SecurityPropertyModificationEvent;
@@ -94,14 +93,7 @@ public final class Security {
         });
     }
 
-    @SuppressWarnings("try")
     private static void initialize() {
-        try (var ignored = IoOverNio.disableInThisThread()) {
-            initialize0();
-        }
-    }
-
-    private static void initialize0() {
         props = new Properties();
         boolean overrideAll = false;
 
@@ -131,6 +123,7 @@ public final class Security {
                     props.getProperty(key));
             }
         }
+
     }
 
     private static boolean loadProps(File masterFile, String extraPropFile, boolean overrideAll) {
