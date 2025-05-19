@@ -32,6 +32,7 @@ import java.awt.image.VolatileImage;
 import java.awt.image.WritableRaster;
 
 import sun.awt.image.SunVolatileImage;
+import sun.java2d.SurfaceData;
 
 /**
  * The {@code GraphicsConfiguration} class describes the
@@ -463,5 +464,14 @@ public abstract class GraphicsConfiguration {
      */
     public long getSharedContext() {
         return -1;
+    }
+
+    /**
+     * Some comment
+     * @param texture - something
+     * @return something
+     */
+    public Image wrapTextureImage(long texture) {
+        return null;
     }
 }

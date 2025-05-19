@@ -37,6 +37,7 @@ import java.awt.Image;
 @JBRApi.Provides("SharedTextures")
 public class SharedTextures {
     public final static int METAL_TEXTURE_TYPE = 1;
+    public final static int OPENGL_TEXTURE_TYPE = 2;
 
     private final int textureType;
 
@@ -67,11 +68,21 @@ public class SharedTextures {
         try {
             if (SunToolkit.isInstanceOf(gc, "sun.java2d.metal.MTLGraphicsConfig")) {
                 return METAL_TEXTURE_TYPE;
+            } else if (SunToolkit.isInstanceOf(gc, "sun.java2d.opengl.WGLGraphicsConfig")) {
+                return OPENGL_TEXTURE_TYPE;
             }
         } catch (Exception e) {
             throw new InternalError("Unexpected exception during reflection", e);
         }
 
         return 0;
+    }
+
+    public long getSharedGLContext(GraphicsConfiguration gc) {
+        return gc.getSharedContext();
+    }
+
+    public int getGLPixelFormat(GraphicsConfiguration gc) {
+        return gc.getPixelFormat();
     }
 }

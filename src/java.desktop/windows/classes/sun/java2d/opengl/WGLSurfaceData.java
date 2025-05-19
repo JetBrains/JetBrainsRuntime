@@ -33,6 +33,8 @@ import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 import java.awt.image.ColorModel;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import sun.awt.SunToolkit;
 import sun.awt.Win32GraphicsDevice;
 import sun.awt.windows.WComponentPeer;
@@ -136,6 +138,10 @@ public abstract class WGLSurfaceData extends OGLSurfaceData {
     {
         return new WGLOffScreenSurfaceData(null, gc, width, height,
                                            image, cm, type);
+    }
+
+    public static WGLSurfaceData createData(WGLGraphicsConfig gc, Image image, long textureId) {
+        return new WGLTextureWrapperSurfaceData(gc, image, textureId);
     }
 
     public static WGLGraphicsConfig getGC(WComponentPeer peer) {
@@ -256,6 +262,44 @@ public abstract class WGLSurfaceData extends OGLSurfaceData {
          */
         public Object getDestination() {
             return offscreenImage;
+        }
+    }
+
+    public static class WGLTextureWrapperSurfaceData extends WGLSurfaceData {
+        private final Image image;
+
+        public WGLTextureWrapperSurfaceData(WGLGraphicsConfig gc, Image image, long textureId) {
+            super(null, gc, ColorModel.getRGBdefault(), RT_TEXTURE);
+            this.image = image;
+
+            OGLRenderQueue rq = OGLRenderQueue.getInstance();
+            AtomicBoolean success = new AtomicBoolean(false);
+            rq.lock();
+            try {
+                OGLContext.setScratchSurface(gc);
+                rq.flushAndInvokeNow(() -> success.set(initWithTexture(getNativeOps(), false, textureId)));
+            } finally {
+                rq.unlock();
+            }
+
+            if (!success.get()) {
+                throw new IllegalArgumentException("Failed to init the surface data");
+            }
+        }
+
+        @Override
+        public SurfaceData getReplacement() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Rectangle getBounds() {
+            return getNativeBounds();
+        }
+
+        @Override
+        public Object getDestination() {
+            return null;
         }
     }
 

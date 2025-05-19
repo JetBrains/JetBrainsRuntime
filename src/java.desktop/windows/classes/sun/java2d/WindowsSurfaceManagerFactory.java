@@ -28,13 +28,11 @@ package sun.java2d;
 import java.awt.GraphicsConfiguration;
 import java.awt.Image;
 
-import sun.awt.image.BufImgVolatileSurfaceManager;
-import sun.awt.image.SunVolatileImage;
-import sun.awt.image.SurfaceManager;
-import sun.awt.image.VolatileSurfaceManager;
+import sun.awt.image.*;
 import sun.java2d.d3d.D3DGraphicsConfig;
 import sun.java2d.d3d.D3DVolatileSurfaceManager;
 import sun.java2d.opengl.WGLGraphicsConfig;
+import sun.java2d.opengl.WGLSurfaceData;
 import sun.java2d.opengl.WGLVolatileSurfaceManager;
 
 /**
@@ -66,7 +64,10 @@ public class WindowsSurfaceManagerFactory extends SurfaceManagerFactory {
     }
 
     @Override
-    public SurfaceManager createTextureWrapperSurfaceManager(GraphicsConfiguration gc, Image image, long texture) {
+    public SurfaceManager createTextureWrapperSurfaceManager(GraphicsConfiguration gc, Image image, long textureId) {
+        if (gc instanceof WGLGraphicsConfig) {
+            return new TextureWrapperSurfaceManager(WGLSurfaceData.createData((WGLGraphicsConfig) gc, image, textureId));
+        }
         throw new UnsupportedOperationException("Not supported");
     }
 }

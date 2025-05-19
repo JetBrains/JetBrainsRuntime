@@ -25,20 +25,14 @@
 
 package sun.java2d.opengl;
 
-import java.awt.AWTException;
-import java.awt.BufferCapabilities;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.ImageCapabilities;
-import java.awt.Transparency;
+import java.awt.*;
 import java.awt.color.ColorSpace;
 import java.awt.image.ColorModel;
 import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
 import java.awt.image.VolatileImage;
 
+import com.jetbrains.desktop.image.TextureWrapperImage;
 import sun.awt.Win32GraphicsConfig;
 import sun.awt.Win32GraphicsDevice;
 import sun.awt.image.SunVolatileImage;
@@ -452,5 +446,10 @@ public final class WGLGraphicsConfig
     @Override
     public ContextCapabilities getContextCapabilities() {
         return oglCaps;
+    }
+
+    @Override
+    public Image wrapTextureImage(long texture) {
+        return new TextureWrapperImage(this, texture);
     }
 }
