@@ -165,18 +165,18 @@ class Klass : public Metadata {
   uintx    _secondary_supers_bitmap;
   uint8_t  _hash_slot;
 
-  // Advanced class redefinition
-
+  // Enhanced class redefinition
   // Old version (used in advanced class redefinition)
   Klass*      _old_version;
   // New version (used in advanced class redefinition)
   Klass*      _new_version;
-
   int         _redefinition_flags;     // Level of class redefinition
   bool        _is_redefining;
   int*        _update_information;
   bool        _is_copying_backwards;   // Does the class need to copy fields backwards? => possibly overwrite itself?
   bool        _is_rolled_back;         // true if class was rolled back in redefinition
+  // offsets of fields used in compatibility check
+  GrowableArray<int>* volatile _compat_check_field_offsets;
 
 private:
   // This is an index into AOTClassLocationConfig::class_locations(), to
@@ -442,6 +442,13 @@ protected:
   void set_copying_backwards(bool b)     { _is_copying_backwards = b; }
   bool is_rolled_back() { return _is_rolled_back; }
   void set_rolled_back(bool b) { _is_rolled_back = b;}
+  GrowableArray<int>* compat_check_field_offsets() const { return Atomic::load_acquire(&_compat_check_field_offsets); }
+  GrowableArray<int>* set_compat_check_field_offsets(GrowableArray<int>* offsets) {
+    return Atomic::cmpxchg(&_compat_check_field_offsets, (GrowableArray<int>*) nullptr, offsets);
+  }
+  void clear_compat_check_field_offsets() {
+    _compat_check_field_offsets = nullptr;
+  }
 
  protected:                                // internal accessors
   void     set_subklass(Klass* s);
@@ -479,7 +486,8 @@ protected:
      ModifyClassSize = ModifyClass << 1,         // The size of the class meta data changes.
      ModifyInstances = ModifyClassSize << 1,     // There are change to the instance format.
      ModifyInstanceSize = ModifyInstances << 1,  // The size of instances changes.
-     RemoveSuperType = ModifyInstanceSize << 1,  // A super type of this class is removed.
+     RemoveInterface = ModifyInstanceSize << 1,  // A super type of this class is removed.
+     RemoveSuperType = RemoveInterface << 1,  // A super type of this class is removed.
      MarkedAsAffected = RemoveSuperType << 1,    // This class has been marked as an affected class.
      PrimaryRedefine = MarkedAsAffected << 1     // This class is from primary redefinition set
    };
