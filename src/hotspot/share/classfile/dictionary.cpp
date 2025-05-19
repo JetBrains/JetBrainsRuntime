@@ -320,8 +320,10 @@ DictionaryEntry* Dictionary::get_entry(Thread* current,
 // (DCEVM) replace old_class by new class in dictionary
 bool Dictionary::update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass) {
   DictionaryEntry* entry = get_entry(current, class_name);
-  if (entry != NULL) {
-    assert(entry->instance_klass() == old_klass, "should be old class");
+  if (entry != nullptr) {
+    // update_class is called :
+    // 1. From load_new_class_versions when the new version of a class is parsed
+    // 2. From redefinition doit() to make sure that all entries updated to new versions
     entry->set_instance_klass(k);
     return true;
   }
