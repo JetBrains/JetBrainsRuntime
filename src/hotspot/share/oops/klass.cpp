@@ -196,13 +196,14 @@ void* Klass::operator new(size_t size, ClassLoaderData* loader_data, size_t word
 // The constructor is also used from CppVtableCloner,
 // which doesn't zero out the memory before calling the constructor.
 Klass::Klass(KlassKind kind) : _kind(kind),
-                           _old_version(NULL),
-                           _new_version(NULL),
+                           _old_version(nullptr),
+                           _new_version(nullptr),
                            _redefinition_flags(Klass::NoRedefinition),
                            _is_redefining(false),
-                           _update_information(NULL),
+                           _update_information(nullptr),
                            _is_copying_backwards(false),
                            _is_rolled_back(false),
+                           _compat_check_field_offsets(nullptr),
                            _shared_class_path_index(-1) {
   CDS_ONLY(_shared_class_flags = 0;)
   CDS_JAVA_HEAP_ONLY(_archived_mirror_index = -1;)
