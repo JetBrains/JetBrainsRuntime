@@ -902,6 +902,7 @@ class WindowsPath implements Path {
         if (sm != null) {
             sm.checkDelete(getPathForPermissionCheck());
         }
+    }
 
     private byte[] getUppercasePath() {
         byte[] result = uppercasePath != null ? uppercasePath.get() : null;
