@@ -41,10 +41,8 @@ class PlatformEvent : public CHeapObj<mtSynchronizer> {
   public:
     PlatformEvent() {
       _Event   = 0 ;
-      if (!UseModernSynchAPI) {
-        _ParkHandle = CreateEvent (nullptr, false, false, nullptr) ;
-        guarantee (_ParkHandle != nullptr, "invariant") ;
-      }
+      _ParkHandle = CreateEvent (nullptr, false, false, nullptr) ;
+      guarantee (_ParkHandle != nullptr, "invariant") ;
     }
 
     // Exercise caution using reset() and fired() - they may require MEMBARs
@@ -59,23 +57,16 @@ class PlatformEvent : public CHeapObj<mtSynchronizer> {
 class PlatformParker {
   NONCOPYABLE(PlatformParker);
 
-protected:
+ protected:
   HANDLE _ParkHandle;
-  int _TargetValue;
 
-public:
+ public:
   PlatformParker() {
-    if (UseModernSynchAPI) {
-      _TargetValue = 0;
-    } else {
-      _ParkHandle = CreateEvent (nullptr, true, false, nullptr) ;
-      guarantee(_ParkHandle != nullptr, "invariant") ;
-    }
+    _ParkHandle = CreateEvent (nullptr, true, false, nullptr) ;
+    guarantee(_ParkHandle != nullptr, "invariant") ;
   }
   ~PlatformParker() {
-    if (! UseModernSynchAPI) {
-      CloseHandle(_ParkHandle);
-    }
+    CloseHandle(_ParkHandle);
   }
 };
 
