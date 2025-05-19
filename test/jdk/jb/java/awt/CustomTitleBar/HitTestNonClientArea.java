@@ -67,7 +67,7 @@ public class HitTestNonClientArea {
 
     public static void main(String... args) {
         TaskResult awtResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createFrameWithCustomTitleBar, TestUtils::createDialogWithCustomTitleBar), hitTestNonClientAreaAWT);
-        TaskResult swingResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createJFrameWithCustomTitleBar, TestUtils::createJFrameWithCustomTitleBar), hitTestNonClientAreaSwing);
+        TaskResult swingResult = CommonAPISuite.runTestSuite(List.of(TestUtils::createJFrameWithCustomTitleBar, TestUtils::createJDialogWithCustomTitleBar), hitTestNonClientAreaSwing);
 
         TaskResult result = awtResult.merge(swingResult);
         if (!result.isPassed()) {
@@ -84,28 +84,35 @@ public class HitTestNonClientArea {
 
         @Override
         protected void cleanup() {
+            System.out.println("Cleanup");
             Arrays.fill(gotClicks, false);
             titleBar = null;
         }
 
         @Override
         public void prepareTitleBar() {
+            System.out.println("Prepare title bar");
             titleBar = JBR.getWindowDecorations().createCustomTitleBar();
             titleBar.setHeight(TestUtils.TITLE_BAR_HEIGHT);
+            System.out.println("Title bar prepared");
         }
 
         @Override
         public void customizeWindow() {
+            System.out.println("Customize window");
             button = new Button();
             button.setBackground(Color.CYAN);
             button.setSize(BUTTON_WIDTH, BUTTON_HEIGHT);
             MouseAdapter adapter = new MouseAdapter() {
                 private void hit() {
+                    System.out.println("hit");
                     titleBar.forceHitTest(false);
                 }
 
                 @Override
                 public void mouseClicked(MouseEvent e) {
+                    System.out.println("Mouse clicked");
+                    System.out.println(e);
                     hit();
                     if (e.getButton() >= 1 && e.getButton() <= 3) {
                         gotClicks[e.getButton() - 1] = true;
@@ -114,33 +121,42 @@ public class HitTestNonClientArea {
 
                 @Override
                 public void mousePressed(MouseEvent e) {
+                    System.out.println("Mouse pressed");
                     hit();
                 }
 
                 @Override
                 public void mouseReleased(MouseEvent e) {
+                    System.out.println("Mouse released");
                     hit();
                 }
             };
             button.addMouseListener(adapter);
             button.addMouseMotionListener(adapter);
 
+            System.out.println("Button added");
             Panel panel = new Panel();
             panel.setBounds(300, 20, 100, 50);
             panel.add(button);
             window.add(panel);
+            System.out.println("Panel added");
         }
 
         @Override
         public void test() throws AWTException {
+            System.out.println("Test RUN");
             Robot robot = new Robot();
 
             int initialX = button.getLocationOnScreen().x + button.getWidth() / 2;
             int initialY = button.getLocationOnScreen().y + button.getHeight() / 2;
 
+            System.out.println("Initial location: " + initialX + ", " + initialY);
+
             for (Integer mask: BUTTON_MASKS) {
                 MouseUtils.verifyLocationAndClick(robot, window, initialX, initialY, mask);
             }
+
+            System.out.println("Clicks 1 done");
 
             Point initialLocation = window.getLocationOnScreen();
             robot.waitForIdle();
@@ -152,10 +168,12 @@ public class HitTestNonClientArea {
                 robot.delay(300);
                 MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
             }
+            System.out.println("Moves done");
             robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
             robot.waitForIdle();
             Point newLocation = window.getLocationOnScreen();
 
+            System.out.println("Checked location");
             passed = initialLocation.x < newLocation.x && initialLocation.y < newLocation.y;
             if (!passed) {
                 System.out.println("Window location was changed");
