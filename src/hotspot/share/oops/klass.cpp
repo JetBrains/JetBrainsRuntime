@@ -308,6 +308,7 @@ Klass::Klass(KlassKind kind) : _kind(kind),
                                _update_information(nullptr),
                                _is_copying_backwards(false),
                                _is_rolled_back(false),
+                               _compat_check_field_offsets(nullptr),
                                _shared_class_path_index(-1)
                                {
   CDS_ONLY(_shared_class_flags = 0;)
