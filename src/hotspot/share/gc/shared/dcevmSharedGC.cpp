@@ -34,17 +34,31 @@
 #include "oops/oop.inline.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/copy.hpp"
+#include "runtime/fieldDescriptor.hpp"
+#include "runtime/fieldDescriptor.inline.hpp"
+
+DcevmSharedGC* DcevmSharedGC::_static_instance = nullptr;
+
+void DcevmSharedGC::create_static_instance() {
+  _static_instance = new DcevmSharedGC();
+}
+
+void DcevmSharedGC::destroy_static_instance() {
+  if (_static_instance != nullptr) {
+    delete _static_instance;
+    _static_instance = nullptr;
+  }
+}
 
 void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, bool must_be_new) {
-  if (rescued_oops != NULL) {
+  if (rescued_oops != nullptr) {
     copy_rescued_objects_back(rescued_oops, 0, rescued_oops->length(), must_be_new);
   }
 }
 
 // (DCEVM) Copy the rescued objects to their destination address after compaction.
 void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, int from, int to, bool must_be_new) {
-
-  if (rescued_oops != NULL) {
+  if (rescued_oops != nullptr) {
     for (int i=from; i < to; i++) {
       HeapWord* rescued_ptr = rescued_oops->at(i);
       oop rescued_obj = cast_to_oop(rescued_ptr);
@@ -52,10 +66,10 @@ void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_
       size_t size = rescued_obj->size();
       oop new_obj = rescued_obj->forwardee();
 
-      assert(!must_be_new || rescued_obj->klass()->new_version() != NULL, "Just checking");
+      assert(!must_be_new || rescued_obj->klass()->new_version() != nullptr, "Just checking");
       Klass* new_klass = rescued_obj->klass()->new_version();
-      if (new_klass!= NULL) {
-        if (new_klass->update_information() != NULL) {
+      if (new_klass!= nullptr) {
+        if (new_klass->update_information() != nullptr) {
           DcevmSharedGC::update_fields(rescued_obj, new_obj);
         } else {
           rescued_obj->set_klass(new_klass);
@@ -69,11 +83,10 @@ void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_
       assert(oopDesc::is_oop(new_obj), "must be a valid oop");
     }
   }
-
 }
 
 void DcevmSharedGC::clear_rescued_objects_resource(GrowableArray<HeapWord*>* rescued_oops) {
-  if (rescued_oops != NULL) {
+  if (rescued_oops != nullptr) {
     for (int i=0; i < rescued_oops->length(); i++) {
       HeapWord* rescued_ptr = rescued_oops->at(i);
       size_t size = cast_to_oop(rescued_ptr)->size();
@@ -84,7 +97,7 @@ void DcevmSharedGC::clear_rescued_objects_resource(GrowableArray<HeapWord*>* res
 }
 
 void DcevmSharedGC::clear_rescued_objects_heap(GrowableArray<HeapWord*>* rescued_oops) {
-  if (rescued_oops != NULL) {
+  if (rescued_oops != nullptr) {
     for (int i=0; i < rescued_oops->length(); i++) {
       HeapWord* rescued_ptr = rescued_oops->at(i);
       FREE_C_HEAP_ARRAY(HeapWord, rescued_ptr);
@@ -96,7 +109,7 @@ void DcevmSharedGC::clear_rescued_objects_heap(GrowableArray<HeapWord*>* rescued
 // (DCEVM) Update instances of a class whose fields changed.
 void DcevmSharedGC::update_fields(oop q, oop new_location) {
 
-  assert(q->klass()->new_version() != NULL, "class of old object must have new version");
+  assert(q->klass()->new_version() != nullptr, "class of old object must have new version");
 
   Klass* old_klass_oop = q->klass();
   Klass* new_klass_oop = q->klass()->new_version();
@@ -107,7 +120,7 @@ void DcevmSharedGC::update_fields(oop q, oop new_location) {
   size_t size = q->size_given_klass(old_klass);
   size_t new_size = q->size_given_klass(new_klass);
 
-  HeapWord* tmp = NULL;
+  HeapWord* tmp = nullptr;
   oop tmp_obj = q;
 
   // Save object somewhere, there is an overlap in fields
@@ -122,39 +135,141 @@ void DcevmSharedGC::update_fields(oop q, oop new_location) {
 
   q->set_klass(new_klass_oop);
   int *cur = new_klass_oop->update_information();
-  assert(cur != NULL, "just checking");
-  DcevmSharedGC::update_fields(new_location, q, cur);
+  assert(cur != nullptr, "just checking");
+  _static_instance->update_fields(new_location, q, cur, false);
 
-  if (tmp != NULL) {
+  if (tmp != nullptr) {
     FREE_RESOURCE_ARRAY(HeapWord, tmp, size);
   }
 }
 
-void DcevmSharedGC::update_fields(oop new_location, oop tmp_obj, int *cur) {
-  assert(cur != NULL, "just checking");
-  char* to = (char*)cast_from_oop<HeapWord*>(new_location);
+void DcevmSharedGC::update_fields(oop new_obj, oop old_obj, int* cur, bool do_compat_check) {
+  assert(cur != nullptr, "just checking");
+  char* to = (char*)cast_from_oop<HeapWord*>(new_obj);
+  char* src_base = (char *)cast_from_oop<HeapWord*>(old_obj);
   while (*cur != 0) {
-    int size = *cur;
-    if (size > 0) {
+    int raw = *cur;
+    if (raw > 0) {
       cur++;
-      int offset = *cur;
-      HeapWord* from = (HeapWord*)(((char *)cast_from_oop<HeapWord*>(tmp_obj)) + offset);
-      if (size == HeapWordSize) {
-        *((HeapWord*)to) = *from;
-      } else if (size == HeapWordSize * 2) {
-        *((HeapWord*)to) = *from;
-        *(((HeapWord*)to) + 1) = *(from + 1);
+      int src_offset = *cur;
+      HeapWord* from = (HeapWord*)(src_base + src_offset);
+
+      bool compat_check = do_compat_check && ((raw & UpdateInfoCompatFlag) != 0);
+      int size = (raw & UpdateInfoLengthMask);
+
+      if (!compat_check) {
+        if (size == HeapWordSize) {
+          *((HeapWord *) to) = *from;
+        } else if (size == HeapWordSize * 2) {
+          *((HeapWord *) to) = *from;
+          *(((HeapWord *) to) + 1) = *(from + 1);
+        } else {
+          Copy::conjoint_jbytes(from, to, size);
+        }
       } else {
-        Copy::conjoint_jbytes(from, to, size);
+        assert(size == heapOopSize, "Must be one oop");
+        int dst_offset = (int)(to - (char*)cast_from_oop<HeapWord*>(new_obj));
+
+        oop obj = old_obj->obj_field(src_offset);
+
+        if (obj == nullptr) {
+          new_obj->obj_field_put(dst_offset, nullptr);
+        } else {
+          bool compatible = is_compatible(new_obj, dst_offset, obj);
+          new_obj->obj_field_put(dst_offset, compatible ? obj : (oop)nullptr);
+        }
       }
       to += size;
       cur++;
     } else {
-      assert(size < 0, "");
-      int skip = -*cur;
-      Copy::fill_to_bytes(to, skip, 0);
-      to += skip;
+      Copy::fill_to_bytes(to, -raw, 0);
+      to += -raw;
       cur++;
     }
   }
+}
+
+void DcevmSharedGC::update_fields_in_old(oop old_obj, int* cur) {
+  assert(cur != nullptr, "just checking");
+  int dst_offset = 0;
+  while (*cur != 0) {
+    int raw = *cur;
+    if (raw > 0) {
+      cur++;
+      int size = (raw & UpdateInfoLengthMask);
+
+      if ((raw & UpdateInfoCompatFlag) != 0) {
+        assert(size == heapOopSize, "Must be one oop");
+        int src_offset = *cur;
+        oop obj = old_obj->obj_field(src_offset);
+        if (obj != nullptr) {
+          bool compatible = is_compatible(old_obj, dst_offset, obj);
+          if (!compatible) {
+            old_obj->obj_field_put(src_offset, nullptr);
+          }
+        }
+      }
+      dst_offset += size;
+      cur++;
+    } else {
+      dst_offset += -raw;
+      cur++;
+    }
+  }
+}
+
+static inline bool signature_matches_name(Symbol* sig, Symbol* name) {
+  const int sig_len  = sig->utf8_length();
+  const int name_len = name->utf8_length();
+  if (sig_len != name_len + 2) {
+    return false;
+  }
+  const u1* s = sig ->bytes();
+  const u1* n = name->bytes();
+  return (s[0] == 'L' && s[sig_len - 1] == ';' && memcmp(s + 1, n, name_len) == 0);
+}
+
+bool DcevmSharedGC::is_compatible(oop fld_holder, int fld_offset, oop fld_val) {
+  assert(oopDesc::is_oop(fld_val), "val has corrupted header");
+
+  bool result = false;
+  Symbol *sig_wanted;
+
+  InstanceKlass* holder_ik = InstanceKlass::cast(fld_holder->klass()->newest_version());
+  Symbol** sig_cached = _field_sig_table->get({holder_ik, fld_offset});
+
+  if (sig_cached != nullptr) {
+    sig_wanted = *sig_cached;
+  } else {
+    fieldDescriptor fd_new;
+    bool ok = holder_ik->find_field_from_offset(fld_offset, false, &fd_new);
+    assert(ok, "Must exist");
+    sig_wanted = fd_new.signature();
+    _field_sig_table->put({holder_ik, fld_offset}, sig_wanted);
+  }
+
+  InstanceKlass *ik = InstanceKlass::cast(fld_val->klass()->newest_version());
+  bool* hit = _compat_table->get({ik, sig_wanted });
+
+  if (hit != nullptr) {
+    result = *hit;
+  } else {
+    InstanceKlass* scan = ik;
+    while (scan != nullptr && !result) {
+      if (signature_matches_name(sig_wanted, scan->name())) {
+        result = true;
+        break;
+      }
+      Array<InstanceKlass*>* ifaces = scan->local_interfaces();
+      for (int j = 0; j < ifaces->length(); ++j) {
+        if (signature_matches_name(sig_wanted, ifaces->at(j)->name())) {
+          result = true;
+          break;
+        }
+      }
+      scan = (scan->super() != nullptr) ? InstanceKlass::cast(scan->super()) : nullptr;
+    }
+    _compat_table->put({ik, sig_wanted }, result);
+  }
+  return result;
 }
