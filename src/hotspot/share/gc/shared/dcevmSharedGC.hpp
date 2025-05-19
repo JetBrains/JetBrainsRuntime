@@ -33,16 +33,63 @@
 #include "runtime/timer.hpp"
 #include "utilities/growableArray.hpp"
 #include "utilities/stack.hpp"
+#include "utilities/resourceHash.hpp"
 
 // Shared GC code used from different GC (Serial, CMS, G1) on enhanced redefinition
 class DcevmSharedGC : AllStatic {
- public:
+private:
+  struct SymbolKey {
+    InstanceKlass* ik;
+    Symbol*        dst_sig;
+  };
+  static unsigned symbol_hash(const SymbolKey& k) {
+    return (uintptr_t)k.ik ^ (uintptr_t)k.dst_sig;
+  }
+  static bool symbol_eq(const SymbolKey& a, const SymbolKey& b) {
+    return a.ik == b.ik && a.dst_sig == b.dst_sig;
+  }
+  typedef ResourceHashtable<SymbolKey, bool, 512,
+          AnyObj::C_HEAP, mtInternal,
+          &symbol_hash, &symbol_eq> CompatTable;
+
+  struct OffsetKey {
+    InstanceKlass* ik;
+    int            offset;
+  };
+  static unsigned offset_hash(const OffsetKey& k) {
+    return uintptr_t(k.ik) ^ k.offset;
+  }
+  static bool offset_eq(const OffsetKey& a, const OffsetKey& b) {
+    return a.ik == b.ik && a.offset == b.offset;
+  }
+  typedef ResourceHashtable<OffsetKey, Symbol*, 512,
+          AnyObj::C_HEAP, mtInternal,
+          &offset_hash, &offset_eq> FieldSigTable;
+
+  static CompatTable* _compat_table;
+  static FieldSigTable* _field_sig_table;
+
+  static void set_fld_with_compat_check(oop fld_holder, int fld_offset, oop fld_val);
+public:
+  // ------------------------------------------------------------------
+  //  update info flags
+  //
+  //  bit 31 : sign bit  (<0 = fill, >0 = copy)
+  //  bit 30 : UpdateInfoCompatFlag – copy segment requires per-oop compatibility check
+  //  bits 0-29 : raw byte length of the segment
+  // ------------------------------------------------------------------
+  static const int UpdateInfoCompatFlag  = 1U << 30;
+  static const int UpdateInfoLengthMask  = ~(1U << 31 | UpdateInfoCompatFlag);
+
+  static void create_compat_check_tables();
+  static void destroy_compat_check_tables();
   static void copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, bool must_be_new);
   static void copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, int from, int to, bool must_be_new);
   static void clear_rescued_objects_resource(GrowableArray<HeapWord*>* rescued_oops);
   static void clear_rescued_objects_heap(GrowableArray<HeapWord*>* rescued_oops);
   static void update_fields(oop q, oop new_location);
-  static void update_fields(oop new_location, oop tmp_obj, int *cur);
+  static void update_fields(oop new_location, oop tmp_obj, int *cur, bool do_compat_check);
+  static void post_gc_compat_check(oop obj, int* cur);
 };
 
 #endif

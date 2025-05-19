@@ -202,6 +202,7 @@ Klass::Klass(KlassKind kind) : _kind(kind),
                            _is_redefining(false),
                            _update_information(NULL),
                            _is_copying_backwards(false),
+                           _is_fld_compat_check(false),
                            _is_rolled_back(false),
                            _shared_class_path_index(-1) {
   CDS_ONLY(_shared_class_flags = 0;)

@@ -83,6 +83,8 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   bool _object_klass_redefined;
   // true if vmClasses::*_klass is redefined
   bool _vm_class_redefined;
+  // true if field compatibility check will be done in post GC run
+  bool _post_gc_fld_compat_check;
 
   // (DCEVM) Enhanced class redefinition, affected klasses contain all classes which should be redefined
   // either because of redefine, class hierarchy or interface change

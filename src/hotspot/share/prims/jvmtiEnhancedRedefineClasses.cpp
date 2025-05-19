@@ -115,6 +115,7 @@ VM_EnhancedRedefineClasses::VM_EnhancedRedefineClasses(jint class_count, const j
   _any_class_has_resolved_methods = false;
   _object_klass_redefined = false;
   _vm_class_redefined = false;
+  _post_gc_fld_compat_check = false;
   _id = next_id();
 }
 
@@ -204,26 +205,60 @@ bool VM_EnhancedRedefineClasses::doit_prologue() {
 class FieldCopier : public FieldClosure {
   public:
   void do_field(fieldDescriptor* fd) {
-    InstanceKlass* cur = InstanceKlass::cast(fd->field_holder());
+    InstanceKlass *cur = InstanceKlass::cast(fd->field_holder());
     oop cur_oop = cur->java_mirror();
 
-    InstanceKlass* old = InstanceKlass::cast(cur->old_version());
+    InstanceKlass *old = InstanceKlass::cast(cur->old_version());
     oop old_oop = old->java_mirror();
 
     fieldDescriptor result;
-    bool found = old->find_local_field(fd->name(), fd->signature(), &result);
+    Symbol *sig_new = fd->signature();
+    bool found = old->find_local_field_by_name(fd->name(), &result);
     if (found && result.is_static()) {
-      log_trace(redefine, class, obsolete, metadata)("Copying static field value for field %s old_offset=%d new_offset=%d",
-                                               fd->name()->as_C_string(), result.offset(), fd->offset());
-      memcpy(cur_oop->field_addr<HeapWord>(fd->offset()),
-             old_oop->field_addr<HeapWord>(result.offset()),
-             type2aelembytes(fd->field_type()));
+      Symbol *sig_old = result.signature();
+      bool compatible = false;
 
-      // Static fields may have references to java.lang.Class
-      if (fd->field_type() == T_OBJECT) {
-         oop oop = cur_oop->obj_field(fd->offset());
-         if (oop != nullptr && oop->is_instance() && InstanceKlass::cast(oop->klass())->is_mirror_instance_klass()) {
-            Klass* klass = java_lang_Class::as_Klass(oop);
+      if (sig_new == sig_old) {
+        compatible = true;
+      } else {
+        if (fd->field_type() == T_OBJECT && result.field_type() == T_OBJECT) {
+          oop oop = old_oop->obj_field(result.offset());
+          if (oop != nullptr) {
+            Klass* k = oop->klass();
+            if (k->is_instance_klass() && k->is_redefining()) {
+              InstanceKlass *scan = InstanceKlass::cast(k);
+              while (scan != nullptr && !compatible) {
+                if (sig_new->equals(scan->signature_name())) {
+                  compatible = true;
+                  break;
+                }
+                Array<InstanceKlass*>* local_interfaces = scan->local_interfaces();
+                for (int j = 0; j < local_interfaces->length(); j++) {
+                  Klass* iface = local_interfaces->at(j);
+                  if (sig_new->equals(iface->signature_name())) {
+                    compatible = true;
+                    break;
+                  }
+                }
+                scan = (scan->super() != nullptr) ? InstanceKlass::cast(scan->super()) : nullptr;
+              }
+            }
+          }
+        }
+      }
+
+      if (compatible) {
+        log_trace(redefine, class, obsolete, metadata)("Copying static field value for field %s old_offset=%d new_offset=%d",
+                  fd->name()->as_C_string(), result.offset(), fd->offset());
+        memcpy(cur_oop->field_addr<HeapWord>(fd->offset()),
+               old_oop->field_addr<HeapWord>(result.offset()),
+               type2aelembytes(fd->field_type()));
+
+        // Static fields may have references to java.lang.Class
+        if (fd->field_type() == T_OBJECT) {
+          oop oop = cur_oop->obj_field(fd->offset());
+          if (oop != nullptr && oop->is_instance() && InstanceKlass::cast(oop->klass())->is_mirror_instance_klass()) {
+            Klass *klass = java_lang_Class::as_Klass(oop);
             if (klass != nullptr && klass->is_instance_klass()) {
               assert(oop == InstanceKlass::cast(klass)->java_mirror(), "just checking");
               if (klass->new_version() != nullptr) {
@@ -233,8 +268,12 @@ class FieldCopier : public FieldClosure {
             }
           }
         }
+      } else {
+        log_trace(redefine,class, obsolete, metadata)("Skipping incompatible static field %s, old_signature=%s, new_signature=%s",
+                  fd->name()->as_C_string(), sig_old->as_C_string(), sig_new->as_C_string());
       }
     }
+  }
 };
 
 
@@ -492,11 +531,20 @@ public:
           src->set_klass(obj->klass()->new_version());
           //  FIXME: instance updates...
           //guarantee(false, "instance updates!");
-          DcevmSharedGC::update_fields(obj, src, new_klass->update_information());
+          DcevmSharedGC::update_fields(obj, src, new_klass->update_information(), true);
         }
       } else {
         obj->set_klass(obj->klass()->new_version());
       }
+    }
+  }
+};
+
+class CheckFieldCompatibilityClosure : public ObjectClosure {
+public:
+  virtual void do_object(oop obj) {
+    if (obj->klass()->is_redefining() && obj->klass()->is_fld_compat_check()) {
+      DcevmSharedGC::post_gc_compat_check(obj, obj->klass()->update_information());
     }
   }
 };
@@ -552,6 +600,7 @@ void VM_EnhancedRedefineClasses::doit() {
   }
 
   Universe::set_inside_redefinition(true);
+  DcevmSharedGC::create_compat_check_tables();
 
   // Mark methods seen on stack and everywhere else so old methods are not
   // cleaned up if they're on the stack.
@@ -741,6 +790,14 @@ void VM_EnhancedRedefineClasses::doit() {
 
     _timer_heap_full_gc.stop();
     log_trace(redefine, class, redefine, metadata)("After redefinition full GC run");
+
+    if (_post_gc_fld_compat_check) {
+      log_trace(redefine, class, redefine, metadata)("Before checking field compatibility");
+      Universe::heap()->ensure_parsability(false);
+      CheckFieldCompatibilityClosure compatClosure;
+      Universe::heap()->object_iterate(&compatClosure);
+      log_trace(redefine, class, redefine, metadata)("After checking field compatibility");
+    }
   }
 
   // Unmark Klasses as "redefining"
@@ -787,6 +844,7 @@ void VM_EnhancedRedefineClasses::doit() {
   }
 #endif
 
+  DcevmSharedGC::destroy_compat_check_tables();
   Universe::set_inside_redefinition(false);
   _timer_vm_op_doit.stop();
 
@@ -1118,9 +1176,9 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(Old2N
       redefinition_flags = Klass::NoRedefinition;
     } else {
       redefinition_flags = calculate_redefinition_flags(new_class, old_2_new_klass_map);
-      if (redefinition_flags >= Klass::RemoveSuperType) {
-        return JVMTI_ERROR_UNSUPPORTED_REDEFINITION_HIERARCHY_CHANGED;
-      }
+//      if (redefinition_flags >= Klass::RemoveSuperType) {
+//        return JVMTI_ERROR_UNSUPPORTED_REDEFINITION_HIERARCHY_CHANGED;
+//      }
     }
 
     if (new_class->super() != nullptr) {
@@ -1484,7 +1542,7 @@ jvmtiError VM_EnhancedRedefineClasses::find_class_bytes(InstanceKlass* the_class
 
 // Calculate difference between non static fields of old and new class and store the info into new class:
 //     instanceKlass->store_update_information
-//     instanceKlass->copy_backwards
+//     instanceKlass->copying_backwards
 void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* new_version) {
 
   class CalculateFieldUpdates : public FieldClosure {
@@ -1493,16 +1551,21 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne
     InstanceKlass* _old_ik;
     GrowableArray<int> _update_info;
     int _position;
-    bool _copy_backwards;
+    bool _copying_backwards;
+    bool _compat_check;
 
   public:
 
-    bool does_copy_backwards() {
-      return _copy_backwards;
+    bool is_copying_backwards() {
+      return _copying_backwards;
+    }
+
+    bool is_compat_check() {
+      return _compat_check;
     }
 
     CalculateFieldUpdates(InstanceKlass* old_ik) :
-        _old_ik(old_ik), _position(instanceOopDesc::base_offset_in_bytes()), _copy_backwards(false) {
+        _old_ik(old_ik), _position(instanceOopDesc::base_offset_in_bytes()), _copying_backwards(false), _compat_check() {
       _update_info.append(_position);
       _update_info.append(0);
     }
@@ -1524,43 +1587,73 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne
       assert(_position == fd->offset(), "must be correct offset!");
 
       InstanceKlass* holder = fd->field_holder();
+      InstanceKlass* maybe_old_holder = holder->is_redefining() ? InstanceKlass::cast(holder->old_version()) : holder;
       if (fd->index() < holder->java_fields_count()) {
         fieldDescriptor old_fd;
-        if (_old_ik->find_field(fd->name(), fd->signature(), false, &old_fd) != nullptr) {
-          // Found field in the old class, copy
-          copy(old_fd.offset(), type2aelembytes(fd->field_type()));
 
-          if (old_fd.offset() < fd->offset()) {
-            _copy_backwards = true;
+        bool found = false;
+        if (_old_ik->find_field(fd->name(), fd->signature(), false, &old_fd) != nullptr) {
+          found = true;
+        } else {
+          if (maybe_old_holder->find_local_field_by_name(fd->name(), &old_fd) && !old_fd.is_static()) {
+            found = true;
+          }
+        }
+
+        if (found) {
+          // Found field in the old class, copy
+          Symbol *sig_new = fd->signature();
+          Symbol *sig_old = old_fd.signature();
+          int compat_flag;
+
+          if (sig_new == sig_old) {
+            compat_flag = 1;
+          } else {
+            if (fd->field_type() == T_OBJECT && old_fd.field_type() == T_OBJECT) {
+              compat_flag = 0;
+              _compat_check = true;
+            } else {
+              compat_flag = -1;
+            }
           }
 
-          // Transfer special flags
-          fd->set_is_field_modification_watched(old_fd.is_field_modification_watched());
-          fd->set_is_field_access_watched(old_fd.is_field_access_watched());
+          if (compat_flag != -1) {
+            copy(old_fd.offset(), type2aelembytes(fd->field_type()), (compat_flag == 0));
+
+            if (old_fd.offset() < fd->offset()) {
+              _copying_backwards = true;
+            }
+
+            // Transfer special flags
+            fd->set_is_field_modification_watched(old_fd.is_field_modification_watched());
+            fd->set_is_field_access_watched(old_fd.is_field_access_watched());
+          } else {
+            fill(type2aelembytes(fd->field_type()));
+          }
         } else {
           // New field, fill
           fill(type2aelembytes(fd->field_type()));
         }
       } else {
         FieldInfo internal_field = holder->field(fd->index());
-        InstanceKlass* maybe_old_klass = holder->is_redefining() ? InstanceKlass::cast(holder->old_version()) : holder;
-        int java_fields_count = maybe_old_klass->java_fields_count();
+
+        int java_fields_count = maybe_old_holder->java_fields_count();
         int num_injected;
-        const InjectedField* const injected = JavaClasses::get_injected(maybe_old_klass->name(), &num_injected);
-        for (int i = java_fields_count; i < java_fields_count+num_injected; i++) {
-          FieldInfo maybe_old_field = maybe_old_klass->field(i);
+        const InjectedField *const injected = JavaClasses::get_injected(maybe_old_holder->name(), &num_injected);
+        for (int i = java_fields_count; i < java_fields_count + num_injected; i++) {
+          FieldInfo maybe_old_field = maybe_old_holder->field(i);
           if (maybe_old_field.field_flags().is_injected() &&
               internal_field.field_flags().is_injected() &&
               maybe_old_field.lookup_symbol(maybe_old_field.name_index()) == internal_field.lookup_symbol(internal_field.name_index())) {
-            copy(maybe_old_field.offset(), type2aelembytes(Signature::basic_type(internal_field.signature_injected_dcevm())));
+            copy(maybe_old_field.offset(), type2aelembytes(Signature::basic_type(internal_field.signature_injected_dcevm())), false);
             if (maybe_old_field.offset() < internal_field.offset()) {
-              _copy_backwards = true;
+              _copying_backwards = true;
             }
             break;
           }
         }
       }
-   }
+    }
 
   private:
     void fill(int size) {
@@ -1572,19 +1665,24 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne
       _position += size;
     }
 
-    void copy(int offset, int size) {
-      int prev_end = -1;
-      if (_update_info.length() > 0 && _update_info.at(_update_info.length() - 1) > 0) {
-        prev_end = _update_info.at(_update_info.length() - 2) + _update_info.at(_update_info.length() - 1);
-      }
+    void copy(int offset, int size, bool needs_compat_check) {
+      if (!needs_compat_check && _update_info.length() >= 2) {
+        int last_size = _update_info.at(_update_info.length() - 2);
+        int last_offset = _update_info.at(_update_info.length() - 1);
 
-      if (prev_end == offset) {
-        (*_update_info.adr_at(_update_info.length() - 2)) += size;
-      } else {
-        _update_info.append(size);
-        _update_info.append(offset);
+        if (last_offset > 0 && (last_size & DcevmSharedGC::UpdateInfoCompatFlag) == 0) {
+          int last_len = last_size & DcevmSharedGC::UpdateInfoLengthMask;
+          int prev_end = last_offset + last_len;
+          if (prev_end == offset) {
+            (*_update_info.adr_at(_update_info.length() - 2)) += size;
+            _position += size;
+            return;
+          }
+        }
       }
-
+      int tagged_size = needs_compat_check ? (size | DcevmSharedGC::UpdateInfoCompatFlag) : size;
+      _update_info.append(tagged_size);
+      _update_info.append(offset);
       _position += size;
     }
   };
@@ -1598,10 +1696,16 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne
 
   GrowableArray<int> result = cl.finish();
   ik->store_update_information(result);
-  ik->set_copying_backwards(cl.does_copy_backwards());
+  ik->set_copying_backwards(cl.is_copying_backwards());
+
+  if (cl.is_compat_check() && ik->size_helper() != old_ik->size_helper()) {
+    ik->set_fld_compat_check(cl.is_compat_check());
+    _post_gc_fld_compat_check = true;
+  }
+
   if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
     log_trace(redefine, class, obsolete, metadata)("Instance update information for %s:", new_version->name()->as_C_string());
-    if (cl.does_copy_backwards()) {
+    if (cl.is_copying_backwards()) {
       log_trace(redefine, class, obsolete, metadata)("\tDoes copy backwards!");
     }
     for (int i=0; i<result.length(); i++) {
