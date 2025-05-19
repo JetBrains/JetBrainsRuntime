@@ -575,6 +575,7 @@ public:
   bool find_local_field_from_offset(int offset, bool is_static, fieldDescriptor* fd) const;
   bool find_field_from_offset(int offset, bool is_static, fieldDescriptor* fd) const;
 
+  bool find_local_field_by_name(Symbol* name, fieldDescriptor* fd) const;
  private:
   inline static int quick_search(const Array<Method*>* methods, const Symbol* name);
 
