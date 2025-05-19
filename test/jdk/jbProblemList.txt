@@ -837,6 +837,7 @@ java/net/MulticastSocket/SetLoopbackModeIPv4.java JBR-8455 macosx-all
 java/net/MulticastSocket/SetOutgoingIf.java JBR-8828 macosx-x64
 java/net/SocketPermission/SocketPermissionTest.java JBR-8455 macosx-all
 java/net/MulticastSocket/SetLoopbackMode.java                   7122846 macosx-all
+java/net/MulticastSocket/SetOutgoingIf.java 8321217 macosx-14.7.3,macosx-14.7.4
 
 java/net/MulticastSocket/Test.java                              7145658 macosx-all
 
@@ -912,6 +913,7 @@ security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#sslrootevrsaca 8333788 generic-all
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#teliasonerarootcav1 8328825 generic-all
 
+sun/security/lib/cacerts/VerifyCACerts.java 8357195 generic-all
 sun/security/mscapi/CngCipher.java JBR-8508 windows-all
 
 sun/security/smartcardio/TestChannel.java                       8039280 generic-all
@@ -1199,13 +1201,14 @@ tools/jlink/plugins/SystemModuleDescriptors/SystemModulesTest.java JBR-8465 gene
 tools/jlink/plugins/VendorInfoPluginsTest.java JBR-8783 windows-aarch64
 tools/jpackage/share/AddLauncherTest.java#id1 JBR-8701 windows-all
 tools/jpackage/share/IconTest.java JBR-8701 windows-all
+tools/jpackage/share/MultiNameTwoPhaseTest.java JBR-8860 linux-aarch64
 tools/jpackage/windows/Win8301247Test.java JBR-8708 windows-all
 tools/launcher/Arrrghs.java JBR-8466 generic-all
 tools/launcher/ChangeDataModel.java JBR-8467 generic-all
 tools/launcher/HelpFlagsTest.java JBR-2053,JBR-8614 windows-all
 tools/launcher/MultipleJRERemoved.java JBR-8468 generic-all
 tools/launcher/Settings.java JBR-8469 generic-all
-tools/launcher/TestSpecialArgs.java windows-all,linux-6.8.0-1028-aws,linux-5.15.0-1081-aws
+tools/launcher/TestSpecialArgs.java windows-all,linux-aarch64
 tools/launcher/VersionCheck.java JBR-2053 windows-all
 
 ############################################################################
@@ -1214,6 +1217,7 @@ tools/launcher/VersionCheck.java JBR-2053 windows-all
 
 com/sun/jdi/FinalizerTest.java 8343606 generic-all
 com/sun/jdi/RepStep.java                                        8043571 generic-all
+com/sun/jdi/SetLocalWhileThreadInNative.java JBR-8537 generic-all
 
 com/sun/jdi/InvokeHangTest.java                                 8218463 linux-all
 
@@ -1227,6 +1231,7 @@ com/sun/jdi/InvokeHangTest.java                                 8218463 linux-al
 
 java/util/Locale/LocaleProvidersRun.java                        8268379 macosx-x64
 sun/util/locale/provider/CalendarDataRegression.java            8268379 macosx-x64
+java/util/concurrent/BlockingQueue/MultipleProducersSingleConsumerLoops.java JBR-8867 windows-aarch64
 java/util/concurrent/forkjoin/AsyncShutdownNow.java             8286352 linux-all,windows-x64
 java/util/concurrent/ExecutorService/CloseTest.java             8288899 macosx-aarch64
 

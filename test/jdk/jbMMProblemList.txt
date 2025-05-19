@@ -1,9 +1,11 @@
+java/awt/Button/DisabledButtonPress.java JBR-5799,JBR-8858 windows-aarch64,windows-x64
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857,JBR-5398 macosx-all,linux-all,windows-all
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-6284 linux-all
 java/awt/Debug/X11Trace.java JBR-5442 linux-all
 java/awt/EmbeddedFrame/GraphicsConfigTest/GraphicsConfigTest.java 8305515 linux-all
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-x64
 java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916,JBR-7141 linux-all,windows-all
+java/awt/grab/SystemMenuTest.java JBR-8829 windows-x64
 java/awt/Multiscreen/MultiScreenInsetsTest/MultiScreenInsetsTest.java JBR-7782 linux-x64
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-6058,JBR-6664 windows-all,linux-all,macosx-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531 macosx-all,linux-all
@@ -132,7 +134,7 @@ javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java 8253184,JBR-5510 window
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-5510 linux-all
-javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510 windows-all,linux-all
+javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510,JBR-8300 windows-all,linux-all,macosx-aarch64
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5510,JBR-5951 linux-all,windows-x64
 javax/swing/text/html/StyleSheet/bug4936917.java JBR-899,JBR-5510 windows-all,linux-all
 jb/java/awt/MouseInfo/GetPointerInfoTest.java nobug linux-all
