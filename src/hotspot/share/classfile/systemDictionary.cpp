@@ -1428,7 +1428,7 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
     // outcome must be same as result of standard redefinition, that does not create a new Klass
     ClassLoaderDataGraph_lock->lock();
     Symbol*  name_h = k->name();
-    bool ok = ClassLoaderDataGraph::dictionary_classes_do_update_klass(THREAD, name_h, k, old_klass);
+    bool ok = ClassLoaderDataGraph::dictionary_classes_do_update_klass(THREAD, name_h, k, old_klass, true);
     ClassLoaderDataGraph_lock->unlock();
     assert (ok, "must have found old class and updated!");
   }

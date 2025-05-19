@@ -318,10 +318,15 @@ DictionaryEntry* Dictionary::get_entry(Thread* current,
 }
 
 // (DCEVM) replace old_class by new class in dictionary
-bool Dictionary::update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass) {
+bool Dictionary::update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass, bool check_old) {
   DictionaryEntry* entry = get_entry(current, class_name);
-  if (entry != NULL) {
-    assert(entry->instance_klass() == old_klass, "should be old class");
+  if (entry != nullptr) {
+    assert(!check_old || old_klass == entry->instance_klass(), "Must be old");
+    assert(entry->instance_klass()->class_loader_data() == k->class_loader_data(), "Must be same class loader");
+    if (!check_old && entry->instance_klass()->new_version() != nullptr) {
+      ResourceMark rm(current);
+      log_debug(redefine, class, redefine, metadata)("Updating old class from doit() %s", entry->instance_klass()->name()->as_C_string());
+    }
     entry->set_instance_klass(k);
     return true;
   }
