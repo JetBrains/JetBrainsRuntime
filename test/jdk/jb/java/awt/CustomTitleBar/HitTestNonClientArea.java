@@ -243,24 +243,31 @@ public class HitTestNonClientArea {
 
         @Override
         public void test() throws AWTException {
+            System.out.println("Test RUN Swing");
             Robot robot = new Robot();
 
             int initialX = button.getLocationOnScreen().x + button.getWidth() / 2;
             int initialY = button.getLocationOnScreen().y + button.getHeight() / 2;
 
+            System.out.println("Initial location: " + initialX + ", " + initialY);
+
             for (Integer mask: BUTTON_MASKS) {
                 robot.waitForIdle();
 
+                System.out.println("For mask " + mask + " initial location: " + initialX + ", " + initialY);
                 MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
                 robot.mousePress(mask);
                 robot.mouseRelease(mask);
 
                 robot.waitForIdle();
+                System.out.println("Iteration finished");
             }
 
             Point initialLocation = window.getLocationOnScreen();
             robot.waitForIdle();
+            System.out.println("Initial location: " + initialLocation);
             MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
+            System.out.println("Moved");
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
             for (int i = 0; i < 10; i++) {
                 initialX += 3;
@@ -268,10 +275,14 @@ public class HitTestNonClientArea {
                 robot.delay(300);
                 MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
             }
+            System.out.println("Moves done");
 
             robot.waitForIdle();
+            System.out.println("Ready 1");
             robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+            System.out.println("Released 1");
             Point newLocation = window.getLocationOnScreen();
+            System.out.println("Checked location");
 
             passed = initialLocation.x < newLocation.x && initialLocation.y < newLocation.y;
             if (!passed) {
