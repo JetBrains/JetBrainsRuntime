@@ -47,7 +47,11 @@
 //   - doit() - main redefition, adjust existing objects on the heap, clear caches
 //   - doit_epilogue() - cleanup
 class VM_EnhancedRedefineClasses: public VM_GC_Operation {
- private:
+public:
+  static unsigned int sym_hash  (Symbol* const& s) { return (int)(uintptr_t)s; }
+  static bool     sym_equals(Symbol* const& a, Symbol* const& b) { return a == b; }
+  typedef ResourceHashtable<Symbol*, char, 37, AnyObj::C_HEAP, mtInternal, &sym_hash, &sym_equals> SymbolSet;
+private:
   // These static fields are needed by ClassLoaderDataGraph::classes_do()
   // facility and the AdjustCpoolCacheAndVtable helper:
   static Array<Method*>* _old_methods;
@@ -71,7 +75,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // RetransformClasses.  Indicate which.
   JvmtiClassLoadKind          _class_load_kind;
 
-  GrowableArray<InstanceKlass*>*      _new_classes;
+  GrowableArray<InstanceKlass*>*  _new_classes;
   jvmtiError                  _res;
 
   // Set if any of the InstanceKlasses have entries in the ResolvedMethodTable
@@ -89,6 +93,8 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   GrowableArray<Klass*>*      _affected_klasses;
 
   int                         _max_redefinition_flags;
+
+  SymbolSet*                  _removed_interfaces;
 
   // Performance measurement support. These timers do not cover all
   // the work done for JVM/TI RedefineClasses() but they do cover
@@ -113,7 +119,7 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   //
   // The result is sotred in _affected_klasses(old definitions) and _new_classes(new definitions) arrays.
   jvmtiError load_new_class_versions(TRAPS);
-  jvmtiError load_new_class_versions_single_step(Old2NewKlassMap* old_2_new_klass_map, TRAPS);
+  jvmtiError load_new_class_versions_single_step(Old2NewKlassMap* old_2_new_klass_map, GrowableArray<int>* klass_redefinition_flags, TRAPS);
 
   // Searches for all affected classes and performs a sorting such tha
   // a supertype is always before a subtype.
@@ -169,13 +175,6 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
     Thread* _thread;
    public:
     ClearCpoolCacheAndUnpatch(Thread* t) : _thread(t) {}
-    void do_klass(Klass* k);
-  };
-
-  // Clean MethodData out
-  class MethodDataCleaner : public KlassClosure {
-   public:
-    MethodDataCleaner() {}
     void do_klass(Klass* k);
   };
  public:
