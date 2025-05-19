@@ -93,7 +93,7 @@ public:
   void verify();
 
   // (DCEVM) Enhanced class redefinition
-  bool update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass);
+  bool update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass, bool check_old);
 
   void rollback_redefinition();
 

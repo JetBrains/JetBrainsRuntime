@@ -360,13 +360,6 @@ void ClassLoaderDataGraph::verify_dictionary() {
                                 while (ClassLoaderData* X = iter.get_next()) \
                                   if (X->dictionary() != nullptr)
 
-// (DCEVM) - iterate over dict classes
-void ClassLoaderDataGraph::dictionary_classes_do(KlassClosure* klass_closure) {
-  FOR_ALL_DICTIONARY(cld) {
-    cld->dictionary()->classes_do(klass_closure);
-  }
-}
-
 // (DCEVM) rollback redefined classes
 void ClassLoaderDataGraph::rollback_redefinition() {
   FOR_ALL_DICTIONARY(cld) {
@@ -375,12 +368,19 @@ void ClassLoaderDataGraph::rollback_redefinition() {
 }
 
 // (DCEVM) - iterate over all classes in all dictionaries
-bool ClassLoaderDataGraph::dictionary_classes_do_update_klass(Thread* current, Symbol* name, InstanceKlass* k, InstanceKlass* old_klass) {
+bool ClassLoaderDataGraph::dictionary_classes_do_update_klass(Thread* current, Symbol* name, InstanceKlass* k, InstanceKlass* old_klass, bool check_old) {
   bool ok = false;
   FOR_ALL_DICTIONARY(cld) {
-    ok = cld->dictionary()->update_klass(current, name, k, old_klass) || ok;
+    ok = cld->dictionary()->update_klass(current, name, k, old_klass, check_old) || ok;
   }
   return ok;
+}
+
+// (DCEVM) - iterate over all classes in all dictionaries
+void ClassLoaderDataGraph::dictionary_classes_do_classes_do_safepoint(void f(InstanceKlass* const)) {
+  FOR_ALL_DICTIONARY(cld) {
+     cld->dictionary()->classes_do_safepoint(f);
+  }
 }
 
 void ClassLoaderDataGraph::print_dictionary(outputStream* st) {
