@@ -1934,6 +1934,18 @@ bool InstanceKlass::find_field_from_offset(int offset, bool is_static, fieldDesc
 }
 
 
+bool InstanceKlass::find_local_field_by_name(Symbol* name, fieldDescriptor* fd) const {
+  for (JavaFieldStream fs(this); !fs.done(); fs.next()) {
+    Symbol* f_name = fs.name();
+    if (f_name == name) {
+      fd->reinitialize(const_cast<InstanceKlass*>(this), fs.to_FieldInfo());
+      return true;
+    }
+  }
+  return false;
+}
+
+
 void InstanceKlass::methods_do(void f(Method* method)) {
   // Methods aren't stable until they are loaded.  This can be read outside
   // a lock through the ClassLoaderData for profiling
