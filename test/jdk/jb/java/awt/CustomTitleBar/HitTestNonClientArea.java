@@ -159,14 +159,21 @@ public class HitTestNonClientArea {
             System.out.println("Clicks 1 done");
 
             Point initialLocation = window.getLocationOnScreen();
+            System.out.println("Initial location: " + initialLocation);
             robot.waitForIdle();
+            System.out.println("Ready 2");
             MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
+            System.out.println("Moved");
             robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+            System.out.println("Pressed");
             for (int i = 0; i < 10; i++) {
+                System.out.println("Iteration " + i);
                 initialX += 3;
                 initialY += 3;
                 robot.delay(300);
+                System.out.println("Iteration finished for: " + initialX + ", " + initialY);
                 MouseUtils.verifyLocationAndMove(robot, window, initialX, initialY);
+                System.out.println("Moved");
             }
             System.out.println("Moves done");
             robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
