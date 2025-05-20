@@ -31,7 +31,7 @@
  *
  * @library /vmTestbase
  *          /test/lib
- * @run main/othervm -XX:MaxDirectMemorySize=50M gc.memory.Nio.Nio
+ * @run main/othervm -XX:MaxDirectMemorySize=50M -Djdk.nio.maxCachedBufferSize=0 gc.memory.Nio.Nio
  */
 
 package gc.memory.Nio;
