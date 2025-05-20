@@ -115,7 +115,11 @@ function create_image_bundle {
 
   # jmod does not preserve file permissions (JDK-8173610)
   [ -f "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper
-  [ -f "$IMAGES_DIR"/"$__root_dir"/lib/cef_server ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/cef_server
+  if [ -n "${JCEF_BUILD_ONLY_IN_PROCESS:-}" ]; then
+    echo "Skip fixing permissions for cef_server."
+  else
+    [ -f "$IMAGES_DIR"/"$__root_dir"/lib/cef_server ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/cef_server
+  fi
 
   echo Creating "$JBR".tar.gz ...
 
