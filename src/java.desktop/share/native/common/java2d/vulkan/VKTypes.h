@@ -60,9 +60,18 @@ typedef uint16_t VKPackedSwizzle;
  * [ y'] = [  m10  m11  m12  ] [ y ] = [ m10x + m11y + m12 ]
  * [ 1 ]   [   0    0    1   ] [ 1 ]   [         1         ]
  */
+
+#if defined(_MSC_VER) // For Microsoft Visual C++
+#define ALIGNAS(n) __declspec(align(n))
+#else // For GCC and Clang
+#include <stdalign.h>
+    #define ALIGNAS(n) alignas(n)
+#endif
+
 typedef struct {
     float m00, m01, m02;
-    float m10 __attribute__((aligned(16))), m11, m12;
+    ALIGNAS(16) float m10;
+    float m11, m12;
 } VKTransform;
 
 VK_DEFINE_NON_DISPATCHABLE_HANDLE(VKMemory);
