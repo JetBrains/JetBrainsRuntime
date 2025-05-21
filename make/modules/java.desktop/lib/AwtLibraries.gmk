@@ -150,6 +150,9 @@ ifeq ($(VULKAN_ENABLED), true)
   LIBAWT_EXTRA_HEADER_DIRS += common/font common/java2d/vulkan common/java2d
   LIBAWT_CFLAGS += $(VULKAN_FLAGS)
   LIBAWT_EXTRA_FILES += $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/AccelTexturePool.c
+  VULKAN_EXCLUDES := vulkan
+else
+  VULKAN_EXCLUDES := vulkan java2d/vulkan
 endif
 
 # -fgcse-after-reload improves performance of MaskFill in Java2D by 20% for
@@ -280,7 +283,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
   $(eval $(call SetupJdkLibrary, BUILD_LIBAWT_HEADLESS, \
       NAME := awt_headless, \
       EXTRA_SRC := $(LIBAWT_HEADLESS_EXTRA_SRC), \
-      EXCLUDES := medialib wl vulkan, \
+      EXCLUDES := medialib wl $(VULKAN_EXCLUDES), \
       ONLY_EXPORTED := $(LIBAWT_HEADLESS_ONLY_EXPORTED), \
       OPTIMIZATION := LOW, \
       CFLAGS := -DHEADLESS=true $(CUPS_CFLAGS) $(FONTCONFIG_CFLAGS) \
@@ -361,7 +364,7 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       NAME := awt_xawt, \
       EXTRA_SRC := $(LIBAWT_XAWT_EXTRA_SRC), \
       EXTRA_HEADER_DIRS := $(LIBAWT_XAWT_EXTRA_HEADER_DIRS), \
-      EXCLUDES := medialib debug wl vulkan, \
+      EXCLUDES := medialib debug wl $(VULKAN_EXCLUDES), \
       OPTIMIZATION := LOW, \
       CFLAGS := -DXAWT -DXAWT_HACK $(LIBAWT_XAWT_CFLAGS) $(DBUS_CFLAGS) \
           $(FONTCONFIG_CFLAGS) $(CUPS_CFLAGS) $(X_CFLAGS), \
@@ -424,7 +427,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/wayland \
         #
 
-    LIBAWT_WLAWT_EXCLUDES := medialib debug opengl vulkan x11
+    LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11 $(VULKAN_EXCLUDES)
     LIBAWT_WLAWT_EXCLUDE_FILES := common/awt/X11Color.c common/awt/awt_Font.c
 
     LIBAWT_WLAWT_EXTRA_HEADER_DIRS := \
@@ -528,7 +531,7 @@ ifeq ($(call isTargetOs, macosx), true)
       #
 
   LIBAWT_LWAWT_EXCLUDE_FILES := fontpath.c awt_Font.c X11Color.c
-  LIBAWT_LWAWT_EXCLUDES := vulkan \
+  LIBAWT_LWAWT_EXCLUDES := $(VULKAN_EXCLUDES) \
         $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib \
         #
 
