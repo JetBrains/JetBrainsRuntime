@@ -157,7 +157,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
                 queueFamily = j;
             } else if (queueFamily == -1) {
                 // We have chosen no queue so far, choose this for now.
-                queueFamily = j;
+                queueFamily = (uint32_t)j;
             }
         }
     }
@@ -340,9 +340,9 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
         .flags = 0,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueCreateInfo,
-        .enabledLayerCount = ARRAY_SIZE(device->enabledLayers),
+        .enabledLayerCount = (uint32_t)ARRAY_SIZE(device->enabledLayers),
         .ppEnabledLayerNames = (const char *const *) device->enabledLayers,
-        .enabledExtensionCount = ARRAY_SIZE(device->enabledExtensions),
+        .enabledExtensionCount = (uint32_t)ARRAY_SIZE(device->enabledExtensions),
         .ppEnabledExtensionNames = (const char *const *) device->enabledExtensions,
         .pEnabledFeatures = &features10
     };

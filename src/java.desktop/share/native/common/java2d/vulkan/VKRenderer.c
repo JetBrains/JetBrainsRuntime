@@ -243,7 +243,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
     VkSubmitInfo submitInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .pNext = &timelineSemaphoreSubmitInfo,
-            .waitSemaphoreCount = ARRAY_SIZE(renderer->wait.semaphores),
+            .waitSemaphoreCount = (uint32_t)ARRAY_SIZE(renderer->wait.semaphores),
             .pWaitSemaphores = renderer->wait.semaphores,
             .pWaitDstStageMask = renderer->wait.stages,
             .commandBufferCount = renderer->commandBuffer != VK_NULL_HANDLE ? 1 : 0,
@@ -263,7 +263,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
                 .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                 .waitSemaphoreCount = 1,
                 .pWaitSemaphores = &semaphores[1],
-                .swapchainCount = pendingPresentations,
+                .swapchainCount = (uint32_t)pendingPresentations,
                 .pSwapchains = renderer->pendingPresentation.swapchains,
                 .pImageIndices = renderer->pendingPresentation.indices,
                 .pResults = renderer->pendingPresentation.results

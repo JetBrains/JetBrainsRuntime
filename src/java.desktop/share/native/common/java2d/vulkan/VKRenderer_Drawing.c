@@ -52,7 +52,7 @@ void VKRenderer_ResetDrawing(VKSDOps* surface) {
     surface->renderPass->maskFillBufferWriting = (VKBufferWritingState) {NULL, 0, VK_FALSE};
     if (ARRAY_SIZE(surface->renderPass->flushRanges) > 0) {
         VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle,
-            ARRAY_SIZE(surface->renderPass->flushRanges), surface->renderPass->flushRanges)) {}
+                    (uint32_t)ARRAY_SIZE(surface->renderPass->flushRanges), surface->renderPass->flushRanges)) {}
         ARRAY_RESIZE(surface->renderPass->flushRanges, 0);
     }
 #define MOVE_TO_POOL(ARRAY, POOL)                                                              \
@@ -131,12 +131,12 @@ static void VKRenderer_SetupStencil() {
     renderPass->vertexBufferWriting.bound = VK_FALSE;
 
     // Rasterize clip spans.
-    uint32_t primitiveCount = ARRAY_SIZE(context->clipSpanVertices) / 3;
+    size_t primitiveCount = ARRAY_SIZE(context->clipSpanVertices) / 3;
     VKIntVertex* vs;
-    for (uint32_t primitivesDrawn = 0;;) {
-        uint32_t currentDraw = primitiveCount - primitivesDrawn;
+    for (size_t primitivesDrawn = 0;;) {
+        size_t currentDraw = primitiveCount - primitivesDrawn;
         if (currentDraw == 0) break;
-        currentDraw = VK_DRAW(vs, currentDraw, 3);
+        currentDraw = VK_DRAW(vs, (uint32_t)currentDraw, 3);
         memcpy(vs, context->clipSpanVertices + primitivesDrawn * 3, currentDraw * 3 * sizeof(VKIntVertex));
         primitivesDrawn += currentDraw;
     }

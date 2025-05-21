@@ -165,7 +165,7 @@ static VkDescriptorSet VKImage_AllocateDescriptorSet(VKDevice* device, VkDescrip
 }
 
 static void VKImage_CreateDescriptorSet(VKDevice* device, VkDescriptorPool* descriptorPool, VkDescriptorSet* set) {
-    for (int i = ARRAY_SIZE(device->imageDescriptorPools) - 1; i >= 0; i--) {
+    for (size_t i = ARRAY_SIZE(device->imageDescriptorPools) - 1; i >= 0; i--) {
         *set = VKImage_AllocateDescriptorSet(device, device->imageDescriptorPools[i]);
         if (*set != VK_NULL_HANDLE) {
             *descriptorPool = device->imageDescriptorPools[i];
