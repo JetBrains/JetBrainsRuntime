@@ -34,8 +34,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dialog;
 import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
 import java.awt.Insets;
 import java.awt.RenderingHints;
@@ -43,19 +41,14 @@ import java.awt.SystemColor;
 import java.awt.Window;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Path2D;
-import java.awt.image.BufferedImage;
-import java.awt.image.ConvolveOp;
-import java.awt.image.Kernel;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;
-import java.util.Arrays;
 
 public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     private static Font defaultFont;
     private Dialog blocker;
 
     public static final String WINDOW_CORNER_RADIUS = "apple.awt.windowCornerRadius";
-    public static final int SHADOW_SIZE = 15;
 
     private WLRoundedCornersManager.RoundedCornerKind roundedCornerKind = WLRoundedCornersManager.RoundedCornerKind.DEFAULT; // guarded by dataLock
     private Path2D.Double topLeftMask;      // guarded by dataLock
@@ -124,8 +117,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
 
     @Override
     public Insets getInsets() {
-        return new Insets(SHADOW_SIZE, SHADOW_SIZE, SHADOW_SIZE, SHADOW_SIZE);
-//        return new Insets(0, 0, 0, 0);
+        return new Insets(0, 0, 0, 0);
     }
 
     @Override
@@ -209,23 +201,6 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     void updateSurfaceData() {
         resetCornerMasks();
         super.updateSurfaceData();
-
-        var g2d = new SunGraphics2D(surfaceData, Color.RED, new Color(0, 0, 0, 0), null);
-        g2d.clearRect(0, 0, getWidth(), getHeight());
-        var shadowImage = createShadow(getWidth(), getHeight(), SHADOW_SIZE, SHADOW_SIZE);
-        g2d.drawImage(shadowImage, 0, 0, null);
-        g2d.dispose();
-    }
-
-    public Graphics getGraphics() {
-        var fullGraphics = super.getGraphics();
-        if (fullGraphics != null) {
-            // TODO: In dev clip, the size in in buffer units
-//            ((SunGraphics2D)fullGraphics).setDevClip(SHADOW_SIZE, SHADOW_SIZE, getBufferWidth() - SHADOW_SIZE * 2, getBufferHeight() - SHADOW_SIZE * 2);
-            fullGraphics.setClip(SHADOW_SIZE, SHADOW_SIZE, getWidth() - SHADOW_SIZE * 2, getHeight() - SHADOW_SIZE * 2);
-            fullGraphics.translate(SHADOW_SIZE, SHADOW_SIZE);
-        }
-        return fullGraphics;
     }
 
     private Window getWindow() {
@@ -343,32 +318,5 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
             graphics.fill(bottomLeftMask);
             graphics.fill(bottomRightMask);
         }
-    }
-
-    private static BufferedImage createShadow(int width, int height, int arc, int shadowSize) {
-        BufferedImage shadow = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2d = shadow.createGraphics();
-
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2d.setColor(new Color(0, 0, 0, 100) );
-        g2d.fillRoundRect(shadowSize, shadowSize, width - 2 * shadowSize, height - 2 * shadowSize, arc, arc);
-        g2d.setBackground(new Color(0, 0, 0, 0) );
-        g2d.clearRect(0, height - 2 * shadowSize, width, 2*shadowSize);
-        g2d.fillRect(shadowSize, height - 2 * shadowSize, width - 2*shadowSize, shadowSize);
-
-        // Apply a Gaussian blur
-        float[] blurKernel = createBlurKernel(14);
-        ConvolveOp blurOp = new ConvolveOp(new Kernel(14, 14, blurKernel), ConvolveOp.EDGE_NO_OP, null);
-        shadow = blurOp.filter(shadow, null);
-
-        g2d.dispose();
-        return shadow;
-    }
-
-    private static float[] createBlurKernel(int size) {
-        float[] kernel = new float[size * size];
-        float value = 1.0f / (size * size);
-        Arrays.fill(kernel, value);
-        return kernel;
     }
 }
