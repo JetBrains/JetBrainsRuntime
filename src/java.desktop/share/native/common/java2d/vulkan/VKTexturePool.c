@@ -24,7 +24,11 @@
  * questions.
  */
 
+#ifdef _WIN32
+#include <windows.h>
+#elif
 #include <pthread.h>
+#endif
 
 #include "VKImage.h"
 #include "VKUtil.h"
@@ -39,6 +43,44 @@
 
 
 /* lock API */
+#ifdef _WIN32
+
+ATexturePoolLockPrivPtr* VKTexturePoolLock_initImpl(void) {
+    CRITICAL_SECTION *l = (CRITICAL_SECTION*)malloc(sizeof(CRITICAL_SECTION));
+    CHECK_NULL_LOG_RETURN(l, NULL, "VKTexturePoolLock_initImpl: could not allocate CRITICAL_SECTION");
+
+    InitializeCriticalSection(l);
+    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_initImpl: lock=%p", l);
+    return (ATexturePoolLockPrivPtr*)l;
+}
+
+void VKTexturePoolLock_DisposeImpl(ATexturePoolLockPrivPtr *lock) {
+    CRITICAL_SECTION* l = (CRITICAL_SECTION*)lock;
+    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_DisposeImpl: lock=%p", l);
+    DeleteCriticalSection(l);
+    free(l);
+}
+
+void VKTexturePoolLock_lockImpl(ATexturePoolLockPrivPtr *lock) {
+    CRITICAL_SECTION* l = (CRITICAL_SECTION*)lock;
+    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_lockImpl: lock=%p", l);
+    EnterCriticalSection(l);
+    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_lockImpl: lock=%p - locked", l);
+}
+
+void VKTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
+    CRITICAL_SECTION* l = (CRITICAL_SECTION*)lock;
+    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_unlockImpl: lock=%p", l);
+    LeaveCriticalSection(l);
+    if (TRACE_LOCK) J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKTexturePoolLock_unlockImpl: lock=%p - unlocked", l);
+}
+
+static void VKTexturePool_FindImageMemoryType(VKMemoryRequirements* requirements) {
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_ALL_MEMORY_PROPERTIES);
+}
+
+#elif
+
 ATexturePoolLockPrivPtr* VKTexturePoolLock_initImpl(void) {
     pthread_mutex_t *l = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
     CHECK_NULL_LOG_RETURN(l, NULL, "VKTexturePoolLock_initImpl: could not allocate pthread_mutex_t");
@@ -75,6 +117,8 @@ void VKTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
 static void VKTexturePool_FindImageMemoryType(VKMemoryRequirements* requirements) {
     VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_ALL_MEMORY_PROPERTIES);
 }
+
+#endif
 
 /* Texture allocate/free API */
 static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
