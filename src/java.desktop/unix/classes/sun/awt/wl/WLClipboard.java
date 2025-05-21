@@ -32,18 +32,29 @@ import java.awt.datatransfer.FlavorTable;
 import java.awt.datatransfer.Transferable;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 public final class WLClipboard extends SunClipboard {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLClipboard");
 
+    private final WLDataDevice dataDevice;
+
     // true if this is the "primary selection" clipboard,
     // false otherwise (the regular clipboard).
-    private final boolean isPrimary; // used by native
+    private final boolean isPrimary;
 
     private final Object dataLock = new Object();
-    // A handle to the native clipboard representation, 0 if not available.
-    private WLDataOffer clipboardContents;   // guarded by dataLock
-    private WLDataSource ourOffer;           // guarded by dataLock
+
+    // Latest active data offer to us, containing up-to-date clipboard content,
+    // as provided by the Wayland compositor.
+    // If null, there's no clipboard data available.
+    // Guarded by dataLock.
+    private WLDataOffer clipboardDataOfferedToUs;
+
+    // Clipboard data source we are providing to the Wayland compositor.
+    // If null, we are not offering any clipboard data at the moment.
+    // Guarded by dataLock.
+    private WLDataSource ourDataSource;
 
     static {
         flavorTable = DataTransferer.adaptFlavorMap(getDefaultFlavorTable());
@@ -51,12 +62,21 @@ public final class WLClipboard extends SunClipboard {
 
     private final static FlavorTable flavorTable;
 
-    public WLClipboard(String name, boolean isPrimary) {
+    public WLClipboard(WLDataDevice dataDevice, String name, boolean isPrimary) {
         super(name);
         this.isPrimary = isPrimary;
+        this.dataDevice = dataDevice;
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("Clipboard: Created " + this);
+        }
+    }
+
+    private int getProtocol() {
+        if (isPrimary) {
+            return WLDataDevice.DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION;
+        } else {
+            return WLDataDevice.DATA_TRANSFER_PROTOCOL_WAYLAND;
         }
     }
 
@@ -122,19 +142,14 @@ public final class WLClipboard extends SunClipboard {
                 }
 
                 WLDataSource newOffer = null;
-
-                if (isPrimary) {
-                    newOffer = WLDataSource.createPrimarySelection(contents);
-                } else {
-                    newOffer = WLDataSource.createWayland(contents);
-                }
+                newOffer = dataDevice.createDataSourceFromTransferable(getProtocol(), contents);
 
                 synchronized (dataLock) {
-                    if (ourOffer != null) {
-                        ourOffer.destroy();
+                    if (ourDataSource != null) {
+                        ourDataSource.destroy();
                     }
-                    ourOffer = newOffer;
-                    newOffer.setSelection(eventSerial);
+                    ourDataSource = newOffer;
+                    dataDevice.setSelection(getProtocol(), newOffer, eventSerial);
                 }
             }
         } else {
@@ -149,18 +164,20 @@ public final class WLClipboard extends SunClipboard {
     @Override
     protected long[] getClipboardFormats() {
         WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
+        List<String> mimes;
         synchronized (dataLock) {
-            if (clipboardContents == null || !clipboardContents.isValid()) {
+            if (clipboardDataOfferedToUs == null || !clipboardDataOfferedToUs.isValid()) {
                 return null;
             }
 
-            var mimes = clipboardContents.getMimes();
-            long[] formats = new long[mimes.size()];
-            for (int i = 0; i < mimes.size(); ++i) {
-                formats[i] = wlDataTransferer.getFormatForNativeAsLong(mimes.get(i));
-            }
-            return formats;
+            mimes = clipboardDataOfferedToUs.getMimes();
         }
+
+        long[] formats = new long[mimes.size()];
+        for (int i = 0; i < mimes.size(); ++i) {
+            formats[i] = wlDataTransferer.getFormatForNativeAsLong(mimes.get(i));
+        }
+        return formats;
     }
 
     /**
@@ -175,7 +192,7 @@ public final class WLClipboard extends SunClipboard {
         WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
         String mime = wlDataTransferer.getNativeForFormat(format);
         synchronized (dataLock) {
-            return clipboardContents.receiveData(mime);
+            return clipboardDataOfferedToUs.receiveData(mime);
         }
     }
 
@@ -204,11 +221,10 @@ public final class WLClipboard extends SunClipboard {
         lostOwnershipNow(null);
 
         synchronized (dataLock) {
-            if (clipboardContents != null) {
-                clipboardContents.destroy();
+            if (clipboardDataOfferedToUs != null && clipboardDataOfferedToUs.isValid()) {
+                clipboardDataOfferedToUs.destroy();
             }
-
-            clipboardContents = offer;
+            clipboardDataOfferedToUs = offer;
         }
     }
 }

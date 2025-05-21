@@ -29,11 +29,9 @@ import java.awt.datatransfer.Transferable;
 
 public class WLDataSource {
     private long nativePtr;
-    private Transferable data;
+    private final Transferable data;
 
-    private static native long createImpl(int protocol);
-
-    private static native void bindNative(long nativePtr, WLDataSource object);
+    private native long initNative(long dataDeviceNativePtr, int protocol);
 
     private static native void offerMimeImpl(long nativePtr, String mime);
 
@@ -41,38 +39,33 @@ public class WLDataSource {
 
     private static native void setDnDActionsImpl(long nativePtr, int actions);
 
-    private static native void setSelectionImpl(long nativePtr, long serial);
-
-    private WLDataSource(int protocol, Transferable data) {
+    WLDataSource(long dataDeviceNativePtr, int protocol, Transferable data) {
         var wlDataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
 
-        long nativePtr = createImpl(protocol);
-        if (nativePtr == 0) {
-            throw new InternalError("Failed to create data source");
-        }
-        this.nativePtr = nativePtr;
+        nativePtr = initNative(dataDeviceNativePtr, protocol);
+        assert nativePtr != 0; // should've already thrown in native
         this.data = data;
-        bindNative(nativePtr, this);
 
-        if (data != null) {
-            long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(data, wlDataTransferer.getFlavorTable());
-            for (long format : formats) {
-                String mime = wlDataTransferer.getNativeForFormat(format);
-                offerMime(mime);
+        try {
+            if (data != null) {
+                long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(data, wlDataTransferer.getFlavorTable());
+                for (long format : formats) {
+                    String mime = wlDataTransferer.getNativeForFormat(format);
+                    offerMime(mime);
+                }
             }
+        } catch (Throwable e) {
+            destroyImpl(nativePtr);
+            throw e;
         }
-    }
-
-    public static WLDataSource createWayland(Transferable data) {
-        return new WLDataSource(WLDataDevice.DATA_TRANSFER_PROTOCOL_WAYLAND, data);
-    }
-
-    public static WLDataSource createPrimarySelection(Transferable data) {
-        return new WLDataSource(WLDataDevice.DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION, data);
     }
 
     public boolean isValid() {
         return nativePtr != 0;
+    }
+
+    public long getNativePtr() {
+        return nativePtr;
     }
 
     public void offerMime(String mime) {
@@ -94,13 +87,6 @@ public class WLDataSource {
             throw new IllegalStateException("Native pointer is null");
         }
         setDnDActionsImpl(nativePtr, actions);
-    }
-
-    public void setSelection(long serial) {
-        if (nativePtr == 0) {
-            throw new IllegalStateException("Native pointer is null");
-        }
-        setSelectionImpl(nativePtr, serial);
     }
 
     // Event handlers, called from native code on the data transferer dispatch thread

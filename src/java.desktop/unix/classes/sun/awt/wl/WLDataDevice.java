@@ -36,18 +36,18 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.SortedMap;
 
 public class WLDataDevice {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLDataDevice");
 
-    private static final class LazyHolder {
-        private static final WLDataDevice INSTANCE = new WLDataDevice();
-    }
-
-    private Thread queueThread;
-    private WLClipboard systemClipboard;
-    private WLClipboard primarySelection;
+    private long nativePtr;
+    private final WLClipboard systemClipboard;
+    private final WLClipboard primarySelectionClipboard;
 
     public static final int DND_COPY = 0x01;
     public static final int DND_MOVE = 0x02;
@@ -57,29 +57,55 @@ public class WLDataDevice {
     public static final int DATA_TRANSFER_PROTOCOL_WAYLAND = 1;
     public static final int DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION = 2;
 
-    public static WLDataDevice getInstance() {
-        return LazyHolder.INSTANCE;
-    }
+    WLDataDevice(long wlSeatNativePtr) {
+        nativePtr = initNative(wlSeatNativePtr);
 
-    void initialize(WLClipboard systemClipboard, WLClipboard primarySelection) {
-        this.systemClipboard = systemClipboard;
-        this.primarySelection = primarySelection;
-
-        initNative();
-
-        queueThread = InnocuousThread.newThread("AWT-Wayland-data-transferer-dispatcher", () -> {
-            dispatchDataTransferQueueImpl();
+        var queueThread = InnocuousThread.newThread("AWT-Wayland-data-transferer-dispatcher", () -> {
+            dispatchDataTransferQueueImpl(nativePtr);
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine("data transfer dispatcher exited");
             }
         });
         queueThread.setDaemon(true);
         queueThread.start();
+
+        systemClipboard = new WLClipboard(this, "System", false);
+        if (isProtocolSupported(DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION)) {
+            primarySelectionClipboard = new WLClipboard(this, "Selection", true);
+        } else {
+            primarySelectionClipboard = null;
+        }
     }
 
-    private native void initNative();
+    private native static void initIDs();
+    static {
+        initIDs();
+    }
 
-    private static native void dispatchDataTransferQueueImpl();
+    private native long initNative(long wlSeatNativePtr);
+    private static native boolean isProtocolSupportedImpl(long nativePtr, int protocol);
+    private static native void dispatchDataTransferQueueImpl(long nativePtr);
+    private static native void setSelectionImpl(int protocol, long nativePtr, long dataOfferNativePtr, long serial);
+
+    public WLDataSource createDataSourceFromTransferable(int protocol, Transferable transferable) {
+        return new WLDataSource(nativePtr, protocol, transferable);
+    }
+
+    public boolean isProtocolSupported(int protocol) {
+        return isProtocolSupportedImpl(nativePtr, protocol);
+    }
+
+    public void setSelection(int protocol, WLDataSource source, long serial) {
+        setSelectionImpl(protocol, nativePtr, source.getNativePtr(), serial);
+    }
+
+    public WLClipboard getSystemClipboard() {
+        return systemClipboard;
+    }
+
+    public WLClipboard getPrimarySelectionClipboard() {
+        return primarySelectionClipboard;
+    }
 
     static void transferContentsWithType(Transferable contents, String mime, int fd) {
         Objects.requireNonNull(contents);
@@ -213,8 +239,8 @@ public class WLDataDevice {
     private void handleDnDDrop() {
     }
 
-    private void handleSelection(WLDataOffer offer /* nullable */, boolean isPrimary) {
-        WLClipboard clipboard = isPrimary ? primarySelection : systemClipboard;
+    private void handleSelection(WLDataOffer offer /* nullable */, int protocol) {
+        WLClipboard clipboard = (protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) ? primarySelectionClipboard : systemClipboard;
 
         if (clipboard != null) {
             clipboard.handleClipboardOffer(offer);
