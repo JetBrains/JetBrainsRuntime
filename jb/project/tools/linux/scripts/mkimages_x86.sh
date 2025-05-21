@@ -12,6 +12,7 @@ set -x
 #
 
 source jb/project/tools/common/scripts/common.sh
+ENABLE_CDS="no"
 
 function do_configure {
   linux32 bash configure \
@@ -24,7 +25,7 @@ function do_configure {
     --with-version-opt=b"$build_number" \
     --with-boot-jdk="$BOOT_JDK" \
     $STATIC_CONF_ARGS \
-    --enable-cds=yes \
+    --enable-cds=$ENABLE_CDS \
     $DISABLE_WARNINGS_AS_ERRORS \
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
@@ -51,7 +52,7 @@ function create_image_bundle {
   __cds_opt=''
 
   if is_musl; then libc_type_suffix='musl-' ; fi
-  __cds_opt="--generate-cds-archive"
+  [ "${ENABLE_CDS}" == "yes" ] && __cds_opt="--generate-cds-archive"
 
   [ "$bundle_type" == "fd" ] && [ "$__arch_name" == "$JBRSDK_BUNDLE" ] && __bundle_name=$__arch_name && fastdebug_infix="fastdebug-"
   JBR=${__bundle_name}-${JBSDK_VERSION}-linux-${libc_type_suffix}x86-${fastdebug_infix}b${build_number}
