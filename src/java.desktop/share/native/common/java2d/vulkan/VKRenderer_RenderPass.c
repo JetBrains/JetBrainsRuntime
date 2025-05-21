@@ -293,7 +293,7 @@ VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface) {
 
     // Insert barriers to prepare surface for rendering.
     VkImageMemoryBarrier barriers[2];
-    VKBarrierBatch barrierBatch = {};
+    VKBarrierBatch barrierBatch = { 0 };
     VKImage_AddBarrier(barriers, &barrierBatch, surface->image,
                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,

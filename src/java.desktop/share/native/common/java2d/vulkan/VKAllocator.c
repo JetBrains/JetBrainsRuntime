@@ -285,7 +285,7 @@ static uint32_t VKAllocator_PopFreeBlockPair(SharedPageData* data, uint32_t leve
             pair = &data->blockPairs[pairIndex-1];
             data->freeBlockPairIndex = pair->nextFree;
         } else {
-            ARRAY_PUSH_BACK(data->blockPairs) = (BlockPair) {};
+            ARRAY_PUSH_BACK(data->blockPairs) = (BlockPair) { 0 };
             pairIndex = (uint32_t)ARRAY_SIZE(data->blockPairs);
             pair = &data->blockPairs[pairIndex-1];
         }
