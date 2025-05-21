@@ -230,9 +230,9 @@ static uint32_t VKAllocator_AllocatePage(VKAllocator* alloc, uint32_t memoryType
         page = &alloc->pages.data[index];
         alloc->freePageIndex = page->nextFreePage;
     } else {
-        index = alloc->pages.size;
+        index = (uint32_t)alloc->pages.size;
         VK_RUNTIME_ASSERT(index < MAX_PAGES);
-        ARRAY_PUSH_BACK(alloc->pages) = (Page) {};
+        ARRAY_PUSH_BACK(alloc->pages) = (Page) {0};
         page = &ARRAY_LAST(alloc->pages);
     }
     assert(page->memory == VK_NULL_HANDLE);
@@ -286,7 +286,7 @@ static uint32_t VKAllocator_PopFreeBlockPair(SharedPageData* data, uint32_t leve
             data->freeBlockPairIndex = pair->nextFree;
         } else {
             ARRAY_PUSH_BACK(data->blockPairs) = (BlockPair) {};
-            pairIndex = data->blockPairs.size;
+            pairIndex = (uint32_t)data->blockPairs.size;
             pair = &data->blockPairs.data[pairIndex-1];
         }
         // Subdivide parent block.
