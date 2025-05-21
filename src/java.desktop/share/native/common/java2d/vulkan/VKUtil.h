@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include <stdalign.h>
 #include <Trace.h>
-#include "awt.h"
 #include "jni_util.h"
 #include "VKTypes.h"
 
@@ -109,7 +108,7 @@ typedef enum {
  */
 typedef struct {
     VkFormat              aliases[FORMAT_ALIAS_COUNT];
-    uint                  bytes;
+    unsigned int          bytes;
     VkImageAspectFlagBits aspect;
 } FormatGroup;
 

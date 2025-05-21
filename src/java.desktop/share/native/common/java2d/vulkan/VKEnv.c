@@ -246,9 +246,9 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
             .pNext = pNext,
             .flags = 0,
             .pApplicationInfo = &applicationInfo,
-            .enabledLayerCount = enabledLayers.size,
+            .enabledLayerCount = (uint32_t)enabledLayers.size,
             .ppEnabledLayerNames = enabledLayers.data,
-            .enabledExtensionCount = enabledExtensions.size,
+            .enabledExtensionCount = (uint32_t)enabledExtensions.size,
             .ppEnabledExtensionNames = enabledExtensions.data
     };
 
@@ -332,14 +332,14 @@ static jobjectArray createJavaGPUs(JNIEnv *env, VKEnv* vk) {
     if (deviceClass == NULL) return NULL;
     jmethodID deviceConstructor = (*env)->GetMethodID(env, deviceClass, "<init>", "(JLjava/lang/String;II[I)V");
     if (deviceConstructor == NULL) return NULL;
-    jobjectArray deviceArray = (*env)->NewObjectArray(env, vk->devices.size, deviceClass, NULL);
+    jobjectArray deviceArray = (*env)->NewObjectArray(env, (jsize)vk->devices.size, deviceClass, NULL);
     if (deviceArray == NULL) return NULL;
     for (uint32_t i = 0; i < vk->devices.size; i++) {
         jstring name = JNU_NewStringPlatform(env, vk->devices.data[i].name);
         if (name == NULL) return NULL;
-        jintArray supportedFormats = (*env)->NewIntArray(env, vk->devices.data[i].supportedFormats.size);
+        jintArray supportedFormats = (*env)->NewIntArray(env, (jsize)vk->devices.data[i].supportedFormats.size);
         if (supportedFormats == NULL) return NULL;
-        (*env)->SetIntArrayRegion(env, supportedFormats, 0, vk->devices.data[i].supportedFormats.size, vk->devices.data[i].supportedFormats.data);
+        (*env)->SetIntArrayRegion(env, supportedFormats, 0, (jsize)vk->devices.data[i].supportedFormats.size, vk->devices.data[i].supportedFormats.data);
         jobject device = (*env)->NewObject(env, deviceClass, deviceConstructor,
                                            ptr_to_jlong(&vk->devices.data[i]), name, vk->devices.data[i].type,
                                            vk->devices.data[i].caps, supportedFormats);

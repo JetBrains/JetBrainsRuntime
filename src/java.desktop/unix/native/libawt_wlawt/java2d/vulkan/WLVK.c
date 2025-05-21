@@ -37,6 +37,8 @@ ENTRY(__VA_ARGS__, vkCreateWaylandSurfaceKHR); \
 PLATFORM_FUNCTION_TABLE(DECL_PFN)
 static struct wl_display* wl_display;
 
+extern JavaVM *jvm;
+
 static VkBool32 WLVK_InitFunctions(VKEnv* vk, PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
     VkBool32 missingAPI = JNI_FALSE;
     PLATFORM_FUNCTION_TABLE(CHECK_PROC_ADDR, missingAPI, vkGetInstanceProcAddr, vk->instance,)
