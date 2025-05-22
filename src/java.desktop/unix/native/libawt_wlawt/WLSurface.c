@@ -33,12 +33,7 @@
 
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
-#include "WLRobotPeer.h"
 #include "WLGraphicsEnvironment.h"
-
-#ifdef WAKEFIELD_ROBOT
-#include "wakefield.h"
-#endif
 
 #include "sun_awt_wl_WLSurface.h"
 
@@ -229,20 +224,6 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLSurface_nativeSetOpaqueRegion
     wl_region_destroy(region);
     // Do not flush here as this update needs to be committed together with the change
     // of the buffer's size and scale, if any.
-}
-
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLSurface_nativeMoveSurface
-        (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y)
-{
-    struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
-    assert (sd);
-
-#ifdef WAKEFIELD_ROBOT
-    if (wakefield) {
-        // TODO: this doesn't work quite as expected for some reason
-        wakefield_move_surface(wakefield, sd->wlSurface, x, y);
-    }
-#endif
 }
 
 static void

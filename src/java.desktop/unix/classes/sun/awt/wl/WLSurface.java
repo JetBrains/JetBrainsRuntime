@@ -26,6 +26,7 @@
 
 package sun.awt.wl;
 
+import sun.awt.SunToolkit;
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLSurfaceDataExt;
 
@@ -97,11 +98,9 @@ public class WLSurface {
         nativeCommitWlSurface(nativePtr);
     }
 
-    public void moveTo(int x, int y) {
-        nativeMoveSurface(nativePtr, x, y);
-    }
-
     public long getWlSurfacePtr() {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+
         // TODO: this should be constant throughout the lifetime of this object
         return wlSurfacePtr(nativePtr);
     }
@@ -168,6 +167,5 @@ public class WLSurface {
     private native void nativeDestroyWlSurface(long ptr);
     private native void nativeHideWlSurface(long ptr);
     private native void nativeSetOpaqueRegion(long ptr, int x, int y, int width, int height);
-    private native void nativeMoveSurface(long ptr, int x, int y);
     private native void nativeActivate(long ptr, long serial, long activatingSurfacePtr);
 }

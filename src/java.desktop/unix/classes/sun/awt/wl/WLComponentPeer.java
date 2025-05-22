@@ -365,11 +365,11 @@ public class WLComponentPeer implements ComponentPeer {
                     nativeCreatePopup(nativePtr, getNativePtrFor(toplevel), wlSurfacePtr,
                             thisWidth, thisHeight, nativeLocation.x, nativeLocation.y);
                 } else {
-                    int xNative = javaUnitsToSurfaceUnits(target.getX());
-                    int yNative = javaUnitsToSurfaceUnits(target.getY());
-                    wlSurface.moveTo(xNative, yNative);
                     nativeCreateWindow(nativePtr, getParentNativePtr(target), wlSurfacePtr,
                             isModal, isMaximized, isMinimized, title, WLToolkit.getApplicationID());
+                    int xNative = javaUnitsToSurfaceUnits(target.getX());
+                    int yNative = javaUnitsToSurfaceUnits(target.getY());
+                    WLRobotPeer.setLocationOfWLSurface(wlSurface, xNative, yNative);
                 }
 
                 // From xdg-shell.xml: "After creating a role-specific object and
@@ -583,7 +583,7 @@ public class WLComponentPeer implements ComponentPeer {
             // but not top-level windows. So we can only ask robot to do that.
             int newXNative = javaUnitsToSurfaceUnits(newX);
             int newYNative = javaUnitsToSurfaceUnits(newY);
-            performLocked(() -> wlSurface.moveTo(newXNative, newYNative));
+            performLocked(() -> WLRobotPeer.setLocationOfWLSurface(wlSurface, newXNative, newYNative));
         }
 
         if ((positionChanged || sizeChanged) && isPopup && visible) {
@@ -666,10 +666,9 @@ public class WLComponentPeer implements ComponentPeer {
     public Point getLocationOnScreen() {
         return performLocked(() -> {
             // TODO: this needs to be made atomicallt wrt wlSurfacePtr validity; performLocked doesn't guarantee that anymore
-            final long wlSurfacePtr = wlSurface.getWlSurfacePtr();
-            if (wlSurfacePtr != 0) {
+            if (wlSurface != null) {
                 try {
-                    return WLRobotPeer.getLocationOfWLSurface(wlSurfacePtr);
+                    return WLRobotPeer.getLocationOfWLSurface(wlSurface);
                 } catch (UnsupportedOperationException ignore) {
                     return getFakeLocationOnScreen();
                 }

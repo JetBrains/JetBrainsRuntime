@@ -381,6 +381,27 @@ Java_sun_awt_wl_WLRobotPeer_getLocationOfWLSurfaceImpl
 #endif
 }
 
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLRobotPeer_setLocationOfWLSurfaceImpl
+        (JNIEnv *env, jclass clazz, jlong wlSurfacePtr, jint x, jint y)
+{
+#ifdef WAKEFIELD_ROBOT
+    if (!wakefield) {
+        JNU_ThrowByName(env, "java/awt/AWTError", "no 'wakefield' protocol extension");
+        return;
+    }
+
+    J2dTrace2(J2D_TRACE_INFO, "WLRobotPeer: sending move_surface request to wakefield %d, %d\n",
+            x, y);
+
+    struct wl_surface * const surface = (struct wl_surface*) wlSurfacePtr;
+    wakefield_move_surface(wakefield, surface, x, y);
+    wl_surface_commit(surface);
+    wlFlushToServer(env);
+#endif
+}
+
+
 JNIEXPORT jintArray JNICALL
 Java_sun_awt_wl_WLRobotPeer_getRGBPixelsImpl
         (JNIEnv *env, jclass clazz, jint x, jint y, jint width, jint height)
