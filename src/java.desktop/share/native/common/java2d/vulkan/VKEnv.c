@@ -140,13 +140,13 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
     // Query supported layers.
     uint32_t layerCount;
     VK_IF_ERROR(vkEnumerateInstanceLayerProperties(&layerCount, NULL)) return NULL;
-    VkLayerProperties allLayers[layerCount];
+    DECL_ARRAY(VkLayerProperties, allLayers, layerCount);
     VK_IF_ERROR(vkEnumerateInstanceLayerProperties(&layerCount, allLayers)) return NULL;
 
     // Query supported extensions.
     uint32_t extensionCount;
     VK_IF_ERROR(vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, NULL)) return NULL;
-    VkExtensionProperties allExtensions[extensionCount];
+    DECL_ARRAY(VkExtensionProperties, allExtensions, extensionCount);
     VK_IF_ERROR(vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, allExtensions)) return NULL;
 
     // Log layers and extensions.
@@ -306,7 +306,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice);
 static VkBool32 VKEnv_FindDevices(VKEnv* vk) {
     uint32_t count;
     VK_IF_ERROR(vk->vkEnumeratePhysicalDevices(vk->instance, &count, NULL)) return JNI_FALSE;
-    VkPhysicalDevice physicalDevices[count];
+    DECL_ARRAY(VkPhysicalDevice, physicalDevices, count);
     VK_IF_ERROR(vk->vkEnumeratePhysicalDevices(vk->instance, &count, physicalDevices)) return JNI_FALSE;
     ARRAY_ENSURE_CAPACITY(vk->devices, count);
     J2dRlsTraceLn1(J2D_TRACE_INFO, "Vulkan: Found %d physical devices:", count)

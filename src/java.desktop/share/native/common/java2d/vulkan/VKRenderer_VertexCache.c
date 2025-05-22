@@ -34,7 +34,7 @@ static VKBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
     VKBuffer buffer;
     if (POOL_TAKE(renderer, renderer->vertexBufferPool, buffer)) return buffer;
     uint32_t bufferCount = VERTEX_BUFFER_PAGE_SIZE / VERTEX_BUFFER_SIZE;
-    VKBuffer buffers[bufferCount];
+    DECL_ARRAY(VKBuffer, buffers, bufferCount);
     VKMemory page = VKBuffer_CreateBuffers(renderer->device, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                            VKRenderer_FindVertexBufferMemoryType,
                                            VERTEX_BUFFER_SIZE, VERTEX_BUFFER_PAGE_SIZE, &bufferCount, buffers);

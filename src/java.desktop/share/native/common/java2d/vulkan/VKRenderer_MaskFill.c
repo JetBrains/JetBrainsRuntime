@@ -34,12 +34,12 @@ static VKTexelBuffer VKRenderer_GetMaskFillBuffer(VKRenderer* renderer) {
     VKTexelBuffer buffer;
     if (POOL_TAKE(renderer, renderer->maskFillBufferPool, buffer)) return buffer;
     uint32_t bufferCount = MASK_FILL_BUFFER_PAGE_SIZE / MASK_FILL_BUFFER_SIZE;
-    VKBuffer buffers[bufferCount];
+    DECL_ARRAY(VKBuffer, buffers, bufferCount);
     VKMemory page = VKBuffer_CreateBuffers(renderer->device, VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
                                            VKRenderer_FindMaskFillBufferMemoryType,
                                            MASK_FILL_BUFFER_SIZE, MASK_FILL_BUFFER_PAGE_SIZE, &bufferCount, buffers);
     VK_RUNTIME_ASSERT(page);
-    VKTexelBuffer texelBuffers[bufferCount];
+    DECL_ARRAY(VKTexelBuffer, texelBuffers, bufferCount);
     VkDescriptorPool descriptorPool = VKBuffer_CreateTexelBuffers(
             renderer->device, VK_FORMAT_R8_UNORM, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
             renderer->pipelineContext->maskFillDescriptorSetLayout, bufferCount, buffers, texelBuffers);
