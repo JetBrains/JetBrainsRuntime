@@ -49,7 +49,6 @@ static bool equals(const void* ap, const void* bp) {
 VKComposites VKComposites_Create() {
     const VKCompositeMode NEXT_FREE_MODE = ALPHA_COMPOSITE_GROUP + 1;
     VKComposites composites = { NULL };
-    HASH_MAP_REHASH(composites.map, linear_probing, &equals, &hash, NEXT_FREE_MODE + 1, 10, 0.75);
 
     VKComposites_AddState(&composites, LOGIC_COMPOSITE_XOR, (VKCompositeState) {
         {   .blendEnable = VK_FALSE,
@@ -139,7 +138,8 @@ void VKComposites_AddState(VKComposites* composites, VKCompositeMode mode, VKCom
     state.blendState.pNext = NULL;
     state.blendState.attachmentCount = 1;
     state.outAlphaType = ALPHA_TYPE_PRE_MULTIPLIED;
-    MAP_AT(composites->map, (VKCompositeDescriptor) { mode, VK_FALSE }) = state;
+    VKCompositeDescriptor compositorDescriptor = { mode, VK_FALSE };
+    MAP_PUT(composites->map, compositorDescriptor, state);
 
     // Using pre-multiplied alpha is necessary for correct blending,
     // but it can lead to information loss, which is crucial in case of opaque destinations.
@@ -204,11 +204,14 @@ void VKComposites_AddState(VKComposites* composites, VKCompositeMode mode, VKCom
             state.outAlphaType = straightSrcAlpha ? ALPHA_TYPE_STRAIGHT : ALPHA_TYPE_PRE_MULTIPLIED;
         }
     }
-    MAP_AT(composites->map, (VKCompositeDescriptor) { mode, VK_TRUE }) = state;
+    compositorDescriptor.dstOpaque = VK_TRUE;
+    MAP_PUT(composites->map, compositorDescriptor, state);
 }
 
 const VKCompositeState* VKComposites_GetState(VKComposites* composites, VKCompositeMode mode, VkBool32 dstOpaque) {
-    VKCompositeState* state = MAP_FIND(composites->map, (VKCompositeDescriptor) { mode, dstOpaque });
+    VKCompositeDescriptor desc = { mode, dstOpaque };
+    VKCompositeState* state = NULL;
+    MAP_FIND(composites->map, desc, state);
     state->blendState.pAttachments = &state->attachmentState;
     return state;
 }

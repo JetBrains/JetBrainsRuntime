@@ -107,8 +107,6 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
         return NULL;
     }
 
-    HASH_MAP_REHASH(image->viewMap, linear_probing, &viewKeyEquals, &viewKeyHash, 1, 10, 0.75);
-
     return image;
 }
 
@@ -116,8 +114,9 @@ void VKImage_Destroy(VKDevice* device, VKImage* image) {
     assert(device != NULL && device->allocator != NULL);
     if (image == NULL) return;
     if (image->viewMap != NULL) {
-        for (const VKImageViewKey* k = NULL; (k = MAP_NEXT_KEY(image->viewMap, k)) != NULL;) {
-            const VKImageViewInfo* viewInfo = MAP_FIND(image->viewMap, *k);
+        for (const VKImageViewKey* k = NULL; (k = (const VKImageViewKey*)(MAP_NEXT_KEY(image->viewMap, k))) != NULL;) {
+            const VKImageViewInfo* viewInfo = NULL;
+            MAP_FIND(image->viewMap, *k, viewInfo);;
             if (viewInfo->descriptorSet != VK_NULL_HANDLE) {
                 device->vkFreeDescriptorSets(device->handle, viewInfo->descriptorPool, 1, &viewInfo->descriptorSet);
             }
@@ -132,9 +131,9 @@ void VKImage_Destroy(VKDevice* device, VKImage* image) {
 
 static VKImageViewInfo* VKImage_GetViewInfo(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle) {
     VKImageViewKey key = { format, swizzle };
-    VKImageViewInfo* viewInfo = MAP_FIND(image->viewMap, key);
-    if (viewInfo == NULL || viewInfo->view == VK_NULL_HANDLE) {
-        if (viewInfo == NULL) viewInfo = &MAP_AT(image->viewMap, key);
+    VKImageViewInfo* viewInfo = NULL;
+    MAP_AT(image->viewMap, key, viewInfo);
+    if (viewInfo->view == VK_NULL_HANDLE) {
         viewInfo->view = VKImage_CreateView(device, image->handle, format, VK_UNPACK_SWIZZLE(swizzle));
     }
     return viewInfo;
