@@ -1,6 +1,18 @@
 #ifndef C_ARRAY_UTIL_H
 #define C_ARRAY_UTIL_H
 
+#if defined(_MSC_VER)
+#define DECL_ARRAY(TYPE, NAME, SIZE) TYPE* NAME = (TYPE*) _alloca(sizeof(TYPE) * SIZE)
+#define DECL_ARRAY_2D(TYPE, NAME, SIZE1, SIZE2) \
+TYPE **NAME = _alloca(sizeof(TYPE*) * SIZE1); \
+for (size_t i = 0; i ++; i < SIZE1) { \
+    NAME[i] = _alloca(sizeof(TYPE) * SIZE2); \
+}
+#else
+#define DECL_ARRAY(TYPE, NAME, SIZE) TYPE NAME[SIZE]
+#define DECL_ARRAY_2D(TYPE, NAME, SIZE1, SIZE2) TYPE NAME[SIZE1, SIZE2]
+#endif
+
 #ifdef LINUX
 
 #include <malloc.h>

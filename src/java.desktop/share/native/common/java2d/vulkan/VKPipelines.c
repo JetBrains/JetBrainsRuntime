@@ -141,13 +141,13 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     VKShaders* shaders = pipelineContext->shaders;
     VKComposites* composites = &VKEnv_GetInstance()->composites;
 
-    VKPipelineInfo pipelineInfos[count];
+    DECL_ARRAY(VKPipelineInfo, pipelineInfos, count);
     // Setup pipeline creation structs.
-    static const uint32_t MAX_DYNAMIC_STATES = 2;
+    #define MAX_DYNAMIC_STATES 2
     typedef struct {
         VkPipelineShaderStageCreateInfo createInfos[2]; // vert + frag
     } ShaderStages;
-    ShaderStages stages[count];
+    DECL_ARRAY(ShaderStages, stages, count);
     typedef struct {
         uint32_t inAlphaType, outAlphaType, shaderVariant, shaderModifier;
     } SpecializationData;
@@ -161,12 +161,12 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
         VkSpecializationInfo info;
         SpecializationData data;
     } Specialization;
-    Specialization specializations[count];
-    VkPipelineInputAssemblyStateCreateInfo inputAssemblyStates[count];
-    VkPipelineDepthStencilStateCreateInfo depthStencilStates[count];
-    VkPipelineDynamicStateCreateInfo dynamicStates[count];
-    VkDynamicState dynamicStateValues[count][MAX_DYNAMIC_STATES];
-    VkGraphicsPipelineCreateInfo createInfos[count];
+    DECL_ARRAY(Specialization, specializations, count);
+    DECL_ARRAY(VkPipelineInputAssemblyStateCreateInfo, inputAssemblyStates, count);
+    DECL_ARRAY(VkPipelineDepthStencilStateCreateInfo, depthStencilStates, count);
+    DECL_ARRAY(VkPipelineDynamicStateCreateInfo, dynamicStates, count);
+    DECL_ARRAY_2D(VkDynamicState, dynamicStateValues, count, MAX_DYNAMIC_STATES);
+    DECL_ARRAY(VkGraphicsPipelineCreateInfo, createInfos, count);
     for (uint32_t i = 0; i < count; i++) {
         const VKCompositeState* compositeState =
             VKComposites_GetState(composites, descriptors[i].composite, descriptors[i].dstOpaque);
@@ -318,7 +318,7 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
 
     // Create pipelines.
     // TODO pipeline cache
-    VkPipeline pipelines[count];
+    DECL_ARRAY(VkPipeline, pipelines, count);
     VK_IF_ERROR(device->vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, count,
                                                   createInfos, NULL, pipelines)) VK_UNHANDLED_ERROR();
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_CreatePipelines: created %d pipelines", count);
