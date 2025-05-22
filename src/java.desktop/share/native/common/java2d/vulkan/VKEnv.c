@@ -24,23 +24,70 @@
  * questions.
  */
 
+#ifdef _WIN32
+#include <windows.h>
+#include <stdio.h>
+#include <jdk_util.h>
+#elif
 #include <dlfcn.h>
+#endif
+
 #include <string.h>
 #include "VKUtil.h"
 #include "VKCapabilityUtil.h"
 #include "VKEnv.h"
 #include "VKDevice.h"
 
+
+
+static void* pVulkanLib = NULL;
+
+#ifdef _WIN32
+
+static PFN_vkGetInstanceProcAddr vulkanLibOpen() {
+    if (pVulkanLib == NULL) {
+        // Try to load the Vulkan library
+        pVulkanLib = JDK_LoadSystemLibrary("vulkan-1.dll");
+        if (pVulkanLib == NULL) {
+            fprintf(stderr, "Vulkan: Failed to load %s\n", "vulkan-1.dll");
+            return NULL;
+        }
+    }
+
+    // Get the address of the vkGetInstanceProcAddr function
+    PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
+            (PFN_vkGetInstanceProcAddr)GetProcAddress(pVulkanLib, "vkGetInstanceProcAddr");
+    if (vkGetInstanceProcAddr == NULL) {
+        // Log an error if the function cannot be retrieved
+        fprintf(stderr, "Vulkan: Failed to get proc address of vkGetInstanceProcAddr from %s\n", "vulkan-1.dll");
+
+        // Unload the library and reset the handle
+        FreeLibrary(pVulkanLib);
+        pVulkanLib = NULL;
+        return NULL;
+    }
+    return vkGetInstanceProcAddr;
+}
+
+static void vulkanLibClose() {
+   if (pVulkanLib != NULL) {
+       FreeLibrary(pVulkanLib);
+       pVulkanLib = NULL;
+   }
+}
+
+#elif
+
 #define VULKAN_DLL JNI_LIB_NAME("vulkan")
 #define VULKAN_1_DLL VERSIONED_JNI_LIB_NAME("vulkan", "1")
 
-static void* pVulkanLib = NULL;
 static void vulkanLibClose() {
     if (pVulkanLib != NULL) {
         dlclose(pVulkanLib);
         pVulkanLib = NULL;
     }
 }
+
 static PFN_vkGetInstanceProcAddr vulkanLibOpen() {
     if (pVulkanLib == NULL) {
         pVulkanLib = dlopen(VULKAN_DLL, RTLD_NOW);
@@ -62,6 +109,8 @@ static PFN_vkGetInstanceProcAddr vulkanLibOpen() {
     }
     return vkGetInstanceProcAddr;
 }
+
+#endif
 
 void VKDevice_Reset(VKDevice* device);
 
