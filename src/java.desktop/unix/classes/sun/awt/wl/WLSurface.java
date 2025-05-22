@@ -91,7 +91,7 @@ public class WLSurface {
         WLToolkit.registerWLSurface(wlSurfacePtr, peer);
     }
 
-    public void hide() {
+    private void hide() {
         assert SunToolkit.isAWTLockHeldByCurrentThread();
         assertIsValid();
 

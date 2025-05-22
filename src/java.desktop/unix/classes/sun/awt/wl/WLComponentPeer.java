@@ -869,22 +869,21 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public void dispose() {
-        // TODO: this order seems very wrong
+        WLToolkit.targetDisposedPeer(target, this);
+
         performLocked(() -> {
+            assert !isVisible();
+
+            nativeDisposeFrame(nativePtr);
+            nativePtr = 0;
+            if (wlSurface != null) {
+                wlSurface.dispose();
+                wlSurface = null;
+            }
             SurfaceData oldData = surfaceData;
             surfaceData = null;
             if (oldData != null) {
                 oldData.invalidate();
-            }
-        });
-        WLToolkit.targetDisposedPeer(target, this);
-        performLocked(() -> {
-            assert(!isVisible());
-            if (wlSurface != null) {
-                nativeDisposeFrame(nativePtr);
-                nativePtr = 0;
-                wlSurface.dispose();
-                wlSurface = null;
             }
         });
     }

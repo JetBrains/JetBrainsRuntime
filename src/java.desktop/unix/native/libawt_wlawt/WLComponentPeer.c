@@ -487,7 +487,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
         (JNIEnv *env, jobject obj, jlong ptr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
-    DoHide(env, frame);
     (*env)->DeleteWeakGlobalRef(env, frame->nativeFramePeer);
     free(frame);
 }
