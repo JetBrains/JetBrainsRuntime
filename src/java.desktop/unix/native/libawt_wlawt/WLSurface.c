@@ -186,6 +186,8 @@ Java_sun_awt_wl_WLSurface_nativeDestroyWlSurface
     assert (sd);
 
     wl_surface_destroy(sd->wlSurface);
+    delete_all_tokens(sd->activation_token_list);
+    sd->activation_token_list = NULL;
     (*env)->DeleteGlobalRef(env, sd->javaSurface);
     free(sd);
 }
@@ -198,8 +200,6 @@ Java_sun_awt_wl_WLSurface_nativeHideWlSurface
     assert (sd);
 
     wl_surface_attach(sd->wlSurface, NULL, 0, 0);
-    delete_all_tokens(sd->activation_token_list);
-    sd->activation_token_list = NULL;
 }
 
 JNIEXPORT void JNICALL

@@ -34,7 +34,9 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 public class WLSurface {
-    private final long nativePtr;
+    private final long nativePtr; // an opaque native handle
+    private final long wlSurfacePtr; // a pointer to wl_surface object
+    private boolean isValid = true;
     private final WLComponentPeer peer;
 
     // Graphics devices this top-level component is visible on
@@ -52,60 +54,78 @@ public class WLSurface {
         if (nativePtr == 0) {
             throw new RuntimeException("Failed to create WLSurface");
         }
+        wlSurfacePtr = wlSurfacePtr(nativePtr);
         surfaceData = null; // having surface data means that the surface is visible
     }
 
     public void dispose() {
-        synchronized (this) {
-            // TODO: introduce "isValid"?
-            hide();
-            nativeDestroyWlSurface(nativePtr);
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+
+        hide();
+        nativeDestroyWlSurface(nativePtr);
+        isValid = false;
+    }
+
+    private void assertIsValid() {
+        if (!isValid) {
+            throw new IllegalStateException("WLSurface is not valid");
         }
     }
 
-    public boolean isVisible() {
-        synchronized (this) {
-            return surfaceData != null;
-        }
+    public boolean hasSurfaceData() {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assertIsValid();
+
+        return surfaceData != null;
     }
 
-    public void showWithData(SurfaceData data) {
+    public void associateWithSurfaceData(SurfaceData data) {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
         Objects.requireNonNull(data);
+        assertIsValid();
 
-        synchronized (this) {
-            if (surfaceData != null) return;
+        if (surfaceData != null) return;
 
-            surfaceData = data;
-            SurfaceData.convertTo(WLSurfaceDataExt.class, data).assignSurface(getWlSurfacePtr());
-            WLToolkit.registerWLSurface(getWlSurfacePtr(), peer);
-        }
-
+        surfaceData = data;
+        SurfaceData.convertTo(WLSurfaceDataExt.class, data).assignSurface(wlSurfacePtr);
+        WLToolkit.registerWLSurface(wlSurfacePtr, peer);
     }
 
     public void hide() {
-        synchronized (this) {
-            WLToolkit.unregisterWLSurface(getWlSurfacePtr());
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assertIsValid();
 
-            if (surfaceData == null) return;
-            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(0);
-            surfaceData = null;
-        }
+        WLToolkit.unregisterWLSurface(getWlSurfacePtr());
+
+        if (surfaceData == null) return;
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(0);
+        surfaceData = null;
 
         nativeHideWlSurface(nativePtr);
     }
 
     public void commit() {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assertIsValid();
+
         nativeCommitWlSurface(nativePtr);
     }
 
+    /**
+     * NB: the returned pointer is valid for as long as AWT lock is being held
+     * @return a pointer to wl_surface native object
+     */
     public long getWlSurfacePtr() {
         assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assertIsValid();
 
-        // TODO: this should be constant throughout the lifetime of this object
-        return wlSurfacePtr(nativePtr);
+        return wlSurfacePtr;
     }
 
     public void setOpaqueRegion(int x, int y, int width, int height) {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assertIsValid();
+
         nativeSetOpaqueRegion(nativePtr, x, y, width, height);
     }
 
@@ -156,6 +176,9 @@ public class WLSurface {
     }
 
     public void activateByAnotherSurface(long serial, long activatingSurfacePtr) {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assertIsValid();
+
         nativeActivate(nativePtr, serial, activatingSurfacePtr);
     }
 

@@ -90,8 +90,8 @@ public class WLComponentPeer implements ComponentPeer {
 
     final Object dataLock = new Object(); // TODO: use getStateLock() instead
 
-    WLSurface wlSurface; // TODO: synchronize access to it
     protected Color background; // protected by dataLock
+    WLSurface wlSurface; // accessed under AWT lock
     SurfaceData surfaceData; // accessed under AWT lock
     final WLRepaintArea paintArea;
     boolean paintPending = false; // protected by dataLock
@@ -169,8 +169,11 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     boolean isVisible() {
-        synchronized (getStateLock()) {
+        WLToolkit.awtLock();
+        try {
             return wlSurface != null && visible;
+        } finally {
+            WLToolkit.awtUnlock();
         }
     }
 
@@ -350,12 +353,10 @@ public class WLComponentPeer implements ComponentPeer {
                     : Frame.NORMAL;
             boolean isMaximized = (state & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH;
             boolean isMinimized = (state & Frame.ICONIFIED) == Frame.ICONIFIED;
-            synchronized (getStateLock()) {
-                assert wlSurface == null;
-                wlSurface = new WLSurface(this);
-            }
 
             performLocked(() -> {
+                assert wlSurface == null;
+                wlSurface = new WLSurface(this);
                 long wlSurfacePtr = wlSurface.getWlSurfacePtr();
                 if (isWlPopup) {
                     Window popup = (Window) target;
@@ -665,7 +666,6 @@ public class WLComponentPeer implements ComponentPeer {
     @Override
     public Point getLocationOnScreen() {
         return performLocked(() -> {
-            // TODO: this needs to be made atomicallt wrt wlSurfacePtr validity; performLocked doesn't guarantee that anymore
             if (wlSurface != null) {
                 try {
                     return WLRobotPeer.getLocationOfWLSurface(wlSurface);
@@ -1033,8 +1033,11 @@ public class WLComponentPeer implements ComponentPeer {
             serial = WLToolkit.getInputState().pointerButtonSerial();
         }
         long surface = WLToolkit.getInputState().surfaceForKeyboardInput();
-        if (serial != 0 && wlSurface != null) {
-            wlSurface.activateByAnotherSurface(serial, surface);
+        if (serial != 0) {
+            final long finalSerial = serial;
+            performLocked(() -> {
+                if (wlSurface != null) wlSurface.activateByAnotherSurface(finalSerial, surface);
+            });
         } else {
             if (log.isLoggable(Level.WARNING)) {
                 log.warning("activate() aborted due to missing input or focus event serial");
@@ -1564,6 +1567,8 @@ public class WLComponentPeer implements ComponentPeer {
 
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
                           boolean active, boolean maximized, boolean fullscreen) {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+
         // NB: The width and height, as well as X and Y arguments, specify the size and the location
         //     of the window in surface-local coordinates.
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1601,8 +1606,8 @@ public class WLComponentPeer implements ComponentPeer {
             changeSizeToConfigured(newSurfaceWidth, newSurfaceHeight);
         }
 
-        if (!wlSurface.isVisible()) {
-            wlSurface.showWithData(surfaceData);
+        if (!wlSurface.hasSurfaceData()) {
+            wlSurface.associateWithSurfaceData(surfaceData);
         }
 
         if (clientDecidesDimension || isWlPopup) {
@@ -1632,9 +1637,11 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     void notifyEnteredOutput(int wlOutputID) {
-        if (wlSurface != null) {
-            wlSurface.notifyEnteredOutput(wlOutputID);
-        }
+        performLocked(() -> {
+            if (wlSurface != null) {
+                wlSurface.notifyEnteredOutput(wlOutputID);
+            }
+        });
     }
 
     void notifyPopupDone() {
@@ -1643,6 +1650,8 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     void checkIfOnNewScreen() {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+
         if (wlSurface == null) return;
         final WLGraphicsDevice newDevice = wlSurface.getGraphicsDevice();
         if (newDevice != null) { // could be null when screens are being reconfigured
