@@ -48,10 +48,10 @@ struct activation_token_list_item {
 struct WLSurfaceDescr {
     struct wl_surface* wlSurface;
     jobject javaSurface; // a global reference to WLSurface
-    struct activation_token_list_item *activation_token_list; // TODO: why have this at all?
 };
 
-static struct activation_token_list_item *add_token
+static struct activation_token_list_item *
+add_token
         (JNIEnv* env, struct activation_token_list_item *list, struct xdg_activation_token_v1* token_to_add)
 {
     struct activation_token_list_item *new_item =
@@ -62,7 +62,8 @@ static struct activation_token_list_item *add_token
     return new_item;
 }
 
-static struct activation_token_list_item *delete_last_token
+static struct activation_token_list_item *
+delete_last_token
         (struct activation_token_list_item *list)
 {
     assert(list);
@@ -72,7 +73,8 @@ static struct activation_token_list_item *delete_last_token
     return next_item;
 }
 
-static struct activation_token_list_item *delete_token
+static struct activation_token_list_item *
+delete_token
         (struct activation_token_list_item *list, struct xdg_activation_token_v1 *token_to_delete)
 {
     if (list == NULL) {
@@ -85,7 +87,8 @@ static struct activation_token_list_item *delete_token
     }
 }
 
-static void delete_all_tokens
+static void
+delete_all_tokens
         (struct activation_token_list_item *list)
 {
     while (list) {
@@ -198,8 +201,6 @@ Java_sun_awt_wl_WLSurface_nativeHideWlSurface
     assert (sd);
 
     wl_surface_attach(sd->wlSurface, NULL, 0, 0);
-    delete_all_tokens(sd->activation_token_list);
-    sd->activation_token_list = NULL;
 }
 
 JNIEXPORT void JNICALL
@@ -212,7 +213,8 @@ Java_sun_awt_wl_WLSurface_nativeCommitWlSurface
     wl_surface_commit(sd->wlSurface);
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLSurface_nativeSetOpaqueRegion
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLSurface_nativeSetOpaqueRegion
         (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y, jint width, jint height)
 {
     struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
@@ -234,7 +236,6 @@ xdg_activation_token_v1_done
     assert (sd);
 	struct wl_surface *surface = sd->wlSurface;
     xdg_activation_v1_activate(xdg_activation_v1, token, surface);
-    sd->activation_token_list = delete_token(sd->activation_token_list, xdg_activation_token_v1);
 
     JNIEnv* env = getEnv();
     wlFlushToServer(env);
@@ -261,7 +262,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeActivate
             xdg_activation_token_v1_set_surface(token, surface);
         }
         xdg_activation_token_v1_commit(token);
-        sd->activation_token_list = add_token(env, sd->activation_token_list, token);
         wlFlushToServer(env);
     }
 }
