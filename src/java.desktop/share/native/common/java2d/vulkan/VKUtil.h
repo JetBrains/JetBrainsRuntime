@@ -25,7 +25,6 @@
 #define VKUtil_h_Included
 #include <stdlib.h>
 #include <Trace.h>
-#include "awt.h"
 #include "jni_util.h"
 #include "VKTypes.h"
 

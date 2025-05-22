@@ -343,7 +343,7 @@ static jobjectArray createJavaGPUs(JNIEnv *env, VKEnv* vk) {
 }
 
 static VKEnv* instance = NULL;
-JNIEXPORT VKEnv* VKEnv_GetInstance() {
+VKEnv* VKEnv_GetInstance() {
     return instance;
 }
 
