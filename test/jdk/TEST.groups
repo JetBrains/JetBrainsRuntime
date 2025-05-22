@@ -1324,7 +1324,7 @@ jdk_swing_wayland= \
     -javax/swing/text/DefaultCaret/bug4203175.java \
     -javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java \
     -javax/swing/text/DefaultCaret/HidingSelection/MultiSelectionTest.java \
-    §-javax/swing/text/DefaultEditorKit/4278839/bug4278839.java \
+    -javax/swing/text/DefaultEditorKit/4278839/bug4278839.java \
     -javax/swing/text/DefaultStyledDocument/6636983/bug6636983.java \
     -javax/swing/text/FlowView/LayoutTest.java \
     -javax/swing/text/GlyphPainter2/6427244/bug6427244.java \
