@@ -212,6 +212,15 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  */
 #define SARRAY_COUNT_OF(STATIC_ARRAY) (sizeof(STATIC_ARRAY)/sizeof((STATIC_ARRAY)[0]))
 
+#if defined(_MSC_VER)
+#define DECL_ARRAY(TYPE, NAME, SIZE) TYPE* NAME = (TYPE*) _alloca(sizeof(TYPE) * SIZE)
+#define DECL_ARRAY_2D(TYPE, NAME, SIZE1, SIZE2) TYPE (*NAME)[SIZE2] = _alloca(SIZE1 * SIZE2 * sizeof(TYPE))
+#else
+#define DECL_ARRAY(TYPE, NAME, SIZE) TYPE NAME[SIZE]
+#define DECL_ARRAY_2D(TYPE, NAME, SIZE1, SIZE2) TYPE NAME[SIZE1, SIZE2]
+#endif
+
+
 // === Ring buffers ===
 
 typedef struct {
