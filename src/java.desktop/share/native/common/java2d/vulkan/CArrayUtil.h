@@ -36,6 +36,12 @@ static inline void consume(const void* value) {}
 #define ARRAY_DEFAULT_CAPACITY 10
 #endif
 
+#if defined(_MSC_VER)
+#define ALIGN_OF(VAL) alignof(__typeof__(VAL))
+#else
+#define ALIGN_OF(VAL) alignof(VAL)
+#endif
+
 typedef struct {
     size_t size;
     size_t capacity;
@@ -115,7 +121,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * Deallocate the vector
  * @param P array
  */
-#define ARRAY_FREE(P) ((void)CARR_array_realloc((void**)&(P), alignof(*(P)), sizeof(*(P)), 0))
+#define ARRAY_FREE(P) ((void)CARR_array_realloc((void**)&(P), ALIGN_OF(*(P)), sizeof(*(P)), 0))
 
 /**
  * Apply function to the array elements
@@ -152,7 +158,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @return true if the operation succeeded
  */
 #define ARRAY_TRY_ENSURE_CAPACITY(P, CAPACITY) \
-    CARR_array_ensure_capacity((void**)&(P), alignof(*(P)), sizeof(*(P)), (CAPACITY), false)
+    CARR_array_ensure_capacity((void**)&(P), ALIGN_OF(*(P)), sizeof(*(P)), (CAPACITY), false)
 
 /**
  * Ensure array capacity. Array is implicitly initialized when necessary.
@@ -161,7 +167,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @param CAPACITY required capacity of the array
  */
 #define ARRAY_ENSURE_CAPACITY(P, CAPACITY) \
-    ((void)CARR_array_ensure_capacity((void**)&(P), alignof(*(P)), sizeof(*(P)), (CAPACITY), true))
+    ((void)CARR_array_ensure_capacity((void**)&(P), ALIGN_OF(*(P)), sizeof(*(P)), (CAPACITY), true))
 
 /**
  * Shrink capacity of the array to its size.
@@ -170,7 +176,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @return the array
  * @return true if the operation succeeded
  */
-#define ARRAY_SHRINK_TO_FIT(P) CARR_array_realloc((void**)&(P), alignof(*(P)), sizeof(*(P)), ARRAY_SIZE(P))
+#define ARRAY_SHRINK_TO_FIT(P) CARR_array_realloc((void**)&(P), ALIGN_OF(*(P)), sizeof(*(P)), ARRAY_SIZE(P))
 
 /**
  * Resize an array. Array is implicitly initialized when necessary.
@@ -180,7 +186,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @return true if the operation succeeded
  */
 #define ARRAY_TRY_RESIZE(P, SIZE) \
-    CARR_array_resize((void**)&(P), alignof(*(P)), sizeof(*(P)), (SIZE), false)
+    CARR_array_resize((void**)&(P), ALIGN_OF(*(P)), sizeof(*(P)), (SIZE), false)
 
 /**
  * Resize an array. Array is implicitly initialized when necessary.
@@ -189,7 +195,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @param SIZE required size of the array
  */
 #define ARRAY_RESIZE(P, SIZE) \
-    ((void)CARR_array_resize((void**)&(P), alignof(*(P)), sizeof(*(P)), (SIZE), true))
+    ((void)CARR_array_resize((void**)&(P), ALIGN_OF(*(P)), sizeof(*(P)), (SIZE), true))
 
 /**
  * Add element to the end of the array. Array is implicitly initialized when necessary.
@@ -198,7 +204,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @return dereferenced pointer to the inserted element
  */
 #define ARRAY_PUSH_BACK(P) \
-    (*(CARR_array_push_back((void**)&(P), alignof(*(P)), sizeof(*(P))), (P) + ARRAY_SIZE(P) - 1))
+    (*(CARR_array_push_back((void**)&(P), ALIGN_OF(*(P)), sizeof(*(P))), (P) + ARRAY_SIZE(P) - 1))
 
 /**
  * Compile-time length of the static array.
@@ -273,7 +279,7 @@ static inline size_t CARR_ring_buffer_push_back(void* data) {
  * @return true if the operation succeeded
  */
 #define RING_BUFFER_TRY_ENSURE_CAN_PUSH(P) CARR_RING_BUFFER_GUARD((P), \
-    CARR_ring_buffer_ensure_can_push((void**)&(P), alignof(*(P)), sizeof(*(P)), false))
+    CARR_ring_buffer_ensure_can_push((void**)&(P), ALIGN_OF(*(P)), sizeof(*(P)), false))
 
 /**
  * Ensure enough capacity to push an element into ring buffer. Implicitly initializes when buffer is NULL.
@@ -281,7 +287,7 @@ static inline size_t CARR_ring_buffer_push_back(void* data) {
  * @param P ring buffer
  */
 #define RING_BUFFER_ENSURE_CAN_PUSH(P) CARR_RING_BUFFER_GUARD((P), \
-    (void)CARR_ring_buffer_ensure_can_push((void**)&(P), alignof(*(P)), sizeof(*(P)), true))
+    (void)CARR_ring_buffer_ensure_can_push((void**)&(P), ALIGN_OF(*(P)), sizeof(*(P)), true))
 
 /**
  * Add element to the beginning of the ring buffer. Implicitly initializes when buffer is NULL.
@@ -337,7 +343,7 @@ static inline size_t CARR_ring_buffer_push_back(void* data) {
  * @param P ring buffer
  */
 #define RING_BUFFER_FREE(P) CARR_RING_BUFFER_GUARD((P), \
-    (void)CARR_ring_buffer_realloc((void**)&(P), alignof(*(P)), sizeof(*(P)), 0))
+    (void)CARR_ring_buffer_realloc((void**)&(P), ALIGN_OF(*(P)), sizeof(*(P)), 0))
 
 // === Maps ===
 
@@ -347,8 +353,8 @@ typedef size_t (*CARR_hash_fp)(const void* data);
 #define CARR_MAP_LAYOUT_ARGS size_t key_alignment, size_t key_size, size_t value_alignment, size_t value_size
 #define CARR_MAP_LAYOUT_PASS key_alignment, key_size, value_alignment, value_size
 #define CARR_MAP_LAYOUT(P)                                                         \
-    alignof((P)->CARR_keys[0].CARR_key[0]), sizeof((P)->CARR_keys[0].CARR_key[0]), \
-    alignof((P)->CARR_values[0].CARR_value[0]), sizeof((P)->CARR_values[0].CARR_value[0])
+    ALIGN_OF((P)->CARR_keys[0].CARR_key[0]), sizeof((P)->CARR_keys[0].CARR_key[0]), \
+    ALIGN_OF((P)->CARR_values[0].CARR_value[0]), sizeof((P)->CARR_values[0].CARR_value[0])
 
 typedef const void* (*CARR_map_dispatch_next_key_fp)(CARR_MAP_LAYOUT_ARGS, const void* data, const void* key_slot);
 typedef void* (*CARR_map_dispatch_find_fp)(CARR_MAP_LAYOUT_ARGS,
