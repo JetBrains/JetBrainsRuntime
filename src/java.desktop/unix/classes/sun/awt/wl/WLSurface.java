@@ -182,6 +182,15 @@ public class WLSurface {
         nativeActivate(nativePtr, serial, activatingSurfacePtr);
     }
 
+    public void updateSurfaceSize(int surfaceWidth, int surfaceHeight) {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assertIsValid();
+
+        if (surfaceData != null && !surfaceData.getColorModel().hasAlpha()) {
+            setOpaqueRegion(0, 0, surfaceWidth, surfaceHeight);
+        }
+    }
+
     private static native void initIDs();
 
     private native long wlSurfacePtr(long ptr);

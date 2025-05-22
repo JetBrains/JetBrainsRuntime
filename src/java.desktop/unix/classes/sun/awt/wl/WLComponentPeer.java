@@ -434,10 +434,9 @@ public class WLComponentPeer implements ComponentPeer {
         Dimension maxSize = target.isMaximumSizeSet() ? target.getMaximumSize() : null;
         Dimension surfaceMaxSize = maxSize != null ? javaUnitsToSurfaceSize(constrainSize(maxSize)) : null;
 
+        // TODO: move wp_viewport to WLSurface or WLMainSurface?
         nativeSetSurfaceSize(nativePtr, surfaceWidth, surfaceHeight);
-        if (!surfaceData.getColorModel().hasAlpha()) {
-            wlSurface.setOpaqueRegion(0, 0, surfaceWidth, surfaceHeight);
-        }
+        wlSurface.updateSurfaceSize(surfaceWidth, surfaceHeight);
         nativeSetWindowGeometry(nativePtr, 0, 0, surfaceWidth, surfaceHeight);
         nativeSetMinimumSize(nativePtr, surfaceMinSize.width, surfaceMinSize.height);
         if (surfaceMaxSize != null) {
