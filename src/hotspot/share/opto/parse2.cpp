@@ -434,7 +434,7 @@ void Parse::do_tableswitch() {
 
   // generate decision tree, using trichotomy when possible
   int rnum = len+2;
-  bool makes_backward_branch = false;
+  bool makes_backward_branch = (default_dest <= bci());
   SwitchRange* ranges = NEW_RESOURCE_ARRAY(SwitchRange, rnum);
   int rp = -1;
   if (lo_index != min_jint) {
@@ -536,7 +536,7 @@ void Parse::do_lookupswitch() {
   }
 
   int rnum = len*2+1;
-  bool makes_backward_branch = false;
+  bool makes_backward_branch = (default_dest <= bci());
   SwitchRange* ranges = NEW_RESOURCE_ARRAY(SwitchRange, rnum);
   int rp = -1;
   for (int j = 0; j < len; j++) {
