@@ -166,7 +166,7 @@ public final class WLClipboard extends SunClipboard {
         WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
         List<String> mimes;
         synchronized (dataLock) {
-            if (clipboardDataOfferedToUs == null || !clipboardDataOfferedToUs.isValid()) {
+            if (clipboardDataOfferedToUs == null) {
                 return null;
             }
 
@@ -221,7 +221,7 @@ public final class WLClipboard extends SunClipboard {
         lostOwnershipNow(null);
 
         synchronized (dataLock) {
-            if (clipboardDataOfferedToUs != null && clipboardDataOfferedToUs.isValid()) {
+            if (clipboardDataOfferedToUs != null) {
                 clipboardDataOfferedToUs.destroy();
             }
             clipboardDataOfferedToUs = offer;

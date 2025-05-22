@@ -46,6 +46,7 @@ enum DataTransferProtocol {
 // seat's wl_data_device and zwp_primary_selection_device_v1 have user pointers to this struct
 struct DataDevice {
     // global reference to the corresponding WLDataDevice object
+    // TODO: it's currently never destroyed, because WLDataDevice is never destroyed
     jobject javaObject;
 
     struct wl_event_queue *dataTransferQueue;
@@ -58,6 +59,7 @@ struct DataDevice {
 struct DataSource {
     enum DataTransferProtocol protocol;
     // global reference to the corresponding WLDataSource object
+    // destroyed in WLDataSource.destroy()
     jobject javaObject;
 
     union {
@@ -73,6 +75,7 @@ struct DataSource {
 struct DataOffer {
     enum DataTransferProtocol protocol;
     // global reference to the corresponding WLDataOffer object
+    // destroyed in WLDataOffer.destroy()
     jobject javaObject;
 
     union {
@@ -401,8 +404,7 @@ static void wl_data_source_handle_target(void *user, struct wl_data_source *wl_d
     }
 }
 
-static void
-wl_data_source_handle_send(void *user, struct wl_data_source *wl_data_source, const char *mime, int32_t fd) {
+static void wl_data_source_handle_send(void *user, struct wl_data_source *wl_data_source, const char *mime, int32_t fd) {
     struct DataSource *source = user;
     assert(source != NULL);
 
@@ -618,8 +620,8 @@ static void wl_data_device_handle_motion(
 
     JNIEnv *env = getEnv();
     assert(env != NULL);
-    (*env)->CallVoidMethod(env, dataDevice->javaObject, wlDataDeviceHandleDnDMotionMID, (jlong)time, (jdouble)x / 256.0,
-                           (jdouble)y / 256.0);
+    (*env)->CallVoidMethod(env, dataDevice->javaObject, wlDataDeviceHandleDnDMotionMID, (jlong)time, wl_fixed_to_double(x),
+                           wl_fixed_to_double(y));
     EXCEPTION_CLEAR(env);
 }
 
