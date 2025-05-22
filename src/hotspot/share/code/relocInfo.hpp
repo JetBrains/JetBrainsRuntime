@@ -1183,6 +1183,11 @@ class runtime_call_w_cp_Relocation : public CallRelocation {
 // in the code, it can patch it to jump to the trampoline where is
 // sufficient space for a far branch. Needed on PPC.
 class trampoline_stub_Relocation : public Relocation {
+#ifdef USE_TRAMPOLINE_STUB_FIX_OWNER
+  void pd_fix_owner_after_move();
+  void fix_relocation_after_move(const CodeBuffer* src, CodeBuffer* dest) override;
+#endif
+
  public:
   static RelocationHolder spec(address static_call) {
     RelocationHolder rh = newHolder();
@@ -1204,8 +1209,8 @@ class trampoline_stub_Relocation : public Relocation {
   // Return the address of the NativeCall that owns the trampoline.
   address owner() { return _owner; }
 
-  void pack_data_to(CodeSection * dest);
-  void unpack_data();
+  void pack_data_to(CodeSection * dest) override;
+  void unpack_data() override;
 
   // Find the trampoline stub for a call.
   static address get_trampoline_for(address call, nmethod* code);
