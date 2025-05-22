@@ -151,7 +151,7 @@ public class WLRobotPeer implements RobotPeer {
     }
 
     private static void checkPeerForPixelGrab(WLComponentPeer peer) {
-        if (!peer.hasSurface()) {
+        if (!peer.isVisible()) {
             throw new UnsupportedOperationException("The window has no backing buffer to read pixels from");
         }
         if (! (peer.surfaceData instanceof WLPixelGrabberExt)) {

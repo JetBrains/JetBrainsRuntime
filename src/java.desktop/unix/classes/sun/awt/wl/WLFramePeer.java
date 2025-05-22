@@ -44,15 +44,6 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
                 Toolkit.getDefaultToolkit().isFrameStateSupported(Frame.MAXIMIZED_BOTH));
     }
 
-    @Override
-    void configureWLSurface() {
-        super.configureWLSurface();
-        int state = getFrame().getExtendedState();
-        if (state != Frame.NORMAL) {
-            setState(state);
-        }
-    }
-
 //    @Override
 //    public void beginLayout() {
 //        log.fine("Not implemented: WLFramePeer.beginLayout()");

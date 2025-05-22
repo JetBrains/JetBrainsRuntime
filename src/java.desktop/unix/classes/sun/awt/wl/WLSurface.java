@@ -29,47 +29,145 @@ package sun.awt.wl;
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLSurfaceDataExt;
 
+import java.util.ArrayList;
+import java.util.Objects;
+
 public class WLSurface {
     private final long nativePtr;
-    private SurfaceData surfaceData; // accessed under AWT lock
     private final WLComponentPeer peer;
-    boolean visible;
+
+    // Graphics devices this top-level component is visible on
+    protected final java.util.List<WLGraphicsDevice> devices = new ArrayList<>();
+
+    private SurfaceData surfaceData;
 
     static {
         initIDs();
     }
 
-    WLSurface(WLComponentPeer peer) {
+    public WLSurface(WLComponentPeer peer) {
         this.peer = peer;
         nativePtr = nativeCreateWlSurface();
         if (nativePtr == 0) {
             throw new RuntimeException("Failed to create WLSurface");
         }
-        WLToolkit.registerWLSurface(wlSurfacePtr(nativePtr), peer);
+        surfaceData = null; // having surface data means that the surface is visible
     }
 
-    void destroy() {
+    public void dispose() {
         synchronized (this) {
-            WLToolkit.unregisterWLSurface(nativePtr);
-            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(0);
+            // TODO: introduce "isValid"?
+            hide();
             nativeDestroyWlSurface(nativePtr);
-            visible = false;
         }
     }
 
-    void commit() {
+    public boolean isVisible() {
+        synchronized (this) {
+            return surfaceData != null;
+        }
+    }
+
+    public void showWithData(SurfaceData data) {
+        Objects.requireNonNull(data);
+
+        synchronized (this) {
+            if (surfaceData != null) return;
+
+            surfaceData = data;
+            SurfaceData.convertTo(WLSurfaceDataExt.class, data).assignSurface(getWlSurfacePtr());
+            WLToolkit.registerWLSurface(getWlSurfacePtr(), peer);
+        }
+
+    }
+
+    public void hide() {
+        synchronized (this) {
+            WLToolkit.unregisterWLSurface(getWlSurfacePtr());
+
+            if (surfaceData == null) return;
+            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(0);
+            surfaceData = null;
+        }
+
+        nativeHideWlSurface(nativePtr);
+    }
+
+    public void commit() {
         nativeCommitWlSurface(nativePtr);
     }
 
-    void moveTo(int x, int y) {
+    public void moveTo(int x, int y) {
         nativeMoveSurface(nativePtr, x, y);
     }
+
+    public long getWlSurfacePtr() {
+        // TODO: this should be constant throughout the lifetime of this object
+        return wlSurfacePtr(nativePtr);
+    }
+
+    public void setOpaqueRegion(int x, int y, int width, int height) {
+        nativeSetOpaqueRegion(nativePtr, x, y, width, height);
+    }
+
+    WLGraphicsDevice getGraphicsDevice() {
+        int scale = 0;
+        WLGraphicsDevice theDevice = null;
+        // AFAIK there's no way of knowing which WLGraphicsDevice is displaying
+        // the largest portion of this component, so choose the first in the ordered list
+        // of devices with the maximum scale simply to be deterministic.
+        // NB: devices are added to the end of the list when we enter the corresponding
+        // Wayland's output and are removed as soon as we have left.
+        synchronized (devices) {
+            for (WLGraphicsDevice gd : devices) {
+                if (gd.getDisplayScale() > scale) {
+                    scale = gd.getDisplayScale();
+                    theDevice = gd;
+                }
+            }
+        }
+
+        return theDevice;
+    }
+
+    void notifyEnteredOutput(int wlOutputID) {
+        // Called from native code whenever the corresponding wl_surface enters an output (monitor)
+        synchronized (devices) {
+            final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
+            final WLGraphicsDevice gd = ge.notifySurfaceEnteredOutput(peer, wlOutputID);
+            if (gd != null) {
+                devices.add(gd);
+            }
+        }
+
+        peer.checkIfOnNewScreen();
+    }
+
+    void notifyLeftOutput(int wlOutputID) {
+        // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
+        synchronized (devices) {
+            final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
+            final WLGraphicsDevice gd = ge.notifySurfaceLeftOutput(peer, wlOutputID);
+            if (gd != null) {
+                devices.remove(gd);
+            }
+        }
+
+        peer.checkIfOnNewScreen();
+    }
+
+    public void activateByAnotherSurface(long serial, long activatingSurfacePtr) {
+        nativeActivate(nativePtr, serial, activatingSurfacePtr);
+    }
+
+    private static native void initIDs();
 
     private native long wlSurfacePtr(long ptr);
     private native void nativeCommitWlSurface(long ptr);
     private native long nativeCreateWlSurface();
     private native void nativeDestroyWlSurface(long ptr);
+    private native void nativeHideWlSurface(long ptr);
     private native void nativeSetOpaqueRegion(long ptr, int x, int y, int width, int height);
     private native void nativeMoveSurface(long ptr, int x, int y);
-    private static native void initIDs();
+    private native void nativeActivate(long ptr, long serial, long activatingSurfacePtr);
 }
