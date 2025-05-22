@@ -303,7 +303,7 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     J2dRlsTraceLn1(J2D_TRACE_INFO, "VKPipelines_CreatePipelines: created %d pipelines", count);
     for (uint32_t i = 0; i < count; i++) {
         pipelineInfos[i].pipeline = pipelines[i];
-        MAP_AT(renderPassContext->pipelines, descriptors[i]) = pipelineInfos[i];
+        MAP_PUT(renderPassContext->pipelines, descriptors[i], pipelineInfos[i]);
     }
     return pipelineInfos[0];
 }
@@ -366,8 +366,9 @@ static void VKPipelines_DestroyRenderPassContext(VKRenderPassContext* renderPass
     if (renderPassContext == NULL) return;
     VKDevice* device = renderPassContext->pipelineContext->device;
     assert(device != NULL);
-    for (const VKPipelineDescriptor* k = NULL; (k = MAP_NEXT_KEY(renderPassContext->pipelines, k)) != NULL;) {
-        const VKPipelineInfo* info = MAP_FIND(renderPassContext->pipelines, *k);
+    for (const VKPipelineDescriptor* k = NULL; (k = (const VKPipelineDescriptor*)(MAP_NEXT_KEY(renderPassContext->pipelines, k))) != NULL;) {
+        const VKPipelineInfo* info = NULL;
+        MAP_FIND(renderPassContext->pipelines, *k, info);
         device->vkDestroyPipeline(device->handle, info->pipeline, NULL);
     }
     MAP_FREE(renderPassContext->pipelines);
@@ -383,8 +384,6 @@ static VKRenderPassContext* VKPipelines_CreateRenderPassContext(VKPipelineContex
     assert(pipelineContext != NULL && pipelineContext->device != NULL);
     VKRenderPassContext* renderPassContext = calloc(1, sizeof(VKRenderPassContext));
     VK_RUNTIME_ASSERT(renderPassContext);
-    HASH_MAP_REHASH(renderPassContext->pipelines, linear_probing,
-                    &pipelineDescriptorEquals, &pipelineDescriptorHash, 0, 10, 0.75);
     renderPassContext->pipelineContext = pipelineContext;
     renderPassContext->format = format;
 
@@ -531,7 +530,9 @@ VKRenderPassContext* VKPipelines_GetRenderPassContext(VKPipelineContext* pipelin
 
 VKPipelineInfo VKPipelines_GetPipelineInfo(VKRenderPassContext* renderPassContext, VKPipelineDescriptor descriptor) {
     assert(renderPassContext != NULL);
-    VKPipelineInfo info = MAP_AT(renderPassContext->pipelines, descriptor);
+    VKPipelineInfo *info_ptr;
+    MAP_AT(renderPassContext->pipelines, descriptor, info_ptr);
+    VKPipelineInfo info = *info_ptr;
     if (info.pipeline == VK_NULL_HANDLE) {
         info = VKPipelines_CreatePipelines(renderPassContext, 1, &descriptor);
     }
