@@ -1,2 +1,0 @@
-# Fedora & ArchLinux (Wayland) & Ubuntu 21.04
-javax/swing/JInternalFrame/bug5009724.java JBR-7087 linux-all
