@@ -268,19 +268,25 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             break;
         case SHADER_CLIP:
             createInfos[i].pVertexInputState = &INPUT_STATE_CLIP;
-            static const VkStencilOpState CLIP_STENCIL_OP = {
-                .failOp = VK_STENCIL_OP_REPLACE,
-                .passOp = VK_STENCIL_OP_REPLACE,
-                .compareOp = VK_COMPARE_OP_NEVER,
-                .compareMask = 0U,
-                .writeMask = 0xFFFFFFFFU,
-                .reference = CLIP_STENCIL_INCLUDE_VALUE
-            };
             static const VkPipelineDepthStencilStateCreateInfo CLIP_STENCIL_STATE = {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-                .stencilTestEnable = VK_TRUE,
-                .front = CLIP_STENCIL_OP,
-                .back = CLIP_STENCIL_OP
+                    .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+                    .stencilTestEnable = VK_TRUE,
+                    .front = /*CLIP_STENCIL_OP*/ {
+                            .failOp = VK_STENCIL_OP_REPLACE,
+                            .passOp = VK_STENCIL_OP_REPLACE,
+                            .compareOp = VK_COMPARE_OP_NEVER,
+                            .compareMask = 0U,
+                            .writeMask = 0xFFFFFFFFU,
+                            .reference = CLIP_STENCIL_INCLUDE_VALUE
+                    },
+                    .back = /*CLIP_STENCIL_OP*/ {
+                            .failOp = VK_STENCIL_OP_REPLACE,
+                            .passOp = VK_STENCIL_OP_REPLACE,
+                            .compareOp = VK_COMPARE_OP_NEVER,
+                            .compareMask = 0U,
+                            .writeMask = 0xFFFFFFFFU,
+                            .reference = CLIP_STENCIL_INCLUDE_VALUE
+                    }
             };
             createInfos[i].pDepthStencilState = &CLIP_STENCIL_STATE;
             createInfos[i].layout = pipelineContext->texturePipelineLayout;

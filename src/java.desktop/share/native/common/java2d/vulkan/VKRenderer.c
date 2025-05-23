@@ -30,14 +30,14 @@
 // which is only called from the queue flusher thread, no need for synchronization.
 static VKRenderingContext context = {
         .surface = NULL,
-        .transform = VK_ID_TRANSFORM,
+        .transform = /*VK_ID_TRANSFORM*/ {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
         .transformModCount = 1,
         .color = { 0 },
         .renderColor = { 0 },
         .composite = ALPHA_COMPOSITE_SRC_OVER,
         .extraAlpha = 1.0f,
         .clipModCount = 1,
-        .clipRect = NO_CLIP,
+        .clipRect = /*NO_CLIP*/ {{0, 0}, {0x7FFFFFFFU, 0x7FFFFFFFU}},
         .clipSpanVertices = NULL
 };
 
