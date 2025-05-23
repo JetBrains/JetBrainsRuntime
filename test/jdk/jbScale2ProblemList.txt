@@ -72,7 +72,7 @@ javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-8212 linux-all
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-6589 windows-all
 
 sanity/client/SwingSet/src/ColorChooserDemoTest.java 8278582,8273312,JBR-8354 windows-all,linux-all
-sanity/client/SwingSet/src/GridBagLayoutDemoTest.java JBR-6285,JBR-7473 linux-all,windows-all
+sanity/client/SwingSet/src/GridBagLayoutDemoTest.java JBR-6285 linux-all,windows-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java 8253184,JBR-6685 windows-all,linux-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001,JBR-6293 linux-all,windows-all
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,windows-all
