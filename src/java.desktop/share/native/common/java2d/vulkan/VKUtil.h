@@ -24,6 +24,7 @@
 #ifndef VKUtil_h_Included
 #define VKUtil_h_Included
 #include <stdlib.h>
+#include <stdio.h>
 #include <Trace.h>
 #include "jni_util.h"
 #include "VKTypes.h"
@@ -55,11 +56,10 @@ inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
 
 #define VK_IF_ERROR(EXPR) if (VKUtil_CheckError(EXPR, #EXPR " == %s\n    at " LOCATION))
 
-#define VK_FATAL_ERROR(MESSAGE) do {                              \
-    J2dRlsTraceLn(J2D_TRACE_ERROR, MESSAGE "\n    at " LOCATION); \
-    JNIEnv* env = (JNIEnv*)JNU_GetEnv(jvm, JNI_VERSION_1_2);      \
-    if (env != NULL) JNU_RUNTIME_ASSERT(env, 0, (MESSAGE));       \
-    else abort();                                                 \
+#define VK_FATAL_ERROR(MESSAGE)           \
+do {                                      \
+    perror(MESSAGE "\n    at " LOCATION); \
+    abort();                              \
 } while(0)
 #define VK_UNHANDLED_ERROR() VK_FATAL_ERROR("Unhandled Vulkan error")
 #define VK_RUNTIME_ASSERT(...) if (!(__VA_ARGS__)) VK_FATAL_ERROR("Vulkan assertion failed: " #__VA_ARGS__)
