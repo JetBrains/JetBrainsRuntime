@@ -155,8 +155,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     private static boolean initialized = false;
     private static Thread toolkitThread;
-    private final WLClipboard clipboard;
-    private final WLClipboard selection;
+    private final WLDataDevice dataDevice;
 
     private static Cursor currentCursor;
 
@@ -190,17 +189,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             toolkitSystemThread.setDaemon(true);
             toolkitSystemThread.start();
 
-            WLClipboard selectionClipboard = null;
-            try {
-                selectionClipboard = new WLClipboard("Selection", true);
-            } catch (UnsupportedOperationException ignored) {
-            }
-
-            clipboard = new WLClipboard("System", false);
-            selection = selectionClipboard;
+            dataDevice = new WLDataDevice(0); // TODO: for multiseat support pass wl_seat pointer here
         } else {
-            clipboard = null;
-            selection = null;
+            dataDevice = null;
         }
     }
 
@@ -805,12 +796,12 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public  Clipboard getSystemClipboard() {
-        return clipboard;
+        return dataDevice.getSystemClipboard();
     }
 
     @Override
     public Clipboard getSystemSelection() {
-        return selection;
+        return dataDevice.getPrimarySelectionClipboard();
     }
 
     @Override
