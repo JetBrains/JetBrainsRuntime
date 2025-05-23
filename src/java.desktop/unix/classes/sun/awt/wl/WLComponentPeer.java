@@ -91,7 +91,7 @@ public class WLComponentPeer implements ComponentPeer {
     protected final Component target;
 
     protected Color background; // protected by stateLock
-    WLSurface wlSurface; // accessed under AWT lock
+    WLMainSurface wlSurface; // accessed under AWT lock
     SurfaceData surfaceData; // accessed under AWT lock
     final WLRepaintArea paintArea;
     boolean paintPending = false; // protected by stateLock
@@ -356,7 +356,7 @@ public class WLComponentPeer implements ComponentPeer {
 
             performLocked(() -> {
                 assert wlSurface == null;
-                wlSurface = new WLSurface(this);
+                wlSurface = new WLMainSurface(this);
                 long wlSurfacePtr = wlSurface.getWlSurfacePtr();
                 if (isWlPopup) {
                     Window popup = (Window) target;
@@ -434,8 +434,6 @@ public class WLComponentPeer implements ComponentPeer {
         Dimension maxSize = target.isMaximumSizeSet() ? target.getMaximumSize() : null;
         Dimension surfaceMaxSize = maxSize != null ? javaUnitsToSurfaceSize(constrainSize(maxSize)) : null;
 
-        // TODO: move wp_viewport to WLSurface or WLMainSurface?
-        nativeSetSurfaceSize(nativePtr, surfaceWidth, surfaceHeight);
         wlSurface.updateSurfaceSize(surfaceWidth, surfaceHeight);
         nativeSetWindowGeometry(nativePtr, 0, 0, surfaceWidth, surfaceHeight);
         nativeSetMinimumSize(nativePtr, surfaceMinSize.width, surfaceMinSize.height);
@@ -1072,7 +1070,6 @@ public class WLComponentPeer implements ComponentPeer {
     private native void nativeRequestFullScreen(long ptr, int wlID);
     private native void nativeRequestUnsetFullScreen(long ptr);
 
-    private native void nativeSetSurfaceSize(long ptr, int width, int height);
     private native void nativeSetWindowGeometry(long ptr, int x, int y, int width, int height);
     private native void nativeSetMinimumSize(long ptr, int width, int height);
     private native void nativeSetMaximumSize(long ptr, int width, int height);

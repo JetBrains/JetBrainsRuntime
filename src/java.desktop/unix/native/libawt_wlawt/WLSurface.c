@@ -47,6 +47,7 @@ struct activation_token_list_item {
 
 struct WLSurfaceDescr {
     struct wl_surface* wlSurface;
+    struct wp_viewport* viewport;
     jobject javaSurface; // a global reference to WLSurface
     struct activation_token_list_item *activation_token_list; // TODO: why have this at all?
 };
@@ -155,14 +156,19 @@ Java_sun_awt_wl_WLSurface_nativeCreateWlSurface
     CHECK_NULL_THROW_OOME_RETURN(env, javaObjRef, "Couldn't create a global reference to WLSurface", 0);
 
     struct wl_surface* surface = wl_compositor_create_surface(wl_compositor);
+    struct wp_viewport* viewport = wp_viewporter_get_viewport(wp_viewporter, surface);
 
-    if (surface && javaObjRef) {
+    if (surface && viewport && javaObjRef) {
         struct WLSurfaceDescr* data = calloc(1, sizeof(struct WLSurfaceDescr));
 
         data->wlSurface = surface;
+        data->viewport = viewport;
         data->javaSurface = javaObjRef;
         wl_surface_add_listener(surface, &wl_surface_listener, data);
         return ptr_to_jlong(data);
+    } else {
+        if (surface) wl_surface_destroy(surface);
+        if (viewport) wp_viewport_destroy(viewport);
     }
 
     return 0;
@@ -186,6 +192,7 @@ Java_sun_awt_wl_WLSurface_nativeDestroyWlSurface
     assert (sd);
 
     wl_surface_destroy(sd->wlSurface);
+    wp_viewport_destroy(sd->viewport);
     delete_all_tokens(sd->activation_token_list);
     sd->activation_token_list = NULL;
     (*env)->DeleteGlobalRef(env, sd->javaSurface);
@@ -211,6 +218,23 @@ Java_sun_awt_wl_WLSurface_nativeCommitWlSurface
 
     wl_surface_commit(sd->wlSurface);
 }
+
+/**
+ * Specifies the size of the Wayland's surface in surface units.
+ * For the resulting image on the screen to look sharp this size should be
+ * multiple of backing buffer's size with the ratio matching the display scale.
+ */
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLSurface_nativeSetSize
+        (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)
+{
+    struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
+    assert (sd);
+
+    wp_viewport_set_destination(sd->viewport, width, height);
+    // Neigher flush nor commit here as this update needs to be committed together with the change
+    // of the buffer's size and scale, if any.
+}
+
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLSurface_nativeSetOpaqueRegion
         (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y, jint width, jint height)
@@ -245,7 +269,7 @@ static const struct xdg_activation_token_v1_listener xdg_activation_token_v1_lis
 };
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLComponentPeer_nativeActivate
+Java_sun_awt_wl_WLMainSurface_nativeActivate
         (JNIEnv *env, jobject obj, jlong ptr, jlong serial, jlong activatingSurfacePtr)
 {
     struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
@@ -264,5 +288,32 @@ Java_sun_awt_wl_WLComponentPeer_nativeActivate
         sd->activation_token_list = add_token(env, sd->activation_token_list, token);
         wlFlushToServer(env);
     }
+}
+
+JNIEXPORT jlong JNICALL
+Java_sun_awt_wl_WLSubSurface_nativeCreateWlSubSurface
+        (JNIEnv *env, jobject obj, jlong surfacePtr, jlong parentSurfacePtr)
+{
+    struct wl_surface* parentSurface = jlong_to_ptr(parentSurfacePtr);
+    struct wl_surface* surface = jlong_to_ptr(surfacePtr);
+    struct wl_subsurface* subSurface = wl_subcompositor_get_subsurface(wl_subcompositor, surface, parentSurface);
+    wl_subsurface_place_below(subSurface, parentSurface);
+
+    // Do not accept any input, we must be able to click through any sub-surface
+	struct wl_region* input_region = wl_compositor_create_region(wl_compositor);
+    wl_surface_set_input_region(surface, input_region);
+    wl_region_destroy(input_region);
+
+    return ptr_to_jlong(subSurface);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLSubSurface_nativeSetPosition
+        (JNIEnv *env, jobject obj, jlong subSurfacePtr, jint x, jint y)
+{
+
+    struct wl_subsurface* subSurface = jlong_to_ptr(subSurfacePtr);
+
+    wl_subsurface_set_position(subSurface, x, y);
 }
 

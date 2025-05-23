@@ -49,7 +49,6 @@ static jmethodID notifyPopupDoneMID;
 
 struct WLFrame {
     jobject nativeFramePeer; // weak reference
-    struct wp_viewport *wp_viewport;
     struct xdg_surface *xdg_surface;
     struct gtk_surface1 *gtk_surface;
     struct WLFrame *parent;
@@ -344,8 +343,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWindow
     struct WLFrame *parentFrame = jlong_to_ptr(parentPtr);
     struct wl_surface *wl_surface = jlong_to_ptr(wlSurfacePtr);
 
-    frame->wp_viewport = wp_viewporter_get_viewport(wp_viewporter, wl_surface);
-    CHECK_NULL(frame->wp_viewport);
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, wl_surface);
     CHECK_NULL(frame->xdg_surface);
 #ifdef HAVE_GTK_SHELL1
@@ -413,8 +410,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreatePopup
     struct WLFrame *frame = (struct WLFrame *) ptr;
     struct WLFrame *parentFrame = (struct WLFrame*) parentPtr;
     struct wl_surface* wl_surface = jlong_to_ptr(wlSurfacePtr);
-    frame->wp_viewport = wp_viewporter_get_viewport(wp_viewporter, wl_surface);
-    CHECK_NULL(frame->wp_viewport);
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, wl_surface);
     CHECK_NULL(frame->xdg_surface);
 
@@ -463,13 +458,11 @@ DoHide(JNIEnv *env, struct WLFrame *frame)
         gtk_surface1_destroy(frame->gtk_surface);
     }
 #endif
-    wp_viewport_destroy(frame->wp_viewport);
     xdg_surface_destroy(frame->xdg_surface);
 
     frame->xdg_surface = NULL;
     frame->xdg_toplevel = NULL;
     frame->xdg_popup = NULL;
-    frame->wp_viewport = NULL;
     frame->gtk_surface = NULL;
     frame->toplevel = JNI_FALSE;
 }
@@ -508,22 +501,6 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
     if (frame->toplevel && wl_seat && frame->xdg_toplevel != NULL) {
         xdg_toplevel_resize(frame->xdg_toplevel, wl_seat, serial, edges);
         wlFlushToServer(env);
-    }
-}
-
-/**
- * Specifies the size of the Wayland's surface in surface units.
- * For the resulting image on the screen to look sharp this size should be
- * multiple of backing buffer's size with the ratio matching the display scale.
- */
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetSurfaceSize
-        (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)
-{
-    struct WLFrame *frame = jlong_to_ptr(ptr);
-    if (frame->wp_viewport != NULL) {
-        wp_viewport_set_destination(frame->wp_viewport, width, height);
-        // Do not flush here as this update needs to be committed together with the change
-        // of the buffer's size and scale, if any.
     }
 }
 

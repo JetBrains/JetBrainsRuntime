@@ -30,17 +30,12 @@ import sun.awt.SunToolkit;
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLSurfaceDataExt;
 
-import java.util.ArrayList;
 import java.util.Objects;
 
 public class WLSurface {
     private final long nativePtr; // an opaque native handle
     private final long wlSurfacePtr; // a pointer to wl_surface object
     private boolean isValid = true;
-    private final WLComponentPeer peer;
-
-    // Graphics devices this top-level component is visible on
-    protected final java.util.List<WLGraphicsDevice> devices = new ArrayList<>();
 
     private SurfaceData surfaceData;
 
@@ -48,8 +43,7 @@ public class WLSurface {
         initIDs();
     }
 
-    public WLSurface(WLComponentPeer peer) {
-        this.peer = peer;
+    public WLSurface() {
         nativePtr = nativeCreateWlSurface();
         if (nativePtr == 0) {
             throw new RuntimeException("Failed to create WLSurface");
@@ -61,12 +55,25 @@ public class WLSurface {
     public void dispose() {
         assert SunToolkit.isAWTLockHeldByCurrentThread();
 
-        hide();
-        nativeDestroyWlSurface(nativePtr);
-        isValid = false;
+        if (isValid) {
+            hide();
+            nativeDestroyWlSurface(nativePtr);
+            isValid = false;
+        }
     }
 
-    private void assertIsValid() {
+    private void hide() {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assertIsValid();
+
+        if (surfaceData == null) return;
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(0);
+        surfaceData = null;
+
+        nativeHideWlSurface(nativePtr);
+    }
+
+    protected void assertIsValid() {
         if (!isValid) {
             throw new IllegalStateException("WLSurface is not valid");
         }
@@ -88,20 +95,6 @@ public class WLSurface {
 
         surfaceData = data;
         SurfaceData.convertTo(WLSurfaceDataExt.class, data).assignSurface(wlSurfacePtr);
-        WLToolkit.registerWLSurface(wlSurfacePtr, peer);
-    }
-
-    private void hide() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
-        assertIsValid();
-
-        WLToolkit.unregisterWLSurface(getWlSurfacePtr());
-
-        if (surfaceData == null) return;
-        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(0);
-        surfaceData = null;
-
-        nativeHideWlSurface(nativePtr);
     }
 
     public void commit() {
@@ -113,6 +106,7 @@ public class WLSurface {
 
     /**
      * NB: the returned pointer is valid for as long as AWT lock is being held
+     *
      * @return a pointer to wl_surface native object
      */
     public long getWlSurfacePtr() {
@@ -122,6 +116,20 @@ public class WLSurface {
         return wlSurfacePtr;
     }
 
+    protected long getNativePtr() {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assertIsValid();
+
+        return nativePtr;
+    }
+
+    public void setSize(int width, int height) {
+        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assertIsValid();
+
+        nativeSetSize(nativePtr, width, height);
+    }
+
     public void setOpaqueRegion(int x, int y, int width, int height) {
         assert SunToolkit.isAWTLockHeldByCurrentThread();
         assertIsValid();
@@ -129,63 +137,19 @@ public class WLSurface {
         nativeSetOpaqueRegion(nativePtr, x, y, width, height);
     }
 
-    WLGraphicsDevice getGraphicsDevice() {
-        int scale = 0;
-        WLGraphicsDevice theDevice = null;
-        // AFAIK there's no way of knowing which WLGraphicsDevice is displaying
-        // the largest portion of this component, so choose the first in the ordered list
-        // of devices with the maximum scale simply to be deterministic.
-        // NB: devices are added to the end of the list when we enter the corresponding
-        // Wayland's output and are removed as soon as we have left.
-        synchronized (devices) {
-            for (WLGraphicsDevice gd : devices) {
-                if (gd.getDisplayScale() > scale) {
-                    scale = gd.getDisplayScale();
-                    theDevice = gd;
-                }
-            }
-        }
-
-        return theDevice;
-    }
-
     void notifyEnteredOutput(int wlOutputID) {
-        // Called from native code whenever the corresponding wl_surface enters an output (monitor)
-        synchronized (devices) {
-            final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
-            final WLGraphicsDevice gd = ge.notifySurfaceEnteredOutput(peer, wlOutputID);
-            if (gd != null) {
-                devices.add(gd);
-            }
-        }
-
-        peer.checkIfOnNewScreen();
+        // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
     }
 
     void notifyLeftOutput(int wlOutputID) {
         // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
-        synchronized (devices) {
-            final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
-            final WLGraphicsDevice gd = ge.notifySurfaceLeftOutput(peer, wlOutputID);
-            if (gd != null) {
-                devices.remove(gd);
-            }
-        }
-
-        peer.checkIfOnNewScreen();
-    }
-
-    public void activateByAnotherSurface(long serial, long activatingSurfacePtr) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
-        assertIsValid();
-
-        nativeActivate(nativePtr, serial, activatingSurfacePtr);
     }
 
     public void updateSurfaceSize(int surfaceWidth, int surfaceHeight) {
         assert SunToolkit.isAWTLockHeldByCurrentThread();
         assertIsValid();
 
+        setSize(surfaceWidth, surfaceHeight);
         if (surfaceData != null && !surfaceData.getColorModel().hasAlpha()) {
             setOpaqueRegion(0, 0, surfaceWidth, surfaceHeight);
         }
@@ -196,8 +160,8 @@ public class WLSurface {
     private native long wlSurfacePtr(long ptr);
     private native void nativeCommitWlSurface(long ptr);
     private native long nativeCreateWlSurface();
+    private native void nativeSetSize(long ptr, int width, int height);
     private native void nativeDestroyWlSurface(long ptr);
     private native void nativeHideWlSurface(long ptr);
     private native void nativeSetOpaqueRegion(long ptr, int x, int y, int width, int height);
-    private native void nativeActivate(long ptr, long serial, long activatingSurfacePtr);
 }
