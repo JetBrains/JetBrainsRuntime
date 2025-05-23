@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 JetBrains s.r.o.
+ * Copyright 2025 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package sun.awt.wl;
 
+import jdk.internal.misc.InnocuousThread;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.datatransfer.ToolkitThreadBlockedHandler;
 import sun.datatransfer.DataFlavorUtil;
@@ -39,6 +40,8 @@ import javax.imageio.stream.ImageInputStream;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.FlavorTable;
+import java.awt.datatransfer.SystemFlavorMap;
 import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
@@ -51,11 +54,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.Objects;
 
 /**
@@ -66,8 +71,6 @@ import java.util.Objects;
  *                 once established, this mapping never changes
  */
 public class WLDataTransferer extends DataTransferer {
-    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLDataTransferer");
-
     private static ImageTypeSpecifier defaultImageSpec = null;
 
     // Maps the "native" format (MIME) to its numeric ID
@@ -79,12 +82,22 @@ public class WLDataTransferer extends DataTransferer {
     private final Map<Long, Boolean> imageFormats = new HashMap<>();
     private final Map<Long, Boolean> textFormats = new HashMap<>();
 
+    private final FlavorTable flavorTable;
+
+    public FlavorTable getFlavorTable() {
+        return flavorTable;
+    }
+
     private static class HOLDER {
         static WLDataTransferer instance = new WLDataTransferer();
     }
 
     static WLDataTransferer getInstanceImpl() {
         return HOLDER.instance;
+    }
+
+    private WLDataTransferer() {
+        flavorTable = adaptFlavorMap(SystemFlavorMap.getDefaultFlavorMap());
     }
 
     @Override
