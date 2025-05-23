@@ -48,13 +48,13 @@ public class WLDataOffer {
     private static native void setDnDActionsImpl(long nativePtr, int actions, int preferredAction);
 
     private WLDataOffer(long nativePtr) {
+        if (nativePtr == 0) {
+            throw new IllegalArgumentException("nativePtr is null");
+        }
         this.nativePtr = nativePtr;
     }
 
-    public boolean isValid() {
-        return nativePtr != 0;
-    }
-
+    // after calling destroy(), this object enters an invalid state and needs to be deleted
     public void destroy() {
         if (nativePtr != 0) {
             destroyImpl(nativePtr);
@@ -63,11 +63,14 @@ public class WLDataOffer {
     }
 
     public byte[] receiveData(String mime) throws IOException  {
+        int fd;
+
         if (nativePtr == 0) {
             throw new IllegalStateException("nativePtr is 0");
         }
 
-        int fd = openReceivePipe(nativePtr, mime);
+        fd = openReceivePipe(nativePtr, mime);
+
         assert(fd != -1); // Otherwise an exception should be thrown from native code
 
         FileDescriptor javaFD = new FileDescriptor();
@@ -107,20 +110,20 @@ public class WLDataOffer {
         setDnDActionsImpl(nativePtr, actions, preferredAction);
     }
 
-    public List<String> getMimes() {
+    public synchronized List<String> getMimes() {
         return mimes;
     }
 
     // Event handlers, called from native code on the data device dispatch thread
-    private void handleOfferMime(String mime) {
+    private synchronized void handleOfferMime(String mime) {
         mimes.add(mime);
     }
 
-    private void handleSourceActions(int actions) {
+    private synchronized void handleSourceActions(int actions) {
         sourceActions = actions;
     }
 
-    private void handleAction(int action) {
+    private synchronized void handleAction(int action) {
         selectedAction = action;
     }
 }
