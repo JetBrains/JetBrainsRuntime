@@ -28,7 +28,11 @@ package sun.awt.wl;
 import java.awt.datatransfer.Transferable;
 
 public class WLDataSource {
+    // nativePtr will be reset to 0 after this object receives a "cancelled" event, and is destroyed.
+    // Reading from nativePtr doesn't need to be synchronized for methods that happen before announcing
+    // this object as a selection, or a drag-and-drop source.
     private long nativePtr;
+
     private final Transferable data;
 
     private native long initNative(long dataDeviceNativePtr, int protocol);
@@ -51,7 +55,7 @@ public class WLDataSource {
                 long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(data, wlDataTransferer.getFlavorTable());
                 for (long format : formats) {
                     String mime = wlDataTransferer.getNativeForFormat(format);
-                    offerMime(mime);
+                    offerMimeImpl(nativePtr, mime);
                 }
             }
         } catch (Throwable e) {
@@ -60,28 +64,14 @@ public class WLDataSource {
         }
     }
 
-    public boolean isValid() {
-        return nativePtr != 0;
-    }
-
-    public long getNativePtr() {
+    // Used by WLDataDevice to set this source as a selection or to start drag-and-drop.
+    // This method can only safely be called before setting this source as selection, or starting drag-and-drop,
+    // because after that, source might receive a cancel event at any time and be destroyed.
+    long getNativePtr() {
         return nativePtr;
     }
 
-    public void offerMime(String mime) {
-        if (nativePtr == 0) {
-            throw new IllegalStateException("Native pointer is null");
-        }
-        offerMimeImpl(nativePtr, mime);
-    }
-
-    public void destroy() {
-        if (nativePtr != 0) {
-            destroyImpl(nativePtr);
-            nativePtr = 0;
-        }
-    }
-
+    // This method can only be called once before setting this object as a drag-and-drop source
     public void setDnDActions(int actions) {
         if (nativePtr == 0) {
             throw new IllegalStateException("Native pointer is null");
@@ -89,9 +79,14 @@ public class WLDataSource {
         setDnDActionsImpl(nativePtr, actions);
     }
 
-    // Event handlers, called from native code on the data transferer dispatch thread
-    protected void handleTargetAcceptsMime(String mime) {
+    public synchronized void destroy() {
+        if (nativePtr != 0) {
+            destroyImpl(nativePtr);
+            nativePtr = 0;
+        }
     }
+
+    // Event handlers, called from native code on the data transferer dispatch thread
 
     protected void handleSend(String mime, int fd) {
         WLDataDevice.transferContentsWithType(data, mime, fd);
@@ -101,12 +96,19 @@ public class WLDataSource {
         destroy();
     }
 
+    protected void handleTargetAcceptsMime(String mime) {
+        // TODO: drag-and-drop implementation, synchronization
+    }
+
     protected void handleDnDDropPerformed() {
+        // TODO: drag-and-drop implementation, synchronization
     }
 
     protected void handleDnDFinished() {
+        // TODO: drag-and-drop implementation, synchronization
     }
 
     protected void handleDnDAction(int action) {
+        // TODO: drag-and-drop implementation, synchronization
     }
 }

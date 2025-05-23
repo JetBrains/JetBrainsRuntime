@@ -37,15 +37,18 @@
 
 // Types
 
-enum DataTransferProtocol {
+enum DataTransferProtocol
+{
     DATA_TRANSFER_PROTOCOL_WAYLAND = sun_awt_wl_WLDataDevice_DATA_TRANSFER_PROTOCOL_WAYLAND,
     DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION = sun_awt_wl_WLDataDevice_DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION,
 };
 
 // native part of WLDataDevice, one instance per seat
 // seat's wl_data_device and zwp_primary_selection_device_v1 have user pointers to this struct
-struct DataDevice {
+struct DataDevice
+{
     // global reference to the corresponding WLDataDevice object
+    // TODO: it's currently never destroyed, because WLDataDevice is never destroyed
     jobject javaObject;
 
     struct wl_event_queue *dataTransferQueue;
@@ -55,12 +58,15 @@ struct DataDevice {
 
 // native part of WLDataSource, remains alive until WLDataSource.destroy() is called
 // pointer to this structure is the wl_data_source's (zwp_primary_selection_source_v1's) user pointer
-struct DataSource {
+struct DataSource
+{
     enum DataTransferProtocol protocol;
     // global reference to the corresponding WLDataSource object
+    // destroyed in WLDataSource.destroy()
     jobject javaObject;
 
-    union {
+    union
+    {
         void *anyPtr;
 
         struct wl_data_source *wlDataSource;
@@ -70,12 +76,15 @@ struct DataSource {
 
 // native part of WLDataOffer, remains alive until WLDataOffer.destroy() is called
 // pointer to this structure is the wl_data_offer's (zwp_primary_selection_offer_v1's) user pointer
-struct DataOffer {
+struct DataOffer
+{
     enum DataTransferProtocol protocol;
     // global reference to the corresponding WLDataOffer object
+    // destroyed in WLDataOffer.destroy()
     jobject javaObject;
 
-    union {
+    union
+    {
         void *anyPtr;
 
         struct wl_data_offer *wlDataOffer;
@@ -102,7 +111,9 @@ static jmethodID wlDataOfferHandleOfferMimeMID;
 static jmethodID wlDataOfferHandleSourceActionsMID;
 static jmethodID wlDataOfferHandleActionMID;
 
-static bool initJavaRefs(JNIEnv *env) {
+static bool
+initJavaRefs(JNIEnv *env)
+{
     jclass wlDataDeviceClass = NULL;
     jclass wlDataSourceClass = NULL;
 
@@ -136,102 +147,154 @@ static bool initJavaRefs(JNIEnv *env) {
 
 // Event handlers declarations
 
-static void wl_data_source_handle_target(void *user, struct wl_data_source *source, const char *mime);
-static void wl_data_source_handle_send(void *user, struct wl_data_source *source, const char *mime, int32_t fd);
-static void wl_data_source_handle_cancelled(void *user, struct wl_data_source *source);
-static void wl_data_source_handle_dnd_drop_performed(void *user, struct wl_data_source *source);
-static void wl_data_source_handle_dnd_finished(void *user, struct wl_data_source *source);
-static void wl_data_source_handle_action(void *user, struct wl_data_source *source, uint32_t action);
+static void
+wl_data_source_handle_target(void *user, struct wl_data_source *source, const char *mime);
+
+static void
+wl_data_source_handle_send(void *user, struct wl_data_source *source, const char *mime, int32_t fd);
+
+static void
+wl_data_source_handle_cancelled(void *user, struct wl_data_source *source);
+
+static void
+wl_data_source_handle_dnd_drop_performed(void *user, struct wl_data_source *source);
+
+static void
+wl_data_source_handle_dnd_finished(void *user, struct wl_data_source *source);
+
+static void
+wl_data_source_handle_action(void *user, struct wl_data_source *source, uint32_t action);
 
 static const struct wl_data_source_listener wl_data_source_listener = {
-    .target = wl_data_source_handle_target,
-    .send = wl_data_source_handle_send,
-    .cancelled = wl_data_source_handle_cancelled,
-    .dnd_drop_performed = wl_data_source_handle_dnd_drop_performed,
-    .dnd_finished = wl_data_source_handle_dnd_finished,
-    .action = wl_data_source_handle_action,
+        .target = wl_data_source_handle_target,
+        .send = wl_data_source_handle_send,
+        .cancelled = wl_data_source_handle_cancelled,
+        .dnd_drop_performed = wl_data_source_handle_dnd_drop_performed,
+        .dnd_finished = wl_data_source_handle_dnd_finished,
+        .action = wl_data_source_handle_action,
 };
 
-static void zwp_primary_selection_source_handle_send(void *user,
-                                                     struct zwp_primary_selection_source_v1 *source,
-                                                     const char *mime,
-                                                     int32_t fd);
-static void zwp_primary_selection_source_handle_cancelled(void *user, struct zwp_primary_selection_source_v1 *source);
+static void
+zwp_primary_selection_source_handle_send(void *user,
+                                         struct zwp_primary_selection_source_v1 *source,
+                                         const char *mime,
+                                         int32_t fd);
+
+static void
+zwp_primary_selection_source_handle_cancelled(void *user, struct zwp_primary_selection_source_v1 *source);
 
 static const struct zwp_primary_selection_source_v1_listener zwp_primary_selection_source_v1_listener = {
-    .send = zwp_primary_selection_source_handle_send,
-    .cancelled = zwp_primary_selection_source_handle_cancelled,
+        .send = zwp_primary_selection_source_handle_send,
+        .cancelled = zwp_primary_selection_source_handle_cancelled,
 };
 
-static void wl_data_offer_handle_offer(void *user, struct wl_data_offer *offer, const char *mime);
-static void wl_data_offer_handle_source_actions(void *user, struct wl_data_offer *offer, uint32_t source_actions);
-static void wl_data_offer_handle_action(void *user, struct wl_data_offer *offer, uint32_t action);
+static void
+wl_data_offer_handle_offer(void *user, struct wl_data_offer *offer, const char *mime);
+
+static void
+wl_data_offer_handle_source_actions(void *user, struct wl_data_offer *offer, uint32_t source_actions);
+
+static void
+wl_data_offer_handle_action(void *user, struct wl_data_offer *offer, uint32_t action);
 
 static const struct wl_data_offer_listener wlDataOfferListener = {
-    .offer = wl_data_offer_handle_offer,
-    .source_actions = wl_data_offer_handle_source_actions,
-    .action = wl_data_offer_handle_action,
+        .offer = wl_data_offer_handle_offer,
+        .source_actions = wl_data_offer_handle_source_actions,
+        .action = wl_data_offer_handle_action,
 };
 
 static void
 zwp_primary_selection_offer_handle_offer(void *user, struct zwp_primary_selection_offer_v1 *offer, const char *mime);
 
 static const struct zwp_primary_selection_offer_v1_listener zwpPrimarySelectionOfferListener = {
-    .offer = zwp_primary_selection_offer_handle_offer,
+        .offer = zwp_primary_selection_offer_handle_offer,
 };
 
 static void
 wl_data_device_handle_data_offer(void *user, struct wl_data_device *wl_data_device, struct wl_data_offer *id);
-static void wl_data_device_handle_enter(void *user,
-                                        struct wl_data_device *wl_data_device,
-                                        uint32_t serial,
-                                        struct wl_surface *surface,
-                                        wl_fixed_t x,
-                                        wl_fixed_t y,
-                                        struct wl_data_offer *id);
-static void wl_data_device_handle_leave(void *user, struct wl_data_device *wl_data_device);
-static void wl_data_device_handle_motion(
-    void *user, struct wl_data_device *wl_data_device, uint32_t time, wl_fixed_t x, wl_fixed_t y);
-static void wl_data_device_handle_drop(void *user, struct wl_data_device *wl_data_device);
+
+static void
+wl_data_device_handle_enter(void *user,
+                            struct wl_data_device *wl_data_device,
+                            uint32_t serial,
+                            struct wl_surface *surface,
+                            wl_fixed_t x,
+                            wl_fixed_t y,
+                            struct wl_data_offer *id);
+
+static void
+wl_data_device_handle_leave(void *user, struct wl_data_device *wl_data_device);
+
+static void
+wl_data_device_handle_motion(
+        void *user, struct wl_data_device *wl_data_device, uint32_t time, wl_fixed_t x, wl_fixed_t y);
+
+static void
+wl_data_device_handle_drop(void *user, struct wl_data_device *wl_data_device);
+
 static void
 wl_data_device_handle_selection(void *user, struct wl_data_device *wl_data_device, struct wl_data_offer *id);
 
 static const struct wl_data_device_listener wlDataDeviceListener = {
-    .data_offer = wl_data_device_handle_data_offer,
-    .enter = wl_data_device_handle_enter,
-    .leave = wl_data_device_handle_leave,
-    .motion = wl_data_device_handle_motion,
-    .drop = wl_data_device_handle_drop,
-    .selection = wl_data_device_handle_selection,
+        .data_offer = wl_data_device_handle_data_offer,
+        .enter = wl_data_device_handle_enter,
+        .leave = wl_data_device_handle_leave,
+        .motion = wl_data_device_handle_motion,
+        .drop = wl_data_device_handle_drop,
+        .selection = wl_data_device_handle_selection,
 };
 
-static void zwp_primary_selection_device_handle_data_offer(void *user,
-                                                           struct zwp_primary_selection_device_v1 *device,
-                                                           struct zwp_primary_selection_offer_v1 *id);
-static void zwp_primary_selection_device_handle_selection(void *user,
-                                                          struct zwp_primary_selection_device_v1 *device,
-                                                          struct zwp_primary_selection_offer_v1 *id);
+static void
+zwp_primary_selection_device_handle_data_offer(void *user,
+                                               struct zwp_primary_selection_device_v1 *device,
+                                               struct zwp_primary_selection_offer_v1 *id);
+
+static void
+zwp_primary_selection_device_handle_selection(void *user,
+                                              struct zwp_primary_selection_device_v1 *device,
+                                              struct zwp_primary_selection_offer_v1 *id);
 
 static const struct zwp_primary_selection_device_v1_listener zwpPrimarySelectionDeviceListener = {
-    .data_offer = zwp_primary_selection_device_handle_data_offer,
-    .selection = zwp_primary_selection_device_handle_selection,
+        .data_offer = zwp_primary_selection_device_handle_data_offer,
+        .selection = zwp_primary_selection_device_handle_selection,
 };
 
-static void DataSource_offer(const struct DataSource *source, const char *mime);
-static void DataSource_setDnDActions(const struct DataSource *source, uint32_t actions);
+static void
+DataSource_offer(const struct DataSource *source, const char *mime);
 
-static struct DataOffer *DataOffer_create(struct DataDevice* dataDevice, enum DataTransferProtocol protocol, void *waylandObject);
-static void DataOffer_destroy(struct DataOffer *offer);
-static void DataOffer_receive(struct DataOffer *offer, const char *mime, int fd);
-static void DataOffer_accept(struct DataOffer *offer, uint32_t serial, const char *mime);
-static void DataOffer_finishDnD(struct DataOffer *offer);
-static void DataOffer_setDnDActions(struct DataOffer *offer, int dnd_actions, int preferred_action);
-static void DataOffer_callOfferHandler(struct DataOffer *offer, const char *mime);
-static void DataOffer_callSelectionHandler(struct DataDevice* dataDevice, struct DataOffer *offer, enum DataTransferProtocol protocol);
+static void
+DataSource_setDnDActions(const struct DataSource *source, uint32_t actions);
+
+static struct DataOffer *
+DataOffer_create(struct DataDevice *dataDevice, enum DataTransferProtocol protocol, void *waylandObject);
+
+static void
+DataOffer_destroy(struct DataOffer *offer);
+
+static void
+DataOffer_receive(struct DataOffer *offer, const char *mime, int fd);
+
+static void
+DataOffer_accept(struct DataOffer *offer, uint32_t serial, const char *mime);
+
+static void
+DataOffer_finishDnD(struct DataOffer *offer);
+
+static void
+DataOffer_setDnDActions(struct DataOffer *offer, int dnd_actions, int preferred_action);
+
+static void
+DataOffer_callOfferHandler(struct DataOffer *offer, const char *mime);
+
+static void
+DataOffer_callSelectionHandler(struct DataDevice *dataDevice, struct DataOffer *offer,
+                               enum DataTransferProtocol protocol);
 
 // Implementation
 
-static void DataSource_offer(const struct DataSource *source, const char *mime) {
+static void
+DataSource_offer(const struct DataSource *source, const char *mime)
+{
     if (source->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
         wl_data_source_offer(source->wlDataSource, mime);
     } else if (source->protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
@@ -239,19 +302,23 @@ static void DataSource_offer(const struct DataSource *source, const char *mime) 
     }
 }
 
-static void DataSource_setDnDActions(const struct DataSource *source, uint32_t actions) {
+static void
+DataSource_setDnDActions(const struct DataSource *source, uint32_t actions)
+{
     if (source->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
         wl_data_source_set_actions(source->wlDataSource, actions);
     }
 }
 
-static struct DataOffer *DataOffer_create(struct DataDevice* dataDevice, enum DataTransferProtocol protocol, void *waylandObject) {
+static struct DataOffer *
+DataOffer_create(struct DataDevice *dataDevice, enum DataTransferProtocol protocol, void *waylandObject)
+{
     struct DataOffer *offer = calloc(1, sizeof(struct DataOffer));
     if (offer == NULL) {
         return NULL;
     }
 
-    JNIEnv* env = getEnv();
+    JNIEnv *env = getEnv();
     assert(env != NULL);
 
     jobject obj = (*env)->NewObject(env, wlDataOfferClass, wlDataOfferConstructorMID, ptr_to_jlong(offer));
@@ -279,7 +346,7 @@ static struct DataOffer *DataOffer_create(struct DataDevice* dataDevice, enum Da
     if (protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
         struct wl_data_offer *wlDataOffer = waylandObject;
 
-        wl_proxy_set_queue((struct wl_proxy *)wlDataOffer, dataDevice->dataTransferQueue);
+        wl_proxy_set_queue((struct wl_proxy *) wlDataOffer, dataDevice->dataTransferQueue);
         wl_data_offer_add_listener(wlDataOffer, &wlDataOfferListener, offer);
 
         offer->wlDataOffer = wlDataOffer;
@@ -289,7 +356,7 @@ static struct DataOffer *DataOffer_create(struct DataDevice* dataDevice, enum Da
     if (protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
         struct zwp_primary_selection_offer_v1 *zwpPrimarySelectionOffer = waylandObject;
 
-        wl_proxy_set_queue((struct wl_proxy *)zwpPrimarySelectionOffer, dataDevice->dataTransferQueue);
+        wl_proxy_set_queue((struct wl_proxy *) zwpPrimarySelectionOffer, dataDevice->dataTransferQueue);
         zwp_primary_selection_offer_v1_add_listener(zwpPrimarySelectionOffer, &zwpPrimarySelectionOfferListener, offer);
         offer->zwpPrimarySelectionOffer = zwpPrimarySelectionOffer;
         offer->protocol = DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION;
@@ -298,13 +365,15 @@ static struct DataOffer *DataOffer_create(struct DataDevice* dataDevice, enum Da
     return offer;
 }
 
-static void DataOffer_destroy(struct DataOffer *offer) {
+static void
+DataOffer_destroy(struct DataOffer *offer)
+{
     if (offer == NULL) {
         return;
     }
 
     if (offer->javaObject != NULL) {
-        JNIEnv* env = getEnv();
+        JNIEnv *env = getEnv();
         assert(env != NULL);
         (*env)->DeleteGlobalRef(env, offer->javaObject);
         offer->javaObject = NULL;
@@ -319,7 +388,9 @@ static void DataOffer_destroy(struct DataOffer *offer) {
     free(offer);
 }
 
-static void DataOffer_receive(struct DataOffer *offer, const char *mime, int fd) {
+static void
+DataOffer_receive(struct DataOffer *offer, const char *mime, int fd)
+{
     if (offer->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
         wl_data_offer_receive(offer->wlDataOffer, mime, fd);
     } else if (offer->protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
@@ -327,25 +398,33 @@ static void DataOffer_receive(struct DataOffer *offer, const char *mime, int fd)
     }
 }
 
-static void DataOffer_accept(struct DataOffer *offer, uint32_t serial, const char *mime) {
+static void
+DataOffer_accept(struct DataOffer *offer, uint32_t serial, const char *mime)
+{
     if (offer->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
         wl_data_offer_accept(offer->wlDataOffer, serial, mime);
     }
 }
 
-static void DataOffer_finishDnD(struct DataOffer *offer) {
+static void
+DataOffer_finishDnD(struct DataOffer *offer)
+{
     if (offer->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
         wl_data_offer_finish(offer->wlDataOffer);
     }
 }
 
-static void DataOffer_setDnDActions(struct DataOffer *offer, int dnd_actions, int preferred_action) {
+static void
+DataOffer_setDnDActions(struct DataOffer *offer, int dnd_actions, int preferred_action)
+{
     if (offer->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
         wl_data_offer_set_actions(offer->wlDataOffer, dnd_actions, preferred_action);
     }
 }
 
-static void DataOffer_callOfferHandler(struct DataOffer *offer, const char *mime) {
+static void
+DataOffer_callOfferHandler(struct DataOffer *offer, const char *mime)
+{
     assert(offer != NULL);
 
     if (offer->javaObject == NULL) {
@@ -364,7 +443,10 @@ static void DataOffer_callOfferHandler(struct DataOffer *offer, const char *mime
     }
 }
 
-static void DataOffer_callSelectionHandler(struct DataDevice* dataDevice, struct DataOffer *offer, enum DataTransferProtocol protocol) {
+static void
+DataOffer_callSelectionHandler(struct DataDevice *dataDevice, struct DataOffer *offer,
+                               enum DataTransferProtocol protocol)
+{
     assert(dataDevice != NULL);
     // offer can be NULL, this means that the selection was cleared
     jobject offerObject = NULL;
@@ -381,7 +463,9 @@ static void DataOffer_callSelectionHandler(struct DataDevice* dataDevice, struct
 
 // Event handlers
 
-static void wl_data_source_handle_target(void *user, struct wl_data_source *wl_data_source, const char *mime) {
+static void
+wl_data_source_handle_target(void *user, struct wl_data_source *wl_data_source, const char *mime)
+{
     struct DataSource *source = user;
     assert(source != NULL);
 
@@ -402,7 +486,8 @@ static void wl_data_source_handle_target(void *user, struct wl_data_source *wl_d
 }
 
 static void
-wl_data_source_handle_send(void *user, struct wl_data_source *wl_data_source, const char *mime, int32_t fd) {
+wl_data_source_handle_send(void *user, struct wl_data_source *wl_data_source, const char *mime, int32_t fd)
+{
     struct DataSource *source = user;
     assert(source != NULL);
 
@@ -422,7 +507,9 @@ wl_data_source_handle_send(void *user, struct wl_data_source *wl_data_source, co
     }
 }
 
-static void wl_data_source_handle_cancelled(void *user, struct wl_data_source *wl_data_source) {
+static void
+wl_data_source_handle_cancelled(void *user, struct wl_data_source *wl_data_source)
+{
     struct DataSource *source = user;
     assert(source != NULL);
 
@@ -437,7 +524,9 @@ static void wl_data_source_handle_cancelled(void *user, struct wl_data_source *w
     EXCEPTION_CLEAR(env);
 }
 
-static void wl_data_source_handle_dnd_drop_performed(void *user, struct wl_data_source *wl_data_source) {
+static void
+wl_data_source_handle_dnd_drop_performed(void *user, struct wl_data_source *wl_data_source)
+{
     struct DataSource *source = user;
     assert(source != NULL);
 
@@ -452,7 +541,9 @@ static void wl_data_source_handle_dnd_drop_performed(void *user, struct wl_data_
     EXCEPTION_CLEAR(env);
 }
 
-static void wl_data_source_handle_dnd_finished(void *user, struct wl_data_source *wl_data_source) {
+static void
+wl_data_source_handle_dnd_finished(void *user, struct wl_data_source *wl_data_source)
+{
     struct DataSource *source = user;
     assert(source != NULL);
 
@@ -467,7 +558,9 @@ static void wl_data_source_handle_dnd_finished(void *user, struct wl_data_source
     EXCEPTION_CLEAR(env);
 }
 
-static void wl_data_source_handle_action(void *user, struct wl_data_source *wl_data_source, uint32_t action) {
+static void
+wl_data_source_handle_action(void *user, struct wl_data_source *wl_data_source, uint32_t action)
+{
     struct DataSource *source = user;
     assert(source != NULL);
 
@@ -482,8 +575,11 @@ static void wl_data_source_handle_action(void *user, struct wl_data_source *wl_d
     EXCEPTION_CLEAR(env);
 }
 
-static void zwp_primary_selection_source_handle_send(
-    void *user, struct zwp_primary_selection_source_v1 *zwp_primary_selection_source_v1, const char *mime, int32_t fd) {
+static void
+zwp_primary_selection_source_handle_send(
+        void *user, struct zwp_primary_selection_source_v1 *zwp_primary_selection_source_v1, const char *mime,
+        int32_t fd)
+{
     struct DataSource *source = user;
     assert(source != NULL);
 
@@ -505,7 +601,8 @@ static void zwp_primary_selection_source_handle_send(
 
 static void
 zwp_primary_selection_source_handle_cancelled(void *user,
-                                              struct zwp_primary_selection_source_v1 *zwp_primary_selection_source_v1) {
+                                              struct zwp_primary_selection_source_v1 *zwp_primary_selection_source_v1)
+{
     struct DataSource *source = user;
     assert(source != NULL);
 
@@ -520,12 +617,15 @@ zwp_primary_selection_source_handle_cancelled(void *user,
     EXCEPTION_CLEAR(env);
 }
 
-static void wl_data_offer_handle_offer(void *user, struct wl_data_offer *wl_data_offer, const char *mime) {
-    DataOffer_callOfferHandler((struct DataOffer *)user, mime);
+static void
+wl_data_offer_handle_offer(void *user, struct wl_data_offer *wl_data_offer, const char *mime)
+{
+    DataOffer_callOfferHandler((struct DataOffer *) user, mime);
 }
 
 static void
-wl_data_offer_handle_source_actions(void *user, struct wl_data_offer *wl_data_offer, uint32_t source_actions) {
+wl_data_offer_handle_source_actions(void *user, struct wl_data_offer *wl_data_offer, uint32_t source_actions)
+{
     struct DataOffer *offer = user;
     assert(offer != NULL);
 
@@ -536,11 +636,13 @@ wl_data_offer_handle_source_actions(void *user, struct wl_data_offer *wl_data_of
     JNIEnv *env = getEnv();
     assert(env != NULL);
 
-    (*env)->CallVoidMethod(env, offer->javaObject, wlDataOfferHandleSourceActionsMID, (jint)source_actions);
+    (*env)->CallVoidMethod(env, offer->javaObject, wlDataOfferHandleSourceActionsMID, (jint) source_actions);
     EXCEPTION_CLEAR(env);
 }
 
-static void wl_data_offer_handle_action(void *user, struct wl_data_offer *wl_data_offer, uint32_t action) {
+static void
+wl_data_offer_handle_action(void *user, struct wl_data_offer *wl_data_offer, uint32_t action)
+{
     struct DataOffer *offer = user;
     assert(offer != NULL);
 
@@ -551,18 +653,22 @@ static void wl_data_offer_handle_action(void *user, struct wl_data_offer *wl_dat
     JNIEnv *env = getEnv();
     assert(env != NULL);
 
-    (*env)->CallVoidMethod(env, offer->javaObject, wlDataOfferHandleActionMID, (jint)action);
+    (*env)->CallVoidMethod(env, offer->javaObject, wlDataOfferHandleActionMID, (jint) action);
     EXCEPTION_CLEAR(env);
 }
 
-static void zwp_primary_selection_offer_handle_offer(
-    void *user, struct zwp_primary_selection_offer_v1 *zwp_primary_selection_offer_v1, const char *mime) {
-    DataOffer_callOfferHandler((struct DataOffer *)user, mime);
+static void
+zwp_primary_selection_offer_handle_offer(void *user,
+                                         struct zwp_primary_selection_offer_v1 *zwp_primary_selection_offer_v1,
+                                         const char *mime)
+{
+    DataOffer_callOfferHandler((struct DataOffer *) user, mime);
 }
 
 static void
-wl_data_device_handle_data_offer(void *user, struct wl_data_device *wl_data_device, struct wl_data_offer *id) {
-    struct DataDevice* dataDevice = user;
+wl_data_device_handle_data_offer(void *user, struct wl_data_device *wl_data_device, struct wl_data_offer *id)
+{
+    struct DataDevice *dataDevice = user;
     assert(dataDevice != NULL);
 
     struct DataOffer *offer = DataOffer_create(dataDevice, DATA_TRANSFER_PROTOCOL_WAYLAND, id);
@@ -577,16 +683,18 @@ wl_data_device_handle_data_offer(void *user, struct wl_data_device *wl_data_devi
     // associated with the wl_data_offer
 }
 
-static void wl_data_device_handle_enter(void *user,
-                                        struct wl_data_device *wl_data_device,
-                                        uint32_t serial,
-                                        struct wl_surface *surface,
-                                        wl_fixed_t x,
-                                        wl_fixed_t y,
-                                        struct wl_data_offer *id) {
-    struct DataDevice* dataDevice = user;
+static void
+wl_data_device_handle_enter(void *user,
+                            struct wl_data_device *wl_data_device,
+                            uint32_t serial,
+                            struct wl_surface *surface,
+                            wl_fixed_t x,
+                            wl_fixed_t y,
+                            struct wl_data_offer *id)
+{
+    struct DataDevice *dataDevice = user;
     assert(dataDevice != NULL);
-    struct DataOffer *offer = (struct DataOffer *)wl_data_offer_get_user_data(id);
+    struct DataOffer *offer = (struct DataOffer *) wl_data_offer_get_user_data(id);
     assert(offer != NULL);
 
     if (offer->javaObject == NULL) {
@@ -596,13 +704,16 @@ static void wl_data_device_handle_enter(void *user,
     JNIEnv *env = getEnv();
     assert(env != NULL);
 
-    (*env)->CallVoidMethod(env, dataDevice->javaObject, wlDataDeviceHandleDnDEnterMID, offer->javaObject, (jlong)serial,
+    (*env)->CallVoidMethod(env, dataDevice->javaObject, wlDataDeviceHandleDnDEnterMID, offer->javaObject,
+                           (jlong) serial,
                            ptr_to_jlong(surface), wl_fixed_to_double(x), wl_fixed_to_double(y));
     EXCEPTION_CLEAR(env);
 }
 
-static void wl_data_device_handle_leave(void *user, struct wl_data_device *wl_data_device) {
-    struct DataDevice* dataDevice = user;
+static void
+wl_data_device_handle_leave(void *user, struct wl_data_device *wl_data_device)
+{
+    struct DataDevice *dataDevice = user;
     assert(dataDevice != NULL);
 
     JNIEnv *env = getEnv();
@@ -611,20 +722,25 @@ static void wl_data_device_handle_leave(void *user, struct wl_data_device *wl_da
     EXCEPTION_CLEAR(env);
 }
 
-static void wl_data_device_handle_motion(
-    void *user, struct wl_data_device *wl_data_device, uint32_t time, wl_fixed_t x, wl_fixed_t y) {
-    struct DataDevice* dataDevice = user;
+static void
+wl_data_device_handle_motion(
+        void *user, struct wl_data_device *wl_data_device, uint32_t time, wl_fixed_t x, wl_fixed_t y)
+{
+    struct DataDevice *dataDevice = user;
     assert(dataDevice != NULL);
 
     JNIEnv *env = getEnv();
     assert(env != NULL);
-    (*env)->CallVoidMethod(env, dataDevice->javaObject, wlDataDeviceHandleDnDMotionMID, (jlong)time, (jdouble)x / 256.0,
-                           (jdouble)y / 256.0);
+    (*env)->CallVoidMethod(env, dataDevice->javaObject, wlDataDeviceHandleDnDMotionMID, (jlong) time,
+                           wl_fixed_to_double(x),
+                           wl_fixed_to_double(y));
     EXCEPTION_CLEAR(env);
 }
 
-static void wl_data_device_handle_drop(void *user, struct wl_data_device *wl_data_device) {
-    struct DataDevice* dataDevice = user;
+static void
+wl_data_device_handle_drop(void *user, struct wl_data_device *wl_data_device)
+{
+    struct DataDevice *dataDevice = user;
     assert(dataDevice != NULL);
 
     JNIEnv *env = getEnv();
@@ -634,14 +750,15 @@ static void wl_data_device_handle_drop(void *user, struct wl_data_device *wl_dat
 }
 
 static void
-wl_data_device_handle_selection(void *user, struct wl_data_device *wl_data_device, struct wl_data_offer *id) {
-    struct DataDevice* dataDevice = user;
+wl_data_device_handle_selection(void *user, struct wl_data_device *wl_data_device, struct wl_data_offer *id)
+{
+    struct DataDevice *dataDevice = user;
     assert(dataDevice != NULL);
     struct DataOffer *offer = NULL;
 
     // id can be NULL, this means that the selection was cleared
     if (id != NULL) {
-        offer = (struct DataOffer *)wl_data_offer_get_user_data(id);
+        offer = (struct DataOffer *) wl_data_offer_get_user_data(id);
         assert(offer != NULL);
     }
 
@@ -651,8 +768,9 @@ wl_data_device_handle_selection(void *user, struct wl_data_device *wl_data_devic
 static void
 zwp_primary_selection_device_handle_data_offer(void *user,
                                                struct zwp_primary_selection_device_v1 *zwp_primary_selection_device_v1,
-                                               struct zwp_primary_selection_offer_v1 *id) {
-    struct DataDevice* dataDevice = user;
+                                               struct zwp_primary_selection_offer_v1 *id)
+{
+    struct DataDevice *dataDevice = user;
     struct DataOffer *offer = DataOffer_create(dataDevice, DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION, id);
     if (offer == NULL) {
         // This can only happen in OOM scenarios.
@@ -668,15 +786,16 @@ zwp_primary_selection_device_handle_data_offer(void *user,
 static void
 zwp_primary_selection_device_handle_selection(void *user,
                                               struct zwp_primary_selection_device_v1 *zwp_primary_selection_device_v1,
-                                              struct zwp_primary_selection_offer_v1 *id) {
-    struct DataDevice* dataDevice = user;
+                                              struct zwp_primary_selection_offer_v1 *id)
+{
+    struct DataDevice *dataDevice = user;
     assert(dataDevice != NULL);
 
     struct DataOffer *offer = NULL;
 
     // id can be NULL, this means that the selection was cleared
     if (id != NULL) {
-        offer = (struct DataOffer *)zwp_primary_selection_offer_v1_get_user_data(id);
+        offer = (struct DataOffer *) zwp_primary_selection_offer_v1_get_user_data(id);
         assert(offer != NULL);
     }
 
@@ -685,15 +804,18 @@ zwp_primary_selection_device_handle_selection(void *user,
 
 // JNI functions
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataDevice_initIDs(JNIEnv* env, jclass clazz)
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataDevice_initIDs(JNIEnv *env, jclass clazz)
 {
     if (!initJavaRefs(env)) {
         JNU_ThrowInternalError(env, "Failed to initialize WLDataDevice java refs");
     }
 }
 
-JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLDataDevice_initNative(JNIEnv *env, jobject obj, jlong wlSeatPtr) {
-    struct wl_seat* seat = (wlSeatPtr == 0) ? wl_seat : (struct wl_seat*)jlong_to_ptr(wlSeatPtr);
+JNIEXPORT jlong JNICALL
+Java_sun_awt_wl_WLDataDevice_initNative(JNIEnv *env, jobject obj, jlong wlSeatPtr)
+{
+    struct wl_seat *seat = (wlSeatPtr == 0) ? wl_seat : (struct wl_seat *) jlong_to_ptr(wlSeatPtr);
 
     struct DataDevice *dataDevice = calloc(1, sizeof(struct DataDevice));
     if (dataDevice == NULL) {
@@ -718,7 +840,8 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLDataDevice_initNative(JNIEnv *env, job
 
     dataDevice->zwpPrimarySelectionDevice = NULL;
     if (zwp_selection_dm != NULL) {
-        dataDevice->zwpPrimarySelectionDevice = zwp_primary_selection_device_manager_v1_get_device(zwp_selection_dm, seat);
+        dataDevice->zwpPrimarySelectionDevice = zwp_primary_selection_device_manager_v1_get_device(zwp_selection_dm,
+                                                                                                   seat);
         if (dataDevice->zwpPrimarySelectionDevice == NULL) {
             JNU_ThrowInternalError(env, "Couldn't get zwp_primary_selection_device");
             goto error_cleanup;
@@ -734,13 +857,14 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLDataDevice_initNative(JNIEnv *env, job
     wl_data_device_add_listener(dataDevice->wlDataDevice, &wlDataDeviceListener, dataDevice);
 
     if (dataDevice->zwpPrimarySelectionDevice != NULL) {
-        zwp_primary_selection_device_v1_add_listener(dataDevice->zwpPrimarySelectionDevice, &zwpPrimarySelectionDeviceListener,
+        zwp_primary_selection_device_v1_add_listener(dataDevice->zwpPrimarySelectionDevice,
+                                                     &zwpPrimarySelectionDeviceListener,
                                                      dataDevice);
     }
 
     return ptr_to_jlong(dataDevice);
 
-error_cleanup:
+    error_cleanup:
     if (dataDevice->dataTransferQueue != NULL) {
         wl_event_queue_destroy(dataDevice->dataTransferQueue);
     }
@@ -763,7 +887,9 @@ error_cleanup:
     return 0;
 }
 
-JNIEXPORT jboolean JNICALL Java_sun_awt_wl_WLDataDevice_isProtocolSupportedImpl(JNIEnv *env, jclass clazz, jlong nativePtr, jint protocol) {
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_wl_WLDataDevice_isProtocolSupportedImpl(JNIEnv *env, jclass clazz, jlong nativePtr, jint protocol)
+{
     struct DataDevice *dataDevice = jlong_to_ptr(nativePtr);
     assert(dataDevice != NULL);
 
@@ -778,7 +904,9 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_wl_WLDataDevice_isProtocolSupportedImpl(
     return false;
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataDevice_dispatchDataTransferQueueImpl(JNIEnv *env, jclass clazz, jlong nativePtr) {
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataDevice_dispatchDataTransferQueueImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
+{
     struct DataDevice *dataDevice = jlong_to_ptr(nativePtr);
     assert(dataDevice != NULL);
 
@@ -786,12 +914,14 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataDevice_dispatchDataTransferQueueImp
     }
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataDevice_setSelectionImpl(JNIEnv *env,
-                                                                     jclass clazz,
-                                                                     jint protocol,
-                                                                     jlong dataDeviceNativePtr,
-                                                                     jlong dataSourceNativePtr,
-                                                                     jlong serial) {
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataDevice_setSelectionImpl(JNIEnv *env,
+                                              jclass clazz,
+                                              jint protocol,
+                                              jlong dataDeviceNativePtr,
+                                              jlong dataSourceNativePtr,
+                                              jlong serial)
+{
     struct DataDevice *dataDevice = jlong_to_ptr(dataDeviceNativePtr);
     assert(dataDevice != NULL);
 
@@ -801,11 +931,14 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataDevice_setSelectionImpl(JNIEnv *env
         wl_data_device_set_selection(dataDevice->wlDataDevice, (source == NULL) ? NULL : source->wlDataSource, serial);
     } else if (protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
         zwp_primary_selection_device_v1_set_selection(
-                dataDevice->zwpPrimarySelectionDevice, (source == NULL) ? NULL : source->zwpPrimarySelectionSource, serial);
+                dataDevice->zwpPrimarySelectionDevice, (source == NULL) ? NULL : source->zwpPrimarySelectionSource,
+                serial);
     }
 }
 
-JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, jobject javaObject, jlong dataDeviceNativePtr, jint protocol) {
+JNIEXPORT jlong JNICALL
+Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, jobject javaObject, jlong dataDeviceNativePtr, jint protocol)
+{
     struct DataDevice *dataDevice = jlong_to_ptr(dataDeviceNativePtr);
     assert(dataDevice != NULL);
 
@@ -840,7 +973,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, job
             return 0;
         }
 
-        wl_proxy_set_queue((struct wl_proxy *)wlDataSource, dataDevice->dataTransferQueue);
+        wl_proxy_set_queue((struct wl_proxy *) wlDataSource, dataDevice->dataTransferQueue);
         wl_data_source_add_listener(wlDataSource, &wl_data_source_listener, dataSource);
 
         dataSource->protocol = DATA_TRANSFER_PROTOCOL_WAYLAND;
@@ -856,7 +989,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, job
             return 0;
         }
 
-        wl_proxy_set_queue((struct wl_proxy *)zwpPrimarySelectionSource, dataDevice->dataTransferQueue);
+        wl_proxy_set_queue((struct wl_proxy *) zwpPrimarySelectionSource, dataDevice->dataTransferQueue);
         zwp_primary_selection_source_v1_add_listener(zwpPrimarySelectionSource,
                                                      &zwp_primary_selection_source_v1_listener, dataSource);
 
@@ -867,10 +1000,12 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, job
     return ptr_to_jlong(dataSource);
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_offerMimeImpl(JNIEnv *env,
-                                                                  jclass clazz,
-                                                                  jlong nativePtr,
-                                                                  jstring mimeJavaString) {
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataSource_offerMimeImpl(JNIEnv *env,
+                                           jclass clazz,
+                                           jlong nativePtr,
+                                           jstring mimeJavaString)
+{
     struct DataSource *source = jlong_to_ptr(nativePtr);
     const char *mime = (*env)->GetStringUTFChars(env, mimeJavaString, NULL);
     JNU_CHECK_EXCEPTION(env);
@@ -878,7 +1013,9 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_offerMimeImpl(JNIEnv *env,
     (*env)->ReleaseStringUTFChars(env, mimeJavaString, mime);
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_destroyImpl(JNIEnv *env, jclass clazz, jlong nativePtr) {
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataSource_destroyImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
+{
     struct DataSource *source = jlong_to_ptr(nativePtr);
     if (source == NULL) {
         return;
@@ -898,21 +1035,27 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_destroyImpl(JNIEnv *env, jcl
     free(source);
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDActionsImpl(JNIEnv *env,
-                                                                      jclass clazz,
-                                                                      jlong nativePtr,
-                                                                      jint actions) {
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataSource_setDnDActionsImpl(JNIEnv *env,
+                                               jclass clazz,
+                                               jlong nativePtr,
+                                               jint actions)
+{
     struct DataSource *source = jlong_to_ptr(nativePtr);
     DataSource_setDnDActions(source, actions);
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataOffer_destroyImpl(JNIEnv *env, jclass clazz, jlong nativePtr) {
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataOffer_destroyImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
+{
     struct DataOffer *offer = jlong_to_ptr(nativePtr);
     DataOffer_destroy(offer);
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataOffer_acceptImpl(
-    JNIEnv *env, jclass clazz, jlong nativePtr, jlong serial, jstring mimeJavaString) {
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataOffer_acceptImpl(
+        JNIEnv *env, jclass clazz, jlong nativePtr, jlong serial, jstring mimeJavaString)
+{
     struct DataOffer *offer = jlong_to_ptr(nativePtr);
     const char *mime = NULL;
 
@@ -921,17 +1064,19 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataOffer_acceptImpl(
         JNU_CHECK_EXCEPTION(env);
     }
 
-    DataOffer_accept(offer, (uint32_t)serial, mime);
+    DataOffer_accept(offer, (uint32_t) serial, mime);
 
     if (mime != NULL) {
         (*env)->ReleaseStringUTFChars(env, mimeJavaString, mime);
     }
 }
 
-JNIEXPORT jint JNICALL Java_sun_awt_wl_WLDataOffer_openReceivePipe(JNIEnv *env,
-                                                                   jclass clazz,
-                                                                   jlong nativePtr,
-                                                                   jstring mimeJavaString) {
+JNIEXPORT jint JNICALL
+Java_sun_awt_wl_WLDataOffer_openReceivePipe(JNIEnv *env,
+                                            jclass clazz,
+                                            jlong nativePtr,
+                                            jstring mimeJavaString)
+{
     struct DataOffer *offer = jlong_to_ptr(nativePtr);
     const char *mime = (*env)->GetStringUTFChars(env, mimeJavaString, NULL);
     JNU_CHECK_EXCEPTION_RETURN(env, -1);
@@ -953,13 +1098,17 @@ JNIEXPORT jint JNICALL Java_sun_awt_wl_WLDataOffer_openReceivePipe(JNIEnv *env,
     return fds[0];
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataOffer_finishDnDImpl(JNIEnv *env, jclass clazz, jlong nativePtr) {
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataOffer_finishDnDImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
+{
     struct DataOffer *offer = jlong_to_ptr(nativePtr);
     DataOffer_finishDnD(offer);
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataOffer_setDnDActionsImpl(
-    JNIEnv *env, jclass clazz, jlong nativePtr, jint actions, jint preferredAction) {
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataOffer_setDnDActionsImpl(
+        JNIEnv *env, jclass clazz, jlong nativePtr, jint actions, jint preferredAction)
+{
     struct DataOffer *offer = jlong_to_ptr(nativePtr);
     DataOffer_setDnDActions(offer, actions, preferredAction);
 }

@@ -159,15 +159,17 @@ public final class WLClipboard extends SunClipboard {
     }
 
     /**
-     * @return formats the current clipboard is available in; could be null
+     * Returns zero-length array (not null) if the number of available formats is zero.
+     *
+     * @throws IllegalStateException if formats could not be retrieved
      */
     @Override
     protected long[] getClipboardFormats() {
         WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
         List<String> mimes;
         synchronized (dataLock) {
-            if (clipboardDataOfferedToUs == null || !clipboardDataOfferedToUs.isValid()) {
-                return null;
+            if (clipboardDataOfferedToUs == null) {
+                return new long[0];
             }
 
             mimes = clipboardDataOfferedToUs.getMimes();
@@ -221,7 +223,7 @@ public final class WLClipboard extends SunClipboard {
         lostOwnershipNow(null);
 
         synchronized (dataLock) {
-            if (clipboardDataOfferedToUs != null && clipboardDataOfferedToUs.isValid()) {
+            if (clipboardDataOfferedToUs != null) {
                 clipboardDataOfferedToUs.destroy();
             }
             clipboardDataOfferedToUs = offer;
