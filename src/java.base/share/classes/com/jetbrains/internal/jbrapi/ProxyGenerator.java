@@ -25,6 +25,9 @@
 
 package com.jetbrains.internal.jbrapi;
 
+import jdk.internal.classfile.impl.ClassHierarchyImpl;
+import jdk.internal.classfile.impl.Util;
+
 import java.lang.classfile.*;
 import java.lang.classfile.instruction.ConstantInstruction;
 import java.lang.constant.ClassDesc;
@@ -75,6 +78,7 @@ class ProxyGenerator {
     private final Proxy.Info info;
     private final Class<?> interFace;
     private final Lookup proxyGenLookup;
+    private final ClassHierarchyResolverOption classResolver;
     private final Mapping[] specialization;
     private final Mapping.Context mappingContext;
     private final AccessContext accessContext;
@@ -101,6 +105,15 @@ class ProxyGenerator {
         // Placing our proxy implementation into the target's nest is preferred, as it gives us direct method calls.
         this.proxyGenLookup = info.targetLookup != null && AccessContext.canAccess(info.targetLookup, interFace) ?
                 info.targetLookup : info.interfaceLookup;
+
+        classResolver = ClassHierarchyResolverOption.of(
+                new ClassHierarchyImpl.ClassLoadingClassHierarchyResolver(cd -> {
+                    try {
+                        return Class.forName(Util.toBinaryName(cd), false, proxyGenLookup.lookupClass().getClassLoader());
+                    } catch (ClassNotFoundException ex) {
+                        return null;
+                    }
+                }));
 
         this.mappingContext = new Mapping.Context(proxyRepository);
         this.accessContext = new AccessContext(proxyGenLookup);
@@ -225,7 +238,7 @@ class ProxyGenerator {
             mappingContext.initTypeParameters(interFace, Stream.of(specialization));
         }
         mappingContext.initTypeParameters(interFace);
-        bytecode = ClassFile.of().build(proxyDesc, cb -> {
+        bytecode = ClassFile.of(classResolver).build(proxyDesc, cb -> {
             cb.withFlags(ACC_SUPER | ACC_FINAL | ACC_SYNTHETIC)
               .withSuperclass(superclassDesc)
               .withInterfaceSymbols(superinterfaceDescs);
