@@ -44,12 +44,6 @@ function do_configure {
     fi
   fi
 
-  if [ -n "${JCEF_BUILD_LEGACY:-}" ]; then
-    WITH_VULKAN=""
-  else
-    WITH_VULKAN="--with-vulkan"
-  fi
-
   sh configure \
     $WITH_DEBUG_LEVEL \
     --with-vendor-name="$VENDOR_NAME" \
@@ -61,7 +55,7 @@ function do_configure {
     --with-boot-jdk="$BOOT_JDK" \
     --enable-cds=yes \
     --with-gtk-shell1-protocol=$GTK_SHELL_PATH \
-    $WITH_VULKAN \
+    --with-vulkan \
     $LINUX_TARGET \
     $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
@@ -120,9 +114,7 @@ function create_image_bundle {
 
   # jmod does not preserve file permissions (JDK-8173610)
   [ -f "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper
-  if [! -n "${JCEF_BUILD_LEGACY:-}" ]; then
-    [ -f "$IMAGES_DIR"/"$__root_dir"/lib/cef_server ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/cef_server
-  fi
+  [ -f "$IMAGES_DIR"/"$__root_dir"/lib/cef_server ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/cef_server
 
   echo Creating "$JBR".tar.gz ...
 
