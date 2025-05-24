@@ -51,7 +51,7 @@ compiler/c2/TestVerifyConstraintCasts.java 8355574,JBR-8714 generic-all,linux-aa
 
 # :hotspot_gc
 
-gc/shenandoah/generational/TestOldGrowthTriggers.java JBR-8019 linux-all,windows-all,macosx-13.7.3,macosx-13.7.5
+gc/shenandoah/generational/TestOldGrowthTriggers.java JBR-8019 generic-all
 gc/stress/gcold/TestGCOldWithShenandoah.java#aggressive JBR-8563 windows-aarch64
 
 #############################################################################
@@ -87,6 +87,7 @@ serviceability/sa/ClhsdbInspect.java JBR-6351 windows-aarch64
 vmTestbase/jit/escape/AdaptiveBlocking/AdaptiveBlocking001/AdaptiveBlocking001.java JBR-8798 linux-aarch64
 vmTestbase/jit/misctests/JitBug1/JitBug1.java JBR-8801 linux-aarch64,windows-all
 vmTestbase/jit/misctests/Pi/Pi.java JBR-8854 linux-aarch64
+vmTestbase/jit/misctests/putfield00802/putfield00802.java JBR-8801 linux-aarch64,windows-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi002/TestDescription.java JBR-8743 windows-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi003/TestDescription.java JBR-8743 windows-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi004/TestDescription.java JBR-8744 windows-all
