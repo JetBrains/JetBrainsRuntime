@@ -8,10 +8,12 @@ java/awt/dnd/DragOverDropTargetPerformanceTest.java JBR-5799 windows-all
 java/awt/dnd/DragSourceGCrashTest.java JBR-8745 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-8745 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws
 java/awt/Dialog/ChoiceModalDialogTest.java JBR-8724 windows-all
+java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-6292 windows-all
 java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java JBR-6292 windows-all
 java/awt/event/MouseEvent/FrameMouseEventAbsoluteCoordsTest/FrameMouseEventAbsoluteCoordsTest.java 8238720,JBR-6095 windows-all,linux-all
+java/awt/FileDialog/8017487/bug8017487.java JBR-8144 windows-all
 java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java JBR-6089 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-6090 windows-all
 java/awt/Frame/DisabledParentOfToplevel.java JBR-8818 windows-x64
@@ -52,6 +54,7 @@ java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
 java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071 linux-all
 
+javax/swing/event/FocusEventCauseTest.java JBR-8811 windows-all
 javax/swing/InputVerifier/bug4774166.java JBR-8735 windows-all
 javax/swing/JFileChooser/JFileChooserSetLocationTest.java JBR-8098 linux-all,windows-all
 javax/swing/JMenu/bug4342646.java JBR-8727 linux-all,windows-all
