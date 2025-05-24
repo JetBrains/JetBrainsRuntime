@@ -393,6 +393,7 @@ java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 generic-all
+java/awt/Graphics2D/DrawString/IgnoredWhitespaceTest.java JBR-8886,JBR-8887 macosx-all,linux-6.8.0-1029-aws
 sun/java2d/SunGraphics2D/DrawImageBilinear.java 8297175 linux-all
 sun/java2d/SunGraphics2D/EmptyClipRenderingTest.java 8144029 macosx-all,linux-all,windows-all
 sun/java2d/SunGraphics2D/PolyVertTest.java 6986565 generic-all
@@ -1049,6 +1050,7 @@ javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-8270 linux-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JFrame/MaximizeWindowTest.java 8321289,JBR-8292 linux-all
+javax/swing/JFrame/NSTexturedJFrame/NSTexturedJFrame.java JBR-8837 macosx-all
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949 linux-all,windows-all
 javax/swing/JLabel/6596966/bug6596966.java 8197552 windows-all
 javax/swing/JLabel/7004134/bug7004134.java JBR-5437 linux-all
