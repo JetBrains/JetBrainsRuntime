@@ -158,6 +158,7 @@ java/awt/Frame/DisposeTest.java JBR-7937,JBR-8718 macosx-aarch64,linux-5.18.2-ar
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509 generic-all
 java/awt/Frame/HideMaximized/HideMaximized.java JBR-8310 linux-all
 java/awt/Frame/MaximizeUndecoratedTest.java JBR-8064 linux-all
+java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java JBR-7509,JBR-8889 macosx-15.4.1,macosx-all
 java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 linux-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
@@ -198,6 +199,7 @@ java/awt/Focus/TypeAhead/TestFocusFreeze.java JBR-5856 windows-all
 java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java JBR-69 windows-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java 8169096,JBR-4880,JBR-5387 macosx-all,windows-all,linux-all
 java/awt/EventQueue/6980209/bug6980209.java 8198615 macosx-all
+java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java JBR-8885 macosx-all
 java/awt/Frame/SetMinimumSizeTest/SetMinimumSizeTest2.java JBR-5210 windows-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java JBR-5210,JBR-6126 windows-all,linux-5.18.2-arch1-1,macosx-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184,JBR-5510 macosx-all,windows-all,linux-5.18.2-arch1-1
@@ -673,6 +675,7 @@ java/awt/JAWT/JAWT.sh 8197798 windows-all,linux-all
 java/awt/datatransfer/ConstructFlavoredObjectTest/ConstructFlavoredObjectTest.java 8202860 linux-all
 java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.java 8202882,JBR-1147 linux-all,macosx-all
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275 macosx-all
+java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-7299 linux-all
 java/awt/Focus/NoFocusOwnerAWTTest.java JBR-5825 windows-all
 java/awt/Focus/NoFocusOwnerSwingTest.java JBR-5825 windows-all
 java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java 6848810,JBR-5210 macosx-all,linux-all,windows-all
@@ -827,12 +830,13 @@ java/net/DatagramSocket/DatagramSocketMulticasting.java         8144003,JBR-8455
 java/net/MulticastSocket/NoLoopbackPackets.java                 7122846 macosx-all
 java/net/MulticastSocket/Promiscuous.java                       8308807,JBR-8455 aix-ppc64,macosx-all
 java/net/MulticastSocket/SetLoopbackModeIPv4.java JBR-8455 macosx-all
-java/net/MulticastSocket/SetOutgoingIf.java JBR-8828 macosx-x64
 java/net/SocketPermission/SocketPermissionTest.java JBR-8455 macosx-all
 java/net/MulticastSocket/SetLoopbackMode.java                   7122846 macosx-all
-java/net/MulticastSocket/SetOutgoingIf.java 8321217 macosx-14.7.3,macosx-14.7.4
+java/net/MulticastSocket/SetOutgoingIf.java 8321217,JBR-8828 macosx-14.7.3,macosx-14.7.4,macosx-14.7.5,macosx-all
 
 java/net/MulticastSocket/Test.java                              7145658 macosx-all
+
+javax/net/ssl/SSLSocket/Tls13PacketSize.java 8354235 windows-all
 
 ############################################################################
 

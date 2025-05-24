@@ -23,6 +23,7 @@ java/awt/Focus/LabelScrollBarFocus.java JBR-6090 windows-x64
 java/awt/Focus/ModalExcludedWindowClickTest/ModalExcludedWindowClickTest.java JBR-884,JBR-6090 windows-x64,linux-x64
 java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.java 8194753,JBR-6090 linux-all,macosx-all,windows-x64
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275,JBR-5799 macosx-all,windows-all
+java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-7299,JBR-8728 linux-all,windows-all
 java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java JBR-6089 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-6090 windows-all
 java/awt/Frame/DynamicLayout/DynamicLayout.java JBR-5799 windows-all

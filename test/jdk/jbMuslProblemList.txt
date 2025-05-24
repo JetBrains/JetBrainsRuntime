@@ -42,6 +42,7 @@ javax/imageio/plugins/shared/ImageWriterCompressionTest.java JBR-8804 linux-all
 javax/swing/border/Test4129681.java JBR-7787 linux-all
 javax/swing/JCheckBox/ImageCheckboxFocus/ImageCheckboxTest.java JBR-8806 linux-all
 javax/swing/JComboBox/6559152/bug6559152.java JBR-8807 linux-all
+javax/swing/JComboBox/DisabledComboBoxFontTestAuto.java JBR-8808 linux-all
 javax/swing/JComboBox/TestComboBoxComponentRendering.java initial_runs generic-all
 javax/swing/JEditorPane/4666101/JEditorPaneNavigationTest.java initial_runs generic-all
 javax/swing/JEditorPane/6917744/bug6917744.java initial_runs generic-all

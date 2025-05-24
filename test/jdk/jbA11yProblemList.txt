@@ -2,7 +2,7 @@ java/awt/Choice/ChoiceHandleMouseEvent.java
 java/awt/Choice/ChoiceHandleMouseEvent_2.java JBR-7174 windows-all
 java/awt/Choice/SelectItem/SelectCurrentItemTest.java JBR-8333 windows-all
 java/awt/Choice/SelectItem/SelectNewItemTest.java JBR-8387 windows-x64
-java/awt/grab/SystemMenuTest.java JBR-8862
+java/awt/grab/SystemMenuTest.java JBR-8862 windows-x64
 java/awt/Graphics/XORPaint.java#id0 JBR-7499 windows-x64
 java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java   nobug macosx-all,linux-all,windows-all
 java/awt/Toolkit/AWTThreadingTest.java              nobug macosx-all,linux-all,windows-all
@@ -15,7 +15,7 @@ java/awt/Modal/BlockedMouseInputTest.java JBR-8406 windows-x64
 java/awt/Modal/BlockedMouseInputTest2.java JBR-8406 windows-x64
 java/awt/Modal/BlockedMouseInputTest3.java JBR-8406 windows-x64
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java#id0 JBR-8577 windows-x64
-java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java 8157147,JBR-8578 linux-all,windows-all,windows-x64
+java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java 8157147,JBR-8578,JBR-5397 linux-all,windows-all,windows-x64,macosx-all
 java/awt/Paint/PaintNativeOnUpdate.java JBR-5397,JBR-7415 macosx-all,windows-x64
 java/awt/PopupMenu/PopupMenuLocation.java JBR-5397,JBR-7375 macosx-all,windows-x64
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java JBR-5397,JBR-6092 macosx-all,windows-x64
@@ -127,7 +127,6 @@ java/awt/List/ListMultipleSelectTest/ListMultipleSelectTest.java JBR-5555,JBR-53
 java/awt/Mouse/EnterExitEvents/DragWindowTest.java 8253184,JBR-5397 macosx-all,windows-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java 8253184,JBR-5709 windows-all,linux-all
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java 8253184,JBR-6752,JBR-5397 windows-all,linux-all,macosx-all
-java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java JBR-5397 macosx-all
 java/awt/Window/WindowOwnedByEmbeddedFrameTest/WindowOwnedByEmbeddedFrameTest.java JBR-5397 macosx-all
 javax/accessibility/JSlider/AccessibleAction/JSliderAccessibleAction.java JBR-5397 macosx-all
 javax/swing/JComboBox/6236162/bug6236162.java JBR-5210,JBR-5397 windows-all,macosx-all
