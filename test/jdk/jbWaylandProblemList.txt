@@ -1,6 +1,7 @@
 java/awt/font/ComplexEmoji.java JBR-5009,JBR-8399 linux-aarch64,linux-x64
 java/awt/FullScreen/SetFullScreenTest.java JBR-8214,JBR-8400 linux-5.18.2-arch1-1,linux-x64
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
+java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-8264 linux-x64
 
 java/awt/event/KeyEvent/FunctionKeyTest.java JBR-7773 linux-all
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-7269 linux-all
