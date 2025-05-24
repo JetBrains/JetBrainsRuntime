@@ -1,4 +1,5 @@
 # cannotbe run against jbr which does not contain some jbrsdk's utilities required for test executions
+java/awt/Headless/HeadlessMalfunctionTest.java JBR-8888 linux-all
 javax/imageio/stream/StreamCloserLeak/run_test.sh nobug generic-all
 javax/imageio/spi/AppletContextTest/BadPluginConfigurationTest.sh nobug generic-all
 
