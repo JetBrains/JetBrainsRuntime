@@ -42,6 +42,7 @@ javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java JBR-8269 linux-all
 javax/swing/border/Test4129681.java JBR-7787 linux-all
 javax/swing/JColorChooser/Test6707406.java JBR-8748 linux-all
 javax/swing/JColorChooser/TestDisabledColorChooser.java JBR-8748 linux-all
+javax/swing/JEditorPane/4666101/JEditorPaneNavigationTest.java JBR-8558 linux-all
 javax/swing/JFileChooser/8013442/Test8013442.java JBR-8748 linux-all
 javax/swing/JFrame/JFrameBackgroundRefreshTest.java JBR-7471 linux-all
 javax/swing/JInternalFrame/4769772/TestJInternalFrameIconify.java JBR-8748 linux-all
