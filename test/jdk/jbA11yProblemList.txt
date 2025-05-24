@@ -37,10 +37,12 @@ javax/swing/JMenuBar/MenuBarRTLBug.java JBR-7385 windows-x64
 javax/swing/JPopupMenu/4634626/bug4634626.java      nobug macosx-all,linux-all,windows-all
 javax/swing/JPopupMenu/4966112/bug4966112.java      nobug macosx-all,linux-all,windows-all
 javax/swing/JPopupMenu/6415145/bug6415145.java 8197552,JBR-5397 macosx-all,windows-all
+javax/swing/JSplitPane/4615365/JSplitPaneDividerLocationTest.java JBR-5397,JBR-5505 macosx-all,windows-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-7386 windows-x64
 
 jb/java/awt/Desktop/AboutHandlerTest.java           nobug macosx-all,linux-all,windows-all
 jb/java/awt/Focus/NewFrameAfterDialogTest.java JBR-7387 windows-x64
+jb/java/awt/Focus/ChainOfPopupsFocusTest.java JBR-8407 windows-x64
 
 # VoiceOver on MacOS
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-5397 macosx-all
@@ -87,8 +89,8 @@ javax/swing/JPopupMenu/4634626/bug4634626.java 8253184,JBR-5397 windows-all,maco
 javax/swing/JPopupMenu/6827786/bug6827786.java JBR-5397 macosx-all
 javax/swing/JRadioButton/4314194/bug4314194.java JBR-5397 macosx-all
 javax/swing/JSplitPane/4164779/JSplitPaneKeyboardNavigationTest.java JBR-5397 macosx-all
-javax/swing/JSplitPane/4615365/JSplitPaneDividerLocationTest.java JBR-5397 macosx-all
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5397 macosx-all
+javax/swing/JTableHeader/6884066/bug6884066.java JBR-8902 windows-x64
 javax/swing/JTable/8236907/LastVisibleRow.java JBR-5397 macosx-all
 javax/swing/JTextField/4532513/DefaultCaretRequestsFocusTest.java JBR-5397 macosx-all
 javax/swing/JTextField/8036819/bug8036819.java JBR-5397,JBR-6113 macosx-all,windows-all
@@ -201,7 +203,6 @@ javax/swing/JScrollBar/7163696/Test7163696.java JBR-5505 windows-all
 javax/swing/JScrollPane/TestMouseWheelScroll.java JBR-5505 windows-all
 javax/swing/JSlider/6401380/bug6401380.java JBR-5505 windows-all
 javax/swing/JSpinner/4788637/bug4788637.java JBR-5505 windows-all
-javax/swing/JSplitPane/4615365/JSplitPaneDividerLocationTest.java JBR-5505 windows-all
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-5505 windows-all
 javax/swing/JSplitPane/4885629/bug4885629.java JBR-5505 windows-all
 javax/swing/JTabbedPane/4361477/bug4361477.java JBR-5932,JBR-5505 linux-all,windows-all
