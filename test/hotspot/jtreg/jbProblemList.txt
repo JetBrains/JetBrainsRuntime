@@ -332,6 +332,7 @@ vmTestbase/jit/escape/LockCoarsening/LockCoarsening001.java 8148743 generic-all
 vmTestbase/jit/escape/LockCoarsening/LockCoarsening002.java 8208259 generic-all
 
 vmTestbase/jit/misctests/fpustack/GraphApplet.java linux-x64
+vmTestbase/jit/misctests/JitBug1/JitBug1.java JBR-8801 linux-aarch64
 vmTestbase/jit/misctests/putfield00802/putfield00802.java JBR-8801 linux-aarch64,windows-all
 
 vmTestbase/vm/mlvm/hiddenloader/stress/byteMutation/Test.java initial_run windows-all
