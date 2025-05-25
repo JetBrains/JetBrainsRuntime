@@ -79,16 +79,6 @@
 #include "opto/c2compiler.hpp"
 #endif
 
-Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = nullptr;
-Array<Method*>* VM_EnhancedRedefineClasses::_new_methods = nullptr;
-Method**  VM_EnhancedRedefineClasses::_matching_old_methods = nullptr;
-Method**  VM_EnhancedRedefineClasses::_matching_new_methods = nullptr;
-Method**  VM_EnhancedRedefineClasses::_deleted_methods      = nullptr;
-Method**  VM_EnhancedRedefineClasses::_added_methods        = nullptr;
-int         VM_EnhancedRedefineClasses::_matching_methods_length = 0;
-int         VM_EnhancedRedefineClasses::_deleted_methods_length  = 0;
-int         VM_EnhancedRedefineClasses::_added_methods_length    = 0;
-Klass*      VM_EnhancedRedefineClasses::_the_class_oop = nullptr;
 u8        VM_EnhancedRedefineClasses::_id_counter = 0;
 
 //
@@ -115,6 +105,16 @@ VM_EnhancedRedefineClasses::VM_EnhancedRedefineClasses(jint class_count, const j
   _any_class_has_resolved_methods = false;
   _object_klass_redefined = false;
   _vm_class_redefined = false;
+  _the_class_oop = nullptr;
+  _old_methods = nullptr;
+  _new_methods = nullptr;
+  _matching_old_methods = nullptr;
+  _matching_new_methods = nullptr;
+  _deleted_methods      = nullptr;
+  _added_methods        = nullptr;
+  _matching_methods_length = 0;
+  _deleted_methods_length  = 0;
+  _added_methods_length    = 0;
   _id = next_id();
 }
 
@@ -512,6 +512,7 @@ public:
 
   virtual void work(uint worker_id) {
     HandleMark hm(Thread::current());   // make sure any handles created are deleted
+    ResourceMark rm(Thread::current());
     ChangePointersObjectClosure objectClosure(_cl);
     _poi->object_iterate(&objectClosure, worker_id);
     _needs_instance_update = _needs_instance_update || objectClosure.needs_instance_update();
@@ -815,9 +816,6 @@ void VM_EnhancedRedefineClasses::doit_epilogue() {
     delete _affected_klasses;
     _affected_klasses = nullptr;
   }
-
-  // Reset the_class_oop to null for error printing.
-  _the_class_oop = nullptr;
 
   if (log_is_enabled(Info, redefine, class, timer)) {
     // Used to have separate timers for "doit" and "all", but the timer
