@@ -550,10 +550,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public DragSourceContextPeer createDragSourceContextPeer(DragGestureEvent dge) throws InvalidDnDOperationException {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createDragSourceContextPeer()");
-        }
-        return null;
+        return new WLDragSourceContextPeer(dge, dataDevice);
     }
 
     @Override

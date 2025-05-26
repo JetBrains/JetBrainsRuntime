@@ -173,6 +173,10 @@ public abstract class SunDropTargetContextPeer implements DropTargetContextPeer,
         return currentA;
     }
 
+    protected int getDropAction() {
+        return currentDA;
+    }
+
     /**
      * get the Transferable associated with the drop
      */
@@ -571,6 +575,7 @@ public abstract class SunDropTargetContextPeer implements DropTargetContextPeer,
                                       final long nativeCtxt,
                                       final int eventID,
                                       final boolean dispatchType) {
+        System.err.printf("postDropTargetEvent(%d), x = %d, y = %d, dropAction = %d, actions = %d, context = %s\n", eventID, x, y, dropAction, actions, currentDTC);
         AppContext appContext = SunToolkit.targetToAppContext(component);
 
         EventDispatcher dispatcher =

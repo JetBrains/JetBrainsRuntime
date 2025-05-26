@@ -936,6 +936,21 @@ Java_sun_awt_wl_WLDataDevice_setSelectionImpl(JNIEnv *env,
     }
 }
 
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataDevice_startDragImpl(JNIEnv *env, jclass clazz, jlong dataDeviceNativePtr,
+                                           jlong dataSourceNativePtr, jlong wlSurfacePtr,
+                                           jlong iconPtr, jlong serial)
+{
+    struct DataDevice *dataDevice = jlong_to_ptr(dataDeviceNativePtr);
+    assert(dataDevice != NULL);
+
+    struct DataSource *source = jlong_to_ptr(dataSourceNativePtr);
+    assert(source != NULL);
+
+    wl_data_device_start_drag(dataDevice->wlDataDevice, source->wlDataSource, jlong_to_ptr(wlSurfacePtr),
+                              jlong_to_ptr(iconPtr), serial);
+}
+
 JNIEXPORT jlong JNICALL
 Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, jobject javaObject, jlong dataDeviceNativePtr, jint protocol)
 {

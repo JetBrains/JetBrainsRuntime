@@ -1,0 +1,219 @@
+/*
+ * Copyright 2025 JetBrains s.r.o.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+package sun.awt.wl;
+
+import sun.awt.AWTAccessor;
+import sun.awt.dnd.SunDropTargetContextPeer;
+
+import java.awt.Component;
+import java.awt.dnd.DnDConstants;
+import java.awt.event.MouseEvent;
+import java.io.IOException;
+
+public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
+    private WLDataOffer currentOffer;
+    private Component currentTarget;
+    private double currentX;
+    private double currentY;
+    private long[] sourceFormats;
+    private int lastAction = -1;
+    private boolean didDrop = false;
+
+    private WLDropTargetContextPeer() {
+    }
+
+    private static final WLDropTargetContextPeer INSTANCE = new WLDropTargetContextPeer();
+
+    public static WLDropTargetContextPeer getInstance() {
+        return INSTANCE;
+    }
+
+    private synchronized boolean hasTarget() {
+        var dropTarget = getDropTarget();
+        var context = (dropTarget != null) ? dropTarget.getDropTargetContext() : null;
+        return context != null;
+    }
+
+    private synchronized void postEvent(int event) {
+        if (currentOffer == null || currentTarget == null) {
+            return;
+        }
+        var peer = (WLComponentPeer) AWTAccessor.getComponentAccessor().getPeer(currentTarget);
+        var x = peer.surfaceUnitsToJavaUnits((int) currentX);
+        var y = peer.surfaceUnitsToJavaUnits((int) currentY);
+//        var dropAction = WLDataDevice.waylandActionsToJava(currentOffer.getSelectedAction());
+        var actions = WLDataDevice.waylandActionsToJava(currentOffer.getSourceActions());
+        int dropAction = 0;
+        if (hasTarget() && event != MouseEvent.MOUSE_EXITED) {
+            if ((actions & DnDConstants.ACTION_MOVE) != 0) {
+                dropAction = DnDConstants.ACTION_MOVE;
+            } else if ((actions & DnDConstants.ACTION_COPY) != 0) {
+                dropAction = DnDConstants.ACTION_COPY;
+            }
+        }
+
+        postDropTargetEvent(
+                currentTarget,
+                x,
+                y,
+                dropAction,
+                actions,
+                sourceFormats,
+                0,
+                event,
+                false);
+    }
+
+    @Override
+    protected Object getNativeData(long format) throws IOException {
+        System.err.println("getNativeData");
+        var dataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
+
+        synchronized (this) {
+            if (currentOffer == null) {
+                return null;
+            }
+
+            // Since one format can be mapped to multiple mimes, we need to iterate over all of them.
+            for (var mime : currentOffer.getMimes()) {
+                if (dataTransferer.getFormatForNativeAsLong(mime) == format) {
+                    return currentOffer.receiveData(mime);
+                }
+            }
+        }
+
+        throw new IOException("Unknown format " + format + ", aka " + dataTransferer.getNativeForFormat(format));
+    }
+
+    @Override
+    protected void doDropDone(boolean success, int dropAction, boolean isLocal) {
+        System.err.println("doDropDone");
+        reset();
+    }
+
+    private synchronized void updateActions() {
+        if (currentOffer == null) {
+            return;
+        }
+
+        int action = 0;
+        if (hasTarget()) {
+            action = WLDataDevice.javaActionsToWayland(getDropAction());
+        }
+        if (action != lastAction) {
+            System.err.println("setDnDActions: " + action);
+            currentOffer.setDnDActions(action, action);
+            lastAction = action;
+        }
+    }
+
+    private synchronized void reset() {
+        if (currentOffer != null) {
+            currentOffer.destroy();
+        }
+
+        currentOffer = null;
+        currentTarget = null;
+        lastAction = -1;
+        didDrop = false;
+    }
+
+    @Override
+    public synchronized void acceptDrag(int dragOperation) {
+        System.err.printf("acceptDrag(%d)\n", dragOperation);
+        super.acceptDrag(dragOperation);
+        updateActions();
+    }
+
+    @Override
+    public synchronized void rejectDrag() {
+        System.err.printf("rejectDrag()\n");
+        super.rejectDrag();
+        updateActions();
+    }
+
+    public synchronized void handleEnter(WLDataOffer offer, long serial, long surfacePtr, double x, double y) {
+        var peer = WLComponentPeer.getPeerFromWLSurface(surfacePtr);
+        if (peer == null) {
+            return;
+        }
+
+        reset();
+
+        currentTarget = peer.getTarget();
+        currentX = x;
+        currentY = y;
+        lastAction = -1;
+        currentOffer = offer;
+
+        var mimes = offer.getMimes();
+        var wlDataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
+        long[] formats = new long[mimes.size()];
+        for (int i = 0; i < mimes.size(); ++i) {
+            formats[i] = wlDataTransferer.getFormatForNativeAsLong(mimes.get(i));
+        }
+        sourceFormats = formats;
+
+        postEvent(MouseEvent.MOUSE_ENTERED);
+
+        currentOffer.setListener(new WLDataOffer.EventListener() {
+            @Override
+            public void availableActionsChanged(int actions) {
+                postEvent(MouseEvent.MOUSE_DRAGGED);
+            }
+
+            @Override
+            public void selectedActionChanged(int action) {
+                postEvent(MouseEvent.MOUSE_DRAGGED);
+            }
+        });
+
+        updateActions();
+
+        // Accept all formats by default. Rejecting the drop is done by setting supported actions to 0.
+        for (var mime : offer.getMimes()) {
+            offer.accept(serial, mime);
+        }
+    }
+
+    public synchronized void handleLeave() {
+        if (!didDrop) {
+            postEvent(MouseEvent.MOUSE_EXITED);
+            reset();
+        }
+    }
+
+    public synchronized void handleMotion(long timestamp, double x, double y) {
+        currentX = x;
+        currentY = y;
+        postEvent(MouseEvent.MOUSE_DRAGGED);
+    }
+
+    public synchronized void handleDrop() {
+        didDrop = true;
+        postEvent(MouseEvent.MOUSE_RELEASED);
+    }
+}
