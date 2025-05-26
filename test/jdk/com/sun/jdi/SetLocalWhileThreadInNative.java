@@ -40,6 +40,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.sun.jdi.*;
 import com.sun.jdi.event.*;
@@ -159,7 +160,14 @@ public class SetLocalWhileThreadInNative extends TestScaffold {
         for (StackFrame ff : stack_frames) {
             System.out.println("frame[" + i++ +"]: " + ff.location().method());
         }
-        StackFrame frame = mainThread.frame(2);
+        StackFrame frame = mainThread.frame(
+                // frame[0]: java.io.FileInputStream.read0()
+                // frame[1]: java.io.FileInputStream.implRead()
+                // frame[2]: java.io.FileInputStream.read()
+                // frame[3]: SetLocalWhileThreadInNativeTarget.dontinline_testMethod()
+                // frame[4]: SetLocalWhileThreadInNativeTarget.main(java.lang.String[])
+                3
+        );
         Asserts.assertEQ(frame.location().method().toString(), "SetLocalWhileThreadInNativeTarget.dontinline_testMethod()");
         List<LocalVariable> localVars = frame.visibleVariables();
         boolean changedLocal = false;
