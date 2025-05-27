@@ -126,7 +126,7 @@ typedef enum {
 - (void)dealloc;
 
 - (void)handleDisplayLink:(BOOL)enabled displayID:(jint)displayID source:(const char*)src;
-- (void)createDisplayLinkIfAbsent: (jint)displayID;
+- (void)createDisplayLinkIfAbsent: (NSNumber*)displayID;
 
 /**
  * Resets the current clip state (disables both scissor and depth tests).
