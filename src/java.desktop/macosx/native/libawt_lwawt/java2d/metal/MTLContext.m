@@ -38,6 +38,8 @@
 // to avoid multiple start/stop displaylink operations. It speeds up
 // scenarios with multiple subsequent updates.
 #define KEEP_ALIVE_COUNT 4
+#define CV_DISPLAYLINK_FAIL_DELAY 1.0
+#define MAX_DISPLAYLINK_FAIL_COUNT 5
 
 #define TO_MS(x) (1000.0 * (x))
 #define TO_FPS(x) (1.0 / (x))
@@ -98,6 +100,7 @@ typedef struct {
     CVDisplayLinkRef    displayLink;
     MTLContext*         mtlc;
     jint                redrawCount;
+    jint                failCount;
 
     jint                avgDisplayLinkSamples;
     CFTimeInterval      lastRedrawTime;
@@ -330,13 +333,13 @@ extern void initSamplers(id<MTLDevice> device);
                     case MTLDCM_DISPLAY_WAKEUP:
                         if (active) {
                             // (if needed will start a new display link thread):
-                            [mtlc createDisplayLinkIfAbsent:displayID];
+                            [mtlc createDisplayLinkIfAbsent:@(displayID)];
                         }
                         break;
                     case MTLDCM_DISPLAY_RECONFIGURE:
                         if (active) {
                             // (if needed will start a new display link thread):
-                            [mtlc createDisplayLinkIfAbsent:displayID];
+                            [mtlc createDisplayLinkIfAbsent:@(displayID)];
                         } else {
                             // kill CVDisplayLinks for inactive displays:
                             [mtlc destroyDisplayLink:displayID];
@@ -410,7 +413,7 @@ extern void initSamplers(id<MTLDevice> device);
         [device release];
     }
     // (will start a new display link thread if needed):
-    [mtlc createDisplayLinkIfAbsent:displayID];
+    [mtlc createDisplayLinkIfAbsent:@(displayID)];
     return mtlc;
 }
 
@@ -493,27 +496,47 @@ extern void initSamplers(id<MTLDevice> device);
     return [_displayLinkStates allKeys];
 }
 
-- (void)createDisplayLinkIfAbsent: (jint)displayID {
+- (void)createDisplayLinkIfAbsent: (NSNumber*)displayID {
     AWT_ASSERT_APPKIT_THREAD;
     if (_displayLinkStates != nil) {
-        MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
+        MTLDisplayLinkState *dlState = [self getDisplayLinkState:[displayID intValue]];
         if ((dlState != nil) && (dlState->displayLink != nil)) {
             return;
         }
         if (TRACE_DISPLAY) {
-            dumpDisplayInfo(displayID);
+            dumpDisplayInfo([displayID intValue]);
         }
         CVDisplayLinkRef _displayLink;
         if (TRACE_CVLINK) {
             J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLContext_createDisplayLinkIfAbsent: "
-                                             "ctx=%p displayID=%d", self, displayID);
+                                             "ctx=%p displayID=%d", self, [displayID intValue]);
         }
+
         CHECK_CVLINK("CreateWithCGDisplay", nil, &_displayLink,
-                     CVDisplayLinkCreateWithCGDisplay(displayID, &_displayLink));
+                     CVDisplayLinkCreateWithCGDisplay([displayID intValue], &_displayLink));
 
         if (_displayLink == nil) {
             J2dRlsTraceLn(J2D_TRACE_ERROR,
                           "MTLContext_createDisplayLinkIfAbsent: Failed to initialize CVDisplayLink.");
+
+            if (dlState == nil) {
+                dlState = malloc(sizeof(MTLDisplayLinkState));
+                dlState->displayID = [displayID intValue];
+                dlState->displayLink = nil;
+                dlState->failCount = 0;
+                _displayLinkStates[displayID] = [NSValue valueWithPointer:dlState];
+            }
+
+            if (dlState->failCount >= MAX_DISPLAYLINK_FAIL_COUNT) {
+                J2dTraceLn(J2D_TRACE_ERROR,
+                           "MTLLayer.createDisplayLink --- unable to create CVDisplayLink.");
+                dlState->failCount = 0;
+                return;
+            }
+            dlState->failCount++;
+            [self performSelector:@selector(createDisplayLinkIfAbsent:)
+                       withObject:displayID
+                       afterDelay:CV_DISPLAYLINK_FAIL_DELAY];
         } else {
             J2dRlsTraceLn(J2D_TRACE_INFO, "MTLContext_createDisplayLinkIfAbsent["
                                           "ctx=%p displayID=%d] displayLink=%p",
@@ -524,11 +547,12 @@ extern void initSamplers(id<MTLDevice> device);
                 isNewDisplayLink = true;
             }
             // update:
-            dlState->displayID = displayID;
+            dlState->displayID = [displayID intValue];
             dlState->displayLink = _displayLink;
             dlState->mtlc = self;
 
             dlState->redrawCount = 0;
+            dlState->failCount = 0;
             dlState->avgDisplayLinkSamples = 0;
             dlState->lastRedrawTime = 0.0;
             dlState->lastDisplayLinkTime = 0.0;
@@ -537,7 +561,7 @@ extern void initSamplers(id<MTLDevice> device);
 
             if (isNewDisplayLink) {
                 // publish fully initialized object:
-                _displayLinkStates[@(displayID)] = [NSValue valueWithPointer:dlState];
+                _displayLinkStates[displayID] = [NSValue valueWithPointer:dlState];
             }
 
             CHECK_CVLINK("SetOutputCallback", nil, &_displayLink,
