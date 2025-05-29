@@ -40,20 +40,22 @@
 
 # gtest
 
-gtest/AsyncLogGtest.java initial_run generic-all
-gtest/MetaspaceGtests.java#reclaim-none-ndebug initial_run generic-all
+gtest/AsyncLogGtest.java JBR-4027 generic-all
+gtest/LockStackGtests.java JBR-4027 generic-all
 gtest/LargePageGtests.java#use-large-pages-sysV initial_run linux-all
 gtest/LargePageGtests.java#use-large-pages-1G initial_run linux-all
+gtest/MetaspaceGtests.java#reclaim-none-ndebug initial_run generic-all
 gtest/GTestWrapper.java initial_run generic-all
 gtest/MetaspaceUtilsGtests.java initial_run generic-all
-gtest/MetaspaceGtests.java#balanced-no-ccs initial_run generic-all
+gtest/MetaspaceGtests.java#balanced-no-ccs JBR-4027 generic-all
 gtest/MetaspaceGtests.java#balanced-with-guards JBR-4027 generic-all
 gtest/MetaspaceGtests.java#default-debug JBR-4027 generic-all
+gtest/MetaspaceGtests.java#no-ccs JBR-4027 generic-all
 gtest/MetaspaceGtests.java#reclaim-aggressive-debug JBR-4027 generic-all
+gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug JBR-4027 generic-all
 gtest/MetaspaceGtests.java#reclaim-none-debug JBR-4027 generic-all
-gtest/MetaspaceGtests.java#reclaim-aggressive-ndebug initial_run generic-all
 gtest/MetaspaceGtests.java#UseCompactObjectHeaders JBR-4027 generic-all
-gtest/LargePageGtests.java#use-large-pages initial_run linux-all,windows-all
+gtest/LargePageGtests.java#use-large-pages JBR-4027 linux-all,windows-all
 
 gtest/NativeHeapTrimmerGtest.java JBR-4027 generic-all
 gtest/NMTGtests.java#nmt-detail JBR-4027 generic-all
@@ -296,6 +298,7 @@ vmTestbase/jit/escape/LockCoarsening/LockCoarsening001.java 8148743 generic-all
 vmTestbase/jit/escape/LockCoarsening/LockCoarsening002.java 8208259 generic-all
 
 vmTestbase/jit/misctests/fpustack/GraphApplet.java linux-x64
+vmTestbase/jit/misctests/putfield00802/putfield00802.java JBR-8801 linux-aarch64,windows-all
 
 vmTestbase/vm/mlvm/hiddenloader/stress/byteMutation/Test.java initial_run windows-all
 vmTestbase/vm/mlvm/indy/func/jvmti/redefineClassInBootstrap/TestDescription.java 8013267 generic-all
