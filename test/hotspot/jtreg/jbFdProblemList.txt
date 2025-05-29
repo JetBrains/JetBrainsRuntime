@@ -69,6 +69,8 @@
 # :vmTestbase_*
 
 vmTestbase/jit/escape/AdaptiveBlocking/AdaptiveBlocking001/AdaptiveBlocking001.java JBR-8798 linux-aarch64
+vmTestbase/jit/misctests/JitBug1/JitBug1.java JBR-8801 linux-aarch64,windows-all
+vmTestbase/jit/misctests/Pi/Pi.java JBR-8854 linux-aarch64
 
 #############################################################################
 
