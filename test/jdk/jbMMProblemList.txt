@@ -2,6 +2,7 @@ java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-5398 linux-all,
 java/awt/Debug/X11Trace.java JBR-5442 linux-all
 java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java JBR-6294 linux-all
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-x64
+java/awt/Focus/FocusKeepTest.java JBR-8874 windows-x64
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-6058 windows-all
 java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
