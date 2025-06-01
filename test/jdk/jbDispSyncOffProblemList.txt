@@ -2,6 +2,7 @@ com/apple/laf/RootPane/RootPaneDefaultButtonTest.java JBR-8712 macosx-all
 
 java/awt/FullScreen/SetFullScreenTest.java JBR-8184 macosx-aarch64
 java/awt/Graphics2D/DrawPrimitivesTest.java JBR-5620 macosx-aarch64
+java/awt/Scrollbar/ListScrollbarTest.java JBR-8941 macosx-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-7312 macosx-all
 
 javax/swing/AbstractButton/bug4133768.java JBR-8713 macosx-all
@@ -14,3 +15,5 @@ javax/swing/plaf/aqua/CustomComboBoxFocusTest.java JBR-5190 macosx-all
 javax/swing/SwingGraphics/TranslateTest.java JBR-7510 macosx-aarch64
 
 jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-6998 macosx-all
+
+sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-8943 macosx-all
