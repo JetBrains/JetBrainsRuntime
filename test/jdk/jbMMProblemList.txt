@@ -10,6 +10,7 @@ java/awt/Frame/FramesGC/FramesGC.java 8079069,JBR-6057 macosx-all,windows-all
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-5442,JBR-6058 linux-all,windows-all
 java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
+java/awt/FullScreen/SetFullScreenTest.java JBR-8400 linux-x64
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
 java/awt/GraphicsDevice/DisplayModes/UnknownRefrshRateTest.java JBR-6336 macosx-all
 java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-all
