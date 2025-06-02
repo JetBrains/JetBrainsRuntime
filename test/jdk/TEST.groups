@@ -997,7 +997,6 @@ jdk_awt_wayland = \
     -java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java \
     -java/awt/GridBagLayout \
     -java/awt/GridLayout \
-    -java/awt/Gtk \
     -java/awt/hidpi \
     -java/awt/Icon \
     -java/awt/im \
@@ -1327,7 +1326,6 @@ jdk_swing_wayland= \
     -javax/swing/KeyboardManager/8013370/Test8013370.java \
     -javax/swing/KeyboardManager/bug4345798.java \
     -javax/swing/InputVerifier/bug4774166.java \
-    -javax/swing/LookAndFeel/8145547/DemandGTK.java \
     -javax/swing/LookAndFeel/8146276/NimbusGlueTest.java \
     -javax/swing/LookAndFeel/SystemLookAndFeel/SystemLookAndFeelTest.java \
     -javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java \
