@@ -40,7 +40,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import com.sun.jdi.*;
 import com.sun.jdi.event.*;
