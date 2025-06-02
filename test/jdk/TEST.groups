@@ -1014,7 +1014,6 @@ jdk_awt_wayland = \
     -java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java \
     -java/awt/GridBagLayout \
     -java/awt/GridLayout \
-    -java/awt/Gtk \
     -java/awt/im \
     -java/awt/image/BufferStrategy/ExceptionAfterComponentDispose.java \
     -java/awt/image/MemoryLeakTest/MemoryLeakTest.java \
