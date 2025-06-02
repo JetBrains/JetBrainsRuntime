@@ -32,9 +32,13 @@ import sun.java2d.wl.WLSurfaceDataExt;
 
 import java.util.Objects;
 
+/**
+ * Represents a wl_surface Wayland object.
+ * All operations must be performed on the AWT thread.
+ */
 public class WLSurface {
     private final long nativePtr; // an opaque native handle
-    private final long wlSurfacePtr; // a pointer to wl_surface object
+    private final long wlSurfacePtr; // a pointer to a wl_surface object
     private boolean isValid = true;
 
     private SurfaceData surfaceData;

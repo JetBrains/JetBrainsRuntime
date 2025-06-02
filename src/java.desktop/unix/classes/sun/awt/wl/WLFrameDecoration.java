@@ -24,6 +24,10 @@
  */
 package sun.awt.wl;
 
+import sun.java2d.SunGraphics2D;
+import sun.java2d.SurfaceData;
+import sun.java2d.wl.WLSurfaceDataExt;
+import sun.java2d.wl.WLSurfaceSizeListener;
 import sun.swing.SwingUtilities2;
 
 import java.awt.AlphaComposite;
@@ -108,7 +112,6 @@ public class WLFrameDecoration implements PropertyChangeListener {
 
     private final WLDecoratedPeer peer;
     private final boolean isUndecorated;
-
 
     private final ButtonState closeButton;
     private final ButtonState maximizeButton;

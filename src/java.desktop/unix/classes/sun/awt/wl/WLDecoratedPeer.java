@@ -24,7 +24,13 @@
  */
 package sun.awt.wl;
 
-import java.awt.*;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.GraphicsEnvironment;
+import java.awt.Insets;
+import java.awt.Rectangle;
+import java.awt.Window;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 
@@ -94,6 +100,11 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
         // signals the end of repainting by Swing and/or AWT
         paintClientDecorations(getGraphics());
         super.updateWindow();
+    }
+
+    @Override
+    void updateSurfaceData() {
+        super.updateSurfaceData();
     }
 
     // called from native code

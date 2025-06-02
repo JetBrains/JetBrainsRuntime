@@ -24,18 +24,15 @@
  * questions.
  */
 
-
 package sun.awt.wl;
-
-import sun.java2d.SurfaceData;
 
 import java.awt.Point;
 
 public class WLSubSurface extends WLSurface {
-    private final Point offset = new Point();
     private final WLMainSurface mainSurface;
-    private final long wlSubSurfacePtr; // a pointer to wl_subsurface object
+    private final Point offset = new Point();
 
+    private final long wlSubSurfacePtr; // a pointer to a wl_subsurface object
 
     public WLSubSurface(WLMainSurface mainSurface, int x, int y) {
         super();
@@ -60,13 +57,9 @@ public class WLSubSurface extends WLSurface {
     }
 
     @Override
-    public void dispose() {
-        super.dispose();
-    }
-
-    @Override
     public void updateSurfaceSize(int surfaceWidth, int surfaceHeight) {
         super.updateSurfaceSize(surfaceWidth, surfaceHeight);
+
         // TODO: create input region excluding the main surface
         // Need to know main surface's size for that
     }
