@@ -1292,7 +1292,7 @@ jdk_swing_wayland= \
     -javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java \
     -javax/swing/KeyboardManager/8013370/Test8013370.java \
     -javax/swing/KeyboardManager/bug4345798.java \
-    -javax/swing/LookAndFeel/8145547/DemandGTK.java \
+    -javax/swing/LookAndFeel/8145547/DemandGTK2.sh \
     -javax/swing/LookAndFeel/8146276/NimbusGlueTest.java \
     -javax/swing/LookAndFeel/SystemLookAndFeel/SystemLookAndFeelTest.java \
     -javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java \
