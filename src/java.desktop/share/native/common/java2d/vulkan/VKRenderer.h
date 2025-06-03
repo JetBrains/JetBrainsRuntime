@@ -68,6 +68,13 @@ void VKRenderer_Destroy(VKRenderer* renderer);
 void VKRenderer_Flush(VKRenderer* renderer);
 
 /**
+ * Wait for the latest checkpoint to be reached by GPU.
+ * This only affects commands tracked by the timeline semaphore,
+ * unlike vkDeviceWaitIdle / vkQueueWaitIdle.
+ */
+void VKRenderer_Sync(VKRenderer* renderer);
+
+/**
  * Cancel render pass of the surface, release all associated resources and deallocate render pass.
  */
 void VKRenderer_DestroyRenderPass(VKSDOps* surface);
