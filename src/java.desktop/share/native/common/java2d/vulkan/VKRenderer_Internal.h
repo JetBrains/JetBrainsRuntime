@@ -184,14 +184,7 @@ inline VkBool32 VKRenderer_DidReach(VKRenderer* renderer, uint64_t timestamp) {
  */
 void VKRenderer_Wait(VKRenderer* renderer, uint64_t timestamp);
 
-/**
- * Wait for the latest checkpoint to be reached by GPU.
- * This only affects commands tracked by the timeline semaphore,
- * unlike vkDeviceWaitIdle / vkQueueWaitIdle.
- */
-inline void VKRenderer_Sync(VKRenderer* renderer) {
-    VKRenderer_Wait(renderer, renderer->writeTimestamp - 1);
-}
+
 
 /**
  * Record commands into the primary command buffer (outside of a render pass).

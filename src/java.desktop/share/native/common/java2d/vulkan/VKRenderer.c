@@ -65,7 +65,6 @@ void VKRenderer_Wait(VKRenderer* renderer, uint64_t timestamp) {
         VK_IF_ERROR(renderer->device->vkWaitSemaphores(renderer->device->handle, &semaphoreWaitInfo, -1)) VK_UNHANDLED_ERROR();
         else renderer->readTimestamp = timestamp; // On success, update the last known timestamp.
     }
-    VKRenderer_CleanupPendingResources(renderer);
 }
 
 VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
@@ -210,6 +209,18 @@ VkCommandBuffer VKRenderer_Record(VKRenderer* renderer) {
     renderer->commandBuffer = commandBuffer;
     J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_Record(%p): started", renderer);
     return commandBuffer;
+}
+
+/**
+ * Wait for the latest checkpoint to be reached by GPU.
+ * This only affects commands tracked by the timeline semaphore,
+ * unlike vkDeviceWaitIdle / vkQueueWaitIdle.
+ */
+void VKRenderer_Sync(VKRenderer* renderer) {
+    if (renderer == NULL) {
+        return;
+    }
+    VKRenderer_Wait(renderer, renderer->writeTimestamp - 1);
 }
 
 void VKRenderer_Flush(VKRenderer* renderer) {
