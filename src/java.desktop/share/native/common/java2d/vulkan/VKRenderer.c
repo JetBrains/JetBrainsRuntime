@@ -349,7 +349,6 @@ static void VKRenderer_Wait(VKRenderer* renderer, uint64_t timestamp) {
         VK_IF_ERROR(renderer->device->vkWaitSemaphores(renderer->device->handle, &semaphoreWaitInfo, -1)) VK_UNHANDLED_ERROR();
         else renderer->readTimestamp = timestamp; // On success, update the last known timestamp.
     }
-    VKRenderer_CleanupPendingResources(renderer);
 }
 
 void VKRenderer_Sync(VKRenderer* renderer) {
