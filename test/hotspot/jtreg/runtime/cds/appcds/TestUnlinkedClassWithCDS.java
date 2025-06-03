@@ -4,6 +4,7 @@
  * @requires vm.cds
  * @library /test/lib
  * @compile test-classes/CustomClassLoaderApp.java
+ * @compile Outer.java
  * @run driver TestUnlinkedClassWithCDS
  */
 

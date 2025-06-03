@@ -371,6 +371,11 @@ void InstanceKlass::set_nest_host(InstanceKlass* host) {
   // Can't assert this as package is not set yet:
   // assert(is_same_class_package(host), "proposed host is in wrong package");
 
+  // set dynamic nest host
+  _nest_host = host;
+  // Record dependency to keep nest host from being unloaded before this class.
+  ClassLoaderData* this_key = class_loader_data();
+
   if (log_is_enabled(Trace, class, nestmates)) {
     ResourceMark rm;
     const char* msg = "";
@@ -379,18 +384,19 @@ void InstanceKlass::set_nest_host(InstanceKlass* host) {
       msg = "(the NestHost attribute in the current class is ignored)";
     } else if (_nest_members != nullptr && _nest_members != Universe::the_empty_short_array()) {
       msg = "(the NestMembers attribute in the current class is ignored)";
+    } else if (this_key == nullptr) {
+      msg = "(the NestMembers classloader data in the current class is ignored)";
     }
+
     log_trace(class, nestmates)("Injected type %s into the nest of %s %s",
                                 this->external_name(),
                                 host->external_name(),
                                 msg);
   }
-  // set dynamic nest host
-  _nest_host = host;
-  // Record dependency to keep nest host from being unloaded before this class.
-  ClassLoaderData* this_key = class_loader_data();
-  assert(this_key != nullptr, "sanity");
-  this_key->record_dependency(host);
+
+  if (this_key != nullptr) {
+    this_key->record_dependency(host);
+  }
 }
 
 // check if 'this' and k are nestmates (same nest_host), or k is our nest_host,
