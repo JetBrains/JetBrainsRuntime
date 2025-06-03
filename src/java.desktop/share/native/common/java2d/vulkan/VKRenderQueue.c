@@ -790,6 +790,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
     // Flush all pending GPU work
     VKEnv* vk = VKEnv_GetInstance();
     for (uint32_t i = 0; i < ARRAY_SIZE(vk->devices); i++) {
+        VKRenderer_Sync(vk->devices[i].renderer);
         VKRenderer_Flush(vk->devices[i].renderer);
     }
 }
