@@ -563,7 +563,10 @@ void VM_EnhancedRedefineClasses::doit() {
 
   for (int i = 0; i < _new_classes->length(); i++) {
     Klass *new_class = _new_classes->at(i);
-    new_class->old_version()->set_new_version(new_class);
+    // MagicAccessorImpl new_class is set in load_new_class_versions
+    if (new_class->old_version() != vmClasses::reflect_MagicAccessorImpl_klass() || new_class->old_version()->new_version() == nullptr) {
+      new_class->old_version()->set_new_version(new_class);
+    }
   }
 
   for (int i = 0; i < _new_classes->length(); i++) {
@@ -1094,6 +1097,14 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(Old2N
     InstanceKlass* new_class = k;
     old_2_new_klass_map->put(the_class, new_class);
     _new_classes->append(new_class);
+
+    // If MagicAccessorImpl is being redefined, we must set new_version,
+    // because class loading may trigger Reflection::verify_class_access,
+    // which performs superclass checks. This can occur when a subclass
+    // of MagicAccessorImpl is being loaded as part of the same redefinition run.
+    if (the_class == vmClasses::reflect_MagicAccessorImpl_klass()) {
+      the_class->set_new_version(new_class);
+    }
 
     if (the_class == vmClasses::Reference_klass()) {
       // must set offset+count to skip field "referent". Look at InstanceRefKlass::update_nonstatic_oop_maps
