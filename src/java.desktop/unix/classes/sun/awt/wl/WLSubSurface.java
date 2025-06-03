@@ -56,14 +56,6 @@ public class WLSubSurface extends WLSurface {
         // Deliberately ignored
     }
 
-    @Override
-    public void updateSurfaceSize(int surfaceWidth, int surfaceHeight) {
-        super.updateSurfaceSize(surfaceWidth, surfaceHeight);
-
-        // TODO: create input region excluding the main surface
-        // Need to know main surface's size for that
-    }
-
     private native long nativeCreateWlSubSurface(long surfacePtr, long parentSurfacePtr);
     private native void nativeSetPosition(long ptr, int x, int y);
 }
