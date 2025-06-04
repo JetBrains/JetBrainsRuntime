@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1994, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,7 @@ import java.util.StringTokenizer;
 import java.util.Iterator;
 import java.security.Permission;
 import java.util.Properties;
+
 import sun.net.NetworkClient;
 import sun.net.util.IPAddressUtil;
 import sun.net.www.MessageHeader;
@@ -61,6 +62,7 @@ import sun.net.ProgressMonitor;
 import sun.net.www.ParseUtil;
 import sun.security.action.GetPropertyAction;
 
+import static sun.net.util.ProxyUtil.copyProxy;
 
 /**
  * This class Opens an FTP input (or output) stream given a URL.
@@ -244,7 +246,7 @@ public class FtpURLConnection extends URLConnection {
                 URI uri = sun.net.www.ParseUtil.toURI(url);
                 Iterator<Proxy> it = sel.select(uri).iterator();
                 while (it.hasNext()) {
-                    p = it.next();
+                    p = copyProxy(it.next());
                     if (p == null || p == Proxy.NO_PROXY ||
                         p.type() == Proxy.Type.SOCKS) {
                         break;

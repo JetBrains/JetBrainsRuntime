@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1994, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,8 @@ import sun.net.www.ParseUtil;
 import sun.net.www.protocol.http.AuthenticatorKeys;
 import sun.net.www.protocol.http.HttpURLConnection;
 import sun.util.logging.PlatformLogger;
+
+import static sun.net.util.ProxyUtil.copyProxy;
 import static sun.net.www.protocol.http.HttpURLConnection.TunnelState.*;
 import sun.security.action.GetPropertyAction;
 
@@ -264,7 +266,7 @@ public class HttpClient extends NetworkClient {
     }
 
     protected HttpClient(URL url, Proxy p, int to) throws IOException {
-        proxy = (p == null) ? Proxy.NO_PROXY : p;
+        proxy = p == null ? Proxy.NO_PROXY : copyProxy(p);
         this.host = url.getHost();
         this.url = url;
         port = url.getPort();
@@ -329,9 +331,7 @@ public class HttpClient extends NetworkClient {
     public static HttpClient New(URL url, Proxy p, int to, boolean useCache,
         HttpURLConnection httpuc) throws IOException
     {
-        if (p == null) {
-            p = Proxy.NO_PROXY;
-        }
+        p = p == null ? Proxy.NO_PROXY : copyProxy(p);
         HttpClient ret = null;
         /* see if one's already around */
         if (useCache) {
