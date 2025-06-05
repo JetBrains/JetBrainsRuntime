@@ -3,7 +3,7 @@ java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-8264 linux-x64
 
-javax/swing/AbstractDocument/bug4549069.java JBR-8267 linux-6.8.0-1026-aws
+javax/swing/AbstractDocument/bug4549069.java JBR-8267 linux-6.8.0-1026-aws,linux-6.8.0-1029-aws
 javax/swing/JComponent/6989617/bug6989617.java JBR-8796 linux-6.8.0-1029-aws
 javax/swing/JDesktopPane/TestDesktopManagerNPE.java JBR-8449 linux-x64
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
