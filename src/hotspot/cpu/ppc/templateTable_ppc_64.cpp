@@ -1041,7 +1041,7 @@ void TemplateTable::bastore() {
 
   // Need to check whether array is boolean or byte
   // since both types share the bastore bytecode.
-  __ load_klass(Rscratch, Rarray);
+  __ load_klass_check_null_throw(Rscratch, Rarray, Rscratch);
   __ lwz(Rscratch, in_bytes(Klass::layout_helper_offset()), Rscratch);
   int diffbit = exact_log2(Klass::layout_helper_boolean_diffbit());
   __ testbitdi(CCR0, R0, Rscratch, diffbit);
