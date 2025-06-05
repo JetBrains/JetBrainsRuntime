@@ -66,7 +66,7 @@ public class WLSurface {
         }
     }
 
-    private void hide() {
+    public void hide() {
         assert SunToolkit.isAWTLockHeldByCurrentThread();
         assertIsValid();
 

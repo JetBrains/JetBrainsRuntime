@@ -26,5 +26,10 @@
 package sun.java2d.wl;
 
 public interface WLSurfaceSizeListener {
+    /**
+     * Called when a backing buffer containing actual pixels has been attached to the surface.
+     * This is the point in time when the surface size needs to be updated so that it is in sync
+     * with the actual buffer size for the whole window to remain sharp and not distorted.
+     */
     void updateSurfaceSize();
 }
