@@ -32,10 +32,15 @@ import java.awt.datatransfer.FlavorTable;
 import java.awt.datatransfer.Transferable;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 public final class WLClipboard extends SunClipboard {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLClipboard");
+
+    private static final String plainTextUtf8 = "text/plain;charset=utf-8";
+    private static final String utf8String = "UTF8_STRING";
+
 
     private final WLDataDevice dataDevice;
 
@@ -175,11 +180,16 @@ public final class WLClipboard extends SunClipboard {
             mimes = clipboardDataOfferedToUs.getMimes();
         }
 
-        long[] formats = new long[mimes.size()];
-        for (int i = 0; i < mimes.size(); ++i) {
-            formats[i] = wlDataTransferer.getFormatForNativeAsLong(mimes.get(i));
+        var formatsSet = new HashSet<Long>();
+        for (var mime : mimes) {
+            formatsSet.add(wlDataTransferer.getFormatForNativeAsLong(mime));
+            if (mime.equalsIgnoreCase(plainTextUtf8)) {
+                // some compositors (WSLg) don't advertise UTF8_STRING
+                formatsSet.add(wlDataTransferer.getFormatForNativeAsLong(utf8String));
+            }
         }
-        return formats;
+
+        return formatsSet.stream().mapToLong(Long::longValue).toArray();
     }
 
     /**
@@ -191,11 +201,21 @@ public final class WLClipboard extends SunClipboard {
      */
     @Override
     protected byte[] getClipboardData(long format) throws IOException {
-        WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
-        String mime = wlDataTransferer.getNativeForFormat(format);
+        final WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
+        final long utf8StringFormat = wlDataTransferer.getFormatForNativeAsLong(utf8String);
         synchronized (dataLock) {
-            return clipboardDataOfferedToUs.receiveData(mime);
+            // Iterate over all mime types, since the mapping between mime types and java formats might not be 1:1
+            // Also treat text/plain;charset=utf-8 as UTF8_STRING
+            for (var mime : clipboardDataOfferedToUs.getMimes()) {
+                long curFormat = wlDataTransferer.getFormatForNativeAsLong(mime);
+                if (curFormat == format) {
+                    return clipboardDataOfferedToUs.receiveData(mime);
+                } else if (mime.equalsIgnoreCase(plainTextUtf8) && utf8StringFormat == format) {
+                    return clipboardDataOfferedToUs.receiveData(mime);
+                }
+            }
         }
+        throw new IOException("No appropriate mime type found for WLClipboard.getClipboardData with format = " + format);
     }
 
     @Override
