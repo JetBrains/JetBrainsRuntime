@@ -304,8 +304,12 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/awt/systemscale \
         common/font \
         common/java2d/opengl \
-        common/java2d/x11 \
-        $(LIBPIPEWIRE_HEADER_DIRS)
+        common/java2d/x11
+
+    # exclude pipewire from the AIX build, no Wayland support
+    ifeq ($(call isTargetOs, aix), false)
+      LIBAWT_XAWT_EXTRA_HEADER_DIRS += $(LIBPIPEWIRE_HEADER_DIRS)
+    endif
 
     LIBAWT_XAWT_CFLAGS += -DXAWT -DXAWT_HACK \
         $(FONTCONFIG_CFLAGS) \
