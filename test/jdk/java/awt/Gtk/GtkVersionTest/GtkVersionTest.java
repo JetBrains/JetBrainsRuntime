@@ -27,8 +27,12 @@
  * @summary "Fail forward" fails for GTK3 if no GTK2 available
  * @modules java.desktop/sun.awt
  * @requires (os.family == "linux")
+ * @library /test/lib
  * @run main GtkVersionTest
  */
+
+import jdk.test.lib.process.ProcessTools;
+import jdk.test.lib.StringArrayUtils;
 
 import sun.awt.UNIXToolkit;
 
@@ -54,13 +58,17 @@ public class GtkVersionTest {
     private static void test(String version, String expect) throws Exception {
         System.out.println( "Test " +
                 (version == null ? "no" : " GTK" + version) + " preference.");
-        Process p = Runtime.getRuntime().exec(System.getProperty("java.home") +
-                "/bin/java " +
-                (version == null ? "" : "-Djdk.gtk.version=" + version) +
-                " -Djdk.gtk.verbose=true " +
-                "--add-exports=java.desktop/sun.awt=ALL-UNNAMED " +
-                "-cp " + System.getProperty("java.class.path", ".") +
-                " GtkVersionTest$LoadGtk");
+
+        String args[] = StringArrayUtils.concat(
+            "--add-exports=java.desktop/sun.awt=ALL-UNNAMED",
+            "-Djdk.gtk.verbose=true");
+        if (version != null) {
+            args = StringArrayUtils.concat(args, "-Djdk.gtk.version=" + version);
+        }
+        args = StringArrayUtils.concat(args, LoadGtk.class.getName());
+
+        ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(args);
+        Process p = ProcessTools.startProcess("GTK test", pb);
         p.waitFor();
 
         try (BufferedReader br = new BufferedReader(
