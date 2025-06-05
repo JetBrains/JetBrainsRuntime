@@ -154,7 +154,6 @@ gc/shenandoah/oom/TestAllocOutOfMemory.java#large 8344312 linux-ppc64le
 runtime/jni/terminatedThread/TestTerminatedThread.java 8317789 aix-ppc64
 runtime/cds/appcds/jigsaw/modulepath/ModulePathAndCP_JFR.java 8253437 windows-x64
 runtime/cds/CheckDefaultArchiveFile.java JBR-4227 generic-all
-runtime/jni/terminatedThread/TestTerminatedThread.java 8219652 aix-ppc64
 runtime/handshake/HandshakeSuspendExitTest.java 8294313 generic-all
 runtime/Monitor/SyncOnValueBasedClassTest.java 8340995 linux-s390x
 runtime/os/TestTracePageSizes.java#no-options 8267460 linux-aarch64
