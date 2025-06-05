@@ -253,7 +253,7 @@ public class EmojiFont extends Font2D {
         }
 
         private int getGlyph(int unicode, int variationSelector, boolean raw) {
-            if (isIgnorableWhitespace(ch) || (isDefaultIgnorable(ch) && !raw)) {
+            if (isIgnorableWhitespace(unicode) || (isDefaultIgnorable(unicode) && !raw)) {
                 return INVISIBLE_GLYPH_ID;
             }
             boolean slot = getSlot(unicode, variationSelector);
