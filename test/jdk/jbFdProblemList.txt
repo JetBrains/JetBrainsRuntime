@@ -111,5 +111,6 @@
 
 ############################################################################
 
-java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
+java/awt/dnd/RemoveDropTargetCrashTest/RemoveDropTargetCrashTest.java JBR-8960 windows-x64
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-8542 windows-all timeout
+java/awt/MenuItem/EnableTest.java JBR-8543 windows-all timeout
