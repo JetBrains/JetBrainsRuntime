@@ -51,7 +51,7 @@ struct DataDevice
     // TODO: it's currently never destroyed, because WLDataDevice is never destroyed
     jobject javaObject;
 
-    struct wl_event_queue *dataTransferQueue;
+    struct wl_event_queue *dataSourceQueue;
     struct wl_data_device *wlDataDevice;
     struct zwp_primary_selection_device_v1 *zwpPrimarySelectionDevice;
 };
@@ -346,7 +346,6 @@ DataOffer_create(struct DataDevice *dataDevice, enum DataTransferProtocol protoc
     if (protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
         struct wl_data_offer *wlDataOffer = waylandObject;
 
-        wl_proxy_set_queue((struct wl_proxy *) wlDataOffer, dataDevice->dataTransferQueue);
         wl_data_offer_add_listener(wlDataOffer, &wlDataOfferListener, offer);
 
         offer->wlDataOffer = wlDataOffer;
@@ -356,7 +355,6 @@ DataOffer_create(struct DataDevice *dataDevice, enum DataTransferProtocol protoc
     if (protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
         struct zwp_primary_selection_offer_v1 *zwpPrimarySelectionOffer = waylandObject;
 
-        wl_proxy_set_queue((struct wl_proxy *) zwpPrimarySelectionOffer, dataDevice->dataTransferQueue);
         zwp_primary_selection_offer_v1_add_listener(zwpPrimarySelectionOffer, &zwpPrimarySelectionOfferListener, offer);
         offer->zwpPrimarySelectionOffer = zwpPrimarySelectionOffer;
         offer->protocol = DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION;
@@ -848,8 +846,8 @@ Java_sun_awt_wl_WLDataDevice_initNative(JNIEnv *env, jobject obj, jlong wlSeatPt
         }
     }
 
-    dataDevice->dataTransferQueue = wl_display_create_queue(wl_display);
-    if (dataDevice->dataTransferQueue == NULL) {
+    dataDevice->dataSourceQueue = wl_display_create_queue(wl_display);
+    if (dataDevice->dataSourceQueue == NULL) {
         JNU_ThrowInternalError(env, "Couldn't create an event queue for the data device");
         goto error_cleanup;
     }
@@ -865,8 +863,8 @@ Java_sun_awt_wl_WLDataDevice_initNative(JNIEnv *env, jobject obj, jlong wlSeatPt
     return ptr_to_jlong(dataDevice);
 
     error_cleanup:
-    if (dataDevice->dataTransferQueue != NULL) {
-        wl_event_queue_destroy(dataDevice->dataTransferQueue);
+    if (dataDevice->dataSourceQueue != NULL) {
+        wl_event_queue_destroy(dataDevice->dataSourceQueue);
     }
 
     if (dataDevice->zwpPrimarySelectionDevice != NULL) {
@@ -905,12 +903,12 @@ Java_sun_awt_wl_WLDataDevice_isProtocolSupportedImpl(JNIEnv *env, jclass clazz, 
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLDataDevice_dispatchDataTransferQueueImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
+Java_sun_awt_wl_WLDataDevice_dispatchDataSourceQueueImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
 {
     struct DataDevice *dataDevice = jlong_to_ptr(nativePtr);
     assert(dataDevice != NULL);
 
-    while (wl_display_dispatch_queue(wl_display, dataDevice->dataTransferQueue) != -1) {
+    while (wl_display_dispatch_queue(wl_display, dataDevice->dataSourceQueue) != -1) {
     }
 }
 
@@ -934,6 +932,21 @@ Java_sun_awt_wl_WLDataDevice_setSelectionImpl(JNIEnv *env,
                 dataDevice->zwpPrimarySelectionDevice, (source == NULL) ? NULL : source->zwpPrimarySelectionSource,
                 serial);
     }
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataDevice_startDragImpl(JNIEnv *env, jclass clazz, jlong dataDeviceNativePtr,
+                                           jlong dataSourceNativePtr, jlong wlSurfacePtr,
+                                           jlong iconPtr, jlong serial)
+{
+    struct DataDevice *dataDevice = jlong_to_ptr(dataDeviceNativePtr);
+    assert(dataDevice != NULL);
+
+    struct DataSource *source = jlong_to_ptr(dataSourceNativePtr);
+    assert(source != NULL);
+
+    wl_data_device_start_drag(dataDevice->wlDataDevice, source->wlDataSource, jlong_to_ptr(wlSurfacePtr),
+                              jlong_to_ptr(iconPtr), serial);
 }
 
 JNIEXPORT jlong JNICALL
@@ -973,7 +986,7 @@ Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, jobject javaObject, jlong d
             return 0;
         }
 
-        wl_proxy_set_queue((struct wl_proxy *) wlDataSource, dataDevice->dataTransferQueue);
+        wl_proxy_set_queue((struct wl_proxy *) wlDataSource, dataDevice->dataSourceQueue);
         wl_data_source_add_listener(wlDataSource, &wl_data_source_listener, dataSource);
 
         dataSource->protocol = DATA_TRANSFER_PROTOCOL_WAYLAND;
@@ -989,7 +1002,7 @@ Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, jobject javaObject, jlong d
             return 0;
         }
 
-        wl_proxy_set_queue((struct wl_proxy *) zwpPrimarySelectionSource, dataDevice->dataTransferQueue);
+        wl_proxy_set_queue((struct wl_proxy *) zwpPrimarySelectionSource, dataDevice->dataSourceQueue);
         zwp_primary_selection_source_v1_add_listener(zwpPrimarySelectionSource,
                                                      &zwp_primary_selection_source_v1_listener, dataSource);
 
