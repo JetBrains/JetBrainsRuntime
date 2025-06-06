@@ -28,6 +28,9 @@ import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 
+import static sun.font.FontUtilities.isDefaultIgnorable;
+import static sun.font.FontUtilities.isIgnorableWhitespace;
+
 public class EmojiFont extends Font2D {
 
     private Font2D symbol, emoji;
