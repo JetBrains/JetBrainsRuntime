@@ -30,6 +30,7 @@ import sun.util.logging.PlatformLogger;
 
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
+import java.awt.dnd.DnDConstants;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -60,8 +61,8 @@ public class WLDataDevice {
     WLDataDevice(long wlSeatNativePtr) {
         nativePtr = initNative(wlSeatNativePtr);
 
-        var queueThread = InnocuousThread.newThread("AWT-Wayland-data-transferer-dispatcher", () -> {
-            dispatchDataTransferQueueImpl(nativePtr);
+        var queueThread = InnocuousThread.newThread("AWT-Wayland-data-source-queue-dispatcher", () -> {
+            dispatchDataSourceQueueImpl(nativePtr);
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine("data transfer dispatcher exited");
             }
@@ -84,19 +85,21 @@ public class WLDataDevice {
 
     private native long initNative(long wlSeatNativePtr);
     private static native boolean isProtocolSupportedImpl(long nativePtr, int protocol);
-    private static native void dispatchDataTransferQueueImpl(long nativePtr);
+    private static native void dispatchDataSourceQueueImpl(long nativePtr);
     private static native void setSelectionImpl(int protocol, long nativePtr, long dataOfferNativePtr, long serial);
-
-    public WLDataSource createDataSourceFromTransferable(int protocol, Transferable transferable) {
-        return new WLDataSource(nativePtr, protocol, transferable);
-    }
+    private static native void startDragImpl(long nativePtr, long dataOfferNativePtr,
+                                             long originSurfaceNativePtr, long iconNativePtr, long serial);
 
     public boolean isProtocolSupported(int protocol) {
         return isProtocolSupportedImpl(nativePtr, protocol);
     }
 
     public void setSelection(int protocol, WLDataSource source, long serial) {
-        setSelectionImpl(protocol, nativePtr, source.getNativePtr(), serial);
+        setSelectionImpl(protocol, nativePtr, (source == null) ? 0 : source.getNativePtr(), serial);
+    }
+
+    public void startDrag(WLDataSource source, long originSurfaceNativePtr, long iconNativePtr, long serial) {
+        startDragImpl(nativePtr, source.getNativePtr(), originSurfaceNativePtr, iconNativePtr, serial);
     }
 
     public WLClipboard getSystemClipboard() {
@@ -107,29 +110,34 @@ public class WLDataDevice {
         return primarySelectionClipboard;
     }
 
+    long getNativePtr() {
+        return nativePtr;
+    }
+
     static void transferContentsWithType(Transferable contents, String mime, int fd) {
-        Objects.requireNonNull(contents);
-        Objects.requireNonNull(mime);
+        FileDescriptor javaDestFD = new FileDescriptor();
+        jdk.internal.access.SharedSecrets.getJavaIOFileDescriptorAccess().set(javaDestFD, fd);
 
-        WLDataTransferer wlDataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
+        try {
+            try (var out = new FileOutputStream(javaDestFD)) {
+                Objects.requireNonNull(contents);
+                Objects.requireNonNull(mime);
 
-        SortedMap<Long, DataFlavor> formatMap = wlDataTransferer.getFormatsForTransferable(contents, wlDataTransferer.getFlavorTable());
+                WLDataTransferer wlDataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
 
-        long targetFormat = wlDataTransferer.getFormatForNativeAsLong(mime);
-        DataFlavor flavor = formatMap.get(targetFormat);
+                SortedMap<Long, DataFlavor> formatMap = wlDataTransferer.getFormatsForTransferable(contents, wlDataTransferer.getFlavorTable());
 
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("will write contents (" + contents + ") in format " + mime + " to fd=" + fd);
-            log.fine("data flavor: " + flavor);
-        }
+                long targetFormat = wlDataTransferer.getFormatForNativeAsLong(mime);
+                DataFlavor flavor = formatMap.get(targetFormat);
 
-        if (flavor != null) {
-            try {
-                byte[] bytes = wlDataTransferer.translateTransferable(contents, flavor, targetFormat);
-                if (bytes == null) return;
-                FileDescriptor javaDestFD = new FileDescriptor();
-                jdk.internal.access.SharedSecrets.getJavaIOFileDescriptorAccess().set(javaDestFD, fd);
-                try (var out = new FileOutputStream(javaDestFD)) {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("will write contents (" + contents + ") in format " + mime + " to fd=" + fd);
+                    log.fine("data flavor: " + flavor);
+                }
+
+                if (flavor != null) {
+                    byte[] bytes = wlDataTransferer.translateTransferable(contents, flavor, targetFormat);
+                    if (bytes == null) return;
                     if (log.isLoggable(PlatformLogger.Level.FINE)) {
                         log.fine("about to write " + bytes.length + " bytes to " + out);
                     }
@@ -144,9 +152,9 @@ public class WLDataDevice {
                         ch.write(buffer);
                     }
                 }
-            } catch (IOException e) {
-                log.warning("failed to write contents (" + contents + ") in format " + mime + " to fd=" + fd);
             }
+        } catch (IOException e) {
+            log.warning("failed to write contents (" + contents + ") in format " + mime + " to fd=" + fd);
         }
     }
 
@@ -216,27 +224,43 @@ public class WLDataDevice {
         return result;
     }
 
-    private WLDataOffer currentDnDOffer = null;
+    public static int waylandActionsToJava(int waylandActions) {
+        int result = 0;
+        if ((waylandActions & DND_COPY) != 0) {
+            result |= DnDConstants.ACTION_COPY;
+        }
+        if ((waylandActions & DND_MOVE) != 0) {
+            result |= DnDConstants.ACTION_MOVE;
+        }
+        return result;
+    }
+
+    public static int javaActionsToWayland(int javaActions) {
+        int result = 0;
+        if ((javaActions & DnDConstants.ACTION_COPY) != 0) {
+            result |= DND_COPY;
+        }
+        if ((javaActions & DnDConstants.ACTION_MOVE) != 0) {
+            result |= DND_MOVE;
+        }
+        return result;
+    }
 
     // Event handlers, called from native on the EDT
     private void handleDnDEnter(WLDataOffer offer, long serial, long surfacePtr, double x, double y) {
-        if (currentDnDOffer != null) {
-            currentDnDOffer.destroy();
-        }
-        currentDnDOffer = offer;
+        WLDropTargetContextPeer.getInstance().handleEnter(offer, serial, surfacePtr, x, y);
     }
 
     private void handleDnDLeave() {
-        if (currentDnDOffer != null) {
-            currentDnDOffer.destroy();
-            currentDnDOffer = null;
-        }
+        WLDropTargetContextPeer.getInstance().handleLeave();
     }
 
     private void handleDnDMotion(long timestamp, double x, double y) {
+        WLDropTargetContextPeer.getInstance().handleMotion(timestamp, x, y);
     }
 
     private void handleDnDDrop() {
+        WLDropTargetContextPeer.getInstance().handleDrop();
     }
 
     private void handleSelection(WLDataOffer offer /* nullable */, int protocol) {
