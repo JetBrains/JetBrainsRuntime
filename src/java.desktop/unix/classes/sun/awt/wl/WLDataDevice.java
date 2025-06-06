@@ -115,28 +115,29 @@ public class WLDataDevice {
     }
 
     static void transferContentsWithType(Transferable contents, String mime, int fd) {
-        Objects.requireNonNull(contents);
-        Objects.requireNonNull(mime);
+        FileDescriptor javaDestFD = new FileDescriptor();
+        jdk.internal.access.SharedSecrets.getJavaIOFileDescriptorAccess().set(javaDestFD, fd);
 
-        WLDataTransferer wlDataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
+        try {
+            try (var out = new FileOutputStream(javaDestFD)) {
+                Objects.requireNonNull(contents);
+                Objects.requireNonNull(mime);
 
-        SortedMap<Long, DataFlavor> formatMap = wlDataTransferer.getFormatsForTransferable(contents, wlDataTransferer.getFlavorTable());
+                WLDataTransferer wlDataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
 
-        long targetFormat = wlDataTransferer.getFormatForNativeAsLong(mime);
-        DataFlavor flavor = formatMap.get(targetFormat);
+                SortedMap<Long, DataFlavor> formatMap = wlDataTransferer.getFormatsForTransferable(contents, wlDataTransferer.getFlavorTable());
 
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("will write contents (" + contents + ") in format " + mime + " to fd=" + fd);
-            log.fine("data flavor: " + flavor);
-        }
+                long targetFormat = wlDataTransferer.getFormatForNativeAsLong(mime);
+                DataFlavor flavor = formatMap.get(targetFormat);
 
-        if (flavor != null) {
-            try {
-                byte[] bytes = wlDataTransferer.translateTransferable(contents, flavor, targetFormat);
-                if (bytes == null) return;
-                FileDescriptor javaDestFD = new FileDescriptor();
-                jdk.internal.access.SharedSecrets.getJavaIOFileDescriptorAccess().set(javaDestFD, fd);
-                try (var out = new FileOutputStream(javaDestFD)) {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("will write contents (" + contents + ") in format " + mime + " to fd=" + fd);
+                    log.fine("data flavor: " + flavor);
+                }
+
+                if (flavor != null) {
+                    byte[] bytes = wlDataTransferer.translateTransferable(contents, flavor, targetFormat);
+                    if (bytes == null) return;
                     if (log.isLoggable(PlatformLogger.Level.FINE)) {
                         log.fine("about to write " + bytes.length + " bytes to " + out);
                     }
@@ -151,9 +152,9 @@ public class WLDataDevice {
                         ch.write(buffer);
                     }
                 }
-            } catch (IOException e) {
-                log.warning("failed to write contents (" + contents + ") in format " + mime + " to fd=" + fd);
             }
+        } catch (IOException e) {
+            log.warning("failed to write contents (" + contents + ") in format " + mime + " to fd=" + fd);
         }
     }
 
