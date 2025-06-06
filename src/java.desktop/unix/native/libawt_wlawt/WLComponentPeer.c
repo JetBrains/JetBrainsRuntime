@@ -636,9 +636,26 @@ Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
 }
 
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_getWLSurface
-        (JNIEnv *env, jobject obj, jlong ptr)
+        (JNIEnv *env, jclass clazz, jlong ptr)
 {
     return ptr_to_jlong(((struct WLFrame*)jlong_to_ptr(ptr))->wl_surface);
+}
+
+JNIEXPORT jobject JNICALL Java_sun_awt_wl_WLComponentPeer_nativeGetPeerFromWLSurface
+        (JNIEnv *env, jclass clazz, jlong wlSurfacePtr)
+{
+    struct wl_surface* wl_surface = jlong_to_ptr(wlSurfacePtr);
+    if (wl_surface == NULL) {
+        return NULL;
+    }
+    struct WLFrame* frame = wl_surface_get_user_data(wl_surface);
+    if (frame == NULL) {
+        return NULL;
+    }
+
+    jobject ref = (*env)->NewLocalRef(env, frame->nativeFramePeer);
+    JNU_CHECK_EXCEPTION_RETURN(env, NULL);
+    return ref;
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartDrag
