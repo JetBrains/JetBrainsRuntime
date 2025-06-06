@@ -40,22 +40,23 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
     private class WLDragSource extends WLDataSource {
         private int action;
         private String mime;
-        private boolean didSendFinishedEvent;
+        private boolean didSendFinishedEvent = false;
+        private boolean didSucceed = false;
 
         WLDragSource(Transferable data) {
             super(dataDevice, WLDataDevice.DATA_TRANSFER_PROTOCOL_WAYLAND, data);
         }
 
-        private void sendFinishedEvent(boolean success) {
+        private void sendFinishedEvent() {
             if (didSendFinishedEvent) {
                 return;
             }
             didSendFinishedEvent = true;
 
-            final int javaAction = success ? WLDataDevice.waylandActionsToJava(action) : 0;
+            final int javaAction = didSucceed ? WLDataDevice.waylandActionsToJava(action) : 0;
             final int x = WLToolkit.getInputState().getPointerX();
             final int y = WLToolkit.getInputState().getPointerY();
-            WLDragSourceContextPeer.this.dragDropFinished(success, javaAction, x, y);
+            WLDragSourceContextPeer.this.dragDropFinished(didSucceed, javaAction, x, y);
         }
 
         @Override
@@ -65,12 +66,12 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
         @Override
         protected synchronized void handleDnDDropPerformed() {
-            sendFinishedEvent(true);
+            didSucceed = action != 0 && mime != null;
         }
 
         @Override
         protected synchronized void handleDnDFinished() {
-            // drop target has finished reading our data
+            sendFinishedEvent();
             destroy();
         }
 
@@ -81,7 +82,7 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
         @Override
         protected void handleCancelled() {
-            sendFinishedEvent(false);
+            sendFinishedEvent();
             super.handleCancelled();
         }
     }
