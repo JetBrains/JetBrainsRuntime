@@ -412,6 +412,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private static void dispatchKeyboardModifiersEvent(long serial) {
         assert EventQueue.isDispatchThread();
         inputState = inputState.updatedFromKeyboardModifiersEvent(serial, keyboard.getModifiers());
+        WLDropTargetContextPeer.getInstance().handleModifiersUpdate();
     }
 
     private static void dispatchKeyboardEnterEvent(long serial, long surfacePtr) {
