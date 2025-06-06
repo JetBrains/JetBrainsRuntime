@@ -147,7 +147,7 @@ public final class WLClipboard extends SunClipboard {
                 }
 
                 WLDataSource newOffer = null;
-                newOffer = dataDevice.createDataSourceFromTransferable(getProtocol(), contents);
+                newOffer = new WLDataSource(dataDevice, getProtocol(), contents);
 
                 synchronized (dataLock) {
                     if (ourDataSource != null) {

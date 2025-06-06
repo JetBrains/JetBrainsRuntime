@@ -32,10 +32,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class WLDataOffer {
+    public interface EventListener {
+        void availableActionsChanged(int actions);
+        void selectedActionChanged(int action);
+    }
+
     private long nativePtr;
     private final List<String> mimes = new ArrayList<>();
-    private int sourceActions = -1;
-    private int selectedAction = -1;
+    private int sourceActions = 0;
+    private int selectedAction = 0;
+    private EventListener listener;
 
     private static native void destroyImpl(long nativePtr);
 
@@ -110,8 +116,20 @@ public class WLDataOffer {
         setDnDActionsImpl(nativePtr, actions, preferredAction);
     }
 
+    public synchronized void setListener(EventListener listener) {
+        this.listener = listener;
+    }
+
     public synchronized List<String> getMimes() {
-        return mimes;
+        return new ArrayList<>(mimes);
+    }
+
+    public synchronized int getSourceActions() {
+        return sourceActions;
+    }
+
+    public synchronized int getSelectedAction() {
+        return selectedAction;
     }
 
     // Event handlers, called from native code on the data device dispatch thread
@@ -121,9 +139,15 @@ public class WLDataOffer {
 
     private synchronized void handleSourceActions(int actions) {
         sourceActions = actions;
+        if (this.listener != null) {
+            this.listener.availableActionsChanged(actions);
+        }
     }
 
     private synchronized void handleAction(int action) {
         selectedAction = action;
+        if (this.listener != null) {
+            this.listener.selectedActionChanged(action);
+        }
     }
 }
