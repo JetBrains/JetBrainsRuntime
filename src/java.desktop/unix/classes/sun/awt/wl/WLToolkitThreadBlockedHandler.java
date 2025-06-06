@@ -41,11 +41,11 @@ final class WLToolkitThreadBlockedHandler implements
     }
 
     public void lock() {
-        throw new UnsupportedOperationException();
+        WLToolkit.awtLock();
     }
 
     public void unlock() {
-        throw new UnsupportedOperationException();
+        WLToolkit.awtUnlock();
     }
 
     public void enter() {
