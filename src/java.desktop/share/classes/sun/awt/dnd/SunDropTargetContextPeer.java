@@ -172,6 +172,10 @@ public abstract class SunDropTargetContextPeer implements DropTargetContextPeer,
         return currentA;
     }
 
+    protected int getDropAction() {
+        return currentDA;
+    }
+
     /**
      * get the Transferable associated with the drop
      */
