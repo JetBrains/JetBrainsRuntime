@@ -60,9 +60,9 @@ fi
 
 log "Signing jmod files"
 JMODS_DIR="$APPLICATION_PATH/Contents/Home/jmods"
-JMOD_EXE="$BOOT_JDK/bin/jmod"
+JMOD_EXE="$APPLICATION_PATH/Contents/Home/bin/jmod"
 if [ -d "$JMODS_DIR" ]; then
-  log "processing jmods"  
+  log "processing jmods"
 
   for jmod_file in "$JMODS_DIR"/*.jmod; do
     log "Processing $jmod_file"
