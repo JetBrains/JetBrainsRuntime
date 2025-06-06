@@ -26,11 +26,11 @@
 package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
+import sun.awt.dnd.SunDragSourceContextPeer;
 import sun.awt.dnd.SunDropTargetContextPeer;
 import sun.awt.dnd.SunDropTargetEvent;
 
 import java.awt.Component;
-import java.awt.dnd.DnDConstants;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
 
@@ -40,7 +40,8 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
     private double currentX;
     private double currentY;
     private long[] sourceFormats;
-    private int lastAction = -1;
+    private int lastPreferredAction = -1;
+    private int lastActions = -1;
     private boolean didDrop = false;
 
     private WLDropTargetContextPeer() {
@@ -65,15 +66,11 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
         var peer = (WLComponentPeer) AWTAccessor.getComponentAccessor().getPeer(currentTarget);
         var x = peer.surfaceUnitsToJavaUnits((int) currentX);
         var y = peer.surfaceUnitsToJavaUnits((int) currentY);
-//        var dropAction = WLDataDevice.waylandActionsToJava(currentOffer.getSelectedAction());
         var actions = WLDataDevice.waylandActionsToJava(currentOffer.getSourceActions());
         int dropAction = 0;
+
         if (hasTarget() && event != MouseEvent.MOUSE_EXITED) {
-            if ((actions & DnDConstants.ACTION_MOVE) != 0) {
-                dropAction = DnDConstants.ACTION_MOVE;
-            } else if ((actions & DnDConstants.ACTION_COPY) != 0) {
-                dropAction = DnDConstants.ACTION_COPY;
-            }
+            dropAction = currentOffer.getSelectedAction();
         }
 
         postDropTargetEvent(
@@ -118,13 +115,17 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
             return;
         }
 
-        int action = 0;
+        int actions = 0;
         if (hasTarget()) {
-            action = WLDataDevice.javaActionsToWayland(getDropAction());
+            actions = WLDataDevice.javaActionsToWayland(getTargetActions());
         }
-        if (action != lastAction) {
-            currentOffer.setDnDActions(action, action);
-            lastAction = action;
+
+        int preferredAction = SunDragSourceContextPeer.convertModifiersToDropAction(WLToolkit.getInputState().getModifiers(), actions);
+
+        if (actions != lastActions || preferredAction != lastPreferredAction) {
+            currentOffer.setDnDActions(actions, preferredAction);
+            lastActions = actions;
+            lastPreferredAction = preferredAction;
         }
     }
 
@@ -135,7 +136,8 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
 
         currentOffer = null;
         currentTarget = null;
-        lastAction = -1;
+        lastPreferredAction = -1;
+        lastActions = -1;
         didDrop = false;
     }
 
@@ -162,7 +164,7 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
         currentTarget = peer.getTarget();
         currentX = x;
         currentY = y;
-        lastAction = -1;
+        lastPreferredAction = -1;
         currentOffer = offer;
 
         var mimes = offer.getMimes();
@@ -217,5 +219,9 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
             postEvent(MouseEvent.MOUSE_EXITED);
             reset();
         }
+    }
+
+    public synchronized void handleModifiersUpdate() {
+        updateActions();
     }
 }
