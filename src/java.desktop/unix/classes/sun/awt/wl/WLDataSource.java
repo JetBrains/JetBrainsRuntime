@@ -43,10 +43,10 @@ public class WLDataSource {
 
     private static native void setDnDActionsImpl(long nativePtr, int actions);
 
-    WLDataSource(long dataDeviceNativePtr, int protocol, Transferable data) {
+    WLDataSource(WLDataDevice dataDevice, int protocol, Transferable data) {
         var wlDataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
 
-        nativePtr = initNative(dataDeviceNativePtr, protocol);
+        nativePtr = initNative(dataDevice.getNativePtr(), protocol);
         assert nativePtr != 0; // should've already thrown in native
         this.data = data;
 
@@ -96,19 +96,11 @@ public class WLDataSource {
         destroy();
     }
 
-    protected void handleTargetAcceptsMime(String mime) {
-        // TODO: drag-and-drop implementation, synchronization
-    }
+    protected void handleTargetAcceptsMime(String mime) {}
 
-    protected void handleDnDDropPerformed() {
-        // TODO: drag-and-drop implementation, synchronization
-    }
+    protected void handleDnDDropPerformed() {}
 
-    protected void handleDnDFinished() {
-        // TODO: drag-and-drop implementation, synchronization
-    }
+    protected void handleDnDFinished() {}
 
-    protected void handleDnDAction(int action) {
-        // TODO: drag-and-drop implementation, synchronization
-    }
+    protected void handleDnDAction(int action) {}
 }
