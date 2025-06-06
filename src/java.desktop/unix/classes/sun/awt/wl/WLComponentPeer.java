@@ -1188,7 +1188,8 @@ public class WLComponentPeer implements ComponentPeer {
 
     protected native void nativeDisposeFrame(long ptr);
 
-    private native long getWLSurface(long ptr);
+    private static native long getWLSurface(long ptr);
+    private static native WLComponentPeer nativeGetPeerFromWLSurface(long ptr);
     private native void nativeStartDrag(long serial, long ptr);
     private native void nativeStartResize(long serial, long ptr, int edges);
 
@@ -1217,6 +1218,14 @@ public class WLComponentPeer implements ComponentPeer {
     static long getParentNativePtr(Component target) {
         Component parent = target.getParent();
         return parent ==  null ? 0 : getNativePtrFor(parent);
+    }
+
+    static long getWLSurfaceForComponent(Component component) {
+        return getWLSurface(getNativePtrFor(component));
+    }
+
+    static WLComponentPeer getPeerFromWLSurface(long wlSurfaceNativePtr) {
+        return nativeGetPeerFromWLSurface(wlSurfaceNativePtr);
     }
 
     private final Object state_lock = new Object();
