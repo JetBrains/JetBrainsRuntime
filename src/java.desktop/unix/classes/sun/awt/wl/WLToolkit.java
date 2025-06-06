@@ -46,6 +46,7 @@ import java.awt.dnd.DragGestureListener;
 import java.awt.dnd.DragGestureRecognizer;
 import java.awt.dnd.DragSource;
 import java.awt.dnd.InvalidDnDOperationException;
+import java.awt.dnd.MouseDragGestureRecognizer;
 import java.awt.dnd.peer.DragSourceContextPeer;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
@@ -411,6 +412,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private static void dispatchKeyboardModifiersEvent(long serial) {
         assert EventQueue.isDispatchThread();
         inputState = inputState.updatedFromKeyboardModifiersEvent(serial, keyboard.getModifiers());
+        WLDropTargetContextPeer.getInstance().handleModifiersUpdate();
     }
 
     private static void dispatchKeyboardEnterEvent(long serial, long surfacePtr) {
@@ -549,13 +551,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public DragSourceContextPeer createDragSourceContextPeer(DragGestureEvent dge) throws InvalidDnDOperationException {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createDragSourceContextPeer()");
-        }
-        return null;
+        return new WLDragSourceContextPeer(dge, dataDevice);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T extends DragGestureRecognizer> T
     createDragGestureRecognizer(Class<T> recognizerClass,
                     DragSource ds,
@@ -563,9 +563,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                     int srcActions,
                     DragGestureListener dgl)
     {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createDragGestureRecognizer()");
+        final LightweightFrame f = SunToolkit.getLightweightFrame(c);
+        if (f != null) {
+            return f.createDragGestureRecognizer(recognizerClass, ds, c, srcActions, dgl);
         }
+
+        if (recognizerClass.isAssignableFrom(WLMouseDragGestureRecognizer.class)) {
+            return (T)new WLMouseDragGestureRecognizer(ds, c, srcActions, dgl);
+        }
+
         return null;
     }
 
