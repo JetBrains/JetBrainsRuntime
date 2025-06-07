@@ -1275,6 +1275,7 @@ jdk_swing_wayland= \
     -javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java \
     -javax/swing/JSplitPane/4885629/bug4885629.java \
     -javax/swing/JSplitPane/bug4870674.java \
+    -javax/swing/JSplitPane/TestSplitPaneResetDividerLoc.java \
     -javax/swing/JTabbedPane/6495408/bug6495408.java \
     -javax/swing/JTabbedPane/7024235/Test7024235.java \
     -javax/swing/JTabbedPane/7161568/bug7161568.java \
