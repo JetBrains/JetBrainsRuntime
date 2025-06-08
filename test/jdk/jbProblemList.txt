@@ -355,7 +355,6 @@ java/awt/font/Emoji/EmojiVariation.java JBR-8716 linux-5.18.2-arch1-1
 java/awt/font/EmojiVariation.java JBR-5009,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
 java/awt/font/FontScaling/StretchedFontTest.java JBR-6225 macosx-all
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8437 linux-aarch64
-java/awt/font/GlyphVector/NLGlyphTest.java 8273321,JBR-5355 linux-all
 java/awt/font/JNICheck/JNICheck.sh JBR-5011 linux-all
 java/awt/font/OutlineTextRendererEmoji.java JBR-5009 linux-aarch64
 java/awt/font/TextLayout/ArabicDiacriticTest.java JBR-6760 linux-i386
@@ -398,7 +397,6 @@ java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 generic-all
-java/awt/Graphics2D/DrawString/IgnoredWhitespaceTest.java JBR-8886,JBR-8887 macosx-all,linux-6.8.0-1029-aws
 sun/java2d/SunGraphics2D/DrawImageBilinear.java 8297175 linux-all
 sun/java2d/SunGraphics2D/EmptyClipRenderingTest.java 8144029 macosx-all,linux-all,windows-all
 sun/java2d/SunGraphics2D/PolyVertTest.java 6986565 generic-all
@@ -830,6 +828,7 @@ javax/management/monitor/DerivedGaugeMonitorTest.java         8042211 generic-al
 java/io/Console/CharsetTest.java JBR-8938 macosx-all
 java/io/File/DeleteReadOnly.java JBR-8903 windows-all
 java/io/File/EmptyPath.java JBR-8538 generic-all
+java/io/File/WinTrailingSpace.java JBR-8978 windows-all
 java/io/pathNames/GeneralWin32.java                             8180264 windows-all
 java/io/Serializable/font/FontSerialization.java JBR-8452 macosx-all,windows-all
 
@@ -869,7 +868,9 @@ java/net/DatagramSocket/DatagramSocketMulticasting.java         8144003,JBR-8455
 
 java/net/httpclient/ConcurrentResponses.java JBR-8827 windows-aarch64
 java/net/httpclient/HttpClientLocalAddrTest.java JBR-8827 windows-aarch64
+java/net/httpclient/ManyRequests.java JBR-8827 windows-aarch64
 java/net/httpclient/ManyRequests2.java JBR-8901 windows-aarch64
+java/net/httpclient/PlainProxyConnectionTest.java JBR-8827 windows-aarch64
 
 java/net/MulticastSocket/NoLoopbackPackets.java                 7122846 macosx-all
 java/net/MulticastSocket/Promiscuous.java                       8308807,JBR-8455 aix-ppc64,macosx-all
@@ -927,6 +928,7 @@ com/sun/nio/sctp/SctpChannel/SocketOptionTests.java             8141694 linux-al
 
 # jdk_security
 
+sun/security/lib/CheckBlockedCerts.java JBR-8979 generic-all
 sun/security/mscapi/CngCipher.java JBR-8508 windows-all
 sun/security/mscapi/DupAlias.java JBR-8701 windows-all
 
@@ -1023,7 +1025,7 @@ javax/swing/plaf/basic/BasicTableHeaderUI/6394566/bug6394566.java JBR-5846 windo
 javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,windows-all
 javax/swing/plaf/basic/BasicTreeUI/8023474/bug8023474.java 8253184 linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510,JBR-8300 windows-all,linux-5.18.2-arch1-1,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-14.7.5,macosx-15.4.1,macosx-15.5
+javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510,JBR-8300 windows-all,linux-5.18.2-arch1-1,macosx-all
 javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/plaf/nimbus/TestNimbusOverride.java 8253184,JBR-5829 windows-all,linux-all
 javax/swing/plaf/nimbus/TestNimbusTabbedPaneIconPosition.java JBR-8718 linux-5.18.2-arch1-1
@@ -1443,7 +1445,6 @@ java/awt/FullScreen/SetFSWindow/FSFrame.java 8253184 windows-all
 java/awt/FullScreen/SetFullScreenTest.java JBR-8214 linux-5.18.2-arch1-1
 java/awt/grab/MenuDragEvents/MenuDragEvents.java JBR-4880 windows-all
 java/awt/image/mlib/MlibOpsTest.java JBR-5225 windows-all
-java/awt/image/multiresolution/MenuMultiresolutionIconTest.java JBR-4880,8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java JBR-4880 windows-all
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880 windows-all
 javax/swing/JSlider/6348946/bug6348946.java 8197552,JBR-5387 windows-all,linux-all
