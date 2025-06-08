@@ -3,7 +3,7 @@ java/awt/Choice/ChoiceMoveTest.java JBR-7980 windows-all
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java JBR-6027 windows-all
 java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
-java/awt/dnd/CustomDragCursorTest.java JBR-8932 windows-x64
+java/awt/dnd/CustomDragCursorTest.java 8242805,JBR-8932 macosx-all,windows-x64
 java/awt/dnd/DnDAWTLockTest.java JBR-8745 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws
 java/awt/dnd/DragOverDropTargetPerformanceTest.java JBR-5799 windows-all
 java/awt/dnd/DragSourceGCrashTest.java JBR-8745 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws
@@ -31,6 +31,7 @@ java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-6090 windows-all
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275,JBR-5799 macosx-all,windows-all
 java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-7299,JBR-8728 linux-all,windows-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184,JBR-5510,JBR-8725 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-6.8.0-1028-aws,linux-6.8.0-1029-aws
+java/awt/Graphics/LineClipTest.java JBR-5071 linux-aarch64
 java/awt/Graphics/NativeWin32Clear.java JBR-8730 windows-all
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,8322653,JBR-5071 windows-all,macosx-all,linux-all
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720,8322653,JBR-5071 windows-all,macosx-all,linux-all
@@ -57,6 +58,8 @@ java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071 linux-all
 
 javax/swing/event/FocusEventCauseTest.java JBR-8811 windows-all
 javax/swing/InputVerifier/bug4774166.java JBR-8735 windows-all
+javax/swing/JButton/bug4323121.java JBR-8924 windows-all
+javax/swing/JButton/bug4490179.java JBR-8925 windows-all
 javax/swing/JFileChooser/JFileChooserSetLocationTest.java JBR-8098 linux-all,windows-all
 javax/swing/JMenu/bug4342646.java JBR-8727 linux-all,windows-all
 javax/swing/JPopupMenu/6580930/bug6580930.java JBR-5071 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws
@@ -167,6 +170,7 @@ javax/swing/JButton/8151303/PressedIconTest.java nobug generic-all
 javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7965,JBR-8345 windows-all,linux-all
 javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-8345 linux-all
 javax/swing/JButton/TestGlyphBreak.java nobug generic-all
+javax/swing/JComboBox/6559152/bug6559152.java JBR-8964 windows-all
 javax/swing/JComboBox/DisabledComboBoxFontTestAuto.java nobug generic-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java nobug generic-all
 javax/swing/JInternalFrame/8069348/bug8069348.java nobug generic-all
