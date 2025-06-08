@@ -116,12 +116,17 @@ java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-5510 linux-all
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Window/WindowTitleVisibleTest/WindowTitleVisibleTestLinuxGnome.java NOBUG linux-all
+javax/swing/JButton/bug4323121.java JBR-8924 windows-x64
+javax/swing/JButton/bug4490179.java JBR-8925 windows-x64
 javax/swing/JButton/8151303/PressedIconTest.java JBR-5210,JBR-5510 windows-all,linux-all
+javax/swing/JComboBox/6559152/bug6559152.java JBR-8964 windows-all
 javax/swing/JComponent/7154030/bug7154030.java JBR-5510 linux-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5510 linux-all
 javax/swing/JFileChooser/4400728/JFileChooserDefaultDirectoryTest.java JBR-8534 windows-x64
+javax/swing/JFileChooser/4847375/bug4847375.java JBR-8534 windows-x64
 javax/swing/JFileChooser/4966171/bug4966171.java JBR-8534 windows-x64
+javax/swing/JFileChooser/8013442/Test8013442.java JBR-8534 windows-x64
 javax/swing/JFileChooser/FileChooserListenerLeak.java JBR-8534 windows-x64
 javax/swing/JFileChooser/JFileChooserFontReset.java JBR-8534 windows-x64
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-5510,JBR-6160 linux-all
@@ -145,7 +150,6 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128,8253184,JBR-5510 macosx-all,windows-all,linux-all
 javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-all
-javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5510,JBR-5951 linux-all,windows-x64
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java 8265770,8273312,JBR-5510 windows-all,macosx-all,linux-all
 sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5510 linux-all
