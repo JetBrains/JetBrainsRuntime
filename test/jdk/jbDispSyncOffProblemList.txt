@@ -2,8 +2,11 @@ com/apple/laf/RootPane/RootPaneDefaultButtonTest.java JBR-8712 macosx-all
 
 java/awt/FullScreen/SetFullScreenTest.java JBR-8184 macosx-aarch64
 java/awt/Graphics2D/DrawPrimitivesTest.java JBR-5620 macosx-aarch64
+java/awt/Robot/ScreenCaptureRobotTest.java#id0 JBR-8984 macosx-all
 java/awt/Scrollbar/ListScrollbarTest.java JBR-8941 macosx-all
+java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-8983 macosx-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-7312 macosx-all
+java/awt/Window/TranslucentJAppletTest/TranslucentJAppletTest.java JBR-8985 macosx-all
 
 javax/swing/AbstractButton/bug4133768.java JBR-8713 macosx-all
 javax/swing/JComponent/7154030/bug7154030.java JBR-7713 macosx-aarch64
