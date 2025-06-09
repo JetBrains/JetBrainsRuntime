@@ -25,8 +25,6 @@
 
 package sun.nio.fs;
 
-import com.jetbrains.internal.IoToNioErrorMessageHolder;
-
 import java.nio.file.*;
 import java.io.IOException;
 
@@ -96,7 +94,6 @@ class WindowsException extends Exception {
 
     void rethrowAsIOException(String file) throws IOException {
         IOException x = translateToIOException(file, null);
-        IoToNioErrorMessageHolder.addMessage(x, errorString());
         throw x;
     }
 
@@ -104,7 +101,6 @@ class WindowsException extends Exception {
         String a = (file == null) ? null : file.getPathForExceptionMessage();
         String b = (other == null) ? null : other.getPathForExceptionMessage();
         IOException x = translateToIOException(a, b);
-        IoToNioErrorMessageHolder.addMessage(x, errorString());
         throw x;
     }
 
