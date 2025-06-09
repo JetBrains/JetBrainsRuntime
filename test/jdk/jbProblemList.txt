@@ -386,12 +386,14 @@ java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java 8169469,8273617
 java/awt/print/PrinterJob/GetUserNameTest.java JBR-5225 windows-all
 java/awt/print/PrinterJob/PSQuestionMark.java 7003378 generic-all
 java/awt/print/PrinterJob/GlyphPositions.java 7003378 generic-all
+java/awt/Clipboard/NullContentsTest.java JBR-8494 linux-5.15.0-1084-aws
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java JBR-64 windows-all
 java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java JBR-5799 windows-all
 java/awt/Choice/ChoiceFocusLostTest.java JBR-5799 windows-x64
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java 6849371,6849371,JBR-5210 macosx-all,linux-all,windows-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857 macosx-all
 java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-5510,JBR-6284 linux-5.18.2-arch1-1,linux-all
+java/awt/Choice/InsertRemoveTest.java JBR-8494 linux-5.15.0-1084-aws
 java/awt/Choice/NonFocusablePopupMenuTest.java JBR-7785 linux-5.18.2-arch1-1
 java/awt/ColorClass/AlphaColorTest.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Component/F10TopToplevel/F10TopToplevel.java JBR-5687 linux-all
@@ -855,6 +857,7 @@ java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-
 
 java/nio/channels/Selector/Wakeup.java                          6963118 windows-all
 
+java/nio/file/Files/Misc.java JBR-8969 windows-all
 java/nio/file/WatchService/JNIChecks.java JBR-8457 generic-all
 java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
 
@@ -862,6 +865,11 @@ java/nio/file/WatchService/WithSecurityManager.java                             
 
 # jdk_rmi
 
+java/rmi/server/RMIClassLoader/spi/ContextInsulation.java JBR-8857 generic-all
+java/rmi/server/RMIClassLoader/spi/DefaultProperty.java JBR-8857 generic-all
+java/rmi/server/RMIClassLoader/spi/Installed.java JBR-8857 generic-all
+java/rmi/server/RMIClassLoader/spi/InvalidProperty.java JBR-8857 generic-all
+java/rmi/server/RMIClassLoader/spi/Property.java JBR-8857 generic-all
 java/rmi/server/Unreferenced/finiteGCLatency/FiniteGCLatency.java 7140992 generic-all
 
 java/rmi/transport/rapidExportUnexport/RapidExportUnexport.java 7146541 linux-all
@@ -874,7 +882,7 @@ java/rmi/activation/ActivationGroup/downloadActivationGroup/DownloadActivationGr
 
 java/rmi/activation/rmidViaInheritedChannel/InheritedChannelNotServerSocket.java 8170562 generic-all
 
-java/rmi/registry/readTest/CodebaseTest.java                    8173324 windows-all
+java/rmi/registry/readTest/CodebaseTest.java                    8173324,JBR-8857 windows-all,generic-all
 
 java/rmi/Naming/DefaultRegistryPort.java                        8005619 windows-all
 java/rmi/Naming/legalRegistryNames/LegalRegistryNames.java      8005619 windows-all
@@ -1026,7 +1034,7 @@ javax/swing/JOptionPane/7138665/bug7138665.java JBR-5799 windows-all
 javax/swing/JOptionPane/8081019/bug8081019.java JBR-5767 windows-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-5510,JBR-8665 linux-5.18.2-arch1-1,linux-6.8.0-1017-raspi
 javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java JBR-8571 linux-all
-javax/swing/JProgressBar/8161664/ProgressBarMemoryLeakTest.java JBR-8926 maosx-x64
+javax/swing/JProgressBar/8161664/ProgressBarMemoryLeakTest.java JBR-8926 macosx-x64
 javax/swing/JPopupMenu/4634626/bug4634626.java 8253184 windows-all
 javax/swing/JPopupMenu/4760494/bug4760494.java 8253184 windows-all
 javax/swing/JPopupMenu/4870644/bug4870644.java 8194130 macosx-all,linux-all
@@ -1069,6 +1077,7 @@ javax/swing/JButton/4659800/EnterKeyActivatesButton.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6541987.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test7194184.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test8051548.java JBR-5210 windows-all
+javax/swing/JEditorPane/4666101/JEditorPaneNavigationTest.java JBR-8558 linux-aarch64
 javax/swing/JEditorPane/bug4714674.java JBR-5810 windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java JBR-912 windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest.java JBR-912 windows-all
