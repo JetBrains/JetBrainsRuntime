@@ -39,7 +39,7 @@ AccessibleCaret::~AccessibleCaret() {
     DeleteCriticalSection(&m_caretLocationLock);
 }
 
-AccessibleCaret *AccessibleCaret::instance = nullptr;
+std::atomic<AccessibleCaret *> AccessibleCaret::instance{nullptr};
 
 
 // IUnknown methods
@@ -196,7 +196,7 @@ IFACEMETHODIMP AccessibleCaret::accLocation(long *pxLeft, long *pyTop, long *pcx
     *pcxWidth = m_width;
     *pcyHeight = m_height;
     LeaveCriticalSection(&m_caretLocationLock);
-    
+
     return S_OK;
 }
 
@@ -240,15 +240,17 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_AccessibleCaretLocationNotifier_upda
     JNIEnv *env, jclass jClass,
     jlong jHwnd, jint x, jint y, jint width, jint height) {
     HWND hwnd = reinterpret_cast<HWND>(jHwnd);
-    if (AccessibleCaret::instance == nullptr) {
-        AccessibleCaret::instance = AccessibleCaret::createInstance();
+    AccessibleCaret *caret = AccessibleCaret::instance.load(std::memory_order_acquire);
+    if (caret == nullptr) {
+        caret = AccessibleCaret::createInstance();
+        AccessibleCaret::instance.store(caret, std::memory_order_release);
         // Notify with Object ID "OBJID_CARET".
         // After that, an assistive tool will send a WM_GETOBJECT message with this ID,
         // and we can return the caret instance.
         NotifyWinEvent(EVENT_OBJECT_CREATE, hwnd, OBJID_CARET, CHILDID_SELF);
         NotifyWinEvent(EVENT_OBJECT_SHOW, hwnd, OBJID_CARET, CHILDID_SELF);
     }
-    AccessibleCaret::instance->setLocation(x, y, width, height);
+    caret->setLocation(x, y, width, height);
     NotifyWinEvent(EVENT_OBJECT_LOCATIONCHANGE, hwnd, OBJID_CARET, CHILDID_SELF);
 }
 
@@ -259,10 +261,10 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_AccessibleCaretLocationNotifier_upda
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_AccessibleCaretLocationNotifier_releaseNativeCaret(
     JNIEnv *env, jclass jClass, jlong jHwnd) {
-    if (AccessibleCaret::instance != nullptr) {
+    AccessibleCaret *caret = AccessibleCaret::instance.exchange(nullptr, std::memory_order_acq_rel);
+    if (caret != nullptr) {
+        caret->Release();
         HWND hwnd = reinterpret_cast<HWND>(jHwnd);
-        AccessibleCaret::instance->Release();
-        AccessibleCaret::instance = nullptr;
         NotifyWinEvent(EVENT_OBJECT_HIDE, hwnd, OBJID_CARET, CHILDID_SELF);
         NotifyWinEvent(EVENT_OBJECT_DESTROY, hwnd, OBJID_CARET, CHILDID_SELF);
     }

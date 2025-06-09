@@ -25,11 +25,12 @@
 #define ACCESSIBLECARET_H
 #include "jni.h"
 #include <oleacc.h>
+#include <atomic>
 
 class AccessibleCaret : public IAccessible {
 public:
     static AccessibleCaret *createInstance();
-    static AccessibleCaret *instance;
+    static std::atomic<AccessibleCaret *> instance;
 
     // IUnknown methods.
     IFACEMETHODIMP_(ULONG) AddRef();
