@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, Red Hat Inc.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -141,7 +141,6 @@ class HugePageConfiguration {
             while (scanner.hasNextLine()) {
                 Matcher mat = pat.matcher(scanner.nextLine());
                 if (mat.matches()) {
-                    scanner.close();
                     return Long.parseLong(mat.group(1)) * 1024;
                 }
             }
