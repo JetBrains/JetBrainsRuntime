@@ -1886,12 +1886,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     private class Shadow implements WLSurfaceSizeListener {
-        private WLSubSurface shadowSurface;
-        private SurfaceData shadowSurfaceData;
-        private boolean needsRepaint = true;
+        private WLSubSurface shadowSurface; // protected by AWT lock
+        private SurfaceData shadowSurfaceData;  // protected by AWT lock
+        private boolean needsRepaint = true;  // protected by AWT lock
         private final int shadowSize;
-        private final WLSize shadowWlSize = new WLSize();
-        private boolean isActive;
+        private final WLSize shadowWlSize = new WLSize(); // protected by stateLock
+        private boolean isActive;  // protected by AWT lock
 
         public Shadow(int shadowSize) {
             this.shadowSize = shadowSize;
@@ -1911,7 +1911,9 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
 
         public void resizeToParentWindow() {
-            shadowWlSize.deriveFromJavaSize(wlSize.getJavaWidth() + 2 * shadowSize, wlSize.getJavaHeight() + 2 * shadowSize);
+            synchronized (getStateLock()) {
+                shadowWlSize.deriveFromJavaSize(wlSize.getJavaWidth() + 2 * shadowSize, wlSize.getJavaHeight() + 2 * shadowSize);
+            }
         }
 
         public void createSurface() {
