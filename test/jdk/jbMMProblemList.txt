@@ -34,6 +34,7 @@ java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-60
 java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5442 linux-all
 
+javax/swing/event/FocusEventCauseTest.java JBR-8811 windows-all
 javax/swing/JTextField/4532513/DefaultCaretRequestsFocusTest.java JBR-8330 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
 javax/swing/JTextArea/4514331/TabShiftsFocusToNextComponent.java JBR-8329 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java JBR-5442 linux-all
