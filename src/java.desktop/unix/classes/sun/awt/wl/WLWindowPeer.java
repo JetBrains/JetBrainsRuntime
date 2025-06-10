@@ -49,12 +49,12 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
 
     public static final String WINDOW_CORNER_RADIUS = "apple.awt.windowCornerRadius";
 
-    private WLRoundedCornersManager.RoundedCornerKind roundedCornerKind = WLRoundedCornersManager.RoundedCornerKind.DEFAULT; // guarded by dataLock
-    private Path2D.Double topLeftMask;      // guarded by dataLock
-    private Path2D.Double topRightMask;     // guarded by dataLock
-    private Path2D.Double bottomLeftMask;   // guarded by dataLock
-    private Path2D.Double bottomRightMask;  // guarded by dataLock
-    private SunGraphics2D graphics;         // guarded by dataLock
+    private WLRoundedCornersManager.RoundedCornerKind roundedCornerKind = WLRoundedCornersManager.RoundedCornerKind.DEFAULT; // guarded by stateLock
+    private Path2D.Double topLeftMask;      // guarded by stateLock
+    private Path2D.Double topRightMask;     // guarded by stateLock
+    private Path2D.Double bottomLeftMask;   // guarded by stateLock
+    private Path2D.Double bottomRightMask;  // guarded by stateLock
+    private SunGraphics2D graphics;         // guarded by stateLock
 
     static synchronized Font getDefaultFont() {
         if (null == defaultFont) {
@@ -232,20 +232,20 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     }
 
     protected boolean roundedCornersRequested() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             return roundedCornerKind == WLRoundedCornersManager.RoundedCornerKind.FULL
                     || roundedCornerKind == WLRoundedCornersManager.RoundedCornerKind.SMALL;
         }
     }
 
     WLRoundedCornersManager.RoundedCornerKind getRoundedCornerKind() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             return roundedCornerKind;
         }
     }
 
     void setRoundedCornerKind(WLRoundedCornersManager.RoundedCornerKind kind) {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             if (roundedCornerKind != kind) {
                 roundedCornerKind = kind;
                 resetCornerMasks();
@@ -268,7 +268,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     }
 
     private void resetCornerMasks() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             if (graphics != null) graphics.dispose();
             graphics = null;
             topLeftMask = null;
@@ -308,7 +308,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     }
 
     private void paintRoundCorners() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             createCornerMasks();
 
             graphics.fill(topLeftMask);
