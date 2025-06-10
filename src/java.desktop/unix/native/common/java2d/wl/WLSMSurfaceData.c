@@ -125,7 +125,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_commit(JNIEnv *env, jobject wsd)
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_wl_WLSMSurfaceData_revalidate(JNIEnv *env, jobject wsd, jobject gc,
+Java_sun_java2d_wl_WLSMSurfaceData_nativeRevalidate(JNIEnv *env, jobject wsd,
                                               jint width, jint height, jint scale)
 {
 #ifndef HEADLESS
