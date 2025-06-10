@@ -86,6 +86,7 @@ public class WLComponentPeer implements ComponentPeer {
     private static final int MINIMUM_WIDTH = 1;
     private static final int MINIMUM_HEIGHT = 1;
 
+    private final Object stateLock = new Object();
 
     private long nativePtr; // accessed under AWT lock
     private volatile boolean surfaceAssigned = false;
@@ -94,21 +95,20 @@ public class WLComponentPeer implements ComponentPeer {
     // Graphics devices this top-level component is visible on
     protected final java.util.List<WLGraphicsDevice> devices = new ArrayList<>();
 
-    protected Color background; // protected by dataLock
+    protected Color background; // protected by stateLock
     SurfaceData surfaceData; // accessed under AWT lock
     final WLRepaintArea paintArea;
-    boolean paintPending = false; // protected by dataLock
-    boolean isLayouting = false; // protected by dataLock
+    boolean paintPending = false; // protected by stateLock
+    boolean isLayouting = false; // protected by stateLock
     boolean visible = false;
 
-    final Object dataLock = new Object();
-    private boolean isFullscreen = false;  // protected by dataLock
-    boolean sizeIsBeingConfigured = false; // protected by dataLock
-    int displayScale; // protected by dataLock
-    double effectiveScale; // protected by dataLock
+    private boolean isFullscreen = false;  // protected by stateLock
+    boolean sizeIsBeingConfigured = false; // protected by stateLock
+    int displayScale; // protected by stateLock
+    double effectiveScale; // protected by stateLock
     private final WLSize wlSize = new WLSize();
-    boolean repositionPopup = false; // protected by dataLock
-    boolean resizePending = false; // protected by dataLock
+    boolean repositionPopup = false; // protected by stateLock
+    boolean resizePending = false; // protected by stateLock
 
     static {
         initIDs();
@@ -137,7 +137,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     int getDisplayScale() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             return displayScale;
         }
     }
@@ -151,7 +151,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public Color getBackground() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             return background;
         }
     }
@@ -183,7 +183,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     boolean isFullscreen() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             return isFullscreen;
         }
     }
@@ -545,37 +545,37 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     private boolean popupNeedsReposition() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             return repositionPopup;
         }
     }
 
     private void markPopupNeedsReposition() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             repositionPopup = true;
         }
     }
 
     private void popupRepositioned() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             repositionPopup = false;
         }
     }
 
     private boolean resizePending() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             return resizePending;
         }
     }
 
     private void markResizePending() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             resizePending = true;
         }
     }
 
     private void resizeCompleted() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             resizePending = false;
         }
     }
@@ -623,13 +623,13 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     boolean isSizeBeingConfigured() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             return sizeIsBeingConfigured;
         }
     }
 
     private void setSizeIsBeingConfigured(boolean value) {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             sizeIsBeingConfigured = value;
         }
     }
@@ -643,7 +643,7 @@ public class WLComponentPeer implements ComponentPeer {
     }
 
     public Rectangle getBufferBounds() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             return new Rectangle(getBufferWidth(), getBufferHeight());
         }
     }
@@ -790,13 +790,13 @@ public class WLComponentPeer implements ComponentPeer {
 
     public void beginLayout() {
         // Skip all painting till endLayout
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             isLayouting = true;
         }
     }
 
     private boolean needPaintEvent() {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             // If not waiting for native painting, repaint the damaged area
             return !paintPending && !paintArea.isEmpty()
                     && !AWTAccessor.getComponentAccessor().getIgnoreRepaint(target);
@@ -810,7 +810,7 @@ public class WLComponentPeer implements ComponentPeer {
         if (needPaintEvent()) {
             WLToolkit.postEvent(new PaintEvent(target, PaintEvent.PAINT, new Rectangle()));
         }
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             isLayouting = false;
         }
     }
@@ -850,7 +850,7 @@ public class WLComponentPeer implements ComponentPeer {
 
     @Override
     public void setBackground(Color c) {
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             if (Objects.equals(background, c)) {
                 return;
             }
@@ -975,7 +975,7 @@ public class WLComponentPeer implements ComponentPeer {
 
         WLGraphicsDevice gd = ((WLGraphicsConfig) gc).getDevice();
         gd.addWindow(this);
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             if (newScale != displayScale) {
                 displayScale = newScale;
                 effectiveScale = ((WLGraphicsConfig)gc).getEffectiveScale();
@@ -1105,13 +1105,12 @@ public class WLComponentPeer implements ComponentPeer {
         return nativeGetPeerFromWLSurface(wlSurfaceNativePtr);
     }
 
-    private final Object state_lock = new Object();
     /**
      * This lock object is used to protect instance data from concurrent access
      * by two threads.
      */
     Object getStateLock() {
-        return state_lock;
+        return stateLock;
     }
 
     void postMouseEvent(MouseEvent e) {
@@ -1521,7 +1520,7 @@ public class WLComponentPeer implements ComponentPeer {
         if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
             return value;
         } else {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 return (int)(value * displayScale / effectiveScale);
             }
         }
@@ -1531,7 +1530,7 @@ public class WLComponentPeer implements ComponentPeer {
         if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
             return value;
         } else {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 return (int) Math.ceil(value * displayScale / effectiveScale);
             }
         }
@@ -1545,7 +1544,7 @@ public class WLComponentPeer implements ComponentPeer {
         if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
             return value;
         } else {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 return (int) Math.floor(value * effectiveScale / displayScale);
             }
         }
@@ -1555,7 +1554,7 @@ public class WLComponentPeer implements ComponentPeer {
         if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
             return value;
         } else {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 return (int) Math.ceil(value * effectiveScale / displayScale);
             }
         }
@@ -1586,7 +1585,7 @@ public class WLComponentPeer implements ComponentPeer {
             log.fine(String.format("%s configured to %dx%d surface units", this, newSurfaceWidth, newSurfaceHeight));
         }
 
-        synchronized (dataLock) {
+        synchronized (getStateLock()) {
             isFullscreen = fullscreen;
         }
 
@@ -1816,13 +1815,13 @@ public class WLComponentPeer implements ComponentPeer {
         /**
          * Represents the full size of the component in "client" units as returned by Component.getSize().
          */
-        private final Dimension javaSize = new Dimension(); // in the client (Java) space, protected by dataLock
+        private final Dimension javaSize = new Dimension(); // in the client (Java) space, protected by stateLock
 
         /**
          * Represents the full size of the component in screen pixels.
          * The SurfaceData associated with this component takes its size from this value.
          */
-        private final Dimension pixelSize = new Dimension(); // in pixels, protected by dataLock
+        private final Dimension pixelSize = new Dimension(); // in pixels, protected by stateLock
 
         /**
          * Represents the full size of the component in "surface-local" units;
@@ -1830,10 +1829,10 @@ public class WLComponentPeer implements ComponentPeer {
          * Unless the debug scale is used (WLGraphicsEnvironment.isDebugScaleEnabled()), it is identical
          * to javaSize.
          */
-        private final Dimension surfaceSize = new Dimension(); // in surface units, protected by dataLock
+        private final Dimension surfaceSize = new Dimension(); // in surface units, protected by stateLock
 
         void deriveFromJavaSize(int width, int height) {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 javaSize.width = width;
                 javaSize.height = height;
                 pixelSize.width = (int) (width * effectiveScale);
@@ -1844,7 +1843,7 @@ public class WLComponentPeer implements ComponentPeer {
         }
 
         void deriveFromSurfaceSize(int width, int height) {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 javaSize.width = surfaceUnitsToJavaSize(width);
                 javaSize.height = surfaceUnitsToJavaSize(height);
                 pixelSize.width = width * displayScale;
@@ -1855,7 +1854,7 @@ public class WLComponentPeer implements ComponentPeer {
         }
 
         void updateWithNewScale() {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 pixelSize.width = (int)(javaSize.width * effectiveScale);
                 pixelSize.height = (int)(javaSize.height * effectiveScale);
                 surfaceSize.width = javaUnitsToSurfaceSize(javaSize.width);
@@ -1864,50 +1863,50 @@ public class WLComponentPeer implements ComponentPeer {
         }
 
         boolean hasPixelSizeSet() {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 return pixelSize.width > 0 && pixelSize.height > 0;
             }
         }
 
         void setJavaSize(int width, int height) {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 javaSize.width = width;
                 javaSize.height = height;
             }
         }
 
         int getPixelWidth() {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 return pixelSize.width;
             }
         }
 
         int getPixelHeight() {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 return pixelSize.height;
             }
         }
 
         int getJavaWidth() {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 return javaSize.width;
             }
         }
 
         int getJavaHeight() {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 return javaSize.height;
             }
         }
 
         int getSurfaceWidth() {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 return surfaceSize.width;
             }
         }
 
         int getSurfaceHeight() {
-            synchronized (dataLock) {
+            synchronized (getStateLock()) {
                 return surfaceSize.height;
             }
         }
