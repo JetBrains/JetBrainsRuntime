@@ -154,7 +154,7 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
     }
 
     public synchronized void handleEnter(WLDataOffer offer, long serial, long surfacePtr, double x, double y) {
-        var peer = WLComponentPeer.getPeerFromWLSurface(surfacePtr);
+        var peer = WLToolkit.componentPeerFromSurface(surfacePtr);
         if (peer == null) {
             return;
         }
