@@ -59,6 +59,7 @@ import java.awt.GraphicsConfiguration;
 import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.SystemColor;
 import java.awt.Toolkit;
 import java.awt.Window;
@@ -71,11 +72,14 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.PaintEvent;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
+import java.awt.image.ConvolveOp;
+import java.awt.image.Kernel;
 import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -95,6 +99,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private Color background; // protected by stateLock
     protected SurfaceData surfaceData; // accessed under AWT lock
     private WLMainSurface wlSurface; // accessed under AWT lock
+    private Shadow shadow; // accessed under AWT lock
     private final WLRepaintArea paintArea;
     private boolean paintPending = false; // protected by stateLock
     private boolean isLayouting = false; // protected by stateLock
@@ -130,6 +135,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             log.fine("WLComponentPeer: target=" + target + " with size=" + wlSize);
         }
 
+        shadow = new Shadow(targetIsWlPopup() ? ShadowImage.POPUP_SHADOW_SIZE : ShadowImage.WINDOW_SHADOW_SIZE);
         // TODO
         // setup parent window for target
     }
@@ -375,9 +381,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                     WLRobotPeer.setLocationOfWLSurface(wlSurface, xNative, yNative);
                 }
 
+                shadow.createSurface();
+
                 // From xdg-shell.xml: "After creating a role-specific object and
                 // setting it up, the client must perform an initial commit
                 // without any buffer attached"
+                shadow.commitSurface();
                 wlSurface.commit();
 
                 ((WLToolkit) Toolkit.getDefaultToolkit()).flush();
@@ -389,6 +398,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         } else {
             performLocked(() -> {
                 nativeHideFrame(nativePtr);
+
+                shadow.hide();
                 wlSurface.dispose();
                 wlSurface = null;
             });
@@ -417,6 +428,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     void updateSurfaceData() {
         SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
                 getGraphicsConfiguration(), getBufferWidth(), getBufferHeight(), getDisplayScale());
+
+        shadow.updateSurfaceData();
     }
 
     @Override
@@ -523,6 +536,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     public void commitToServer() {
         performLocked(() -> {
             if (wlSurface != null) {
+                shadow.paint();
+                shadow.commitSurfaceData();
                 SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).commit();
             }
         });
@@ -607,6 +622,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         if (sizeChanged) {
             if (!isSizeBeingConfigured()) {
                 wlSize.deriveFromJavaSize(newSize.width, newSize.height);
+                shadow.resizeToParentWindow();
                 markResizePending();
             }
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -815,7 +831,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     public Dimension getMinimumSize() {
-        return new Dimension(1, 1);
+        int shadowSize = (int) Math.ceil(shadow.getSize() * 4);
+        return new Dimension(shadowSize, shadowSize);
     }
 
     void showWindowMenu(long serial, int x, int y) {
@@ -891,6 +908,10 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             surfaceData = null;
             if (oldData != null) {
                 oldData.invalidate();
+            }
+            if (shadow != null) {
+                shadow.dispose();
+                shadow = null;
             }
         });
     }
@@ -983,6 +1004,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 displayScale = newScale;
                 effectiveScale = ((WLGraphicsConfig)gc).getEffectiveScale();
                 wlSize.updateWithNewScale();
+                shadow.resizeToParentWindow();
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
                     log.fine(String.format("%s is updating buffer to %dx%d pixels", this, getBufferWidth(), getBufferHeight()));
                 }
@@ -1618,6 +1640,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             wlSurface.associateWithSurfaceData(surfaceData);
         }
 
+        shadow.notifyConfigured(active, maximized, fullscreen);
+
         if (clientDecidesDimension || isWlPopup) {
             // In case this is the first 'configure' after setVisible(true), we
             // need to post the initial paint event for the window to appear on
@@ -1634,6 +1658,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private void changeSizeToConfigured(int newSurfaceWidth, int newSurfaceHeight) {
         resizeCompleted();
         wlSize.deriveFromSurfaceSize(newSurfaceWidth, newSurfaceHeight);
+        shadow.resizeToParentWindow();
         int newWidth = wlSize.getJavaWidth();
         int newHeight = wlSize.getJavaHeight();
         try {
@@ -1760,6 +1785,233 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             result = result.getOwner();
         }
         return result;
+    }
+
+    private static class ShadowImage {
+        private static final Color activeColor = new Color(0, 0, 0, 0xA0);
+        private static final Color inactiveColor = new Color(0, 0, 0, 0x40);
+        private static final Color popupColor = new Color(0, 0, 0, 0x40);
+
+        public static final int WINDOW_SHADOW_SIZE = 20;
+        public static final int POPUP_SHADOW_SIZE = 10;
+
+        public static final ShadowImage windowShadowActive = new ShadowImage(WINDOW_SHADOW_SIZE, activeColor);
+        public static final ShadowImage windowShadow = new ShadowImage(WINDOW_SHADOW_SIZE, inactiveColor);
+        public static final ShadowImage popupShadow = new ShadowImage(POPUP_SHADOW_SIZE, popupColor);
+
+        private final BufferedImage image;
+        private final int shadowSize;
+        private final Color color;
+
+        public ShadowImage(int shadowSize, Color color) {
+            this.shadowSize = shadowSize;
+            this.color = color;
+            image = create(shadowSize * 8, shadowSize * 8, shadowSize, shadowSize);
+        }
+
+        public static ShadowImage forSize(int size, boolean active) {
+            return switch (size) {
+                case WINDOW_SHADOW_SIZE -> active ? windowShadowActive : windowShadow;
+                case POPUP_SHADOW_SIZE -> popupShadow;
+                default -> throw new IllegalArgumentException("Invalid shadow size: " + size);
+            };
+        }
+
+        private BufferedImage create(int width, int height, int arc, int shadowSize) {
+            var shadow = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            var g2d = shadow.createGraphics();
+            g2d.setColor(color);
+            g2d.fillRoundRect(shadowSize, shadowSize, width - 2 * shadowSize, height - 2 * shadowSize, arc, arc);
+
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+            // Apply a Gaussian blur
+            float[] blurKernel = createBlurKernel(shadowSize);
+            ConvolveOp blurOp = new ConvolveOp(new Kernel(shadowSize, shadowSize, blurKernel), ConvolveOp.EDGE_NO_OP, null);
+            shadow = blurOp.filter(shadow, null);
+
+            g2d.dispose();
+            return shadow;
+        }
+
+        private float[] createBlurKernel(int size) {
+            float[] kernel = new float[size * size];
+            float value = 1.0f / (size * size);
+            Arrays.fill(kernel, value);
+            return kernel;
+        }
+
+        public void paintTo(SunGraphics2D g, int width, int height) {
+            // This is the size of the minimal square that fits a corner of the shadow
+            int size = (int) Math.ceil(shadowSize * 2.5);
+
+            if ( width > 2 * size && height > 2 * size) {
+                g.setColor(color);
+                g.fillRect(size, size, width - 2 * size, height - 2 * size);
+            }
+
+            int shadowImageWidth = image.getWidth(null);
+            int shadowImageHeight = image.getHeight(null);
+
+            // top
+            g.copyImage(image, 0, 0, 0, 0, size, size, null, null);
+            int horizGap = width - 2 * size;
+            int vertGap = height - 2 * size;
+            g.clipRect(size, 0, horizGap, size);
+            for (int i = 0; i < horizGap / shadowSize + 1; i++) {
+                g.copyImage(image, size + i * shadowSize, 0, size, 0, shadowSize, size, null, null);
+            }
+            g.setClip(null);
+
+            g.copyImage(image, width - size, 0, shadowImageWidth - size, 0, size, size, null, null);
+
+            // bottom
+            g.copyImage(image, 0, height - size, 0, shadowImageHeight - size, size, size, null, null);
+            g.clipRect(size, height - size, width - size * 2, size);
+            for (int i = 0; i < horizGap / shadowSize + 1; i++) {
+                g.copyImage(image, size + i * shadowSize, height - size, size, shadowImageHeight - size, shadowSize, size, null, null);
+            }
+            g.setClip(null);
+            g.copyImage(image, width - size, height - size, shadowImageWidth - size, shadowImageHeight - size, size, size, null, null);
+
+            // left
+            g.clipRect(0, size, size, height - size * 2);
+            for (int i = 0; i < vertGap / shadowSize + 1; i++) {
+                g.copyImage(image, 0, size + shadowSize * i, 0, size, size, shadowSize, null, null);
+            }
+            g.setClip(null);
+
+            // right
+            g.clipRect(width - size, size, size, height - size * 2);
+            for (int i = 0; i < vertGap / shadowSize + 1; i++) {
+                g.copyImage(image, width - size, size + shadowSize * i, shadowImageWidth - size, size, size, shadowSize, null, null);
+            }
+            g.setClip(null);
+        }
+    }
+
+    private class Shadow implements WLSurfaceSizeListener {
+        private WLSubSurface shadowSurface; // protected by AWT lock
+        private SurfaceData shadowSurfaceData;  // protected by AWT lock
+        private boolean needsRepaint = true;  // protected by AWT lock
+        private final int shadowSize;
+        private final WLSize shadowWlSize = new WLSize(); // protected by stateLock
+        private boolean isActive;  // protected by AWT lock
+
+        public Shadow(int shadowSize) {
+            this.shadowSize = shadowSize;
+            shadowWlSize.deriveFromJavaSize(wlSize.getJavaWidth() + shadowSize * 2, wlSize.getJavaHeight() + shadowSize * 2);
+            shadowSurfaceData = ((WLGraphicsConfig) getGraphicsConfiguration()).createSurfaceData(this, shadowWlSize.getPixelWidth(), shadowWlSize.getPixelHeight());
+        }
+
+        public int getSize() {
+            return shadowSize;
+        }
+
+        @Override
+        public void updateSurfaceSize() {
+            assert SunToolkit.isAWTLockHeldByCurrentThread();
+
+            shadowSurface.updateSurfaceSize(shadowWlSize.getSurfaceWidth(), shadowWlSize.getSurfaceHeight());
+        }
+
+        public void resizeToParentWindow() {
+            synchronized (getStateLock()) {
+                shadowWlSize.deriveFromJavaSize(wlSize.getJavaWidth() + 2 * shadowSize, wlSize.getJavaHeight() + 2 * shadowSize);
+            }
+        }
+
+        public void createSurface() {
+            assert shadowSurface == null;
+            assert SunToolkit.isAWTLockHeldByCurrentThread();
+
+            int shadowOffset = -javaUnitsToSurfaceUnits(shadowSize);
+            shadowSurface = new WLSubSurface(wlSurface, shadowOffset, shadowOffset);
+        }
+
+        public void commitSurface() {
+            assert shadowSurface != null;
+            assert SunToolkit.isAWTLockHeldByCurrentThread();
+
+            shadowSurface.commit();
+        }
+
+        public void dispose() {
+            assert SunToolkit.isAWTLockHeldByCurrentThread();
+
+            if (shadowSurface != null) {
+                shadowSurface.dispose();
+                shadowSurface = null;
+            }
+
+            SurfaceData oldShadowData = shadowSurfaceData;
+            shadowSurfaceData = null;
+            if (oldShadowData != null) {
+                oldShadowData.invalidate();
+            }
+        }
+
+        public void hide() {
+            assert SunToolkit.isAWTLockHeldByCurrentThread();
+
+            if (shadowSurface != null) {
+                shadowSurface.dispose();
+                shadowSurface = null;
+            }
+        }
+
+        public void updateSurfaceData() {
+            assert SunToolkit.isAWTLockHeldByCurrentThread();
+
+            needsRepaint = true;
+            SurfaceData.convertTo(WLSurfaceDataExt.class, shadowSurfaceData).revalidate(
+                    getGraphicsConfiguration(), shadowWlSize.getPixelWidth(), shadowWlSize.getPixelHeight(), getDisplayScale());
+        }
+
+        public void paint() {
+            assert SunToolkit.isAWTLockHeldByCurrentThread();
+
+            if (!needsRepaint) {
+                return;
+            }
+
+            int width = shadowWlSize.getJavaWidth();
+            int height = shadowWlSize.getJavaHeight();
+
+            var g = new SunGraphics2D(shadowSurfaceData, Color.BLACK, new Color(0, true), null);
+            try {
+                g.clearRect(0, 0, width, height);
+                ShadowImage.forSize(shadowSize, isActive).paintTo(g, width, height);
+            } finally {
+                g.dispose();
+            }
+
+            needsRepaint = false;
+        }
+
+        public void commitSurfaceData() {
+            SurfaceData.convertTo(WLSurfaceDataExt.class, shadowSurfaceData).commit();
+        }
+
+        public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
+            assert shadowSurface != null;
+            assert SunToolkit.isAWTLockHeldByCurrentThread();
+
+            needsRepaint |= active ^ isActive;
+
+            isActive = active;
+            boolean showShadow = !fullscreen && !maximized;
+            if (showShadow) {
+                if (!shadowSurface.hasSurfaceData()) {
+                    shadowSurface.associateWithSurfaceData(shadowSurfaceData);
+                }
+            } else {
+                shadowSurface.hide();
+                needsRepaint = false;
+            }
+            shadowSurface.commit();
+        }
     }
 
     private class WLSize {
