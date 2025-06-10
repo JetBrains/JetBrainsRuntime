@@ -45,61 +45,14 @@
 
 static jmethodID postWindowClosingMID;
 static jmethodID notifyConfiguredMID;
-static jmethodID notifyEnteredOutputMID;
-static jmethodID notifyLeftOutputMID;
 static jmethodID notifyPopupDoneMID;
-
-struct activation_token_list_item {
-    struct xdg_activation_token_v1 *token;
-    struct activation_token_list_item *next_item;
-};
-
-static struct activation_token_list_item *add_token(JNIEnv* env,
-                                                    struct activation_token_list_item *list,
-                                                    struct xdg_activation_token_v1* token_to_add) {
-    struct activation_token_list_item *new_item =
-        (struct activation_token_list_item *) calloc(1, sizeof(struct activation_token_list_item));
-    CHECK_NULL_THROW_OOME_RETURN(env, new_item, "Failed to allocate a Wayland activation token", NULL);
-    new_item->token = token_to_add;
-    new_item->next_item = list;
-    return new_item;
-}
-
-static struct activation_token_list_item *delete_last_token(struct activation_token_list_item *list) {
-    assert(list);
-    xdg_activation_token_v1_destroy(list->token);
-    struct activation_token_list_item *next_item = list->next_item;
-    free(list);
-    return next_item;
-}
-
-static struct activation_token_list_item *delete_token(struct activation_token_list_item *list,
-                                                       struct xdg_activation_token_v1 *token_to_delete) {
-    if (list == NULL) {
-        return NULL;
-    } else if (list->token == token_to_delete) {
-        return delete_last_token(list);
-    } else {
-        list->next_item = delete_token(list->next_item, token_to_delete);
-        return list;
-    }
-}
-
-static void delete_all_tokens(struct activation_token_list_item *list) {
-    while (list) {
-        list = delete_last_token(list);
-    }
-}
 
 struct WLFrame {
     jobject nativeFramePeer; // weak reference
-    struct wl_surface *wl_surface;
-    struct wp_viewport *wp_viewport;
     struct xdg_surface *xdg_surface;
     struct gtk_surface1 *gtk_surface;
     struct WLFrame *parent;
     struct xdg_positioner *xdg_positioner;
-    struct activation_token_list_item *activation_token_list;
     jboolean toplevel;
     union {
         struct xdg_toplevel *xdg_toplevel;
@@ -141,52 +94,8 @@ xdg_surface_configure(void *data,
     }
 }
 
-static void
-wl_surface_entered_output(void *data,
-                          struct wl_surface *wl_surface,
-                          struct wl_output *output)
-{
-    J2dTrace(J2D_TRACE_INFO, "wl_surface %p entered output %p\n", wl_surface, output);
-    struct WLFrame *wlFrame = (struct WLFrame*) data;
-    uint32_t wlOutputID = WLOutputID(output);
-    if (wlOutputID == 0) return;
-
-    JNIEnv *env = getEnv();
-    const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);
-    if (nativeFramePeer) {
-        (*env)->CallVoidMethod(env, nativeFramePeer, notifyEnteredOutputMID, wlOutputID);
-        (*env)->DeleteLocalRef(env, nativeFramePeer);
-        JNU_CHECK_EXCEPTION(env);
-    }
-}
-
-static void
-wl_surface_left_output(void *data,
-                       struct wl_surface *wl_surface,
-                       struct wl_output *output)
-{
-    J2dTrace(J2D_TRACE_INFO, "wl_surface %p left output %p\n", wl_surface, output);
-    struct WLFrame *wlFrame = (struct WLFrame*) data;
-    uint32_t wlOutputID = WLOutputID(output);
-    if (wlOutputID == 0) return;
-
-    JNIEnv *env = getEnv();
-    const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);
-    if (nativeFramePeer) {
-        (*env)->CallVoidMethod(env, nativeFramePeer, notifyLeftOutputMID, wlOutputID);
-        (*env)->DeleteLocalRef(env, nativeFramePeer);
-        JNU_CHECK_EXCEPTION(env);
-    }
-
-}
-
 static const struct xdg_surface_listener xdg_surface_listener = {
         .configure = xdg_surface_configure,
-};
-
-static const struct wl_surface_listener wl_surface_listener = {
-        .enter = wl_surface_entered_output,
-        .leave = wl_surface_left_output
 };
 
 static void
@@ -298,24 +207,6 @@ static const struct xdg_popup_listener xdg_popup_listener = {
         .repositioned = xdg_popup_repositioned
 };
 
-static void
-xdg_activation_token_v1_done(void *data,
-		                     struct xdg_activation_token_v1 *xdg_activation_token_v1,
-		                     const char *token) {
-	struct WLFrame *frame = (struct WLFrame *) data;
-	assert(frame);
-	struct wl_surface *surface = frame->wl_surface;
-    assert(surface);
-    xdg_activation_v1_activate(xdg_activation_v1, token, surface);
-    frame->activation_token_list = delete_token(frame->activation_token_list, xdg_activation_token_v1);
-    JNIEnv* env = getEnv();
-    wlFlushToServer(env);
-}
-
-static const struct xdg_activation_token_v1_listener xdg_activation_token_v1_listener = {
-        .done = xdg_activation_token_v1_done,
-};
-
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_initIDs
         (JNIEnv *env, jclass clazz)
@@ -323,12 +214,6 @@ Java_sun_awt_wl_WLComponentPeer_initIDs
     CHECK_NULL_THROW_IE(env,
                         notifyConfiguredMID = (*env)->GetMethodID(env, clazz, "notifyConfigured", "(IIIIZZZ)V"),
                         "Failed to find method WLComponentPeer.notifyConfigured");
-    CHECK_NULL_THROW_IE(env,
-                        notifyEnteredOutputMID = (*env)->GetMethodID(env, clazz, "notifyEnteredOutput", "(I)V"),
-                        "Failed to find method WLComponentPeer.notifyEnteredOutput");
-    CHECK_NULL_THROW_IE(env,
-                        notifyLeftOutputMID = (*env)->GetMethodID(env, clazz, "notifyLeftOutput", "(I)V"),
-                        "Failed to find method WLComponentPeer.notifyLeftOutput");
     CHECK_NULL_THROW_IE(env,
                         notifyPopupDoneMID = (*env)->GetMethodID(env, clazz, "notifyPopupDone", "()V"),
                         "Failed to find method WLComponentPeer.notifyPopupDone");
@@ -449,28 +334,23 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnsetFullScreen
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
-      (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr,
-       jint x, jint y,
+Java_sun_awt_wl_WLComponentPeer_nativeCreateWindow
+      (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr, jlong wlSurfacePtr,
        jboolean isModal, jboolean isMaximized, jboolean isMinimized,
        jstring title, jstring appid)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     struct WLFrame *parentFrame = jlong_to_ptr(parentPtr);
-    if (frame->wl_surface) return;
-    frame->wl_surface = wl_compositor_create_surface(wl_compositor);
-    CHECK_NULL(frame->wl_surface);
-    frame->wp_viewport = wp_viewporter_get_viewport(wp_viewporter, frame->wl_surface);
-    CHECK_NULL(frame->wp_viewport);
-    frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
+    struct wl_surface *wl_surface = jlong_to_ptr(wlSurfacePtr);
+
+    frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, wl_surface);
     CHECK_NULL(frame->xdg_surface);
 #ifdef HAVE_GTK_SHELL1
     if (gtk_shell1 != NULL) {
-        frame->gtk_surface = gtk_shell1_get_gtk_surface(gtk_shell1, frame->wl_surface);
+        frame->gtk_surface = gtk_shell1_get_gtk_surface(gtk_shell1, wl_surface);
         CHECK_NULL(frame->gtk_surface);
     }
 #endif
-    wl_surface_add_listener(frame->wl_surface, &wl_surface_listener, frame);
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
     frame->toplevel = JNI_TRUE;
     frame->xdg_toplevel = xdg_surface_get_toplevel(frame->xdg_surface);
@@ -497,18 +377,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
         gtk_surface1_set_modal(frame->gtk_surface);
     }
 #endif
-
-#ifdef WAKEFIELD_ROBOT
-        if (wakefield) {
-            // TODO: this doesn't work quite as expected for some reason
-            wakefield_move_surface(wakefield, frame->wl_surface, x, y);
-        }
-#endif
-    // From xdg-shell.xml: "After creating a role-specific object and
-    // setting it up, the client must perform an initial commit
-    // without any buffer attached"
-    wl_surface_commit(frame->wl_surface);
-    wlFlushToServer(env);
 }
 
 static struct xdg_positioner *
@@ -534,22 +402,17 @@ newPositioner
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
-        (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr,
+Java_sun_awt_wl_WLComponentPeer_nativeCreatePopup
+        (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr, jlong wlSurfacePtr,
          jint width, jint height,
          jint offsetX, jint offsetY)
 {
     struct WLFrame *frame = (struct WLFrame *) ptr;
     struct WLFrame *parentFrame = (struct WLFrame*) parentPtr;
-    if (frame->wl_surface) return;
-    frame->wl_surface = wl_compositor_create_surface(wl_compositor);
-    CHECK_NULL(frame->wl_surface);
-    frame->wp_viewport = wp_viewporter_get_viewport(wp_viewporter, frame->wl_surface);
-    CHECK_NULL(frame->wp_viewport);
-    frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
+    struct wl_surface* wl_surface = jlong_to_ptr(wlSurfacePtr);
+    frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, wl_surface);
     CHECK_NULL(frame->xdg_surface);
 
-    wl_surface_add_listener(frame->wl_surface, &wl_surface_listener, frame);
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
     frame->toplevel = JNI_FALSE;
 
@@ -561,11 +424,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
     CHECK_NULL(frame->xdg_popup);
     xdg_popup_add_listener(frame->xdg_popup, &xdg_popup_listener, frame);
     xdg_positioner_destroy(xdg_positioner);
-    // From xdg-shell.xml: "After creating a role-specific object and
-    // setting it up, the client must perform an initial commit
-    // without any buffer attached"
-    wl_surface_commit(frame->wl_surface);
-    wlFlushToServer(env);
 }
 
 JNIEXPORT void JNICALL
@@ -590,31 +448,23 @@ Java_sun_awt_wl_WLComponentPeer_nativeRepositionWLPopup
 static void
 DoHide(JNIEnv *env, struct WLFrame *frame)
 {
-    if (frame->wl_surface) {
-        if(frame->toplevel) {
-            xdg_toplevel_destroy(frame->xdg_toplevel);
-        } else {
-            xdg_popup_destroy(frame->xdg_popup);
-        }
-#ifdef HAVE_GTK_SHELL1
-        if (frame->gtk_surface != NULL) {
-            gtk_surface1_destroy(frame->gtk_surface);
-        }
-#endif
-        wp_viewport_destroy(frame->wp_viewport);
-        xdg_surface_destroy(frame->xdg_surface);
-        wl_surface_destroy(frame->wl_surface);
-        delete_all_tokens(frame->activation_token_list);
-        wlFlushToServer(env);
-
-        frame->activation_token_list = NULL;
-        frame->wl_surface = NULL;
-        frame->xdg_surface = NULL;
-        frame->xdg_toplevel = NULL;
-        frame->xdg_popup = NULL;
-        frame->wp_viewport = NULL;
-        frame->toplevel = JNI_FALSE;
+    if(frame->toplevel) {
+        xdg_toplevel_destroy(frame->xdg_toplevel);
+    } else {
+        xdg_popup_destroy(frame->xdg_popup);
     }
+#ifdef HAVE_GTK_SHELL1
+    if (frame->gtk_surface != NULL) {
+        gtk_surface1_destroy(frame->gtk_surface);
+    }
+#endif
+    xdg_surface_destroy(frame->xdg_surface);
+
+    frame->xdg_surface = NULL;
+    frame->xdg_toplevel = NULL;
+    frame->xdg_popup = NULL;
+    frame->gtk_surface = NULL;
+    frame->toplevel = JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
@@ -630,32 +480,8 @@ Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
         (JNIEnv *env, jobject obj, jlong ptr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
-    DoHide(env, frame);
     (*env)->DeleteWeakGlobalRef(env, frame->nativeFramePeer);
     free(frame);
-}
-
-JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_getWLSurface
-        (JNIEnv *env, jclass clazz, jlong ptr)
-{
-    return ptr_to_jlong(((struct WLFrame*)jlong_to_ptr(ptr))->wl_surface);
-}
-
-JNIEXPORT jobject JNICALL Java_sun_awt_wl_WLComponentPeer_nativeGetPeerFromWLSurface
-        (JNIEnv *env, jclass clazz, jlong wlSurfacePtr)
-{
-    struct wl_surface* wl_surface = jlong_to_ptr(wlSurfacePtr);
-    if (wl_surface == NULL) {
-        return NULL;
-    }
-    struct WLFrame* frame = wl_surface_get_user_data(wl_surface);
-    if (frame == NULL) {
-        return NULL;
-    }
-
-    jobject ref = (*env)->NewLocalRef(env, frame->nativeFramePeer);
-    JNU_CHECK_EXCEPTION_RETURN(env, NULL);
-    return ref;
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartDrag
@@ -677,37 +503,6 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
         wlFlushToServer(env);
     }
 }
-
-/**
- * Specifies the size of the Wayland's surface in surface units.
- * For the resulting image on the screen to look sharp this size should be
- * multiple of backing buffer's size with the ratio matching the display scale.
- */
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetSurfaceSize
-        (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)
-{
-    struct WLFrame *frame = jlong_to_ptr(ptr);
-    if (frame->wp_viewport != NULL) {
-        wp_viewport_set_destination(frame->wp_viewport, width, height);
-        // Do not flush here as this update needs to be committed together with the change
-        // of the buffer's size and scale, if any.
-    }
-}
-
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetOpaqueRegion
-        (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y, jint width, jint height)
-{
-    struct WLFrame *frame = jlong_to_ptr(ptr);
-    if (frame->wl_surface != NULL) {
-        struct wl_region* region = wl_compositor_create_region(wl_compositor);
-        wl_region_add(region, x, y, width, height);
-        wl_surface_set_opaque_region(frame->wl_surface, region);
-        wl_region_destroy(region);
-        // Do not flush here as this update needs to be committed together with the change
-        // of the buffer's size and scale, if any.
-    }
-}
-
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetWindowGeometry
         (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y, jint width, jint height)
@@ -752,22 +547,3 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeShowWindowMenu
     }
 }
 
-JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLComponentPeer_nativeActivate
-        (JNIEnv *env, jobject obj, jlong serial, jlong ptr, jlong activatingSurfacePtr)
-{
-    struct WLFrame *frame = jlong_to_ptr(ptr);
-    if (frame->wl_surface && xdg_activation_v1 && wl_seat) {
-        struct xdg_activation_token_v1 *token = xdg_activation_v1_get_activation_token(xdg_activation_v1);
-        CHECK_NULL(token);
-        xdg_activation_token_v1_add_listener(token, &xdg_activation_token_v1_listener, frame);
-        xdg_activation_token_v1_set_serial(token, serial, wl_seat);
-        if (activatingSurfacePtr) {
-            struct wl_surface* surface = jlong_to_ptr(activatingSurfacePtr);
-            xdg_activation_token_v1_set_surface(token, surface);
-        }
-        xdg_activation_token_v1_commit(token);
-        frame->activation_token_list = add_token(env, frame->activation_token_list, token);
-        wlFlushToServer(env);
-    }
-}
