@@ -401,6 +401,7 @@ Java_sun_awt_wl_WLRobotPeer_setLocationOfWLSurfaceImpl
 #endif
 }
 
+
 JNIEXPORT jintArray JNICALL
 Java_sun_awt_wl_WLRobotPeer_getRGBPixelsImpl
         (JNIEnv *env, jclass clazz, jint x, jint y, jint width, jint height)
