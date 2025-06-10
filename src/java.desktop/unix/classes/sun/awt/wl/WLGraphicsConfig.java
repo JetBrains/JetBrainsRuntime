@@ -34,6 +34,7 @@ import java.awt.image.WritableRaster;
 import sun.awt.image.OffScreenImage;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
+import sun.java2d.wl.WLSurfaceSizeListener;
 
 public abstract class WLGraphicsConfig extends GraphicsConfiguration {
     private final WLGraphicsDevice device;
@@ -122,6 +123,7 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
 
     public abstract SurfaceType getSurfaceType();
     public abstract SurfaceData createSurfaceData(WLComponentPeer peer);
+    public abstract SurfaceData createSurfaceData(WLSurfaceSizeListener sl, int width, int height);
 
     @Override
     public String toString() {
