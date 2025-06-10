@@ -55,6 +55,7 @@ extern struct wl_seat *wl_seat;
 extern struct wl_display *wl_display;
 extern struct wl_pointer *wl_pointer; // optional, check for NULL before use
 extern struct wl_compositor *wl_compositor;
+extern struct wl_subcompositor *wl_subcompositor;
 extern struct xdg_wm_base *xdg_wm_base;
 extern struct wp_viewporter *wp_viewporter;
 extern struct xdg_activation_v1 *xdg_activation_v1; // optional, check for NULL before use
