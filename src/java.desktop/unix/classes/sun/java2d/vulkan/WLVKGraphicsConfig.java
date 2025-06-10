@@ -37,6 +37,7 @@ import sun.awt.wl.WLGraphicsConfig;
 import sun.awt.wl.WLGraphicsDevice;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
+import sun.java2d.wl.WLSurfaceSizeListener;
 import sun.util.logging.PlatformLogger;
 
 public final class WLVKGraphicsConfig extends WLGraphicsConfig
@@ -108,6 +109,11 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
     @Override
     public SurfaceData createSurfaceData(WLComponentPeer peer) {
         return new WLVKWindowSurfaceData(peer);
+    }
+
+    @Override
+    public SurfaceData createSurfaceData(WLSurfaceSizeListener sl, int width, int height) {
+        return new WLVKWindowSurfaceData(sl, width, height, this);
     }
 
     public SurfaceType getSurfaceType() {
