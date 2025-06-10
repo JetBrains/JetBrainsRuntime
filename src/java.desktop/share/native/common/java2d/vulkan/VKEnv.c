@@ -66,6 +66,9 @@ static PFN_vkGetInstanceProcAddr vulkanLibOpen() {
         pVulkanLib = NULL;
         return NULL;
     }
+
+    fprintf(stdout, "Vulkan: loaded(PID: %d)\n", GetCurrentProcessId());
+
     return vkGetInstanceProcAddr;
 }
 

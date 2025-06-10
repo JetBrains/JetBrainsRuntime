@@ -108,3 +108,4 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_assignWlSurf
     VKSD_InitWindowSurface(env, vksd, WLVK_InitSurfaceData, jlong_to_ptr(wlSurfacePtr));
 }
 
+
