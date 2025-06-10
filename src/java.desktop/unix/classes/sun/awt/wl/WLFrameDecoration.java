@@ -26,10 +26,8 @@ package sun.awt.wl;
 
 import sun.swing.SwingUtilities2;
 
-import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Composite;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -108,7 +106,6 @@ public class WLFrameDecoration implements PropertyChangeListener {
 
     private final WLDecoratedPeer peer;
     private final boolean isUndecorated;
-
 
     private final ButtonState closeButton;
     private final ButtonState maximizeButton;
