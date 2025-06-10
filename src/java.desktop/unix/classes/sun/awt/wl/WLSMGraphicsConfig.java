@@ -29,6 +29,7 @@ package sun.awt.wl;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
 import sun.java2d.wl.WLSMSurfaceData;
+import sun.java2d.wl.WLSurfaceSizeListener;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.Transparency;
@@ -118,8 +119,14 @@ public class WLSMGraphicsConfig extends WLGraphicsConfig {
         }
     }
 
+    @Override
     public SurfaceData createSurfaceData(WLComponentPeer peer) {
         return WLSMSurfaceData.createData(peer, this);
+    }
+
+    @Override
+    public SurfaceData createSurfaceData(WLSurfaceSizeListener sl, int width, int height) {
+        return WLSMSurfaceData.createData(sl, width, height, this);
     }
 
     public int getWlShmFormat() {
