@@ -24,7 +24,13 @@
  */
 package sun.awt.wl;
 
-import java.awt.*;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.GraphicsEnvironment;
+import java.awt.Insets;
+import java.awt.Rectangle;
+import java.awt.Window;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 
@@ -76,15 +82,13 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
 
     @Override
     public Dimension getMinimumSize() {
-        final Dimension targetMinimumSize = target.isMinimumSizeSet()
-                ? target.getMinimumSize()
-                : new Dimension(1, 1);
+        final Dimension parentMinimumSize = super.getMinimumSize();
         final Dimension decorMinimumSize = decoration.getMinimumSize();
         final Dimension frameMinimumSize
                 = (decorMinimumSize.getWidth() == 0 && decorMinimumSize.getHeight() == 0)
                 ? new Dimension(1, 1)
                 : decorMinimumSize;
-        return new Rectangle(targetMinimumSize)
+        return new Rectangle(parentMinimumSize)
                 .union(new Rectangle(frameMinimumSize))
                 .getSize();
     }
