@@ -39,11 +39,16 @@ import java.awt.event.WindowListener;
 import java.awt.image.ColorModel;
 import java.awt.peer.WindowPeer;
 import java.util.ArrayList;
+import java.util.function.Supplier;
 
 import sun.awt.image.SurfaceManager;
 import sun.awt.windows.WWindowPeer;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.opengl.WGLGraphicsConfig;
+import sun.java2d.vulkan.VKEnv;
+import sun.java2d.vulkan.VKGPU;
+import sun.java2d.vulkan.VKGraphicsConfig;
+import sun.java2d.vulkan.WinVKGraphicsConfig;
 import sun.java2d.windows.WindowsFlags;
 
 import static java.awt.peer.ComponentPeer.SET_BOUNDS;
@@ -318,6 +323,10 @@ public class Win32GraphicsDevice extends GraphicsDevice implements
                     System.out.println(" for default config on screen " +
                                        screen);
                 }
+            } else if (WindowsFlags.isVulkanEnabled()) {
+                VKGPU vkgpu = VKEnv.getDevices().findFirst().orElseThrow(() -> new RuntimeException("No Vulkan devices found"));
+                VKGraphicsConfig offscreenConfig = vkgpu.getPresentableGraphicsConfigs().findFirst().orElseThrow(() -> new RuntimeException("No presentable g                                                                                     raphics configs found"));
+                defaultConfig = new WinVKGraphicsConfig(offscreenConfig, this, 0);
             }
 
             // Fix for 4669614.  Most apps are not concerned with PixelFormats,

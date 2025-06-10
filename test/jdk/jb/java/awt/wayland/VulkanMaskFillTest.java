@@ -31,7 +31,6 @@ import java.util.concurrent.CountDownLatch;
 
 /*
  * @test
- * @requires os.family == "linux"
  * @summary Verifies that Vulkan mask fill works
  * @modules java.desktop/sun.java2d.vulkan:+open
  * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true VulkanMaskFillTest
@@ -96,7 +95,7 @@ public class VulkanMaskFillTest {
                     try {
                         Color c = robot.getPixelColor(x, y);
                         if (!compareColors(c, Color.RED, 0)) {
-                            System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
+                            System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + "), Expected: " + Color.RED);
                             failed = true;
                         }
 
@@ -105,7 +104,7 @@ public class VulkanMaskFillTest {
 
                         c = robot.getPixelColor(x, y);
                         if (!compareColors(c, Color.GREEN, 0)) {
-                            System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
+                            System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + "), Expected: " + Color.GREEN);
                             failed = true;
                         }
 
@@ -114,7 +113,7 @@ public class VulkanMaskFillTest {
 
                         c = robot.getPixelColor(x, y);
                         if (!compareColors(c, Color.BLUE, 0)) {
-                            System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + ")");
+                            System.out.println("Unexpected color: " + c + " at (" + x + ", " + y + "), Expected: " + Color.BLUE);
                             failed = true;
                         }
                     } catch (Throwable t) {
