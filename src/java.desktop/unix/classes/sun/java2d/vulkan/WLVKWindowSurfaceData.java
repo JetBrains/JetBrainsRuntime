@@ -25,19 +25,24 @@
 
 package sun.java2d.vulkan;
 
+import java.awt.Component;
 import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.util.Objects;
+
 import sun.awt.wl.WLComponentPeer;
 import sun.java2d.SurfaceData;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.wl.WLPixelGrabberExt;
 import sun.java2d.wl.WLSurfaceDataExt;
+import sun.java2d.wl.WLSurfaceSizeListener;
 
 public class WLVKWindowSurfaceData extends VKSurfaceData
         implements WLPixelGrabberExt, WLSurfaceDataExt {
-    private final WLComponentPeer peer;
+    private final Component target; // optional
+    private final WLSurfaceSizeListener sizeListener;
 
     private native void initOps(int format, int backgroundRGB);
 
@@ -45,11 +50,30 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
 
     public WLVKWindowSurfaceData(WLComponentPeer peer) {
         super(((VKGraphicsConfig) peer.getGraphicsConfiguration()).getFormat(), peer.getColorModel().getTransparency(), WINDOW);
-        this.peer = peer;
+        this.target = peer.getTarget();
+        this.sizeListener = peer;
+        this.gc = (WLVKGraphicsConfig) peer.getGraphicsConfiguration();
+        this.width = peer.getBufferWidth();
+        this.height = peer.getBufferHeight();
+
         final int backgroundRGB = peer.getBackground() != null
                 ? peer.getBackground().getRGB()
                 : 0;
         initOps(getFormat().getValue(getTransparency()), backgroundRGB);
+    }
+
+    public WLVKWindowSurfaceData(WLSurfaceSizeListener sizeListener, int width, int height, WLVKGraphicsConfig gc) {
+        super(gc.getFormat(), gc.getColorModel().getTransparency(), WINDOW);
+        this.target = null;
+        this.sizeListener = sizeListener;
+        this.gc = gc;
+        this.width = width;
+        this.height = height;
+
+        Objects.requireNonNull(sizeListener);
+        Objects.requireNonNull(gc);
+
+        initOps(getFormat().getValue(getTransparency()), 0);
     }
 
     public SurfaceData getReplacement() {
@@ -62,16 +86,15 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
     }
 
     public Rectangle getBounds() {
-        Rectangle r = peer.getBufferBounds();
-        r.x = r.y = 0;
-        return r;
+        return new Rectangle(width, height);
     }
 
     /**
      * Returns destination Component associated with this SurfaceData.
      */
     public Object getDestination() {
-        return peer.getTarget();
+        // NB: optional; could be null
+        return target;
     }
 
     @Override
@@ -113,10 +136,10 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
     private void bufferAttached() {
         // Called from the native code when a buffer has just been attached to this surface
         // but the surface has not been committed yet.
-        peer.updateSurfaceSize();
+        sizeListener.updateSurfaceSize();
     }
     public int getRGBPixelAt(int x, int y) {
-        Rectangle r = peer.getBufferBounds();
+        Rectangle r = getBounds();
         if (x < r.x || x >= r.x + r.width || y < r.y || y >= r.y + r.height) {
             throw new ArrayIndexOutOfBoundsException("x,y outside of buffer bounds");
         }
@@ -126,7 +149,7 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
     }
 
     public int [] getRGBPixelsAt(Rectangle bounds) {
-        Rectangle r = peer.getBufferBounds();
+        Rectangle r = getBounds();
 
         if ((long)bounds.width * (long)bounds.height > Integer.MAX_VALUE) {
             throw new IndexOutOfBoundsException("Dimensions (width=" + bounds.width +
