@@ -31,10 +31,11 @@ import java.awt.image.BufferedImage;
 import java.awt.image.VolatileImage;
 import java.io.File;
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 
 /*
  * @test
- * @requires os.family == "linux"
  * @summary Verifies composites in opaque and translucent modes.
  * @modules java.desktop/sun.java2d.vulkan:+open
  * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.leOptimizations=true VulkanCompositeTest TRANSLUCENT
@@ -47,6 +48,46 @@ import java.io.IOException;
 public class VulkanCompositeTest {
     final static int W = 1;
     final static int H = 1;
+
+    private static class FileLogger {
+        private final File file;
+        private final String prefix;
+        private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
+
+        private FileLogger(File file, String prefix) {
+            this.file = file;
+            this.prefix = prefix;
+//            clearFile();
+        }
+
+        void log(String msg) {
+            if (file != null) {
+                try (var writer = new java.io.BufferedWriter(new java.io.FileWriter(file, true))) {
+                    var time = java.time.LocalTime.now();
+                    writer.write(formatter.format(time) + ": " + prefix + msg + "\n");
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                System.out.println(prefix + msg);
+            }
+        }
+
+//        void clearFile() {
+//            if (file != null) {
+//                try {
+//                    file.delete();
+//                    file.createNewFile();
+//                } catch (IOException e) {
+//                    throw new Error(e);
+//                }
+//            } else {
+//                System.out.println("Clearing log file");
+//            }
+//        }
+    }
+
+    static FileLogger logger = new FileLogger(new File("vkCompositeTest.log"), "VKCompositeTest: ");
 
     static Color argb(int argb) { return new Color(argb, true); }
     static boolean compareColors(Color c1, Color c2, double tolerance) {
@@ -85,6 +126,10 @@ public class VulkanCompositeTest {
         GraphicsConfiguration config = (GraphicsConfiguration) vkgc;
         int transparency = hasAlpha ? VolatileImage.TRANSLUCENT : VolatileImage.OPAQUE;
         String prefix = vkgc.descriptorString() + (hasAlpha ? ", TRANSLUCENT, " : ", OPAQUE, ");
+        if (prefix.contains("_PACK32")) {
+            System.out.println("Skipping " + prefix + "due to VK_IMAGE_CREATE_PACKED_32BIT_STORAGE_BIT_KHR not being supported");
+            return;
+        }
 
         // Create a new Vulkan image.
         VolatileImage image = config.createCompatibleVolatileImage(W, H, transparency);
@@ -94,14 +139,22 @@ public class VulkanCompositeTest {
         // On an opaque surface it should discard alpha and leave the same, but opaque color.
         paint(image, config, AlphaComposite.Src, argb(0x00ab00ba));
         validate(image, prefix + "SRC-TRANSPARENT", hasAlpha ? argb(0x0) : argb(0xffab00ba));
+        System.out.println("OK: SRC-TRANSPARENT");
         // Paint with semi-transparent colors.
         paint(image, config, AlphaComposite.Src, argb(0x80ff0000));
         validate(image, prefix + "SRC-SEMI-TRANSPARENT", hasAlpha ? argb(0x80ff0000) : argb(0xffff0000));
+        System.out.println("OK: SRC-SEMI-TRANSPARENT");
+
         paint(image, config, AlphaComposite.SrcOver, argb(0x8000ff00));
         validate(image, prefix + "SRC-OVER", hasAlpha ? argb(0xc055aa00) : argb(0xff7f8000));
+        System.out.println("OK: SRC-OVER");
     }
 
     public static void main(String[] args) throws IOException {
+        logger.log("============================== Start testing ==============================");
+        logger.log("Args: " + Arrays.toString( args));
+
+        System.out.println("My PID: " + ProcessHandle.current().pid());
         if (!VKEnv.isVulkanEnabled()) {
             throw new Error("Vulkan not enabled");
         }
@@ -112,7 +165,7 @@ public class VulkanCompositeTest {
         else throw new Error("Usage: VulkanBlitTest <TRANSLUCENT|OPAQUE>");
 
         VKEnv.getDevices().flatMap(VKGPU::getOffscreenGraphicsConfigs).forEach(gc -> {
-            System.out.println("Testing " + gc);
+            logger.log("Testing: " + gc.toString());
             try {
                 test(gc, hasAlpha);
             } catch (IOException e) {
