@@ -95,20 +95,20 @@ public class WLComponentPeer implements ComponentPeer {
     // Graphics devices this top-level component is visible on
     protected final java.util.List<WLGraphicsDevice> devices = new ArrayList<>();
 
-    protected Color background; // protected by stateLock
-    SurfaceData surfaceData; // accessed under AWT lock
-    final WLRepaintArea paintArea;
-    boolean paintPending = false; // protected by stateLock
-    boolean isLayouting = false; // protected by stateLock
-    boolean visible = false;
+    private Color background; // protected by stateLock
+    protected SurfaceData surfaceData; // accessed under AWT lock
+    private final WLRepaintArea paintArea;
+    private boolean paintPending = false; // protected by stateLock
+    private boolean isLayouting = false; // protected by stateLock
+    protected boolean visible = false;
 
     private boolean isFullscreen = false;  // protected by stateLock
-    boolean sizeIsBeingConfigured = false; // protected by stateLock
-    int displayScale; // protected by stateLock
-    double effectiveScale; // protected by stateLock
+    private boolean sizeIsBeingConfigured = false; // protected by stateLock
+    private int displayScale; // protected by stateLock
+    private double effectiveScale; // protected by stateLock
     private final WLSize wlSize = new WLSize();
-    boolean repositionPopup = false; // protected by stateLock
-    boolean resizePending = false; // protected by stateLock
+    private boolean repositionPopup = false; // protected by stateLock
+    private boolean resizePending = false; // protected by stateLock
 
     static {
         initIDs();
