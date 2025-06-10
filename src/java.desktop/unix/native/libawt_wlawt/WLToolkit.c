@@ -70,6 +70,7 @@ extern JavaVM *jvm;
 struct wl_display *wl_display = NULL;
 struct wl_shm *wl_shm = NULL;
 struct wl_compositor *wl_compositor = NULL;
+struct wl_subcompositor *wl_subcompositor = NULL;
 struct xdg_wm_base *xdg_wm_base = NULL;
 struct wp_viewporter *wp_viewporter = NULL;
 struct xdg_activation_v1 *xdg_activation_v1 = NULL; // optional, check for NULL before use
@@ -536,6 +537,8 @@ registry_global(void *data, struct wl_registry *wl_registry,
         wl_shm = wl_registry_bind( wl_registry, name, &wl_shm_interface, 1);
     } else if (strcmp(interface, wl_compositor_interface.name) == 0) {
         wl_compositor = wl_registry_bind(wl_registry, name, &wl_compositor_interface, 4);
+    } else if (strcmp(interface, wl_subcompositor_interface.name) == 0) {
+        wl_subcompositor = wl_registry_bind(wl_registry, name, &wl_subcompositor_interface, 1);
     } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
         // Need version 3, but can work with version 1.
         // The version will be checked at the point of use.
@@ -771,7 +774,7 @@ getCursorTheme(int scale) {
     if (!cursor_themes[scale]) {
         J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Failed to load cursor theme\n");
     }
-    
+
     return cursor_themes[scale];
 }
 
