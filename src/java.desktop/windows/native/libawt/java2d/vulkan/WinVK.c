@@ -11,7 +11,6 @@ ENTRY(__VA_ARGS__, vkGetPhysicalDeviceWin32PresentationSupportKHR); \
 ENTRY(__VA_ARGS__, vkCreateWin32SurfaceKHR); \
 
 PLATFORM_FUNCTION_TABLE(DECL_PFN)
-static HWND hwnd;
 
 static VkBool32 WinVK_InitFunctions(VKEnv* vk, PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
     VkBool32 missingAPI = JNI_FALSE;
@@ -40,7 +39,7 @@ static VKPlatformData platformData = {
  */
 JNIEXPORT jlong JNICALL
 Java_sun_java2d_vulkan_VKEnv_initPlatform(JNIEnv* env, jclass vkenv, jlong windowHandle) {
-    hwnd = (HWND)windowHandle;
+    // hwnd = (HWND)windowHandle;
     return ptr_to_jlong(&platformData);
 }
 
@@ -71,5 +70,17 @@ static void WinVK_OnSurfaceResize(VKWinSDOps* surface, VkExtent2D extent) {
  */
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WinVKWindowSurfaceData_initOps(
         JNIEnv *env, jobject vksd, jint format, jint backgroundRGB) {
-VKSD_CreateSurface(env, vksd, VKSD_WINDOW, format, backgroundRGB, WinVK_OnSurfaceResize);
+    VKSD_CreateSurface(env, vksd, VKSD_WINDOW, format, backgroundRGB, WinVK_OnSurfaceResize);
+    jclass vksdClass = (*env)->GetObjectClass(env, vksd);
+    jfieldID peerFieldID = (*env)->GetFieldID(env, vksdClass, "peer", "Lsun/awt/windows/WComponentPeer;");
+
+    jobject peer = (*env)->GetObjectField(env, vksd, peerFieldID);
+
+    // Retrieve hwnd by calling getHWnd() on the peer object
+    jclass peerClass = (*env)->GetObjectClass(env, peer);
+    jmethodID getHWndMethodId = (*env)->GetMethodID(env, peerClass, "getHWnd", "()J");
+
+    HWND hwnd = (*env)->CallLongMethod(env, peer, getHWndMethodId);
+
+    VKSD_InitWindowSurface(env, vksd, WinVK_InitSurfaceData, hwnd);
 }

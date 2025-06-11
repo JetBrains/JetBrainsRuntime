@@ -65,4 +65,12 @@ public class WinVKWindowSurfaceData extends VKSurfaceData {
     }
 
     private native void initOps(int format, int backgroundRGB);
+
+    public void revalidate(GraphicsConfiguration gc, int width, int height, int scale) {
+        this.width = width;
+        this.height = height;
+        this.scale = scale;
+        revalidate((VKGraphicsConfig) gc);
+        configure();
+    }
 }
