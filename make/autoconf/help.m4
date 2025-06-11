@@ -119,6 +119,8 @@ apt_help() {
       PKGHANDLER_COMMAND="sudo apt-get install systemtap-sdt-dev" ;;
     capstone)
       PKGHANDLER_COMMAND="sudo apt-get install libcapstone-dev" ;;
+    atk)
+      PKGHANDLER_COMMAND="sudo apt-get install libatspi2.0-dev libatk1.0-dev libglib2.0-dev" ;;
   esac
 }
 
