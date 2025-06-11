@@ -105,6 +105,9 @@ public final class WinVKGraphicsConfig extends Win32GraphicsConfig implements VK
 
     @Override
     public SurfaceData createSurfaceData(WComponentPeer peer, int numBackBuffers) {
-        return new WinVKWindowSurfaceData(peer);
+        WinVKWindowSurfaceData winVKWindowSurfaceData = new WinVKWindowSurfaceData(peer);
+        winVKWindowSurfaceData.revalidate(this, peer.getBounds().width, peer.getBounds().height, (int) getScale());
+//        winVKWindowSurfaceData.configure();
+        return winVKWindowSurfaceData;
     }
 }

@@ -136,6 +136,7 @@ import sun.java2d.ScreenUpdateManager;
 import sun.java2d.d3d.D3DRenderQueue;
 import sun.java2d.d3d.D3DScreenUpdateManager;
 import sun.java2d.opengl.OGLRenderQueue;
+import sun.java2d.vulkan.VKEnv;
 import sun.java2d.windows.WindowsFlags;
 import sun.print.PrintJob2D;
 import sun.util.logging.PlatformLogger;
@@ -245,6 +246,9 @@ public final class WToolkit extends SunToolkit implements Runnable {
         //set system property if not yet assigned
         System.setProperty(extraButtons, ""+areExtraMouseButtonsEnabled);
         setExtraMouseButtonsEnabledNative(areExtraMouseButtonsEnabled);
+        if (WindowsFlags.isVulkanEnabled()) {
+            VKEnv.init(0);
+        }
     }
 
     private void registerShutdownHook() {

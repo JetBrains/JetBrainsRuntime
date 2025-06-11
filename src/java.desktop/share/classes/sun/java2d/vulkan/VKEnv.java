@@ -69,7 +69,7 @@ public final class VKEnv {
 
     public static synchronized void init(long nativePtr) {
         if (state > INITIALIZING) return;
-        long platformData = nativePtr == 0 ? 0 : initPlatform(nativePtr);
+        long platformData = initPlatform(nativePtr);
         int newState = DISABLED;
         if (Options.vulkan) {
             devices = initNative(platformData);
