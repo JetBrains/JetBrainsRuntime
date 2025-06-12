@@ -318,7 +318,7 @@ void Assembler::wrap_label(Label &L, prfop op, prefetch_insn insn) {
 
 bool Assembler::operand_valid_for_add_sub_immediate(int64_t imm) {
   bool shift = false;
-  uint64_t uimm = (uint64_t)uabs((jlong)imm);
+  uint64_t uimm = (uint64_t)g_uabs((jlong)imm);
   if (uimm < (1 << 12))
     return true;
   if (uimm < (1 << 24)
