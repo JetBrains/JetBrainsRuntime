@@ -27,8 +27,11 @@ package sun.java2d.vulkan;
 
 import sun.awt.windows.WComponentPeer;
 import sun.java2d.SurfaceData;
+import sun.java2d.pipe.RenderBuffer;
 
 import java.awt.*;
+
+import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 
 public class WinVKWindowSurfaceData extends VKSurfaceData {
 
@@ -72,5 +75,20 @@ public class WinVKWindowSurfaceData extends VKSurfaceData {
         this.scale = scale;
         revalidate((VKGraphicsConfig) gc);
         configure();
+    }
+
+    public void commit() {
+        VKRenderQueue rq = VKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            RenderBuffer buf = rq.getBuffer();
+            rq.ensureCapacityAndAlignment(12, 4);
+            buf.putInt(FLUSH_BUFFER);
+            buf.putLong(getNativeOps());
+
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
     }
 }
