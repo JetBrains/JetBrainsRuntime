@@ -82,12 +82,12 @@
 // Maximum value as per spec (Power ISA v2.07): 2 ^ 60 bytes, i.e. 1 EiB (exbibyte)
 static const unsigned int MAXIMUM_MAX_ADDRESS_BIT = 60;
 
-// Most modern power processors provide an address space with not more than 45 bit addressable bit,
-// that is an address space of 32 TiB in size.
-static const unsigned int DEFAULT_MAX_ADDRESS_BIT = 45;
-
-// Minimum value returned, if probing fails: 64 GiB
-static const unsigned int MINIMUM_MAX_ADDRESS_BIT = 36;
+// Default value if probing is not implemented for a certain platform
+// Max address bit is restricted by implicit assumptions in the code, for instance
+// the bit layout of XForwardingEntry or Partial array entry (see XMarkStackEntry) in mark stack
+static const size_t DEFAULT_MAX_ADDRESS_BIT = 46;
+// Minimum value returned, if probing fails
+static const size_t MINIMUM_MAX_ADDRESS_BIT = 36;
 
 // Determines the highest addressable bit of the virtual address space (depends on platform)
 // by trying to interact with memory in that address range,
