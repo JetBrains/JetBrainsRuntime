@@ -322,8 +322,8 @@ public class StreamEncoder extends Writer
     }
 
     void implClose() throws IOException {
-        flushLeftoverChar(null, true);
-        try {
+        try (ch; out) {
+            flushLeftoverChar(null, true);
             for (;;) {
                 CoderResult cr = encoder.flush(bb);
                 if (cr.isUnderflow())
@@ -338,15 +338,8 @@ public class StreamEncoder extends Writer
 
             if (bb.position() > 0)
                 writeBytes();
-            if (ch != null)
-                ch.close();
-            else {
-                try {
-                    out.flush();
-                } finally {
-                    out.close();
-                }
-            }
+            if (out != null)
+                out.flush();
         } catch (IOException x) {
             encoder.reset();
             throw x;
