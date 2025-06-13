@@ -102,7 +102,7 @@ function create_image_bundle {
 
   # jmod does not preserve file permissions (JDK-8173610)
   [ -f "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper
-  if [ ! -n "${JCEF_BUILD_LEGACY:-}" ]; then
+  if [! -n "${JCEF_BUILD_LEGACY:-}" ]; then
     [ -f "$IMAGES_DIR"/"$__root_dir"/lib/cef_server ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/cef_server
   fi
 
