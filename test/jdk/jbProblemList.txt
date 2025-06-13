@@ -671,7 +671,7 @@ java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.
 java/awt/Paint/ComponentIsNotDrawnAfterRemoveAddTest/ComponentIsNotDrawnAfterRemoveAddTest.java 8253184 windows-all
 java/awt/Paint/ListRepaint.java JBR-5060 linux-all
 java/awt/Paint/PaintNativeOnUpdate.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/PopupMenu/PopupMenuLocation.java 8238720 windows-all
+java/awt/PopupMenu/PopupMenuLocation.java 8259913,8315878 windows-all,macosx-aarch64
 java/awt/GridBagLayout/ComponentShortage.java 8355280 windows-all,linux-all
 java/awt/GridBagLayout/GridBagLayoutIpadXYTest/GridBagLayoutIpadXYTest.java 8253184 windows-all
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,8322653 windows-all,macosx-all
