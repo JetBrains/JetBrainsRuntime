@@ -3,7 +3,7 @@ java/awt/Debug/X11Trace.java JBR-5442 linux-all
 java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java JBR-6294 linux-all
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-x64
 java/awt/Focus/FocusKeepTest.java JBR-8874 windows-x64
-java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-6058 windows-all
+java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-5442,JBR-6058 linux-all,windows-all
 java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
 java/awt/Frame/FramesGC/FramesGC.java 8079069,JBR-6057 macosx-all,windows-all
@@ -15,10 +15,9 @@ java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java#id1 JBR-5442 
 java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java 8253184,JBR-5442 windows-all,linux-all
 java/awt/MouseInfo/MultiscreenPointerInfo.java JBR-5442 linux-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java 8253184,JBR-5442 windows-all,linux-all
-java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-5442 linux-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531,JBR-5442 macosx-all,linux-all
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-5442 linux-all
-java/awt/PopupMenu/PopupMenuLocation.java 8238720,JBR-5442 windows-all,linux-all
+java/awt/PopupMenu/PopupMenuLocation.java 8259913,8315878,JBR-5442,JBR-7079 windows-all,macosx-aarch64,linux-all,linux-x64
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510,JBR-5442,JBR-6092 windows-all,linux-all,macosx-aarch64
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5442 windows-all,linux-all
 java/awt/Robot/InfiniteLoopException.java JBR-8830 windows-x64
@@ -102,7 +101,6 @@ java/awt/Modal/BlockedMouseInputTest.java NOBUG linux-all
 java/awt/Modal/ModalDialogOrderingTest/ModalDialogOrderingTest.java 8066259,8253184,JBR-5510 macosx-all,windows-all,linux-all
 java/awt/Modal/MultipleDialogs/MultipleDialogs4Test.java 8198665,8253184,JBR-5510 macosx-all,windows-all,linux-all
 java/awt/Paint/PaintNativeOnUpdate.java 8253184,JBR-5510 windows-all,linux-all
-java/awt/PopupMenu/PopupMenuLocation.java JBR-7079 linux-x64
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,NOBUG windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java NOBUG linux-all
 java/awt/Window/8159168/SetShapeTest.java 8253184,JBR-5510 windows-all,linux-all
