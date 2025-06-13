@@ -1068,6 +1068,20 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     final void activate() {
         // "The serial can come from an input or focus event."
+        long serial = getSerialForActivation();
+        if (serial != 0) {
+            performLocked(() -> {
+                long surface = WLToolkit.getInputState().surfaceForKeyboardInput();
+                // The surface pointer may be out of date, which will cause a protocol error.
+                // So make sure it is valid and do that under AWT lock.
+                if (wlSurface != null && surface != 0 && WLToolkit.componentPeerFromSurface(surface) != null) {
+                    wlSurface.activateByAnotherSurface(serial, surface);
+                }
+            });
+        }
+    }
+
+    private static long getSerialForActivation() {
         long serial = WLToolkit.getInputState().keyboardEnterSerial(); // a focus event
         if (serial == 0) { // may have just left one surface and not yet entered another
             serial = WLToolkit.getInputState().keySerial(); // an input event
@@ -1078,17 +1092,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // of the last resort.
             serial = WLToolkit.getInputState().pointerButtonSerial();
         }
-        long surface = WLToolkit.getInputState().surfaceForKeyboardInput();
-        if (serial != 0) {
-            final long finalSerial = serial;
-            performLocked(() -> {
-                if (wlSurface != null) wlSurface.activateByAnotherSurface(finalSerial, surface);
-            });
-        } else {
-            if (log.isLoggable(Level.WARNING)) {
-                log.warning("activate() aborted due to missing input or focus event serial");
-            }
-        }
+        return serial;
     }
 
     private static native void initIDs();
