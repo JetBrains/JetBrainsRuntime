@@ -704,12 +704,30 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private Point getFakeLocationOnScreen() {
         // If we can't learn the real location from WLRobotPeer, we can at least
         // return a reasonable fake. This fake location places all windows in the top-left
-        // corner of their respective screen.
-        GraphicsConfiguration graphicsConfig = target.getGraphicsConfiguration();
-        if (graphicsConfig != null) {
-            return graphicsConfig.getBounds().getLocation();
+        // corner of their respective screen and popups at the offset from
+        // their parents' fake screen location.
+        if (targetIsWlPopup()) {
+            Window popup = (Window) target;
+            Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
+            Window toplevel = getToplevelFor(popupParent);
+            Point popupOffset = popup.getLocation(); // popup's offset from its parent
+            if (toplevel != null) {
+                Point parentOffset = getRelativeLocation(popupParent, toplevel);
+                Point thisLocation = toplevel.getLocationOnScreen();
+                thisLocation.translate(parentOffset.x, parentOffset.y);
+                thisLocation.translate(popupOffset.x, popupOffset.y);
+                return thisLocation;
+            } else {
+                return popupOffset;
+            }
+        } else {
+            GraphicsConfiguration graphicsConfig = target.getGraphicsConfiguration();
+            if (graphicsConfig != null) {
+                return graphicsConfig.getBounds().getLocation();
+            } else {
+                return new Point();
+            }
         }
-        return new Point();
     }
 
     /**
