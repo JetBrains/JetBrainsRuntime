@@ -63,7 +63,7 @@ jbr-api:
 	$(BASH) "$(JBR_API_DIR)/tools/build.sh" dev "$(BOOT_JDK)"
 	if [ -d "$(M2_REPO)" ]; then \
 	    $(MKDIR) -p $(M2_ARTIFACT); \
-	    $(ECHO) "$(M2_POM_CONTENT)" > $(M2_ARTIFACT)/$(ARTIFACT_NAME).pom; \
+	    $(ECHO) '$(M2_POM_CONTENT)' > $(M2_ARTIFACT)/$(ARTIFACT_NAME).pom; \
 	    $(CP) "$(JBR_API_DIR)/out/$(ARTIFACT_NAME).jar" "$(M2_ARTIFACT)"; \
 	    $(ECHO) "Installed into local Maven repository as com.jetbrains:jbr-api:SNAPSHOT"; \
 	else \
