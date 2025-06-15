@@ -3,6 +3,7 @@ java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java JBR-64 window
 java/awt/Choice/SelectItem/SelectCurrentItemTest.java JBR-8333 windows-all
 java/awt/Choice/SelectItem/SelectNewItemTest.java JBR-8387 windows-x64
 java/awt/Graphics/XORPaint.java#id0 JBR-7499 windows-x64
+java/awt/Graphics2D/TextPerf.java JBR-8541 windows-x64
 java/awt/grab/SystemMenuTest.java JBR-8944 windows-x64
 java/awt/Focus/TemporaryLostComponentDeadlock.java JBR-5734 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java nobug macosx-all,linux-all,windows-all
