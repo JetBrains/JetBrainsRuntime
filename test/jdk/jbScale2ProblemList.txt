@@ -61,6 +61,7 @@ javax/swing/InputVerifier/bug4774166.java JBR-8735 windows-all
 javax/swing/JButton/bug4323121.java JBR-8924 windows-all
 javax/swing/JButton/bug4490179.java JBR-8925 windows-all
 javax/swing/JFileChooser/JFileChooserSetLocationTest.java JBR-8098 linux-all,windows-all
+javax/swing/JInternalFrame/4202966/IntFrameCoord.java JBR-9006 window-all
 javax/swing/JMenu/bug4342646.java JBR-8727 linux-all,windows-all
 javax/swing/JPopupMenu/6580930/bug6580930.java JBR-5071 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws
 javax/swing/JTable/JTableRightOrientationTest.java JBR-8102 linux-all,windows-all
