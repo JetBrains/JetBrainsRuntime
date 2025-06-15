@@ -115,7 +115,7 @@ java/awt/dnd/RemoveDropTargetCrashTest/RemoveDropTargetCrashTest.java JBR-8960 w
 java/awt/Focus/ModalDialogInFocusEventTest.java JBR-7818 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-8542 windows-all timeout
 java/awt/Graphics2D/TextPerf.java JBR-8541 linux-all,windows-all
-java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-7077 linux-all,windows-x64
+java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-7077 linux-all,windows-all
 java/awt/MenuItem/EnableTest.java JBR-8543 windows-all timeout
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
 
