@@ -81,7 +81,7 @@ public abstract class VKSurfaceData extends SurfaceData
     }
 
     private final VKFormat format;
-    protected VKGraphicsConfig gc;
+    private VKGraphicsConfig gc;
     protected double scale;
     protected int width;
     protected int height;
