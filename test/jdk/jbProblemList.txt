@@ -1435,6 +1435,8 @@ jb/java/awt/wayland/RobotGetPixelsTest.java JBR-8029 linux-5.18.2-arch1-1
 jb/java/jcef/HandleJSQueryTest3314.sh JBR-4866 linux-all
 jb/java/jcef/HwFacadeWindowNoFrontTest.java
 
+jb/java/io/IoOverNio/FileTest.java JBR-8866 linux-5.18.2-arch1-1
+
 jb/sun/awt/macos/InputMethodTest/ChineseCapsLockTest.java JBR-7242 macosx-all
 jb/sun/awt/macos/InputMethodTest/JapaneseReconvertTest.java JBR-7172,JBR-7243 macosx-all
 jb/sun/awt/macos/KeyPressAndHoldTest.java JBR-4901 macosx-all
