@@ -26,7 +26,6 @@
 
 package sun.awt.wl;
 
-import sun.awt.SunToolkit;
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLPixelGrabberExt;
 
@@ -152,7 +151,7 @@ public class WLRobotPeer implements RobotPeer {
     }
 
     private static void checkPeerForPixelGrab(WLComponentPeer peer) {
-        if (!peer.isVisible()) {
+        if (!peer.hasSurface()) {
             throw new UnsupportedOperationException("The window has no backing buffer to read pixels from");
         }
         if (! (peer.surfaceData instanceof WLPixelGrabberExt)) {
@@ -166,14 +165,12 @@ public class WLRobotPeer implements RobotPeer {
      * Throws UnsupportedOperationException if the Wayland extension
      * that implements this wasn't loaded on the server side.
      *
+     * @param wlSurfacePtr a pointer to struct wl_surface
      * @return location of the surface in absolute coordinates
      */
-    static Point getLocationOfWLSurface(WLSurface wlSurface) {
+    static Point getLocationOfWLSurface(long wlSurfacePtr) {
         checkExtensionPresent();
 
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
-
-        final long wlSurfacePtr = wlSurface.getWlSurfacePtr();
         // The native implementation allows for just one such request at a time
         synchronized(WLRobotPeer.class) {
             return getLocationOfWLSurfaceImpl(wlSurfacePtr);
@@ -186,13 +183,12 @@ public class WLRobotPeer implements RobotPeer {
      * Does nothing if the Wayland extension that supports this functionality
      * was not loaded by the server.
      *
-     * @param wlSurface WLSurface
+     * @param wlSurfacePtr a pointer to struct wl_surface
      * @param x the absolute x-coordinate
      * @param y the absolute y-coordinate
      */
-    static void setLocationOfWLSurface(WLSurface wlSurface, int x, int y) {
+    static void setLocationOfWLSurface(long wlSurfacePtr, int x, int y) {
         if (isRobotExtensionPresent) {
-            long wlSurfacePtr = wlSurface.getWlSurfacePtr();
             setLocationOfWLSurfaceImpl(wlSurfacePtr, x, y);
         }
     }

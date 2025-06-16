@@ -96,8 +96,8 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         var comp = getComponent();
         while (comp != null) {
             var peer = AWTAccessor.getComponentAccessor().getPeer(comp);
-            if (peer instanceof WLComponentPeer wlPeer) {
-                return wlPeer.getSurface().getWlSurfacePtr();
+            if (peer instanceof WLComponentPeer) {
+                return WLComponentPeer.getWLSurfaceForComponent(comp);
             }
             comp = comp.getParent();
         }
