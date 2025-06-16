@@ -2545,7 +2545,7 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(bool do_init
       log_trace(redefine, class, load)("%s", _affected_klasses->at(i)->name()->as_C_string());
     }
   }
-  return JVMTI_ERROR_NONE;
+  return result;
 }
 
 // Pairs of class dependencies (for topological sort)
@@ -2586,6 +2586,18 @@ jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(Old2NewKlass
                            ClassFileParser::INTERNAL, // publicity level
                            old_2_new_klass_map,
                            THREAD);
+
+    if (HAS_PENDING_EXCEPTION) {
+      Symbol* ex_name = PENDING_EXCEPTION->klass()->name();
+      oop message = java_lang_Throwable::message(PENDING_EXCEPTION);
+      if (message != nullptr) {
+        char* ex_msg = java_lang_String::as_utf8_string(message);
+        log_info(redefine, class, load, exceptions)("parse_class exception: '%s %s'", ex_name->as_C_string(), ex_msg);
+      } else {
+        log_info(redefine, class, load, exceptions)("parse_class exception: '%s'", ex_name->as_C_string());
+      }
+      return JVMTI_ERROR_INTERNAL;
+    }
 
     const Klass* super_klass = parser.super_klass();
     if (super_klass != nullptr && _affected_klasses->contains((Klass*) super_klass)) {
