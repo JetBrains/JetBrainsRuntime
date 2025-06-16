@@ -24,6 +24,7 @@ java/awt/GraphicsDevice/DisplayModes/UnknownRefrshRateTest.java JBR-6336 macosx-
 java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-all
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.java JBR-8905 windows-x64
+java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-x64
 java/awt/Robot/Delay/InterruptOfDelay.java 8265986,JBR-8148 macosx-all,linux-x64
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442,JBR-5510 macosx-15.4,macosx-15.5,linux-5.18.2-arch1-1
@@ -35,6 +36,7 @@ java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5442 linux-all
 
 javax/swing/event/FocusEventCauseTest.java JBR-8811 windows-all
+javax/swing/JButton/bug4234034.java JBR-8997 windows-all
 javax/swing/JTextField/4532513/DefaultCaretRequestsFocusTest.java JBR-8330 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
 javax/swing/JTextArea/4514331/TabShiftsFocusToNextComponent.java JBR-8329 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java JBR-5442 linux-all

@@ -11,6 +11,7 @@ java/awt/Focus/TemporaryLostComponentDeadlock.java JBR-5734 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java nobug macosx-all,linux-all,windows-all
 java/awt/List/NofocusListDblClickTest/NofocusListDblClickTest.java nobug macosx-all,linux-all,windows-all
 java/awt/List/TriggerActionEventTest.java JBR-7621 windows-all
+java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-8996 windows-x64
 java/awt/Modal/BlockedMouseInputTest.java JBR-8406 windows-x64
 java/awt/Modal/BlockedMouseInputTest2.java JBR-8406 windows-x64
 java/awt/Modal/BlockedMouseInputTest3.java JBR-8406 windows-x64

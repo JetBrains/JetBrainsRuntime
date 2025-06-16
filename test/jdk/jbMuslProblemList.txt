@@ -37,6 +37,9 @@ java/awt/TextComponent/MiddleMouseClickPasteTest.java initial_runs generic-all
 java/awt/Window/FindOwner/FindOwnerTest.html JBR-7500 linux-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java initial_runs generic-all
 
+jb/java/io/IoOverNio/ErrorMessageTest.java JBR-8865 linux-all
+jb/java/io/IoOverNio/FileTest.java JBR-8866 linux-all
+
 javax/imageio/plugins/shared/ImageWriterCompressionTest.java JBR-8804 linux-all
 
 javax/swing/border/Test4129681.java JBR-7787 linux-all
