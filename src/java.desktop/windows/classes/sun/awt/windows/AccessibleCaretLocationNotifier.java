@@ -62,7 +62,7 @@ import java.lang.ref.WeakReference;
  * </ol>
  * </p>
  * <p>
- * The feature is disabled by default
+ * The feature is enabled by default
  * and can be toggled by setting the sun.awt.windows.use.native.caret.accessibility.events property.
  * </p>
  */
@@ -70,7 +70,7 @@ import java.lang.ref.WeakReference;
 class AccessibleCaretLocationNotifier implements PropertyChangeListener, CaretListener {
     private volatile static AccessibleCaretLocationNotifier caretNotifier;
     private static final boolean nativeCaretEventsEnabled =
-            Boolean.parseBoolean(System.getProperty("sun.awt.windows.use.native.caret.accessibility.events", "false"));
+            Boolean.parseBoolean(System.getProperty("sun.awt.windows.use.native.caret.accessibility.events", "true"));
 
     private WeakReference<JTextComponent> currentFocusedComponent;
     private long currentHwnd;
