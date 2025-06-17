@@ -110,7 +110,6 @@ public class TestFramework {
                     "Trace",
                     "Print",
                     "Verify",
-                    "TLAB",
                     "UseNewCode",
                     "Xmn",
                     "Xms",
