@@ -60,7 +60,8 @@ public class JISAutoDetect
         return ((cs.name().equals("US-ASCII"))
                 || (cs instanceof SJIS)
                 || (cs instanceof EUC_JP)
-                || (cs instanceof ISO2022_JP));
+                || (cs instanceof ISO2022_JP)
+                || (cs instanceof JISAutoDetect));
     }
 
     public boolean canEncode() {
