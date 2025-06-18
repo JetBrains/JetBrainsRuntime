@@ -75,6 +75,7 @@ public class WLSurface {
         surfaceData = null;
 
         nativeHideWlSurface(nativePtr);
+        nativeCommitWlSurface(nativePtr);
     }
 
     protected void assertIsValid() {
