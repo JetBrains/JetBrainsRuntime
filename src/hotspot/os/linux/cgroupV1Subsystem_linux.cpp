@@ -232,6 +232,30 @@ jlong CgroupV1Subsystem::memory_max_usage_in_bytes() {
   return (jlong)memmaxusage;
 }
 
+jlong CgroupV1Subsystem::rss_usage_in_bytes() {
+  julong rss;
+  bool is_ok = _memory->controller()->read_numerical_key_value("/memory.stat",
+                                                               "rss",
+                                                               &rss);
+  if (!is_ok) {
+    return OSCONTAINER_ERROR;
+  }
+  log_trace(os, container)("RSS usage is: " JULONG_FORMAT, rss);
+  return (jlong)rss;
+}
+
+jlong CgroupV1Subsystem::cache_usage_in_bytes() {
+  julong cache;
+  bool is_ok = _memory->controller()->read_numerical_key_value("/memory.stat",
+                                                               "cache",
+                                                               &cache);
+  if (!is_ok) {
+    return OSCONTAINER_ERROR;
+  }
+  log_trace(os, container)("Cache usage is: " JULONG_FORMAT, cache);
+  return (jlong)cache;
+}
+
 jlong CgroupV1Subsystem::kernel_memory_usage_in_bytes() {
   julong kmem_usage;
   CONTAINER_READ_NUMBER_CHECKED(_memory->controller(), "/memory.kmem.usage_in_bytes", "Kernel Memory Usage", kmem_usage);
