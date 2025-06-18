@@ -167,8 +167,8 @@ Java_sun_awt_wl_WLSurface_nativeCreateWlSurface
         wl_surface_add_listener(surface, &wl_surface_listener, data);
         return ptr_to_jlong(data);
     } else {
-        if (surface) wl_surface_destroy(surface);
         if (viewport) wp_viewport_destroy(viewport);
+        if (surface) wl_surface_destroy(surface);
     }
 
     return 0;
@@ -191,10 +191,12 @@ Java_sun_awt_wl_WLSurface_nativeDestroyWlSurface
     struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
     assert (sd);
 
-    wl_surface_destroy(sd->wlSurface);
     wp_viewport_destroy(sd->viewport);
+    wl_surface_destroy(sd->wlSurface);
     delete_all_tokens(sd->activation_token_list);
     sd->activation_token_list = NULL;
+    wlFlushToServer(env);
+
     (*env)->DeleteGlobalRef(env, sd->javaSurface);
     free(sd);
 }
@@ -313,6 +315,7 @@ Java_sun_awt_wl_WLSubSurface_nativeDestroyWlSubSurface
 {
     struct wl_subsurface* subSurface = jlong_to_ptr(subSurfacePtr);
     wl_subsurface_destroy(subSurface);
+    wlFlushToServer(env);
 }
 
 JNIEXPORT void JNICALL
