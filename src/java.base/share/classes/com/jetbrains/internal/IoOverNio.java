@@ -30,7 +30,6 @@ import sun.nio.ch.FileChannelImpl;
 import sun.security.action.GetPropertyAction;
 
 import java.io.Closeable;
-import java.lang.Boolean;
 import java.nio.file.FileSystems;
 
 /**
@@ -99,12 +98,14 @@ public class IoOverNio {
      * Without this method, the classloader still can dive into an infinite recursion.
      */
     public static ThreadLocalCloseable disableInThisThread() {
-        Integer value = ALLOW_IN_THIS_THREAD.get();
-        if (value == null) {
-            value = 0;
+        if (IS_ENABLED_IN_GENERAL) {
+            Integer value = ALLOW_IN_THIS_THREAD.get();
+            if (value == null) {
+                value = 0;
+            }
+            ++value;
+            ALLOW_IN_THIS_THREAD.set(value);
         }
-        ++value;
-        ALLOW_IN_THIS_THREAD.set(value);
         return ThreadLocalCloseable.INSTANCE;
     }
 
@@ -143,12 +144,14 @@ public class IoOverNio {
 
         @Override
         public void close() {
-            Integer value = ALLOW_IN_THIS_THREAD.get();
-            --value;
-            if (value == 0) {
-                value = null;
+            if (IS_ENABLED_IN_GENERAL) {
+                Integer value = ALLOW_IN_THIS_THREAD.get();
+                --value;
+                if (value == 0) {
+                    value = null;
+                }
+                ALLOW_IN_THIS_THREAD.set(value);
             }
-            ALLOW_IN_THIS_THREAD.set(value);
         }
     }
 
