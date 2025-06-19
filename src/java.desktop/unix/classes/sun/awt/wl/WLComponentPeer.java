@@ -944,7 +944,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     public void updateCursorImmediately() {
-        WLToolkit.updateCursorImmediatelyFor(this);
+        WLToolkit.getCursorManager().updateCursorImmediatelyFor(this);
     }
 
     Cursor cursorAt(int x, int y) {
