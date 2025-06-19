@@ -46,7 +46,6 @@ import java.awt.dnd.DragGestureListener;
 import java.awt.dnd.DragGestureRecognizer;
 import java.awt.dnd.DragSource;
 import java.awt.dnd.InvalidDnDOperationException;
-import java.awt.dnd.MouseDragGestureRecognizer;
 import java.awt.dnd.peer.DragSourceContextPeer;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
@@ -81,7 +80,6 @@ import java.awt.peer.TextAreaPeer;
 import java.awt.peer.TextFieldPeer;
 import java.awt.peer.TrayIconPeer;
 import java.awt.peer.WindowPeer;
-import java.beans.PropertyChangeListener;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
@@ -134,31 +132,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private static final int MOUSE_BUTTONS_COUNT = 7;
     private static final int AWT_MULTICLICK_DEFAULT_TIME_MS = 500;
 
-    // mapping of AWT cursor types to X cursor names
-    // multiple variants can be specified, that will be tried in order
-    // See https://freedesktop.org/wiki/Specifications/cursor-spec/
-    private static final String[][] CURSOR_NAMES = {
-            {"default", "arrow", "left_ptr", "left_arrow"}, // DEFAULT_CURSOR
-            {"crosshair", "cross"}, // CROSSHAIR_CURSOR
-            {"text", "xterm"}, // TEXT_CURSOR
-            {"wait", "watch", "progress"}, // WAIT_CURSOR
-            {"sw-resize", "bottom_left_corner"}, // SW_RESIZE_CURSOR
-            {"se-resize", "bottom_right_corner"}, // SE_RESIZE_CURSOR
-            {"nw-resize", "top_left_corner"}, // NW_RESIZE_CURSOR
-            {"ne-resize", "top_right_corner"}, // NE_RESIZE_CURSOR
-            {"n-resize", "top_side"}, // N_RESIZE_CURSOR
-            {"s-resize", "bottom_side"}, // S_RESIZE_CURSOR
-            {"w-resize", "left_side"}, // W_RESIZE_CURSOR
-            {"e-resize", "right_side"}, // E_RESIZE_CURSOR
-            {"pointer", "pointing_hand", "hand1", "hand2"}, // HAND_CURSOR
-            {"move"}, // MOVE_CURSOR
-    };
-
     private static boolean initialized = false;
     private static Thread toolkitThread;
     private final WLDataDevice dataDevice;
-
-    private static Cursor currentCursor;
 
     private static Boolean sunAwtDisableGtkFileDialogs = null;
 
@@ -325,7 +301,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         inputState = newInputState;
         if (e.hasLeaveEvent() || e.hasEnterEvent()) {
             // We've lost the control over the cursor, assume no knowledge about it
-            currentCursor = null;
+            getCursorManager().reset();
         }
         final WLComponentPeer peer = newInputState.peerForPointerEvents();
         if (peer == null) {
@@ -1086,79 +1062,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return initialized;
     }
 
-    static void performLockedGlobal(Runnable task) {
-        WLToolkit.awtLock();
-        try {
-            task.run();
-        } finally {
-            WLToolkit.awtUnlock();
-        }
+    public static WLCursorManager getCursorManager() {
+        return WLCursorManager.getInstance();
     }
 
-    static void updateCursorImmediatelyFor(WLComponentPeer peer) {
-        Cursor cursor = peer.cursorAt(inputState.getPointerX(), inputState.getPointerY());
-        GraphicsConfiguration gc = peer.getGraphicsConfiguration();
-        int scale = gc instanceof WLGraphicsConfig wlGC ? wlGC.getDisplayScale() : 1;
-        setCursorTo(cursor, scale);
-    }
-
-    static void setCursorTo(Cursor c, int scale) {
-        long serial = inputState.pointerEnterSerial();
-        if (serial == 0) {
-            if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                log.fine("setCursor aborted due to missing event serial");
-            }
-            return; // Wayland will ignore the request anyway
-        }
-
-        Cursor cursor;
-        if (c.getType() == Cursor.CUSTOM_CURSOR && !(c instanceof WLCustomCursor)) {
-            cursor = Cursor.getDefaultCursor();
-        } else {
-            cursor = c;
-        }
-
-        performLockedGlobal(() -> {
-            // Cursors may get updated very often; prevent vacuous updates from reaching the native code so
-            // as not to overwhelm the Wayland server.
-            if (cursor == currentCursor) return;
-            currentCursor = cursor;
-
-            long pData = AWTAccessor.getCursorAccessor().getPData(cursor, scale);
-            if (pData == 0) {
-                // instead of destroying and creating new cursor after changing scale could be used caching
-                long oldPData = AWTAccessor.getCursorAccessor().getPData(cursor);
-                if (oldPData != 0 && oldPData != -1) {
-                    nativeDestroyPredefinedCursor(oldPData);
-                }
-
-                pData = createNativeCursor(cursor.getType(), scale);
-                if (pData == 0) {
-                    pData = createNativeCursor(Cursor.DEFAULT_CURSOR, scale);
-                }
-                if (pData == 0) {
-                    pData = -1; // mark as unavailable
-                }
-                AWTAccessor.getCursorAccessor().setPData(cursor, scale, pData);
-            }
-            nativeSetCursor(pData, scale, serial);
-        });
-    }
-
-    private static long createNativeCursor(int type, int scale) {
-        if (type < Cursor.DEFAULT_CURSOR || type > Cursor.MOVE_CURSOR) {
-            type = Cursor.DEFAULT_CURSOR;
-        }
-        for (String name : CURSOR_NAMES[type]) {
-            long pData = nativeGetPredefinedCursor(name, scale);
-            if (pData != 0) {
-                return pData;
-            }
-        }
-        return 0;
-    }
-
-    private static native void nativeSetCursor(long pData, int scale, long pointerEnterSerial);
-    private static native long nativeGetPredefinedCursor(String name, int scale);
-    private static native long nativeDestroyPredefinedCursor(long pData);
 }
