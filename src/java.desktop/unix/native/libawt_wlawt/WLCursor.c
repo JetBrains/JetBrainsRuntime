@@ -31,6 +31,8 @@
 #include "WLToolkit.h"
 #include "WLGraphicsEnvironment.h"
 
+#include "sun_awt_wl_WLCursorManager.h"
+
 struct WLCursor {
     struct wl_buffer *buffer;
     bool managed;
@@ -58,7 +60,7 @@ Java_java_awt_Cursor_finalizeImpl
     }
 }
 
-JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLToolkit_nativeGetPredefinedCursor
+JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCursorManager_nativeGetPredefinedCursor
   (JNIEnv *env, jclass cls, jstring name, jint scale)
 {
     struct wl_cursor_theme *cursor_theme = getCursorTheme(scale);
@@ -91,9 +93,10 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLToolkit_nativeGetPredefinedCursor
     return ptr_to_jlong(cursor);
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLToolkit_nativeDestroyPredefinedCursor
-        (JNIEnv *env, jclass cls, struct WLCursor *cursor)
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLCursorManager_nativeDestroyPredefinedCursor
+        (JNIEnv *env, jclass cls, jlong cursorPtr)
 {
+    struct WLCursor *cursor = jlong_to_ptr(cursorPtr);
     free(cursor);
 }
 
@@ -140,7 +143,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
     return ptr_to_jlong(cursor);
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLToolkit_nativeSetCursor
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLCursorManager_nativeSetCursor
   (JNIEnv *env, jclass cls, jlong pData, jint scale, jlong pointerEnterSerial)
 {
     struct wl_buffer *buffer = NULL;
