@@ -24,6 +24,7 @@
 /*
  * @test
  * @bug 8190312
+ * @key intermittent
  * @summary test redirected URLs for -link
  * @library /tools/lib ../../lib
  * @library /test/lib
