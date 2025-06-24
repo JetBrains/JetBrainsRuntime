@@ -1007,6 +1007,7 @@ javax/swing/JComboBox/bug4890345.java JBR-5799 windows-all
 javax/swing/JComboBox/bug4924758.java JBR-5846 windows-all
 javax/swing/JComboBox/bug5029504.java JBR-5799 windows-all
 javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java JBR-5210 windows-all
+javax/swing/JComboBox/EditableComboBoxPopupPos.java JBR-8793 windows-all
 javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-8270 linux-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -1457,6 +1458,7 @@ jb/javax/swing/JPopupMenu/JPopupMenuOutOfWindowTest.java JBR-6682 windows-all,li
 
 jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984 macosx-all
+jb/java/awt/Window/ParentMovingToAnotherSpace.java JBR-8480 macosx-x64
 
 jb/java/jcef/MouseEventTest.java JBR-4908 linux-all
 

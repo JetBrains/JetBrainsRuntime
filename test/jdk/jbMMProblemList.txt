@@ -121,6 +121,10 @@ javax/swing/JComboBox/6559152/bug6559152.java JBR-7783 linux-x64
 javax/swing/JComponent/7154030/bug7154030.java JBR-5510 linux-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5510 linux-all
+javax/swing/JFileChooser/4847375/bug4847375.java JBR-8534 windows-x64
+javax/swing/JFileChooser/4966171/bug4966171.java JBR-8534 windows-x64
+javax/swing/JFileChooser/FileChooserListenerLeak.java JBR-8534 windows-x64
+javax/swing/JFileChooser/JFileChooserFontReset.java JBR-8534 windows-x64
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java  JBR-5510 linux-all
 javax/swing/JInternalFrame/bug4732229.java JBR-8897 windows-x64
@@ -145,6 +149,8 @@ javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5510,JBR-5951 linux-all,wi
 javax/swing/text/html/StyleSheet/bug4936917.java JBR-899,JBR-5510 windows-all,linux-all
 jb/java/awt/MouseInfo/GetPointerInfoTest.java nobug linux-all
 jb/java/awt/Window/WindowEventsOnPopupShowing.java JBR-7744 linux-x64
+
+sanity/client/SwingSet/src/FileChooserDemoTest.java JBR-8534 windows-x64
 
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,windows-all
 sun/java2d/GdiRendering/InsetClipping.java 7124403,JBR-5510 windows-x64,macosx-all,linux-all

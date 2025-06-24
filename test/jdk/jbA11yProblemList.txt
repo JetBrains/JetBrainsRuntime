@@ -88,6 +88,7 @@ java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java JBR-5397 macosx-al
 javax/swing/JFileChooser/4524490/bug4524490.java JBR-5397,JBR-5846 macosx-all,windows-all
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-5397,JBR-7413 macosx-all,windows-x64
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880,JBR-5397 windows-all,macosx-all
+javax/swing/JFileChooser/8013442/Test8013442.java JBR-8534 windows-x64
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949,JBR-5397 linux-all,windows-all,macosx-all
 javax/swing/JLabel/6596966/bug6596966.java 8197552,JBR-5397 windows-all,macosx-all
 javax/swing/JList/4618767/JListSelectedElementTest.java JBR-4955,JBR-5397 windows-all,macosx-all
