@@ -47,7 +47,7 @@ import java.beans.PropertyChangeListener;
 import java.util.function.Supplier;
 
 public class WLFrameDecoration implements PropertyChangeListener {
-    private static final int HEIGHT = 30;
+    public static final int HEIGHT = 30;
     private static final int BUTTON_ICON_SIZE = 4;
     private static final int BUTTON_CIRCLE_SIZE = 10;
     private static final Font FONT = new Font(Font.DIALOG, Font.BOLD, 12);
@@ -104,7 +104,7 @@ public class WLFrameDecoration implements PropertyChangeListener {
             Cursor.SE_RESIZE_CURSOR
     };
 
-    private final WLDecoratedPeer peer;
+    protected final WLDecoratedPeer peer;
     private final boolean isUndecorated;
 
     private final ButtonState closeButton;

@@ -39,7 +39,8 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
 
     public WLDecoratedPeer(Window target, boolean isUndecorated, boolean showMinimize, boolean showMaximize) {
         super(target);
-        decoration = new WLFrameDecoration(this, isUndecorated, showMinimize, showMaximize);
+        //decoration = new WLFrameDecoration(this, isUndecorated, showMinimize, showMaximize);
+        decoration = new WLGtkFrameDecoration(this, isUndecorated, showMinimize, showMaximize);
     }
 
     private static native void initIDs();
