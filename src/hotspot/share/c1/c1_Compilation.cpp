@@ -33,6 +33,7 @@
 #include "c1/c1_ValueMap.hpp"
 #include "c1/c1_ValueStack.hpp"
 #include "code/debugInfoRec.hpp"
+#include "compiler/compilationLog.hpp"
 #include "compiler/compileLog.hpp"
 #include "compiler/compilerDirectives.hpp"
 #include "memory/resourceArea.hpp"
@@ -638,6 +639,13 @@ void Compilation::notice_inlined_method(ciMethod* method) {
 
 void Compilation::bailout(const char* msg) {
   assert(msg != nullptr, "bailout message must exist");
+  // record the bailout for hserr envlog
+  if (CompilationLog::log() != nullptr) {
+    CompilerThread* thread = CompilerThread::current();
+    CompileTask* task = thread->task();
+    CompilationLog::log()->log_failure(thread, task, msg, nullptr);
+  }
+
   if (!bailed_out()) {
     // keep first bailout message
     if (PrintCompilation || PrintBailouts) tty->print_cr("compilation bailout: %s", msg);
