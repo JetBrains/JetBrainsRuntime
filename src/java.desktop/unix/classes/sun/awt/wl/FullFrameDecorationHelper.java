@@ -246,8 +246,7 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
         if (e.getID() == MouseEvent.MOUSE_PRESSED) {
             pressedLocation = point;
         } else if (e.getID() == MouseEvent.MOUSE_DRAGGED && pressedInDragStartArea(point) && isSignificantDrag(point)) {
-            peer.startDrag(WLToolkit.getInputState().pointerButtonSerial());
-
+            startDrag();
         } else if (e.getID() == MouseEvent.MOUSE_CLICKED && e.getClickCount() == 2 && pressedInDragStartArea(point)
                 && peer.isFrameStateSupported(Frame.MAXIMIZED_BOTH)) {
             toggleMaximizedState();
@@ -256,6 +255,23 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
         }
 
         return true;
+    }
+
+    private void startDrag() {
+        pressedLocation = null;
+        boolean changed = false;
+        if (closeButton != null) {
+            changed |= closeButton.reset();
+        }
+        if (maximizeButton != null) {
+            changed |= maximizeButton.reset();
+        }
+        if (minimizeButton != null) {
+            changed |= minimizeButton.reset();
+        }
+        if (changed) peer.notifyClientDecorationsChanged();
+
+        peer.startDrag(WLToolkit.getInputState().pointerButtonSerial());
     }
 
     private void toggleMaximizedState() {
@@ -292,6 +308,13 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
         private ButtonState(Supplier<Rectangle> bounds, Runnable action) {
             this.bounds = bounds;
             this.action = action;
+        }
+
+        private boolean reset() {
+            boolean changed = hovered | pressed;
+            hovered = false;
+            pressed = false;
+            return changed;
         }
 
         private boolean processMouseEvent(MouseEvent e) {
