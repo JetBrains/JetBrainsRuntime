@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -35,6 +37,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+
 import static java.lang.System.out;
 
 /**
@@ -79,6 +83,7 @@ public class SmallTimeout {
     public static void main(String[] args) throws Exception {
         HttpClient client = HttpClient.newHttpClient();
         ReferenceTracker.INSTANCE.track(client);
+        Reference<HttpClient> reference = new WeakReference<>(client);
 
         Throwable failed = null;
         try (ServerSocket ss = new ServerSocket()) {
@@ -151,10 +156,12 @@ public class SmallTimeout {
                                          .build();
 
                 final HttpRequest req = requests[i];
+
                 executor.execute(() -> {
                     Throwable cause = null;
                     try {
-                        HttpResponse<?> r = client.send(req, BodyHandlers.replacing(null));
+                        HttpClient httpClient = reference.get();
+                        HttpResponse<?> r = httpClient.send(req, BodyHandlers.replacing(null));
                         out.println("Unexpected success for r" + n +": " + r);
                     } catch (HttpTimeoutException e) {
                         out.println("Caught expected timeout for r" + n +": " + e);
@@ -173,7 +180,31 @@ public class SmallTimeout {
 
             checkReturn(requests);
 
-            executor.shutdownNow();
+            // shuts down the executor and awaits its termination
+            //executor.close();
+            // In 17, ExecutorService does not implement close().
+            // I derived this from the implementation of the method
+            // in 21.
+            {
+                boolean terminated = executor.isTerminated();
+                if (!terminated) {
+                    executor.shutdown();
+                    boolean interrupted = false;
+                    while (!terminated) {
+                        try {
+                            terminated = executor.awaitTermination(1L, TimeUnit.DAYS);
+                        } catch (InterruptedException e) {
+                            if (!interrupted) {
+                                executor.shutdownNow();
+                                interrupted = true;
+                            }
+                        }
+                    }
+                    if (interrupted) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
 
             if (error)
                 throw new RuntimeException("Failed. Check output");
@@ -182,8 +213,11 @@ public class SmallTimeout {
             failed = t;
             throw t;
         } finally {
+            Reference.reachabilityFence(client);
+            client = null;
+            System.gc();
             try {
-                Thread.sleep(100);
+                Thread.sleep(10);
             } catch (InterruptedException t) {
                 // ignore;
             }
