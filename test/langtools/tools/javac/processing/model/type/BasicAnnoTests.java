@@ -33,7 +33,7 @@
  *          jdk.compiler/com.sun.tools.javac.util
  * @build JavacTestingAbstractProcessor DPrinter BasicAnnoTests
  * @compile/process -XDaccessInternalAPI -processor BasicAnnoTests -proc:only BasicAnnoTests.java
- * @compile/process -XDaccessInternalAPI -processor BasicAnnoTests -proc:only BasicAnnoTests
+ * @compile/process -XDaccessInternalAPI -XDaddTypeAnnotationsToSymbol=true -processor BasicAnnoTests -proc:only BasicAnnoTests
  */
 
 import java.io.PrintWriter;
