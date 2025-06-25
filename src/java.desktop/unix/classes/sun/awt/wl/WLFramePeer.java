@@ -75,7 +75,7 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
 
     @Override
     public boolean isInteractivelyResizable() {
-        return getFrame().isResizable() && !isMaximized();
+        return getFrame().isResizable() && !isMaximized() && !isFullscreen();
     }
 
     @Override
