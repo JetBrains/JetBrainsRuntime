@@ -80,7 +80,7 @@ public class CompletionErrorOnEnclosingType {
                 new JavacTask(tb)
                         .outdir(out)
                         .classpath(out)
-                        .options("-XDrawDiagnostics")
+                        .options("-XDrawDiagnostics", "-XDaddTypeAnnotationsToSymbol=true")
                         .files(src.resolve("C.java"))
                         .run(Expect.FAIL)
                         .writeAll()
