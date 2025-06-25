@@ -54,6 +54,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBJDWP, \
     NAME := jdwp, \
     OPTIMIZATION := LOW, \
     CFLAGS := $(CFLAGS_JDKLIB) -DJDWP_LOGGING, \
+    DISABLED_WARNINGS_microsoft_debugInit.c := 5287, \
     EXTRA_HEADER_DIRS := \
       include \
       libjdwp/export, \
