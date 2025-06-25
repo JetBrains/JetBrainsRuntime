@@ -640,11 +640,24 @@ class IoOverNioFileSystem extends FileSystem {
                 // Also, notice that Windows FS does not support Posix attributes, which is expected.
                 // Checking for Posix attributes first prevents from checking DOS attributes on Linux,
                 // even though Posix permissions aren't used in this method.
-                BasicFileAttributes attrs;
-                try {
-                    attrs = Files.readAttributes(path, PosixFileAttributes.class);
-                } catch (UnsupportedOperationException _) {
-                    attrs = Files.readAttributes(path, DosFileAttributes.class);
+                BasicFileAttributes attrs = null;
+                Set<String> supportedFileAttributeViews = path.getFileSystem().supportedFileAttributeViews();
+                if (supportedFileAttributeViews.contains("posix")) {
+                    try {
+                        attrs = Files.readAttributes(path, PosixFileAttributes.class);
+                    } catch (UnsupportedOperationException ignored) {
+                        // Nothing.
+                    }
+                }
+                if (attrs == null && supportedFileAttributeViews.contains("dos")) {
+                    try {
+                        attrs = Files.readAttributes(path, DosFileAttributes.class);
+                    } catch (UnsupportedOperationException ignored) {
+                        // Nothing.
+                    }
+                }
+                if (attrs == null) {
+                    attrs = Files.readAttributes(path, BasicFileAttributes.class);
                 }
 
                 return BA_EXISTS
