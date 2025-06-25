@@ -131,6 +131,8 @@ public class ClassReader {
      */
     public boolean saveParameterNames;
 
+    private final boolean addTypeAnnotationsToSymbol;
+
     /**
      * The currently selected profile.
      */
@@ -296,6 +298,8 @@ public class ClassReader {
         typevars = WriteableScope.create(syms.noSymbol);
 
         lintClassfile = Lint.instance(context).isEnabled(LintCategory.CLASSFILE);
+
+        addTypeAnnotationsToSymbol = options.getBoolean("addTypeAnnotationsToSymbol", false);
 
         initAttributeReaders();
     }
@@ -2258,7 +2262,9 @@ public class ClassReader {
                 currentClassFile = classFile;
                 List<Attribute.TypeCompound> newList = deproxyTypeCompoundList(proxies);
                 sym.setTypeAttributes(newList.prependList(sym.getRawTypeAttributes()));
-                addTypeAnnotationsToSymbol(sym, newList);
+                if (addTypeAnnotationsToSymbol) {
+                    addTypeAnnotationsToSymbol(sym, newList);
+                }
             } finally {
                 currentClassFile = previousClassFile;
             }
