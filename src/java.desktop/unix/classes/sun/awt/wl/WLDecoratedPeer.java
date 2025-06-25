@@ -35,11 +35,11 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 
 public abstract class WLDecoratedPeer extends WLWindowPeer {
-    private final WLFrameDecoration decoration;
+    private final WLAbstractFrameDecoration decoration;
 
     public WLDecoratedPeer(Window target, boolean isUndecorated, boolean showMinimize, boolean showMaximize) {
         super(target);
-        decoration = new WLFrameDecoration(this, isUndecorated, showMinimize, showMaximize);
+        decoration = isUndecorated ? new WLEmptyFrameDecoration(this) : new WLDefaultFrameDecoration(this, showMinimize, showMaximize);
     }
 
     private static native void initIDs();
