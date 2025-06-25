@@ -33,13 +33,20 @@ import java.awt.Rectangle;
 import java.awt.Window;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
+import java.util.Objects;
 
 public abstract class WLDecoratedPeer extends WLWindowPeer {
-    private final WLFrameDecoration decoration;
+    private FrameDecoration decoration; // protected by stateLock
+    private final boolean isUndecorated;
+    private final boolean showMaximize;
+    private final boolean showMinimize;
 
     public WLDecoratedPeer(Window target, boolean isUndecorated, boolean showMinimize, boolean showMaximize) {
         super(target);
-        decoration = new WLFrameDecoration(this, isUndecorated, showMinimize, showMaximize);
+        this.isUndecorated = isUndecorated;
+        this.showMinimize = showMinimize;
+        this.showMaximize = showMaximize;
+        decoration = isUndecorated ? new MinimalFrameDecoration(this) : new DefaultFrameDecoration(this, showMinimize, showMaximize);
     }
 
     private static native void initIDs();
@@ -60,7 +67,27 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
 
     @Override
     public Insets getInsets() {
-        return decoration.getInsets();
+        return getDecoration().getContentInsets();
+    }
+
+    public final void setDecoration(FrameDecoration newDecoration) {
+        Objects.requireNonNull(newDecoration);
+        synchronized (getStateLock()) {
+            if (decoration != newDecoration) {
+                decoration.dispose();
+                decoration = newDecoration;
+            }
+        }
+        // Since the client area of the window may have changed, need to re-validate the target
+        // to let it re-layout its children.
+        target.invalidate();
+        target.validate();
+    }
+
+    protected final FrameDecoration getDecoration() {
+        synchronized (getStateLock()) {
+            return decoration;
+        }
     }
 
     @Override
@@ -83,7 +110,7 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     @Override
     public Dimension getMinimumSize() {
         final Dimension parentMinimumSize = super.getMinimumSize();
-        final Dimension decorMinimumSize = decoration.getMinimumSize();
+        final Dimension decorMinimumSize = getDecoration().getMinimumSize();
         final Dimension frameMinimumSize
                 = (decorMinimumSize.getWidth() == 0 && decorMinimumSize.getHeight() == 0)
                 ? new Dimension(1, 1)
@@ -107,7 +134,7 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
 
     @Override
     void postMouseEvent(MouseEvent e) {
-        boolean processed = decoration.processMouseEvent(e);
+        boolean processed = getDecoration().processMouseEvent(e);
         if (!processed) {
             super.postMouseEvent(e);
         }
@@ -116,9 +143,21 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     @Override
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
                           boolean active, boolean maximized, boolean fullscreen) {
+        boolean wasFullscreen = isFullscreen();
+
         super.notifyConfigured(newSurfaceX, newSurfaceY, newSurfaceWidth, newSurfaceHeight,
                 active, maximized, fullscreen);
-        decoration.setActive(active);
+
+        if (wasFullscreen != fullscreen) {
+            if (fullscreen) {
+                setDecoration(new MinimalFrameDecoration(this));
+            } else {
+                if (!isUndecorated) {
+                    setDecoration(new DefaultFrameDecoration(this, showMinimize, showMaximize));
+                }
+            }
+        }
+        getDecoration().notifyConfigured(active, maximized, fullscreen);
     }
 
     @Override
@@ -128,9 +167,10 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     }
 
     final void notifyClientDecorationsChanged() {
-        final Rectangle bounds = decoration.getBounds();
+        FrameDecoration d = getDecoration();
+        Rectangle bounds = d.getTitleBarBounds();
         if (!bounds.isEmpty()) {
-            decoration.markRepaintNeeded();
+            d.markRepaintNeeded(true);
             postPaintEvent(bounds.x, bounds.y, bounds.width, bounds.height);
         }
     }
@@ -143,15 +183,16 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
         }
     }
 
-    final void paintClientDecorations(final Graphics g) {
-        if (decoration.isRepaintNeeded()) {
-            decoration.paint(g);
+    final void paintClientDecorations(Graphics g) {
+        FrameDecoration d = getDecoration();
+        if (d.isRepaintNeeded()) {
+            d.paint(g);
         }
     }
 
     @Override
     Cursor cursorAt(int x, int y) {
-        Cursor cursor = decoration.getCursor(x, y);
+        Cursor cursor = getDecoration().cursorAt(x, y);
         if (cursor != null) {
             return cursor;
         } else {
@@ -161,7 +202,7 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
 
     @Override
     public void dispose() {
-        decoration.dispose();
+        getDecoration().dispose();
         super.dispose();
     }
 }
