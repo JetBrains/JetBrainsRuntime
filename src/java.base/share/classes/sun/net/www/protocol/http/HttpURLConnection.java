@@ -420,6 +420,10 @@ public class HttpURLConnection extends java.net.HttpURLConnection {
        calls getInputStream after disconnect */
     private Exception rememberedException = null;
 
+    /* Remembered Exception, we will throw it again if somebody
+       calls getOutputStream after disconnect  or error */
+    private Exception rememberedExceptionOut = null;
+
     /* If we decide we want to reuse a client, we put it here */
     private HttpClient reuseClient = null;
 
@@ -1449,6 +1453,14 @@ public class HttpURLConnection extends java.net.HttpURLConnection {
                                + " if doOutput=false - call setDoOutput(true)");
             }
 
+            if (rememberedExceptionOut != null) {
+                if (rememberedExceptionOut instanceof RuntimeException) {
+                    throw new RuntimeException(rememberedExceptionOut);
+                } else {
+                    throw getChainedException((IOException) rememberedExceptionOut);
+                }
+            }
+
             if (method.equals("GET")) {
                 method = "POST"; // Backward compatibility
             }
@@ -1511,9 +1523,11 @@ public class HttpURLConnection extends java.net.HttpURLConnection {
             int i = responseCode;
             disconnectInternal();
             responseCode = i;
+            rememberedExceptionOut = e;
             throw e;
         } catch (IOException e) {
             disconnectInternal();
+            rememberedExceptionOut = e;
             throw e;
         }
     }
