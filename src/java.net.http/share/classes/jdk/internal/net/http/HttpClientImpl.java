@@ -355,6 +355,7 @@ final class HttpClientImpl extends HttpClient implements Trackable {
     // nature of the API, we also need to wait until all pending operations
     // have completed.
     private final WeakReference<HttpClientFacade> facadeRef;
+    private final WeakReference<HttpClientImpl> implRef;
 
     private final ConcurrentSkipListSet<PlainHttpConnection> openedConnections
             = new ConcurrentSkipListSet<>(HttpConnection.COMPARE_BY_ID);
@@ -398,6 +399,7 @@ final class HttpClientImpl extends HttpClient implements Trackable {
     private final AtomicLong pendingTCPConnectionCount = new AtomicLong();
     private final AtomicLong pendingSubscribersCount = new AtomicLong();
     private final AtomicBoolean isAlive = new AtomicBoolean();
+    private final AtomicBoolean isStarted = new AtomicBoolean();
 
     /** A Set of, deadline first, ordered timeout events. */
     private final TreeSet<TimeoutEvent> timeouts;
@@ -455,6 +457,7 @@ final class HttpClientImpl extends HttpClient implements Trackable {
         delegatingExecutor = new DelegatingExecutor(this::isSelectorThread, ex,
                 this::onSubmitFailure);
         facadeRef = new WeakReference<>(facadeFactory.createFacade(this));
+        implRef = new WeakReference<>(this);
         client2 = new Http2ClientImpl(this);
         cookieHandler = builder.cookieHandler;
         connectTimeout = builder.connectTimeout;
@@ -504,7 +507,12 @@ final class HttpClientImpl extends HttpClient implements Trackable {
     }
 
     private void start() {
-        selmgr.start();
+        try {
+            selmgr.start();
+        } catch (Throwable t) {
+            isStarted.set(true);
+            throw t;
+        }
     }
 
     // Called from the SelectorManager thread, just before exiting.
@@ -699,7 +707,9 @@ final class HttpClientImpl extends HttpClient implements Trackable {
         final AtomicLong connnectionsCount;
         final AtomicLong subscribersCount;
         final Reference<?> reference;
+        final Reference<?> implRef;
         final AtomicBoolean isAlive;
+        final AtomicBoolean isStarted;
         final String name;
         HttpClientTracker(AtomicLong request,
                           AtomicLong http,
@@ -709,7 +719,9 @@ final class HttpClientImpl extends HttpClient implements Trackable {
                           AtomicLong conns,
                           AtomicLong subscribers,
                           Reference<?> ref,
+                          Reference<?> implRef,
                           AtomicBoolean isAlive,
+                          AtomicBoolean isStarted,
                           String name) {
             this.requestCount = request;
             this.httpCount = http;
@@ -719,7 +731,9 @@ final class HttpClientImpl extends HttpClient implements Trackable {
             this.connnectionsCount = conns;
             this.subscribersCount = subscribers;
             this.reference = ref;
+            this.implRef = implRef;
             this.isAlive = isAlive;
+            this.isStarted = isStarted;
             this.name = name;
         }
         @Override
@@ -750,8 +764,12 @@ final class HttpClientImpl extends HttpClient implements Trackable {
         public boolean isFacadeReferenced() {
             return !reference.refersTo(null);
         }
+        public boolean isImplementationReferenced() {
+            return !implRef.refersTo(null);
+        }
+        // The selector is considered alive if it's not yet started
         @Override
-        public boolean isSelectorAlive() { return isAlive.get(); }
+        public boolean isSelectorAlive() { return isAlive.get() || !isStarted.get(); }
         @Override
         public String getName() {
             return name;
@@ -768,7 +786,9 @@ final class HttpClientImpl extends HttpClient implements Trackable {
                 pendingTCPConnectionCount,
                 pendingSubscribersCount,
                 facadeRef,
+                implRef,
                 isAlive,
+                isStarted,
                 dbgTag);
     }
 
@@ -1144,7 +1164,8 @@ final class HttpClientImpl extends HttpClient implements Trackable {
             List<Pair<AsyncEvent,IOException>> errorList = new ArrayList<>();
             List<AsyncEvent> readyList = new ArrayList<>();
             List<Runnable> resetList = new ArrayList<>();
-            owner.isAlive.set(true);
+            owner.isAlive.set(true);   // goes back to false when run exits
+            owner.isStarted.set(true); // never goes back to false
             try {
                 if (Log.channel()) Log.logChannel(getName() + ": starting");
                 while (!Thread.currentThread().isInterrupted() && !closed) {
