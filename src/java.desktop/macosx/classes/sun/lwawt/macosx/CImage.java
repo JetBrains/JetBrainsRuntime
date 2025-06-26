@@ -184,13 +184,18 @@ public class CImage extends CFRetainedResource {
         public byte[] getPlatformImageBytesForFormat(final Image image, final String format) {
             int width = image.getWidth(null);
             int height = image.getHeight(null);
-            BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g2d = bufferedImage.createGraphics();
-            g2d.drawImage(image, 0, 0, null);
-            g2d.dispose();
+            BufferedImage bufferedImage;
 
-            int numBytes = (width * height * bufferedImage.getColorModel().getPixelSize()) / 8;
-            ByteArrayOutputStream out = new ByteArrayOutputStream(numBytes);
+            if (image instanceof BufferedImage) {
+                bufferedImage = (BufferedImage) image;
+            } else {
+                bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g2d = bufferedImage.createGraphics();
+                g2d.drawImage(image, 0, 0, null);
+                g2d.dispose();
+            }
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
             try {
                 if (!ImageIO.write(bufferedImage, format, out)) {
                     return null;
