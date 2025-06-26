@@ -111,10 +111,11 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface);
  */
 VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface);
 
-
+/**
+ * Register a handler to be called at the cleanup phase of the renderer.
+ */
 void VKRenderer_DisposeOnCleanup(VKRenderer* renderer, VKCleanupHandler hnd, void* data);
 
-void VKRenderer_DisposePrimaryResources(VKRenderer* renderer);
 /**
  * Flush pending render pass and queue surface for presentation (if applicable).
  */
