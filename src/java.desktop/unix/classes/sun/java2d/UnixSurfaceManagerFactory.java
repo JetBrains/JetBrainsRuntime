@@ -35,6 +35,7 @@ import sun.awt.image.SurfaceManager;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.opengl.GLXGraphicsConfig;
 import sun.java2d.opengl.GLXVolatileSurfaceManager;
+import sun.java2d.vulkan.VKOffscreenGraphicsConfig;
 import sun.java2d.vulkan.WLVKGraphicsConfig;
 import sun.java2d.vulkan.VKVolatileSurfaceManager;
 import sun.java2d.wl.WLVolatileSurfaceManager;
@@ -69,6 +70,8 @@ public class UnixSurfaceManagerFactory extends SurfaceManagerFactory {
         } else if (gc instanceof X11GraphicsConfig){
             return new X11VolatileSurfaceManager(vImg, context);
         } else if (gc instanceof WLVKGraphicsConfig) {
+            return new VKVolatileSurfaceManager(vImg, context);
+        } else if (gc instanceof VKOffscreenGraphicsConfig) {
             return new VKVolatileSurfaceManager(vImg, context);
         } else {
             return new WLVolatileSurfaceManager(vImg, context);
