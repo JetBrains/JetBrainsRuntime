@@ -29,28 +29,36 @@ import java.awt.Graphics;
 import java.awt.Insets;
 import java.awt.Rectangle;
 
-public class WLEmptyFrameDecoration extends WLAbstractFrameDecoration {
+/**
+ * The frame decorations that add nothing to the frame itself, but make it interactively resized, if/when allowed.
+ */
+public class MinimalFrameDecoration extends FrameDecoration {
 
-    public WLEmptyFrameDecoration(WLDecoratedPeer peer) {
+    public MinimalFrameDecoration(WLDecoratedPeer peer) {
         super(peer);
     }
 
-    public Insets getInsets() {
+    @Override
+    public Insets getContentInsets() {
         return new Insets(0, 0, 0, 0);
     }
 
-    public Rectangle getBounds() {
+    @Override
+    public Rectangle getTitleBarBounds() {
         return new Rectangle(0, 0, 0, 0);
     }
 
+    @Override
     public Dimension getMinimumSize() {
         return new Dimension(0, 0);
     }
 
-    public void paint(final Graphics g) {
+    @Override
+    public void paint(Graphics g) {
         // Nothing to paint
     }
 
+    @Override
     public void dispose() {
         // Nothing to dispose
     }

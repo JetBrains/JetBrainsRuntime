@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 JetBrains s.r.o.
+ * Copyright 2022, 2025, JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,14 +26,15 @@ package sun.awt.wl;
 
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
 
-public abstract class WLAbstractFrameDecoration {
-    private static final int RESIZE_EDGE_THICKNESS = 5;
+public abstract class FrameDecoration {
+    private static final int DEFAULT_RESIZE_EDGE_THICKNESS = 5;
 
     private static final int XDG_TOPLEVEL_RESIZE_EDGE_TOP = 1;
     private static final int XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM = 2;
@@ -54,38 +55,87 @@ public abstract class WLAbstractFrameDecoration {
             Cursor.SE_RESIZE_CURSOR
     };
 
-    // TODO: no 'protected', please
     protected final WLDecoratedPeer peer;
-    protected boolean active; // TODO: synchronization
-    protected volatile boolean needRepaint = true;
 
-    public WLAbstractFrameDecoration(WLDecoratedPeer peer) {
+    private final Object dataLock = new Object();
+
+    private boolean active;
+    private boolean maximized;
+    private boolean fullscreen;
+    private boolean needRepaint = true;
+
+    public FrameDecoration(WLDecoratedPeer peer) {
         this.peer = peer;
+        active = false; // until the next configuration
+        maximized = peer.getState() == Frame.MAXIMIZED_BOTH;
+        fullscreen = peer.isFullscreen();
     }
 
-    public abstract Insets getInsets();
-    public abstract Rectangle getBounds();
+    /**
+     * Returns the insets of the frame's content, i.e. the are of the window minus the decorations.
+     */
+    public abstract Insets getContentInsets();
+
+    public abstract Rectangle getTitleBarBounds();
+
     public abstract Dimension getMinimumSize();
 
     public abstract void paint(Graphics g);
 
-    public void setActive(boolean active) {
-        if (active != this.active) {
-            this.active = active;
+    public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
+        boolean decorationsChanged = false;
+        synchronized (dataLock) {
+            if (active != this.active) {
+                this.active = active;
+                decorationsChanged = true;
+            }
+            if (maximized != this.maximized) {
+                this.maximized = maximized;
+                decorationsChanged = true;
+            }
+            if (fullscreen != this.fullscreen) {
+                this.fullscreen = fullscreen;
+                decorationsChanged = true;
+            }
+        }
+
+        if (decorationsChanged) {
             peer.notifyClientDecorationsChanged();
         }
     }
 
-    public final boolean isRepaintNeeded() {
-        return needRepaint;
+    public final boolean isActive() {
+        synchronized (dataLock) {
+            return active;
+        }
     }
 
-    public final void markRepaintNeeded() {
-        needRepaint = true;
+    public final boolean isMaximized() {
+        synchronized (dataLock) {
+            return maximized;
+        }
+    }
+
+    public final boolean isFullscreen() {
+        synchronized (dataLock) {
+            return fullscreen;
+        }
+    }
+
+    public final boolean isRepaintNeeded() {
+        synchronized (dataLock) {
+            return needRepaint;
+        }
+    }
+
+    public final void markRepaintNeeded(boolean value) {
+        synchronized (dataLock) {
+            needRepaint = value;
+        }
     }
 
     boolean processMouseEvent(MouseEvent e) {
-        if (!peer.isResizable()) return false;
+        if (!peer.isInteractivelyResizable()) return false;
 
         boolean isLMB = e.getButton() == MouseEvent.BUTTON1;
         boolean isPressed = e.getID() == MouseEvent.MOUSE_PRESSED;
@@ -108,20 +158,26 @@ public abstract class WLAbstractFrameDecoration {
     private int getResizeEdges(int x, int y) {
         if (!peer.isInteractivelyResizable()) return 0;
         int edges = 0;
-        if (x < RESIZE_EDGE_THICKNESS) {
+        if (x < getResizeEdgeThickness()) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
-        } else if (x > peer.getWidth() - RESIZE_EDGE_THICKNESS) {
+        } else if (x > peer.getWidth() - getResizeEdgeThickness()) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
         }
-        if (y < RESIZE_EDGE_THICKNESS) {
+        if (y < getResizeEdgeThickness()) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_TOP;
-        } else if (y > peer.getHeight() - RESIZE_EDGE_THICKNESS) {
+        } else if (y > peer.getHeight() - getResizeEdgeThickness()) {
             edges |= XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
         }
         return edges;
     }
 
-    public Cursor getCursor(int x, int y) {
+    public int getResizeEdgeThickness() {
+        return DEFAULT_RESIZE_EDGE_THICKNESS;
+    }
+
+    public Cursor cursorAt(int x, int y) {
+        if (!peer.isInteractivelyResizable()) return null;
+
         int edges = getResizeEdges(x, y);
         if (edges != 0) {
             return Cursor.getPredefinedCursor(RESIZE_CURSOR_TYPES[edges]);

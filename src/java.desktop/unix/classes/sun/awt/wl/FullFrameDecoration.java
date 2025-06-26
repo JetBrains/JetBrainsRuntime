@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 JetBrains s.r.o.
+ * Copyright 2022, 2025, JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ import java.beans.PropertyChangeListener;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public abstract class WLFrameDecoration extends WLAbstractFrameDecoration {
+public abstract class FullFrameDecoration extends FrameDecoration {
     private volatile boolean isDarkTheme;
 
     private PropertyChangeListener pcl;
@@ -51,12 +51,12 @@ public abstract class WLFrameDecoration extends WLAbstractFrameDecoration {
     private boolean pressedInside;
     private Point pressedLocation;
 
-    public WLFrameDecoration(WLDecoratedPeer peer, boolean showMinimize, boolean showMaximize) {
+    public FullFrameDecoration(WLDecoratedPeer peer, boolean showMinimize, boolean showMaximize) {
         super(peer);
 
-        closeButton = new ButtonState(this::getCloseButtonCenter, peer::postWindowClosing);
-        maximizeButton = showMaximize ? new ButtonState(this::getMaximizeButtonCenter, this::toggleMaximizedState) : null;
-        minimizeButton = showMinimize ? new ButtonState(this::getMinimizeButtonCenter, this::minimizeWindow) : null;
+        closeButton = new ButtonState(this::getCloseButtonBounds, peer::postWindowClosing);
+        maximizeButton = showMaximize ? new ButtonState(this::getMaximizeButtonBounds, this::toggleMaximizedState) : null;
+        minimizeButton = showMinimize ? new ButtonState(this::getMinimizeButtonBounds, this::minimizeWindow) : null;
         pcl = new PropertyChangeListener() {
             @Override
             public void propertyChange(PropertyChangeEvent evt) {
@@ -75,12 +75,6 @@ public abstract class WLFrameDecoration extends WLAbstractFrameDecoration {
 
     public abstract void notifyThemeChanged();
 
-    public abstract Insets getInsets();
-
-    public abstract Rectangle getBounds();
-
-    public abstract Dimension getMinimumSize();
-
     protected final boolean hasMinimizeButton() {
         return minimizeButton != null;
     }
@@ -89,18 +83,20 @@ public abstract class WLFrameDecoration extends WLAbstractFrameDecoration {
         return maximizeButton != null && peer.isResizable();
     }
 
-    // TODO: make those return Rectangle
-    protected abstract Point getCloseButtonCenter();
+    protected abstract Rectangle getCloseButtonBounds();
 
-    protected abstract Point getMaximizeButtonCenter();
+    protected abstract Rectangle getMaximizeButtonBounds();
 
-    protected abstract Point getMinimizeButtonCenter();
+    protected abstract Rectangle getMinimizeButtonBounds();
 
     public final boolean isDarkTheme() {
         return isDarkTheme;
     }
 
+    @Override
     public void paint(Graphics g) {
+        assert isRepaintNeeded();
+
         int width = peer.getWidth();
         int height = peer.getHeight();
         if (width <= 0 || height <= 0) return;
@@ -108,7 +104,8 @@ public abstract class WLFrameDecoration extends WLAbstractFrameDecoration {
         Graphics2D g2d = (Graphics2D) g;
         paintBorder(g2d);
         paintTitleBar(g2d);
-        needRepaint = false;
+
+        markRepaintNeeded(false);
     }
 
     protected abstract void paintBorder(Graphics2D g2d);
@@ -135,26 +132,26 @@ public abstract class WLFrameDecoration extends WLAbstractFrameDecoration {
     }
 
     protected abstract boolean isSignificantDragDistance(Point p1, Point p2);
+
     protected abstract boolean pressedInDragStartArea(Point p);
 
+    @Override
     boolean processMouseEvent(MouseEvent e) {
         if (super.processMouseEvent(e)) return true;
 
         final boolean isLMB = e.getButton() == MouseEvent.BUTTON1;
         final boolean isRMB = e.getButton() == MouseEvent.BUTTON3;
         final boolean isPressed = e.getID() == MouseEvent.MOUSE_PRESSED;
-        final boolean isLMBPressed = isLMB && isPressed;
         final boolean isRMBPressed = isRMB && isPressed;
 
         Point point = e.getPoint();
-
-        if (isRMBPressed && getBounds().contains(e.getX(), e.getY())) {
-            peer.showWindowMenu(WLToolkit.getInputState().pointerButtonSerial(), e.getX(), e.getY());
+        if (isRMBPressed && getTitleBarBounds().contains(point.x, point.y)) {
+            peer.showWindowMenu(WLToolkit.getInputState().pointerButtonSerial(), point.x, point.y);
             return true;
         }
 
-        Rectangle bounds = getBounds();
-        boolean pointerInside = e.getY() >= bounds.height && e.getID() != MouseEvent.MOUSE_EXITED ||
+        Rectangle bounds = getTitleBarBounds();
+        boolean pointerInside = point.y >= bounds.height && e.getID() != MouseEvent.MOUSE_EXITED ||
                 pressedInside && e.getID() == MouseEvent.MOUSE_DRAGGED;
         if (pointerInside && !this.pointerInside && e.getID() != MouseEvent.MOUSE_ENTERED) {
             WLToolkit.postEvent(convertEvent(e, MouseEvent.MOUSE_ENTERED));
@@ -197,38 +194,38 @@ public abstract class WLFrameDecoration extends WLAbstractFrameDecoration {
         peer.setState(Frame.ICONIFIED);
     }
 
-    public Cursor getCursor(int x, int y) {
-        var superCursor = super.getCursor(x, y);
+    @Override
+    public Cursor cursorAt(int x, int y) {
+        var superCursor = super.cursorAt(x, y);
         if (superCursor != null) return superCursor;
 
-        Rectangle bounds = getBounds();
+        Rectangle bounds = getTitleBarBounds();
         if (y < bounds.height) {
             return Cursor.getDefaultCursor();
         }
         return null;
     }
 
+    @Override
     public void dispose() {
         WLToolkit.getDefaultToolkit().removePropertyChangeListener("awt.os.theme.isDark", pcl);
     }
 
     protected static class ButtonState {
-        private final Supplier<Point> location;
+        private final Supplier<Rectangle> bounds;
         private final Runnable action;
         boolean hovered;
         boolean pressed;
 
-        private ButtonState(Supplier<Point> location, Runnable action) {
-            this.location = location;
+        private ButtonState(Supplier<Rectangle> bounds, Runnable action) {
+            this.bounds = bounds;
             this.action = action;
         }
 
         private boolean processMouseEvent(MouseEvent e) {
-            int BUTTON_CIRCLE_SIZE = 15; // TODO:
-            Point buttonCenter = location.get();
-            boolean ourLocation = buttonCenter != null && e.getID() != MouseEvent.MOUSE_EXITED &&
-                    Math.abs(buttonCenter.x - e.getX()) <= BUTTON_CIRCLE_SIZE &&
-                    Math.abs(buttonCenter.y - e.getY()) <= BUTTON_CIRCLE_SIZE;
+            Rectangle buttonBounds = bounds.get();
+            boolean ourLocation = buttonBounds != null && e.getID() != MouseEvent.MOUSE_EXITED &&
+                    buttonBounds.contains(e.getPoint());
             boolean oldHovered = hovered;
             boolean oldPressed = pressed;
             hovered = ourLocation;
