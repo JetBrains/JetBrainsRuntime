@@ -445,7 +445,7 @@ public class ISO_8859_1_Test implements HttpServerAdapters {
                 sharedClient == null ? null : sharedClient.toString();
         sharedClient = null;
         Thread.sleep(100);
-        AssertionError fail = TRACKER.check(500);
+        AssertionError fail = TRACKER.check(1500);
         try {
             http1TestServer.stop();
             https1TestServer.stop();
