@@ -237,7 +237,7 @@ class Http1Request {
         if (defaultPort) {
             return host;
         } else {
-            return host + ":" + Integer.toString(port);
+            return host + ":" + port;
         }
     }
 

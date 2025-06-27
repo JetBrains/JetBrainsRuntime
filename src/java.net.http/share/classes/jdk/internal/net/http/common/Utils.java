@@ -909,7 +909,7 @@ public final class Utils {
         if (defaultPort) {
             return host;
         } else {
-            return host + ":" + Integer.toString(port);
+            return host + ":" + port;
         }
     }
 

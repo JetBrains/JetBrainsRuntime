@@ -110,7 +110,7 @@ class Http1Response<T> {
     }
 
     // The ClientRefCountTracker is used to track the state
-    // of a pending operation. Altough there usually is a single
+    // of a pending operation. Although there usually is a single
     // point where the operation starts, it may terminate at
     // different places.
     private final class ClientRefCountTracker {
@@ -734,7 +734,7 @@ class Http1Response<T> {
 
         @Override
         public String toString() {
-            return super.toString() + "/parser=" + String.valueOf(parser);
+            return super.toString() + "/parser=" + parser;
         }
     }
 }

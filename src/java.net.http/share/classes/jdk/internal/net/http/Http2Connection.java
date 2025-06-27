@@ -1227,7 +1227,7 @@ class Http2Connection  {
         throws IOException
     {
         shutdown(new IOException(
-                        String.valueOf(connection.channel().getLocalAddress())
+                        connection.channel().getLocalAddress()
                         +": GOAWAY received"));
     }
 
