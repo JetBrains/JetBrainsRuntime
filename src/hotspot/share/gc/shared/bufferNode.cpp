@@ -29,10 +29,10 @@
 
 #include <new>
 
-BufferNode::AllocatorConfig::AllocatorConfig(size_t size) : _buffer_size(size) {}
+BufferNode::AllocatorConfig::AllocatorConfig(size_t size) : _buffer_capacity(size) {}
 
 void* BufferNode::AllocatorConfig::allocate() {
-  size_t byte_size = _buffer_size * sizeof(void*);
+  size_t byte_size = _buffer_capacity * sizeof(void*);
   return NEW_C_HEAP_ARRAY(char, buffer_offset() + byte_size, mtGC);
 }
 
@@ -41,8 +41,8 @@ void BufferNode::AllocatorConfig::deallocate(void* node) {
   FREE_C_HEAP_ARRAY(char, node);
 }
 
-BufferNode::Allocator::Allocator(const char* name, size_t buffer_size) :
-  _config(buffer_size),
+BufferNode::Allocator::Allocator(const char* name, size_t buffer_capacity) :
+  _config(buffer_capacity),
   _free_list(name, &_config)
 {}
 
