@@ -78,7 +78,7 @@ public:
 // We use BufferNode::AllocatorConfig to set the allocation options for the
 // FreeListAllocator.
 class BufferNode::AllocatorConfig : public FreeListConfig {
-  const size_t _buffer_size;
+  const size_t _buffer_capacity;
 public:
   explicit AllocatorConfig(size_t size);
 
@@ -88,7 +88,7 @@ public:
 
   void deallocate(void* node) override;
 
-  size_t buffer_size() const { return _buffer_size; }
+  size_t buffer_capacity() const { return _buffer_capacity; }
 };
 
 class BufferNode::Allocator {
@@ -100,10 +100,10 @@ class BufferNode::Allocator {
   NONCOPYABLE(Allocator);
 
 public:
-  Allocator(const char* name, size_t buffer_size);
+  Allocator(const char* name, size_t buffer_capacity);
   ~Allocator() = default;
 
-  size_t buffer_size() const { return _config.buffer_size(); }
+  size_t buffer_capacity() const { return _config.buffer_capacity(); }
   size_t free_count() const;
   BufferNode* allocate();
   void release(BufferNode* node);
