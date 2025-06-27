@@ -1725,7 +1725,7 @@ public class ForkJoinPool extends AbstractExecutorService {
             else if (deadline - System.currentTimeMillis() > TIMEOUT_SLOP)
                 LockSupport.parkUntil(deadline);
             else if (((int)c & SMASK) == (w.config & SMASK) &&
-                     compareAndSetCtl(c, ((UC_MASK & (c - TC_UNIT)) |
+                     compareAndSetCtl(c, ((c & RC_MASK) | ((c - TC_UNIT) & TC_MASK) |
                                           (prevCtl & SP_MASK)))) {
                 w.config |= QUIET;           // sentinel for deregisterWorker
                 return -1;                   // drop on timeout
