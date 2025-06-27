@@ -1129,6 +1129,7 @@ void TemplateTable::aastore() {
   // Get the value we will store
   __ ld(x10, at_tos());
   // Now store using the appropriate barrier
+  // Clobbers: x11, x13, x29
   do_oop_store(_masm, element_address, x10, IS_ARRAY);
   __ j(done);
 
@@ -1137,6 +1138,7 @@ void TemplateTable::aastore() {
   __ profile_null_seen(x12);
 
   // Store a NULL
+  // Clobbers: x11, x13, x29
   do_oop_store(_masm, element_address, noreg, IS_ARRAY);
 
   // Pop stack arguments
@@ -2716,6 +2718,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
     __ add(off, obj, off); // if static, obj from cache, else obj from stack.
     const Address field(off, 0);
     // Store into the field
+    // Clobbers: x11, x13, x29
     do_oop_store(_masm, field, x10, IN_HEAP);
     if (rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_aputfield, bc, x11, true, byte_no);
@@ -2950,8 +2953,8 @@ void TemplateTable::fast_storefield(TosState state)
   // Must prevent reordering of the following cp cache loads with bytecode load
   __ membar(MacroAssembler::LoadLoad);
 
-  // test for volatile with x13
-  __ lwu(x13, Address(x12, in_bytes(base +
+  // test for volatile with x15
+  __ lwu(x15, Address(x12, in_bytes(base +
                                     ConstantPoolCacheEntry::flags_offset())));
 
   // replace index with field offset from cache entry
@@ -2959,7 +2962,7 @@ void TemplateTable::fast_storefield(TosState state)
 
   {
     Label notVolatile;
-    __ test_bit(t0, x13, ConstantPoolCacheEntry::is_volatile_shift);
+    __ test_bit(t0, x15, ConstantPoolCacheEntry::is_volatile_shift);
     __ beqz(t0, notVolatile);
     __ membar(MacroAssembler::StoreStore | MacroAssembler::LoadStore);
     __ bind(notVolatile);
@@ -2975,6 +2978,7 @@ void TemplateTable::fast_storefield(TosState state)
   // access field
   switch (bytecode()) {
     case Bytecodes::_fast_aputfield:
+      // Clobbers: x11, x13, x29
       do_oop_store(_masm, field, x10, IN_HEAP);
       break;
     case Bytecodes::_fast_lputfield:
@@ -3007,7 +3011,7 @@ void TemplateTable::fast_storefield(TosState state)
 
   {
     Label notVolatile;
-    __ test_bit(t0, x13, ConstantPoolCacheEntry::is_volatile_shift);
+    __ test_bit(t0, x15, ConstantPoolCacheEntry::is_volatile_shift);
     __ beqz(t0, notVolatile);
     __ membar(MacroAssembler::StoreLoad | MacroAssembler::StoreStore);
     __ bind(notVolatile);
