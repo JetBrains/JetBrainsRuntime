@@ -28,14 +28,13 @@
 
 PtrQueue::PtrQueue(PtrQueueSet* qset) :
   _index(0),
-  _capacity_in_bytes(index_to_byte_index(qset->buffer_size())),
+  _capacity_in_bytes(index_to_byte_index(qset->buffer_capacity())),
   _buf(nullptr)
 {}
 
 PtrQueue::~PtrQueue() {
   assert(_buf == nullptr, "queue must be flushed before delete");
 }
-
 
 
 PtrQueueSet::PtrQueueSet(BufferNode::Allocator* allocator) :
@@ -46,7 +45,7 @@ PtrQueueSet::~PtrQueueSet() {}
 
 void PtrQueueSet::reset_queue(PtrQueue& queue) {
   if (queue.buffer() != nullptr) {
-    queue.set_index(buffer_size());
+    queue.set_index(buffer_capacity());
   }
 }
 
@@ -57,7 +56,7 @@ void PtrQueueSet::flush_queue(PtrQueue& queue) {
     queue.set_buffer(nullptr);
     queue.set_index(0);
     BufferNode* node = BufferNode::make_node_from_buffer(buffer, index);
-    if (index == buffer_size()) {
+    if (index == buffer_capacity()) {
       deallocate_buffer(node);
     } else {
       enqueue_completed_buffer(node);
@@ -95,7 +94,7 @@ BufferNode* PtrQueueSet::exchange_buffer_with_new(PtrQueue& queue) {
 
 void PtrQueueSet::install_new_buffer(PtrQueue& queue) {
   queue.set_buffer(allocate_buffer());
-  queue.set_index(buffer_size());
+  queue.set_index(buffer_capacity());
 }
 
 void** PtrQueueSet::allocate_buffer() {

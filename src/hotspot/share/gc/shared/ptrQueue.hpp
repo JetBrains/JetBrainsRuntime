@@ -155,11 +155,11 @@ public:
   // Return the associated BufferNode allocator.
   BufferNode::Allocator* allocator() const { return _allocator; }
 
-  // Return the buffer for a BufferNode of size buffer_size().
+  // Return the buffer for a BufferNode of size buffer_capacity().
   void** allocate_buffer();
 
   // Return an empty buffer to the free list.  The node is required
-  // to have been allocated with a size of buffer_size().
+  // to have been allocated with a size of buffer_capacity().
   void deallocate_buffer(BufferNode* node);
 
   // A completed buffer is a buffer the mutator is finished with, and
@@ -168,8 +168,8 @@ public:
   // Adds node to the completed buffer list.
   virtual void enqueue_completed_buffer(BufferNode* node) = 0;
 
-  size_t buffer_size() const {
-    return _allocator->buffer_size();
+  size_t buffer_capacity() const {
+    return _allocator->buffer_capacity();
   }
 };
 
