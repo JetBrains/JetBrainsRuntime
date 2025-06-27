@@ -26,9 +26,12 @@
 package sun.lwawt.macosx;
 
 import java.awt.*;
+import java.awt.datatransfer.DataFlavor;
 import java.awt.geom.Dimension2D;
 import java.awt.image.*;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.awt.image.MultiResolutionImage;
@@ -37,6 +40,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import sun.awt.image.MultiResolutionCachedImage;
 
 import sun.awt.image.SunWritableRaster;
+
+import javax.imageio.ImageIO;
 
 public final class CImage extends CFRetainedResource {
     private static native long nativeCreateNSImageFromArray(int[] buffer, int w, int h);
@@ -174,6 +179,32 @@ public final class CImage extends CFRetainedResource {
             }
 
             return nativeGetPlatformImageBytes(buffer, image.getWidth(null), image.getHeight(null));
+        }
+
+        public byte[] getPlatformImageBytesForFormat(final Image image, final String format) {
+            int width = image.getWidth(null);
+            int height = image.getHeight(null);
+            BufferedImage bufferedImage;
+
+            if (image instanceof BufferedImage) {
+                bufferedImage = (BufferedImage) image;
+            } else {
+                bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g2d = bufferedImage.createGraphics();
+                g2d.drawImage(image, 0, 0, null);
+                g2d.dispose();
+            }
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            try {
+                if (!ImageIO.write(bufferedImage, format, out)) {
+                    return null;
+                }
+            } catch (IOException e) {
+                return null;
+            }
+
+            return out.toByteArray();
         }
 
         /**
