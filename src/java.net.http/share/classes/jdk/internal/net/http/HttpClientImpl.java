@@ -148,7 +148,7 @@ final class HttpClientImpl extends HttpClient implements Trackable {
      * is the SelectorManager thread. If the current thread is not
      * the selector manager thread the given task is executed inline.
      */
-    final static class DelegatingExecutor implements Executor {
+    static final class DelegatingExecutor implements Executor {
         private final BooleanSupplier isInSelectorThread;
         private final Executor delegate;
         private final BiConsumer<Runnable, Throwable> errorHandler;
@@ -698,7 +698,7 @@ final class HttpClientImpl extends HttpClient implements Trackable {
     // Trackers are used in test to verify that an instance of
     // HttpClient has shutdown correctly, and that all operations
     // have terminated.
-    final static class HttpClientTracker implements Tracker {
+    static final class HttpClientTracker implements Tracker {
         final AtomicLong requestCount;
         final AtomicLong httpCount;
         final AtomicLong http2Count;
@@ -996,7 +996,7 @@ final class HttpClientImpl extends HttpClient implements Trackable {
     }
 
     // Main loop for this client's selector
-    private final static class SelectorManager extends Thread {
+    private static final class SelectorManager extends Thread {
 
         // For testing purposes we have an internal System property that
         // can control the frequency at which the selector manager will wake
@@ -1409,7 +1409,7 @@ final class HttpClientImpl extends HttpClient implements Trackable {
         private final SelectableChannel chan;
         private final Selector selector;
         private final Set<AsyncEvent> pending;
-        private final static Logger debug =
+        private static final Logger debug =
                 Utils.getDebugLogger("SelectorAttachment"::toString, Utils.DEBUG);
         private int interestOps;
 

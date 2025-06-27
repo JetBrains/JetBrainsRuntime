@@ -67,7 +67,7 @@ import static jdk.internal.net.http.common.Utils.ProxyHeaders;
 abstract class HttpConnection implements Closeable {
 
     final Logger debug = Utils.getDebugLogger(this::dbgString, Utils.DEBUG);
-    final static Logger DEBUG_LOGGER = Utils.getDebugLogger(
+    static final Logger DEBUG_LOGGER = Utils.getDebugLogger(
             () -> "HttpConnection(SocketTube(?))", Utils.DEBUG);
     public static final Comparator<HttpConnection> COMPARE_BY_ID
             = Comparator.comparing(HttpConnection::id);
