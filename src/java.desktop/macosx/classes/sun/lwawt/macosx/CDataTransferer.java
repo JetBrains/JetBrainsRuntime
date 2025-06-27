@@ -244,6 +244,13 @@ public final class CDataTransferer extends DataTransferer {
 
     @Override
     protected byte[] imageToPlatformBytes(Image image, long format) {
+        String formatString = getNativeForFormat(format);
+        byte[] result = CImage.getCreator().getPlatformImageBytesForFormat(image, formatString);
+        if (result != null) {
+            return result;
+        }
+
+        // fallback
         return CImage.getCreator().getPlatformImageBytes(image);
     }
 
