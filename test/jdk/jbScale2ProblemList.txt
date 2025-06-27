@@ -1,24 +1,51 @@
-java/awt/BasicStroke/DashOffset.java
-java/awt/BasicStroke/DashScaleMinWidth.java
-java/awt/BasicStroke/DashZeroWidth.java
 java/awt/Choice/ChoiceMouseEventOutbounds.java JBR-7980 windows-all
 java/awt/Choice/ChoiceMoveTest.java JBR-7980 windows-all
-java/awt/Component/SetComponentsBounds/SetComponentsBounds.java
+java/awt/dnd/DnDAWTLockTest.java JBR-6442 linux-all
 java/awt/dnd/DragOverDropTargetPerformanceTest.java JBR-5799 windows-all
-java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java
+java/awt/dnd/DragSourceGCrashTest.java JBR-6442 linux-all
+java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
+java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-6442 linux-all
+java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
+java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-all
 java/awt/Frame/DynamicLayout/DynamicLayout.java JBR-5799 windows-all
-java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java
-java/awt/Frame/SetIconImagesCrashTest/SetIconImagesCrashTest.java
-java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java
+
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275,JBR-5799 macosx-all,windows-all
-java/awt/Graphics/CopyScaledArea/CopyScaledAreaTest.java
-java/awt/Graphics/DrawOvalTest.java
+java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-10.0
+java/awt/Window/AlwaysOnTop/SyncAlwaysOnTopFieldTest.java JBR-6845 linux-all
+java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
+
+jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-6589 windows-all
+jb/java/awt/Focus/FileDialogClosing.java JBR-5799 windows-all
+jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-5799 windows-all
+jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
+jb/java/awt/Focus/PopupFromMenuTest.java JBR-5799 windows-all
+jb/java/awt/Focus/PopupIncomingFocusTest.java                                       JBR-2651 generic-all
+jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
+jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
+jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
+jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                          JBR-6090 windows-all
+jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
+jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
+
+#
+# the below tests are not intended to be executed in S2 configurations because
+# the tests contains tags to be launched for various scales including S2
+#
+java/awt/BasicStroke/DashOffset.java nobug generic-all
+java/awt/BasicStroke/DashScaleMinWidth.java nobug generic-all
+java/awt/BasicStroke/DashZeroWidth.java nobug generic-all
+java/awt/Component/SetComponentsBounds/SetComponentsBounds.java nobug generic-all
+java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java nobug generic-all
+java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java nobug generic-all
+java/awt/Frame/SetIconImagesCrashTest/SetIconImagesCrashTest.java nobug generic-all
+java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java nobug generic-all
+java/awt/Graphics/CopyScaledArea/CopyScaledAreaTest.java nobug generic-all
+java/awt/Graphics/DrawOvalTest.java nobug generic-all
 java/awt/Graphics/XORPaint.java#id1 nobug generic-all
 java/awt/Graphics2D/LargeWindowPaintTest.java#ZGenerational nobug generic-all
 java/awt/Graphics2D/LargeWindowPaintTest.java#ZSinglege nobug generic-all
 java/awt/Graphics2D/LargeWindowPaintTest.java#default nobug generic-all
-java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-10.0
-java/awt/Mouse/8158205/MouseHandCursorTest.java                                     nobug generic-all
+java/awt/Mouse/8158205/MouseHandCursorTest.java nobug generic-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java nobug generic-all
 java/awt/Paint/PaintNativeOnUpdate.java nobug generic-all
 java/awt/Paint/RepaintOnAWTShutdown.java nobug generic-all
@@ -30,16 +57,13 @@ java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java nobug generic-all
 java/awt/Robot/ScreenCaptureRobotTest.java#id0 nobug generic-all
 java/awt/Toolkit/ScreenInsetsDPIVariation/ScreenInsetsDPIVariation.java nobug generic-all
 java/awt/Window/8159168/SetShapeTest.java nobug generic-all
-java/awt/Window/AlwaysOnTop/SyncAlwaysOnTopFieldTest.java JBR-6845 linux-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java nobug generic-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java nobug generic-all
 java/awt/Window/MinimumSizeDPIVariation/MinimumSizeDPIVariation.java nobug generic-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java nobug generic-all
-java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
 java/awt/Window/TranslucentJAppletTest/TranslucentJAppletTest.java nobug generic-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java nobug generic-all
 java/awt/dnd/DnDTestWithHIDPI/DragTestWithHIDPI.java nobug generic-all
-java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
 java/awt/dnd/ImageTransferTest/ImageTransferTest.java nobug generic-all
 java/awt/font/Emoji/MacEmoji.java nobug generic-all
 java/awt/hidpi/ClientAreaOriginWindowsTest.java nobug generic-all
@@ -120,7 +144,6 @@ jb/java/awt/CustomTitleBar/NativeControlsVisibilityTest.java nobug generic-all
 jb/java/awt/CustomTitleBar/WindowResizeTest.java nobug generic-all
 jb/java/awt/CustomTitleBar/WindowVisibilityTest.java nobug generic-all
 jb/java/awt/CustomTitleBar/WindowsControlWidthTest.java nobug generic-all
-jb/java/awt/Window/ZOrderOnModalDialogActivation.java nobug generic-all
 jb/java/awt/dnd/DnDScalingWithHIDPI/DnDScalingWithHIDPITest.java nobug generic-all
 jb/javax/swing/CustomTitleBar/JFrameNativeControlsMacOSTest.java nobug generic-all
 jb/javax/swing/Popup/WLPopupAsParent.java nobug generic-all
@@ -132,19 +155,3 @@ jb/javax/swing/Popup/WLPopupResize.java nobug generic-all
 jb/javax/swing/Popup/WLPopupVisibility.java nobug generic-all
 sun/java2d/SunGraphics2D/DrawImageBilinear.java nobug generic-all
 sun/java2d/pipe/InterpolationQualityTest.java nobug generic-all
-
-
-java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-all
-
-jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-6589 windows-all
-jb/java/awt/Focus/FileDialogClosing.java JBR-5799 windows-all
-jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-5799 windows-all
-jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
-jb/java/awt/Focus/PopupFromMenuTest.java JBR-5799 windows-all
-jb/java/awt/Focus/PopupIncomingFocusTest.java                                       JBR-2651 generic-all
-jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
-jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
-jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
-jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                          JBR-6090 windows-all
-jb/java/awt/Window/ZOrderOnModalDialogActivation.java                               JBR-5713 windows-all
-jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
