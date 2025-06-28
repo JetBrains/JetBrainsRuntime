@@ -70,33 +70,79 @@ public class BootClassPathMismatch {
         test.testBootClassPathMismatchTwoJars();
     }
 
-    /* Archive contains boot classes only, with Hello class on -Xbootclasspath/a path.
-     *
-     * Error should be detected if:
-     * dump time: -Xbootclasspath/a:${testdir}/hello.jar
-     * run-time : -Xbootclasspath/a:${testdir}/newdir/hello.jar
-     *
-     * or
-     * dump time: -Xbootclasspath/a:${testdir}/newdir/hello.jar
-     * run-time : -Xbootclasspath/a:${testdir}/hello.jar
-     */
+    // It's OK if jars in cp & bootclasspath are moved together
     public void testBootClassPathMismatch() throws Exception {
         String appJar = JarBuilder.getOrCreateHelloJar();
         String appClasses[] = {"Hello"};
         String testDir = TestCommon.getTestDir("newdir");
         String otherJar = testDir + File.separator + "hello.jar";
+        String matchMessage = "[class,load] Hello source: shared objects file";
 
+        // Single jar, check paths match/mismatch only
+
+        // dump time: -cp ${testdir}/hello.jar -Xbootclasspath/a:${testdir}/hello.jar
+        // run-time : -cp ${testdir}/hello.jar -Xbootclasspath/a:${testdir}/newdir/hello.jar
         TestCommon.dump(appJar, appClasses, "-Xbootclasspath/a:" + appJar);
         TestCommon.run(
                 "-Xlog:cds",
                 "-cp", appJar, "-Xbootclasspath/a:" + otherJar, "Hello")
             .assertAbnormalExit(mismatchMessage);
 
+        // dump time: -cp ${testdir}/hello.jar -Xbootclasspath/a:${testdir}/hello.jar
+        // run-time : -cp ${testdir}/hello.jar -Xbootclasspath/a:${testdir}/newdir/hello.jar
+        TestCommon.dump(appJar, appClasses, "-Xbootclasspath/a:" + appJar);
+        TestCommon.run(
+                "-Xlog:cds",
+                "-cp", appJar, "-Xbootclasspath/a:" + otherJar, "Hello")
+            .assertAbnormalExit(mismatchMessage);
+
+        // dump time: -cp ${testdir}/hello.jar -Xbootclasspath/a:${testdir}/newdir/hello.jar
+        // run-time : -cp ${testdir}/hello.jar -Xbootclasspath/a:${testdir}/hello.jar
         TestCommon.dump(appJar, appClasses, "-Xbootclasspath/a:" + otherJar);
         TestCommon.run(
                 "-Xlog:cds",
                 "-cp", appJar, "-Xbootclasspath/a:" + appJar, "Hello")
             .assertAbnormalExit(mismatchMessage);
+
+        // dump time: -cp ${testdir}/hello.jar -Xbootclasspath/a:${testdir}/hello.jar
+        // run-time : -cp ${testdir}/newdir/hello.jar -Xbootclasspath/a:${testdir}/newdir/hello.jar
+        TestCommon.dump(appJar, appClasses, "-Xbootclasspath/a:" + appJar);
+        TestCommon.run(
+                "-Xlog:cds,class+path,cds+path", "-verbose:class",
+                "-cp", otherJar, "-Xbootclasspath/a:" + otherJar, "Hello")
+            .assertNormalExit(matchMessage);
+
+        // dump time: -cp ${testdir}/newdir/hello.jar -Xbootclasspath/a:${testdir}/newdir/hello.jar
+        // run-time : -cp ${testdir}/hello.jar -Xbootclasspath/a:${testdir}/hello.jar
+        TestCommon.dump(otherJar, appClasses, "-Xbootclasspath/a:" + otherJar);
+        TestCommon.run(
+                "-Xlog:cds,class+path,cds+path", "-verbose:class",
+                "-cp", appJar, "-Xbootclasspath/a:" + appJar, "Hello")
+            .assertNormalExit(matchMessage);
+
+        // Two jars, check paths match & loading from the jsa without dump-time jars
+
+        String jar2 = ClassFileInstaller.writeJar("jar2.jar", "pkg/C2");
+        String jars = appJar + File.pathSeparator + jar2;
+        appClasses = new String[]{"Hello", "pkg/C2"};
+        String otherJar2 = ClassFileInstaller.writeJar("newdir/jar2.jar", "pkg/C2");
+        String otherJars = otherJar + File.pathSeparator + otherJar2;
+
+        TestCommon.dump(jars, appClasses, "-Xbootclasspath/a:" + jars);
+        Files.delete(Paths.get(jar2));
+
+        TestCommon.run(
+                "-Xlog:cds,class+path,cds+path",
+                "-cp", otherJars, "-verbose:class",
+                "-Xbootclasspath/a:" + otherJars, "Hello")
+            .assertNormalExit(matchMessage);
+
+        Files.delete(Paths.get(otherJar2));
+        TestCommon.run(
+                "-Xlog:cds,class+path,cds+path",
+                "-cp", otherJars, "-verbose:class",
+                "-Xbootclasspath/a:" + otherJars, "Hello")
+            .assertAbnormalExit("classpath entry does not exist");
     }
 
     /* Archive contains boot classes only.
