@@ -79,7 +79,7 @@ $(CLASSLIST_FILE): $(INTERIM_IMAGE_DIR)/bin/java$(EXECUTABLE_SUFFIX) $(CLASSLIST
 	    -Xlog:aot=off \
 	    -Xlog:cds=off \
 	    -cp $(SUPPORT_OUTPUTDIR)/classlist.jar \
-	    build.tools.classlist.HelloClasslist $(LOG_DEBUG)
+	    build.tools.classlist.HelloClasslist jdk/src/classes/build/tools/classlist/clear.classlist $(LOG_DEBUG)
 	$(GREP) -v HelloClasslist $@.raw > $@.interim
 	$(FIXPATH) $(INTERIM_IMAGE_DIR)/bin/java -Xshare:dump \
 	    -Xlog:aot=off \
@@ -94,7 +94,7 @@ $(CLASSLIST_FILE): $(INTERIM_IMAGE_DIR)/bin/java$(EXECUTABLE_SUFFIX) $(CLASSLIST
 	    -Xlog:aot=off \
 	    -Xlog:cds=off \
 	    -cp $(SUPPORT_OUTPUTDIR)/classlist.jar \
-	    build.tools.classlist.HelloClasslist \
+	    build.tools.classlist.HelloClasslist jdk/src/classes/build/tools/classlist/clear.classlist \
 	    2> $(LINK_OPT_DIR)/stderr > $(JLI_TRACE_FILE) \
 	    || ( \
 	        exitcode=$$? ; \

@@ -93,7 +93,9 @@ class SATBMarkQueueSet: public PtrQueueSet {
   size_t _buffer_enqueue_threshold;
   // SATB is only active during marking.  Enqueuing is only done when active.
   bool _all_active;
-  DEFINE_PAD_MINUS_SIZE(2, DEFAULT_PADDING_SIZE, 4 * sizeof(size_t));
+  #if ! (defined(_WIN64) && DEFAULT_PADDING_SIZE == 32)
+    DEFINE_PAD_MINUS_SIZE(2, DEFAULT_PADDING_SIZE, 4 * sizeof(size_t));
+  #endif
 
   BufferNode* get_completed_buffer();
   void abandon_completed_buffers();
