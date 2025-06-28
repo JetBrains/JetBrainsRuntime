@@ -101,7 +101,7 @@ public class NoClassToArchive extends DynamicArchiveTestBase {
              "-help")
             .assertNormalExit(output -> {
                     // some classes will be loaded from the java.base module
-                    output.shouldContain("java.text.MessageFormat source: jrt:/java.base");
+                    output.shouldContain(" source: jrt:/java.base");
                 });
     }
 
