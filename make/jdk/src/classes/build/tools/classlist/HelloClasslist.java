@@ -37,6 +37,8 @@ import java.lang.invoke.MethodType;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -172,6 +174,20 @@ public class HelloClasslist {
         // an inconsistency in the classlist between builds (see JDK-8295951).
         // To avoid the problem, load the class explicitly.
         Class<?> striped64Class = Class.forName("java.util.concurrent.atomic.Striped64$Cell");
+        Files.lines(Path.of(args[0])).forEach(line -> {
+                if (line.isEmpty() || line.charAt(0) == '#') {
+                    return;
+                }
+                try {
+                    int index = line.indexOf(' ');
+                    if (index <= 0) {
+                        return;
+                    }
+                    String className = line.substring(0, index).replace('/', '.');
+                    Class.forName(className);
+                } catch (Exception e) {
+                }
+            });
     }
 
     public HelloClasslist() {}
