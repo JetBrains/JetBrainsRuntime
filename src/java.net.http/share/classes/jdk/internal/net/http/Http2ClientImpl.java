@@ -213,10 +213,10 @@ class Http2ClientImpl {
 
     private EOFException STOPPED;
     void stop() {
-        synchronized (this) {stopping = true;}
         if (debug.on()) debug.log("stopping");
         STOPPED = new EOFException("HTTP/2 client stopped");
         STOPPED.setStackTrace(new StackTraceElement[0]);
+        synchronized (this) {stopping = true;}
         do {
             connections.values().forEach(this::close);
         } while (!connections.isEmpty());
