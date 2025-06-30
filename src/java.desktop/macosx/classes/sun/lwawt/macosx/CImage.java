@@ -182,6 +182,10 @@ public class CImage extends CFRetainedResource {
         }
 
         public byte[] getPlatformImageBytesForFormat(final Image image, final String format) {
+            if (format.equals("TIFF")) {
+                return getPlatformImageBytes(image);
+            }
+
             int width = image.getWidth(null);
             int height = image.getHeight(null);
             BufferedImage bufferedImage;
