@@ -186,13 +186,18 @@ public final class CImage extends CFRetainedResource {
                 return getPlatformImageBytes(image);
             }
 
-            int width = image.getWidth(null);
-            int height = image.getHeight(null);
             BufferedImage bufferedImage;
 
             if (image instanceof BufferedImage) {
                 bufferedImage = (BufferedImage) image;
             } else {
+                int width = image.getWidth(null);
+                int height = image.getHeight(null);
+
+                if (width <= 0 || height <= 0) {
+                    return null;
+                }
+
                 bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
                 Graphics2D g2d = bufferedImage.createGraphics();
                 g2d.drawImage(image, 0, 0, null);
