@@ -303,7 +303,7 @@ java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java JBR-5765 macosx-al
 java/awt/Toolkit/RealSync/Test.java 6849383,8072110 linux-all,windows-all
 java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java JBR-5812 linux-all
 java/awt/Toolkit/SecurityTest/SecurityTest2.java JBR-5225 windows-all
-java/awt/Toolkit/SunDisplayChangerLeakTest/SunDisplayChangerLeakTest.java JBR-5051 windows-all
+java/awt/Toolkit/SunDisplayChangerLeakTest/SunDisplayChangerLeakTest.java JBR-655,JBR-5051 linux-aarch64,windows-all
 java/awt/Toolkit/ToolkitPropertyTest/ToolkitPropertyTest_Enable.java 6847163 linux-all,windows-all
 java/awt/TrayIcon/8072769/bug8072769.java JBR-6913 windows-all
 java/awt/TrayIcon/ActionCommand/ActionCommand.java 8150540,JBR-3107 windows-all,linux-all
