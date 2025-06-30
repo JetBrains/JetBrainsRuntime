@@ -584,6 +584,7 @@ JvmtiEnvBase::vframeForNoProcess(JavaThread* java_thread, jint depth) {
 jclass
 JvmtiEnvBase::get_jni_class_non_null(Klass* k) {
   assert(k != NULL, "k != NULL");
+  assert(k->is_loader_alive(), "Must be alive");
   Thread *thread = Thread::current();
   return (jclass)jni_reference(Handle(thread, k->java_mirror()));
 }
