@@ -44,15 +44,20 @@ import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
 
 public class GtkFrameDecoration extends FullFrameDecorationHelper {
-    private static final int CLOSE_BUTTON_ID = 1;
-    private static final int MINIMIZE_BUTTON_ID = 2;
-    private static final int MAXIMIZE_BUTTON_ID = 3;
-
     private long nativePtr;
+    private Rectangle minimizeButtonBounds;
+    private Rectangle maximizeButtonBounds;
+    private Rectangle closeButtonBounds;
+    private int titleBarHeight = 37;
+    private int titleBarMinWidth = 180;
+
     private final ImageCache cache = new ImageCache(16);
+
     private final int dndThreshold;
-    private final int titleBarHeight;
-    private final int titleBarMinWidth;
+
+    static {
+        initIDs();
+    }
 
     public GtkFrameDecoration(WLDecoratedPeer peer, boolean showMinimize, boolean showMaximize) {
         super(peer, showMinimize, showMaximize);
@@ -63,12 +68,6 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
         int t = nativeGetIntProperty(nativePtr, "gtk-dnd-drag-threshold");
         dndThreshold = t > 0 ? t : 4;
-
-        t = nativeGetTitleBarHeight(nativePtr);
-        titleBarHeight = t > 0 ? t : 37;
-
-        t = nativeGetTitleBarMinimumWidth(nativePtr);
-        titleBarMinWidth = t > 0 ? t : 180;
 
         // TODO: gtk-alternative-button-order Whether dialog buttons appear in an alternate order (Mac-like).
         // gtk-decoration-layout - This setting determines which buttons should be put in the titlebar of client-side decorated windows,
@@ -84,7 +83,11 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     @Override
     protected void paintTitleBar(Graphics2D g2d) {
         int width = peer.getWidth();
+        // Determine the various sizes and locations
+        nativePrePaint(nativePtr, width);
+
         int height = titleBarHeight;
+
         // TODO: use the cache
         double scale = ((WLGraphicsConfig) peer.getGraphicsConfiguration()).getEffectiveScale();
         g2d.setBackground(new Color(0, true));
@@ -174,19 +177,19 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     protected Rectangle getMinimizeButtonBounds() {
         if (!hasMinimizeButton()) return null;
 
-        return nativeGetButtonBounds(nativePtr, MINIMIZE_BUTTON_ID);
+        return minimizeButtonBounds;
     }
 
     @Override
     protected Rectangle getMaximizeButtonBounds() {
         if (!hasMaximizeButton()) return null;
 
-        return nativeGetButtonBounds(nativePtr, MAXIMIZE_BUTTON_ID);
+        return maximizeButtonBounds;
     }
 
     @Override
     protected Rectangle getCloseButtonBounds() {
-        return nativeGetButtonBounds(nativePtr, CLOSE_BUTTON_ID);
+        return closeButtonBounds;
     }
 
     @Override
@@ -195,13 +198,13 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
         nativeSwitchTheme();
     }
 
+    private static native void initIDs();
+
     private native long nativeCreateDecoration(boolean showMinimize, boolean showMaximize);
     private native void nativeDestroyDecoration(long nativePtr);
     private native void nativeSwitchTheme();
     private native void nativePaintTitleBar(long nativePtr, int[] buffer, int width, int height, int scale, String title);
     private native int nativeGetIntProperty(long nativePtr, String name);
-    private native int nativeGetTitleBarHeight(long nativePtr);
-    private native int nativeGetTitleBarMinimumWidth(long nativePtr);
-    private native Rectangle nativeGetButtonBounds(long nativePtr, int buttonID);
     private native void nativeNotifyConfigured(long nativePtr, boolean active, boolean maximized, boolean fullscreen);
+    private native void nativePrePaint(long nativePtr, int width);
 }
