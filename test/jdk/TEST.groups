@@ -854,6 +854,7 @@ jdk_awt_wayland = \
     -java/awt/event/ComponentEvent/MovedResizedTardyEventTest/MovedResizedTardyEventTest.java \
     -java/awt/event/ComponentEvent/MovedResizedTwiceTest/MovedResizedTwiceTest.java \
     -java/awt/event/ComponentEvent/TextComponentTextEventTest.java \
+    -java/awt/event/HierarchyEvent/AncestorResized/AncestorResized.java \
     -java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java \
     -java/awt/event/InputEvent/MouseModsTest.java \
     -java/awt/event/KeyEvent/AcceleratorTest/AcceleratorTest.html \
