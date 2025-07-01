@@ -39,15 +39,6 @@
 
 #include "sun_awt_wl_GtkFrameDecoration.h"
 
-enum header_element {
-	HEADER_NONE,
-	HEADER_FULL, /* entire header bar */
-	HEADER_TITLE, /* label */
-	HEADER_MIN,
-	HEADER_MAX,
-	HEADER_CLOSE,
-};
-
 typedef struct rectangle_t {
     int x, y;
     int width, height;
@@ -136,64 +127,6 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
     cairo_surface_destroy(surface);
 }
 
-struct header_element_data {
-	const char *name;
-	enum header_element type;
-	/* pointer to button or NULL if not found*/
-	GtkWidget *widget;
-	GtkStateFlags state;
-};
-
-static void
-find_widget_by_name(GtkWidget *widget, void *data)
-{
-	if (GTK_IS_WIDGET(widget)) {
-		char *style_ctx = gtk_style_context_to_string(
-					  gtk_widget_get_style_context(widget),
-					  GTK_STYLE_CONTEXT_PRINT_SHOW_STYLE);
-		if (strstr(style_ctx, ((struct header_element_data *)data)->name)) {
-			((struct header_element_data *)data)->widget = widget;
-			free(style_ctx);
-			return;
-		}
-		free(style_ctx);
-	}
-
-	if (GTK_IS_CONTAINER(widget)) {
-		/* recursively traverse container */
-		gtk_container_forall(GTK_CONTAINER(widget), &find_widget_by_name, data);
-	}
-}
-
-static struct header_element_data
-find_widget_by_type(GtkWidget *widget, enum header_element type)
-{
-	char* name = NULL;
-	switch (type) {
-	case HEADER_FULL:
-		name = "headerbar.titlebar:";
-		break;
-	case HEADER_TITLE:
-		name = "label.title:";
-		break;
-	case HEADER_MIN:
-		name = ".minimize";
-		break;
-	case HEADER_MAX:
-		name = ".maximize";
-		break;
-	case HEADER_CLOSE:
-		name = ".close";
-		break;
-	default:
-		break;
-	}
-
-	struct header_element_data data = {.name = name, .type = type, .widget = NULL};
-	find_widget_by_name(widget, &data);
-	return data;
-}
-
 static void
 draw_header_background(gtk_frame_decoration_t* decor, cairo_t *cr)
 {
@@ -253,46 +186,24 @@ draw_header_title(gtk_frame_decoration_t* decor, cairo_surface_t * surface)
 
 static void
 draw_header_button(gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr,
-                   enum header_element button_type)
+                   const char *name)
 {
-	struct header_element_data elem;
-	GtkWidget *button;
-	GtkStyleContext* button_style;
-	GtkStateFlags style_state;
-
-	GtkAllocation allocation;
-
 	gchar *icon_name;
 	int scale;
-	GtkWidget *icon_widget;
-	GtkAllocation allocation_icon;
 	GtkIconInfo* icon_info;
 
 	double sx, sy;
 
-	gint icon_width, icon_height;
-
-	GdkPixbuf* icon_pixbuf;
-	cairo_surface_t* icon_surface;
-
-	gint width = 0, height = 0;
-
-	gint left = 0, top = 0, right = 0, bottom = 0;
-	GtkBorder border;
-
-	GtkBorder padding;
-
-	elem = find_widget_by_type(decor->header, button_type);
-	button = elem.widget;
+	GtkWidget *button = widget_by_name(decor->header, name);
 	if (!button)
 		return;
-	button_style = gtk_widget_get_style_context(button);
-	style_state = elem.state;
+    GtkStyleContext* button_style = gtk_widget_get_style_context(button);
+	GtkStateFlags style_state = GTK_STATE_FLAG_NORMAL;
 
-	/* change style based on window state and focus */
-	if (FALSE /*!(window_state & LIBDECOR_WINDOW_STATE_ACTIVE)*/) {
+	if (decor->isActive) {
 		style_state |= GTK_STATE_FLAG_BACKDROP;
 	}
+    // TODO: hovered/pressed state
 	if (FALSE/*frame_gtk->hdr_focus.widget == button*/) {
 		style_state |= GTK_STATE_FLAG_PRELIGHT;
 	//	if (frame_gtk->hdr_focus.state & GTK_STATE_FLAG_ACTIVE) {
@@ -301,19 +212,37 @@ draw_header_button(gtk_frame_decoration_t* decor, cairo_surface_t * surface, cai
 	}
 
 	/* background */
+	GtkAllocation allocation;
 	gtk_widget_get_clip(button, &allocation);
+    if (strcmp(name, ".maximize") == 0) {
+        decor->maximizeButtonBounds.x = allocation.x;
+        decor->maximizeButtonBounds.y = allocation.y;
+        decor->maximizeButtonBounds.width = allocation.width;
+        decor->maximizeButtonBounds.height= allocation.height;
+    } else if (strcmp(name, ".close") == 0) {
+        decor->closeButtonBounds.x = allocation.x;
+        decor->closeButtonBounds.y = allocation.y;
+        decor->closeButtonBounds.width = allocation.width;
+        decor->closeButtonBounds.height= allocation.height;
+    } else {
+        decor->minimizeButtonBounds.x = allocation.x;
+        decor->minimizeButtonBounds.y = allocation.y;
+        decor->minimizeButtonBounds.width = allocation.width;
+        decor->minimizeButtonBounds.height= allocation.height;
+    }
+    printf("button %s clip: %d, %d %dx%d\n", name, allocation.x, allocation.y,
+           allocation.width, allocation.height);
 
 	gtk_style_context_save(button_style);
-	gtk_style_context_set_state(button_style, style_state);
-	gtk_render_background(button_style, cr,
-			      allocation.x, allocation.y,
-			      allocation.width, allocation.height);
-	gtk_render_frame(button_style, cr,
-			 allocation.x, allocation.y,
-			 allocation.width, allocation.height);
-	gtk_style_context_restore(button_style);
+    gtk_style_context_set_state(button_style, style_state);
+    gtk_render_background(button_style, cr,
+                          allocation.x, allocation.y, allocation.width, allocation.height);
+    gtk_render_frame(button_style, cr,
+                     allocation.x, allocation.y, allocation.width, allocation.height);
+    gtk_style_context_restore(button_style);
 
 	/* symbol */
+    /*
 	switch (button_type) {
 	case HEADER_MIN:
 		icon_name = "window-minimize-symbolic";
@@ -330,17 +259,20 @@ draw_header_button(gtk_frame_decoration_t* decor, cairo_surface_t * surface, cai
 		icon_name = NULL;
 		break;
 	}
-    //fprintf(stderr, "Button icon '%s' @(%d, %d)\n", icon_name, allocation.x, allocation.y);
+*/
+		icon_name = "window-minimize-symbolic";
 
 	/* get scale */
 	cairo_surface_get_device_scale(surface, &sx, &sy);
 	scale = (sx+sy) / 2.0;
 
 	/* get original icon dimensions */
-	icon_widget = gtk_bin_get_child(GTK_BIN(button));
+	GtkWidget *icon_widget = gtk_bin_get_child(GTK_BIN(button));
+	GtkAllocation allocation_icon;
 	gtk_widget_get_allocation(icon_widget, &allocation_icon);
 
 	/* icon info */
+	gint icon_width, icon_height;
 	if (!gtk_icon_size_lookup(GTK_ICON_SIZE_MENU, &icon_width, &icon_height)) {
 		icon_width = 16;
 		icon_height = 16;
@@ -352,14 +284,19 @@ draw_header_button(gtk_frame_decoration_t* decor, cairo_surface_t * surface, cai
 	/* icon pixel buffer*/
 	gtk_style_context_save(button_style);
 	gtk_style_context_set_state(button_style, style_state);
-	icon_pixbuf = gtk_icon_info_load_symbolic_for_context(
-		icon_info, button_style, NULL, NULL);
-	icon_surface = gdk_cairo_surface_create_from_pixbuf(icon_pixbuf, scale, NULL);
+	GdkPixbuf* icon_pixbuf = gtk_icon_info_load_symbolic_for_context(icon_info, button_style, NULL, NULL);
+	cairo_surface_t* icon_surface = gdk_cairo_surface_create_from_pixbuf(icon_pixbuf, scale, NULL);
 	gtk_style_context_restore(button_style);
 
 	/* dimensions and position */
-	gtk_style_context_get(button_style, gtk_style_context_get_state(button_style),
-			      "min-width", &width, "min-height", &height, NULL);
+	gint width = 0, height = 0;
+	gint left = 0, top = 0, right = 0, bottom = 0;
+	GtkBorder border;
+
+	GtkBorder padding;
+
+    gtk_style_context_get(button_style, gtk_style_context_get_state(button_style),
+                          "min-width", &width, "min-height", &height, NULL);
 
 	if (width < icon_width)
 		width = icon_width;
@@ -378,13 +315,15 @@ draw_header_button(gtk_frame_decoration_t* decor, cairo_surface_t * surface, cai
 	top += padding.top;
 	bottom += padding.bottom;
 
+    printf("\tbutton %dx%d\n", width, height);
+    printf("\tbutton padding %d, %d, %d, %d\n", left, right, top, bottom);
 	width += left + right;
 	height += top + bottom;
 
 	gtk_render_icon_surface(gtk_widget_get_style_context(icon_widget),
 				cr, icon_surface,
-				allocation.x + ((width - icon_width) / 2),
-				allocation.y + ((height - icon_height) / 2));
+				allocation.x + left,
+				allocation.y + top);
 	cairo_paint(cr);
 	cairo_surface_destroy(icon_surface);
 	g_object_unref(icon_pixbuf);
@@ -394,14 +333,14 @@ static void
 draw_header_buttons(gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr)
 {
     if (decor->showMinimize) {
-        draw_header_button(decor, surface, cr, HEADER_MIN);
+        draw_header_button(decor, surface, cr, ".minimize");
     }
 
     if (decor->showMaximize) {
-        draw_header_button(decor, surface, cr, HEADER_MAX);
+        draw_header_button(decor, surface, cr, ".maximize");
     }
 
-    draw_header_button(decor, surface, cr, HEADER_CLOSE);
+    draw_header_button(decor, surface, cr, ".close");
 }
 
 static void
@@ -433,7 +372,7 @@ draw_title_bar(gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t
 
 	draw_header_background(decor, cr);
 	draw_header_title(decor, surface);
-	//draw_header_buttons(decor, surface, cr);
+    draw_header_buttons(decor, surface, cr);
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeSwitchTheme
@@ -494,39 +433,6 @@ JNIEXPORT jobject JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeGetButtonBoun
     assert (ptr != 0);
 
     gtk_frame_decoration_t* decor = jlong_to_ptr(ptr);
-
-    /*
-	gtk_widget_show_all(decor->window);
-	GtkWidget *button;
-
-	GtkAllocation allocation;
-
-	char* name = NULL;
-    switch (buttonID) {
-        case sun_awt_wl_GtkFrameDecoration_MINIMIZE_BUTTON_ID:
-            name = ".minimize";
-            break;
-        case sun_awt_wl_GtkFrameDecoration_MAXIMIZE_BUTTON_ID:
-            name = ".maximize";
-            break;
-        case sun_awt_wl_GtkFrameDecoration_CLOSE_BUTTON_ID:
-            name = ".close";
-            break;
-        default:
-            JNU_ThrowInternalError(env, "Invalid button id");
-            return NULL;
-    }
-	struct header_element_data data = {.name = name, .type = HEADER_NONE, .widget = NULL};
-    GtkWidget* widget;
-	find_widget_by_name(widget, &data);
-	button = data.widget;
-	if (!button) {
-        JNU_ThrowInternalError(env, "Couldn't find button by id");
-        return NULL;
-    }
-	gtk_widget_get_clip(button, &allocation);
-    printf("(%d, %d) %dx%d\n", allocation.x, allocation.y, allocation.width, allocation.height);
-    */
 
     rectangle_t bounds;
     switch (buttonID) {

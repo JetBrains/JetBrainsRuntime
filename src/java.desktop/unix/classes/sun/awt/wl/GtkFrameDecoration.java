@@ -128,8 +128,18 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     protected boolean pressedInDragStartArea(Point p) {
-        // TODO
-        return false;
+        if (p.x <= 0 || p.x >= peer.getWidth() || p.y <= 0 || p.y >= titleBarHeight) return false;
+
+        var b1 = getMinimizeButtonBounds();
+        if (b1 != null && b1.contains(p)) return false;
+
+        var b2 = getMaximizeButtonBounds();
+        if (b2 != null && b2.contains(p)) return false;
+
+        var b3 = getCloseButtonBounds();
+        if (b3 != null && b3.contains(p)) return false;
+
+        return true;
     }
 
     @Override
