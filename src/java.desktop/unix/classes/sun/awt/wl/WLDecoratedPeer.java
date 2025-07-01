@@ -46,7 +46,7 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
         this.isUndecorated = isUndecorated;
         this.showMinimize = showMinimize;
         this.showMaximize = showMaximize;
-        decoration = isUndecorated ? new MinimalFrameDecoration(this) : new DefaultFrameDecoration(this, showMinimize, showMaximize);
+        decoration = isUndecorated ? new MinimalFrameDecoration(this) : new GtkFrameDecoration(this, showMinimize, showMaximize);
     }
 
     private static native void initIDs();
