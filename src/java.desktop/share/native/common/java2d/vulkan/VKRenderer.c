@@ -450,7 +450,7 @@ static void VKRenderer_CleanupPendingResources(VKRenderer* renderer) {
     VKDevice* device = renderer->device;
 
     while (POOL_NOT_EMPTY(renderer, cleanupQueue)) {
-        VKCleanupEntry entry;
+        VKCleanupEntry entry = {};
         POOL_TAKE(renderer, cleanupQueue, entry);
         entry.handler(device, entry.data);
     }
