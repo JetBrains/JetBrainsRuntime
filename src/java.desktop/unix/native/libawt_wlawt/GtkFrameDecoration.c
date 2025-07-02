@@ -94,13 +94,13 @@ static void draw_header_title(GtkFrameDecorationDescr* decor, cairo_surface_t * 
     cairo_surface_t *label_surface = cairo_surface_create_for_rectangle(
         surface, allocation.x, allocation.y, allocation.width, allocation.height);
     cairo_t *cr = cairo_create(label_surface);
-    //gtk_widget_size_allocate(label, &allocation); // TODO: why allocate in the same place?
     gtk_widget_draw(label, cr);
     cairo_destroy(cr);
     cairo_surface_destroy(label_surface);
 }
 
 static void draw_header_button(GtkFrameDecorationDescr* decor, cairo_surface_t * surface, cairo_t *cr,
+                               double scale,
                                jboolean hovered, jboolean pressed,
                                const char *name, const char *icon_name) {
 	GtkWidget *button = widget_by_name(decor->header, name);
@@ -132,39 +132,23 @@ static void draw_header_button(GtkFrameDecorationDescr* decor, cairo_surface_t *
                      allocation.x, allocation.y, allocation.width, allocation.height);
     gtk_style_context_restore(button_style);
 
-	double sx, sy;
-	cairo_surface_get_device_scale(surface, &sx, &sy);
-	int scale = (sx+sy) / 2.0;
-
-	/* get original icon dimensions */
-	GtkWidget *icon_widget = gtk_bin_get_child(GTK_BIN(button));
-	GtkAllocation allocation_icon;
-	gtk_widget_get_allocation(icon_widget, &allocation_icon);
-
-	/* icon info */
-	gint icon_width, icon_height;
+	int icon_width;
+    int icon_height;
 	if (!gtk_icon_size_lookup(GTK_ICON_SIZE_MENU, &icon_width, &icon_height)) {
 		icon_width = 16;
 		icon_height = 16;
 	}
 	GtkIconInfo* icon_info = gtk_icon_theme_lookup_icon_for_scale(
-		gtk_icon_theme_get_default(), icon_name,
-		icon_width, scale, (GtkIconLookupFlags)0);
+		gtk_icon_theme_get_default(), icon_name, icon_width, (int) scale, 0);
 
-	/* icon pixel buffer*/
 	gtk_style_context_save(button_style);
 	gtk_style_context_set_state(button_style, style_state);
 	GdkPixbuf* icon_pixbuf = gtk_icon_info_load_symbolic_for_context(icon_info, button_style, NULL, NULL);
 	cairo_surface_t* icon_surface = gdk_cairo_surface_create_from_pixbuf(icon_pixbuf, scale, NULL);
 	gtk_style_context_restore(button_style);
 
-	/* dimensions and position */
-	gint width = 0, height = 0;
-	gint left = 0, top = 0, right = 0, bottom = 0;
-	GtkBorder border;
-
-	GtkBorder padding;
-
+	int width = 0;
+    int height = 0;
     gtk_style_context_get(button_style, gtk_style_context_get_state(button_style),
                           "min-width", &width, "min-height", &height, NULL);
 
@@ -172,6 +156,13 @@ static void draw_header_button(GtkFrameDecorationDescr* decor, cairo_surface_t *
 		width = icon_width;
 	if (height < icon_height)
 		height = icon_height;
+
+	int left = 0;
+    int top = 0;
+    int right = 0;
+    int bottom = 0;
+	GtkBorder border;
+	GtkBorder padding;
 
 	gtk_style_context_get_border(button_style, gtk_style_context_get_state(button_style), &border);
 	left += border.left;
@@ -190,6 +181,7 @@ static void draw_header_button(GtkFrameDecorationDescr* decor, cairo_surface_t *
 
     int offset_x = (width - icon_width) / 2;
     int offset_y = (height - icon_height) / 2;
+    GtkWidget *icon_widget = gtk_bin_get_child(GTK_BIN(button));
 	gtk_render_icon_surface(gtk_widget_get_style_context(icon_widget),
 				cr, icon_surface, allocation.x + offset_x, allocation.y + offset_y);
 	cairo_paint(cr);
@@ -197,30 +189,31 @@ static void draw_header_button(GtkFrameDecorationDescr* decor, cairo_surface_t *
 	g_object_unref(icon_pixbuf);
 }
 
-static void draw_header_buttons(GtkFrameDecorationDescr* decor, cairo_surface_t * surface, cairo_t *cr, int buttonsState) {
+static void draw_header_buttons(GtkFrameDecorationDescr* decor, cairo_surface_t * surface, cairo_t *cr,
+                                double scale, int buttonsState) {
     if (decor->show_minimize) {
         jboolean hovered = buttonsState & sun_awt_wl_GtkFrameDecoration_MIN_BUTTON_STATE_HOVERED;
         jboolean pressed = buttonsState & sun_awt_wl_GtkFrameDecoration_MIN_BUTTON_STATE_PRESSED;
-        draw_header_button(decor, surface, cr, hovered, pressed,
+        draw_header_button(decor, surface, cr, scale, hovered, pressed,
                            ".minimize", "window-minimize-symbolic");
     }
 
     if (decor->show_maximize) {
         jboolean hovered = buttonsState & sun_awt_wl_GtkFrameDecoration_MAX_BUTTON_STATE_HOVERED;
         jboolean pressed = buttonsState & sun_awt_wl_GtkFrameDecoration_MAX_BUTTON_STATE_PRESSED;
-        draw_header_button(decor, surface, cr, hovered, pressed,
+        draw_header_button(decor, surface, cr, scale, hovered, pressed,
                            ".maximize",
                            decor->is_maximized ? "window-restore-symbolic" : "window-maximize-symbolic");
     }
 
     jboolean hovered = buttonsState & sun_awt_wl_GtkFrameDecoration_CLOSE_BUTTON_STATE_HOVERED;
     jboolean pressed = buttonsState & sun_awt_wl_GtkFrameDecoration_CLOSE_BUTTON_STATE_PRESSED;
-    draw_header_button(decor, surface, cr, hovered, pressed,
+    draw_header_button(decor, surface, cr, scale, hovered, pressed,
                        ".close", "window-close-symbolic");
 }
 
 static void draw_title_bar(GtkFrameDecorationDescr* decor, cairo_surface_t * surface, cairo_t *cr,
-                           int width, int height, int scale, const char *title, int buttonsState) {
+                           int width, int height, double scale, const char *title, int buttonsState) {
 	GtkStyleContext *style = gtk_widget_get_style_context(decor->window);
 
 	if (!decor->is_active) {
@@ -244,7 +237,7 @@ static void draw_title_bar(GtkFrameDecorationDescr* decor, cairo_surface_t * sur
 
 	draw_header_background(decor, cr);
 	draw_header_title(decor, surface);
-    draw_header_buttons(decor, surface, cr, buttonsState);
+    draw_header_buttons(decor, surface, cr, scale, buttonsState);
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_initIDs(JNIEnv *env, jclass clazz) {
