@@ -25,6 +25,7 @@
 
 package sun.awt.wl;
 
+import sun.awt.UNIXToolkit;
 import sun.awt.image.SunWritableRaster;
 import sun.java2d.SunGraphics2D;
 import sun.swing.ImageCache;
@@ -43,6 +44,7 @@ import java.awt.image.ColorModel;
 import java.awt.image.DataBufferInt;
 import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
+import sun.awt.UNIXToolkit;
 
 public class GtkFrameDecoration extends FullFrameDecorationHelper {
     private static final int MIN_BUTTON_STATE_HOVERED = 1;
@@ -71,6 +73,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
         super(peer, showMinimize, showMaximize);
         // TODO: load gtk once and properly
         ((WLToolkit) WLToolkit.getDefaultToolkit()).checkGtkVersion(3, 0, 0);
+        loadGTK();
         nativePtr = nativeCreateDecoration(showMinimize, showMaximize);
 
         assert nativePtr != 0;
@@ -87,6 +90,16 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
         // gtk-titlebar-middle-click
         // gtk-titlebar-right-click
         // see https://docs.gtk.org/gtk3/class.Settings.html
+    }
+
+    private static Boolean nativeGTKLoaded;
+    private static boolean loadGTK() {
+        synchronized (UNIXToolkit.GTK_LOCK) {
+            if (nativeGTKLoaded == null) {
+                nativeGTKLoaded = nativeLoadGTK();
+            }
+        }
+        return nativeGTKLoaded;
     }
 
     @Override
@@ -232,6 +245,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     }
 
     private static native void initIDs();
+    private static native boolean nativeLoadGTK();
 
     private native long nativeCreateDecoration(boolean showMinimize, boolean showMaximize);
     private native void nativeDestroyDecoration(long nativePtr);
