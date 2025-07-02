@@ -135,6 +135,7 @@ gc/TestAllocHumongousFragment.java#iu-aggressive 8298781 generic-all
 runtime/cds/appcds/complexURI/ComplexURITest.java JBR-6616 windows-aarch64
 runtime/cds/appcds/TestDumpClassListSource.java JBR-6099 generic-all
 runtime/cds/appcds/dynamicArchive/CDSStreamTestDriver.java initial_run generic-all
+runtime/cds/appcds/lambdaForm/DefaultClassListLFInvokers.java JBR-8923 windows-aarch64
 runtime/cds/appcds/methodHandles/MethodHandlesInvokersTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesCastFailureTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesGeneralTest.java initial_run generic-all
@@ -174,6 +175,7 @@ runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_r
 
 containers/docker/TestJcmd.java 8278102 linux-all
 containers/docker/TestMemoryAwareness.java 8303470 linux-all
+containers/docker/TestPids.java 8356277 linux-all
 
 #############################################################################
 
