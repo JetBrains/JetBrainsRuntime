@@ -23,17 +23,16 @@
  * questions.
  */
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <jni.h>
 #include <jni_util.h>
-#include <Trace.h>
 #include <assert.h>
-#include <stdbool.h>
 
+// TODO: temporary
 #include <gtk/gtk.h>
 
-#include "jni_util.h"
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
 
@@ -48,8 +47,10 @@ typedef struct gtk_frame_decoration_t {
     jboolean isMaximized;
 } gtk_frame_decoration_t;
 
-static void draw_title_bar(gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr, int width, int height, int scale, const char *title);
-
+struct widget_cb_data_t {
+    const char *name;
+    GtkWidget *widget;
+};
 
 static jfieldID closeButtonBoundsFID;
 static jfieldID minButtonBoundsFID;
@@ -57,97 +58,9 @@ static jfieldID maxButtonBoundsFID;
 static jfieldID titleBarHeightFID;
 static jfieldID titleBarMinWidthFID;
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_initIDs
-        (JNIEnv *env, jclass clazz)
-{
-    CHECK_NULL_THROW_IE(env,
-                        closeButtonBoundsFID = (*env)->GetFieldID(env, clazz, "closeButtonBounds", "Ljava/awt/Rectangle;"),
-                        "Failed to find field closeButtonBounds");
-    CHECK_NULL_THROW_IE(env,
-                        minButtonBoundsFID = (*env)->GetFieldID(env, clazz, "minimizeButtonBounds", "Ljava/awt/Rectangle;"),
-                        "Failed to find field minimizeButtonBounds");
-    CHECK_NULL_THROW_IE(env,
-                        maxButtonBoundsFID = (*env)->GetFieldID(env, clazz, "maximizeButtonBounds", "Ljava/awt/Rectangle;"),
-                        "Failed to find field maximizeButtonBounds");
-    CHECK_NULL_THROW_IE(env,
-                        titleBarHeightFID = (*env)->GetFieldID(env, clazz, "titleBarHeight", "I"),
-                        "Failed to find field titleBarHeightBounds");
-    CHECK_NULL_THROW_IE(env,
-                        titleBarMinWidthFID = (*env)->GetFieldID(env, clazz, "titleBarMinWidth", "I"),
-                        "Failed to find field titleBarMinWidth");
-}
-
-JNIEXPORT jlong JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeCreateDecoration
-        (JNIEnv *env, jobject obj, jboolean showMinimize, jboolean showMaximize)
-{
-    gtk_frame_decoration_t *d = calloc(1, sizeof(gtk_frame_decoration_t));
-    CHECK_NULL_THROW_OOME_RETURN(env, d, "Failed to allocate GtkFrameDeocration", 0);
-
-    d->showMinimize = showMinimize;
-    d->showMaximize = showMaximize;
-	d->window = gtk_offscreen_window_new();
-	d->header = gtk_header_bar_new();
-
-	g_object_set(d->header,
-		     "title", "Default Title",
-		     "has-subtitle", FALSE,
-		     "show-close-button", TRUE,
-		     NULL);
-
-	GtkStyleContext *context_hdr;
-	context_hdr = gtk_widget_get_style_context(d->header);
-	gtk_style_context_add_class(context_hdr, GTK_STYLE_CLASS_TITLEBAR);
-	gtk_style_context_add_class(context_hdr, "default-decoration");
-	gtk_window_set_titlebar(GTK_WINDOW(d->window), d->header);
-	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(d->header), TRUE);
-	gtk_window_set_resizable(GTK_WINDOW(d->window), TRUE);
-
-    return ptr_to_jlong(d);
-}
-
-
-JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
-        (JNIEnv *env, jobject obj, jlong ptr, jintArray dest, jint width, jint height, jint scale, jstring title)
-{
-    gtk_frame_decoration_t* decor = jlong_to_ptr(ptr);
-
-    unsigned char *buffer = (*env)->GetPrimitiveArrayCritical(env, dest, 0);
-    if (!buffer) {
-        JNU_ThrowOutOfMemoryError(env, "Could not get image buffer");
-        return;
-    }
-
-    //gdk_threads_enter();
-    cairo_surface_t *surface = cairo_image_surface_create_for_data(
-        buffer, CAIRO_FORMAT_ARGB32,
-        width, height,
-        cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width));
-
-	cairo_surface_set_device_scale(surface, scale, scale);
-
-	cairo_t *cr = cairo_create(surface);
-
-    jboolean isCopy = JNI_FALSE;
-    const char *title_c_str = JNU_GetStringPlatformChars(env, title, &isCopy);
-    if (!title_c_str)
-        return;
-    draw_title_bar(decor, surface, cr, width, height, scale, title_c_str);
-
-    if (isCopy) {
-        JNU_ReleaseStringPlatformChars(env, title, title_c_str);
-    }
-
-    // Make sure pixels have been flush into the underlying buffer
-    cairo_surface_flush(surface);
-    //gdk_threads_leave();
-    (*env)->ReleasePrimitiveArrayCritical(env, dest, buffer, 0);
-
-    cairo_destroy(cr);
-    cairo_surface_destroy(surface);
-}
-
 static void
-draw_header_background(gtk_frame_decoration_t* decor, cairo_t *cr)
+draw_header_background
+        (gtk_frame_decoration_t* decor, cairo_t *cr)
 {
 	GtkAllocation allocation;
 	gtk_widget_get_allocation(GTK_WIDGET(decor->header), &allocation);
@@ -155,13 +68,9 @@ draw_header_background(gtk_frame_decoration_t* decor, cairo_t *cr)
 	gtk_render_background(style, cr, allocation.x, allocation.y, allocation.width, allocation.height);
 }
 
-struct widget_cb_data_t {
-    const char *name;
-    GtkWidget *widget;
-};
-
 static void
-widget_by_name_cb(GtkWidget *widget, void *payload)
+widget_by_name_cb
+        (GtkWidget *widget, void *payload)
 {
     struct widget_cb_data_t *data = payload;
 	if (GTK_IS_WIDGET(widget)) {
@@ -180,22 +89,23 @@ widget_by_name_cb(GtkWidget *widget, void *payload)
 }
 
 static GtkWidget*
-widget_by_name(GtkWidget *widget, const char *name)
+widget_by_name
+        (GtkWidget *widget, const char *name)
 {
-    struct widget_cb_data_t data = { .name = name, .widget = NULL };
+    struct widget_cb_data_t data = {.name = name, .widget = NULL};
     widget_by_name_cb(widget, &data);
     return data.widget;
 }
 
 static void
-draw_header_title(gtk_frame_decoration_t* decor, cairo_surface_t * surface)
+draw_header_title
+        (gtk_frame_decoration_t* decor, cairo_surface_t * surface)
 {
     GtkWidget *label = widget_by_name(decor->header, "label.title:");
     GtkAllocation allocation;
     gtk_widget_get_allocation(label, &allocation);
     cairo_surface_t *label_surface = cairo_surface_create_for_rectangle(
-        surface,
-        allocation.x, allocation.y, allocation.width, allocation.height);
+        surface, allocation.x, allocation.y, allocation.width, allocation.height);
     cairo_t *cr = cairo_create(label_surface);
     //gtk_widget_size_allocate(label, &allocation); // TODO: why allocate in the same place?
     gtk_widget_draw(label, cr);
@@ -204,8 +114,9 @@ draw_header_title(gtk_frame_decoration_t* decor, cairo_surface_t * surface)
 }
 
 static void
-draw_header_button(gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr,
-                   jboolean hovered, const char *name, const char *icon_name)
+draw_header_button
+        (gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr,
+         jboolean hovered, const char *name, const char *icon_name)
 {
 	GtkWidget *button = widget_by_name(decor->header, name);
 	if (!button)
@@ -307,7 +218,8 @@ draw_header_button(gtk_frame_decoration_t* decor, cairo_surface_t * surface, cai
 }
 
 static void
-draw_header_buttons(gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr)
+draw_header_buttons
+        (gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr)
 {
     if (decor->showMinimize) {
         // TODO
@@ -327,7 +239,134 @@ draw_header_buttons(gtk_frame_decoration_t* decor, cairo_surface_t * surface, ca
     draw_header_button(decor, surface, cr, hovered, ".close", "window-close-symbolic");
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint
+static void
+draw_title_bar
+        (gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr,
+         int width, int height, int scale, const char *title)
+{
+	GtkStyleContext *style = gtk_widget_get_style_context(decor->window);
+
+	if (!decor->isActive) {
+		gtk_widget_set_state_flags(decor->window, GTK_STATE_FLAG_BACKDROP, true);
+	} else {
+		gtk_widget_unset_state_flags(decor->window, GTK_STATE_FLAG_BACKDROP);
+	}
+
+    if (decor->isMaximized) {
+        gtk_style_context_add_class(style, "maximized");
+    } else {
+		gtk_style_context_remove_class(style, "maximized");
+    }
+
+	gtk_widget_show_all(decor->window);
+
+	gtk_header_bar_set_title(GTK_HEADER_BAR(decor->header), title);
+
+	GtkAllocation allocation = {0, 0, width, height};
+	gtk_widget_size_allocate(decor->header, &allocation);
+
+	draw_header_background(decor, cr);
+	draw_header_title(decor, surface);
+    draw_header_buttons(decor, surface, cr);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_GtkFrameDecoration_initIDs
+        (JNIEnv *env, jclass clazz)
+{
+    CHECK_NULL_THROW_IE(env,
+                        closeButtonBoundsFID = (*env)->GetFieldID(env, clazz, "closeButtonBounds", "Ljava/awt/Rectangle;"),
+                        "Failed to find field closeButtonBounds");
+    CHECK_NULL_THROW_IE(env,
+                        minButtonBoundsFID = (*env)->GetFieldID(env, clazz, "minimizeButtonBounds", "Ljava/awt/Rectangle;"),
+                        "Failed to find field minimizeButtonBounds");
+    CHECK_NULL_THROW_IE(env,
+                        maxButtonBoundsFID = (*env)->GetFieldID(env, clazz, "maximizeButtonBounds", "Ljava/awt/Rectangle;"),
+                        "Failed to find field maximizeButtonBounds");
+    CHECK_NULL_THROW_IE(env,
+                        titleBarHeightFID = (*env)->GetFieldID(env, clazz, "titleBarHeight", "I"),
+                        "Failed to find field titleBarHeightBounds");
+    CHECK_NULL_THROW_IE(env,
+                        titleBarMinWidthFID = (*env)->GetFieldID(env, clazz, "titleBarMinWidth", "I"),
+                        "Failed to find field titleBarMinWidth");
+}
+
+JNIEXPORT jlong JNICALL
+Java_sun_awt_wl_GtkFrameDecoration_nativeCreateDecoration
+        (JNIEnv *env, jobject obj, jboolean showMinimize, jboolean showMaximize)
+{
+    gtk_frame_decoration_t *d = calloc(1, sizeof(gtk_frame_decoration_t));
+    CHECK_NULL_THROW_OOME_RETURN(env, d, "Failed to allocate GtkFrameDeocration", 0);
+
+    d->showMinimize = showMinimize;
+    d->showMaximize = showMaximize;
+	d->window = gtk_offscreen_window_new();
+	d->header = gtk_header_bar_new();
+
+	g_object_set(d->header,
+		     "title", "Default Title",
+		     "has-subtitle", FALSE,
+		     "show-close-button", TRUE,
+		     NULL);
+
+	GtkStyleContext *context_hdr;
+	context_hdr = gtk_widget_get_style_context(d->header);
+	gtk_style_context_add_class(context_hdr, GTK_STYLE_CLASS_TITLEBAR);
+	gtk_style_context_add_class(context_hdr, "default-decoration");
+	gtk_window_set_titlebar(GTK_WINDOW(d->window), d->header);
+	gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(d->header), TRUE);
+	gtk_window_set_resizable(GTK_WINDOW(d->window), TRUE);
+
+    return ptr_to_jlong(d);
+}
+
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
+        (JNIEnv *env, jobject obj, jlong ptr, jintArray dest, jint width, jint height, jdouble scale, jstring title)
+{
+    gtk_frame_decoration_t* decor = jlong_to_ptr(ptr);
+
+    jint pixelWidth = ceil(width * scale);
+    jint pixelHeight = ceil(height * scale);
+
+    unsigned char *buffer = (*env)->GetPrimitiveArrayCritical(env, dest, 0);
+    if (!buffer) {
+        JNU_ThrowOutOfMemoryError(env, "Could not get image buffer");
+        return;
+    }
+
+    //gdk_threads_enter();
+    cairo_surface_t *surface = cairo_image_surface_create_for_data(
+        buffer, CAIRO_FORMAT_ARGB32,
+        pixelWidth, pixelHeight,
+        cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, pixelWidth));
+
+	cairo_surface_set_device_scale(surface, scale, scale);
+
+	cairo_t *cr = cairo_create(surface);
+
+    jboolean isCopy = JNI_FALSE;
+    const char *title_c_str = JNU_GetStringPlatformChars(env, title, &isCopy);
+    if (!title_c_str)
+        return;
+    draw_title_bar(decor, surface, cr, width, height, scale, title_c_str);
+
+    if (isCopy) {
+        JNU_ReleaseStringPlatformChars(env, title, title_c_str);
+    }
+
+    // Make sure pixels have been flush into the underlying buffer
+    cairo_surface_flush(surface);
+    //gdk_threads_leave();
+    (*env)->ReleasePrimitiveArrayCritical(env, dest, buffer, 0);
+
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint
         (JNIEnv *env, jobject obj, jlong ptr, jint width)
 {
     assert (ptr != 0);
@@ -387,44 +426,15 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint
     }
 }
 
-static void
-draw_title_bar(gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr,
-               int width, int height, int scale, const char *title)
-{
-	GtkStyleContext *style = gtk_widget_get_style_context(decor->window);
-
-	if (!decor->isActive) {
-		gtk_widget_set_state_flags(decor->window, GTK_STATE_FLAG_BACKDROP, true);
-	} else {
-		gtk_widget_unset_state_flags(decor->window, GTK_STATE_FLAG_BACKDROP);
-	}
-
-    if (decor->isMaximized) {
-        gtk_style_context_add_class(style, "maximized");
-    } else {
-		gtk_style_context_remove_class(style, "maximized");
-    }
-
-	gtk_widget_show_all(decor->window);
-
-	gtk_header_bar_set_title(GTK_HEADER_BAR(decor->header), title);
-
-    // TODO: natural size instead of division by scale
-	GtkAllocation allocation = {0, 0, width / scale, height / scale};
-	gtk_widget_size_allocate(decor->header, &allocation);
-
-	draw_header_background(decor, cr);
-	draw_header_title(decor, surface);
-    draw_header_buttons(decor, surface, cr);
-}
-
-JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeSwitchTheme
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_GtkFrameDecoration_nativeSwitchTheme
         (JNIEnv *env, jobject obj)
 {
     while((*g_main_context_iteration)(NULL, FALSE));
 }
 
-JNIEXPORT jint JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeGetIntProperty
+JNIEXPORT jint JNICALL
+Java_sun_awt_wl_GtkFrameDecoration_nativeGetIntProperty
         (JNIEnv *env, jobject obj, jlong ptr, jstring name)
 {
     jboolean isCopy = JNI_FALSE;

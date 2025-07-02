@@ -31,6 +31,7 @@ import sun.swing.ImageCache;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Insets;
 import java.awt.Point;
@@ -61,6 +62,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     public GtkFrameDecoration(WLDecoratedPeer peer, boolean showMinimize, boolean showMaximize) {
         super(peer, showMinimize, showMaximize);
+        // TODO: load gtk once and properly
         ((WLToolkit) WLToolkit.getDefaultToolkit()).checkGtkVersion(3, 0, 0);
         nativePtr = nativeCreateDecoration(showMinimize, showMaximize);
 
@@ -81,11 +83,16 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     }
 
     @Override
+    public void paint(Graphics g) {
+        // Determine buttons' bounds, etc.
+        nativePrePaint(nativePtr, peer.getWidth());
+
+        super.paint(g);
+    }
+
+    @Override
     protected void paintTitleBar(Graphics2D g2d) {
         int width = peer.getWidth();
-        // Determine the various sizes and locations
-        nativePrePaint(nativePtr, width);
-
         int height = titleBarHeight;
 
         // TODO: use the cache
@@ -98,7 +105,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
         String title = peer.getTitle();
 //        System.err.printf("width=%d, height=%d, scale=%f, nativeW=%d, nativeH=%d\n", width, height, scale, nativeW, nativeH);
-        nativePaintTitleBar(nativePtr, SunWritableRaster.stealData(dataBuffer, 0), nativeW, nativeH, (int)scale, title);
+        nativePaintTitleBar(nativePtr, SunWritableRaster.stealData(dataBuffer, 0), width, height, scale, title);
         SunWritableRaster.markDirty(dataBuffer);
 
         int[] bands = { 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000 };
@@ -108,7 +115,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
         BufferedImage img = new BufferedImage(cm, raster, true, null);
         cache.setImage(getClass(), null, nativeW, nativeH, null, img);
 
-        if (scale > 1 && g2d instanceof SunGraphics2D sg2d) {
+        if (scale != 1.0 && g2d instanceof SunGraphics2D sg2d) {
             sg2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             sg2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             sg2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
@@ -203,7 +210,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     private native long nativeCreateDecoration(boolean showMinimize, boolean showMaximize);
     private native void nativeDestroyDecoration(long nativePtr);
     private native void nativeSwitchTheme();
-    private native void nativePaintTitleBar(long nativePtr, int[] buffer, int width, int height, int scale, String title);
+    private native void nativePaintTitleBar(long nativePtr, int[] buffer, int width, int height, double scale, String title);
     private native int nativeGetIntProperty(long nativePtr, String name);
     private native void nativeNotifyConfigured(long nativePtr, boolean active, boolean maximized, boolean fullscreen);
     private native void nativePrePaint(long nativePtr, int width);
