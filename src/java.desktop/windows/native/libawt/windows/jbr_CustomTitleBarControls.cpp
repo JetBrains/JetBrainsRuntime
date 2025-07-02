@@ -359,6 +359,7 @@ class CustomTitleBarControls::Style {
 public:
     float height {0}, width {0};
     int dark {0};
+    bool rtl {false};
     ButtonColors colors {};
 
     bool Update(jobject target, JNIEnv* env) {
@@ -373,6 +374,7 @@ public:
                 height = JNU_CallMethodByName(env, nullptr, titleBar, "getHeight", "()F").f;
                 width = GetNumberProperty(env, properties, L"controls.width");
                 dark = GetBooleanProperty(env, properties, L"controls.dark");
+                rtl = GetBooleanProperty(env, properties, L"controls.rtl") > 0;
                 // Get colors
                 #define GET_STATE_COLOR(NAME, PROPERTY) \
                 colors[0][(int)State::NAME] = GetColorProperty(env, properties, L"controls.background." PROPERTY); \
@@ -460,12 +462,15 @@ void CustomTitleBarControls::PaintButton(Type type, State state, int x, int widt
 
 #define LOAD_STYLE_BITS()                                        \
 DWORD styleBits = (DWORD) GetWindowLong(parent, GWL_STYLE);      \
-DWORD exStyleBits = (DWORD) GetWindowLong(parent, GWL_EXSTYLE);  \
-bool allButtons = styleBits & (WS_MINIMIZEBOX | WS_MAXIMIZEBOX); \
-bool ltr = !(exStyleBits & WS_EX_LAYOUTRTL)
+bool allButtons = styleBits & (WS_MINIMIZEBOX | WS_MAXIMIZEBOX)
 
 void CustomTitleBarControls::Update(State windowState) {
     LOAD_STYLE_BITS();
+
+    // Updating orientation before rendering the controls
+    DWORD currentExStyle = (DWORD) GetWindowLong(hwnd, GWL_EXSTYLE);
+    if (style->rtl == !(currentExStyle & WS_EX_LAYOUTRTL))
+        ::SetWindowLongPtr(hwnd, GWL_EXSTYLE, currentExStyle ^ WS_EX_LAYOUTRTL);
 
     // Calculate size
     float userWidth;
@@ -503,22 +508,17 @@ void CustomTitleBarControls::Update(State windowState) {
     if (allButtons) {
         int w = newSize.cx / 3;
         Type maxType = IsZoomed(parent) ? Type::RESTORE : Type::MAXIMIZE;
-        if (ltr) {
-            PaintButton(Type::MINIMIZE, minState, 0, w, scale, dark);
-            PaintButton(maxType, maxState, w, w, scale, dark);
-            PaintButton(Type::CLOSE, closeState, w*2, newSize.cx-w*2, scale, dark);
-        } else {
-            PaintButton(Type::CLOSE, closeState, 0, newSize.cx-w*2, scale, dark);
-            PaintButton(maxType, maxState, newSize.cx-w*2, w, scale, dark);
-            PaintButton(Type::MINIMIZE, minState, newSize.cx-w, w, scale, dark);
-        }
+        
+        PaintButton(Type::MINIMIZE, minState, 0, w, scale, dark);
+        PaintButton(maxType, maxState, w, w, scale, dark);
+        PaintButton(Type::CLOSE, closeState, w*2, newSize.cx-w*2, scale, dark);
     } else {
         PaintButton(Type::CLOSE, closeState, 0, newSize.cx, scale, dark);
     }
 
     // Update window
     POINT position {0, 0}, ptSrc {0, 0};
-    if (ltr) {
+    if (!style->rtl) {
         RECT parentRect;
         GetClientRect(parent, &parentRect);
         position.x = parentRect.right - newSize.cx;
@@ -539,7 +539,7 @@ void CustomTitleBarControls::Update(State windowState) {
     JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
     jobject target = env->NewLocalRef(this->target);
     if (target) {
-        env->CallVoidMethod(target, jmUpdateInsets, !ltr ? userWidth : 0.0f, ltr ? userWidth : 0.0f);
+        env->CallVoidMethod(target, jmUpdateInsets, style->rtl ? userWidth : 0.0f, !style->rtl ? userWidth : 0.0f);
         env->DeleteLocalRef(target);
     }
 }
@@ -555,9 +555,14 @@ LRESULT CustomTitleBarControls::Hit(HitType type, int ncx, int ncy) {
             if (allButtons) {
                 int w = (rect.right - rect.left) / 3;
                 ncx -= rect.left;
-                if (!ltr) ncx = rect.right - rect.left - ncx;
-                if (ncx < w) newHit = HTMINBUTTON;
-                else if (ncx < w*2) newHit = HTMAXBUTTON;
+
+                if (style->rtl) {
+                    if (ncx > w && ncx <= w*2) newHit = HTMAXBUTTON;
+                    else if (ncx > w*2 && ncx <= w*3) newHit = HTMINBUTTON;
+                } else {
+                    if (ncx < w) newHit = HTMINBUTTON;
+                    else if (ncx < w*2) newHit = HTMAXBUTTON;
+                }
             }
         }
     }
