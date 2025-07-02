@@ -116,7 +116,8 @@ draw_header_title
 static void
 draw_header_button
         (gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr,
-         jboolean hovered, const char *name, const char *icon_name)
+         jboolean hovered, jboolean pressed,
+         const char *name, const char *icon_name)
 {
 	GtkWidget *button = widget_by_name(decor->header, name);
 	if (!button)
@@ -131,9 +132,9 @@ draw_header_button
     }
 	if (hovered) {
 		style_state |= GTK_STATE_FLAG_PRELIGHT;
-	//	if (frame_gtk->hdr_focus.state & GTK_STATE_FLAG_ACTIVE) {
-			//style_state |= GTK_STATE_FLAG_ACTIVE;
-	//	}
+	}
+	if (pressed) {
+        style_state |= GTK_STATE_FLAG_ACTIVE;
 	}
 
 	/* background */
@@ -219,30 +220,33 @@ draw_header_button
 
 static void
 draw_header_buttons
-        (gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr)
+        (gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr, int buttonsState)
 {
     if (decor->showMinimize) {
-        // TODO
-        jboolean hovered = JNI_TRUE;
-        draw_header_button(decor, surface, cr, hovered, ".minimize", "window-minimize-symbolic");
+        jboolean hovered = buttonsState & sun_awt_wl_GtkFrameDecoration_MIN_BUTTON_STATE_HOVERED;
+        jboolean pressed = buttonsState & sun_awt_wl_GtkFrameDecoration_MIN_BUTTON_STATE_PRESSED;
+        draw_header_button(decor, surface, cr, hovered, pressed,
+                           ".minimize", "window-minimize-symbolic");
     }
 
     if (decor->showMaximize) {
-        // TODO
-        jboolean hovered = JNI_FALSE;
-        draw_header_button(decor, surface, cr, hovered, ".maximize",
+        jboolean hovered = buttonsState & sun_awt_wl_GtkFrameDecoration_MAX_BUTTON_STATE_HOVERED;
+        jboolean pressed = buttonsState & sun_awt_wl_GtkFrameDecoration_MAX_BUTTON_STATE_PRESSED;
+        draw_header_button(decor, surface, cr, hovered, pressed,
+                           ".maximize",
                            decor->isMaximized ? "window-restore-symbolic" : "window-maximize-symbolic");
     }
 
-    // TODO
-    jboolean hovered = JNI_FALSE;
-    draw_header_button(decor, surface, cr, hovered, ".close", "window-close-symbolic");
+    jboolean hovered = buttonsState & sun_awt_wl_GtkFrameDecoration_CLOSE_BUTTON_STATE_HOVERED;
+    jboolean pressed = buttonsState & sun_awt_wl_GtkFrameDecoration_CLOSE_BUTTON_STATE_PRESSED;
+    draw_header_button(decor, surface, cr, hovered, pressed,
+                       ".close", "window-close-symbolic");
 }
 
 static void
 draw_title_bar
         (gtk_frame_decoration_t* decor, cairo_surface_t * surface, cairo_t *cr,
-         int width, int height, int scale, const char *title)
+         int width, int height, int scale, const char *title, int buttonsState)
 {
 	GtkStyleContext *style = gtk_widget_get_style_context(decor->window);
 
@@ -267,7 +271,7 @@ draw_title_bar
 
 	draw_header_background(decor, cr);
 	draw_header_title(decor, surface);
-    draw_header_buttons(decor, surface, cr);
+    draw_header_buttons(decor, surface, cr, buttonsState);
 }
 
 JNIEXPORT void JNICALL
@@ -323,7 +327,9 @@ Java_sun_awt_wl_GtkFrameDecoration_nativeCreateDecoration
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
-        (JNIEnv *env, jobject obj, jlong ptr, jintArray dest, jint width, jint height, jdouble scale, jstring title)
+        (JNIEnv *env, jobject obj, jlong ptr, jintArray dest,
+         jint width, jint height, jdouble scale,
+         jstring title, jint buttonsState)
 {
     gtk_frame_decoration_t* decor = jlong_to_ptr(ptr);
 
@@ -350,7 +356,7 @@ Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
     const char *title_c_str = JNU_GetStringPlatformChars(env, title, &isCopy);
     if (!title_c_str)
         return;
-    draw_title_bar(decor, surface, cr, width, height, scale, title_c_str);
+    draw_title_bar(decor, surface, cr, width, height, scale, title_c_str, buttonsState);
 
     if (isCopy) {
         JNU_ReleaseStringPlatformChars(env, title, title_c_str);

@@ -45,6 +45,13 @@ import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
 
 public class GtkFrameDecoration extends FullFrameDecorationHelper {
+    private static final int MIN_BUTTON_STATE_HOVERED = 1;
+    private static final int MIN_BUTTON_STATE_PRESSED = 1 << 1;
+    private static final int MAX_BUTTON_STATE_HOVERED = 1 << 2;
+    private static final int MAX_BUTTON_STATE_PRESSED = 1 << 3;
+    private static final int CLOSE_BUTTON_STATE_HOVERED = 1 << 4;
+    private static final int CLOSE_BUTTON_STATE_PRESSED = 1 << 5;
+
     private long nativePtr;
     private Rectangle minimizeButtonBounds;
     private Rectangle maximizeButtonBounds;
@@ -103,9 +110,10 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
         int nativeH = (int) Math.ceil(height * scale);
         DataBufferInt dataBuffer = new DataBufferInt(nativeW * nativeH);
 
-        String title = peer.getTitle();
-//        System.err.printf("width=%d, height=%d, scale=%f, nativeW=%d, nativeH=%d\n", width, height, scale, nativeW, nativeH);
-        nativePaintTitleBar(nativePtr, SunWritableRaster.stealData(dataBuffer, 0), width, height, scale, title);
+        nativePaintTitleBar(
+                nativePtr,
+                SunWritableRaster.stealData(dataBuffer, 0),
+                width, height, scale, peer.getTitle(), getButtonsState());
         SunWritableRaster.markDirty(dataBuffer);
 
         int[] bands = { 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000 };
@@ -205,12 +213,31 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
         nativeSwitchTheme();
     }
 
+    private int getButtonsState() {
+        int state = 0;
+        if (closeButton.hovered) state |= CLOSE_BUTTON_STATE_HOVERED;
+        if (closeButton.pressed) state |= CLOSE_BUTTON_STATE_PRESSED;
+
+        if (hasMinimizeButton()) {
+            if (minimizeButton.hovered) state |= MIN_BUTTON_STATE_HOVERED;
+            if (minimizeButton.pressed) state |= MIN_BUTTON_STATE_PRESSED;
+        }
+
+        if (hasMaximizeButton()) {
+            if (maximizeButton.hovered) state |= MAX_BUTTON_STATE_HOVERED;
+            if (maximizeButton.pressed) state |= MAX_BUTTON_STATE_PRESSED;
+        }
+
+        return state;
+    }
+
     private static native void initIDs();
 
     private native long nativeCreateDecoration(boolean showMinimize, boolean showMaximize);
     private native void nativeDestroyDecoration(long nativePtr);
     private native void nativeSwitchTheme();
-    private native void nativePaintTitleBar(long nativePtr, int[] buffer, int width, int height, double scale, String title);
+    private native void nativePaintTitleBar(long nativePtr, int[] buffer, int width, int height, double scale,
+                                            String title, int buttonsState);
     private native int nativeGetIntProperty(long nativePtr, String name);
     private native void nativeNotifyConfigured(long nativePtr, boolean active, boolean maximized, boolean fullscreen);
     private native void nativePrePaint(long nativePtr, int width);
