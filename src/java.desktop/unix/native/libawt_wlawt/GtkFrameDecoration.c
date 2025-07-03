@@ -35,8 +35,107 @@
 #include <string.h>
 #include <dlfcn.h>
 
-// TODO: temporary
-#include <gtk/gtk.h>
+typedef void* gpointer;
+typedef char gchar;
+typedef int gint;
+typedef unsigned int guint;
+typedef gint gboolean;
+typedef signed short gint16;
+typedef double gdouble;
+typedef void* GtkWidget;
+typedef void* GtkStyleContext;
+typedef void* GtkContainer;
+typedef void* GtkBin;
+typedef void* GtkWindow;
+typedef void* GtkHeaderBar;
+typedef void* GtkIconInfo;
+typedef void* GtkIconTheme;
+typedef void* GtkSettings;
+typedef void* GdkPixbuf;
+typedef void* GdkWindow;
+typedef void* GError;
+typedef unsigned long GType;
+typedef void (*GtkCallback)(GtkWidget *widget, gpointer data);
+typedef struct _GValue GValue;
+typedef struct _GObject GObject;
+typedef struct _GTypeInstance GTypeInstance;
+typedef struct _GMainContext GMainContext;
+
+typedef enum {
+    GTK_WINDOW_TOPLEVEL,
+    GTK_WINDOW_POPUP
+} GtkWindowType;
+
+typedef enum {
+    GTK_ICON_SIZE_INVALID,
+    GTK_ICON_SIZE_MENU,
+    GTK_ICON_SIZE_SMALL_TOOLBAR,
+    GTK_ICON_SIZE_LARGE_TOOLBAR,
+    GTK_ICON_SIZE_BUTTON,
+    GTK_ICON_SIZE_DND,
+    GTK_ICON_SIZE_DIALOG
+} GtkIconSize;
+
+typedef enum {
+    GTK_ICON_LOOKUP_NO_SVG = 1 << 0,
+    GTK_ICON_LOOKUP_FORCE_SVG = 1 << 1,
+    GTK_ICON_LOOKUP_USE_BUILTIN = 1 << 2,
+    GTK_ICON_LOOKUP_GENERIC_FALLBACK = 1 << 3,
+    GTK_ICON_LOOKUP_FORCE_SIZE = 1 << 4,
+    GTK_ICON_LOOKUP_FORCE_REGULAR = 1 << 5,
+    GTK_ICON_LOOKUP_FORCE_SYMBOLIC = 1 << 6,
+    GTK_ICON_LOOKUP_DIR_LTR = 1 << 7,
+    GTK_ICON_LOOKUP_DIR_RTL = 1 << 8
+} GtkIconLookupFlags;
+
+typedef enum {
+    GTK_STATE_FLAG_NORMAL = 0,
+    GTK_STATE_FLAG_ACTIVE = 1 << 0,
+    GTK_STATE_FLAG_PRELIGHT = 1 << 1,
+    GTK_STATE_FLAG_SELECTED = 1 << 2,
+    GTK_STATE_FLAG_INSENSITIVE = 1 << 3,
+    GTK_STATE_FLAG_INCONSISTENT = 1 << 4,
+    GTK_STATE_FLAG_FOCUSED = 1 << 5,
+    GTK_STATE_FLAG_BACKDROP = 1 << 6
+} GtkStateFlags;
+
+typedef enum {
+    GTK_STYLE_CONTEXT_PRINT_NONE = 0,
+    GTK_STYLE_CONTEXT_PRINT_RECURSE = 1 << 0,
+    GTK_STYLE_CONTEXT_PRINT_SHOW_STYLE = 1 << 1
+} GtkStyleContextPrintFlags;
+
+typedef struct {
+    gint16 left;
+    gint16 right;
+    gint16 top;
+    gint16 bottom;
+} GtkBorder;
+
+typedef struct {
+    int x;
+    int y;
+    int width;
+    int height;
+} GtkAllocation;
+
+#define GTK_STYLE_CLASS_TITLEBAR "titlebar"
+#define GTK_TYPE_WIDGET (p_gtk_widget_get_type())
+#define GTK_TYPE_CONTAINER (p_gtk_container_get_type())
+#define GTK_IS_CONTAINER(obj) p_g_type_check_instance_is_a((obj), GTK_TYPE_CONTAINER)
+#define GTK_IS_WIDGET(obj) p_g_type_check_instance_is_a((obj), GTK_TYPE_WIDGET)
+#define GTK_CONTAINER(obj) ((GtkContainer)(obj))
+#define GTK_BIN(obj) ((GtkBin)(obj))
+#define GTK_WINDOW(obj) ((GtkWindow)(obj))
+#define GTK_WIDGET(obj) ((GtkWidget)(obj))
+#define GTK_HEADER_BAR(obj) ((GtkHeaderBar)(obj))
+
+typedef enum {
+    CAIRO_FORMAT_ARGB32
+} cairo_format_t;
+
+typedef struct _cairo cairo_t;
+typedef struct _cairo_surface cairo_surface_t;
 
 typedef char* (*gtk_style_context_to_string_t)(GtkStyleContext*, GtkStyleContextPrintFlags);
 typedef gboolean (*gtk_icon_size_lookup_t)(GtkIconSize, gint*, gint*);
@@ -93,6 +192,13 @@ typedef void (*cairo_surface_destroy_t)(cairo_surface_t*);
 typedef void (*cairo_surface_flush_t)(cairo_surface_t *);
 typedef void (*cairo_surface_set_device_scale_t)(cairo_surface_t *, double, double);
 
+typedef void (*g_object_unref_t)(gpointer);
+typedef void (*g_object_get_t)(gpointer, const gchar*, ...);
+typedef void (*g_object_set_t)(gpointer, const gchar*, ...);
+typedef void (*g_object_get_property_t)(GObject*, const gchar*, GValue*);
+typedef gboolean (*g_type_check_instance_is_a_t)(void**, GType);
+typedef gboolean (*g_main_context_iteration_t)(GMainContext *context, gboolean);
+
 static gtk_bin_get_child_t p_gtk_bin_get_child;
 static gtk_container_forall_t p_gtk_container_forall;
 static gtk_container_get_type_t p_gtk_container_get_type;
@@ -145,6 +251,13 @@ static cairo_surface_create_for_rectangle_t p_cairo_surface_create_for_rectangle
 static cairo_surface_destroy_t p_cairo_surface_destroy;
 static cairo_surface_flush_t p_cairo_surface_flush;
 static cairo_surface_set_device_scale_t p_cairo_surface_set_device_scale;
+
+static g_object_unref_t p_g_object_unref;
+static g_object_get_t p_g_object_get;
+static g_object_set_t p_g_object_set;
+static g_object_get_property_t p_g_object_get_property;
+static g_type_check_instance_is_a_t p_g_type_check_instance_is_a;
+static g_main_context_iteration_t p_g_main_context_iteration;
 
 static void* gtk_handle;
 static void* gdk_handle;
@@ -243,6 +356,13 @@ static jboolean load_gtk(JNIEnv *env) {
     p_cairo_format_stride_for_width = find_func(env, gtk_handle, "cairo_format_stride_for_width");
     p_cairo_surface_flush = find_func(env, gtk_handle, "cairo_surface_flush");
 
+    p_g_object_unref = find_func(env, gtk_handle, "g_object_unref");
+    p_g_object_get = find_func(env, gtk_handle, "g_object_get");
+    p_g_object_set = find_func(env, gtk_handle, "g_object_set");
+    p_g_object_get_property = find_func(env, gtk_handle, "g_object_get_property");
+    p_g_type_check_instance_is_a = find_func(env, gtk_handle, "g_type_check_instance_is_a");
+    p_g_main_context_iteration = find_func(env, gtk_handle, "g_main_context_iteration");
+
     return JNI_TRUE;
 }
 
@@ -338,9 +458,9 @@ static void draw_header_button(GtkFrameDecorationDescr* decor, cairo_surface_t *
 	p_gtk_style_context_save(button_style);
     p_gtk_style_context_set_state(button_style, style_state);
     p_gtk_render_background(button_style, cr,
-                          allocation.x, allocation.y, allocation.width, allocation.height);
+                            allocation.x, allocation.y, allocation.width, allocation.height);
     p_gtk_render_frame(button_style, cr,
-                     allocation.x, allocation.y, allocation.width, allocation.height);
+                       allocation.x, allocation.y, allocation.width, allocation.height);
     p_gtk_style_context_restore(button_style);
 
 	int icon_width;
@@ -355,7 +475,7 @@ static void draw_header_button(GtkFrameDecorationDescr* decor, cairo_surface_t *
 	p_gtk_style_context_save(button_style);
 	p_gtk_style_context_set_state(button_style, style_state);
 	GdkPixbuf* icon_pixbuf = p_gtk_icon_info_load_symbolic_for_context(icon_info, button_style, NULL, NULL);
-	cairo_surface_t* icon_surface = p_gdk_cairo_surface_create_from_pixbuf(icon_pixbuf, scale, NULL);
+	cairo_surface_t* icon_surface = p_gdk_cairo_surface_create_from_pixbuf(icon_pixbuf, (int) scale, NULL);
 	p_gtk_style_context_restore(button_style);
 
 	int width = 0;
@@ -397,7 +517,7 @@ static void draw_header_button(GtkFrameDecorationDescr* decor, cairo_surface_t *
 				cr, icon_surface, allocation.x + offset_x, allocation.y + offset_y);
 	p_cairo_paint(cr);
 	p_cairo_surface_destroy(icon_surface);
-	g_object_unref(icon_pixbuf);
+	p_g_object_unref(icon_pixbuf);
 }
 
 static void draw_header_buttons(GtkFrameDecorationDescr* decor, cairo_surface_t * surface, cairo_t *cr,
@@ -483,19 +603,19 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeCreateDecoratio
 	d->window = p_gtk_offscreen_window_new();
 	d->header = p_gtk_header_bar_new();
 
-    g_object_set(d->header,
-                 "title", "Default Title",
-                 "has-subtitle", FALSE,
-                 "show-close-button", TRUE,
-                 NULL);
+    p_g_object_set(d->header,
+                  "title", "Default Title",
+                  "has-subtitle", false,
+                  "show-close-button", true,
+                  NULL);
 
 	GtkStyleContext *context_hdr;
 	context_hdr = p_gtk_widget_get_style_context(d->header);
 	p_gtk_style_context_add_class(context_hdr, GTK_STYLE_CLASS_TITLEBAR);
 	p_gtk_style_context_add_class(context_hdr, "default-decoration");
 	p_gtk_window_set_titlebar(GTK_WINDOW(d->window), d->header);
-	p_gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(d->header), TRUE);
-	p_gtk_window_set_resizable(GTK_WINDOW(d->window), TRUE);
+	p_gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(d->header), true);
+	p_gtk_window_set_resizable(GTK_WINDOW(d->window), true);
 
     return ptr_to_jlong(d);
 }
@@ -603,7 +723,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint(JNIEnv 
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeSwitchTheme(JNIEnv *env, jobject obj) {
-    while ((*g_main_context_iteration)(NULL, FALSE));
+    while ((*p_g_main_context_iteration)(NULL, false));
 }
 
 JNIEXPORT jint JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeGetIntProperty
@@ -615,7 +735,7 @@ JNIEXPORT jint JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeGetIntProperty
         return 0;
 
     jint result;
-    g_object_get(gtk_widget_get_settings(decor->window), name_c_str, &result, NULL);
+    p_g_object_get(p_gtk_widget_get_settings(decor->window), name_c_str, &result, NULL);
     if (is_copy) {
         JNU_ReleaseStringPlatformChars(env, name, name_c_str);
     }
