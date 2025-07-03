@@ -223,6 +223,7 @@ runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_r
 containers/docker/TestMemoryAwareness.java 8303470 linux-all
 containers/docker/TestJFREvents.java 8327723 linux-x64
 containers/docker/TestJcmdWithSideCar.java 8341518 linux-x64
+containers/docker/TestPids.java 8356277 linux-all
 
 sources/TestNoNULL.java JBR-8419 generic-all
 

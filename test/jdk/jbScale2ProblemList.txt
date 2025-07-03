@@ -24,6 +24,7 @@ java/awt/Frame/InitialIconifiedTest.java 7144049,8203920,JBR-8819 macosx-all,lin
 java/awt/Frame/InitialMaximizedTest/InitialMaximizedTest.java JBR-8093,JBR-8094 macosx-all,linux-all
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-6090 windows-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR-6090 windows-all
+java/awt/Frame/MinimumSizeTest.java JBR-8298,JBR-9062 linux-all,windows-10.0
 java/awt/Frame/MaximizeUndecoratedTest.java JBR-8064,JBR-8820 linux-all,windows-x64
 java/awt/Frame/MinimizeUndecoratedTest.java 8330731,JBR-8821 linux-all,windows-x64
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-6090 windows-all

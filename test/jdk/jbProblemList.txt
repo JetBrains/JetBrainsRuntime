@@ -371,6 +371,7 @@ java/awt/font/TextLayout/TextLayoutBounds.java 8169188 generic-all
 java/awt/font/TextLayout/TextLayoutEqualsTest.java JBR-6760 linux-i386
 java/awt/font/TextLayout/UnderlinePositionTest.java JBR-6760 linux-i386
 java/awt/font/TextLayout/VisibleAdvance.java JBR-6760 linux-i386
+java/awt/FontMetrics/ExtremeFontSizeTest.java JBR-8989 macosx-14.7.6
 java/awt/image/BufferedImage/ICMColorDataTest/ICMColorDataTest.java 8233028 generic-all
 java/awt/image/DrawImage/IncorrectAlphaSurface2SW.java 8056077 linux-all
 java/awt/image/multiresolution/Corrupted2XImageTest.java 8264053 macosx-all
@@ -794,6 +795,7 @@ java/beans/XMLEncoder/Test6570354.java 8015593 macosx-all
 # jdk_foreign
 
 java/foreign/critical/TestCriticalUpcall.java JBR-8711 windows-aarch64
+java/foreign/TestBufferStackStress.java JBR-8930 windows-aarch64
 java/foreign/TestMismatch.java 8249684 macosx-all
 
 ############################################################################
@@ -870,6 +872,7 @@ javax/management/remote/mandatory/connection/BrokenConnectionTest.java 8262312 l
 java/net/DatagramSocket/DatagramSocketExample.java              8144003,JBR-8455,JBR-8456,8308807 macosx-all,aix-ppc64
 java/net/DatagramSocket/DatagramSocketMulticasting.java         8144003,JBR-8455,JBR-8456,8308807 macosx-all,aix-ppc64
 
+java/net/httpclient/AuthFilterCacheTest.java JBR-8827 windows-aarch64
 java/net/httpclient/ConcurrentResponses.java JBR-8827 windows-aarch64
 java/net/httpclient/HttpClientLocalAddrTest.java JBR-8827 windows-aarch64
 java/net/httpclient/ManyRequests.java JBR-8827 windows-aarch64
@@ -948,6 +951,7 @@ sun/security/smartcardio/TestExclusive.java                     8039280 generic-
 sun/security/smartcardio/TestMultiplePresent.java               8039280 generic-all
 sun/security/smartcardio/TestPresent.java                       8039280 generic-all
 sun/security/smartcardio/TestTransmit.java                      8039280 generic-all
+sun/security/ssl/SSLSessionImpl/MultiNSTClient.java JBR-9058 macosx-aarch64
 com/sun/crypto/provider/Cipher/DES/PerformanceTest.java         8039280 generic-all
 com/sun/security/auth/callback/TextCallbackHandler/Default.java 8039280 generic-all
 com/sun/security/auth/callback/TextCallbackHandler/Password.java 8039280 generic-all
