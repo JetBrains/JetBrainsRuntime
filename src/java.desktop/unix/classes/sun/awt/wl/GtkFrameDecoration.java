@@ -113,7 +113,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     protected void paintBorder(Graphics2D g2d) {
-        // TODO
+        // No border in this decoration style
     }
 
     @Override
@@ -146,8 +146,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     public Insets getContentInsets() {
-        // TODO: proper border width
-        return new Insets(titleBarHeight + 1, 1, 1, 1);
+        return new Insets(titleBarHeight, 0, 0, 0);
     }
 
     @Override
@@ -157,8 +156,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     public Dimension getMinimumSize() {
-        // TODO: proper border width
-        return new Dimension(titleBarMinWidth + 1 * 2, titleBarHeight + 1);
+        return new Dimension(titleBarMinWidth, titleBarHeight);
     }
 
     @Override

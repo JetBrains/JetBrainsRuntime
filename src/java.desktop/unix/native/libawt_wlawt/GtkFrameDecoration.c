@@ -602,6 +602,8 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeCreateDecoratio
     GtkFrameDecorationDescr *d = calloc(1, sizeof(GtkFrameDecorationDescr));
     CHECK_NULL_THROW_OOME_RETURN(env, d, "Failed to allocate GtkFrameDeocration", 0);
 
+    p_gdk_threads_enter();
+
     d->show_minimize = show_minimize;
     d->show_maximize = show_maximize;
 	d->window = p_gtk_offscreen_window_new();
@@ -621,6 +623,8 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeCreateDecoratio
 	p_gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(d->titlebar), true);
 	p_gtk_window_set_resizable(GTK_WINDOW(d->window), true);
 
+    p_gdk_threads_leave();
+
     return ptr_to_jlong(d);
 }
 
@@ -629,8 +633,10 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeDestroyDecoratio
     assert (ptr != 0);
     GtkFrameDecorationDescr* decor = jlong_to_ptr(ptr);
 
+    p_gdk_threads_enter();
     p_gtk_widget_destroy(decor->titlebar);
     p_gtk_widget_destroy(decor->window);
+    p_gdk_threads_leave();
 
     free(decor);
 }
@@ -683,6 +689,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint(JNIEnv 
     assert (ptr != 0);
     GtkFrameDecorationDescr* decor = jlong_to_ptr(ptr);
 
+    p_gdk_threads_enter();
 	if (decor->is_active) {
 		p_gtk_widget_set_state_flags(decor->window, GTK_STATE_FLAG_BACKDROP, true);
 	} else {
@@ -734,6 +741,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint(JNIEnv 
                                              ba.x, ba.y, ba.width, ba.height);
         (*env)->SetObjectField(env, obj, MaxButtonBoundsFID, recObj);
     }
+    p_gdk_threads_leave();
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeSwitchTheme(JNIEnv *env, jobject obj) {
@@ -749,7 +757,9 @@ JNIEXPORT jint JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeGetIntProperty
         return 0;
 
     jint result;
+    p_gdk_threads_enter();
     p_g_object_get(p_gtk_widget_get_settings(decor->window), name_c_str, &result, NULL);
+    p_gdk_threads_leave();
     if (is_copy) {
         JNU_ReleaseStringPlatformChars(env, name, name_c_str);
     }
