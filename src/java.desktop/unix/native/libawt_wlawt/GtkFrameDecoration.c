@@ -131,7 +131,7 @@ typedef struct {
 #define GTK_HEADER_BAR(obj) ((GtkHeaderBar)(obj))
 
 typedef enum {
-    CAIRO_FORMAT_ARGB32
+    CAIRO_FORMAT_ARGB32 = 0
 } cairo_format_t;
 
 typedef struct _cairo cairo_t;
@@ -368,7 +368,7 @@ static jboolean load_gtk(JNIEnv *env) {
 
 typedef struct GtkFrameDecorationDescr {
     GtkWidget *window;
-    GtkWidget *header;
+    GtkWidget *titlebar;
     jboolean   show_minimize;
     jboolean   show_maximize;
     jboolean   is_active;
@@ -411,15 +411,15 @@ static GtkWidget* widget_by_name(GtkWidget *widget, const char *name) {
     return data.widget;
 }
 
-static void draw_header_background(GtkFrameDecorationDescr* decor, cairo_t *cr) {
+static void draw_titlebar_background(GtkFrameDecorationDescr* decor, cairo_t *cr) {
 	GtkAllocation allocation;
-	p_gtk_widget_get_allocation(GTK_WIDGET(decor->header), &allocation);
-	GtkStyleContext* style = p_gtk_widget_get_style_context(decor->header);
+	p_gtk_widget_get_allocation(GTK_WIDGET(decor->titlebar), &allocation);
+	GtkStyleContext* style = p_gtk_widget_get_style_context(decor->titlebar);
 	p_gtk_render_background(style, cr, allocation.x, allocation.y, allocation.width, allocation.height);
 }
 
-static void draw_header_title(GtkFrameDecorationDescr* decor, cairo_surface_t * surface) {
-    GtkWidget *label = widget_by_name(decor->header, "label.title:");
+static void draw_titlebar_title(GtkFrameDecorationDescr* decor, cairo_surface_t * surface) {
+    GtkWidget *label = widget_by_name(decor->titlebar, "label.title:");
     GtkAllocation allocation;
     p_gtk_widget_get_allocation(label, &allocation);
     cairo_surface_t *label_surface = p_cairo_surface_create_for_rectangle(
@@ -430,11 +430,11 @@ static void draw_header_title(GtkFrameDecorationDescr* decor, cairo_surface_t * 
     p_cairo_surface_destroy(label_surface);
 }
 
-static void draw_header_button(GtkFrameDecorationDescr* decor, cairo_surface_t * surface, cairo_t *cr,
+static void draw_titlebar_button(GtkFrameDecorationDescr* decor, cairo_surface_t * surface, cairo_t *cr,
                                double scale,
                                jboolean hovered, jboolean pressed,
                                const char *name, const char *icon_name) {
-	GtkWidget *button = widget_by_name(decor->header, name);
+	GtkWidget *button = widget_by_name(decor->titlebar, name);
 	if (!button)
 		return;
 
@@ -520,26 +520,26 @@ static void draw_header_button(GtkFrameDecorationDescr* decor, cairo_surface_t *
 	p_g_object_unref(icon_pixbuf);
 }
 
-static void draw_header_buttons(GtkFrameDecorationDescr* decor, cairo_surface_t * surface, cairo_t *cr,
+static void draw_titlebar_buttons(GtkFrameDecorationDescr* decor, cairo_surface_t * surface, cairo_t *cr,
                                 double scale, int buttonsState) {
     if (decor->show_minimize) {
         jboolean hovered = buttonsState & sun_awt_wl_GtkFrameDecoration_MIN_BUTTON_STATE_HOVERED;
         jboolean pressed = buttonsState & sun_awt_wl_GtkFrameDecoration_MIN_BUTTON_STATE_PRESSED;
-        draw_header_button(decor, surface, cr, scale, hovered, pressed,
+        draw_titlebar_button(decor, surface, cr, scale, hovered, pressed,
                            ".minimize", "window-minimize-symbolic");
     }
 
     if (decor->show_maximize) {
         jboolean hovered = buttonsState & sun_awt_wl_GtkFrameDecoration_MAX_BUTTON_STATE_HOVERED;
         jboolean pressed = buttonsState & sun_awt_wl_GtkFrameDecoration_MAX_BUTTON_STATE_PRESSED;
-        draw_header_button(decor, surface, cr, scale, hovered, pressed,
+        draw_titlebar_button(decor, surface, cr, scale, hovered, pressed,
                            ".maximize",
                            decor->is_maximized ? "window-restore-symbolic" : "window-maximize-symbolic");
     }
 
     jboolean hovered = buttonsState & sun_awt_wl_GtkFrameDecoration_CLOSE_BUTTON_STATE_HOVERED;
     jboolean pressed = buttonsState & sun_awt_wl_GtkFrameDecoration_CLOSE_BUTTON_STATE_PRESSED;
-    draw_header_button(decor, surface, cr, scale, hovered, pressed,
+    draw_titlebar_button(decor, surface, cr, scale, hovered, pressed,
                        ".close", "window-close-symbolic");
 }
 
@@ -561,14 +561,14 @@ static void draw_title_bar(GtkFrameDecorationDescr* decor, cairo_surface_t * sur
 
 	p_gtk_widget_show_all(decor->window);
 
-	p_gtk_header_bar_set_title(GTK_HEADER_BAR(decor->header), title);
+	p_gtk_header_bar_set_title(GTK_HEADER_BAR(decor->titlebar), title);
 
 	GtkAllocation allocation = {0, 0, width, height};
-	p_gtk_widget_size_allocate(decor->header, &allocation);
+	p_gtk_widget_size_allocate(decor->titlebar, &allocation);
 
-	draw_header_background(decor, cr);
-	draw_header_title(decor, surface);
-    draw_header_buttons(decor, surface, cr, scale, buttonsState);
+	draw_titlebar_background(decor, cr);
+	draw_titlebar_title(decor, surface);
+    draw_titlebar_buttons(decor, surface, cr, scale, buttonsState);
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_initIDs(JNIEnv *env, jclass clazz) {
@@ -601,20 +601,20 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeCreateDecoratio
     d->show_minimize = show_minimize;
     d->show_maximize = show_maximize;
 	d->window = p_gtk_offscreen_window_new();
-	d->header = p_gtk_header_bar_new();
+	d->titlebar = p_gtk_header_bar_new();
 
-    p_g_object_set(d->header,
+    p_g_object_set(d->titlebar,
                   "title", "Default Title",
                   "has-subtitle", false,
                   "show-close-button", true,
                   NULL);
 
 	GtkStyleContext *context_hdr;
-	context_hdr = p_gtk_widget_get_style_context(d->header);
+	context_hdr = p_gtk_widget_get_style_context(d->titlebar);
 	p_gtk_style_context_add_class(context_hdr, GTK_STYLE_CLASS_TITLEBAR);
 	p_gtk_style_context_add_class(context_hdr, "default-decoration");
-	p_gtk_window_set_titlebar(GTK_WINDOW(d->window), d->header);
-	p_gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(d->header), true);
+	p_gtk_window_set_titlebar(GTK_WINDOW(d->window), d->titlebar);
+	p_gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(d->titlebar), true);
 	p_gtk_window_set_resizable(GTK_WINDOW(d->window), true);
 
     return ptr_to_jlong(d);
@@ -682,21 +682,21 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint(JNIEnv 
 		p_gtk_style_context_remove_class(style, "maximized");
     }
 
-	p_gtk_header_bar_set_title(GTK_HEADER_BAR(decor->header), "Title");
+	p_gtk_header_bar_set_title(GTK_HEADER_BAR(decor->titlebar), "Title");
 	p_gtk_widget_show_all(decor->window);
 
     jint pref_height;
-	p_gtk_widget_get_preferred_height(decor->header, NULL, &pref_height);
+	p_gtk_widget_get_preferred_height(decor->titlebar, NULL, &pref_height);
     jint min_width;
-	p_gtk_widget_get_preferred_width(decor->header, &min_width, NULL);
+	p_gtk_widget_get_preferred_width(decor->titlebar, &min_width, NULL);
 
     (*env)->SetIntField(env, obj, TitleBarHeightFID, pref_height);
     (*env)->SetIntField(env, obj, TitleBarMinWidthFID, min_width);
 
 	GtkAllocation ha = {0, 0, width, pref_height};
-	p_gtk_widget_size_allocate(decor->header, &ha);
+	p_gtk_widget_size_allocate(decor->titlebar, &ha);
 
-	GtkWidget *button = widget_by_name(decor->header, ".close");
+	GtkWidget *button = widget_by_name(decor->titlebar, ".close");
 	GtkAllocation ba;
     if (button) {
         p_gtk_widget_get_clip(button, &ba);
@@ -705,7 +705,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint(JNIEnv 
         (*env)->SetObjectField(env, obj, CloseButtonBoundsFID, recObj);
     }
 
-	button = widget_by_name(decor->header, ".minimize");
+	button = widget_by_name(decor->titlebar, ".minimize");
     if (button) {
         p_gtk_widget_get_clip(button, &ba);
         jobject recObj = JNU_NewObjectByName(env, "java/awt/Rectangle", "(IIII)V",
@@ -713,7 +713,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint(JNIEnv 
         (*env)->SetObjectField(env, obj, MinButtonBoundsFID, recObj);
     }
 
-	button = widget_by_name(decor->header, ".maximize");
+	button = widget_by_name(decor->titlebar, ".maximize");
     if (button) {
         p_gtk_widget_get_clip(button, &ba);
         jobject recObj = JNU_NewObjectByName(env, "java/awt/Rectangle", "(IIII)V",
