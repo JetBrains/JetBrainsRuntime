@@ -25,10 +25,8 @@
 
 package sun.awt.wl;
 
-import sun.awt.UNIXToolkit;
 import sun.awt.image.SunWritableRaster;
 import sun.java2d.SunGraphics2D;
-import sun.swing.ImageCache;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -44,7 +42,6 @@ import java.awt.image.ColorModel;
 import java.awt.image.DataBufferInt;
 import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
-import sun.awt.UNIXToolkit;
 
 public class GtkFrameDecoration extends FullFrameDecorationHelper {
     private static final int MIN_BUTTON_STATE_HOVERED = 1;
@@ -55,58 +52,31 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     private static final int CLOSE_BUTTON_STATE_PRESSED = 1 << 5;
 
     private long nativePtr;
-    private Rectangle minimizeButtonBounds;
-    private Rectangle maximizeButtonBounds;
-    private Rectangle closeButtonBounds;
-    private int titleBarHeight = 37;
-    private int titleBarMinWidth = 180;
-
-    private final ImageCache cache = new ImageCache(16);
+    private Rectangle minimizeButtonBounds; // set by the native code
+    private Rectangle maximizeButtonBounds; // set by the native code
+    private Rectangle closeButtonBounds; // set by the native code
+    private int titleBarHeight = 37; // set by the native code
+    private int titleBarMinWidth = 180; // set by the native code
 
     private final int dndThreshold;
 
     static {
         initIDs();
+        nativeLoadGTK();
     }
 
     public GtkFrameDecoration(WLDecoratedPeer peer, boolean showMinimize, boolean showMaximize) {
         super(peer, showMinimize, showMaximize);
-        // TODO: load gtk once and properly
-        ((WLToolkit) WLToolkit.getDefaultToolkit()).checkGtkVersion(3, 0, 0);
-        loadGTK();
         nativePtr = nativeCreateDecoration(showMinimize, showMaximize);
-
         assert nativePtr != 0;
-
         int t = nativeGetIntProperty(nativePtr, "gtk-dnd-drag-threshold");
         dndThreshold = t > 0 ? t : 4;
-
-        // TODO: gtk-alternative-button-order Whether dialog buttons appear in an alternate order (Mac-like).
-        // gtk-decoration-layout - This setting determines which buttons should be put in the titlebar of client-side decorated windows,
-        // and whether they should be placed at the left of right.
-        // For example, “menu:minimize,maximize,close” specifies a menu on the left, and minimize, maximize and close buttons on the right.
-        // gtk-titlebar-double-click - This setting determines the action to take when a double-click occurs on the titlebar
-        //                      of client-side decorated windows.
-        // gtk-titlebar-middle-click
-        // gtk-titlebar-right-click
-        // see https://docs.gtk.org/gtk3/class.Settings.html
-    }
-
-    private static Boolean nativeGTKLoaded;
-    private static boolean loadGTK() {
-        synchronized (UNIXToolkit.GTK_LOCK) {
-            if (nativeGTKLoaded == null) {
-                nativeGTKLoaded = nativeLoadGTK();
-            }
-        }
-        return nativeGTKLoaded;
     }
 
     @Override
     public void paint(Graphics g) {
         // Determine buttons' bounds, etc.
         nativePrePaint(nativePtr, peer.getWidth());
-
         super.paint(g);
     }
 
@@ -115,7 +85,6 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
         int width = peer.getWidth();
         int height = titleBarHeight;
 
-        // TODO: use the cache
         double scale = ((WLGraphicsConfig) peer.getGraphicsConfiguration()).getEffectiveScale();
         g2d.setBackground(new Color(0, true));
         g2d.clearRect(0, 0, width, height);
@@ -134,8 +103,6 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
         ColorModel cm = peer.getGraphicsConfiguration().getColorModel(Transparency.TRANSLUCENT);
         BufferedImage img = new BufferedImage(cm, raster, true, null);
-        cache.setImage(getClass(), null, nativeW, nativeH, null, img);
-
         if (scale != 1.0 && g2d instanceof SunGraphics2D sg2d) {
             sg2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             sg2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
@@ -153,7 +120,6 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     public void dispose() {
         nativeDestroyDecoration(nativePtr);
         nativePtr = 0;
-        cache.flush();
         super.dispose();
     }
 
@@ -222,7 +188,6 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     public void notifyThemeChanged() {
-        cache.flush();
         nativeSwitchTheme();
     }
 

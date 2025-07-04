@@ -620,6 +620,13 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeCreateDecoratio
     return ptr_to_jlong(d);
 }
 
+JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeDestroyDecoration
+        (JNIEnv *env, jobject obj, jlong ptr) {
+    assert (ptr != 0);
+    GtkFrameDecorationDescr* decor = jlong_to_ptr(ptr);
+
+    free(decor);
+}
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
         (JNIEnv *env, jobject obj, jlong ptr, jintArray dest,

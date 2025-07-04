@@ -41,12 +41,37 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     private final boolean showMaximize;
     private final boolean showMinimize;
 
+    private final static String decorationPreference = System.getProperty("sun.awt.wl.WindowDecorationStyle");
+
     public WLDecoratedPeer(Window target, boolean isUndecorated, boolean showMinimize, boolean showMaximize) {
         super(target);
         this.isUndecorated = isUndecorated;
         this.showMinimize = showMinimize;
         this.showMaximize = showMaximize;
-        decoration = isUndecorated ? new MinimalFrameDecoration(this) : new GtkFrameDecoration(this, showMinimize, showMaximize);
+        decoration = determineDecoration(isUndecorated, showMinimize, showMaximize);
+    }
+
+    private FrameDecoration determineDecoration(boolean isUndecorated, boolean showMinimize, boolean showMaximize) {
+        FrameDecoration d;
+        if (isUndecorated) {
+            d = new MinimalFrameDecoration(this);
+        } else if (decorationPreference != null) {
+            if ("builtin".equals(decorationPreference)) {
+                d = new DefaultFrameDecoration(this, showMinimize, showMaximize);
+            } else if ("gtk".equals(decorationPreference)
+                    && ((WLToolkit) WLToolkit.getDefaultToolkit()).checkGtkVersion(3, 20, 0)) {
+                d = new GtkFrameDecoration(this, showMinimize, showMaximize);
+            } else {
+                d = new DefaultFrameDecoration(this, showMinimize, showMaximize);
+            }
+        } else {
+            if (((WLToolkit) WLToolkit.getDefaultToolkit()).checkGtkVersion(3, 20, 0)) {
+                d = new GtkFrameDecoration(this, showMinimize, showMaximize);
+            } else {
+                d = new DefaultFrameDecoration(this, showMinimize, showMaximize);
+            }
+        }
+        return d;
     }
 
     private static native void initIDs();
@@ -70,13 +95,10 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
         return getDecoration().getContentInsets();
     }
 
-    public final void setDecoration(FrameDecoration newDecoration) {
-        Objects.requireNonNull(newDecoration);
+    public final void resetDecoration(boolean isFullscreen) {
         synchronized (getStateLock()) {
-            if (decoration != newDecoration) {
-                decoration.dispose();
-                decoration = newDecoration;
-            }
+            decoration.dispose();
+            decoration = determineDecoration(isFullscreen | isUndecorated, showMinimize, showMaximize);
         }
         // Since the client area of the window may have changed, need to re-validate the target
         // to let it re-layout its children.
@@ -150,10 +172,10 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
 
         if (wasFullscreen != fullscreen) {
             if (fullscreen) {
-                setDecoration(new MinimalFrameDecoration(this));
+                resetDecoration(true);
             } else {
                 if (!isUndecorated) {
-                    setDecoration(new DefaultFrameDecoration(this, showMinimize, showMaximize));
+                    resetDecoration(false);
                 }
             }
         }
