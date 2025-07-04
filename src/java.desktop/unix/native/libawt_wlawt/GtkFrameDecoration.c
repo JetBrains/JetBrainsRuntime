@@ -166,6 +166,7 @@ typedef void (*gtk_style_context_remove_class_t)(GtkStyleContext*, const gchar*)
 typedef void (*gtk_style_context_restore_t)(GtkStyleContext*);
 typedef void (*gtk_style_context_save_t)(GtkStyleContext*);
 typedef void (*gtk_style_context_set_state_t)(GtkStyleContext*, GtkStateFlags);
+typedef void (*gtk_widget_destroy_t)(GtkWidget*);
 typedef void (*gtk_widget_draw_t)(GtkWidget*, cairo_t*);
 typedef void (*gtk_widget_get_allocation_t)(GtkWidget*, GtkAllocation*);
 typedef void (*gtk_widget_get_clip_t)(GtkWidget*, GtkAllocation*);
@@ -223,6 +224,7 @@ static gtk_style_context_restore_t p_gtk_style_context_restore;
 static gtk_style_context_save_t p_gtk_style_context_save;
 static gtk_style_context_set_state_t p_gtk_style_context_set_state;
 static gtk_style_context_to_string_t p_gtk_style_context_to_string;
+static gtk_widget_destroy_t p_gtk_widget_destroy;
 static gtk_widget_draw_t p_gtk_widget_draw;
 static gtk_widget_get_allocation_t p_gtk_widget_get_allocation;
 static gtk_widget_get_clip_t p_gtk_widget_get_clip;
@@ -238,6 +240,7 @@ static gtk_widget_unset_state_flags_t p_gtk_widget_unset_state_flags;
 static gtk_window_new_t p_gtk_window_new;
 static gtk_window_set_resizable_t p_gtk_window_set_resizable;
 static gtk_window_set_titlebar_t p_gtk_window_set_titlebar;
+
 static gdk_cairo_surface_create_from_pixbuf_t p_gdk_cairo_surface_create_from_pixbuf;
 static gdk_threads_enter_t p_gdk_threads_enter;
 static gdk_threads_leave_t p_gdk_threads_leave;
@@ -313,6 +316,7 @@ static jboolean load_gtk(JNIEnv *env) {
     p_gtk_icon_theme_get_default = find_func(env, gtk_handle, "gtk_icon_theme_get_default");
     p_gtk_icon_theme_lookup_icon_for_scale = find_func(env, gtk_handle, "gtk_icon_theme_lookup_icon_for_scale");
     p_gtk_offscreen_window_new = find_func(env, gtk_handle, "gtk_offscreen_window_new");
+    p_gtk_widget_destroy = find_func(env, gtk_handle, "gtk_widget_destroy");
     p_gtk_render_background = find_func(env, gtk_handle, "gtk_render_background");
     p_gtk_render_frame = find_func(env, gtk_handle, "gtk_render_frame");
     p_gtk_render_icon_surface = find_func(env, gtk_handle, "gtk_render_icon_surface");
@@ -624,6 +628,9 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeDestroyDecoratio
         (JNIEnv *env, jobject obj, jlong ptr) {
     assert (ptr != 0);
     GtkFrameDecorationDescr* decor = jlong_to_ptr(ptr);
+
+    p_gtk_widget_destroy(decor->titlebar);
+    p_gtk_widget_destroy(decor->window);
 
     free(decor);
 }
