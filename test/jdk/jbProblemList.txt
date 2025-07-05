@@ -921,6 +921,7 @@ sun/security/smartcardio/TestExclusive.java                     8039280 generic-
 sun/security/smartcardio/TestMultiplePresent.java               8039280 generic-all
 sun/security/smartcardio/TestPresent.java                       8039280 generic-all
 sun/security/smartcardio/TestTransmit.java                      8039280 generic-all
+sun/security/ssl/CipherSuite/NamedGroupsWithCipherSuite.java JBR-9066 macosx-aarch64
 com/sun/crypto/provider/Cipher/DES/PerformanceTest.java         8039280 generic-all
 com/sun/security/auth/callback/TextCallbackHandler/Default.java 8039280 generic-all
 com/sun/security/auth/callback/TextCallbackHandler/Password.java 8039280 generic-all
@@ -968,7 +969,7 @@ javax/script/ScriptEngineOrder.sh JBR-8506 windows-all
 
 # jdk_swing
 
-com/sun/java/swing/plaf/gtk/TestBackSpaceAction.java JBR-8570 linux-aarch64
+com/sun/java/swing/plaf/gtk/TestBackSpaceAction.java JBR-8570 linux-all
 javax/accessibility/SlowPanelIteration/SlowPanelIteration.java JBR-870 windows-all,linux-x64
 javax/swing/plaf/aqua/CustomComboBoxFocusTest.java JBR-6488 macosx-all
 javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945 linux-all,macosx-all
@@ -979,7 +980,7 @@ javax/swing/plaf/basic/BasicTableHeaderUI/6394566/bug6394566.java JBR-5846 windo
 javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,windows-all
 javax/swing/plaf/basic/BasicTreeUI/8023474/bug8023474.java 8253184 linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
-javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510,JBR-8300 windows-all,linux-5.18.2-arch1-1,macosx-aarch64
+javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-5510,JBR-8300 windows-all,linux-5.18.2-arch1-1,macosx-all
 javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464 windows-all,linux-all,windows-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java 8253184,JBR-5829 windows-all,linux-all
 javax/swing/plaf/windows/6921687/bug6921687.java 8253184 windows-all
