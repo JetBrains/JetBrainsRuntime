@@ -1,5 +1,6 @@
 com/sun/java/swing/plaf/gtk/TestFileChooserCtrlASelection.java JBR-8748 linux-all
 com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java JBR-6749 linux-all
+containers/cgroup/TestContainerized.java
 
 java/awt/Choice/NonFocusablePopupMenuTest.java JBR-7785 linux-all
 java/awt/Component/DimensionEncapsulation/DimensionEncapsulation.java JBR-8748 linux-all
@@ -22,19 +23,20 @@ java/awt/font/TextLayout/VisibleAdvance.java JBR-8766 linux-all
 java/awt/FontMetrics/ExtremeFontSizeTest.java JBR-7823 linux-all
 java/awt/Graphics2D/DrawString/RotTransText.java JBR-8767 linux-all
 java/awt/Graphics/XORPaint.java#id2 JBR-7373 linux-x64
-java/awt/Graphics2D/DrawString/RotTransText.java
 java/awt/image/DrawImage/SimpleManagedImage.java JBR-8769 linux-all
 java/awt/image/DrawImage/SimpleUnmanagedImage.java JBR-8769 linux-all
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java JBR-8748 linux-all
 java/awt/Mixing/AWT_Mixing/JListInGlassPaneOverlapping.java JBR-8770 linux-all
-java/awt/Mixing/AWT_Mixing/JListOverlapping.java initial_runs JBR-8770 linux-all
-java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java initial_runs JBR-8770 linux-all
+java/awt/Mixing/AWT_Mixing/JListOverlapping.java JBR-8770 linux-all
+java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java JBR-8770 linux-all
 java/awt/Mixing/HWDisappear.java JBR-6818 linux-all
+java/awt/Mixing/LWComboBox.java JBR-7595 linux-all
 java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java JBR-7076 linux-all
 java/awt/PopupMenu/PopupMenuLocation.java JBR-8774 linux-all
 java/awt/PopupMenu/PopupMenuStayOpen.java JBR-8775 linux-all
 java/awt/TextArea/AutoScrollOnSelectAndAppend/AutoScrollOnSelectAndAppend.java JBR-8776 linux-all
 java/awt/TextComponent/MiddleMouseClickPasteTest.java JBR-8777 linux-all
+java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java JBR-9087 linux-all
 java/awt/Window/FindOwner/FindOwnerTest.html JBR-7500 linux-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java JBR-8778 linux-all
 
@@ -82,7 +84,14 @@ javax/swing/text/html/StyleSheet/bug4476002.java JBR-7498 linux-aarch64
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-8748 linux-all
 
 jb/build/ResolveSymbolsTest/ResolveSymbolsRealEnv.java JBR-8544 linux-all
+jb/java/awt/Toolkit/DetectingOSThemeTest.java JBR-9088 linux-all
+jb/java/io/IoOverNio/ErrorMessageTest.java JBR-8865 linux-all
 jb/java/io/IoOverNio/FileTest.java JBR-8723 linux-all
+jb/java/awt/wayland/VulkanBlitTest.java JBR-8394 linux-all
+jb/java/awt/wayland/VulkanCompositeTest.java JBR-8394 linux-all
+jb/java/awt/Window/ZOrderOnModalDialogActivation.java JBR-9089 linux-all
+
+jb/javax/swing/JLabel/JLabel/JLabel269.java JBR-9090 linux-all
 
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java JBR-8748 linux-all
 sanity/client/SwingSet/src/ButtonDemoTest.java JBR-8748 linux-all
@@ -105,3 +114,6 @@ sanity/client/SwingSet/src/TableDemoTest.java JBR-8748 linux-all
 sanity/client/SwingSet/src/ToggleButtonDemoTest.java JBR-8748 linux-all
 sanity/client/SwingSet/src/TreeDemoTest.java JBR-8748 linux-all
 sanity/client/SwingSet/src/WindowDemoTest.java JBR-8748 linux-all
+
+sun/awt/font/CacheFlushTest.java JBR-9085 linux-all
+sun/awt/font/TestArabicHebrew.java JBR-8826 linux-all
