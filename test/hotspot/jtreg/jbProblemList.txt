@@ -198,12 +198,19 @@ runtime/NMT/VirtualAllocCommitMerge.java 8309698 linux-s390x
 applications/jcstress/copy.java 8229852 linux-all
 
 containers/docker/TestJcmd.java 8278102 linux-all
+containers/docker/TestJcmdWithSideCar.java 8341518,JBR-9074 linux-x64,linux-aarch64
+containers/docker/TestJFREvents.java 8327723 linux-x64
+containers/docker/TestMemoryAwareness.java 8303470 linux-all
+containers/docker/TestMemoryWithSubgroups.java 8360533 linux-all
+containers/docker/TestPids.java 8356277 linux-all
 
 runtime/memory/ReserveMemory.java initial_run windows-aarch64
 runtime/memory/ReadFromNoaccessArea.java initial_run windows-aarch64
 
 runtime/cds/appcds/CommandLineFlagCombo.java JBR-6616 windows-aarch64
 runtime/cds/appcds/complexURI/ComplexURITest.java JBR-6616 windows-aarch64
+runtime/cds/appcds/lambdaForm/DefaultClassListLFInvokers.java JBR-9079 windows-aarch64
+runtime/cds/DeterministicDump.java JBR-9077 windows-aarch64
 runtime/cds/appcds/LotsOfSyntheticClasses.java JBR-8823 windows-all
 runtime/cds/appcds/methodHandles/MethodHandlesInvokersTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesCastFailureTest.java initial_run generic-all
@@ -220,9 +227,6 @@ runtime/cds/TestCDSVMCrash.java JBR-6616 windows-aarch64
 runtime/cds/TestDefaultArchiveLoading.java#coops_nocoh JBR-6616 windows-aarch64
 runtime/cds/TestDefaultArchiveLoading.java#nocoops_nocoh JBR-6616 windows-aarch64
 runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_run generic-all
-containers/docker/TestMemoryAwareness.java 8303470 linux-all
-containers/docker/TestJFREvents.java 8327723 linux-x64
-containers/docker/TestJcmdWithSideCar.java 8341518 linux-x64
 
 sources/TestNoNULL.java JBR-8419 generic-all
 
