@@ -233,7 +233,7 @@ java/awt/Mixing/AWT_Mixing/JSliderInGlassPaneOverlapping.java 8158801,JBR-5510 w
 java/awt/Mixing/AWT_Mixing/JSliderOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JSpinnerInGlassPaneOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JSpinnerOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
-java/awt/Mixing/AWT_Mixing/JTableInGlassPaneOverlapping.java 8158801,JBR-5510,JBR-8311 windows-all,linux-5.18.2-arch1-1,linux-6.8.0-1029-aws
+java/awt/Mixing/AWT_Mixing/JTableInGlassPaneOverlapping.java 8158801,JBR-5510,JBR-8311 windows-all,linux-5.18.2-arch1-1,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws
 java/awt/Mixing/AWT_Mixing/JTableOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JTextAreaInGlassPaneOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JTextAreaOverlapping.java 8158801,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -949,6 +949,7 @@ sun/security/smartcardio/TestExclusive.java                     8039280 generic-
 sun/security/smartcardio/TestMultiplePresent.java               8039280 generic-all
 sun/security/smartcardio/TestPresent.java                       8039280 generic-all
 sun/security/smartcardio/TestTransmit.java                      8039280 generic-all
+sun/security/ssl/SSLSessionImpl/MultiNSTClient.java JBR-9058 macosx-15.5
 com/sun/crypto/provider/Cipher/DES/PerformanceTest.java         8039280 generic-all
 com/sun/security/auth/callback/TextCallbackHandler/Default.java 8039280 generic-all
 com/sun/security/auth/callback/TextCallbackHandler/Password.java 8039280 generic-all
@@ -1146,7 +1147,7 @@ javax/swing/JFormattedTextField/bug4863121.java JBR-7424 windows-all
 javax/swing/JFrame/8016356/bug8016356.java JBR-108 windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106,JBR-5510 macosx-aarch64,linux-5.18.2-arch1-1
 javax/swing/JPopupMenu/6800513/bug6800513.java 7184956,JBR-6533 macosx-all,linux-all,windows-all
-javax/swing/JSlider/bug4382876.java JBR-8666 linux-6.8.0-1027-aws,linux-6.8.0-1028-aws,linux-6.8.0-1029-aws
+javax/swing/JSlider/bug4382876.java JBR-8666 linux-6.8.0-1027-aws,linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws
 javax/swing/JScrollBar/4708809/bug4708809.java 8169957 windows-x64
 javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java 8197552 windows-all
 javax/swing/JSplitPane/4885629/bug4885629.java JBR-5510 linux-5.18.2-arch1-1
@@ -1202,7 +1203,7 @@ javax/swing/JInternalFrame/8069348/bug8069348.java 8253184,JBR-900,JBR-8718 maco
 javax/swing/text/DefaultEditorKit/4278839/bug4278839.java CODETOOLS-7901623 windows-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-896,JBR-6760 windows-all,linux-i386
 javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-5386 windows-all,linux-all
-javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-5210 windows-all
+javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-521,JBR-6687 windows-all,linux-5.18.2-arch1-1
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5542 linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,8340330 windows-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.4.1,macosx-15.5
