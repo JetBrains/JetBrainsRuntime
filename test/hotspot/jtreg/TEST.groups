@@ -661,6 +661,13 @@ tier4 = \
  -:tier2 \
  -:tier3
 
+ tier4_part1 = \
+   :tier4 \
+  -vmTestbase/nsk
+
+ tier4_part2 = \
+  vmTestbase/nsk
+
 hotspot_tier2_runtime = \
   runtime/ \
  -runtime/CommandLine/OptionsValidation/TestOptionsWithRanges.java \
