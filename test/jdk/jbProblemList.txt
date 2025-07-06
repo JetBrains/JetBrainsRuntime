@@ -921,6 +921,7 @@ sun/security/smartcardio/TestExclusive.java                     8039280 generic-
 sun/security/smartcardio/TestMultiplePresent.java               8039280 generic-all
 sun/security/smartcardio/TestPresent.java                       8039280 generic-all
 sun/security/smartcardio/TestTransmit.java                      8039280 generic-all
+sun/security/ssl/CipherSuite/NamedGroupsWithCipherSuite.java JBR-9066 macosx-aarch64
 com/sun/crypto/provider/Cipher/DES/PerformanceTest.java         8039280 generic-all
 com/sun/security/auth/callback/TextCallbackHandler/Default.java 8039280 generic-all
 com/sun/security/auth/callback/TextCallbackHandler/Password.java 8039280 generic-all
@@ -968,7 +969,7 @@ javax/script/ScriptEngineOrder.sh JBR-8506 windows-all
 
 # jdk_swing
 
-com/sun/java/swing/plaf/gtk/TestBackSpaceAction.java JBR-8570 linux-aarch64
+com/sun/java/swing/plaf/gtk/TestBackSpaceAction.java JBR-8570 linux-all
 javax/accessibility/SlowPanelIteration/SlowPanelIteration.java JBR-870 windows-all,linux-x64
 javax/swing/plaf/aqua/CustomComboBoxFocusTest.java JBR-6488 macosx-all
 javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945 linux-all,macosx-all
