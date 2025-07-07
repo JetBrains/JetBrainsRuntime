@@ -41,8 +41,11 @@ public final class VKEnv {
     private static final class Options {
 
         @SuppressWarnings("removal")
-        private static final boolean vulkan = "true".equalsIgnoreCase(AccessController.doPrivileged(
-                (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan", "")));
+        private static final String vulkanProperty = AccessController.doPrivileged(
+                (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan", ""));
+
+        private static final boolean vulkan = "true".equalsIgnoreCase(vulkanProperty);
+        private static final boolean verbose = "True".equals(vulkanProperty);
 
         @SuppressWarnings("removal")
         private static final boolean accelsd = vulkan && "true".equalsIgnoreCase(AccessController.doPrivileged(
@@ -94,14 +97,23 @@ public final class VKEnv {
         }
         state = newState;
 
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+        if (Options.verbose || log.isLoggable(PlatformLogger.Level.FINE)) {
+            String message;
             if (isVulkanEnabled()) {
-                log.fine("Vulkan rendering enabled: YES" +
-                        "\n  presentation enabled: " + (isPresentationEnabled() ? "YES" : "NO") +
-                        "\n  accelerated surface data enabled: " + (isSurfaceDataAccelerated() ? "YES" : "NO") +
-                        "\n  devices:" + Stream.of(devices).map(d -> (d == defaultDevice ?
-                        "\n    *" : "\n     ") + d.getName()).collect(Collectors.joining()));
-            } else log.fine("Vulkan rendering enabled: NO");
+                message = "Vulkan rendering enabled: YES" +
+                          "\n  presentation enabled: " + (isPresentationEnabled() ? "YES" : "NO") +
+                          "\n  accelerated surface data enabled: " + (isSurfaceDataAccelerated() ? "YES" : "NO") +
+                          "\n  devices:" + Stream.of(devices).map(d -> (d == defaultDevice ?
+                          "\n    *" : "\n     ") + d.getName()).collect(Collectors.joining());
+            } else {
+                message = "Vulkan rendering enabled: NO";
+            }
+            if (Options.verbose) {
+                System.err.println(message);
+            }
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine(message);
+            }
         }
     }
 
