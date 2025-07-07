@@ -33,7 +33,6 @@ import java.awt.Rectangle;
 import java.awt.Window;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
-import java.util.Objects;
 
 public abstract class WLDecoratedPeer extends WLWindowPeer {
     private FrameDecoration decoration; // protected by stateLock

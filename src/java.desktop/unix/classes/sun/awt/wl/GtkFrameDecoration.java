@@ -91,16 +91,13 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
         int nativeW = (int) Math.ceil(width * scale);
         int nativeH = (int) Math.ceil(height * scale);
         DataBufferInt dataBuffer = new DataBufferInt(nativeW * nativeH);
-
         nativePaintTitleBar(
                 nativePtr,
                 SunWritableRaster.stealData(dataBuffer, 0),
                 width, height, scale, peer.getTitle(), getButtonsState());
         SunWritableRaster.markDirty(dataBuffer);
-
-        int[] bands = { 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000 };
+        int[] bands = {0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000};
         WritableRaster raster = Raster.createPackedRaster(dataBuffer, nativeW, nativeH, nativeW, bands, null);
-
         ColorModel cm = peer.getGraphicsConfiguration().getColorModel(Transparency.TRANSLUCENT);
         BufferedImage img = new BufferedImage(cm, raster, true, null);
         if (scale != 1.0 && g2d instanceof SunGraphics2D sg2d) {
@@ -145,6 +142,11 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     }
 
     @Override
+    public int getResizeEdgeThickness() {
+        return 10;
+    }
+
+    @Override
     public Insets getContentInsets() {
         return new Insets(titleBarHeight, 0, 0, 0);
     }
@@ -168,14 +170,12 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     @Override
     protected Rectangle getMinimizeButtonBounds() {
         if (!hasMinimizeButton()) return null;
-
         return minimizeButtonBounds;
     }
 
     @Override
     protected Rectangle getMaximizeButtonBounds() {
         if (!hasMaximizeButton()) return null;
-
         return maximizeButtonBounds;
     }
 
