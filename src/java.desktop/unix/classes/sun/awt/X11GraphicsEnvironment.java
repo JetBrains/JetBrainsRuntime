@@ -52,7 +52,7 @@ import sun.java2d.xr.XRSurfaceData;
  * @see GraphicsDevice
  * @see java.awt.GraphicsConfiguration
  */
-public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
+public final class X11GraphicsEnvironment extends SunGraphicsEnvironment implements HiDPIInfoProvider {
 
     static {
         initStatic();
@@ -417,5 +417,15 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
      */
     @Override
     public void paletteChanged() {
+    }
+
+    public String[][] getHiDPIInfo() {
+        X11GraphicsDevice device = null;
+        synchronized (this) {
+            if (devices.containsKey(0)) {
+                device = devices.get(0);
+            }
+        }
+        return device != null ? device.getDpiInfo() : null;
     }
 }
