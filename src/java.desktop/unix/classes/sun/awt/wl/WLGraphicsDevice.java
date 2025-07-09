@@ -227,6 +227,21 @@ public class WLGraphicsDevice extends GraphicsDevice {
         return getResolutionX(defaultConfig);
     }
 
+    double getPhysicalResolution() {
+        Rectangle bounds = defaultConfig.getRealBounds();
+        double daigInPixels = Math.sqrt(bounds.width * bounds.width + bounds.height * bounds.height);
+        double diagInMm = Math.sqrt(widthMm * widthMm + heightMm * heightMm);
+        return daigInPixels * MM_IN_INCH / diagInMm;
+    }
+
+    double getPhysicalScale() {
+        Rectangle bounds = defaultConfig.getRealBounds();
+        double daigInPixels = Math.sqrt(bounds.width * bounds.width + bounds.height * bounds.height);
+        bounds = defaultConfig.getBounds();
+        double diagInUnits = Math.sqrt(bounds.width * bounds.width + bounds.height * bounds.height);
+        return daigInPixels / diagInUnits;
+    }
+
     int getResolutionX(WLGraphicsConfig config) {
         Rectangle bounds = config.getBounds();
         if (bounds.width == 0) return 0;
