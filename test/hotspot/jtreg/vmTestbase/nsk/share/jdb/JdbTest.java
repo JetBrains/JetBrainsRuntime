@@ -127,14 +127,15 @@ public abstract class JdbTest {
     protected void afterJdbExit() {
     }
 
-    protected int runTest(String argv[], PrintStream out) {
+    protected void runTest(String argv[]) {
+        PrintStream out = System.out;
         try {
             argumentHandler = new JdbArgumentHandler(argv);
             log = new Log(out, argumentHandler);
 
             if (shouldPass()) {
                 log.println("TEST PASSED");
-                return PASSED;
+                return;
             }
 
             try {
@@ -223,16 +224,14 @@ public abstract class JdbTest {
 
             if (!success) {
                 log.complain("TEST FAILED");
-                return FAILED;
+                throw new RuntimeException("TEST FAILED");
             }
 
         } catch (Exception e) {
             out.println("Caught unexpected exception while starting the test: " + e);
             e.printStackTrace(out);
-            out.println("TEST FAILED");
-            return FAILED;
+            throw new RuntimeException("TEST FAILED", e);
         }
         out.println("TEST PASSED");
-        return PASSED;
     }
 }
