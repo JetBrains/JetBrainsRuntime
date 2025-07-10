@@ -1185,6 +1185,13 @@ java/awt/List/HandlingKeyEventIfMousePressedTest.java 6848358 macosx-all,windows
 
 ############################################################################
 
+# jdk_since_checks
+
+tools/sincechecker/modules/java.base/JavaBaseCheckSince.java 8358627 generic-all
+tools/sincechecker/modules/jdk.management.jfr/JdkManagementJfrCheckSince.java 8354921 generic-all
+
+############################################################################
+
 # various Windows are created spontaneously during test execution
 
 javax/swing/JList/4618767/JListSelectedElementTest.java                             JBR-4955 windows-all
