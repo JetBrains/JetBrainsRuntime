@@ -35,7 +35,7 @@ import jdk.test.lib.jfr.Events;
  * @key jfr
  * @requires vm.hasJFR
  * @library /test/lib
- * @run main/othervm jdk.jfr.api.metadata.annotations.TestLabel
+ * @run main/othervm jdk.jfr.api.metadata.annotations.TestPeriod
  */
 public class TestPeriod {
 
