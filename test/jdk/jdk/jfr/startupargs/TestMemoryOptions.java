@@ -487,6 +487,7 @@ public class TestMemoryOptions {
             if (flightRecorderOptions != null) {
                 pb = ProcessTools.createTestJvm("--add-exports=jdk.jfr/jdk.jfr.internal=ALL-UNNAMED",
                                                 "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED",
+                                                "-Xmx256m",
                                                 flightRecorderOptions,
                                                 "-XX:StartFlightRecording",
                                                 SUT.class.getName(),
@@ -495,6 +496,7 @@ public class TestMemoryOptions {
                 // default, no FlightRecorderOptions passed
                 pb = ProcessTools.createTestJvm("--add-exports=jdk.jfr/jdk.jfr.internal=ALL-UNNAMED",
                                                 "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED",
+                                                "-Xmx256m",
                                                 "-XX:StartFlightRecording",
                                                 SUT.class.getName(),
                                                 tc.getTestName());
