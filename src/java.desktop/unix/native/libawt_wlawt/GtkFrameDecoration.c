@@ -652,9 +652,12 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
     cairo_t *cr = p_cairo_create(surface);
 
     jboolean is_copy = JNI_FALSE;
-    const char *title_c_str = JNU_GetStringPlatformChars(env, title, &is_copy);
-    if (!title_c_str)
-        return;
+    const char *title_c_str = "";
+    if (title) {
+        title_c_str = JNU_GetStringPlatformChars(env, title, &is_copy);
+        if (!title_c_str)
+            return;
+    }
     draw_title_bar(decor, surface, cr, width, height, scale, title_c_str, buttonsState);
 
     if (is_copy) {
