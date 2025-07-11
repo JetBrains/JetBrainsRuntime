@@ -319,40 +319,4 @@ public class WLGraphicsDevice extends GraphicsDevice {
     public Insets getInsets() {
         return new Insets(0, 0, 0, 0);
     }
-
-    public String[][] getDpiInfo() {
-        var devices = WLGraphicsEnvironment.getSingleInstance().getScreenDevices();
-        if (devices != null && devices.length > 0) {
-            String[][] info = new String[devices.length * 4][3];
-
-            int j = 0;
-            for (int i = 0; i < devices.length; i++) {
-                var gd = (WLGraphicsDevice) devices[i];
-                var gc = (WLGraphicsConfig) gd.getDefaultConfiguration();
-
-                info[j][0] = String.format("Display #%d logical scale", i);
-                info[j][1] = String.valueOf(gd.getDisplayScale());
-                info[j][2] = "wl_output scale factor";
-                j++;
-
-                info[j][0] = String.format("Display #%d effective logical scale", i);
-                info[j][1] = String.format("%.2f", gc.getEffectiveScale());
-                info[j][2] = "Effective logical scale";
-                j++;
-
-                info[j][0] = String.format("Display #%d physical resolution", i);
-                info[j][1] = String.format("%.2f", gd.getPhysicalResolution());
-                info[j][2] = "Pixels per inch";
-                j++;
-                info[j][0] = String.format("Display #%d physical scale", i);
-                info[j][1] = String.format("%.2f", gd.getPhysicalScale());
-                info[j][2] = "Physical to logical diagonal length ratio";
-                j++;
-
-            }
-
-            return info;
-        }
-        return null;
-    }
 }

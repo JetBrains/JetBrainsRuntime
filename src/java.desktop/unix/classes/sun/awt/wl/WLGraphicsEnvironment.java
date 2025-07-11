@@ -250,4 +250,36 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     static boolean isDebugScaleEnabled() {
         return debugScaleEnabled;
     }
+
+    public static String[][] getDpiInfo() {
+        var devices = getSingleInstance().getScreenDevices();
+        if (devices != null && devices.length > 0) {
+            String[][] info = new String[devices.length * 3][3];
+
+            int j = 0;
+            for (int i = 0; i < devices.length; i++) {
+                var gd = (WLGraphicsDevice) devices[i];
+                var gc = (WLGraphicsConfig) gd.getDefaultConfiguration();
+
+                var bounds = gc.getBounds();
+                info[j][0] = String.format("Display #%d logical bounds", i);
+                info[j][1] = String.format("%dx%d @(%d,%d)", bounds.width, bounds.height, bounds.x, bounds.y);
+                info[j][2] = "Display size and offset in logical units";
+                j++;
+
+                info[j][0] = String.format("Display #%d logical scale", i);
+                info[j][1] = String.format("%d (%.2f)", gd.getDisplayScale(), gc.getEffectiveScale());
+                info[j][2] = "wl_output scale and effective scale factor";
+                j++;
+
+                info[j][0] = String.format("Display #%d real scale", i);
+                info[j][1] = String.format("%.2f", gd.getPhysicalScale());
+                info[j][2] = "Physical to logical diagonal length ratio";
+                j++;
+            }
+
+            return info;
+        }
+        return null;
+    }
 }

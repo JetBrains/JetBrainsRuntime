@@ -26,7 +26,7 @@
 package sun.awt;
 
 import com.jetbrains.exported.JBRApi;
-import sun.awt.wl.WLGraphicsDevice;
+import sun.awt.wl.WLGraphicsEnvironment;
 
 import java.awt.GraphicsEnvironment;
 
@@ -46,8 +46,7 @@ class HiDPIInfoDispenser {
                 return x11gd.getDpiInfo();
             }
             case "sun.awt.wl.WLGraphicsDevice" -> {
-                var wlgd = (WLGraphicsDevice) gd;
-                return wlgd.getDpiInfo();
+                return WLGraphicsEnvironment.getDpiInfo();
             }
             default -> {
                 throw new UnsupportedOperationException("Unsupported GraphicsDevice type: " + name);
