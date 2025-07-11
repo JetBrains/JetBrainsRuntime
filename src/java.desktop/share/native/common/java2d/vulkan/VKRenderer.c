@@ -604,33 +604,6 @@ void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* 
 }
 
 /**
- * Prepare buffer barrier info to be executed in batch, if needed.
- */
-void VKRenderer_AddBufferBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
-                                VKBuffer* buffer, VkPipelineStageFlags stage,
-                                VkAccessFlags access)
-{
-    assert(barriers != NULL && batch != NULL && buffer != NULL);
-    if (stage != buffer->lastStage || access != buffer->lastAccess) {
-        barriers[batch->barrierCount] = (VkBufferMemoryBarrier) {
-                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-                .srcAccessMask = buffer->lastAccess,
-                .dstAccessMask = access,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .buffer = buffer->handle,
-                .offset = 0,
-                .size = VK_WHOLE_SIZE
-        };
-        batch->barrierCount++;
-        batch->srcStages |= buffer->lastStage;
-        batch->dstStages |= stage;
-        buffer->lastStage = stage;
-        buffer->lastAccess = access;
-    }
-}
-
-/**
  * Get Color RGBA components in a suitable for the current render pass.
  */
 inline RGBA VKRenderer_GetRGBA(VKSDOps* surface, Color color) {
