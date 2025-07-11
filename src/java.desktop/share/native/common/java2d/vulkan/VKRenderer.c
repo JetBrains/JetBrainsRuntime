@@ -155,8 +155,10 @@ typedef struct {
  */
 struct VKRenderPass {
     VKRenderPassContext* context;
-    ARRAY(VKBuffer)      vertexBuffers;
-    ARRAY(VKTexelBuffer) maskFillBuffers;
+    ARRAY(VkMappedMemoryRange) flushRanges;
+    ARRAY(VKBuffer)            vertexBuffers;
+    ARRAY(VKTexelBuffer)       maskFillBuffers;
+    ARRAY(VKCleanupEntry)      cleanupQueue;
     ARRAY(VKSDOps*)      usedSurfaces;
     VkRenderPass         renderPass; // Non-owning.
     VkFramebuffer        framebuffer;
@@ -624,10 +626,11 @@ inline void VKRenderer_FlushDraw(VKSDOps* surface) {
 }
 
 /**
- * Flush vertex buffer writes, push vertex buffers to the pending queue, reset drawing state for the surface.
+ * Flush buffer writes, push buffers to the pending queue, reset the drawing state for the surface.
  */
 static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
+    VKRenderer* renderer = surface->device->renderer;
     surface->renderPass->state.composite = NO_COMPOSITE;
     surface->renderPass->state.shader = NO_SHADER;
     surface->renderPass->transformModCount = 0;
@@ -635,22 +638,27 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     surface->renderPass->vertexCount = 0;
     surface->renderPass->vertexBufferWriting = (BufferWritingState) {NULL, 0, VK_FALSE};
     surface->renderPass->maskFillBufferWriting = (BufferWritingState) {NULL, 0, VK_FALSE};
+    if (ARRAY_SIZE(surface->renderPass->flushRanges) > 0) {
+        VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle,
+                                                               ARRAY_SIZE(surface->renderPass->flushRanges), surface->renderPass->flushRanges)) {}
+        ARRAY_RESIZE(surface->renderPass->flushRanges, 0);
+    }
     size_t vertexBufferCount = ARRAY_SIZE(surface->renderPass->vertexBuffers);
     size_t maskFillBufferCount = ARRAY_SIZE(surface->renderPass->maskFillBuffers);
-    if (vertexBufferCount == 0 && maskFillBufferCount == 0) return;
+    size_t cleanupQueueCount = ARRAY_SIZE(surface->renderPass->cleanupQueue);;
     VkMappedMemoryRange memoryRanges[vertexBufferCount + maskFillBufferCount];
     for (uint32_t i = 0; i < vertexBufferCount; i++) {
-        memoryRanges[i] = surface->renderPass->vertexBuffers[i].range;
         POOL_RETURN(surface->device->renderer, vertexBufferPool, surface->renderPass->vertexBuffers[i]);
     }
     for (uint32_t i = 0; i < maskFillBufferCount; i++) {
-        memoryRanges[vertexBufferCount + i] = surface->renderPass->maskFillBuffers[i].buffer.range;
         POOL_RETURN(surface->device->renderer, maskFillBufferPool, surface->renderPass->maskFillBuffers[i]);
+    }
+    for (uint32_t i = 0; i < cleanupQueueCount; i++) {
+        POOL_RETURN(surface->device->renderer, cleanupQueue, surface->renderPass->cleanupQueue[i]);
     }
     ARRAY_RESIZE(surface->renderPass->vertexBuffers, 0);
     ARRAY_RESIZE(surface->renderPass->maskFillBuffers, 0);
-    VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle,
-                                                           vertexBufferCount + maskFillBufferCount, memoryRanges)) {}
+    ARRAY_RESIZE(surface->renderPass->cleanupQueue, 0);
 }
 
 /**
@@ -1120,6 +1128,7 @@ uint32_t VKRenderer_AllocateVertices(uint32_t primitives, uint32_t vertices, siz
         if (writing.state.data == NULL) {
             VKBuffer buffer = VKRenderer_GetVertexBuffer(surface->device->renderer);
             ARRAY_PUSH_BACK(surface->renderPass->vertexBuffers) = buffer;
+            ARRAY_PUSH_BACK(surface->renderPass->flushRanges) = buffer.range;
             surface->renderPass->vertexBufferWriting.data = writing.state.data = buffer.data;
         }
         assert(ARRAY_SIZE(surface->renderPass->vertexBuffers) > 0);
@@ -1160,6 +1169,7 @@ static BufferWritingState VKRenderer_AllocateMaskFillBytes(uint32_t size) {
         if (state.data == NULL) {
             VKTexelBuffer buffer = VKRenderer_GetMaskFillBuffer(surface->device->renderer);
             ARRAY_PUSH_BACK(surface->renderPass->maskFillBuffers) = buffer;
+            ARRAY_PUSH_BACK(surface->renderPass->flushRanges) = buffer.buffer.range;
             surface->renderPass->maskFillBufferWriting.data = state.data = buffer.buffer.data;
         }
         assert(ARRAY_SIZE(surface->renderPass->maskFillBuffers) > 0);
