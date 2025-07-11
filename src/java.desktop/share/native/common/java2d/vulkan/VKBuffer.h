@@ -35,8 +35,6 @@
 
 struct VKBuffer {
     VkBuffer handle;
-    VkPipelineStageFlagBits lastStage;
-    VkAccessFlagBits        lastAccess;
     // Buffer has no ownership over its memory.
     // Provided memory, offset and size must only be used to flush memory writes.
     // Allocation and freeing is done in pages.
@@ -95,5 +93,9 @@ VKBuffer* VKBuffer_CreateFromRaster(VKDevice* device, VKBuffer_RasterInfo info,
 void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer);
 
 void VKBuffer_Dispose(VKDevice* device, void* ctx);
+
+void VKBuffer_AddBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch, VKBuffer* buffer,
+                         VkPipelineStageFlags srcStage, VkAccessFlags srcAccess,
+                         VkPipelineStageFlags dstStage, VkAccessFlags dstAccess);
 
 #endif // VKBuffer_h_Included
