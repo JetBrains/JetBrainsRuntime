@@ -82,10 +82,6 @@ VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
 void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
                                 VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout);
 
-void VKRenderer_AddBufferBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
-                                VKBuffer* buffer, VkPipelineStageFlags stage,
-                                VkAccessFlags access);
-
 /**
  * Record barrier batches into the primary command buffer.
  */
