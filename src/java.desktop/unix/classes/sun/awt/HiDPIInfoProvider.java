@@ -25,32 +25,6 @@
 
 package sun.awt;
 
-import com.jetbrains.exported.JBRApi;
-import sun.awt.wl.WLGraphicsEnvironment;
-
-import java.awt.GraphicsEnvironment;
-
-@JBRApi.Service
-@JBRApi.Provides("HiDPIInfo")
-class HiDPIInfoDispenser {
-    String[][] getInfo() {
-        var gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
-        if (gd == null) {
-            throw new UnsupportedOperationException("No default screen device");
-        }
-
-        String name = gd.getClass().getName();
-        switch (name) {
-            case "sun.awt.X11GraphicsDevice" -> {
-                var x11gd = (X11GraphicsDevice) gd;
-                return x11gd.getDpiInfo();
-            }
-            case "sun.awt.wl.WLGraphicsDevice" -> {
-                return WLGraphicsEnvironment.getDpiInfo();
-            }
-            default -> {
-                throw new UnsupportedOperationException("Unsupported GraphicsDevice type: " + name);
-            }
-        }
-    }
+public interface HiDPIInfoProvider {
+    String[][] getHiDPIInfo();
 }

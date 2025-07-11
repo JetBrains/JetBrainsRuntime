@@ -31,6 +31,7 @@ import java.util.Locale;
 import java.util.function.Supplier;
 
 import com.jetbrains.exported.JBRApi;
+import sun.awt.HiDPIInfoProvider;
 import sun.awt.PlatformGraphicsInfo;
 import sun.font.FontManager;
 import sun.font.FontManagerFactory;
@@ -433,5 +434,15 @@ public abstract class GraphicsEnvironment {
     // Default implementation: return the usable bounds of the default screen
     // device.  This is correct for Microsoft Windows and non-Xinerama X11.
         return SunGraphicsEnvironment.getUsableBounds(getDefaultScreenDevice());
+    }
+
+    @JBRApi.Provides("HiDPIInfo")
+    private static String[][] getInfo() {
+        var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        if (ge instanceof HiDPIInfoProvider provider) {
+            return provider.getHiDPIInfo();
+        } else {
+            throw new UnsupportedOperationException("Not supported with " + ge.getClass().getName());
+        }
     }
 }
