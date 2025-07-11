@@ -39,6 +39,13 @@ final class InputContextState {
     public final long nativeContextPtr;
 
 
+    public InputContextState(long nativeContextPtr) {
+        assert(nativeContextPtr != 0);
+
+        this.nativeContextPtr = nativeContextPtr;
+    }
+
+
     /**
      * This class represents the extended state of an {@code InputContextState} that only exists when the context
      *   is enabled.

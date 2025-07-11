@@ -39,6 +39,11 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.im.text_input_unstable_v3.WLInputMethodZwpTextInputV3");
 
 
+    public WLInputMethodZwpTextInputV3() throws AWTException {
+        wlInitializeContext();
+    }
+
+
     /* sun.awt.im.InputMethodAdapter methods section */
 
     @Override
@@ -162,7 +167,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void dispose() {
-        // TODO: implement
+        wlDisposeContext();
     }
 
     @Override
@@ -174,6 +179,13 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /* java.lang.Object methods section */
 
+    @SuppressWarnings("removal")
+    @Override
+    protected void finalize() throws Throwable {
+        dispose();
+        super.finalize();
+    }
+
     @Override
     public String toString() {
         // TODO: implement
@@ -182,6 +194,69 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
 
     /* Implementation details section */
+
+    // Since WLToolkit dispatches (almost) all native Wayland events on EDT, not on its thread,
+    //   there's no need for this class to think about multithreading issues - all of its parts may only be executed
+    //   on EDT.
+    // If WLToolkit dispatched native Wayland events on its thread {@link sun.awt.wl.WLToolkit#isToolkitThread},
+    //   this class would require the following modifications:
+    //     - Guarding access to the fields with some synchronization primitives
+    //     - Taking into account that zwp_text_input_v3_on* callbacks may even be called when the constructor doesn't
+    //       even return yet (in the current implementation)
+    //     - Reworking the implementation of {@link #disposeNativeContext(long)} so that it prevents
+    //       use-after-free access errors to the destroyed native context from the native handlers of
+    //       zwp_text_input_v3 native events.
+
+    static {
+        initIDs();
+    }
+
+
+    /* Wayland-side state section */
+
+    // The fields in this section are prefixed with "wl" and aren't supposed to be modified by
+    //   non-Wayland-related methods (whose names are prefixed with "wl" or "zwp_text_input_v3_"),
+    //   though can be read by them.
+
+    /** The reference must only be (directly) modified in {@link #wlInitializeContext()} and {@link #wlDisposeContext()}. */
+    private InputContextState wlInputContextState = null;
+
+
+    /* Wayland-side methods section */
+
+    // The methods in this section implement the core logic of working with the "text-input-unstable-v3" protocol.
+
+    private void wlInitializeContext() throws AWTException {
+        assert(wlInputContextState == null);
+
+        long nativeCtxPtr = 0;
+
+        try {
+            nativeCtxPtr = createNativeContext();
+            if (nativeCtxPtr == 0) {
+                throw new AWTException("nativeCtxPtr == 0");
+            }
+
+            wlInputContextState = new InputContextState(nativeCtxPtr);
+        } catch (Throwable err) {
+            if (nativeCtxPtr != 0) {
+                disposeNativeContext(nativeCtxPtr);
+                nativeCtxPtr = 0;
+            }
+
+            throw err;
+        }
+    }
+
+    private void wlDisposeContext() {
+        final var ctxToDispose = this.wlInputContextState;
+
+        wlInputContextState = null;
+
+        if (ctxToDispose != null && ctxToDispose.nativeContextPtr != 0) {
+            disposeNativeContext(ctxToDispose.nativeContextPtr);
+        }
+    }
 
 
     /* JNI downcalls section */
