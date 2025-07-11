@@ -36,6 +36,7 @@ import sun.awt.PeerEvent;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.datatransfer.DataTransferer;
+import sun.awt.wl.im.WLInputMethodMetaDescriptor;
 import sun.java2d.vulkan.VKInstance;
 import sun.java2d.vulkan.VKRenderQueue;
 import sun.util.logging.PlatformLogger;
@@ -860,10 +861,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     public InputMethodDescriptor getInputMethodAdapterDescriptor() {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.getInputMethodAdapterDescriptor()");
-        }
-        return null;
+        return WLInputMethodMetaDescriptor.getInstanceIfAvailableOnPlatform();
     }
 
     /**
