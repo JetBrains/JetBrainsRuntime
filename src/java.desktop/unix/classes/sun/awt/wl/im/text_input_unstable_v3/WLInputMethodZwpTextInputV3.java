@@ -649,14 +649,45 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     private void zwp_text_input_v3_onEnter(long enteredWlSurfacePtr) {
         assert EventQueue.isDispatchThread();
 
-        if (wlContextHasToBeEnabled() && wlContextCanBeEnabledNow()) {
-            wlEnableContextNow();
+        try {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("zwp_text_input_v3_onEnter(enteredWlSurfacePtr={0}): this={1}.", enteredWlSurfacePtr, this);
+            }
+
+            // a native context can't be in the enabled state while not focused on any surface
+            assert(!wlInputContextState.isEnabled());
+
+            wlInputContextState.setCurrentWlSurfacePtr(enteredWlSurfacePtr);
+
+            if (wlContextHasToBeEnabled() && wlContextCanBeEnabledNow()) {
+                wlEnableContextNow();
+            }
+        } catch (Exception err) {
+            log.severe("Failed to handle a zwp_text_input_v3::enter event (enteredWlSurfacePtr=" + enteredWlSurfacePtr + ").", err);
         }
     }
 
     /** Called in response to {@code zwp_text_input_v3::leave} events. */
     private void zwp_text_input_v3_onLeave(long leftWlSurfacePtr) {
         assert EventQueue.isDispatchThread();
+
+        try {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("zwp_text_input_v3_onLeave(leftWlSurfacePtr={0}). this={1}.", leftWlSurfacePtr, this);
+            }
+
+            if (wlInputContextState.getCurrentWlSurfacePtr() != leftWlSurfacePtr) {
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.warning("zwp_text_input_v3_onLeave: leftWlSurfacePtr=={0} isn't equal to the currently known one {1}.",
+                                leftWlSurfacePtr, wlInputContextState.getCurrentWlSurfacePtr());
+                }
+            }
+
+            wlInputContextState.setCurrentWlSurfacePtr(0);
+            wlHandleContextGotDisabled();
+        } catch (Exception err) {
+            log.severe("Failed to handle a zwp_text_input_v3::leave event (leftWlSurfacePtr=" + leftWlSurfacePtr + ").", err);
+        }
     }
 
     /** Called in response to {@code zwp_text_input_v3::preedit_string} events. */
