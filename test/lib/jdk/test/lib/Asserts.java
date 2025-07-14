@@ -23,6 +23,10 @@
 
 package jdk.test.lib;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Objects;
 
 /**
@@ -602,6 +606,28 @@ public class Asserts {
      */
     public static void fail(Object lhs, Object rhs, String message, String relation) {
         throw new RuntimeException(format(lhs, rhs, message, relation));
+    }
+
+    /**
+     * Asserts that contents of two files are equal.
+     *
+     * @param f1 The path of the first file to compare
+     * @param f2 The path of the second file to compare
+     * @throws RuntimeException on mismatch or I/O failure
+     */
+    public static void assertFileContentsEqual(Path f1, Path f2) {
+        long mismatchIndex = 0;
+        try {
+            mismatchIndex = Files.mismatch(f1, f2);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+        if (mismatchIndex >= 0) {
+            String message = String.format(
+                    "Contents of files '%s' and '%s' mismatch at index %d",
+                    f1, f2, mismatchIndex);
+            fail(message);
+        }
     }
 
     /**
