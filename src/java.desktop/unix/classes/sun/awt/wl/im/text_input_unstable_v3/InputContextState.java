@@ -80,6 +80,10 @@ final class InputContextState {
         return new OutgoingBeingCommittedChanges(changes, this.commitCounter);
     }
 
+    public long getCommitCounter() {
+        return commitCounter;
+    }
+
 
     /**
      * This class represents the extended state of an {@code InputContextState} that only exists when the context
@@ -125,6 +129,25 @@ final class InputContextState {
      */
     public void setEnabledState(StateOfEnabled newState) {
         this.stateOfEnabled = newState;
+    }
+
+
+    public void syncWithAppliedIncomingChanges(final JavaPreeditString appliedPreeditString, final JavaCommitString appliedCommitString, final long doneSerial) {
+        this.latestAppliedPreeditString = Objects.requireNonNull(appliedPreeditString, "appliedPreeditString");
+        this.latestAppliedCommitString = Objects.requireNonNull(appliedCommitString, "appliedCommitString");
+        this.latestDoneSerial = doneSerial;
+    }
+
+    public JavaPreeditString getLatestAppliedPreeditString() {
+        return latestAppliedPreeditString;
+    }
+
+    public JavaCommitString getLatestAppliedCommitString() {
+        return latestAppliedCommitString;
+    }
+
+    public long getLatestDoneSerial() {
+        return latestDoneSerial;
     }
 
 
