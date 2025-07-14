@@ -745,6 +745,20 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     /** Called in response to {@code zwp_text_input_v3::delete_surrounding_text} events. */
     private void zwp_text_input_v3_onDeleteSurroundingText(long numberOfUtf8BytesBeforeToDelete, long numberOfUtf8BytesAfterToDelete) {
         assert EventQueue.isDispatchThread();
+
+        // TODO: support the surrounding text API (set_surrounding_text + set_text_change_cause | delete_surrounding text)
+        //       at least for particular cases.
+        //       What capabilities are required from the component:
+        //         - (set_surrounding_text) track the caret's virtual position
+        //         - (set_surrounding_text) track all text changes in the current component
+        //         - (set_surrounding_text) retrieve the caret's virtual position
+        //         - (set_surrounding_text) retrieve the component's text around the caret
+        //         - (delete_surrounding_text) delete text at specific indices
+        // We're currently not supporting the set_surronding_text / delete_surrounding_text API.
+        // The main reason behind that is the lack of a suitable AWT/Swing API.
+        // We expect the compositor never sends us such an event because we never send a set_surrounding_text request,
+        //   this way notifying the compositor we don't support this API:
+        // "The initial state for affected fields is empty, meaning that the text input does not support sending surrounding text."
     }
 
     /** Called in response to {@code zwp_text_input_v3::done} events. */
