@@ -53,6 +53,7 @@ record JavaPreeditString(String text, int cursorBeginCodeUnit, int cursorEndCode
     }
 
     public static final JavaPreeditString EMPTY = new JavaPreeditString("", 0, 0);
+    public static final JavaPreeditString EMPTY_NO_CARET = new JavaPreeditString("", -1, -1);
 
     public static JavaPreeditString fromWaylandPreeditString(
         final byte[] utf8Bytes,
