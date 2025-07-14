@@ -30,6 +30,7 @@ import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
 import java.awt.im.spi.InputMethodContext;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -290,6 +291,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     private OutgoingChanges wlPendingChanges = null;
     /** Changes that have been committed but not yet applied by the compositor. {@code null} means there are no such changes at the moment. */
     private OutgoingBeingCommittedChanges wlBeingCommittedChanges = null;
+    /** Changes that have been sent by the compositor but not yet applied on our side (because a zwp_text_input_v3::done event hasn't been received yet). */
+    private IncomingChanges wlIncomingChanges = null;
 
 
     /* Wayland-side methods section */
@@ -300,6 +303,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         assert(wlInputContextState == null);
         assert(wlPendingChanges == null);
         assert(wlBeingCommittedChanges == null);
+        assert(wlIncomingChanges == null);
 
         long nativeCtxPtr = 0;
 
@@ -326,6 +330,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         wlInputContextState = null;
         wlPendingChanges = null;
         wlBeingCommittedChanges = null;
+        wlIncomingChanges = null;
 
         if (ctxToDispose != null && ctxToDispose.nativeContextPtr != 0) {
             disposeNativeContext(ctxToDispose.nativeContextPtr);
@@ -620,6 +625,13 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         }
     }
 
+    private IncomingChanges wlGetIncomingChanges() {
+        if (wlIncomingChanges == null) {
+            wlIncomingChanges = new IncomingChanges();
+        }
+        return wlIncomingChanges;
+    }
+
 
     /* JNI downcalls section */
 
@@ -691,11 +703,40 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     /** Called in response to {@code zwp_text_input_v3::preedit_string} events. */
     private void zwp_text_input_v3_onPreeditString(byte[] preeditStrUtf8, int cursorBeginUtf8Byte, int cursorEndUtf8Byte) {
         assert EventQueue.isDispatchThread();
+
+        try {
+            if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                log.finer("zwp_text_input_v3_onPreeditString(cursorBeginUtf8Byte={0}, cursorEndUtf8Byte={1}, preeditStrUtf8={2}).",
+                          cursorBeginUtf8Byte, cursorEndUtf8Byte, Arrays.toString(preeditStrUtf8));
+            }
+
+            wlGetIncomingChanges().updatePreeditString(preeditStrUtf8, cursorBeginUtf8Byte, cursorEndUtf8Byte);
+
+            if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                log.finer("zwp_text_input_v3_onPreeditString: this.wlIncomingChanges={0}.", this.wlIncomingChanges);
+            }
+        } catch (Exception err) {
+            log.severe("Failed to handle a zwp_text_input_v3::preedit_string event.", err);
+        }
     }
 
     /** Called in response to {@code zwp_text_input_v3::commit_string} events. */
     private void zwp_text_input_v3_onCommitString(byte[] commitStrUtf8) {
         assert EventQueue.isDispatchThread();
+
+        try {
+            if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                log.finer("zwp_text_input_v3_onCommitString(commitStrUtf8={0}).", Arrays.toString(commitStrUtf8));
+            }
+
+            wlGetIncomingChanges().updateCommitString(commitStrUtf8);
+
+            if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                log.finer("zwp_text_input_v3_onCommitString: this.wlIncomingChanges={0}.", this.wlIncomingChanges);
+            }
+        } catch (Exception err) {
+            log.severe("Failed to handle a zwp_text_input_v3::commit_string event.", err);
+        }
     }
 
     /** Called in response to {@code zwp_text_input_v3::delete_surrounding_text} events. */
