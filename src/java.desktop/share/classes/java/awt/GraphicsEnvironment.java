@@ -435,14 +435,4 @@ public abstract class GraphicsEnvironment {
     // device.  This is correct for Microsoft Windows and non-Xinerama X11.
         return SunGraphicsEnvironment.getUsableBounds(getDefaultScreenDevice());
     }
-
-    @JBRApi.Provides("HiDPIInfo")
-    private static String[][] getInfo() {
-        var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        if (ge instanceof HiDPIInfoProvider provider) {
-            return provider.getHiDPIInfo();
-        } else {
-            throw new UnsupportedOperationException("Not supported with " + ge.getClass().getName());
-        }
-    }
 }

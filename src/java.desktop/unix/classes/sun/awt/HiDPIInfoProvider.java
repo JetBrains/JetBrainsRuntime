@@ -25,6 +25,21 @@
 
 package sun.awt;
 
+import com.jetbrains.exported.JBRApi;
+
+import java.awt.GraphicsEnvironment;
+
+@JBRApi.Service
+@JBRApi.Provides("HiDPIInfo")
 public interface HiDPIInfoProvider {
-    String[][] getHiDPIInfo();
+    private static HiDPIInfoProvider create() {
+        var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        if (ge instanceof HiDPIInfoProvider provider) {
+            return provider;
+        } else {
+            throw new JBRApi.ServiceNotAvailableException("Not supported in this graphics environment: " + ge.getClass().getName());
+        }
+    }
+
+    String[][] getInfo();
 }
