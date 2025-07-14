@@ -117,7 +117,12 @@ VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface);
 /**
  * Register a handler to be called at the cleanup phase of the renderer.
  */
-void VKRenderer_DisposeOnCleanup(VKRenderer* renderer, VKCleanupHandler hnd, void* data);
+void VKRenderer_ExecOnCleanup(VKRenderPass* renderPass, VKCleanupHandler hnd, void* data);
+
+/**
+ * Register a memory range that will be flushed on render pass reset drawing.
+ */
+void VKRenderer_FlushMemoryOnReset(VKRenderPass* renderPass, VkMappedMemoryRange range);
 
 /**
  * Flush pending render pass and queue surface for presentation (if applicable).
@@ -151,7 +156,7 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans);
 void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
                          jint maskoff, jint maskscan, jint masklen, uint8_t *mask);
 
-void VKRenderer_DrawImage(VKImage* image, AlphaType alphaType, VkFormat format,
+void VKRenderer_DrawImage(VKImage* image, VkFormat format,
                                  VKPackedSwizzle swizzle, jint filter, VKSamplerWrap wrap,
                                  float sx1, float sy1, float sx2, float sy2,
                                  float dx1, float dy1, float dx2, float dy2);
