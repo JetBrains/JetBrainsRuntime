@@ -51,6 +51,10 @@ final class InputContextState {
         return currentWlSurfacePtr;
     }
 
+    public void setCurrentWlSurfacePtr(long currentWlSurfacePtr) {
+        this.currentWlSurfacePtr = currentWlSurfacePtr;
+    }
+
 
     /**
      * Notifies the InputContext that a set of changes has been sent and committed to the compositor
