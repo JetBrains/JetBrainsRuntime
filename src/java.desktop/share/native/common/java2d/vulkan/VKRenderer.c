@@ -645,7 +645,7 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     }
     size_t vertexBufferCount = ARRAY_SIZE(surface->renderPass->vertexBuffers);
     size_t maskFillBufferCount = ARRAY_SIZE(surface->renderPass->maskFillBuffers);
-    size_t cleanupQueueCount = ARRAY_SIZE(surface->renderPass->cleanupQueue);;
+    size_t cleanupQueueCount = ARRAY_SIZE(surface->renderPass->cleanupQueue);
     VkMappedMemoryRange memoryRanges[vertexBufferCount + maskFillBufferCount];
     for (uint32_t i = 0; i < vertexBufferCount; i++) {
         POOL_RETURN(surface->device->renderer, vertexBufferPool, surface->renderPass->vertexBuffers[i]);
@@ -1263,10 +1263,12 @@ static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
     renderPass->state.shader = NO_SHADER;
 }
 
-void VKRenderer_DisposeOnCleanup(VKRenderer* renderer, VKCleanupHandler hnd, void* data) {
-    if (renderer == NULL) return;
-    VKCleanupEntry entry = {hnd, data};
-    POOL_RETURN(renderer, cleanupQueue, entry);
+void VKRenderer_ExecOnCleanup(VKRenderPass* renderPass, VKCleanupHandler hnd, void* data) {
+    ARRAY_PUSH_BACK(renderPass->cleanupQueue) = (VKCleanupEntry) { hnd, data };
+}
+
+void VKRenderer_FlushMemoryOnReset(VKRenderPass* renderPass, VkMappedMemoryRange range) {
+    ARRAY_PUSH_BACK(renderPass->flushRanges) = range;
 }
 
 void VKRenderer_RecordBarriers(VKRenderer* renderer,
@@ -1495,11 +1497,10 @@ void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
     vs[3] = p1; vs[4] = p3; vs[5] = p4;
 }
 
-void VKRenderer_DrawImage(VKImage* image, AlphaType alphaType, VkFormat format,
+void VKRenderer_DrawImage(VKImage* image, VkFormat format,
                                  VKPackedSwizzle swizzle, jint filter, VKSamplerWrap wrap,
                                  float sx1, float sy1, float sx2, float sy2,
                                  float dx1, float dy1, float dx2, float dy2) {
-    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) return;
     VKSDOps* surface = VKRenderer_GetContext()->surface;
     VKDevice* device = surface->device;
 
