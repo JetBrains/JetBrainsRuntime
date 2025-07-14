@@ -103,6 +103,26 @@ final class InputContextState {
         }
     }
 
+    public StateOfEnabled getCurrentStateOfEnabled() {
+        return stateOfEnabled;
+    }
+
+    public boolean isEnabled() {
+        return getCurrentStateOfEnabled() != null;
+    }
+
+    /**
+     * NB: if you want to call setEnabledState(null), consider using {@code wlHandleContextGotDisabled()} of
+     *     the owning {@link WLInputMethodZwpTextInputV3}.
+     *
+     * @param newState {@code null} to mark the InputContext as disabled,
+     *                 otherwise the InputContext will be marked as enabled and having the state as
+     *                 specified in the parameter.
+     */
+    public void setEnabledState(StateOfEnabled newState) {
+        this.stateOfEnabled = newState;
+    }
+
 
     @Override
     public String toString() {
