@@ -1170,6 +1170,7 @@ native_sanity/simplenativelauncher/ProgramTest.java JBR-5287 windows-all
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java 8265770,8273312,JBR-5510,JBR-6475 windows-all,macosx-all,linux-all
 sanity/client/SwingSet/src/ColorChooserDemoTest.java 8278582,8273312,JBR-5510 windows-all,linux-5.18.2-arch1-1
 sanity/client/SwingSet/src/DialogDemoTest.java 8253184 windows-all
+sanity/client/SwingSet/src/FileChooserDemoTest.java JBR-8397 windows-all
 sanity/client/SwingSet/src/FrameDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/GridBagLayoutDemoTest.java 8253184 windows-all
