@@ -35,13 +35,15 @@ public interface HiDPIInfoProvider {
 
 @JBRApi.Service
 @JBRApi.Provides("HiDPIInfo")
-class HiDPIInfoDispenser {
-    public static String[][] getInfo() {
+interface HiDPIInfoDispenser {
+    private static HiDPIInfoDispenser create() {
         var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         if (ge instanceof HiDPIInfoProvider provider) {
-            return provider.getHiDPIInfo();
+            return provider::getHiDPIInfo;
         } else {
             throw new JBRApi.ServiceNotAvailableException("Not supported in this graphics environment: " + ge.getClass().getName());
         }
     }
+
+    String[][] getInfo();
 }
