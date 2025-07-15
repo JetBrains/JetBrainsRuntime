@@ -451,7 +451,8 @@ jbr_all = \
 jdk_desktop = \
     :jdk_desktop_part1 \
     :jdk_desktop_part2 \
-    :jdk_desktop_part3
+    :jdk_desktop_part3 \
+    :jbr_all
 
 jdk_desktop_part1 = \
     :jdk_client_sanity \
@@ -462,8 +463,7 @@ jdk_desktop_part1 = \
     :jdk_editpad \
     :jfc_demo \
     :jdk_accessibility \
-    :jdk_beans \
-    :jbr_all
+    :jdk_beans
 
 jdk_desktop_part2 = \
     :jdk_awt \
