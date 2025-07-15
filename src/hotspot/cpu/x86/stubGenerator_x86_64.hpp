@@ -487,6 +487,7 @@ class StubGenerator: public StubCodeGenerator {
   address generate_libmPow();
   address generate_libmLog();
   address generate_libmLog10();
+  address generate_libmFmod();
 
   // Shared constants
   static address ZERO;
@@ -548,6 +549,12 @@ class StubGenerator: public StubCodeGenerator {
                                    address runtime_entry,
                                    Register arg1 = noreg,
                                    Register arg2 = noreg);
+
+  // Specialized stub implementations for UseSecondarySupersTable.
+  address generate_lookup_secondary_supers_table_stub(u1 super_klass_index);
+
+  // Slow path implementation for UseSecondarySupersTable.
+  address generate_lookup_secondary_supers_table_slow_path_stub();
 
   void create_control_words();
 

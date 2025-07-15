@@ -1169,7 +1169,7 @@ public final class Long extends Number
 
             // Load and use the archived cache if it exists
             CDS.initializeFromArchive(LongCache.class);
-            if (archivedCache == null || archivedCache.length != size) {
+            if (archivedCache == null) {
                 Long[] c = new Long[size];
                 long value = -128;
                 for(int i = 0; i < size; i++) {
@@ -1178,6 +1178,7 @@ public final class Long extends Number
                 archivedCache = c;
             }
             cache = archivedCache;
+            assert cache.length == size;
         }
     }
 

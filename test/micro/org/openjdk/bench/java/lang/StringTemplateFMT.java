@@ -45,7 +45,7 @@ import static java.util.FormatProcessor.FMT;
 @State(Scope.Benchmark)
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
-@Fork(value = 3, jvmArgsAppend = "--enable-preview")
+@Fork(value = 3, jvmArgs = "--enable-preview")
 public class StringTemplateFMT {
 
     public String s = "str";

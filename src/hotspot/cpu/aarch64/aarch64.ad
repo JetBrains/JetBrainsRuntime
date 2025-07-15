@@ -1,6 +1,6 @@
 //
 // Copyright (c) 2003, 2023, Oracle and/or its affiliates. All rights reserved.
-// Copyright (c) 2014, 2021, Red Hat, Inc. All rights reserved.
+// Copyright (c) 2014, 2024, Red Hat, Inc. All rights reserved.
 // DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 //
 // This code is free software; you can redistribute it and/or modify it
@@ -1648,8 +1648,8 @@ int MachCallRuntimeNode::ret_addr_offset() {
   // for real runtime callouts it will be six instructions
   // see aarch64_enc_java_to_runtime
   //   adr(rscratch2, retaddr)
+  //   str(rscratch2, Address(rthread, JavaThread::last_Java_pc_offset()));
   //   lea(rscratch1, RuntimeAddress(addr)
-  //   stp(zr, rscratch2, Address(__ pre(sp, -2 * wordSize)))
   //   blr(rscratch1)
   CodeBlob *cb = CodeCache::find_blob(_entry_point);
   if (cb) {
@@ -2739,10 +2739,6 @@ typedef void (MacroAssembler::* mem_vector_insn)(FloatRegister Rt,
   {
     Address addr = mem2address(opcode, base, index, scale, disp);
     if (addr.getMode() == Address::base_plus_offset) {
-      /* If we get an out-of-range offset it is a bug in the compiler,
-         so we assert here. */
-      assert(Address::offset_ok_for_immed(addr.offset(), exact_log2(size_in_memory)),
-             "c2 compiler bug");
       /* Fix up any out-of-range offsets. */
       assert_different_registers(rscratch1, base);
       assert_different_registers(rscratch1, reg);
@@ -3774,14 +3770,13 @@ encode %{
       __ post_call_nop();
     } else {
       Label retaddr;
+      // Make the anchor frame walkable
       __ adr(rscratch2, retaddr);
+      __ str(rscratch2, Address(rthread, JavaThread::last_Java_pc_offset()));
       __ lea(rscratch1, RuntimeAddress(entry));
-      // Leave a breadcrumb for JavaFrameAnchor::capture_last_Java_pc()
-      __ stp(zr, rscratch2, Address(__ pre(sp, -2 * wordSize)));
       __ blr(rscratch1);
       __ bind(retaddr);
       __ post_call_nop();
-      __ add(sp, sp, 2 * wordSize);
     }
     if (Compile::current()->max_vector_size() > 0) {
       __ reinitialize_ptrue();
@@ -16692,6 +16687,39 @@ instruct partialSubtypeCheck(iRegP_R4 sub, iRegP_R0 super, iRegP_R2 temp, iRegP_
   ins_encode(aarch64_enc_partial_subtype_check(sub, super, temp, result));
 
   opcode(0x1); // Force zero of result reg on hit
+
+  ins_pipe(pipe_class_memory);
+%}
+
+instruct partialSubtypeCheckConstSuper(iRegP_R4 sub, iRegP_R0 super_reg, immP super_con, vRegD_V0 vtemp, iRegP_R5 result,
+                                       iRegP_R1 tempR1, iRegP_R2 tempR2, iRegP_R3 tempR3,
+                                       rFlagsReg cr)
+%{
+  match(Set result (PartialSubtypeCheck sub (Binary super_reg super_con)));
+  predicate(UseSecondarySupersTable);
+  effect(KILL cr, TEMP tempR1, TEMP tempR2, TEMP tempR3, TEMP vtemp);
+
+  ins_cost(700);  // smaller than the next version
+  format %{ "partialSubtypeCheck $result, $sub, super" %}
+
+  ins_encode %{
+    bool success = false;
+    u1 super_klass_slot = ((Klass*)$super_con$$constant)->hash_slot();
+    if (InlineSecondarySupersTest) {
+      success = __ lookup_secondary_supers_table($sub$$Register, $super_reg$$Register,
+                                                 $tempR1$$Register, $tempR2$$Register, $tempR3$$Register,
+                                                 $vtemp$$FloatRegister,
+                                                 $result$$Register,
+                                                 super_klass_slot);
+    } else {
+      address call = __ trampoline_call(RuntimeAddress(StubRoutines::lookup_secondary_supers_table_stub(super_klass_slot)));
+      success = (call != nullptr);
+    }
+    if (!success) {
+      ciEnv::current()->record_failure("CodeCache is full");
+      return;
+    }
+  %}
 
   ins_pipe(pipe_class_memory);
 %}

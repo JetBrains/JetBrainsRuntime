@@ -4,9 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -65,7 +63,7 @@ import static jdk.internal.org.objectweb.asm.Opcodes.V12;
  */
 @Warmup(iterations = 3)
 @Measurement(iterations = 5)
-@Fork(value = 1, jvmArgsAppend = {
+@Fork(value = 1, jvmArgs = {
         "--add-exports", "java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED",
         "--add-exports", "java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED",
         "--add-exports", "java.base/jdk.internal.classfile=ALL-UNNAMED",

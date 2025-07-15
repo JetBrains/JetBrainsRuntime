@@ -509,7 +509,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBLCMS, \
         common/awt/debug \
         libawt/java2d, \
     HEADERS_FROM_SRC := $(LIBLCMS_HEADERS_FROM_SRC), \
-    DISABLED_WARNINGS_gcc := format-nonliteral type-limits stringop-truncation, \
+    DISABLED_WARNINGS_gcc := format-nonliteral stringop-truncation, \
     DISABLED_WARNINGS_clang := format-nonliteral, \
     DISABLED_WARNINGS_clang_cmstypes.c := unused-but-set-parameter, \
     LDFLAGS := $(LDFLAGS_JDKLIB) \
@@ -686,7 +686,7 @@ else
    # range-loop-analysis  -> clang on Xcode12
 
    HARFBUZZ_DISABLED_WARNINGS_gcc := missing-field-initializers strict-aliasing \
-       unused-result array-bounds parentheses
+       unused-result array-bounds parentheses dangling-pointer
    # noexcept-type required for GCC 7 builds. Not required for GCC 8+.
    # expansion-to-defined required for GCC 9 builds. Not required for GCC 10+.
    # maybe-uninitialized required for GCC 8 builds. Not required for GCC 9+.
@@ -1045,6 +1045,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
       EXCLUDE_SRC_PATTERNS := $(LIBSPLASHSCREEN_EXCLUDE_SRC_PATTERNS), \
       DISABLED_WARNINGS_gcc := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_gcc), \
       DISABLED_WARNINGS_clang := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_clang), \
+      DISABLED_WARNINGS_clang_png.c := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_clang) unused-function, \
       DISABLED_WARNINGS_microsoft := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_microsoft), \
       EXCLUDE_FILES := $(LIBSPLASHSCREEN_EXCLUDE_FILES), \
       EXCLUDES := $(LIBSPLASHSCREEN_EXCLUDES), \

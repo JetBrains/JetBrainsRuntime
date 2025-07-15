@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.security.PrivilegedAction;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Objects;
 
 import javax.accessibility.*;
 import javax.swing.*;
@@ -271,7 +272,11 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     // Notify macOS Accessibility Zoom to move focus to the new caret location.
                     execute(ptr -> updateZoomCaretFocus(ptr));
                 } else if (name.equals(ACCESSIBLE_TEXT_PROPERTY)) {
-                    execute(ptr -> valueChanged(ptr));
+                    AccessibleContext thisAC = accessible.getAccessibleContext();
+                    Accessible parentAccessible = thisAC.getAccessibleParent();
+                    if (!(parentAccessible instanceof JSpinner.NumberEditor)) {
+                        execute(ptr -> valueChanged(ptr));
+                    }
                 } else if (name.equals(ACCESSIBLE_SELECTION_PROPERTY)) {
                     if (timer != null) {
                         timer.stop();
@@ -366,7 +371,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
 
                     // Do send check box state changes to native side
                     if (thisRole == AccessibleRole.CHECK_BOX) {
-                        if (newValue != null && !newValue.equals(oldValue)) {
+                        if (!Objects.equals(newValue, oldValue)) {
                             execute(ptr -> valueChanged(ptr));
                         }
 
@@ -392,7 +397,7 @@ class CAccessible extends CFRetainedResource implements Accessible {
 
                     // Do send toggle button state changes to native side
                     if (thisRole == AccessibleRole.TOGGLE_BUTTON) {
-                        if (newValue != null && !newValue.equals(oldValue)) {
+                        if (!Objects.equals(newValue, oldValue)) {
                             valueChanged(ptr);
                         }
                     }

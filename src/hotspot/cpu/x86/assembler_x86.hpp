@@ -528,6 +528,13 @@ class Assembler : public AbstractAssembler  {
     EVEX_Z  = 0x80
   };
 
+  enum EvexRoundPrefix {
+    EVEX_RNE = 0x0,
+    EVEX_RD  = 0x1,
+    EVEX_RU  = 0x2,
+    EVEX_RZ  = 0x3
+  };
+
   enum VexSimdPrefix {
     VEX_SIMD_NONE = 0x0,
     VEX_SIMD_66   = 0x1,
@@ -886,6 +893,8 @@ private:
   void movsd(Address dst, XMMRegister src);
   void movlpd(XMMRegister dst, Address src);
 
+  void vmovsd(XMMRegister dst, XMMRegister src, XMMRegister src2);
+
   // New cpus require use of movaps and movapd to avoid partial register stall
   // when moving between registers.
   void movaps(XMMRegister dst, XMMRegister src);
@@ -1233,12 +1242,18 @@ private:
   void divss(XMMRegister dst, XMMRegister src);
 
 
-#ifndef _LP64
+  void fnstsw_ax();
+  void fprem();
+  void fld_d(Address adr);
+  void fstp_d(Address adr);
+  void fstp_d(int index);
+
  private:
 
   void emit_farith(int b1, int b2, int i);
 
  public:
+#ifndef _LP64
   void emms();
 
   void fabs();
@@ -1297,7 +1312,6 @@ private:
 
   void fld1();
 
-  void fld_d(Address adr);
   void fld_s(Address adr);
   void fld_s(int index);
 
@@ -1326,10 +1340,6 @@ private:
   void fnsave(Address dst);
 
   void fnstcw(Address src);
-
-  void fnstsw_ax();
-
-  void fprem();
   void fprem1();
 
   void frstor(Address src);
@@ -1341,8 +1351,6 @@ private:
   void fst_d(Address adr);
   void fst_s(Address adr);
 
-  void fstp_d(Address adr);
-  void fstp_d(int index);
   void fstp_s(Address adr);
 
   void fsub(int i);
@@ -1717,6 +1725,7 @@ private:
 
   void btsq(Address dst, int imm8);
   void btrq(Address dst, int imm8);
+  void btq(Register src, int imm8);
 #endif
 
   void orw(Register dst, Register src);
@@ -2171,7 +2180,7 @@ private:
   void subss(XMMRegister dst, XMMRegister src);
 
   void testb(Address dst, int imm8);
-  void testb(Register dst, int imm8);
+  void testb(Register dst, int imm8, bool use_ral = true);
 
   void testl(Address dst, int32_t imm32);
   void testl(Register dst, int32_t imm32);
@@ -2244,9 +2253,13 @@ private:
   void vaddss(XMMRegister dst, XMMRegister nds, XMMRegister src);
   void vdivsd(XMMRegister dst, XMMRegister nds, Address src);
   void vdivsd(XMMRegister dst, XMMRegister nds, XMMRegister src);
+  void evdivsd(XMMRegister dst, XMMRegister nds, XMMRegister src, EvexRoundPrefix rmode);
   void vdivss(XMMRegister dst, XMMRegister nds, Address src);
   void vdivss(XMMRegister dst, XMMRegister nds, XMMRegister src);
   void vfmadd231sd(XMMRegister dst, XMMRegister nds, XMMRegister src);
+  void vfnmadd213sd(XMMRegister dst, XMMRegister nds, XMMRegister src);
+  void evfnmadd213sd(XMMRegister dst, XMMRegister nds, XMMRegister src, EvexRoundPrefix rmode);
+  void vfnmadd231sd(XMMRegister dst, XMMRegister src1, XMMRegister src2);
   void vfmadd231ss(XMMRegister dst, XMMRegister nds, XMMRegister src);
   void vmulsd(XMMRegister dst, XMMRegister nds, Address src);
   void vmulsd(XMMRegister dst, XMMRegister nds, XMMRegister src);
@@ -2336,8 +2349,11 @@ private:
   // Round Packed Double precision value.
   void vroundpd(XMMRegister dst, XMMRegister src, int32_t rmode, int vector_len);
   void vroundpd(XMMRegister dst, Address src, int32_t rmode, int vector_len);
+  void vrndscalesd(XMMRegister dst,  XMMRegister src1,  XMMRegister src2, int32_t rmode);
   void vrndscalepd(XMMRegister dst,  XMMRegister src,  int32_t rmode, int vector_len);
   void vrndscalepd(XMMRegister dst, Address src, int32_t rmode, int vector_len);
+  void vroundsd(XMMRegister dst, XMMRegister src, XMMRegister src2, int32_t rmode);
+  void vroundsd(XMMRegister dst, XMMRegister src, Address src2, int32_t rmode);
 
   // Bitwise Logical AND of Packed Floating-Point Values
   void andpd(XMMRegister dst, XMMRegister src);
@@ -2721,6 +2737,8 @@ private:
   void vextractf64x4(XMMRegister dst, XMMRegister src, uint8_t imm8);
   void vextractf64x4(Address dst, XMMRegister src, uint8_t imm8);
 
+  void extractps(Register dst, XMMRegister src, uint8_t imm8);
+
   // xmm/mem sourced byte/word/dword/qword replicate
   void vpbroadcastb(XMMRegister dst, XMMRegister src, int vector_len);
   void vpbroadcastb(XMMRegister dst, Address src, int vector_len);
@@ -2953,6 +2971,8 @@ public:
   void set_embedded_opmask_register_specifier(KRegister mask) {
     _embedded_opmask_register_specifier = mask->encoding() & 0x7;
   }
+
+  void set_extended_context(void) { _is_extended_context = true; }
 
 };
 

@@ -37,6 +37,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.IntFunction;
+import java.util.function.Predicate;
+import java.util.stream.IntStream;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
@@ -60,6 +62,7 @@ import com.sun.tools.javac.file.PathFileObject;
 import com.sun.tools.javac.jvm.ClassFile.Version;
 import com.sun.tools.javac.jvm.PoolConstant.NameAndType;
 import com.sun.tools.javac.main.Option;
+import com.sun.tools.javac.resources.CompilerProperties.Errors;
 import com.sun.tools.javac.resources.CompilerProperties.Fragments;
 import com.sun.tools.javac.resources.CompilerProperties.Warnings;
 import com.sun.tools.javac.util.*;
@@ -127,6 +130,8 @@ public class ClassReader {
     /** Switch: preserve parameter names from the variable table.
      */
     public boolean saveParameterNames;
+
+    private final boolean addTypeAnnotationsToSymbol;
 
     /**
      * The currently selected profile.
@@ -293,6 +298,8 @@ public class ClassReader {
         typevars = WriteableScope.create(syms.noSymbol);
 
         lintClassfile = Lint.instance(context).isEnabled(LintCategory.CLASSFILE);
+
+        addTypeAnnotationsToSymbol = options.getBoolean("addTypeAnnotationsToSymbol", false);
 
         initAttributeReaders();
     }
@@ -2255,12 +2262,309 @@ public class ClassReader {
                 currentClassFile = classFile;
                 List<Attribute.TypeCompound> newList = deproxyTypeCompoundList(proxies);
                 sym.setTypeAttributes(newList.prependList(sym.getRawTypeAttributes()));
+                if (addTypeAnnotationsToSymbol) {
+                    addTypeAnnotationsToSymbol(sym, newList);
+                }
             } finally {
                 currentClassFile = previousClassFile;
             }
         }
     }
 
+    /**
+     * Rewrites types in the given symbol to include type annotations.
+     *
+     * <p>The list of type annotations includes annotations for all types in the signature of the
+     * symbol. Associating the annotations with the correct type requires interpreting the JVMS
+     * 4.7.20-A target_type to locate the correct type to rewrite, and then interpreting the JVMS
+     * 4.7.20.2 type_path to associate the annotation with the correct contained type.
+     */
+    private void addTypeAnnotationsToSymbol(Symbol s, List<Attribute.TypeCompound> attributes) {
+        try {
+            new TypeAnnotationSymbolVisitor(attributes).visit(s, null);
+        } catch (CompletionFailure ex) {
+            JavaFileObject prev = log.useSource(currentClassFile);
+            try {
+                log.error(Errors.CantAttachTypeAnnotations(attributes, s.owner, s.name, ex.getDetailValue()));
+            } finally {
+                log.useSource(prev);
+            }
+        }
+    }
+
+    private static class TypeAnnotationSymbolVisitor
+            extends Types.DefaultSymbolVisitor<Void, Void> {
+
+        private final List<Attribute.TypeCompound> attributes;
+
+        private TypeAnnotationSymbolVisitor(List<Attribute.TypeCompound> attributes) {
+            this.attributes = attributes;
+        }
+
+        /**
+         * A supertype_index value of 65535 specifies that the annotation appears on the superclass
+         * in an extends clause of a class declaration, see JVMS 4.7.20.1
+         */
+        public static final int SUPERCLASS_INDEX = 65535;
+
+        @Override
+        public Void visitClassSymbol(Symbol.ClassSymbol s, Void unused) {
+            ClassType t = (ClassType) s.type;
+            int i = 0;
+            ListBuffer<Type> interfaces = new ListBuffer<>();
+            for (Type itf : t.interfaces_field) {
+                interfaces.add(addTypeAnnotations(itf, classExtends(i++)));
+            }
+            t.interfaces_field = interfaces.toList();
+            t.supertype_field = addTypeAnnotations(t.supertype_field, classExtends(SUPERCLASS_INDEX));
+            if (t.typarams_field != null) {
+                t.typarams_field =
+                        rewriteTypeParameters(
+                                t.typarams_field, TargetType.CLASS_TYPE_PARAMETER_BOUND);
+            }
+            return null;
+        }
+
+        @Override
+        public Void visitMethodSymbol(Symbol.MethodSymbol s, Void unused) {
+            Type t = s.type;
+            if (t.hasTag(TypeTag.FORALL)) {
+                Type.ForAll fa = (Type.ForAll) t;
+                fa.tvars = rewriteTypeParameters(fa.tvars, TargetType.METHOD_TYPE_PARAMETER_BOUND);
+                t = fa.qtype;
+            }
+            MethodType mt = (MethodType) t;
+            ListBuffer<Type> argtypes = new ListBuffer<>();
+            int i = 0;
+            for (Symbol.VarSymbol param : s.params) {
+                param.type = addTypeAnnotations(param.type, methodFormalParameter(i++));
+                argtypes.add(param.type);
+            }
+            mt.argtypes = argtypes.toList();
+            ListBuffer<Type> thrown = new ListBuffer<>();
+            i = 0;
+            for (Type thrownType : mt.thrown) {
+                thrown.add(addTypeAnnotations(thrownType, thrownType(i++)));
+            }
+            mt.thrown = thrown.toList();
+            /* possible information loss if the type of the method is void then we can't add type
+             * annotations to it
+             */
+            if (!mt.restype.hasTag(TypeTag.VOID)) {
+                mt.restype = addTypeAnnotations(mt.restype, TargetType.METHOD_RETURN);
+            }
+            if (mt.recvtype != null) {
+                mt.recvtype = addTypeAnnotations(mt.recvtype, TargetType.METHOD_RECEIVER);
+            }
+            return null;
+        }
+
+        @Override
+        public Void visitVarSymbol(Symbol.VarSymbol s, Void unused) {
+            s.type = addTypeAnnotations(s.type, TargetType.FIELD);
+            return null;
+        }
+
+        @Override
+        public Void visitSymbol(Symbol s, Void unused) {
+            return null;
+        }
+
+        private List<Type> rewriteTypeParameters(List<Type> tvars, TargetType boundType) {
+            ListBuffer<Type> tvarbuf = new ListBuffer<>();
+            int typeVariableIndex = 0;
+            for (Type tvar : tvars) {
+                Type bound = tvar.getUpperBound();
+                if (bound.isCompound()) {
+                    ClassType ct = (ClassType) bound;
+                    int boundIndex = 0;
+                    if (ct.supertype_field != null) {
+                        ct.supertype_field =
+                                addTypeAnnotations(
+                                        ct.supertype_field,
+                                        typeParameterBound(
+                                                boundType, typeVariableIndex, boundIndex++));
+                    }
+                    ListBuffer<Type> itfbuf = new ListBuffer<>();
+                    for (Type itf : ct.interfaces_field) {
+                        itfbuf.add(
+                                addTypeAnnotations(
+                                        itf,
+                                        typeParameterBound(
+                                                boundType, typeVariableIndex, boundIndex++)));
+                    }
+                    ct.interfaces_field = itfbuf.toList();
+                } else {
+                    bound =
+                            addTypeAnnotations(
+                                    bound,
+                                    typeParameterBound(
+                                            boundType,
+                                            typeVariableIndex,
+                                            bound.isInterface() ? 1 : 0));
+                }
+                ((TypeVar) tvar).setUpperBound(bound);
+                tvarbuf.add(tvar);
+                typeVariableIndex++;
+            }
+            return tvarbuf.toList();
+        }
+
+        private Type addTypeAnnotations(Type type, TargetType targetType) {
+            return addTypeAnnotations(type, pos -> pos.type == targetType);
+        }
+
+        private Type addTypeAnnotations(Type type, Predicate<TypeAnnotationPosition> filter) {
+            Assert.checkNonNull(type);
+
+            // Find type annotations that match the given target type
+            ListBuffer<Attribute.TypeCompound> filtered = new ListBuffer<>();
+            for (Attribute.TypeCompound attribute : this.attributes) {
+                if (filter.test(attribute.position)) {
+                    filtered.add(attribute);
+                }
+            }
+            if (filtered.isEmpty()) {
+                return type;
+            }
+
+            // Group the matching annotations by their type path. Each group of annotations will be
+            // added to a type at that location.
+            Map<List<TypeAnnotationPosition.TypePathEntry>, ListBuffer<Attribute.TypeCompound>>
+                    attributesByPath = new HashMap<>();
+            for (Attribute.TypeCompound attribute : filtered.toList()) {
+                attributesByPath
+                        .computeIfAbsent(attribute.position.location, k -> new ListBuffer<>())
+                        .add(attribute);
+            }
+
+            // Rewrite the type and add the annotations
+            type = new TypeAnnotationStructuralTypeMapping(attributesByPath).visit(type, List.nil());
+
+            return type;
+        }
+
+        private static Predicate<TypeAnnotationPosition> typeParameterBound(
+                TargetType targetType, int parameterIndex, int boundIndex) {
+            return pos ->
+                    pos.type == targetType
+                            && pos.parameter_index == parameterIndex
+                            && pos.bound_index == boundIndex;
+        }
+
+        private static Predicate<TypeAnnotationPosition> methodFormalParameter(int index) {
+            return pos ->
+                    pos.type == TargetType.METHOD_FORMAL_PARAMETER && pos.parameter_index == index;
+        }
+
+        private static Predicate<TypeAnnotationPosition> thrownType(int index) {
+            return pos -> pos.type == TargetType.THROWS && pos.type_index == index;
+        }
+
+        private static Predicate<TypeAnnotationPosition> classExtends(int index) {
+            return pos -> pos.type == TargetType.CLASS_EXTENDS && pos.type_index == index;
+        }
+    }
+
+    /**
+     * A type mapping that rewrites the type to include type annotations.
+     *
+     * <p>This logic is similar to {@link Type.StructuralTypeMapping}, but also tracks the path to
+     * the contained types being rewritten, and so cannot easily share the existing logic.
+     */
+    private static final class TypeAnnotationStructuralTypeMapping
+            extends Types.TypeMapping<List<TypeAnnotationPosition.TypePathEntry>> {
+
+        private final Map<List<TypeAnnotationPosition.TypePathEntry>,
+                ListBuffer<Attribute.TypeCompound>> attributesByPath;
+
+        private TypeAnnotationStructuralTypeMapping(
+                Map<List<TypeAnnotationPosition.TypePathEntry>, ListBuffer<Attribute.TypeCompound>>
+                    attributesByPath) {
+            this.attributesByPath = attributesByPath;
+        }
+
+
+        @Override
+        public Type visitClassType(ClassType t, List<TypeAnnotationPosition.TypePathEntry> path) {
+            // As described in JVMS 4.7.20.2, type annotations on nested types are located with
+            // 'left-to-right' steps starting on 'the outermost part of the type for which a type
+            // annotation is admissible'. So the current path represents the outermost containing
+            // type of the type being visited, and we add type path steps for every contained nested
+            // type.
+            Type outer = t.getEnclosingType();
+            Type outer1 = outer != Type.noType ? visit(outer, path) : outer;
+            for (Type curr = t.getEnclosingType();
+                    curr != Type.noType;
+                    curr = curr.getEnclosingType()) {
+                path = path.append(TypeAnnotationPosition.TypePathEntry.INNER_TYPE);
+            }
+            List<Type> typarams = t.getTypeArguments();
+            List<Type> typarams1 = rewriteTypeParams(path, typarams);
+            if (outer1 != outer || typarams != typarams1) {
+                t = new ClassType(outer1, typarams1, t.tsym, t.getMetadata());
+            }
+            return reannotate(t, path);
+        }
+
+        private List<Type> rewriteTypeParams(
+                List<TypeAnnotationPosition.TypePathEntry> path, List<Type> typarams) {
+            var i = IntStream.iterate(0, x -> x + 1).iterator();
+            return typarams.map(typaram -> visit(typaram,
+                    path.append(new TypeAnnotationPosition.TypePathEntry(
+                            TypeAnnotationPosition.TypePathEntryKind.TYPE_ARGUMENT, i.nextInt()))));
+        }
+
+        @Override
+        public Type visitWildcardType(
+                WildcardType wt, List<TypeAnnotationPosition.TypePathEntry> path) {
+            Type t = wt.type;
+            if (t != null) {
+                t = visit(t, path.append(TypeAnnotationPosition.TypePathEntry.WILDCARD));
+            }
+            if (t != wt.type) {
+                wt = new WildcardType(t, wt.kind, wt.tsym, wt.bound, wt.getMetadata());
+            }
+            return reannotate(wt, path);
+        }
+
+        @Override
+        public Type visitArrayType(ArrayType t, List<TypeAnnotationPosition.TypePathEntry> path) {
+            Type elemtype = t.elemtype;
+            Type elemtype1 =
+                    visit(elemtype, path.append(TypeAnnotationPosition.TypePathEntry.ARRAY));
+            if (elemtype1 != elemtype)  {
+                t = new ArrayType(elemtype1, t.tsym, t.getMetadata());
+            }
+            return reannotate(t, path);
+        }
+
+        @Override
+        public Type visitType(Type t, List<TypeAnnotationPosition.TypePathEntry> path) {
+            return reannotate(t, path);
+        }
+
+        Type reannotate(Type type, List<TypeAnnotationPosition.TypePathEntry> path) {
+            List<Attribute.TypeCompound> attributes = attributesForPath(path);
+            if (attributes.isEmpty()) {
+                return type;
+            }
+            // Runtime-visible and -invisible annotations are completed separately, so if the same
+            // type has annotations from both it will get annotated twice.
+            TypeMetadata.Annotations existing = type.getMetadata(TypeMetadata.Annotations.class);
+            if (existing != null) {
+                existing.annotationBuffer().addAll(attributes);
+                return type;
+            }
+            return type.annotatedType(attributes);
+        }
+
+        List<Attribute.TypeCompound> attributesForPath(
+                List<TypeAnnotationPosition.TypePathEntry> path) {
+            ListBuffer<Attribute.TypeCompound> attributes = attributesByPath.remove(path);
+            return attributes != null ? attributes.toList() : List.nil();
+        }
+    }
 
 /************************************************************************
  * Reading Symbols
