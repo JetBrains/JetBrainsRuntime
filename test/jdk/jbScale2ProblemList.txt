@@ -1,5 +1,6 @@
 java/awt/Choice/ChoiceMouseEventOutbounds.java JBR-7980 windows-all
 java/awt/Choice/ChoiceMoveTest.java JBR-7980 windows-all
+java/awt/Dialog/ChoiceModalDialogTest.java JBR-8724 windows-all
 java/awt/dnd/DnDAWTLockTest.java JBR-6442 linux-all
 java/awt/dnd/DragOverDropTargetPerformanceTest.java JBR-5799 windows-all
 java/awt/dnd/DragSourceGCrashTest.java JBR-6442 linux-all
@@ -13,6 +14,7 @@ java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 71
 java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-10.0
 java/awt/Window/AlwaysOnTop/SyncAlwaysOnTopFieldTest.java JBR-6845 linux-all
 java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
+javax/swing/InputVerifier/bug4774166.java JBR-8735,JBR-8745 windows-all,
 
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-6589 windows-all
 jb/java/awt/Focus/FileDialogClosing.java JBR-5799 windows-all
