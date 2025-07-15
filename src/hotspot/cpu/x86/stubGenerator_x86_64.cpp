@@ -3896,9 +3896,59 @@ address StubGenerator::generate_throw_exception(const char* name,
   return stub->entry_point();
 }
 
+address StubGenerator::generate_lookup_secondary_supers_table_stub(u1 super_klass_index) {
+  StubCodeMark mark(this, "StubRoutines", "lookup_secondary_supers_table");
+
+  address start = __ pc();
+
+  const Register
+      r_super_klass = rax,
+      r_sub_klass   = rsi,
+      result        = rdi;
+
+  __ lookup_secondary_supers_table(r_sub_klass, r_super_klass,
+                                   rdx, rcx, rbx, r11, // temps
+                                   result,
+                                   super_klass_index);
+  __ ret(0);
+
+  return start;
+}
+
+// Slow path implementation for UseSecondarySupersTable.
+address StubGenerator::generate_lookup_secondary_supers_table_slow_path_stub() {
+  StubCodeMark mark(this, "StubRoutines", "lookup_secondary_supers_table");
+
+  address start = __ pc();
+
+  const Register
+      r_super_klass  = rax,
+      r_array_base   = rbx,
+      r_array_index  = rdx,
+      r_sub_klass    = rsi,
+      r_bitmap       = r11,
+      result         = rdi;
+
+  Label L_success;
+  __ lookup_secondary_supers_table_slow_path(r_super_klass, r_array_base, r_array_index, r_bitmap,
+                                             rcx, rdi, // temps
+                                             &L_success);
+  // bind(L_failure);
+  __ movl(result, 1);
+  __ ret(0);
+
+  __ bind(L_success);
+  __ movl(result, 0);
+  __ ret(0);
+
+  return start;
+}
+
 void StubGenerator::create_control_words() {
   // Round to nearest, 64-bit mode, exceptions masked
   StubRoutines::x86::_mxcsr_std = 0x1F80;
+  // Round to zero, 64-bit mode, exceptions masked
+  StubRoutines::x86::_mxcsr_rz = 0x7F80;
 }
 
 // Initialization
@@ -3980,6 +4030,8 @@ void StubGenerator::generate_initial_stubs() {
   }
 
   generate_libm_stubs();
+
+  StubRoutines::_fmod = generate_libmFmod(); // from stubGenerator_x86_64_fmod.cpp
 }
 
 void StubGenerator::generate_continuation_stubs() {
@@ -4168,6 +4220,14 @@ void StubGenerator::generate_compiler_stubs() {
     StubRoutines::_bigIntegerRightShiftWorker = generate_bigIntegerRightShift();
     StubRoutines::_bigIntegerLeftShiftWorker = generate_bigIntegerLeftShift();
   }
+  if (UseSecondarySupersTable) {
+    StubRoutines::_lookup_secondary_supers_table_slow_path_stub = generate_lookup_secondary_supers_table_slow_path_stub();
+    if (! InlineSecondarySupersTest) {
+      for (int slot = 0; slot < Klass::SECONDARY_SUPERS_TABLE_SIZE; slot++) {
+        StubRoutines::_lookup_secondary_supers_table_stubs[slot] = generate_lookup_secondary_supers_table_stub(slot);
+      }
+    }
+  }
   if (UseMontgomeryMultiplyIntrinsic) {
     StubRoutines::_montgomeryMultiply
       = CAST_FROM_FN_PTR(address, SharedRuntime::montgomery_multiply);
@@ -4240,6 +4300,7 @@ void StubGenerator::generate_compiler_stubs() {
       StubRoutines::_vector_d_math[VectorSupport::VEC_SIZE_256][op] = (address)os::dll_lookup(libjsvml, ebuf);
     }
   }
+
 #endif // COMPILER2
 #endif // COMPILER2_OR_JVMCI
 }

@@ -180,6 +180,9 @@ class Abstract_VM_Version: AllStatic {
   // Does platform support stack watermark barriers for concurrent stack processing?
   constexpr static bool supports_stack_watermark_barrier() { return false; }
 
+  // Does platform support secondary supers table lookup?
+  constexpr static bool supports_secondary_supers_table() { return false; }
+
   // Does platform support float16 instructions?
   static bool supports_float16() { return false; }
 

@@ -8969,7 +8969,7 @@ class Character implements java.io.Serializable, Comparable<Character>, Constabl
 
             // Load and use the archived cache if it exists
             CDS.initializeFromArchive(CharacterCache.class);
-            if (archivedCache == null || archivedCache.length != size) {
+            if (archivedCache == null) {
                 Character[] c = new Character[size];
                 for (int i = 0; i < size; i++) {
                     c[i] = new Character((char) i);
@@ -8977,6 +8977,7 @@ class Character implements java.io.Serializable, Comparable<Character>, Constabl
                 archivedCache = c;
             }
             cache = archivedCache;
+            assert cache.length == size;
         }
     }
 
