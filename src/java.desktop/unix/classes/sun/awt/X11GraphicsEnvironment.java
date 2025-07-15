@@ -419,7 +419,7 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment impleme
     public void paletteChanged() {
     }
 
-    public String[][] getInfo() {
+    public String[][] getHiDPIInfo() {
         X11GraphicsDevice device = null;
         synchronized (this) {
             if (devices.containsKey(0)) {

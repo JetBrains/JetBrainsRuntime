@@ -29,17 +29,19 @@ import com.jetbrains.exported.JBRApi;
 
 import java.awt.GraphicsEnvironment;
 
+public interface HiDPIInfoProvider {
+    String[][] getHiDPIInfo();
+}
+
 @JBRApi.Service
 @JBRApi.Provides("HiDPIInfo")
-public interface HiDPIInfoProvider {
-    private static HiDPIInfoProvider create() {
+class HiDPIInfoDispenser {
+    public static String[][] getInfo() {
         var ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         if (ge instanceof HiDPIInfoProvider provider) {
-            return provider;
+            return provider.getHiDPIInfo();
         } else {
             throw new JBRApi.ServiceNotAvailableException("Not supported in this graphics environment: " + ge.getClass().getName());
         }
     }
-
-    String[][] getInfo();
 }

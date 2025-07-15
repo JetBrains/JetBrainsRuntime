@@ -252,7 +252,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         return debugScaleEnabled;
     }
 
-    public String[][] getInfo() {
+    public String[][] getHiDPIInfo() {
         var devices = getSingleInstance().getScreenDevices();
         if (devices != null && devices.length > 0) {
             String[][] info = new String[devices.length * 3][3];
