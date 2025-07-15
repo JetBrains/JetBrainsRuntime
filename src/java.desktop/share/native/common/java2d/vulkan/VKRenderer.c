@@ -708,8 +708,6 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface) {
     }
     if (surface->renderPass == NULL) return;
     if (device != NULL && device->renderer != NULL) {
-        // Wait while surface resources are being used by the device.
-        VKRenderer_Wait(device->renderer, surface->lastTimestamp);
         VKRenderer_CleanupPendingResources(device->renderer);
         VKRenderer_DiscardRenderPass(surface);
         // Release resources.
