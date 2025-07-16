@@ -823,7 +823,6 @@ jdk_awt_wayland = \
     -com/apple/laf \
     -sun/awt \
     -java/awt/a11y \
-    -java/awt/applet \
     -java/awt/BasicStroke/DashOffset.java \
     -java/awt/BasicStroke/DashScaleMinWidth.java \
     -java/awt/BasicStroke/DashZeroWidth.java \
