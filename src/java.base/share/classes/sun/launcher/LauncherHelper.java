@@ -71,6 +71,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.TreeSet;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
@@ -295,6 +296,8 @@ public final class LauncherHelper {
                 Locale.getDefault(Category.DISPLAY).getDisplayName());
         ostream.println(INDENT + "default format locale = " +
                 Locale.getDefault(Category.FORMAT).getDisplayName());
+        ostream.println(INDENT + "default timezone = " +
+                TimeZone.getDefault().getID());
         ostream.println(INDENT + "tzdata version = " +
                 ZoneInfoFile.getVersion());
         if (!summaryMode) {
