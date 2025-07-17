@@ -317,7 +317,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
      */
     public WLComponentPeer peerForPointerEvents() {
         return eventWithSurface != null
-                ? WLToolkit.componentPeerFromSurface(eventWithSurface.getSurface())
+                ? WLToolkit.peerFromSurface(eventWithSurface.getSurface())
                 : null;
     }
 
