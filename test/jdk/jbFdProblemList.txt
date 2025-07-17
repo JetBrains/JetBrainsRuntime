@@ -125,5 +125,6 @@ javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,834
 
 jb/build/ResolveSymbolsTest/ResolveSymbolsRealEnv.java JBR-8544 linux-all
 jb/java/awt/Window/UndecoratedDialogInTransientsChain.java JBR-8710 windows-aarch64
+jb/javax/swing/JDialog/JDialog1054.java JBR-5004 macosx-aarch64
 
 sun/awt/dnd/8024061/bug8024061.java JBR-9033 windows-all
