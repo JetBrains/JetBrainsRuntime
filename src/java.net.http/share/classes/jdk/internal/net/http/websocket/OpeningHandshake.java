@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,6 +66,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.String.format;
+import static jdk.internal.net.http.common.Utils.copyProxy;
 import static jdk.internal.net.http.common.Utils.isValidName;
 import static jdk.internal.net.http.common.Utils.permissionForProxy;
 import static jdk.internal.net.http.common.Utils.stringOf;
@@ -373,7 +374,7 @@ public class OpeningHandshake {
         if (proxy.type() != Proxy.Type.HTTP) {
             return null;
         }
-        return proxy;
+        return copyProxy(proxy);
     }
 
     /**
