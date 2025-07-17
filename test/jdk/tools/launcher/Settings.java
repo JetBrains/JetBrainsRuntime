@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,6 +79,7 @@ public class Settings extends TestHelper {
     private static final String BAD_SEC_OPTION_MSG = "Unrecognized security subcommand";
     private static final String SYSTEM_SETTINGS = "Operating System Metrics:";
     private static final String STACKSIZE_SETTINGS = "Stack Size:";
+    private static final String TIMEZONE_SETTINGS = "default timezone";
     private static final String TZDATA_SETTINGS = "tzdata version";
 
     static void containsAllOptions(TestResult tr) {
@@ -92,6 +93,7 @@ public class Settings extends TestHelper {
         checkContains(tr, SEC_SUMMARY_PROPS_SETTINGS);
         checkContains(tr, SEC_PROVIDER_SETTINGS);
         checkContains(tr, SEC_TLS_SETTINGS);
+        checkContains(tr, TIMEZONE_SETTINGS);
         checkContains(tr, TZDATA_SETTINGS);
         if (System.getProperty("os.name").contains("Linux")) {
             checkContains(tr, SYSTEM_SETTINGS);
@@ -160,6 +162,7 @@ public class Settings extends TestHelper {
         checkContains(tr, LOCALE_SETTINGS);
         checkContains(tr, AVAILABLE_LOCALES);
         checkNotContains(tr, LOCALE_SUMMARY_SETTINGS);
+        checkContains(tr, TIMEZONE_SETTINGS);
         checkContains(tr, TZDATA_SETTINGS);
     }
 
