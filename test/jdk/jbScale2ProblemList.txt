@@ -74,7 +74,6 @@ javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux
 
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-6589 windows-all
 jb/java/awt/Focus/FileDialogClosing.java JBR-5799,JBR-8309 windows-all,macosx-x64
-jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-5799 windows-all
 jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
 jb/java/awt/Focus/PopupFromMenuTest.java JBR-5799 windows-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java                                       JBR-2651 generic-all
@@ -86,6 +85,7 @@ jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                      
 jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
 
 sanity/client/SwingSet/src/ColorChooserDemoTest.java JBR-8354,JBR-8933 linux-all,windows-aarch64,windows-10.0
+sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5510,JBR-6285 linux-5.18.2-arch1-1,linux-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java JBR-6685 linux-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001,JBR-6293 linux-all,windows-all
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,windows-all

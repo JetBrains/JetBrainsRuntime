@@ -21,6 +21,7 @@ java/awt/font/TextLayout/HitTest.java JBR-8764 linux-all
 java/awt/font/TextLayout/TestGetPixelBounds.java JBR-8765 linux-all
 java/awt/font/TextLayout/VisibleAdvance.java JBR-8766 linux-all
 java/awt/FontMetrics/ExtremeFontSizeTest.java JBR-7823 linux-all
+java/awt/Graphics2D/DrawString/IgnoredWhitespaceTest.java JBR-9086 linux-all
 java/awt/Graphics2D/DrawString/RotTransText.java JBR-8767 linux-all
 java/awt/Graphics/XORPaint.java#id2 JBR-7373 linux-x64
 java/awt/image/DrawImage/SimpleManagedImage.java JBR-8769 linux-all
