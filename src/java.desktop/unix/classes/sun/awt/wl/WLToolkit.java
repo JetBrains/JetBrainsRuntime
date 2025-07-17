@@ -402,9 +402,19 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
         final WLInputState newInputState = inputState.updatedFromKeyboardEnterEvent(serial, surfacePtr);
         final WLWindowPeer peer = peerFromSurface(surfacePtr);
-        if (peer != null && peer.getTarget() instanceof Window window) {
+        if (peer != null) {
+            Window window = (Window) peer.getTarget();
+            Window winToFocus = window;
+
+            Component s = peer.getSyntheticFocusOwner();
+            if (s instanceof Window synthWindow) {
+                if (synthWindow.isVisible() && synthWindow.isFocusableWindow()) {
+                    winToFocus = synthWindow;
+                }
+            }
+
             WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(window);
-            final WindowEvent windowEnterEvent = new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS);
+            WindowEvent windowEnterEvent = new WindowEvent(winToFocus, WindowEvent.WINDOW_GAINED_FOCUS);
             postPriorityEvent(windowEnterEvent);
         }
         inputState = newInputState;
