@@ -154,9 +154,6 @@ class JNIHandleBlock : public CHeapObj<mtInternal> {
   uintptr_t*      _free_list;                   // Handle free list
   int             _allocate_before_rebuild;     // Number of blocks to allocate before rebuilding free list
 
-  // Check JNI, "planned capacity" for current frame (or push/ensure)
-  size_t          _planned_capacity;
-
   #ifndef PRODUCT
   JNIHandleBlock* _block_list_link;             // Link for list below
   static JNIHandleBlock* _block_list;           // List of all allocated blocks (for debugging only)
@@ -192,11 +189,6 @@ class JNIHandleBlock : public CHeapObj<mtInternal> {
   // Garbage collection support
   // Traversal of handles
   void oops_do(OopClosure* f);
-
-  // Checked JNI support
-  void set_planned_capacity(size_t planned_capacity) { _planned_capacity = planned_capacity; }
-  const size_t get_planned_capacity() { return _planned_capacity; }
-  const size_t get_number_of_live_handles();
 
   // Debugging
   bool chain_contains(jobject handle) const;    // Does this block or following blocks contain handle
