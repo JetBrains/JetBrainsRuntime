@@ -25,6 +25,8 @@
 
 #ifndef PRODUCT
 #ifndef ZERO
+// Neither ppc nor s390 compilers use code strings.
+#if !defined(PPC) && !defined(S390)
 
 #include "asm/macroAssembler.inline.hpp"
 #include "compiler/disassembler.hpp"
@@ -263,5 +265,6 @@ TEST_VM(codestrings, validate)
     buffer_blob_test();
 }
 
+#endif // not S390 not PPC
 #endif // not ZERO
 #endif // not PRODUCT
