@@ -795,6 +795,7 @@ java/beans/XMLEncoder/Test6570354.java 8015593 macosx-all
 # jdk_foreign
 
 java/foreign/critical/TestCriticalUpcall.java JBR-8711 windows-aarch64
+java/foreign/TestBufferStackStress.java JBR-8930 windows-aarch64
 java/foreign/TestMismatch.java 8249684 macosx-all
 
 ############################################################################
@@ -1562,7 +1563,7 @@ javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-5510,JBR-6908 linux-5.18.2-arc
 jb/java/awt/Focus/BrokenTraversalAWT.java JBR-5799 windows-all
 jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728 linux-all,windows-x64
 jb/java/awt/Focus/ContextMenuAfterPopup.java JBR-5799 windows-all
-jb/java/awt/Focus/FileDialogClosing.java JBR-8309 macosx-x64
+jb/java/awt/Focus/FileDialogClosing.java JBR-5799,JBR-8309 windows-all,macosx-x64
 jb/java/awt/Focus/FocusTraversalOrderTest.java JBR-6060 generic-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java JBR-6394 linux-5.18.2-arch1-1

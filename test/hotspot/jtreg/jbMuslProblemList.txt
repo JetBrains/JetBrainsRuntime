@@ -2,6 +2,8 @@
 
 # :hotspot_runtime
 
+containers/cgroup/TestContainerized.java JBR-9076 linux-all
+
 runtime/8176717/TestInheritFD.java JBR-6974 linux-all
 runtime/ErrorHandling/CreateCoredumpOnCrash.java JBR-7917 linux-all
 runtime/Thread/ThreadCountLimit.java#id0 JBR-7974 linux-all
