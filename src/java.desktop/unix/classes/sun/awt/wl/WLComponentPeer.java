@@ -344,6 +344,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     protected void wlSetVisible(boolean v) {
+        // TODO: this whole method should be moved to WLWindowPeer
         synchronized (getStateLock()) {
             if (this.visible == v) return;
 
@@ -364,7 +365,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
             performLocked(() -> {
                 assert wlSurface == null;
-                wlSurface = new WLMainSurface(this);
+                wlSurface = new WLMainSurface((WLWindowPeer) this);
                 long wlSurfacePtr = wlSurface.getWlSurfacePtr();
                 if (isWlPopup) {
                     Window popup = (Window) target;
@@ -1074,7 +1075,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 long surface = WLToolkit.getInputState().surfaceForKeyboardInput();
                 // The surface pointer may be out of date, which will cause a protocol error.
                 // So make sure it is valid and do that under AWT lock.
-                if (wlSurface != null && surface != 0 && WLToolkit.componentPeerFromSurface(surface) != null) {
+                if (wlSurface != null && surface != 0 && WLToolkit.peerFromSurface(surface) != null) {
                     wlSurface.activateByAnotherSurface(serial, surface);
                 }
             });
