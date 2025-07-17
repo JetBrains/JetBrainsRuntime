@@ -43,6 +43,11 @@ public class WLButtonPeer extends WLComponentPeer implements ButtonPeer {
         label = target.getLabel();
     }
 
+    @Override
+    protected void wlSetVisible(boolean v) {
+        // TODO: unimplemented
+    }
+
     public boolean isFocusable() {
         return true;
     }
