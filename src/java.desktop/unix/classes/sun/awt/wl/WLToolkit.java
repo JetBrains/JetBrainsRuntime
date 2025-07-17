@@ -334,7 +334,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         }
 
         final long surfacePtr = inputState.surfaceForKeyboardInput();
-        final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
+        final WLComponentPeer peer = peerFromSurface(surfacePtr);
         if (peer != null) {
             if (extendedKeyCode >= 0x1000000) {
                 int ch = extendedKeyCode - 0x1000000;
@@ -401,7 +401,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         }
 
         final WLInputState newInputState = inputState.updatedFromKeyboardEnterEvent(serial, surfacePtr);
-        final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
+        final WLWindowPeer peer = peerFromSurface(surfacePtr);
         if (peer != null && peer.getTarget() instanceof Window window) {
             WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(window);
             final WindowEvent windowEnterEvent = new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS);
@@ -422,7 +422,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         keyboard.onLostFocus();
 
         final WLInputState newInputState = inputState.updatedFromKeyboardLeaveEvent(serial, surfacePtr);
-        final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
+        final WLWindowPeer peer = peerFromSurface(surfacePtr);
         if (peer != null && peer.getTarget() instanceof Window window) {
             final WindowEvent winLostFocusEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
             WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
@@ -435,28 +435,28 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     /**
      * Maps 'struct wl_surface*' to WLComponentPeer that owns the Wayland surface.
      */
-    private static final Map<Long, WLComponentPeer> wlSurfaceToComponentMap = new HashMap<>();
+    private static final Map<Long, WLWindowPeer> wlSurfaceToPeerMap = new HashMap<>();
 
-    static void registerWLSurface(long wlSurfacePtr, WLComponentPeer componentPeer) {
+    static void registerWLSurface(long wlSurfacePtr, WLWindowPeer peer) {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("registerWLSurface: 0x" + Long.toHexString(wlSurfacePtr) + "->" + componentPeer);
+            log.fine("registerWLSurface: 0x" + Long.toHexString(wlSurfacePtr) + "->" + peer);
         }
-        synchronized (wlSurfaceToComponentMap) {
-            wlSurfaceToComponentMap.put(wlSurfacePtr, componentPeer);
+        synchronized (wlSurfaceToPeerMap) {
+            wlSurfaceToPeerMap.put(wlSurfacePtr, peer);
         }
     }
 
     static void unregisterWLSurface(long wlSurfacePtr) {
-        synchronized (wlSurfaceToComponentMap) {
-            wlSurfaceToComponentMap.remove(wlSurfacePtr);
+        synchronized (wlSurfaceToPeerMap) {
+            wlSurfaceToPeerMap.remove(wlSurfacePtr);
         }
 
         inputState = inputState.updatedFromUnregisteredSurface(wlSurfacePtr);
     }
 
-    static WLComponentPeer componentPeerFromSurface(long wlSurfacePtr) {
-        synchronized (wlSurfaceToComponentMap) {
-            return wlSurfaceToComponentMap.get(wlSurfacePtr);
+    static WLWindowPeer peerFromSurface(long wlSurfacePtr) {
+        synchronized (wlSurfaceToPeerMap) {
+            return wlSurfaceToPeerMap.get(wlSurfacePtr);
         }
     }
 
@@ -465,15 +465,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      * associated with that surface.
      * Otherwise, throw UOE.
      */
-    static WLComponentPeer getSingularWindowPeer() {
-        synchronized (wlSurfaceToComponentMap) {
-            if (wlSurfaceToComponentMap.size() > 1) {
+    static WLWindowPeer getSingularWindowPeer() {
+        synchronized (wlSurfaceToPeerMap) {
+            if (wlSurfaceToPeerMap.size() > 1) {
                 throw new UnsupportedOperationException("More than one native window");
-            } else if (wlSurfaceToComponentMap.isEmpty()) {
+            } else if (wlSurfaceToPeerMap.isEmpty()) {
                 throw new UnsupportedOperationException("No native windows");
             }
 
-            return wlSurfaceToComponentMap.values().iterator().next();
+            return wlSurfaceToPeerMap.values().iterator().next();
         }
     }
 
