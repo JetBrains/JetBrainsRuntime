@@ -43,10 +43,14 @@ import java.awt.event.WindowEvent;
 import java.awt.geom.Path2D;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;
+import java.lang.ref.WeakReference;
 
 public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     private static Font defaultFont;
     private Dialog blocker;
+
+    // If this window gets focus from Wayland, we need to transfer focus synthFocusOwner, if any
+    private WeakReference<Component> synthFocusOwner = new WeakReference<>(null);
 
     public static final String WINDOW_CORNER_RADIUS = "apple.awt.windowCornerRadius";
 
@@ -222,6 +226,14 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
                 WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow() == nativeFocusTarget) {
             WLToolkit.postPriorityEvent(new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS));
         }
+    }
+
+    public Component getSyntheticFocusOwner() {
+        return synthFocusOwner.get();
+    }
+
+    public void setSyntheticFocusOwner(Component c) {
+        synthFocusOwner = new WeakReference<>(c);
     }
 
     private boolean canPaintRoundedCorners() {
