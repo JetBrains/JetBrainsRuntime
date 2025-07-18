@@ -28,6 +28,7 @@ package com.jetbrains.desktop;
 import com.jetbrains.desktop.image.TextureWrapperImage;
 import com.jetbrains.exported.JBRApi;
 import sun.awt.SunToolkit;
+import sun.java2d.opengl.OGLGraphicsConfigJbrApi;
 
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
@@ -59,6 +60,7 @@ public class SharedTextures {
         return 0;
     }
 
+    @Deprecated
     public int getTextureType() {
         GraphicsConfiguration gc = GraphicsEnvironment
                 .getLocalGraphicsEnvironment()
@@ -72,10 +74,10 @@ public class SharedTextures {
     }
 
     public long getSharedGLContext(GraphicsConfiguration gc) {
-        return gc.getSharedContext();
+        return OGLGraphicsConfigJbrApi.getSharedContext(gc);
     }
 
     public int getGLPixelFormat(GraphicsConfiguration gc) {
-        return gc.getPixelFormat();
+        return OGLGraphicsConfigJbrApi.getPixelFormat(gc);
     }
 }

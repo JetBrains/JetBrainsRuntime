@@ -74,20 +74,9 @@ public final class WGLGraphicsConfig
 
     public static native int getDefaultPixFmt(int screennum);
 
-    /**
-     * Returns the shared context for this WGLGraphicsConfig.  This is
-     * @return shared context for this WGLGraphicsConfig, or 0 if none.
-     */
-    @Override
-    public long getSharedContext() {
-        return n_getSharedContext();
-    }
-
-    private native long n_getSharedContext();
     private static native boolean initWGL();
     private static native long getWGLConfigInfo(int screennum, int visualnum);
     private static native int getOGLCapabilities(long configInfo);
-    private static native int getPixelFormat(long configInfo);
 
     static {
         wglAvailable = initWGL();
@@ -253,15 +242,6 @@ public final class WGLGraphicsConfig
         default:
             return null;
         }
-    }
-
-    /**
-     * Returns the pixel format associated with this WGLGraphicsConfig.
-     * @return pixel format associated with this WGLGraphicsConfig, or 0 if
-     */
-    @Override
-    public int getPixelFormat() {
-        return getPixelFormat(pConfigInfo);
     }
 
     @Override

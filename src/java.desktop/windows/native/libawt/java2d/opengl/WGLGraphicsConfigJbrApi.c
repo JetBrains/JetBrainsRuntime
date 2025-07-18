@@ -35,25 +35,25 @@
 extern HGLRC sharedContext;
 
 JNIEXPORT jlong JNICALL
-Java_sun_java2d_opengl_WGLGraphicsConfig_n_1getSharedContext(JNIEnv *env,
-                                                             jobject wglgc)
+Java_sun_java2d_opengl_OGLGraphicsConfigJbrApi_getSharedContext(JNIEnv *env,
+                                                                jclass wglcl)
 {
     return (jlong)sharedContext;
 }
 
 JNIEXPORT jint JNICALL
-Java_sun_java2d_opengl_WGLGraphicsConfig_getPixelFormat(JNIEnv *env,
-                                                        jclass wglcl,
-                                                        jlong pConfigInfo)
+Java_sun_java2d_opengl_OGLGraphicsConfigJbrApi_getPixelFormat(JNIEnv *env,
+                                                              jclass wglcl,
+                                                              jlong pConfigInfo)
 {
     WGLGraphicsConfigInfo *wglinfo =
         (WGLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
-    J2dTraceLn(J2D_TRACE_INFO, "WGLGraphicsConfig_getPixelFormat");
+    J2dTraceLn(J2D_TRACE_INFO, "OGLGraphicsConfigJbrApi_getPixelFormat");
 
     if (wglinfo == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
-                    "WGLGraphicsConfig_getPixelFormat: config info is null");
+                    "OGLGraphicsConfigJbrApi_getPixelFormat: config info is null");
         return 0;
     }
 

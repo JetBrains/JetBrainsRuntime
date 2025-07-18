@@ -451,22 +451,6 @@ public abstract class GraphicsConfiguration {
     }
 
     /**
-     * sadfafasdf
-     * @return asdasd
-     */
-    public int getPixelFormat() {
-        return -1;
-    }
-
-    /**
-     * sadfafasdf
-     * @return sdfasdf
-     */
-    public long getSharedContext() {
-        return -1;
-    }
-
-    /**
      * Some comment
      * @param texture - something
      * @return something
