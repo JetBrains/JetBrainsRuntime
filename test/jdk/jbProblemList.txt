@@ -139,6 +139,7 @@ java/awt/FileDialog/8003399/bug8003399.java JBR-6930 windows-all
 java/awt/FileDialog/8017487/bug8017487.java JBR-8144 windows-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
+java/awt/Focus/ComponentLostFocusTest.java JBR-7909 generic-all
 java/awt/Focus/EmptyWindowKeyTest.java JBR-7913 windows-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java JBR-5178 windows-all
@@ -168,6 +169,7 @@ java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MinimizeUndecoratedTest.java 8330731 linux-all
+java/awt/Frame/MinimumSizeTest.java JBR-8298 linux-6.8.0-1031-aws
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880,JBR-6683 windows-all,linux-all
 java/awt/dnd/CustomDragCursorTest.java 8242805 macosx-all
@@ -271,6 +273,7 @@ java/awt/datatransfer/SystemSelection/SystemSelectionSwingTest.java JBR-6393 lin
 java/awt/datatransfer/UnicodeTransferTest/UnicodeTransferTest.java 8300704 linux-all
 java/awt/LightweightComponent/LightweightDragTest.java JBR-6557 windows-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050,JBR-8313 windows-all,macosx-all,linux-all
+java/awt/LightweightComponent/MultipleAddNotifyTest/MultipleAddNotifyTest.java JBR-8092 linux-all
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-8146 windows-x64
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java JBR-6633 linux-all,windows-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.java 8073636,JBR-4211 macosx-all,linux-all
@@ -372,7 +375,7 @@ java/awt/image/multiresolution/MultiresolutionIconTest.java 8252812 windows-all,
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
 java/awt/print/Headless/HeadlessPrinterJob.java 8196088 windows-all
 sun/awt/datatransfer/SuplementaryCharactersTransferTest.java 8011371 generic-all
-sun/awt/font/TestDevTransform.java 8347618 linux-all
+sun/awt/font/TestDevTransform.java 8347618,JBR-9122 linux-all,windows-all
 sun/awt/shell/ShellFolderMemoryLeak.java 8197794 windows-all
 sun/java2d/DirectX/OnScreenRenderingResizeTest/OnScreenRenderingResizeTest.java 8301177 generic-all
 sun/java2d/DirectX/OpaqueImageToSurfaceBlitTest/OpaqueImageToSurfaceBlitTest.java JBR-5393 windows-aarch64
@@ -761,6 +764,7 @@ java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java 8266243,JBR-551
 java/awt/Dialog/ModalDialogPermission/ModalDialogPermission.java JBR-5225 windows-all
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java JBR-5082 linux-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787,8253184 linux-all,windows-all
+java/awt/dnd/DragSourceMotionListenerTest.java 8225131 windows-all
 
 ############################################################################
 
@@ -1007,6 +1011,7 @@ javax/swing/plaf/windows/6921687/bug6921687.java 8253184 windows-all
 javax/swing/plaf/windows/WindowsRootPaneUI/WrongAltProcessing/WrongAltProcessing.java JBR-4372 windows-all
 
 javax/swing/Box/TestBoxFiller.java JBR-5210 windows-all
+javax/swing/DataTransfer/bug4655513.java JBR-8849 windows-all
 javax/swing/DefaultButtonModel/DefaultButtonModelCrashTest.java JBR-5210,JBR-5799 windows-all
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-5210 windows-all
 javax/swing/JButton/4368790/bug4368790.java JBR-5210 windows-all
