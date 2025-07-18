@@ -154,7 +154,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
                       jdouble dx2, jdouble dy2)
 {
     if (src == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_Blit: src is null");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_Blit: src is null");
         return;
     }
     VKRenderingContext* context = VKRenderer_GetContext();
@@ -162,7 +162,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
     SurfaceDataRasInfo srcInfo = { .bounds = { sx1, sy1, sx2, sy2 } };
     // NOTE: This function will modify the contents of the bounds field to represent the maximum available raster data.
     if (src->Lock(env, src, &srcInfo, SD_LOCK_READ) != SD_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_WARNING, "VKRenderer_Blit: could not acquire lock");
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "VKBlitLoops_Blit: could not acquire lock");
         return;
     }
     if (srcInfo.bounds.x2 > srcInfo.bounds.x1 && srcInfo.bounds.y2 > srcInfo.bounds.y1) {
@@ -245,7 +245,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
             VKRenderer_ExecOnCleanup(context->surface->renderPass, VKBlitLoops_DisposeBuffer, buffer.handle);
             VKRenderer_ExecOnCleanup(context->surface->renderPass, VKBlitLoops_DisposeMemory, page);
         } else {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_Blit: could not get raster info");
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_Blit: could not get raster info");
         }
         SurfaceData_InvokeRelease(env, src, &srcInfo);
     }
@@ -263,21 +263,21 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env,
                             jint width, jint height)
 {
     if (src == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_SurfaceToSwBlit: src is null");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_SurfaceToSwBlit: src is null");
         return;
     }
     if (dst == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_SurfaceToSwBlit: dst is null");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_SurfaceToSwBlit: dst is null");
         return;
     }
     if (width <= 0 || height <= 0) {
-        J2dTraceLn(J2D_TRACE_WARNING, "VKRenderer_SurfaceToSwBlit: dimensions are non-positive");
+        J2dTraceLn(J2D_TRACE_WARNING, "VKBlitLoops_SurfaceToSwBlit: dimensions are non-positive");
         return;
     }
     VKDevice* device = src->device;
     VKImage* image = src->image;
     if (image == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_SurfaceToSwBlit: image is null");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_SurfaceToSwBlit: image is null");
         return;
     }
 
@@ -298,7 +298,7 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env,
 
     // NOTE: This function will modify the contents of the bounds field to represent the maximum available raster data.
     if (dst->Lock(env, dst, &dstInfo, SD_LOCK_WRITE) != SD_SUCCESS) {
-        J2dTraceLn(J2D_TRACE_WARNING, "VKRenderer_SurfaceToSwBlit: could not acquire lock");
+        J2dTraceLn(J2D_TRACE_WARNING, "VKBlitLoops_SurfaceToSwBlit: could not acquire lock");
         return;
     }
     if (dstInfo.bounds.x2 > dstInfo.bounds.x1 && dstInfo.bounds.y2 > dstInfo.bounds.y1) {
@@ -366,7 +366,7 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env,
             device->vkDestroyBuffer(device->handle, buffer.handle, NULL);
             VKAllocator_Free(device->allocator, page);
         } else {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_SurfaceToSwBlit: could not get raster info");
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_SurfaceToSwBlit: could not get raster info");
         }
         SurfaceData_InvokeRelease(env, dst, &dstInfo);
     }
