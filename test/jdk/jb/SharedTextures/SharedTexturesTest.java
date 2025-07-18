@@ -49,9 +49,9 @@ public class SharedTexturesTest {
         SharedTextures jbrApi = SharedTextures.create();
         int textureType = jbrApi.getTextureType(gc);
         if ("True".equals(System.getProperty("sun.java2d.opengl"))) {
-            Asserts.assertEquals(jbrApi.getTextureType(), SharedTextures.OPENGL_TEXTURE_TYPE);
+            Asserts.assertEquals(textureType, SharedTextures.OPENGL_TEXTURE_TYPE);
         } else if ("True".equals(System.getProperty("sun.java2d.metal"))) {
-            Asserts.assertEquals(jbrApi.getTextureType(), SharedTextures.METAL_TEXTURE_TYPE);
+            Asserts.assertEquals(textureType, SharedTextures.METAL_TEXTURE_TYPE);
         } else {
             throw new RuntimeException("The rendering pipeline has to be specified explicitly");
         }
@@ -62,7 +62,8 @@ public class SharedTexturesTest {
         initNative(textureType);
 
         BufferedImage originalImage = createImage();
-        byte[] bytes = getPixelData(originalImage, TexturePixelLayout.getPixelFormat(textureType));
+        boolean flipY = textureType == SharedTextures.OPENGL_TEXTURE_TYPE;
+        byte[] bytes = getPixelData(originalImage, TexturePixelLayout.get(textureType), flipY);
 
         BufferedImage bufferedImageContent;
         BufferedImage volatileImageContent;
@@ -72,12 +73,12 @@ public class SharedTexturesTest {
         try {
             Image textureImage = jbrApi.wrapTexture(gc, textureId);
 
-            // Render the shared texture image to a BufferedImage
+            // Render the shared texture image onto a BufferedImage
             bufferedImageContent = new BufferedImage(
                     textureImage.getWidth(null), textureImage.getHeight(null), BufferedImage.TYPE_INT_ARGB);
             copyImage(textureImage, bufferedImageContent);
 
-            // Render the shared texture image to a VolatileImage and copy it to another BufferedImage
+            // Render the shared texture image onto a VolatileImage and copy it to another BufferedImage
             // to check the content later
             volatileImageContent = new BufferedImage(
                     textureImage.getWidth(null), textureImage.getHeight(null), BufferedImage.TYPE_INT_ARGB);
@@ -92,6 +93,7 @@ public class SharedTexturesTest {
             Asserts.assertNotEquals(attempts, 0, "Failed to draw the VolatileImage");
         } finally {
             disposeTexture(textureId);
+            releaseContext();
         }
 
         try {
@@ -106,8 +108,8 @@ public class SharedTexturesTest {
             saveImage(originalImage, "original_image.png");
             saveImage(bufferedImageContent, "buffered_image.png");
             saveImage(volatileImageContent, "volatile_image.png");
-            saveImage(imagesDiff(originalImage, bufferedImageContent), "bi_diff.png");
-            saveImage(imagesDiff(originalImage, volatileImageContent), "vi_diff.png");
+            saveImage(imagesDiff(originalImage, bufferedImageContent), "buffered_image_diff.png");
+            saveImage(imagesDiff(originalImage, volatileImageContent), "volatile_image_diff.png");
             throw e;
         }
     }
@@ -157,7 +159,7 @@ public class SharedTexturesTest {
         private TexturePixelLayout(int r, int g, int b, int a) {this.r = r; this.g = g; this.b = b; this.a = a;}
         final static TexturePixelLayout RGBA = new TexturePixelLayout(0, 1, 2, 3);
         final static TexturePixelLayout BGRA = new TexturePixelLayout(2, 1, 0, 3);
-        static TexturePixelLayout getPixelFormat(int textureType) {
+        static TexturePixelLayout get(int textureType) {
             return switch (textureType) {
                 case SharedTextures.OPENGL_TEXTURE_TYPE -> TexturePixelLayout.RGBA;
                 case SharedTextures.METAL_TEXTURE_TYPE -> TexturePixelLayout.BGRA;
@@ -166,15 +168,19 @@ public class SharedTexturesTest {
         }
     }
 
-    private static byte[] getPixelData(BufferedImage image, TexturePixelLayout pixelLayout) {
+    private static byte[] getPixelData(BufferedImage image, TexturePixelLayout pixelLayout, boolean flipY) {
         byte[] rawPixels = new byte[image.getWidth() * image.getHeight() * 4];
         int[] argbPixels = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+        ColorModel cm = image.getColorModel();
         for (int i = 0; i < argbPixels.length; i++) {
+            int x = i % image.getWidth();
+            int y = flipY ? image.getHeight() - (i / image.getWidth()) - 1 : i / image.getWidth();
+            int targetIndex = (x + y * image.getWidth()) * 4;
             int argb = argbPixels[i];
-            rawPixels[i * 4 + pixelLayout.r] = (byte) ((argb >> 16) & 0xFF); // Red
-            rawPixels[i * 4 + pixelLayout.g] = (byte) ((argb >> 8) & 0xFF);  // Green
-            rawPixels[i * 4 + pixelLayout.b] = (byte) (argb & 0xFF);         // Blue
-            rawPixels[i * 4 + pixelLayout.a] = (byte) ((argb >> 24) & 0xFF); // Alpha
+            rawPixels[targetIndex + pixelLayout.r] = (byte) cm.getRed(argb);
+            rawPixels[targetIndex + pixelLayout.g] = (byte) cm.getGreen(argb);
+            rawPixels[targetIndex + pixelLayout.b] = (byte) cm.getBlue(argb);
+            rawPixels[targetIndex + pixelLayout.a] = (byte) cm.getAlpha(argb);
         }
 
         return rawPixels;
@@ -213,7 +219,6 @@ public class SharedTexturesTest {
                 int gB = (rgbB >> 8) & 0xff;
                 int bB = (rgbB) & 0xff;
 
-                // Per-channel absolute difference (modulus)
                 int aDiff = Math.abs(aA - aB);
                 int rDiff = Math.abs(rA - rB);
                 int gDiff = Math.abs(gA - gB);
