@@ -59,7 +59,7 @@ import static sun.java2d.opengl.WGLSurfaceData.WGLVSyncOffScreenSurfaceData;
 
 public final class WGLGraphicsConfig
     extends Win32GraphicsConfig
-    implements OGLGraphicsConfig, SurfaceManager.TextureWrapperFactory
+    implements OGLGraphicsConfig
 {
     protected static boolean wglAvailable;
     private static ImageCapabilities imageCaps = new WGLImageCaps();
@@ -435,18 +435,5 @@ public final class WGLGraphicsConfig
     public VolatileSurfaceManager createVolatileManager(SunVolatileImage image,
                                                         Object context) {
         return new WGLVolatileSurfaceManager(image, context);
-    }
-
-    @Override
-    public Image wrapTextureImage(long texture) {
-        return new TextureWrapperImage(this, texture);
-    }
-
-    @Override
-    public SurfaceManager createTextureWrapperSurfaceManager(GraphicsConfiguration gc, Image image, long textureId) {
-        if (gc instanceof WGLGraphicsConfig) {
-            return new TextureWrapperSurfaceManager(WGLSurfaceData.createData((WGLGraphicsConfig) gc, image, textureId));
-        }
-        throw new UnsupportedOperationException();
     }
 }
