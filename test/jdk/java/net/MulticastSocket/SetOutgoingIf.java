@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,11 @@
 /*
  * @test
  * @bug 4742177 8241786
+ * @summary Re-test IPv6 (and specifically MulticastSocket) with latest Linux & USAGI code
+ * @requires os.family != "windows"
  * @library /test/lib
  * @run main/othervm SetOutgoingIf
  * @run main/othervm -Djdk.net.usePlainDatagramSocketImpl SetOutgoingIf
- * @summary Re-test IPv6 (and specifically MulticastSocket) with latest Linux & USAGI code
  */
 import java.io.IOException;
 import java.net.*;
@@ -37,7 +38,7 @@ import jdk.test.lib.NetworkConfiguration;
 
 
 public class SetOutgoingIf implements AutoCloseable {
-    private static String osname;
+
     private final MulticastSocket SOCKET;
     private final int PORT;
     private final Map<NetIf, MulticastSender> sendersMap = new ConcurrentHashMap<>();
@@ -48,12 +49,6 @@ public class SetOutgoingIf implements AutoCloseable {
         } catch (IOException io) {
             throw new ExceptionInInitializerError(io);
         }
-    }
-
-    static boolean isWindows() {
-        if (osname == null)
-            osname = System.getProperty("os.name");
-        return osname.contains("Windows");
     }
 
     static boolean isMacOS() {
@@ -83,10 +78,6 @@ public class SetOutgoingIf implements AutoCloseable {
     }
 
     public void run() throws Exception {
-        if (isWindows()) {
-            System.out.println("The test only run on non-Windows OS. Bye.");
-            return;
-        }
 
         if (!hasIPv6()) {
             System.out.println("No IPv6 available. Bye.");
