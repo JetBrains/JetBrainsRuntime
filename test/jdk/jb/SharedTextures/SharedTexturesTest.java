@@ -203,29 +203,12 @@ public class SharedTexturesTest {
         int width = Math.min(lhs.getWidth(), rhs.getWidth());
         int height = Math.min(lhs.getHeight(), rhs.getHeight());
         BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        ColorModel lhsCM = lhs.getColorModel();
+        ColorModel rhsCM = rhs.getColorModel();
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                int rgbA = lhs.getRGB(x, y);
-                int rgbB = rhs.getRGB(x, y);
-
-                int aA = (rgbA >> 24) & 0xff;
-                int rA = (rgbA >> 16) & 0xff;
-                int gA = (rgbA >> 8) & 0xff;
-                int bA = (rgbA) & 0xff;
-
-                int aB = (rgbB >> 24) & 0xff;
-                int rB = (rgbB >> 16) & 0xff;
-                int gB = (rgbB >> 8) & 0xff;
-                int bB = (rgbB) & 0xff;
-
-                int aDiff = Math.abs(aA - aB);
-                int rDiff = Math.abs(rA - rB);
-                int gDiff = Math.abs(gA - gB);
-                int bDiff = Math.abs(bA - bB);
-
-                int resultRGB = (aDiff << 24) | (rDiff << 16) | (gDiff << 8) | bDiff;
-                result.setRGB(x, y, resultRGB);
+                result.setRGB(x, y, lhsCM.getRGB(lhs.getRGB(x, y)) ^ rhsCM.getRGB(rhs.getRGB(x, y)));
             }
         }
         return result;
