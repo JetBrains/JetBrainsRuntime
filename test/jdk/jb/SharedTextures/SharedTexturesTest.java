@@ -56,11 +56,6 @@ public class SharedTexturesTest {
             throw new RuntimeException("The rendering pipeline has to be specified explicitly");
         }
 
-        if (textureType == SharedTextures.OPENGL_TEXTURE_TYPE) {
-            setSharedContext(jbrApi.getSharedGLContext(gc), jbrApi.getGLPixelFormat(gc));
-        }
-        initNative(textureType);
-
         BufferedImage originalImage = createImage();
         boolean flipY = textureType == SharedTextures.OPENGL_TEXTURE_TYPE;
         byte[] bytes = getPixelData(originalImage, TexturePixelLayout.get(textureType), flipY);
@@ -68,6 +63,10 @@ public class SharedTexturesTest {
         BufferedImage bufferedImageContent;
         BufferedImage volatileImageContent;
 
+        if (textureType == SharedTextures.OPENGL_TEXTURE_TYPE) {
+            setSharedContext(jbrApi.getSharedGLContext(gc), jbrApi.getGLPixelFormat(gc));
+        }
+        initNative(textureType);
         long textureId = createTexture(bytes, originalImage.getWidth(), originalImage.getHeight());
 
         try {
