@@ -1,6 +1,7 @@
 java/awt/Choice/ChoiceHandleMouseEvent.java
 java/awt/Choice/ChoiceHandleMouseEvent_2.java JBR-7174 windows-all
 java/awt/Graphics/XORPaint.java#id0 JBR-7499 windows-x64
+java/awt/Graphics2D/TextPerf.java JBR-8541 windows-x64
 java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java   nobug macosx-all,linux-all,windows-all
 java/awt/Toolkit/AWTThreadingTest.java              nobug macosx-all,linux-all,windows-all
 java/awt/Toolkit/AWTThreadingCMenuTest.java         nobug macosx-all,linux-all,windows-all
@@ -8,6 +9,7 @@ java/awt/Focus/TemporaryLostComponentDeadlock.java JBR-5734 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java nobug macosx-all,linux-all,windows-all
 java/awt/List/NofocusListDblClickTest/NofocusListDblClickTest.java nobug macosx-all,linux-all,windows-all
 java/awt/List/TriggerActionEventTest.java JBR-7621 windows-all
+java/awt/Mouse/MouseEnterExitTest.java JBR-8096 windows-x64
 java/awt/Paint/PaintNativeOnUpdate.java JBR-5397,JBR-7415 macosx-all,windows-x64
 java/awt/PopupMenu/PopupMenuLocation.java JBR-5397,JBR-7375 macosx-all,windows-x64
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java JBR-5397,JBR-6092 macosx-all,windows-x64
@@ -15,6 +17,8 @@ java/awt/Robot/NonEmptyErrorStream.java JBR-5510,JBR-7375 linux-5.18.2-arch1-1,w
 java/awt/Robot/RobotWheelTest/RobotWheelTest.java JBR-5397,JBR-7377 macosx-all,windows-x64
 java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java JBR-5397,JBR-7531 macosx-all,windows-x64
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5397,JBR-7378 macosx-all,windows-x64
+
+java/beans/PropertyEditor/6380849/TestPropertyEditor.java JBR-9130 windows-x64
 
 javax/accessibility/JFileChooserAccessibleDescriptionTest.java JBR-5397,JBR-7379 macosx-all,windows-x64
 javax/accessibility/SlowPanelIteration/SlowPanelIteration.java JBR-870,JBR-5397 windows-x64,linux-x64,macosx-all
@@ -25,6 +29,7 @@ javax/swing/JComboBox/6559152/bug6559152.java JBR-5397,JBR-7382 macosx-all,windo
 javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java JBR-5210 windows-all
 javax/swing/JComboBox/bug4996503.java JBR-7412 windows-x64
 javax/swing/JComboBox/EditableComboBoxPopupPos.java JBR-7383 windows-x64
+javax/swing/JInternalFrame/bug4732229.java JBR-9131  windows-x64
 javax/swing/JInternalFrame/Test6505027.java         nobug macosx-all,linux-all,windows-all
 javax/swing/JMenuBar/MenuBarRTLBug.java JBR-7385 windows-x64
 javax/swing/JPopupMenu/4634626/bug4634626.java      nobug macosx-all,linux-all,windows-all
@@ -108,6 +113,7 @@ java/awt/Mouse/EnterExitEvents/DragWindowTest.java 8253184,JBR-5397 macosx-all,w
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.java 8253184,JBR-5709 windows-all,linux-all
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java 8253184,JBR-6752,JBR-5397 windows-all,linux-all,macosx-all
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java JBR-5397 macosx-all
+java/awt/Window/ProxyCrash/PopupProxyCrash.java JBR-9084 windows-x64
 java/awt/Window/WindowOwnedByEmbeddedFrameTest/WindowOwnedByEmbeddedFrameTest.java JBR-5397 macosx-all
 javax/accessibility/JSlider/AccessibleAction/JSliderAccessibleAction.java JBR-5397 macosx-all
 javax/swing/JComboBox/6236162/bug6236162.java JBR-5210,JBR-5397 windows-all,macosx-all
@@ -141,6 +147,7 @@ java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java 8233568,J
 java/awt/Focus/6378278/InputVerifierTest.java JBR-5505 windows-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 8169110,JBR-5505 linux-all,windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-5505 windows-all
+java/awt/Frame/DisabledParentOfToplevel.java JBR-9092 windows-x64
 java/awt/Frame/DisposeStressTest/DisposeStressTest.java JBR-7331 windows-all
 java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-5505 windows-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-5505 windows-all
