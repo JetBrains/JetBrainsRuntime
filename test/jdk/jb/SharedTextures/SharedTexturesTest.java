@@ -2,6 +2,7 @@ import com.jetbrains.desktop.SharedTextures;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
 import java.awt.image.VolatileImage;
 import java.io.File;
 import java.io.IOException;
@@ -52,7 +53,7 @@ public class SharedTexturesTest {
         } else if ("True".equals(System.getProperty("sun.java2d.metal"))) {
             Asserts.assertEquals(jbrApi.getTextureType(), SharedTextures.METAL_TEXTURE_TYPE);
         } else {
-            throw new RuntimeException("The rendering pipeline has to specified explicitly");
+            throw new RuntimeException("The rendering pipeline has to be specified explicitly");
         }
 
         if (textureType == SharedTextures.OPENGL_TEXTURE_TYPE) {
@@ -71,22 +72,23 @@ public class SharedTexturesTest {
         try {
             Image textureImage = jbrApi.wrapTexture(gc, textureId);
 
-            // Create a BufferedImage containing a copy of textureImage
+            // Render the shared texture image to a BufferedImage
             bufferedImageContent = new BufferedImage(
                     textureImage.getWidth(null), textureImage.getHeight(null), BufferedImage.TYPE_INT_ARGB);
             copyImage(textureImage, bufferedImageContent);
 
-            // Create a VolatileImage containing a copy of textureImage and dump it to a BufferedImage
+            // Render the shared texture image to a VolatileImage and copy it to another BufferedImage
+            // to check the content later
             volatileImageContent = new BufferedImage(
                     textureImage.getWidth(null), textureImage.getHeight(null), BufferedImage.TYPE_INT_ARGB);
-            VolatileImage volatileImage = gc.createCompatibleVolatileImage(
+            VolatileImage volatileImageTarget = gc.createCompatibleVolatileImage(
                     textureImage.getWidth(null), textureImage.getHeight(null), Transparency.TRANSLUCENT);
             int attempts = 10;
             do {
-                copyImage(textureImage, volatileImage);
-                copyImage(volatileImage, volatileImageContent);
+                copyImage(textureImage, volatileImageTarget);
+                copyImage(volatileImageTarget, volatileImageContent);
                 attempts--;
-            } while (volatileImage.contentsLost() && attempts > 0);
+            } while (volatileImageTarget.contentsLost() && attempts > 0);
             Asserts.assertNotEquals(attempts, 0, "Failed to draw the VolatileImage");
         } finally {
             disposeTexture(textureId);
@@ -104,6 +106,8 @@ public class SharedTexturesTest {
             saveImage(originalImage, "original_image.png");
             saveImage(bufferedImageContent, "buffered_image.png");
             saveImage(volatileImageContent, "volatile_image.png");
+            saveImage(imagesDiff(originalImage, bufferedImageContent), "bi_diff.png");
+            saveImage(imagesDiff(originalImage, volatileImageContent), "vi_diff.png");
             throw e;
         }
     }
@@ -133,6 +137,10 @@ public class SharedTexturesTest {
 
         g.setColor(new Color(255, 0, 0, 128));
         g.fillOval(0, 0, width, height);
+
+        g.setColor(Color.BLUE);
+        g.drawLine(0, 0, width, height);
+
         g.dispose();
 
         return bufferedImage;
@@ -183,6 +191,39 @@ public class SharedTexturesTest {
         }
 
         return count;
+    }
+
+    private static BufferedImage imagesDiff(BufferedImage lhs, BufferedImage rhs) {
+        int width = Math.min(lhs.getWidth(), rhs.getWidth());
+        int height = Math.min(lhs.getHeight(), rhs.getHeight());
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgbA = lhs.getRGB(x, y);
+                int rgbB = rhs.getRGB(x, y);
+
+                int aA = (rgbA >> 24) & 0xff;
+                int rA = (rgbA >> 16) & 0xff;
+                int gA = (rgbA >> 8) & 0xff;
+                int bA = (rgbA) & 0xff;
+
+                int aB = (rgbB >> 24) & 0xff;
+                int rB = (rgbB >> 16) & 0xff;
+                int gB = (rgbB >> 8) & 0xff;
+                int bB = (rgbB) & 0xff;
+
+                // Per-channel absolute difference (modulus)
+                int aDiff = Math.abs(aA - aB);
+                int rDiff = Math.abs(rA - rB);
+                int gDiff = Math.abs(gA - gB);
+                int bDiff = Math.abs(bA - bB);
+
+                int resultRGB = (aDiff << 24) | (rDiff << 16) | (gDiff << 8) | bDiff;
+                result.setRGB(x, y, resultRGB);
+            }
+        }
+        return result;
     }
 
     private native static void initNative(int textureType);
