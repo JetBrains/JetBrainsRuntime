@@ -440,7 +440,6 @@ jboolean JNICALL Java_sun_java2d_opengl_OGLSurfaceData_initWithTexture
     oglsdo->textureHeight = height;
     oglsdo->textureTarget = GL_TEXTURE_2D;
     oglsdo->sdOps.Dispose = OGLSD_DisposeTextureWrapper;
-    // OGLSD_INIT_TEXTURE_FILTER(oglsdo, GL_NEAREST);
 
     GLuint fbobjectID, depthID;
     if (!OGLSD_InitFBObject(&fbobjectID, &depthID,
@@ -448,12 +447,11 @@ jboolean JNICALL Java_sun_java2d_opengl_OGLSurfaceData_initWithTexture
                             oglsdo->textureWidth, oglsdo->textureHeight))
     {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "OGLSurfaceData_initFBObject: could not init fbobject");
+            "OGLSurfaceData_initWithTexture: could not init fbobject");
         return JNI_FALSE;
     }
 
     oglsdo->drawableType = OGLSD_FBOBJECT;
-    // other fields (e.g. width, height) are set in OGLSD_InitTextureObject()
     oglsdo->fbobjectID = fbobjectID;
     oglsdo->depthID = depthID;
 
@@ -717,16 +715,13 @@ OGLSD_SetNativeDimensions(JNIEnv *env, OGLSDOps *oglsdo,
 void
 OGLSD_Delete(JNIEnv *env, OGLSDOps *oglsdo)
 {
-
-    J2dTraceLn(J2D_TRACE_INFO, "OGLSD_Delete: type=%d",
-                oglsdo->drawableType);
-
     if (oglsdo->drawableType == OGLSD_TEXTURE) {
         if (oglsdo->textureID != 0) {
             if(oglsdo->isTextureWrapper) {
                 J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_Delete : Texture %d was not reset!!!!!!!!!", oglsdo->textureID);
+            } else {
+                J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_Delete : Texture %d was reset");
             }
-//            J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_Delete: %d", oglsdo->textureID);
             j2d_glDeleteTextures(1, &oglsdo->textureID);
             oglsdo->textureID = 0;
         } else {
@@ -734,10 +729,12 @@ OGLSD_Delete(JNIEnv *env, OGLSDOps *oglsdo)
         }
     } else if (oglsdo->drawableType == OGLSD_FBOBJECT) {
         if (oglsdo->textureID != 0) {
-            J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_Delete: %d, texture: %d", oglsdo->textureID, oglsdo->isTextureWrapper);
+            J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_Delete: %d, isTexture: %d", oglsdo->textureID, oglsdo->isTextureWrapper);
 
             j2d_glDeleteTextures(1, &oglsdo->textureID);
             oglsdo->textureID = 0;
+        } else if (oglsdo->isTextureWrapper) {
+            J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_Delete: skipped");
         }
         if (oglsdo->depthID != 0) {
             j2d_glDeleteRenderbuffersEXT(1, &oglsdo->depthID);
@@ -775,11 +772,6 @@ OGLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
     (*env)->DeleteGlobalRef(env, graphicsConfig);
     oglsdo->graphicsConfig = NULL;
 }
-//
-//void OGLSD_Dispose_SharedTexture(JNIEnv *env, SurfaceDataOps *ops) {
-//    OGLSDOps *oglsdo = (OGLSDOps *)ops;
-
-//}
 
 /**
  * This is the implementation of the general surface LockFunc defined in
@@ -823,9 +815,17 @@ void
 OGLSD_DisposeTextureWrapper(JNIEnv *env, SurfaceDataOps *ops)
 {
     OGLSDOps *oglsdo = (OGLSDOps *)ops;
-    if(oglsdo->textureID) {
-        J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_DisposeTextureWrapper : texture %d is reset", oglsdo->textureID);
+    if (!oglsdo) {
+        J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_DisposeTextureWrapper: oglsdo is null");
     }
+
+    if(oglsdo->textureID) {
+        oglsdo->textureID = 0;
+        J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_DisposeTextureWrapper: texture %d is reset", oglsdo->textureID);
+    } else {
+        J2dTraceLn(J2D_TRACE_WARNING, "OGLSD_DisposeTextureWrapper: texture ID is 0");
+    }
+    OGLSD_Dispose(env, ops);
 }
 
 #endif /* !HEADLESS */
