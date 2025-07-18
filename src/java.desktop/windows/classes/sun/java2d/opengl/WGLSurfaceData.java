@@ -284,7 +284,7 @@ public abstract class WGLSurfaceData extends OGLSurfaceData {
             rq.lock();
             try {
                 OGLContext.setScratchSurface(gc);
-                rq.flushAndInvokeNow(() -> success.set(initWithTexture(getNativeOps(), false, textureId)));
+                rq.flushAndInvokeNow(() -> success.set(OGLSurfaceDataJbrApi.initWithTexture(this, textureId)));
             } finally {
                 rq.unlock();
             }

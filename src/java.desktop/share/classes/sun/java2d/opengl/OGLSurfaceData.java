@@ -172,8 +172,6 @@ public abstract class OGLSurfaceData extends SurfaceData
                                           int width, int height);
     protected native boolean initFlipBackbuffer(long pData);
 
-    protected native boolean initWithTexture(long pData, boolean isOpaque, long textureId);
-
     private native int getTextureTarget(long pData);
     private native int getTextureID(long pData);
     protected native void resetTextureId(long pData);
