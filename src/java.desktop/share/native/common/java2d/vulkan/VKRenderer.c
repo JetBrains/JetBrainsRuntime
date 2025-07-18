@@ -646,7 +646,6 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     size_t vertexBufferCount = ARRAY_SIZE(surface->renderPass->vertexBuffers);
     size_t maskFillBufferCount = ARRAY_SIZE(surface->renderPass->maskFillBuffers);
     size_t cleanupQueueCount = ARRAY_SIZE(surface->renderPass->cleanupQueue);
-    VkMappedMemoryRange memoryRanges[vertexBufferCount + maskFillBufferCount];
     for (uint32_t i = 0; i < vertexBufferCount; i++) {
         POOL_RETURN(surface->device->renderer, vertexBufferPool, surface->renderPass->vertexBuffers[i]);
     }
