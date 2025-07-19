@@ -358,10 +358,7 @@ public class FileTest {
     public void getCanonicalPath() throws Exception {
         assumeNotWindows();
 
-        // On macOS, the default temporary directory is a symlink.
-        // The test won't work correctly without canonicalization here.
-        File dir = temporaryFolder.newFolder().getCanonicalFile();
-
+        File dir = temporaryFolder.newFolder();
         File file = new File(dir, "file");
         Files.createFile(file.toPath());
         Files.createSymbolicLink(file.toPath().resolveSibling("123"), file.toPath());
