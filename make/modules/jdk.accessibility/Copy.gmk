@@ -27,3 +27,17 @@
 # Include CopyCommon.gmk to get exported header files to be properly copied.
 
 include CopyCommon.gmk
+
+################################################################################
+
+ifeq ($(call isTargetOs, linux), true)
+  ifeq ($(A11Y_JAVA_ATK_WRAPPER_ENABLED), true)
+      $(eval $(call SetupCopyFiles, COPY_ACCESSIBILITY_CONF, \
+          DEST := $(CONF_DST_DIR), \
+          FILES := $(TOPDIR)/src/jdk.accessibility/linux/conf/accessibility.properties, \
+      ))
+      TARGETS := $(COPY_ACCESSIBILITY_CONF)
+  endif
+endif
+
+################################################################################

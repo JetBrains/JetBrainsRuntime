@@ -39,6 +39,10 @@ m4_include([lib-dbus.m4])
 m4_include([lib-vulkan.m4])
 m4_include([lib-wayland.m4])
 m4_include([lib-tests.m4])
+m4_include([lib-atk.m4])
+m4_include([lib-at-spi2-atk.m4])
+m4_include([lib-glib.m4])
+m4_include([lib-gobject.m4])
 
 ################################################################################
 # Determine which libraries are needed for this configuration
@@ -113,6 +117,19 @@ AC_DEFUN_ONCE([LIB_DETERMINE_DEPENDENCIES],
   else
     NEEDS_LIB_NVDACONTROLLERCLIENT=false
   fi
+
+  # Check if atk, at-spi2-atk, glib, gobject is needed
+  if test "x$A11Y_JAVA_ATK_WRAPPER_ENABLED" = xtrue; then
+    NEEDS_LIB_ATK=true
+    NEEDS_LIB_AT_SPI2_ATK=true
+    NEEDS_LIB_GLIB=true
+    NEEDS_LIB_GOBJECT=true
+  else
+    NEEDS_LIB_ATK=false
+    NEEDS_LIB_AT_SPI2_ATK=false
+    NEEDS_LIB_GLIB=false
+    NEEDS_LIB_GOBJECT=false
+  fi
 ])
 
 ################################################################################
@@ -186,6 +203,12 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBRARIES],
     # in libc.
     BASIC_JVM_LIBS="$BASIC_JVM_LIBS -lrt"
   fi
+
+  # libraries for Java ATK Wrapper
+  LIB_SETUP_AT_SPI2_ATK
+  LIB_SETUP_ATK
+  LIB_SETUP_GLIB
+  LIB_SETUP_GOBJECT
 
   # perfstat lib
   if test "x$OPENJDK_TARGET_OS" = xaix; then
