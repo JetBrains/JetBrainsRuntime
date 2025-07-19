@@ -47,7 +47,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.JavaSecurityPropertiesAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.event.EventHelper;
@@ -323,14 +322,7 @@ public final class Security {
         });
     }
 
-    @SuppressWarnings("try")
     private static void initialize() {
-        try (var ignored = IoOverNio.disableInThisThread()) {
-            initialize0();
-        }
-    }
-
-    private static void initialize0() {
         SecPropLoader.loadAll();
         initialSecurityProperties = (Properties) props.clone();
         if (sdebug != null) {

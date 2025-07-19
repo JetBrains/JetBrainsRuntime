@@ -35,8 +35,6 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.jetbrains.internal.IoOverNio;
 import jdk.internal.util.StaticProperty;
 
 /**
@@ -159,15 +157,7 @@ public class File
     /**
      * The FileSystem object representing the platform's local file system.
      */
-    private static final FileSystem FS;
-
-    static {
-        if (IoOverNio.IS_ENABLED_IN_GENERAL) {
-            FS = new IoOverNioFileSystem(DefaultFileSystem.getFileSystem());
-        } else {
-            FS = DefaultFileSystem.getFileSystem();
-        }
-    }
+    private static final FileSystem FS = DefaultFileSystem.getFileSystem();
 
     /**
      * This abstract pathname's normalized pathname string. A normalized

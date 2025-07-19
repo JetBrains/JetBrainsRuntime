@@ -48,7 +48,6 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Objects;
 
-import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.JavaIOFileDescriptorAccess;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.event.FileForceEvent;
@@ -139,9 +138,6 @@ public class FileChannelImpl
         this.writable = writable;
         this.sync = sync;
         this.direct = direct;
-        if (parent == null) {
-            parent = IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.get();
-        }
         this.parent = parent;
         if (direct) {
             assert path != null;
@@ -175,24 +171,6 @@ public class FileChannelImpl
 
     public void setUninterruptible() {
         uninterruptible = true;
-    }
-
-    public void setInterruptible() {
-        uninterruptible = false;
-    }
-
-    @Override
-    public FileChannelImpl clone() {
-        FileChannelImpl result = new FileChannelImpl(fd, path, readable, writable, sync, direct, parent);
-        result.uninterruptible = uninterruptible;
-        if (!isOpen()) {
-            try {
-                result.close();
-            } catch (IOException _) {
-                // Ignored.
-            }
-        }
-        return result;
     }
 
     private void beginBlocking() {
@@ -1792,9 +1770,5 @@ public class FileChannelImpl
         }
         assert fileLockTable != null;
         fileLockTable.remove(fli);
-    }
-
-    public FileDescriptor getFD() {
-        return fd;
     }
 }

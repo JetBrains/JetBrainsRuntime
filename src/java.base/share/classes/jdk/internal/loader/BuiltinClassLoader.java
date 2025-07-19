@@ -52,7 +52,6 @@ import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
-import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.SharedSecrets;
 import jdk.internal.misc.VM;
 import jdk.internal.module.ModulePatcher.PatchedModuleReader;
@@ -675,11 +674,8 @@ public class BuiltinClassLoader
      *
      * @return the resulting Class or {@code null} if not found
      */
-    @SuppressWarnings("try")
     private Class<?> findClassInModuleOrNull(LoadedModule loadedModule, String cn) {
-        try (var ignored = IoOverNio.disableInThisThread()) {
-            return defineClass(cn, loadedModule);
-        }
+        return defineClass(cn, loadedModule);
     }
 
     /**
@@ -687,17 +683,14 @@ public class BuiltinClassLoader
      *
      * @return the resulting Class or {@code null} if not found
      */
-    @SuppressWarnings("try")
     private Class<?> findClassOnClassPathOrNull(String cn) {
         String path = cn.replace('.', '/').concat(".class");
-        try (var ignored = IoOverNio.disableInThisThread()) {
-            Resource res = ucp.getResource(path);
-            if (res != null) {
-                try {
-                    return defineClass(cn, res);
-                } catch (IOException ioe) {
-                    // TBD on how I/O errors should be propagated
-                }
+        Resource res = ucp.getResource(path);
+        if (res != null) {
+            try {
+                return defineClass(cn, res);
+            } catch (IOException ioe) {
+                // TBD on how I/O errors should be propagated
             }
         }
         return null;
