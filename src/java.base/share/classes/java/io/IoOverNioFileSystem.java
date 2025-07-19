@@ -130,8 +130,10 @@ class IoOverNioFileSystem extends FileSystem {
                 // and this check happens there before calling GetFileAttributesW.
                 return (ACCESS_READ == access || ACCESS_EXECUTE == access) && enable;
             } else {
-                // A new behavior for java.io.File was introduced in the issue 8024695
-                f = FileSystem.getCWD();
+                // Unlike on Windows,
+                // Java_java_io_UnixFileSystem_checkAccess0 has no return statements before chmod(),
+                // and chmod() returns an error for an empty path.
+                return false;
             }
         }
 
@@ -594,16 +596,6 @@ class IoOverNioFileSystem extends FileSystem {
     private int getBooleanAttributes0(File f) {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs(f.getPath());
         if (nioFs != null) {
-            if (f.getPath().isEmpty()) {
-                // A new behavior for java.io.File was introduced in issue 8024695.
-                int mask = getBooleanAttributes0(FileSystem.getCWD());
-                if (getSeparator() == '/') {
-                    // new File("") is never treated as hidden in Unix, whatever name a canonicalized path would have.
-                    mask &= ~BA_HIDDEN;
-                }
-                return mask;
-            }
-
             try {
                 Path path = nioFs.getPath(f.getPath());
 
@@ -684,8 +676,9 @@ class IoOverNioFileSystem extends FileSystem {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs(f.getPath());
         if (nioFs != null) {
             if (f.getPath().isEmpty()) {
-                // A new behavior for java.io.File was introduced in issue 8024695.
-                f = FileSystem.getCWD();
+                // Both access() in Posix and GetFileAttributesW in Windows treat an empty path
+                // as an invalid argument and return an error.
+                return false;
             }
 
             try {
@@ -933,8 +926,10 @@ class IoOverNioFileSystem extends FileSystem {
         if (nioFs != null) {
             String pathStr = f.getPath();
             if (pathStr.isEmpty()) {
-                // A new behavior for java.io.File was introduced in issue 8024695.
-                pathStr = FileSystem.getCWD().getPath();
+                // Java_java_io_UnixFileSystem_list0 calls opendir(), and it returns an error for an empty path.
+                // Java_java_io_WinNTFileSystem_list0 returns null
+                // after calling fileToNTPath and before any WinAPI call.
+                return null;
             }
 
             try {
@@ -1066,7 +1061,7 @@ class IoOverNioFileSystem extends FileSystem {
         if (nioFs != null) {
             if (f.getPath().isEmpty()) {
                 // Here happens the same as in checkAccess0.
-                return setLastModifiedTime0(FileSystem.getCWD(), time);
+                return false;
             }
 
             try {
