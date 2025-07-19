@@ -233,14 +233,12 @@ public class FileOutputStream extends OutputStream
             // java.io backend doesn't open DOS hidden files for writing, but java.nio.file opens.
             // This code mimics the old behavior.
             if (nioFs.getSeparator().equals("\\")) {
-                DosFileAttributes attrs = null;
+                DosFileAttributes attrs;
                 try {
-                    var view = Files.getFileAttributeView(nioPath, DosFileAttributeView.class);
-                    if (view != null) {
-                        attrs = view.readAttributes();
-                    }
+                    attrs = Files.getFileAttributeView(nioPath, DosFileAttributeView.class).readAttributes();
                 } catch (IOException | UnsupportedOperationException _) {
                     // Windows paths without DOS attributes? Not a problem in this case.
+                    attrs = null;
                 }
                 if (attrs != null && (attrs.isHidden() || attrs.isDirectory())) {
                     throw new FileNotFoundException(file.getPath() + " (Access is denied)");
