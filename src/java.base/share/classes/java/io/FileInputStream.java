@@ -25,13 +25,8 @@
 
 package java.io;
 
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
-
-import jdk.internal.misc.VM;
 import jdk.internal.util.ArraysSupport;
 import jdk.internal.event.FileReadEvent;
 import jdk.internal.vm.annotation.Stable;
@@ -71,8 +66,6 @@ public class FileInputStream extends InputStream
      * file reads should be traced by JFR.
      */
     private static boolean jfrTracing;
-
-    private static final boolean useNIO = Boolean.parseBoolean(System.getProperty("jbr.java.io.use.nio", "true"));
 
     /* File Descriptor - handle to the open file */
     private final FileDescriptor fd;
@@ -205,18 +198,7 @@ public class FileInputStream extends InputStream
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceRead0();
         }
-        return implRead();
-    }
-
-    private int implRead() throws IOException {
-        if (!VM.isBooted() || !useNIO) {
-            return read0();
-        } else {
-            ByteBuffer buffer = ByteBuffer.allocate(1);
-            int nRead = getChannel().read(buffer);
-            buffer.rewind();
-            return nRead == 1 ? (buffer.get() & 0xFF) : -1;
-        }
+        return read0();
     }
 
     private native int read0() throws IOException;
@@ -226,7 +208,7 @@ public class FileInputStream extends InputStream
         long bytesRead = 0;
         long start = FileReadEvent.timestamp();
         try {
-            result = implRead();
+            result = read0();
             if (result < 0) {
                 bytesRead = -1;
             } else {
@@ -251,7 +233,7 @@ public class FileInputStream extends InputStream
         int bytesRead = 0;
         long start = FileReadEvent.timestamp();
         try {
-            bytesRead = implRead(b, off, len);
+            bytesRead = readBytes(b, off, len);
         } finally {
             FileReadEvent.offer(start, path, bytesRead);
         }
@@ -274,22 +256,7 @@ public class FileInputStream extends InputStream
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceReadBytes(b, 0, b.length);
         }
-
-        return implRead(b);
-    }
-
-    private int implRead(byte[] b) throws IOException {
-        if (!VM.isBooted() || !useNIO) {
-            return readBytes(b, 0, b.length);
-        } else {
-            try {
-                ByteBuffer buffer = ByteBuffer.wrap(b);
-                return getChannel().read(buffer);
-            } catch (OutOfMemoryError e) {
-                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
-                return readBytes(b, 0, b.length);
-            }
-        }
+        return readBytes(b, 0, b.length);
     }
 
     /**
@@ -311,21 +278,7 @@ public class FileInputStream extends InputStream
         if (jfrTracing && FileReadEvent.enabled()) {
             return traceReadBytes(b, off, len);
         }
-        return implRead(b, off, len);
-    }
-
-    private int implRead(byte[] b, int off, int len) throws IOException {
-        if (!VM.isBooted() || !useNIO) {
-            return readBytes(b, off, len);
-        } else {
-            try {
-                ByteBuffer buffer = ByteBuffer.wrap(b, off, len);
-                return getChannel().read(buffer);
-            } catch (OutOfMemoryError e) {
-                // May fail to allocate direct buffer memory due to small -XX:MaxDirectMemorySize
-                return readBytes(b, off, len);
-            }
-        }
+        return readBytes(b, off, len);
     }
 
     @Override
@@ -441,21 +394,12 @@ public class FileInputStream extends InputStream
     }
 
     private long length() throws IOException {
-        if (fd != null || !useNIO || !isRegularFile()) {
-            return length0();
-        } else {
-            return getChannel().size();
-        }
+        return length0();
     }
-
     private native long length0() throws IOException;
 
     private long position() throws IOException {
-        if (!VM.isBooted() || !useNIO) {
-            return position0();
-        } else {
-            return getChannel().position();
-        }
+        return position0();
     }
     private native long position0() throws IOException;
 
@@ -485,18 +429,10 @@ public class FileInputStream extends InputStream
      */
     @Override
     public long skip(long n) throws IOException {
-        if (isRegularFile()) {
-            if (!VM.isBooted() || !useNIO) {
-                return skip0(n);
-            } else {
-                getChannel();
-                long startPos = channel.position();
-                channel.position(startPos + n);
-                return channel.position() - startPos;
-            }
-        } else {
-            return super.skip(n);
-        }
+        if (isRegularFile())
+            return skip0(n);
+
+        return super.skip(n);
     }
 
     private native long skip0(long n) throws IOException;
@@ -520,15 +456,7 @@ public class FileInputStream extends InputStream
      */
     @Override
     public int available() throws IOException {
-        if (!VM.isBooted() || !useNIO || !isRegularFile()) {
-            return available0();
-        } else {
-            getChannel();
-            long size = channel.size();
-            long pos = channel.position();
-            long avail = size > pos ? (size - pos) : 0;
-            return avail > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)avail;
-        }
+        return available0();
     }
 
     private native int available0() throws IOException;
@@ -642,13 +570,7 @@ public class FileInputStream extends InputStream
     private boolean isRegularFile() {
         Boolean isRegularFile = this.isRegularFile;
         if (isRegularFile == null) {
-            if (path == null) {
-                this.isRegularFile = isRegularFile = false;
-            } else if (!VM.isBooted() || !useNIO) {
-                this.isRegularFile = isRegularFile = isRegularFile0(fd);
-            } else {
-                this.isRegularFile = isRegularFile = Files.isRegularFile(Path.of(path));
-            }
+            this.isRegularFile = isRegularFile = isRegularFile0(fd);
         }
         return isRegularFile;
     }
