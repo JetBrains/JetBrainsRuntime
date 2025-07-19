@@ -35,7 +35,6 @@ import jdk.jfr.internal.periodic.PeriodicEvents;
 import jdk.jfr.internal.util.ImplicitFields;
 import jdk.jfr.internal.util.TimespanRate;
 import jdk.jfr.internal.util.Utils;
-import jdk.jfr.internal.settings.Throttler;
 import jdk.jfr.internal.tracing.Modification;
 
 /**
@@ -73,7 +72,6 @@ public final class PlatformEventType extends Type {
     private boolean registered = true;
     private boolean committable = enabled && registered;
     private boolean hasLevel = false;
-    private Throttler throttler;
 
     // package private
     PlatformEventType(String name, long id, boolean isJDK, boolean dynamicSettings) {
@@ -192,11 +190,9 @@ public final class PlatformEventType extends Type {
         }
     }
 
-    public void setThrottle(long eventSampleSize, long periodInMillis) {
+    public void setThrottle(long eventSampleSize, long period_ms) {
         if (isJVM) {
-            JVM.setThrottle(getId(), eventSampleSize, periodInMillis);
-        } else {
-            throttler.configure(eventSampleSize, periodInMillis);
+            JVM.setThrottle(getId(), eventSampleSize, period_ms);
         }
     }
 
@@ -423,13 +419,5 @@ public final class PlatformEventType extends Type {
 
     public long getStackFilterId() {
         return startFilterId;
-    }
-
-    public Throttler getThrottler() {
-        return throttler;
-    }
-
-    public void setThrottler(Throttler throttler) {
-       this.throttler = throttler;
     }
 }

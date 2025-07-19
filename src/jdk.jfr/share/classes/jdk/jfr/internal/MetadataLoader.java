@@ -45,12 +45,11 @@ import jdk.jfr.Period;
 import jdk.jfr.Relational;
 import jdk.jfr.StackTrace;
 import jdk.jfr.Threshold;
-import jdk.jfr.Throttle;
 import jdk.jfr.TransitionFrom;
 import jdk.jfr.TransitionTo;
 import jdk.jfr.Unsigned;
 import jdk.jfr.internal.util.Utils;
-import jdk.jfr.internal.settings.ThrottleSetting;
+
 public final class MetadataLoader {
 
     // Caching to reduce allocation pressure and heap usage
@@ -321,7 +320,7 @@ public final class MetadataLoader {
                     aes.add(new AnnotationElement(Cutoff.class, Cutoff.INFINITY));
                 }
                 if (t.throttle) {
-                    aes.add(new AnnotationElement(Throttle.class, ThrottleSetting.DEFAULT_VALUE));
+                    aes.add(new AnnotationElement(Throttle.class, Throttle.DEFAULT));
                 }
             }
             if (t.experimental) {

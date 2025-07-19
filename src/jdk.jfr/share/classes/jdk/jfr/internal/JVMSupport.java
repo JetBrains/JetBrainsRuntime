@@ -98,7 +98,7 @@ public final class JVMSupport {
     public static void tryToInitializeJVM() {
     }
 
-    public static long nanosToTicks(long nanos) {
+    static long nanosToTicks(long nanos) {
         return (long) (nanos * JVM.getTimeConversionFactor());
     }
 

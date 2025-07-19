@@ -45,13 +45,11 @@ import jdk.jfr.EventType;
 import jdk.jfr.Name;
 import jdk.jfr.Period;
 import jdk.jfr.SettingControl;
-import jdk.jfr.Throttle;
 import jdk.jfr.ValueDescriptor;
 import jdk.jfr.internal.consumer.RepositoryFiles;
 import jdk.jfr.internal.event.EventConfiguration;
 import jdk.jfr.internal.management.HiddenWait;
 import jdk.jfr.internal.periodic.PeriodicEvents;
-import jdk.jfr.internal.settings.Throttler;
 import jdk.jfr.internal.util.Utils;
 
 public final class MetadataRepository {
@@ -216,11 +214,9 @@ public final class MetadataRepository {
             }
         }
         EventType eventType = PrivateAccess.getInstance().newEventType(pEventType);
-        pEventType.setHasThrottle(pEventType.getAnnotation(Throttle.class) != null);
         EventControl ec = new EventControl(pEventType, eventClass);
         SettingControl[] settings = ec.getSettingControls().toArray(new SettingControl[0]);
-        Throttler throttler = pEventType.getThrottler();
-        EventConfiguration configuration = new EventConfiguration(pEventType, eventType, ec, settings, throttler, eventType.getId());
+        EventConfiguration configuration = new EventConfiguration(pEventType, eventType, ec, settings, eventType.getId());
         pEventType.setRegistered(true);
         // If class is instrumented or should not be instrumented, mark as instrumented.
         if (JVM.isInstrumented(eventClass) || !JVMSupport.shouldInstrument(pEventType.isJDK(), pEventType.getName())) {
