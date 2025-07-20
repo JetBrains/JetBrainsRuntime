@@ -1687,7 +1687,8 @@ void TemplateTable::float_cmp(bool is_float, int unordered_result) {
 
 void TemplateTable::branch(bool is_jsr, bool is_wide) {
   __ get_method(rcx); // rcx holds method
-  __ profile_taken_branch(rax); // rax holds updated MDP
+  __ profile_taken_branch(rax, rbx); // rax holds updated MDP, rbx
+                                     // holds bumped taken count
 
   const ByteSize be_offset = MethodCounters::backedge_counter_offset() +
                              InvocationCounter::counter_offset();
@@ -1738,6 +1739,7 @@ void TemplateTable::branch(bool is_jsr, bool is_wide) {
   if (UseLoopCounter) {
     // increment backedge counter for backward branches
     // rax: MDO
+    // rbx: MDO bumped taken-count
     // rcx: method
     // rdx: target offset
     // r13: target bcp
