@@ -48,50 +48,41 @@ VerificationType VerificationType::from_tag(u1 tag) {
   }
 }
 
-// Potentially resolve the target class and from class, and check whether the from class is assignable
-// to the target class. The current_klass is the class being verified - it could also be the target in some
-// cases, and otherwise is needed to obtain the correct classloader for resolving the other classes.
-bool VerificationType::resolve_and_check_assignability(InstanceKlass* current_klass, Symbol* target_name, Symbol* from_name,
-                                                       bool from_field_is_protected, bool from_is_array,
-                                                       bool from_is_object, bool* target_is_interface, TRAPS) {
+bool VerificationType::resolve_and_check_assignability(InstanceKlass* klass, Symbol* name,
+         Symbol* from_name, bool from_field_is_protected, bool from_is_array, bool from_is_object, TRAPS) {
   HandleMark hm(THREAD);
-  Klass* target_klass;
-  if (current_klass->is_hidden() && current_klass->name() == target_name) {
-    target_klass = current_klass;
+  Klass* this_class;
+  if (klass->is_hidden() && klass->name() == name) {
+    this_class = klass;
   } else {
-    target_klass = SystemDictionary::resolve_or_fail(
-      target_name, Handle(THREAD, current_klass->class_loader()), true, CHECK_false);
+    this_class = SystemDictionary::resolve_or_fail(
+      name, Handle(THREAD, klass->class_loader()), true, CHECK_false);
     if (log_is_enabled(Debug, class, resolve)) {
-      Verifier::trace_class_resolution(target_klass, current_klass);
+      Verifier::trace_class_resolution(this_class, klass);
     }
   }
 
-  bool is_intf = target_klass->is_interface();
-  if (target_is_interface != nullptr) {
-    *target_is_interface = is_intf;
-  }
-
-  if (is_intf && (!from_field_is_protected ||
+  if (this_class->is_interface() && (!from_field_is_protected ||
       from_name != vmSymbols::java_lang_Object())) {
     // If we are not trying to access a protected field or method in
     // java.lang.Object then, for arrays, we only allow assignability
     // to interfaces java.lang.Cloneable and java.io.Serializable.
     // Otherwise, we treat interfaces as java.lang.Object.
     return !from_is_array ||
-      target_klass == vmClasses::Cloneable_klass() ||
-      target_klass == vmClasses::Serializable_klass();
+      this_class == vmClasses::Cloneable_klass() ||
+      this_class == vmClasses::Serializable_klass();
   } else if (from_is_object) {
-    Klass* from_klass;
-    if (current_klass->is_hidden() && current_klass->name() == from_name) {
-      from_klass = current_klass;
+    Klass* from_class;
+    if (klass->is_hidden() && klass->name() == from_name) {
+      from_class = klass;
     } else {
-      from_klass = SystemDictionary::resolve_or_fail(
-        from_name, Handle(THREAD, current_klass->class_loader()), true, CHECK_false);
+      from_class = SystemDictionary::resolve_or_fail(
+        from_name, Handle(THREAD, klass->class_loader()), true, CHECK_false);
       if (log_is_enabled(Debug, class, resolve)) {
-        Verifier::trace_class_resolution(from_klass, current_klass);
+        Verifier::trace_class_resolution(from_class, klass);
       }
     }
-    return from_klass->is_subclass_of(target_klass);
+    return from_class->is_subclass_of(this_class);
   }
 
   return false;
@@ -99,8 +90,8 @@ bool VerificationType::resolve_and_check_assignability(InstanceKlass* current_kl
 
 bool VerificationType::is_reference_assignable_from(
     const VerificationType& from, ClassVerifier* context,
-    bool from_field_is_protected, bool* this_is_interface, TRAPS) const {
-
+    bool from_field_is_protected, TRAPS) const {
+  InstanceKlass* klass = context->current_class();
   if (from.is_null()) {
     // null is assignable to any reference
     return true;
@@ -118,7 +109,7 @@ bool VerificationType::is_reference_assignable_from(
 #if INCLUDE_CDS
     if (CDSConfig::is_dumping_archive()) {
       bool skip_assignability_check = false;
-      SystemDictionaryShared::add_verification_constraint(context->current_class(),
+      SystemDictionaryShared::add_verification_constraint(klass,
               name(), from.name(), from_field_is_protected, from.is_array(),
               from.is_object(), &skip_assignability_check);
       if (skip_assignability_check) {
@@ -128,9 +119,8 @@ bool VerificationType::is_reference_assignable_from(
       }
     }
 #endif
-    return resolve_and_check_assignability(context->current_class(), name(), from.name(),
-                                           from_field_is_protected, from.is_array(),
-                                           from.is_object(), this_is_interface, THREAD);
+    return resolve_and_check_assignability(klass, name(), from.name(),
+          from_field_is_protected, from.is_array(), from.is_object(), THREAD);
   } else if (is_array() && from.is_array()) {
     VerificationType comp_this = get_component(context);
     VerificationType comp_from = from.get_component(context);
