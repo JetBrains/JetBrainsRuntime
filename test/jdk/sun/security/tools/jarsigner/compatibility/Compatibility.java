@@ -516,7 +516,7 @@ public class Compatibility {
             String line;
             while ((line = reader.readLine()) != null) {
                 String item = line.trim();
-                if (!item.isEmpty() && !item.startsWith("#")) {
+                if (!item.isEmpty()) {
                     list.add(item);
                 }
             }
@@ -718,8 +718,8 @@ public class Compatibility {
             String match = "^  ("
                     + "  Signature algorithm: " + signItem.certInfo.
                             expectedSigalg(signItem) + ", " + signItem.certInfo.
-                            expectedKeySize() + "-bit (" + signItem.certInfo.
-                            expectedKeyAlgorithm() + " key|key)"
+                            expectedKeySize() + "-bit " + signItem.certInfo.
+                            expectedKeyAlgorithm() + " key"
                     + ")|("
                     + "  Digest algorithm: " + signItem.expectedDigestAlg()
                     + (isWeakAlg(signItem.expectedDigestAlg()) ? " \\(weak\\)" : "")
