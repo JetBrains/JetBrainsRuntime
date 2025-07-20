@@ -48,11 +48,10 @@ enum JfrSampleResult {
 };
 
 enum JfrSampleRequestType {
-  NO_SAMPLE,
-  JAVA_SAMPLE,
-  NATIVE_SAMPLE,
-  WAITING_FOR_NATIVE_SAMPLE,
-  NOF_SAMPLE_STATES
+  NO_SAMPLE = 0,
+  NATIVE_SAMPLE = 1,
+  JAVA_SAMPLE = 2,
+  NOF_SAMPLE_TYPES
 };
 
 struct JfrSampleRequest {
