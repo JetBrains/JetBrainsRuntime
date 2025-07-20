@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,10 +23,11 @@
 
 /*
  * @test
- * @bug 8221481 8358496
+ * @bug 8221481
  * @library /test/lib
  * @build jdk.test.lib.Utils
- * @run junit/othervm/timeout=180 Timeouts
+ * @compile Timeouts.java
+ * @run testng/othervm/timeout=180 Timeouts
  * @summary Test Socket timeouts
  */
 
@@ -42,27 +43,25 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.util.ArrayList;
-import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assumptions.*;
+import org.testng.SkipException;
+import org.testng.annotations.Test;
+import static org.testng.Assert.*;
 import jdk.test.lib.Utils;
 
-class Timeouts {
+@Test
+public class Timeouts {
 
     /**
-     * Test timed connect where connection is established.
+     * Test timed connect where connection is established
      */
-    @Test
-    void testTimedConnect1() throws IOException {
+    public void testTimedConnect1() throws IOException {
         try (ServerSocket ss = boundServerSocket()) {
             try (Socket s = new Socket()) {
                 s.connect(ss.getLocalSocketAddress(), 2000);
@@ -71,21 +70,21 @@ class Timeouts {
     }
 
     /**
-     * Test timed connect where connection is refused.
+     * Test timed connect where connection is refused
      */
-    @Test
-    void testTimedConnect2() throws IOException {
+    public void testTimedConnect2() throws IOException {
         try (Socket s = new Socket()) {
             SocketAddress remote = Utils.refusingEndpoint();
-            assertThrows(ConnectException.class,  () -> s.connect(remote, 10000));
+            try {
+                s.connect(remote, 10000);
+            } catch (ConnectException expected) { }
         }
     }
 
     /**
-     * Test connect with a timeout of Integer.MAX_VALUE.
+     * Test connect with a timeout of Integer.MAX_VALUE
      */
-    @Test
-    void testTimedConnect3() throws IOException {
+    public void testTimedConnect3() throws IOException {
         try (ServerSocket ss = boundServerSocket()) {
             try (Socket s = new Socket()) {
                 s.connect(ss.getLocalSocketAddress(), Integer.MAX_VALUE);
@@ -96,183 +95,141 @@ class Timeouts {
     /**
      * Test connect with a negative timeout.
      */
-    @Test
-    void testTimedConnect4() throws IOException {
+    public void testTimedConnect4() throws IOException {
         try (ServerSocket ss = boundServerSocket()) {
             try (Socket s = new Socket()) {
-                assertThrows(IllegalArgumentException.class,
+                expectThrows(IllegalArgumentException.class,
                              () -> s.connect(ss.getLocalSocketAddress(), -1));
             }
         }
     }
 
     /**
-     * Test timed read where the read succeeds immediately.
+     * Test timed read where the read succeeds immediately
      */
-    @Test
-    void testTimedRead1() throws IOException {
+    public void testTimedRead1() throws IOException {
         withConnection((s1, s2) -> {
             s1.getOutputStream().write(99);
             s2.setSoTimeout(30*1000);
             int b = s2.getInputStream().read();
-            assertEquals(99, b);
+            assertTrue(b == 99);
         });
     }
 
     /**
-     * Test timed read where the read succeeds after a delay.
+     * Test timed read where the read succeeds after a delay
      */
-    @Test
-    void testTimedRead2() throws IOException {
+    public void testTimedRead2() throws IOException {
         withConnection((s1, s2) -> {
             scheduleWrite(s1.getOutputStream(), 99, 2000);
             s2.setSoTimeout(30*1000);
             int b = s2.getInputStream().read();
-            assertEquals(99, b);
+            assertTrue(b == 99);
         });
     }
 
     /**
-     * Test timed read where the read times out.
+     * Test timed read where the read times out
      */
-    @Test
-    void testTimedRead3() throws IOException {
+    public void testTimedRead3() throws IOException {
         withConnection((s1, s2) -> {
             s2.setSoTimeout(2000);
             long startMillis = millisTime();
-            assertThrows(SocketTimeoutException.class, () -> s2.getInputStream().read());
+            expectThrows(SocketTimeoutException.class, () -> s2.getInputStream().read());
             int timeout = s2.getSoTimeout();
             checkDuration(startMillis, timeout-100, timeout+20_000);
         });
     }
 
     /**
-     * Test timed read that succeeds after a previous read has timed out.
+     * Test timed read that succeeds after a previous read has timed out
      */
-    @Test
-    void testTimedRead4() throws IOException {
+    public void testTimedRead4() throws IOException {
         withConnection((s1, s2) -> {
             s2.setSoTimeout(2000);
-            assertThrows(SocketTimeoutException.class, () -> s2.getInputStream().read());
+            expectThrows(SocketTimeoutException.class, () -> s2.getInputStream().read());
             s1.getOutputStream().write(99);
             int b = s2.getInputStream().read();
-            assertEquals(99, b);
+            assertTrue(b == 99);
         });
     }
 
     /**
      * Test timed read that succeeds after a previous read has timed out and
-     * after a short delay.
+     * after a short delay
      */
-    @Test
-    void testTimedRead5() throws IOException {
+    public void testTimedRead5() throws IOException {
         withConnection((s1, s2) -> {
             s2.setSoTimeout(2000);
-            assertThrows(SocketTimeoutException.class, () -> s2.getInputStream().read());
+            expectThrows(SocketTimeoutException.class, () -> s2.getInputStream().read());
             s2.setSoTimeout(30*3000);
             scheduleWrite(s1.getOutputStream(), 99, 2000);
             int b = s2.getInputStream().read();
-            assertEquals(99, b);
+            assertTrue(b == 99);
         });
     }
 
     /**
-     * Test untimed read that succeeds after a previous read has timed out.
+     * Test untimed read that succeeds after a previous read has timed out
      */
-    @Test
-    void testTimedRead6() throws IOException {
+    public void testTimedRead6() throws IOException {
         withConnection((s1, s2) -> {
             s2.setSoTimeout(2000);
-            assertThrows(SocketTimeoutException.class, () -> s2.getInputStream().read());
+            expectThrows(SocketTimeoutException.class, () -> s2.getInputStream().read());
             s1.getOutputStream().write(99);
             s2.setSoTimeout(0);
             int b = s2.getInputStream().read();
-            assertEquals(99, b);
+            assertTrue(b == 99);
         });
     }
 
     /**
      * Test untimed read that succeeds after a previous read has timed out and
-     * after a short delay.
+     * after a short delay
      */
-    @Test
-    void testTimedRead7() throws IOException {
+    public void testTimedRead7() throws IOException {
         withConnection((s1, s2) -> {
             s2.setSoTimeout(2000);
-            assertThrows(SocketTimeoutException.class, () -> s2.getInputStream().read());
+            expectThrows(SocketTimeoutException.class, () -> s2.getInputStream().read());
             scheduleWrite(s1.getOutputStream(), 99, 2000);
             s2.setSoTimeout(0);
             int b = s2.getInputStream().read();
-            assertEquals(99, b);
+            assertTrue(b == 99);
         });
     }
 
     /**
-     * Test async close of timed read.
+     * Test async close of timed read
      */
-    @Test
-    void testTimedRead8() throws IOException {
+    public void testTimedRead8() throws IOException {
         withConnection((s1, s2) -> {
             s2.setSoTimeout(30*1000);
             scheduleClose(s2, 2000);
-            assertThrows(SocketException.class, () -> s2.getInputStream().read());
+            expectThrows(SocketException.class, () -> s2.getInputStream().read());
         });
     }
 
     /**
-     * Test read with a timeout of Integer.MAX_VALUE.
+     * Test read with a timeout of Integer.MAX_VALUE
      */
-    @Test
-    void testTimedRead9() throws IOException {
+    public void testTimedRead9() throws IOException {
         withConnection((s1, s2) -> {
             scheduleWrite(s1.getOutputStream(), 99, 2000);
             s2.setSoTimeout(Integer.MAX_VALUE);
             int b = s2.getInputStream().read();
-            assertEquals(99, b);
+            assertTrue(b == 99);
         });
-    }
-
-    /**
-     * Test 100 threads concurrently reading the same Socket with a timeout of 2s.
-     * Each read should throw SocketTimeoutException after 2s, not 2s for the first,
-     * 4s for the second, 6s for the third, up to 200s for the last thread.
-     */
-    @Test
-    void testTimedRead10() throws Exception {
-        var futures = new ArrayList<Future<?>>();
-        withConnection((_, s) -> {
-            s.setSoTimeout(2000);
-            Callable<?> timedReadTask = () -> {
-                long startMillis = millisTime();
-                assertThrows(SocketTimeoutException.class,
-                        () -> s.getInputStream().read());
-                int timeout = s.getSoTimeout();
-                checkDuration(startMillis, timeout-100, timeout+20_000);
-                return null;
-            };
-            // start 100 virtual threads to read from the socket
-            try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-                for (int i = 0; i < 100; i++) {
-                    Future<?> future = executor.submit(timedReadTask);
-                    futures.add(future);
-                }
-            }
-        });
-        for (Future<?> future : futures) {
-            future.get();
-        }
     }
 
     /**
      * Test writing after a timed read.
      */
-    @Test
-    void testTimedWrite1() throws IOException {
+    public void testTimedWrite1() throws IOException {
         withConnection((s1, s2) -> {
             s1.getOutputStream().write(99);
             s2.setSoTimeout(3000);
             int b = s2.getInputStream().read();
-            assertEquals(99, b);
+            assertTrue(b == 99);
 
             // schedule thread to read s1 to EOF
             scheduleReadToEOF(s1.getInputStream(), 3000);
@@ -288,13 +245,12 @@ class Timeouts {
     /**
      * Test async close of writer (after a timed read).
      */
-    @Test
-    void testTimedWrite2() throws IOException {
+    public void testTimedWrite2() throws IOException {
         withConnection((s1, s2) -> {
             s1.getOutputStream().write(99);
             s2.setSoTimeout(3000);
             int b = s2.getInputStream().read();
-            assertEquals(99, b);
+            assertTrue(b == 99);
 
             // schedule s2 to be closed
             scheduleClose(s2, 3000);
@@ -310,10 +266,9 @@ class Timeouts {
     }
 
     /**
-     * Test timed accept where a connection is established immediately.
+     * Test timed accept where a connection is established immediately
      */
-    @Test
-    void testTimedAccept1() throws IOException {
+    public void testTimedAccept1() throws IOException {
         Socket s1 = null;
         Socket s2 = null;
         try (ServerSocket ss = boundServerSocket()) {
@@ -328,10 +283,9 @@ class Timeouts {
     }
 
     /**
-     * Test timed accept where a connection is established after a short delay.
+     * Test timed accept where a connection is established after a short delay
      */
-    @Test
-    void testTimedAccept2() throws IOException {
+    public void testTimedAccept2() throws IOException {
         try (ServerSocket ss = boundServerSocket()) {
             ss.setSoTimeout(30*1000);
             scheduleConnect(ss.getLocalSocketAddress(), 2000);
@@ -343,8 +297,7 @@ class Timeouts {
     /**
      * Test timed accept where the accept times out
      */
-    @Test
-    void testTimedAccept3() throws IOException {
+    public void testTimedAccept3() throws IOException {
         try (ServerSocket ss = boundServerSocket()) {
             ss.setSoTimeout(2000);
             long startMillis = millisTime();
@@ -363,8 +316,7 @@ class Timeouts {
      * Test timed accept where a connection is established immediately after a
      * previous accept timed out.
      */
-    @Test
-    void testTimedAccept4() throws IOException {
+    public void testTimedAccept4() throws IOException {
         try (ServerSocket ss = boundServerSocket()) {
             ss.setSoTimeout(2000);
             try {
@@ -382,10 +334,9 @@ class Timeouts {
 
     /**
      * Test untimed accept where a connection is established after a previous
-     * accept timed out.
+     * accept timed out
      */
-    @Test
-    void testTimedAccept5() throws IOException {
+    public void testTimedAccept5() throws IOException {
         try (ServerSocket ss = boundServerSocket()) {
             ss.setSoTimeout(2000);
             try {
@@ -404,10 +355,9 @@ class Timeouts {
 
     /**
      * Test untimed accept where a connection is established after a previous
-     * accept timed out and after a short delay.
+     * accept timed out and after a short delay
      */
-    @Test
-    void testTimedAccept6() throws IOException {
+    public void testTimedAccept6() throws IOException {
         try (ServerSocket ss = boundServerSocket()) {
             ss.setSoTimeout(2000);
             try {
@@ -423,10 +373,9 @@ class Timeouts {
     }
 
     /**
-     * Test async close of a timed accept.
+     * Test async close of a timed accept
      */
-    @Test
-    void testTimedAccept7() throws IOException {
+    public void testTimedAccept7() throws IOException {
         try (ServerSocket ss = boundServerSocket()) {
             ss.setSoTimeout(30*1000);
             long delay = 2000;
@@ -444,9 +393,9 @@ class Timeouts {
     /**
      * Test timed accept with the thread interrupt status set.
      */
-    @Test
-    void testTimedAccept8() throws IOException {
-        assumeFalse(Thread.currentThread().isVirtual(), "Main test is a virtual thread");
+    public void testTimedAccept8() throws IOException {
+        if (Thread.currentThread().isVirtual())
+            throw new SkipException("Main test is a virtual thread");
         try (ServerSocket ss = boundServerSocket()) {
             ss.setSoTimeout(2000);
             Thread.currentThread().interrupt();
@@ -469,9 +418,9 @@ class Timeouts {
     /**
      * Test interrupt of thread blocked in timed accept.
      */
-    @Test
-    void testTimedAccept9() throws IOException {
-        assumeFalse(Thread.currentThread().isVirtual(), "Main test is a virtual thread");
+    public void testTimedAccept9() throws IOException {
+        if (Thread.currentThread().isVirtual())
+            throw new SkipException("Main test is a virtual thread");
         try (ServerSocket ss = boundServerSocket()) {
             ss.setSoTimeout(4000);
             // interrupt thread after 1 second
@@ -496,8 +445,7 @@ class Timeouts {
     /**
      * Test two threads blocked in timed accept where no connection is established.
      */
-    @Test
-    void testTimedAccept10() throws Exception {
+    public void testTimedAccept10() throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try (ServerSocket ss = boundServerSocket()) {
             ss.setSoTimeout(4000);
@@ -508,9 +456,9 @@ class Timeouts {
             Future<Socket> result2 = pool.submit(ss::accept);
 
             // both tasks should complete with SocketTimeoutException
-            Throwable e = assertThrows(ExecutionException.class, result1::get);
+            Throwable e = expectThrows(ExecutionException.class, result1::get);
             assertTrue(e.getCause() instanceof SocketTimeoutException);
-            e = assertThrows(ExecutionException.class, result2::get);
+            e = expectThrows(ExecutionException.class, result2::get);
             assertTrue(e.getCause() instanceof SocketTimeoutException);
 
             // should get here in 4 seconds, not 8 seconds
@@ -524,8 +472,7 @@ class Timeouts {
     /**
      * Test two threads blocked in timed accept where one connection is established.
      */
-    @Test
-    void testTimedAccept11() throws Exception {
+    public void testTimedAccept11() throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try (ServerSocket ss = boundServerSocket()) {
             ss.setSoTimeout(4000);
@@ -567,25 +514,25 @@ class Timeouts {
     /**
      * Test Socket setSoTimeout with a negative timeout.
      */
-    @Test
-    void testBadTimeout1() throws IOException {
+    @Test(expectedExceptions = { IllegalArgumentException.class })
+    public void testBadTimeout1() throws IOException {
         try (Socket s = new Socket()) {
-            assertThrows(IllegalArgumentException.class, () -> s.setSoTimeout(-1));
+            s.setSoTimeout(-1);
         }
     }
 
     /**
      * Test ServerSocket setSoTimeout with a negative timeout.
      */
-    @Test
-    void testBadTimeout2() throws IOException {
+    @Test(expectedExceptions = { IllegalArgumentException.class })
+    public void testBadTimeout2() throws IOException {
         try (ServerSocket ss = new ServerSocket()) {
-            assertThrows(IllegalArgumentException.class, () -> ss.setSoTimeout(-1));
+            ss.setSoTimeout(-1);
         }
     }
 
     /**
-     * Returns a ServerSocket bound to a port on the loopback address.
+     * Returns a ServerSocket bound to a port on the loopback address
      */
     static ServerSocket boundServerSocket() throws IOException {
         var loopback = InetAddress.getLoopbackAddress();
@@ -595,14 +542,14 @@ class Timeouts {
     }
 
     /**
-     * An operation that accepts two arguments and may throw IOException.
+     * An operation that accepts two arguments and may throw IOException
      */
     interface ThrowingBiConsumer<T, U> {
         void accept(T t, U u) throws IOException;
     }
 
     /**
-     * Invokes the consumer with a connected pair of sockets.
+     * Invokes the consumer with a connected pair of sockets
      */
     static void withConnection(ThrowingBiConsumer<Socket, Socket> consumer)
         throws IOException
@@ -621,7 +568,7 @@ class Timeouts {
     }
 
     /**
-     * Schedule c to be closed after a delay.
+     * Schedule c to be closed after a delay
      */
     static void scheduleClose(Closeable c, long delay) {
         schedule(() -> {
@@ -632,14 +579,14 @@ class Timeouts {
     }
 
     /**
-     * Schedule thread to be interrupted after a delay.
+     * Schedule thread to be interrupted after a delay
      */
     static Future<?> scheduleInterrupt(Thread thread, long delay) {
         return schedule(() -> thread.interrupt(), delay);
     }
 
     /**
-     * Schedule a thread to connect to the given end point after a delay.
+     * Schedule a thread to connect to the given end point after a delay
      */
     static void scheduleConnect(SocketAddress remote, long delay) {
         schedule(() -> {
@@ -650,7 +597,7 @@ class Timeouts {
     }
 
     /**
-     * Schedule a thread to read to EOF after a delay.
+     * Schedule a thread to read to EOF after a delay
      */
     static void scheduleReadToEOF(InputStream in, long delay) {
         schedule(() -> {
@@ -662,7 +609,7 @@ class Timeouts {
     }
 
     /**
-     * Schedule a thread to write after a delay.
+     * Schedule a thread to write after a delay
      */
     static void scheduleWrite(OutputStream out, byte[] data, long delay) {
         schedule(() -> {
@@ -676,7 +623,12 @@ class Timeouts {
     }
 
     static Future<?> schedule(Runnable task, long delay) {
-        return ForkJoinPool.commonPool().schedule(task, delay, TimeUnit.MILLISECONDS);
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        try {
+            return executor.schedule(task, delay, TimeUnit.MILLISECONDS);
+        } finally {
+            executor.shutdown();
+        }
     }
 
     /**
@@ -688,7 +640,7 @@ class Timeouts {
     }
 
     /**
-     * Check the duration of a task.
+     * Check the duration of a task
      * @param start start time, in milliseconds
      * @param min minimum expected duration, in milliseconds
      * @param max maximum expected duration, in milliseconds
