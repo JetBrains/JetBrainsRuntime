@@ -191,7 +191,6 @@ class ZGenerationYoung : public ZGeneration {
   friend class VM_ZMarkStartYoung;
   friend class VM_ZMarkStartYoungAndOld;
   friend class VM_ZRelocateStartYoung;
-  friend class ZRemapYoungRootsTask;
   friend class ZYoungTypeSetter;
 
 private:
@@ -219,8 +218,6 @@ private:
   void concurrent_select_relocation_set();
   void pause_relocate_start();
   void concurrent_relocate();
-
-  ZRemembered* remembered();
 
 public:
   ZGenerationYoung(ZPageTable* page_table,
@@ -254,9 +251,6 @@ public:
 
   // Register old pages with remembered set
   void register_with_remset(ZPage* page);
-
-  // Remap the oops of the current remembered set
-  void remap_current_remset(ZRemsetTableIterator* iter);
 
   // Serviceability
   ZGenerationTracer* jfr_tracer();
