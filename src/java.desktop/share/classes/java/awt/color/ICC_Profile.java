@@ -811,12 +811,12 @@ public sealed class ICC_Profile implements Serializable
         }
 
         try {
-            if (getColorSpaceType(data) == ColorSpace.TYPE_GRAY
+            if (getColorSpaceType(p) == ColorSpace.TYPE_GRAY
                     && getData(p, icSigMediaWhitePointTag) != null
                     && getData(p, icSigGrayTRCTag) != null) {
                 return new ICC_ProfileGray(p);
             }
-            if (getColorSpaceType(data) == ColorSpace.TYPE_RGB
+            if (getColorSpaceType(p) == ColorSpace.TYPE_RGB
                     && getData(p, icSigMediaWhitePointTag) != null
                     && getData(p, icSigRedColorantTag) != null
                     && getData(p, icSigGreenColorantTag) != null
@@ -1028,8 +1028,13 @@ public sealed class ICC_Profile implements Serializable
         if (info != null) {
             return info.colorSpaceType;
         }
-        byte[] theHeader = getData(cmmProfile(), icSigHead);
-        return getColorSpaceType(theHeader);
+        return getColorSpaceType(cmmProfile());
+    }
+
+    private static int getColorSpaceType(Profile p) {
+        byte[] theHeader = getData(p, icSigHead);
+        int theColorSpaceSig = intFromBigEndian(theHeader, icHdrColorSpace);
+        return iccCStoJCS(theColorSpaceSig);
     }
 
     private static int getColorSpaceType(byte[] theHeader) {
@@ -1052,7 +1057,8 @@ public sealed class ICC_Profile implements Serializable
      */
     public int getPCSType() {
         byte[] theHeader = getData(icSigHead);
-        return getPCSType(theHeader);
+        int thePCSSig = intFromBigEndian(theHeader, icHdrPcs);
+        return iccCStoJCS(thePCSSig);
     }
 
     private static int getPCSType(byte[] theHeader) {
@@ -1183,19 +1189,23 @@ public sealed class ICC_Profile implements Serializable
         checkRenderingIntent(data);
     }
 
-    private static void checkRenderingIntent(byte[] header) {
+    private static boolean checkRenderingIntent(byte[] header) {
         int index = ICC_Profile.icHdrRenderingIntent;
-        /*
-         * ICC spec: only the least-significant 16 bits encode the rendering
-         * intent. The most significant 16 bits must be zero and can be ignored.
-         * https://www.color.org/specification/ICC.1-2022-05.pdf, section 7.2.15
+
+        /* According to ICC spec, only the least-significant 16 bits shall be
+         * used to encode the rendering intent. The most significant 16 bits
+         * shall be set to zero. Thus, we are ignoring two most significant
+         * bytes here. Please refer ICC Spec Document for more details.
          */
-        // Extract 16-bit unsigned rendering intent (0–65535)
-        int intent = (header[index + 2] & 0xff) << 8 | header[index + 3] & 0xff;
-        // Only check upper bound since intent can't be negative
-        if (intent > icICCAbsoluteColorimetric) {
-            throw new IllegalArgumentException(
-                    "Unknown Rendering Intent: %d".formatted(intent));
+        int renderingIntent = ((header[index+2] & 0xff) <<  8) |
+                              (header[index+3] & 0xff);
+
+        switch (renderingIntent) {
+            case icPerceptual, icMediaRelativeColorimetric,
+                    icSaturation, icAbsoluteColorimetric -> {
+                return true;
+            }
+            default -> throw new IllegalArgumentException("Unknown Rendering Intent");
         }
     }
 
