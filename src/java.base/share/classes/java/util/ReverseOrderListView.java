@@ -42,7 +42,8 @@ class ReverseOrderListView<E> implements List<E> {
 
     @Stable
     final List<E> base;
-    final boolean modifiable;
+    @Stable
+    final Boolean modifiable;
 
     public static <T> List<T> of(List<T> list, boolean modifiable) {
         if (list instanceof RandomAccess) {
