@@ -29,7 +29,6 @@
 #include "compiler/disassembler.hpp"
 #include "logging/log.hpp"
 #include "oops/klass.inline.hpp"
-#include "oops/methodCounters.hpp"
 #include "oops/methodData.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/icache.hpp"
@@ -538,9 +537,6 @@ void CodeBuffer::finalize_oop_references(const methodHandle& mh) {
             if (m->is_methodData()) {
               m = ((MethodData*)m)->method();
             }
-            if (m->is_methodCounters()) {
-              m = ((MethodCounters*)m)->method();
-            }
             if (m->is_method()) {
               m = ((Method*)m)->method_holder();
             }
@@ -564,9 +560,6 @@ void CodeBuffer::finalize_oop_references(const methodHandle& mh) {
       if (oop_recorder()->is_real(m)) {
         if (m->is_methodData()) {
           m = ((MethodData*)m)->method();
-        }
-        if (m->is_methodCounters()) {
-          m = ((MethodCounters*)m)->method();
         }
         if (m->is_method()) {
           m = ((Method*)m)->method_holder();
