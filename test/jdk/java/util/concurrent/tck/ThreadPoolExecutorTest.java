@@ -1727,7 +1727,7 @@ public class ThreadPoolExecutorTest extends JSR166TestCase {
                 e.invokeAny(l, randomTimeout(), null);
                 shouldThrow();
             } catch (NullPointerException success) {
-                // Do not check the message, as ThreadPoolExecutor does not override invokeAny
+                assertEquals("Cannot invoke \"java.util.concurrent.TimeUnit.toNanos(long)\" because \"unit\" is null", success.getMessage());
             }
         }
     }
