@@ -26,6 +26,7 @@
 #define SHARE_JFR_RECORDER_CHECKPOINT_TYPES_TRACEID_JFRTRACEIDEPOCH_HPP
 
 #include "jfr/utilities/jfrSignal.hpp"
+#include "jfr/utilities/jfrTypes.hpp"
 #include "memory/allStatic.hpp"
 
 #define BIT                                  1
@@ -40,17 +41,16 @@
 #define EPOCH_0_METHOD_AND_CLASS_BITS        (METHOD_AND_CLASS_BITS << EPOCH_0_SHIFT)
 #define EPOCH_1_METHOD_AND_CLASS_BITS        (METHOD_AND_CLASS_BITS << EPOCH_1_SHIFT)
 
-/*
- * An epoch shift or alternation on each rotation enables concurrent tagging.
- * The epoch shift happens only during a safepoint.
- *
- *   _generation - mainly used with virtual threads, but also for the generational string pool in Java.
- *   _tag_state  - signals an incremental modification to artifact tagging (klasses, methods, CLDs, etc)
- *                   purpose of which is to trigger a collection of artifacts.
- *   _method_tracer_state - a special notification state only used with method timing and tracing.
- *   _epoch_state - the fundamental binary epoch state that shifts on each rotation during a safepoint.
- */
-
+ // Epoch alternation on each rotation allow for concurrent tagging.
+ // The epoch shift happens only during a safepoint.
+ //
+ // _synchronizing is a transition state, the purpose of which is to
+ // have JavaThreads that run _thread_in_native (i.e. Compiler threads)
+ // respect the current epoch shift in-progress during the safepoint.
+ //
+ // _changed_tag_state == true signals an incremental modification to artifact tagging
+ // (klasses, methods, CLDs, etc), purpose of which is to trigger collection of artifacts.
+ //
 class JfrTraceIdEpoch : AllStatic {
   friend class JfrCheckpointManager;
  private:
@@ -58,8 +58,10 @@ class JfrTraceIdEpoch : AllStatic {
   static JfrSignal _tag_state;
   static bool _method_tracer_state;
   static bool _epoch_state;
+  static bool _synchronizing;
 
-  static void shift_epoch();
+  static void begin_epoch_shift();
+  static void end_epoch_shift();
 
  public:
   static bool epoch() {
