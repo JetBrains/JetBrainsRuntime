@@ -107,14 +107,6 @@ TEST_VM(RiscV, cmov) {
   }
 }
 
-template <Assembler::operand_size ASMSIZE>
-bool using_narrow() {
-  if (ASMSIZE == Assembler::int8 || ASMSIZE == Assembler::int16) {
-    return !(UseZacas && UseZabha);
-  }
-  return false;
-}
-
 template <typename TESTSIZE, Assembler::operand_size ASMSIZE>
 class CmpxchgTester {
   // The functions expect arguments to be type represented, not C-ABI argument representation.
@@ -134,7 +126,7 @@ class CmpxchgTester {
     CodeBuffer code(_bb);
     MacroAssembler _masm(&code);
     address entry = _masm.pc();
-    if (using_narrow<ASMSIZE>()) {
+    if (ASMSIZE == Assembler::int8 || ASMSIZE == Assembler::int16) {
         address entry = _masm.pc();
        _masm.cmpxchg_narrow_value(/*addr*/ c_rarg0, /*expected*/ c_rarg1, /*new_value*/c_rarg2,
                         ASMSIZE, Assembler::relaxed, Assembler::relaxed,
@@ -184,7 +176,7 @@ class CmpxchgTester {
   }
 
   TESTSIZE cmpxchg(intptr_t addr, TESTSIZE expected, TESTSIZE new_value) {
-    if (using_narrow<ASMSIZE>()) {
+    if (ASMSIZE == Assembler::int8 || ASMSIZE == Assembler::int16) {
       return _narrow(addr, expected, new_value, /* dummy result */ 67, -1, -1, -1);
     } else {
       return _func(addr, expected, new_value, /* dummy result */ 67);
@@ -205,7 +197,7 @@ template <typename TESTSIZE, Assembler::operand_size ASMSIZE>
 static void run_plain_cmpxchg_tests() {
   TESTSIZE max = std::numeric_limits<TESTSIZE>::max();
   TESTSIZE min = std::numeric_limits<TESTSIZE>::min();
-  TESTSIZE val[] = {37, min, max};
+  TESTSIZE val[] = {1337, min, max};
   for (int i = 0; i < 3; i++) {
     // Normal
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(     0 /* variant */ , val[i] /* start value */,
@@ -213,7 +205,7 @@ static void run_plain_cmpxchg_tests() {
                                           val[i] /* return */  ,     42 /* end value*/, false /* boolean ret*/);
 
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(     0 /* variant */ , val[i] /* start value */,
-                                              36 /* expected */,     42 /* new value */,
+                                            1336 /* expected */,     42 /* new value */,
                                           val[i] /* return */  , val[i] /* end value */, false /* boolean ret*/);
 
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(     0 /* variant */ , val[i] /* start value */,
@@ -221,7 +213,7 @@ static void run_plain_cmpxchg_tests() {
                                                1 /* return */  ,     42 /* end value*/, true /* boolean ret*/);
 
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(     0 /* variant */ , val[i] /* start value */,
-                                              36 /* expected */,     42 /* new value */,
+                                            1336 /* expected */,     42 /* new value */,
                                                0 /* return */  , val[i] /* end value */, true /* boolean ret*/);
 
     // result == expected register
@@ -230,7 +222,7 @@ static void run_plain_cmpxchg_tests() {
                                           val[i] /* return */  ,      42 /* end value*/, false /* boolean ret*/);
 
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(     1 /* variant */ ,  val[i] /* start value */,
-                                              36 /* expected */,      42 /* new value */,
+                                            1336 /* expected */,      42 /* new value */,
                                           val[i] /* return */  ,  val[i] /* end value */, false /* boolean ret*/);
 
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(     1 /* variant */ , val[i] /* start value */,
@@ -238,7 +230,7 @@ static void run_plain_cmpxchg_tests() {
                                                1 /* return */  ,     42 /* end value*/, true /* boolean ret*/);
 
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(     1 /* variant */ , val[i] /* start value */,
-                                              36 /* expected */,     42 /* new value */,
+                                            1336 /* expected */,     42 /* new value */,
                                                0 /* return */  , val[i] /* end value */, true /* boolean ret*/);
 
     // new_value == result register
@@ -247,7 +239,7 @@ static void run_plain_cmpxchg_tests() {
                                           val[i] /* return */  ,     42 /* end value*/, false /* boolean ret*/);
 
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(     2 /* variant */ , val[i] /* start value */,
-                                              36 /* expected */,     42 /* new value */,
+                                            1336 /* expected */,     42 /* new value */,
                                           val[i] /* return */  , val[i] /* end value */, false /* boolean ret*/);
 
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(     2 /* variant */ , val[i] /* start value */,
@@ -255,7 +247,7 @@ static void run_plain_cmpxchg_tests() {
                                                1 /* return */  ,     42 /* end value*/, true /* boolean ret*/);
 
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(    2 /* variant */ , val[i] /* start value */,
-                                             36 /* expected */,     42 /* new value */,
+                                           1336 /* expected */,     42 /* new value */,
                                               0 /* return */  , val[i] /* end value */, true /* boolean ret*/);
 
     // expected == new_value register
@@ -264,7 +256,7 @@ static void run_plain_cmpxchg_tests() {
                                           val[i] /* return */  , val[i] /* end value */, false /* boolean ret*/);
 
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(     3 /* variant */ , val[i] /* start value */,
-                                              36 /* expected */,     42 /* new value */,
+                                            1336 /* expected */,     42 /* new value */,
                                           val[i] /* return */  , val[i] /* end value */, false /* boolean ret*/);
 
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(     3 /* variant */ , val[i] /* start value */,
@@ -272,7 +264,7 @@ static void run_plain_cmpxchg_tests() {
                                                1 /* return */  , val[i] /* end value */, true /* boolean ret*/);
 
     plain_cmpxchg_test<TESTSIZE, ASMSIZE>(    3 /* variant */ , val[i] /* start value */,
-                                             36 /* expected */,     42 /* new value */,
+                                           1336 /* expected */,     42 /* new value */,
                                               0 /* return */  , val[i] /* end value */, true /* boolean ret*/);
   }
 }
@@ -316,18 +308,6 @@ TEST_VM(RiscV, cmpxchg_uint32_maybe_zacas) {
   }
 }
 
-TEST_VM(RiscV, cmpxchg_int16_maybe_zacas_zabha) {
-  if (UseZacas && UseZabha) {
-    run_plain_cmpxchg_tests<int16_t, Assembler::int16>();
-  }
-}
-
-TEST_VM(RiscV, cmpxchg_int8_maybe_zacas_zabha) {
-  if (UseZacas && UseZabha) {
-    run_plain_cmpxchg_tests<int8_t, Assembler::int8>();
-  }
-}
-
 template <typename TESTSIZE, Assembler::operand_size ASMSIZE>
 static void run_narrow_cmpxchg_tests() {
   CmpxchgTester<TESTSIZE, ASMSIZE> cmpxchg(0, false);
@@ -340,6 +320,7 @@ static void run_narrow_cmpxchg_tests() {
   TESTSIZE val[] = {121, min, max};
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 7; j++) {
+      // printf("%lu %lX\n", (uint64_t)val[i], (uint64_t)val[i]);
       memset(data, -1, sizeof(data));
       data[i] = val[i];
       ret = cmpxchg.cmpxchg((intptr_t)&data[i], val[i], 42);
@@ -364,35 +345,29 @@ static void run_narrow_cmpxchg_tests() {
   }
 }
 
-TEST_VM(RiscV, cmpxchg_narrow_int16_lr_sc) {
+TEST_VM(RiscV, cmpxchg_int16_lr_sc) {
   bool zacas = UseZacas;
   UseZacas = false;
   run_narrow_cmpxchg_tests<int16_t, Assembler::int16>();
   UseZacas = zacas;
 }
 
-TEST_VM(RiscV, cmpxchg_narrow_int16_maybe_zacas) {
+TEST_VM(RiscV, cmpxchg_int16_maybe_zacas) {
   if (UseZacas) {
-    bool zabha = UseZabha;
-    UseZabha = false;
     run_narrow_cmpxchg_tests<int16_t, Assembler::int16>();
-    UseZabha = zabha;
   }
 }
 
-TEST_VM(RiscV, cmpxchg_narrow_int8_lr_sc) {
+TEST_VM(RiscV, cmpxchg_int8_lr_sc) {
   bool zacas = UseZacas;
   UseZacas = false;
   run_narrow_cmpxchg_tests<int8_t, Assembler::int8>();
   UseZacas = zacas;
 }
 
-TEST_VM(RiscV, cmpxchg_narrow_int8_maybe_zacas) {
+TEST_VM(RiscV, cmpxchg_int8_maybe_zacas) {
   if (UseZacas) {
-    bool zabha = UseZabha;
-    UseZabha = false;
     run_narrow_cmpxchg_tests<int8_t, Assembler::int8>();
-    UseZabha = zabha;
   }
 }
 
@@ -511,7 +486,7 @@ TEST_VM(RiscV, cmpxchg_uint32_concurrent_maybe_zacas) {
   }
 }
 
-TEST_VM(RiscV, cmpxchg_narrow_int16_concurrent_lr_sc) {
+TEST_VM(RiscV, cmpxchg_int16_concurrent_lr_sc) {
   bool zacas = UseZacas;
   UseZacas = false;
   run_concurrent_cmpxchg_tests<int16_t, Assembler::int16>();
@@ -519,17 +494,14 @@ TEST_VM(RiscV, cmpxchg_narrow_int16_concurrent_lr_sc) {
   UseZacas = zacas;
 }
 
-TEST_VM(RiscV, cmpxchg_narrow_int16_concurrent_maybe_zacas) {
+TEST_VM(RiscV, cmpxchg_int16_concurrent_maybe_zacas) {
   if (UseZacas) {
-    bool zabha = UseZabha;
-    UseZabha = false;
     run_concurrent_cmpxchg_tests<int16_t, Assembler::int16>();
     run_concurrent_alt_cmpxchg_tests<int16_t, Assembler::int16>();
-    UseZabha = zabha;
   }
 }
 
-TEST_VM(RiscV, cmpxchg_narrow_int8_concurrent_lr_sc) {
+TEST_VM(RiscV, cmpxchg_int8_concurrent_lr_sc) {
   bool zacas = UseZacas;
   UseZacas = false;
   run_concurrent_cmpxchg_tests<int8_t, Assembler::int8>();
@@ -537,25 +509,8 @@ TEST_VM(RiscV, cmpxchg_narrow_int8_concurrent_lr_sc) {
   UseZacas = zacas;
 }
 
-TEST_VM(RiscV, cmpxchg_narrow_int8_concurrent_maybe_zacas) {
+TEST_VM(RiscV, cmpxchg_int8_concurrent_maybe_zacas) {
   if (UseZacas) {
-    bool zabha = UseZabha;
-    UseZabha = false;
-    run_concurrent_cmpxchg_tests<int8_t, Assembler::int8>();
-    run_concurrent_alt_cmpxchg_tests<int8_t, Assembler::int8>();
-    UseZabha = zabha;
-  }
-}
-
-TEST_VM(RiscV, cmpxchg_int16_concurrent_maybe_zacas_zabha) {
-  if (UseZacas && UseZabha) {
-    run_concurrent_cmpxchg_tests<int16_t, Assembler::int16>();
-    run_concurrent_alt_cmpxchg_tests<int16_t, Assembler::int16>();
-  }
-}
-
-TEST_VM(RiscV, cmpxchg_int8_concurrent_maybe_zacas_zabha) {
-  if (UseZacas && UseZabha) {
     run_concurrent_cmpxchg_tests<int8_t, Assembler::int8>();
     run_concurrent_alt_cmpxchg_tests<int8_t, Assembler::int8>();
   }
@@ -579,7 +534,7 @@ class WeakCmpxchgTester {
     _bb = BufferBlob::create("riscvTest", 128);
     CodeBuffer code(_bb);
     MacroAssembler _masm(&code);
-    if (using_narrow<ASMSIZE>()) {
+    if (ASMSIZE == Assembler::int8 || ASMSIZE == Assembler::int16) {
         address entry = _masm.pc();
        _masm.weak_cmpxchg_narrow_value(/*addr*/ c_rarg0, /*expected*/ c_rarg1, /*new_value*/ c_rarg2,
                                       ASMSIZE, Assembler::relaxed, Assembler::relaxed,
@@ -599,7 +554,7 @@ class WeakCmpxchgTester {
   }
 
   TESTSIZE weak_cmpxchg(intptr_t addr, TESTSIZE expected, TESTSIZE new_value) {
-    if (using_narrow<ASMSIZE>()) {
+    if (ASMSIZE == Assembler::int8 || ASMSIZE == Assembler::int16) {
       return _narrow_weak(addr, expected, new_value, /* dummy result */ 67, -1, -1, -1);
     } else {
       return _weak(addr, expected, new_value, /* dummy result */ 67);
@@ -669,46 +624,28 @@ TEST_VM(RiscV, weak_cmpxchg_uint32_maybe_zacas) {
   }
 }
 
-TEST_VM(RiscV, weak_cmpxchg_narrow_int16_lr_sc) {
+TEST_VM(RiscV, weak_cmpxchg_int16_lr_sc) {
   bool zacas = UseZacas;
   UseZacas = false;
   run_weak_cmpxchg_tests<int16_t, Assembler::int16>();
   UseZacas = zacas;
 }
 
-TEST_VM(RiscV, weak_cmpxchg_narrow_int8_lr_sc) {
+TEST_VM(RiscV, weak_cmpxchg_int8_lr_sc) {
   bool zacas = UseZacas;
   UseZacas = false;
   run_weak_cmpxchg_tests<int8_t, Assembler::int8>();
   UseZacas = zacas;
 }
 
-TEST_VM(RiscV, weak_cmpxchg_narrow_int16_maybe_zacas) {
+TEST_VM(RiscV, weak_cmpxchg_int16_maybe_zacas) {
   if (UseZacas) {
-    bool zabha = UseZabha;
-    UseZabha = false;
-    run_weak_cmpxchg_tests<int16_t, Assembler::int16>();
-    UseZabha = zabha;
-  }
-}
-
-TEST_VM(RiscV, weak_cmpxchg_narrow_int8_maybe_zacas) {
-  if (UseZacas) {
-    bool zabha = UseZabha;
-    UseZabha = false;
-    run_weak_cmpxchg_tests<int8_t, Assembler::int8>();
-    UseZabha = zabha;
-  }
-}
-
-TEST_VM(RiscV, weak_cmpxchg_int16_maybe_zacas_zabha) {
-  if (UseZacas && UseZabha) {
     run_weak_cmpxchg_tests<int16_t, Assembler::int16>();
   }
 }
 
-TEST_VM(RiscV, weak_cmpxchg_int8_maybe_zacas_zabha) {
-  if (UseZacas && UseZabha) {
+TEST_VM(RiscV, weak_cmpxchg_int8_maybe_zacas) {
+  if (UseZacas) {
     run_weak_cmpxchg_tests<int8_t, Assembler::int8>();
   }
 }
@@ -787,7 +724,7 @@ TEST_VM(RiscV, weak_cmpxchg_int32_concurrent_maybe_zacas) {
   }
 }
 
-TEST_VM(RiscV, weak_cmpxchg_narrow_int16_concurrent_lr_sc) {
+TEST_VM(RiscV, weak_cmpxchg_int16_concurrent_lr_sc) {
   bool zacas = UseZacas;
   UseZacas = false;
   run_concurrent_weak_cmpxchg_tests<int16_t, Assembler::int16>();
@@ -795,17 +732,14 @@ TEST_VM(RiscV, weak_cmpxchg_narrow_int16_concurrent_lr_sc) {
   UseZacas = zacas;
 }
 
-TEST_VM(RiscV, weak_cmpxchg_narrow_int16_concurrent_maybe_zacas) {
+TEST_VM(RiscV, weak_cmpxchg_int16_concurrent_maybe_zacas) {
   if (UseZacas) {
-    bool zabha = UseZabha;
-    UseZabha = false;
     run_concurrent_weak_cmpxchg_tests<int16_t, Assembler::int16>();
     run_concurrent_alt_weak_cmpxchg_tests<int16_t, Assembler::int16>();
-    UseZabha = zabha;
   }
 }
 
-TEST_VM(RiscV, weak_cmpxchg_narrow_int8_concurrent_lr_sc) {
+TEST_VM(RiscV, weak_cmpxchg_int8_concurrent_lr_sc) {
   bool zacas = UseZacas;
   UseZacas = false;
   run_concurrent_weak_cmpxchg_tests<int8_t, Assembler::int8>();
@@ -813,25 +747,8 @@ TEST_VM(RiscV, weak_cmpxchg_narrow_int8_concurrent_lr_sc) {
   UseZacas = zacas;
 }
 
-TEST_VM(RiscV, weak_cmpxchg_narrow_int8_concurrent_maybe_zacas) {
+TEST_VM(RiscV, weak_cmpxchg_int8_concurrent_maybe_zacas) {
   if (UseZacas) {
-    bool zabha = UseZabha;
-    UseZabha = false;
-    run_concurrent_weak_cmpxchg_tests<int8_t, Assembler::int8>();
-    run_concurrent_alt_weak_cmpxchg_tests<int8_t, Assembler::int8>();
-    UseZabha = zabha;
-  }
-}
-
-TEST_VM(RiscV, weak_cmpxchg_int16_concurrent_maybe_zacas_zabha) {
-  if (UseZacas && UseZabha) {
-    run_concurrent_weak_cmpxchg_tests<int16_t, Assembler::int16>();
-    run_concurrent_alt_weak_cmpxchg_tests<int16_t, Assembler::int16>();
-  }
-}
-
-TEST_VM(RiscV, weak_cmpxchg_int8_concurrent_maybe_zacas_zabha) {
-  if (UseZacas && UseZabha) {
     run_concurrent_weak_cmpxchg_tests<int8_t, Assembler::int8>();
     run_concurrent_alt_weak_cmpxchg_tests<int8_t, Assembler::int8>();
   }
