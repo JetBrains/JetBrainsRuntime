@@ -426,8 +426,6 @@ class AsmRemarks {
   AsmRemarks();
  ~AsmRemarks();
 
-  void init();
-
   const char* insert(uint offset, const char* remstr);
 
   bool is_empty() const;
@@ -453,8 +451,6 @@ class DbgStrings {
  public:
   DbgStrings();
  ~DbgStrings();
-
-  void init();
 
   const char* insert(const char* dbgstr);
 
