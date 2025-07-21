@@ -2199,11 +2199,10 @@ class AdapterFingerPrint : public MetaspaceObj {
   }
 
   // Private construtor. Use allocate() to get an instance.
-  AdapterFingerPrint(int total_args_passed, BasicType* sig_bt, int len) {
+  AdapterFingerPrint(int total_args_passed, BasicType* sig_bt) {
     int* data = data_pointer();
     // Pack the BasicTypes with 8 per int
-    assert(len == length(total_args_passed), "sanity");
-    _length = len;
+    _length = length(total_args_passed);
     int sig_index = 0;
     for (int index = 0; index < _length; index++) {
       int value = 0;
@@ -2218,15 +2217,16 @@ class AdapterFingerPrint : public MetaspaceObj {
 
   // Call deallocate instead
   ~AdapterFingerPrint() {
-    ShouldNotCallThis();
+    FreeHeap(this);
   }
 
   static int length(int total_args) {
     return (total_args + (_basic_types_per_int-1)) / _basic_types_per_int;
   }
 
-  static int compute_size_in_words(int len) {
-    return (int)heap_word_size(sizeof(AdapterFingerPrint) + (len * sizeof(int)));
+  static int compute_size(int total_args_passed, BasicType* sig_bt) {
+    int len = length(total_args_passed);
+    return sizeof(AdapterFingerPrint) + (len * sizeof(int));
   }
 
   // Remap BasicTypes that are handled equivalently by the adapters.
@@ -2289,15 +2289,12 @@ class AdapterFingerPrint : public MetaspaceObj {
 
  public:
   static AdapterFingerPrint* allocate(int total_args_passed, BasicType* sig_bt) {
-    int len = length(total_args_passed);
-    int size_in_bytes = BytesPerWord * compute_size_in_words(len);
-    AdapterFingerPrint* afp = new (size_in_bytes) AdapterFingerPrint(total_args_passed, sig_bt, len);
-    assert((afp->size() * BytesPerWord) == size_in_bytes, "should match");
-    return afp;
+    int size_in_bytes = compute_size(total_args_passed, sig_bt);
+    return new (size_in_bytes) AdapterFingerPrint(total_args_passed, sig_bt);
   }
 
   static void deallocate(AdapterFingerPrint* fp) {
-    FreeHeap(fp);
+    fp->~AdapterFingerPrint();
   }
 
   int value(int index) {
@@ -2421,7 +2418,7 @@ class AdapterFingerPrint : public MetaspaceObj {
 
   // methods required by virtue of being a MetaspaceObj
   void metaspace_pointers_do(MetaspaceClosure* it) { return; /* nothing to do here */ }
-  int size() const { return compute_size_in_words(_length); }
+  int size() const { return (int)heap_word_size(sizeof(AdapterFingerPrint) + (_length * sizeof(int))); }
   MetaspaceObj::Type type() const { return AdapterFingerPrintType; }
 
   static bool equals(AdapterFingerPrint* const& fp1, AdapterFingerPrint* const& fp2) {
