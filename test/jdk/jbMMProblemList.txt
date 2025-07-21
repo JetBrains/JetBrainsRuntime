@@ -117,7 +117,7 @@ java/awt/Window/ShapedAndTranslucentWindows/SetShape.java 8253184,JBR-5510 windo
 java/awt/Window/WindowTitleVisibleTest/WindowTitleVisibleTestLinuxGnome.java nobug linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java nobug linux-all
 javax/swing/JButton/8151303/PressedIconTest.java JBR-5210,JBR-5510 windows-all,linux-all
-javax/swing/JComboBox/6559152/bug6559152.java JBR-7783 linux-x64
+javax/swing/JComboBox/6559152/bug6559152.java JBR-7783,JBR-8964 linux-x64,windows-all
 javax/swing/JComponent/7154030/bug7154030.java JBR-5510 linux-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5510 linux-all
