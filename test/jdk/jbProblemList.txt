@@ -169,7 +169,7 @@ java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MinimizeUndecoratedTest.java 8330731 linux-all
-java/awt/Frame/MinimumSizeTest.java JBR-8298 linux-5.18.2-arch1-1,linux-6.8.0-1031-aws
+java/awt/Frame/MinimumSizeTest.java JBR-8298 linux-5.18.2-arch1-1,linux-6.8.0-1031-aws,linux-6.8.0-1032-aws
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880,JBR-6683 windows-all,linux-all
 java/awt/dnd/CustomDragCursorTest.java 8242805 macosx-all
@@ -378,6 +378,7 @@ sun/awt/datatransfer/SuplementaryCharactersTransferTest.java 8011371 generic-all
 sun/awt/font/TestArabicHebrew.java JBR-8826 linux-5.18.2-arch1-1
 sun/awt/font/TestDevTransform.java 8347618,JBR-9122 linux-all,windows-all
 sun/awt/shell/ShellFolderMemoryLeak.java 8197794 windows-all
+sun/awt/windows/TestPen.java JBR-8718 linux-5.18.2-arch1-1
 sun/java2d/DirectX/OnScreenRenderingResizeTest/OnScreenRenderingResizeTest.java 8301177 generic-all
 sun/java2d/DirectX/OpaqueImageToSurfaceBlitTest/OpaqueImageToSurfaceBlitTest.java JBR-5393 windows-aarch64
 sun/java2d/DirectX/OverriddenInsetsTest/OverriddenInsetsTest.java 8196102 generic-all
@@ -386,6 +387,7 @@ sun/java2d/Disposer/TestDisposerLeak.java JBR-6650 windows-all
 sun/java2d/GdiRendering/GdiBlitOffscreenTest.java JBR-8718 linux-5.18.2-arch1-1
 sun/java2d/SunGraphics2D/EmptyClipRenderingTest.java 8144029 macosx-all,linux-all,windows-all
 sun/java2d/SunGraphics2D/DrawImageBilinear.java 8297175 linux-all
+sun/java2d/loops/XORClearRect.java JBR-8718 linux-5.18.2-arch1-1
 
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354 macosx-all,windows-all,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
@@ -700,6 +702,7 @@ java/awt/image/VolatileImage/CustomCompositeTest.java 8199002 windows-all,linux-
 java/awt/image/VolatileImage/GradientPaints.java 8199003 linux-all
 java/awt/JAWT/JAWT.sh 8197798 windows-all,linux-all
 java/awt/datatransfer/ConstructFlavoredObjectTest/ConstructFlavoredObjectTest.java 8202860 linux-all
+java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java JBR-889 windows-all
 java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.java 8202882,JBR-1147 linux-all,macosx-all
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275 macosx-all
 java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-7299 linux-all
@@ -1130,6 +1133,7 @@ javax/swing/JTabbedPane/4361477/bug4361477.java JBR-5932 linux-all
 javax/swing/JTabbedPane/8007563/Test8007563.java 8051591 generic-all
 javax/swing/JTabbedPane/4624207/bug4624207.java 8064922,8197552,JBR-6235 macosx-all,windows-all,linux-all 8064922:macosx-all, 8197552:windows-all
 javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java 8253184,JBR-8498 windows-all,linux-5.18.2-arch1-1,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
+javax/swing/JTabbedPane/TestJTabbedPaneBackgroundColor.java JBR-8718 linux-5.18.2-arch1-1,macosx-15.4.1
 javax/swing/JToggleButton/TestSelectedKey.java JBR-5846 windows-all
 javax/swing/JToolBar/4529206/bug4529206.java JBR-5387 linux-all
 javax/swing/JToolTip/6219960/bug6219960.java 8253184 windows-all

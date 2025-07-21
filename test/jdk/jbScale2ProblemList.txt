@@ -18,6 +18,7 @@ java/awt/event/StressTest/MouseAndKeyEventStressTest.java JBR-6479,JBR-6090 gene
 java/awt/Focus/6378278/InputVerifierTest.java JBR-5799,JBR-6090 windows-all
 java/awt/Focus/6382144/EndlessLoopTest.java JBR-6090 windows-all
 java/awt/Focus/8282640/ScrollPaneFocusBugTest.java JBR-6090 windows-all
+java/awt/Focus/ActivateFocusTest.java JBR-7888 linux-all
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java 8252772,JBR-5799,JBR-6031 linux-all,windows-all
 java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java 8198618,JBR-814,JBR-6090 macosx-all,linux-all,windows-all
 java/awt/Focus/LabelScrollBarFocus.java JBR-6090 windows-x64
@@ -73,7 +74,7 @@ javax/swing/JMenu/bug4342646.java JBR-8727 linux-all,windows-all
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      JBR-5071 linux-all
 javax/swing/JSlider/6848475/bug6848475.java JBR-7329,JBR-7472 windows-all
 javax/swing/JSplitPane/4885629/bug4885629.java JBR-7270 macosx-all
-javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-5342 linux-all
+javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all
 javax/swing/JTextArea/bug4265784.java JBR-7472 linux-all
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java JBR-8450 linux-all
 javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8324 linux-all
@@ -97,6 +98,7 @@ java/awt/BasicStroke/DashScaleMinWidth.java nobug generic-all
 java/awt/BasicStroke/DashZeroWidth.java nobug generic-all
 java/awt/Component/SetComponentsBounds/SetComponentsBounds.java nobug generic-all
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java nobug generic-all
+java/awt/Frame/FrameSetMinimumSizeTest.java JBR-8729 windows-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java nobug generic-all
 java/awt/Frame/SetIconImagesCrashTest/SetIconImagesCrashTest.java nobug generic-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java nobug generic-all
@@ -154,6 +156,7 @@ javax/swing/GraphicsConfigNotifier/StalePreferredSize.java nobug generic-all
 javax/swing/GraphicsConfigNotifier/TestSingleScreenGConfigNotify.java nobug generic-all
 javax/swing/JButton/8151303/PressedIconTest.java nobug generic-all
 javax/swing/JButton/TestGlyphBreak.java nobug generic-all
+javax/swing/JComboBox/6559152/bug6559152.java JBR-8964 windows-all
 javax/swing/JComboBox/DisabledComboBoxFontTestAuto.java nobug generic-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java nobug generic-all
 javax/swing/JInternalFrame/8069348/bug8069348.java nobug generic-all
