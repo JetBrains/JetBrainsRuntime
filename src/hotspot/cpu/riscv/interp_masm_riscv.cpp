@@ -955,29 +955,47 @@ void InterpreterMacroAssembler::set_mdp_data_at(Register mdp_in,
 
 
 void InterpreterMacroAssembler::increment_mdp_data_at(Register mdp_in,
-                                                      int constant) {
-  increment_mdp_data_at(mdp_in, noreg, constant);
+                                                      int constant,
+                                                      bool decrement) {
+  increment_mdp_data_at(mdp_in, noreg, constant, decrement);
 }
 
 void InterpreterMacroAssembler::increment_mdp_data_at(Register mdp_in,
-                                                      Register index,
-                                                      int constant) {
+                                                      Register reg,
+                                                      int constant,
+                                                      bool decrement) {
   assert(ProfileInterpreter, "must be profiling interpreter");
+  // %%% this does 64bit counters at best it is wasting space
+  // at worst it is a rare bug when counters overflow
 
-  assert_different_registers(t1, t0, mdp_in, index);
+  assert_different_registers(t1, t0, mdp_in, reg);
 
   Address addr1(mdp_in, constant);
   Address addr2(t1, 0);
   Address &addr = addr1;
-  if (index != noreg) {
+  if (reg != noreg) {
     la(t1, addr1);
-    add(t1, t1, index);
+    add(t1, t1, reg);
     addr = addr2;
   }
 
-  ld(t0, addr);
-  addi(t0, t0, DataLayout::counter_increment);
-  sd(t0, addr);
+  if (decrement) {
+    ld(t0, addr);
+    subi(t0, t0, DataLayout::counter_increment);
+    Label L;
+    bltz(t0, L);      // skip store if counter underflow
+    sd(t0, addr);
+    bind(L);
+  } else {
+    assert(DataLayout::counter_increment == 1,
+           "flow-free idiom only works with 1");
+    ld(t0, addr);
+    addi(t0, t0, DataLayout::counter_increment);
+    Label L;
+    blez(t0, L);       // skip store if counter overflow
+    sd(t0, addr);
+    bind(L);
+  }
 }
 
 void InterpreterMacroAssembler::set_mdp_flag_at(Register mdp_in,
