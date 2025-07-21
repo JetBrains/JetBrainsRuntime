@@ -28,6 +28,7 @@ package com.jetbrains.desktop.image;
 import sun.awt.image.SurfaceManager;
 import sun.java2d.SurfaceData;
 
+import javax.management.openmbean.InvalidOpenTypeException;
 import java.awt.AlphaComposite;
 import java.awt.GraphicsConfiguration;
 import java.awt.Graphics2D;
@@ -131,14 +132,36 @@ public class TextureWrapperImage extends Image {
         return capabilities;
     }
 
-    private static SurfaceManager createManager(GraphicsConfiguration gc, Image image, long texture) {
+    private static SurfaceManager createManager(GraphicsConfiguration gc, Image image, long texture) throws UnsupportedOperationException, IllegalArgumentException {
         if (createSurfaceManagerMethod == null) {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException("Surface manager creation method not available");
         }
+
         try {
+            if (gc == null) {
+                throw new IllegalArgumentException("GraphicsConfiguration cannot be null");
+            }
+            if (texture == 0) {
+                throw new IllegalArgumentException("Invalid texture");
+            }
+
             return (SurfaceManager) createSurfaceManagerMethod.invoke(null, gc, image, texture);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            if (e.getCause() instanceof IllegalArgumentException iae) {
+                throw iae;
+            } else if (e.getCause() instanceof UnsupportedOperationException uoe) {
+                throw uoe;
+            } else {
+                Throwable cause = e.getTargetException();
+                String message = String.format("Failed to create surface manager - Cause: %s, Message: %s",
+                        cause.getClass().getName(),
+                        cause.getMessage());
+                throw new InternalError(message, cause);
+            }
         } catch (Exception e) {
-            throw new InternalError(e);
+            throw new InternalError("Unexpected error creating surface manager: " + e.getMessage(), e);
         }
     }
+
+
 }

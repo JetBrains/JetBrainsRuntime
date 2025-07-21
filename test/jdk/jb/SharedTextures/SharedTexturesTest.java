@@ -37,6 +37,19 @@ import java.awt.*;
  * @requires (os.family=="windows")
  */
 
+/**
+ * @test
+ * @key headful
+ * @summary The test creates a BufferedImage and makes a texture from its content.
+ *          The texture gets wrapped into a TextureWrapperImage image by SharedTextures JBR API service.
+ *          The TextureWrapperImage is copied into a BufferedImage and VolatileImage and expects that all images have
+ *          the same content.
+ * @library /test/lib
+ * @compile --add-exports java.desktop/com.jetbrains.desktop=ALL-UNNAMED SharedTexturesTest.java
+ * @run main/othervm/native -Dsun.java2d.uiScale=1 -Dsun.java2d.opengl=True --add-exports java.desktop/com.jetbrains.desktop=ALL-UNNAMED SharedTexturesTest
+ * @requires (os.family=="linux")
+ */
+
 public class SharedTexturesTest {
     static {
         System.loadLibrary("SharedTexturesTest");
@@ -103,6 +116,12 @@ public class SharedTexturesTest {
             Asserts.assertEquals(originalImage.getWidth(), volatileImageContent.getWidth());
             Asserts.assertEquals(originalImage.getHeight(), volatileImageContent.getHeight());
             Asserts.assertEquals(countImageDiff(originalImage, volatileImageContent), 0);
+
+            saveImage(originalImage, "/home/khvv/delme/original_image.png");
+            saveImage(bufferedImageContent, "/home/khvv/delme/buffered_image.png");
+            saveImage(volatileImageContent, "/home/khvv/delme/volatile_image.png");
+            saveImage(imagesDiff(originalImage, bufferedImageContent), "/home/khvv/delme/buffered_image_diff.png");
+            saveImage(imagesDiff(originalImage, volatileImageContent), "/home/khvv/delme/volatile_image_diff.png");
         } catch (Exception e) {
             saveImage(originalImage, "original_image.png");
             saveImage(bufferedImageContent, "buffered_image.png");

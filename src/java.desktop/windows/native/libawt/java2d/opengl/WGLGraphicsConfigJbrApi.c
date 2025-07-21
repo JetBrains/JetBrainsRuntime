@@ -36,7 +36,8 @@ extern HGLRC sharedContext;
 
 JNIEXPORT jlong JNICALL
 Java_sun_java2d_opengl_OGLGraphicsConfigJbrApi_getSharedContext(JNIEnv *env,
-                                                                jclass wglcl)
+                                                                jclass wglcl,
+                                                                jlong pConfigInfo)
 {
     return (jlong)sharedContext;
 }

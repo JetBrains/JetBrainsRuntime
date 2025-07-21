@@ -50,7 +50,9 @@ public class SharedTextures {
         try {
             if (SunToolkit.isInstanceOf(gc, "sun.java2d.metal.MTLGraphicsConfig")) {
                 return METAL_TEXTURE_TYPE;
-            } else if (SunToolkit.isInstanceOf(gc, "sun.java2d.opengl.WGLGraphicsConfig")) {
+            } else if (SunToolkit.isInstanceOf(gc, "sun.java2d.opengl.WGLGraphicsConfig") ||
+                       SunToolkit.isInstanceOf(gc, "sun.java2d.opengl.GLXGraphicsConfig")
+            ) {
                 return OPENGL_TEXTURE_TYPE;
             }
         } catch (Exception e) {
