@@ -104,7 +104,10 @@ public class ConsolePromptTest {
 
         OutputAnalyzer output = ProcessTools.executeProcess(command.toArray(String[]::new));
         output.reportDiagnosticSummary();
-        output.shouldHaveExitValue(0);
+        var eval = output.getExitValue();
+        if (eval != 0) {
+            throw new RuntimeException("Test failed. Exit value from 'expect' command: " + eval);
+        }
     }
 
     public static class ConsoleTest {
