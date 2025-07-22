@@ -28,7 +28,6 @@ package com.jetbrains.desktop.image;
 import sun.awt.image.SurfaceManager;
 import sun.java2d.SurfaceData;
 
-import javax.management.openmbean.InvalidOpenTypeException;
 import java.awt.AlphaComposite;
 import java.awt.GraphicsConfiguration;
 import java.awt.Graphics2D;
