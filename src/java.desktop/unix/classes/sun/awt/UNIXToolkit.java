@@ -50,7 +50,6 @@ import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
@@ -292,14 +291,12 @@ public abstract class UNIXToolkit extends SunToolkit
         return result;
     }
 
-    private Integer getGnomeShellMajorVersion() {
+    public Integer getGnomeShellMajorVersion() {
         try {
             Process process =
                 new ProcessBuilder("/usr/bin/gnome-shell", "--version")
                         .start();
-            try (InputStreamReader isr = new InputStreamReader(process.getInputStream());
-                 BufferedReader reader = new BufferedReader(isr)) {
-
+            try (BufferedReader reader = process.inputReader()) {
                 if (process.waitFor(2, SECONDS) &&  process.exitValue() == 0) {
                     String line = reader.readLine();
                     if (line != null) {
