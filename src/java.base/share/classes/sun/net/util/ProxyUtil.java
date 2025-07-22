@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,37 +23,27 @@
  * questions.
  */
 
-package jdk.jfr.events;
+package sun.net.util;
 
-import jdk.jfr.Category;
-import jdk.jfr.Description;
-import jdk.jfr.Label;
-import jdk.jfr.DataAmount;
-import jdk.jfr.Name;
-import jdk.jfr.Throttle;
-import jdk.jfr.internal.Type;
-import jdk.jfr.internal.MirrorEvent;
+import sun.net.ApplicationProxy;
 
-@Name(Type.EVENT_NAME_PREFIX + "FileWrite")
-@Label("File Write")
-@Category("Java Application")
-@Description("Writing data to a file")
-@StackFilter({"java.nio.channels.FileChannel",
-              "java.io.DataOutputStream",
-              "java.io.FileOutputStream",
-              "java.io.OutputStream",
-              "java.io.RandomAccessFile",
-              "sun.nio.ch.ChannelOutputStream",
-              "sun.nio.ch.FileChannelImpl"})
-@Throttle
-public final class FileWriteEvent extends MirrorEvent {
+import java.net.Proxy;
 
-    @Label("Path")
-    @Description("Full path of the file, or N/A if a file descriptor was used to create the stream, for example System.out and System.err")
-    public String path;
+public final class ProxyUtil {
 
-    @Label("Bytes Written")
-    @Description("Number of bytes written to the file")
-    @DataAmount
-    public long bytesWritten;
+    private ProxyUtil() {}
+
+    /**
+     * Creates a new {@link Proxy} instance for the given proxy iff it is
+     * neither null, {@link Proxy#NO_PROXY Proxy.NO_PROXY}, an
+     * {@link ApplicationProxy} instance, nor already a {@code Proxy} instance.
+     */
+    public static Proxy copyProxy(Proxy proxy) {
+        return proxy == null
+                || proxy.getClass() == Proxy.class
+                || proxy instanceof ApplicationProxy
+                ? proxy
+                : new Proxy(proxy.type(), proxy.address());
+    }
+
 }
