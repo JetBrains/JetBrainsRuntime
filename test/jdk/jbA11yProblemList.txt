@@ -4,6 +4,7 @@ java/awt/Choice/SelectItem/SelectCurrentItemTest.java JBR-8333 windows-all
 java/awt/Choice/SelectItem/SelectNewItemTest.java JBR-8387 windows-x64
 java/awt/grab/SystemMenuTest.java JBR-8862 windows-x64
 java/awt/Graphics/XORPaint.java#id0 JBR-7499 windows-x64
+java/awt/Graphics2D/TextPerf.java JBR-8541 windows-x64
 java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java   nobug macosx-all,linux-all,windows-all
 java/awt/Toolkit/AWTThreadingTest.java              nobug macosx-all,linux-all,windows-all
 java/awt/Toolkit/AWTThreadingCMenuTest.java         nobug macosx-all,linux-all,windows-all
