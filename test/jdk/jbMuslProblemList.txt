@@ -22,6 +22,7 @@ java/awt/font/TextLayout/TestGetPixelBounds.java initial_runs generic-all
 java/awt/FontMetrics/ExtremeFontSizeTest.java JBR-7823 linux-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.java initial_runs generic-all
 java/awt/Graphics2D/DrawString/RotTransText.java initial_runs generic-all
+java/awt/Graphics/NativeWin32Clear.java JBR-8689 linux-x64
 java/awt/Graphics/XORPaint.java#id2 JBR-7373 linux-x64
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java initial_runs generic-all
 java/awt/image/DrawImage/IncorrectManagedImageSourceOffset.java JBR-8240 linux-aarch64
@@ -53,8 +54,10 @@ javax/swing/JFileChooser/FileViewNPETest.java initial_runs generic-all
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java initial_runs generic-all
 javax/swing/JFrame/JFrameBackgroundRefreshTest.java JBR-7471 linux-all
 javax/swing/JMenu/4213634/bug4213634.java JBR-8056 linux-aarch64
+javax/swing/JMenu/bug4146588.java JBR-9132 linux-all
 javax/swing/JMenu/TestDisabledMenuForegroundColor.java initial_runs generic-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java initial_runs generic-all
+javax/swing/JPopupMenu/bug4966109.java JBR-9133 linux-all
 javax/swing/JRadioButton/bug4823809.java JBR-7788 linux-all
 javax/swing/JScrollBar/bug4202954/bug4202954.java initial_runs generic-all
 javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java initial_runs generic-all
@@ -87,6 +90,9 @@ javax/swing/text/StyledEditorKit/8016833/bug8016833.java initial_runs generic-al
 javax/swing/text/Utilities/bug7045593.java initial_runs generic-all
 javax/swing/tree/DefaultTreeCellEditor/bug4480602.java initial_runs generic-all
 javax/swing/UIDefaults/6302464/bug6302464.java initial_runs generic-all
+
+sun/awt/font/CacheFlushTest.java JBR-9085 linux-all
+sun/awt/font/TestArabicHebrew.java JBR-8826 linux-all
 
 jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728 linux-aarch64
 jb/java/awt/Focus/PopupIncomingFocusTest.java initial_runs generic-all
