@@ -27,6 +27,8 @@
 
 #include "OGLSurfaceData.h"
 
+#include "jlong.h"
+
 void
 OGLSD_DisposeTextureWrapper(JNIEnv *env, SurfaceDataOps *ops)
 {

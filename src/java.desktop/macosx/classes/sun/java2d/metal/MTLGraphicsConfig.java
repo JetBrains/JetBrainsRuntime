@@ -71,7 +71,7 @@ import static sun.java2d.pipe.hw.ContextCapabilities.*;
 import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_BIOP_SHADER;
 
 public final class MTLGraphicsConfig extends CGraphicsConfig
-        implements AccelGraphicsConfig, SurfaceManager.Factory, SurfaceManager.TextureWrapperFactory
+        implements AccelGraphicsConfig, SurfaceManager.Factory
 {
     private static ImageCapabilities imageCaps = new MTLImageCaps();
 
@@ -381,10 +381,10 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         return new MTLVolatileSurfaceManager(image, context);
     }
 
-    @Override
-    public SurfaceManager createTextureWrapperSurfaceManager(
-            GraphicsConfiguration gc, Image image, long texture) {
-        SurfaceData sd = MTLSurfaceData.createData(this, image, texture);
-        return new TextureWrapperSurfaceManager(sd);
-    }
+//    @Override
+//    public SurfaceManager createTextureWrapperSurfaceManager(
+//            GraphicsConfiguration gc, Image image, long texture) {
+//        SurfaceData sd = MTLSurfaceData.createData(this, image, texture);
+//        return new TextureWrapperSurfaceManager(sd);
+//    }
 }
