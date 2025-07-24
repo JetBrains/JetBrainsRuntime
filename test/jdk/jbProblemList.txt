@@ -1557,14 +1557,15 @@ javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-5510 linux-5.18.2-arch1-1
 jb/java/awt/Focus/BrokenTraversalAWT.java JBR-5799 windows-all
 jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728 linux-all,windows-x64
 jb/java/awt/Focus/ContextMenuAfterPopup.java JBR-5799 windows-all
-jb/java/awt/Focus/FileDialogClosing.java JBR-8309 macosx-x64,windows-all
+jb/java/awt/Focus/FileDialogClosing.java JBR-8309 macosx-x64,windows-all,linux-aarch64
 jb/java/awt/Focus/FocusTraversalOrderTest.java JBR-6060 generic-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java JBR-6394 linux-5.18.2-arch1-1,windows-all
 
 com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java JBR-6749 linux-x64
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-5510 linux-5.18.2-arch1-1
-java/awt/Graphics/NativeWin32Clear.java JBR-8689 linux-5.18.2-arch1-1
+java/awt/Graphics/NativeWin32Clear.java JBR-8689 linux-5.18.2-arch1-1,linux-aarch64
+java/awt/Graphics/XORPaint.java#id1 JBR-8642 macosx-aarch64
 java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JMenu/TestDisabledMenuForegroundColor.java JBR-5510 linux-5.18.2-arch1-1
