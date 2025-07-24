@@ -560,8 +560,9 @@ final class HttpClientImpl extends HttpClient implements Trackable {
                         if (debug.on()) {
                             debug.log("body subscriber registered: " + count);
                         }
+                        return true;
                     }
-                    return true;
+                    return false;
                 }
             }
         }
