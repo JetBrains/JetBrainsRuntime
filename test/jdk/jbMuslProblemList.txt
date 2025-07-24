@@ -10,6 +10,7 @@ java/awt/datatransfer/Independence/IndependenceSwingTest.java JBR-8749 linux-all
 java/awt/event/ComponentEvent/ListItemEventsTest.java JBR-8750 linux-all
 java/awt/event/MouseEvent/DragMouseEventTest.java JBR-8751 linux-all
 java/awt/FileDialog/MoveToTrashTest.java JBR-8752 linux-all
+java/awt/Focus/6401036/InputVerifierTest2.java JBR-9142 linux-aarch64
 java/awt/Focus/TestWindowsLFFocus.java JBR-8759 linux-all
 java/awt/font/Emoji/EmojiVariation.java JBR-8717 linux-all
 java/awt/font/Emoji/OutlineTextRendererEmoji.java JBR-8717 linux-all
@@ -41,10 +42,15 @@ java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java JBR-9087 l
 java/awt/Window/FindOwner/FindOwnerTest.html JBR-7500 linux-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java JBR-8778 linux-all
 
+javax/imageio/plugins/shared/ImageWriterCompressionTest.java JBR-8804 linux-all
+javax/print/PostScriptRotatedScaledFontTest.java JBR-8805 linux-all
+
 javax/swing/ButtonGroup/TestButtonGroupFocusTraversal.java JBR-8269 linux-all
 javax/swing/border/Test4129681.java JBR-7787 linux-all
+javax/swing/JCheckBox/ImageCheckboxFocus/ImageCheckboxTest.java JBR-8806 linux-all
 javax/swing/JColorChooser/Test6707406.java JBR-8748 linux-all
 javax/swing/JColorChooser/TestDisabledColorChooser.java JBR-8748 linux-all
+javax/swing/JComboBox/6559152/bug6559152.java JBR-8807 linux-all
 javax/swing/JEditorPane/4666101/JEditorPaneNavigationTest.java JBR-8558 linux-all
 javax/swing/JFileChooser/8013442/Test8013442.java JBR-8748 linux-all
 javax/swing/JFrame/JFrameBackgroundRefreshTest.java JBR-7471 linux-all
