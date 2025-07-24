@@ -35,10 +35,11 @@ java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenSmall.java JBR
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-6090 windows-all
 java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-6090 windows-x64
-java/awt/Graphics/NativeWin32Clear.java JBR-8730 windows-all
+java/awt/Graphics/NativeWin32Clear.java JBR-8689,JBR-8730 linux-5.18.2-arch1-1,linux-aarch64,windows-all
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,8324782,JBR-6090,JBR-4199 windows-all,macosx-all,linux-6.8.0-54-generic,linux-6.8.0-1021-aws
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720,8324782,JBR-6090,JBR-4199 windows-all,macosx-all,linux-6.8.0-54-generic,linux-6.8.0-1021-aws
 
+java/awt/Graphics/LineClipTest.java                                                 JBR-5071 linux-all
 java/awt/Graphics/LineClipTest.java                                                 JBR-5071 linux-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071,JBR-5359 linux-all,windows-aarch64
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050,JBR-5071 windows-all,macosx-all,linux-all
