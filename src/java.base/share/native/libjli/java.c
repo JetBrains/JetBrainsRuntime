@@ -598,7 +598,14 @@ JavaMain(void* _args)
     ret = (*env)->ExceptionOccurred(env) == NULL ? 0 : 1;
 
     LEAVE();
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+#endif
 }
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 /*
  * Test if the given name is one of the class path options.
