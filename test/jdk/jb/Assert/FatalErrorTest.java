@@ -40,6 +40,7 @@ import java.util.ArrayList;
 public class FatalErrorTest {
 
     public static void main(String args[]) throws Exception {
+        System.out.println("Run FATAL ERROR TEST");
         if (args.length > 0 && args[0].equals("--test")) {
             System.out.println("Proceeding to crash JVM with a simulated assertion failure");
             String osDependentLibraryFileName = toPlatformLibraryName("FatalErrorTest");
@@ -55,19 +56,24 @@ public class FatalErrorTest {
     }
 
     public static void generateAndVerifyCrashLogContents() throws Exception {
+        System.out.println("Generate crash log contents");
         String nativePathSetting = "-Dtest.nativepath=" + System.getProperty("test.nativepath");
+        System.out.println("Loading library from: " + nativePathSetting);
         ArrayList<String> opts = new ArrayList<>();
         opts.add("-XX:-CreateCoredumpOnCrash");
         opts.add("-XX:+ErrorFileToStdout");
         opts.add(nativePathSetting);
         opts.add(FatalErrorTest.class.getName());
         opts.add("--test");
+        System.setProperty("opts", opts.stream().reduce("", String::concat));
         ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(opts);
+        System.out.println("Starting JVM with: " + pb.toString());
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.outputTo(System.out);
         output.shouldContain("A fatal error has been detected by the Java Runtime Environment");
         output.shouldContain("Internal Error");
         output.shouldContain("Java_FatalErrorTest_crashJVM: unique message");
+        System.out.println("Done with JVM");
     }
 
     private static String toPlatformLibraryName(String name) {
