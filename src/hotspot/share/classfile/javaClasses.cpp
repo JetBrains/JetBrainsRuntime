@@ -4496,28 +4496,31 @@ int java_lang_invoke_MethodType::rtype_slot_count(oop mt) {
 // Support for java_lang_invoke_CallSite
 
 int java_lang_invoke_CallSite::_target_offset;
-int java_lang_invoke_CallSite::_context_offset;
+int java_lang_invoke_CallSite::_vmdependencies_offset;
+int java_lang_invoke_CallSite::_last_cleanup_offset;
 
 #define CALLSITE_FIELDS_DO(macro) \
   macro(_target_offset,  k, "target", java_lang_invoke_MethodHandle_signature, false); \
-  macro(_context_offset, k, "context", java_lang_invoke_MethodHandleNatives_CallSiteContext_signature, false)
 
 void java_lang_invoke_CallSite::compute_offsets() {
   InstanceKlass* k = vmClasses::CallSite_klass();
   CALLSITE_FIELDS_DO(FIELD_COMPUTE_OFFSET);
+  CALLSITE_INJECTED_FIELDS(INJECTED_FIELD_COMPUTE_OFFSET);
 }
 
 #if INCLUDE_CDS
 void java_lang_invoke_CallSite::serialize_offsets(SerializeClosure* f) {
   CALLSITE_FIELDS_DO(FIELD_SERIALIZE_OFFSET);
+  CALLSITE_INJECTED_FIELDS(INJECTED_FIELD_SERIALIZE_OFFSET);
 }
 #endif
 
-oop java_lang_invoke_CallSite::context_no_keepalive(oop call_site) {
+DependencyContext java_lang_invoke_CallSite::vmdependencies(oop call_site) {
   assert(java_lang_invoke_CallSite::is_instance(call_site), "");
-
-  oop dep_oop = call_site->obj_field_access<AS_NO_KEEPALIVE>(_context_offset);
-  return dep_oop;
+  nmethodBucket* volatile* vmdeps_addr = call_site->field_addr<nmethodBucket* volatile>(_vmdependencies_offset);
+  volatile uint64_t* last_cleanup_addr = call_site->field_addr<volatile uint64_t>(_last_cleanup_offset);
+  DependencyContext dep_ctx(vmdeps_addr, last_cleanup_addr);
+  return dep_ctx;
 }
 
 // Support for java_lang_invoke_ConstantCallSite
@@ -4537,30 +4540,6 @@ void java_lang_invoke_ConstantCallSite::serialize_offsets(SerializeClosure* f) {
   CONSTANTCALLSITE_FIELDS_DO(FIELD_SERIALIZE_OFFSET);
 }
 #endif
-
-// Support for java_lang_invoke_MethodHandleNatives_CallSiteContext
-
-int java_lang_invoke_MethodHandleNatives_CallSiteContext::_vmdependencies_offset;
-int java_lang_invoke_MethodHandleNatives_CallSiteContext::_last_cleanup_offset;
-
-void java_lang_invoke_MethodHandleNatives_CallSiteContext::compute_offsets() {
-  InstanceKlass* k = vmClasses::Context_klass();
-  CALLSITECONTEXT_INJECTED_FIELDS(INJECTED_FIELD_COMPUTE_OFFSET);
-}
-
-#if INCLUDE_CDS
-void java_lang_invoke_MethodHandleNatives_CallSiteContext::serialize_offsets(SerializeClosure* f) {
-  CALLSITECONTEXT_INJECTED_FIELDS(INJECTED_FIELD_SERIALIZE_OFFSET);
-}
-#endif
-
-DependencyContext java_lang_invoke_MethodHandleNatives_CallSiteContext::vmdependencies(oop call_site) {
-  assert(java_lang_invoke_MethodHandleNatives_CallSiteContext::is_instance(call_site), "");
-  nmethodBucket* volatile* vmdeps_addr = call_site->field_addr<nmethodBucket* volatile>(_vmdependencies_offset);
-  volatile uint64_t* last_cleanup_addr = call_site->field_addr<volatile uint64_t>(_last_cleanup_offset);
-  DependencyContext dep_ctx(vmdeps_addr, last_cleanup_addr);
-  return dep_ctx;
-}
 
 // Support for java_security_AccessControlContext
 
@@ -5305,7 +5284,6 @@ void java_lang_InternalError::serialize_offsets(SerializeClosure* f) {
   f(java_lang_invoke_ConstantCallSite) \
   f(java_lang_invoke_DirectMethodHandle_StaticAccessor) \
   f(java_lang_invoke_DirectMethodHandle_Accessor) \
-  f(java_lang_invoke_MethodHandleNatives_CallSiteContext) \
   f(java_security_AccessControlContext) \
   f(java_lang_reflect_AccessibleObject) \
   f(java_lang_reflect_Method) \
@@ -5379,7 +5357,6 @@ bool JavaClasses::is_supported_for_archiving(oop obj) {
       // constant pool entries, so excluding them shouldn't affect the archiving of static fields.
       klass == vmClasses::ResolvedMethodName_klass() ||
       klass == vmClasses::MemberName_klass() ||
-      klass == vmClasses::Context_klass() ||
       // It's problematic to archive Reference objects. One of the reasons is that
       // Reference::discovered may pull in unwanted objects (see JDK-8284336)
       klass->is_subclass_of(vmClasses::Reference_klass())) {
