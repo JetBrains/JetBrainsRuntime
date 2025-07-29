@@ -259,10 +259,6 @@ inline bool java_lang_invoke_ConstantCallSite::is_instance(oop obj) {
   return obj != nullptr && is_subclass(obj->klass());
 }
 
-inline bool java_lang_invoke_MethodHandleNatives_CallSiteContext::is_instance(oop obj) {
-  return obj != nullptr && is_subclass(obj->klass());
-}
-
 inline bool java_lang_invoke_MemberName::is_instance(oop obj) {
   return obj != nullptr && obj->klass() == vmClasses::MemberName_klass();
 }
