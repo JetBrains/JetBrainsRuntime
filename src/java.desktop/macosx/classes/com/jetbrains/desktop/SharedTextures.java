@@ -26,8 +26,13 @@
 package com.jetbrains.desktop;
 
 import com.jetbrains.desktop.image.TextureWrapperImage;
+import com.jetbrains.desktop.image.TextureWrapperSurfaceManager;
 import com.jetbrains.exported.JBRApi;
-import sun.awt.SunToolkit;
+import sun.awt.image.SurfaceManager;
+import sun.java2d.SurfaceData;
+import sun.java2d.metal.MTLGraphicsConfig;
+import sun.java2d.metal.MTLSurfaceData;
+import sun.java2d.metal.MTLTextureWrapperSurfaceData;
 
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
@@ -64,14 +69,22 @@ public class SharedTextures {
                 .getLocalGraphicsEnvironment()
                 .getDefaultScreenDevice()
                 .getDefaultConfiguration();
-        try {
-            if (SunToolkit.isInstanceOf(gc, "sun.java2d.metal.MTLGraphicsConfig")) {
-                return METAL_TEXTURE_TYPE;
-            }
-        } catch (Exception e) {
-            throw new InternalError("Unexpected exception during reflection", e);
+
+        if (gc instanceof MTLGraphicsConfig) {
+            return METAL_TEXTURE_TYPE;
         }
 
         return 0;
+    }
+
+    static SurfaceManager createSurfaceManager(GraphicsConfiguration gc, Image image, long texture) {
+        SurfaceData sd;
+        if (gc instanceof MTLGraphicsConfig mtlGraphicsConfig) {
+            sd = new MTLTextureWrapperSurfaceData(mtlGraphicsConfig, image, texture);
+        } else {
+            throw new IllegalArgumentException("Unsupported graphics configuration: " + gc);
+        }
+
+        return new TextureWrapperSurfaceManager(sd);
     }
 }
