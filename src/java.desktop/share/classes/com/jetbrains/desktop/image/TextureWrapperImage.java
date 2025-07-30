@@ -37,6 +37,7 @@ import java.awt.ImageCapabilities;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
+import java.lang.reflect.Method;
 
 /**
  * This class is a wrapper for a GPU texture-based image.
@@ -55,6 +56,24 @@ public class TextureWrapperImage extends Image {
     final SurfaceData sd;
     final static ImageCapabilities capabilities = new ImageCapabilities(true);
 
+    private static final Method createSurfaceManagerMethod;
+
+    static {
+        Method method = null;
+        try {
+            Class<?> clazz = Class.forName("com.jetbrains.desktop.SharedTextures");
+            method = clazz.getDeclaredMethod(
+                    "createSurfaceManager",
+                    GraphicsConfiguration.class,
+                    Image.class,
+                    long.class
+            );
+            method.setAccessible(true);
+        } catch (ClassNotFoundException | NoSuchMethodException ignored) {
+        }
+        createSurfaceManagerMethod = method;
+    }
+
     /**
      * Constructs a TextureWrapperImage instance with the specified graphics configuration
      * and a texture.
@@ -70,10 +89,7 @@ public class TextureWrapperImage extends Image {
     public TextureWrapperImage(GraphicsConfiguration gc, long texture)
             throws UnsupportedOperationException, IllegalArgumentException {
         this.gc = gc;
-        SurfaceManager surfaceManager;
-        if (gc instanceof SurfaceManager.TextureWrapperFactory factory) {
-            surfaceManager = factory.createTextureWrapperSurfaceManager(gc, this, texture);
-        } else throw new UnsupportedOperationException();
+        SurfaceManager surfaceManager = createManager(gc, this, texture);
         sd = surfaceManager.getPrimarySurfaceData();
         SurfaceManager.setManager(this, surfaceManager);
     }
@@ -114,5 +130,30 @@ public class TextureWrapperImage extends Image {
     @Override
     public ImageCapabilities getCapabilities(GraphicsConfiguration gc) {
         return capabilities;
+    }
+
+    private static SurfaceManager createManager(GraphicsConfiguration gc, Image image, long texture) throws UnsupportedOperationException, IllegalArgumentException {
+        if (createSurfaceManagerMethod == null) {
+            throw new UnsupportedOperationException("Surface manager creation method not available");
+        }
+
+        try {
+            return (SurfaceManager) createSurfaceManagerMethod.invoke(null, gc, image, texture);
+        }
+        catch (java.lang.reflect.InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof IllegalArgumentException iae) {
+                throw iae;
+            } else if (cause instanceof UnsupportedOperationException uoe) {
+                throw uoe;
+            } else {
+                String message = String.format("Failed to create surface manager - Cause: %s, Message: %s",
+                        cause.getClass().getName(),
+                        cause.getMessage());
+                throw new InternalError(message, cause);
+            }
+        } catch (Exception e) {
+            throw new InternalError("Unexpected error creating surface manager: " + e.getMessage(), e);
+        }
     }
 }
