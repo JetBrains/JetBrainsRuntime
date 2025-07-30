@@ -185,14 +185,6 @@ public abstract class SurfaceManager {
     }
 
     /**
-     * See TextureWrapperImage.
-     */
-    public interface TextureWrapperFactory {
-        SurfaceManager createTextureWrapperSurfaceManager(
-                GraphicsConfiguration gc, Image image, long texture);
-    }
-
-    /**
      * An interface for GraphicsConfiguration objects to implement if
      * they create their own VolatileSurfaceManager implementations.
      */
