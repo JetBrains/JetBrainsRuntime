@@ -24,7 +24,6 @@
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
@@ -100,40 +99,36 @@ public class Win8301247Test {
 
     private static Optional<Long> findMainAppLauncherPID(JPackageCommand cmd,
             int expectedCount) {
-        // Get the list of PIDs and PPIDs of app launcher processes.
-        // wmic process where (name = "foo.exe") get ProcessID,ParentProcessID
-        List<String> output = Executor.of("wmic", "process", "where", "(name",
-                "=",
-                "\"" + cmd.appLauncherPath().getFileName().toString() + "\"",
-                ")", "get", "ProcessID,ParentProcessID").dumpOutput(true).
-                saveOutput().executeAndGetOutput();
-
-        if (output.isEmpty()) {
-            throw new NoSuchElementException();
-        }
-        String first = output.get(0);
+        // Get the list of PIDs and PPIDs of app launcher processes. Run setWinRunWithEnglishOutput(true) for JDK-8344275.
+        // powershell -NoLogo -NoProfile -NonInteractive -Command
+        //   "Get-CimInstance Win32_Process -Filter \"Name = 'foo.exe'\" | select ProcessID,ParentProcessID"
+        String command = "Get-CimInstance Win32_Process -Filter \\\"Name = '"
+                + cmd.appLauncherPath().getFileName().toString()
+                + "'\\\" | select ProcessID,ParentProcessID";
+        List<String> output = Executor.of("powershell", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command)
+                .dumpOutput(true).saveOutput().executeAndGetOutput();
 
         if (expectedCount == 0) {
-            TKit.assertEquals("No Instance(s) Available.", first.
-                    trim(), "Check no app launcher processes found running");
-            return Optional.empty();
+            if (output.size() < 1) {
+                return Optional.empty();
+            }
         }
 
-        String[] headers = Stream.of(first.split("\\s+", 2)).map(
+        String[] headers = Stream.of(output.get(1).split("\\s+", 2)).map(
                 String::trim).map(String::toLowerCase).toArray(String[]::new);
         Pattern pattern;
         if (headers[0].equals("parentprocessid") && headers[1].equals(
                 "processid")) {
-            pattern = Pattern.compile("^(?<ppid>\\d+)\\s+(?<pid>\\d+)\\s+$");
+            pattern = Pattern.compile("^\\s+(?<ppid>\\d+)\\s+(?<pid>\\d+)$");
         } else if (headers[1].equals("parentprocessid") && headers[0].equals(
                 "processid")) {
-            pattern = Pattern.compile("^(?<pid>\\d+)\\s+(?<ppid>\\d+)\\s+$");
+            pattern = Pattern.compile("^\\s+(?<pid>\\d+)\\s+(?<ppid>\\d+)$");
         } else {
             throw new RuntimeException(
-                    "Unrecognizable output of \'wmic process\' command");
+                    "Unrecognizable output of \'Get-CimInstance Win32_Process\' command");
         }
 
-        List<long[]> processes = output.stream().skip(1).map(line -> {
+        List<long[]> processes = output.stream().skip(3).map(line -> {
             Matcher m = pattern.matcher(line);
             long[] pids = null;
             if (m.matches()) {
