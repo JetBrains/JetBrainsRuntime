@@ -7,6 +7,7 @@ import java.nio.file.Paths;
  * @test
  * @requires os.family == "linux"
  * @run main/othervm -Dawt.toolkit.name=WLToolkit WaylandDiagnostics
+ * @key headful
  */
 public class WaylandDiagnostics {
 
