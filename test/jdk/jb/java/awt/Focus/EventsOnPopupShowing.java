@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * @test
  * @summary Regression test for JBR-4021 Unexpected focus event order on window showing
+ * @run main/othervm -Dawt.toolkit.name=WLToolkit EventsOnPopupShowing
  * @key headful
  */
 
