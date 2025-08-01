@@ -58,6 +58,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -240,6 +241,7 @@ public interface HttpServerAdapters {
         public abstract void close();
         public abstract InetSocketAddress getRemoteAddress();
         public abstract InetSocketAddress getLocalAddress();
+        public abstract String getConnectionKey();
         public void serverPush(URI uri, HttpHeaders headers, byte[] body) {
             ByteArrayInputStream bais = new ByteArrayInputStream(body);
             serverPush(uri, headers, bais);
@@ -254,7 +256,7 @@ public interface HttpServerAdapters {
             return new Http1TestExchange(exchange);
         }
         public static HttpTestExchange of(Http2TestExchange exchange) {
-            return new Http2TestExchangeImpl(exchange);
+            return new H2ExchangeImpl(exchange);
         }
 
         abstract void doFilter(Filter.Chain chain) throws IOException;
@@ -310,15 +312,21 @@ public interface HttpServerAdapters {
             public URI getRequestURI() { return exchange.getRequestURI(); }
             @Override
             public String getRequestMethod() { return exchange.getRequestMethod(); }
+
+            @Override
+            public String getConnectionKey() {
+                return exchange.getLocalAddress() + "->" + exchange.getRemoteAddress();
+            }
+
             @Override
             public String toString() {
                 return this.getClass().getSimpleName() + ": " + exchange.toString();
             }
         }
 
-        private static final class Http2TestExchangeImpl extends HttpTestExchange {
+        private static final class H2ExchangeImpl extends HttpTestExchange {
             private final Http2TestExchange exchange;
-            Http2TestExchangeImpl(Http2TestExchange exch) {
+            H2ExchangeImpl(Http2TestExchange exch) {
                 this.exchange = exch;
             }
             @Override
@@ -369,6 +377,11 @@ public interface HttpServerAdapters {
             @Override
             public InetSocketAddress getLocalAddress() {
                 return exchange.getLocalAddress();
+            }
+
+            @Override
+            public String getConnectionKey() {
+                return exchange.getConnectionKey();
             }
 
             @Override
@@ -716,6 +729,7 @@ public interface HttpServerAdapters {
         public abstract HttpTestContext addHandler(HttpTestHandler handler, String root);
         public abstract InetSocketAddress getAddress();
         public abstract Version getVersion();
+        public abstract void setRequestApprover(final Predicate<String> approver);
 
         public String serverAuthority() {
             InetSocketAddress address = getAddress();
@@ -864,6 +878,11 @@ public interface HttpServerAdapters {
                         impl.getAddress().getPort());
             }
             public Version getVersion() { return Version.HTTP_1_1; }
+
+            @Override
+            public void setRequestApprover(final Predicate<String> approver) {
+                throw new UnsupportedOperationException("not supported");
+            }
         }
 
         private static class Http1TestContext extends HttpTestContext {
@@ -915,6 +934,11 @@ public interface HttpServerAdapters {
                         impl.getAddress().getPort());
             }
             public Version getVersion() { return Version.HTTP_2; }
+
+            @Override
+            public void setRequestApprover(final Predicate<String> approver) {
+                this.impl.setRequestApprover(approver);
+            }
         }
 
         private static class Http2TestContext
