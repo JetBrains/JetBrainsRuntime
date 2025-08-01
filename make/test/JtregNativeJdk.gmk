@@ -96,7 +96,8 @@ ifeq ($(call isTargetOs, macosx), true)
   BUILD_JDK_JTREG_LIBRARIES_LIBS_libTestDynamicStore := \
       -framework Cocoa -framework SystemConfiguration
   BUILD_JDK_JTREG_LIBRARIES_LIBS_libSharedTexturesTest := \
-      -framework Cocoa -framework Metal
+      -framework Cocoa -framework Metal -framework OpenGL
+  BUILD_JDK_JTREG_EXCLUDE += libSharedTexturesTest.c
 else
   BUILD_JDK_JTREG_EXCLUDE += libTestMainKeyWindow.m
   BUILD_JDK_JTREG_EXCLUDE += libTestDynamicStore.m
@@ -108,6 +109,7 @@ endif
 ifeq ($(OPENJDK_TARGET_OS), windows)
   BUILD_JDK_JTREG_LIBRARIES_LIBS_libwindows_touch_robot := user32.lib
   BUILD_JDK_JTREG_EXCLUDE += libtouchscreen_device.c
+  BUILD_JDK_JTREG_LIBRARIES_LIBS_libSharedTexturesTest := gdi32.lib opengl32.lib user32.lib
 else
   ifeq ($(OPENJDK_TARGET_OS), linux)
     BUILD_JDK_JTREG_EXCLUDE += libwindows_touch_robot.c
@@ -123,6 +125,7 @@ ifeq ($(call isTargetOs, linux), true)
   BUILD_JDK_JTREG_LIBRARIES_STRIP_SYMBOLS_libFib := false
   # nio tests' libCreationTimeHelper native needs -ldl linker flag
   BUILD_JDK_JTREG_LIBRARIES_LDFLAGS_libCreationTimeHelper := -ldl
+  BUILD_JDK_JTREG_LIBRARIES_LIBS_libSharedTexturesTest := -lX11 -lGL -lGLX
 endif
 
 ifeq ($(ASAN_ENABLED), true)
