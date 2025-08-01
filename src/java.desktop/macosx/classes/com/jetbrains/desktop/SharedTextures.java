@@ -26,9 +26,9 @@
 package com.jetbrains.desktop;
 
 import com.jetbrains.desktop.image.TextureWrapperImage;
+import com.jetbrains.desktop.image.TextureWrapperSurfaceManager;
 import com.jetbrains.exported.JBRApi;
 import sun.awt.image.SurfaceManager;
-import sun.awt.image.TextureWrapperSurfaceManager;
 import sun.java2d.SurfaceData;
 import sun.java2d.metal.MTLGraphicsConfig;
 import sun.java2d.metal.MTLSurfaceData;
