@@ -23,8 +23,9 @@
  * questions.
  */
 
-package sun.awt.image;
+package com.jetbrains.desktop.image;
 
+import sun.awt.image.SurfaceManager;
 import sun.java2d.SurfaceData;
 
 import java.awt.GraphicsConfiguration;
