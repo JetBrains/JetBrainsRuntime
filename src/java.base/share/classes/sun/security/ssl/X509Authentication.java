@@ -72,9 +72,9 @@ enum X509Authentication implements SSLAuthentication {
         this.keyTypes = keyTypes;
     }
 
-    static X509Authentication valueOf(SignatureScheme signatureScheme) {
+    static X509Authentication valueOfKeyAlgorithm(String keyAlgorithm) {
         for (X509Authentication au : X509Authentication.values()) {
-            if (au.keyAlgorithm.equals(signatureScheme.keyAlgorithm)) {
+            if (au.keyAlgorithm.equals(keyAlgorithm)) {
                 return au;
             }
         }
