@@ -78,7 +78,7 @@ public class SharedTexturesTest {
         BufferedImage volatileImageContent;
 
         if (textureType == SharedTextures.OPENGL_TEXTURE_TYPE) {
-            setSharedContext(sharedTextures.getSharedOpenGLContext(gc), sharedTextures.getSharedOpenGLPixelFormat(gc));
+            setSharedContextInfo(sharedTextures.getOpenGLContextInfo(gc));
         }
         initNative(textureType);
         long textureId = createTexture(bytes, originalImage.getWidth(), originalImage.getHeight());
@@ -229,7 +229,7 @@ public class SharedTexturesTest {
 
     private native static void initNative(int textureType);
 
-    private native static void setSharedContext(long sharedContext, long pixelFormat);
+    private native static void setSharedContextInfo(long[] sharedContextInfo);
 
     private native static long createTexture(byte[] data, int width, int height);
 

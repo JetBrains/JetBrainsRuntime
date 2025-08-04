@@ -26,9 +26,13 @@
 package sun.java2d.opengl;
 
 public class GLXGraphicsConfigExt {
-    public static native long getSharedContext();
-    public static long getPixelFormat() {
-        // not needed
-        return 0;
+    public static long getFBConfig(GLXGraphicsConfig config) {
+        return getFBConfig(config.getNativeConfigInfo());
     }
+
+    public native static long getAwtDisplay();
+
+    public native static long getSharedContext();
+
+    private static native long getFBConfig(long pNativeConfigInfo);
 }
