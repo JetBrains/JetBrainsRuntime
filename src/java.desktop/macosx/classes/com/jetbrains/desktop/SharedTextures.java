@@ -91,19 +91,14 @@ public class SharedTextures {
         return new TextureWrapperSurfaceManager(sd);
     }
 
-    public long getSharedOpenGLContext(GraphicsConfiguration gc) {
-        if (gc instanceof CGLGraphicsConfig) {
-            return CGLGraphicsConfigExt.getSharedContext();
+    public long[] getOpenGLContextInfo(GraphicsConfiguration gc) {
+        if (gc instanceof CGLGraphicsConfig cglGraphicsConfig) {
+            return new long[] {
+                    CGLGraphicsConfigExt.getSharedContext(),
+                    CGLGraphicsConfigExt.getPixelFormat()
+            };
         }
 
-        throw new IllegalArgumentException("Unsupported graphics configuration: " + gc);
-    }
-
-    public long getSharedOpenGLPixelFormat(GraphicsConfiguration gc) {
-        if (gc instanceof CGLGraphicsConfig) {
-            return CGLGraphicsConfigExt.getPixelFormat();
-        }
-
-        throw new IllegalArgumentException("Unsupported graphics configuration: " + gc);
+        throw new UnsupportedOperationException("Unsupported graphics configuration: " + gc);
     }
 }

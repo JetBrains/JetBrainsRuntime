@@ -131,10 +131,18 @@ static jlong createTextureOpenGL(JNIEnv *env, jbyteArray byteArray, jint width, 
     return texId;
 }
 
-JNIEXPORT void JNICALL Java_SharedTexturesTest_setSharedContext
-        (JNIEnv *env, jclass clazz, jlong sharedContext, jlong pixelType) {
-    gSharedContext = (CGLContextObj) sharedContext;
-    gPixelFormat = (CGLPixelFormatObj) pixelType;
+JNIEXPORT void JNICALL Java_SharedTexturesTest_setSharedContextInfo
+        (JNIEnv *env, jclass clazz, jlongArray sharedContextInfo) {
+    jsize length = (*env)->GetArrayLength(env, sharedContextInfo);
+    if (length != 2) {
+            (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+            "Unexpected shared context info size");
+    }
+
+    jlong contextInfo[2];
+    (*env)->GetLongArrayRegion(env, sharedContextInfo, 0, length, contextInfo);
+    gSharedContext = (CGLContextObj)contextInfo[0];
+    gPixelFormat = (CGLPixelFormatObj)contextInfo[1];
 }
 
 JNIEXPORT void JNICALL Java_SharedTexturesTest_initNative
