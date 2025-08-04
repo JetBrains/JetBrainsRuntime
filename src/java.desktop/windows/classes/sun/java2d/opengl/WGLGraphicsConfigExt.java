@@ -28,15 +28,10 @@ package sun.java2d.opengl;
 import java.awt.*;
 
 public class WGLGraphicsConfigExt {
-    public static long getSharedOpenGLContext(WGLGraphicsConfig gc) {
-        return getSharedOpenGLContext(gc.getNativeConfigInfo());
-    }
-
+    public static native long getSharedOpenGLContext();
     public static long getSharedOpenGLPixelFormat(WGLGraphicsConfig gc) {
         return getSharedOpenGLPixelFormat(gc.getNativeConfigInfo());
     }
 
-
-    private static native long getSharedOpenGLContext(long pConfigInfo);
     private static native long getSharedOpenGLPixelFormat(long pCongigInfo);
 }

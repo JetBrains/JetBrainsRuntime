@@ -10,6 +10,7 @@
 #ifdef LINUX
 #include <X11/Xlib.h>
 #include <GL/glx.h>
+#include <X11/Xlib.h>
 #endif
 
 static int gTextureType = -1;
@@ -21,13 +22,14 @@ static void check_gl_error(JNIEnv *env, const char* msgPrefix) {
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) {
         char msg[256];
-        snprintf(msg, sizeof(msg), "%s: OpenGL error %d (%s)", msgPrefix, err);
+        snprintf(msg, sizeof(msg), "%s: OpenGL error %d", msgPrefix, err);
         jclass excCls = (*env)->FindClass(env, "java/lang/RuntimeException");
         (*env)->ThrowNew(env, excCls, msg);
     }
 }
 
 #ifdef _WIN32
+static HWND gHwnd = 0;
 static HGLRC gSharedContext = 0;
 static int gPixelFormat = 0;
 
@@ -35,115 +37,67 @@ static HDC dc = 0;
 static HGLRC gGLContext = 0;
 
 static int initOpenGL() {
-    dc = GetDC(0);
+    gHwnd = CreateWindowEx(0, "STATIC", "Hidden", WS_POPUP, 0,0,1,1, NULL, NULL, GetModuleHandle(NULL), NULL);
+    if (gHwnd == 0) {
+        return FALSE;
+    }
+
+    dc = GetDC(gHwnd);
     if (!dc) {
-        return 0;
+        DestroyWindow(gHwnd);
+        return FALSE;
     }
 
     if (!SetPixelFormat(dc, gPixelFormat, 0)) {
-        printf("SetPixelFormat(%d) failed: %d\n", gPixelFormat, GetLastError());
         ReleaseDC(0, dc);
+        DestroyWindow(gHwnd);
         return FALSE;
     }
 
     gGLContext = wglCreateContext(dc);
     if (!gGLContext) {
         ReleaseDC(0, dc);
-        dc = 0;
-        return 0;
+        DestroyWindow(gHwnd);
+        return FALSE;
     }
 
     if (!wglShareLists(gSharedContext, gGLContext)) {
         ReleaseDC(0, dc);
-        dc = 0;
-        return 0;
+        DestroyWindow(gHwnd);
+        return FALSE;
     }
 
     if (!wglMakeCurrent(dc, gGLContext)) {
         wglDeleteContext(gGLContext);
         gGLContext = 0;
         ReleaseDC(0, dc);
-        dc = 0;
-        return 0;
+        DestroyWindow(gHwnd);
+        return FALSE;
     }
 
     wglMakeCurrent(0, 0);
     return 1;
 }
 
-JNIEXPORT void JNICALL Java_SharedTexturesTest_setSharedContext
-        (JNIEnv *env, jclass clazz, jlong sharedContext, jlong pixelType) {
-    gSharedContext = (HGLRC)sharedContext;
-    gPixelFormat = pixelType;
+static int makeContextCurrent(int isCurrent) {
+    if (isCurrent) {
+        return wglMakeCurrent(dc, gGLContext);
+    }
+    return wglMakeCurrent(0, 0);
 }
 
-JNIEXPORT void JNICALL Java_SharedTexturesTest_initNative
-        (JNIEnv *env, jclass clazz, jint textureType) {
-    if (textureType != OPENGL_TEXTURE_TYPE) {
-        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/RuntimeException"),
-            "Unsupported texture type");
-        return;
+JNIEXPORT void JNICALL Java_SharedTexturesTest_setSharedContextInfo
+        (JNIEnv *env, jclass clazz, jlongArray sharedContextInfo) {
+    jsize length = (*env)->GetArrayLength(env, sharedContextInfo);
+    if (length != 2) {
+            (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+            "Unexpected shared context info size");
     }
 
-    if (!initOpenGL()) {
-        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/RuntimeException"),
-            "Failed to init OpenGL");
-        return;
-    }
-
-    gTextureType = textureType;
-}
-
-JNIEXPORT jlong JNICALL Java_SharedTexturesTest_createTexture
-        (JNIEnv *env, jclass clazz, jbyteArray byteArray, jint width, jint height) {
-    if (!wglMakeCurrent(dc, gGLContext)) {
-        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/RuntimeException"),
-            "SharedTexturesTest: can't make the context current");
-        return 0;
-    }
-
-    if (gTextureType == -1) {
-        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/RuntimeException"),
-            "SharedTexturesTest: native is not initialized");
-        return 0;
-    }
-
-    if (gTextureType != 2) {
-        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/RuntimeException"),
-            "Unsupported texture type");
-        return 0;
-    }
-
-    jsize length = (*env)->GetArrayLength(env, byteArray);
-    jbyte *pixels = (*env)->GetByteArrayElements(env, byteArray, NULL);
-
-    GLuint texId = 0;
-    glGenTextures(1, &texId);
-    check_gl_error(env, "glGenTextures");
-    glBindTexture(GL_TEXTURE_2D, texId);
-    check_gl_error(env, "glBindTexture");
-
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    check_gl_error(env, "glTexParameteri GL_TEXTURE_MAG_FILTER");
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    check_gl_error(env, "glTexParameteri GL_TEXTURE_MIN_FILTER");
-
-    #define GL_CLAMP_TO_EDGE 0x812F
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pixels);
-
-    check_gl_error(env, "glTexImage2D");
-
-    (*env)->ReleaseByteArrayElements(env, byteArray, pixels, JNI_ABORT);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glFinish();
-
-    return (jlong)texId;
+    jlong contextInfo[2];
+    (*env)->GetLongArrayRegion(env, sharedContextInfo, 0, length, contextInfo);
+    gSharedContext = (HGLRC)contextInfo[0];
+    gPixelFormat = (int)contextInfo[1];
 }
 
 JNIEXPORT void JNICALL Java_SharedTexturesTest_releaseContext
@@ -156,8 +110,8 @@ JNIEXPORT void JNICALL Java_SharedTexturesTest_releaseContext
         }
 
         if (dc)  {
-            dc = 0;
             ReleaseDC(0, dc);
+            DestroyWindow(gHwnd);
         }
     }
 }
@@ -165,9 +119,6 @@ JNIEXPORT void JNICALL Java_SharedTexturesTest_releaseContext
 #endif
 
 #ifdef LINUX
-#include <X11/Xlib.h>
-#include <GL/glx.h>
-#include <GL/gl.h>
 
 static Display *gDisplay = NULL;
 static GLXContext gSharedContext = 0;
@@ -202,6 +153,13 @@ static int initOpenGL() {
     return 1;
 }
 
+static int makeContextCurrent(int isCurrent) {
+    if (isCurrent) {
+        return glXMakeCurrent(gDisplay, gPbuffer, gGLContext);
+    }
+    return glXMakeCurrent(gDisplay, None, NULL);
+}
+
 JNIEXPORT void JNICALL Java_SharedTexturesTest_setSharedContextInfo
         (JNIEnv *env, jclass clazz, jlongArray sharedContextInfo) {
     jsize length = (*env)->GetArrayLength(env, sharedContextInfo);
@@ -217,6 +175,24 @@ JNIEXPORT void JNICALL Java_SharedTexturesTest_setSharedContextInfo
     gDisplay = (Display*)contextInfo[1];
     gFBConfig = (GLXFBConfig)contextInfo[2];
 }
+
+JNIEXPORT void JNICALL Java_SharedTexturesTest_releaseContext
+        (JNIEnv *env, jclass clazz) {
+    if (gTextureType == OPENGL_TEXTURE_TYPE) {
+        if (gGLContext) {
+            glXMakeCurrent(gDisplay, None, NULL);
+            glXDestroyContext(gDisplay, gGLContext);
+            gGLContext = 0;
+        }
+
+        if (gPbuffer) {
+            glXDestroyPbuffer(gDisplay, gPbuffer);
+            gPbuffer = 0;
+        }
+    }
+}
+
+#endif
 
 JNIEXPORT void JNICALL Java_SharedTexturesTest_initNative
         (JNIEnv *env, jclass clazz, jint textureType) {
@@ -237,7 +213,7 @@ JNIEXPORT void JNICALL Java_SharedTexturesTest_initNative
 
 JNIEXPORT jlong JNICALL Java_SharedTexturesTest_createTexture
         (JNIEnv *env, jclass clazz, jbyteArray byteArray, jint width, jint height) {
-    if (!glXMakeCurrent(gDisplay, gPbuffer, gGLContext)) {
+    if (!makeContextCurrent(1)) {
         (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/RuntimeException"),
             "SharedTexturesTest: can't make the context current");
         return 0;
@@ -270,6 +246,10 @@ JNIEXPORT jlong JNICALL Java_SharedTexturesTest_createTexture
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     check_gl_error(env, "glTexParameteri GL_TEXTURE_MIN_FILTER");
 
+    #ifndef GL_CLAMP_TO_EDGE
+    #define GL_CLAMP_TO_EDGE 0x812F
+    #endif
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
@@ -282,28 +262,10 @@ JNIEXPORT jlong JNICALL Java_SharedTexturesTest_createTexture
     glFinish();
     check_gl_error(env, "glFinish");
 
-    glXMakeCurrent(gDisplay, None, NULL);
+    makeContextCurrent(0);
 
     return (jlong)texId;
 }
-
-JNIEXPORT void JNICALL Java_SharedTexturesTest_releaseContext
-        (JNIEnv *env, jclass clazz) {
-    if (gTextureType == OPENGL_TEXTURE_TYPE) {
-        if (gGLContext) {
-            glXMakeCurrent(gDisplay, None, NULL);
-            glXDestroyContext(gDisplay, gGLContext);
-            gGLContext = 0;
-        }
-
-        if (gPbuffer) {
-            glXDestroyPbuffer(gDisplay, gPbuffer);
-            gPbuffer = 0;
-        }
-    }
-}
-
-#endif
 
 JNIEXPORT void JNICALL Java_SharedTexturesTest_disposeTexture
         (JNIEnv *env, jclass clazz, jlong texture) {
