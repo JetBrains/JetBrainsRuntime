@@ -38,6 +38,7 @@
 #define NEXT_BOOLEAN(buf)   (jboolean)NEXT_INT(buf)
 #define NEXT_LONG(buf)      NEXT_VAL(buf, jlong)
 #define NEXT_DOUBLE(buf)    NEXT_VAL(buf, jdouble)
+#define NEXT_SURFACE(buf) ((VKSurfaceData*) (SurfaceDataOps*) jlong_to_ptr(NEXT_LONG(buf)))
 
 /*
  * Increments a pointer (buf) by the given number of bytes.
