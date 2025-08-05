@@ -81,7 +81,7 @@ static ATexturePrivPtr* VKTexturePool_createTexture(ADevicePrivPtr *device,
                                                     long format)
 {
     CHECK_NULL_RETURN(device, NULL);
-    VKImage* texture = VKImage_Create((VKLogicalDevice*)device, width, height,
+    VKImage* texture = VKImage_Create((VKDevice*)device, width, height,
                                       (VkFormat)format,
                                       VK_IMAGE_TILING_LINEAR,
                                       VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -117,7 +117,7 @@ static void VKTexturePool_freeTexture(ADevicePrivPtr *device, ATexturePrivPtr *t
     if (TRACE_TEX) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKTexturePool_freeTexture: free texture: tex=%p, w=%d h=%d, pf=%d",
                                  tex, tex->extent.width, tex->extent.height, tex->format);
 
-    VKImage_free((VKLogicalDevice*)device, tex);
+    VKImage_free((VKDevice*)device, tex);
 }
 
 /* VKTexturePoolHandle API */
@@ -139,7 +139,7 @@ jint VKTexturePoolHandle_GetRequestedHeight(VKTexturePoolHandle *handle) {
 
 
 /* VKTexturePool API */
-VKTexturePool* VKTexturePool_initWithDevice(VKLogicalDevice *device) {
+VKTexturePool* VKTexturePool_InitWithDevice(VKDevice *device) {
     CHECK_NULL_RETURN(device, NULL);
     // TODO: get vulkan device memory information (1gb fixed here):
     uint64_t maxDeviceMemory = 1024 * UNIT_MB;
@@ -163,11 +163,11 @@ void VKTexturePool_Dispose(VKTexturePool *pool) {
     ATexturePool_Dispose(pool);
 }
 
-ATexturePoolLockWrapper* VKTexturePool_getLockWrapper(VKTexturePool *pool) {
+ATexturePoolLockWrapper* VKTexturePool_GetLockWrapper(VKTexturePool *pool) {
     return ATexturePool_getLockWrapper(pool);
 }
 
-VKTexturePoolHandle* VKTexturePool_getTexture(VKTexturePool *pool,
+VKTexturePoolHandle* VKTexturePool_GetTexture(VKTexturePool *pool,
                                               jint width,
                                               jint height,
                                               jlong format)
