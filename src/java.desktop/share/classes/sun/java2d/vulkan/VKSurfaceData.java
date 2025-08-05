@@ -110,9 +110,9 @@ public abstract class VKSurfaceData extends SurfaceData
         }
     }
 
-    protected final int scale;
-    protected final int width;
-    protected final int height;
+    protected int scale;
+    protected int width;
+    protected int height;
     protected int type;
     private VKGraphicsConfig graphicsConfig;
     // these fields are set from the native code when the surface is
