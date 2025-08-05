@@ -187,45 +187,58 @@ void* CARR_ring_buffer_realloc(CARR_ring_buffer_t* buf, size_t elem_size, size_t
 #define RING_BUFFER_CAPACITY(P) ((P) == NULL ? (size_t) 0 : RING_BUFFER_T(P)->capacity)
 
 /**
+ * Add element to the beginning of the ring buffer. Implicitly initializes when buffer is NULL.
+ * On allocation failure, C_ARRAY_UTIL_ALLOCATION_FAILED is called.
+ * @param P pointer to the first data element of the buffer
+ */
+#define RING_BUFFER_PUSH_FRONT(P, ...) do {                                                                                    \
+    if ((P) == NULL) (P) = CARR_ring_buffer_realloc(NULL, sizeof((P)[0]), ARRAY_DEFAULT_CAPACITY);                             \
+    else if ((RING_BUFFER_T(P)->head + RING_BUFFER_T(P)->capacity - 1) % RING_BUFFER_T(P)->capacity == RING_BUFFER_T(P)->tail) \
+        (P) = CARR_ring_buffer_realloc(RING_BUFFER_T(P), sizeof((P)[0]), ARRAY_CAPACITY_GROW(RING_BUFFER_T(P)->capacity));     \
+    if ((P) == NULL) C_ARRAY_UTIL_ALLOCATION_FAILED();                                                                         \
+    RING_BUFFER_T(P)->head = (RING_BUFFER_T(P)->head + RING_BUFFER_T(P)->capacity - 1) % RING_BUFFER_T(P)->capacity;           \
+    (P)[RING_BUFFER_T(P)->head] = (__VA_ARGS__);                                                                               \
+} while(0)
+
+/**
  * Add element to the end of the ring buffer. Implicitly initializes when buffer is NULL.
  * On allocation failure, C_ARRAY_UTIL_ALLOCATION_FAILED is called.
  * @param P pointer to the first data element of the buffer
  */
-#define RING_BUFFER_PUSH(P, ...) RING_BUFFER_PUSH_CUSTOM(P, (P)[tail] = (__VA_ARGS__);)
-#define RING_BUFFER_PUSH_CUSTOM(P, ...) do {                                                                                 \
-    size_t head, tail, new_tail;                                                                                             \
-    if ((P) == NULL) {                                                                                                       \
-        (P) = CARR_ring_buffer_realloc(NULL, sizeof((P)[0]), ARRAY_DEFAULT_CAPACITY);                                        \
-        if ((P) == NULL) C_ARRAY_UTIL_ALLOCATION_FAILED();                                                                   \
-        head = tail = 0;                                                                                                     \
-        new_tail = 1;                                                                                                        \
-    } else {                                                                                                                 \
-        head = RING_BUFFER_T(P)->head;                                                                                       \
-        tail = RING_BUFFER_T(P)->tail;                                                                                       \
-        new_tail = (tail + 1) % RING_BUFFER_T(P)->capacity;                                                                  \
-        if (new_tail == head) {                                                                                              \
-            (P) = CARR_ring_buffer_realloc(RING_BUFFER_T(P), sizeof(P[0]), ARRAY_CAPACITY_GROW(RING_BUFFER_T(P)->capacity)); \
-            if ((P) == NULL) C_ARRAY_UTIL_ALLOCATION_FAILED();                                                               \
-            head = 0;                                                                                                        \
-            tail = RING_BUFFER_T(P)->tail;                                                                                   \
-            new_tail = RING_BUFFER_T(P)->tail + 1;                                                                           \
-        }                                                                                                                    \
-    }                                                                                                                        \
-    __VA_ARGS__                                                                                                              \
-    RING_BUFFER_T(P)->tail = new_tail;                                                                                       \
+#define RING_BUFFER_PUSH_BACK(P, ...) do {                                                                                 \
+    if ((P) == NULL) (P) = CARR_ring_buffer_realloc(NULL, sizeof((P)[0]), ARRAY_DEFAULT_CAPACITY);                         \
+    else if ((RING_BUFFER_T(P)->tail + 1) % RING_BUFFER_T(P)->capacity == RING_BUFFER_T(P)->head)                          \
+        (P) = CARR_ring_buffer_realloc(RING_BUFFER_T(P), sizeof((P)[0]), ARRAY_CAPACITY_GROW(RING_BUFFER_T(P)->capacity)); \
+    if ((P) == NULL) C_ARRAY_UTIL_ALLOCATION_FAILED();                                                                     \
+    (P)[RING_BUFFER_T(P)->tail] = (__VA_ARGS__);                                                                           \
+    RING_BUFFER_T(P)->tail = (RING_BUFFER_T(P)->tail + 1) % RING_BUFFER_T(P)->capacity;                                    \
 } while(0)
 
 /**
  * Get pointer to the first element of the ring buffer.
  * @param P pointer to the first data element of the buffer
  */
-#define RING_BUFFER_PEEK(P) ((P) == NULL || RING_BUFFER_T(P)->head == RING_BUFFER_T(P)->tail ? NULL : &(P)[RING_BUFFER_T(P)->head])
+#define RING_BUFFER_FRONT(P) ((P) == NULL || RING_BUFFER_T(P)->head == RING_BUFFER_T(P)->tail ? NULL : &(P)[RING_BUFFER_T(P)->head])
+
+/**
+ * Get pointer to the last element of the ring buffer.
+ * @param P pointer to the first data element of the buffer
+ */
+#define RING_BUFFER_BACK(P) ((P) == NULL || RING_BUFFER_T(P)->head == RING_BUFFER_T(P)->tail ? NULL : \
+    &(P)[(RING_BUFFER_T(P)->tail + RING_BUFFER_T(P)->capacity - 1) % RING_BUFFER_T(P)->capacity])
 
 /**
  * Move beginning of the ring buffer forward (remove first element).
  * @param P pointer to the first data element of the buffer
  */
-#define RING_BUFFER_POP(P) RING_BUFFER_T(P)->head = (RING_BUFFER_T(P)->head + 1) % RING_BUFFER_T(P)->capacity
+#define RING_BUFFER_POP_FRONT(P) RING_BUFFER_T(P)->head = (RING_BUFFER_T(P)->head + 1) % RING_BUFFER_T(P)->capacity
+
+/**
+ * Move end of the ring buffer backward (remove last element).
+ * @param P pointer to the first data element of the buffer
+ */
+#define RING_BUFFER_POP_BACK(P) \
+    RING_BUFFER_T(P)->tail = (RING_BUFFER_T(P)->tail + RING_BUFFER_T(P)->capacity - 1) % RING_BUFFER_T(P)->capacity
 
 /**
  * Deallocate the ring buffer
