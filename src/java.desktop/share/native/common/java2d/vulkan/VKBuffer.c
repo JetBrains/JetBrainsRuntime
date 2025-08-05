@@ -46,7 +46,7 @@ VkResult VKBuffer_FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeF
     return VK_ERROR_UNKNOWN;
 }
 
-VKBuffer* VKBuffer_Create(VKLogicalDevice* logicalDevice, VkDeviceSize size,
+VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
                           VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
 {
     VKBuffer* buffer = malloc(sizeof (VKBuffer));
@@ -58,7 +58,7 @@ VKBuffer* VKBuffer_Create(VKLogicalDevice* logicalDevice, VkDeviceSize size,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
 
-    if (logicalDevice->vkCreateBuffer(logicalDevice->device, &bufferInfo, NULL, &buffer->buffer) != VK_SUCCESS) {
+    if (device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &buffer->buffer) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to allocate descriptor sets!");
         return NULL;
     }
@@ -66,11 +66,11 @@ VKBuffer* VKBuffer_Create(VKLogicalDevice* logicalDevice, VkDeviceSize size,
     buffer->size = size;
 
     VkMemoryRequirements memRequirements;
-    logicalDevice->vkGetBufferMemoryRequirements(logicalDevice->device, buffer->buffer, &memRequirements);
+    device->vkGetBufferMemoryRequirements(device->handle, buffer->buffer, &memRequirements);
 
     uint32_t memoryType;
 
-    if (VKBuffer_FindMemoryType(logicalDevice->physicalDevice,
+    if (VKBuffer_FindMemoryType(device->physicalDevice,
                                 memRequirements.memoryTypeBits,
                                 properties, &memoryType) != VK_SUCCESS)
     {
@@ -84,27 +84,27 @@ VKBuffer* VKBuffer_Create(VKLogicalDevice* logicalDevice, VkDeviceSize size,
             .memoryTypeIndex = memoryType
     };
 
-    if (logicalDevice->vkAllocateMemory(logicalDevice->device, &allocInfo, NULL, &buffer->memory) != VK_SUCCESS) {
+    if (device->vkAllocateMemory(device->handle, &allocInfo, NULL, &buffer->memory) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to allocate buffer memory!");
         return NULL;
     }
 
-    if (logicalDevice->vkBindBufferMemory(logicalDevice->device, buffer->buffer, buffer->memory, 0) != VK_SUCCESS) {
+    if (device->vkBindBufferMemory(device->handle, buffer->buffer, buffer->memory, 0) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to bind buffer memory!");
         return NULL;
     }
     return buffer;
 }
 
-VKBuffer* VKBuffer_CreateFromData(VKLogicalDevice* logicalDevice, void* vertices, VkDeviceSize bufferSize)
+VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize bufferSize)
 {
-    VKBuffer* buffer = VKBuffer_Create(logicalDevice, bufferSize,
+    VKBuffer* buffer = VKBuffer_Create(device, bufferSize,
                                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     void* data;
-    if (logicalDevice->vkMapMemory(logicalDevice->device, buffer->memory, 0, bufferSize, 0, &data) != VK_SUCCESS) {
+    if (device->vkMapMemory(device->handle, buffer->memory, 0, bufferSize, 0, &data) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to map memory!");
         return NULL;
     }
@@ -119,23 +119,23 @@ VKBuffer* VKBuffer_CreateFromData(VKLogicalDevice* logicalDevice, void* vertices
     };
 
 
-    if (logicalDevice->vkFlushMappedMemoryRanges(logicalDevice->device, 1, &memoryRange) != VK_SUCCESS) {
+    if (device->vkFlushMappedMemoryRanges(device->handle, 1, &memoryRange) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to flush memory!");
         return NULL;
     }
-    logicalDevice->vkUnmapMemory(logicalDevice->device, buffer->memory);
+    device->vkUnmapMemory(device->handle, buffer->memory);
     buffer->size = bufferSize;
 
     return buffer;
 }
 
-void VKBuffer_free(VKLogicalDevice* logicalDevice, VKBuffer* buffer) {
+void VKBuffer_free(VKDevice* device, VKBuffer* buffer) {
     if (buffer != NULL) {
         if (buffer->buffer != VK_NULL_HANDLE) {
-            logicalDevice->vkDestroyBuffer(logicalDevice->device, buffer->buffer, NULL);
+            device->vkDestroyBuffer(device->handle, buffer->buffer, NULL);
         }
         if (buffer->memory != VK_NULL_HANDLE) {
-            logicalDevice->vkFreeMemory(logicalDevice->device, buffer->memory, NULL);
+            device->vkFreeMemory(device->handle, buffer->memory, NULL);
         }
         free(buffer);
     }
