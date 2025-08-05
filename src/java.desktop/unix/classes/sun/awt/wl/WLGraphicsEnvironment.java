@@ -30,8 +30,6 @@ import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.Rectangle;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -43,44 +41,16 @@ import sun.util.logging.PlatformLogger.Level;
 public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLGraphicsEnvironment");
 
-    private static boolean vulkanEnabled = false;
-    private static boolean verboseVulkanStatus = false;
-    private static boolean vulkanRequested = false;
-    private static int vulkanRequestedDeviceNumber = -1;
     private static final boolean debugScaleEnabled;
-    @SuppressWarnings("removal")
-    private static String vulkanOption =
-            AccessController.doPrivileged(
-                    (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan", ""));
-
-    @SuppressWarnings("removal")
-    private static String vulkanOptionDeviceNumber =
-            AccessController.doPrivileged(
-                    (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.deviceNumber", "0"));
+    private final Dimension totalDisplayBounds = new Dimension();
 
     @SuppressWarnings("restricted")
     private static void loadAwt() {
         System.loadLibrary("awt");
     }
 
-    private final Dimension totalDisplayBounds = new Dimension();
-
     static {
-        vulkanRequested = "true".equalsIgnoreCase(vulkanOption);
-        try {
-            vulkanRequestedDeviceNumber = Integer.parseInt(vulkanOptionDeviceNumber);
-        } catch (NumberFormatException e) {
-            log.warning("Invalid Vulkan device number:" + vulkanOptionDeviceNumber);
-        }
-        verboseVulkanStatus = "True".equals(vulkanOption);
-
         loadAwt();
-        if (vulkanRequested) {
-            vulkanEnabled = initVKWL(verboseVulkanStatus, vulkanRequestedDeviceNumber);
-        }
-        if (log.isLoggable(Level.FINE)) {
-            log.fine("Vulkan rendering enabled: " + (vulkanEnabled?"YES":"NO"));
-        }
 
         debugScaleEnabled = SunGraphicsEnvironment.isUIScaleEnabled() && SunGraphicsEnvironment.getDebugScale() >= 1;
 
@@ -88,13 +58,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment {
         WLToolkit.isInitialized();
     }
 
-    private static native boolean initVKWL(boolean verbose, int deviceNumber);
-
     private WLGraphicsEnvironment() {
-    }
-
-    public static boolean isVulkanEnabled() {
-        return vulkanEnabled;
     }
 
     private static class Holder {
