@@ -40,27 +40,25 @@
 #undef SHADER_ENTRY
 #undef BYTECODE_END
 
-VkShaderModule createShaderModule(VKLogicalDevice* logicalDevice, uint32_t* shader, uint32_t sz) {
+VkShaderModule createShaderModule(VKDevice* device, uint32_t* shader, uint32_t sz) {
     VkShaderModuleCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     createInfo.codeSize = sz;
     createInfo.pCode = (uint32_t*)shader;
     VkShaderModule shaderModule;
-    if (logicalDevice->vkCreateShaderModule(logicalDevice->device, &createInfo, NULL, &shaderModule) != VK_SUCCESS) {
+    if (device->vkCreateShaderModule(device->handle, &createInfo, NULL, &shaderModule) != VK_SUCCESS) {
         J2dRlsTrace(J2D_TRACE_ERROR, "failed to create shader module\n");
         return VK_NULL_HANDLE;
     }
     return shaderModule;
 }
 
-VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice) {
+VKRenderer* VKRenderer_CreateFillTexturePoly(VKDevice* device) {
     VKRenderer* fillTexturePoly = malloc(sizeof (VKRenderer ));
 
-    VkDevice device = logicalDevice->device;
-
     // Create graphics pipeline
-    VkShaderModule vertShaderModule = createShaderModule(logicalDevice, blit_vert_data, sizeof (blit_vert_data));
-    VkShaderModule fragShaderModule = createShaderModule(logicalDevice, blit_frag_data, sizeof (blit_frag_data));
+    VkShaderModule vertShaderModule = createShaderModule(device, blit_vert_data, sizeof (blit_vert_data));
+    VkShaderModule fragShaderModule = createShaderModule(device, blit_frag_data, sizeof (blit_frag_data));
 
     VkPipelineShaderStageCreateInfo vertShaderStageInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -162,7 +160,7 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice) {
             .pBindings = &samplerLayoutBinding
     };
 
-    if (logicalDevice->vkCreateDescriptorSetLayout(device, &layoutInfo, NULL, &fillTexturePoly->descriptorSetLayout) != VK_SUCCESS) {
+    if (device->vkCreateDescriptorSetLayout(device->handle, &layoutInfo, NULL, &fillTexturePoly->descriptorSetLayout) != VK_SUCCESS) {
         J2dRlsTrace(J2D_TRACE_INFO,  "failed to create descriptor set layout!");
         return JNI_FALSE;
     }
@@ -174,7 +172,7 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice) {
             .pushConstantRangeCount = 0
     };
 
-    if (logicalDevice->vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL,
+    if (device->vkCreatePipelineLayout(device->handle, &pipelineLayoutInfo, NULL,
                                    &fillTexturePoly->pipelineLayout) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "failed to create pipeline layout!\n");
@@ -193,20 +191,20 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice) {
             .pColorBlendState = &colorBlending,
             .pDynamicState = &dynamicState,
             .layout = fillTexturePoly->pipelineLayout,
-            .renderPass = logicalDevice->renderPass,
+            .renderPass = device->renderPass,
             .subpass = 0,
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex = -1
     };
 
-    if (logicalDevice->vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
+    if (device->vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
                                               &fillTexturePoly->graphicsPipeline) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "failed to create graphics pipeline!\n");
         return JNI_FALSE;
     }
-    logicalDevice->vkDestroyShaderModule(device, fragShaderModule, NULL);
-    logicalDevice->vkDestroyShaderModule(device, vertShaderModule, NULL);
+    device->vkDestroyShaderModule(device->handle, fragShaderModule, NULL);
+    device->vkDestroyShaderModule(device->handle, vertShaderModule, NULL);
 
     VkSamplerCreateInfo samplerInfo = {
             .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -228,7 +226,7 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice) {
             .maxLod = 0.0f
     };
 
-    if (logicalDevice->vkCreateSampler(device, &samplerInfo, NULL, &logicalDevice->textureSampler) != VK_SUCCESS) {
+    if (device->vkCreateSampler(device->handle, &samplerInfo, NULL, &device->textureSampler) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to create texture sampler!");
         return JNI_FALSE;
     }
@@ -245,7 +243,7 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice) {
             .maxSets = 1
     };
 
-    if (logicalDevice->vkCreateDescriptorPool(device, &descrPoolInfo, NULL, &fillTexturePoly->descriptorPool) != VK_SUCCESS) {
+    if (device->vkCreateDescriptorPool(device->handle, &descrPoolInfo, NULL, &fillTexturePoly->descriptorPool) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "failed to create descriptor pool!");
         return JNI_FALSE;
     }
@@ -257,7 +255,7 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice) {
             .pSetLayouts = &fillTexturePoly->descriptorSetLayout
     };
 
-    if (logicalDevice->vkAllocateDescriptorSets(device, &descrAllocInfo, &fillTexturePoly->descriptorSets) != VK_SUCCESS) {
+    if (device->vkAllocateDescriptorSets(device->handle, &descrAllocInfo, &fillTexturePoly->descriptorSets) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to allocate descriptor sets!");
         return JNI_FALSE;
     }
@@ -265,17 +263,15 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice) {
     return fillTexturePoly;
 }
 
-VKRenderer *VKRenderer_CreateRenderColorPoly(VKLogicalDevice* logicalDevice,
+VKRenderer *VKRenderer_CreateRenderColorPoly(VKDevice* device,
                                              VkPrimitiveTopology primitiveTopology,
                                              VkPolygonMode polygonMode)
 {
     VKRenderer* renderColorPoly = malloc(sizeof (VKRenderer ));
 
-    VkDevice device = logicalDevice->device;
-
     // Create graphics pipeline
-    VkShaderModule vertShaderModule = createShaderModule(logicalDevice, color_vert_data, sizeof (color_vert_data));
-    VkShaderModule fragShaderModule = createShaderModule(logicalDevice, color_frag_data, sizeof (color_frag_data));
+    VkShaderModule vertShaderModule = createShaderModule(device, color_vert_data, sizeof (color_vert_data));
+    VkShaderModule fragShaderModule = createShaderModule(device, color_frag_data, sizeof (color_frag_data));
 
     VkPipelineShaderStageCreateInfo vertShaderStageInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -376,7 +372,7 @@ VKRenderer *VKRenderer_CreateRenderColorPoly(VKLogicalDevice* logicalDevice,
             .pPushConstantRanges = &pushConstantRange
     };
 
-    if (logicalDevice->vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL,
+    if (device->vkCreatePipelineLayout(device->handle, &pipelineLayoutInfo, NULL,
                                    &renderColorPoly->pipelineLayout) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "failed to create pipeline layout!\n");
@@ -395,32 +391,30 @@ VKRenderer *VKRenderer_CreateRenderColorPoly(VKLogicalDevice* logicalDevice,
             .pColorBlendState = &colorBlending,
             .pDynamicState = &dynamicState,
             .layout = renderColorPoly->pipelineLayout,
-            .renderPass = logicalDevice->renderPass,
+            .renderPass = device->renderPass,
             .subpass = 0,
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex = -1
     };
 
-    if (logicalDevice->vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
+    if (device->vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
                                       &renderColorPoly->graphicsPipeline) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "failed to create graphics pipeline!\n");
         return JNI_FALSE;
     }
-    logicalDevice->vkDestroyShaderModule(device, fragShaderModule, NULL);
-    logicalDevice->vkDestroyShaderModule(device, vertShaderModule, NULL);
+    device->vkDestroyShaderModule(device->handle, fragShaderModule, NULL);
+    device->vkDestroyShaderModule(device->handle, vertShaderModule, NULL);
     renderColorPoly->primitiveTopology = primitiveTopology;
     return renderColorPoly;
 }
 
-VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKLogicalDevice* logicalDevice) {
+VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKDevice* device) {
     VKRenderer* fillColorPoly = malloc(sizeof (VKRenderer ));
 
-    VkDevice device = logicalDevice->device;
-
     // Create graphics pipeline
-    VkShaderModule vertShaderModule = createShaderModule(logicalDevice, color_max_rect_vert_data, sizeof (color_max_rect_vert_data));
-    VkShaderModule fragShaderModule = createShaderModule(logicalDevice, color_max_rect_frag_data, sizeof (color_max_rect_frag_data));
+    VkShaderModule vertShaderModule = createShaderModule(device, color_max_rect_vert_data, sizeof (color_max_rect_vert_data));
+    VkShaderModule fragShaderModule = createShaderModule(device, color_max_rect_frag_data, sizeof (color_max_rect_frag_data));
 
     VkPipelineShaderStageCreateInfo vertShaderStageInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -518,7 +512,7 @@ VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKLogicalDevice* logicalDevice) {
             .pPushConstantRanges = &pushConstantRange
     };
 
-    if (logicalDevice->vkCreatePipelineLayout(device, &pipelineLayoutInfo, NULL,
+    if (device->vkCreatePipelineLayout(device->handle, &pipelineLayoutInfo, NULL,
                                    &fillColorPoly->pipelineLayout) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "failed to create pipeline layout!\n");
@@ -537,43 +531,43 @@ VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKLogicalDevice* logicalDevice) {
             .pColorBlendState = &colorBlending,
             .pDynamicState = &dynamicState,
             .layout = fillColorPoly->pipelineLayout,
-            .renderPass = logicalDevice->renderPass,
+            .renderPass = device->renderPass,
             .subpass = 0,
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex = -1
     };
 
-    if (logicalDevice->vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
+    if (device->vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, 1, &pipelineInfo, NULL,
                                       &fillColorPoly->graphicsPipeline) != VK_SUCCESS)
     {
         J2dRlsTrace(J2D_TRACE_INFO, "failed to create graphics pipeline!\n");
         return JNI_FALSE;
     }
-    logicalDevice->vkDestroyShaderModule(device, fragShaderModule, NULL);
-    logicalDevice->vkDestroyShaderModule(device, vertShaderModule, NULL);
+    device->vkDestroyShaderModule(device->handle, fragShaderModule, NULL);
+    device->vkDestroyShaderModule(device->handle, vertShaderModule, NULL);
     fillColorPoly->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
     return fillColorPoly;
 }
 
-void VKRenderer_BeginRendering(VKLogicalDevice* logicalDevice) {
+void VKRenderer_BeginRendering(VKDevice* device) {
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-    if (logicalDevice->vkBeginCommandBuffer(logicalDevice->commandBuffer, &beginInfo) != VK_SUCCESS) {
+    if (device->vkBeginCommandBuffer(device->commandBuffer, &beginInfo) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to begin recording command buffer!");
         return;
     }
 }
 
-void VKRenderer_EndRendering(VKLogicalDevice* logicalDevice, VkBool32 notifyRenderFinish, VkBool32 waitForDisplayImage) {
-    if (logicalDevice->vkEndCommandBuffer(logicalDevice->commandBuffer) != VK_SUCCESS) {
+void VKRenderer_EndRendering(VKDevice* device, VkBool32 notifyRenderFinish, VkBool32 waitForDisplayImage) {
+    if (device->vkEndCommandBuffer(device->commandBuffer) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to record command buffer!");
         return;
     }
 
-    VkSemaphore waitSemaphores[] = {logicalDevice->imageAvailableSemaphore};
+    VkSemaphore waitSemaphores[] = {device->imageAvailableSemaphore};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    VkSemaphore signalSemaphores[] = {logicalDevice->renderFinishedSemaphore};
+    VkSemaphore signalSemaphores[] = {device->renderFinishedSemaphore};
 
     VkSubmitInfo submitInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -581,29 +575,29 @@ void VKRenderer_EndRendering(VKLogicalDevice* logicalDevice, VkBool32 notifyRend
             .pWaitSemaphores = waitSemaphores,
             .pWaitDstStageMask = waitStages,
             .commandBufferCount = 1,
-            .pCommandBuffers = &logicalDevice->commandBuffer,
+            .pCommandBuffers = &device->commandBuffer,
             .signalSemaphoreCount = (notifyRenderFinish ? 1 : 0),
             .pSignalSemaphores = signalSemaphores
     };
 
-    if (logicalDevice->vkQueueSubmit(logicalDevice->queue, 1, &submitInfo, logicalDevice->inFlightFence) != VK_SUCCESS) {
+    if (device->vkQueueSubmit(device->queue, 1, &submitInfo, device->inFlightFence) != VK_SUCCESS) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,"failed to submit draw command buffer!");
         return;
     }
 }
 
-void VKRenderer_TextureRender(VKLogicalDevice* logicalDevice, VKImage *destImage, VKImage *srcImage,
+void VKRenderer_TextureRender(VKDevice* device, VKImage *destImage, VKImage *srcImage,
                               VkBuffer vertexBuffer, uint32_t vertexNum)
 {
     VkDescriptorImageInfo imageInfo = {
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             .imageView = srcImage->view,
-            .sampler = logicalDevice->textureSampler
+            .sampler = device->textureSampler
     };
 
     VkWriteDescriptorSet descriptorWrites = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = logicalDevice->fillTexturePoly->descriptorSets,
+            .dstSet = device->fillTexturePoly->descriptorSets,
             .dstBinding = 0,
             .dstArrayElement = 0,
             .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -611,13 +605,13 @@ void VKRenderer_TextureRender(VKLogicalDevice* logicalDevice, VKImage *destImage
             .pImageInfo = &imageInfo
     };
 
-    logicalDevice->vkUpdateDescriptorSets(logicalDevice->device, 1, &descriptorWrites, 0, NULL);
+    device->vkUpdateDescriptorSets(device->handle, 1, &descriptorWrites, 0, NULL);
 
 
     VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
     VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = logicalDevice->renderPass,
+            .renderPass = device->renderPass,
             .framebuffer = destImage->framebuffer,
             .renderArea.offset = (VkOffset2D){0, 0},
             .renderArea.extent = destImage->extent,
@@ -625,13 +619,13 @@ void VKRenderer_TextureRender(VKLogicalDevice* logicalDevice, VKImage *destImage
             .pClearValues = &clearColor
     };
 
-    logicalDevice->vkCmdBeginRenderPass(logicalDevice->commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    logicalDevice->vkCmdBindPipeline(logicalDevice->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          logicalDevice->fillTexturePoly->graphicsPipeline);
+    device->vkCmdBeginRenderPass(device->commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    device->vkCmdBindPipeline(device->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          device->fillTexturePoly->graphicsPipeline);
 
     VkBuffer vertexBuffers[] = {vertexBuffer};
     VkDeviceSize offsets[] = {0};
-    logicalDevice->vkCmdBindVertexBuffers(logicalDevice->commandBuffer, 0, 1, vertexBuffers, offsets);
+    device->vkCmdBindVertexBuffers(device->commandBuffer, 0, 1, vertexBuffers, offsets);
     VkViewport viewport = {
             .x = 0.0f,
             .y = 0.0f,
@@ -641,24 +635,24 @@ void VKRenderer_TextureRender(VKLogicalDevice* logicalDevice, VKImage *destImage
             .maxDepth = 1.0f
     };
 
-    logicalDevice->vkCmdSetViewport(logicalDevice->commandBuffer, 0, 1, &viewport);
+    device->vkCmdSetViewport(device->commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor = {
             .offset = (VkOffset2D){0, 0},
             .extent = destImage->extent,
     };
 
-    logicalDevice->vkCmdSetScissor(logicalDevice->commandBuffer, 0, 1, &scissor);
-    logicalDevice->vkCmdBindDescriptorSets(logicalDevice->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                logicalDevice->fillTexturePoly->pipelineLayout, 0, 1, &logicalDevice->fillTexturePoly->descriptorSets, 0, NULL);
-    logicalDevice->vkCmdDraw(logicalDevice->commandBuffer, vertexNum, 1, 0, 0);
+    device->vkCmdSetScissor(device->commandBuffer, 0, 1, &scissor);
+    device->vkCmdBindDescriptorSets(device->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                device->fillTexturePoly->pipelineLayout, 0, 1, &device->fillTexturePoly->descriptorSets, 0, NULL);
+    device->vkCmdDraw(device->commandBuffer, vertexNum, 1, 0, 0);
 
-    logicalDevice->vkCmdEndRenderPass(logicalDevice->commandBuffer);
+    device->vkCmdEndRenderPass(device->commandBuffer);
 
 
 }
 
-void VKRenderer_ColorRender(VKLogicalDevice* logicalDevice, VKImage *destImage, VKRenderer *renderer, uint32_t rgba,
+void VKRenderer_ColorRender(VKDevice* device, VKImage *destImage, VKRenderer *renderer, uint32_t rgba,
                             VkBuffer vertexBuffer,
                             uint32_t vertexNum)
 {
@@ -666,17 +660,17 @@ void VKRenderer_ColorRender(VKLogicalDevice* logicalDevice, VKImage *destImage, 
         J2dRlsTrace(J2D_TRACE_ERROR, "VKRenderer_ColorRender: vertex buffer is NULL\n");
         return;
     }
-    logicalDevice->vkWaitForFences(logicalDevice->device, 1, &logicalDevice->inFlightFence, VK_TRUE, UINT64_MAX);
-    logicalDevice->vkResetFences(logicalDevice->device, 1, &logicalDevice->inFlightFence);
+    device->vkWaitForFences(device->handle, 1, &device->inFlightFence, VK_TRUE, UINT64_MAX);
+    device->vkResetFences(device->handle, 1, &device->inFlightFence);
 
-    logicalDevice->vkResetCommandBuffer(logicalDevice->commandBuffer, 0);
+    device->vkResetCommandBuffer(device->commandBuffer, 0);
 
-    VKRenderer_BeginRendering(logicalDevice);
+    VKRenderer_BeginRendering(device);
 
     VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
     VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = logicalDevice->renderPass,
+            .renderPass = device->renderPass,
             .framebuffer = destImage->framebuffer,
             .renderArea.offset = (VkOffset2D){0, 0},
             .renderArea.extent = destImage->extent,
@@ -684,8 +678,8 @@ void VKRenderer_ColorRender(VKLogicalDevice* logicalDevice, VKImage *destImage, 
             .pClearValues = &clearColor
     };
 
-    logicalDevice->vkCmdBeginRenderPass(logicalDevice->commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    logicalDevice->vkCmdBindPipeline(logicalDevice->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    device->vkCmdBeginRenderPass(device->commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    device->vkCmdBindPipeline(device->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           renderer->graphicsPipeline);
     struct PushConstants {
         float r, g, b, a;
@@ -693,8 +687,8 @@ void VKRenderer_ColorRender(VKLogicalDevice* logicalDevice, VKImage *destImage, 
 
     pushConstants = (struct PushConstants){RGBA_TO_L4(rgba)};
 
-    logicalDevice->vkCmdPushConstants(
-            logicalDevice->commandBuffer,
+    device->vkCmdPushConstants(
+            device->commandBuffer,
             renderer->pipelineLayout,
             VK_SHADER_STAGE_VERTEX_BIT,
             0,
@@ -704,7 +698,7 @@ void VKRenderer_ColorRender(VKLogicalDevice* logicalDevice, VKImage *destImage, 
 
     VkBuffer vertexBuffers[] = {vertexBuffer};
     VkDeviceSize offsets[] = {0};
-    logicalDevice->vkCmdBindVertexBuffers(logicalDevice->commandBuffer, 0, 1, vertexBuffers, offsets);
+    device->vkCmdBindVertexBuffers(device->commandBuffer, 0, 1, vertexBuffers, offsets);
     VkViewport viewport = {
             .x = 0.0f,
             .y = 0.0f,
@@ -714,25 +708,25 @@ void VKRenderer_ColorRender(VKLogicalDevice* logicalDevice, VKImage *destImage, 
             .maxDepth = 1.0f
     };
 
-    logicalDevice->vkCmdSetViewport(logicalDevice->commandBuffer, 0, 1, &viewport);
+    device->vkCmdSetViewport(device->commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor = {
             .offset = (VkOffset2D){0, 0},
             .extent = destImage->extent,
     };
 
-    logicalDevice->vkCmdSetScissor(logicalDevice->commandBuffer, 0, 1, &scissor);
-    logicalDevice->vkCmdDraw(logicalDevice->commandBuffer, vertexNum, 1, 0, 0);
+    device->vkCmdSetScissor(device->commandBuffer, 0, 1, &scissor);
+    device->vkCmdDraw(device->commandBuffer, vertexNum, 1, 0, 0);
 
-    logicalDevice->vkCmdEndRenderPass(logicalDevice->commandBuffer);
-    VKRenderer_EndRendering(logicalDevice, VK_FALSE, VK_FALSE);
+    device->vkCmdEndRenderPass(device->commandBuffer);
+    VKRenderer_EndRendering(device, VK_FALSE, VK_FALSE);
 }
 
-void VKRenderer_ColorRenderMaxRect(VKLogicalDevice* logicalDevice, VKImage *destImage, uint32_t rgba) {
+void VKRenderer_ColorRenderMaxRect(VKDevice* device, VKImage *destImage, uint32_t rgba) {
     VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
     VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = logicalDevice->renderPass,
+            .renderPass = device->renderPass,
             .framebuffer = destImage->framebuffer,
             .renderArea.offset = (VkOffset2D){0, 0},
             .renderArea.extent = destImage->extent,
@@ -740,9 +734,9 @@ void VKRenderer_ColorRenderMaxRect(VKLogicalDevice* logicalDevice, VKImage *dest
             .pClearValues = &clearColor
     };
 
-    logicalDevice->vkCmdBeginRenderPass(logicalDevice->commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    logicalDevice->vkCmdBindPipeline(logicalDevice->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          logicalDevice->fillMaxColorPoly->graphicsPipeline);
+    device->vkCmdBeginRenderPass(device->commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    device->vkCmdBindPipeline(device->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          device->fillMaxColorPoly->graphicsPipeline);
 
     struct PushConstants {
         float r, g, b, a;
@@ -750,9 +744,9 @@ void VKRenderer_ColorRenderMaxRect(VKLogicalDevice* logicalDevice, VKImage *dest
 
     pushConstants = (struct PushConstants){RGBA_TO_L4(rgba)};
 
-    logicalDevice->vkCmdPushConstants(
-            logicalDevice->commandBuffer,
-            logicalDevice->fillMaxColorPoly->pipelineLayout,
+    device->vkCmdPushConstants(
+            device->commandBuffer,
+            device->fillMaxColorPoly->pipelineLayout,
             VK_SHADER_STAGE_VERTEX_BIT,
             0,
             sizeof(struct PushConstants),
@@ -768,21 +762,21 @@ void VKRenderer_ColorRenderMaxRect(VKLogicalDevice* logicalDevice, VKImage *dest
             .maxDepth = 1.0f
     };
 
-    logicalDevice->vkCmdSetViewport(logicalDevice->commandBuffer, 0, 1, &viewport);
+    device->vkCmdSetViewport(device->commandBuffer, 0, 1, &viewport);
 
     VkRect2D scissor = {
             .offset = (VkOffset2D){0, 0},
             .extent = destImage->extent,
     };
 
-    logicalDevice->vkCmdSetScissor(logicalDevice->commandBuffer, 0, 1, &scissor);
-    logicalDevice->vkCmdDraw(logicalDevice->commandBuffer, 4, 1, 0, 0);
+    device->vkCmdSetScissor(device->commandBuffer, 0, 1, &scissor);
+    device->vkCmdDraw(device->commandBuffer, 4, 1, 0, 0);
 
-    logicalDevice->vkCmdEndRenderPass(logicalDevice->commandBuffer);
+    device->vkCmdEndRenderPass(device->commandBuffer);
 }
 
 void
-VKRenderer_FillRect(VKLogicalDevice* logicalDevice, jint x, jint y, jint w, jint h)
+VKRenderer_FillRect(VKDevice* device, jint x, jint y, jint w, jint h)
 {
     J2dTraceLn(J2D_TRACE_INFO, "VKRenderer_FillRect %d %d %d %d", x, y, w, h);
 
@@ -791,7 +785,7 @@ VKRenderer_FillRect(VKLogicalDevice* logicalDevice, jint x, jint y, jint w, jint
     }
 }
 
-void VKRenderer_RenderParallelogram(VKLogicalDevice* logicalDevice,
+void VKRenderer_RenderParallelogram(VKDevice* device,
                                   VKRenderer* renderer,
                                   jint color, VKSDOps *dstOps,
                                   jfloat x11, jfloat y11,
@@ -850,17 +844,17 @@ void VKRenderer_RenderParallelogram(VKLogicalDevice* logicalDevice,
 
     int vertexNum = ARRAY_SIZE(vertices);
 
-    VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(logicalDevice, vertices);
+    VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
     ARRAY_FREE(vertices);
 
     VKRenderer_ColorRender(
-            logicalDevice,
+            device,
             vksdOps->image, renderer,
             color,
             renderVertexBuffer->buffer, vertexNum);
 }
 
-void VKRenderer_FillSpans(VKLogicalDevice* logicalDevice, jint color, VKSDOps *dstOps, jint spanCount, jint *spans)
+void VKRenderer_FillSpans(VKDevice* device, jint color, VKSDOps *dstOps, jint spanCount, jint *spans)
 {
     if (dstOps == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_FillSpans: current dest is null");
@@ -907,7 +901,7 @@ void VKRenderer_FillSpans(VKLogicalDevice* logicalDevice, jint color, VKSDOps *d
         ARRAY_PUSH_BACK(&vertices, ((VKVertex){p1x,p1y}));
     }
 
-    VKBuffer *fillVertexBuffer = ARRAY_TO_VERTEX_BUF(logicalDevice, vertices);
+    VKBuffer *fillVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
     if (!fillVertexBuffer) {
         J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create vertex buffer\n");
         return;
@@ -915,21 +909,21 @@ void VKRenderer_FillSpans(VKLogicalDevice* logicalDevice, jint color, VKSDOps *d
     ARRAY_FREE(vertices);
 
     VKRenderer_ColorRender(
-            logicalDevice,
-            vksdOps->image, logicalDevice->fillColorPoly,
+            device,
+            vksdOps->image, device->fillColorPoly,
             color,
             fillVertexBuffer->buffer, VERT_COUNT);
 }
 
-jboolean VK_CreateLogicalDeviceRenderers(VKLogicalDevice* logicalDevice) {
-    logicalDevice->fillTexturePoly = VKRenderer_CreateFillTexturePoly(logicalDevice);
-    logicalDevice->fillColorPoly = VKRenderer_CreateRenderColorPoly(logicalDevice, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+jboolean VK_CreateLogicalDeviceRenderers(VKDevice* device) {
+    device->fillTexturePoly = VKRenderer_CreateFillTexturePoly(device);
+    device->fillColorPoly = VKRenderer_CreateRenderColorPoly(device, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                                                     VK_POLYGON_MODE_FILL);
-    logicalDevice->drawColorPoly = VKRenderer_CreateRenderColorPoly(logicalDevice, VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
+    device->drawColorPoly = VKRenderer_CreateRenderColorPoly(device, VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
                                                                     VK_POLYGON_MODE_LINE);
-    logicalDevice->fillMaxColorPoly = VKRenderer_CreateFillMaxColorPoly(logicalDevice);
-    if (!logicalDevice->fillTexturePoly || !logicalDevice->fillColorPoly || !logicalDevice->drawColorPoly ||
-        !logicalDevice->fillMaxColorPoly)
+    device->fillMaxColorPoly = VKRenderer_CreateFillMaxColorPoly(device);
+    if (!device->fillTexturePoly || !device->fillColorPoly || !device->drawColorPoly ||
+        !device->fillMaxColorPoly)
     {
         return JNI_FALSE;
     }
