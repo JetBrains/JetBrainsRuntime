@@ -24,12 +24,24 @@
  * questions.
  */
 
-// These are stubs in case we were built with Vulkan disabled.
-#ifndef VULKAN_ENABLED
-#include "jni.h"
+#include "VKShader.h"
 
-jboolean VK_Init() {
-    return 0;
+// Inline bytecode of all shaders
+#define INCLUDE_BYTECODE
+#define SHADER_ENTRY(NAME, TYPE) static uint32_t NAME ## _ ## TYPE ## _data[] = {
+#define BYTECODE_END };
+#include "vulkan/shader_list.h"
+#undef INCLUDE_BYTECODE
+#undef SHADER_ENTRY
+#undef BYTECODE_END
+
+void VKShaders::init(const vk::raii::Device& device) {
+    // Declare file extensions as stage flags
+    auto vert = vk::ShaderStageFlagBits::eVertex;
+    auto frag = vk::ShaderStageFlagBits::eFragment;
+    // Init all shader modules
+#   define SHADER_ENTRY(NAME, TYPE) \
+    NAME ## _ ## TYPE.init(device, sizeof NAME ## _ ## TYPE ## _data, NAME ## _ ## TYPE ## _data, TYPE);
+#   include "vulkan/shader_list.h"
+#   undef SHADER_ENTRY
 }
-
-#endif
