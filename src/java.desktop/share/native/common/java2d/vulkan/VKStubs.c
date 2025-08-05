@@ -32,8 +32,4 @@ jboolean VK_Init() {
     return 0;
 }
 
-jint VK_MaxTextureSize() {
-    return 0;
-}
-
 #endif
