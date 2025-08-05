@@ -480,11 +480,9 @@ ifeq ($(call isTargetOs, windows macosx), false)
             logical-op-parentheses format-nonliteral int-conversion, \
         DISABLED_WARNINGS_gcc_awt_InputMethod.c := unused-label, \
         DISABLED_WARNINGS_gcc_CUPSfuncs.c := unused-variable, \
-        DISABLED_WARNINGS_gcc_VKMemory.cpp := missing-field-initializers implicit-fallthrough parentheses, \
         DISABLED_WARNINGS_gcc_VKRenderQueue.c := unused-variable unused-but-set-variable, \
         DISABLED_WARNINGS_clang_awt_InputMethod.c := unused-label, \
         DISABLED_WARNINGS_clang_CUPSfuncs.c := unused-variable, \
-        DISABLED_WARNINGS_clang_VKMemory.cpp := missing-field-initializers implicit-fallthrough parentheses, \
         DISABLED_WARNINGS_clang_VKRenderQueue.c := unused-variable unused-but-set-variable, \
         JDK_LIBS := libawt java.base:libjava java.base:libjvm, \
         LIBS := $(WAYLAND_LIBS), \
