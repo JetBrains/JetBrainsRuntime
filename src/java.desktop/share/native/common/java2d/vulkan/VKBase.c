@@ -662,6 +662,10 @@ VKGraphicsEnvironment* VKGE_graphics_environment() {
  */
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_vulkan_VKInstance_initNative(JNIEnv *env, jclass wlge, jlong nativePtr, jboolean verb, jint requestedDevice) {
+#ifdef DEBUG
+    // Init random for debug-related validation tricks.
+    srand(nativePtr);
+#endif
     verbose = verb;
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = vulkanLibOpen();
     if (vkGetInstanceProcAddr == NULL) {
