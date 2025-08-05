@@ -34,7 +34,7 @@ import sun.awt.PeerEvent;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.datatransfer.DataTransferer;
-import sun.awt.wl.WLDisplay;
+import sun.java2d.vulkan.VKInstance;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
@@ -141,7 +141,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     static {
         if (!GraphicsEnvironment.isHeadless()) {
             keyboard = new WLKeyboard();
-            initIDs(WLDisplay.getInstance().getDisplayPtr());
+            long display = WLDisplay.getInstance().getDisplayPtr();
+            VKInstance.init(display);
+            initIDs(display);
         }
         initialized = true;
     }
