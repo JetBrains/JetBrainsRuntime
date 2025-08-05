@@ -71,6 +71,10 @@ typedef struct {
     VkExtensionProperties*  extensions;
     VkLayerProperties*      layers;
 
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    struct wl_display* waylandDisplay;
+#endif
+
     PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices;
     PFN_vkGetPhysicalDeviceFeatures2 vkGetPhysicalDeviceFeatures2;
     PFN_vkGetPhysicalDeviceProperties2 vkGetPhysicalDeviceProperties2;
