@@ -44,5 +44,10 @@ void VKRenderer_ColorRender(VKImage *destImage, uint32_t rgba, VkBuffer vertexBu
 void VKRenderer_ColorRenderMaxRect(VKImage *destImage, uint32_t rgba);
 // fill ops
 void VKRenderer_FillRect(jint x, jint y, jint w, jint h);
+void VKRenderer_FillParallelogram(jint color, VKSDOps *dstOps,
+                                  jfloat x11, jfloat y11,
+                                  jfloat dx21, jfloat dy21,
+                                  jfloat dx12, jfloat dy12);
+void VKRenderer_FillSpans(jint color, VKSDOps *dstOps, jint spanCount, jint *spans);
 
 #endif //VKRenderer_h_Included
