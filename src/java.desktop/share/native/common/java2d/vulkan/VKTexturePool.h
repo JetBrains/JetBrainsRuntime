@@ -45,13 +45,13 @@ jint VKTexturePoolHandle_GetRequestedHeight(VKTexturePoolHandle *handle);
 /* VKTexturePool API */
 typedef ATexturePool VKTexturePool;
 
-VKTexturePool* VKTexturePool_initWithDevice(VKLogicalDevice *device) ;
+VKTexturePool* VKTexturePool_InitWithDevice(VKDevice *device) ;
 
 void VKTexturePool_Dispose(VKTexturePool *pool);
 
-ATexturePoolLockWrapper* VKTexturePool_getLockWrapper(VKTexturePool *pool);
+ATexturePoolLockWrapper* VKTexturePool_GetLockWrapper(VKTexturePool *pool);
 
-VKTexturePoolHandle* VKTexturePool_getTexture(VKTexturePool *pool,
+VKTexturePoolHandle* VKTexturePool_GetTexture(VKTexturePool *pool,
                                         jint width,
                                         jint height,
                                         jlong format);
