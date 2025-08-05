@@ -65,6 +65,8 @@
 
 static VKSDOps *dstOps = NULL;
 
+static VKLogicalDevice* currentDevice;
+
 // TODO move this property to special drawing context structure
 static int color = -1;
 
@@ -185,7 +187,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint h = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_RECT(%d, %d, %d, %d)", x, y, w, h);
-                VKRenderer_FillRect(x, y, w, h);
+                VKRenderer_FillRect(currentDevice, x, y, w, h);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FILL_SPANS:
@@ -193,7 +195,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint count = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_SPANS");
-                VKRenderer_FillSpans(color, dstOps, count, (jint *)b);
+                VKRenderer_FillSpans(currentDevice, color, dstOps, count, (jint *)b);
                 SKIP_BYTES(b, count * BYTES_PER_SPAN);
             }
             break;
@@ -208,7 +210,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(%f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12);
-                VKRenderer_FillParallelogram(color, dstOps, x11, y11, dx21, dy21, dx12, dy12);
+                VKRenderer_FillParallelogram(currentDevice, color, dstOps, x11, y11, dx21, dy21, dx12, dy12);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM:
@@ -423,20 +425,21 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     "VKRenderQueue_flushBuffer: SET_SURFACES");
                 dstOps = (VKSDOps *) jlong_to_ptr(dst);
 
-                if (dstOps != NULL && dstOps->drawableType == VKSD_WINDOW && dstOps->bgColorUpdated) {
-                    VKWinSDOps *winDstOps = (VKWinSDOps *)dstOps;
-                    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
-                    VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
+                if (dstOps != NULL) {
+                    currentDevice = dstOps->device;
+                    if (dstOps->drawableType == VKSD_WINDOW && dstOps->bgColorUpdated) {
+                        VKWinSDOps *winDstOps = (VKWinSDOps *)dstOps;
 
-                    ge->vkWaitForFences(logicalDevice->device, 1, &logicalDevice->inFlightFence, VK_TRUE, UINT64_MAX);
-                    ge->vkResetFences(logicalDevice->device, 1, &logicalDevice->inFlightFence);
+                        currentDevice->vkWaitForFences(currentDevice->device, 1, &currentDevice->inFlightFence, VK_TRUE, UINT64_MAX);
+                        currentDevice->vkResetFences(currentDevice->device, 1, &currentDevice->inFlightFence);
 
-                    ge->vkResetCommandBuffer(logicalDevice->commandBuffer, 0);
+                        currentDevice->vkResetCommandBuffer(currentDevice->commandBuffer, 0);
 
-                    VKRenderer_BeginRendering();
+                        VKRenderer_BeginRendering(currentDevice);
 
-                    VKRenderer_ColorRenderMaxRect(winDstOps->vksdOps.image, winDstOps->vksdOps.bgColor);
-                    VKRenderer_EndRendering(VK_FALSE, VK_FALSE);
+                        VKRenderer_ColorRenderMaxRect(currentDevice, winDstOps->vksdOps.image, winDstOps->vksdOps.bgColor);
+                        VKRenderer_EndRendering(currentDevice, VK_FALSE, VK_FALSE);
+                    }
                 }
             }
             break;
@@ -646,31 +649,30 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
         }
     }
 
-    if (dstOps != NULL && dstOps->drawableType == VKSD_WINDOW) {
+    if (dstOps != NULL && dstOps->drawableType == VKSD_WINDOW && currentDevice != NULL) {
         VKWinSDOps *winDstOps = (VKWinSDOps *)dstOps;
-        VKGraphicsEnvironment* ge = VKGE_graphics_environment();
-        VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
 
-        ge->vkWaitForFences(logicalDevice->device, 1, &logicalDevice->inFlightFence, VK_TRUE, UINT64_MAX);
-        ge->vkResetFences(logicalDevice->device, 1, &logicalDevice->inFlightFence);
+        currentDevice->vkWaitForFences(currentDevice->device, 1, &currentDevice->inFlightFence, VK_TRUE, UINT64_MAX);
+        currentDevice->vkResetFences(currentDevice->device, 1, &currentDevice->inFlightFence);
 
         uint32_t imageIndex;
-        ge->vkAcquireNextImageKHR(logicalDevice->device, winDstOps->swapchainKhr, UINT64_MAX,
-                                  logicalDevice->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+        currentDevice->vkAcquireNextImageKHR(currentDevice->device, winDstOps->swapchainKhr, UINT64_MAX,
+                                             currentDevice->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
-        ge->vkResetCommandBuffer(logicalDevice->commandBuffer, 0);
+        currentDevice->vkResetCommandBuffer(currentDevice->commandBuffer, 0);
 
-        VKRenderer_BeginRendering();
+        VKRenderer_BeginRendering(currentDevice);
 
         VKRenderer_TextureRender(
+                currentDevice,
                 &winDstOps->swapChainImages[imageIndex],
                 winDstOps->vksdOps.image,
-                logicalDevice->blitVertexBuffer->buffer, 4
+                currentDevice->blitVertexBuffer->buffer, 4
         );
 
-        VKRenderer_EndRendering(VK_TRUE, VK_TRUE);
+        VKRenderer_EndRendering(currentDevice, VK_TRUE, VK_TRUE);
 
-        VkSemaphore signalSemaphores[] = {logicalDevice->renderFinishedSemaphore};
+        VkSemaphore signalSemaphores[] = {currentDevice->renderFinishedSemaphore};
 
         VkSwapchainKHR swapChains[] = {winDstOps->swapchainKhr};
         VkPresentInfoKHR presentInfo = {
@@ -682,7 +684,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 .pImageIndices = &imageIndex
         };
 
-        ge->vkQueuePresentKHR(logicalDevice->queue, &presentInfo);
+        currentDevice->vkQueuePresentKHR(currentDevice->queue, &presentInfo);
 
     }
 }
