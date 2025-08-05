@@ -53,11 +53,11 @@ typedef struct {
 
 typedef struct {
     float px, py;
-    float r, g, b, a;
-} VKCVertex;
+} VKVertex;
+
 
 VKVertexDescr VKVertex_GetTxVertexDescr();
-VKVertexDescr VKVertex_GetCVertexDescr();
+VKVertexDescr VKVertex_GetVertexDescr();
 
 
 
