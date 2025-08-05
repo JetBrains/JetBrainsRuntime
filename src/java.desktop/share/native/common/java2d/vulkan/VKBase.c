@@ -25,44 +25,25 @@
  */
 
 #include <dlfcn.h>
-#include <malloc.h>
 #include <string.h>
-#include <vulkan/vulkan.h>
-
-#include "jlong_md.h"
-#include "jvm_md.h"
-#include "jni_util.h"
-#include "CArrayUtil.h"
+#include "VKUtil.h"
 #include "VKBase.h"
-#include "VKVertex.h"
 #include "VKRenderer.h"
 #include "VKTexturePool.h"
-#include <Trace.h>
 
 #define VULKAN_DLL JNI_LIB_NAME("vulkan")
 #define VULKAN_1_DLL VERSIONED_JNI_LIB_NAME("vulkan", "1")
 static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 2, 0);
 
-
-#define MAX_ENABLED_LAYERS 5
-#define MAX_ENABLED_EXTENSIONS 5
 #define VALIDATION_LAYER_NAME "VK_LAYER_KHRONOS_validation"
-#define COUNT_OF(x) (sizeof(x)/sizeof(x[0]))
 
 static jboolean verbose;
 static VKGraphicsEnvironment* geInstance = NULL;
 static void* pVulkanLib = NULL;
-#define INCLUDE_BYTECODE
-#define SHADER_ENTRY(NAME, TYPE) static uint32_t NAME ## _ ## TYPE ## _data[] = {
-#define BYTECODE_END };
-#include "vulkan/shader_list.h"
-#undef INCLUDE_BYTECODE
-#undef SHADER_ENTRY
-#undef BYTECODE_END
 
 #define GET_VK_PROC_RET_FALSE_IF_ERR(GETPROCADDR, STRUCT, HANDLE, NAME) do {                   \
-    STRUCT->NAME = (PFN_ ## NAME) GETPROCADDR(HANDLE, #NAME);                                  \
-    if (STRUCT->NAME == NULL) {                                                                \
+    (STRUCT)->NAME = (PFN_ ## NAME) GETPROCADDR(HANDLE, #NAME);                                \
+    if ((STRUCT)->NAME == NULL) {                                                              \
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Required api is not supported. " #NAME " is missing.");\
         return JNI_FALSE;                                                                      \
     }                                                                                          \
@@ -74,23 +55,17 @@ static void vulkanLibClose() {
             ARRAY_FREE(geInstance->physicalDevices);
             if (geInstance->devices != NULL) {
                 for (uint32_t i = 0; i < ARRAY_SIZE(geInstance->devices); i++) {
-                    if (geInstance->devices[i].enabledExtensions != NULL) {
-                        free(geInstance->devices[i].enabledExtensions);
-                    }
-                    if (geInstance->devices[i].enabledLayers != NULL) {
-                        free(geInstance->devices[i].enabledLayers);
-                    }
-                    if (geInstance->devices[i].name != NULL) {
-                        free(geInstance->devices[i].name);
-                    }
-                    if (geInstance->devices[i].texturePool != NULL) {
-                        VKTexturePool_Dispose(geInstance->devices[i].texturePool);
-                    }
-                    if (geInstance->devices[i].vkDestroyDevice != NULL && geInstance->devices[i].handle != VK_NULL_HANDLE) {
-                        geInstance->devices[i].vkDestroyDevice(geInstance->devices[i].handle, NULL);
+                    VKDevice* device = &geInstance->devices[i];
+                    VKRenderer_Destroy(device->renderer);
+                    VKTexturePool_Dispose(device->texturePool);
+                    ARRAY_FREE(device->enabledExtensions);
+                    ARRAY_FREE(device->enabledLayers);
+                    free(device->name);
+                    if (device->vkDestroyDevice != NULL && device->handle != NULL) {
+                        device->vkDestroyDevice(device->handle, NULL);
                     }
                 }
-                free(geInstance->devices);
+                ARRAY_FREE(geInstance->devices);
             }
 
 #if defined(DEBUG)
@@ -118,7 +93,7 @@ static PFN_vkGetInstanceProcAddr vulkanLibOpen() {
             pVulkanLib = dlopen(VULKAN_1_DLL, RTLD_NOW);
         }
         if (pVulkanLib == NULL) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "Failed to load %s", VULKAN_DLL);
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Failed to load %s", VULKAN_DLL);
             return NULL;
         }
     }
@@ -126,7 +101,7 @@ static PFN_vkGetInstanceProcAddr vulkanLibOpen() {
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr) dlsym(pVulkanLib, "vkGetInstanceProcAddr");
     if (vkGetInstanceProcAddr == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
-                      "Failed to get proc address of vkGetInstanceProcAddr from %s", VULKAN_DLL);
+                      "Vulkan: Failed to get proc address of vkGetInstanceProcAddr from %s", VULKAN_DLL);
         vulkanLibClose();
         return NULL;
     }
@@ -168,7 +143,7 @@ static VkBool32 debugCallback(
     J2dRlsTraceLn(level, pCallbackData->pMessage);
 
     if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-        // raise(SIGABRT); TODO uncomment when all validation errors are fixed.
+        VK_FATAL_ERROR("Unhandled Vulkan validation error");
     }
     return VK_FALSE;
 }
@@ -186,10 +161,7 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
 
     uint32_t apiVersion = 0;
 
-    if (geInstance->vkEnumerateInstanceVersion(&apiVersion) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: unable to enumerate Vulkan instance version");
-        return JNI_FALSE;
-    }
+    VK_IF_ERROR(geInstance->vkEnumerateInstanceVersion(&apiVersion)) return JNI_FALSE;
 
     J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Available (%d.%d.%d)",
                   VK_API_VERSION_MAJOR(apiVersion),
@@ -206,30 +178,14 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
 
     uint32_t extensionsCount;
     // Get the number of extensions and layers
-    if (geInstance->vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, NULL) != VK_SUCCESS)
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceExtensionProperties fails");
-        return JNI_FALSE;
-    }
+    VK_IF_ERROR(geInstance->vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, NULL)) return JNI_FALSE;
     VkExtensionProperties extensions[extensionsCount];
-    if (geInstance->vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, extensions) != VK_SUCCESS)
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceExtensionProperties fails");
-        return JNI_FALSE;
-    }
+    VK_IF_ERROR(geInstance->vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, extensions)) return JNI_FALSE;
 
     uint32_t layersCount;
-    if (geInstance->vkEnumerateInstanceLayerProperties(&layersCount, NULL) != VK_SUCCESS)
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceLayerProperties fails");
-        return JNI_FALSE;
-    }
+    VK_IF_ERROR(geInstance->vkEnumerateInstanceLayerProperties(&layersCount, NULL)) return JNI_FALSE;
     VkLayerProperties layers[layersCount];
-    if (geInstance->vkEnumerateInstanceLayerProperties(&layersCount, layers) != VK_SUCCESS)
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: vkEnumerateInstanceLayerProperties fails");
-        return JNI_FALSE;
-    }
+    VK_IF_ERROR(geInstance->vkEnumerateInstanceLayerProperties(&layersCount, layers)) return JNI_FALSE;
 
     J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported instance layers:");
     for (uint32_t i = 0; i < layersCount; i++) {
@@ -278,7 +234,7 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
 
     VkValidationFeaturesEXT features = {};
     features.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-    features.enabledValidationFeatureCount = COUNT_OF(enables);
+    features.enabledValidationFeatureCount = SARRAY_COUNT_OF(enables);
     features.pEnabledValidationFeatures = enables;
 
     // Includes the validation features into the instance creation process
@@ -329,14 +285,12 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
             .ppEnabledExtensionNames = (const char *const *) enabledExtensions
     };
 
-    if (geInstance->vkCreateInstance(&instanceCreateInfo, NULL, &geInstance->vkInstance) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Failed to create Vulkan instance");
+    VK_IF_ERROR(geInstance->vkCreateInstance(&instanceCreateInfo, NULL, &geInstance->vkInstance)) {
         ARRAY_FREE(enabledLayers);
         ARRAY_FREE(enabledExtensions);
         return JNI_FALSE;
-    } else {
-        J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Instance Created");
     }
+    J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Instance Created");
     ARRAY_FREE(enabledLayers);
     ARRAY_FREE(enabledExtensions);
 
@@ -356,6 +310,7 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
     INSTANCE_PROC(vkEnumerateDeviceLayerProperties);
     INSTANCE_PROC(vkEnumerateDeviceExtensionProperties);
     INSTANCE_PROC(vkCreateDevice);
+    INSTANCE_PROC(vkDestroySurfaceKHR);
     INSTANCE_PROC(vkGetDeviceProcAddr);
 
     // Create debug messenger
@@ -364,6 +319,7 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
     INSTANCE_PROC(vkDestroyDebugUtilsMessengerEXT);
     if (pNext) {
         VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
                 .flags =           0,
                 .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
                                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
@@ -374,10 +330,8 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
                                    VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
                 .pfnUserCallback = &debugCallback
         };
-        if (geInstance->vkCreateDebugUtilsMessengerEXT(geInstance->vkInstance, &debugUtilsMessengerCreateInfo,
-                                                       NULL, &geInstance->debugMessenger) != VK_SUCCESS) {
-            J2dRlsTraceLn(J2D_TRACE_WARNING, "Vulkan: Failed to create debug messenger");
-        }
+        VK_IF_ERROR(geInstance->vkCreateDebugUtilsMessengerEXT(geInstance->vkInstance, &debugUtilsMessengerCreateInfo,
+                                                            NULL, &geInstance->debugMessenger)) {}
     }
 
 #endif
@@ -387,13 +341,8 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
 
 static jboolean VK_FindDevices() {
     uint32_t physicalDevicesCount;
-    if (geInstance->vkEnumeratePhysicalDevices(geInstance->vkInstance,
-                                               &physicalDevicesCount,
-                                               NULL) != VK_SUCCESS)
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: vkEnumeratePhysicalDevices fails");
-        return JNI_FALSE;
-    }
+    VK_IF_ERROR(geInstance->vkEnumeratePhysicalDevices(geInstance->vkInstance,
+                                                    &physicalDevicesCount, NULL)) return JNI_FALSE;
 
     if (physicalDevicesCount == 0) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Failed to find GPUs with Vulkan support");
@@ -402,26 +351,12 @@ static jboolean VK_FindDevices() {
         J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Found %d physical devices:", physicalDevicesCount);
     }
 
-    geInstance->physicalDevices = ARRAY_ALLOC(VkPhysicalDevice, physicalDevicesCount);
-    if (geInstance->physicalDevices == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VkPhysicalDevice");
-        return JNI_FALSE;
-    }
+    ARRAY_RESIZE(geInstance->physicalDevices, physicalDevicesCount);
 
-    if (geInstance->vkEnumeratePhysicalDevices(
-            geInstance->vkInstance,
-            &physicalDevicesCount,
-            geInstance->physicalDevices) != VK_SUCCESS)
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: vkEnumeratePhysicalDevices fails");
-        return JNI_FALSE;
-    }
+    VK_IF_ERROR(geInstance->vkEnumeratePhysicalDevices(geInstance->vkInstance, &physicalDevicesCount,
+                                                    geInstance->physicalDevices)) return JNI_FALSE;
 
-    geInstance->devices = ARRAY_ALLOC(VKDevice, physicalDevicesCount);
-    if (geInstance->devices == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VKDevice");
-        return JNI_FALSE;
-    }
+    ARRAY_ENSURE_CAPACITY(geInstance->devices, physicalDevicesCount);
 
     for (uint32_t i = 0; i < physicalDevicesCount; i++) {
         VkPhysicalDeviceVulkan12Features device12Features = {
@@ -459,14 +394,7 @@ static jboolean VK_FindDevices() {
         uint32_t queueFamilyCount = 0;
         geInstance->vkGetPhysicalDeviceQueueFamilyProperties(
                 geInstance->physicalDevices[i], &queueFamilyCount, NULL);
-
-        VkQueueFamilyProperties *queueFamilies = (VkQueueFamilyProperties*)calloc(queueFamilyCount,
-                                                                                  sizeof(VkQueueFamilyProperties));
-        if (queueFamilies == NULL) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VkQueueFamilyProperties");
-            return JNI_FALSE;
-        }
-
+        VkQueueFamilyProperties queueFamilies[queueFamilyCount];
         geInstance->vkGetPhysicalDeviceQueueFamilyProperties(
                 geInstance->physicalDevices[i], &queueFamilyCount, queueFamilies);
         int64_t queueFamily = -1;
@@ -499,37 +427,28 @@ static jboolean VK_FindDevices() {
                 queueFamily = j;
             }
         }
-        free(queueFamilies);
         if (queueFamily == -1) {
             J2dRlsTraceLn(J2D_TRACE_INFO, "    --------------------- Suitable queue not found, skipped");
             continue;
         }
 
         uint32_t layerCount;
-        geInstance->vkEnumerateDeviceLayerProperties(geInstance->physicalDevices[i], &layerCount, NULL);
-        VkLayerProperties *layers = (VkLayerProperties *) calloc(layerCount, sizeof(VkLayerProperties));
-        if (layers == NULL) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VkLayerProperties");
-            return JNI_FALSE;
-        }
-
-        geInstance->vkEnumerateDeviceLayerProperties(geInstance->physicalDevices[i], &layerCount, layers);
+        VK_IF_ERROR(geInstance->vkEnumerateDeviceLayerProperties(geInstance->physicalDevices[i],
+                                                              &layerCount, NULL)) continue;
+        VkLayerProperties layers[layerCount];
+        VK_IF_ERROR(geInstance->vkEnumerateDeviceLayerProperties(geInstance->physicalDevices[i],
+                                                              &layerCount, layers)) continue;
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device layers:");
         for (uint32_t j = 0; j < layerCount; j++) {
             J2dRlsTraceLn(J2D_TRACE_VERBOSE, "        %s", (char *) layers[j].layerName);
         }
 
         uint32_t extensionCount;
-        geInstance->vkEnumerateDeviceExtensionProperties(geInstance->physicalDevices[i], NULL, &extensionCount, NULL);
-        VkExtensionProperties *extensions = (VkExtensionProperties *) calloc(
-                extensionCount, sizeof(VkExtensionProperties));
-        if (extensions == NULL) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate VkExtensionProperties");
-            return JNI_FALSE;
-        }
-
-        geInstance->vkEnumerateDeviceExtensionProperties(
-                geInstance->physicalDevices[i], NULL, &extensionCount, extensions);
+        VK_IF_ERROR(geInstance->vkEnumerateDeviceExtensionProperties(geInstance->physicalDevices[i],
+                                                                  NULL, &extensionCount, NULL)) continue;
+        VkExtensionProperties extensions[extensionCount];
+        VK_IF_ERROR(geInstance->vkEnumerateDeviceExtensionProperties(geInstance->physicalDevices[i],
+                                                                  NULL, &extensionCount, extensions)) continue;
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device extensions:");
         VkBool32 hasSwapChain = VK_FALSE;
         for (uint32_t j = 0; j < extensionCount; j++) {
@@ -537,30 +456,17 @@ static jboolean VK_FindDevices() {
             hasSwapChain = hasSwapChain ||
                            strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, extensions[j].extensionName) == 0;
         }
-        free(extensions);
-        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Found:");
-        if (hasSwapChain) {
-            J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    VK_KHR_SWAPCHAIN_EXTENSION_NAME");
-        }
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Vulkan: Found device extensions:");
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    " VK_KHR_SWAPCHAIN_EXTENSION_NAME " = %s", hasSwapChain ? "true" : "false");
 
         if (!hasSwapChain) {
             J2dRlsTraceLn(J2D_TRACE_INFO,
-                        "    --------------------- Required VK_KHR_SWAPCHAIN_EXTENSION_NAME not found, skipped");
+                        "    --------------------- Required " VK_KHR_SWAPCHAIN_EXTENSION_NAME " not found, skipped");
             continue;
         }
 
-        pchar* deviceEnabledLayers = ARRAY_ALLOC(pchar, MAX_ENABLED_LAYERS);
-        if (deviceEnabledLayers == NULL) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate deviceEnabledLayers array");
-            return JNI_FALSE;
-        }
-
-        pchar* deviceEnabledExtensions = ARRAY_ALLOC(pchar, MAX_ENABLED_EXTENSIONS);
-        if (deviceEnabledExtensions == NULL) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot allocate deviceEnabledExtensions array");
-            return JNI_FALSE;
-        }
-
+        pchar* deviceEnabledLayers = NULL;
+        pchar* deviceEnabledExtensions = NULL;
         ARRAY_PUSH_BACK(deviceEnabledExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
         // Validation layer
@@ -577,7 +483,6 @@ static jboolean VK_FindDevices() {
                 J2dRlsTraceLn(J2D_TRACE_INFO, "    %s device layer is not supported", VALIDATION_LAYER_NAME);
             }
 #endif
-        free(layers);
         char* deviceName = strdup(deviceProperties2.properties.deviceName);
         if (deviceName == NULL) {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot duplicate deviceName");
@@ -591,58 +496,14 @@ static jboolean VK_FindDevices() {
                 .physicalDevice = geInstance->physicalDevices[i],
                 .queueFamily = queueFamily,
                 .enabledLayers = deviceEnabledLayers,
-                .enabledExtensions = deviceEnabledExtensions,
+                .enabledExtensions = deviceEnabledExtensions
         }));
     }
     if (ARRAY_SIZE(geInstance->devices) == 0) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "No compatible device found");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: No compatible device found");
         return JNI_FALSE;
     }
     return JNI_TRUE;
-}
-static VkRenderPassCreateInfo* VK_GetGenericRenderPassInfo() {
-    static VkAttachmentDescription colorAttachment = {
-            .format = VK_FORMAT_B8G8R8A8_UNORM, //TODO: swapChain colorFormat
-            .samples = VK_SAMPLE_COUNT_1_BIT,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-    };
-
-    static VkAttachmentReference colorReference = {
-            .attachment = 0,
-            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-    };
-
-    static VkSubpassDescription subpassDescription = {
-            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-            .colorAttachmentCount = 1,
-            .pColorAttachments = &colorReference
-    };
-
-    // Subpass dependencies for layout transitions
-    static VkSubpassDependency dependency = {
-            .srcSubpass = VK_SUBPASS_EXTERNAL,
-            .dstSubpass = 0,
-            .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .srcAccessMask = 0,
-            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-    };
-
-    static VkRenderPassCreateInfo renderPassInfo = {
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-            .attachmentCount = 1,
-            .pAttachments = &colorAttachment,
-            .subpassCount = 1,
-            .pSubpasses = &subpassDescription,
-            .dependencyCount = 1,
-            .pDependencies = &dependency
-    };
-    return &renderPassInfo;
 }
 
 static jboolean VK_InitDevice(VKDevice* device) {
@@ -670,10 +531,15 @@ static jboolean VK_InitDevice(VKDevice* device) {
     };
 
     VkPhysicalDeviceFeatures features10 = { .logicOp = VK_TRUE };
+    VkPhysicalDeviceVulkan12Features features12 = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .timelineSemaphore = VK_TRUE
+    };
+    void *pNext = &features12;
 
     VkDeviceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext = NULL,
+        .pNext = pNext,
         .flags = 0,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueCreateInfo,
@@ -684,27 +550,33 @@ static jboolean VK_InitDevice(VKDevice* device) {
         .pEnabledFeatures = &features10
     };
 
-    if (geInstance->vkCreateDevice(device->physicalDevice, &createInfo, NULL, &device->handle) != VK_SUCCESS)
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create device:\n    %s", device->name);
-        vulkanLibClose();
+    VK_IF_ERROR(geInstance->vkCreateDevice(device->physicalDevice, &createInfo, NULL, &device->handle)) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot create device: %s", device->name);
         return JNI_FALSE;
     }
-    J2dRlsTraceLn(J2D_TRACE_INFO, "Logical device (%s) created", device->name);
+    J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Device created (%s)", device->name);
 
 #define DEVICE_PROC(NAME) GET_VK_PROC_RET_FALSE_IF_ERR(geInstance->vkGetDeviceProcAddr, device, device->handle, NAME)
     DEVICE_PROC(vkDestroyDevice);
     DEVICE_PROC(vkCreateShaderModule);
-    DEVICE_PROC(vkCreatePipelineLayout);
-    DEVICE_PROC(vkCreateGraphicsPipelines);
     DEVICE_PROC(vkDestroyShaderModule);
+    DEVICE_PROC(vkCreatePipelineLayout);
+    DEVICE_PROC(vkDestroyPipelineLayout);
+    DEVICE_PROC(vkCreateGraphicsPipelines);
+    DEVICE_PROC(vkDestroyPipeline);
     DEVICE_PROC(vkCreateSwapchainKHR);
+    DEVICE_PROC(vkDestroySwapchainKHR);
     DEVICE_PROC(vkGetSwapchainImagesKHR);
     DEVICE_PROC(vkCreateImageView);
     DEVICE_PROC(vkCreateFramebuffer);
     DEVICE_PROC(vkCreateCommandPool);
+    DEVICE_PROC(vkDestroyCommandPool);
     DEVICE_PROC(vkAllocateCommandBuffers);
+    DEVICE_PROC(vkFreeCommandBuffers);
     DEVICE_PROC(vkCreateSemaphore);
+    DEVICE_PROC(vkDestroySemaphore);
+    DEVICE_PROC(vkWaitSemaphores);
+    DEVICE_PROC(vkGetSemaphoreCounterValue);
     DEVICE_PROC(vkCreateFence);
     DEVICE_PROC(vkGetDeviceQueue);
     DEVICE_PROC(vkWaitForFences);
@@ -714,7 +586,11 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkQueueSubmit);
     DEVICE_PROC(vkQueuePresentKHR);
     DEVICE_PROC(vkBeginCommandBuffer);
+    DEVICE_PROC(vkCmdBlitImage);
+    DEVICE_PROC(vkCmdPipelineBarrier);
     DEVICE_PROC(vkCmdBeginRenderPass);
+    DEVICE_PROC(vkCmdExecuteCommands);
+    DEVICE_PROC(vkCmdClearAttachments);
     DEVICE_PROC(vkCmdBindPipeline);
     DEVICE_PROC(vkCmdSetViewport);
     DEVICE_PROC(vkCmdSetScissor);
@@ -723,9 +599,11 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkEndCommandBuffer);
     DEVICE_PROC(vkCreateImage);
     DEVICE_PROC(vkCreateSampler);
+    DEVICE_PROC(vkDestroySampler);
     DEVICE_PROC(vkAllocateMemory);
     DEVICE_PROC(vkBindImageMemory);
     DEVICE_PROC(vkCreateDescriptorSetLayout);
+    DEVICE_PROC(vkDestroyDescriptorSetLayout);
     DEVICE_PROC(vkUpdateDescriptorSets);
     DEVICE_PROC(vkCreateDescriptorPool);
     DEVICE_PROC(vkAllocateDescriptorSets);
@@ -738,6 +616,7 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkUnmapMemory);
     DEVICE_PROC(vkCmdBindVertexBuffers);
     DEVICE_PROC(vkCreateRenderPass);
+    DEVICE_PROC(vkDestroyRenderPass);
     DEVICE_PROC(vkDestroyBuffer);
     DEVICE_PROC(vkFreeMemory);
     DEVICE_PROC(vkDestroyImageView);
@@ -746,69 +625,24 @@ static jboolean VK_InitDevice(VKDevice* device) {
     DEVICE_PROC(vkFlushMappedMemoryRanges);
     DEVICE_PROC(vkCmdPushConstants);
 
-    // Create command pool
-    VkCommandPoolCreateInfo poolInfo = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-            .queueFamilyIndex = device->queueFamily
-    };
-    if (device->vkCreateCommandPool(device->handle, &poolInfo, NULL, &device->commandPool) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, "failed to create command pool!");
-        return JNI_FALSE;
-    }
-
-    // Create command buffer
-    VkCommandBufferAllocateInfo allocInfo = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = device->commandPool,
-            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1
-    };
-
-    if (device->vkAllocateCommandBuffers(device->handle, &allocInfo, &device->commandBuffer) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, "failed to allocate command buffers!");
-        return JNI_FALSE;
-    }
-
-    // Create semaphores
-    VkSemaphoreCreateInfo semaphoreInfo = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
-    };
-
-    VkFenceCreateInfo fenceInfo = {
-            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-            .flags = VK_FENCE_CREATE_SIGNALED_BIT
-    };
-
-    if (device->vkCreateSemaphore(device->handle, &semaphoreInfo, NULL, &device->imageAvailableSemaphore) != VK_SUCCESS ||
-        device->vkCreateSemaphore(device->handle, &semaphoreInfo, NULL, &device->renderFinishedSemaphore) != VK_SUCCESS ||
-        device->vkCreateFence(device->handle, &fenceInfo, NULL, &device->inFlightFence) != VK_SUCCESS)
-    {
-        J2dRlsTraceLn(J2D_TRACE_INFO, "failed to create semaphores!");
-        return JNI_FALSE;
-    }
-
     device->vkGetDeviceQueue(device->handle, device->queueFamily, 0, &device->queue);
     if (device->queue == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, "failed to get device queue!");
+        J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Failed to get device queue");
+        VK_UNHANDLED_ERROR();
         return JNI_FALSE;
     }
 
-    VKTxVertex* vertices = ARRAY_ALLOC(VKTxVertex, 4);
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex){-1.0f, -1.0f, 0.0f, 0.0f}));
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex){1.0f, -1.0f, 1.0f, 0.0f}));
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex){-1.0f, 1.0f, 0.0f, 1.0f}));
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex){1.0f, 1.0f, 1.0f, 1.0f}));
-    device->blitVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
-    if (!device->blitVertexBuffer) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create vertex buffer");
+    device->renderer = VKRenderer_Create(device);
+    if (!device->renderer) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot create renderer");
+        VK_UNHANDLED_ERROR();
         return JNI_FALSE;
     }
-    ARRAY_FREE(vertices);
 
     device->texturePool = VKTexturePool_InitWithDevice(device);
     if (!device->texturePool) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create texture pool");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot create texture pool");
+        VK_UNHANDLED_ERROR();
         return JNI_FALSE;
     }
 
@@ -859,18 +693,6 @@ Java_sun_java2d_vulkan_VKInstance_initNative(JNIEnv *env, jclass wlge, jlong nat
         return JNI_FALSE;
     }
 
-    if (geInstance->currentDevice->vkCreateRenderPass(
-            geInstance->currentDevice->handle, VK_GetGenericRenderPassInfo(),
-            NULL, &geInstance->currentDevice->renderPass) != VK_SUCCESS)
-    {
-        J2dRlsTrace(J2D_TRACE_INFO, "Cannot create render pass for device");
-        return JNI_FALSE;
-    }
-    
-    if (!VK_CreateLogicalDeviceRenderers(geInstance->currentDevice)) {
-        vulkanLibClose();
-        return JNI_FALSE;
-    }
     return JNI_TRUE;
 }
 
