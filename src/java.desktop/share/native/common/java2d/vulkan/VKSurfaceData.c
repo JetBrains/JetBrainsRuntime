@@ -26,6 +26,7 @@
 
 #ifndef HEADLESS
 
+#include <stdlib.h>
 #include "jlong.h"
 #include "SurfaceData.h"
 #include "VKSurfaceData.h"
