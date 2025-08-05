@@ -224,6 +224,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
       common/awt/debug \
       common/font \
       common/java2d/opengl \
+      common/java2d/vulkan \
       java.base:libjvm \
       #
 
@@ -248,6 +249,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
       OPTIMIZATION := LOW, \
       CFLAGS := -DHEADLESS=true $(CUPS_CFLAGS) $(FONTCONFIG_CFLAGS) \
           $(X_CFLAGS) $(DBUS_CFLAGS), \
+      CXXFLAGS := $(CXXFLAGS_JDKLIB), \
       EXTRA_HEADER_DIRS := $(LIBAWT_HEADLESS_EXTRA_HEADER_DIRS), \
       DISABLED_WARNINGS_gcc := unused-variable, \
       DISABLED_WARNINGS_clang := unused-variable, \
@@ -489,7 +491,7 @@ ifeq ($(call isTargetOs, macosx), true)
       #
 
   LIBAWT_LWAWT_EXCLUDE_FILES := fontpath.c awt_Font.c X11Color.c
-  LIBAWT_LWAWT_EXCLUDES := $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib \
+  LIBAWT_LWAWT_EXCLUDES := \
         $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/vulkan \
         $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib \
         #
