@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,17 +27,16 @@
 #ifndef WLVKSurfaceData_h_Included
 #define WLVKSurfaceData_h_Included
 
+#include "awt_p.h"
 #include "VKSurfaceData.h"
 
-#ifndef HEADLESS
+#ifdef HEADLESS
+#define WLVKSDOps void
+#else /* HEADLESS */
 
-class WLVKSurfaceData : public VKSwapchainSurfaceData {
-    wl_surface* _wl_surface;
-public:
-    WLVKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
-            : VKSwapchainSurfaceData(w, h, s, bgc), _wl_surface(nullptr) {}
-    void validate(wl_surface* wls);
-};
+typedef struct _WLVKSDOps {
+    struct wl_surface* wl_surface;
+} WLVKSDOps;
 
 #endif /* HEADLESS */
 
