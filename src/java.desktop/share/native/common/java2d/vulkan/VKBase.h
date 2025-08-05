@@ -33,6 +33,7 @@ struct VKLogicalDevice {
     VkPhysicalDevice    physicalDevice;
     VKRenderer*         fillTexturePoly;
     VKRenderer*         fillColorPoly;
+    VKRenderer*         drawColorPoly;
     VKRenderer*         fillMaxColorPoly;
     char*               name;
     uint32_t            queueFamily;
