@@ -27,62 +27,10 @@
 #ifndef VKSurfaceData_h_Included
 #define VKSurfaceData_h_Included
 
-#include "java_awt_image_AffineTransformOp.h"
-#include "sun_java2d_pipe_hw_AccelSurface.h"
-
+#include <mutex>
+#include "jni.h"
 #include "SurfaceData.h"
-#include "Trace.h"
-
-/**
- * The VKSDOps structure describes a native Vulkan surface and contains all
- * information pertaining to the native surface.  Some information about
- * the more important/different fields:
- *
- *     void *privOps;
- * Pointer to native-specific SurfaceData info, such as the
- * native Drawable handle and GraphicsConfig data.
- *
- *     jobject graphicsConfig;
- * Strong reference to the VKGraphicsConfig used by this VKSurfaceData.
- *
- *     jint drawableType;
- * The surface type; can be any one of the surface type constants defined
- * below (VK_WINDOW, VK_TEXTURE, etc).
- *
- *     jboolean isOpaque;
- * If true, the surface should be treated as being fully opaque.
- *
- *     jboolean needsInit;
- * If true, the surface requires some one-time initialization, which should
- * be performed after a context has been made current to the surface for
- * the first time.
- *
- *     jint x/yOffset
- * The offset in pixels of the Vulkan viewport origin from the lower-left
- * corner of the heavyweight drawable.
- *
- *     jint width/height;
- * The cached surface bounds.  For offscreen surface types (VK_RT_TEXTURE,
- * VK_TEXTURE, etc.) these values must remain constant.  Onscreen window
- * surfaces (VK_WINDOW, etc.) may have their
- * bounds changed in response to a programmatic or user-initiated event, so
- * these values represent the last known dimensions.  To determine the true
- * current bounds of this surface, query the native Drawable through the
- * privOps field.
- *
- */
-typedef struct _VKSDOps {
-    SurfaceDataOps               sdOps;
-    void                         *privOps;
-    jobject                      graphicsConfig;
-    jint                         drawableType;
-    jboolean                     isOpaque;
-    jboolean                     needsInit;
-    jint                         xOffset;
-    jint                         yOffset;
-    jint                         width;
-    jint                         height;
-  } VKSDOps;
+#include "VKBase.h"
 
 /**
  * These are shorthand names for the surface type constants defined in
@@ -92,4 +40,123 @@ typedef struct _VKSDOps {
 #define VKSD_WINDOW          sun_java2d_pipe_hw_AccelSurface_WINDOW
 #define VKSD_TEXTURE         sun_java2d_pipe_hw_AccelSurface_TEXTURE
 #define VKSD_RT_TEXTURE      sun_java2d_pipe_hw_AccelSurface_RT_TEXTURE
+
+class VKRecorder;
+
+struct VKSurfaceImage {
+    vk::Image       image;
+    vk::ImageView   view;
+    vk::Framebuffer framebuffer; // Only if dynamic rendering is off.
+};
+
+class VKSurfaceData : private SurfaceDataOps {
+    std::recursive_mutex   _mutex;
+    uint32_t               _width;
+    uint32_t               _height;
+    uint32_t               _scale; // TODO Is it needed there at all?
+    uint32_t               _bg_color;
+protected:
+    VKDevice*              _device;
+    vk::Format             _format;
+
+    vk::ImageLayout         _layout = vk::ImageLayout::eUndefined;
+    // We track any access and write access separately, as read-read access does not need synchronization.
+    vk::PipelineStageFlags _lastStage = vk::PipelineStageFlagBits::eTopOfPipe;
+    vk::PipelineStageFlags _lastWriteStage = vk::PipelineStageFlagBits::eTopOfPipe;
+    vk::AccessFlags        _lastAccess = {};
+    vk::AccessFlags        _lastWriteAccess = {};
+
+    /// Insert barrier if needed for given access and layout.
+    bool barrier(VKRecorder& recorder, vk::Image image,
+                 vk::PipelineStageFlags stage, vk::AccessFlags access, vk::ImageLayout layout);
+public:
+    VKSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc);
+    // No need to move, as object must only be created with "new".
+    VKSurfaceData(VKSurfaceData&&) = delete;
+    VKSurfaceData& operator=(VKSurfaceData&&) = delete;
+
+    void attachToJavaSurface(JNIEnv *env, jobject javaSurfaceData);
+
+    VKDevice& device() const {
+        return *_device;
+    }
+
+    vk::Format format() const {
+        return _format;
+    }
+
+    uint32_t width() const {
+        return _width;
+    }
+
+    uint32_t height() const {
+        return _height;
+    }
+
+    uint32_t scale() const {
+        return _scale;
+    }
+
+    uint32_t bg_color() const {
+        return _bg_color;
+    }
+
+    void set_bg_color(uint32_t bg_color) {
+        if (_bg_color != bg_color) {
+            _bg_color = bg_color;
+            // TODO now we need to repaint the surface???
+        }
+    }
+
+    virtual ~VKSurfaceData() = default;
+
+    virtual void revalidate(uint32_t w, uint32_t h, uint32_t s) {
+        _width = w;
+        _height = h;
+        _scale = s;
+    }
+
+    /// Prepare image for access (necessary barriers & layout transitions).
+    virtual VKSurfaceImage access(VKRecorder& recorder,
+                                  vk::PipelineStageFlags stage,
+                                  vk::AccessFlags access,
+                                  vk::ImageLayout layout) = 0;
+    /// Flush all pending changes to the surface, including screen presentation for on-screen surfaces.
+    virtual void flush(VKRecorder& recorder) = 0;
+};
+
+class VKSwapchainSurfaceData : public VKSurfaceData {
+    struct Image {
+        vk::Image             image;
+        vk::raii::ImageView   view;
+        vk::raii::Framebuffer framebuffer = nullptr; // Only if dynamic rendering is off.
+        vk::raii::Semaphore   semaphore = nullptr;
+    };
+
+    vk::raii::SurfaceKHR   _surface = nullptr;
+    vk::raii::SwapchainKHR _swapchain = nullptr;
+    std::vector<Image>     _images;
+    uint32_t               _currentImage = (uint32_t) -1;
+    vk::raii::Semaphore    _freeSemaphore = nullptr;
+
+protected:
+    void reset(VKDevice& device, vk::raii::SurfaceKHR surface) {
+        _images.clear();
+        _swapchain = nullptr;
+        _surface = std::move(surface);
+        _device = &device;
+    }
+public:
+    VKSwapchainSurfaceData(uint32_t w, uint32_t h, uint32_t s, uint32_t bgc)
+            : VKSurfaceData(w, h, s, bgc) {};
+
+    virtual void revalidate(uint32_t w, uint32_t h, uint32_t s);
+
+    virtual VKSurfaceImage access(VKRecorder& recorder,
+                                  vk::PipelineStageFlags stage,
+                                  vk::AccessFlags access,
+                                  vk::ImageLayout layout);
+    virtual void flush(VKRecorder& recorder);
+};
+
 #endif /* VKSurfaceData_h_Included */
