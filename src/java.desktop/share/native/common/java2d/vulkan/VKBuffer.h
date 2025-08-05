@@ -30,19 +30,28 @@
 #include "VKTypes.h"
 
 struct VKBuffer {
-    VkBuffer buffer;
-    VkDeviceMemory memory;
-    VkDeviceSize size;
+    VkBuffer handle;
+    // Buffer has no ownership over its memory.
+    // Provided memory, offset and size must only be used to flush memory writes.
+    // Allocation and freeing is done in pages.
+    VkMappedMemoryRange range;
+    // Only sequential writes and no reads from mapped memory!
+    void* data;
 };
 
 VkResult VKBuffer_FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
                                  VkMemoryPropertyFlags properties, uint32_t* pMemoryType);
 
-VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
-                          VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
-
-VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize bufferSize);
-
-void VKBuffer_free(VKDevice* device, VKBuffer* buffer);
+/**
+ * Create buffers, allocate a memory page and bind them together.
+ * 'pageSize' can be 0, meaning that page size is calculated based on buffer memory requirements.
+ * It returns allocated memory page, or VK_NULL_HANDLE on failure.
+ * 'bufferCount' is updated with actual number of created buffers.
+ * Created buffers are written in 'buffers'.
+ */
+VkDeviceMemory VKBuffer_CreateBuffers(VKDevice* device, VkBufferUsageFlags usageFlags,
+                                      VkMemoryPropertyFlags requiredMemoryProperties,
+                                      VkDeviceSize bufferSize, VkDeviceSize pageSize,
+                                      uint32_t* bufferCount, VKBuffer* buffers);
 
 #endif // VKBuffer_h_Included
