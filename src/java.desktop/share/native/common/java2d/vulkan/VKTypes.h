@@ -25,14 +25,29 @@
 #define VKTypes_h_Included
 #include <vulkan/vulkan.h>
 
-#define STRUCT(NAME) typedef struct NAME NAME
+/**
+ * Floating-point RGBA color with sRGB encoding.
+ */
+typedef union {
+    struct {
+        float r, g, b, a;
+    };
+    VkClearValue vkClearValue;
+} Color;
+
+typedef struct VKGraphicsEnvironment VKGraphicsEnvironment;
+typedef struct VKDevice VKDevice;
+typedef struct VKRenderer VKRenderer;
+typedef struct VKRenderPass VKRenderPass;
+typedef struct VKRenderingContext VKRenderingContext;
+typedef struct VKPipelineContext VKPipelineContext;
+typedef struct VKRenderPassContext VKRenderPassContext;
+typedef struct VKShaders VKShaders;
+typedef struct VKBuffer VKBuffer;
+typedef struct VKImage VKImage;
+typedef struct VKSDOps VKSDOps;
+typedef struct VKWinSDOps VKWinSDOps;
 
 typedef char* pchar;
-
-STRUCT(VKGraphicsEnvironment);
-STRUCT(VKDevice);
-STRUCT(VKRenderer);
-STRUCT(VKBuffer);
-STRUCT(VKImage);
 
 #endif //VKTypes_h_Included
