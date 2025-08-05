@@ -1,8 +1,37 @@
+/*
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
+import sun.awt.DisplayChangedListener;
+import sun.java2d.vulkan.WLVKGraphicsConfig;
 
 import java.awt.*;
+import java.util.ArrayList;
 
 /**
  * Corresponds to Wayland's output and is identified by its wlID and x, y coordinates
@@ -30,6 +59,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
      */
     private volatile int y; // only changes when the device gets invalidated
 
+    private final java.util.List<WLComponentPeer> peers = new ArrayList<>();
     private volatile WLGraphicsConfig config = null;
 
     private WLGraphicsDevice(int id, int x, int y) {
@@ -47,7 +77,9 @@ public class WLGraphicsDevice extends GraphicsDevice {
         if (config == null || config.differsFrom(width, height, scale)) {
             // It is necessary to create a new object whenever config changes as its
             // identity is used to detect changes in scale, among other things.
-            config = new WLGraphicsConfig(this, width, height, scale);
+            config = WLGraphicsEnvironment.isVulkanEnabled() ?
+                    WLVKGraphicsConfig.getConfig(this, width, height, scale) :
+                    new WLGraphicsConfig(this, width, height, scale);
         }
     }
 
