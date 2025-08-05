@@ -27,50 +27,60 @@
 #ifndef VKRenderer_h_Included
 #define VKRenderer_h_Included
 
-#include "j2d_md.h"
-#include "VKBase.h"
-#include "VKBuffer.h"
-#include "VKImage.h"
-#include "VKSurfaceData.h"
+#include "VKTypes.h"
+#include "VKPipelines.h"
 
-struct VKRenderer {
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorPool    descriptorPool;
-    VkDescriptorSet     descriptorSets;
-    VkPipelineLayout    pipelineLayout;
-    VkPipeline          graphicsPipeline;
-    VkPrimitiveTopology primitiveTopology;
+struct VKRenderingContext {
+    VKSDOps* surface;
+    Color color;
 };
 
-VKRenderer *VKRenderer_CreateRenderColorPoly(VKDevice* device, VkPrimitiveTopology primitiveTopology, VkPolygonMode polygonMode);
+VKRenderer* VKRenderer_Create(VKDevice* device);
 
-VKRenderer* VKRenderer_CreateFillTexturePoly(VKDevice* device);
+void VKRenderer_Destroy(VKRenderer* renderer);
 
-VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKDevice* device);
+/**
+ * Wait for the latest checkpoint to be reached by GPU.
+ * This only affects commands tracked by the timeline semaphore,
+ * unlike vkDeviceWaitIdle / vkQueueWaitIdle.
+ */
+void VKRenderer_Sync(VKRenderer* renderer);
 
-void VKRenderer_BeginRendering(VKDevice* device);
+/**
+ * Submit pending command buffer, completed render passes & presentation requests.
+ */
+void VKRenderer_Flush(VKRenderer* renderer);
 
-void VKRenderer_EndRendering(VKDevice* device,
-                             VkBool32 notifyRenderFinish, VkBool32 waitForDisplayImage);
+/**
+ * Cancel render pass of the surface, release all associated resources and deallocate render pass.
+ */
+void VKRenderer_ReleaseRenderPass(VKSDOps* surface);
 
-void VKRenderer_TextureRender(VKDevice* device,
+/**
+ * Flush pending render pass and queue surface for presentation (if applicable).
+ */
+void VKRenderer_FlushSurface(VKSDOps* surface);
+
+/**
+ * Request size for the surface. It has no effect, if it is already of the same size.
+ * Actual resize will be performed later, before starting a new frame.
+ */
+void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent);
+
+// Blit ops.
+
+void VKRenderer_TextureRender(VKRenderingContext* context,
                               VKImage *destImage, VKImage *srcImage,
                               VkBuffer vertexBuffer, uint32_t vertexNum);
 
-void VKRenderer_ColorRender(VKDevice* device,
-                            VKImage *destImage,
-                            VKRenderer *renderer, uint32_t rgba, VkBuffer vertexBuffer, uint32_t vertexNum);
-
-void VKRenderer_ColorRenderMaxRect(VKDevice* device, VKImage *destImage, uint32_t rgba);
 // fill ops
-void VKRenderer_FillRect(VKDevice* device, jint x, jint y, jint w, jint h);
-void VKRenderer_RenderParallelogram(VKDevice* device,
-                                    VKRenderer* renderer, jint color, VKSDOps *dstOps,
+void VKRenderer_FillRect(VKRenderingContext* context, jint x, jint y, jint w, jint h);
+
+void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipeline,
                                     jfloat x11, jfloat y11,
                                     jfloat dx21, jfloat dy21,
                                     jfloat dx12, jfloat dy12);
 
-void VKRenderer_FillSpans(VKDevice* device, jint color, VKSDOps *dstOps, jint spanCount, jint *spans);
+void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spans);
 
-jboolean VK_CreateLogicalDeviceRenderers(VKDevice* device);
 #endif //VKRenderer_h_Included
