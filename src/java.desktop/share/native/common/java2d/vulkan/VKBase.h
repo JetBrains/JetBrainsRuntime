@@ -26,23 +26,9 @@
 
 #ifndef VKBase_h_Included
 #define VKBase_h_Included
-#include <vulkan/vulkan.h>
-#include "CArrayUtil.h"
-#include "jni.h"
-#include "VKBuffer.h"
+#include "VKTypes.h"
 
-typedef char* pchar;
-
-typedef struct {
-    VkRenderPass        renderPass;
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorPool    descriptorPool;
-    VkDescriptorSet     descriptorSets;
-    VkPipelineLayout    pipelineLayout;
-    VkPipeline          graphicsPipeline;
-} VKRenderer;
-
-typedef struct {
+struct VKLogicalDevice {
     VkDevice            device;
     VkPhysicalDevice    physicalDevice;
     VKRenderer*         fillTexturePoly;
@@ -60,38 +46,12 @@ typedef struct {
     VkQueue             queue;
     VkSampler           textureSampler;
     VKBuffer*           blitVertexBuffer;
-} VKLogicalDevice;
 
-
-typedef struct {
-    VkInstance              vkInstance;
-    VkPhysicalDevice*       physicalDevices;
-    VKLogicalDevice*        devices;
-    uint32_t                enabledDeviceNum;
-    VkExtensionProperties*  extensions;
-    VkLayerProperties*      layers;
-
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    struct wl_display* waylandDisplay;
-#endif
-
-    PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices;
-    PFN_vkGetPhysicalDeviceFeatures2 vkGetPhysicalDeviceFeatures2;
-    PFN_vkGetPhysicalDeviceProperties2 vkGetPhysicalDeviceProperties2;
-    PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties;
-    PFN_vkEnumerateDeviceLayerProperties vkEnumerateDeviceLayerProperties;
-    PFN_vkEnumerateDeviceExtensionProperties vkEnumerateDeviceExtensionProperties;
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR vkGetPhysicalDeviceWaylandPresentationSupportKHR;
-    PFN_vkCreateWaylandSurfaceKHR vkCreateWaylandSurfaceKHR;
-#endif
+    PFN_vkDestroyDevice vkDestroyDevice;
     PFN_vkCreateShaderModule vkCreateShaderModule;
     PFN_vkCreatePipelineLayout vkCreatePipelineLayout;
     PFN_vkCreateGraphicsPipelines vkCreateGraphicsPipelines;
     PFN_vkDestroyShaderModule vkDestroyShaderModule;
-    PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
-    PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR;
-    PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
     PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR;
     PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR;
     PFN_vkCreateImageView vkCreateImageView;
@@ -118,7 +78,6 @@ typedef struct {
     PFN_vkCreateImage vkCreateImage;
     PFN_vkCreateSampler vkCreateSampler;
     PFN_vkAllocateMemory vkAllocateMemory;
-    PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties;
     PFN_vkBindImageMemory vkBindImageMemory;
     PFN_vkCreateDescriptorSetLayout vkCreateDescriptorSetLayout;
     PFN_vkUpdateDescriptorSets vkUpdateDescriptorSets;
@@ -140,14 +99,48 @@ typedef struct {
     PFN_vkDestroyFramebuffer vkDestroyFramebuffer;
     PFN_vkFlushMappedMemoryRanges vkFlushMappedMemoryRanges;
     PFN_vkCmdPushConstants vkCmdPushConstants;
-} VKGraphicsEnvironment;
+};
 
 
-jboolean VK_FindDevices();
-jboolean VK_CreateLogicalDevice(jint requestedDeviceNumber);
-jboolean VK_CreateLogicalDeviceRenderers();
+struct VKGraphicsEnvironment {
+    VkInstance              vkInstance;
+    VkPhysicalDevice*       physicalDevices;
+    VKLogicalDevice*        devices;
+    VKLogicalDevice*        currentDevice;
+
+#if defined(DEBUG)
+    VkDebugUtilsMessengerEXT debugMessenger;
+
+    PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT;
+    PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
+#endif
+
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    struct wl_display* waylandDisplay;
+
+    PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR vkGetPhysicalDeviceWaylandPresentationSupportKHR;
+    PFN_vkCreateWaylandSurfaceKHR vkCreateWaylandSurfaceKHR;
+#endif
+
+    PFN_vkEnumerateInstanceVersion vkEnumerateInstanceVersion;
+    PFN_vkEnumerateInstanceExtensionProperties vkEnumerateInstanceExtensionProperties;
+    PFN_vkEnumerateInstanceLayerProperties vkEnumerateInstanceLayerProperties;
+    PFN_vkCreateInstance vkCreateInstance;
+    PFN_vkDestroyInstance vkDestroyInstance;
+    PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices;
+    PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties;
+    PFN_vkGetPhysicalDeviceFeatures2 vkGetPhysicalDeviceFeatures2;
+    PFN_vkGetPhysicalDeviceProperties2 vkGetPhysicalDeviceProperties2;
+    PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties;
+    PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
+    PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR;
+    PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
+    PFN_vkEnumerateDeviceLayerProperties vkEnumerateDeviceLayerProperties;
+    PFN_vkEnumerateDeviceExtensionProperties vkEnumerateDeviceExtensionProperties;
+    PFN_vkCreateDevice vkCreateDevice;
+    PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr;
+};
 
 VKGraphicsEnvironment* VKGE_graphics_environment();
-void* vulkanLibProc(VkInstance vkInstance, char* procName);
 
 #endif //VKBase_h_Included
