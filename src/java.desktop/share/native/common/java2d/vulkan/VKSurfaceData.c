@@ -34,13 +34,13 @@
 #include "VKRenderer.h"
 #include <Trace.h>
 
-void VKSD_InitImageSurface(VKLogicalDevice* logicalDevice, VKSDOps *vksdo) {
+void VKSD_InitImageSurface(VKDevice* device, VKSDOps *vksdo) {
     if (vksdo->image != VK_NULL_HANDLE) {
         return;
     }
 
-    vksdo->device = logicalDevice;
-    vksdo->image = VKImage_Create(logicalDevice, vksdo->width, vksdo->height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR,
+    vksdo->device = device;
+    vksdo->image = VKImage_Create(device, vksdo->width, vksdo->height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR,
                                   VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     if (!vksdo->image)
@@ -49,15 +49,15 @@ void VKSD_InitImageSurface(VKLogicalDevice* logicalDevice, VKSDOps *vksdo) {
         return;
     }
 
-    if (!VKImage_CreateFramebuffer(logicalDevice, vksdo->image, logicalDevice->renderPass)) {
+    if (!VKImage_CreateFramebuffer(device, vksdo->image, device->renderPass)) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create framebuffer for window surface");
         return;
     }
 }
 
-void VKSD_InitWindowSurface(VKLogicalDevice* logicalDevice, VKWinSDOps *vkwinsdo) {
+void VKSD_InitWindowSurface(VKDevice* device, VKWinSDOps *vkwinsdo) {
     VKGraphicsEnvironment* ge = VKGE_graphics_environment();
-    VkPhysicalDevice physicalDevice = logicalDevice->physicalDevice;
+    VkPhysicalDevice physicalDevice = device->physicalDevice;
 
     if (vkwinsdo->swapchainKhr == VK_NULL_HANDLE) {
         ge->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, vkwinsdo->surface, &vkwinsdo->capabilitiesKhr);
@@ -109,14 +109,14 @@ void VKSD_InitWindowSurface(VKLogicalDevice* logicalDevice, VKWinSDOps *vkwinsdo
                 .clipped = VK_TRUE
         };
 
-        if (logicalDevice->vkCreateSwapchainKHR(logicalDevice->device, &createInfoKhr, NULL, &vkwinsdo->swapchainKhr) != VK_SUCCESS) {
+        if (device->vkCreateSwapchainKHR(device->handle, &createInfoKhr, NULL, &vkwinsdo->swapchainKhr) != VK_SUCCESS) {
             J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create swapchain\n");
             return;
         }
 
         vkwinsdo->swapChainImages = VKImage_CreateImageArrayFromSwapChain(
-                                        logicalDevice, vkwinsdo->swapchainKhr,
-                                        logicalDevice->renderPass,
+                                        device, vkwinsdo->swapchainKhr,
+                                        device->renderPass,
                                         vkwinsdo->formatsKhr[0].format, extent);
 
         if (!vkwinsdo->swapChainImages) {
