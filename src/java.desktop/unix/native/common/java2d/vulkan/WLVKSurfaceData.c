@@ -83,7 +83,7 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_assignSurface(JNIEnv *env, jobject wsd, j
         return;
     }
     VKGraphicsEnvironment* ge = VKGE_graphics_environment();
-    VKLogicalDevice* logicalDevice = ge->currentDevice;
+    VKDevice* device = ge->currentDevice;
     wlvksdo->wl_surface = (struct wl_surface*)jlong_to_ptr(wlSurfacePtr);
 
     if (vkwinsdo->surface == VK_NULL_HANDLE) {
@@ -101,8 +101,8 @@ Java_sun_java2d_vulkan_WLVKSurfaceData_assignSurface(JNIEnv *env, jobject wsd, j
         }
     }
 
-    VKSD_InitImageSurface(logicalDevice, &vkwinsdo->vksdOps);
-    VKSD_InitWindowSurface(logicalDevice, vkwinsdo);
+    VKSD_InitImageSurface(device, &vkwinsdo->vksdOps);
+    VKSD_InitWindowSurface(device, vkwinsdo);
     J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKSurfaceData_assignSurface: Created WaylandSurfaceKHR");
 
     J2dTraceLn(J2D_TRACE_INFO, "WLVKSurfaceData_assignSurface wl_surface(%p) wl_display(%p)", wlvksdo->wl_surface, wl_display);
