@@ -24,12 +24,19 @@
  * questions.
  */
 
-// These are stubs in case we were built with Vulkan disabled.
-#ifndef VULKAN_ENABLED
-#include "jni.h"
+#ifndef VKPipeline_h_Included
+#define VKPipeline_h_Included
 
-jboolean VK_Init() {
-    return 0;
-}
+#include "VKShader.h"
 
-#endif
+struct VKPipelines {
+    VKShaders shaders;
+    // TODO we need a pool of pipelines and (optionally) render passes for different formats.
+    vk::raii::RenderPass renderPass = nullptr; // Render pass is only needed if dynamic rendering is off.
+    vk::raii::PipelineLayout testLayout = nullptr;
+    vk::raii::Pipeline test = nullptr;
+
+    void init(const vk::raii::Device& device, bool dynamicRendering);
+};
+
+#endif //VKPipeline_h_Included
