@@ -24,115 +24,50 @@
  * questions.
  */
 
-#include <wayland-client.h>
-#include <stdlib.h>
-#include <string.h>
-#include "jni.h"
 #include <jni_util.h>
 #include <Trace.h>
-#include <SurfaceData.h>
 #include "VKBase.h"
+#include "VKUtil.h"
 #include "VKSurfaceData.h"
-#include "WLVKSurfaceData.h"
 
-extern struct wl_display *wl_display;
-
-JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_initOps
-(JNIEnv *env, jobject vksd, jint width, jint height, jint scale, jint backgroundRGB) {
-#ifndef HEADLESS
-    J2dTrace(J2D_TRACE_INFO, "Create WLVKSurfaceData with size %d x %d and scale %d\n", width, height, scale);
-    VKWinSDOps *vkwinsdo = (VKWinSDOps *)SurfaceData_InitOps(env, vksd, sizeof(VKWinSDOps));
-    vkwinsdo->vksdOps.drawableType = VKSD_WINDOW;
-
-    if (vkwinsdo == NULL) {
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_initOps(JNIEnv *env, jobject vksd, jint backgroundRGB) {
+    J2dTraceLn(J2D_TRACE_VERBOSE, "WLVKSurfaceData_initOps(%p)", vksd);
+    VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_InitOps(env, vksd, sizeof(VKWinSDOps));
+    if (sd == NULL) {
         JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
         return;
     }
-
-    WLVKSDOps *wlvksdo = (WLVKSDOps *)malloc(sizeof(WLVKSDOps));
-
-    if (wlvksdo == NULL) {
-        JNU_ThrowOutOfMemoryError(env, "creating native WLVK ops");
-        return;
-    }
-
-    vkwinsdo->privOps = wlvksdo;
-    wlvksdo->wl_surface = NULL;
-    width /= scale; // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
-    height /= scale; // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
-    vkwinsdo->vksdOps.width = width;
-    vkwinsdo->vksdOps.height = height;
-    vkwinsdo->vksdOps.scale = scale;
-    vkwinsdo->vksdOps.bgColor = backgroundRGB;
-    vkwinsdo->vksdOps.bgColorUpdated = VK_TRUE;
-#endif /* !HEADLESS */
+    sd->vksdOps.drawableType = VKSD_WINDOW;
+    sd->vksdOps.background = VKUtil_DecodeJavaColor(backgroundRGB);
+    VKSD_ResetSurface(&sd->vksdOps);
 }
 
-JNIEXPORT void JNICALL
-Java_sun_java2d_vulkan_WLVKSurfaceData_assignSurface(JNIEnv *env, jobject wsd, jlong wlSurfacePtr)
-{
-#ifndef HEADLESS
-    VKWinSDOps* vkwinsdo = (VKWinSDOps *)SurfaceData_GetOps(env, wsd);
-    if (vkwinsdo == NULL) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "WLVKSurfaceData_assignSurface: VKSDOps is NULL");
-        return;
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_assignWlSurface(JNIEnv *env, jobject vksd, jlong wlSurfacePtr) {
+    J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKSurfaceData_assignWlSurface(%p): wl_surface=%p", (void*)vksd, wlSurfacePtr);
+    VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);
+    if (sd == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "WLVKSurfaceData_assignWlSurface(%p): VKWinSDOps is NULL", vksd);
+        VK_UNHANDLED_ERROR();
     }
-    WLVKSDOps* wlvksdo = (WLVKSDOps *)vkwinsdo->privOps;
-    if (wlvksdo == NULL) {
-        J2dRlsTrace(J2D_TRACE_ERROR, "WLVKSurfaceData_assignSurface: WLVKSDOps is NULL");
-        return;
+
+    if (sd->surface != VK_NULL_HANDLE) {
+        VKSD_ResetSurface(&sd->vksdOps);
+        J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKSurfaceData_assignWlSurface(%p): surface reset", vksd);
     }
-    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
-    VKDevice* device = ge->currentDevice;
-    wlvksdo->wl_surface = (struct wl_surface*)jlong_to_ptr(wlSurfacePtr);
 
-    if (vkwinsdo->surface == VK_NULL_HANDLE) {
-        VkWaylandSurfaceCreateInfoKHR surfaceCreateInfo = {};
-        surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
-        surfaceCreateInfo.display = wl_display;
-        surfaceCreateInfo.surface = wlvksdo->wl_surface;
+    struct wl_surface* wl_surface = (struct wl_surface*)jlong_to_ptr(wlSurfacePtr);
 
-        if (ge->vkCreateWaylandSurfaceKHR(ge->vkInstance,
-                                          &surfaceCreateInfo,
-                                          NULL,
-                                          &vkwinsdo->surface) != VK_SUCCESS) {
-            J2dRlsTrace(J2D_TRACE_ERROR, "WLVKSurfaceData_assignSurface: WLVKSDOps is NULL");
-            return;
+    if (wl_surface != NULL) {
+        VKGraphicsEnvironment* ge = VKGE_graphics_environment();
+        VkWaylandSurfaceCreateInfoKHR surfaceCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
+                .display = ge->waylandDisplay,
+                .surface = wl_surface
+        };
+        VK_IF_ERROR(ge->vkCreateWaylandSurfaceKHR(ge->vkInstance, &surfaceCreateInfo, NULL, &sd->surface)) {
+            VK_UNHANDLED_ERROR();
         }
+        J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKSurfaceData_assignWlSurface(%p): surface created", vksd);
+        // Swapchain will be created later after CONFIGURE_SURFACE.
     }
-
-    VKSD_InitImageSurface(device, &vkwinsdo->vksdOps);
-    VKSD_InitWindowSurface(device, vkwinsdo);
-    J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKSurfaceData_assignSurface: Created WaylandSurfaceKHR");
-
-    J2dTraceLn(J2D_TRACE_INFO, "WLVKSurfaceData_assignSurface wl_surface(%p) wl_display(%p)", wlvksdo->wl_surface, wl_display);
-
-#endif /* !HEADLESS */
-}
-
-JNIEXPORT void JNICALL
-Java_sun_java2d_vulkan_WLVKSurfaceData_flush(JNIEnv *env, jobject wsd)
-{
-#ifndef HEADLESS
-    J2dTrace(J2D_TRACE_INFO, "WLVKSurfaceData_flush\n");
-// TODO?
-#endif /* !HEADLESS */
-}
-
-JNIEXPORT void JNICALL
-Java_sun_java2d_vulkan_WLVKSurfaceData_revalidate(JNIEnv *env, jobject wsd,
-        jint width, jint height, jint scale)
-{
-    width /= scale; // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
-    height /= scale; // TODO This is incorrect, but we'll deal with this later, we probably need to do something on Wayland side for app-controlled scaling
-#ifndef HEADLESS
-    VKSDOps* vksdo = (VKSDOps*)SurfaceData_GetOps(env, wsd);
-    if (vksdo == NULL) {
-        return;
-    }
-    J2dTrace(J2D_TRACE_INFO, "WLVKSurfaceData_revalidate to size %d x %d and scale %d\n", width, height, scale);
-    vksdo->width = width;
-    vksdo->height = height;
-    vksdo->scale = scale;
-#endif /* !HEADLESS */
 }
