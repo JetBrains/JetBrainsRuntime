@@ -30,39 +30,37 @@
 #include "VKTexturePool.h"
 
 struct VKDevice {
-    VkDevice            handle;
-    VkPhysicalDevice    physicalDevice;
-    VKRenderer*         fillTexturePoly;
-    VKRenderer*         fillColorPoly;
-    VKRenderer*         drawColorPoly;
-    VKRenderer*         fillMaxColorPoly;
-    char*               name;
-    uint32_t            queueFamily;
-    pchar*              enabledLayers;
-    pchar*              enabledExtensions;
-    VkCommandPool       commandPool;
-    VkCommandBuffer     commandBuffer;
-    VkSemaphore         imageAvailableSemaphore;
-    VkSemaphore         renderFinishedSemaphore;
-    VkFence             inFlightFence;
-    VkQueue             queue;
-    VkSampler           textureSampler;
-    VKBuffer*           blitVertexBuffer;
-    VkRenderPass        renderPass;
-    VKTexturePool*      texturePool;
+    VkDevice         handle;
+    VkPhysicalDevice physicalDevice;
+    char*            name;
+    uint32_t         queueFamily;
+    pchar*           enabledLayers;
+    pchar*           enabledExtensions;
+    VkQueue          queue;
+
+    VKRenderer*      renderer;
+    VKTexturePool*   texturePool;
 
     PFN_vkDestroyDevice vkDestroyDevice;
     PFN_vkCreateShaderModule vkCreateShaderModule;
-    PFN_vkCreatePipelineLayout vkCreatePipelineLayout;
-    PFN_vkCreateGraphicsPipelines vkCreateGraphicsPipelines;
     PFN_vkDestroyShaderModule vkDestroyShaderModule;
+    PFN_vkCreatePipelineLayout vkCreatePipelineLayout;
+    PFN_vkDestroyPipelineLayout vkDestroyPipelineLayout;
+    PFN_vkCreateGraphicsPipelines vkCreateGraphicsPipelines;
+    PFN_vkDestroyPipeline vkDestroyPipeline;
     PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR;
+    PFN_vkDestroySwapchainKHR vkDestroySwapchainKHR;
     PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR;
     PFN_vkCreateImageView vkCreateImageView;
     PFN_vkCreateFramebuffer vkCreateFramebuffer;
     PFN_vkCreateCommandPool vkCreateCommandPool;
+    PFN_vkDestroyCommandPool vkDestroyCommandPool;
     PFN_vkAllocateCommandBuffers vkAllocateCommandBuffers;
+    PFN_vkFreeCommandBuffers vkFreeCommandBuffers;
     PFN_vkCreateSemaphore vkCreateSemaphore;
+    PFN_vkDestroySemaphore vkDestroySemaphore;
+    PFN_vkWaitSemaphores vkWaitSemaphores;
+    PFN_vkGetSemaphoreCounterValue vkGetSemaphoreCounterValue;
     PFN_vkCreateFence vkCreateFence;
     PFN_vkGetDeviceQueue vkGetDeviceQueue;
     PFN_vkWaitForFences vkWaitForFences;
@@ -72,7 +70,11 @@ struct VKDevice {
     PFN_vkQueueSubmit vkQueueSubmit;
     PFN_vkQueuePresentKHR vkQueuePresentKHR;
     PFN_vkBeginCommandBuffer vkBeginCommandBuffer;
+    PFN_vkCmdBlitImage vkCmdBlitImage;
+    PFN_vkCmdPipelineBarrier vkCmdPipelineBarrier;
     PFN_vkCmdBeginRenderPass vkCmdBeginRenderPass;
+    PFN_vkCmdExecuteCommands vkCmdExecuteCommands;
+    PFN_vkCmdClearAttachments vkCmdClearAttachments;
     PFN_vkCmdBindPipeline vkCmdBindPipeline;
     PFN_vkCmdSetViewport vkCmdSetViewport;
     PFN_vkCmdSetScissor vkCmdSetScissor;
@@ -81,9 +83,11 @@ struct VKDevice {
     PFN_vkEndCommandBuffer vkEndCommandBuffer;
     PFN_vkCreateImage vkCreateImage;
     PFN_vkCreateSampler vkCreateSampler;
+    PFN_vkDestroySampler vkDestroySampler;
     PFN_vkAllocateMemory vkAllocateMemory;
     PFN_vkBindImageMemory vkBindImageMemory;
     PFN_vkCreateDescriptorSetLayout vkCreateDescriptorSetLayout;
+    PFN_vkDestroyDescriptorSetLayout vkDestroyDescriptorSetLayout;
     PFN_vkUpdateDescriptorSets vkUpdateDescriptorSets;
     PFN_vkCreateDescriptorPool vkCreateDescriptorPool;
     PFN_vkAllocateDescriptorSets vkAllocateDescriptorSets;
@@ -96,6 +100,7 @@ struct VKDevice {
     PFN_vkUnmapMemory vkUnmapMemory;
     PFN_vkCmdBindVertexBuffers vkCmdBindVertexBuffers;
     PFN_vkCreateRenderPass vkCreateRenderPass;
+    PFN_vkDestroyRenderPass vkDestroyRenderPass;
     PFN_vkDestroyBuffer vkDestroyBuffer;
     PFN_vkFreeMemory vkFreeMemory;
     PFN_vkDestroyImageView vkDestroyImageView;
@@ -104,7 +109,6 @@ struct VKDevice {
     PFN_vkFlushMappedMemoryRanges vkFlushMappedMemoryRanges;
     PFN_vkCmdPushConstants vkCmdPushConstants;
 };
-
 
 struct VKGraphicsEnvironment {
     VkInstance        vkInstance;
@@ -142,6 +146,7 @@ struct VKGraphicsEnvironment {
     PFN_vkEnumerateDeviceLayerProperties vkEnumerateDeviceLayerProperties;
     PFN_vkEnumerateDeviceExtensionProperties vkEnumerateDeviceExtensionProperties;
     PFN_vkCreateDevice vkCreateDevice;
+    PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR;
     PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr;
 };
 
