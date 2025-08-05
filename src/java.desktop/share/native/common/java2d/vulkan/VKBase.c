@@ -595,6 +595,50 @@ static jboolean VK_FindDevices() {
     }
     return JNI_TRUE;
 }
+static VkRenderPassCreateInfo* VK_GetGenericRenderPassInfo() {
+    static VkAttachmentDescription colorAttachment = {
+            .format = VK_FORMAT_B8G8R8A8_UNORM, //TODO: swapChain colorFormat
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    };
+
+    static VkAttachmentReference colorReference = {
+            .attachment = 0,
+            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    };
+
+    static VkSubpassDescription subpassDescription = {
+            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &colorReference
+    };
+
+    // Subpass dependencies for layout transitions
+    static VkSubpassDependency dependency = {
+            .srcSubpass = VK_SUBPASS_EXTERNAL,
+            .dstSubpass = 0,
+            .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcAccessMask = 0,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+    };
+
+    static VkRenderPassCreateInfo renderPassInfo = {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+            .attachmentCount = 1,
+            .pAttachments = &colorAttachment,
+            .subpassCount = 1,
+            .pSubpasses = &subpassDescription,
+            .dependencyCount = 1,
+            .pDependencies = &dependency
+    };
+    return &renderPassInfo;
+}
 
 static jboolean VK_InitLogicalDevice(VKLogicalDevice* logicalDevice) {
     if (logicalDevice->device != VK_NULL_HANDLE) {
@@ -804,6 +848,15 @@ Java_sun_java2d_vulkan_VKInstance_initNative(JNIEnv *env, jclass wlge, jlong nat
         vulkanLibClose();
         return JNI_FALSE;
     }
+
+    if (geInstance->currentDevice->vkCreateRenderPass(
+            geInstance->currentDevice->device, VK_GetGenericRenderPassInfo(),
+            NULL, &geInstance->currentDevice->renderPass) != VK_SUCCESS)
+    {
+        J2dRlsTrace(J2D_TRACE_INFO, "Cannot create render pass for device");
+        return JNI_FALSE;
+    }
+    
     if (!VK_CreateLogicalDeviceRenderers(geInstance->currentDevice)) {
         vulkanLibClose();
         return JNI_FALSE;
