@@ -44,7 +44,6 @@ public abstract class WLVKSurfaceData extends VKSurfaceData implements WLSurface
 
     protected WLComponentPeer peer;
     protected WLVKGraphicsConfig graphicsConfig;
-    private native void initOps(WLVKGraphicsConfig gc, WLComponentPeer peer);
 
     @Override
     public native void assignSurface(long surfacePtr);
