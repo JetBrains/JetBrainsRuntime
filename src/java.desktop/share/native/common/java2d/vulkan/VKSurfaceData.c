@@ -49,7 +49,7 @@ void VKSD_InitImageSurface(VKLogicalDevice* logicalDevice, VKSDOps *vksdo) {
         return;
     }
 
-    if (!VKImage_CreateFramebuffer(logicalDevice, vksdo->image, logicalDevice->fillTexturePoly->renderPass)) {
+    if (!VKImage_CreateFramebuffer(logicalDevice, vksdo->image, logicalDevice->renderPass)) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create framebuffer for window surface");
         return;
     }
@@ -116,7 +116,7 @@ void VKSD_InitWindowSurface(VKLogicalDevice* logicalDevice, VKWinSDOps *vkwinsdo
 
         vkwinsdo->swapChainImages = VKImage_CreateImageArrayFromSwapChain(
                                         logicalDevice, vkwinsdo->swapchainKhr,
-                                        logicalDevice->fillTexturePoly->renderPass,
+                                        logicalDevice->renderPass,
                                         vkwinsdo->formatsKhr[0].format, extent);
 
         if (!vkwinsdo->swapChainImages) {
