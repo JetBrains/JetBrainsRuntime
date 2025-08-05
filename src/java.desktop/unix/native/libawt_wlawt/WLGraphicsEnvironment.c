@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +25,13 @@
  */
 #ifndef HEADLESS
 
-#include <stdbool.h>
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <Trace.h>
 
-#include "jvm_md.h"
 #include "jni_util.h"
-#include "awt.h"
 #include "WLToolkit.h"
 #include "VKBase.h"
-#include "VKWLGraphicsConfig.h"
 
 typedef struct WLOutput {
     struct WLOutput *  next;
