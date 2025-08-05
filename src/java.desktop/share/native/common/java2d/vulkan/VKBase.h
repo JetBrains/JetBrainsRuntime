@@ -26,139 +26,124 @@
 
 #ifndef VKBase_h_Included
 #define VKBase_h_Included
-#ifdef __cplusplus
-
-
-#define VK_NO_PROTOTYPES
-#define VULKAN_HPP_NO_DEFAULT_DISPATCHER
-#include <queue>
-#include <vulkan/vulkan_raii.hpp>
+#include <vulkan/vulkan.h>
+#include "CArrayUtil.h"
 #include "jni.h"
-#include "VKMemory.h"
-#include "VKPipeline.h"
+#include "VKBuffer.h"
 
-class VKDevice : public vk::raii::Device, public vk::raii::PhysicalDevice {
-    friend class VKGraphicsEnvironment;
+typedef char* pchar;
 
-    vk::Instance             _instance;
-    std::string              _name;
-    std::vector<const char*> _enabled_layers, _enabled_extensions;
-    bool                     _ext_memory_budget, _khr_synchronization2, _khr_dynamic_rendering;
-    int                      _queue_family = -1;
+typedef struct {
+    VkRenderPass        renderPass;
+    VkDescriptorSetLayout descriptorSetLayout;
+    VkDescriptorPool    descriptorPool;
+    VkDescriptorSet     descriptorSets;
+    VkPipelineLayout    pipelineLayout;
+    VkPipeline          graphicsPipeline;
+} VKRenderer;
 
-    // Logical device state
-    VKMemory                 _memory;
-    VKPipelines              _pipelines;
-    vk::raii::Queue          _queue = nullptr;
-    vk::raii::CommandPool    _commandPool = nullptr;
-    vk::raii::Semaphore      _timelineSemaphore = nullptr;
-    uint64_t                 _timelineCounter = 0;
-    uint64_t                 _lastReadTimelineCounter = 0;
+typedef struct {
+    VkDevice            device;
+    VkPhysicalDevice    physicalDevice;
+    VKRenderer*         fillTexturePoly;
+    VKRenderer*         fillColorPoly;
+    VKRenderer*         fillMaxColorPoly;
+    char*               name;
+    uint32_t            queueFamily;
+    pchar*              enabledLayers;
+    pchar*              enabledExtensions;
+    VkCommandPool       commandPool;
+    VkCommandBuffer     commandBuffer;
+    VkSemaphore         imageAvailableSemaphore;
+    VkSemaphore         renderFinishedSemaphore;
+    VkFence             inFlightFence;
+    VkQueue             queue;
+    VkSampler           textureSampler;
+    VKBuffer*           blitVertexBuffer;
+} VKLogicalDevice;
 
-    template <typename T> struct Pending {
-        T        resource;
-        uint64_t counter;
-        using Queue = std::queue<Pending<T>>;
-    };
-    Pending<vk::raii::CommandBuffer>::Queue _pendingPrimaryBuffers, _pendingSecondaryBuffers;
-    Pending<VKBuffer>::Queue                _pendingVertexBuffers;
 
-    template <typename T> T popPending(typename Pending<T>::Queue& queue) {
-        if (!queue.empty()) {
-            auto& f = queue.front();
-            if (_lastReadTimelineCounter >= f.counter ||
-                (_lastReadTimelineCounter = _timelineSemaphore.getCounterValue()) >= f.counter) {
-                T resource = std::move(f.resource);
-                queue.pop();
-                return resource;
-            }
-        }
-        return T(nullptr);
-    }
-    template <typename T> void pushPending(typename Pending<T>::Queue& queue, T&& resource) {
-        queue.push({std::move(resource), _timelineCounter});
-    }
-    template <typename T> void pushPending(typename Pending<T>::Queue& queue, std::vector<T>& resources) {
-        for (T& r : resources) {
-            pushPending(queue, std::move(r));
-        }
-        resources.clear();
-    }
+typedef struct {
+    VkInstance              vkInstance;
+    VkPhysicalDevice*       physicalDevices;
+    VKLogicalDevice*        devices;
+    uint32_t                enabledDeviceNum;
+    VkExtensionProperties*  extensions;
+    VkLayerProperties*      layers;
 
-    explicit VKDevice(vk::Instance instance, vk::raii::PhysicalDevice&& handle);
-public:
-
-    bool synchronization2() {
-        return _khr_synchronization2;
-    }
-
-    bool dynamicRendering() {
-        return _khr_dynamic_rendering;
-    }
-
-    VKPipelines& pipelines() {
-        return _pipelines;
-    }
-
-    uint32_t queue_family() const {
-        return (uint32_t) _queue_family;
-    }
-
-    const vk::raii::Queue& queue() const {
-        return _queue;
-    }
-
-    void init(); // Creates actual logical device
-
-    VKBuffer getVertexBuffer();
-    vk::raii::CommandBuffer getCommandBuffer(vk::CommandBufferLevel level);
-    void submitCommandBuffer(vk::raii::CommandBuffer&& primary,
-                             std::vector<vk::raii::CommandBuffer>& secondary,
-                             std::vector<VKBuffer>& vertexBuffers,
-                             std::vector<vk::Semaphore>& waitSemaphores,
-                             std::vector<vk::PipelineStageFlags>& waitStages,
-                             std::vector<vk::Semaphore>& signalSemaphores);
-
-    bool supported() const { // Supported or not
-        return *((const vk::raii::PhysicalDevice&) *this);
-    }
-
-    explicit operator bool() const { // Initialized or not
-        return *((const vk::raii::Device&) *this);
-    }
-
-    const std::string& name() {
-        return _name;
-    }
-};
-
-class VKGraphicsEnvironment {
-    vk::raii::Context                      _vk_context;
-    vk::raii::Instance                     _vk_instance;
-#if defined(DEBUG)
-    vk::raii::DebugUtilsMessengerEXT       _debugMessenger = nullptr;
+    PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices;
+    PFN_vkGetPhysicalDeviceFeatures2 vkGetPhysicalDeviceFeatures2;
+    PFN_vkGetPhysicalDeviceProperties2 vkGetPhysicalDeviceProperties2;
+    PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties;
+    PFN_vkEnumerateDeviceLayerProperties vkEnumerateDeviceLayerProperties;
+    PFN_vkEnumerateDeviceExtensionProperties vkEnumerateDeviceExtensionProperties;
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR vkGetPhysicalDeviceWaylandPresentationSupportKHR;
+    PFN_vkCreateWaylandSurfaceKHR vkCreateWaylandSurfaceKHR;
 #endif
-    std::vector<std::unique_ptr<VKDevice>> _devices;
-    VKDevice*                              _default_device;
-    static bool                   _verbose;
-    static int                    _requested_device_number;
-    static std::unique_ptr<VKGraphicsEnvironment> _ge_instance;
-    VKGraphicsEnvironment();
-public:
-    static void set_verbose(bool verbose) { _verbose = verbose; }
-    static void set_requested_device(int requested_device) { _requested_device_number = requested_device; }
-    static VKGraphicsEnvironment* graphics_environment();
-    static void dispose();
-    VKDevice& default_device();
-    vk::raii::Instance& vk_instance();
-};
+    PFN_vkCreateShaderModule vkCreateShaderModule;
+    PFN_vkCreatePipelineLayout vkCreatePipelineLayout;
+    PFN_vkCreateGraphicsPipelines vkCreateGraphicsPipelines;
+    PFN_vkDestroyShaderModule vkDestroyShaderModule;
+    PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR;
+    PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR;
+    PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
+    PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR;
+    PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR;
+    PFN_vkCreateImageView vkCreateImageView;
+    PFN_vkCreateFramebuffer vkCreateFramebuffer;
+    PFN_vkCreateCommandPool vkCreateCommandPool;
+    PFN_vkAllocateCommandBuffers vkAllocateCommandBuffers;
+    PFN_vkCreateSemaphore vkCreateSemaphore;
+    PFN_vkCreateFence vkCreateFence;
+    PFN_vkGetDeviceQueue vkGetDeviceQueue;
+    PFN_vkWaitForFences vkWaitForFences;
+    PFN_vkResetFences vkResetFences;
+    PFN_vkAcquireNextImageKHR vkAcquireNextImageKHR;
+    PFN_vkResetCommandBuffer vkResetCommandBuffer;
+    PFN_vkQueueSubmit vkQueueSubmit;
+    PFN_vkQueuePresentKHR vkQueuePresentKHR;
+    PFN_vkBeginCommandBuffer vkBeginCommandBuffer;
+    PFN_vkCmdBeginRenderPass vkCmdBeginRenderPass;
+    PFN_vkCmdBindPipeline vkCmdBindPipeline;
+    PFN_vkCmdSetViewport vkCmdSetViewport;
+    PFN_vkCmdSetScissor vkCmdSetScissor;
+    PFN_vkCmdDraw vkCmdDraw;
+    PFN_vkCmdEndRenderPass vkCmdEndRenderPass;
+    PFN_vkEndCommandBuffer vkEndCommandBuffer;
+    PFN_vkCreateImage vkCreateImage;
+    PFN_vkCreateSampler vkCreateSampler;
+    PFN_vkAllocateMemory vkAllocateMemory;
+    PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties;
+    PFN_vkBindImageMemory vkBindImageMemory;
+    PFN_vkCreateDescriptorSetLayout vkCreateDescriptorSetLayout;
+    PFN_vkUpdateDescriptorSets vkUpdateDescriptorSets;
+    PFN_vkCreateDescriptorPool vkCreateDescriptorPool;
+    PFN_vkAllocateDescriptorSets vkAllocateDescriptorSets;
+    PFN_vkCmdBindDescriptorSets vkCmdBindDescriptorSets;
+    PFN_vkGetImageMemoryRequirements vkGetImageMemoryRequirements;
+    PFN_vkCreateBuffer vkCreateBuffer;
+    PFN_vkGetBufferMemoryRequirements vkGetBufferMemoryRequirements;
+    PFN_vkBindBufferMemory vkBindBufferMemory;
+    PFN_vkMapMemory vkMapMemory;
+    PFN_vkUnmapMemory vkUnmapMemory;
+    PFN_vkCmdBindVertexBuffers vkCmdBindVertexBuffers;
+    PFN_vkCreateRenderPass vkCreateRenderPass;
+    PFN_vkDestroyBuffer vkDestroyBuffer;
+    PFN_vkFreeMemory vkFreeMemory;
+    PFN_vkDestroyImageView vkDestroyImageView;
+    PFN_vkDestroyImage vkDestroyImage;
+    PFN_vkDestroyFramebuffer vkDestroyFramebuffer;
+    PFN_vkFlushMappedMemoryRanges vkFlushMappedMemoryRanges;
+    PFN_vkCmdPushConstants vkCmdPushConstants;
+} VKGraphicsEnvironment;
 
-extern "C" {
-#endif //__cplusplus
 
-jboolean VK_Init(jboolean verbose, jint requestedDevice);
+jboolean VK_FindDevices();
+jboolean VK_CreateLogicalDevice(jint requestedDeviceNumber);
+jboolean VK_CreateLogicalDeviceRenderers();
 
-#ifdef __cplusplus
-}
-#endif //__cplusplus
+VKGraphicsEnvironment* VKGE_graphics_environment();
+void* vulkanLibProc(VkInstance vkInstance, char* procName);
+
 #endif //VKBase_h_Included

@@ -24,25 +24,33 @@
  * questions.
  */
 
-#ifndef VKRenderer_h_Included
-#define VKRenderer_h_Included
+#ifndef VKImage_h_Included
+#define VKImage_h_Included
 
-#include "j2d_md.h"
-#include "VKBase.h"
-#include "VKSurfaceData.h"
+#include <vulkan/vulkan.h>
 
-VKRenderer* VKRenderer_CreateFillTexturePoly();
+typedef struct {
+    VkImage                 image;
+    VkDeviceMemory          memory;
+    VkFramebuffer           framebuffer;
+    VkImageView             view;
+    VkFormat                format;
+    VkExtent2D              extent;
+    VkBool32                noImageDealloc;
+} VKImage;
 
-VKRenderer* VKRenderer_CreateFillColorPoly();
+VKImage* VKImage_Create(uint32_t width, uint32_t height,
+                        VkFormat format, VkImageTiling tiling,
+                        VkImageUsageFlags usage,
+                        VkMemoryPropertyFlags properties);
 
-VKRenderer* VKRenderer_CreateFillMaxColorPoly();
+VKImage* VKImage_CreateImageArrayFromSwapChain(VkSwapchainKHR swapchainKhr,
+                                               VkRenderPass renderPass,
+                                               VkFormat format,
+                                               VkExtent2D extent);
 
-void VKRenderer_BeginRendering();
-void VKRenderer_EndRendering(VkBool32 notifyRenderFinish, VkBool32 waitForDisplayImage);
-void VKRenderer_TextureRender(VKImage *destImage, VKImage *srcImage, VkBuffer vertexBuffer, uint32_t vertexNum);
-void VKRenderer_ColorRender(VKImage *destImage, VkBuffer vertexBuffer, uint32_t vertexNum);
-void VKRenderer_ColorRenderMaxRect(VKImage *destImage, uint32_t rgba);
-// fill ops
-void VKRenderer_FillRect(jint x, jint y, jint w, jint h);
+VkBool32 VKImage_CreateFramebuffer(VKImage *image, VkRenderPass renderPass);
 
-#endif //VKRenderer_h_Included
+void VKImage_free(VKImage* image);
+void VKImage_dealloc(VKImage* image);
+#endif // VKImage_h_Included
