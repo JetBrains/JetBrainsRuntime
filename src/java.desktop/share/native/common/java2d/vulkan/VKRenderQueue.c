@@ -144,6 +144,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                               "VKRenderQueue_flushBuffer: DRAW_RECT(%d, %d, %d, %d)",
                               x, y, w, h);
+                VKRenderer_RenderRect(&context, PIPELINE_DRAW_COLOR, x, y, w, h);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_POLY:
@@ -213,7 +214,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint h = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_RECT(%d, %d, %d, %d)", x, y, w, h);
-                VKRenderer_FillRect(&context, x, y, w, h);
+                VKRenderer_RenderRect(&context, PIPELINE_FILL_COLOR, x, y, w, h);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FILL_SPANS:
