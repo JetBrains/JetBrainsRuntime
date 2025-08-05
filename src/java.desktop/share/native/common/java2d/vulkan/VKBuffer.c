@@ -25,8 +25,7 @@
  */
 
 #include <string.h>
-#include <Trace.h>
-#include "CArrayUtil.h"
+#include "VKUtil.h"
 #include "VKBase.h"
 #include "VKBuffer.h"
 
@@ -49,7 +48,8 @@ VkResult VKBuffer_FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeF
 VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
                           VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
 {
-    VKBuffer* buffer = malloc(sizeof (VKBuffer));
+    VKBuffer* buffer = calloc(1, sizeof(VKBuffer));
+    VK_RUNTIME_ASSERT(buffer);
 
     VkBufferCreateInfo bufferInfo = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -58,8 +58,8 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
 
-    if (device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &buffer->buffer) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to allocate descriptor sets!");
+    VK_IF_ERROR(device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &buffer->buffer)) {
+        VKBuffer_free(device, buffer);
         return NULL;
     }
 
@@ -70,11 +70,10 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
 
     uint32_t memoryType;
 
-    if (VKBuffer_FindMemoryType(device->physicalDevice,
-                                memRequirements.memoryTypeBits,
-                                properties, &memoryType) != VK_SUCCESS)
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to find memory!");
+    VK_IF_ERROR(VKBuffer_FindMemoryType(device->physicalDevice,
+                                     memRequirements.memoryTypeBits,
+                                     properties, &memoryType)) {
+        VKBuffer_free(device, buffer);
         return NULL;
     }
 
@@ -84,13 +83,13 @@ VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
             .memoryTypeIndex = memoryType
     };
 
-    if (device->vkAllocateMemory(device->handle, &allocInfo, NULL, &buffer->memory) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to allocate buffer memory!");
+    VK_IF_ERROR(device->vkAllocateMemory(device->handle, &allocInfo, NULL, &buffer->memory)) {
+        VKBuffer_free(device, buffer);
         return NULL;
     }
 
-    if (device->vkBindBufferMemory(device->handle, buffer->buffer, buffer->memory, 0) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to bind buffer memory!");
+    VK_IF_ERROR(device->vkBindBufferMemory(device->handle, buffer->buffer, buffer->memory, 0)) {
+        VKBuffer_free(device, buffer);
         return NULL;
     }
     return buffer;
@@ -104,8 +103,8 @@ VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize
                                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     void* data;
-    if (device->vkMapMemory(device->handle, buffer->memory, 0, bufferSize, 0, &data) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to map memory!");
+    VK_IF_ERROR(device->vkMapMemory(device->handle, buffer->memory, 0, VK_WHOLE_SIZE, 0, &data)) {
+        VKBuffer_free(device, buffer);
         return NULL;
     }
     memcpy(data, vertices, bufferSize);
@@ -119,8 +118,8 @@ VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* vertices, VkDeviceSize
     };
 
 
-    if (device->vkFlushMappedMemoryRanges(device->handle, 1, &memoryRange) != VK_SUCCESS) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "failed to flush memory!");
+    VK_IF_ERROR(device->vkFlushMappedMemoryRanges(device->handle, 1, &memoryRange)) {
+        VKBuffer_free(device, buffer);
         return NULL;
     }
     device->vkUnmapMemory(device->handle, buffer->memory);
