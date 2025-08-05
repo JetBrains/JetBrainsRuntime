@@ -31,9 +31,7 @@
 #include "jni.h"
 #include "SurfaceData.h"
 #include "sun_java2d_pipe_hw_AccelSurface.h"
-#include "VKBase.h"
-#include "VKBuffer.h"
-#include "VKImage.h"
+#include "VKTypes.h"
 
 /**
  * These are shorthand names for the surface type constants defined in
@@ -98,7 +96,7 @@ void VKSD_Unlock(JNIEnv *env,
 void VKSD_Dispose(JNIEnv *env, SurfaceDataOps *ops);
 void VKSD_Delete(JNIEnv *env, VKSDOps *oglsdo);
 
-void VKSD_InitImageSurface(VKSDOps *vksdo);
-void VKSD_InitWindowSurface(VKWinSDOps *vkwinsdo);
+void VKSD_InitImageSurface(VKLogicalDevice* logicalDevice, VKSDOps *vksdo);
+void VKSD_InitWindowSurface(VKLogicalDevice* logicalDevice, VKWinSDOps *vkwinsdo);
 
 #endif /* VKSurfaceData_h_Included */
