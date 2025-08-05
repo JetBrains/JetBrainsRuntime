@@ -193,6 +193,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint count = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_SPANS");
+                VKRenderer_FillSpans(color, dstOps, count, (jint *)b);
                 SKIP_BYTES(b, count * BYTES_PER_SPAN);
             }
             break;
@@ -207,67 +208,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(%f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12);
-
-                if (dstOps != NULL) {
-                    VKSDOps *vksdOps = (VKSDOps *)dstOps;
-                    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
-                    VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
-                    float width = vksdOps->width;
-                    float height = vksdOps->height;
-                    J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                                  "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(W=%f, H=%f)",
-                                  width, height);
-                    VKVertex* vertices = ARRAY_ALLOC(VKVertex, 4);
-                    /*                   dx21
-                     *    (p1)---------(p2) |          (p1)------
-                     *     |\            \  |            |  \    dy21
-                     *     | \            \ |       dy12 |   \
-                     *     |  \            \|            |   (p2)-
-                     *     |  (p4)---------(p3)        (p4)   |
-                     *      dx12                           \  |  dy12
-                     *                              dy21    \ |
-                     *                                  -----(p3)
-                     */
-                    float p1x = -1.0f + x11 / width;
-                    float p1y = -1.0f + y11 / height;
-                    float p2x = -1.0f + (x11 + dx21) / width;
-                    float p2y = -1.0f + (y11 + dy21) / height;
-                    float p3x = -1.0f + (x11 + dx21 + dx12) / width;
-                    float p3y = -1.0f + (y11 + dy21 + dy12) / height;
-                    float p4x = -1.0f + (x11 + dx12) / width;
-                    float p4y = -1.0f + (y11 + dy12) / height;
-
-
-                    ARRAY_PUSH_BACK(&vertices, ((VKVertex){p1x,p1y}));
-
-                    ARRAY_PUSH_BACK(&vertices, ((VKVertex){p2x,p2y}));
-
-                    ARRAY_PUSH_BACK(&vertices, ((VKVertex){p4x,p4y}));
-
-                    ARRAY_PUSH_BACK(&vertices, ((VKVertex){p3x,p3y}));
-
-                    VKBuffer* fillVertexBuffer = ARRAY_TO_VERTEX_BUF(vertices);
-                    if (!fillVertexBuffer) {
-                        J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create vertex buffer\n");
-                        break;
-                    }
-                    ARRAY_FREE(vertices);
-
-                    ge->vkWaitForFences(logicalDevice->device, 1, &logicalDevice->inFlightFence, VK_TRUE, UINT64_MAX);
-                    ge->vkResetFences(logicalDevice->device, 1, &logicalDevice->inFlightFence);
-
-                    ge->vkResetCommandBuffer(logicalDevice->commandBuffer,  0);
-
-                    VKRenderer_BeginRendering();
-
-                    VKRenderer_ColorRender(
-                        vksdOps->image,
-                        color,
-                        fillVertexBuffer->buffer, 4
-                    );
-
-                    VKRenderer_EndRendering(VK_FALSE, VK_FALSE);
-                }
+                VKRenderer_FillParallelogram(color, dstOps, x11, y11, dx21, dy21, dx12, dy12);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM:
