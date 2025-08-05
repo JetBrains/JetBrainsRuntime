@@ -27,15 +27,15 @@
 #ifndef VKSurfaceData_h_Included
 #define VKSurfaceData_h_Included
 
-#include <pthread.h>
-#include "jni.h"
 #include "SurfaceData.h"
 #include "sun_java2d_pipe_hw_AccelSurface.h"
 #include "VKTypes.h"
+#include "VKRenderer.h"
 
 /**
  * These are shorthand names for the surface type constants defined in
  * VKSurfaceData.java.
+ * TODO which constants?
  */
 #define VKSD_UNDEFINED       sun_java2d_pipe_hw_AccelSurface_UNDEFINED
 #define VKSD_WINDOW          sun_java2d_pipe_hw_AccelSurface_WINDOW
@@ -44,59 +44,46 @@
  * The VKSDOps structure describes a native Vulkan surface and contains all
  * information pertaining to the native surface.
  */
-typedef struct {
-    SurfaceDataOps          sdOps;
-    jint                    drawableType;
-    pthread_mutex_t         mutex;
-    uint32_t                width;
-    uint32_t                height;
-    uint32_t                scale; // TODO Is it needed there at all?
-    uint32_t                bgColor;
-    VkBool32                bgColorUpdated;
-    VKDevice*               device;
-    VKImage*                image;
-    // We track any access and write access separately, as read-read access does not need synchronization.
-    VkPipelineStageFlagBits lastStage;
-    VkPipelineStageFlagBits lastWriteStage;
-    VkAccessFlagBits        lastAccess;
-    VkAccessFlagBits        lastWriteAccess;
-} VKSDOps;
+struct VKSDOps {
+    SurfaceDataOps sdOps;
+    jint           drawableType;
+    VKDevice*      device;
+    VKImage*       image;
+
+    Color          background;
+    VkExtent2D     requestedExtent;
+
+    VKRenderPass*  renderPass;
+};
 
 /**
  * The VKWinSDOps structure describes a native Vulkan surface connected with a window.
- * Some information about the more important/different fields:
- *
- *     void *privOps;
- * Pointer to native-specific SurfaceData info, such as the
- * native Drawable handle and GraphicsConfig data.
  */
-typedef struct {
-    VKSDOps                 vksdOps;
-    void                    *privOps;
-    VkSurfaceKHR            surface;
-    VkSurfaceCapabilitiesKHR capabilitiesKhr;
-    VkSurfaceFormatKHR*     formatsKhr;
-    uint32_t                formatsKhrCount;
-    VkPresentModeKHR*       presentModesKhr;
-    uint32_t                presentModeKhrCount;
-    VkSwapchainKHR          swapchainKhr;
-    VKImage*                swapChainImages;
-} VKWinSDOps;
+struct VKWinSDOps {
+    VKSDOps        vksdOps;
+    VkSurfaceKHR   surface;
+    VkSwapchainKHR swapchain;
+    VkImage*       swapchainImages;
+    VKDevice*      swapchainDevice;
+    VkExtent2D     swapchainExtent;
+};
 
 /**
- * Exported methods.
+ * Release all resources of the surface, resetting it to initial state.
+ * This function must also be used to initialize newly allocated surfaces.
+ * VKSDOps.drawableType must be properly set before calling this function.
  */
-jint VKSD_Lock(JNIEnv *env,
-                SurfaceDataOps *ops, SurfaceDataRasInfo *pRasInfo,
-                jint lockflags);
-void VKSD_GetRasInfo(JNIEnv *env,
-                      SurfaceDataOps *ops, SurfaceDataRasInfo *pRasInfo);
-void VKSD_Unlock(JNIEnv *env,
-                  SurfaceDataOps *ops, SurfaceDataRasInfo *pRasInfo);
-void VKSD_Dispose(JNIEnv *env, SurfaceDataOps *ops);
-void VKSD_Delete(JNIEnv *env, VKSDOps *oglsdo);
+void VKSD_ResetSurface(VKSDOps* vksdo);
 
-void VKSD_InitImageSurface(VKDevice* device, VKSDOps *vksdo);
-void VKSD_InitWindowSurface(VKDevice* device, VKWinSDOps *vkwinsdo);
+/**
+ * Configure image surface. This [re]initializes the device and surface image.
+ */
+VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo);
+
+/**
+ * Configure window surface. This [re]initializes the swapchain.
+ * VKSD_ConfigureImageSurface must have been called before.
+ */
+VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo);
 
 #endif /* VKSurfaceData_h_Included */
