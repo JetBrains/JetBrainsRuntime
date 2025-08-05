@@ -62,11 +62,11 @@ VKVertexDescr VKVertex_GetTxVertexDescr() {
     };
 }
 
-VKVertexDescr VKVertex_GetCVertexDescr() {
+VKVertexDescr VKVertex_GetVertexDescr() {
     static VkVertexInputBindingDescription bindingDescriptions[] = {
             {
                     .binding = 0,
-                    .stride = sizeof(VKCVertex),
+                    .stride = sizeof(VKVertex),
                     .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
             }
     };
@@ -76,13 +76,7 @@ VKVertexDescr VKVertex_GetCVertexDescr() {
                     .binding = 0,
                     .location = 0,
                     .format = VK_FORMAT_R32G32_SFLOAT,
-                    .offset = offsetof(VKCVertex, px)
-            },
-            {
-                    .binding = 0,
-                    .location = 1,
-                    .format = VK_FORMAT_R32G32B32A32_SFLOAT,
-                    .offset = offsetof(VKCVertex, r)
+                    .offset = offsetof(VKVertex, px)
             }
     };
 
