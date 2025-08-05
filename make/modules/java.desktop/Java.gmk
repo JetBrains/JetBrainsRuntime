@@ -54,6 +54,7 @@ ifeq ($(call isTargetOs, macosx), true)
       sun/awt/wl \
       sun/java2d/wl \
       sun/java2d/x11 \
+      sun/java2d/vulkan \
       sun/java2d/jules \
       sun/java2d/xr \
       com/sun/java/swing/plaf/gtk \
