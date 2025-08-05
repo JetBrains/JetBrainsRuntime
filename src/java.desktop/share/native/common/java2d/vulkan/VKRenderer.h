@@ -40,7 +40,7 @@ VKRenderer* VKRenderer_CreateFillMaxColorPoly();
 void VKRenderer_BeginRendering();
 void VKRenderer_EndRendering(VkBool32 notifyRenderFinish, VkBool32 waitForDisplayImage);
 void VKRenderer_TextureRender(VKImage *destImage, VKImage *srcImage, VkBuffer vertexBuffer, uint32_t vertexNum);
-void VKRenderer_ColorRender(VKImage *destImage, VkBuffer vertexBuffer, uint32_t vertexNum);
+void VKRenderer_ColorRender(VKImage *destImage, uint32_t rgba, VkBuffer vertexBuffer, uint32_t vertexNum);
 void VKRenderer_ColorRenderMaxRect(VKImage *destImage, uint32_t rgba);
 // fill ops
 void VKRenderer_FillRect(jint x, jint y, jint w, jint h);
