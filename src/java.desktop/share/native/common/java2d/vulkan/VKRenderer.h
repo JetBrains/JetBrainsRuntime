@@ -54,7 +54,7 @@ void VKRenderer_Flush(VKRenderer* renderer);
 /**
  * Cancel render pass of the surface, release all associated resources and deallocate render pass.
  */
-void VKRenderer_ReleaseRenderPass(VKSDOps* surface);
+void VKRenderer_DestroyRenderPass(VKSDOps* surface);
 
 /**
  * Flush pending render pass and queue surface for presentation (if applicable).
@@ -67,14 +67,15 @@ void VKRenderer_FlushSurface(VKSDOps* surface);
  */
 void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent);
 
-// Blit ops.
+// Blit operations.
 
 void VKRenderer_TextureRender(VKRenderingContext* context,
                               VKImage *destImage, VKImage *srcImage,
                               VkBuffer vertexBuffer, uint32_t vertexNum);
 
-// fill ops
-void VKRenderer_FillRect(VKRenderingContext* context, jint x, jint y, jint w, jint h);
+// Drawing operations.
+
+void VKRenderer_RenderRect(VKRenderingContext* context, VKPipeline pipeline, jint x, jint y, jint w, jint h);
 
 void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipeline,
                                     jfloat x11, jfloat y11,
