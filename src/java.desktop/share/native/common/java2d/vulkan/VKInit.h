@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,9 @@
  * questions.
  */
 
-#ifndef VKPipeline_h_Included
-#define VKPipeline_h_Included
+#ifndef VKInit_h_Included
+#define VKInit_h_Included
 
-#include "VKShader.h"
+jboolean VK_Init(jboolean verbose, jint requestedDevice);
 
-struct VKPipelines {
-    VKShaders shaders;
-    // TODO we need a pool of pipelines and (optionally) render passes for different formats.
-    vk::raii::RenderPass renderPass = nullptr; // Render pass is only needed if dynamic rendering is off.
-    vk::raii::PipelineLayout testLayout = nullptr;
-    vk::raii::Pipeline test = nullptr;
-
-    void init(const vk::raii::Device& device, bool dynamicRendering);
-};
-
-#endif //VKPipeline_h_Included
+#endif //VKInit_h_Included
