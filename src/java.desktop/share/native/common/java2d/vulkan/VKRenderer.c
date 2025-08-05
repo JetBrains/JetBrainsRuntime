@@ -40,51 +40,6 @@
 #undef SHADER_ENTRY
 #undef BYTECODE_END
 
-VkRenderPassCreateInfo* VKRenderer_GetGenericRenderPassInfo() {
-    static VkAttachmentDescription colorAttachment = {
-            .format = VK_FORMAT_B8G8R8A8_UNORM, //TODO: swapChain colorFormat
-            .samples = VK_SAMPLE_COUNT_1_BIT,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-    };
-
-    static VkAttachmentReference colorReference = {
-            .attachment = 0,
-            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-    };
-
-    static VkSubpassDescription subpassDescription = {
-            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-            .colorAttachmentCount = 1,
-            .pColorAttachments = &colorReference
-    };
-
-    // Subpass dependencies for layout transitions
-    static VkSubpassDependency dependency = {
-            .srcSubpass = VK_SUBPASS_EXTERNAL,
-            .dstSubpass = 0,
-            .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .srcAccessMask = 0,
-            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-    };
-
-    static VkRenderPassCreateInfo renderPassInfo = {
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-            .attachmentCount = 1,
-            .pAttachments = &colorAttachment,
-            .subpassCount = 1,
-            .pSubpasses = &subpassDescription,
-            .dependencyCount = 1,
-            .pDependencies = &dependency
-    };
-    return &renderPassInfo;
-}
-
 VkShaderModule createShaderModule(VKLogicalDevice* logicalDevice, uint32_t* shader, uint32_t sz) {
     VkShaderModuleCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -102,13 +57,6 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice) {
     VKRenderer* fillTexturePoly = malloc(sizeof (VKRenderer ));
 
     VkDevice device = logicalDevice->device;
-
-    if (logicalDevice->vkCreateRenderPass(logicalDevice->device, VKRenderer_GetGenericRenderPassInfo(),
-                               NULL, &fillTexturePoly->renderPass) != VK_SUCCESS)
-    {
-        J2dRlsTrace(J2D_TRACE_INFO, "Cannot create render pass for device");
-        return JNI_FALSE;
-    }
 
     // Create graphics pipeline
     VkShaderModule vertShaderModule = createShaderModule(logicalDevice, blit_vert_data, sizeof (blit_vert_data));
@@ -245,7 +193,7 @@ VKRenderer* VKRenderer_CreateFillTexturePoly(VKLogicalDevice* logicalDevice) {
             .pColorBlendState = &colorBlending,
             .pDynamicState = &dynamicState,
             .layout = fillTexturePoly->pipelineLayout,
-            .renderPass = fillTexturePoly->renderPass,
+            .renderPass = logicalDevice->renderPass,
             .subpass = 0,
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex = -1
@@ -324,13 +272,6 @@ VKRenderer *VKRenderer_CreateRenderColorPoly(VKLogicalDevice* logicalDevice,
     VKRenderer* renderColorPoly = malloc(sizeof (VKRenderer ));
 
     VkDevice device = logicalDevice->device;
-
-    if (logicalDevice->vkCreateRenderPass(logicalDevice->device, VKRenderer_GetGenericRenderPassInfo(),
-                               NULL, &renderColorPoly->renderPass) != VK_SUCCESS)
-    {
-        J2dRlsTrace(J2D_TRACE_INFO, "Cannot create render pass for device");
-        return JNI_FALSE;
-    }
 
     // Create graphics pipeline
     VkShaderModule vertShaderModule = createShaderModule(logicalDevice, color_vert_data, sizeof (color_vert_data));
@@ -454,7 +395,7 @@ VKRenderer *VKRenderer_CreateRenderColorPoly(VKLogicalDevice* logicalDevice,
             .pColorBlendState = &colorBlending,
             .pDynamicState = &dynamicState,
             .layout = renderColorPoly->pipelineLayout,
-            .renderPass = renderColorPoly->renderPass,
+            .renderPass = logicalDevice->renderPass,
             .subpass = 0,
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex = -1
@@ -476,13 +417,6 @@ VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKLogicalDevice* logicalDevice) {
     VKRenderer* fillColorPoly = malloc(sizeof (VKRenderer ));
 
     VkDevice device = logicalDevice->device;
-
-    if (logicalDevice->vkCreateRenderPass(logicalDevice->device, VKRenderer_GetGenericRenderPassInfo(),
-                               NULL, &fillColorPoly->renderPass) != VK_SUCCESS)
-    {
-        J2dRlsTrace(J2D_TRACE_INFO, "Cannot create render pass for device");
-        return JNI_FALSE;
-    }
 
     // Create graphics pipeline
     VkShaderModule vertShaderModule = createShaderModule(logicalDevice, color_max_rect_vert_data, sizeof (color_max_rect_vert_data));
@@ -603,7 +537,7 @@ VKRenderer* VKRenderer_CreateFillMaxColorPoly(VKLogicalDevice* logicalDevice) {
             .pColorBlendState = &colorBlending,
             .pDynamicState = &dynamicState,
             .layout = fillColorPoly->pipelineLayout,
-            .renderPass = fillColorPoly->renderPass,
+            .renderPass = logicalDevice->renderPass,
             .subpass = 0,
             .basePipelineHandle = VK_NULL_HANDLE,
             .basePipelineIndex = -1
@@ -683,7 +617,7 @@ void VKRenderer_TextureRender(VKLogicalDevice* logicalDevice, VKImage *destImage
     VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
     VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = logicalDevice->fillTexturePoly->renderPass,
+            .renderPass = logicalDevice->renderPass,
             .framebuffer = destImage->framebuffer,
             .renderArea.offset = (VkOffset2D){0, 0},
             .renderArea.extent = destImage->extent,
@@ -742,7 +676,7 @@ void VKRenderer_ColorRender(VKLogicalDevice* logicalDevice, VKImage *destImage, 
     VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
     VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = renderer->renderPass,
+            .renderPass = logicalDevice->renderPass,
             .framebuffer = destImage->framebuffer,
             .renderArea.offset = (VkOffset2D){0, 0},
             .renderArea.extent = destImage->extent,
@@ -798,7 +732,7 @@ void VKRenderer_ColorRenderMaxRect(VKLogicalDevice* logicalDevice, VKImage *dest
     VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
     VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = logicalDevice->fillMaxColorPoly->renderPass,
+            .renderPass = logicalDevice->renderPass,
             .framebuffer = destImage->framebuffer,
             .renderArea.offset = (VkOffset2D){0, 0},
             .renderArea.extent = destImage->extent,
