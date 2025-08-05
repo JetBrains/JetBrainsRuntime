@@ -363,7 +363,7 @@ VKRenderer* VKRenderer_CreateFillColorPoly() {
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-            .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+            .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
             .primitiveRestartEnable = VK_FALSE
     };
 
@@ -861,6 +861,152 @@ VKRenderer_FillRect(jint x, jint y, jint w, jint h)
     if (w <= 0 || h <= 0) {
         return;
     }
+}
+
+void VKRenderer_FillParallelogram(jint color, VKSDOps *dstOps,
+                                  jfloat x11, jfloat y11,
+                                  jfloat dx21, jfloat dy21,
+                                  jfloat dx12, jfloat dy12)
+{
+    if (dstOps == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_FillParallelogram: current dest is null");
+        return;
+    }
+
+    VKSDOps *vksdOps = (VKSDOps *)dstOps;
+    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
+    VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
+    float width = vksdOps->width;
+    float height = vksdOps->height;
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                  "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(W=%f, H=%f)",
+                  width, height);
+    VKVertex* vertices = ARRAY_ALLOC(VKVertex, 6);
+    /*                   dx21
+     *    (p1)---------(p2) |          (p1)------
+     *     |\            \  |            |  \    dy21
+     *     | \            \ |       dy12 |   \
+     *     |  \            \|            |   (p2)-
+     *     |  (p4)---------(p3)        (p4)   |
+     *      dx12                           \  |  dy12
+     *                              dy21    \ |
+     *                                  -----(p3)
+     */
+    float p1x = -1.0f + x11 / width;
+    float p1y = -1.0f + y11 / height;
+    float p2x = -1.0f + (x11 + dx21) / width;
+    float p2y = -1.0f + (y11 + dy21) / height;
+    float p3x = -1.0f + (x11 + dx21 + dx12) / width;
+    float p3y = -1.0f + (y11 + dy21 + dy12) / height;
+    float p4x = -1.0f + (x11 + dx12) / width;
+    float p4y = -1.0f + (y11 + dy12) / height;
+
+
+    ARRAY_PUSH_BACK(&vertices, ((VKVertex){p1x,p1y}));
+
+    ARRAY_PUSH_BACK(&vertices, ((VKVertex){p2x,p2y}));
+
+    ARRAY_PUSH_BACK(&vertices, ((VKVertex){p3x,p3y}));
+
+    ARRAY_PUSH_BACK(&vertices, ((VKVertex){p3x,p3y}));
+
+    ARRAY_PUSH_BACK(&vertices, ((VKVertex){p4x,p4y}));
+
+    ARRAY_PUSH_BACK(&vertices, ((VKVertex){p1x,p1y}));
+
+    VKBuffer* fillVertexBuffer = ARRAY_TO_VERTEX_BUF(vertices);
+    if (!fillVertexBuffer) {
+        J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create vertex buffer\n");
+        return;
+    }
+    ARRAY_FREE(vertices);
+
+    ge->vkWaitForFences(logicalDevice->device, 1, &logicalDevice->inFlightFence, VK_TRUE, UINT64_MAX);
+    ge->vkResetFences(logicalDevice->device, 1, &logicalDevice->inFlightFence);
+
+    ge->vkResetCommandBuffer(logicalDevice->commandBuffer,  0);
+
+    VKRenderer_BeginRendering();
+
+    VKRenderer_ColorRender(
+            vksdOps->image,
+            color,
+            fillVertexBuffer->buffer, 6
+    );
+
+    VKRenderer_EndRendering(VK_FALSE, VK_FALSE);
+}
+
+void VKRenderer_FillSpans(jint color, VKSDOps *dstOps, jint spanCount, jint *spans)
+{
+    if (dstOps == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_FillSpans: current dest is null");
+        return;
+    }
+
+    if (spanCount == 0) {
+        return;
+    }
+
+    VKSDOps *vksdOps = (VKSDOps *)dstOps;
+    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
+    VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
+    float width = vksdOps->width;
+    float height = vksdOps->height;
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_FillSpans(W=%f, H=%f, COUNT=%d)",
+                  width, height, spanCount);
+
+    const int VERT_COUNT = spanCount * 6;
+    VKVertex* vertices = ARRAY_ALLOC(VKVertex, VERT_COUNT);
+    for (int i = 0; i < spanCount; i++) {
+        jfloat x1 = *(spans++);
+        jfloat y1 = *(spans++);
+        jfloat x2 = *(spans++);
+        jfloat y2 = *(spans++);
+
+        float p1x = -1.0f + x1 / width;
+        float p1y = -1.0f + y1 / height;
+        float p2x = -1.0f + x2 / width;
+        float p2y = p1y;
+        float p3x = p2x;
+        float p3y = -1.0f + y2 / height;
+        float p4x = p1x;
+        float p4y = p3y;
+
+        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p1x,p1y}));
+
+        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p2x,p2y}));
+
+        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p3x,p3y}));
+
+        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p3x,p3y}));
+
+        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p4x,p4y}));
+
+        ARRAY_PUSH_BACK(&vertices, ((VKVertex){p1x,p1y}));
+    }
+
+    VKBuffer *fillVertexBuffer = ARRAY_TO_VERTEX_BUF(vertices);
+    if (!fillVertexBuffer) {
+        J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create vertex buffer\n");
+        return;
+    }
+    ARRAY_FREE(vertices);
+
+    ge->vkWaitForFences(logicalDevice->device, 1, &logicalDevice->inFlightFence, VK_TRUE, UINT64_MAX);
+    ge->vkResetFences(logicalDevice->device, 1, &logicalDevice->inFlightFence);
+
+    ge->vkResetCommandBuffer(logicalDevice->commandBuffer, 0);
+
+    VKRenderer_BeginRendering();
+
+    VKRenderer_ColorRender(
+            vksdOps->image,
+            color,
+            fillVertexBuffer->buffer, VERT_COUNT
+    );
+
+    VKRenderer_EndRendering(VK_FALSE, VK_FALSE);
 }
 
 jboolean VK_CreateLogicalDeviceRenderers() {
