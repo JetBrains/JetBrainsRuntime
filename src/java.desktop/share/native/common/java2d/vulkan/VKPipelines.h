@@ -36,7 +36,8 @@ typedef enum {
     PIPELINE_FILL_COLOR = 0,
     PIPELINE_DRAW_COLOR = 1,
     PIPELINE_BLIT = 2,
-    PIPELINE_COUNT = 3
+    PIPELINE_COUNT = 3,
+    NO_PIPELINE = PIPELINE_COUNT
 } VKPipeline;
 
 /**
@@ -66,7 +67,8 @@ struct VKRenderPassContext {
 
 typedef struct {
     float x, y;
-} VKVertex;
+    Color color;
+} VKColorVertex;
 
 typedef struct {
     float px, py;
