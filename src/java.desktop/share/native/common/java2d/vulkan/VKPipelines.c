@@ -228,9 +228,15 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
             .format = VK_FORMAT_R32G32_SFLOAT,
             .offset = sizeof(float) * 2
     };
+    static const VkVertexInputAttributeDescription colorAttribute = {
+            .location = 1,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32B32A32_SFLOAT,
+            .offset = sizeof(float) * 2
+    };
 
     { // Setup plain color pipelines.
-        MAKE_INPUT_STATE(VKVertex, positionAttribute);
+        MAKE_INPUT_STATE(VKColorVertex, positionAttribute, colorAttribute);
         createInfos[PIPELINE_DRAW_COLOR].pVertexInputState = createInfos[PIPELINE_FILL_COLOR].pVertexInputState = &inputState;
         createInfos[PIPELINE_FILL_COLOR].pInputAssemblyState = &INPUT_ASSEMBLY_STATE_TRIANGLE_LIST;
         createInfos[PIPELINE_DRAW_COLOR].pInputAssemblyState = &INPUT_ASSEMBLY_STATE_LINE_LIST;
@@ -327,7 +333,7 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
     VkPushConstantRange pushConstantRange = {
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
             .offset = 0,
-            .size = sizeof(float) * 4
+            .size = sizeof(float) * 2
     };
     VkPipelineLayoutCreateInfo createInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
