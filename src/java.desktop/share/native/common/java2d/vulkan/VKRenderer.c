@@ -142,11 +142,12 @@ struct VKRenderPass {
     uint32_t           vertexCount;
     BufferWritingState vertexBufferWriting;
 
-    VKPipeline currentPipeline;
-    VkBool32   pendingFlush;
-    VkBool32   pendingCommands;
-    VkBool32   pendingClear;
-    uint64_t   lastTimestamp; // When was this surface last used?
+    VKCompositeMode currentComposite;
+    VKPipeline      currentPipeline;
+    VkBool32        pendingFlush;
+    VkBool32        pendingCommands;
+    VkBool32        pendingClear;
+    uint64_t        lastTimestamp; // When was this surface last used?
 };
 
 /**
@@ -464,6 +465,7 @@ inline void VKRenderer_FlushDraw(VKSDOps* surface) {
  */
 static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
+    surface->renderPass->currentComposite = NO_COMPOSITE;
     surface->renderPass->currentPipeline = NO_PIPELINE;
     surface->renderPass->firstVertex = 0;
     surface->renderPass->vertexCount = 0;
@@ -502,9 +504,7 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface) {
         VKRenderer_Wait(device->renderer, surface->renderPass->lastTimestamp);
         VKRenderer_DiscardRenderPass(surface);
         // Release resources.
-        if (surface->renderPass->framebuffer != VK_NULL_HANDLE) {
-            device->vkDestroyFramebuffer(device->handle, surface->renderPass->framebuffer, NULL);
-        }
+        device->vkDestroyFramebuffer(device->handle, surface->renderPass->framebuffer, NULL);
         if (surface->renderPass->commandBuffer != VK_NULL_HANDLE) {
             POOL_RETURN(device->renderer, secondaryCommandBufferPool, surface->renderPass->commandBuffer);
         }
@@ -535,6 +535,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
     (*renderPass) = (VKRenderPass) {
             .pendingCommands = VK_FALSE,
             .pendingClear = VK_TRUE, // Clear the surface by default
+            .currentComposite = NO_COMPOSITE,
             .currentPipeline = NO_PIPELINE,
             .lastTimestamp = 0
     };
@@ -556,7 +557,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
                 .layers = 1
         };
         VK_IF_ERROR(device->vkCreateFramebuffer(device->handle, &framebufferCreateInfo, NULL,
-                                             &renderPass->framebuffer)) VK_UNHANDLED_ERROR();
+                                                &renderPass->framebuffer)) VK_UNHANDLED_ERROR();
     }
 
     J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_InitRenderPass(%p)", surface);
@@ -889,28 +890,39 @@ VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
     assert(context != NULL && context->surface != NULL);
     VKSDOps* surface = context->surface;
 
-    // Validate render pass state.
+    // Init render pass.
     if (surface->renderPass == NULL || !surface->renderPass->pendingCommands) {
         // We must only [re]init render pass between frames.
-        // Now this is correct, but in future we may have frames consisting of multiple render passes,
-        // so we must be careful to NOT call VKRenderer_InitRenderPass between render passes within single frame.
+        // Be careful to NOT call VKRenderer_InitRenderPass between render passes within single frame.
         if (!VKRenderer_InitRenderPass(surface)) return VK_FALSE;
-        // In the future, we may need to restart the render pass within single frame,
-        // for example when switching between blended and XOR drawing modes.
-        // So, generally, this should depend on VKRenderingContext, but now we just start the render pass once.
-        VKRenderer_BeginRenderPass(surface);
     }
     VKRenderPass* renderPass = surface->renderPass;
+
+    // Validate render pass state.
+    if (renderPass->currentComposite != context->composite) {
+        // ALPHA_COMPOSITE_DST keeps destination intact, so don't even bother to change the state.
+        if (context->composite == ALPHA_COMPOSITE_DST) return VK_FALSE;
+        VKCompositeMode oldComposite = renderPass->currentComposite;
+        // Update state.
+        VKRenderer_FlushDraw(surface);
+        renderPass->currentComposite = context->composite;
+        // Begin render pass.
+        if (!renderPass->pendingCommands) VKRenderer_BeginRenderPass(surface);
+        // Validate current composite.
+        J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating composite, old=%d, new=%d", oldComposite, context->composite);
+        // Reset the pipeline.
+        renderPass->currentPipeline = NO_PIPELINE;
+    }
 
     // Validate current pipeline.
     if (renderPass->currentPipeline != pipeline) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating pipeline, old=%d, new=%d",
-                   surface->renderPass->currentPipeline, pipeline);
+                   renderPass->currentPipeline, pipeline);
         VKRenderer_FlushDraw(surface);
         VkCommandBuffer cb = renderPass->commandBuffer;
         renderPass->currentPipeline = pipeline;
         surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           VKPipelines_GetPipeline(renderPass->context, pipeline));
+                                           VKPipelines_GetPipeline(renderPass->context, context->composite, pipeline));
         renderPass->vertexBufferWriting.bound = VK_FALSE;
     }
     return VK_TRUE;
