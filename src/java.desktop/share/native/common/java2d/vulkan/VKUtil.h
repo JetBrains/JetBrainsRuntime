@@ -79,6 +79,11 @@ inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
  */
 Color VKUtil_DecodeJavaColor(uint32_t color);
 
+/**
+ * Integer log2, the same as index of highest set bit.
+ */
+uint32_t VKUtil_Log2(uint64_t i);
+
 /*
  * The following macros allow the caller to return (or continue) if the
  * provided value is NULL.  (The strange else clause is included below to
