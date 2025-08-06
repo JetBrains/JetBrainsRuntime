@@ -137,6 +137,128 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
 //    VKBuffer_Destroy(device, renderVertexBuffer);
 }
 
+static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VKImage* dest,
+                                   int sx1, int sy1, int sx2, int sy2,
+                                   double dx1, double dy1, double dx2, double dy2)
+{
+    VKSDOps* surface = context->surface;
+
+    VKRenderer_FlushRenderPass(surface);
+
+    VKDevice* device = surface->device;
+
+    ARRAY(VKTxVertex) vertices = ARRAY_ALLOC(VKTxVertex, 4);
+    /*
+     *    (p1)---------(p2)
+     *     |             |
+     *     |             |
+     *     |             |
+     *    (p4)---------(p3)
+     */
+
+    double u1 = (double)sx1 / src->extent.width;
+    double v1 = (double)sy1 / src->extent.height;
+    double u2 = (double)sx2 / src->extent.width;
+    double v2 = (double)sy2 / src->extent.height;
+
+    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx1, dy1, u1, v1};
+    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx2, dy1, u2, v1};
+    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx1, dy2, u1, v2};
+    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx2, dy2, u2, v2};
+
+    VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
+    ARRAY_FREE(vertices);
+
+    VkCommandBuffer cb = VKRenderer_Record(device->renderer);
+    {
+        VkImageMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = {};
+        VKRenderer_AddImageBarrier(&barrier, &barrierBatch, src,
+                                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                   VK_ACCESS_SHADER_READ_BIT,
+                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        if (barrierBatch.barrierCount > 0) {
+            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
+                                         0, 0, NULL,
+                                         0, NULL,
+                                         barrierBatch.barrierCount, &barrier);
+        }
+    }
+
+    VKRenderer_TextureRender(context, dest, src,
+                             renderVertexBuffer->handle, 4);
+
+//  TODO: Not optimal but required for releasing raster buffer. Such Buffers should also be managed by special pools
+//  TODO: Also, consider using VKRenderer_FlushRenderPass here to process pending command
+    VKRenderer_Flush(device->renderer);
+    VKRenderer_Sync(device->renderer);
+//  TODO: Add proper sync for renderVertexBuffer
+//    VKBuffer_Destroy(device, renderVertexBuffer);
+}
+
+static jboolean clipDestCoords(
+        VKRenderingContext* context,
+        jdouble *dx1, jdouble *dy1, jdouble *dx2, jdouble *dy2,
+        jint *sx1, jint *sy1, jint *sx2, jint *sy2,
+        jint destW, jint destH) {
+    // Trim destination rect by clip-rect (or dest.bounds)
+    const jint sw    = *sx2 - *sx1;
+    const jint sh    = *sy2 - *sy1;
+    const jdouble dw = *dx2 - *dx1;
+    const jdouble dh = *dy2 - *dy1;
+    VkRect2D* clipRect = &context->clipRect;
+    jdouble dcx1 = 0;
+    jdouble dcx2 = destW;
+    jdouble dcy1 = 0;
+    jdouble dcy2 = destH;
+    if (clipRect->offset.x > dcx1)
+        dcx1 = clipRect->offset.x;
+    const int maxX = clipRect->offset.x + clipRect->extent.width;
+    if (dcx2 > maxX)
+        dcx2 = maxX;
+    if (clipRect->offset.y > dcy1)
+        dcy1 = clipRect->offset.y;
+    const int maxY = clipRect->offset.y + clipRect->extent.height;
+    if (dcy2 > maxY)
+        dcy2 = maxY;
+
+    if (dcx1 >= dcx2) {
+        J2dTraceLn(J2D_TRACE_ERROR, "\tclipDestCoords: dcx1=%1.2f, dcx2=%1.2f", dcx1, dcx2);
+        dcx1 = dcx2;
+    }
+    if (dcy1 >= dcy2) {
+        J2dTraceLn(J2D_TRACE_ERROR, "\tclipDestCoords: dcy1=%1.2f, dcy2=%1.2f", dcy1, dcy2);
+        dcy1 = dcy2;
+    }
+    if (*dx2 <= dcx1 || *dx1 >= dcx2 || *dy2 <= dcy1 || *dy1 >= dcy2) {
+        J2dTraceLn(J2D_TRACE_INFO, "\tclipDestCoords: dest rect doesn't intersect clip area");
+        J2dTraceLn(J2D_TRACE_INFO, "\tdx2=%1.4f <= dcx1=%1.4f || *dx1=%1.4f >= dcx2=%1.4f", *dx2, dcx1, *dx1, dcx2);
+        J2dTraceLn(J2D_TRACE_INFO, "\t*dy2=%1.4f <= dcy1=%1.4f || *dy1=%1.4f >= dcy2=%1.4f", *dy2, dcy1, *dy1, dcy2);
+        return JNI_FALSE;
+    }
+    if (*dx1 < dcx1) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "\t\tdx1=%1.2f, will be clipped to %1.2f | sx1+=%d", *dx1, dcx1, (jint)((dcx1 - *dx1) * (sw/dw)));
+        *sx1 += (jint)((dcx1 - *dx1) * (sw/dw));
+        *dx1 = dcx1;
+    }
+    if (*dx2 > dcx2) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "\t\tdx2=%1.2f, will be clipped to %1.2f | sx2-=%d", *dx2, dcx2, (jint)((*dx2 - dcx2) * (sw/dw)));
+        *sx2 -= (jint)((*dx2 - dcx2) * (sw/dw));
+        *dx2 = dcx2;
+    }
+    if (*dy1 < dcy1) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "\t\tdy1=%1.2f, will be clipped to %1.2f | sy1+=%d", *dy1, dcy1, (jint)((dcy1 - *dy1) * (sh/dh)));
+        *sy1 += (jint)((dcy1 - *dy1) * (sh/dh));
+        *dy1 = dcy1;
+    }
+    if (*dy2 > dcy2) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "\t\tdy2=%1.2f, will be clipped to %1.2f | sy2-=%d", *dy2, dcy2, (jint)((*dy2 - dcy2) * (sh/dh)));
+        *sy2 -= (jint)((*dy2 - dcy2) * (sh/dh));
+        *dy2 = dcy2;
+    }
+    return JNI_TRUE;
+}
 
 void VKBlitLoops_IsoBlit(JNIEnv *env,
                          VKRenderingContext* context, jlong pSrcOps,
@@ -147,73 +269,79 @@ void VKBlitLoops_IsoBlit(JNIEnv *env,
                          jdouble dx1, jdouble dy1,
                          jdouble dx2, jdouble dy2)
 {
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT_IsoBlit (%d %d %d %d) -> (%f %f %f %f) ",
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKBlitLoops_IsoBlit: (%d %d %d %d) -> (%f %f %f %f) ",
                                    sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT_IsoBlit texture=%d xform=%d",
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKBlitLoops_IsoBlit: texture=%d xform=%d",
                                    texture, xform);
-}
-static jboolean clipDestCoords(
-        VKRenderingContext* context,
-        jdouble *dx1, jdouble *dy1, jdouble *dx2, jdouble *dy2,
-        jint *sx1, jint *sy1, jint *sx2, jint *sy2,
-        jint destW, jint destH) {
-  // Trim destination rect by clip-rect (or dest.bounds)
-  const jint sw    = *sx2 - *sx1;
-  const jint sh    = *sy2 - *sy1;
-  const jdouble dw = *dx2 - *dx1;
-  const jdouble dh = *dy2 - *dy1;
-  VkRect2D* clipRect = &context->clipRect;
-  jdouble dcx1 = 0;
-  jdouble dcx2 = destW;
-  jdouble dcy1 = 0;
-  jdouble dcy2 = destH;
-    if (clipRect->offset.x > dcx1)
-      dcx1 = clipRect->offset.x;
-    const int maxX = clipRect->offset.x + clipRect->extent.width;
-    if (dcx2 > maxX)
-      dcx2 = maxX;
-    if (clipRect->offset.y > dcy1)
-      dcy1 = clipRect->offset.y;
-    const int maxY = clipRect->offset.y + clipRect->extent.height;
-    if (dcy2 > maxY)
-      dcy2 = maxY;
 
-    if (dcx1 >= dcx2) {
-      J2dTraceLn(J2D_TRACE_ERROR, "\tclipDestCoords: dcx1=%1.2f, dcx2=%1.2f", dcx1, dcx2);
-      dcx1 = dcx2;
+    VKSDOps *srcOps = (VKSDOps *)jlong_to_ptr(pSrcOps);
+
+    if (context == NULL || srcOps == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_IsoBlit: context(%p) or srcOps(%p) is null",
+                      context, srcOps);
+        return;
     }
-    if (dcy1 >= dcy2) {
-      J2dTraceLn(J2D_TRACE_ERROR, "\tclipDestCoords: dcy1=%1.2f, dcy2=%1.2f", dcy1, dcy2);
-      dcy1 = dcy2;
+
+    if (srcOps->image == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "VKBlitLoops_IsoBlit: srcOps->image is null");
+        return;
     }
-  if (*dx2 <= dcx1 || *dx1 >= dcx2 || *dy2 <= dcy1 || *dy1 >= dcy2) {
-    J2dTraceLn(J2D_TRACE_INFO, "\tclipDestCoords: dest rect doesn't intersect clip area");
-    J2dTraceLn(J2D_TRACE_INFO, "\tdx2=%1.4f <= dcx1=%1.4f || *dx1=%1.4f >= dcx2=%1.4f", *dx2, dcx1, *dx1, dcx2);
-    J2dTraceLn(J2D_TRACE_INFO, "\t*dy2=%1.4f <= dcy1=%1.4f || *dy1=%1.4f >= dcy2=%1.4f", *dy2, dcy1, *dy1, dcy2);
-    return JNI_FALSE;
-  }
-  if (*dx1 < dcx1) {
-    J2dTraceLn(J2D_TRACE_VERBOSE, "\t\tdx1=%1.2f, will be clipped to %1.2f | sx1+=%d", *dx1, dcx1, (jint)((dcx1 - *dx1) * (sw/dw)));
-    *sx1 += (jint)((dcx1 - *dx1) * (sw/dw));
-    *dx1 = dcx1;
-  }
-  if (*dx2 > dcx2) {
-    J2dTraceLn(J2D_TRACE_VERBOSE, "\t\tdx2=%1.2f, will be clipped to %1.2f | sx2-=%d", *dx2, dcx2, (jint)((*dx2 - dcx2) * (sw/dw)));
-    *sx2 -= (jint)((*dx2 - dcx2) * (sw/dw));
-    *dx2 = dcx2;
-  }
-  if (*dy1 < dcy1) {
-    J2dTraceLn(J2D_TRACE_VERBOSE, "\t\tdy1=%1.2f, will be clipped to %1.2f | sy1+=%d", *dy1, dcy1, (jint)((dcy1 - *dy1) * (sh/dh)));
-    *sy1 += (jint)((dcy1 - *dy1) * (sh/dh));
-    *dy1 = dcy1;
-  }
-  if (*dy2 > dcy2) {
-    J2dTraceLn(J2D_TRACE_VERBOSE, "\t\tdy2=%1.2f, will be clipped to %1.2f | sy2-=%d", *dy2, dcy2, (jint)((*dy2 - dcy2) * (sh/dh)));
-    *sy2 -= (jint)((*dy2 - dcy2) * (sh/dh));
-    *dy2 = dcy2;
-  }
-  return JNI_TRUE;
+
+    if (!VKRenderer_Validate(context, PIPELINE_BLIT)) {
+        J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_IsoBlit: VKRenderer_Validate cannot validate renderer");
+        return;
+    }
+
+    // TODO: check if srctype is supported
+
+    SurfaceDataRasInfo srcInfo;
+    jint sw    = sx2 - sx1;
+    jint sh    = sy2 - sy1;
+    jdouble dw = dx2 - dx1;
+    jdouble dh = dy2 - dy1;
+
+    if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) {
+        J2dTraceLn(J2D_TRACE_WARNING,
+                   "VKBlitLoops_IsoBlit: invalid dimensions");
+        return;
+    }
+
+    srcInfo.bounds.x1 = sx1;
+    srcInfo.bounds.y1 = sy1;
+    srcInfo.bounds.x2 = sx2;
+    srcInfo.bounds.y2 = sy2;
+
+    SurfaceData_IntersectBoundsXYXY(&srcInfo.bounds,
+                                    0, 0,
+                                    srcOps->image->extent.width,
+                                    srcOps->image->extent.height);
+
+    if (srcInfo.bounds.x2 > srcInfo.bounds.x1 &&
+        srcInfo.bounds.y2 > srcInfo.bounds.y1) {
+        if (srcInfo.bounds.x1 != sx1) {
+            dx1 += (srcInfo.bounds.x1 - sx1) * (dw / sw);
+            sx1 = srcInfo.bounds.x1;
+        }
+        if (srcInfo.bounds.y1 != sy1) {
+            dy1 += (srcInfo.bounds.y1 - sy1) * (dh / sh);
+            sy1 = srcInfo.bounds.y1;
+        }
+        if (srcInfo.bounds.x2 != sx2) {
+            dx2 += (srcInfo.bounds.x2 - sx2) * (dw / sw);
+            sx2 = srcInfo.bounds.x2;
+        }
+        if (srcInfo.bounds.y2 != sy2) {
+            dy2 += (srcInfo.bounds.y2 - sy2) * (dh / sh);
+            sy2 = srcInfo.bounds.y2;
+        }
+
+        if (sx2 > sx1 && sy2 > sy1) {
+            VKBlitTextureToTexture(context, srcOps->image, context->surface->image,
+                                   sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+        }
+    }
 }
+
 
 
 void VKBlitLoops_Blit(JNIEnv *env,
@@ -333,8 +461,8 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
     SurfaceDataOps *dstOps = (SurfaceDataOps *)jlong_to_ptr(pDstOps);
     SurfaceDataRasInfo srcInfo, dstInfo;
 
-    J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_SurfaceToSwBlit: (%d %d %d %d) -> (%d %d)",
-               srcx, srcy, width, height, dstx, dsty);
+    J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_SurfaceToSwBlit: (%p) (%d %d %d %d) -> (%p) (%d %d)",
+               srcOps, srcx, srcy, width, height, dstOps, dstx, dsty);
 
     if (width <= 0 || height <= 0) {
         J2dTraceLn(J2D_TRACE_WARNING,
