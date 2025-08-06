@@ -42,7 +42,7 @@
 #endif
 
 // Useful logging & result checking macros
-void VKUtil_LogResultError(const char* string, VkResult result);
+JNIEXPORT void VKUtil_LogResultError(const char* string, VkResult result);
 inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
     if (result != VK_SUCCESS) {
         VKUtil_LogResultError(errorMessage, result);

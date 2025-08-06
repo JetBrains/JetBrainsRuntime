@@ -30,7 +30,6 @@
 #include "SurfaceData.h"
 #include "sun_java2d_pipe_hw_AccelSurface.h"
 #include "VKUtil.h"
-#include "VKTypes.h"
 
 #define VKSD_UNDEFINED       sun_java2d_pipe_hw_AccelSurface_UNDEFINED
 #define VKSD_WINDOW          sun_java2d_pipe_hw_AccelSurface_WINDOW
@@ -57,6 +56,7 @@ struct VKSDOps {
 };
 
 typedef void (*VKWinSD_SurfaceResizeCallback)(VKWinSDOps* surface, VkExtent2D extent);
+typedef void (*VKWinSD_SurfaceInitCallback)(VKWinSDOps* surface, void* data);
 
 /**
  * The VKWinSDOps structure describes a native Vulkan surface connected with a window.
@@ -71,14 +71,26 @@ struct VKWinSDOps {
     VKWinSD_SurfaceResizeCallback resizeCallback;
 };
 
+/**
+ * Create a new surface with given parameters.
+ * This is intended to be called via JNI and provided with a valid VKSurfaceData object handle.
+ * Use SurfaceData_DisposeOps to destroy the surface.
+ */
+JNIEXPORT VKSDOps* VKSD_CreateSurface(JNIEnv* env, jobject vksd, jint drawableType, jint format, jint backgroundRGB,
+                                      VKWinSD_SurfaceResizeCallback resizeCallback);
+
+/**
+ * [Re]initialize window surface with a given platform-specific initialization callback.
+ * This is intended to be called via JNI and provided with a valid VKSurfaceData object handle.
+ */
+JNIEXPORT void VKSD_InitWindowSurface(JNIEnv *env, jobject vksd, VKWinSD_SurfaceInitCallback initCallback, void* data);
+
 inline VkBool32 VKSD_IsOpaque(VKSDOps* vksdo) {
     return vksdo->drawableFormat & VKSD_FORMAT_OPAQUE_BIT ? VK_TRUE : VK_FALSE;
 }
 
 /**
  * Release all resources of the surface, resetting it to initial state.
- * This function must also be used to initialize newly allocated surfaces.
- * VKSDOps.drawableType must be properly set before calling this function.
  */
 void VKSD_ResetSurface(VKSDOps* vksdo);
 
