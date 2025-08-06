@@ -29,14 +29,15 @@
 #include "VKTypes.h"
 #include "VKTexturePool.h"
 #include "VKRenderState.h"
+#include "VKUtil.h"
 
 struct VKDevice {
     VkDevice         handle;
     VkPhysicalDevice physicalDevice;
     char*            name;
     uint32_t         queueFamily;
-    pchar*           enabledLayers;
-    pchar*           enabledExtensions;
+    ARRAY(pchar)     enabledLayers;
+    ARRAY(pchar)     enabledExtensions;
     VkQueue          queue;
 
     VKAllocator*     allocator;
@@ -118,10 +119,10 @@ struct VKDevice {
 };
 
 struct VKGraphicsEnvironment {
-    VkInstance        vkInstance;
-    VkPhysicalDevice* physicalDevices;
-    VKDevice*         devices;
-    VKDevice*         currentDevice;
+    VkInstance              vkInstance;
+    ARRAY(VkPhysicalDevice) physicalDevices;
+    ARRAY(VKDevice)         devices;
+    VKDevice*               currentDevice;
 
 #if defined(DEBUG)
     VkDebugUtilsMessengerEXT debugMessenger;
