@@ -45,8 +45,13 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.awt.image.BufferedImageOp;
+import java.awt.image.ComponentColorModel;
+import java.awt.image.DataBuffer;
+import java.awt.image.DirectColorModel;
+import java.awt.image.PixelInterleavedSampleModel;
 import java.lang.annotation.Native;
 import java.lang.ref.WeakReference;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -424,24 +429,104 @@ final class VKSurfaceToSwBlit extends Blit {
 
 final class VKSwToSurfaceBlitContext {
 
-    // TODO switch to TYPE_INT_ARGB when blit shader is fixed to handle straight alpha?
     // Don't use pre-multiplied alpha to preserve color values whenever possible.
-    private final VKStageSurface stage4Byte = new VKStageSurface((w, h) -> new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE));
+    private final VKStageSurface stage4Byte = new VKStageSurface((w, h) -> new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB));
 
     VKStageSurface getStage(SurfaceData src, VKSurfaceData dst) {
         // We assume that 4 byte sampled format is always supported.
         return stage4Byte;
     }
 
+    @Native private static final int SRCTYPE_PRE_MULTIPLIED_ALPHA_BIT = 1 << 15;
+    @Native private static final int SRCTYPE_BITS = 2;
+    @Native private static final int SRCTYPE_MASK = (1 << SRCTYPE_BITS) - 1;
+    @Native private static final int SRCTYPE_4BYTE = 0;
+    @Native private static final int SRCTYPE_3BYTE = 1;
+    @Native private static final int SRCTYPE_565   = 2;
+    @Native private static final int SRCTYPE_555   = 3;
+
+    private static int getDCMComponentIndex(int mask) {
+        int index;
+        switch (mask) {
+            case 0x000000ff -> index = 0;
+            case 0x0000ff00 -> index = 1;
+            case 0x00ff0000 -> index = 2;
+            case 0xff000000 -> index = 3;
+            default -> { return -1; }
+        }
+        if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) index = 3 - index;
+        return index;
+    }
+
+    private static int encode4Byte(int r, int g, int b, int a, boolean alphaPre) {
+        return SRCTYPE_4BYTE |
+                (r <<  SRCTYPE_BITS     ) |
+                (g << (SRCTYPE_BITS + 2)) |
+                (b << (SRCTYPE_BITS + 4)) |
+                (a << (SRCTYPE_BITS + 6)) |
+                (alphaPre ? SRCTYPE_PRE_MULTIPLIED_ALPHA_BIT : 0);
+    }
+
+    private static int encode3Byte(int r, int g, int b) {
+        return SRCTYPE_3BYTE |
+                (r <<  SRCTYPE_BITS     ) |
+                (g << (SRCTYPE_BITS + 2)) |
+                (b << (SRCTYPE_BITS + 4));
+    }
+
+    private static boolean hasCap(VKSurfaceData dst, int cap) {
+        return (dst.getGraphicsConfig().getGPU().getSampledCaps() & cap) != 0;
+    }
+
     /**
      * Encode src surface type for native blit.
      * Return -1 if the surface type is not supported.
      * All stage surfaces from getStage() must always be supported.
+     * See decodeSrcType() in VKBlitLoops.c
      */
-    int encodeSrcType(SurfaceData src) {
-        // TODO Needs to be implemented.
-        //      Currently, all blits are performed via a staged surface.
-        if (src.getSurfaceType() == SurfaceType.IntArgbPre) return 0;
+    int encodeSrcType(SurfaceData src, VKSurfaceData dst) {
+        if (src.getNativeOps() == 0) return -1; // No native raster info - needs a staged blit.
+        // We assume that the 4-byte sampled format is always supported.
+        if (src.getColorModel() instanceof DirectColorModel dcm) {
+            if (dcm.getTransferType() == DataBuffer.TYPE_INT) {
+                // Int-packed format. Can be directly mapped to 4-byte format with arbitrary component order.
+                int r, g, b, a;
+                if ((r = getDCMComponentIndex(dcm.getRedMask()))   == -1 ||
+                        (g = getDCMComponentIndex(dcm.getGreenMask())) == -1 ||
+                        (b = getDCMComponentIndex(dcm.getBlueMask()))  == -1) return -1;
+                if (!dcm.hasAlpha()) a = r; // Special case, a = r means no alpha.
+                else if ((a = getDCMComponentIndex(dcm.getAlphaMask())) == -1) return -1;
+                return encode4Byte(r, g, b, a, dcm.isAlphaPremultiplied());
+            } else if (dcm.getTransferType() == DataBuffer.TYPE_SHORT || dcm.getTransferType() == DataBuffer.TYPE_USHORT) {
+                // Short-packed format, we support few standard formats.
+                if (dcm.getRedMask() == 0xf800 && dcm.getGreenMask() == 0x07E0 && dcm.getBlueMask() == 0x001F) {
+                    if (hasCap(dst, VKGPU.SAMPLED_CAP_565_BIT)) return SRCTYPE_565;
+                } else if (dcm.getRedMask() == 0x7C00 && dcm.getGreenMask() == 0x03E0 && dcm.getBlueMask() == 0x001F) {
+                    if (hasCap(dst, VKGPU.SAMPLED_CAP_555_BIT)) return SRCTYPE_555;
+                }
+            }
+        } else if (src.getColorModel() instanceof ComponentColorModel &&
+                   src.getColorModel().getColorSpace().isCS_sRGB() &&
+                   src.getRaster(0, 0, 0, 0).getSampleModel() instanceof PixelInterleavedSampleModel sm &&
+                   sm.getTransferType() == DataBuffer.TYPE_BYTE) {
+            // Byte-interleaved format. We support 3 and 4-byte formats with arbitrary component order.
+            int stride = sm.getPixelStride();
+            if (stride == 4 || (stride == 3 && hasCap(dst, VKGPU.SAMPLED_CAP_3BYTE_BIT))) {
+                int[] bands = sm.getBandOffsets();
+                if (bands.length >= 3 &&
+                    bands[0] >= 0 && bands[0] < stride &&
+                    bands[1] >= 0 && bands[1] < stride &&
+                    bands[2] >= 0 && bands[2] < stride) {
+                    if (stride == 3) {
+                        return encode3Byte(bands[0], bands[1], bands[2]);
+                    } else if (bands.length == 4 && bands[3] >= 0 && bands[3] < stride) {
+                        return encode4Byte(bands[0], bands[1], bands[2], bands[3], src.getColorModel().isAlphaPremultiplied());
+                    } else if (bands.length == 3) {
+                        return encode4Byte(bands[0], bands[1], bands[2], bands[0], false); // Special case, a = r means no alpha.
+                    }
+                }
+            }
+        }
         return -1;
     }
 }
@@ -458,7 +543,7 @@ class VKSwToSurfaceBlit extends Blit {
     public void Blit(SurfaceData src, SurfaceData dst,
                      Composite comp, Region clip,
                      int sx, int sy, int dx, int dy, int w, int h) {
-        int srcType = blitContext.encodeSrcType(src);
+        int srcType = blitContext.encodeSrcType(src, (VKSurfaceData) dst);
         if (srcType == -1) {
             try (VKStageSurface stageSurface = blitContext.getStage(src, (VKSurfaceData) dst)) {
                 SurfaceData stage = stageSurface.acquire(w, h);
@@ -494,7 +579,7 @@ class VKSwToSurfaceScale extends ScaledBlit {
                       int sx2, int sy2,
                       double dx1, double dy1,
                       double dx2, double dy2) {
-        int srcType = blitContext.encodeSrcType(src);
+        int srcType = blitContext.encodeSrcType(src, (VKSurfaceData) dst);
         if (srcType == -1) {
             try (VKStageSurface stageSurface = blitContext.getStage(src, (VKSurfaceData) dst)) {
                 int w = sx2-sx1, h = sy2-sy1;
@@ -529,7 +614,7 @@ class VKSwToSurfaceTransform extends TransformBlit {
                           Composite comp, Region clip,
                           AffineTransform at, int hint,
                           int sx, int sy, int dx, int dy, int w, int h) {
-        int srcType = blitContext.encodeSrcType(src);
+        int srcType = blitContext.encodeSrcType(src, (VKSurfaceData) dst);
         if (srcType == -1) {
             try (VKStageSurface stageSurface = blitContext.getStage(src, (VKSurfaceData) dst)) {
                 SurfaceData stage = stageSurface.acquire(w, h);
