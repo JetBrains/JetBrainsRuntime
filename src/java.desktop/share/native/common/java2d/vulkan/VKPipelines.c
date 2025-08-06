@@ -46,6 +46,7 @@ static size_t pipelineDescriptorHash(const void* ptr) {
     uint32_t h = 0U;
     hash(&h, d->stencilMode);
     hash(&h, d->dstOpaque);
+    hash(&h, d->inAlphaType);
     hash(&h, d->composite);
     hash(&h, d->shader);
     hash(&h, d->topology);
@@ -55,6 +56,7 @@ static bool pipelineDescriptorEquals(const void* ap, const void* bp) {
     const VKPipelineDescriptor *a = ap, *b = bp;
     return a->stencilMode == b->stencilMode &&
              a->dstOpaque == b->dstOpaque &&
+           a->inAlphaType == b->inAlphaType &&
              a->composite == b->composite &&
                 a->shader == b->shader &&
               a->topology == b->topology;
@@ -142,6 +144,12 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
         VkPipelineShaderStageCreateInfo createInfos[2]; // vert + frag
     } ShaderStages;
     ShaderStages stages[count];
+    typedef struct {
+        VkSpecializationInfo info;
+        VkSpecializationMapEntry entries[2];
+        uint64_t data[1];
+    } Specialization;
+    Specialization specializations[count][2];
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyStates[count];
     VkPipelineDepthStencilStateCreateInfo depthStencilStates[count];
     VkPipelineDynamicStateCreateInfo dynamicStates[count];
@@ -155,6 +163,14 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
         // - pStages (but stageCount is set to 2)
         // - pVertexInputState
         // - createInfo.layout
+        for (uint32_t j = 0; j < SARRAY_COUNT_OF(specializations[i]); j++) {
+            specializations[i][j].info = (VkSpecializationInfo) {
+                .mapEntryCount = 0,
+                .pMapEntries = specializations[i][j].entries,
+                .dataSize = 0,
+                .pData = specializations[i][j].data
+            };
+        }
         inputAssemblyStates[i] = (VkPipelineInputAssemblyStateCreateInfo) {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
             .topology = descriptors[i].topology
@@ -240,6 +256,15 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             createInfos[i].pVertexInputState = &INPUT_STATE_BLIT;
             createInfos[i].layout = pipelineContext->texturePipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->blit_vert, shaders->blit_frag }};
+            // Alpha conversion specialization.
+            uint32_t* spec = (uint32_t*) specializations[i][1].data;
+            spec[0] = descriptors[i].inAlphaType;
+            spec[1] = pipelineInfos[i].outAlphaType;
+            specializations[i][1].info.dataSize = 8;
+            specializations[i][1].entries[0] = (VkSpecializationMapEntry) { 0, 0, 4 };
+            specializations[i][1].entries[1] = (VkSpecializationMapEntry) { 1, 4, 4 };
+            specializations[i][1].info.mapEntryCount = 2;
+            stages[i].createInfos[1].pSpecializationInfo = &specializations[i][1].info;
             break;
         case SHADER_CLIP:
             createInfos[i].pVertexInputState = &INPUT_STATE_CLIP;
