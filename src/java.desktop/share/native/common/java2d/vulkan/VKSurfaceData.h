@@ -31,16 +31,11 @@
 #include "sun_java2d_pipe_hw_AccelSurface.h"
 #include "VKUtil.h"
 #include "VKTypes.h"
-#include "VKRenderer.h"
 
-/**
- * These are shorthand names for the surface type constants defined in
- * VKSurfaceData.java.
- * TODO which constants?
- */
 #define VKSD_UNDEFINED       sun_java2d_pipe_hw_AccelSurface_UNDEFINED
 #define VKSD_WINDOW          sun_java2d_pipe_hw_AccelSurface_WINDOW
 #define VKSD_RT_TEXTURE      sun_java2d_pipe_hw_AccelSurface_RT_TEXTURE
+#define VKSD_FORMAT_OPAQUE_BIT ((jint) 0x80000000)
 
 /**
  * The VKSDOps structure describes a native Vulkan surface and contains all
@@ -49,6 +44,7 @@
 struct VKSDOps {
     SurfaceDataOps sdOps;
     jint           drawableType;
+    jint           drawableFormat;
     VKDevice*      device;
     VKImage*       image;
     VKImage*       stencil;
@@ -74,6 +70,10 @@ struct VKWinSDOps {
     VkExtent2D     swapchainExtent;
     VKWinSD_SurfaceResizeCallback resizeCallback;
 };
+
+inline VkBool32 VKSD_IsOpaque(VKSDOps* vksdo) {
+    return vksdo->drawableFormat & VKSD_FORMAT_OPAQUE_BIT ? VK_TRUE : VK_FALSE;
+}
 
 /**
  * Release all resources of the surface, resetting it to initial state.
