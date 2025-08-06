@@ -73,13 +73,13 @@ uint32_t VKUtil_Log2(uint64_t i) {
             LT(4), LT(5), LT(5), LT(6), LT(6), LT(6), LT(6),
             LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7) };
     register uint32_t t;
-    if (t = i >> 56) return 56 + LogTable256[t];
-    if (t = i >> 48) return 48 + LogTable256[t];
-    if (t = i >> 40) return 40 + LogTable256[t];
-    if (t = i >> 32) return 32 + LogTable256[t];
-    if (t = i >> 24) return 24 + LogTable256[t];
-    if (t = i >> 16) return 16 + LogTable256[t];
-    if (t = i >>  8) return  8 + LogTable256[t];
+    if ((t = i >> 56)) return 56 + LogTable256[t];
+    if ((t = i >> 48)) return 48 + LogTable256[t];
+    if ((t = i >> 40)) return 40 + LogTable256[t];
+    if ((t = i >> 32)) return 32 + LogTable256[t];
+    if ((t = i >> 24)) return 24 + LogTable256[t];
+    if ((t = i >> 16)) return 16 + LogTable256[t];
+    if ((t = i >>  8)) return  8 + LogTable256[t];
     return LogTable256[i & 0xFF];
 }
 
@@ -291,7 +291,7 @@ FormatGroup VKUtil_GetFormatGroup(VkFormat format) {
 #undef GROUP
 }
 
-void VKUtil_LogResultError(const char* string, VkResult result) {
+JNIEXPORT void VKUtil_LogResultError(const char* string, VkResult result) {
     const char* r;
     switch (result) {
 #define RESULT(T) case T: r = #T; break
