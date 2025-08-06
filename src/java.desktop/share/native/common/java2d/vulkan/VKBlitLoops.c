@@ -24,21 +24,14 @@
  * questions.
  */
 
+#include <assert.h>
 #include <string.h>
-#include "jlong.h"
-#include "SurfaceData.h"
-#include "VKUtil.h"
-#include "VKBlitLoops.h"
-#include "VKSurfaceData.h"
-#include "VKRenderer.h"
 #include "GraphicsPrimitiveMgr.h"
-
-
-#include "Trace.h"
-#include "VKImage.h"
 #include "VKBuffer.h"
+#include "VKImage.h"
 #include "VKDevice.h"
-#include "VKTexturePool.h"
+#include "VKRenderer.h"
+#include "VKSurfaceData.h"
 #include "VKUtil.h"
 
 #define SRCTYPE_BITS sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_BITS
@@ -50,7 +43,7 @@ typedef struct {
 
 // See encodeSrcType() in VKBlitLoops.java
 static BlitSrcType decodeSrcType(VKDevice* device, jshort srctype) {
-    jshort type = srctype & sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_MASK;
+    jshort type = (jshort) (srctype & sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_MASK);
     const VKSampledSrcType* entry = &device->sampledSrcTypes.table[type];
     BlitSrcType result = { entry->format, 0 };
     switch (type) {
@@ -175,57 +168,6 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
     VKRenderer_CleanupLater(device->renderer, VKBuffer_Dispose, buffer);
 }
 
-static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VkBool32 srcOpaque, jint hint,
-                                   int sx1, int sy1, int sx2, int sy2,
-                                   double dx1, double dy1, double dx2, double dy2)
-{
-    VKSDOps* surface = context->surface;
-
-    VKDevice* device = surface->device;
-
-    ARRAY(VKTxVertex) vertices = ARRAY_ALLOC(VKTxVertex, 4);
-    /*
-     *    (p1)---------(p2)
-     *     |             |
-     *     |             |
-     *     |             |
-     *    (p4)---------(p3)
-     */
-
-    double u1 = (double)sx1;
-    double v1 = (double)sy1;
-    double u2 = (double)sx2;
-    double v2 = (double)sy2;
-
-    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx1, dy1, u1, v1};
-    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx2, dy1, u2, v1};
-    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx1, dy2, u1, v2};
-    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx2, dy2, u2, v2};
-
-    VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
-    ARRAY_FREE(vertices);
-
-    {
-        VkImageMemoryBarrier barrier;
-        VKBarrierBatch barrierBatch = {};
-        VKImage_AddBarrier(&barrier, &barrierBatch, src,
-                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                           VK_ACCESS_SHADER_READ_BIT,
-                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
-    }
-
-    static const VKPackedSwizzle OPAQUE_SWIZZLE = VK_PACK_SWIZZLE(VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                  VK_COMPONENT_SWIZZLE_ONE);
-    VkDescriptorSet srcDescriptorSet = VKImage_GetDescriptorSet(device, src, src->format, srcOpaque ? OPAQUE_SWIZZLE : 0);
-    VKRenderer_TextureRender(srcDescriptorSet, renderVertexBuffer->handle, 4, hint, SAMPLER_WRAP_BORDER);
-
-    VKRenderer_FlushSurface(context->surface);
-    VKRenderer_CleanupLater(device->renderer, VKBuffer_Dispose, renderVertexBuffer);
-}
-
 static jboolean clipDestCoords(
         VKRenderingContext* context,
         jdouble *dx1, jdouble *dy1, jdouble *dx2, jdouble *dy2,
@@ -289,19 +231,11 @@ static jboolean clipDestCoords(
     return JNI_TRUE;
 }
 
-void VKBlitLoops_IsoBlit(JNIEnv *env, jlong pSrcOps, jboolean xform, jint hint,
+void VKBlitLoops_IsoBlit(VKSDOps* srcOps, jint filter,
                          jint sx1, jint sy1, jint sx2, jint sy2,
-                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
-{
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKBlitLoops_IsoBlit: (%d %d %d %d) -> (%f %f %f %f) ",
-                                   sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKBlitLoops_IsoBlit: xform=%d", xform);
-
-    VKSDOps *srcOps = (VKSDOps *)jlong_to_ptr(pSrcOps);
-
+                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2) {
     if (srcOps == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-                      "VKBlitLoops_IsoBlit: srcOps(%p) is null", srcOps);
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_IsoBlit: srcOps is null");
         return;
     }
 
@@ -311,65 +245,20 @@ void VKBlitLoops_IsoBlit(JNIEnv *env, jlong pSrcOps, jboolean xform, jint hint,
         return;
     }
 
-    if (srcOps->image == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_WARNING, "VKBlitLoops_IsoBlit: srcOps->image is null");
-        return;
-    }
+    // Ensure all prior drawing to src surface have finished.
+    VKRenderer_FlushRenderPass(srcOps);
 
     VkBool32 srcOpaque = VKSD_IsOpaque(srcOps);
     AlphaType alphaType = srcOpaque ? ALPHA_TYPE_STRAIGHT : ALPHA_TYPE_PRE_MULTIPLIED;
-    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) {
-        J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_IsoBlit: VKRenderer_Validate cannot validate renderer");
-        return;
-    }
+    static const VKPackedSwizzle OPAQUE_SWIZZLE = VK_PACK_SWIZZLE(VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                  VK_COMPONENT_SWIZZLE_ONE);
+    VKPackedSwizzle swizzle = srcOpaque ? OPAQUE_SWIZZLE : 0;
 
-    SurfaceDataRasInfo srcInfo;
-    jint sw    = sx2 - sx1;
-    jint sh    = sy2 - sy1;
-    jdouble dw = dx2 - dx1;
-    jdouble dh = dy2 - dy1;
-
-    if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) {
-        J2dTraceLn(J2D_TRACE_WARNING,
-                   "VKBlitLoops_IsoBlit: invalid dimensions");
-        return;
-    }
-
-    srcInfo.bounds.x1 = sx1;
-    srcInfo.bounds.y1 = sy1;
-    srcInfo.bounds.x2 = sx2;
-    srcInfo.bounds.y2 = sy2;
-
-    SurfaceData_IntersectBoundsXYXY(&srcInfo.bounds,
-                                    0, 0,
-                                    srcOps->image->extent.width,
-                                    srcOps->image->extent.height);
-
-    if (srcInfo.bounds.x2 > srcInfo.bounds.x1 &&
-        srcInfo.bounds.y2 > srcInfo.bounds.y1) {
-        if (srcInfo.bounds.x1 != sx1) {
-            dx1 += (srcInfo.bounds.x1 - sx1) * (dw / sw);
-            sx1 = srcInfo.bounds.x1;
-        }
-        if (srcInfo.bounds.y1 != sy1) {
-            dy1 += (srcInfo.bounds.y1 - sy1) * (dh / sh);
-            sy1 = srcInfo.bounds.y1;
-        }
-        if (srcInfo.bounds.x2 != sx2) {
-            dx2 += (srcInfo.bounds.x2 - sx2) * (dw / sw);
-            sx2 = srcInfo.bounds.x2;
-        }
-        if (srcInfo.bounds.y2 != sy2) {
-            dy2 += (srcInfo.bounds.y2 - sy2) * (dh / sh);
-            sy2 = srcInfo.bounds.y2;
-        }
-
-        if (sx2 > sx1 && sy2 > sy1) {
-            VKRenderer_FlushRenderPass(srcOps);
-            VKBlitTextureToTexture(context, srcOps->image, srcOpaque, hint,
-                                   sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
-        }
-    }
+    VKRenderer_DrawImage(srcOps->image, alphaType, srcOps->image->format, swizzle, filter, SAMPLER_WRAP_BORDER,
+                         (float)sx1, (float)sy1, (float)sx2, (float)sy2, (float)dx1, (float)dy1, (float)dx2, (float)dy2);
+    VKRenderer_AddSurfaceDependency(srcOps, context->surface);
 }
 
 
