@@ -30,6 +30,11 @@
 #include "VKUtil.h"
 #include "VKSurfaceData.h"
 
+static void WLVKSurfaceData_OnResize(VKWinSDOps* surface, VkExtent2D extent) {
+    JNIEnv* env = (JNIEnv*)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    JNU_CallMethodByName(env, NULL, surface->vksdOps.sdOps.sdObject, "bufferAttached", "()V");
+}
+
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_initOps(JNIEnv *env, jobject vksd, jint backgroundRGB) {
     J2dTraceLn(J2D_TRACE_VERBOSE, "WLVKSurfaceData_initOps(%p)", vksd);
     VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_InitOps(env, vksd, sizeof(VKWinSDOps));
@@ -39,6 +44,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_initOps(JNIEnv *en
     }
     sd->vksdOps.drawableType = VKSD_WINDOW;
     sd->vksdOps.background = VKUtil_DecodeJavaColor(backgroundRGB);
+    sd->resizeCallback = WLVKSurfaceData_OnResize;
     VKSD_ResetSurface(&sd->vksdOps);
 }
 
