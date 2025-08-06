@@ -26,7 +26,7 @@
 
 #include <jni_util.h>
 #include <Trace.h>
-#include "VKBase.h"
+#include "VKEnv.h"
 #include "VKUtil.h"
 #include "VKSurfaceData.h"
 
@@ -82,13 +82,13 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_assignWlSurf
     struct wl_surface* wl_surface = (struct wl_surface*)jlong_to_ptr(wlSurfacePtr);
 
     if (wl_surface != NULL) {
-        VKGraphicsEnvironment* ge = VKGE_graphics_environment();
+        VKEnv* vk = VKEnv_GetInstance();
         VkWaylandSurfaceCreateInfoKHR surfaceCreateInfo = {
                 .sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
-                .display = ge->waylandDisplay,
+                .display = vk->waylandDisplay,
                 .surface = wl_surface
         };
-        VK_IF_ERROR(ge->vkCreateWaylandSurfaceKHR(ge->vkInstance, &surfaceCreateInfo, NULL, &sd->surface)) {
+        VK_IF_ERROR(vk->vkCreateWaylandSurfaceKHR(vk->instance, &surfaceCreateInfo, NULL, &sd->surface)) {
             VK_UNHANDLED_ERROR();
         }
         J2dRlsTraceLn(J2D_TRACE_INFO,
