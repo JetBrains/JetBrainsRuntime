@@ -40,9 +40,10 @@ static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
     // DestroyRenderPass also waits while the surface resources are being used by device.
     VKRenderer_DestroyRenderPass(vksdo);
 
-    if (vksdo->device != NULL && vksdo->image != NULL) {
+    if (vksdo->device != NULL) {
+        VKImage_Destroy(vksdo->device, vksdo->stencil);
         VKImage_Destroy(vksdo->device, vksdo->image);
-        vksdo->image = NULL;
+        vksdo->image = vksdo->stencil = NULL;
     }
 }
 
@@ -98,6 +99,25 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): image updated %dx%d", vksdo, image->extent.width, image->extent.height);
     }
     return vksdo->image != NULL;
+}
+
+VkBool32 VKSD_ConfigureImageSurfaceStencil(VKSDOps* vksdo) {
+    // Check that image is ready.
+    if (vksdo->image == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "VKSD_ConfigureImageSurfaceStencil(%p): image is not ready", vksdo);
+        return VK_FALSE;
+    }
+    // Initialize stencil image.
+    if (vksdo->stencil == NULL) {
+        vksdo->stencil = VKImage_Create(vksdo->device, vksdo->image->extent.width, vksdo->image->extent.height,
+                                        0, VK_FORMAT_S8_UINT, VK_IMAGE_TILING_OPTIMAL,
+                                        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                                        VK_SAMPLE_COUNT_1_BIT, VKSD_FindImageSurfaceMemoryType);
+        VK_RUNTIME_ASSERT(vksdo->stencil);
+        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureImageSurfaceStencil(%p): stencil image updated %dx%d",
+                      vksdo, vksdo->stencil->extent.width, vksdo->stencil->extent.height);
+    }
+    return vksdo->stencil != NULL;
 }
 
 VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
