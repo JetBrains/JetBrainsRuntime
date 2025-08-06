@@ -95,6 +95,11 @@ static AlphaType getSrcAlphaType(jshort srctype) {
         ALPHA_TYPE_PRE_MULTIPLIED : ALPHA_TYPE_STRAIGHT;
 }
 
+static void VKTexturePoolTexture_Dispose(VKDevice* device, void* ctx) {
+    VKTexturePoolHandle* hnd = (VKTexturePoolHandle*) ctx;
+    VKTexturePoolHandle_ReleaseTexture(hnd);
+}
+
 static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
                                               VKSDOps *dstOps,
                                               const SurfaceDataRasInfo *srcInfo, jshort srctype,
@@ -104,8 +109,6 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
 
     const int sw = srcInfo->bounds.x2 - srcInfo->bounds.x1;
     const int sh = srcInfo->bounds.y2 - srcInfo->bounds.y1;
-    const int dw = dx2 - dx1;
-    const int dh = dy2 - dy1;
 
     ARRAY(VKTxVertex) vertices = ARRAY_ALLOC(VKTxVertex, 4);
     /*
@@ -129,19 +132,18 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
     VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
     ARRAY_FREE(vertices);
 
-    const char *raster = srcInfo->rasBase;
-    raster += (uint32_t)srcInfo->bounds.y1 * (uint32_t)srcInfo->scanStride + (uint32_t)srcInfo->bounds.x1 * (uint32_t)srcInfo->pixelStride;
     J2dTraceLn(J2D_TRACE_VERBOSE, "replaceTextureRegion src (dw, dh) : [%d, %d] dest (dx1, dy1) =[%d, %d]",
-               dw, dh, dx1, dy1);
-    uint32_t dataSize = sw * sh * srcInfo->pixelStride;
-    char* data = malloc(dataSize);
-    // copy src pixels inside src bounds to buff
-    for (int row = 0; row < sh; row++) {
-        memcpy(data + (row * sw * srcInfo->pixelStride), raster, sw * srcInfo->pixelStride);
-        raster += (uint32_t)srcInfo->scanStride;
-    }
-    VKBuffer *buffer = VKBuffer_CreateFromData(device, data, dataSize);
-    free(data);
+               (dx2 - dx1), (dy2 - dy1), dx1, dy1);
+    VKBuffer *buffer =
+            VKBuffer_CreateFromRaster(device, (VKBuffer_RasterInfo){
+                .data = srcInfo->rasBase,
+                .x1 = srcInfo->bounds.x1,
+                .y1 = srcInfo->bounds.y1,
+                .w = sw,
+                .h = sh,
+                .pixelStride = srcInfo->pixelStride,
+                .scanStride = srcInfo->scanStride
+                }, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
 
     VkCommandBuffer cb = VKRenderer_Record(device->renderer);
     {
@@ -181,15 +183,9 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
     VkDescriptorSet srcDescriptorSet = VKImage_GetDescriptorSet(device, src, type.format, type.swizzle);
     VKRenderer_TextureRender(srcDescriptorSet, renderVertexBuffer->handle, 4);
 
-//  TODO: Not optimal but required for releasing raster buffer. Such Buffers should also be managed by special pools
     VKRenderer_FlushSurface(dstOps);
-    VKRenderer_Flush(device->renderer);
-    VKRenderer_Sync(device->renderer);
-//  TODO: Track lifecycle of the texture to avoid reuse of occupied texture
-    VKTexturePoolHandle_ReleaseTexture(hnd);
-    VKBuffer_Destroy(device, buffer);
-//  TODO: Add proper sync for renderVertexBuffer
-//    VKBuffer_Destroy(device, renderVertexBuffer);
+    VKRenderer_DisposeOnPrimaryComplete(device->renderer, VKTexturePoolTexture_Dispose, hnd);
+    VKRenderer_DisposeOnPrimaryComplete(device->renderer, VKBuffer_Dispose, buffer);
 }
 
 static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VkBool32 srcOpaque,
@@ -246,12 +242,8 @@ static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, Vk
     VkDescriptorSet srcDescriptorSet = VKImage_GetDescriptorSet(device, src, src->format, srcOpaque ? OPAQUE_SWIZZLE : 0);
     VKRenderer_TextureRender(srcDescriptorSet, renderVertexBuffer->handle, 4);
 
-//  TODO: Not optimal but required for releasing raster buffer. Such Buffers should also be managed by special pools
-//  TODO: Also, consider using VKRenderer_FlushRenderPass here to process pending command
-    VKRenderer_Flush(device->renderer);
-    VKRenderer_Sync(device->renderer);
-//  TODO: Add proper sync for renderVertexBuffer
-//    VKBuffer_Destroy(device, renderVertexBuffer);
+    VKRenderer_FlushSurface(context->surface);
+    VKRenderer_DisposeOnPrimaryComplete(device->renderer, VKBuffer_Dispose, renderVertexBuffer);
 }
 
 static jboolean clipDestCoords(
