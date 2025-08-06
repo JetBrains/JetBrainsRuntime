@@ -22,10 +22,20 @@
 // questions.
 
 #include <assert.h>
+#include <math.h>
 #include "VKUtil.h"
 
-Color VKUtil_DecodeJavaColor(uint32_t color) {
-    assert(sizeof(Color) == sizeof(float) * 4);
+static RGBA VKUtil_ConvertAlphaType(RGBA rgba, AlphaType newAlphaType) {
+    float mul = rgba.a;
+    if (newAlphaType == ALPHA_TYPE_STRAIGHT && mul != 0.0f) mul = 1.0f / mul;
+    rgba.r *= mul;
+    rgba.g *= mul;
+    rgba.b *= mul;
+    return rgba;
+}
+
+Color VKUtil_DecodeJavaColor(uint32_t color, AlphaType alphaType) {
+    assert(sizeof(RGBA) == sizeof(float) * 4);
     // Just map [0, 255] integer colors onto [0, 1] floating-point range, it remains in sRGB color space.
     // sRGB gamma correction remains unsupported.
     static const float NormTable256[256] = {
@@ -34,17 +44,25 @@ Color VKUtil_DecodeJavaColor(uint32_t color) {
 #define NORM64(N) NORM8(N),NORM8(N+8),NORM8(N+16),NORM8(N+24),NORM8(N+32),NORM8(N+40),NORM8(N+48),NORM8(N+56)
             NORM64(0),NORM64(64),NORM64(128),NORM64(192)
     };
-    Color srgb = {
-            .r = NormTable256[(color >> 16) & 0xFF],
-            .g = NormTable256[(color >>  8) & 0xFF],
-            .b = NormTable256[ color        & 0xFF],
-            .a = NormTable256[(color >> 24) & 0xFF]
+    // Decode color in its original type.
+    static const RGBA NAN_RGBA = {.r = NAN, .g = NAN, .b = NAN, .a = NAN};
+    Color result = {{ NAN_RGBA, NAN_RGBA }};
+    result.values[alphaType] = (RGBA) {
+        .r = NormTable256[(color >> 16) & 0xFF],
+        .g = NormTable256[(color >>  8) & 0xFF],
+        .b = NormTable256[ color        & 0xFF],
+        .a = NormTable256[(color >> 24) & 0xFF]
     };
-    // Convert to pre-multiplied alpha.
-    srgb.r *= srgb.a;
-    srgb.g *= srgb.a;
-    srgb.b *= srgb.a;
-    return srgb;
+    return result;
+}
+
+RGBA VKUtil_GetRGBA(Color color, AlphaType alphaType) {
+    if (isnan(color.values[alphaType].a)) {
+        AlphaType otherAlphaType = alphaType ^ 1;
+        assert(!isnan(color.values[otherAlphaType].a));
+        color.values[alphaType] = VKUtil_ConvertAlphaType(color.values[otherAlphaType], alphaType);
+    }
+    return color.values[alphaType];
 }
 
 uint32_t VKUtil_Log2(uint64_t i) {
@@ -55,14 +73,14 @@ uint32_t VKUtil_Log2(uint64_t i) {
             LT(4), LT(5), LT(5), LT(6), LT(6), LT(6), LT(6),
             LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7) };
     register uint32_t t;
-    if      (t = i >> 56) return 56 + LogTable256[t];
-    else if (t = i >> 48) return 48 + LogTable256[t];
-    else if (t = i >> 40) return 40 + LogTable256[t];
-    else if (t = i >> 32) return 32 + LogTable256[t];
-    else if (t = i >> 24) return 24 + LogTable256[t];
-    else if (t = i >> 16) return 16 + LogTable256[t];
-    else if (t = i >>  8) return  8 + LogTable256[t];
-    else return LogTable256[i & 0xFF];
+    if (t = i >> 56) return 56 + LogTable256[t];
+    if (t = i >> 48) return 48 + LogTable256[t];
+    if (t = i >> 40) return 40 + LogTable256[t];
+    if (t = i >> 32) return 32 + LogTable256[t];
+    if (t = i >> 24) return 24 + LogTable256[t];
+    if (t = i >> 16) return 16 + LogTable256[t];
+    if (t = i >>  8) return  8 + LogTable256[t];
+    return LogTable256[i & 0xFF];
 }
 
 FormatGroup VKUtil_GetFormatGroup(VkFormat format) {
