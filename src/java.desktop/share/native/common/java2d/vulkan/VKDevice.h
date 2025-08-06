@@ -26,8 +26,21 @@
 
 #ifndef VKDevice_h_Included
 #define VKDevice_h_Included
+#include "sun_java2d_vulkan_VKSwToSurfaceBlitContext.h"
 #include "VKTexturePool.h"
 #include "VKUtil.h"
+
+/**
+ * Description of a sampled source type bound to a specific format, supported on the device.
+ */
+typedef struct {
+    VkFormat           format;
+    VkComponentSwizzle components[4];
+} VKSampledSrcType;
+
+typedef struct {
+    VKSampledSrcType table[1 << sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_BITS];
+} VKSampledSrcTypes;
 
 struct VKDevice {
     VkDevice             handle;
@@ -38,6 +51,7 @@ struct VKDevice {
     ARRAY(pchar)         enabledLayers;
     ARRAY(pchar)         enabledExtensions;
     VkQueue              queue;
+    VKSampledSrcTypes    sampledSrcTypes;
 
     VKAllocator*     allocator;
     VKRenderer*      renderer;
