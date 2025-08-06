@@ -48,7 +48,8 @@
 #define NEXT_BOOLEAN(buf)   (jboolean)NEXT_INT(buf)
 #define NEXT_LONG(buf)      NEXT_VAL(buf, jlong)
 #define NEXT_DOUBLE(buf)    NEXT_VAL(buf, jdouble)
-#define NEXT_SURFACE(buf) ((VKSDOps*) (SurfaceDataOps*) jlong_to_ptr(NEXT_LONG(buf)))
+#define NEXT_SURFACE(buf)    ((SurfaceDataOps*) jlong_to_ptr(NEXT_LONG(buf)))
+#define NEXT_VK_SURFACE(buf) ((VKSDOps*) NEXT_SURFACE(buf))
 
 /*
  * Increments a pointer (buf) by the given number of bytes.
@@ -324,43 +325,38 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_BLIT:
             {
-                jint packedParams = NEXT_INT(b);
-                jint sx1          = NEXT_INT(b);
-                jint sy1          = NEXT_INT(b);
-                jint sx2          = NEXT_INT(b);
-                jint sy2          = NEXT_INT(b);
-                jdouble dx1       = NEXT_DOUBLE(b);
-                jdouble dy1       = NEXT_DOUBLE(b);
-                jdouble dx2       = NEXT_DOUBLE(b);
-                jdouble dy2       = NEXT_DOUBLE(b);
-                jlong pSrc        = NEXT_LONG(b);
-                jlong pDst        = NEXT_LONG(b);
-                jint hint         = EXTRACT_BYTE(packedParams, OFFSET_HINT);
-                jboolean xform    = EXTRACT_BOOLEAN(packedParams,
-                                                    OFFSET_XFORM);
-                jboolean isoblit  = EXTRACT_BOOLEAN(packedParams,
-                                                    OFFSET_ISOBLIT);
-                VKSDOps *dstOps = (VKSDOps *)jlong_to_ptr(pDst);
-                VKSDOps *oldSurface = VKRenderer_GetContext()->surface;
-                VKRenderer_GetContext()->surface = dstOps;
+                jint packedParams   = NEXT_INT(b);
+                jint sx1            = NEXT_INT(b);
+                jint sy1            = NEXT_INT(b);
+                jint sx2            = NEXT_INT(b);
+                jint sy2            = NEXT_INT(b);
+                jdouble dx1         = NEXT_DOUBLE(b);
+                jdouble dy1         = NEXT_DOUBLE(b);
+                jdouble dx2         = NEXT_DOUBLE(b);
+                jdouble dy2         = NEXT_DOUBLE(b);
+                SurfaceDataOps* src = NEXT_SURFACE(b);
+                VKSDOps* dst        = NEXT_VK_SURFACE(b);
+                jint hint           = EXTRACT_BYTE(packedParams, OFFSET_HINT);
+                jboolean xform      = EXTRACT_BOOLEAN(packedParams, OFFSET_XFORM);
+                jboolean isoblit    = EXTRACT_BOOLEAN(packedParams, OFFSET_ISOBLIT);
+                VKRenderingContext* context = VKRenderer_GetContext();
+                VKSDOps* oldSurface = context->surface;
+                context->surface = dst;
                 if (isoblit) {
-                    VKBlitLoops_IsoBlit(env, pSrc,
-                                        xform, hint,
+                    VKBlitLoops_IsoBlit((VKSDOps*) src, hint,
                                         sx1, sy1, sx2, sy2,
                                         dx1, dy1, dx2, dy2);
                 } else {
                     jshort srctype = EXTRACT_SHORT(packedParams, OFFSET_SRCTYPE);
-                    VKBlitLoops_Blit(env, pSrc,
+                    VKBlitLoops_Blit(env, ptr_to_jlong(src),
                                      xform, hint, srctype,
                                      sx1, sy1, sx2, sy2,
                                      dx1, dy1, dx2, dy2);
                 }
-                VKRenderer_GetContext()->surface = oldSurface;
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT %p -> %p ", pSrc, pDst);
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT (%d %d %d %d) -> (%f %f %f %f) ",
-                              sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT xform=%d isoblit=%d", xform, isoblit);
-
+                context->surface = oldSurface;
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                    "VKRenderQueue_flushBuffer: BLIT (%p)(%d %d %d %d) -> (%p)(%f %f %f %f), xform=%d isoblit=%d",
+                    src, sx1, sy1, sx2, sy2, dst, dx1, dy1, dx2, dy2, xform, isoblit);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SURFACE_TO_SW_BLIT:
@@ -546,8 +542,8 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
         // context-related ops
         case sun_java2d_pipe_BufferedOpCodes_SET_SURFACES:
             {
-                VKSDOps* src = NEXT_SURFACE(b);
-                VKSDOps* dst = NEXT_SURFACE(b);
+                VKSDOps* src = NEXT_VK_SURFACE(b);
+                VKSDOps* dst = NEXT_VK_SURFACE(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                               "VKRenderQueue_flushBuffer: SET_SURFACES src=%p dst=%p", src, dst);
 
@@ -564,7 +560,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE:
             {
-                VKSDOps* surface = NEXT_SURFACE(b);
+                VKSDOps* surface = NEXT_VK_SURFACE(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FLUSH_SURFACE (%p)", surface);
             }
@@ -600,7 +596,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
 
         case sun_java2d_pipe_BufferedOpCodes_CONFIGURE_SURFACE:
             {
-                VKSDOps* surface = NEXT_SURFACE(b);
+                VKSDOps* surface = NEXT_VK_SURFACE(b);
                 VKDevice* device = jlong_to_ptr(NEXT_LONG(b));
                 jint width = NEXT_INT(b);
                 jint height = NEXT_INT(b);
@@ -621,7 +617,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
 
         case sun_java2d_pipe_BufferedOpCodes_FLUSH_BUFFER:
             {
-                VKSDOps* surface = NEXT_SURFACE(b);
+                VKSDOps* surface = NEXT_VK_SURFACE(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FLUSH_BUFFER (%p)", surface);
 
