@@ -34,6 +34,7 @@ import sun.java2d.SurfaceData;
 import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.loops.SurfaceType;
+import static sun.java2d.pipe.BufferedOpCodes.CONFIGURE_SURFACE;
 import sun.java2d.pipe.ParallelogramPipe;
 import sun.java2d.pipe.PixelToParallelogramConverter;
 import sun.java2d.pipe.RenderBuffer;
@@ -301,6 +302,23 @@ public abstract class VKSurfaceData extends SurfaceData
 
     public VKGraphicsConfig getGraphicsConfig() {
         return graphicsConfig;
+    }
+
+    protected synchronized void configure() {
+        VKRenderQueue rq = VKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            RenderBuffer buf = rq.getBuffer();
+            rq.ensureCapacityAndAlignment(20, 4);
+            buf.putInt(CONFIGURE_SURFACE);
+            buf.putLong(getNativeOps());
+            buf.putInt(width);
+            buf.putInt(height);
+
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
     }
 
     public abstract boolean isOnScreen();
