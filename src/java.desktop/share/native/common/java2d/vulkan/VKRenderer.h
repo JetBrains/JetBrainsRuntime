@@ -120,6 +120,8 @@ void VKRenderer_FlushSurface(VKSDOps* surface);
  */
 void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* device);
 
+void VKRenderer_AddSurfaceDependency(VKSDOps* src, VKSDOps* dst);
+
 // Blit operations.
 
 void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexBuffer, uint32_t vertexNum,
@@ -139,6 +141,11 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans);
 void
 VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
                     jint maskoff, jint maskscan, jint masklen, uint8_t *mask);
+
+void VKRenderer_DrawImage(VKImage* image, AlphaType alphaType, VkFormat format,
+                          VKPackedSwizzle swizzle, jint filter, VKSamplerWrap wrap,
+                          float sx1, float sy1, float sx2, float sy2,
+                          float dx1, float dy1, float dx2, float dy2);
 
 VKRenderingContext* VKRenderer_GetContext();
 
