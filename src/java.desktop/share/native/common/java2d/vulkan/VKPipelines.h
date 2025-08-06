@@ -55,6 +55,7 @@ typedef enum {
 typedef struct {
     VKStencilMode       stencilMode : 2;
     VkBool32            dstOpaque   : 1;
+    AlphaType           inAlphaType : 1;
     VKCompositeMode     composite;
     VKShader            shader;
     VkPrimitiveTopology topology;
