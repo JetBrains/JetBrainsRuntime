@@ -45,7 +45,7 @@ class VKBufImgOps extends BufferedBufImgOps {
     /**
      * This method is called from VKDrawImage.transformImage() only.  It
      * validates the provided BufferedImageOp to determine whether the op
-     * is one that can be accelerated by the MTL pipeline.  If the operation
+     * is one that can be accelerated by the Vulkan pipeline.  If the operation
      * cannot be completed for any reason, this method returns false;
      * otherwise, the given BufferedImage is rendered to the destination
      * using the provided BufferedImageOp and this method returns true.
@@ -53,65 +53,66 @@ class VKBufImgOps extends BufferedBufImgOps {
     static boolean renderImageWithOp(SunGraphics2D sg, BufferedImage img,
                                      BufferedImageOp biop, int x, int y)
     {
-        // Validate the provided BufferedImage (make sure it is one that
-        // is supported, and that its properties are acceleratable)
-        if (biop instanceof ConvolveOp) {
-            if (!isConvolveOpValid((ConvolveOp)biop)) {
-                return false;
-            }
-        } else if (biop instanceof RescaleOp) {
-            if (!isRescaleOpValid((RescaleOp)biop, img)) {
-                return false;
-            }
-        } else if (biop instanceof LookupOp) {
-            if (!isLookupOpValid((LookupOp)biop, img)) {
-                return false;
-            }
-        } else {
-            // No acceleration for other BufferedImageOps (yet)
-            return false;
-        }
-
-        SurfaceData dstData = sg.surfaceData;
-        if (!(dstData instanceof VKSurfaceData) ||
-                (sg.interpolationType == AffineTransformOp.TYPE_BICUBIC) ||
-                (sg.compositeState > SunGraphics2D.COMP_ALPHA))
-        {
-            return false;
-        }
-
-        SurfaceData srcData =
-                dstData.getSourceSurfaceData(img, SunGraphics2D.TRANSFORM_ISIDENT,
-                        CompositeType.SrcOver, null);
-        if (!(srcData instanceof VKSurfaceData)) {
-            // REMIND: this hack tries to ensure that we have a cached texture
-            srcData =
-                    dstData.getSourceSurfaceData(img, SunGraphics2D.TRANSFORM_ISIDENT,
-                            CompositeType.SrcOver, null);
-            if (!(srcData instanceof VKSurfaceData)) {
-                return false;
-            }
-        }
-
-        // Verify that the source surface is actually a texture and
-        // that the operation is supported
-        VKSurfaceData vkSrc = (VKSurfaceData)srcData;
-        VKGraphicsConfig gc = vkSrc.getGraphicsConfig();
-        if (vkSrc.getType() != VKSurfaceData.TEXTURE || !gc.isCapPresent(CAPS_EXT_BIOP_SHADER))
-        {
-            return false;
-        }
-
-        int sw = img.getWidth();
-        int sh = img.getHeight();
-        VKBlitLoops.IsoBlit(srcData, dstData,
-                img, biop,
-                sg.composite, sg.getCompClip(),
-                sg.transform, sg.interpolationType,
-                0, 0, sw, sh,
-                x, y, x+sw, y+sh,
-                true);
-
-        return true;
+        // TODO No acceleration for image ops yet.
+        return false;
+//        // Validate the provided BufferedImage (make sure it is one that
+//        // is supported, and that its properties are acceleratable)
+//        if (biop instanceof ConvolveOp) {
+//            if (!isConvolveOpValid((ConvolveOp)biop)) {
+//                return false;
+//            }
+//        } else if (biop instanceof RescaleOp) {
+//            if (!isRescaleOpValid((RescaleOp)biop, img)) {
+//                return false;
+//            }
+//        } else if (biop instanceof LookupOp) {
+//            if (!isLookupOpValid((LookupOp)biop, img)) {
+//                return false;
+//            }
+//        } else {
+//            // No acceleration for other BufferedImageOps (yet)
+//            return false;
+//        }
+//
+//        SurfaceData dstData = sg.surfaceData;
+//        if (!(dstData instanceof VKSurfaceData) ||
+//                (sg.interpolationType == AffineTransformOp.TYPE_BICUBIC) ||
+//                (sg.compositeState > SunGraphics2D.COMP_ALPHA))
+//        {
+//            return false;
+//        }
+//
+//        SurfaceData srcData =
+//                dstData.getSourceSurfaceData(img, SunGraphics2D.TRANSFORM_ISIDENT,
+//                        CompositeType.SrcOver, null);
+//        if (!(srcData instanceof VKSurfaceData)) {
+//            // REMIND: this hack tries to ensure that we have a cached texture
+//            srcData =
+//                    dstData.getSourceSurfaceData(img, SunGraphics2D.TRANSFORM_ISIDENT,
+//                            CompositeType.SrcOver, null);
+//            if (!(srcData instanceof VKSurfaceData)) {
+//                return false;
+//            }
+//        }
+//
+//        // Verify that the source surface is actually a texture and
+//        // that the operation is supported
+//        VKSurfaceData vkSrc = (VKSurfaceData)srcData;
+//        VKGraphicsConfig gc = vkSrc.getGraphicsConfig();
+//        if (vkSrc.getType() != VKSurfaceData.TEXTURE || !gc.isCapPresent(CAPS_EXT_BIOP_SHADER))
+//        {
+//            return false;
+//        }
+//
+//        int sw = img.getWidth();
+//        int sh = img.getHeight();
+//        VKBlitLoops.IsoBlit(srcData, dstData,
+//                img, biop,
+//                sg.composite, sg.getCompClip(),
+//                sg.transform, sg.interpolationType,
+//                0, 0, sw, sh,
+//                x, y, x+sw, y+sh);
+//
+//        return true;
     }
 }
