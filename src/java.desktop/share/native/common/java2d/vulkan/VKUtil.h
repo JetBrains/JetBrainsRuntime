@@ -24,7 +24,6 @@
 #ifndef VKUtil_h_Included
 #define VKUtil_h_Included
 #include <stdlib.h>
-#include <vulkan/vulkan.h>
 #include <Trace.h>
 #include "awt.h"
 #include "jni_util.h"
@@ -114,7 +113,12 @@ typedef struct {
  * Note: we receive colors from Java with straight (non-premultiplied) alpha, which is done to prevent precision loss.
  * This is controlled by PixelConverter parameter of SurfaceType, see VKSurfaceData.java.
  */
-Color VKUtil_DecodeJavaColor(uint32_t color);
+Color VKUtil_DecodeJavaColor(uint32_t color, AlphaType alphaType);
+
+/**
+ * Get floating-point RGBA color components with specified AlphaType.
+ */
+RGBA VKUtil_GetRGBA(Color color, AlphaType alphaType);
 
 /**
  * Integer log2, the same as index of highest set bit.
