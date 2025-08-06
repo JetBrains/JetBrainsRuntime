@@ -39,6 +39,7 @@ struct VKDevice {
     pchar*           enabledExtensions;
     VkQueue          queue;
 
+    VKAllocator*     allocator;
     VKRenderer*      renderer;
     VKTexturePool*   texturePool;
 
@@ -93,9 +94,9 @@ struct VKDevice {
     PFN_vkCreateDescriptorPool vkCreateDescriptorPool;
     PFN_vkAllocateDescriptorSets vkAllocateDescriptorSets;
     PFN_vkCmdBindDescriptorSets vkCmdBindDescriptorSets;
-    PFN_vkGetImageMemoryRequirements vkGetImageMemoryRequirements;
+    PFN_vkGetImageMemoryRequirements2 vkGetImageMemoryRequirements2;
     PFN_vkCreateBuffer vkCreateBuffer;
-    PFN_vkGetBufferMemoryRequirements vkGetBufferMemoryRequirements;
+    PFN_vkGetBufferMemoryRequirements2 vkGetBufferMemoryRequirements2;
     PFN_vkBindBufferMemory vkBindBufferMemory;
     PFN_vkMapMemory vkMapMemory;
     PFN_vkUnmapMemory vkUnmapMemory;
@@ -108,6 +109,7 @@ struct VKDevice {
     PFN_vkDestroyImage vkDestroyImage;
     PFN_vkDestroyFramebuffer vkDestroyFramebuffer;
     PFN_vkFlushMappedMemoryRanges vkFlushMappedMemoryRanges;
+    PFN_vkInvalidateMappedMemoryRanges vkInvalidateMappedMemoryRanges;
     PFN_vkCmdPushConstants vkCmdPushConstants;
     PFN_vkCmdCopyBufferToImage vkCmdCopyBufferToImage;
 };
