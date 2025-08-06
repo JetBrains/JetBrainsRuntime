@@ -192,3 +192,28 @@ VkDescriptorSet VKImage_GetDescriptorSet(VKDevice* device, VKImage* image, VkFor
     }
     return info->descriptorSet;
 }
+
+void VKImage_AddBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
+                        VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
+    assert(barriers != NULL && batch != NULL && image != NULL);
+    // TODO Even if stage, access and layout didn't change, we may still need a barrier against WaW hazard.
+    if (stage != image->lastStage || access != image->lastAccess || layout != image->layout) {
+        barriers[batch->barrierCount] = (VkImageMemoryBarrier) {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .srcAccessMask = image->lastAccess,
+                .dstAccessMask = access,
+                .oldLayout = image->layout,
+                .newLayout = layout,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = image->handle,
+                .subresourceRange = { VKUtil_GetFormatGroup(image->format).aspect, 0, 1, 0, 1 }
+        };
+        batch->barrierCount++;
+        batch->srcStages |= image->lastStage;
+        batch->dstStages |= stage;
+        image->lastStage = stage;
+        image->lastAccess = access;
+        image->layout = layout;
+    }
+}
