@@ -30,6 +30,11 @@
 #include <CoreVideo/CVDisplayLink.h>
 #import "common.h"
 
+#define TRACE_DISPLAY_ENABLED   0
+#define TRACE_DISPLAY_CHANGED   0
+
+#define TRACE_DISPLAY_ON        (TRACE_DISPLAY_ENABLED == 1)
+
 @interface MTLLayer : CAMetalLayer
 
 @property (nonatomic) jobject javaLayer;
@@ -42,8 +47,12 @@
 @property (readwrite, assign) int leftInset;
 @property (readwrite, atomic) int redrawCount;
 @property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
-@property (readwrite, atomic) BOOL perfCountersEnabled;
+
+#if TRACE_DISPLAY_ON
+@property (readwrite, atomic) NSTimeInterval avgNextDrawableTime;
 @property (readwrite, atomic) CFTimeInterval lastPresentedTime;
+#endif
+@property (readwrite, atomic) BOOL perfCountersEnabled;
 
 - (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled;
 
