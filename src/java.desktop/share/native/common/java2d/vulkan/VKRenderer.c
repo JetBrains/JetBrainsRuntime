@@ -150,11 +150,12 @@ struct VKRenderPass {
     BufferWritingState maskFillBufferWriting;
 
     VKPipelineDescriptor state;
-    uint64_t             clipModCount; // Just a tag to detect when clip was changed.
-    VkBool32             pendingFlush;
-    VkBool32             pendingCommands;
-    VkBool32             pendingClear;
     uint64_t             lastTimestamp; // When was this surface last used?
+    uint64_t             clipModCount; // Just a tag to detect when clip was changed.
+    VkBool32             pendingFlush    : 1;
+    VkBool32             pendingCommands : 1;
+    VkBool32             pendingClear    : 1;
+    AlphaType            outAlphaType    : 1;
 };
 
 // Rendering context is only accessed from VKRenderQueue_flushBuffer,
@@ -506,7 +507,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
  * Prepare image barrier info to be executed in batch, if needed.
  */
 void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
-                                       VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
+                                VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
     assert(barriers != NULL && batch != NULL && image != NULL);
     // TODO Even if stage, access and layout didn't change, we may still need a barrier against WaW hazard.
     if (stage != image->lastStage || access != image->lastAccess || layout != image->layout) {
@@ -528,6 +529,13 @@ void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* 
         image->lastAccess = access;
         image->layout = layout;
     }
+}
+
+/**
+ * Get Color RGBA components in a format suitable for the current render pass.
+ */
+inline RGBA VKRenderer_GetRGBA(VKSDOps* surface, Color color) {
+    return VKUtil_GetRGBA(color, surface->renderPass->outAlphaType);
 }
 
 /**
@@ -628,14 +636,15 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
     (*renderPass) = (VKRenderPass) {
             .state = {
                 .stencilMode = STENCIL_MODE_NONE,
+                .dstOpaque = VKSD_IsOpaque(surface),
                 .composite = NO_COMPOSITE,
                 .shader = NO_SHADER
             },
+            .lastTimestamp = 0,
             .clipModCount = 0,
             .pendingFlush = VK_FALSE,
             .pendingCommands = VK_FALSE,
             .pendingClear = VK_TRUE, // Clear the surface by default
-            .lastTimestamp = 0
     };
 
     // Initialize pipelines. They are cached until surface format changes.
@@ -737,8 +746,9 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
         VkClearAttachment clearAttachment = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .colorAttachment = 0,
-                .clearValue = surface->background.vkClearValue
+                .clearValue = VKRenderer_GetRGBA(surface, surface->background).vkClearValue
         };
+        if (VKSD_IsOpaque(surface)) clearAttachment.clearValue.color.float32[3] = 1.0f;
         VkClearRect clearRect = {
                 .rect = {{0, 0}, surface->image->extent},
                 .baseArrayLayer = 0,
@@ -1082,12 +1092,13 @@ static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
 
     // Bind the clip pipeline.
     surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        VKPipelines_GetPipeline(surface->renderPass->context, (VKPipelineDescriptor) {
+        VKPipelines_GetPipelineInfo(surface->renderPass->context, (VKPipelineDescriptor) {
             .stencilMode = STENCIL_MODE_ON,
+            .dstOpaque = VK_TRUE,
             .composite = NO_COMPOSITE,
             .shader = SHADER_CLIP,
             .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
-        }));
+        }).pipeline);
     // Reset vertex buffer binding.
     renderPass->vertexBufferWriting.bound = VK_FALSE;
 
@@ -1169,8 +1180,9 @@ VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology) {
         VkCommandBuffer cb = renderPass->commandBuffer;
         renderPass->state.shader = shader;
         renderPass->state.topology = topology;
-        surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                VKPipelines_GetPipeline(renderPass->context, renderPass->state));
+        VKPipelineInfo pipelineInfo = VKPipelines_GetPipelineInfo(renderPass->context, renderPass->state);
+        renderPass->outAlphaType = pipelineInfo.outAlphaType;
+        surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineInfo.pipeline);
         renderPass->vertexBufferWriting.bound = VK_FALSE;
         renderPass->maskFillBufferWriting.bound = VK_FALSE;
     }
@@ -1192,7 +1204,7 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
     if (!VKRenderer_Validate(SHADER_COLOR,
                              fill ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
                                   : VK_PRIMITIVE_TOPOLOGY_LINE_LIST)) return; // Not ready.
-    Color c = context.renderColor;
+    RGBA c = VKRenderer_GetRGBA(context.surface, context.renderColor);
     /*                   dx21
      *    (p1)---------(p2) |          (p1)------
      *     |\            \  |            |  \    dy21
@@ -1226,7 +1238,7 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
 void VKRenderer_FillSpans(jint spanCount, jint *spans) {
     if (spanCount == 0) return;
     if (!VKRenderer_Validate(SHADER_COLOR, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)) return; // Not ready.
-    Color c = context.renderColor;
+    RGBA c = VKRenderer_GetRGBA(context.surface, context.renderColor);
 
     jfloat x1 = (float)*(spans++);
     jfloat y1 = (float)*(spans++);
@@ -1337,7 +1349,7 @@ void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
 
     VKMaskFillColorVertex* vs;
     VK_DRAW(vs, 6);
-    Color c = context.renderColor;
+    RGBA c = VKRenderer_GetRGBA(context.surface, context.renderColor);
     int offset = (int) maskState.offset;
     VKMaskFillColorVertex p1 = {x, y, offset, maskscan, c};
     VKMaskFillColorVertex p2 = {x + w, y, offset, maskscan, c};
