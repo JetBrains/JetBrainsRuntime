@@ -28,73 +28,113 @@ package sun.java2d.vulkan;
 
 import sun.util.logging.PlatformLogger;
 
+import java.awt.Toolkit;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class VKEnv {
+public final class VKEnv {
 
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.VKInstance");
-    private static Boolean enabled;
-    private static Boolean sdAccelerated;
+
+    private static final class Options {
+
+        @SuppressWarnings("removal")
+        private static final boolean vulkan = "true".equalsIgnoreCase(AccessController.doPrivileged(
+                (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan", "")));
+
+        @SuppressWarnings("removal")
+        private static final boolean accelsd = vulkan && "true".equalsIgnoreCase(AccessController.doPrivileged(
+                (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.accelsd", "")));
+
+        @SuppressWarnings("removal")
+        private static final int deviceNumber = !vulkan ? 0 : AccessController.doPrivileged(
+                (PrivilegedAction<Integer>) () -> Integer.getInteger("sun.java2d.vulkan.deviceNumber", 0));
+    }
+
+    private static final int UNINITIALIZED = 0;
+    private static final int INITIALIZING  = 1;
+    private static final int DISABLED      = 2;
+    private static final int ENABLED       = 3;
+    private static final int ACCELSD_BIT   = 4;
+    private static final int PRESENT_BIT   = 8;
+
+    private static int state = UNINITIALIZED;
     private static VKGPU[] devices;
     private static VKGPU defaultDevice;
 
-    private static native VKGPU[] initNative(long nativePtr);
+    private static native long initPlatform(long nativePtr);
+    private static native VKGPU[] initNative(long platformData);
 
-    @SuppressWarnings({"removal", "restricted"})
-    public static void init(long nativePtr) {
-        String vulkanOption = AccessController.doPrivileged(
-                        (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan", ""));
-        if ("true".equalsIgnoreCase(vulkanOption)) {
-            System.loadLibrary("awt");
-            String sdOption = AccessController.doPrivileged(
-                    (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.accelsd", ""));
-            devices = initNative(nativePtr);
-            enabled = devices != null;
-            sdAccelerated = enabled && "true".equalsIgnoreCase(sdOption);
-            if (enabled) {
-                // Choose default device
-                String deviceNumberOption = AccessController.doPrivileged(
-                        (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.deviceNumber"));
-                if (deviceNumberOption != null) {
-                    try {
-                        int deviceNumber = Integer.parseInt(deviceNumberOption);
-                        defaultDevice = devices[deviceNumber];
-                    } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-                        log.warning("Invalid Vulkan device number:" + deviceNumberOption);
+    public static synchronized void init(long nativePtr) {
+        if (state > INITIALIZING) return;
+        long platformData = nativePtr == 0 ? 0 : initPlatform(nativePtr);
+        int newState = DISABLED;
+        if (Options.vulkan) {
+            devices = initNative(platformData);
+            if (devices != null) {
+                newState = ENABLED;
+                if (Options.accelsd) newState |= ACCELSD_BIT;
+                defaultDevice = devices[Options.deviceNumber >= 0 && Options.deviceNumber < devices.length ?
+                        Options.deviceNumber : 0];
+                // Check whether the presentation is supported.
+                for (VKGPU device : devices) {
+                    if ((device.getCaps() & VKGPU.CAP_PRESENTABLE_BIT) != 0 &&
+                            device.getPresentableGraphicsConfigs().findAny().isPresent()) {
+                        newState |= PRESENT_BIT;
+                        break;
                     }
-                } else defaultDevice = devices[0]; // TODO consider performance/power saving preferences?
+                }
 
                 VKBlitLoops.register();
                 VKMaskFill.register();
                 VKMaskBlit.register();
             }
-        } else enabled = false;
+        }
+        state = newState;
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            if (enabled) {
+            if (isVulkanEnabled()) {
                 log.fine("Vulkan rendering enabled: YES" +
-                         "\n  accelerated surface data enabled: " + (sdAccelerated ? "YES" : "NO") +
-                         "\n  devices:" + Stream.of(devices).map(d -> (d == defaultDevice ?
-                         "\n    *" : "\n     ") + d.getName()).collect(Collectors.joining()));
+                        "\n  presentation enabled: " + (isPresentationEnabled() ? "YES" : "NO") +
+                        "\n  accelerated surface data enabled: " + (isSurfaceDataAccelerated() ? "YES" : "NO") +
+                        "\n  devices:" + Stream.of(devices).map(d -> (d == defaultDevice ?
+                        "\n    *" : "\n     ") + d.getName()).collect(Collectors.joining()));
             } else log.fine("Vulkan rendering enabled: NO");
         }
     }
 
+    private static void checkInit() {
+        if (state > INITIALIZING) return;
+        synchronized (VKEnv.class) {
+            if (state == UNINITIALIZED) {
+                // Try initializing the Toolkit first to give it a chance to init Vulkan with proper platform data.
+                state = INITIALIZING;
+                Toolkit.getDefaultToolkit();
+            }
+            // Still not initialized? Init without platform data.
+            if (state == INITIALIZING) init(0);
+        }
+    }
+
     public static boolean isVulkanEnabled() {
-        if (enabled == null) throw new RuntimeException("Vulkan not initialized");
-        return enabled;
+        checkInit();
+        return (state & ENABLED) == ENABLED;
+    }
+
+    public static boolean isPresentationEnabled() {
+        checkInit();
+        return (state & PRESENT_BIT) != 0;
     }
 
     public static boolean isSurfaceDataAccelerated() {
-        if (enabled == null) throw new RuntimeException("Vulkan not initialized");
-        return sdAccelerated;
+        checkInit();
+        return (state & ACCELSD_BIT) != 0;
     }
 
     public static Stream<VKGPU> getDevices() {
-        if (enabled == null) throw new RuntimeException("Vulkan not initialized");
+        checkInit();
         final VKGPU first = defaultDevice;
         return Stream.concat(Stream.of(first), Stream.of(devices).filter(d -> d != first));
     }
