@@ -377,7 +377,7 @@ static AllocationResult VKAllocator_AllocateForResource(VKMemoryRequirements* re
     // Adjust level to ensure proper alignment. Not very optimal, but this is a very rare case.
     while (blockSize % alignment != 0) { level++; blockSize <<= 1; }
 
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE2,
                   "VKAllocator_Allocate: level=%d, blockSize=%d, size=%d, alignment=%d, memoryType=%d, dedicated=%d",
                   level, blockSize, size, alignment, memoryType, dedicated);
 
