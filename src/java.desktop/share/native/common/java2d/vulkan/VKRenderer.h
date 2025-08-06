@@ -54,7 +54,7 @@ VKRenderer* VKRenderer_Create(VKDevice* device);
 /**
  * Setup pipeline for drawing. Returns FALSE if the surface is not yet ready for drawing.
  */
-VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline);
+VkBool32 VKRenderer_Validate(const VKRenderingContext* context, VKShader shader, VkPrimitiveTopology topology);
 
 /**
  * Record commands into the primary command buffer (outside of a render pass).
@@ -106,21 +106,23 @@ void VKRenderer_FlushRenderPass(VKSDOps* surface);
 
 // Blit operations.
 
-void VKRenderer_TextureRender(VKRenderingContext* context,
+void VKRenderer_TextureRender(const VKRenderingContext* context,
                               VKImage *destImage, VKImage *srcImage,
                               VkBuffer vertexBuffer, uint32_t vertexNum);
 
 // Drawing operations.
 
-void VKRenderer_RenderRect(VKRenderingContext* context, VKPipeline pipeline, jint x, jint y, jint w, jint h);
+void VKRenderer_RenderRect(const VKRenderingContext* context, VkBool32 fill,
+                           jint x, jint y, jint w, jint h);
 
-void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipeline,
+void VKRenderer_RenderParallelogram(const VKRenderingContext* context, VkBool32 fill,
                                     jfloat x11, jfloat y11,
                                     jfloat dx21, jfloat dy21,
                                     jfloat dx12, jfloat dy12);
 
-void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spans);
+void VKRenderer_FillSpans(const VKRenderingContext* context, jint spanCount, jint *spans);
 
-void VKRenderer_MaskFill(VKRenderingContext* context, jint x, jint y, jint w, jint h, jint maskoff, jint maskscan, jint masklen, uint8_t* mask);
+void VKRenderer_MaskFill(const VKRenderingContext* context,
+                         jint x, jint y, jint w, jint h, jint maskoff, jint maskscan, jint masklen, uint8_t* mask);
 
 #endif //VKRenderer_h_Included
