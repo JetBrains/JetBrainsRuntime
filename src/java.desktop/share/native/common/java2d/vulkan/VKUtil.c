@@ -41,6 +41,24 @@ Color VKUtil_DecodeJavaColor(uint32_t srgb) {
     return c;
 }
 
+uint32_t VKUtil_Log2(uint64_t i) {
+    // https://graphics.stanford.edu/~seander/bithacks.html#IntegerLogLookup
+    static const char LogTable256[256] = {
+#define LT(n) n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n
+            -1, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+            LT(4), LT(5), LT(5), LT(6), LT(6), LT(6), LT(6),
+            LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7) };
+    register uint32_t t;
+    if      (t = i >> 56) return 56 + LogTable256[t];
+    else if (t = i >> 48) return 48 + LogTable256[t];
+    else if (t = i >> 40) return 40 + LogTable256[t];
+    else if (t = i >> 32) return 32 + LogTable256[t];
+    else if (t = i >> 24) return 24 + LogTable256[t];
+    else if (t = i >> 16) return 16 + LogTable256[t];
+    else if (t = i >>  8) return  8 + LogTable256[t];
+    else return LogTable256[i & 0xFF];
+}
+
 void VKUtil_LogResultError(const char* string, VkResult result) {
     const char* r;
     switch (result) {
