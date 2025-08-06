@@ -84,6 +84,8 @@ static void vulkanLibClose() {
             }
 #endif
 
+            VKComposites_Destroy(geInstance->composites);
+
             if (geInstance->vkDestroyInstance != NULL) {
                 geInstance->vkDestroyInstance(geInstance->vkInstance, NULL);
             }
@@ -302,6 +304,8 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
     J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Instance Created");
     ARRAY_FREE(enabledLayers);
     ARRAY_FREE(enabledExtensions);
+
+    geInstance->composites = VKComposites_Create();
 
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
     INSTANCE_PROC(vkGetPhysicalDeviceWaylandPresentationSupportKHR);
