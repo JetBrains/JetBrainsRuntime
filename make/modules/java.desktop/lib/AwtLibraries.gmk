@@ -144,11 +144,20 @@ ifeq ($(call isTargetOs, windows), true)
   LIBAWT_CFLAGS += $(A11Y_JAWS_ANNOUNCING_CFLAGS)
 endif
 
+# Setup Vulkan
+ifeq ($(VULKAN_ENABLED), true)
+  LIBAWT_EXTRA_SRC += common/font common/java2d/vulkan
+  LIBAWT_EXTRA_HEADER_DIRS += common/font common/java2d/vulkan common/java2d
+  LIBAWT_CFLAGS += $(VULKAN_FLAGS)
+  LIBAWT_EXTRA_FILES += $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/AccelTexturePool.c
+endif
+
 # -fgcse-after-reload improves performance of MaskFill in Java2D by 20% for
 # some gcc
 $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
     NAME := awt, \
     EXTRA_SRC := $(LIBAWT_EXTRA_SRC), \
+    EXTRA_FILES := $(LIBAWT_EXTRA_FILES), \
     EXCLUDE_FILES := $(LIBAWT_EXCLUDE_FILES), \
     OPTIMIZATION := HIGHEST, \
     CFLAGS := $(LIBAWT_CFLAGS) $(X_CFLAGS) $(DBUS_CFLAGS), \
@@ -229,8 +238,8 @@ ifeq ($(VULKAN_ENABLED), true)
 	$(ECHO) '#include "spirv/$f.h"' >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
 	$(ECHO) BYTECODE_END >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
 	$(ECHO) '#endif' >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
-)
-  $(BUILD_LIBAWT): $(VULKAN_SHADER_LIST)
+  )
+  $(BUILD_LIBAWT_TARGET_DEPS): $(VULKAN_SHADER_LIST)
 endif
 
 TARGETS += $(BUILD_LIBAWT)
@@ -252,7 +261,6 @@ ifeq ($(call isTargetOs, windows macosx), false)
       common/awt/debug \
       common/font \
       common/java2d/opengl \
-      common/java2d/vulkan \
       java.base:libjvm \
       #
 
@@ -416,14 +424,8 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/wayland \
         #
 
-    LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11
+    LIBAWT_WLAWT_EXCLUDES := medialib debug opengl vulkan x11
     LIBAWT_WLAWT_EXCLUDE_FILES := common/awt/X11Color.c common/awt/awt_Font.c
-
-    # Substitute Vulkan with stubs if disabled.
-    ifeq ($(VULKAN_ENABLED), false)
-      LIBAWT_WLAWT_EXCLUDES += vulkan
-      LIBAWT_WLAWT_EXTRA_FILES += $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/vulkan/VKStubs.c
-    endif
 
     LIBAWT_WLAWT_EXTRA_HEADER_DIRS := \
         $(LIBAWT_DEFAULT_HEADER_DIRS) \
@@ -451,8 +453,6 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(VULKAN_FLAGS) \
         $(WAYLAND_CFLAGS) \
         $(CUPS_CFLAGS)
-
-    LIBAWT_WLAWT_CXXFLAGS += $(VULKAN_FLAGS)
 
     ifeq ($(TOOLCHAIN_TYPE), gcc)
       # Turn off all warnings for the following files since they contain warnings
@@ -528,8 +528,7 @@ ifeq ($(call isTargetOs, macosx), true)
       #
 
   LIBAWT_LWAWT_EXCLUDE_FILES := fontpath.c awt_Font.c X11Color.c
-  LIBAWT_LWAWT_EXCLUDES := \
-        $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/vulkan \
+  LIBAWT_LWAWT_EXCLUDES := vulkan \
         $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib \
         #
 
