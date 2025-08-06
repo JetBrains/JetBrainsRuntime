@@ -24,8 +24,6 @@
  * questions.
  */
 
-#ifndef HEADLESS
-
 #include "VKUtil.h"
 #include "VKRenderer.h"
 #include "VKSurfaceData.h"
@@ -290,22 +288,60 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     return VK_TRUE;
 }
 
+static void VKSD_OnDispose(JNIEnv* env, SurfaceDataOps* ops) {
+    VKSD_ResetSurface((VKSDOps*) ops);
+}
+
+JNIEXPORT VKSDOps* VKSD_CreateSurface(JNIEnv* env, jobject vksd, jint type, jint format, jint backgroundRGB,
+                                      VKWinSD_SurfaceResizeCallback resizeCallback) {
+    VKSDOps* sd = (VKSDOps*)SurfaceData_InitOps(env, vksd,
+        type == VKSD_WINDOW ? sizeof(VKWinSDOps) : sizeof(VKSDOps));
+    J2dTraceLn(J2D_TRACE_INFO,
+               "VKSD_CreateSurface(%p): type=%d, format=%d", sd, type, format & ~VKSD_FORMAT_OPAQUE_BIT);
+    if (sd == NULL) {
+        JNU_ThrowOutOfMemoryError(env, "Initialization of VKSDOps failed");
+        return NULL;
+    }
+    sd->sdOps.Dispose = VKSD_OnDispose;
+    sd->drawableType = type;
+    sd->drawableFormat = format;
+    sd->background = VKUtil_DecodeJavaColor(backgroundRGB, ALPHA_TYPE_STRAIGHT);
+    if (type == VKSD_WINDOW) {
+        VKWinSDOps* winSD = (VKWinSDOps*) sd;
+        winSD->resizeCallback = resizeCallback;
+    }
+    VKSD_ResetSurface(sd);
+    return sd;
+}
+
+JNIEXPORT void VKSD_InitWindowSurface(JNIEnv* env, jobject vksd, VKWinSD_SurfaceInitCallback initCallback, void* data) {
+    VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_InitWindowSurface(%p)", sd);
+
+    if (sd == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKSD_InitWindowSurface(%p): VKWinSDOps is NULL", vksd);
+        VK_UNHANDLED_ERROR();
+    }
+
+    if (sd->surface != VK_NULL_HANDLE) {
+        VKSD_ResetSurface(&sd->vksdOps);
+        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_InitWindowSurface(%p): surface reset", vksd);
+    }
+
+    initCallback(sd, data);
+
+    if (sd->surface != VK_NULL_HANDLE) {
+        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_InitWindowSurface(%p): surface created", vksd);
+    }
+    // Swapchain will be created later after CONFIGURE_SURFACE.
+}
+
 /*
  * Class:     sun_java2d_vulkan_VKOffScreenSurfaceData
  * Method:    initOps
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps(JNIEnv *env, jobject vksd, jint format) {
-    VKSDOps * sd = (VKSDOps*)SurfaceData_InitOps(env, vksd, sizeof(VKSDOps));
-    J2dTraceLn(J2D_TRACE_VERBOSE, "VKOffScreenSurfaceData_initOps(%p)", sd);
-    if (sd == NULL) {
-        JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
-        return;
-    }
-    sd->drawableType = VKSD_RT_TEXTURE;
-    sd->drawableFormat = format;
-    sd->background = VKUtil_DecodeJavaColor(0, ALPHA_TYPE_STRAIGHT);
-    VKSD_ResetSurface(sd);
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps(JNIEnv* env, jobject vksd, jint format) {
+    VKSD_CreateSurface(env, vksd, VKSD_RT_TEXTURE, format, 0, NULL);
 }
 
-#endif /* !HEADLESS */
