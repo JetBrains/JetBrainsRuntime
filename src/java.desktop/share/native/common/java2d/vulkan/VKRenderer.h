@@ -61,7 +61,7 @@ typedef struct {
     VkPipelineStageFlags dstStages;
 } VKBarrierBatch;
 
-typedef void (*VKDisposeHandler)(VKDevice* device, void* ctx);
+typedef void (*VKCleanupHandler)(VKDevice* device, void* data);
 
 VKRenderer* VKRenderer_Create(VKDevice* device);
 
@@ -113,10 +113,11 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface);
  */
 VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface);
 
+/**
+ * Register a handler to be called after the current primary command buffer finishes execution.
+ */
+void VKRenderer_CleanupLater(VKRenderer* renderer, VKCleanupHandler hnd, void* data);
 
-void VKRenderer_DisposeOnPrimaryComplete(VKRenderer* renderer, VKDisposeHandler hnd, void* ctx);
-
-void VKRenderer_DisposePrimaryResources(VKRenderer* renderer);
 /**
  * Flush pending render pass and queue surface for presentation (if applicable).
  */
