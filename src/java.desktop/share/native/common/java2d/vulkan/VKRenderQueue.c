@@ -794,6 +794,5 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
     VKEnv* vk = VKEnv_GetInstance();
     for (uint32_t i = 0; i < ARRAY_SIZE(vk->devices); i++) {
         VKRenderer_Flush(vk->devices[i].renderer);
-        VKRenderer_DisposePrimaryResources(vk->devices[i].renderer);
     }
 }
