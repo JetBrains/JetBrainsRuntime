@@ -61,7 +61,10 @@ javax/swing/JTree/4518432/JTreeNodeCopyPasteTest.java JBR-5397,JBR-8335 macosx-a
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-7386 windows-x64
 
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-9083 windows-x64
+jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-9159 windows-x64
 jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-8861 windows-x64
+jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-9161 windows-x64
+jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-9160 windows-x64
 jb/java/awt/Desktop/AboutHandlerTest.java           nobug macosx-all,linux-all,windows-all
 jb/java/awt/Focus/NewFrameAfterDialogTest.java JBR-7387 windows-x64
 jb/java/awt/Focus/ChainOfPopupsFocusTest.java JBR-8407 windows-x64
