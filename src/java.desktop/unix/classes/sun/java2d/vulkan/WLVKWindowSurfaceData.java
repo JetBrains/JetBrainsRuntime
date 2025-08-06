@@ -46,7 +46,7 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
     // TODO Do we really need the scale there? It is used by getDefaultScaleX/Y...
     private int scale = 1;
 
-    private native void initOps(int backgroundRGB);
+    private native void initOps(int format, int backgroundRGB);
 
     private native void assignWlSurface(long surfacePtr);
 
@@ -56,7 +56,7 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
         final int backgroundRGB = peer.getBackground() != null
                 ? peer.getBackground().getRGB()
                 : 0;
-        initOps(backgroundRGB);
+        initOps(getFormat().getValue(getTransparency()), backgroundRGB);
     }
 
     public SurfaceData getReplacement() {
