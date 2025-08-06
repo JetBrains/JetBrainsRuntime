@@ -30,9 +30,6 @@
 #include "jni_util.h"
 #include "VKTypes.h"
 
-#define C_ARRAY_UTIL_ALLOCATION_FAILED() VK_FATAL_ERROR("CArrayUtil allocation failed")
-#include "CArrayUtil.h"
-
 // VK_DEBUG_RANDOM may be used to randomly tune some parameters and turn off some features,
 // which would allow to cover wider range of scenarios and catch configuration-specific errors early.
 // In debug builds it returns 1 with approximately CHANCE_PERCENT chance, on release builds it is always 0.
@@ -68,6 +65,9 @@ inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessage) {
 } while(0)
 #define VK_UNHANDLED_ERROR() VK_FATAL_ERROR("Unhandled Vulkan error")
 #define VK_RUNTIME_ASSERT(...) if (!(__VA_ARGS__)) VK_FATAL_ERROR("Vulkan assertion failed: " #__VA_ARGS__)
+
+#define C_ARRAY_UTIL_ALLOCATION_FAILED() VK_FATAL_ERROR("CArrayUtil allocation failed")
+#include "CArrayUtil.h"
 
 typedef enum {
     FORMAT_ALIAS_ORIGINAL = 0,
