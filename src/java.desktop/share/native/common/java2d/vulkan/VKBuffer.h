@@ -42,9 +42,6 @@ struct VKBuffer {
     void* data;
 };
 
-VkResult VKBuffer_FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
-                                 VkMemoryPropertyFlags properties, uint32_t* pMemoryType);
-
 /**
  * Create buffers, allocate a memory page and bind them together.
  * 'pageSize' can be 0, meaning that page size is calculated based on buffer memory requirements.
@@ -52,10 +49,10 @@ VkResult VKBuffer_FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeF
  * 'bufferCount' is updated with actual number of created buffers.
  * Created buffers are written in 'buffers'.
  */
-VkDeviceMemory VKBuffer_CreateBuffers(VKDevice* device, VkBufferUsageFlags usageFlags,
-                                      VkMemoryPropertyFlags requiredMemoryProperties,
-                                      VkDeviceSize bufferSize, VkDeviceSize pageSize,
-                                      uint32_t* bufferCount, VKBuffer* buffers);
+VKMemory VKBuffer_CreateBuffers(VKDevice* device, VkBufferUsageFlags usageFlags,
+                                VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback,
+                                VkDeviceSize bufferSize, VkDeviceSize pageSize,
+                                uint32_t* bufferCount, VKBuffer* buffers);
 
 // TODO usage of this function is suboptimal, we need to avoid creating individual buffers.
 VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
