@@ -24,19 +24,46 @@
  * questions.
  */
 
-// These are stubs in case we were built with Vulkan disabled.
-#ifndef VULKAN_ENABLED
-#include "jlong_md.h"
-#include "jni.h"
+#ifndef VKEnv_h_Included
+#define VKEnv_h_Included
+#include "VKComposites.h"
+#include "VKDevice.h"
+#include "VKUtil.h"
 
-/*
- * Class:     sun_java2d_vulkan_VKEnv
- * Method:    initNative
- * Signature: (JZI)Z
- */
-JNIEXPORT jboolean JNICALL
-Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv *env, jclass wlge, jlong nativePtr, jboolean verb, jint requestedDevice) {
-    return JNI_FALSE;
-}
-
+// For old Vulkan headers - define version-related macros.
+#ifndef VK_MAKE_API_VERSION
+#   define VK_MAKE_API_VERSION(variant, major, minor, patch) VK_MAKE_VERSION(major, minor, patch)
+#   define VK_API_VERSION_MAJOR(version) VK_VERSION_MAJOR(version)
+#   define VK_API_VERSION_MINOR(version) VK_VERSION_MINOR(version)
+#   define VK_API_VERSION_PATCH(version) VK_VERSION_PATCH(version)
 #endif
+static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 2, 0);
+
+typedef struct {
+#define GLOBAL_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
+#include "VKFunctionTable.inl"
+} VKFunctionTableGlobal;
+
+struct VKEnv {
+    VkInstance      instance;
+    ARRAY(VKDevice) devices;
+    VKDevice*       currentDevice;
+
+    VKComposites composites;
+
+#if defined(DEBUG)
+    VkDebugUtilsMessengerEXT debugMessenger;
+#endif
+
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    struct wl_display* waylandDisplay;
+#endif
+
+#define INSTANCE_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
+#define OPTIONAL_INSTANCE_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
+#include "VKFunctionTable.inl"
+};
+
+VKEnv* VKEnv_GetInstance();
+
+#endif //VKEnv_h_Included
