@@ -36,7 +36,7 @@
 #include "Trace.h"
 #include "VKImage.h"
 #include "VKBuffer.h"
-#include "CArrayUtil.h"
+#include "VKUtil.h"
 
 static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKImage* dest, const SurfaceDataRasInfo *srcInfo,
                      int dx1, int dy1, int dx2, int dy2) {
@@ -53,7 +53,7 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
         return;
     }
 
-    VKTxVertex* vertices = ARRAY_ALLOC(VKTxVertex, 4);
+    ARRAY(VKTxVertex) vertices = ARRAY_ALLOC(VKTxVertex, 4);
     /*
      *    (p1)---------(p2)
      *     |             |
@@ -66,10 +66,10 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
     double u = (double)sw / VKTexturePoolHandle_GetActualWidth(hnd);
     double v = (double)sh / VKTexturePoolHandle_GetActualHeight(hnd);
 
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {dx1, dy1, 0.0f, 0.0f}));
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {dx2, dy1, u, 0.0f}));
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {dx1, dy2, 0.0f, v}));
-    ARRAY_PUSH_BACK(vertices, ((VKTxVertex) {dx2, dy2, u, v}));
+    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx1, dy1, 0.0f, 0.0f};
+    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx2, dy1, u, 0.0f};
+    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx1, dy2, 0.0f, v};
+    ARRAY_PUSH_BACK(vertices) = (VKTxVertex) {dx2, dy2, u, v};
 
     VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
     ARRAY_FREE(vertices);

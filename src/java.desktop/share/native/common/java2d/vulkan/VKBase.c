@@ -198,13 +198,13 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "        %s", (char *) extensions[i].extensionName);
     }
 
-    pchar* enabledLayers = NULL;
-    pchar* enabledExtensions = NULL;
+    ARRAY(pchar) enabledLayers     = NULL;
+    ARRAY(pchar) enabledExtensions = NULL;
     void *pNext = NULL;
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    ARRAY_PUSH_BACK(enabledExtensions, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+    ARRAY_PUSH_BACK(enabledExtensions) = VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME;
 #endif
-    ARRAY_PUSH_BACK(enabledExtensions, VK_KHR_SURFACE_EXTENSION_NAME);
+    ARRAY_PUSH_BACK(enabledExtensions) = VK_KHR_SURFACE_EXTENSION_NAME;
 
     // Check required layers & extensions.
     for (uint32_t i = 0; i < ARRAY_SIZE(enabledExtensions); i++) {
@@ -257,8 +257,8 @@ static jboolean VK_InitGraphicsEnvironment(PFN_vkGetInstanceProcAddr vkGetInstan
     }
 
     if (foundDebugLayer && foundDebugExt) {
-        ARRAY_PUSH_BACK(enabledLayers, VALIDATION_LAYER_NAME);
-        ARRAY_PUSH_BACK(enabledExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        ARRAY_PUSH_BACK(enabledLayers) = VALIDATION_LAYER_NAME;
+        ARRAY_PUSH_BACK(enabledExtensions) = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
         pNext = &features;
     } else {
         J2dRlsTraceLn(J2D_TRACE_WARNING, "Vulkan: %s and %s are not supported",
@@ -466,9 +466,9 @@ static jboolean VK_FindDevices() {
             continue;
         }
 
-        pchar* deviceEnabledLayers = NULL;
-        pchar* deviceEnabledExtensions = NULL;
-        ARRAY_PUSH_BACK(deviceEnabledExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        ARRAY(pchar) deviceEnabledLayers     = NULL;
+        ARRAY(pchar) deviceEnabledExtensions = NULL;
+        ARRAY_PUSH_BACK(deviceEnabledExtensions) = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
 
         // Validation layer
 #ifdef DEBUG
@@ -476,7 +476,7 @@ static jboolean VK_FindDevices() {
             for (uint32_t j = 0; j < layerCount; j++) {
                 if (strcmp(VALIDATION_LAYER_NAME, layers[j].layerName) == 0) {
                     validationLayerNotSupported = 0;
-                    ARRAY_PUSH_BACK(deviceEnabledLayers, VALIDATION_LAYER_NAME);
+                    ARRAY_PUSH_BACK(deviceEnabledLayers) = VALIDATION_LAYER_NAME;
                     break;
                 }
             }
@@ -490,15 +490,14 @@ static jboolean VK_FindDevices() {
             return JNI_FALSE;
         }
 
-        ARRAY_PUSH_BACK(geInstance->devices,
-                ((VKDevice) {
-                .name = deviceName,
-                .handle = VK_NULL_HANDLE,
-                .physicalDevice = geInstance->physicalDevices[i],
-                .queueFamily = queueFamily,
-                .enabledLayers = deviceEnabledLayers,
-                .enabledExtensions = deviceEnabledExtensions
-        }));
+        ARRAY_PUSH_BACK(geInstance->devices) = (VKDevice) {
+            .name = deviceName,
+            .handle = VK_NULL_HANDLE,
+            .physicalDevice = geInstance->physicalDevices[i],
+            .queueFamily = queueFamily,
+            .enabledLayers = deviceEnabledLayers,
+            .enabledExtensions = deviceEnabledExtensions
+        };
     }
     if (ARRAY_SIZE(geInstance->devices) == 0) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: No compatible device found");
