@@ -28,6 +28,9 @@
 #include "VKTypes.h"
 #include "VKUtil.h"
 
+#define CLIP_STENCIL_INCLUDE_VALUE 0x80U
+#define CLIP_STENCIL_EXCLUDE_VALUE 0U
+
 /**
  * All pipeline types.
  */
@@ -39,6 +42,12 @@ typedef enum {
     PIPELINE_COUNT           = 4,
     NO_PIPELINE              = 0x7FFFFFFF
 } VKPipeline;
+
+typedef enum {
+    STENCIL_MODE_NONE = 0, // No stencil attachment.
+    STENCIL_MODE_OFF  = 1, // Has stencil attachment, stencil test disabled.
+    STENCIL_MODE_ON   = 2  // Has stencil attachment, stencil test enabled.
+} VKStencilMode;
 
 /**
  * There are two groups of composite modes:
@@ -93,6 +102,7 @@ struct VKPipelineContext {
  * When adding new fields, update hash and comparison in VKPipelines_GetPipeline.
  */
 typedef struct {
+    VKStencilMode   stencilMode;
     VKCompositeMode composite;
 } VKPipelineSetDescriptor;
 
@@ -102,9 +112,14 @@ typedef struct {
 struct VKRenderPassContext {
     VKPipelineContext*           pipelineContext;
     VkFormat                     format;
-    VkRenderPass                 renderPass;
+    VkRenderPass                 renderPass[2]; // Color-only and color+stencil.
+    VkPipeline                   clipPipeline;
     MAP(VKPipelineSetDescriptor, struct VKPipelineSet*) pipelineSets;
 };
+
+typedef struct {
+    int x, y;
+} VKIntVertex;
 
 typedef struct {
     float x, y;
