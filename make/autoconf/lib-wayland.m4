@@ -48,8 +48,6 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     fi
     WAYLAND_CFLAGS=
     WAYLAND_LIBS=
-    VULKAN_FLAGS=
-    VULKAN_ENABLED=false
   else
     WAYLAND_FOUND=no
     WAYLAND_INCLUDES=
@@ -106,7 +104,7 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     if test "x${with_wayland_lib}" != x; then
       WAYLAND_LIBS="-L${with_wayland_lib} -lwayland-client -lwayland-cursor"
     fi
- 
+
     if test "x$WAYLAND_FOUND" = xno; then
       # Are the wayland headers installed in the default /usr/include location?
       AC_CHECK_HEADERS([wayland-client.h wayland-cursor.h],
@@ -124,98 +122,7 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       AC_MSG_ERROR([Could not find wayland! $HELP_MSG ])
     fi
     WAYLAND_CFLAGS="${WAYLAND_INCLUDES} ${WAYLAND_DEFINES}"
-
-    # Checking for vulkan sdk
-
-    AC_ARG_WITH(vulkan, [AS_HELP_STRING([--with-vulkan],
-      [specify whether we use vulkan])])
-
-    AC_ARG_WITH(vulkan-include, [AS_HELP_STRING([--with-vulkan-include],
-      [specify directory for the vulkan include files ({with-vulkan-include}/vulkan/vulkan.h)])])
-
-    AC_ARG_WITH(vulkan-shader-compiler, [AS_HELP_STRING([--with-vulkan-shader-compiler],
-      [specify which shader compiler to use: glslc/glslangValidator])])
-
-    if test "x$SUPPORTS_LIB_VULKAN" = xfalse; then
-
-      if (test "x${with_vulkan}" != x && test "x${with_vulkan}" != xno) || \
-         (test "x${with_vulkan_include}" != x && test "x${with_vulkan_include}" != xno); then
-        AC_MSG_WARN([[vulkan not used, so --with-vulkan-include is ignored]])
-      fi
-      VULKAN_FLAGS=
-      VULKAN_ENABLED=false
-    else
-      # Do not build vulkan rendering pipeline by default
-      if (test "x${with_vulkan}" = x && test "x${with_vulkan_include}" = x) || \
-          test "x${with_vulkan}" = xno || test "x${with_vulkan_include}" = xno ; then
-        VULKAN_FLAGS=
-        VULKAN_ENABLED=false
-      else
-        VULKAN_FOUND=no
-
-        if test "x${with_vulkan_include}" != x; then
-          AC_MSG_CHECKING([for ${with_vulkan_include}/vulkan/vulkan.h])
-          if test -s "${with_vulkan_include}/vulkan/vulkan.h"; then
-            VULKAN_FOUND=yes
-            VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${with_vulkan_include} -DVULKAN_ENABLED"
-            AC_MSG_RESULT([yes])
-          else
-            AC_MSG_RESULT([no])
-            AC_MSG_ERROR([Can't find 'vulkan/vulkan.h' under '${with_vulkan_include}'])
-          fi
-        fi
-
-        if test "x$VULKAN_FOUND" = xno && test "x${VULKAN_SDK}" != x; then
-          AC_MSG_CHECKING([for ${VULKAN_SDK}/include/vulkan/vulkan.h])
-          if test -s "${VULKAN_SDK}/include/vulkan/vulkan.h"; then
-            VULKAN_FOUND=yes
-            VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${VULKAN_SDK}/include -DVULKAN_ENABLED"
-            AC_MSG_RESULT([yes])
-          else
-            AC_MSG_RESULT([no])
-          fi
-        fi
-
-        if test "x$VULKAN_FOUND" = xno; then
-          # Check default /usr/include location
-          AC_CHECK_HEADERS([vulkan/vulkan.h],
-            [ VULKAN_FOUND=yes
-              VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -DVULKAN_ENABLED"
-            ],
-            [ VULKAN_FOUND=no; break ]
-          )
-        fi
-
-        if test "x$VULKAN_FOUND" = xno; then
-          HELP_MSG_MISSING_DEPENDENCY([vulkan])
-          AC_MSG_ERROR([Could not find vulkan! $HELP_MSG ])
-        else
-          # Find shader compiler - glslc or glslangValidator
-          if (test "x${with_vulkan_shader_compiler}" = x || test "x${with_vulkan_shader_compiler}" = xglslc); then
-            UTIL_LOOKUP_PROGS(GLSLC, glslc)
-            SHADER_COMPILER="$GLSLC"
-            VULKAN_SHADER_COMPILER="glslc --target-env=vulkan1.2 -mfmt=num -o"
-          fi
-
-          if (test "x${with_vulkan_shader_compiler}" = x || test "x${with_vulkan_shader_compiler}" = xglslangValidator) && \
-              test "x$SHADER_COMPILER" = x; then
-            UTIL_LOOKUP_PROGS(GLSLANG, glslangValidator)
-            SHADER_COMPILER="$GLSLANG"
-            VULKAN_SHADER_COMPILER="glslangValidator --target-env vulkan1.2 -x -o"
-          fi
-
-          if test "x$SHADER_COMPILER" != x; then
-            VULKAN_ENABLED=true
-          else
-            AC_MSG_ERROR([Can't find shader compiler])
-          fi
-        fi
-      fi
-    fi
   fi
-  AC_SUBST(VULKAN_FLAGS)
-  AC_SUBST(VULKAN_SHADER_COMPILER)
-  AC_SUBST(VULKAN_ENABLED)
   AC_SUBST(WAYLAND_CFLAGS)
   AC_SUBST(WAYLAND_LIBS)
   AC_SUBST(WAYLAND_PROTOCOLS_ROOT)
