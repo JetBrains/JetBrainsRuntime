@@ -21,7 +21,7 @@
  * questions.
  */
 
-import sun.java2d.vulkan.VKInstance;
+import sun.java2d.vulkan.VKEnv;
 
 import javax.swing.*;
 import java.awt.*;
@@ -56,10 +56,10 @@ public class VulkanMaskFillTest {
             System.out.println("No WLToolkit, skipping test");
             return;
         }
-        if (!VKInstance.isVulkanEnabled()) {
+        if (!VKEnv.isVulkanEnabled()) {
             throw new Error("Vulkan not enabled");
         }
-        if (!VKInstance.isSurfaceDataAccelerated()) {
+        if (!VKEnv.isSurfaceDataAccelerated()) {
             throw new Error("Accelerated surface data not enabled");
         }
 
