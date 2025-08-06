@@ -27,6 +27,10 @@ package sun.java2d.vulkan;
 
 import sun.awt.image.SurfaceManager;
 
+import java.awt.Transparency;
+import java.lang.annotation.Native;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -34,10 +38,11 @@ import java.util.stream.Stream;
  */
 public class VKGPU {
 
-    public static final int SAMPLED_CAP_4BYTE_BIT = 0; // Considered always supported.
-    public static final int SAMPLED_CAP_3BYTE_BIT = 1;
-    public static final int SAMPLED_CAP_565_BIT   = 2;
-    public static final int SAMPLED_CAP_555_BIT   = 4;
+    @Native public static final int FORMAT_PRESENTABLE_BIT = 0x80000000; // Considered always supported.
+    @Native public static final int SAMPLED_CAP_4BYTE_BIT = 0; // Considered always supported.
+    @Native public static final int SAMPLED_CAP_3BYTE_BIT = 1;
+    @Native public static final int SAMPLED_CAP_565_BIT   = 2;
+    @Native public static final int SAMPLED_CAP_555_BIT   = 4;
 
     private boolean initialized;
 
@@ -45,7 +50,8 @@ public class VKGPU {
     private final long nativeHandle;
     private final String name;
     private final Type type;
-    private final VKGraphicsConfig[] offscreenGraphicsConfigs, presentableGraphicsConfigs;
+    private final int sampledCaps;
+    private final List<VKGraphicsConfig> offscreenGraphicsConfigs, presentableGraphicsConfigs;
 
     private static native void init(long nativeHandle);
     private static native void reset(long nativeHandle);
@@ -55,15 +61,25 @@ public class VKGPU {
      * Fresh devices are created in uninitialized state. They can be queried for their properties
      * but cannot be used for rendering until initialized via getNativeHandle().
      */
-    private VKGPU(long nativeHandle, String name, int type) {
+    private VKGPU(long nativeHandle, String name, int type, int sampledCaps, int[] supportedFormats) {
         this.nativeHandle = nativeHandle;
         this.name = name;
         this.type = Type.VALUES[type];
-        // TODO pull out supported formats dynamically
-        offscreenGraphicsConfigs = new VKGraphicsConfig[] {
-                new VKOffscreenGraphicsConfig(this, VKFormat.B8G8R8A8_UNORM)
-        };
-        presentableGraphicsConfigs = offscreenGraphicsConfigs;
+        this.sampledCaps = sampledCaps;
+        offscreenGraphicsConfigs = new ArrayList<>();
+        presentableGraphicsConfigs = new ArrayList<>();
+        VKFormat[] allFormats = VKFormat.values();
+        for (int supportedFormat : supportedFormats) {
+            int formatValue = supportedFormat & ~FORMAT_PRESENTABLE_BIT;
+            for (VKFormat format : allFormats) {
+                if (formatValue == format.getValue(Transparency.TRANSLUCENT)) {
+                    VKOffscreenGraphicsConfig gc = new VKOffscreenGraphicsConfig(this, format);
+                    offscreenGraphicsConfigs.add(gc);
+                    if ((supportedFormat & FORMAT_PRESENTABLE_BIT) != 0) presentableGraphicsConfigs.add(gc);
+                    break;
+                }
+            }
+        }
     }
 
     public SurfaceManager.ProxyCache getSurfaceDataProxyCache() { return surfaceDataProxyCache; }
@@ -71,15 +87,15 @@ public class VKGPU {
     public Type getType() { return type; }
 
     public Stream<VKGraphicsConfig> getOffscreenGraphicsConfigs() {
-        return Stream.of(offscreenGraphicsConfigs);
+        return offscreenGraphicsConfigs.stream();
     }
 
     public Stream<VKGraphicsConfig> getPresentableGraphicsConfigs() {
-        return Stream.of(presentableGraphicsConfigs);
+        return presentableGraphicsConfigs.stream();
     }
 
-    public int getSampledCaps() { // TODO pull dynamically from native.
-        return SAMPLED_CAP_4BYTE_BIT;
+    public int getSampledCaps() {
+        return sampledCaps;
     }
 
     /**
