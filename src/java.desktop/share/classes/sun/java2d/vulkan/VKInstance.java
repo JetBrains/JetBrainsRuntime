@@ -35,6 +35,7 @@ public class VKInstance {
 
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.VKInstance");
     private static Boolean initialized;
+    private static Boolean sdAccelerated;
 
     private static native boolean initNative(long nativePtr, boolean verbose, int deviceNumber);
 
@@ -54,15 +55,25 @@ public class VKInstance {
             final int deviceNumber = parsedDeviceNumber;
             final boolean verbose = "True".equals(vulkanOption);
             System.loadLibrary("awt");
+            String sdOption = AccessController.doPrivileged(
+                    (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.accelsd", ""));
             initialized = initNative(nativePtr, verbose, deviceNumber);
+            sdAccelerated = initialized && "true".equalsIgnoreCase(sdOption);
         } else initialized = false;
+
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("Vulkan rendering enabled: " + (initialized ? "YES" : "NO"));
+            log.fine("Vulkan accelerated surface data enabled: " + (sdAccelerated ? "YES" : "NO"));
         }
     }
 
     public static boolean isVulkanEnabled() {
         if (initialized == null) throw new RuntimeException("Vulkan not initialized");
         return initialized;
+    }
+
+    public static boolean isSurfaceDataAccelerated() {
+        if (initialized == null) throw new RuntimeException("Vulkan not initialized");
+        return sdAccelerated;
     }
 }
