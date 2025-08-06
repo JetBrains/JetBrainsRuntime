@@ -29,7 +29,7 @@
 
 #include "jni.h"
 #include "sun_java2d_vulkan_VKBlitLoops.h"
-#include "VKBase.h"
+#include "VKTypes.h"
 
 void VKBlitLoops_IsoBlit(JNIEnv *env,
                           VKRenderingContext* context, jlong pSrcOps,
