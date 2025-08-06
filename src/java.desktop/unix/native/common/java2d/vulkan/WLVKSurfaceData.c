@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,8 +35,15 @@ static void WLVKSurfaceData_OnResize(VKWinSDOps* surface, VkExtent2D extent) {
     JNU_CallMethodByName(env, NULL, surface->vksdOps.sdOps.sdObject, "bufferAttached", "()V");
 }
 
-JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_initOps(JNIEnv *env, jobject vksd, jint backgroundRGB) {
-    J2dTraceLn(J2D_TRACE_VERBOSE, "WLVKSurfaceData_initOps(%p)", vksd);
+/*
+ * Class:     sun_java2d_vulkan_WLVKSurfaceData_WLVKWindowSurfaceData
+ * Method:    initOps
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_initOps(
+        JNIEnv *env, jobject vksd, jint backgroundRGB)
+{
+    J2dTraceLn(J2D_TRACE_VERBOSE, "WLVKWindowsSurfaceData_initOps(%p)", vksd);
     VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_InitOps(env, vksd, sizeof(VKWinSDOps));
     if (sd == NULL) {
         JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
@@ -48,17 +55,27 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_initOps(JNIEnv *en
     VKSD_ResetSurface(&sd->vksdOps);
 }
 
-JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_assignWlSurface(JNIEnv *env, jobject vksd, jlong wlSurfacePtr) {
-    J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKSurfaceData_assignWlSurface(%p): wl_surface=%p", (void*)vksd, wlSurfacePtr);
+/*
+ * Class:     sun_java2d_vulkan_WLVKSurfaceData_WLVKWindowSurfaceData
+ * Method:    assignWlSurface
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_assignWlSurface(
+        JNIEnv *env, jobject vksd, jlong wlSurfacePtr)
+{
+    J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKWindowsSurfaceData_assignWlSurface(%p): wl_surface=%p",
+                  (void*)vksd, wlSurfacePtr);
     VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);
     if (sd == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "WLVKSurfaceData_assignWlSurface(%p): VKWinSDOps is NULL", vksd);
+        J2dRlsTraceLn(J2D_TRACE_ERROR,
+                      "WLVKWindowSurfaceData_assignWlSurface(%p): VKWinSDOps is NULL", vksd);
         VK_UNHANDLED_ERROR();
     }
 
     if (sd->surface != VK_NULL_HANDLE) {
         VKSD_ResetSurface(&sd->vksdOps);
-        J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKSurfaceData_assignWlSurface(%p): surface reset", vksd);
+        J2dRlsTraceLn(J2D_TRACE_INFO,
+                      "WLVKWindowSurfaceData_assignWlSurface(%p): surface reset", vksd);
     }
 
     struct wl_surface* wl_surface = (struct wl_surface*)jlong_to_ptr(wlSurfacePtr);
@@ -73,7 +90,8 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKSurfaceData_assignWlSurface(JN
         VK_IF_ERROR(ge->vkCreateWaylandSurfaceKHR(ge->vkInstance, &surfaceCreateInfo, NULL, &sd->surface)) {
             VK_UNHANDLED_ERROR();
         }
-        J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKSurfaceData_assignWlSurface(%p): surface created", vksd);
+        J2dRlsTraceLn(J2D_TRACE_INFO,
+                      "WLVKWindowSurfaceData_assignWlSurface(%p): surface created", vksd);
         // Swapchain will be created later after CONFIGURE_SURFACE.
     }
 }
