@@ -27,10 +27,13 @@
 #include <string.h>
 #include "sun_java2d_vulkan_VKGPU.h"
 #include "VKUtil.h"
+#include "VKCapabilityUtil.h"
 #include "VKEnv.h"
 #include "VKAllocator.h"
 #include "VKRenderer.h"
 #include "VKTexturePool.h"
+
+#define CAP_PRESENTABLE_BIT sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT
 
 #if !defined(__BYTE_ORDER__) || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define VK_LITTLE_ENDIAN
@@ -71,7 +74,6 @@ static VkBool32 VKDevice_CheckAndAddFormat(VKEnv* vk, VkPhysicalDevice physicalD
 }
 
 void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
-    jint caps = 0;
     // Query device properties.
     VkPhysicalDeviceVulkan12Features device12Features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
@@ -85,43 +87,58 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     VkPhysicalDeviceProperties2 deviceProperties2 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
     vk->vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
 
-    // Check features.
-    J2dRlsTrace(J2D_TRACE_INFO, "\t- %s (%d.%d.%d, %s) ",
-                (const char *) deviceProperties2.properties.deviceName,
-                VK_API_VERSION_MAJOR(deviceProperties2.properties.apiVersion),
-                VK_API_VERSION_MINOR(deviceProperties2.properties.apiVersion),
-                VK_API_VERSION_PATCH(deviceProperties2.properties.apiVersion),
-                physicalDeviceTypeString(deviceProperties2.properties.deviceType));
+    // Query supported layers.
+    uint32_t layerCount;
+    VK_IF_ERROR(vk->vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, NULL)) return;
+    VkLayerProperties allLayers[layerCount];
+    VK_IF_ERROR(vk->vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, allLayers)) return;
+
+    // Query supported extensions.
+    uint32_t extensionCount;
+    VK_IF_ERROR(vk->vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, NULL)) return;
+    VkExtensionProperties allExtensions[extensionCount];
+    VK_IF_ERROR(vk->vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, allExtensions)) return;
+
+    // Check API version.
+    ARRAY(pchar) errors = NULL;
+    jint caps = 0;
+    J2dRlsTraceLn(J2D_TRACE_INFO, "%s (%d.%d.%d, %s)",
+                  (const char *) deviceProperties2.properties.deviceName,
+                  VK_API_VERSION_MAJOR(deviceProperties2.properties.apiVersion),
+                  VK_API_VERSION_MINOR(deviceProperties2.properties.apiVersion),
+                  VK_API_VERSION_PATCH(deviceProperties2.properties.apiVersion),
+                  physicalDeviceTypeString(deviceProperties2.properties.deviceType));
     if (deviceProperties2.properties.apiVersion < REQUIRED_VULKAN_VERSION) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, " - unsupported API version, skipped");
-        return;
+        ARRAY_PUSH_BACK(errors) = "Unsupported API version";
     }
 
-    if (!deviceFeatures2.features.logicOp) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, " - hasLogicOp not supported, skipped");
-        return;
-    }
-    if (!device12Features.timelineSemaphore) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, " - hasTimelineSemaphore not supported, skipped");
-        return;
-    }
-    J2dRlsTraceLn(J2D_TRACE_INFO, "");
+    // Log layers and extensions.
+    VKNamedEntry_LogAll("device layers", allLayers[0].layerName, layerCount, sizeof(VkLayerProperties));
+    VKNamedEntry_LogAll("device extensions", allExtensions[0].extensionName, extensionCount, sizeof(VkExtensionProperties));
+
+    // Check layers.
+    VKNamedEntry* layers = NULL;
+#ifdef DEBUG
+    DEF_NAMED_ENTRY(layers, VK_KHR_VALIDATION_LAYER);
+#endif
+    VKNamedEntry_Match(layers, allLayers[0].layerName, layerCount, sizeof(VkLayerProperties));
+
+    // Check extensions.
+    VKNamedEntry* extensions = NULL;
+    DEF_NAMED_ENTRY(extensions, VK_KHR_SWAPCHAIN_EXTENSION);
+    VKNamedEntry_Match(extensions, allExtensions[0].extensionName, extensionCount, sizeof(VkExtensionProperties));
 
     // Query queue family properties.
     uint32_t queueFamilyCount = 0;
-    vk->vkGetPhysicalDeviceQueueFamilyProperties(
-            physicalDevice, &queueFamilyCount, NULL);
+    vk->vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, NULL);
     VkQueueFamilyProperties queueFamilies[queueFamilyCount];
-    vk->vkGetPhysicalDeviceQueueFamilyProperties(
-            physicalDevice, &queueFamilyCount, queueFamilies);
+    vk->vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies);
 
     // Find a queue family.
     int64_t queueFamily = -1;
     for (uint32_t j = 0; j < queueFamilyCount; j++) {
-        VkBool32 presentationSupported = VK_FALSE;
-        if (vk->platformData != NULL && vk->platformData->checkPresentationSupport != NULL) {
-            presentationSupported = vk->platformData->checkPresentationSupport(vk, physicalDevice, j);
-        }
+        VkBool32 presentationSupported = vk->presentationSupported && VK_KHR_SWAPCHAIN_EXTENSION.found &&
+            vk->platformData->checkPresentationSupport(vk, physicalDevice, j);
         char logFlags[5] = {
                 queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT ? 'G' : '-',
                 queueFamilies[j].queueFlags & VK_QUEUE_COMPUTE_BIT ? 'C' : '-',
@@ -134,9 +151,9 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
 
         // TODO use compute workloads? Separate transfer-only DMA queue?
         if (queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) { // Queue supports graphics operations.
-            if (!(caps & sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT) && presentationSupported) {
+            if (!(caps & CAP_PRESENTABLE_BIT) && presentationSupported) {
                 // Queue supports presentation, choose it.
-                caps |= sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT;
+                caps |= CAP_PRESENTABLE_BIT;
                 queueFamily = j;
             } else if (queueFamily == -1) {
                 // We have chosen no queue so far, choose this for now.
@@ -144,22 +161,20 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
             }
         }
     }
-    if (queueFamily == -1) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, "    --------------------- Suitable queue not found, skipped");
-        return;
-    }
+    if (queueFamily == -1) ARRAY_PUSH_BACK(errors) = "Suitable queue not found";
 
-    // Query supported layers.
-    uint32_t layerCount;
-    VK_IF_ERROR(vk->vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, NULL)) return;
-    VkLayerProperties layers[layerCount];
-    VK_IF_ERROR(vk->vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, layers)) return;
+    // Check features.
+    VKNamedEntry_LogFound(layers);
+    VKNamedEntry_LogFound(extensions);
 
-    // Query supported extensions.
-    uint32_t extensionCount;
-    VK_IF_ERROR(vk->vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, NULL)) return;
-    VkExtensionProperties extensions[extensionCount];
-    VK_IF_ERROR(vk->vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, extensions)) return;
+    J2dRlsTraceLn(J2D_TRACE_INFO, "    presentable = %s", (caps & CAP_PRESENTABLE_BIT) ? "true" : "false");
+    if (!(caps & CAP_PRESENTABLE_BIT)) VK_KHR_SWAPCHAIN_EXTENSION.found = NULL;
+
+    J2dRlsTraceLn(J2D_TRACE_INFO, "    logicOp = %s", deviceFeatures2.features.logicOp ? "true" : "false");
+    if (deviceFeatures2.features.logicOp) caps |= sun_java2d_vulkan_VKGPU_CAP_LOGIC_OP_BIT;
+
+    J2dRlsTraceLn(J2D_TRACE_INFO, "    timelineSemaphore = %s", device12Features.timelineSemaphore ? "true" : "false");
+    if (!device12Features.timelineSemaphore) ARRAY_PUSH_BACK(errors) = "timelineSemaphore not supported";
 
     // Query supported formats.
     J2dRlsTraceLn(J2D_TRACE_INFO, "    Supported device formats:");
@@ -171,7 +186,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     ARRAY(jint) supportedFormats = NULL;
 #define CHECK_AND_ADD_FORMAT(FORMAT) VKDevice_CheckAndAddFormat(vk, physicalDevice, &supportedFormats, FORMAT, #FORMAT)
     if (CHECK_AND_ADD_FORMAT(VK_FORMAT_B8G8R8A8_UNORM) && SRCTYPE_4BYTE->format == VK_FORMAT_UNDEFINED) {
-        supportedFormats[0] |= sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT; // TODO Check presentation support.
+        supportedFormats[0] |= CAP_PRESENTABLE_BIT; // TODO Check presentation support.
         *SRCTYPE_4BYTE = (VKSampledSrcType) { VK_FORMAT_B8G8R8A8_UNORM, {
             VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_A }};
     }
@@ -208,11 +223,8 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
 
     // Check sampled formats capabilities.
     if (SRCTYPE_4BYTE->format == VK_FORMAT_UNDEFINED) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, " - 4-byte sampled format not found, skipped");
-        ARRAY_FREE(supportedFormats);
-        return;
-    }
-    caps |= sun_java2d_vulkan_VKGPU_CAP_SAMPLED_4BYTE_BIT;
+        ARRAY_PUSH_BACK(errors) = "4-byte sampled format not found";
+    } else caps |= sun_java2d_vulkan_VKGPU_CAP_SAMPLED_4BYTE_BIT;
     if (SRCTYPE_3BYTE->format != VK_FORMAT_UNDEFINED) caps |= sun_java2d_vulkan_VKGPU_CAP_SAMPLED_3BYTE_BIT;
     if (SRCTYPE_565->format != VK_FORMAT_UNDEFINED) caps |= sun_java2d_vulkan_VKGPU_CAP_SAMPLED_565_BIT;
     if (SRCTYPE_555->format != VK_FORMAT_UNDEFINED) caps |= sun_java2d_vulkan_VKGPU_CAP_SAMPLED_555_BIT;
@@ -222,61 +234,21 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         vk->vkGetPhysicalDeviceFormatProperties(physicalDevice, VK_FORMAT_S8_UINT, &formatProperties);
         if ((formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0) {
             J2dRlsTraceLn(J2D_TRACE_INFO, "        %s", "VK_FORMAT_S8_UINT (stencil)");
-        } else {
-            J2dRlsTraceLn(J2D_TRACE_INFO, " - VK_FORMAT_S8_UINT not supported, skipped");
-            ARRAY_FREE(supportedFormats);
-            return;
-        }
+        } else ARRAY_PUSH_BACK(errors) = "VK_FORMAT_S8_UINT not supported";
     }
 
-    // Log layers.
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device layers:");
-    for (uint32_t j = 0; j < layerCount; j++) {
-        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "        %s", (char *) layers[j].layerName);
-    }
-
-    // Check extensions.
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device extensions:");
-    VkBool32 hasSwapChain = VK_FALSE;
-    for (uint32_t j = 0; j < extensionCount; j++) {
-        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "        %s", (char *) extensions[j].extensionName);
-        hasSwapChain = hasSwapChain || strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, extensions[j].extensionName) == 0;
-    }
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "Vulkan: Found device extensions:");
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    " VK_KHR_SWAPCHAIN_EXTENSION_NAME " = %s", hasSwapChain ? "true" : "false");
-
-    if (!hasSwapChain) {
-        J2dRlsTraceLn(J2D_TRACE_INFO,
-                    "    --------------------- Required " VK_KHR_SWAPCHAIN_EXTENSION_NAME " not found, skipped");
-        ARRAY_FREE(supportedFormats);
+    // Check found errors.
+    if (errors != NULL) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "    Device is not supported:");
+        VKCapabilityUtil_LogErrors(J2D_TRACE_WARNING, errors);
+        ARRAY_FREE(errors);
         return;
     }
-
-    ARRAY(pchar) deviceEnabledLayers     = NULL;
-    ARRAY(pchar) deviceEnabledExtensions = NULL;
-    ARRAY_PUSH_BACK(deviceEnabledExtensions) = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
-
-    // Check validation layer.
-#ifdef DEBUG
-    int validationLayerNotSupported = 1;
-        for (uint32_t j = 0; j < layerCount; j++) {
-            if (strcmp("VK_LAYER_KHRONOS_validation", layers[j].layerName) == 0) {
-                validationLayerNotSupported = 0;
-                ARRAY_PUSH_BACK(deviceEnabledLayers) = "VK_LAYER_KHRONOS_validation";
-                break;
-            }
-        }
-        if (validationLayerNotSupported) {
-            J2dRlsTraceLn(J2D_TRACE_INFO, "    %s device layer is not supported", "VK_LAYER_KHRONOS_validation");
-        }
-#endif
 
     // Copy device name.
     char* deviceName = strdup(deviceProperties2.properties.deviceName);
     if (deviceName == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot duplicate deviceName");
-        ARRAY_FREE(deviceEnabledLayers);
-        ARRAY_FREE(deviceEnabledExtensions);
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "    Cannot duplicate deviceName");
         ARRAY_FREE(supportedFormats);
         return;
     }
@@ -288,8 +260,8 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         .handle = VK_NULL_HANDLE,
         .physicalDevice = physicalDevice,
         .queueFamily = queueFamily,
-        .enabledLayers = deviceEnabledLayers,
-        .enabledExtensions = deviceEnabledExtensions,
+        .enabledLayers = VKNamedEntry_CollectNames(layers),
+        .enabledExtensions = VKNamedEntry_CollectNames(extensions),
         .sampledSrcTypes = sampledSrcTypes,
         .supportedFormats = supportedFormats,
         .caps = caps
@@ -304,11 +276,11 @@ void VKDevice_Reset(VKDevice* device) {
     ARRAY_FREE(device->enabledExtensions);
     ARRAY_FREE(device->enabledLayers);
     ARRAY_FREE(device->supportedFormats);
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKDevice_Reset(%s)", device->name);
     free(device->name);
     if (device->vkDestroyDevice != NULL) {
         device->vkDestroyDevice(device->handle, NULL);
     }
-    J2dRlsTraceLn(J2D_TRACE_INFO, "VKDevice_Reset(%s)", device->name);
 }
 
 /*
@@ -348,7 +320,7 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
             .pQueuePriorities = &queuePriority
     };
 
-    VkPhysicalDeviceFeatures features10 = { .logicOp = VK_TRUE };
+    VkPhysicalDeviceFeatures features10 = { .logicOp = device->caps & sun_java2d_vulkan_VKGPU_CAP_LOGIC_OP_BIT };
     VkPhysicalDeviceVulkan12Features features12 = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             .timelineSemaphore = VK_TRUE
@@ -378,17 +350,22 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
     // Init function tables.
     VkBool32 missingAPI = JNI_FALSE;
     DEVICE_FUNCTION_TABLE(CHECK_PROC_ADDR, missingAPI, vk->vkGetDeviceProcAddr, device->handle, device->)
+    if (device->caps & CAP_PRESENTABLE_BIT) {
+        SWAPCHAIN_DEVICE_FUNCTION_TABLE(CHECK_PROC_ADDR, missingAPI, vk->vkGetDeviceProcAddr, device->handle, device->)
+    }
     if (missingAPI) {
         VKDevice_Reset(device);
 #define REQUIRED_API_MISSING_MESSAGE "Vulkan: Required API is missing: "
         size_t size = sizeof(REQUIRED_API_MISSING_MESSAGE);
 #define PFN_CALC_MISSING_NAMES_SIZE(_, NAME) if (device->NAME == NULL) size += sizeof(#NAME) + 1;
         DEVICE_FUNCTION_TABLE(PFN_CALC_MISSING_NAMES_SIZE)
+        if (device->caps & CAP_PRESENTABLE_BIT) { SWAPCHAIN_DEVICE_FUNCTION_TABLE(PFN_CALC_MISSING_NAMES_SIZE) }
         char message[size];
         memcpy(message, REQUIRED_API_MISSING_MESSAGE, size = sizeof(REQUIRED_API_MISSING_MESSAGE) - 1);
 #define PFN_APPEND_MISSING_NAME(_, NAME) if (device->NAME == NULL) { \
         memcpy(message + size, #NAME ", ", sizeof(#NAME) + 1); size += sizeof(#NAME) + 1; }
         DEVICE_FUNCTION_TABLE(PFN_APPEND_MISSING_NAME)
+        if (device->caps & CAP_PRESENTABLE_BIT) { SWAPCHAIN_DEVICE_FUNCTION_TABLE(PFN_APPEND_MISSING_NAME) }
         message[size - 2] = '\0';
         JNU_ThrowByName(env, "java/lang/RuntimeException", message);
         return;
