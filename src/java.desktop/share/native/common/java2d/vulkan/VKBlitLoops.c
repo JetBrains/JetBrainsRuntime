@@ -184,8 +184,8 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
     VKRenderer_TextureRender(srcDescriptorSet, renderVertexBuffer->handle, 4, hint, SAMPLER_WRAP_BORDER);
 
     VKRenderer_FlushSurface(dstOps);
-    VKRenderer_DisposeOnPrimaryComplete(device->renderer, VKTexturePoolTexture_Dispose, hnd);
-    VKRenderer_DisposeOnPrimaryComplete(device->renderer, VKBuffer_Dispose, buffer);
+    VKRenderer_CleanupLater(device->renderer, VKTexturePoolTexture_Dispose, hnd);
+    VKRenderer_CleanupLater(device->renderer, VKBuffer_Dispose, buffer);
 }
 
 static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VkBool32 srcOpaque, jint hint,
@@ -243,7 +243,7 @@ static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, Vk
     VKRenderer_TextureRender(srcDescriptorSet, renderVertexBuffer->handle, 4, hint, SAMPLER_WRAP_BORDER);
 
     VKRenderer_FlushSurface(context->surface);
-    VKRenderer_DisposeOnPrimaryComplete(device->renderer, VKBuffer_Dispose, renderVertexBuffer);
+    VKRenderer_CleanupLater(device->renderer, VKBuffer_Dispose, renderVertexBuffer);
 }
 
 static jboolean clipDestCoords(
