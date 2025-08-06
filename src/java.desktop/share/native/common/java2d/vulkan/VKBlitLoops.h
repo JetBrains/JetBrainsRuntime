@@ -31,13 +31,9 @@
 #include "sun_java2d_vulkan_VKBlitLoops.h"
 #include "VKTypes.h"
 
-void VKBlitLoops_IsoBlit(JNIEnv *env,
-                          jlong pSrcOps,
-                          jboolean xform, jint hint,
-                          jint sx1, jint sy1,
-                          jint sx2, jint sy2,
-                          jdouble dx1, jdouble dy1,
-                          jdouble dx2, jdouble dy2);
+void VKBlitLoops_IsoBlit(VKSDOps* src, jint filter,
+                         jint sx1, jint sy1, jint sx2, jint sy2,
+                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2);
 
 void VKBlitLoops_Blit(JNIEnv *env,
                        jlong pSrcOps,
