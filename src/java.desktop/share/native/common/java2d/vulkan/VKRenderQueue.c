@@ -162,7 +162,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                               "VKRenderQueue_flushBuffer: DRAW_RECT(%d, %d, %d, %d)",
                               x, y, w, h);
-                VKRenderer_RenderRect(&context, PIPELINE_DRAW_COLOR, x, y, w, h);
+                VKRenderer_RenderRect(&context, VK_FALSE, x, y, w, h);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_POLY:
@@ -204,7 +204,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: DRAW_PARALLELOGRAM(%f, %f, %f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12, lwr21, lwr12);
-                VKRenderer_RenderParallelogram(&context, PIPELINE_DRAW_COLOR, x11, y11, dx21, dy21, dx12, dy12);
+                VKRenderer_RenderParallelogram(&context, VK_FALSE, x11, y11, dx21, dy21, dx12, dy12);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_AAPARALLELOGRAM:
@@ -232,7 +232,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint h = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_RECT(%d, %d, %d, %d)", x, y, w, h);
-                VKRenderer_RenderRect(&context, PIPELINE_FILL_COLOR, x, y, w, h);
+                VKRenderer_RenderRect(&context, VK_TRUE, x, y, w, h);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FILL_SPANS:
@@ -255,7 +255,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(%f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12);
-                VKRenderer_RenderParallelogram(&context, PIPELINE_FILL_COLOR, x11, y11, dx21, dy21, dx12, dy12);
+                VKRenderer_RenderParallelogram(&context, VK_TRUE, x11, y11, dx21, dy21, dx12, dy12);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM:
@@ -270,7 +270,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     "VKRenderQueue_flushBuffer: FILL_AAPARALLELOGRAM(%f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12);
                 // TODO this is not AA!
-                VKRenderer_RenderParallelogram(&context, PIPELINE_FILL_COLOR, x11, y11, dx21, dy21, dx12, dy12);
+                VKRenderer_RenderParallelogram(&context, VK_TRUE, x11, y11, dx21, dy21, dx12, dy12);
             }
             break;
 
