@@ -87,12 +87,12 @@ typedef union MemoryHandle {
 #define MAX_SHARED_PAGE_SIZE ((1ULL << MAX_BLOCK_LEVEL) * BLOCK_SIZE)
 
 typedef struct {
-    BlockPair* blockPairs;
-    void*      mappedData;
-    uint32_t   freeLevelIndices[MAX_BLOCK_LEVEL+1]; // Indices start from 1
-    uint32_t   freeBlockPairIndex;                  // Indices start from 1
-    uint32_t   nextPageIndex;
-    uint32_t   memoryType;
+    ARRAY(BlockPair) blockPairs;
+    void*            mappedData;
+    uint32_t         freeLevelIndices[MAX_BLOCK_LEVEL+1]; // Indices start from 1
+    uint32_t         freeBlockPairIndex;                  // Indices start from 1
+    uint32_t         nextPageIndex;
+    uint32_t         memoryType;
 } SharedPageData;
 
 typedef struct {
@@ -120,9 +120,9 @@ struct VKAllocator {
     VKDevice* device;
     VkPhysicalDeviceMemoryProperties memoryProperties;
 
-    Page*    pages;
-    uint32_t freePageIndex;
-    Pool     pools[VK_MAX_MEMORY_TYPES];
+    ARRAY(Page) pages;
+    uint32_t    freePageIndex;
+    Pool        pools[VK_MAX_MEMORY_TYPES];
 };
 
 #define NO_PAGE_INDEX (~0U)
@@ -222,7 +222,7 @@ static uint32_t VKAllocator_AllocatePage(VKAllocator* alloc, uint32_t memoryType
     } else {
         index = ARRAY_SIZE(alloc->pages);
         VK_RUNTIME_ASSERT(index < MAX_PAGES);
-        ARRAY_PUSH_BACK(alloc->pages, (Page) {});
+        ARRAY_PUSH_BACK(alloc->pages) = (Page) {};
         page = &ARRAY_LAST(alloc->pages);
     }
     assert(page->memory == VK_NULL_HANDLE);
@@ -275,7 +275,7 @@ static uint32_t VKAllocator_PopFreeBlockPair(SharedPageData* data, uint32_t leve
             pair = &data->blockPairs[pairIndex-1];
             data->freeBlockPairIndex = pair->nextFree;
         } else {
-            ARRAY_PUSH_BACK(data->blockPairs, (BlockPair) {});
+            ARRAY_PUSH_BACK(data->blockPairs) = (BlockPair) {};
             pairIndex = ARRAY_SIZE(data->blockPairs);
             pair = &data->blockPairs[pairIndex-1];
         }
@@ -401,13 +401,13 @@ static AllocationResult VKAllocator_AllocateForResource(VKMemoryRequirements* re
             data = page->sharedPageData = (SharedPageData*) calloc(1, sizeof(SharedPageData));
             VK_RUNTIME_ASSERT(page->sharedPageData);
             data->memoryType = memoryType;
-            ARRAY_PUSH_BACK(data->blockPairs, (BlockPair) {
-                    .offset     = 0,
-                    .parent     = 0,
-                    .nextFree   = 0,
-                    .firstFree  = 1,
-                    .secondFree = 0,
-            });
+            ARRAY_PUSH_BACK(data->blockPairs) = (BlockPair) {
+                .offset     = 0,
+                .parent     = 0,
+                .nextFree   = 0,
+                .firstFree  = 1,
+                .secondFree = 0,
+            };
             data->freeLevelIndices[pageLevel] = 1;
             data->nextPageIndex = pool->sharedPagesIndex;
             pool->sharedPagesIndex = pageIndex;
