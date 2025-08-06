@@ -34,15 +34,15 @@
 #undef SHADER_ENTRY
 #undef BYTECODE_END
 
-struct VKPipelineSet {
+typedef struct VKPipelineSet {
     VkPipeline pipelines[PIPELINE_COUNT];
-};
+} VKPipelineSet;
 
-struct VKShaders {
+typedef struct VKShaders {
 #   define SHADER_ENTRY(NAME, TYPE) VkPipelineShaderStageCreateInfo NAME ## _ ## TYPE;
 #   include "vulkan/shader_list.h"
 #   undef SHADER_ENTRY
-};
+} VKShaders;
 
 static void VKPipelines_DestroyShaders(VKDevice* device, VKShaders* shaders) {
     assert(device != NULL);
@@ -80,19 +80,19 @@ static VKShaders* VKPipelines_CreateShaders(VKDevice* device) {
     return shaders;
 }
 
-#define MAKE_INPUT_STATE(TYPE, ...)                                             \
-static const VkVertexInputAttributeDescription attributes[] = { __VA_ARGS__ }; \
-static const VkVertexInputBindingDescription binding = {                       \
-        .binding = 0,                                                          \
-        .stride = sizeof(TYPE),                                                \
-        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX                               \
-};                                                                             \
-static const VkPipelineVertexInputStateCreateInfo inputState = {               \
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,    \
-        .vertexBindingDescriptionCount = 1,                                    \
-        .pVertexBindingDescriptions = &binding,                                \
-        .vertexAttributeDescriptionCount = SARRAY_COUNT_OF(attributes),        \
-        .pVertexAttributeDescriptions = attributes                             \
+#define MAKE_INPUT_STATE(NAME, TYPE, ...)                                                         \
+static const VkVertexInputAttributeDescription INPUT_STATE_ATTRIBUTES_##NAME[] = { __VA_ARGS__ }; \
+static const VkVertexInputBindingDescription INPUT_STATE_BINDING_##NAME = {                       \
+        .binding = 0,                                                                             \
+        .stride = sizeof(TYPE),                                                                   \
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX                                                  \
+};                                                                                                \
+static const VkPipelineVertexInputStateCreateInfo INPUT_STATE_##NAME = {                          \
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,                       \
+        .vertexBindingDescriptionCount = 1,                                                       \
+        .pVertexBindingDescriptions = &INPUT_STATE_BINDING_##NAME,                                \
+        .vertexAttributeDescriptionCount = SARRAY_COUNT_OF(INPUT_STATE_ATTRIBUTES_##NAME),        \
+        .pVertexAttributeDescriptions = INPUT_STATE_ATTRIBUTES_##NAME                             \
 }
 
 typedef struct {
@@ -178,13 +178,62 @@ static const VkPipelineInputAssemblyStateCreateInfo INPUT_ASSEMBLY_STATE_LINE_LI
         .topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST
 };
 
-const VkPipelineColorBlendAttachmentState BLEND_STATE = {
-        .blendEnable = VK_FALSE,
-        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
+// Blend states are hard-coded, but can also be loaded dynamically to implement custom composites.
+#define DEF_BLEND(NAME, SRC_COLOR, DST_COLOR, SRC_ALPHA, DST_ALPHA)       \
+{ .blendEnable = VK_TRUE,                                                 \
+  .srcColorBlendFactor = VK_BLEND_FACTOR_ ## SRC_COLOR,                   \
+  .dstColorBlendFactor = VK_BLEND_FACTOR_ ## DST_COLOR,                   \
+  .colorBlendOp = VK_BLEND_OP_ADD,                                        \
+  .srcAlphaBlendFactor = VK_BLEND_FACTOR_ ## SRC_ALPHA,                   \
+  .dstAlphaBlendFactor = VK_BLEND_FACTOR_ ## DST_ALPHA,                   \
+  .alphaBlendOp = VK_BLEND_OP_ADD,                                        \
+  .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | \
+                    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT }
+
+
+const VkPipelineColorBlendAttachmentState COMPOSITE_BLEND_STATES[COMPOSITE_COUNT] = {
+        { .blendEnable = VK_FALSE, // LOGIC_XOR
+          .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT },
+//               NAME ||      SRC_COLOR       |       DST_COLOR      |      SRC_ALPHA       |       DST_ALPHA      ||
+DEF_BLEND(|     CLEAR |, ZERO                 , ZERO                 , ZERO                 , ZERO                 ),
+DEF_BLEND(|       SRC |, ONE                  , ZERO                 , ONE                  , ZERO                 ),
+DEF_BLEND(|  SRC_OVER |, ONE                  , ONE_MINUS_SRC_ALPHA  , ONE                  , ONE_MINUS_SRC_ALPHA  ),
+DEF_BLEND(|  DST_OVER |, ONE_MINUS_DST_ALPHA  , ONE                  , ONE_MINUS_DST_ALPHA  , ONE                  ),
+DEF_BLEND(|    SRC_IN |, DST_ALPHA            , ZERO                 , DST_ALPHA            , ZERO                 ),
+DEF_BLEND(|    DST_IN |, ZERO                 , SRC_ALPHA            , ZERO                 , SRC_ALPHA            ),
+DEF_BLEND(|   SRC_OUT |, ONE_MINUS_DST_ALPHA  , ZERO                 , ONE_MINUS_DST_ALPHA  , ZERO                 ),
+DEF_BLEND(|   DST_OUT |, ZERO                 , ONE_MINUS_SRC_ALPHA  , ZERO                 , ONE_MINUS_SRC_ALPHA  ),
+DEF_BLEND(|       DST |, ZERO                 , ONE                  , ZERO                 , ONE                  ),
+DEF_BLEND(|  SRC_ATOP |, DST_ALPHA            , ONE_MINUS_SRC_ALPHA  , ZERO                 , ONE                  ),
+DEF_BLEND(|  DST_ATOP |, ONE_MINUS_DST_ALPHA  , SRC_ALPHA            , ONE                  , ZERO                 ),
+DEF_BLEND(|       XOR |, ONE_MINUS_DST_ALPHA  , ONE_MINUS_SRC_ALPHA  , ONE_MINUS_DST_ALPHA  , ONE_MINUS_SRC_ALPHA  ),
 };
 
+static const VkVertexInputAttributeDescription INPUT_ATTRIBUTE_POSITION = {
+        .location = 0,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32_SFLOAT,
+        .offset = 0
+};
+static const VkVertexInputAttributeDescription INPUT_ATTRIBUTE_COLOR = {
+        .location = 1,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32B32A32_SFLOAT,
+        .offset = sizeof(float) * 2
+};
+static const VkVertexInputAttributeDescription INPUT_ATTRIBUTE_TEXCOORD = {
+        .location = 1,
+        .binding = 0,
+        .format = VK_FORMAT_R32G32_SFLOAT,
+        .offset = sizeof(float) * 2
+};
+
+MAKE_INPUT_STATE(COLOR_VERTEX, VKColorVertex, INPUT_ATTRIBUTE_POSITION, INPUT_ATTRIBUTE_COLOR);
+MAKE_INPUT_STATE(TEXCOORD_VERTEX, VKTxVertex, INPUT_ATTRIBUTE_POSITION, INPUT_ATTRIBUTE_TEXCOORD);
+
 static void VKPipelines_DestroyPipelineSet(VKDevice* device, VKPipelineSet* set) {
+    assert(device != NULL);
     if (set == NULL) return;
     for (uint32_t i = 0; i < PIPELINE_COUNT; i++) {
         device->vkDestroyPipeline(device->handle, set->pipelines[i], NULL);
@@ -192,8 +241,9 @@ static void VKPipelines_DestroyPipelineSet(VKDevice* device, VKPipelineSet* set)
     free(set);
 }
 
-static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderPassContext) {
+static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderPassContext, VKCompositeMode composite) {
     assert(renderPassContext != NULL && renderPassContext->pipelineContext != NULL);
+    assert(composite < COMPOSITE_COUNT);
     VKPipelineContext* pipelineContext = renderPassContext->pipelineContext;
 
     VKPipelineSet* set = calloc(1, sizeof(VKPipelineSet));
@@ -206,7 +256,8 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
     VKPipelines_InitPipelineCreateState(&base);
     base.createInfo.layout = pipelineContext->pipelineLayout;
     base.createInfo.renderPass = renderPassContext->renderPass;
-    base.colorBlendState.pAttachments = &BLEND_STATE;
+    base.colorBlendState.pAttachments = &COMPOSITE_BLEND_STATES[composite];
+    if (COMPOSITE_GROUP(composite) == LOGIC_COMPOSITE_GROUP) base.colorBlendState.logicOpEnable = VK_TRUE;
     assert(base.dynamicState.dynamicStateCount <= SARRAY_COUNT_OF(base.dynamicStates));
 
     ShaderStages stages[PIPELINE_COUNT];
@@ -216,36 +267,15 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
         createInfos[i].pStages = stages[i].createInfos;
     }
 
-    static const VkVertexInputAttributeDescription positionAttribute = {
-            .location = 0,
-            .binding = 0,
-            .format = VK_FORMAT_R32G32_SFLOAT,
-            .offset = 0
-    };
-    static const VkVertexInputAttributeDescription texcoordAttribute = {
-            .location = 1,
-            .binding = 0,
-            .format = VK_FORMAT_R32G32_SFLOAT,
-            .offset = sizeof(float) * 2
-    };
-    static const VkVertexInputAttributeDescription colorAttribute = {
-            .location = 1,
-            .binding = 0,
-            .format = VK_FORMAT_R32G32B32A32_SFLOAT,
-            .offset = sizeof(float) * 2
-    };
-
     { // Setup plain color pipelines.
-        MAKE_INPUT_STATE(VKColorVertex, positionAttribute, colorAttribute);
-        createInfos[PIPELINE_DRAW_COLOR].pVertexInputState = createInfos[PIPELINE_FILL_COLOR].pVertexInputState = &inputState;
+        createInfos[PIPELINE_DRAW_COLOR].pVertexInputState = createInfos[PIPELINE_FILL_COLOR].pVertexInputState = &INPUT_STATE_COLOR_VERTEX;
         createInfos[PIPELINE_FILL_COLOR].pInputAssemblyState = &INPUT_ASSEMBLY_STATE_TRIANGLE_LIST;
         createInfos[PIPELINE_DRAW_COLOR].pInputAssemblyState = &INPUT_ASSEMBLY_STATE_LINE_LIST;
         stages[PIPELINE_DRAW_COLOR] = stages[PIPELINE_FILL_COLOR] = (ShaderStages) {{ shaders->color_vert, shaders->color_frag }};
     }
 
     { // Setup texture pipeline.
-        MAKE_INPUT_STATE(VKTxVertex, positionAttribute, texcoordAttribute);
-        createInfos[PIPELINE_BLIT].pVertexInputState = &inputState;
+        createInfos[PIPELINE_BLIT].pVertexInputState = &INPUT_STATE_TEXCOORD_VERTEX;
         createInfos[PIPELINE_BLIT].pInputAssemblyState = &INPUT_ASSEMBLY_STATE_TRIANGLE_STRIP;
         createInfos[PIPELINE_BLIT].layout = pipelineContext->texturePipelineLayout;
         stages[PIPELINE_BLIT] = (ShaderStages) {{ shaders->blit_vert, shaders->blit_frag }};
@@ -255,11 +285,12 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
     // TODO pipeline cache
     VK_IF_ERROR(device->vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, PIPELINE_COUNT,
                                                   createInfos, NULL, set->pipelines)) VK_UNHANDLED_ERROR();
-    J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_CreatePipelineSet");
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_CreatePipelineSet: composite=%d", composite);
     return set;
 }
 
 static VkResult VKPipelines_InitRenderPass(VKDevice* device, VKRenderPassContext* renderPassContext) {
+    assert(device != NULL && renderPassContext != NULL);
     VkAttachmentDescription colorAttachment = {
             .format = renderPassContext->format,
             .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -305,8 +336,13 @@ static void VKPipelines_DestroyRenderPassContext(VKRenderPassContext* renderPass
     if (renderPassContext == NULL) return;
     VKDevice* device = renderPassContext->pipelineContext->device;
     assert(device != NULL);
-    VKPipelines_DestroyPipelineSet(device, renderPassContext->pipelineSet);
+    for (uint32_t i = 0; i < ARRAY_SIZE(renderPassContext->pipelineSets); i++) {
+        VKPipelines_DestroyPipelineSet(device, renderPassContext->pipelineSets[i]);
+    }
+    ARRAY_FREE(renderPassContext->pipelineSets);
     device->vkDestroyRenderPass(device->handle, renderPassContext->renderPass, NULL);
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_DestroyRenderPassContext(%p): format=%d",
+                  renderPassContext, renderPassContext->format);
     free(renderPassContext);
 }
 
@@ -322,6 +358,7 @@ static VKRenderPassContext* VKPipelines_CreateRenderPassContext(VKPipelineContex
         return NULL;
     }
 
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_CreateRenderPassContext(%p): format=%d", renderPassContext, format);
     return renderPassContext;
 }
 
@@ -398,6 +435,7 @@ VKPipelineContext* VKPipelines_CreateContext(VKDevice* device) {
         return NULL;
     }
 
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_CreateContext(%p)", pipelineContext);
     return pipelineContext;
 }
 
@@ -418,13 +456,16 @@ void VKPipelines_DestroyContext(VKPipelineContext* pipelineContext) {
     device->vkDestroyPipelineLayout(device->handle, pipelineContext->texturePipelineLayout, NULL);
     device->vkDestroyDescriptorSetLayout(device->handle, pipelineContext->textureDescriptorSetLayout, NULL);
 
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_DestroyContext(%p)", pipelineContext);
     free(pipelineContext);
 }
 
 VKRenderPassContext* VKPipelines_GetRenderPassContext(VKPipelineContext* pipelineContext, VkFormat format) {
     assert(pipelineContext != NULL && pipelineContext->device != NULL);
     for (uint32_t i = 0; i < ARRAY_SIZE(pipelineContext->renderPassContexts); i++) {
-        if (pipelineContext->renderPassContexts[i]->format == format) return pipelineContext->renderPassContexts[i];
+        if (pipelineContext->renderPassContexts[i]->format == format) {
+            return pipelineContext->renderPassContexts[i];
+        }
     }
     // Not found, create.
     VKRenderPassContext* renderPassContext = VKPipelines_CreateRenderPassContext(pipelineContext, format);
@@ -432,9 +473,16 @@ VKRenderPassContext* VKPipelines_GetRenderPassContext(VKPipelineContext* pipelin
     return renderPassContext;
 }
 
-VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKPipeline pipeline) {
-    if (renderPassContext->pipelineSet == NULL) {
-        renderPassContext->pipelineSet = VKPipelines_CreatePipelineSet(renderPassContext);
+VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKCompositeMode composite, VKPipeline pipeline) {
+    assert(renderPassContext != NULL);
+    assert(composite < COMPOSITE_COUNT); // We could append custom composites after that index.
+    assert(pipeline < PIPELINE_COUNT); // We could append custom pipelines after that index.
+    // Currently, our pipelines map to composite modes 1-to-1, but this may change in future when we'll add more states.
+    uint32_t setIndex = (uint32_t) composite;
+
+    while (ARRAY_SIZE(renderPassContext->pipelineSets) <= setIndex) ARRAY_PUSH_BACK(renderPassContext->pipelineSets, NULL);
+    if (renderPassContext->pipelineSets[setIndex] == NULL) {
+        renderPassContext->pipelineSets[setIndex] = VKPipelines_CreatePipelineSet(renderPassContext, composite);
     }
-    return renderPassContext->pipelineSet->pipelines[pipeline];
+    return renderPassContext->pipelineSets[setIndex]->pipelines[pipeline];
 }
