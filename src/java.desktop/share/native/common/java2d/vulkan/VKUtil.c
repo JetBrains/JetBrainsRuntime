@@ -311,3 +311,24 @@ void VKUtil_LogResultError(const char* string, VkResult result) {
     }
     J2dRlsTraceLn(J2D_TRACE_ERROR, string, r);
 }
+
+/**
+ * Concatenate src transform to dst
+ * [d00 d01 d02] [s00 s01 s02]   [d00s00+d01s10 d00s01+d01s11 d00s02+d01s12+d02]
+ * [d10 d11 d12] [s10 s11 s12] = [d10s11+d11s10 d10s01+d11s11 d10s02+d11s12+d12]
+ * [ 0   0   1 ] [ 0   0   1 ]   [      0             0             1          ]
+ */
+void VKUtil_ConcatenateTransform(VKTransform* dst, const VKTransform* src) {
+  float s00 = src->m00, s01 = src->m01, s02 = src->m02;
+  float s10 = src->m10, s11 = src->m11, s12 = src->m12;
+  float d00 = dst->m00, d01 = dst->m01, d02 = dst->m02;
+  float d10 = dst->m10, d11 = dst->m11, d12 = dst->m12;
+
+  dst->m00 = d00 * s00 + d01 * s10;
+  dst->m01 = d00 * s01 + d01 * s11;
+  dst->m02 = d00 * s02 + d01 * s12 + d02;
+
+  dst->m10 = d10 * s00 + d11 * s10;
+  dst->m11 = d10 * s01 + d11 * s11;
+  dst->m12 = d10 * s02 + d11 * s12 + d12;
+}
