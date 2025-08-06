@@ -31,10 +31,14 @@
 #include "VKPipelines.h"
 
 struct VKRenderingContext {
-    VKSDOps*    surface;
-    VKTransform transform;
-    VkRect2D    clipRect;
-    Color       color;
+    VKSDOps*        surface;
+    VKTransform     transform;
+    VkRect2D        clipRect;
+    Color           color;
+    VKCompositeMode composite;
+    // Extra alpha is not used when painting with plain color,
+    // in this case color.a already includes it.
+    float extraAlpha;
 };
 
 typedef struct {
