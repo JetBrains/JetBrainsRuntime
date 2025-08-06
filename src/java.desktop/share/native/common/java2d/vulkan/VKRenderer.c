@@ -40,11 +40,11 @@
  * Pool of resources with associated timestamps, guarding their reuse.
  * The pool must only be manipulated via POOL_* macros.
  */
-#define POOL(TYPE, NAME)    \
-struct PoolEntry_ ## NAME { \
-    uint64_t timestamp;     \
-    TYPE value;             \
-} *NAME
+#define POOL(TYPE, NAME)                \
+RING_BUFFER(struct PoolEntry_ ## NAME { \
+    uint64_t timestamp;                 \
+    TYPE value;                         \
+}) NAME
 
 /**
  * Take an available item from the pool. VAR is left unchanged if there is no available item.
@@ -59,14 +59,14 @@ struct PoolEntry_ ## NAME { \
  * after the next submitted batch of work completes execution on GPU.
  */
 // In debug mode resource reuse will be randomly delayed by 3 timestamps in ~20% cases.
-#define POOL_RETURN(RENDERER, NAME, VAR) RING_BUFFER_PUSH_BACK((RENDERER)->NAME, \
+#define POOL_RETURN(RENDERER, NAME, VAR) (RING_BUFFER_PUSH_BACK((RENDERER)->NAME) = \
     (struct PoolEntry_ ## NAME) { .timestamp = (RENDERER)->writeTimestamp + (VK_DEBUG_RANDOM(20)*3), .value = (VAR) })
 
 /**
  * Insert an item into the pool. It is available for POOL_TAKE immediately.
  * This is usually used for bulk insertion of newly created resources.
  */
-#define POOL_INSERT(RENDERER, NAME, VAR) RING_BUFFER_PUSH_FRONT((RENDERER)->NAME, \
+#define POOL_INSERT(RENDERER, NAME, VAR) (RING_BUFFER_PUSH_FRONT((RENDERER)->NAME) = \
     (struct PoolEntry_ ## NAME) { .timestamp = 0ULL, .value = (VAR) })
 
 /**
@@ -91,13 +91,13 @@ struct VKRenderer {
     VKDevice*          device;
     VKPipelineContext* pipelineContext;
 
-    POOL(VkCommandBuffer, commandBufferPool);
-    POOL(VkCommandBuffer, secondaryCommandBufferPool);
-    POOL(VkSemaphore,     semaphorePool);
-    POOL(VKBuffer,        vertexBufferPool);
-    POOL(VKTexelBuffer,   maskFillBufferPool);
-    VKMemory*             bufferMemoryPages;
-    VkDescriptorPool*     descriptorPools;
+    POOL(VkCommandBuffer,   commandBufferPool);
+    POOL(VkCommandBuffer,   secondaryCommandBufferPool);
+    POOL(VkSemaphore,       semaphorePool);
+    POOL(VKBuffer,          vertexBufferPool);
+    POOL(VKTexelBuffer,     maskFillBufferPool);
+    ARRAY(VKMemory)         bufferMemoryPages;
+    ARRAY(VkDescriptorPool) descriptorPools;
 
     /**
      * Last known timestamp reached by GPU execution. Resources with equal or less timestamp may be safely reused.
@@ -113,14 +113,14 @@ struct VKRenderer {
     VkCommandBuffer commandBuffer;
 
     struct Wait {
-        VkSemaphore*          semaphores;
-        VkPipelineStageFlags* stages;
+        ARRAY(VkSemaphore)          semaphores;
+        ARRAY(VkPipelineStageFlags) stages;
     } wait;
 
     struct PendingPresentation {
-        VkSwapchainKHR* swapchains;
-        uint32_t*       indices;
-        VkResult*       results;
+        ARRAY(VkSwapchainKHR) swapchains;
+        ARRAY(uint32_t)       indices;
+        ARRAY(VkResult)       results;
     } pendingPresentation;
 };
 
@@ -137,8 +137,8 @@ typedef struct {
  */
 struct VKRenderPass {
     VKRenderPassContext* context;
-    VKBuffer*            vertexBuffers;
-    VKTexelBuffer*       maskFillBuffers;
+    ARRAY(VKBuffer)      vertexBuffers;
+    ARRAY(VKTexelBuffer) maskFillBuffers;
     VkFramebuffer        framebuffer;
     VkCommandBuffer      commandBuffer;
 
@@ -172,7 +172,10 @@ inline VkBool32 VKRenderer_CheckPoolEntryAvailable(VKRenderer* renderer, void* e
  */
 static VkBool32 VKRenderer_CheckPoolDrain(void* pool, void* entry) {
     if (entry != NULL) return VK_TRUE;
-    else if (pool != NULL) RING_BUFFER_FREE(pool);
+    if (pool != NULL) {
+        RING_BUFFER(char) ring_buffer = pool;
+        RING_BUFFER_FREE(ring_buffer);
+    }
     return VK_FALSE;
 }
 
@@ -193,7 +196,7 @@ static VKBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
                                            VKRenderer_FindVertexBufferMemoryType,
                                            VERTEX_BUFFER_SIZE, VERTEX_BUFFER_PAGE_SIZE, &bufferCount, buffers);
     VK_RUNTIME_ASSERT(page);
-    ARRAY_PUSH_BACK(renderer->bufferMemoryPages, page);
+    ARRAY_PUSH_BACK(renderer->bufferMemoryPages) = page;
     for (uint32_t i = 1; i < bufferCount; i++) POOL_INSERT(renderer, vertexBufferPool, buffers[i]);
     return buffers[0];
 }
@@ -221,8 +224,8 @@ static VKTexelBuffer VKRenderer_GetMaskFillBuffer(VKRenderer* renderer) {
             renderer->pipelineContext->maskFillDescriptorSetLayout, bufferCount, buffers, texelBuffers);
     VK_RUNTIME_ASSERT(descriptorPool);
     for (uint32_t i = 1; i < bufferCount; i++) POOL_INSERT(renderer, maskFillBufferPool, texelBuffers[i]);
-    ARRAY_PUSH_BACK(renderer->bufferMemoryPages, page);
-    ARRAY_PUSH_BACK(renderer->descriptorPools, descriptorPool);
+    ARRAY_PUSH_BACK(renderer->bufferMemoryPages) = page;
+    ARRAY_PUSH_BACK(renderer->descriptorPools) = descriptorPool;
     return texelBuffers[0];
 }
 
@@ -792,8 +795,8 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
 
         // Acquire swapchain image.
         VkSemaphore acquireSemaphore = VKRenderer_AddPendingSemaphore(renderer);
-        ARRAY_PUSH_BACK(renderer->wait.semaphores, acquireSemaphore);
-        ARRAY_PUSH_BACK(renderer->wait.stages, VK_PIPELINE_STAGE_TRANSFER_BIT); // Acquire image before blitting content onto swapchain
+        ARRAY_PUSH_BACK(renderer->wait.semaphores) = acquireSemaphore;
+        ARRAY_PUSH_BACK(renderer->wait.stages) = VK_PIPELINE_STAGE_TRANSFER_BIT; // Acquire image before blitting content onto swapchain
 
         uint32_t imageIndex;
         VkResult acquireImageResult = device->vkAcquireNextImageKHR(device->handle, win->swapchain, UINT64_MAX,
@@ -854,8 +857,8 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
         }
 
         // Add pending presentation request.
-        ARRAY_PUSH_BACK(renderer->pendingPresentation.swapchains, win->swapchain);
-        ARRAY_PUSH_BACK(renderer->pendingPresentation.indices, imageIndex);
+        ARRAY_PUSH_BACK(renderer->pendingPresentation.swapchains) = win->swapchain;
+        ARRAY_PUSH_BACK(renderer->pendingPresentation.indices) = imageIndex;
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_FlushSurface(%p): queued for presentation", surface);
     }
 }
@@ -916,7 +919,7 @@ static void* VKRenderer_AllocateVertices(VKRenderingContext* context, uint32_t v
     if (!state.bound) {
         if (state.data == NULL) {
             VKBuffer buffer = VKRenderer_GetVertexBuffer(surface->device->renderer);
-            ARRAY_PUSH_BACK(surface->renderPass->vertexBuffers, buffer);
+            ARRAY_PUSH_BACK(surface->renderPass->vertexBuffers) = buffer;
             surface->renderPass->vertexBufferWriting.data = state.data = buffer.data;
         }
         assert(ARRAY_SIZE(surface->renderPass->vertexBuffers) > 0);
@@ -949,7 +952,7 @@ static BufferWritingState VKRenderer_AllocateMaskFillBytes(VKRenderingContext* c
     if (!state.bound) {
         if (state.data == NULL) {
             VKTexelBuffer buffer = VKRenderer_GetMaskFillBuffer(surface->device->renderer);
-            ARRAY_PUSH_BACK(surface->renderPass->maskFillBuffers, buffer);
+            ARRAY_PUSH_BACK(surface->renderPass->maskFillBuffers) = buffer;
             surface->renderPass->maskFillBufferWriting.data = state.data = buffer.buffer.data;
         }
         assert(ARRAY_SIZE(surface->renderPass->maskFillBuffers) > 0);
@@ -999,8 +1002,11 @@ VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
         VKRenderer_FlushDraw(surface);
         VkCommandBuffer cb = renderPass->commandBuffer;
         renderPass->currentPipeline = pipeline;
+        VKPipelineSetDescriptor pipelineSetDescriptor = {
+                .composite = context->composite
+        };
         surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           VKPipelines_GetPipeline(renderPass->context, context->composite, pipeline));
+                                           VKPipelines_GetPipeline(renderPass->context, pipelineSetDescriptor, pipeline));
         renderPass->vertexBufferWriting.bound = VK_FALSE;
         renderPass->maskFillBufferWriting.bound = VK_FALSE;
     }
