@@ -42,6 +42,8 @@ struct VKImage {
     VkAccessFlagBits        lastAccess;
 };
 
+VkImageAspectFlagBits VKImage_GetAspect(VKImage* image);
+
 VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
                         VkImageCreateFlags flags, VkFormat format,
                         VkImageTiling tiling, VkImageUsageFlags usage, VkSampleCountFlagBits samples,
