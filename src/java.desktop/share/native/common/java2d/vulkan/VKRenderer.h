@@ -33,12 +33,14 @@
 struct VKRenderingContext {
     VKSDOps*        surface;
     VKTransform     transform;
-    VkRect2D        clipRect;
     Color           color;
     VKCompositeMode composite;
     // Extra alpha is not used when painting with plain color,
     // in this case color.a already includes it.
     float extraAlpha;
+    uint64_t           clipModCount; // Used to track changes to the clip.
+    VkRect2D           clipRect;
+    ARRAY(VKIntVertex) clipSpanVertices;
 };
 
 typedef struct {
