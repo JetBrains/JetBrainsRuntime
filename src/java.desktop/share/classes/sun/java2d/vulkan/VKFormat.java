@@ -54,7 +54,11 @@ public enum VKFormat {
     // but it can be aliased as TYPE_INT_ARGB on little-endian systems.
     B8G8R8A8_UNORM(44,
             LEOptimizations.ENABLED ? VKFormatModel.INT_ARGB_PRE : VKFormatModel.CUSTOM_4BYTE_BGRA_PRE,
-            LEOptimizations.ENABLED ? VKFormatModel.INT_RGB      : VKFormatModel.CUSTOM_4BYTE_BGRx);
+            LEOptimizations.ENABLED ? VKFormatModel.INT_RGB      : VKFormatModel.CUSTOM_4BYTE_BGRx),
+
+    R8G8B8A8_UNORM(37, VKFormatModel.CUSTOM_4BYTE_RGBA_PRE, VKFormatModel.CUSTOM_4BYTE_RGBx),
+
+    A8B8G8R8_UNORM_PACK32(51, VKFormatModel.CUSTOM_INT_ABGR_PRE, VKFormatModel.INT_BGR);
 
     private final int value;
     private final SurfaceType surfaceType, translucentSurfaceType, opaqueSurfaceType;
