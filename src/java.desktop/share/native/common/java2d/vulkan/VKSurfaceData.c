@@ -36,8 +36,11 @@
 static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
     if (vksdo == NULL) return;
 
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ResetImageSurface(%p)", vksdo);
+
     // DestroyRenderPass also waits while the surface resources are being used by device.
     VKRenderer_DestroyRenderPass(vksdo);
+    vksdo->lastTimestamp = 0;
 
     if (vksdo->device != NULL) {
         VKImage_Destroy(vksdo->device, vksdo->stencil);
@@ -306,6 +309,7 @@ JNIEXPORT VKSDOps* VKSD_CreateSurface(JNIEnv* env, jobject vksd, jint type, jint
     sd->drawableType = type;
     sd->drawableFormat = format;
     sd->background = VKUtil_DecodeJavaColor(backgroundRGB, ALPHA_TYPE_STRAIGHT);
+    sd->lastTimestamp = 0;
     if (type == VKSD_WINDOW) {
         VKWinSDOps* winSD = (VKWinSDOps*) sd;
         winSD->resizeCallback = resizeCallback;
