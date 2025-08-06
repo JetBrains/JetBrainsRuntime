@@ -67,20 +67,17 @@ public abstract class VKSurfaceData extends SurfaceData
     protected static VKDrawImage vkImagePipe;
 
     static {
-        if (!GraphicsEnvironment.isHeadless()) {
-            VKRenderQueue rq = VKRenderQueue.getInstance();
-            vkImagePipe = new VKDrawImage();
-            vkTextPipe = new VKTextRenderer(rq);
-            vkRenderPipe = new VKRenderer(rq);
-            if (GraphicsPrimitive.tracingEnabled()) {
-                vkTextPipe = vkTextPipe.traceWrap();
-                //The wrapped vkRenderPipe will wrap the AA pipe as well...
-                vkAAPgramPipe = vkRenderPipe.traceWrap();
-            }
-            vkAAPgramPipe = vkRenderPipe.getAAParallelogramPipe();
-            vkTxRenderPipe =
-                    new PixelToParallelogramConverter(vkRenderPipe, vkRenderPipe, 1.0, 0.25, true);
+        VKRenderQueue rq = VKRenderQueue.getInstance();
+        vkImagePipe = new VKDrawImage();
+        vkTextPipe = new VKTextRenderer(rq);
+        vkRenderPipe = new VKRenderer(rq);
+        if (GraphicsPrimitive.tracingEnabled()) {
+            vkTextPipe = vkTextPipe.traceWrap();
+            //The wrapped vkRenderPipe will wrap the AA pipe as well...
+            vkAAPgramPipe = vkRenderPipe.traceWrap();
         }
+        vkAAPgramPipe = vkRenderPipe.getAAParallelogramPipe();
+        vkTxRenderPipe = new PixelToParallelogramConverter(vkRenderPipe, vkRenderPipe, 1.0, 0.25, true);
     }
 
     private final VKFormat format;
