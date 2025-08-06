@@ -55,12 +55,6 @@ struct VKRenderingContext {
     ARRAY(VKIntVertex) clipSpanVertices;
 };
 
-typedef struct {
-    uint32_t barrierCount;
-    VkPipelineStageFlags srcStages;
-    VkPipelineStageFlags dstStages;
-} VKBarrierBatch;
-
 typedef void (*VKCleanupHandler)(VKDevice* device, void* data);
 
 VKRenderer* VKRenderer_Create(VKDevice* device);
@@ -77,14 +71,11 @@ VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, Alph
 VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
 
 /**
- * Prepare image barrier info to be executed in batch, if needed.
+ * Record barrier batches into the primary command buffer.
  */
-void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
-                                VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout);
-
-void VKRenderer_AddBufferBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
-                                VKBuffer* buffer, VkPipelineStageFlags stage,
-                                VkAccessFlags access);
+void VKRenderer_RecordBarriers(VKRenderer* renderer,
+                               VkBufferMemoryBarrier* bufferBarriers, VKBarrierBatch* bufferBatch,
+                               VkImageMemoryBarrier* imageBarriers, VKBarrierBatch* imageBatch);
 
 void VKRenderer_CreateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool* descriptorPool, VkDescriptorSet* set);
 
