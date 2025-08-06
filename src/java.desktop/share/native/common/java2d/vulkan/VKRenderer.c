@@ -684,6 +684,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
             .state = {
                 .stencilMode = STENCIL_MODE_NONE,
                 .dstOpaque = VKSD_IsOpaque(surface),
+                .inAlphaType = ALPHA_TYPE_UNKNOWN,
                 .composite = NO_COMPOSITE,
                 .shader = NO_SHADER
             },
@@ -1142,6 +1143,7 @@ static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
         VKPipelines_GetPipelineInfo(surface->renderPass->context, (VKPipelineDescriptor) {
             .stencilMode = STENCIL_MODE_ON,
             .dstOpaque = VK_TRUE,
+            .inAlphaType = ALPHA_TYPE_UNKNOWN,
             .composite = NO_COMPOSITE,
             .shader = SHADER_CLIP,
             .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
@@ -1169,7 +1171,7 @@ static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
 /**
  * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
  */
-VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology) {
+VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, AlphaType inAlphaType) {
     assert(context.surface != NULL);
     VKSDOps* surface = context.surface;
 
@@ -1220,13 +1222,16 @@ VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology) {
     }
 
     // Validate current pipeline.
-    if (renderPass->state.shader != shader || renderPass->state.topology != topology) {
+    if (renderPass->state.shader != shader ||
+        renderPass->state.topology != topology ||
+        renderPass->state.inAlphaType != inAlphaType) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating pipeline, old=%d, new=%d",
                    renderPass->state.shader, shader);
         VKRenderer_FlushDraw(surface);
         VkCommandBuffer cb = renderPass->commandBuffer;
         renderPass->state.shader = shader;
         renderPass->state.topology = topology;
+        renderPass->state.inAlphaType = inAlphaType;
         VKPipelineInfo pipelineInfo = VKPipelines_GetPipelineInfo(renderPass->context, renderPass->state);
         renderPass->outAlphaType = pipelineInfo.outAlphaType;
         surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineInfo.pipeline);
@@ -1250,7 +1255,7 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
 {
     if (!VKRenderer_Validate(SHADER_COLOR,
                              fill ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
-                                  : VK_PRIMITIVE_TOPOLOGY_LINE_LIST)) return; // Not ready.
+                                  : VK_PRIMITIVE_TOPOLOGY_LINE_LIST, ALPHA_TYPE_UNKNOWN)) return; // Not ready.
     RGBA c = VKRenderer_GetRGBA(context.surface, context.renderColor);
     /*                   dx21
      *    (p1)---------(p2) |          (p1)------
@@ -1284,7 +1289,7 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
 
 void VKRenderer_FillSpans(jint spanCount, jint *spans) {
     if (spanCount == 0) return;
-    if (!VKRenderer_Validate(SHADER_COLOR, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)) return; // Not ready.
+    if (!VKRenderer_Validate(SHADER_COLOR, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, ALPHA_TYPE_UNKNOWN)) return; // Not ready.
     RGBA c = VKRenderer_GetRGBA(context.surface, context.renderColor);
 
     jfloat x1 = (float)*(spans++);
@@ -1311,9 +1316,8 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans) {
     }
 }
 
-void VKRenderer_TextureRender(VKImage *destImage, VKImage *srcImage,
-                              VkBuffer vertexBuffer, uint32_t vertexNum) {
-    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) return; // Not ready.
+void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexBuffer, uint32_t vertexNum) {
+    // VKRenderer_Validate was called by VKBlitLoops. TODO refactor this.
     VKSDOps* surface = (VKSDOps*)context.surface;
     VKRenderPass* renderPass = surface->renderPass;
     VkCommandBuffer cb = renderPass->commandBuffer;
@@ -1326,8 +1330,7 @@ void VKRenderer_TextureRender(VKImage *destImage, VKImage *srcImage,
     VkBuffer vertexBuffers[] = {vertexBuffer};
     VkDeviceSize offsets[] = {0};
     device->vkCmdBindVertexBuffers(cb, 0, 1, vertexBuffers, offsets);
-    VkDescriptorSet descriptorSets[] = { VKImage_GetDescriptorSet(device, srcImage, srcImage->format, 0),
-                                         device->renderer->pipelineContext->linearRepeatSamplerDescriptorSet };
+    VkDescriptorSet descriptorSets[] = { srcDescriptorSet, device->renderer->pipelineContext->linearRepeatSamplerDescriptorSet };
     device->vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     device->renderer->pipelineContext->texturePipelineLayout, 0, 2, descriptorSets, 0, NULL);
     device->vkCmdDraw(cb, vertexNum, 1, 0, 0);
@@ -1336,7 +1339,7 @@ void VKRenderer_TextureRender(VKImage *destImage, VKImage *srcImage,
 void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
                          jint maskoff, jint maskscan, jint masklen, uint8_t *mask) {
     if (!VKRenderer_Validate(SHADER_MASK_FILL_COLOR,
-                             VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)) return; // Not ready.
+                             VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, ALPHA_TYPE_UNKNOWN)) return; // Not ready.
     // maskoff is the offset from the beginning of mask,
     // it's the same as x and y offset within a tile (maskoff % maskscan, maskoff / maskscan).
     // maskscan is the number of bytes in a row/
