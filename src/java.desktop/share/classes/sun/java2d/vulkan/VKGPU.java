@@ -34,6 +34,11 @@ import java.util.stream.Stream;
  */
 public class VKGPU {
 
+    public static final int SAMPLED_CAP_4BYTE_BIT = 0; // Considered always supported.
+    public static final int SAMPLED_CAP_3BYTE_BIT = 1;
+    public static final int SAMPLED_CAP_565_BIT   = 2;
+    public static final int SAMPLED_CAP_555_BIT   = 4;
+
     private boolean initialized;
 
     private final SurfaceManager.ProxyCache surfaceDataProxyCache = new SurfaceManager.ProxyCache();
@@ -71,6 +76,10 @@ public class VKGPU {
 
     public Stream<VKGraphicsConfig> getPresentableGraphicsConfigs() {
         return Stream.of(presentableGraphicsConfigs);
+    }
+
+    public int getSampledCaps() { // TODO pull dynamically from native.
+        return SAMPLED_CAP_4BYTE_BIT;
     }
 
     /**
