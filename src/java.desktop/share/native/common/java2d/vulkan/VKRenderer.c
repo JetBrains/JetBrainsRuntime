@@ -139,6 +139,7 @@ struct VKRenderPass {
     VKRenderPassContext* context;
     ARRAY(VKBuffer)      vertexBuffers;
     ARRAY(VKTexelBuffer) maskFillBuffers;
+    VkRenderPass         renderPass; // Non-owning.
     VkFramebuffer        framebuffer;
     VkCommandBuffer      commandBuffer;
 
@@ -149,6 +150,8 @@ struct VKRenderPass {
 
     VKCompositeMode currentComposite;
     VKPipeline      currentPipeline;
+    VKStencilMode   currentStencilMode;
+    uint64_t        clipModCount; // Just a tag to detect when clip was changed.
     VkBool32        pendingFlush;
     VkBool32        pendingCommands;
     VkBool32        pendingClear;
@@ -481,7 +484,7 @@ void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* 
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .image = image->handle,
-                .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+                .subresourceRange = { VKImage_GetAspect(image), 0, 1, 0, 1 }
         };
         batch->barrierCount++;
         batch->srcStages |= image->lastStage;
@@ -587,10 +590,13 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
     VKRenderPass* renderPass = surface->renderPass = malloc(sizeof(VKRenderPass));
     VK_RUNTIME_ASSERT(renderPass);
     (*renderPass) = (VKRenderPass) {
-            .pendingCommands = VK_FALSE,
-            .pendingClear = VK_TRUE, // Clear the surface by default
             .currentComposite = NO_COMPOSITE,
             .currentPipeline = NO_PIPELINE,
+            .currentStencilMode = STENCIL_MODE_NONE,
+            .clipModCount = 0,
+            .pendingFlush = VK_FALSE,
+            .pendingCommands = VK_FALSE,
+            .pendingClear = VK_TRUE, // Clear the surface by default
             .lastTimestamp = 0
     };
 
@@ -599,23 +605,48 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
         renderPass->context = VKPipelines_GetRenderPassContext(renderer->pipelineContext, surface->image->format);
     }
 
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_InitRenderPass(%p)", surface);
+    return VK_TRUE;
+}
+
+/**
+ * Initialize surface framebuffer.
+ * This function can be called between render passes of a single frame, unlike VKRenderer_InitRenderPass.
+ */
+static void VKRenderer_InitFramebuffer(VKSDOps* surface) {
+    assert(surface != NULL && surface->device != NULL && surface->renderPass != NULL);
+    VKDevice* device = surface->device;
+    VKRenderPass* renderPass = surface->renderPass;
+
+    if (renderPass->currentStencilMode == STENCIL_MODE_NONE && surface->stencil != NULL) {
+        // Destroy outdated color-only framebuffer.
+        device->vkDestroyFramebuffer(device->handle, renderPass->framebuffer, NULL);
+        renderPass->framebuffer = VK_NULL_HANDLE;
+        renderPass->currentStencilMode = STENCIL_MODE_OFF;
+    }
+
     // Initialize framebuffer.
     if (renderPass->framebuffer == VK_NULL_HANDLE) {
+        renderPass->renderPass = renderPass->context->renderPass[surface->stencil != NULL];
+        VkImageView views[] = { surface->image->view, VK_NULL_HANDLE };
         VkFramebufferCreateInfo framebufferCreateInfo = {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-                .renderPass = renderPass->context->renderPass,
+                .renderPass = renderPass->renderPass,
                 .attachmentCount = 1,
-                .pAttachments = &surface->image->view,
+                .pAttachments = views,
                 .width = surface->image->extent.width,
                 .height = surface->image->extent.height,
                 .layers = 1
         };
+        if (surface->stencil != NULL) {
+            framebufferCreateInfo.attachmentCount = 2;
+            views[1] = surface->stencil->view;
+        }
         VK_IF_ERROR(device->vkCreateFramebuffer(device->handle, &framebufferCreateInfo, NULL,
                                                 &renderPass->framebuffer)) VK_UNHANDLED_ERROR();
-    }
 
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_InitRenderPass(%p)", surface);
-    return VK_TRUE;
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_InitFramebuffer(%p)", surface);
+    }
 }
 
 /**
@@ -623,6 +654,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
  */
 static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL && !surface->renderPass->pendingCommands);
+    VKRenderer_InitFramebuffer(surface);
     // We may have a pending flush, which is already obsolete.
     surface->renderPass->pendingFlush = VK_FALSE;
     VKDevice* device = surface->device;
@@ -649,7 +681,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     // Begin recording render pass commands.
     VkCommandBufferInheritanceInfo inheritanceInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO,
-            .renderPass = surface->renderPass->context->renderPass,
+            .renderPass = surface->renderPass->renderPass,
             .subpass = 0,
             .framebuffer = surface->renderPass->framebuffer
     };
@@ -678,7 +710,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
         surface->renderPass->pendingClear = VK_FALSE;
     }
 
-    // Set viewport and scissor.
+    // Set viewport.
     VkViewport viewport = {
             .x = 0.0f,
             .y = 0.0f,
@@ -687,9 +719,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
             .minDepth = 0.0f,
             .maxDepth = 1.0f
     };
-    VkRect2D scissor = {{0, 0}, surface->image->extent};
     device->vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-    device->vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     // Calculate inverse viewport for vertex shader.
     viewport.width = 2.0f / viewport.width;
     viewport.height = 2.0f / viewport.height;
@@ -720,22 +750,30 @@ void VKRenderer_FlushRenderPass(VKSDOps* surface) {
     surface->renderPass->lastTimestamp = renderer->writeTimestamp;
     VkCommandBuffer cb = VKRenderer_Record(renderer);
 
-    // Insert barrier to prepare surface for rendering.
-    VkImageMemoryBarrier barriers[1];
+    // Insert barriers to prepare surface for rendering.
+    VkImageMemoryBarrier barriers[2];
     VKBarrierBatch barrierBatch = {};
     VKRenderer_AddImageBarrier(barriers, &barrierBatch, surface->image,
                                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                                VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    if (surface->stencil != NULL) {
+        VKRenderer_AddImageBarrier(barriers, &barrierBatch, surface->stencil,
+                                   VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                                   VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    }
     if (barrierBatch.barrierCount > 0) {
         device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
                                      0, 0, NULL, 0, NULL, barrierBatch.barrierCount, barriers);
     }
 
+    // If there is a pending clear, record it into render pass.
+    if (clear) VKRenderer_BeginRenderPass(surface);
     // Begin render pass.
     VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .renderPass = surface->renderPass->context->renderPass,
+            .renderPass = surface->renderPass->renderPass,
             .framebuffer = surface->renderPass->framebuffer,
             .renderArea.offset = (VkOffset2D){0, 0},
             .renderArea.extent = surface->image->extent,
@@ -743,8 +781,6 @@ void VKRenderer_FlushRenderPass(VKSDOps* surface) {
             .pClearValues = NULL
     };
     device->vkCmdBeginRenderPass(cb, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-    // If there is a pending clear, record it into render pass.
-    if (clear) VKRenderer_BeginRenderPass(surface);
 
     // Execute render pass commands.
     if (surface->renderPass->pendingCommands) {
@@ -965,6 +1001,54 @@ static BufferWritingState VKRenderer_AllocateMaskFillBytes(VKRenderingContext* c
 }
 
 /**
+ * Setup stencil attachment according to the context clip state.
+ * If there is a clip shape, attachment is cleared with "fail" value and then
+ * pixels inside the clip shape are set to "pass".
+ * If there is no clip shape, whole attachment is cleared with "pass" value.
+ */
+static void VKRenderer_SetupStencil(VKRenderingContext* context) {
+    assert(context != NULL && context->surface != NULL && context->surface->renderPass != NULL);
+    VKSDOps* surface = context->surface;
+    VKRenderPass* renderPass = surface->renderPass;
+    VkCommandBuffer cb = renderPass->commandBuffer;
+    VKRenderer_FlushDraw(surface);
+
+    // Clear stencil attachment.
+    VkClearAttachment clearAttachment = {
+            .aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT,
+            .clearValue.depthStencil.stencil = ARRAY_SIZE(context->clipSpanVertices) > 0 ?
+                                               CLIP_STENCIL_EXCLUDE_VALUE : CLIP_STENCIL_INCLUDE_VALUE
+    };
+    VkClearRect clearRect = {
+            .rect = {{0, 0}, surface->stencil->extent},
+            .baseArrayLayer = 0,
+            .layerCount = 1
+    };
+    surface->device->vkCmdClearAttachments(cb, 1, &clearAttachment, 1, &clearRect);
+
+    // Bind the clip pipeline.
+    surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, surface->renderPass->context->clipPipeline);
+    // Reset vertex buffer binding.
+    renderPass->vertexBufferWriting.bound = VK_FALSE;
+
+    // Rasterize clip spans.
+    const uint32_t MAX_VERTICES_PER_DRAW = (VERTEX_BUFFER_SIZE / sizeof(VKIntVertex) / 3) * 3;
+    VKIntVertex* vs;
+    for (uint32_t drawn = 0;;) {
+        uint32_t currentDraw = ARRAY_SIZE(context->clipSpanVertices) - drawn;
+        if (currentDraw > MAX_VERTICES_PER_DRAW) currentDraw = MAX_VERTICES_PER_DRAW;
+        else if (currentDraw == 0) break;
+        VK_DRAW(vs, context, currentDraw);
+        memcpy(vs, context->clipSpanVertices + drawn, currentDraw * sizeof(VKIntVertex));
+        drawn += currentDraw;
+    }
+    VKRenderer_FlushDraw(surface);
+
+    // Reset pipeline state.
+    renderPass->currentPipeline = NO_PIPELINE;
+}
+
+/**
  * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
  */
 VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
@@ -980,19 +1064,41 @@ VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
     VKRenderPass* renderPass = surface->renderPass;
 
     // Validate render pass state.
-    if (renderPass->currentComposite != context->composite) {
+    if (renderPass->currentComposite != context->composite ||
+        renderPass->clipModCount != context->clipModCount) {
         // ALPHA_COMPOSITE_DST keeps destination intact, so don't even bother to change the state.
         if (context->composite == ALPHA_COMPOSITE_DST) return VK_FALSE;
         VKCompositeMode oldComposite = renderPass->currentComposite;
+        VkBool32 clipChanged = renderPass->clipModCount != context->clipModCount;
+        // Init stencil attachment, if needed.
+        if (clipChanged && ARRAY_SIZE(context->clipSpanVertices) > 0 && surface->stencil == NULL) {
+            if (surface->renderPass->pendingCommands) VKRenderer_FlushRenderPass(surface);
+            if (!VKSD_ConfigureImageSurfaceStencil(surface)) return VK_FALSE;
+        }
         // Update state.
         VKRenderer_FlushDraw(surface);
         renderPass->currentComposite = context->composite;
+        renderPass->clipModCount = context->clipModCount;
         // Begin render pass.
-        if (!renderPass->pendingCommands) VKRenderer_BeginRenderPass(surface);
+        VkBool32 renderPassJustStarted = !renderPass->pendingCommands;
+        if (renderPassJustStarted) VKRenderer_BeginRenderPass(surface);
+        // Validate current clip.
+        if (clipChanged || renderPassJustStarted) {
+            J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating clip");
+            surface->device->vkCmdSetScissor(renderPass->commandBuffer, 0, 1, &context->clipRect);
+            if (clipChanged) {
+                if (ARRAY_SIZE(context->clipSpanVertices) > 0) {
+                    VKRenderer_SetupStencil(context);
+                    renderPass->currentStencilMode = STENCIL_MODE_ON;
+                } else renderPass->currentStencilMode = surface->stencil != NULL ? STENCIL_MODE_OFF : STENCIL_MODE_NONE;
+            }
+        }
         // Validate current composite.
-        J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating composite, old=%d, new=%d", oldComposite, context->composite);
-        // Reset the pipeline.
-        renderPass->currentPipeline = NO_PIPELINE;
+        if (oldComposite != context->composite) {
+            J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating composite, old=%d, new=%d", oldComposite, context->composite);
+            // Reset the pipeline.
+            renderPass->currentPipeline = NO_PIPELINE;
+        }
     }
 
     // Validate current pipeline.
@@ -1003,7 +1109,8 @@ VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
         VkCommandBuffer cb = renderPass->commandBuffer;
         renderPass->currentPipeline = pipeline;
         VKPipelineSetDescriptor pipelineSetDescriptor = {
-                .composite = context->composite
+                .stencilMode = renderPass->currentStencilMode,
+                .composite = renderPass->currentComposite
         };
         surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                            VKPipelines_GetPipeline(renderPass->context, pipelineSetDescriptor, pipeline));
