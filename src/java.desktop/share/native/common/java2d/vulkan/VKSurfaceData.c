@@ -27,9 +27,9 @@
 #ifndef HEADLESS
 
 #include "VKUtil.h"
-#include "VKBase.h"
 #include "VKSurfaceData.h"
 #include "VKImage.h"
+#include "VKEnv.h"
 
 /**
  * Release VKSDOps resources & reset to initial state.
@@ -59,8 +59,8 @@ void VKSD_ResetSurface(VKSDOps* vksdo) {
             vkwinsdo->vksdOps.device->vkDestroySwapchainKHR(vkwinsdo->vksdOps.device->handle, vkwinsdo->swapchain, NULL);
         }
         if (vkwinsdo->surface != VK_NULL_HANDLE) {
-            VKGraphicsEnvironment* ge = VKGE_graphics_environment();
-            if (ge != NULL) ge->vkDestroySurfaceKHR(ge->vkInstance, vkwinsdo->surface, NULL);
+            VKEnv* vk = VKEnv_GetInstance();
+            vk->vkDestroySurfaceKHR(vk->instance, vkwinsdo->surface, NULL);
         }
         vkwinsdo->swapchain = VK_NULL_HANDLE;
         vkwinsdo->surface = VK_NULL_HANDLE;
@@ -74,7 +74,7 @@ static void VKSD_FindImageSurfaceMemoryType(VKMemoryRequirements* requirements) 
 
 VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
     // Initialize the device. currentDevice can be changed on the fly, and we must reconfigure surfaces accordingly.
-    VKDevice* device = VKGE_graphics_environment()->currentDevice;
+    VKDevice* device = VKEnv_GetInstance()->currentDevice;
     if (device != vksdo->device) {
         VKSD_ResetImageSurface(vksdo);
         vksdo->device = device;
@@ -137,12 +137,12 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
         return VK_FALSE;
     }
 
-    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
+    VKEnv* vk = VKEnv_GetInstance();
     VKDevice* device = vkwinsdo->vksdOps.device;
     VkPhysicalDevice physicalDevice = device->physicalDevice;
 
     VkSurfaceCapabilitiesKHR capabilities;
-    VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, vkwinsdo->surface, &capabilities)) {
+    VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, vkwinsdo->surface, &capabilities)) {
         return VK_FALSE;
     }
 
@@ -188,11 +188,11 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     } else compositeAlpha = (VkCompositeAlphaFlagBitsKHR) capabilities.supportedCompositeAlpha;
 
     uint32_t formatCount;
-    VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, NULL)) {
+    VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, NULL)) {
         return VK_FALSE;
     }
     VkSurfaceFormatKHR formats[formatCount];
-    VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, formats)) {
+    VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, formats)) {
         return VK_FALSE;
     }
 
@@ -219,11 +219,11 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     }
 
     uint32_t presentModeCount;
-    VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, NULL)) {
+    VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, NULL)) {
         return VK_FALSE;
     }
     VkPresentModeKHR presentModes[presentModeCount];
-    VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, presentModes)) {
+    VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, presentModes)) {
         return VK_FALSE;
     }
     // FIFO mode is guaranteed to be supported.
