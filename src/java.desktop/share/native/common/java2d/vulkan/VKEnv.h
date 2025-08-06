@@ -59,8 +59,10 @@ struct VKEnv {
 #endif
 
     VKPlatformData* platformData;
+    VkBool32 presentationSupported;
 
     INSTANCE_FUNCTION_TABLE(DECL_PFN)
+    SURFACE_INSTANCE_FUNCTION_TABLE(DECL_PFN)
     DEBUG_INSTANCE_FUNCTION_TABLE(DECL_PFN)
 };
 
