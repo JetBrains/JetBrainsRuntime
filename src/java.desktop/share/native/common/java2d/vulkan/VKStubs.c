@@ -30,12 +30,12 @@
 #include "jni.h"
 
 /*
- * Class:     sun_java2d_vulkan_VKInstance
- * Method:    init
+ * Class:     sun_java2d_vulkan_VKEnv
+ * Method:    initNative
  * Signature: (JZI)Z
  */
 JNIEXPORT jboolean JNICALL
-Java_sun_java2d_vulkan_VKInstance_initNative(JNIEnv *env, jclass wlge, jlong nativePtr, jboolean verb, jint requestedDevice) {
+Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv *env, jclass wlge, jlong nativePtr, jboolean verb, jint requestedDevice) {
     return JNI_FALSE;
 }
 
