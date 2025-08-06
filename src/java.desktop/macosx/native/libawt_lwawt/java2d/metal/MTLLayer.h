@@ -42,6 +42,7 @@
 @property (readwrite, assign) int leftInset;
 @property (readwrite, atomic) int redrawCount;
 @property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
+@property (readwrite, atomic) NSTimeInterval avgNextDrawableTime;
 @property (readwrite, atomic) BOOL perfCountersEnabled;
 @property (readwrite, atomic) CFTimeInterval lastPresentedTime;
 
