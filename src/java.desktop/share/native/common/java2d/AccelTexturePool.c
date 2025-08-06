@@ -824,8 +824,6 @@ ATexturePoolHandle* ATexturePool_getTexture(ATexturePool* pool,
         pool->memoryAllocated += requestedBytes;
         pool->totalMemoryAllocated += requestedBytes;
 
-        J2dTraceLn(J2D_TRACE_VERBOSE, "ATexturePool_getTexture: created pool item: tex=%p, w=%d h=%d, pf=%d | allocated memory = %lld Kb (allocs: %d)",
-                   minDeltaTpi->texture, width, height, format, pool->memoryAllocated / UNIT_KB, pool->allocatedCount);
         if (TRACE_MEM_API) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "ATexturePool_getTexture: created pool item: tex=%p, w=%d h=%d, pf=%d | allocated memory = %lld Kb (allocs: %d)",
                                          minDeltaTpi->texture, width, height, format, pool->memoryAllocated / UNIT_KB, pool->allocatedCount);
     } else {
