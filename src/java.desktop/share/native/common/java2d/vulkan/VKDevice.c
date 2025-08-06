@@ -25,11 +25,16 @@
  */
 
 #include <string.h>
+#include "sun_java2d_vulkan_VKGPU.h"
 #include "VKUtil.h"
 #include "VKEnv.h"
 #include "VKAllocator.h"
 #include "VKRenderer.h"
 #include "VKTexturePool.h"
+
+#if !defined(__BYTE_ORDER__) || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define VK_LITTLE_ENDIAN
+#endif
 
 static const char* physicalDeviceTypeString(VkPhysicalDeviceType type) {
     switch (type) {
@@ -42,6 +47,27 @@ static const char* physicalDeviceTypeString(VkPhysicalDeviceType type) {
 #undef STR
     default: return "UNKNOWN_DEVICE_TYPE";
     }
+}
+
+static VkBool32 VKDevice_CheckAndAddFormat(VKEnv* vk, VkPhysicalDevice physicalDevice,
+                                           ARRAY(jint)* supportedFormats, VkFormat format, const char* name) {
+    VkFormatProperties formatProperties;
+    vk->vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
+    static const VkFormatFeatureFlags SAMPLED_FLAGS = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+                                                      VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+    if ((formatProperties.optimalTilingFeatures & SAMPLED_FLAGS) == SAMPLED_FLAGS) {
+        // Our format is supported for sampling.
+        static const VkFormatFeatureFlags ATTACHMENT_FLAGS = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+                                                          VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT |
+                                                          VK_FORMAT_FEATURE_TRANSFER_SRC_BIT;
+        if ((formatProperties.optimalTilingFeatures & ATTACHMENT_FLAGS) == ATTACHMENT_FLAGS) {
+            // Our format is supported as a drawing destination.
+            J2dRlsTraceLn(J2D_TRACE_INFO, "        %s (attachment)", name);
+            ARRAY_PUSH_BACK(*supportedFormats) = (jint) format;
+        } else J2dRlsTraceLn(J2D_TRACE_INFO, "        %s (sampled)", name);
+        return VK_TRUE;
+    }
+    return VK_FALSE;
 }
 
 void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
@@ -116,46 +142,93 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         return;
     }
 
-    // Query supported formats. TODO implement.
-    VKSampledSrcTypes sampledSrcTypes;
-    sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_4BYTE] = (VKSampledSrcType) {VK_FORMAT_B8G8R8A8_UNORM, {
-        VK_COMPONENT_SWIZZLE_B,
-        VK_COMPONENT_SWIZZLE_G,
-        VK_COMPONENT_SWIZZLE_R,
-        VK_COMPONENT_SWIZZLE_A
-    }};
-    // TODO those formats may not be supported!
-    sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_3BYTE] = (VKSampledSrcType) { VK_FORMAT_B8G8R8_UNORM, {
-        VK_COMPONENT_SWIZZLE_B,
-        VK_COMPONENT_SWIZZLE_G,
-        VK_COMPONENT_SWIZZLE_R,
-        VK_COMPONENT_SWIZZLE_ONE
-    }};
-    sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_565] = (VKSampledSrcType) { VK_FORMAT_R5G6B5_UNORM_PACK16, {
-        VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY
-    }};
-    sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_555] = (VKSampledSrcType) { VK_FORMAT_A1R5G5B5_UNORM_PACK16, {
-        VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_ONE
-    }};
-
     // Query supported layers.
     uint32_t layerCount;
     VK_IF_ERROR(vk->vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, NULL)) return;
     VkLayerProperties layers[layerCount];
     VK_IF_ERROR(vk->vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, layers)) return;
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device layers:");
-    for (uint32_t j = 0; j < layerCount; j++) {
-        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "        %s", (char *) layers[j].layerName);
-    }
 
     // Query supported extensions.
     uint32_t extensionCount;
     VK_IF_ERROR(vk->vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, NULL)) return;
     VkExtensionProperties extensions[extensionCount];
     VK_IF_ERROR(vk->vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, extensions)) return;
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device extensions:");
+
+    // Query supported formats.
+    J2dRlsTraceLn(J2D_TRACE_INFO, "    Supported device formats:");
+    VKSampledSrcTypes sampledSrcTypes = {{}, 0};
+    VKSampledSrcType* SRCTYPE_4BYTE = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_4BYTE];
+    VKSampledSrcType* SRCTYPE_3BYTE = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_3BYTE];
+    VKSampledSrcType* SRCTYPE_565 = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_565];
+    VKSampledSrcType* SRCTYPE_555 = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_555];
+    ARRAY(jint) supportedFormats = NULL;
+#define CHECK_AND_ADD_FORMAT(FORMAT) VKDevice_CheckAndAddFormat(vk, physicalDevice, &supportedFormats, FORMAT, #FORMAT)
+    if (CHECK_AND_ADD_FORMAT(VK_FORMAT_B8G8R8A8_UNORM) && SRCTYPE_4BYTE->format == VK_FORMAT_UNDEFINED) {
+        supportedFormats[0] |= sun_java2d_vulkan_VKGPU_FORMAT_PRESENTABLE_BIT; // TODO Check presentation support.
+        *SRCTYPE_4BYTE = (VKSampledSrcType) { VK_FORMAT_B8G8R8A8_UNORM, {
+            VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_A }};
+    }
+    if (CHECK_AND_ADD_FORMAT(VK_FORMAT_R8G8B8A8_UNORM) && SRCTYPE_4BYTE->format == VK_FORMAT_UNDEFINED) {
+        *SRCTYPE_4BYTE = (VKSampledSrcType) { VK_FORMAT_R8G8B8A8_UNORM, {
+            VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A }};
+    }
+    if (CHECK_AND_ADD_FORMAT(VK_FORMAT_A8B8G8R8_UNORM_PACK32) && SRCTYPE_4BYTE->format == VK_FORMAT_UNDEFINED) {
+        *SRCTYPE_4BYTE = (VKSampledSrcType) { VK_FORMAT_A8B8G8R8_UNORM_PACK32, {
+#ifdef VK_LITTLE_ENDIAN
+            VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A
+#else
+            VK_COMPONENT_SWIZZLE_A, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R
+#endif
+        }};
+    }
+    if (CHECK_AND_ADD_FORMAT(VK_FORMAT_R8G8B8_UNORM) && SRCTYPE_3BYTE->format == VK_FORMAT_UNDEFINED) {
+        *SRCTYPE_3BYTE = (VKSampledSrcType) { VK_FORMAT_R8G8B8_UNORM, {
+            VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE }};
+    }
+    if (CHECK_AND_ADD_FORMAT(VK_FORMAT_B8G8R8_UNORM) && SRCTYPE_3BYTE->format == VK_FORMAT_UNDEFINED) {
+        *SRCTYPE_3BYTE = (VKSampledSrcType) { VK_FORMAT_B8G8R8_UNORM, {
+            VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ONE }};
+    }
+    if (CHECK_AND_ADD_FORMAT(VK_FORMAT_R5G6B5_UNORM_PACK16) && SRCTYPE_565->format == VK_FORMAT_UNDEFINED) {
+        *SRCTYPE_565 = (VKSampledSrcType) { VK_FORMAT_R5G6B5_UNORM_PACK16, {
+            VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY }};
+    }
+    if (CHECK_AND_ADD_FORMAT(VK_FORMAT_A1R5G5B5_UNORM_PACK16) && SRCTYPE_555->format == VK_FORMAT_UNDEFINED) {
+        *SRCTYPE_555 = (VKSampledSrcType) { VK_FORMAT_A1R5G5B5_UNORM_PACK16, {
+            VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_ONE }};
+    }
+#undef CHECK_AND_ADD_FORMAT
+
+    // Check sampled formats capabilities.
+    if (SRCTYPE_4BYTE->format == VK_FORMAT_UNDEFINED) {
+        J2dRlsTraceLn(J2D_TRACE_INFO, " - 4-byte sampled format not found, skipped");
+        ARRAY_FREE(supportedFormats);
+        return;
+    }
+    if (SRCTYPE_3BYTE->format != VK_FORMAT_UNDEFINED) sampledSrcTypes.caps |= sun_java2d_vulkan_VKGPU_SAMPLED_CAP_3BYTE_BIT;
+    if (SRCTYPE_565->format != VK_FORMAT_UNDEFINED) sampledSrcTypes.caps |= sun_java2d_vulkan_VKGPU_SAMPLED_CAP_565_BIT;
+    if (SRCTYPE_555->format != VK_FORMAT_UNDEFINED) sampledSrcTypes.caps |= sun_java2d_vulkan_VKGPU_SAMPLED_CAP_555_BIT;
+
+    { // Check stencil format.
+        VkFormatProperties formatProperties;
+        vk->vkGetPhysicalDeviceFormatProperties(physicalDevice, VK_FORMAT_S8_UINT, &formatProperties);
+        if ((formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0) {
+            J2dRlsTraceLn(J2D_TRACE_INFO, "        %s", "VK_FORMAT_S8_UINT (stencil)");
+        } else {
+            J2dRlsTraceLn(J2D_TRACE_INFO, " - VK_FORMAT_S8_UINT not supported, skipped");
+            ARRAY_FREE(supportedFormats);
+            return;
+        }
+    }
+
+    // Log layers.
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device layers:");
+    for (uint32_t j = 0; j < layerCount; j++) {
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "        %s", (char *) layers[j].layerName);
+    }
 
     // Check extensions.
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported device extensions:");
     VkBool32 hasSwapChain = VK_FALSE;
     for (uint32_t j = 0; j < extensionCount; j++) {
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "        %s", (char *) extensions[j].extensionName);
@@ -167,6 +240,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     if (!hasSwapChain) {
         J2dRlsTraceLn(J2D_TRACE_INFO,
                     "    --------------------- Required " VK_KHR_SWAPCHAIN_EXTENSION_NAME " not found, skipped");
+        ARRAY_FREE(supportedFormats);
         return;
     }
 
@@ -195,6 +269,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Cannot duplicate deviceName");
         ARRAY_FREE(deviceEnabledLayers);
         ARRAY_FREE(deviceEnabledExtensions);
+        ARRAY_FREE(supportedFormats);
         return;
     }
 
@@ -207,7 +282,8 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         .queueFamily = queueFamily,
         .enabledLayers = deviceEnabledLayers,
         .enabledExtensions = deviceEnabledExtensions,
-        .sampledSrcTypes = sampledSrcTypes
+        .sampledSrcTypes = sampledSrcTypes,
+        .supportedFormats = supportedFormats
     };
 }
 
@@ -220,6 +296,7 @@ void VKDevice_Reset(VKDevice* device) {
     VKAllocator_Destroy(device->allocator);
     ARRAY_FREE(device->enabledExtensions);
     ARRAY_FREE(device->enabledLayers);
+    ARRAY_FREE(device->supportedFormats);
     free(device->name);
     if (device->vkDestroyDevice != NULL) {
         device->vkDestroyDevice(device->handle, NULL);
