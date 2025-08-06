@@ -115,22 +115,22 @@ static VkBool32 debugCallback(
 }
 #endif
 
-const char* VKFunctionTable_InitGlobal(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKFunctionTableGlobal* table);
-const char* VKFunctionTable_InitInstance(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKEnv* instance);
-
-static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
+static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPlatformData* platformData) {
     if (vkGetInstanceProcAddr == NULL) return NULL;
 
-    VKFunctionTableGlobal table;
-    const char* missingAPI = VKFunctionTable_InitGlobal(vkGetInstanceProcAddr, &table);
-    if (missingAPI != NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Required API is missing: %s", missingAPI);
+    // Init global function table.
+    VkBool32 missingAPI = JNI_FALSE;
+    GLOBAL_FUNCTION_TABLE(DECL_PFN)
+    GLOBAL_FUNCTION_TABLE(CHECK_PROC_ADDR, missingAPI, vkGetInstanceProcAddr, NULL,)
+    if (missingAPI) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Required API is missing:");
+        GLOBAL_FUNCTION_TABLE(LOG_MISSING_PFN,)
         return NULL;
     }
 
     uint32_t apiVersion = 0;
 
-    VK_IF_ERROR(table.vkEnumerateInstanceVersion(&apiVersion)) return NULL;
+    VK_IF_ERROR(vkEnumerateInstanceVersion(&apiVersion)) return NULL;
 
     J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Available (%d.%d.%d)",
                   VK_API_VERSION_MAJOR(apiVersion),
@@ -147,14 +147,14 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
 
     uint32_t extensionsCount;
     // Get the number of extensions and layers
-    VK_IF_ERROR(table.vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, NULL)) return NULL;
+    VK_IF_ERROR(vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, NULL)) return NULL;
     VkExtensionProperties extensions[extensionsCount];
-    VK_IF_ERROR(table.vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, extensions)) return NULL;
+    VK_IF_ERROR(vkEnumerateInstanceExtensionProperties(NULL, &extensionsCount, extensions)) return NULL;
 
     uint32_t layersCount;
-    VK_IF_ERROR(table.vkEnumerateInstanceLayerProperties(&layersCount, NULL)) return NULL;
+    VK_IF_ERROR(vkEnumerateInstanceLayerProperties(&layersCount, NULL)) return NULL;
     VkLayerProperties layers[layersCount];
-    VK_IF_ERROR(table.vkEnumerateInstanceLayerProperties(&layersCount, layers)) return NULL;
+    VK_IF_ERROR(vkEnumerateInstanceLayerProperties(&layersCount, layers)) return NULL;
 
     J2dRlsTraceLn(J2D_TRACE_VERBOSE, "    Supported instance layers:");
     for (uint32_t i = 0; i < layersCount; i++) {
@@ -169,10 +169,10 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
     ARRAY(pchar) enabledLayers     = NULL;
     ARRAY(pchar) enabledExtensions = NULL;
     void *pNext = NULL;
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    ARRAY_PUSH_BACK(enabledExtensions) = VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME;
-#endif
     ARRAY_PUSH_BACK(enabledExtensions) = VK_KHR_SURFACE_EXTENSION_NAME;
+    if (platformData != NULL && platformData->surfaceExtensionName != NULL) {
+        ARRAY_PUSH_BACK(enabledExtensions) = platformData->surfaceExtensionName;
+    }
 
     // Check required layers & extensions.
     for (uint32_t i = 0; i < ARRAY_SIZE(enabledExtensions); i++) {
@@ -241,7 +241,9 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
         ARRAY_FREE(enabledExtensions);
         return NULL;
     }
-    *vk = (VKEnv) {};
+    *vk = (VKEnv) {
+        .platformData = platformData
+    };
 
     VkApplicationInfo applicationInfo = {
             .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -259,12 +261,12 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
             .flags = 0,
             .pApplicationInfo = &applicationInfo,
             .enabledLayerCount = ARRAY_SIZE(enabledLayers),
-            .ppEnabledLayerNames = (const char *const *) enabledLayers,
+            .ppEnabledLayerNames = enabledLayers,
             .enabledExtensionCount = ARRAY_SIZE(enabledExtensions),
-            .ppEnabledExtensionNames = (const char *const *) enabledExtensions
+            .ppEnabledExtensionNames = enabledExtensions
     };
 
-    VK_IF_ERROR(table.vkCreateInstance(&instanceCreateInfo, NULL, &vk->instance)) {
+    VK_IF_ERROR(vkCreateInstance(&instanceCreateInfo, NULL, &vk->instance)) {
         ARRAY_FREE(enabledLayers);
         ARRAY_FREE(enabledExtensions);
         VKEnv_Destroy(vk);
@@ -274,16 +276,16 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
     ARRAY_FREE(enabledLayers);
     ARRAY_FREE(enabledExtensions);
 
-    missingAPI = VKFunctionTable_InitInstance(vkGetInstanceProcAddr, vk);
-    if (missingAPI != NULL) {}
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    else if (vk->vkGetPhysicalDeviceWaylandPresentationSupportKHR == NULL)
-        missingAPI = "vkGetPhysicalDeviceWaylandPresentationSupportKHR";
-    else if (vk->vkCreateWaylandSurfaceKHR == NULL)
-        missingAPI = "vkCreateWaylandSurfaceKHR";
-#endif
-    if (missingAPI != NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Required API is missing: %s", missingAPI);
+    INSTANCE_FUNCTION_TABLE(CHECK_PROC_ADDR, missingAPI, vkGetInstanceProcAddr, vk->instance, vk->)
+    DEBUG_INSTANCE_FUNCTION_TABLE(GET_PROC_ADDR, vkGetInstanceProcAddr, vk->instance, vk->)
+    if (missingAPI) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Required API is missing:");
+        INSTANCE_FUNCTION_TABLE(LOG_MISSING_PFN, vk->)
+        VKEnv_Destroy(vk);
+        return NULL;
+    }
+    if (vk->platformData != NULL && vk->platformData->initFunctions != NULL &&
+        !vk->platformData->initFunctions(vk, vkGetInstanceProcAddr)) {
         VKEnv_Destroy(vk);
         return NULL;
     }
@@ -292,7 +294,8 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
 
     // Create debug messenger
 #if defined(DEBUG)
-    if (foundDebugLayer && foundDebugExt && pNext) {
+    if (foundDebugLayer && foundDebugExt &&
+        vk->vkCreateDebugUtilsMessengerEXT != NULL && pNext) {
         VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfo = {
                 .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
                 .flags =           0,
@@ -347,7 +350,7 @@ static jobjectArray createJavaGPUs(JNIEnv *env, VKEnv* vk) {
         (*env)->SetIntArrayRegion(env, supportedFormats, 0, ARRAY_SIZE(vk->devices[i].supportedFormats), vk->devices[i].supportedFormats);
         jobject device = (*env)->NewObject(env, deviceClass, deviceConstructor,
                                            ptr_to_jlong(&vk->devices[i]), name, vk->devices[i].type,
-                                           vk->devices[i].sampledSrcTypes.caps, supportedFormats);
+                                           vk->devices[i].caps, supportedFormats);
         if (device == NULL) return NULL;
         (*env)->SetObjectArrayElement(env, deviceArray, i, device);
     }
@@ -355,7 +358,7 @@ static jobjectArray createJavaGPUs(JNIEnv *env, VKEnv* vk) {
 }
 
 static VKEnv* instance = NULL;
-VKEnv* VKEnv_GetInstance() {
+JNIEXPORT VKEnv* VKEnv_GetInstance() {
     return instance;
 }
 
@@ -365,23 +368,20 @@ VKEnv* VKEnv_GetInstance() {
  * Signature: (J)[Lsun/java2d/vulkan/VKDevice;
  */
 JNIEXPORT jobjectArray JNICALL
-Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv *env, jclass wlge, jlong nativePtr) {
+Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv* env, jclass vkenv, jlong platformData) {
 #ifdef DEBUG
     // Init random for debug-related validation tricks.
-    srand(nativePtr);
+    srand(platformData);
 #endif
 
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = vulkanLibOpen();
     if (vkGetInstanceProcAddr == NULL) return NULL;
 
-    VKEnv* vk = VKEnv_Create(vkGetInstanceProcAddr);
+    VKEnv* vk = VKEnv_Create(vkGetInstanceProcAddr, jlong_to_ptr(platformData));
     if (vk == NULL) {
         vulkanLibClose();
         return NULL;
     }
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    vk->waylandDisplay = (struct wl_display*) jlong_to_ptr(nativePtr);
-#endif
 
     if (!VKEnv_FindDevices(vk)) {
         VKEnv_Destroy(vk);
@@ -398,9 +398,4 @@ Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv *env, jclass wlge, jlong nativePt
 
     instance = vk;
     return deviceArray;
-}
-
-JNIEXPORT void JNICALL JNI_OnUnload(__attribute__((unused)) JavaVM *vm, __attribute__((unused)) void *reserved) {
-    VKEnv_Destroy(instance);
-    vulkanLibClose();
 }
