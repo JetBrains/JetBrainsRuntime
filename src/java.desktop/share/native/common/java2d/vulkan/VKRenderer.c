@@ -84,6 +84,11 @@ RING_BUFFER(struct PoolEntry_ ## NAME { \
  */
 #define POOL_FREE(RENDERER, NAME) RING_BUFFER_FREE((RENDERER)->NAME)
 
+typedef struct {
+    VKDisposeHandler hnd;
+    void* ctx;
+} VKDisposeRecord;
+
 /**
  * Renderer attached to the device.
  */
@@ -100,6 +105,7 @@ struct VKRenderer {
     ARRAY(VKMemory)         bufferMemoryPages;
     ARRAY(VkDescriptorPool) descriptorPools;
     ARRAY(VkDescriptorPool) imageDescriptorPools;
+    ARRAY(VKDisposeRecord)  disposeRecords;
 
     /**
      * Last known timestamp reached by GPU execution. Resources with equal or less timestamp may be safely reused.
@@ -548,7 +554,17 @@ void VKRenderer_Flush(VKRenderer* renderer) {
                   renderer, submitInfo.commandBufferCount, pendingPresentations);
 }
 
+void VKRenderer_DisposePrimaryResources(VKRenderer* renderer) {
+    if (renderer == NULL) return;
+    size_t disposeRecordsCount = ARRAY_SIZE(renderer->disposeRecords);
+    if (disposeRecordsCount == 0) return;
+    VKRenderer_Sync(renderer);
+    for (uint32_t i = 0; i < disposeRecordsCount; i++) {
+        renderer->disposeRecords[i].hnd(renderer->device, renderer->disposeRecords[i].ctx);
+    }
 
+    ARRAY_RESIZE(renderer->disposeRecords, 0);
+}
 
 /**
  * Prepare image barrier info to be executed in batch, if needed.
@@ -575,6 +591,33 @@ void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* 
         image->lastStage = stage;
         image->lastAccess = access;
         image->layout = layout;
+    }
+}
+
+/**
+ * Prepare buffer barrier info to be executed in batch, if needed.
+ */
+void VKRenderer_AddBufferBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
+                                VKBuffer* buffer, VkPipelineStageFlags stage,
+                                VkAccessFlags access)
+{
+    assert(barriers != NULL && batch != NULL && buffer != NULL);
+    if (stage != buffer->lastStage || access != buffer->lastAccess) {
+        barriers[batch->barrierCount] = (VkBufferMemoryBarrier) {
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                .srcAccessMask = buffer->lastAccess,
+                .dstAccessMask = access,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .buffer = buffer->handle,
+                .offset = 0,
+                .size = VK_WHOLE_SIZE
+        };
+        batch->barrierCount++;
+        batch->srcStages |= buffer->lastStage;
+        batch->dstStages |= stage;
+        buffer->lastStage = stage;
+        buffer->lastAccess = access;
     }
 }
 
@@ -1166,6 +1209,10 @@ static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
 
     // Reset pipeline state.
     renderPass->state.shader = NO_SHADER;
+}
+
+void VKRenderer_DisposeOnPrimaryComplete(VKRenderer* renderer, VKDisposeHandler hnd, void* ctx) {
+    ARRAY_PUSH_BACK(renderer->disposeRecords) = (VKDisposeRecord){hnd, ctx};
 }
 
 /**
