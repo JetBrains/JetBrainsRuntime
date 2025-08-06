@@ -80,7 +80,7 @@ public final class VKEnv {
                         Options.deviceNumber : 0];
                 // Check whether the presentation is supported.
                 for (VKGPU device : devices) {
-                    if ((device.getCaps() & VKGPU.CAP_PRESENTABLE_BIT) != 0 &&
+                    if (device.hasCap(VKGPU.CAP_PRESENTABLE_BIT) &&
                             device.getPresentableGraphicsConfigs().findAny().isPresent()) {
                         newState |= PRESENT_BIT;
                         break;
