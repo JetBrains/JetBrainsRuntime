@@ -125,7 +125,7 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKIma
         }
     }
 
-    VKRenderer_TextureRender(context, dest, VKTexturePoolHandle_GetTexture(hnd),
+    VKRenderer_TextureRender(dest, VKTexturePoolHandle_GetTexture(hnd),
                              renderVertexBuffer->handle, 4);
 
 //  TODO: Not optimal but required for releasing raster buffer. Such Buffers should also be managed by special pools
@@ -190,8 +190,7 @@ static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VK
         }
     }
 
-    VKRenderer_TextureRender(context, dest, src,
-                             renderVertexBuffer->handle, 4);
+    VKRenderer_TextureRender(dest, src, renderVertexBuffer->handle, 4);
 
 //  TODO: Not optimal but required for releasing raster buffer. Such Buffers should also be managed by special pools
 //  TODO: Also, consider using VKRenderer_FlushRenderPass here to process pending command
@@ -264,14 +263,10 @@ static jboolean clipDestCoords(
     return JNI_TRUE;
 }
 
-void VKBlitLoops_IsoBlit(JNIEnv *env,
-                         VKRenderingContext* context, jlong pSrcOps,
-                         jboolean xform, jint hint,
-                         jboolean texture,
-                         jint sx1, jint sy1,
-                         jint sx2, jint sy2,
-                         jdouble dx1, jdouble dy1,
-                         jdouble dx2, jdouble dy2)
+void VKBlitLoops_IsoBlit(JNIEnv *env, jlong pSrcOps, jboolean xform, jint hint,
+                         jboolean texture, jint sx1, jint sy1, jint sx2,
+                         jint sy2, jdouble dx1, jdouble dy1, jdouble dx2,
+                         jdouble dy2)
 {
     J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKBlitLoops_IsoBlit: (%d %d %d %d) -> (%f %f %f %f) ",
                                    sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
@@ -280,9 +275,9 @@ void VKBlitLoops_IsoBlit(JNIEnv *env,
 
     VKSDOps *srcOps = (VKSDOps *)jlong_to_ptr(pSrcOps);
 
-    if (context == NULL || srcOps == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_IsoBlit: context(%p) or srcOps(%p) is null",
-                      context, srcOps);
+    if (srcOps == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR,
+                      "VKBlitLoops_IsoBlit: srcOps(%p) is null", srcOps);
         return;
     }
 
@@ -291,11 +286,12 @@ void VKBlitLoops_IsoBlit(JNIEnv *env,
         return;
     }
 
-    if (!VKRenderer_Validate(context, SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) {
+    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) {
         J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_IsoBlit: VKRenderer_Validate cannot validate renderer");
         return;
     }
 
+    VKRenderingContext* context = VKRenderer_GetContext();
     // TODO: check if srctype is supported
 
     SurfaceDataRasInfo srcInfo;
@@ -350,8 +346,7 @@ void VKBlitLoops_IsoBlit(JNIEnv *env,
 
 
 void VKBlitLoops_Blit(JNIEnv *env,
-                      VKRenderingContext* context, jlong pSrcOps,
-                      jboolean xform, jint hint,
+                      jlong pSrcOps, jboolean xform, jint hint,
                       jint srctype, jboolean texture,
                       jint sx1, jint sy1,
                       jint sx2, jint sy2,
@@ -366,17 +361,19 @@ void VKBlitLoops_Blit(JNIEnv *env,
     SurfaceDataOps *srcOps = (SurfaceDataOps *)jlong_to_ptr(pSrcOps);
 
 
-    if (context == NULL || srcOps == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_Blit: context(%p) or srcOps(%p) is null",
-                       context, srcOps);
+    if (srcOps == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_Blit: srcOps(%p) is null",
+                      srcOps);
         return;
     }
 
 
-    if (!VKRenderer_Validate(context, SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) {
+    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) {
         J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_Blit: VKRenderer_Validate cannot validate renderer");
         return;
     }
+
+    VKRenderingContext *context = VKRenderer_GetContext();
     VKSDOps *dstOps = context->surface;
     VKImage *dest = context->surface->image;
 //    if (srctype < 0 || srctype >= sizeof(RasterFormatInfos)/ sizeof(MTLRasterFormatInfo)) {
@@ -457,10 +454,10 @@ void VKBlitLoops_Blit(JNIEnv *env,
  * memory ("Sw") surface.
  */
 void
-VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
-                             jlong pSrcOps, jlong pDstOps, jint dsttype,
-                             jint srcx, jint srcy, jint dstx, jint dsty,
-                             jint width, jint height)
+VKBlitLoops_SurfaceToSwBlit(JNIEnv *env,
+                            jlong pSrcOps, jlong pDstOps, jint dsttype,
+                            jint srcx, jint srcy, jint dstx, jint dsty,
+                            jint width, jint height)
 {
     VKSDOps *srcOps = (VKSDOps *)jlong_to_ptr(pSrcOps);
     SurfaceDataOps *dstOps = (SurfaceDataOps *)jlong_to_ptr(pDstOps);
@@ -477,7 +474,6 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env, VKRenderingContext* context,
 
     RETURN_IF_NULL(srcOps);
     RETURN_IF_NULL(dstOps);
-    RETURN_IF_NULL(context);
 
     VKDevice* device = srcOps->device;
     VKImage* image = srcOps->image;
