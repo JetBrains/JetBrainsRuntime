@@ -38,6 +38,24 @@ typedef struct VKPipelineSet {
     VkPipeline pipelines[PIPELINE_COUNT];
 } VKPipelineSet;
 
+inline void hash(uint32_t* result, int i) { // Good for hashing enums.
+    uint32_t x = (uint32_t) i;
+    x = ((x >> 16U) ^ x) * 0x45d9f3bU;
+    x = ((x >> 16U) ^ x) * 0x45d9f3bU;
+    x =  (x >> 16U) ^ x;
+    *result ^= x + 0x9e3779b9U + (*result << 6U) + (*result >> 2U);
+}
+static size_t pipelineSetDescriptorHash(const void* ptr) {
+    const VKPipelineSetDescriptor* d = ptr;
+    uint32_t h = 0U;
+    hash(&h, d->composite);
+    return (size_t) h;
+}
+static bool pipelineSetDescriptorEquals(const void* ap, const void* bp) {
+    const VKPipelineSetDescriptor *a = ap, *b = bp;
+    return a->composite == b->composite;
+}
+
 typedef struct VKShaders {
 #   define SHADER_ENTRY(NAME, TYPE) VkPipelineShaderStageCreateInfo NAME ## _ ## TYPE;
 #   include "vulkan/shader_list.h"
@@ -228,9 +246,9 @@ static void VKPipelines_DestroyPipelineSet(VKDevice* device, VKPipelineSet* set)
     free(set);
 }
 
-static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderPassContext, VKCompositeMode composite) {
+static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderPassContext, VKPipelineSetDescriptor descriptor) {
     assert(renderPassContext != NULL && renderPassContext->pipelineContext != NULL);
-    assert(composite < COMPOSITE_COUNT);
+    assert(descriptor.composite < COMPOSITE_COUNT);
     VKPipelineContext* pipelineContext = renderPassContext->pipelineContext;
 
     VKPipelineSet* set = calloc(1, sizeof(VKPipelineSet));
@@ -243,8 +261,8 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
     VKPipelines_InitPipelineCreateState(&base);
     base.createInfo.layout = pipelineContext->pipelineLayout;
     base.createInfo.renderPass = renderPassContext->renderPass;
-    base.colorBlendState.pAttachments = &COMPOSITE_BLEND_STATES[composite];
-    if (COMPOSITE_GROUP(composite) == LOGIC_COMPOSITE_GROUP) base.colorBlendState.logicOpEnable = VK_TRUE;
+    base.colorBlendState.pAttachments = &COMPOSITE_BLEND_STATES[descriptor.composite];
+    if (COMPOSITE_GROUP(descriptor.composite) == LOGIC_COMPOSITE_GROUP) base.colorBlendState.logicOpEnable = VK_TRUE;
     assert(base.dynamicState.dynamicStateCount <= SARRAY_COUNT_OF(base.dynamicStates));
 
     ShaderStages stages[PIPELINE_COUNT];
@@ -279,7 +297,7 @@ static VKPipelineSet* VKPipelines_CreatePipelineSet(VKRenderPassContext* renderP
     // TODO pipeline cache
     VK_IF_ERROR(device->vkCreateGraphicsPipelines(device->handle, VK_NULL_HANDLE, PIPELINE_COUNT,
                                                   createInfos, NULL, set->pipelines)) VK_UNHANDLED_ERROR();
-    J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_CreatePipelineSet: composite=%d", composite);
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_CreatePipelineSet: composite=%d", descriptor.composite);
     return set;
 }
 
@@ -330,10 +348,11 @@ static void VKPipelines_DestroyRenderPassContext(VKRenderPassContext* renderPass
     if (renderPassContext == NULL) return;
     VKDevice* device = renderPassContext->pipelineContext->device;
     assert(device != NULL);
-    for (uint32_t i = 0; i < ARRAY_SIZE(renderPassContext->pipelineSets); i++) {
-        VKPipelines_DestroyPipelineSet(device, renderPassContext->pipelineSets[i]);
+    for (const VKPipelineSetDescriptor* k = NULL; (k = MAP_NEXT_KEY(renderPassContext->pipelineSets, k)) != NULL;) {
+        VKPipelineSet* set = *MAP_FIND(renderPassContext->pipelineSets, *k);
+        VKPipelines_DestroyPipelineSet(device, set);
     }
-    ARRAY_FREE(renderPassContext->pipelineSets);
+    MAP_FREE(renderPassContext->pipelineSets);
     device->vkDestroyRenderPass(device->handle, renderPassContext->renderPass, NULL);
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_DestroyRenderPassContext(%p): format=%d",
                   renderPassContext, renderPassContext->format);
@@ -344,6 +363,8 @@ static VKRenderPassContext* VKPipelines_CreateRenderPassContext(VKPipelineContex
     assert(pipelineContext != NULL && pipelineContext->device != NULL);
     VKRenderPassContext* renderPassContext = calloc(1, sizeof(VKRenderPassContext));
     VK_RUNTIME_ASSERT(renderPassContext);
+    HASH_MAP_REHASH(renderPassContext->pipelineSets, linear_probing,
+                    &pipelineSetDescriptorEquals, &pipelineSetDescriptorHash, 0, 10, 0.75);
     renderPassContext->pipelineContext = pipelineContext;
     renderPassContext->format = format;
 
@@ -483,20 +504,15 @@ VKRenderPassContext* VKPipelines_GetRenderPassContext(VKPipelineContext* pipelin
     }
     // Not found, create.
     VKRenderPassContext* renderPassContext = VKPipelines_CreateRenderPassContext(pipelineContext, format);
-    ARRAY_PUSH_BACK(pipelineContext->renderPassContexts, renderPassContext);
+    ARRAY_PUSH_BACK(pipelineContext->renderPassContexts) = renderPassContext;
     return renderPassContext;
 }
 
-VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKCompositeMode composite, VKPipeline pipeline) {
+VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKPipelineSetDescriptor descriptor, VKPipeline pipeline) {
     assert(renderPassContext != NULL);
-    assert(composite < COMPOSITE_COUNT); // We could append custom composites after that index.
     assert(pipeline < PIPELINE_COUNT); // We could append custom pipelines after that index.
-    // Currently, our pipelines map to composite modes 1-to-1, but this may change in future when we'll add more states.
-    uint32_t setIndex = (uint32_t) composite;
 
-    while (ARRAY_SIZE(renderPassContext->pipelineSets) <= setIndex) ARRAY_PUSH_BACK(renderPassContext->pipelineSets, NULL);
-    if (renderPassContext->pipelineSets[setIndex] == NULL) {
-        renderPassContext->pipelineSets[setIndex] = VKPipelines_CreatePipelineSet(renderPassContext, composite);
-    }
-    return renderPassContext->pipelineSets[setIndex]->pipelines[pipeline];
+    VKPipelineSet** set = &MAP_AT(renderPassContext->pipelineSets, descriptor);
+    if (*set == NULL) *set = VKPipelines_CreatePipelineSet(renderPassContext, descriptor);
+    return (*set)->pipelines[pipeline];
 }
