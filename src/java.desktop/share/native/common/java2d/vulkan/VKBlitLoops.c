@@ -287,7 +287,7 @@ void VKBlitLoops_IsoBlit(JNIEnv *env,
         return;
     }
 
-    if (!VKRenderer_Validate(context, PIPELINE_BLIT)) {
+    if (!VKRenderer_Validate(context, SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) {
         J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_IsoBlit: VKRenderer_Validate cannot validate renderer");
         return;
     }
@@ -368,7 +368,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
     }
 
 
-    if (!VKRenderer_Validate(context, PIPELINE_BLIT)) {
+    if (!VKRenderer_Validate(context, SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) {
         J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_Blit: VKRenderer_Validate cannot validate renderer");
         return;
     }
