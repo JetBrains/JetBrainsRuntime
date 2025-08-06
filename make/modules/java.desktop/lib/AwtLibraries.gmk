@@ -215,7 +215,7 @@ spirv-name = $(strip $1).h
 ifeq ($(VULKAN_ENABLED), true)
   $(eval $(call SetupCopyFiles, COMPILE_VULKAN_SHADERS, \
       SRC := $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan, \
-      FILES := $(call FindFiles, $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan), \
+      FILES := $(filter-out %.glsl, $(call FindFiles, $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan)), \
       DEST := $(SUPPORT_OUTPUTDIR)/headers/java.desktop/vulkan/spirv, \
       MACRO := compile-spirv, \
       NAME_MACRO := spirv-name, \
@@ -223,7 +223,7 @@ ifeq ($(VULKAN_ENABLED), true)
   VULKAN_SHADER_LIST = $(SUPPORT_OUTPUTDIR)/headers/java.desktop/vulkan/shader_list.h
   $(VULKAN_SHADER_LIST): $(COMPILE_VULKAN_SHADERS)
 	> $(VULKAN_SHADER_LIST) $(NEWLINE) \
-	$(foreach f, $(patsubst $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan/%,%,$(call FindFiles, $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan)), \
+	$(foreach f, $(patsubst $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan/%,%,$(filter-out %.glsl, $(call FindFiles, $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan))), \
 	$(ECHO) SHADER_ENTRY\($(subst .,$(COMMA),$(subst /,_,$f))\) >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
 	$(ECHO) '#ifdef INCLUDE_BYTECODE' >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
 	$(ECHO) '#include "spirv/$f.h"' >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
