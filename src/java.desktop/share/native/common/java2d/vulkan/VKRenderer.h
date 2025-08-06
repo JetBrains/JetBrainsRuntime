@@ -59,6 +59,8 @@ typedef struct {
     VkPipelineStageFlags dstStages;
 } VKBarrierBatch;
 
+typedef void (*VKDisposeHandler)(VKDevice* device, void* ctx);
+
 VKRenderer* VKRenderer_Create(VKDevice* device);
 
 /**
@@ -77,6 +79,10 @@ VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
  */
 void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
                                 VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout);
+
+void VKRenderer_AddBufferBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
+                                VKBuffer* buffer, VkPipelineStageFlags stage,
+                                VkAccessFlags access);
 
 void VKRenderer_CreateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool* descriptorPool, VkDescriptorSet* set);
 
@@ -105,6 +111,10 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface);
  */
 VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface);
 
+
+void VKRenderer_DisposeOnPrimaryComplete(VKRenderer* renderer, VKDisposeHandler hnd, void* ctx);
+
+void VKRenderer_DisposePrimaryResources(VKRenderer* renderer);
 /**
  * Flush pending render pass and queue surface for presentation (if applicable).
  */
