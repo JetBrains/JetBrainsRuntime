@@ -81,6 +81,6 @@ typedef struct VKImage VKImage;
 typedef struct VKSDOps VKSDOps;
 typedef struct VKWinSDOps VKWinSDOps;
 
-typedef char* pchar;
+typedef const char* pchar;
 
 #endif //VKTypes_h_Included
