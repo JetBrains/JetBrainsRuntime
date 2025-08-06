@@ -202,19 +202,14 @@ final class VKBlitLoops {
             VKSurfaceData vkSrc = (VKSurfaceData)srcData;
             VKSurfaceData vkDst = (VKSurfaceData)dstData;
             int srctype = vkSrc.getType();
-            boolean rtt;
             VKSurfaceData srcCtxData;
             if (srctype == VKSurfaceData.TEXTURE) {
                 // the source is a regular texture object; we substitute
                 // the destination surface for the purposes of making a
                 // context current
-                rtt = false;
                 srcCtxData = vkDst;
             } else {
-                // the source is a pbuffer, backbuffer, or render-to-texture
-                // surface; we set rtt to true to differentiate this kind
-                // of surface from a regular texture object
-                rtt = true;
+                // the source is a pbuffer, backbuffer, or render-to-texture surface
                 if (srctype == AccelSurface.RT_TEXTURE) {
                     srcCtxData = vkDst;
                 } else {
@@ -238,12 +233,6 @@ final class VKBlitLoops {
 
             if (biop != null) {
                 VKBufImgOps.disableBufImgOp(rq, biop);
-            }
-            if (rtt && vkDst.isOnScreen()) {
-                // we only have to flush immediately when copying from a
-                // (non-texture) surface to the screen; otherwise Swing apps
-                // might appear unresponsive until the auto-flush completes
-                rq.flushNow();
             }
         } finally {
             rq.unlock();
