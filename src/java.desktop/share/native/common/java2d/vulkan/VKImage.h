@@ -68,4 +68,7 @@ VkImageView VKImage_GetView(VKDevice* device, VKImage* image, VkFormat format, V
 
 VkDescriptorSet VKImage_GetDescriptorSet(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle);
 
+void VKImage_AddBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
+                        VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout);
+
 #endif // VKImage_h_Included
