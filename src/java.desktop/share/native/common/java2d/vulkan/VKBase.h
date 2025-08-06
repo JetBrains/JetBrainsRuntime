@@ -27,6 +27,7 @@
 #ifndef VKBase_h_Included
 #define VKBase_h_Included
 #include "VKTypes.h"
+#include "VKComposites.h"
 #include "VKTexturePool.h"
 #include "VKRenderState.h"
 #include "VKUtil.h"
@@ -124,6 +125,8 @@ struct VKGraphicsEnvironment {
     ARRAY(VkPhysicalDevice) physicalDevices;
     ARRAY(VKDevice)         devices;
     VKDevice*               currentDevice;
+
+    VKComposites composites;
 
 #if defined(DEBUG)
     VkDebugUtilsMessengerEXT debugMessenger;
