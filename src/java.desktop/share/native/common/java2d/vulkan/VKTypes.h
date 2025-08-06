@@ -23,16 +23,29 @@
 
 #ifndef VKTypes_h_Included
 #define VKTypes_h_Included
+#define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
 
+typedef enum {
+    ALPHA_TYPE_PRE_MULTIPLIED = 0,
+    ALPHA_TYPE_STRAIGHT = 1
+} AlphaType;
+
 /**
- * Floating-point RGBA color with sRGB encoding and pre-multiplied alpha.
+ * Floating-point RGBA color in unspecified color space and alpha type.
  */
 typedef union {
     struct {
         float r, g, b, a;
     };
     VkClearValue vkClearValue;
+} RGBA;
+
+/**
+ * Floating-point encoding-agnostic color.
+ */
+typedef struct {
+    RGBA values[ALPHA_TYPE_STRAIGHT+1];
 } Color;
 
 /**
