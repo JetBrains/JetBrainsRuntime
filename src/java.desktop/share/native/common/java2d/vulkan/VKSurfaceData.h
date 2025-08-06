@@ -51,6 +51,7 @@ struct VKSDOps {
     jint           drawableType;
     VKDevice*      device;
     VKImage*       image;
+    VKImage*       stencil;
 
     Color          background;
     VkExtent2D     requestedExtent;
@@ -84,6 +85,12 @@ void VKSD_ResetSurface(VKSDOps* vksdo);
  * Configure image surface. This [re]initializes the device and surface image.
  */
 VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo);
+
+/**
+ * [Re]configure stencil attachment of the image surface.
+ * VKSD_ConfigureImageSurface must have been called before.
+ */
+VkBool32 VKSD_ConfigureImageSurfaceStencil(VKSDOps* vksdo);
 
 /**
  * Configure window surface. This [re]initializes the swapchain.
