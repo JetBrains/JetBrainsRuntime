@@ -27,7 +27,8 @@
 #ifndef VKBuffer_h_Included
 #define VKBuffer_h_Included
 
-#include "VKTypes.h"
+#include "VKAllocator.h"
+#include "VKUtil.h"
 
 #define ARRAY_TO_VERTEX_BUF(device, vertices)                                           \
     VKBuffer_CreateFromData(device, vertices, ARRAY_SIZE(vertices)*sizeof (vertices[0]),\
