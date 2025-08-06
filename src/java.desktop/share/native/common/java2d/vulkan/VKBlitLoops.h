@@ -28,7 +28,7 @@
 #define VKBlitLoops_h_Included
 
 #include "jni.h"
-#include "sun_java2d_vulkan_VKBlitLoops.h"
+#include "SurfaceData.h"
 #include "VKTypes.h"
 
 void VKBlitLoops_IsoBlit(VKSDOps* src, jint filter,
@@ -44,10 +44,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
                        jdouble dx1, jdouble dy1,
                        jdouble dx2, jdouble dy2);
 
-void
-VKBlitLoops_SurfaceToSwBlit(JNIEnv *env,
-                            jlong pSrcOps, jlong pDstOps, jint dsttype,
-                            jint srcx, jint srcy, jint dstx, jint dsty,
-                            jint width, jint height);
+void VKBlitLoops_SurfaceToSwBlit(JNIEnv* env, VKSDOps* src, SurfaceDataOps* dst,
+                                 jint srcx, jint srcy, jint dstx, jint dsty, jint width, jint height);
 
 #endif /* VKBlitLoops_h_Included */
