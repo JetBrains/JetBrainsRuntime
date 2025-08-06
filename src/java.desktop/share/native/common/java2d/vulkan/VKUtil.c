@@ -21,9 +21,11 @@
 // or visit www.oracle.com if you need additional information or have any
 // questions.
 
+#include <assert.h>
 #include "VKUtil.h"
 
-Color VKUtil_DecodeJavaColor(uint32_t srgb) {
+Color VKUtil_DecodeJavaColor(uint32_t color) {
+    assert(sizeof(Color) == sizeof(float) * 4);
     // Just map [0, 255] integer colors onto [0, 1] floating-point range, it remains in sRGB color space.
     // sRGB gamma correction remains unsupported.
     static const float NormTable256[256] = {
@@ -32,13 +34,17 @@ Color VKUtil_DecodeJavaColor(uint32_t srgb) {
 #define NORM64(N) NORM8(N),NORM8(N+8),NORM8(N+16),NORM8(N+24),NORM8(N+32),NORM8(N+40),NORM8(N+48),NORM8(N+56)
             NORM64(0),NORM64(64),NORM64(128),NORM64(192)
     };
-    Color c = {
-            .r = NormTable256[(srgb >> 16) & 0xFF],
-            .g = NormTable256[(srgb >>  8) & 0xFF],
-            .b = NormTable256[ srgb        & 0xFF],
-            .a = NormTable256[(srgb >> 24) & 0xFF]
+    Color srgb = {
+            .r = NormTable256[(color >> 16) & 0xFF],
+            .g = NormTable256[(color >>  8) & 0xFF],
+            .b = NormTable256[ color        & 0xFF],
+            .a = NormTable256[(color >> 24) & 0xFF]
     };
-    return c;
+    // Convert to pre-multiplied alpha.
+    srgb.r *= srgb.a;
+    srgb.g *= srgb.a;
+    srgb.b *= srgb.a;
+    return srgb;
 }
 
 uint32_t VKUtil_Log2(uint64_t i) {
