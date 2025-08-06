@@ -94,10 +94,18 @@
 // Rendering context is only accessed from VKRenderQueue_flushBuffer,
 // which is only called from queue flusher thread, no need for synchronization.
 static VKRenderingContext context = {
-        NULL,
-        {1.0, 0.0, 0.0,0.0, 1.0, 0.0},
-        {{0, 0},{INT_MAX, INT_MAX}},
-        {}};
+        .surface = NULL,
+        .transform = {1.0, 0.0, 0.0,0.0, 1.0, 0.0},
+        .clipRect = {{0, 0},{INT_MAX, INT_MAX}},
+        .color = {},
+        .composite = ALPHA_COMPOSITE_SRC_OVER,
+        .extraAlpha = 1.0f
+};
+// We keep this color separately from context.color,
+// because we need consistent state when switching between XOR and alpha composite modes.
+// This variable holds last value set by SET_COLOR, while context.color holds color,
+// currently used for drawing, which may have also been provided by SET_XOR_COMPOSITE.
+static Color color;
 
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
     (JNIEnv *env, jobject oglrq, jlong buf, jint limit)
@@ -431,11 +439,14 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_ALPHA_COMPOSITE:
             {
-                jint rule         = NEXT_INT(b);
+                jint   rule       = NEXT_INT(b);
                 jfloat extraAlpha = NEXT_FLOAT(b);
-                jint flags        = NEXT_INT(b);
+                jint   flags      = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                    "VKRenderQueue_flushBuffer: SET_ALPHA_COMPOSITE");
+                    "VKRenderQueue_flushBuffer: SET_ALPHA_COMPOSITE(%d, %f, %d)", rule, extraAlpha, flags);
+                context.color      = color;
+                context.composite  = (VKCompositeMode) rule;
+                context.extraAlpha = extraAlpha;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_XOR_COMPOSITE:
@@ -443,12 +454,19 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint xorPixel = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_XOR_COMPOSITE");
+                context.color = VKUtil_DecodeJavaColor(xorPixel);
+                context.color.a = 0.0f; // Alpha is left unchanged in XOR mode.
+                context.composite  = LOGIC_COMPOSITE_XOR;
+                context.extraAlpha = 1.0f;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_RESET_COMPOSITE:
             {
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: RESET_COMPOSITE");
+                context.color      = color;
+                context.composite  = ALPHA_COMPOSITE_SRC;
+                context.extraAlpha = 1.0f;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_TRANSFORM:
@@ -583,10 +601,11 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_SET_COLOR:
             {
                 jint javaColor = NEXT_INT(b);
-                context.color = VKUtil_DecodeJavaColor(javaColor);
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                    "VKRenderQueue_flushBuffer: SET_COLOR 0x%08x, linear_rgba={%.3f, %.3f, %.3f, %.3f}",
-                    javaColor, context.color.r, context.color.g, context.color.b, context.color.a);
+                color = VKUtil_DecodeJavaColor(javaColor);
+                if (COMPOSITE_GROUP(context.composite) == ALPHA_COMPOSITE_GROUP) context.color = color;
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: SET_COLOR(0x%08x)", javaColor);
+                J2dTraceLn(J2D_TRACE_VERBOSE, // Print color values with straight alpha for convenience.
+                    "    srgb={%.3f, %.3f, %.3f, %.3f}", color.r/color.a, color.g/color.a, color.b/color.a, color.a);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_GRADIENT_PAINT:
