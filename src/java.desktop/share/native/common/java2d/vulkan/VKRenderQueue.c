@@ -338,10 +338,6 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jlong pSrc        = NEXT_LONG(b);
                 jlong pDst        = NEXT_LONG(b);
                 jint hint         = EXTRACT_BYTE(packedParams, OFFSET_HINT);
-                jboolean texture  = EXTRACT_BOOLEAN(packedParams,
-                                                    OFFSET_TEXTURE);
-                jboolean rtt      = EXTRACT_BOOLEAN(packedParams,
-                                                    OFFSET_RTT);
                 jboolean xform    = EXTRACT_BOOLEAN(packedParams,
                                                     OFFSET_XFORM);
                 jboolean isoblit  = EXTRACT_BOOLEAN(packedParams,
@@ -351,13 +347,13 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 VKRenderer_GetContext()->surface = dstOps;
                 if (isoblit) {
                     VKBlitLoops_IsoBlit(env, pSrc,
-                                        xform, hint, texture,
+                                        xform, hint,
                                         sx1, sy1, sx2, sy2,
                                         dx1, dy1, dx2, dy2);
                 } else {
                     jint srctype = EXTRACT_BYTE(packedParams, OFFSET_SRCTYPE);
                     VKBlitLoops_Blit(env, pSrc,
-                                     xform, hint, srctype, texture,
+                                     xform, hint, srctype,
                                      sx1, sy1, sx2, sy2,
                                      dx1, dy1, dx2, dy2);
                 }
@@ -365,8 +361,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT %p -> %p ", pSrc, pDst);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT (%d %d %d %d) -> (%f %f %f %f) ",
                               sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT texture=%d rtt=%d xform=%d isoblit=%d",
-                              texture, rtt, xform, isoblit);
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: BLIT xform=%d isoblit=%d", xform, isoblit);
 
             }
             break;
