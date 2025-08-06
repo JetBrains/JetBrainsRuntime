@@ -29,6 +29,7 @@
 #include <assert.h>
 #include "VKUtil.h"
 #include "VKBase.h"
+#include "VKAllocator.h"
 #include "VKBuffer.h"
 #include "VKImage.h"
 #include "VKRenderer.h"
@@ -93,7 +94,7 @@ struct VKRenderer {
     POOL(VkCommandBuffer, secondaryCommandBufferPool);
     POOL(VkSemaphore,     semaphorePool);
     POOL(VKBuffer,        vertexBufferPool);
-    VkDeviceMemory*       vertexBufferMemoryPages;
+    VKMemory*             vertexBufferMemoryPages;
 
     /**
      * Last known timestamp reached by GPU execution. Resources with equal or less timestamp may be safely reused.
@@ -171,14 +172,20 @@ static VkBool32 VKRenderer_CheckPoolDrain(void* pool, void* entry) {
 
 #define VERTEX_BUFFER_SIZE (128 * 1024) // 128KiB - enough to draw 910 quads (6 verts) with VKColorVertex.
 #define VERTEX_BUFFER_PAGE_SIZE (1 * 1024 * 1024) // 1MiB - fits 8 buffers.
+static void VKRenderer_FindVertexBufferMemoryType(VKMemoryRequirements* requirements) {
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
+}
 static VKBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
     VKBuffer buffer = { .handle = VK_NULL_HANDLE };
     POOL_TAKE(renderer, vertexBufferPool, buffer);
     if (buffer.handle != VK_NULL_HANDLE) return buffer;
     uint32_t bufferCount = VERTEX_BUFFER_PAGE_SIZE / VERTEX_BUFFER_SIZE;
     VKBuffer buffers[bufferCount];
-    VkDeviceMemory page = VKBuffer_CreateBuffers(renderer->device, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-                                                 VERTEX_BUFFER_SIZE, VERTEX_BUFFER_PAGE_SIZE, &bufferCount, buffers);
+    VKMemory page = VKBuffer_CreateBuffers(renderer->device, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                           VKRenderer_FindVertexBufferMemoryType,
+                                           VERTEX_BUFFER_SIZE, VERTEX_BUFFER_PAGE_SIZE, &bufferCount, buffers);
     VK_RUNTIME_ASSERT(page);
     ARRAY_PUSH_BACK(renderer->vertexBufferMemoryPages, page);
     for (uint32_t i = 1; i < bufferCount; i++) POOL_INSERT(renderer, vertexBufferPool, buffers[i]);
@@ -273,6 +280,7 @@ VKRenderer* VKRenderer_Create(VKDevice* device) {
 void VKRenderer_Destroy(VKRenderer* renderer) {
     if (renderer == NULL) return;
     VKDevice* device = renderer->device;
+    assert(device != NULL && device->allocator != NULL);
     VKRenderer_Sync(renderer);
     // TODO Ensure all surface render passes are released, so that no resources got stuck there.
     //      We can just form a linked list from all render passes to have access to them from the renderer.
@@ -290,7 +298,7 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
         device->vkDestroyBuffer(device->handle, entry->value.handle, NULL);
     }
     for (uint32_t i = 0; i < ARRAY_SIZE(renderer->vertexBufferMemoryPages); i++) {
-        device->vkFreeMemory(device->handle, renderer->vertexBufferMemoryPages[i], NULL);
+        VKAllocator_Free(device->allocator, renderer->vertexBufferMemoryPages[i]);
     }
     ARRAY_FREE(renderer->vertexBufferMemoryPages);
 
@@ -426,7 +434,7 @@ void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* 
                 .newLayout = layout,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = image->image,
+                .image = image->handle,
                 .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
         };
         batch->barrierCount++;
@@ -773,7 +781,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
                 .dstOffsets[1] = {(int)surface->image->extent.width, (int)surface->image->extent.height, 1},
         };
         device->vkCmdBlitImage(cb,
-                               surface->image->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               surface->image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                win->swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                1, &blit, VK_FILTER_NEAREST);
 
