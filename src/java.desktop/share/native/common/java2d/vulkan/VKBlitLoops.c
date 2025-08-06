@@ -41,9 +41,63 @@
 #include "VKTexturePool.h"
 #include "VKUtil.h"
 
+#define SRCTYPE_BITS sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_BITS
+
+typedef struct {
+    VkFormat        format;
+    VKPackedSwizzle swizzle;
+} BlitSrcType;
+
+// See encodeSrcType() in VKBlitLoops.java
+static BlitSrcType decodeSrcType(VKDevice* device, jshort srctype) {
+    jshort type = srctype & sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_MASK;
+    const VKSampledSrcType* entry = &device->sampledSrcTypes.table[type];
+    BlitSrcType result = { entry->format, 0 };
+    switch (type) {
+    case sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_4BYTE: {
+        uint32_t components[] = {
+            ((uint32_t) srctype >>  SRCTYPE_BITS     ) & 0b11,
+            ((uint32_t) srctype >> (SRCTYPE_BITS + 2)) & 0b11,
+            ((uint32_t) srctype >> (SRCTYPE_BITS + 4)) & 0b11,
+            ((uint32_t) srctype >> (SRCTYPE_BITS + 6)) & 0b11
+        };
+        result.swizzle = VK_PACK_SWIZZLE(
+            entry->components[components[0]],
+            entry->components[components[1]],
+            entry->components[components[2]],
+            components[3] == components[0] ? VK_COMPONENT_SWIZZLE_ONE : // Special case, a = r means no alpha.
+            entry->components[components[3]]
+        );
+    } break;
+    case sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_3BYTE: {
+        uint32_t components[] = {
+            ((uint32_t) srctype >>  SRCTYPE_BITS     ) & 0b11,
+            ((uint32_t) srctype >> (SRCTYPE_BITS + 2)) & 0b11,
+            ((uint32_t) srctype >> (SRCTYPE_BITS + 4)) & 0b11
+        };
+        result.swizzle = VK_PACK_SWIZZLE(
+            entry->components[components[0]],
+            entry->components[components[1]],
+            entry->components[components[2]],
+            VK_COMPONENT_SWIZZLE_ONE
+        );
+    } break;
+    default: {
+        result.swizzle =
+            VK_PACK_SWIZZLE(entry->components[0], entry->components[1], entry->components[2], entry->components[3]);
+    } break;
+    }
+    return result;
+}
+
+static AlphaType getSrcAlphaType(jshort srctype) {
+    return srctype & sun_java2d_vulkan_VKSwToSurfaceBlitContext_SRCTYPE_PRE_MULTIPLIED_ALPHA_BIT ?
+        ALPHA_TYPE_PRE_MULTIPLIED : ALPHA_TYPE_STRAIGHT;
+}
+
 static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
                                               VKSDOps *dstOps,
-                                              const SurfaceDataRasInfo *srcInfo,
+                                              const SurfaceDataRasInfo *srcInfo, jshort srctype,
                                               int dx1, int dy1, int dx2, int dy2) {
     VKSDOps* surface = context->surface;
     VKDevice* device = surface->device;
@@ -62,7 +116,8 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
      *    (p4)---------(p3)
      */
 
-    VKTexturePoolHandle* hnd = VKTexturePool_GetTexture(device->texturePool, sw, sh, surface->image->format);
+    BlitSrcType type = decodeSrcType(device, srctype);
+    VKTexturePoolHandle* hnd = VKTexturePool_GetTexture(device->texturePool, sw, sh, type.format);
     double u = (double)sw / VKTexturePoolHandle_GetActualWidth(hnd);
     double v = (double)sh / VKTexturePoolHandle_GetActualHeight(hnd);
 
@@ -123,7 +178,7 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
     }
 
     VKImage* src = VKTexturePoolHandle_GetTexture(hnd);
-    VkDescriptorSet srcDescriptorSet = VKImage_GetDescriptorSet(device, src, src->format, 0);
+    VkDescriptorSet srcDescriptorSet = VKImage_GetDescriptorSet(device, src, type.format, type.swizzle);
     VKRenderer_TextureRender(srcDescriptorSet, renderVertexBuffer->handle, 4);
 
 //  TODO: Not optimal but required for releasing raster buffer. Such Buffers should also be managed by special pools
@@ -296,8 +351,6 @@ void VKBlitLoops_IsoBlit(JNIEnv *env, jlong pSrcOps, jboolean xform, jint hint,
         return;
     }
 
-    // TODO: check if srctype is supported
-
     SurfaceDataRasInfo srcInfo;
     jint sw    = sx2 - sx1;
     jint sh    = sy2 - sy1;
@@ -351,7 +404,7 @@ void VKBlitLoops_IsoBlit(JNIEnv *env, jlong pSrcOps, jboolean xform, jint hint,
 
 void VKBlitLoops_Blit(JNIEnv *env,
                       jlong pSrcOps, jboolean xform, jint hint,
-                      jint srctype,
+                      jshort srctype,
                       jint sx1, jint sy1,
                       jint sx2, jint sy2,
                       jdouble dx1, jdouble dy1,
@@ -370,18 +423,13 @@ void VKBlitLoops_Blit(JNIEnv *env,
         return;
     }
 
-    // TODO We don't know source alpha type yet.
-    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, ALPHA_TYPE_UNKNOWN)) {
+    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, getSrcAlphaType(srctype))) {
         J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_Blit: VKRenderer_Validate cannot validate renderer");
         return;
     }
 
     VKRenderingContext *context = VKRenderer_GetContext();
     VKSDOps *dstOps = context->surface;
-//    if (srctype < 0 || srctype >= sizeof(RasterFormatInfos)/ sizeof(MTLRasterFormatInfo)) {
-//        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: source pixel format %d isn't supported", srctype);
-//        return;
-//    }
     const jint sw    = sx2 - sx1;
     const jint sh    = sy2 - sy1;
     const jint dw = dx2 - dx1;
@@ -437,15 +485,9 @@ void VKBlitLoops_Blit(JNIEnv *env,
                 dstY2 += dy * (dh / sh);
             }
 
-//            MTLRasterFormatInfo rfi = RasterFormatInfos[srctype];
-//
-//            if (texture) {
-//                replaceTextureRegion(mtlc, dest, &srcInfo, &rfi, (int) dx1, (int) dy1, (int) dx2, (int) dy2);
-//            } else {
-                VKBlitSwToTextureViaPooledTexture(context, dstOps, &srcInfo,
-                                                  (int)dstX1, (int)dstY1,
-                                                  (int)dstX2, (int)dstY2);
-//            }
+            VKBlitSwToTextureViaPooledTexture(context, dstOps, &srcInfo, srctype,
+                                              (int)dstX1, (int)dstY1,
+                                              (int)dstX2, (int)dstY2);
         }
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);
     }
