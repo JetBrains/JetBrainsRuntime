@@ -61,6 +61,7 @@ struct VKDevice {
     VKTexturePool*   texturePool;
 
     DEVICE_FUNCTION_TABLE(DECL_PFN)
+    SWAPCHAIN_DEVICE_FUNCTION_TABLE(DECL_PFN)
 };
 
 #endif //VKDevice_h_Included
