@@ -93,15 +93,19 @@
 #define OFFSET_XFORM   sun_java2d_vulkan_VKBlitLoops_OFFSET_XFORM
 #define OFFSET_ISOBLIT sun_java2d_vulkan_VKBlitLoops_OFFSET_ISOBLIT
 
+#define NO_CLIP ((VkRect2D) {{0, 0}, {0x7FFFFFFFU, 0x7FFFFFFFU}})
+
 // Rendering context is only accessed from VKRenderQueue_flushBuffer,
 // which is only called from queue flusher thread, no need for synchronization.
 static VKRenderingContext context = {
         .surface = NULL,
         .transform = {1.0, 0.0, 0.0,0.0, 1.0, 0.0},
-        .clipRect = {{0, 0},{INT_MAX, INT_MAX}},
         .color = {},
         .composite = ALPHA_COMPOSITE_SRC_OVER,
-        .extraAlpha = 1.0f
+        .extraAlpha = 1.0f,
+        .clipModCount = 1,
+        .clipRect = NO_CLIP,
+        .clipSpanVertices = NULL
 };
 // We keep this color separately from context.color,
 // because we need consistent state when switching between XOR and alpha composite modes.
@@ -429,18 +433,21 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint y1 = NEXT_INT(b);
                 jint x2 = NEXT_INT(b);
                 jint y2 = NEXT_INT(b);
-                context.clipRect = (VkRect2D){
-                    {x1, y1},
-                    {x2-x1, y2 - y1}};
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_RECT_CLIP(%d, %d, %d, %d)",
                     x1, y1, x2, y2);
+                ARRAY_RESIZE(context.clipSpanVertices, 0);
+                jint width = x2 - x1, height = y2 - y1;
+                context.clipRect = (VkRect2D) {{x1, y1}, {CARR_MAX(width, 0), CARR_MAX(height, 0)}};
+                context.clipModCount++;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_BEGIN_SHAPE_CLIP:
             {
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: BEGIN_SHAPE_CLIP");
+                ARRAY_RESIZE(context.clipSpanVertices, 0);
+                context.clipModCount++;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_SHAPE_CLIP_SPANS:
@@ -448,19 +455,38 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint count = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_SHAPE_CLIP_SPANS");
-                SKIP_BYTES(b, count * BYTES_PER_SPAN);
+                size_t offset = ARRAY_SIZE(context.clipSpanVertices);
+                ARRAY_RESIZE(context.clipSpanVertices, offset + count * 6);
+                for (jint i = 0; i < count; i++) {
+                    jint x1 = NEXT_INT(b);
+                    jint y1 = NEXT_INT(b);
+                    jint x2 = NEXT_INT(b);
+                    jint y2 = NEXT_INT(b);
+                    context.clipSpanVertices[offset + i * 6 + 0] = (VKIntVertex) {x1, y1};
+                    context.clipSpanVertices[offset + i * 6 + 1] = (VKIntVertex) {x2, y1};
+                    context.clipSpanVertices[offset + i * 6 + 2] = (VKIntVertex) {x2, y2};
+                    context.clipSpanVertices[offset + i * 6 + 3] = (VKIntVertex) {x2, y2};
+                    context.clipSpanVertices[offset + i * 6 + 4] = (VKIntVertex) {x1, y2};
+                    context.clipSpanVertices[offset + i * 6 + 5] = (VKIntVertex) {x1, y1};
+                }
+                context.clipModCount++;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_END_SHAPE_CLIP:
             {
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: END_SHAPE_CLIP");
+                context.clipRect = NO_CLIP;
+                context.clipModCount++;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_RESET_CLIP:
             {
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: RESET_CLIP");
+                ARRAY_RESIZE(context.clipSpanVertices, 0);
+                context.clipRect = NO_CLIP;
+                context.clipModCount++;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_ALPHA_COMPOSITE:
