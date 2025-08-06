@@ -236,7 +236,6 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             static const NSTimeInterval a = 0.25;
 
             if (TRACE_DISPLAY) {
-                static const NSTimeInterval threshold = 0.050; // 50 microseconds
                 const CFTimeInterval nextDrawableLatency = (nextDrawableTime - beforeDrawableTime);
                 if (nextDrawableLatency > 0.0) {
                     self.avgNextDrawableTime = nextDrawableLatency * a + self.avgNextDrawableTime * (1.0 - a);
