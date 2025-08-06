@@ -28,7 +28,8 @@
 
 typedef enum {
     ALPHA_TYPE_PRE_MULTIPLIED = 0,
-    ALPHA_TYPE_STRAIGHT = 1
+    ALPHA_TYPE_STRAIGHT = 1,
+    ALPHA_TYPE_UNKNOWN = ALPHA_TYPE_PRE_MULTIPLIED // Fallback to pre-multiplied.
 } AlphaType;
 
 /**
