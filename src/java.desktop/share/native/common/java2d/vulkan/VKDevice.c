@@ -276,6 +276,12 @@ void VKDevice_Reset(VKDevice* device) {
     ARRAY_FREE(device->enabledExtensions);
     ARRAY_FREE(device->enabledLayers);
     ARRAY_FREE(device->supportedFormats);
+    if (device->vkDestroyDescriptorPool != NULL) {
+        for (uint32_t i = 0; i < ARRAY_SIZE(device->imageDescriptorPools); i++) {
+            device->vkDestroyDescriptorPool(device->handle, device->imageDescriptorPools[i], NULL);
+        }
+    }
+    ARRAY_FREE(device->imageDescriptorPools);
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKDevice_Reset(%s)", device->name);
     free(device->name);
     if (device->vkDestroyDevice != NULL) {

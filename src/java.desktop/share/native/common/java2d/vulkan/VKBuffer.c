@@ -30,7 +30,6 @@
 #include "VKAllocator.h"
 #include "VKBuffer.h"
 #include "VKDevice.h"
-#include "VKRenderer.h"
 
 #define VK_BUFFER_HOST_COHERENT_MEMORY
 
@@ -182,6 +181,14 @@ VkDescriptorPool VKBuffer_CreateTexelBuffers(VKDevice* device, VkFormat format,
     return pool;
 }
 
+// TODO This is an internal API and should not be used from VKBuffer!
+typedef void (*VKCleanupHandler)(VKDevice* device, void* data);
+void VKRenderer_DisposeOnPrimaryComplete(VKRenderer* renderer, VKCleanupHandler hnd, void* ctx);
+VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
+void VKRenderer_RecordBarriers(VKRenderer* renderer,
+                               VkBufferMemoryBarrier* bufferBarriers, VKBarrierBatch* bufferBatch,
+                               VkImageMemoryBarrier* imageBarriers, VKBarrierBatch* imageBatch);
+
 VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
                           VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
 {
@@ -236,9 +243,9 @@ void VKBuffer_Dispose(VKDevice* device, void* data) {
 }
 
 VKBuffer *VKBuffer_CreateFromRaster(VKDevice *device,
-                                        VKBuffer_RasterInfo info,
-                                        VkPipelineStageFlags stage,
-                                        VkAccessFlags access)
+                                    VKBuffer_RasterInfo info,
+                                    VkPipelineStageFlags stage,
+                                    VkAccessFlags access)
 {
     uint32_t dataSize = info.w * info.h * info.pixelStride;
     VKBuffer *buffer = VKBuffer_Create(device, dataSize,
@@ -272,19 +279,10 @@ VKBuffer *VKBuffer_CreateFromRaster(VKDevice *device,
 
     device->vkUnmapMemory(device->handle, buffer->range.memory);
     {
-        VkCommandBuffer cb = VKRenderer_Record(device->renderer);
         VkBufferMemoryBarrier barrier;
         VKBarrierBatch barrierBatch = {};
-        VKRenderer_AddBufferBarrier(&barrier, &barrierBatch, buffer,
-                                    stage, access);
-
-        if (barrierBatch.barrierCount > 0) {
-            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages,
-                                         barrierBatch.dstStages,
-                                         0, 0, NULL,
-                                         barrierBatch.barrierCount, &barrier,
-                                         0, NULL);
-        }
+        VKBuffer_AddBarrier(&barrier, &barrierBatch, buffer, stage, access);
+        VKRenderer_RecordBarriers(device->renderer, &barrier, &barrierBatch, NULL, NULL);
     }
     return buffer;
 }
@@ -310,5 +308,28 @@ void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer) {
             device->vkFreeMemory(device->handle, buffer->range.memory, NULL);
         }
         free(buffer);
+    }
+}
+
+void VKBuffer_AddBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
+                         VKBuffer* buffer, VkPipelineStageFlags stage, VkAccessFlags access) {
+    assert(barriers != NULL && batch != NULL && buffer != NULL);
+    // TODO Even if stage, access and layout didn't change, we may still need a barrier against WaW hazard.
+    if (stage != buffer->lastStage || access != buffer->lastAccess) {
+        barriers[batch->barrierCount] = (VkBufferMemoryBarrier) {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .srcAccessMask = buffer->lastAccess,
+            .dstAccessMask = access,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = buffer->handle,
+            .offset = 0,
+            .size = VK_WHOLE_SIZE
+    };
+        batch->barrierCount++;
+        batch->srcStages |= buffer->lastStage;
+        batch->dstStages |= stage;
+        buffer->lastStage = stage;
+        buffer->lastAccess = access;
     }
 }
