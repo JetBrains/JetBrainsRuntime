@@ -41,8 +41,7 @@ static void WLVKSurfaceData_OnResize(VKWinSDOps* surface, VkExtent2D extent) {
  * Signature: (I)V
  */
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_initOps(
-        JNIEnv *env, jobject vksd, jint backgroundRGB)
-{
+        JNIEnv *env, jobject vksd, jint format, jint backgroundRGB) {
     J2dTraceLn(J2D_TRACE_VERBOSE, "WLVKWindowsSurfaceData_initOps(%p)", vksd);
     VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_InitOps(env, vksd, sizeof(VKWinSDOps));
     if (sd == NULL) {
@@ -50,6 +49,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_initOps(
         return;
     }
     sd->vksdOps.drawableType = VKSD_WINDOW;
+    sd->vksdOps.drawableFormat = format;
     sd->vksdOps.background = VKUtil_DecodeJavaColor(backgroundRGB);
     sd->resizeCallback = WLVKSurfaceData_OnResize;
     VKSD_ResetSurface(&sd->vksdOps);
