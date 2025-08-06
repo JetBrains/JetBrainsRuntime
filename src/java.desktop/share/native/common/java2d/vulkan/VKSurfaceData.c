@@ -125,6 +125,47 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
         return VK_FALSE;
     }
 
+    // currentExtent is the current width and height of the surface, or the special value (0xFFFFFFFF, 0xFFFFFFFF)
+    // indicating that the surface size will be determined by the extent of a swapchain targeting the surface.
+    // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSurfaceCapabilitiesKHR.html
+    // The behavior is platform-dependent if the image extent does not match the surface’s currentExtent
+    // as returned by vkGetPhysicalDeviceSurfaceCapabilitiesKHR.
+    // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSwapchainCreateInfoKHR.html
+    if ((vkwinsdo->vksdOps.image->extent.width != capabilities.currentExtent.width ||
+         vkwinsdo->vksdOps.image->extent.height != capabilities.currentExtent.height) &&
+         (capabilities.currentExtent.width != 0xFFFFFFFF || capabilities.currentExtent.height != 0xFFFFFFFF)) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING,
+                      "VKSD_ConfigureWindowSurface(%p): surface size doesn't match, expected=%dx%d, capabilities.currentExtent=%dx%d",
+                      vkwinsdo, vkwinsdo->vksdOps.image->extent.width, vkwinsdo->vksdOps.image->extent.height,
+                      capabilities.currentExtent.width, capabilities.currentExtent.height);
+        return VK_FALSE;
+    }
+
+    if (vkwinsdo->vksdOps.image->extent.width  < capabilities.minImageExtent.width  ||
+        vkwinsdo->vksdOps.image->extent.height < capabilities.minImageExtent.height ||
+        vkwinsdo->vksdOps.image->extent.width  > capabilities.maxImageExtent.width  ||
+        vkwinsdo->vksdOps.image->extent.height > capabilities.maxImageExtent.height) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING,
+                      "VKSD_ConfigureWindowSurface(%p): surface size doesn't fit, expected=%dx%d, "
+                      "capabilities.minImageExtent=%dx%d, capabilities.minImageExtent=%dx%d",
+                      vkwinsdo, vkwinsdo->vksdOps.image->extent.width, vkwinsdo->vksdOps.image->extent.height,
+                      capabilities.minImageExtent.width, capabilities.minImageExtent.height,
+                      capabilities.maxImageExtent.width, capabilities.maxImageExtent.height);
+        return VK_FALSE;
+    }
+
+    // Our surfaces use pre-multiplied alpha, try to match.
+    // This allows us to have semi-transparent windows.
+    VkCompositeAlphaFlagBitsKHR compositeAlpha;
+    if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR) {
+        compositeAlpha = VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
+    } else if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR) {
+        // This is wrong, but at least some transparency is better than none, right?
+        compositeAlpha = VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
+    } else if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
+        compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+    } else compositeAlpha = (VkCompositeAlphaFlagBitsKHR) capabilities.supportedCompositeAlpha;
+
     uint32_t formatCount;
     VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, NULL)) {
         return VK_FALSE;
@@ -156,20 +197,32 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
         return VK_FALSE;
     }
 
-    // TODO inspect and choose present mode
     uint32_t presentModeCount;
     VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, NULL)) {
         return VK_FALSE;
     }
     VkPresentModeKHR presentModes[presentModeCount];
     VK_IF_ERROR(ge->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, presentModes)) {
-        VK_UNHANDLED_ERROR();
+        return VK_FALSE;
     }
-
-    uint32_t imageCount = capabilities.minImageCount + 1;
-    if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount) {
-        imageCount = capabilities.maxImageCount;
+    // FIFO mode is guaranteed to be supported.
+    // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPresentModeKHR.html
+    uint32_t imageCount = 2;
+    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    // MAILBOX makes no sense without at least 3 images and using less memory
+    // for swapchain images may be more beneficial than having unlimited FPS.
+    // However, if minImageCount is too big anyway, why not use MAILBOX.
+    if (capabilities.minImageCount >= 3) {
+        for (uint32_t i = 0; i < presentModeCount; i++) {
+            if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+                presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+                imageCount = 3;
+                break;
+            }
+        }
     }
+    if (imageCount > capabilities.maxImageCount && capabilities.maxImageCount != 0) imageCount = capabilities.maxImageCount;
+    else if (imageCount < capabilities.minImageCount) imageCount = capabilities.minImageCount;
 
     VkSwapchainKHR swapchain;
     VkSwapchainCreateInfoKHR createInfoKhr = {
@@ -178,15 +231,15 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
             .minImageCount = imageCount,
             .imageFormat = format->format,
             .imageColorSpace = format->colorSpace,
-            .imageExtent = vkwinsdo->vksdOps.image->extent, // TODO consider capabilities.currentExtent, capabilities.minImageExtent and capabilities.maxImageExtent
+            .imageExtent = vkwinsdo->vksdOps.image->extent,
             .imageArrayLayers = 1,
             .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices = NULL,
             .preTransform = capabilities.currentTransform,
-            .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            .presentMode = VK_PRESENT_MODE_FIFO_KHR, // TODO need more flexibility
+            .compositeAlpha = compositeAlpha,
+            .presentMode = presentMode,
             .clipped = VK_TRUE,
             .oldSwapchain = vkwinsdo->swapchain
     };
@@ -194,7 +247,9 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     VK_IF_ERROR(device->vkCreateSwapchainKHR(device->handle, &createInfoKhr, NULL, &swapchain)) {
         return VK_FALSE;
     }
-    J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): swapchain created, format=%d", vkwinsdo, format->format);
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): swapchain created, format=%d, presentMode=%d, imageCount=%d, compositeAlpha=%d",
+                  vkwinsdo, format->format, presentMode, imageCount, compositeAlpha);
+    vkwinsdo->resizeCallback(vkwinsdo, vkwinsdo->vksdOps.image->extent);
 
     if (vkwinsdo->swapchain != VK_NULL_HANDLE) {
         // Destroy old swapchain.
