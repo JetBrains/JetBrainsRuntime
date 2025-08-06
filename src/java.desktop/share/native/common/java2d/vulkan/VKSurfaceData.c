@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -291,6 +291,24 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
         return VK_FALSE;
     }
     return VK_TRUE;
+}
+
+/*
+ * Class:     sun_java2d_vulkan_VKOffScreenSurfaceData
+ * Method:    initOps
+ * Signature: (II)V
+ */
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps
+        (JNIEnv *env, jobject vksd, jint width, jint height) {
+    VKSDOps * sd = (VKSDOps*)SurfaceData_InitOps(env, vksd, sizeof(VKSDOps));
+    J2dTraceLn(J2D_TRACE_VERBOSE, "VKOffScreenSurfaceData_initOps(%p)", sd);
+    if (sd == NULL) {
+        JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
+        return;
+    }
+    sd->drawableType = VKSD_RT_TEXTURE;
+    sd->background = VKUtil_DecodeJavaColor(0);
+    VKRenderer_ConfigureSurface(sd, (VkExtent2D){width, height});
 }
 
 #endif /* !HEADLESS */
