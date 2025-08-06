@@ -29,6 +29,7 @@
 #include "VKComposites.h"
 #include "VKDevice.h"
 #include "VKUtil.h"
+#include "VKFunctionTable.h"
 
 // For old Vulkan headers - define version-related macros.
 #ifndef VK_MAKE_API_VERSION
@@ -39,10 +40,13 @@
 #endif
 static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 2, 0);
 
+typedef VkBool32 (*VKPlatform_InitFunctions)(VKEnv* vk, PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr);
+typedef VkBool32 (*VKPlatform_CheckPresentationSupport)(VKEnv* vk, VkPhysicalDevice device, uint32_t queueFamily);
 typedef struct {
-#define GLOBAL_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
-#include "VKFunctionTable.inl"
-} VKFunctionTableGlobal;
+    const char*                         surfaceExtensionName;
+    VKPlatform_InitFunctions            initFunctions;
+    VKPlatform_CheckPresentationSupport checkPresentationSupport;
+} VKPlatformData;
 
 struct VKEnv {
     VkInstance      instance;
@@ -54,13 +58,10 @@ struct VKEnv {
     VkDebugUtilsMessengerEXT debugMessenger;
 #endif
 
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    struct wl_display* waylandDisplay;
-#endif
+    VKPlatformData* platformData;
 
-#define INSTANCE_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
-#define OPTIONAL_INSTANCE_FUNCTION_TABLE_ENTRY(NAME) PFN_ ## NAME NAME
-#include "VKFunctionTable.inl"
+    INSTANCE_FUNCTION_TABLE(DECL_PFN)
+    DEBUG_INSTANCE_FUNCTION_TABLE(DECL_PFN)
 };
 
 VKEnv* VKEnv_GetInstance();
