@@ -63,9 +63,10 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_initOps(
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_assignWlSurface(
         JNIEnv *env, jobject vksd, jlong wlSurfacePtr)
 {
-    J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKWindowsSurfaceData_assignWlSurface(%p): wl_surface=%p",
-                  (void*)vksd, wlSurfacePtr);
     VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);
+    J2dRlsTraceLn(J2D_TRACE_INFO, "WLVKWindowsSurfaceData_assignWlSurface(%p): wl_surface=%p",
+                  (void*)sd, wlSurfacePtr);
+
     if (sd == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
                       "WLVKWindowSurfaceData_assignWlSurface(%p): VKWinSDOps is NULL", vksd);
