@@ -37,6 +37,8 @@
 #include "Trace.h"
 #include "VKImage.h"
 #include "VKBuffer.h"
+#include "VKDevice.h"
+#include "VKTexturePool.h"
 #include "VKUtil.h"
 
 static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context, VKImage* dest, const SurfaceDataRasInfo *srcInfo,
