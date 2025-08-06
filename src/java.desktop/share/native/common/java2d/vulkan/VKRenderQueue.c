@@ -24,8 +24,6 @@
  * questions.
  */
 
-#ifndef HEADLESS
-
 #include "sun_font_StrikeCache.h"
 #include "sun_java2d_pipe_BufferedOpCodes.h"
 #include "sun_java2d_pipe_BufferedRenderPipe.h"
@@ -799,5 +797,3 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
         VKRenderer_DisposePrimaryResources(vk->devices[i].renderer);
     }
 }
-
-#endif /* !HEADLESS */
