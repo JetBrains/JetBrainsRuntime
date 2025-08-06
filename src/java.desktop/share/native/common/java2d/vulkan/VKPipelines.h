@@ -24,7 +24,7 @@
 #ifndef VKPipelines_h_Included
 #define VKPipelines_h_Included
 
-#include "java_awt_AlphaComposite.h"
+#include "VKComposites.h"
 #include "VKTypes.h"
 #include "VKUtil.h"
 
@@ -32,16 +32,15 @@
 #define CLIP_STENCIL_EXCLUDE_VALUE 0U
 
 /**
- * All pipeline types.
+ * Shader programs.
  */
 typedef enum {
-    PIPELINE_FILL_COLOR      = 0,
-    PIPELINE_DRAW_COLOR      = 1,
-    PIPELINE_BLIT            = 2,
-    PIPELINE_MASK_FILL_COLOR = 3,
-    PIPELINE_COUNT           = 4,
-    NO_PIPELINE              = 0x7FFFFFFF
-} VKPipeline;
+    SHADER_COLOR,
+    SHADER_MASK_FILL_COLOR,
+    SHADER_BLIT,
+    SHADER_CLIP,
+    NO_SHADER = 0x7FFFFFFF
+} VKShader;
 
 typedef enum {
     STENCIL_MODE_NONE = 0, // No stencil attachment.
@@ -50,42 +49,22 @@ typedef enum {
 } VKStencilMode;
 
 /**
- * There are two groups of composite modes:
- * - Logic composite - using logicOp.
- * - Alpha compisite - using blending.
+ * All features describing a pipeline.
+ * When adding new fields, update hash and comparison in VKPipelines.c.
  */
-typedef enum {
-    LOGIC_COMPOSITE_XOR      = 0,
-    LOGIC_COMPOSITE_GROUP    = LOGIC_COMPOSITE_XOR,
-    ALPHA_COMPOSITE_CLEAR    = java_awt_AlphaComposite_CLEAR,
-    ALPHA_COMPOSITE_SRC      = java_awt_AlphaComposite_SRC,
-    ALPHA_COMPOSITE_DST      = java_awt_AlphaComposite_DST,
-    ALPHA_COMPOSITE_SRC_OVER = java_awt_AlphaComposite_SRC_OVER,
-    ALPHA_COMPOSITE_DST_OVER = java_awt_AlphaComposite_DST_OVER,
-    ALPHA_COMPOSITE_SRC_IN   = java_awt_AlphaComposite_SRC_IN,
-    ALPHA_COMPOSITE_DST_IN   = java_awt_AlphaComposite_DST_IN,
-    ALPHA_COMPOSITE_SRC_OUT  = java_awt_AlphaComposite_SRC_OUT,
-    ALPHA_COMPOSITE_DST_OUT  = java_awt_AlphaComposite_DST_OUT,
-    ALPHA_COMPOSITE_SRC_ATOP = java_awt_AlphaComposite_SRC_ATOP,
-    ALPHA_COMPOSITE_DST_ATOP = java_awt_AlphaComposite_DST_ATOP,
-    ALPHA_COMPOSITE_XOR      = java_awt_AlphaComposite_XOR,
-    ALPHA_COMPOSITE_GROUP    = ALPHA_COMPOSITE_XOR,
-    COMPOSITE_COUNT          = ALPHA_COMPOSITE_GROUP + 1,
-    NO_COMPOSITE             = 0x7FFFFFFF
-} VKCompositeMode;
-#define COMPOSITE_GROUP(COMPOSITE) (                               \
-    (COMPOSITE) <= LOGIC_COMPOSITE_GROUP ? LOGIC_COMPOSITE_GROUP : \
-    (COMPOSITE) <= ALPHA_COMPOSITE_GROUP ? ALPHA_COMPOSITE_GROUP : \
-    NO_COMPOSITE )
-
-extern const VkPipelineColorBlendAttachmentState COMPOSITE_BLEND_STATES[COMPOSITE_COUNT];
+typedef struct {
+    VKStencilMode       stencilMode;
+    VKCompositeMode     composite;
+    VKShader            shader;
+    VkPrimitiveTopology topology;
+} VKPipelineDescriptor;
 
 /**
  * Global pipeline context.
  */
 struct VKPipelineContext {
     VKDevice*                   device;
-    VkPipelineLayout            pipelineLayout;
+    VkPipelineLayout            colorPipelineLayout;
     VkDescriptorSetLayout       textureDescriptorSetLayout;
     VkPipelineLayout            texturePipelineLayout;
     VkDescriptorSetLayout       maskFillDescriptorSetLayout;
@@ -98,23 +77,13 @@ struct VKPipelineContext {
 };
 
 /**
- * All features describing a pipeline set.
- * When adding new fields, update hash and comparison in VKPipelines_GetPipeline.
- */
-typedef struct {
-    VKStencilMode   stencilMode;
-    VKCompositeMode composite;
-} VKPipelineSetDescriptor;
-
-/**
  * Per-format context.
  */
 struct VKRenderPassContext {
     VKPipelineContext*           pipelineContext;
     VkFormat                     format;
     VkRenderPass                 renderPass[2]; // Color-only and color+stencil.
-    VkPipeline                   clipPipeline;
-    MAP(VKPipelineSetDescriptor, struct VKPipelineSet*) pipelineSets;
+    MAP(VKPipelineDescriptor, VkPipeline) pipelines;
 };
 
 typedef struct {
@@ -140,6 +109,6 @@ VKPipelineContext* VKPipelines_CreateContext(VKDevice* device);
 void VKPipelines_DestroyContext(VKPipelineContext* pipelines);
 
 VKRenderPassContext* VKPipelines_GetRenderPassContext(VKPipelineContext* pipelineContext, VkFormat format);
-VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKPipelineSetDescriptor descriptor, VKPipeline pipeline);
+VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKPipelineDescriptor descriptor);
 
 #endif //VKPipelines_h_Included
