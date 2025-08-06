@@ -145,38 +145,25 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
                 .scanStride = srcInfo->scanStride
                 }, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
 
-    VkCommandBuffer cb = VKRenderer_Record(device->renderer);
     {
         VkImageMemoryBarrier barrier;
         VKBarrierBatch barrierBatch = {};
-        VKRenderer_AddImageBarrier(&barrier, &barrierBatch, ((VKImage *) VKTexturePoolHandle_GetTexture(hnd)),
-                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                   VK_ACCESS_TRANSFER_WRITE_BIT,
-                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-        if (barrierBatch.barrierCount > 0) {
-            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
-                                         0, 0, NULL,
-                                         0, NULL,
-                                         barrierBatch.barrierCount, &barrier);
-        }
+        VKImage_AddBarrier(&barrier, &barrierBatch, VKTexturePoolHandle_GetTexture(hnd),
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_ACCESS_TRANSFER_WRITE_BIT,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
     }
     VKImage_LoadBuffer(context->surface->device,
                        VKTexturePoolHandle_GetTexture(hnd), buffer, 0, 0, sw, sh);
     {
         VkImageMemoryBarrier barrier;
         VKBarrierBatch barrierBatch = {};
-        VKRenderer_AddImageBarrier(&barrier, &barrierBatch, ((VKImage *) VKTexturePoolHandle_GetTexture(hnd)),
-                                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                   VK_ACCESS_SHADER_READ_BIT,
-                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-        if (barrierBatch.barrierCount > 0) {
-            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
-                                         0, 0, NULL,
-                                         0, NULL,
-                                         barrierBatch.barrierCount, &barrier);
-        }
+        VKImage_AddBarrier(&barrier, &barrierBatch, VKTexturePoolHandle_GetTexture(hnd),
+                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                           VK_ACCESS_SHADER_READ_BIT,
+                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
     }
 
     VKImage* src = VKTexturePoolHandle_GetTexture(hnd);
@@ -218,21 +205,14 @@ static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, Vk
     VKBuffer* renderVertexBuffer = ARRAY_TO_VERTEX_BUF(device, vertices);
     ARRAY_FREE(vertices);
 
-    VkCommandBuffer cb = VKRenderer_Record(device->renderer);
     {
         VkImageMemoryBarrier barrier;
         VKBarrierBatch barrierBatch = {};
-        VKRenderer_AddImageBarrier(&barrier, &barrierBatch, src,
-                                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                   VK_ACCESS_SHADER_READ_BIT,
-                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-        if (barrierBatch.barrierCount > 0) {
-            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
-                                         0, 0, NULL,
-                                         0, NULL,
-                                         barrierBatch.barrierCount, &barrier);
-        }
+        VKImage_AddBarrier(&barrier, &barrierBatch, src,
+                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                           VK_ACCESS_SHADER_READ_BIT,
+                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
     }
 
     static const VKPackedSwizzle OPAQUE_SWIZZLE = VK_PACK_SWIZZLE(VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -568,17 +548,11 @@ VKBlitLoops_SurfaceToSwBlit(JNIEnv *env,
             {
                 VkImageMemoryBarrier barrier;
                 VKBarrierBatch barrierBatch = {};
-                VKRenderer_AddImageBarrier(&barrier, &barrierBatch, image,
-                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                           VK_ACCESS_TRANSFER_READ_BIT,
-                                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-                if (barrierBatch.barrierCount > 0) {
-                    device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
-                                                 0, 0, NULL,
-                                                 0, NULL,
-                                                 barrierBatch.barrierCount, &barrier);
-                }
+                VKImage_AddBarrier(&barrier, &barrierBatch, image,
+                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                   VK_ACCESS_TRANSFER_READ_BIT,
+                                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+                VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
             }
 
             VKBuffer* buffer = VKBuffer_Create(device, bufferSize,
