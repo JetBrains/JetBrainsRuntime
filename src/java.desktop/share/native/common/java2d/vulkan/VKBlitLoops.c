@@ -53,11 +53,6 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
     const int dw = dx2 - dx1;
     const int dh = dy2 - dy1;
 
-    if (dw < sw || dh < sh) {
-        J2dTraceLn(J2D_TRACE_ERROR, "VKBlitSwToTextureViaPooledTexture: dest size: (%d, %d) less than source size: (%d, %d)", dw, dh, sw, sh);
-        return;
-    }
-
     ARRAY(VKTxVertex) vertices = ARRAY_ALLOC(VKTxVertex, 4);
     /*
      *    (p1)---------(p2)
