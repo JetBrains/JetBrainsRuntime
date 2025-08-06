@@ -27,6 +27,7 @@
 #ifndef HEADLESS
 
 #include "VKUtil.h"
+#include "VKRenderer.h"
 #include "VKSurfaceData.h"
 #include "VKImage.h"
 #include "VKEnv.h"
@@ -85,10 +86,9 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
     if (vksdo->requestedExtent.width > 0 && vksdo->requestedExtent.height > 0 && (vksdo->image == NULL ||
             vksdo->requestedExtent.width != vksdo->image->extent.width ||
             vksdo->requestedExtent.height != vksdo->image->extent.height)) {
-        // VK_FORMAT_B8G8R8A8_UNORM is the most widely-supported format for our use.
         // Currently, we only support *_SRGB and *_UNORM formats,
         // as other types may not be trivial to alias for logicOp rendering.
-        VkFormat format = VK_FORMAT_B8G8R8A8_UNORM;
+        VkFormat format = (VkFormat) (vksdo->drawableFormat & ~VKSD_FORMAT_OPAQUE_BIT);
 
         VKImage* image = VKImage_Create(device, vksdo->requestedExtent.width, vksdo->requestedExtent.height,
                                         0, format, VK_IMAGE_TILING_OPTIMAL,
@@ -204,13 +204,8 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
         // We draw with sRGB colors (see VKUtil_DecodeJavaColor()), so we don't want Vulkan to do color space
         // conversions when drawing to surface. We use *_UNORM formats, so that colors are written "as is".
         // With VK_COLOR_SPACE_SRGB_NONLINEAR_KHR these colors will be interpreted by presentation engine as sRGB.
-        if (formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR && (
-                formats[i].format == VK_FORMAT_A8B8G8R8_UNORM_PACK32 ||
-                formats[i].format == VK_FORMAT_B8G8R8A8_UNORM ||
-                formats[i].format == VK_FORMAT_R8G8B8A8_UNORM ||
-                formats[i].format == VK_FORMAT_B8G8R8_UNORM ||
-                formats[i].format == VK_FORMAT_R8G8B8_UNORM
-            )) {
+        if (formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
+            formats[i].format == vkwinsdo->vksdOps.image->format) {
             format = &formats[i];
         }
     }
@@ -300,7 +295,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
  * Method:    initOps
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps(JNIEnv *env, jobject vksd) {
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps(JNIEnv *env, jobject vksd, jint format) {
     VKSDOps * sd = (VKSDOps*)SurfaceData_InitOps(env, vksd, sizeof(VKSDOps));
     J2dTraceLn(J2D_TRACE_VERBOSE, "VKOffScreenSurfaceData_initOps(%p)", sd);
     if (sd == NULL) {
@@ -308,6 +303,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps(JNI
         return;
     }
     sd->drawableType = VKSD_RT_TEXTURE;
+    sd->drawableFormat = format;
     sd->background = VKUtil_DecodeJavaColor(0);
     VKSD_ResetSurface(sd);
 }
