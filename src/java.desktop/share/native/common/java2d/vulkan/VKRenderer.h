@@ -64,7 +64,7 @@ VKRenderer* VKRenderer_Create(VKDevice* device);
 /**
  * Setup pipeline for drawing. Returns FALSE if the surface is not yet ready for drawing.
  */
-VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology);
+VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, AlphaType inAlphaType);
 
 /**
  * Record commands into the primary command buffer (outside of a render pass).
@@ -118,8 +118,7 @@ void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* 
 
 // Blit operations.
 
-void VKRenderer_TextureRender(VKImage *destImage, VKImage *srcImage,
-                              VkBuffer vertexBuffer, uint32_t vertexNum);
+void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexBuffer, uint32_t vertexNum);
 
 // Drawing operations.
 
