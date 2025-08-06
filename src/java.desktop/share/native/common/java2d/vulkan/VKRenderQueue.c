@@ -530,14 +530,24 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     .m11 = m11, .m02 = m02, .m12 = m12
                 };
 
-                VKRenderer_GetContext()->transform = transform;
-
+                if (VKRenderer_GetContext()->surface != NULL &&
+                    VK_IS_NEQ_TRANSFORM(&VKRenderer_GetContext()->transform, &transform))
+                {
+                  VKRenderer_FlushSurface(VKRenderer_GetContext()->surface);
+                  VKRenderer_GetContext()->transform = transform;
+                }
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_RESET_TRANSFORM:
             {
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: RESET_TRANSFORM");
+                if (VKRenderer_GetContext()->surface != NULL &&
+                    VK_IS_NEQ_TRANSFORM(&VKRenderer_GetContext()->transform, &VK_ID_TRANSFORM))
+                {
+                  VKRenderer_FlushSurface(VKRenderer_GetContext()->surface);
+                  VKRenderer_GetContext()->transform = VK_ID_TRANSFORM;
+                }
             }
             break;
 
