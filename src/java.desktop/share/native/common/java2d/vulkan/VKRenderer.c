@@ -138,6 +138,11 @@ typedef struct {
     VkBool32 bound;
 } BufferWritingState;
 
+typedef struct {
+    BufferWritingState state;
+    uint32_t             elements;
+} BufferWriting;
+
 /**
  * Rendering-related info attached to the surface.
  */
@@ -980,81 +985,89 @@ void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* 
 
 /**
  * Allocate bytes for writing into buffer. Returned state contains:
- * - data   - pointer to the beginning of buffer, or NULL, if there is no buffer yet.
- * - offset - writing offset into the buffer data, or 0, if there is no buffer yet.
- * - bound  - whether corresponding buffer is bound to the command buffer,
- *            caller is responsible for checking this value and setting up & binding the buffer.
+ * - state.data   - pointer to the beginning of buffer, or NULL, if there is no buffer yet.
+ * - state.offset - writing offset into the buffer data, or 0, if there is no buffer yet.
+ * - state.bound  - whether corresponding buffer is bound to the command buffer,
+ *                  caller is responsible for checking this value and setting up & binding the buffer.
+ * - elements     - number of actually allocated elements.
  */
-inline BufferWritingState VKRenderer_AllocateBufferData(VKSDOps* surface, BufferWritingState* writingState,
-                                                        VkDeviceSize size, VkDeviceSize maxBufferSize) {
+BufferWriting VKRenderer_AllocateBufferData(VKSDOps* surface, BufferWritingState* writingState,
+                                            VkDeviceSize elements, VkDeviceSize elementSize,
+                                            VkDeviceSize maxBufferSize) {
     assert(surface != NULL && surface->renderPass != NULL && writingState != NULL);
-    assert(size <= maxBufferSize);
-    BufferWritingState result = *writingState;
-    writingState->offset += size;
-    // Overflow, flush drawing commands and take another buffer.
-    if (writingState->offset > maxBufferSize) {
-        VKRenderer_FlushDraw(surface);
-        writingState->offset = size;
-        result.offset = 0;
-        result.bound = VK_FALSE;
-        result.data = NULL;
+    assert(elementSize <= maxBufferSize);
+    VkDeviceSize totalSize = elements * elementSize;
+    BufferWriting result = { *writingState, elements };
+    writingState->offset += totalSize;
+    if (writingState->offset > maxBufferSize) { // Overflow.
+        if (result.state.offset + elementSize > maxBufferSize) {
+            // Cannot fit a single element, flush drawing commands and take another buffer.
+            VKRenderer_FlushDraw(surface);
+            result.state.offset = 0;
+            result.state.bound = VK_FALSE;
+            result.state.data = NULL;
+        }
+        // Calculate the number of remaining elements we can fit.
+        result.elements = (maxBufferSize - result.state.offset) / elementSize;
+        assert(result.elements > 0);
+        if (result.elements > elements) result.elements = elements;
+        writingState->offset = result.state.offset + result.elements * elementSize;
     }
-    writingState->bound = VK_TRUE; // We assume caller will check the result and bind the buffer right away!
+    writingState->bound = VK_TRUE; // We assume the caller will check the result and bind the buffer right away!
     return result;
 }
 
 /**
- * Allocate vertices from vertex buffer. VKRenderer_Validate must have been called before.
+ * Allocate vertices from the vertex buffer, returning the number of allocated primitives (>0).
+ * VKRenderer_Validate must have been called before.
  * This function must not be used directly, use VK_DRAW macro instead.
- * It is responsibility of the caller to pass correct vertexSize, matching current pipeline.
- * This function cannot draw more vertices than fits into single vertex buffer at once.
  * This function must be called after all dynamic allocation functions,
- * which can invalidate drawing state, e.g. VKRenderer_AllocateMaskFillBytes.
+ * which can invalidate the drawing state, e.g., VKRenderer_AllocateMaskFillBytes.
  */
-static void* VKRenderer_AllocateVertices(uint32_t vertices, size_t vertexSize) {
+static uint32_t VKRenderer_AllocateVertices(uint32_t primitives, uint32_t vertices, size_t vertexSize, void** result) {
     assert(vertices > 0 && vertexSize > 0);
     assert(vertexSize * vertices <= VERTEX_BUFFER_SIZE);
-    VKSDOps* surface = context.surface;
-    BufferWritingState state = VKRenderer_AllocateBufferData(
-            surface, &surface->renderPass->vertexBufferWriting, (VkDeviceSize) (vertexSize * vertices), VERTEX_BUFFER_SIZE);
-    if (!state.bound) {
-        if (state.data == NULL) {
+    VKSDOps* surface = VKRenderer_GetContext()->surface;
+    BufferWriting writing = VKRenderer_AllocateBufferData(
+            surface, &surface->renderPass->vertexBufferWriting, primitives, vertices * vertexSize, VERTEX_BUFFER_SIZE);
+    if (!writing.state.bound) {
+        if (writing.state.data == NULL) {
             VKBuffer buffer = VKRenderer_GetVertexBuffer(surface->device->renderer);
             ARRAY_PUSH_BACK(surface->renderPass->vertexBuffers) = buffer;
-            surface->renderPass->vertexBufferWriting.data = state.data = buffer.data;
+            surface->renderPass->vertexBufferWriting.data = writing.state.data = buffer.data;
         }
         assert(ARRAY_SIZE(surface->renderPass->vertexBuffers) > 0);
         surface->renderPass->firstVertex = surface->renderPass->vertexCount = 0;
         surface->device->vkCmdBindVertexBuffers(surface->renderPass->commandBuffer, 0, 1,
-                                                &(ARRAY_LAST(surface->renderPass->vertexBuffers).handle), &state.offset);
+                                                &(ARRAY_LAST(surface->renderPass->vertexBuffers).handle), &writing.state.offset);
     }
-    surface->renderPass->vertexCount += vertices;
-    return (void*) ((uint8_t*) state.data + state.offset);
+    surface->renderPass->vertexCount += writing.elements * vertices;
+    *((uint8_t**) result) = (uint8_t*) writing.state.data + writing.state.offset;
+    return writing.elements;
 }
 
 /**
- * Allocate vertices from vertex buffer, providing pointer for writing.
+ * Allocate vertices from the vertex buffer, returning the number of allocated primitives (>0).
  * VKRenderer_Validate must have been called before.
- * This function cannot draw more vertices than fits into single vertex buffer at once.
  * This function must be called after all dynamic allocation functions,
- * which can invalidate drawing state, e.g. VKRenderer_AllocateMaskFillBytes.
+ * which can invalidate the drawing state, e.g., VKRenderer_AllocateMaskFillBytes.
  */
-#define VK_DRAW(VERTICES, VERTEX_COUNT) \
-    (VERTICES) = VKRenderer_AllocateVertices((VERTEX_COUNT), sizeof((VERTICES)[0]))
+#define VK_DRAW(VERTICES, PRIMITIVE_COUNT, VERTEX_COUNT) \
+    VKRenderer_AllocateVertices((PRIMITIVE_COUNT), (VERTEX_COUNT), sizeof((VERTICES)[0]), (void**) &(VERTICES))
 
 /**
  * Allocate bytes from mask fill buffer. VKRenderer_Validate must have been called before.
  * This function cannot take more bytes than fits into single mask fill buffer at once.
- * Caller must write data at the returned pointer DrawingBufferWritingState.data
- * and take into account DrawingBufferWritingState.offset from the beginning of the bound buffer.
+ * Caller must write data at the returned pointer BufferWritingState.data
+ * and take into account BufferWritingState.offset from the beginning of the bound buffer.
  * This function can invalidate drawing state, always call it before VK_DRAW.
  */
-static BufferWritingState VKRenderer_AllocateMaskFillBytes(const VKRenderingContext* context, uint32_t size) {
+static BufferWritingState VKRenderer_AllocateMaskFillBytes(uint32_t size) {
     assert(size > 0);
     assert(size <= MASK_FILL_BUFFER_SIZE);
-    VKSDOps* surface = context->surface;
+    VKSDOps* surface = VKRenderer_GetContext()->surface;
     BufferWritingState state = VKRenderer_AllocateBufferData(
-            surface, &surface->renderPass->maskFillBufferWriting, size, MASK_FILL_BUFFER_SIZE);
+            surface, &surface->renderPass->maskFillBufferWriting, 1, size, MASK_FILL_BUFFER_SIZE).state;
     if (!state.bound) {
         if (state.data == NULL) {
             VKTexelBuffer buffer = VKRenderer_GetMaskFillBuffer(surface->device->renderer);
@@ -1062,7 +1075,7 @@ static BufferWritingState VKRenderer_AllocateMaskFillBytes(const VKRenderingCont
             surface->renderPass->maskFillBufferWriting.data = state.data = buffer.buffer.data;
         }
         assert(ARRAY_SIZE(surface->renderPass->maskFillBuffers) > 0);
-        surface->device->vkCmdBindDescriptorSets(context->surface->renderPass->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        surface->device->vkCmdBindDescriptorSets(surface->renderPass->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                                  surface->device->renderer->pipelineContext->maskFillPipelineLayout,
                                                  0, 1, &ARRAY_LAST(surface->renderPass->maskFillBuffers).descriptorSet, 0, NULL);
     }
@@ -1071,20 +1084,21 @@ static BufferWritingState VKRenderer_AllocateMaskFillBytes(const VKRenderingCont
 }
 
 static void VKRenderer_ValidateTransform() {
-    assert(context.surface != NULL);
-    VKSDOps* surface = context.surface;
+    VKRenderingContext* context = VKRenderer_GetContext();
+    assert(context->surface != NULL);
+    VKSDOps* surface = context->surface;
     VKRenderPass* renderPass = surface->renderPass;
-    if (renderPass->transformModCount != context.transformModCount) {
+    if (renderPass->transformModCount != context->transformModCount) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_ValidateTransform: updating transform");
         VKRenderer_FlushDraw(surface);
-        renderPass->transformModCount = context.transformModCount;
+        renderPass->transformModCount = context->transformModCount;
         // Calculate user to device transform.
         VKTransform transform = {
-            2.0f / (float) surface->image->extent.width, 0.0f, -1.0f,
-            0.0f, 2.0f / (float) surface->image->extent.height, -1.0f
+                2.0f / (float) surface->image->extent.width, 0.0f, -1.0f,
+                0.0f, 2.0f / (float) surface->image->extent.height, -1.0f
         };
         // Combine it with user transform.
-        VKUtil_ConcatenateTransform(&transform, &context.transform);
+        VKUtil_ConcatenateTransform(&transform, &context->transform);
         // Push the transform into shader.
         surface->device->vkCmdPushConstants(
                 renderPass->commandBuffer,
@@ -1100,7 +1114,8 @@ static void VKRenderer_ValidateTransform() {
  * pixels inside the clip shape are set to "pass".
  * If there is no clip shape, whole attachment is cleared with "pass" value.
  */
-static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
+static void VKRenderer_SetupStencil() {
+    VKRenderingContext* context = VKRenderer_GetContext();
     assert(context != NULL && context->surface != NULL && context->surface->renderPass != NULL);
     VKSDOps* surface = context->surface;
     VKRenderPass* renderPass = surface->renderPass;
@@ -1135,15 +1150,12 @@ static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
     renderPass->vertexBufferWriting.bound = VK_FALSE;
 
     // Rasterize clip spans.
-    const uint32_t MAX_VERTICES_PER_DRAW = (VERTEX_BUFFER_SIZE / sizeof(VKIntVertex) / 3) * 3;
+    uint32_t primitiveCount = ARRAY_SIZE(context->clipSpanVertices) / 3;
     VKIntVertex* vs;
-    for (uint32_t drawn = 0;;) {
-        uint32_t currentDraw = ARRAY_SIZE(context->clipSpanVertices) - drawn;
-        if (currentDraw > MAX_VERTICES_PER_DRAW) currentDraw = MAX_VERTICES_PER_DRAW;
-        else if (currentDraw == 0) break;
-        VK_DRAW(vs, currentDraw);
-        memcpy(vs, context->clipSpanVertices + drawn, currentDraw * sizeof(VKIntVertex));
-        drawn += currentDraw;
+    for (uint32_t primitivesDrawn = 0; primitivesDrawn < primitiveCount;) {
+        uint32_t currentDraw = VK_DRAW(vs, primitiveCount - primitivesDrawn, 3);
+        memcpy(vs, context->clipSpanVertices + primitivesDrawn * 3, currentDraw * 3 * sizeof(VKIntVertex));
+        primitivesDrawn += currentDraw;
     }
     VKRenderer_FlushDraw(surface);
 
@@ -1215,7 +1227,7 @@ VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, Alph
             surface->device->vkCmdSetScissor(renderPass->commandBuffer, 0, 1, &context.clipRect);
             if (clipChanged) {
                 if (ARRAY_SIZE(context.clipSpanVertices) > 0) {
-                    VKRenderer_SetupStencil(&context);
+                    VKRenderer_SetupStencil();
                     renderPass->state.stencilMode = STENCIL_MODE_ON;
                 } else renderPass->state.stencilMode = surface->stencil != NULL ? STENCIL_MODE_OFF : STENCIL_MODE_NONE;
             }
@@ -1283,7 +1295,7 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
     VKColorVertex p4 = {x11 + dx12, y11 + dy12, c};
 
     VKColorVertex* vs;
-    VK_DRAW(vs, fill ? 6 : 8);
+    VK_DRAW(vs, 1, fill ? 6 : 8);
     uint32_t i = 0;
     vs[i++] = p1;
     vs[i++] = p2;
@@ -1312,7 +1324,7 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans) {
     VKColorVertex p4 = {x1, y2, c};
 
     VKColorVertex* vs;
-    VK_DRAW(vs, 6);
+    VK_DRAW(vs, 1, 6);
     vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
 
     for (int i = 1; i < spanCount; i++) {
@@ -1321,7 +1333,7 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans) {
         p2.x = p3.x = (float)*(spans++);
         p3.y = p4.y = (float)*(spans++);
 
-        VK_DRAW(vs, 6);
+        VK_DRAW(vs, 1, 6);
         vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
     }
 }
@@ -1329,7 +1341,7 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans) {
 void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexBuffer, uint32_t vertexNum,
                               jint filter, VKSamplerWrap wrap) {
     // VKRenderer_Validate was called by VKBlitLoops. TODO refactor this.
-    VKSDOps* surface = (VKSDOps*)context.surface;
+    VKSDOps* surface = VKRenderer_GetContext()->surface;
     VKRenderPass* renderPass = surface->renderPass;
     VkCommandBuffer cb = renderPass->commandBuffer;
     VKDevice* device = surface->device;
@@ -1361,16 +1373,16 @@ void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
         maskscan = 0;
         byteCount = 1;
     }
-    BufferWritingState maskState = VKRenderer_AllocateMaskFillBytes(&context, byteCount);
+    BufferWritingState maskState = VKRenderer_AllocateMaskFillBytes(byteCount);
     if (mask != NULL) {
         memcpy(maskState.data, mask + maskoff, byteCount);
     } else {
         // Special case, fully opaque mask
-        *((char *)maskState.data) = 0xFF;
+        *((char *)maskState.data) = (char)0xFF;
     }
 
     VKMaskFillColorVertex* vs;
-    VK_DRAW(vs, 6);
+    VK_DRAW(vs, 1, 6);
     RGBA c = VKRenderer_GetRGBA(context.surface, context.renderColor);
     int offset = (int) maskState.offset;
     VKMaskFillColorVertex p1 = {x, y, offset, maskscan, c};
