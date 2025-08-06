@@ -64,6 +64,8 @@
     (((packedval) >> (offset)) & (mask))
 #define EXTRACT_BYTE(packedval, offset) \
     (unsigned char)EXTRACT_VAL(packedval, offset, 0xff)
+#define EXTRACT_SHORT(packedval, offset) \
+    (jshort)EXTRACT_VAL(packedval, offset, 0xffff)
 #define EXTRACT_BOOLEAN(packedval, offset) \
     (jboolean)EXTRACT_VAL(packedval, offset, 0x1)
 
@@ -88,8 +90,6 @@
 
 #define OFFSET_SRCTYPE sun_java2d_vulkan_VKBlitLoops_OFFSET_SRCTYPE
 #define OFFSET_HINT    sun_java2d_vulkan_VKBlitLoops_OFFSET_HINT
-#define OFFSET_TEXTURE sun_java2d_vulkan_VKBlitLoops_OFFSET_TEXTURE
-#define OFFSET_RTT     sun_java2d_vulkan_VKBlitLoops_OFFSET_RTT
 #define OFFSET_XFORM   sun_java2d_vulkan_VKBlitLoops_OFFSET_XFORM
 #define OFFSET_ISOBLIT sun_java2d_vulkan_VKBlitLoops_OFFSET_ISOBLIT
 
@@ -351,7 +351,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                                         sx1, sy1, sx2, sy2,
                                         dx1, dy1, dx2, dy2);
                 } else {
-                    jint srctype = EXTRACT_BYTE(packedParams, OFFSET_SRCTYPE);
+                    jshort srctype = EXTRACT_SHORT(packedParams, OFFSET_SRCTYPE);
                     VKBlitLoops_Blit(env, pSrc,
                                      xform, hint, srctype,
                                      sx1, sy1, sx2, sy2,
