@@ -148,14 +148,12 @@ struct VKRenderPass {
     BufferWritingState vertexBufferWriting;
     BufferWritingState maskFillBufferWriting;
 
-    VKCompositeMode currentComposite;
-    VKPipeline      currentPipeline;
-    VKStencilMode   currentStencilMode;
-    uint64_t        clipModCount; // Just a tag to detect when clip was changed.
-    VkBool32        pendingFlush;
-    VkBool32        pendingCommands;
-    VkBool32        pendingClear;
-    uint64_t        lastTimestamp; // When was this surface last used?
+    VKPipelineDescriptor state;
+    uint64_t             clipModCount; // Just a tag to detect when clip was changed.
+    VkBool32             pendingFlush;
+    VkBool32             pendingCommands;
+    VkBool32             pendingClear;
+    uint64_t             lastTimestamp; // When was this surface last used?
 };
 
 /**
@@ -513,8 +511,8 @@ inline void VKRenderer_FlushDraw(VKSDOps* surface) {
  */
 static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
-    surface->renderPass->currentComposite = NO_COMPOSITE;
-    surface->renderPass->currentPipeline = NO_PIPELINE;
+    surface->renderPass->state.composite = NO_COMPOSITE;
+    surface->renderPass->state.shader = NO_SHADER;
     surface->renderPass->firstVertex = 0;
     surface->renderPass->vertexCount = 0;
     surface->renderPass->vertexBufferWriting = (BufferWritingState) {NULL, 0, VK_FALSE};
@@ -590,9 +588,11 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
     VKRenderPass* renderPass = surface->renderPass = malloc(sizeof(VKRenderPass));
     VK_RUNTIME_ASSERT(renderPass);
     (*renderPass) = (VKRenderPass) {
-            .currentComposite = NO_COMPOSITE,
-            .currentPipeline = NO_PIPELINE,
-            .currentStencilMode = STENCIL_MODE_NONE,
+            .state = {
+                .stencilMode = STENCIL_MODE_NONE,
+                .composite = NO_COMPOSITE,
+                .shader = NO_SHADER
+            },
             .clipModCount = 0,
             .pendingFlush = VK_FALSE,
             .pendingCommands = VK_FALSE,
@@ -618,11 +618,11 @@ static void VKRenderer_InitFramebuffer(VKSDOps* surface) {
     VKDevice* device = surface->device;
     VKRenderPass* renderPass = surface->renderPass;
 
-    if (renderPass->currentStencilMode == STENCIL_MODE_NONE && surface->stencil != NULL) {
+    if (renderPass->state.stencilMode == STENCIL_MODE_NONE && surface->stencil != NULL) {
         // Destroy outdated color-only framebuffer.
         device->vkDestroyFramebuffer(device->handle, renderPass->framebuffer, NULL);
         renderPass->framebuffer = VK_NULL_HANDLE;
-        renderPass->currentStencilMode = STENCIL_MODE_OFF;
+        renderPass->state.stencilMode = STENCIL_MODE_OFF;
     }
 
     // Initialize framebuffer.
@@ -725,7 +725,7 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     viewport.height = 2.0f / viewport.height;
     device->vkCmdPushConstants(
             commandBuffer,
-            renderer->pipelineContext->pipelineLayout,
+            renderer->pipelineContext->colorPipelineLayout, // TODO what if our pipeline layout differs?
             VK_SHADER_STAGE_VERTEX_BIT,
             0,
             sizeof(float) * 2,
@@ -945,7 +945,7 @@ inline BufferWritingState VKRenderer_AllocateBufferData(VKSDOps* surface, Buffer
  * It is responsibility of the caller to pass correct vertexSize, matching current pipeline.
  * This function cannot draw more vertices than fits into single vertex buffer at once.
  */
-static void* VKRenderer_AllocateVertices(VKRenderingContext* context, uint32_t vertices, size_t vertexSize) {
+static void* VKRenderer_AllocateVertices(const VKRenderingContext* context, uint32_t vertices, size_t vertexSize) {
     assert(vertices > 0 && vertexSize > 0);
     assert(vertexSize * vertices <= VERTEX_BUFFER_SIZE);
     VKSDOps* surface = context->surface;
@@ -978,7 +978,7 @@ static void* VKRenderer_AllocateVertices(VKRenderingContext* context, uint32_t v
  * Caller must write data at the returned pointer DrawingBufferWritingState.data
  * and take into account DrawingBufferWritingState.offset from the beginning of the bound buffer.
  */
-static BufferWritingState VKRenderer_AllocateMaskFillBytes(VKRenderingContext* context, uint32_t size) {
+static BufferWritingState VKRenderer_AllocateMaskFillBytes(const VKRenderingContext* context, uint32_t size) {
     assert(size > 0);
     assert(size <= MASK_FILL_BUFFER_SIZE);
     VKSDOps* surface = context->surface;
@@ -1005,7 +1005,7 @@ static BufferWritingState VKRenderer_AllocateMaskFillBytes(VKRenderingContext* c
  * pixels inside the clip shape are set to "pass".
  * If there is no clip shape, whole attachment is cleared with "pass" value.
  */
-static void VKRenderer_SetupStencil(VKRenderingContext* context) {
+static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
     assert(context != NULL && context->surface != NULL && context->surface->renderPass != NULL);
     VKSDOps* surface = context->surface;
     VKRenderPass* renderPass = surface->renderPass;
@@ -1026,7 +1026,13 @@ static void VKRenderer_SetupStencil(VKRenderingContext* context) {
     surface->device->vkCmdClearAttachments(cb, 1, &clearAttachment, 1, &clearRect);
 
     // Bind the clip pipeline.
-    surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, surface->renderPass->context->clipPipeline);
+    surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        VKPipelines_GetPipeline(surface->renderPass->context, (VKPipelineDescriptor) {
+            .stencilMode = STENCIL_MODE_ON,
+            .composite = NO_COMPOSITE,
+            .shader = SHADER_CLIP,
+            .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+        }));
     // Reset vertex buffer binding.
     renderPass->vertexBufferWriting.bound = VK_FALSE;
 
@@ -1044,13 +1050,13 @@ static void VKRenderer_SetupStencil(VKRenderingContext* context) {
     VKRenderer_FlushDraw(surface);
 
     // Reset pipeline state.
-    renderPass->currentPipeline = NO_PIPELINE;
+    renderPass->state.shader = NO_SHADER;
 }
 
 /**
  * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
  */
-VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
+VkBool32 VKRenderer_Validate(const VKRenderingContext* context, VKShader shader, VkPrimitiveTopology topology) {
     assert(context != NULL && context->surface != NULL);
     VKSDOps* surface = context->surface;
 
@@ -1063,11 +1069,11 @@ VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
     VKRenderPass* renderPass = surface->renderPass;
 
     // Validate render pass state.
-    if (renderPass->currentComposite != context->composite ||
+    if (renderPass->state.composite != context->composite ||
         renderPass->clipModCount != context->clipModCount) {
         // ALPHA_COMPOSITE_DST keeps destination intact, so don't even bother to change the state.
         if (context->composite == ALPHA_COMPOSITE_DST) return VK_FALSE;
-        VKCompositeMode oldComposite = renderPass->currentComposite;
+        VKCompositeMode oldComposite = renderPass->state.composite;
         VkBool32 clipChanged = renderPass->clipModCount != context->clipModCount;
         // Init stencil attachment, if needed.
         if (clipChanged && ARRAY_SIZE(context->clipSpanVertices) > 0 && surface->stencil == NULL) {
@@ -1076,7 +1082,7 @@ VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
         }
         // Update state.
         VKRenderer_FlushDraw(surface);
-        renderPass->currentComposite = context->composite;
+        renderPass->state.composite = context->composite;
         renderPass->clipModCount = context->clipModCount;
         // Begin render pass.
         VkBool32 renderPassJustStarted = !renderPass->pendingCommands;
@@ -1088,31 +1094,28 @@ VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
             if (clipChanged) {
                 if (ARRAY_SIZE(context->clipSpanVertices) > 0) {
                     VKRenderer_SetupStencil(context);
-                    renderPass->currentStencilMode = STENCIL_MODE_ON;
-                } else renderPass->currentStencilMode = surface->stencil != NULL ? STENCIL_MODE_OFF : STENCIL_MODE_NONE;
+                    renderPass->state.stencilMode = STENCIL_MODE_ON;
+                } else renderPass->state.stencilMode = surface->stencil != NULL ? STENCIL_MODE_OFF : STENCIL_MODE_NONE;
             }
         }
         // Validate current composite.
         if (oldComposite != context->composite) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating composite, old=%d, new=%d", oldComposite, context->composite);
             // Reset the pipeline.
-            renderPass->currentPipeline = NO_PIPELINE;
+            renderPass->state.shader = NO_SHADER;
         }
     }
 
     // Validate current pipeline.
-    if (renderPass->currentPipeline != pipeline) {
+    if (renderPass->state.shader != shader || renderPass->state.topology != topology) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating pipeline, old=%d, new=%d",
-                   renderPass->currentPipeline, pipeline);
+                   renderPass->state.shader, shader);
         VKRenderer_FlushDraw(surface);
         VkCommandBuffer cb = renderPass->commandBuffer;
-        renderPass->currentPipeline = pipeline;
-        VKPipelineSetDescriptor pipelineSetDescriptor = {
-                .stencilMode = renderPass->currentStencilMode,
-                .composite = renderPass->currentComposite
-        };
+        renderPass->state.shader = shader;
+        renderPass->state.topology = topology;
         surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                           VKPipelines_GetPipeline(renderPass->context, pipelineSetDescriptor, pipeline));
+                VKPipelines_GetPipeline(renderPass->context, renderPass->state));
         renderPass->vertexBufferWriting.bound = VK_FALSE;
         renderPass->maskFillBufferWriting.bound = VK_FALSE;
     }
@@ -1121,15 +1124,17 @@ VkBool32 VKRenderer_Validate(VKRenderingContext* context, VKPipeline pipeline) {
 
 // Drawing operations.
 
-void VKRenderer_RenderRect(VKRenderingContext* context, VKPipeline pipeline, jint x, jint y, jint w, jint h) {
-    VKRenderer_RenderParallelogram(context, pipeline, (float) x, (float) y, (float) w, 0, 0, (float) h);
+void VKRenderer_RenderRect(const VKRenderingContext* context, VkBool32 fill,
+                           jint x, jint y, jint w, jint h) {
+    VKRenderer_RenderParallelogram(context, fill, (float) x, (float) y, (float) w, 0, 0, (float) h);
 }
 
-void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipeline,
+void VKRenderer_RenderParallelogram(const VKRenderingContext* context, VkBool32 fill,
                                     jfloat x11, jfloat y11,
                                     jfloat dx21, jfloat dy21,
                                     jfloat dx12, jfloat dy12) {
-    if (!VKRenderer_Validate(context, pipeline)) return; // Not ready.
+    if (!VKRenderer_Validate(context, SHADER_COLOR,
+        fill ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : VK_PRIMITIVE_TOPOLOGY_LINE_LIST)) return; // Not ready.
     Color c = context->color;
     /*                   dx21
      *    (p1)---------(p2) |          (p1)------
@@ -1147,23 +1152,23 @@ void VKRenderer_RenderParallelogram(VKRenderingContext* context, VKPipeline pipe
     VKColorVertex p4 = {x11 + dx12, y11 + dy12, c};
 
     VKColorVertex* vs;
-    VK_DRAW(vs, context, pipeline == PIPELINE_DRAW_COLOR ? 8 : 6);
+    VK_DRAW(vs, context, fill ? 6 : 8);
     uint32_t i = 0;
     vs[i++] = p1;
     vs[i++] = p2;
     vs[i++] = p3;
     vs[i++] = p4;
     vs[i++] = p1;
-    if (pipeline == PIPELINE_DRAW_COLOR) {
+    if (!fill) {
         vs[i++] = p4;
         vs[i++] = p2;
     }
     vs[i++] = p3;
 }
 
-void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spans) {
+void VKRenderer_FillSpans(const VKRenderingContext* context, jint spanCount, jint *spans) {
     if (spanCount == 0) return;
-    if (!VKRenderer_Validate(context, PIPELINE_FILL_COLOR)) return; // Not ready.
+    if (!VKRenderer_Validate(context, SHADER_COLOR, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)) return; // Not ready.
     Color c = context->color;
 
     jfloat x1 = (float)*(spans++);
@@ -1190,9 +1195,9 @@ void VKRenderer_FillSpans(VKRenderingContext* context, jint spanCount, jint *spa
     }
 }
 
-void VKRenderer_TextureRender(VKRenderingContext* context, VKImage *destImage, VKImage *srcImage,
+void VKRenderer_TextureRender(const VKRenderingContext* context, VKImage *destImage, VKImage *srcImage,
                               VkBuffer vertexBuffer, uint32_t vertexNum) {
-    if (!VKRenderer_Validate(context, PIPELINE_BLIT)) return; // Not ready.
+    if (!VKRenderer_Validate(context, SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) return; // Not ready.
     VKSDOps* surface = (VKSDOps*)context->surface;
     VKRenderPass* renderPass = surface->renderPass;
     VkCommandBuffer cb = renderPass->commandBuffer;
@@ -1252,9 +1257,9 @@ void VKRenderer_TextureRender(VKRenderingContext* context, VKImage *destImage, V
     device->vkCmdDraw(cb, vertexNum, 1, 0, 0);
 }
 
-void VKRenderer_MaskFill(VKRenderingContext* context, jint x, jint y, jint w, jint h,
+void VKRenderer_MaskFill(const VKRenderingContext* context, jint x, jint y, jint w, jint h,
                          jint maskoff, jint maskscan, jint masklen, uint8_t* mask) {
-    if (!VKRenderer_Validate(context, PIPELINE_MASK_FILL_COLOR)) return; // Not ready.
+    if (!VKRenderer_Validate(context, SHADER_MASK_FILL_COLOR, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)) return; // Not ready.
     // maskoff is the offset from the beginning of mask,
     // it's the same as x and y offset within a tile (maskoff % maskscan, maskoff / maskscan).
     // maskscan is the number of bytes in a row/
