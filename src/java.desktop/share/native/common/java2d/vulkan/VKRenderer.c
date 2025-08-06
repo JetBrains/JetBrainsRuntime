@@ -29,9 +29,9 @@
 #include <assert.h>
 #include <string.h>
 #include "VKUtil.h"
-#include "VKBase.h"
 #include "VKAllocator.h"
 #include "VKBuffer.h"
+#include "VKDevice.h"
 #include "VKImage.h"
 #include "VKRenderer.h"
 #include "VKSurfaceData.h"
