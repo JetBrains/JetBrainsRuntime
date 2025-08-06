@@ -71,6 +71,7 @@ static VkBool32 VKDevice_CheckAndAddFormat(VKEnv* vk, VkPhysicalDevice physicalD
 }
 
 void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
+    jint caps = 0;
     // Query device properties.
     VkPhysicalDeviceVulkan12Features device12Features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
@@ -118,10 +119,9 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     int64_t queueFamily = -1;
     for (uint32_t j = 0; j < queueFamilyCount; j++) {
         VkBool32 presentationSupported = VK_FALSE;
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-        presentationSupported =
-            vk->vkGetPhysicalDeviceWaylandPresentationSupportKHR(physicalDevice, j, vk->waylandDisplay);
-#endif
+        if (vk->platformData != NULL && vk->platformData->checkPresentationSupport != NULL) {
+            presentationSupported = vk->platformData->checkPresentationSupport(vk, physicalDevice, j);
+        }
         char logFlags[5] = {
                 queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT ? 'G' : '-',
                 queueFamilies[j].queueFlags & VK_QUEUE_COMPUTE_BIT ? 'C' : '-',
@@ -133,8 +133,15 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "    %d queues in family (%.*s)", queueFamilies[j].queueCount, 5, logFlags);
 
         // TODO use compute workloads? Separate transfer-only DMA queue?
-        if (queueFamily == -1 && (queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) && presentationSupported) {
-            queueFamily = j;
+        if (queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) { // Queue supports graphics operations.
+            if (!(caps & sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT) && presentationSupported) {
+                // Queue supports presentation, choose it.
+                caps |= sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT;
+                queueFamily = j;
+            } else if (queueFamily == -1) {
+                // We have chosen no queue so far, choose this for now.
+                queueFamily = j;
+            }
         }
     }
     if (queueFamily == -1) {
@@ -156,7 +163,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
 
     // Query supported formats.
     J2dRlsTraceLn(J2D_TRACE_INFO, "    Supported device formats:");
-    VKSampledSrcTypes sampledSrcTypes = {{}, 0};
+    VKSampledSrcTypes sampledSrcTypes = {{}};
     VKSampledSrcType* SRCTYPE_4BYTE = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_4BYTE];
     VKSampledSrcType* SRCTYPE_3BYTE = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_3BYTE];
     VKSampledSrcType* SRCTYPE_565 = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_565];
@@ -164,7 +171,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     ARRAY(jint) supportedFormats = NULL;
 #define CHECK_AND_ADD_FORMAT(FORMAT) VKDevice_CheckAndAddFormat(vk, physicalDevice, &supportedFormats, FORMAT, #FORMAT)
     if (CHECK_AND_ADD_FORMAT(VK_FORMAT_B8G8R8A8_UNORM) && SRCTYPE_4BYTE->format == VK_FORMAT_UNDEFINED) {
-        supportedFormats[0] |= sun_java2d_vulkan_VKGPU_FORMAT_PRESENTABLE_BIT; // TODO Check presentation support.
+        supportedFormats[0] |= sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT; // TODO Check presentation support.
         *SRCTYPE_4BYTE = (VKSampledSrcType) { VK_FORMAT_B8G8R8A8_UNORM, {
             VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_A }};
     }
@@ -205,9 +212,10 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         ARRAY_FREE(supportedFormats);
         return;
     }
-    if (SRCTYPE_3BYTE->format != VK_FORMAT_UNDEFINED) sampledSrcTypes.caps |= sun_java2d_vulkan_VKGPU_SAMPLED_CAP_3BYTE_BIT;
-    if (SRCTYPE_565->format != VK_FORMAT_UNDEFINED) sampledSrcTypes.caps |= sun_java2d_vulkan_VKGPU_SAMPLED_CAP_565_BIT;
-    if (SRCTYPE_555->format != VK_FORMAT_UNDEFINED) sampledSrcTypes.caps |= sun_java2d_vulkan_VKGPU_SAMPLED_CAP_555_BIT;
+    caps |= sun_java2d_vulkan_VKGPU_CAP_SAMPLED_4BYTE_BIT;
+    if (SRCTYPE_3BYTE->format != VK_FORMAT_UNDEFINED) caps |= sun_java2d_vulkan_VKGPU_CAP_SAMPLED_3BYTE_BIT;
+    if (SRCTYPE_565->format != VK_FORMAT_UNDEFINED) caps |= sun_java2d_vulkan_VKGPU_CAP_SAMPLED_565_BIT;
+    if (SRCTYPE_555->format != VK_FORMAT_UNDEFINED) caps |= sun_java2d_vulkan_VKGPU_CAP_SAMPLED_555_BIT;
 
     { // Check stencil format.
         VkFormatProperties formatProperties;
@@ -283,11 +291,10 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         .enabledLayers = deviceEnabledLayers,
         .enabledExtensions = deviceEnabledExtensions,
         .sampledSrcTypes = sampledSrcTypes,
-        .supportedFormats = supportedFormats
+        .supportedFormats = supportedFormats,
+        .caps = caps
     };
 }
-
-const char* VKFunctionTable_InitDevice(VKEnv* vk, VKDevice* device);
 
 void VKDevice_Reset(VKDevice* device) {
     if (device == NULL) return;
@@ -368,13 +375,21 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
     }
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKDevice_init(%s)", device->name);
 
-    const char* missingAPI = VKFunctionTable_InitDevice(vk, device);
-    if (missingAPI != NULL) {
+    // Init function tables.
+    VkBool32 missingAPI = JNI_FALSE;
+    DEVICE_FUNCTION_TABLE(CHECK_PROC_ADDR, missingAPI, vk->vkGetDeviceProcAddr, device->handle, device->)
+    if (missingAPI) {
         VKDevice_Reset(device);
-        const char* fixedMessage = "Vulkan: Required API is missing: ";
-        char message[strlen(fixedMessage) + strlen(missingAPI) + 1];
-        strcpy(message, fixedMessage);
-        strcat(message, missingAPI);
+#define REQUIRED_API_MISSING_MESSAGE "Vulkan: Required API is missing: "
+        size_t size = sizeof(REQUIRED_API_MISSING_MESSAGE);
+#define PFN_CALC_MISSING_NAMES_SIZE(_, NAME) if (device->NAME == NULL) size += sizeof(#NAME) + 1;
+        DEVICE_FUNCTION_TABLE(PFN_CALC_MISSING_NAMES_SIZE)
+        char message[size];
+        memcpy(message, REQUIRED_API_MISSING_MESSAGE, size = sizeof(REQUIRED_API_MISSING_MESSAGE) - 1);
+#define PFN_APPEND_MISSING_NAME(_, NAME) if (device->NAME == NULL) { \
+        memcpy(message + size, #NAME ", ", sizeof(#NAME) + 1); size += sizeof(#NAME) + 1; }
+        DEVICE_FUNCTION_TABLE(PFN_APPEND_MISSING_NAME)
+        message[size - 2] = '\0';
         JNU_ThrowByName(env, "java/lang/RuntimeException", message);
         return;
     }
