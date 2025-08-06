@@ -105,7 +105,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
             WLGraphicsConfig newDefaultConfig;
             // It is necessary to create a new object whenever config changes as its
             // identity is used to detect changes in scale, among other things.
-            if (VKEnv.isVulkanEnabled()) {
+            if (VKEnv.isPresentationEnabled()) {
                 newConfigs = VKEnv.getDevices().flatMap(d -> d.getPresentableGraphicsConfigs().map(
                         gc -> WLVKGraphicsConfig.getConfig(
                                 gc, this, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale)))

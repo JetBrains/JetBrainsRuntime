@@ -546,7 +546,7 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
     }
 
     private static boolean hasCap(VKSurfaceData dst, int cap) {
-        return (dst.getGraphicsConfig().getGPU().getSampledCaps() & cap) != 0;
+        return (dst.getGraphicsConfig().getGPU().getCaps() & cap) != 0;
     }
 
     /**
@@ -571,9 +571,9 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
             } else if (dcm.getTransferType() == DataBuffer.TYPE_SHORT || dcm.getTransferType() == DataBuffer.TYPE_USHORT) {
                 // Short-packed format, we support few standard formats.
                 if (dcm.getRedMask() == 0xf800 && dcm.getGreenMask() == 0x07E0 && dcm.getBlueMask() == 0x001F) {
-                    if (hasCap(dst, VKGPU.SAMPLED_CAP_565_BIT)) return SRCTYPE_565;
+                    if (hasCap(dst, VKGPU.CAP_SAMPLED_565_BIT)) return SRCTYPE_565;
                 } else if (dcm.getRedMask() == 0x7C00 && dcm.getGreenMask() == 0x03E0 && dcm.getBlueMask() == 0x001F) {
-                    if (hasCap(dst, VKGPU.SAMPLED_CAP_555_BIT)) return SRCTYPE_555;
+                    if (hasCap(dst, VKGPU.CAP_SAMPLED_555_BIT)) return SRCTYPE_555;
                 }
             }
         } else if (src.getColorModel() instanceof ComponentColorModel &&
@@ -582,7 +582,7 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
                    sm.getTransferType() == DataBuffer.TYPE_BYTE) {
             // Byte-interleaved format. We support 3 and 4-byte formats with arbitrary component order.
             int stride = sm.getPixelStride();
-            if (stride == 4 || (stride == 3 && hasCap(dst, VKGPU.SAMPLED_CAP_3BYTE_BIT))) {
+            if (stride == 4 || (stride == 3 && hasCap(dst, VKGPU.CAP_SAMPLED_3BYTE_BIT))) {
                 int[] bands = sm.getBandOffsets();
                 if (bands.length >= 3 &&
                     bands[0] >= 0 && bands[0] < stride &&
