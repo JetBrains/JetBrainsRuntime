@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright 2025 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +47,7 @@ public class WLVKVolatileSurfaceManager extends VolatileSurfaceManager {
          */
         int transparency = vImg.getTransparency();
 
-        accelerationEnabled = VKInstance.isSurfaceDataAccelerated() &&
+        accelerationEnabled = VKEnv.isSurfaceDataAccelerated() &&
                 transparency != Transparency.BITMASK;
     }
 
