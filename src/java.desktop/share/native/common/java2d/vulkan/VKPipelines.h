@@ -53,11 +53,17 @@ typedef enum {
  * When adding new fields, update hash and comparison in VKPipelines.c.
  */
 typedef struct {
-    VKStencilMode       stencilMode;
+    VKStencilMode       stencilMode : 2;
+    VkBool32            dstOpaque   : 1;
     VKCompositeMode     composite;
     VKShader            shader;
     VkPrimitiveTopology topology;
 } VKPipelineDescriptor;
+
+typedef struct {
+    VkPipeline pipeline;
+    AlphaType  outAlphaType;
+} VKPipelineInfo;
 
 /**
  * Global pipeline context.
@@ -80,10 +86,10 @@ struct VKPipelineContext {
  * Per-format context.
  */
 struct VKRenderPassContext {
-    VKPipelineContext*           pipelineContext;
-    VkFormat                     format;
-    VkRenderPass                 renderPass[2]; // Color-only and color+stencil.
-    MAP(VKPipelineDescriptor, VkPipeline) pipelines;
+    VKPipelineContext* pipelineContext;
+    VkFormat           format;
+    VkRenderPass       renderPass[2]; // Color-only and color+stencil.
+    MAP(VKPipelineDescriptor, VKPipelineInfo) pipelines;
 };
 
 typedef struct {
@@ -92,7 +98,7 @@ typedef struct {
 
 typedef struct {
     float x, y;
-    Color color;
+    RGBA color;
 } VKColorVertex;
 
 typedef struct {
@@ -102,13 +108,13 @@ typedef struct {
 
 typedef struct {
     int x, y, maskOffset, maskScanline;
-    Color color;
+    RGBA color;
 } VKMaskFillColorVertex;
 
 VKPipelineContext* VKPipelines_CreateContext(VKDevice* device);
 void VKPipelines_DestroyContext(VKPipelineContext* pipelines);
 
 VKRenderPassContext* VKPipelines_GetRenderPassContext(VKPipelineContext* pipelineContext, VkFormat format);
-VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKPipelineDescriptor descriptor);
+VKPipelineInfo VKPipelines_GetPipelineInfo(VKRenderPassContext* renderPassContext, VKPipelineDescriptor descriptor);
 
 #endif //VKPipelines_h_Included
