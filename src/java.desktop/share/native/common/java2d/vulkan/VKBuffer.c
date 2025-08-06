@@ -31,10 +31,6 @@
 #include "VKBuffer.h"
 #include "VKDevice.h"
 
-#define VK_BUFFER_HOST_COHERENT_MEMORY
-
-const size_t VK_BUFFER_CREATE_THRESHOLD = 0xDC000;
-
 static VKMemory VKBuffer_DestroyBuffersOnFailure(VKDevice* device, VKMemory page, uint32_t bufferCount, VKBuffer* buffers) {
     assert(device != NULL && device->allocator != NULL);
     for (uint32_t i = 0; i < bufferCount; i++) {
@@ -181,155 +177,21 @@ VkDescriptorPool VKBuffer_CreateTexelBuffers(VKDevice* device, VkFormat format,
     return pool;
 }
 
-// TODO This is an internal API and should not be used from VKBuffer!
-typedef void (*VKCleanupHandler)(VKDevice* device, void* data);
-void VKRenderer_DisposeOnPrimaryComplete(VKRenderer* renderer, VKCleanupHandler hnd, void* ctx);
-VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
-void VKRenderer_RecordBarriers(VKRenderer* renderer,
-                               VkBufferMemoryBarrier* bufferBarriers, VKBarrierBatch* bufferBatch,
-                               VkImageMemoryBarrier* imageBarriers, VKBarrierBatch* imageBatch);
-
-VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,
-                          VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
-{
-    VKBuffer* buffer = calloc(1, sizeof(VKBuffer));
-    VK_RUNTIME_ASSERT(buffer);
-
-    VkBufferCreateInfo bufferInfo = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = size,
-            .usage = usage,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE
-    };
-
-    VK_IF_ERROR(device->vkCreateBuffer(device->handle, &bufferInfo, NULL, &buffer->handle)) {
-        VKBuffer_Destroy(device, buffer);
-        return NULL;
-    }
-
-    buffer->range.offset = 0;
-    buffer->range.size = size;
-
-    VKMemoryRequirements requirements = VKAllocator_BufferRequirements(device->allocator, buffer->handle);
-    VKAllocator_FindMemoryType(&requirements, properties, VK_ALL_MEMORY_PROPERTIES);
-    if (requirements.memoryType == VK_NO_MEMORY_TYPE) {
-        VKBuffer_Destroy(device, buffer);
-        return NULL;
-    }
-
-    VkMemoryAllocateInfo allocInfo = {
-            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .allocationSize = requirements.requirements.memoryRequirements.size,
-            .memoryTypeIndex = requirements.memoryType
-    };
-
-    VK_IF_ERROR(device->vkAllocateMemory(device->handle, &allocInfo, NULL, &buffer->range.memory)) {
-        VKBuffer_Destroy(device, buffer);
-        return NULL;
-    }
-
-    VK_IF_ERROR(device->vkBindBufferMemory(device->handle, buffer->handle, buffer->range.memory, 0)) {
-        VKBuffer_Destroy(device, buffer);
-        return NULL;
-    }
-    buffer->lastStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    buffer->lastAccess = 0;
-    return buffer;
-}
-
-void VKBuffer_Dispose(VKDevice* device, void* data) {
-    VKBuffer* buffer = data;
-    VKBuffer_Destroy(device, buffer);
-}
-
-VKBuffer *VKBuffer_CreateFromRaster(VKDevice *device,
-                                    VKBuffer_RasterInfo info,
-                                    VkPipelineStageFlags stage,
-                                    VkAccessFlags access)
-{
-    uint32_t dataSize = info.w * info.h * info.pixelStride;
-    VKBuffer *buffer = VKBuffer_Create(device, dataSize,
-                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                                       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-#ifdef VK_BUFFER_HOST_COHERENT_MEMORY
-                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-#endif
-                                       );
-
-    void* data;
-    VK_IF_ERROR(device->vkMapMemory(device->handle, buffer->range.memory, 0, VK_WHOLE_SIZE, 0, &data)) {
-        VKBuffer_Destroy(device, buffer);
-        return NULL;
-    }
-
-    char* raster = (char*)info.data + info.y1 * info.scanStride + info.x1 * info.pixelStride;;
-
-    // copy src pixels inside src bounds to buff
-    for (size_t row = 0; row < info.h; row++) {
-        memcpy((char*)data + (row * info.w * info.pixelStride), raster, info.w * info.pixelStride);
-        raster += (uint32_t) info.scanStride;
-    }
-
-#ifndef VK_BUFFER_HOST_COHERENT_MEMORY
-    device->vkFlushMappedMemoryRanges(device->handle, 1, &buffer->range);
-#endif
-
-    device->vkUnmapMemory(device->handle, buffer->range.memory);
-    {
-        VkBufferMemoryBarrier barrier;
-        VKBarrierBatch barrierBatch = {};
-        VKBuffer_AddBarrier(&barrier, &barrierBatch, buffer, stage, access);
-        VKRenderer_RecordBarriers(device->renderer, &barrier, &barrierBatch, NULL, NULL);
-    }
-    return buffer;
-}
-
-
-VKBuffer* VKBuffer_CreateFromData(VKDevice* device, void* data, VkDeviceSize dataSize,
-                                  VkPipelineStageFlags stage, VkAccessFlags access) {
-    return VKBuffer_CreateFromRaster(device, (VKBuffer_RasterInfo) {
-        .data = data,
-        .w = dataSize,
-        .h = 1,
-        .scanStride = dataSize,
-        .pixelStride = 1
-    }, stage, access);
-}
-
-void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer) {
-    if (buffer != NULL) {
-        if (buffer->handle != VK_NULL_HANDLE) {
-            device->vkDestroyBuffer(device->handle, buffer->handle, NULL);
-        }
-        if (buffer->range.memory != VK_NULL_HANDLE) {
-            device->vkFreeMemory(device->handle, buffer->range.memory, NULL);
-        }
-        free(buffer);
-    }
-}
-
-void VKBuffer_AddBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
-                         VKBuffer* buffer, VkPipelineStageFlags stage, VkAccessFlags access) {
+void VKBuffer_AddBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch, VKBuffer* buffer,
+                         VkPipelineStageFlags srcStage, VkAccessFlags srcAccess,
+                         VkPipelineStageFlags dstStage, VkAccessFlags dstAccess) {
     assert(barriers != NULL && batch != NULL && buffer != NULL);
-    // TODO Even if stage, access and layout didn't change, we may still need a barrier against WaW hazard.
-    if (stage != buffer->lastStage || access != buffer->lastAccess) {
-        barriers[batch->barrierCount] = (VkBufferMemoryBarrier) {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-            .srcAccessMask = buffer->lastAccess,
-            .dstAccessMask = access,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .buffer = buffer->handle,
-            .offset = 0,
-            .size = VK_WHOLE_SIZE
+    barriers[batch->barrierCount] = (VkBufferMemoryBarrier) {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        .srcAccessMask = srcAccess,
+        .dstAccessMask = dstAccess,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .buffer = buffer->handle,
+        .offset = 0,
+        .size = VK_WHOLE_SIZE
     };
-        batch->barrierCount++;
-        batch->srcStages |= buffer->lastStage;
-        batch->dstStages |= stage;
-        buffer->lastStage = stage;
-        buffer->lastAccess = access;
-    }
+    batch->barrierCount++;
+    batch->srcStages |= srcStage;
+    batch->dstStages |= dstStage;
 }
