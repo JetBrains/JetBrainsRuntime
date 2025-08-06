@@ -758,11 +758,15 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
             .maxDepth = 1.0f
     };
     device->vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-    // Calculate inverse viewport for vertex shader.
+
+    // Calculate user to device transform
     VKTransform transform = {
-        2.0f/viewport.width,0.0f, -1.0f,
-        0.0f,2.0f/viewport.height, -1.0f
+        2.0f/viewport.width, 0.0f,                 -1.0f,
+        0.0f,                2.0f/viewport.height, -1.0f
     };
+
+    // Combine it with user transform
+    VKUtil_ConcatenateTransform(&transform, &context.transform);
 
     device->vkCmdPushConstants(
             commandBuffer,
