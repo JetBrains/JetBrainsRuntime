@@ -65,6 +65,12 @@ public class VulkanBlitTest {
         for (Rectangle clip : CLIP_RECTS) COMPLEX_CLIP.add(new Area(clip));
     }
 
+    enum ColorType {
+        SYMMETRIC_RGB,
+        ASYMMETRIC_RGB,
+        GREYSCALE
+    }
+
     static boolean compareColors(Color c1, Color c2, double tolerance) {
         return Math.abs(c1.getRed() - c2.getRed()) <= tolerance &&
                 Math.abs(c1.getGreen() - c2.getGreen()) <= tolerance &&
@@ -103,41 +109,45 @@ public class VulkanBlitTest {
             throw new Error("Unexpected color at "+at+": "+toString(actual)+", expected: "+toString(expected));
         }
     }
-    static void validateClip(BufferedImage image) {
+    static void validateClip(BufferedImage image, double tolerance) {
         for (int i = 1; i <= 3; i += 2) {
             for (int j = 1; j <= 9; j += 4) {
-                validate(image, W*j/12-2, H*0/10, FILL_COLOR, "clipped area", 1);
-                validate(image, W*(j+2)/12+2, H*0/10, FILL_COLOR, "clipped area", 1);
+                validate(image, W*j/12-2, H*0/10, FILL_COLOR, "clipped area", tolerance);
+                validate(image, W*(j+2)/12+2, H*0/10, FILL_COLOR, "clipped area", tolerance);
             }
         }
         for (int i = 1; i < 10; i += 2) {
             for (int j = 0; j < 256; j++) {
-                validate(image, W*j/256+1, H*i/10+2, FILL_COLOR, "clipped area", 1);
+                validate(image, W*j/256+1, H*i/10+2, FILL_COLOR, "clipped area", tolerance);
             }
         }
     }
-    static void validate(BufferedImage image, boolean hasAlpha) {
-        for (int i = 1; i <= 3; i += 2) {
-            String atSuffix = i == 1 ? "" : " (under transparent gradient)";
-            validate(image, W/6, H*i/10, Color.RED, "red stripe" + atSuffix, 1);
-            validate(image, W*3/6, H*i/10, Color.GREEN, "green stripe" + atSuffix, 1);
-            validate(image, W*5/6, H*i/10, Color.BLUE, "blue stripe" + atSuffix, 1);
+    static void validate(BufferedImage image, boolean hasAlpha, ColorType colorType, double tolerance) {
+        if (colorType != ColorType.GREYSCALE) {
+            for (int i = 1; i <= 3; i += 2) {
+                String atSuffix = i == 1 ? "" : " (under transparent gradient)";
+                validate(image, W/6, H*i/10, Color.RED, "red stripe" + atSuffix, tolerance);
+                validate(image, W*3/6, H*i/10, Color.GREEN, "green stripe" + atSuffix, tolerance);
+                validate(image, W*5/6, H*i/10, Color.BLUE, "blue stripe" + atSuffix, tolerance);
+            }
         }
-        for (int j = 0; j < 256; j++) {
-            Color actual = new Color(image.getRGB(W*j/256+1, H*5/10), true);
-            if (actual.getRed() != actual.getGreen() &&
-                actual.getBlue() != actual.getGreen() &&
-                actual.getRed() != actual.getBlue()) {
-                throw new Error("Unexpected color (all components different) at translucent gradient stripe " +
-                                j + ": " + toString(actual));
-            } else if (actual.getRed() == actual.getGreen() &&
-                       actual.getRed() == actual.getBlue()) {
-                throw new Error("Unexpected color (all components equal) at translucent gradient stripe " +
-                                j + ": " + toString(actual));
+        if (colorType == ColorType.SYMMETRIC_RGB) {
+            for (int j = 0; j < 256; j++) {
+                Color actual = new Color(image.getRGB(W*j/256+1, H*5/10), true);
+                if (actual.getRed() != actual.getGreen() &&
+                        actual.getBlue() != actual.getGreen() &&
+                        actual.getRed() != actual.getBlue()) {
+                    throw new Error("Unexpected color (all components different) at translucent gradient stripe " +
+                            j + ": " + toString(actual));
+                } else if (actual.getRed() == actual.getGreen() &&
+                        actual.getRed() == actual.getBlue()) {
+                    throw new Error("Unexpected color (all components equal) at translucent gradient stripe " +
+                            j + ": " + toString(actual));
+                }
             }
         }
         for (int j = 0; j < 256; j++) {
-            validate(image, W*j/256+1, H*7/10, new Color(j, j, j), "opaque gradient stripe " + j, 1);
+            validate(image, W*j/256+1, H*7/10, new Color(j, j, j), "opaque gradient stripe " + j, tolerance);
         }
         for (int j = 0; j < 256; j++) {
             Color expected = new Color(j, j, j, hasAlpha ? j : 255);
@@ -146,6 +156,9 @@ public class VulkanBlitTest {
     }
 
     static void testBlit(Image src, Image dst, String prefix, boolean hasAlpha) throws IOException {
+        testBlit(src, dst, prefix, hasAlpha, ColorType.SYMMETRIC_RGB, 1);
+    }
+    static void testBlit(Image src, Image dst, String prefix, boolean hasAlpha, ColorType colorType, double tolerance) throws IOException {
         BufferedImage validationImage;
 
         {
@@ -162,8 +175,8 @@ public class VulkanBlitTest {
         validationImage = dst instanceof BufferedImage ? (BufferedImage) dst : ((VolatileImage) dst).getSnapshot();
         ImageIO.write(validationImage, "PNG", new File(prefix + "rect-clip.png"));
         try {
-            validate(validationImage, hasAlpha);
-            validateClip(validationImage);
+            validate(validationImage, hasAlpha, colorType, tolerance);
+            validateClip(validationImage, tolerance);
         } catch (Throwable t) {
             throw new Error(prefix + "rect-clip", t);
         }
@@ -180,8 +193,8 @@ public class VulkanBlitTest {
         validationImage = dst instanceof BufferedImage ? (BufferedImage) dst : ((VolatileImage) dst).getSnapshot();
         ImageIO.write(validationImage, "PNG", new File(prefix + "complex-clip.png"));
         try {
-            validate(validationImage, hasAlpha);
-            validateClip(validationImage);
+            validate(validationImage, hasAlpha, colorType, tolerance);
+            validateClip(validationImage, tolerance);
         } catch (Throwable t) {
             throw new Error(prefix + "complex-clip", t);
         }
@@ -197,9 +210,9 @@ public class VulkanBlitTest {
         validationImage = dst instanceof BufferedImage ? (BufferedImage) dst : ((VolatileImage) dst).getSnapshot();
         ImageIO.write(validationImage, "PNG", new File(prefix + "no-clip.png"));
         try {
-            validate(validationImage, hasAlpha);
+            validate(validationImage, hasAlpha, colorType, tolerance);
             try {
-                validateClip(validationImage);
+                validateClip(validationImage, tolerance);
                 throw new Error("Clip validation succeeded");
             } catch (Throwable ignore) {}
         } catch (Throwable t) {
@@ -221,7 +234,7 @@ public class VulkanBlitTest {
         BufferedImage bi = image.getSnapshot();
         ImageIO.write(bi, "PNG", new File(prefix + "snapshot.png"));
         try {
-            validate(bi, hasAlpha);
+            validate(bi, hasAlpha, ColorType.SYMMETRIC_RGB, 1);
         } catch (Throwable t) {
             throw new Error(prefix + "snapshot", t);
         }
@@ -258,6 +271,16 @@ public class VulkanBlitTest {
         bi = new BufferedImage(W, H, BufferedImage.TYPE_4BYTE_ABGR_PRE);
         testBlit(image, bi, prefix + "4BYTE_ABGR_PRE, surface-sw, ", hasAlpha);
         testBlit(bi, check, prefix + "4BYTE_ABGR_PRE, sw-surface, ", hasAlpha);
+        bi = new BufferedImage(W, H, BufferedImage.TYPE_USHORT_565_RGB);
+        testBlit(image, bi, prefix + "TYPE_USHORT_565_RGB, surface-sw, ", false, ColorType.ASYMMETRIC_RGB, 7);
+        testBlit(bi, check, prefix + "TYPE_USHORT_565_RGB, sw-surface, ", false, ColorType.ASYMMETRIC_RGB, 7);
+        bi = new BufferedImage(W, H, BufferedImage.TYPE_USHORT_555_RGB);
+        testBlit(image, bi, prefix + "TYPE_USHORT_555_RGB, surface-sw, ", false, ColorType.SYMMETRIC_RGB, 7);
+        testBlit(bi, check, prefix + "TYPE_USHORT_555_RGB, sw-surface, ", false, ColorType.SYMMETRIC_RGB, 7);
+        // TODO we don't support direct gray blit atm because of the linear color space of TYPE_BYTE_GRAY
+//        bi = new BufferedImage(W, H, BufferedImage.TYPE_BYTE_GRAY);
+//        testBlit(image, bi, prefix + "TYPE_BYTE_GRAY, surface-sw, ", false, ColorType.GREYSCALE, 1);
+//        testBlit(bi, check, prefix + "TYPE_BYTE_GRAY, sw-surface, ", false, ColorType.GREYSCALE, 1);
 
         // Blit into another Vulkan image.
         testBlit(image, check, prefix + "surface-surface, ", hasAlpha);
