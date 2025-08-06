@@ -96,4 +96,7 @@ void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer);
 
 void VKBuffer_Dispose(VKDevice* device, void* ctx);
 
+void VKBuffer_AddBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
+                         VKBuffer* buffer, VkPipelineStageFlags stage, VkAccessFlags access);
+
 #endif // VKBuffer_h_Included
