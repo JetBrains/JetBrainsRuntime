@@ -26,6 +26,7 @@
 
 #include "java_awt_AlphaComposite.h"
 #include "VKTypes.h"
+#include "VKUtil.h"
 
 /**
  * All pipeline types.
@@ -74,27 +75,35 @@ extern const VkPipelineColorBlendAttachmentState COMPOSITE_BLEND_STATES[COMPOSIT
  * Global pipeline context.
  */
 struct VKPipelineContext {
-    VKDevice*             device;
-    VkPipelineLayout      pipelineLayout;
-    VkDescriptorSetLayout textureDescriptorSetLayout;
-    VkPipelineLayout      texturePipelineLayout;
-    VkDescriptorSetLayout maskFillDescriptorSetLayout;
-    VkPipelineLayout      maskFillPipelineLayout;
+    VKDevice*                   device;
+    VkPipelineLayout            pipelineLayout;
+    VkDescriptorSetLayout       textureDescriptorSetLayout;
+    VkPipelineLayout            texturePipelineLayout;
+    VkDescriptorSetLayout       maskFillDescriptorSetLayout;
+    VkPipelineLayout            maskFillPipelineLayout;
 
-    VkSampler             linearRepeatSampler;
+    VkSampler                   linearRepeatSampler;
 
-    struct VKShaders*     shaders;
-    VKRenderPassContext** renderPassContexts;
+    struct VKShaders*           shaders;
+    ARRAY(VKRenderPassContext*) renderPassContexts;
 };
+
+/**
+ * All features describing a pipeline set.
+ * When adding new fields, update hash and comparison in VKPipelines_GetPipeline.
+ */
+typedef struct {
+    VKCompositeMode composite;
+} VKPipelineSetDescriptor;
 
 /**
  * Per-format context.
  */
 struct VKRenderPassContext {
-    VKPipelineContext*     pipelineContext;
-    VkFormat               format;
-    VkRenderPass           renderPass;
-    struct VKPipelineSet** pipelineSets; // TODO we will need a real hash map for this in the future.
+    VKPipelineContext*           pipelineContext;
+    VkFormat                     format;
+    VkRenderPass                 renderPass;
+    MAP(VKPipelineSetDescriptor, struct VKPipelineSet*) pipelineSets;
 };
 
 typedef struct {
@@ -116,6 +125,6 @@ VKPipelineContext* VKPipelines_CreateContext(VKDevice* device);
 void VKPipelines_DestroyContext(VKPipelineContext* pipelines);
 
 VKRenderPassContext* VKPipelines_GetRenderPassContext(VKPipelineContext* pipelineContext, VkFormat format);
-VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKCompositeMode composite, VKPipeline pipeline);
+VkPipeline VKPipelines_GetPipeline(VKRenderPassContext* renderPassContext, VKPipelineSetDescriptor descriptor, VKPipeline pipeline);
 
 #endif //VKPipelines_h_Included
