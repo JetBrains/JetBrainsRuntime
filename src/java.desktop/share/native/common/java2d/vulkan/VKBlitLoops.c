@@ -122,8 +122,9 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
         }
     }
 
-    VKRenderer_TextureRender(dstOps->image, VKTexturePoolHandle_GetTexture(hnd),
-                             renderVertexBuffer->handle, 4);
+    VKImage* src = VKTexturePoolHandle_GetTexture(hnd);
+    VkDescriptorSet srcDescriptorSet = VKImage_GetDescriptorSet(device, src, src->format, 0);
+    VKRenderer_TextureRender(srcDescriptorSet, renderVertexBuffer->handle, 4);
 
 //  TODO: Not optimal but required for releasing raster buffer. Such Buffers should also be managed by special pools
     VKRenderer_FlushSurface(dstOps);
@@ -136,15 +137,11 @@ static void VKBlitSwToTextureViaPooledTexture(VKRenderingContext* context,
 //    VKBuffer_Destroy(device, renderVertexBuffer);
 }
 
-static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VKImage* dest,
+static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VkBool32 srcOpaque,
                                    int sx1, int sy1, int sx2, int sy2,
                                    double dx1, double dy1, double dx2, double dy2)
 {
     VKSDOps* surface = context->surface;
-
-    // TODO this looks wrong, needs to be investigated
-    //      we shouldn't normally need to flush DST surface before the blit, only SRC
-    VKRenderer_FlushRenderPass(surface);
 
     VKDevice* device = surface->device;
 
@@ -187,7 +184,12 @@ static void VKBlitTextureToTexture(VKRenderingContext* context, VKImage* src, VK
         }
     }
 
-    VKRenderer_TextureRender(dest, src, renderVertexBuffer->handle, 4);
+    static const VKPackedSwizzle OPAQUE_SWIZZLE = VK_PACK_SWIZZLE(VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                                  VK_COMPONENT_SWIZZLE_ONE);
+    VkDescriptorSet srcDescriptorSet = VKImage_GetDescriptorSet(device, src, src->format, srcOpaque ? OPAQUE_SWIZZLE : 0);
+    VKRenderer_TextureRender(srcDescriptorSet, renderVertexBuffer->handle, 4);
 
 //  TODO: Not optimal but required for releasing raster buffer. Such Buffers should also be managed by special pools
 //  TODO: Also, consider using VKRenderer_FlushRenderPass here to process pending command
@@ -276,17 +278,24 @@ void VKBlitLoops_IsoBlit(JNIEnv *env, jlong pSrcOps, jboolean xform, jint hint,
         return;
     }
 
+    VKRenderingContext* context = VKRenderer_GetContext();
+    if (srcOps == context->surface) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_IsoBlit: surface blit into itself (%p)", srcOps);
+        return;
+    }
+
     if (srcOps->image == NULL) {
         J2dRlsTraceLn(J2D_TRACE_WARNING, "VKBlitLoops_IsoBlit: srcOps->image is null");
         return;
     }
 
-    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) {
+    VkBool32 srcOpaque = VKSD_IsOpaque(srcOps);
+    AlphaType alphaType = srcOpaque ? ALPHA_TYPE_STRAIGHT : ALPHA_TYPE_PRE_MULTIPLIED;
+    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) {
         J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_IsoBlit: VKRenderer_Validate cannot validate renderer");
         return;
     }
 
-    VKRenderingContext* context = VKRenderer_GetContext();
     // TODO: check if srctype is supported
 
     SurfaceDataRasInfo srcInfo;
@@ -332,7 +341,7 @@ void VKBlitLoops_IsoBlit(JNIEnv *env, jlong pSrcOps, jboolean xform, jint hint,
 
         if (sx2 > sx1 && sy2 > sy1) {
             VKRenderer_FlushRenderPass(srcOps);
-            VKBlitTextureToTexture(context, srcOps->image, context->surface->image,
+            VKBlitTextureToTexture(context, srcOps->image, srcOpaque,
                                    sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
         }
     }
@@ -361,8 +370,8 @@ void VKBlitLoops_Blit(JNIEnv *env,
         return;
     }
 
-
-    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) {
+    // TODO We don't know source alpha type yet.
+    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, ALPHA_TYPE_UNKNOWN)) {
         J2dTraceLn(J2D_TRACE_INFO, "VKBlitLoops_Blit: VKRenderer_Validate cannot validate renderer");
         return;
     }
