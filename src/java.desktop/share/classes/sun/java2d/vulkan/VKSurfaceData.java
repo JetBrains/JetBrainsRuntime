@@ -112,6 +112,7 @@ public abstract class VKSurfaceData extends SurfaceData
         }
     }
 
+    // TODO Do we really want to have scale there? It is used by getDefaultScaleX/Y...
     protected int scale;
     protected int width;
     protected int height;
