@@ -491,8 +491,9 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint xorPixel = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_XOR_COMPOSITE");
-                VKRenderer_GetContext()->renderColor = VKUtil_DecodeJavaColor(xorPixel);
-                VKRenderer_GetContext()->renderColor.a = 0.0f; // Alpha is left unchanged in XOR mode.
+                VKRenderer_GetContext()->renderColor = VKUtil_DecodeJavaColor(xorPixel, ALPHA_TYPE_STRAIGHT);
+                // TODO Fix XOR mode!
+                // VKRenderer_GetContext()->renderColor.a = 0.0f; // Alpha is left unchanged in XOR mode.
                 VKRenderer_GetContext()->composite  = LOGIC_COMPOSITE_XOR;
                 VKRenderer_GetContext()->extraAlpha = 1.0f;
             }
@@ -655,17 +656,17 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_SET_COLOR:
             {
                 jint javaColor = NEXT_INT(b);
-                VKRenderer_GetContext()->color = VKUtil_DecodeJavaColor(javaColor);
+                VKRenderer_GetContext()->color = VKUtil_DecodeJavaColor(javaColor, ALPHA_TYPE_STRAIGHT);
                 if (COMPOSITE_GROUP(VKRenderer_GetContext()->composite) == ALPHA_COMPOSITE_GROUP) {
                     VKRenderer_GetContext()->renderColor = VKRenderer_GetContext()->color;
                 }
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: SET_COLOR(0x%08x)", javaColor);
                 J2dTraceLn(J2D_TRACE_VERBOSE, // Print color values with straight alpha for convenience.
                     "    srgb={%.3f, %.3f, %.3f, %.3f}",
-                    VKRenderer_GetContext()->color.r/VKRenderer_GetContext()->color.a,
-                    VKRenderer_GetContext()->color.g/VKRenderer_GetContext()->color.a,
-                    VKRenderer_GetContext()->color.b/VKRenderer_GetContext()->color.a,
-                    VKRenderer_GetContext()->color.a);
+                    VKUtil_GetRGBA(VKRenderer_GetContext()->color, ALPHA_TYPE_STRAIGHT).r,
+                    VKUtil_GetRGBA(VKRenderer_GetContext()->color, ALPHA_TYPE_STRAIGHT).g,
+                    VKUtil_GetRGBA(VKRenderer_GetContext()->color, ALPHA_TYPE_STRAIGHT).b,
+                    VKUtil_GetRGBA(VKRenderer_GetContext()->color, ALPHA_TYPE_STRAIGHT).a);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_GRADIENT_PAINT:
