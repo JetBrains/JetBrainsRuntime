@@ -40,7 +40,7 @@ static VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
             .image = image->handle,
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
             .format = image->format,
-            .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .subresourceRange.aspectMask = VKImage_GetAspect(image),
             .subresourceRange.baseMipLevel = 0,
             .subresourceRange.levelCount = 1,
             .subresourceRange.baseArrayLayer = 0,
@@ -51,6 +51,11 @@ static VkBool32 VKImage_CreateView(VKDevice* device, VKImage* image) {
         return VK_FALSE;
     }
     return VK_TRUE;
+}
+
+VkImageAspectFlagBits VKImage_GetAspect(VKImage* image) {
+    return VKUtil_GetFormatGroup(image->format).bytes == 0 ? // Unknown format group means stencil.
+           VK_IMAGE_ASPECT_STENCIL_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 }
 
 VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
