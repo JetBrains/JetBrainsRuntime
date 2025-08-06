@@ -264,6 +264,15 @@ public class VulkanBlitTest {
 
         if (image.contentsLost()) throw new Error("Image contents lost");
         if (check.contentsLost()) throw new Error("Check contents lost");
+
+        // Blit into another Vulkan image with a different alpha type.
+        VolatileImage alpha = config.createCompatibleVolatileImage(W, H, 4 - transparency);
+        if (alpha.validate(config) == VolatileImage.IMAGE_INCOMPATIBLE) {
+            throw new Error("Image validation failed");
+        }
+        testBlit(image, alpha, prefix + "surface-surface, other-alpha, ", false);
+        if (image.contentsLost()) throw new Error("Image contents lost");
+        if (alpha.contentsLost()) throw new Error("Alpha contents lost");
     }
 
     public static void main(String[] args) throws IOException {
