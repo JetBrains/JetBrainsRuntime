@@ -30,14 +30,8 @@
 #include "VKAllocator.h"
 #include "VKUtil.h"
 
-#define ARRAY_TO_VERTEX_BUF(device, vertices)                                           \
-    VKBuffer_CreateFromData(device, vertices, ARRAY_SIZE(vertices)*sizeof (vertices[0]),\
-    VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT)
-
 struct VKBuffer {
     VkBuffer handle;
-    VkPipelineStageFlagBits lastStage;
-    VkAccessFlagBits        lastAccess;
     // Buffer has no ownership over its memory.
     // Provided memory, offset and size must only be used to flush memory writes.
     // Allocation and freeing is done in pages.
@@ -97,7 +91,8 @@ void VKBuffer_Destroy(VKDevice* device, VKBuffer* buffer);
 
 void VKBuffer_Dispose(VKDevice* device, void* ctx);
 
-void VKBuffer_AddBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch,
-                         VKBuffer* buffer, VkPipelineStageFlags stage, VkAccessFlags access);
+void VKBuffer_AddBarrier(VkBufferMemoryBarrier* barriers, VKBarrierBatch* batch, VKBuffer* buffer,
+                         VkPipelineStageFlags srcStage, VkAccessFlags srcAccess,
+                         VkPipelineStageFlags dstStage, VkAccessFlags dstAccess);
 
 #endif // VKBuffer_h_Included
