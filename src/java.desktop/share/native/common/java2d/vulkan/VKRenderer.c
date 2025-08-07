@@ -147,13 +147,15 @@ typedef struct {
  * Rendering-related info attached to the surface.
  */
 struct VKRenderPass {
-    VKRenderPassContext* context;
-    ARRAY(VKBuffer)      vertexBuffers;
-    ARRAY(VKTexelBuffer) maskFillBuffers;
-    ARRAY(VKSDOps*)      usedSurfaces;
-    VkRenderPass         renderPass; // Non-owning.
-    VkFramebuffer        framebuffer;
-    VkCommandBuffer      commandBuffer;
+    VKRenderPassContext*       context;
+    ARRAY(VkMappedMemoryRange) flushRanges;
+    ARRAY(VKBuffer)            vertexBuffers;
+    ARRAY(VKTexelBuffer)       maskFillBuffers;
+    ARRAY(VKCleanupEntry)      cleanupQueue;
+    ARRAY(VKSDOps*)            usedSurfaces;
+    VkRenderPass               renderPass; // Non-owning.
+    VkFramebuffer              framebuffer;
+    VkCommandBuffer            commandBuffer;
 
     uint32_t           firstVertex;
     uint32_t           vertexCount;
@@ -577,10 +579,11 @@ inline void VKRenderer_FlushDraw(VKSDOps* surface) {
 }
 
 /**
- * Flush vertex buffer writes, push vertex buffers to the pending queue, reset drawing state for the surface.
+ * Flush buffer writes, push buffers to the pending queue, reset the drawing state for the surface.
  */
 static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
+    VKRenderer* renderer = surface->device->renderer;
     surface->renderPass->state.composite = NO_COMPOSITE;
     surface->renderPass->state.shader = NO_SHADER;
     surface->renderPass->transformModCount = 0;
@@ -588,22 +591,26 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     surface->renderPass->vertexCount = 0;
     surface->renderPass->vertexBufferWriting = (BufferWritingState) {NULL, 0, VK_FALSE};
     surface->renderPass->maskFillBufferWriting = (BufferWritingState) {NULL, 0, VK_FALSE};
+    if (ARRAY_SIZE(surface->renderPass->flushRanges) > 0) {
+        VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle,
+            ARRAY_SIZE(surface->renderPass->flushRanges), surface->renderPass->flushRanges)) {}
+        ARRAY_RESIZE(surface->renderPass->flushRanges, 0);
+    }
     size_t vertexBufferCount = ARRAY_SIZE(surface->renderPass->vertexBuffers);
     size_t maskFillBufferCount = ARRAY_SIZE(surface->renderPass->maskFillBuffers);
-    if (vertexBufferCount == 0 && maskFillBufferCount == 0) return;
-    VkMappedMemoryRange memoryRanges[vertexBufferCount + maskFillBufferCount];
+    size_t cleanupQueueCount = ARRAY_SIZE(surface->renderPass->cleanupQueue);
     for (uint32_t i = 0; i < vertexBufferCount; i++) {
-        memoryRanges[i] = surface->renderPass->vertexBuffers[i].range;
         POOL_RETURN(surface->device->renderer, vertexBufferPool, surface->renderPass->vertexBuffers[i]);
     }
     for (uint32_t i = 0; i < maskFillBufferCount; i++) {
-        memoryRanges[vertexBufferCount + i] = surface->renderPass->maskFillBuffers[i].buffer.range;
         POOL_RETURN(surface->device->renderer, maskFillBufferPool, surface->renderPass->maskFillBuffers[i]);
+    }
+    for (uint32_t i = 0; i < cleanupQueueCount; i++) {
+        POOL_RETURN(surface->device->renderer, cleanupQueue, surface->renderPass->cleanupQueue[i]);
     }
     ARRAY_RESIZE(surface->renderPass->vertexBuffers, 0);
     ARRAY_RESIZE(surface->renderPass->maskFillBuffers, 0);
-    VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle,
-                                                           vertexBufferCount + maskFillBufferCount, memoryRanges)) {}
+    ARRAY_RESIZE(surface->renderPass->cleanupQueue, 0);
 }
 
 /**
@@ -1072,6 +1079,7 @@ static uint32_t VKRenderer_AllocateVertices(uint32_t primitives, uint32_t vertic
         if (writing.state.data == NULL) {
             VKBuffer buffer = VKRenderer_GetVertexBuffer(surface->device->renderer);
             ARRAY_PUSH_BACK(surface->renderPass->vertexBuffers) = buffer;
+            ARRAY_PUSH_BACK(surface->renderPass->flushRanges) = buffer.range;
             surface->renderPass->vertexBufferWriting.data = writing.state.data = buffer.data;
         }
         assert(ARRAY_SIZE(surface->renderPass->vertexBuffers) > 0);
@@ -1110,6 +1118,7 @@ static BufferWritingState VKRenderer_AllocateMaskFillBytes(uint32_t size) {
         if (state.data == NULL) {
             VKTexelBuffer buffer = VKRenderer_GetMaskFillBuffer(surface->device->renderer);
             ARRAY_PUSH_BACK(surface->renderPass->maskFillBuffers) = buffer;
+            ARRAY_PUSH_BACK(surface->renderPass->flushRanges) = buffer.buffer.range;
             surface->renderPass->maskFillBufferWriting.data = state.data = buffer.buffer.data;
         }
         assert(ARRAY_SIZE(surface->renderPass->maskFillBuffers) > 0);
@@ -1201,8 +1210,12 @@ static void VKRenderer_SetupStencil() {
     renderPass->state.shader = NO_SHADER;
 }
 
-void VKRenderer_CleanupLater(VKRenderer* renderer, VKCleanupHandler handler, void* data) {
-    POOL_RETURN(renderer, cleanupQueue, ((VKCleanupEntry) { handler, data }));
+void VKRenderer_ExecOnCleanup(VKSDOps* surface, VKCleanupHandler handler, void* data) {
+    ARRAY_PUSH_BACK(surface->renderPass->cleanupQueue) = (VKCleanupEntry) { handler, data };
+}
+
+void VKRenderer_FlushMemory(VKSDOps* surface, VkMappedMemoryRange range) {
+    ARRAY_PUSH_BACK(surface->renderPass->flushRanges) = range;
 }
 
 void VKRenderer_RecordBarriers(VKRenderer* renderer,
@@ -1376,28 +1389,6 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans) {
     }
 }
 
-void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexBuffer, uint32_t vertexNum,
-                              jint filter, VKSamplerWrap wrap) {
-    // VKRenderer_Validate was called by VKBlitLoops. TODO refactor this.
-    VKSDOps* surface = VKRenderer_GetContext()->surface;
-    VKRenderPass* renderPass = surface->renderPass;
-    VkCommandBuffer cb = renderPass->commandBuffer;
-    VKDevice* device = surface->device;
-
-    // TODO We flush all pending draws and rebind the vertex buffer with the provided one.
-    //      We will make it work with our unified vertex buffer later.
-    VKRenderer_FlushDraw(surface);
-    renderPass->vertexBufferWriting.bound = VK_FALSE;
-    VkBuffer vertexBuffers[] = {vertexBuffer};
-    VkDeviceSize offsets[] = {0};
-    device->vkCmdBindVertexBuffers(cb, 0, 1, vertexBuffers, offsets);
-    VkDescriptorSet descriptorSets[] = { srcDescriptorSet,
-        VKSamplers_GetDescriptorSet(device, &device->renderer->pipelineContext->samplers, filter, wrap) };
-    device->vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    device->renderer->pipelineContext->texturePipelineLayout, 0, 2, descriptorSets, 0, NULL);
-    device->vkCmdDraw(cb, vertexNum, 1, 0, 0);
-}
-
 void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
                          jint maskoff, jint maskscan, jint masklen, uint8_t *mask) {
     if (!VKRenderer_Validate(SHADER_MASK_FILL_COLOR,
@@ -1432,11 +1423,10 @@ void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
     vs[3] = p1; vs[4] = p3; vs[5] = p4;
 }
 
-void VKRenderer_DrawImage(VKImage* image, AlphaType alphaType, VkFormat format,
+void VKRenderer_DrawImage(VKImage* image, VkFormat format,
                           VKPackedSwizzle swizzle, jint filter, VKSamplerWrap wrap,
                           float sx1, float sy1, float sx2, float sy2,
                           float dx1, float dy1, float dx2, float dy2) {
-    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) return;
     VKSDOps* surface = VKRenderer_GetContext()->surface;
     VKDevice* device = surface->device;
 
