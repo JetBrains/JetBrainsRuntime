@@ -596,6 +596,41 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
               int sx1, int sy1, int sx2, int sy2,
               double dx1, double dy1, double dx2, double dy2,
               int w, int h) {
+        // Clip to destination bounds.
+        // This may help to reduce the amount of memory to be copied.
+        if (xform == null) {
+            double cx1 = 0, cy1 = 0, cx2 = ((VKSurfaceData) dst).width, cy2 = ((VKSurfaceData) dst).height;
+            if (clip != null) {
+                if (clip.getLoX() > cx1) cx1 = clip.getLoX();
+                if (clip.getLoY() > cy1) cy1 = clip.getLoY();
+                if (clip.getHiX() < cx2) cx2 = clip.getHiX();
+                if (clip.getHiY() < cy2) cy2 = clip.getHiY();
+            }
+            if (cx1 > dx1) {
+                double rx = (dx2 - dx1) / (sx2 - sx1);
+                int ix = (int) ((cx1 - dx1) / rx);
+                sx1 += ix; dx1 += rx * ix;
+            }
+            if (cx2 < dx2) {
+                double rx = (dx2 - dx1) / (sx2 - sx1);
+                int ix = (int) ((cx2 - dx2) / rx);
+                sx2 += ix; dx2 += rx * ix;
+            }
+            if (cy1 > dy1) {
+                double ry = (dy2 - dy1) / (sy2 - sy1);
+                int iy = (int) ((cy1 - dy1) / ry);
+                sy1 += iy; dy1 += ry * iy;
+            }
+            if (cy2 < dy2) {
+                double ry = (dy2 - dy1) / (sy2 - sy1);
+                int iy = (int) ((cy2 - dy2) / ry);
+                sy2 += iy; dy2 += ry * iy;
+            }
+            w = sx2 - sx1;
+            h = sy2 - sy1;
+            if (w <= 0 || h <= 0) return;
+        }
+
         int srcType = encodeSrcType(src, (VKSurfaceData) dst);
         if (srcType == -1) {
             try (VKStageSurface stageSurface = getStage(src, (VKSurfaceData) dst)) {
