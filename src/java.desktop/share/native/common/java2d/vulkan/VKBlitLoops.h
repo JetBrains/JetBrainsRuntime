@@ -35,14 +35,9 @@ void VKBlitLoops_IsoBlit(VKSDOps* src, jint filter,
                          jint sx1, jint sy1, jint sx2, jint sy2,
                          jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2);
 
-void VKBlitLoops_Blit(JNIEnv *env,
-                       jlong pSrcOps,
-                       jboolean xform, jint hint,
-                       jshort srctype,
-                       jint sx1, jint sy1,
-                       jint sx2, jint sy2,
-                       jdouble dx1, jdouble dy1,
-                       jdouble dx2, jdouble dy2);
+void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint filter,
+                      jint sx1, jint sy1, jint sx2, jint sy2,
+                      jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2);
 
 void VKBlitLoops_SurfaceToSwBlit(JNIEnv* env, VKSDOps* src, SurfaceDataOps* dst,
                                  jint srcx, jint srcy, jint dstx, jint dsty, jint width, jint height);
