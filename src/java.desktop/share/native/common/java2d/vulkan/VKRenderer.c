@@ -1199,15 +1199,12 @@ static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
     renderPass->vertexBufferWriting.bound = VK_FALSE;
 
     // Rasterize clip spans.
-    const uint32_t MAX_VERTICES_PER_DRAW = (VERTEX_BUFFER_SIZE / sizeof(VKIntVertex) / 3) * 3;
+    uint32_t primitiveCount = ARRAY_SIZE(context->clipSpanVertices) / 3;
     VKIntVertex* vs;
-    for (uint32_t drawn = 0;;) {
-        uint32_t currentDraw = ARRAY_SIZE(context->clipSpanVertices) - drawn;
-        if (currentDraw > MAX_VERTICES_PER_DRAW) currentDraw = MAX_VERTICES_PER_DRAW;
-        else if (currentDraw == 0) break;
-        VK_DRAW(vs, 1, currentDraw);
-        memcpy(vs, context->clipSpanVertices + drawn, currentDraw * sizeof(VKIntVertex));
-        drawn += currentDraw;
+    for (uint32_t primitivesDrawn = 0; primitivesDrawn < primitiveCount;) {
+        uint32_t currentDraw = VK_DRAW(vs, primitiveCount - primitivesDrawn, 3);
+        memcpy(vs, context->clipSpanVertices + primitivesDrawn * 3, currentDraw * 3 * sizeof(VKIntVertex));
+        primitivesDrawn += currentDraw;
     }
     VKRenderer_FlushDraw(surface);
 
