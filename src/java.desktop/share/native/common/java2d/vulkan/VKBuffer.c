@@ -30,7 +30,6 @@
 #include "VKAllocator.h"
 #include "VKBuffer.h"
 #include "VKDevice.h"
-#include "VKRenderer.h"
 
 #define VK_BUFFER_HOST_COHERENT_MEMORY
 
@@ -233,6 +232,11 @@ void VKBuffer_Dispose(VKDevice* device, void* data) {
     VKBuffer_Destroy(device, buffer);
 }
 
+// TODO This is an internal API and should not be used from VKBuffer!
+void VKRenderer_RecordBarriers(VKRenderer* renderer,
+                               VkBufferMemoryBarrier* bufferBarriers, VKBarrierBatch* bufferBatch,
+                               VkImageMemoryBarrier* imageBarriers, VKBarrierBatch* imageBatch);
+
 VKBuffer *VKBuffer_CreateFromRaster(VKDevice *device,
                                         VKBuffer_RasterInfo info,
                                         VkPipelineStageFlags stage,
@@ -270,19 +274,10 @@ VKBuffer *VKBuffer_CreateFromRaster(VKDevice *device,
 
     device->vkUnmapMemory(device->handle, buffer->range.memory);
     {
-        VkCommandBuffer cb = VKRenderer_Record(device->renderer);
         VkBufferMemoryBarrier barrier;
         VKBarrierBatch barrierBatch = {};
-        VKBuffer_AddBarrier(&barrier, &barrierBatch, buffer,
-                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, stage, access);
-
-        if (barrierBatch.barrierCount > 0) {
-            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages,
-                                         barrierBatch.dstStages,
-                                         0, 0, NULL,
-                                         barrierBatch.barrierCount, &barrier,
-                                         0, NULL);
-        }
+        VKBuffer_AddBarrier(&barrier, &barrierBatch, buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, stage, access);
+        VKRenderer_RecordBarriers(device->renderer, &barrier, &barrierBatch, NULL, NULL);
     }
     return buffer;
 }
