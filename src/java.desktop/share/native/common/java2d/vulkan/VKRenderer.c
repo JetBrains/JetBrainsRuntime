@@ -614,6 +614,25 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
 }
 
 /**
+ * Flush render passes depending on a given surface.
+ * This function must be called before mutating a surface
+ * because there may be pending render passes reading from that surface.
+ */
+static void VKRenderer_FlushDependentRenderPasses(VKSDOps* surface) {
+    // We're going to clear dependentSurfaces in the end anyway,
+    // so temporarily reset it to NULL to save on removing flushed render passes one-by-one.
+    ARRAY(VKSDOps*) deps = surface->dependentSurfaces;
+    surface->dependentSurfaces = NULL;
+    uint32_t size = (uint32_t) ARRAY_SIZE(deps);
+    if (size > 0) J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "VKRenderer_FlushDependentRenderPasses(%p): %d", surface, size);
+    for (uint32_t i = 0; i < size; i++) {
+        VKRenderer_FlushRenderPass(deps[i]);
+    }
+    ARRAY_RESIZE(deps, 0);
+    surface->dependentSurfaces = deps;
+}
+
+/**
  * Discard all recorded commands for the render pass.
  */
 static void VKRenderer_DiscardRenderPass(VKSDOps* surface) {
@@ -626,7 +645,6 @@ static void VKRenderer_DiscardRenderPass(VKSDOps* surface) {
         J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_DiscardRenderPass(%p)", surface);
     }
 }
-static void VKRenderer_FlushDependentRenderPasses(VKSDOps* surface);
 
 void VKRenderer_DestroyRenderPass(VKSDOps* surface) {
     assert(surface != NULL);
@@ -903,24 +921,6 @@ VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface) {
     return VK_TRUE;
 }
 
-/**
- * Flush render passes depending on a given surface.
- * This function must be called before mutating a surface
- * because there may be pending render passes reading from that surface.
- */
-static void VKRenderer_FlushDependentRenderPasses(VKSDOps* surface) {
-    // We're going to clear dependentSurfaces in the end anyway,
-    // so temporarily reset it to NULL to save on removing flushed render passes one-by-one.
-    ARRAY(VKSDOps*) deps = surface->dependentSurfaces;
-    surface->dependentSurfaces = NULL;
-    uint32_t size = (uint32_t) ARRAY_SIZE(deps);
-    if (size > 0) J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "VKRenderer_FlushDependentRenderPasses(%p): %d", surface, size);
-    for (uint32_t i = 0; i < size; i++) {
-        VKRenderer_FlushRenderPass(deps[i]);
-    }
-    ARRAY_RESIZE(deps, 0);
-    surface->dependentSurfaces = deps;
-}
 void VKRenderer_FlushSurface(VKSDOps* surface) {
     assert(surface != NULL);
     if (!VKRenderer_FlushRenderPass(surface)) return;
