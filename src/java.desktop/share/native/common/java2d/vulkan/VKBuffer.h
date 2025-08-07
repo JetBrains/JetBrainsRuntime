@@ -29,10 +29,6 @@
 
 #include "VKTypes.h"
 
-#define ARRAY_TO_VERTEX_BUF(device, vertices)                                           \
-    VKBuffer_CreateFromData(device, vertices, ARRAY_SIZE(vertices)*sizeof (vertices[0]),\
-    VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT)
-
 struct VKBuffer {
     VkBuffer handle;
     // Buffer has no ownership over its memory.

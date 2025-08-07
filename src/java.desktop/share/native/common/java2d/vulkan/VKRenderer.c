@@ -1390,28 +1390,6 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans) {
     }
 }
 
-void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexBuffer, uint32_t vertexNum,
-                              jint filter, VKSamplerWrap wrap) {
-    // VKRenderer_Validate was called by VKBlitLoops. TODO refactor this.
-    VKSDOps* surface = (VKSDOps*)context.surface;
-    VKRenderPass* renderPass = surface->renderPass;
-    VkCommandBuffer cb = renderPass->commandBuffer;
-    VKDevice* device = surface->device;
-
-    // TODO We flush all pending draws and rebind the vertex buffer with the provided one.
-    //      We will make it work with our unified vertex buffer later.
-    VKRenderer_FlushDraw(surface);
-    renderPass->vertexBufferWriting.bound = VK_FALSE;
-    VkBuffer vertexBuffers[] = {vertexBuffer};
-    VkDeviceSize offsets[] = {0};
-    device->vkCmdBindVertexBuffers(cb, 0, 1, vertexBuffers, offsets);
-    VkDescriptorSet descriptorSets[] = { srcDescriptorSet,
-        VKSamplers_GetDescriptorSet(device, &device->renderer->pipelineContext->samplers, filter, wrap) };
-    device->vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    device->renderer->pipelineContext->texturePipelineLayout, 0, 2, descriptorSets, 0, NULL);
-    device->vkCmdDraw(cb, vertexNum, 1, 0, 0);
-}
-
 void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
                          jint maskoff, jint maskscan, jint masklen, uint8_t *mask) {
     if (!VKRenderer_Validate(SHADER_MASK_FILL_COLOR,

@@ -66,11 +66,6 @@ VKRenderer* VKRenderer_Create(VKDevice* device);
 VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, AlphaType inAlphaType);
 
 /**
- * Record draw command, if there are any pending vertices in the vertex buffer
- */
-void VKRenderer_FlushDraw(VKSDOps* surface);
-
-/**
  * Record commands into primary command buffer (outside of a render pass).
  * Recorded commands will be sent for execution via VKRenderer_Flush.
  */
@@ -130,11 +125,6 @@ void VKRenderer_FlushSurface(VKSDOps* surface);
 void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* device);
 
 void VKRenderer_AddSurfaceDependency(VKSDOps* src, VKSDOps* dst);
-
-// Blit operations.
-
-void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexBuffer, uint32_t vertexNum,
-                              jint filter, VKSamplerWrap wrap);
 
 // Drawing operations.
 
