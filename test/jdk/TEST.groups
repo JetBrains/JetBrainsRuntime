@@ -900,7 +900,6 @@ jdk_awt_wayland = \
     -java/awt/event/KeyEvent/RobotCrash/RobotCrash.java \
     -java/awt/event/KeyEvent/ShiftF10Test.java \
     -java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java \
-    -java/awt/event/MouseEvent/AWTPanelSmoothWheel/AWTPanelSmoothWheel.html \
     -java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java \
     -java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java \
     -java/awt/event/MouseEvent/DisabledComponents/DisabledComponentsTest.java \
