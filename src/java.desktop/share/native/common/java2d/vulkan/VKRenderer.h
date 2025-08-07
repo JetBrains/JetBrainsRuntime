@@ -105,9 +105,14 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface);
 VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface);
 
 /**
- * Register a handler to be called after the current primary command buffer finishes execution.
+ * Register a handler to be called after the render pass is completed.
  */
-void VKRenderer_CleanupLater(VKRenderer* renderer, VKCleanupHandler hnd, void* data);
+void VKRenderer_ExecOnCleanup(VKSDOps* surface, VKCleanupHandler handler, void* data);
+
+/**
+ * Register a memory range that will be flushed before executing the render pass.
+ */
+void VKRenderer_FlushMemory(VKSDOps* surface, VkMappedMemoryRange range);
 
 /**
  * Flush pending render pass and queue surface for presentation (if applicable).
@@ -122,11 +127,6 @@ void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* 
 
 void VKRenderer_AddSurfaceDependency(VKSDOps* src, VKSDOps* dst);
 
-// Blit operations.
-
-void VKRenderer_TextureRender(VkDescriptorSet srcDescriptorSet, VkBuffer vertexBuffer, uint32_t vertexNum,
-                              jint filter, VKSamplerWrap wrap);
-
 // Drawing operations.
 
 void VKRenderer_RenderRect(VkBool32 fill, jint x, jint y, jint w, jint h);
@@ -138,11 +138,10 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
 
 void VKRenderer_FillSpans(jint spanCount, jint *spans);
 
-void
-VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
-                    jint maskoff, jint maskscan, jint masklen, uint8_t *mask);
+void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
+                         jint maskoff, jint maskscan, jint masklen, uint8_t *mask);
 
-void VKRenderer_DrawImage(VKImage* image, AlphaType alphaType, VkFormat format,
+void VKRenderer_DrawImage(VKImage* image, VkFormat format,
                           VKPackedSwizzle swizzle, jint filter, VKSamplerWrap wrap,
                           float sx1, float sy1, float sx2, float sy2,
                           float dx1, float dy1, float dx2, float dy2);

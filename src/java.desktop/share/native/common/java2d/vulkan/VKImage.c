@@ -27,7 +27,7 @@
 #include <assert.h>
 #include "VKUtil.h"
 #include "VKAllocator.h"
-#include "VKBuffer.h"
+#include "VKBuffer.h" // TODO refactor this
 #include "VKDevice.h"
 #include "VKImage.h"
 #include "VKRenderer.h"
