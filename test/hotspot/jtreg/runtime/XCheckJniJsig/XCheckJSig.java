@@ -29,6 +29,8 @@
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @requires os.family == "linux" | os.family == "mac"
+ * @comment loading of the jsig lib does currently not work well with ASAN lib
+ * @requires !vm.asan
  * @run driver XCheckJSig
  */
 

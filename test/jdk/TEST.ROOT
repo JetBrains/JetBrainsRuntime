@@ -93,6 +93,8 @@ requires.properties= \
     vm.cds.write.archived.java.heap \
     vm.continuations \
     vm.musl \
+    vm.asan \
+    vm.ubsan \
     vm.debug \
     vm.hasSA \
     vm.hasJFR \
