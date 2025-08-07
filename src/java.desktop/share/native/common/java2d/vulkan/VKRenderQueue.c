@@ -349,8 +349,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                                         dx1, dy1, dx2, dy2);
                 } else {
                     jshort srctype = EXTRACT_SHORT(packedParams, OFFSET_SRCTYPE);
-                    VKBlitLoops_Blit(env, ptr_to_jlong(src),
-                                     xform, hint, srctype,
+                    VKBlitLoops_Blit(env, src, srctype, hint,
                                      sx1, sy1, sx2, sy2,
                                      dx1, dy1, dx2, dy2);
                 }
