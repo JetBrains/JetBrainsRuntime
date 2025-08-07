@@ -39,6 +39,8 @@ BUILD_NAME="$(ls "$EXPLODED")"
 rm -f $EXPLODED/$BUILD_NAME/Contents/CodeResources
 rm "$INPUT_FILE"
 
+ls $EXPLODED
+
 log "$INPUT_FILE extracted and removed"
 
 APP_NAME=$(basename "$INPUT_FILE" | awk -F".tar" '{ print $1 }')
