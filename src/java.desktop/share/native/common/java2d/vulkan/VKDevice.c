@@ -348,6 +348,7 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
     }
     J2dRlsTraceLn1(J2D_TRACE_INFO, "VKDevice_init(%s)", device->name);
 
+    // Init function tables.
     VkBool32 missingAPI = JNI_FALSE;
     DEVICE_FUNCTION_TABLE(CHECK_PROC_ADDR, missingAPI, vk->vkGetDeviceProcAddr, device->handle, device->)
     if (device->caps & CAP_PRESENTABLE_BIT) {

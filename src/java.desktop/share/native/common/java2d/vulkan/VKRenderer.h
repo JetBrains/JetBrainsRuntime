@@ -27,7 +27,6 @@
 #ifndef VKRenderer_h_Included
 #define VKRenderer_h_Included
 
-#include "SurfaceData.h"
 #include "VKTypes.h"
 #include "VKPipelines.h"
 
@@ -61,12 +60,12 @@ typedef void (*VKCleanupHandler)(VKDevice* device, void* data);
 VKRenderer* VKRenderer_Create(VKDevice* device);
 
 /**
- * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
+ * Setup pipeline for drawing. Returns FALSE if the surface is not yet ready for drawing.
  */
 VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, AlphaType inAlphaType);
 
 /**
- * Record commands into primary command buffer (outside of a render pass).
+ * Record commands into the primary command buffer (outside of a render pass).
  * Recorded commands will be sent for execution via VKRenderer_Flush.
  */
 VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
@@ -83,7 +82,9 @@ void VKRenderer_CreateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool*
 void VKRenderer_Destroy(VKRenderer* renderer);
 
 /**
- * Wait for all rendering commands to complete.
+ * Wait for the latest checkpoint to be reached by GPU.
+ * This only affects commands tracked by the timeline semaphore,
+ * unlike vkDeviceWaitIdle / vkQueueWaitIdle.
  */
 void VKRenderer_Sync(VKRenderer* renderer);
 

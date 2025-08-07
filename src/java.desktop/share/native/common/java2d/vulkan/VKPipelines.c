@@ -21,6 +21,7 @@
 // or visit www.oracle.com if you need additional information or have any
 // questions.
 
+#include <assert.h>
 #include "VKUtil.h"
 #include "VKEnv.h"
 #include "VKPipelines.h"
@@ -527,8 +528,6 @@ VKRenderPassContext* VKPipelines_GetRenderPassContext(VKPipelineContext* pipelin
     ARRAY_PUSH_BACK(pipelineContext->renderPassContexts) = renderPassContext;
     return renderPassContext;
 }
-
-// static VKPipelineInfo VKPipelines_
 
 VKPipelineInfo VKPipelines_GetPipelineInfo(VKRenderPassContext* renderPassContext, VKPipelineDescriptor descriptor) {
     assert(renderPassContext != NULL);

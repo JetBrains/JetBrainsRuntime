@@ -63,7 +63,7 @@ RING_BUFFER(struct PoolEntry_ ## NAME { \
 
 /**
  * Insert an item into the pool. It is available for POOL_TAKE immediately.
- * This is usually used for bulk insertion of newly-created resources.
+ * This is usually used for bulk insertion of newly created resources.
  */
 #define POOL_INSERT(RENDERER, NAME, VAR) (RING_BUFFER_PUSH_FRONT((RENDERER)->NAME) = \
     (struct PoolEntry_ ## NAME) { .timestamp = 0ULL, .value = (VAR) })
@@ -89,7 +89,7 @@ typedef struct {
 } VKCleanupEntry;
 
 /**
- * Renderer attached to device.
+ * Renderer attached to the device.
  */
 struct VKRenderer {
     VKDevice*          device;
@@ -144,7 +144,7 @@ typedef struct {
 } BufferWriting;
 
 /**
- * Rendering-related info attached to surface.
+ * Rendering-related info attached to the surface.
  */
 struct VKRenderPass {
     VKRenderPassContext* context;
@@ -559,7 +559,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
 }
 
 /**
- * Get Color RGBA components in a suitable for the current render pass.
+ * Get Color RGBA components in a format suitable for the current render pass.
  */
 inline RGBA VKRenderer_GetRGBA(VKSDOps* surface, Color color) {
     return VKUtil_GetRGBA(color, surface->renderPass->outAlphaType);
@@ -1063,14 +1063,13 @@ BufferWriting VKRenderer_AllocateBufferData(VKSDOps* surface, BufferWritingState
 }
 
 /**
- * Allocate vertices from vertex buffer. VKRenderer_Validate must have been called before.
+ * Allocate vertices from the vertex buffer, returning the number of allocated primitives (>0).
+ * VKRenderer_Validate must have been called before.
  * This function must not be used directly, use VK_DRAW macro instead.
- * It is responsibility of the caller to pass correct vertexSize, matching current pipeline.
- * This function cannot draw more vertices than fits into single vertex buffer at once.
  * This function must be called after all dynamic allocation functions,
- * which can invalidate drawing state, e.g. VKRenderer_AllocateMaskFillBytes.
+ * which can invalidate the drawing state, e.g., VKRenderer_AllocateMaskFillBytes.
  */
-uint32_t VKRenderer_AllocateVertices(uint32_t primitives, uint32_t vertices, size_t vertexSize, void** result) {
+static uint32_t VKRenderer_AllocateVertices(uint32_t primitives, uint32_t vertices, size_t vertexSize, void** result) {
     assert(vertices > 0 && vertexSize > 0);
     assert(vertexSize * vertices <= VERTEX_BUFFER_SIZE);
     VKSDOps* surface = VKRenderer_GetContext()->surface;
@@ -1094,21 +1093,19 @@ uint32_t VKRenderer_AllocateVertices(uint32_t primitives, uint32_t vertices, siz
 }
 
 /**
- * Allocate vertices from vertex buffer, providing pointer for writing.
+ * Allocate vertices from the vertex buffer, returning the number of allocated primitives (>0).
  * VKRenderer_Validate must have been called before.
- * This function cannot draw more vertices than fits into single vertex buffer at once.
  * This function must be called after all dynamic allocation functions,
- * which can invalidate drawing state, e.g. VKRenderer_AllocateMaskFillBytes.
+ * which can invalidate the drawing state, e.g., VKRenderer_AllocateMaskFillBytes.
  */
 #define VK_DRAW(VERTICES, PRIMITIVE_COUNT, VERTEX_COUNT) \
     VKRenderer_AllocateVertices((PRIMITIVE_COUNT), (VERTEX_COUNT), sizeof((VERTICES)[0]), (void**) &(VERTICES))
 
-
 /**
  * Allocate bytes from mask fill buffer. VKRenderer_Validate must have been called before.
  * This function cannot take more bytes than fits into single mask fill buffer at once.
- * Caller must write data at the returned pointer VKBufferWritingState.data
- * and take into account VKBufferWritingState.offset from the beginning of the bound buffer.
+ * Caller must write data at the returned pointer BufferWritingState.data
+ * and take into account BufferWritingState.offset from the beginning of the bound buffer.
  * This function can invalidate drawing state, always call it before VK_DRAW.
  */
 static BufferWritingState VKRenderer_AllocateMaskFillBytes(uint32_t size) {
@@ -1164,7 +1161,8 @@ static void VKRenderer_ValidateTransform() {
  * pixels inside the clip shape are set to "pass".
  * If there is no clip shape, whole attachment is cleared with "pass" value.
  */
-static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
+static void VKRenderer_SetupStencil() {
+    VKRenderingContext* context = VKRenderer_GetContext();
     assert(context != NULL && context->surface != NULL && context->surface->renderPass != NULL);
     VKSDOps* surface = context->surface;
     VKRenderPass* renderPass = surface->renderPass;
@@ -1279,7 +1277,7 @@ VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, Alph
             surface->device->vkCmdSetScissor(renderPass->commandBuffer, 0, 1, &context.clipRect);
             if (clipChanged) {
                 if (ARRAY_SIZE(context.clipSpanVertices) > 0) {
-                    VKRenderer_SetupStencil(&context);
+                    VKRenderer_SetupStencil();
                     renderPass->state.stencilMode = STENCIL_MODE_ON;
                 } else renderPass->state.stencilMode = surface->stencil != NULL ? STENCIL_MODE_OFF : STENCIL_MODE_NONE;
             }
@@ -1408,7 +1406,7 @@ void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
         memcpy(maskState.data, mask + maskoff, byteCount);
     } else {
         // Special case, fully opaque mask
-        *((char *)maskState.data) = 0xFF;
+        *((char *)maskState.data) = (char)0xFF;
     }
 
     VKMaskFillColorVertex* vs;
