@@ -240,10 +240,10 @@ void VKBlitLoops_Blit(JNIEnv *env,
             VKRenderer_DrawImage(image, type.format, type.swizzle, hint, SAMPLER_WRAP_BORDER,
                                  0, 0, (float)sw, (float)sh, (float)dx1, (float)dy1, (float)dx2, (float)dy2);
 
-            VKRenderer_FlushMemoryOnReset(context->surface->renderPass, buffer.range);
-            VKRenderer_ExecOnCleanup(context->surface->renderPass, VKBlitLoops_DisposeTexture, imageHandle);
-            VKRenderer_ExecOnCleanup(context->surface->renderPass, VKBlitLoops_DisposeBuffer, buffer.handle);
-            VKRenderer_ExecOnCleanup(context->surface->renderPass, VKBlitLoops_DisposeMemory, page);
+            VKRenderer_FlushMemory(context->surface, buffer.range);
+            VKRenderer_ExecOnCleanup(context->surface, VKBlitLoops_DisposeTexture, imageHandle);
+            VKRenderer_ExecOnCleanup(context->surface, VKBlitLoops_DisposeBuffer, buffer.handle);
+            VKRenderer_ExecOnCleanup(context->surface, VKBlitLoops_DisposeMemory, page);
         } else {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_Blit: could not get raster info");
         }

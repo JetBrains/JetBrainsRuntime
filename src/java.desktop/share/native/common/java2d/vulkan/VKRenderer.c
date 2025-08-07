@@ -54,12 +54,6 @@ RING_BUFFER(struct PoolEntry_ ## NAME { \
     }} while(0)
 
 /**
- * Check if there are available items in the pool.
- */
-#define POOL_NOT_EMPTY(RENDERER, NAME)                                                   \
-    (VKRenderer_CheckPoolEntryAvailable((RENDERER), RING_BUFFER_FRONT((RENDERER)->NAME)))
-
-/**
  * Return an item to the pool. It will only become available again
  * after the next submitted batch of work completes execution on GPU.
  */
@@ -106,7 +100,6 @@ struct VKRenderer {
     POOL(VkSemaphore,       semaphorePool);
     POOL(VKBuffer,          vertexBufferPool);
     POOL(VKTexelBuffer,     maskFillBufferPool);
-    POOL(VkFramebuffer,     framebufferDestructionQueue);
     POOL(VKCleanupEntry,    cleanupQueue);
     ARRAY(VKMemory)         bufferMemoryPages;
     ARRAY(VkDescriptorPool) descriptorPools;
@@ -316,6 +309,16 @@ void VKRenderer_CreateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool*
     *set = VKRenderer_AllocateImageDescriptorSet(renderer, *descriptorPool);
 }
 
+static void VKRenderer_CleanupPendingResources(VKRenderer* renderer) {
+    VKDevice* device = renderer->device;
+    for (;;) {
+        VKCleanupEntry entry = { NULL, NULL };
+        POOL_TAKE(renderer, cleanupQueue, entry);
+        if (entry.handler == NULL) break;
+        entry.handler(device, entry.data);
+    }
+}
+
 static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
     VKDevice* device = renderer->device;
     VkSemaphore semaphore = VK_NULL_HANDLE;
@@ -331,21 +334,22 @@ static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
     return semaphore;
 }
 
+/**
+ * Wait till the GPU execution reached a given timestamp.
+ */
 static void VKRenderer_Wait(VKRenderer* renderer, uint64_t timestamp) {
-    if (renderer->readTimestamp >= timestamp) return;
-    VKDevice* device = renderer->device;
-    VkSemaphoreWaitInfo semaphoreWaitInfo = {
+    if (renderer->readTimestamp < timestamp) {
+        VkSemaphoreWaitInfo semaphoreWaitInfo = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
             .flags = 0,
             .semaphoreCount = 1,
             .pSemaphores = &renderer->timelineSemaphore,
             .pValues = &timestamp
-    };
-    VK_IF_ERROR(device->vkWaitSemaphores(device->handle, &semaphoreWaitInfo, -1)) {
-    } else {
-        // On success, update last known timestamp.
-        renderer->readTimestamp = timestamp;
+        };
+        VK_IF_ERROR(renderer->device->vkWaitSemaphores(renderer->device->handle, &semaphoreWaitInfo, -1)) VK_UNHANDLED_ERROR();
+        else renderer->readTimestamp = timestamp; // On success, update the last known timestamp.
     }
+    VKRenderer_CleanupPendingResources(renderer);
 }
 
 void VKRenderer_Sync(VKRenderer* renderer) {
@@ -426,9 +430,6 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
         device->vkDestroyBufferView(device->handle, entry->value.view, NULL);
         device->vkDestroyBuffer(device->handle, entry->value.buffer.handle, NULL);
     }
-    POOL_DRAIN_FOR(renderer, framebufferDestructionQueue, entry) {
-        device->vkDestroyFramebuffer(device->handle, entry->value, NULL);
-    }
     for (uint32_t i = 0; i < ARRAY_SIZE(renderer->bufferMemoryPages); i++) {
         VKAllocator_Free(device->allocator, renderer->bufferMemoryPages[i]);
     }
@@ -451,24 +452,6 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
     ARRAY_FREE(renderer->pendingPresentation.results);
     J2dRlsTraceLn1(J2D_TRACE_INFO, "VKRenderer_Destroy(%p)", renderer);
     free(renderer);
-}
-
-static void VKRenderer_CleanupPendingResources(VKRenderer* renderer) {
-    VKDevice* device = renderer->device;
-
-    while (POOL_NOT_EMPTY(renderer, cleanupQueue)) {
-        VKCleanupEntry entry = {};
-        POOL_TAKE(renderer, cleanupQueue, entry);
-        entry.handler(device, entry.data);
-    }
-
-    for (;;) {
-        VkFramebuffer framebuffer = VK_NULL_HANDLE;
-        POOL_TAKE(renderer, framebufferDestructionQueue, framebuffer);
-        if (framebuffer == VK_NULL_HANDLE) break;
-        device->vkDestroyFramebuffer(device->handle, framebuffer, NULL);
-        J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_CleanupPendingResources(%p): framebuffer destroyed", renderer);
-    }
 }
 
 /**
@@ -688,7 +671,6 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface) {
     }
     if (surface->renderPass == NULL) return;
     if (device != NULL && device->renderer != NULL) {
-        VKRenderer_CleanupPendingResources(device->renderer);
         VKRenderer_DiscardRenderPass(surface);
         // Release resources.
         device->vkDestroyFramebuffer(device->handle, surface->renderPass->framebuffer, NULL);
@@ -744,6 +726,11 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
     return VK_TRUE;
 }
 
+static void VKRenderer_CleanupFramebuffer(VKDevice* device, void* data) {
+    device->vkDestroyFramebuffer(device->handle, (VkFramebuffer) data, NULL);
+    J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "VKRenderer_CleanupFramebuffer(%p)", data);
+}
+
 /**
  * Initialize surface framebuffer.
  * This function can be called between render passes of a single frame, unlike VKRenderer_InitRenderPass.
@@ -755,7 +742,8 @@ static void VKRenderer_InitFramebuffer(VKSDOps* surface) {
 
     if (renderPass->state.stencilMode == STENCIL_MODE_NONE && surface->stencil != NULL) {
         // Queue outdated color-only framebuffer for destruction.
-        POOL_RETURN(device->renderer, framebufferDestructionQueue, renderPass->framebuffer);
+        POOL_RETURN(device->renderer, cleanupQueue,
+            ((VKCleanupEntry) { VKRenderer_CleanupFramebuffer, renderPass->framebuffer }));
         renderPass->framebuffer = VK_NULL_HANDLE;
         renderPass->state.stencilMode = STENCIL_MODE_OFF;
     }
@@ -1262,12 +1250,12 @@ static void VKRenderer_SetupStencil(const VKRenderingContext* context) {
     renderPass->state.shader = NO_SHADER;
 }
 
-void VKRenderer_ExecOnCleanup(VKRenderPass* renderPass, VKCleanupHandler hnd, void* data) {
-    ARRAY_PUSH_BACK(renderPass->cleanupQueue) = (VKCleanupEntry) { hnd, data };
+void VKRenderer_ExecOnCleanup(VKSDOps* surface, VKCleanupHandler handler, void* data) {
+    ARRAY_PUSH_BACK(surface->renderPass->cleanupQueue) = (VKCleanupEntry) { handler, data };
 }
 
-void VKRenderer_FlushMemoryOnReset(VKRenderPass* renderPass, VkMappedMemoryRange range) {
-    ARRAY_PUSH_BACK(renderPass->flushRanges) = range;
+void VKRenderer_FlushMemory(VKSDOps* surface, VkMappedMemoryRange range) {
+    ARRAY_PUSH_BACK(surface->renderPass->flushRanges) = range;
 }
 
 void VKRenderer_RecordBarriers(VKRenderer* renderer,
