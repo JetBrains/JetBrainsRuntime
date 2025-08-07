@@ -43,7 +43,7 @@ log "$INPUT_FILE extracted and removed"
 
 APP_NAME=$(basename "$INPUT_FILE" | awk -F".tar" '{ print $1 }')
 PKG_NAME="$APP_NAME.pkg"
-APPLICATION_PATH=$EXPLODED/"Frameworks"
+APPLICATION_PATH=$EXPLODED
 
 #non_plist=$(find "$APPLICATION_PATH/Contents/" -maxdepth 1 -type f -and -not -name 'Info.plist' | wc -l)
 #if [[ $non_plist -gt 0 ]]; then
