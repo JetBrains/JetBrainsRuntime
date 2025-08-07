@@ -23,8 +23,9 @@
  * questions.
  */
 
-package sun.awt.image;
+package com.jetbrains.desktop.image;
 
+import sun.awt.image.SurfaceManager;
 import sun.java2d.SurfaceData;
 
 import java.awt.GraphicsConfiguration;
@@ -32,7 +33,7 @@ import java.awt.ImageCapabilities;
 
 
 public class TextureWrapperSurfaceManager extends SurfaceManager {
-    private final SurfaceData sd;
+    private SurfaceData sd;
 
     public TextureWrapperSurfaceManager(SurfaceData sd) {
         this.sd = sd;
@@ -51,5 +52,11 @@ public class TextureWrapperSurfaceManager extends SurfaceManager {
     @Override
     public ImageCapabilities getCapabilities(GraphicsConfiguration gc) {
         return new ImageCapabilities(true);
+    }
+
+    @Override
+    public synchronized void flush() {
+        sd.flush();
+        sd = null;
     }
 }
