@@ -558,36 +558,6 @@ void VKRenderer_Flush(VKRenderer* renderer) {
                    renderer, submitInfo.commandBufferCount, pendingPresentations);
 }
 
-
-
-/**
- * Prepare image barrier info to be executed in batch, if needed.
- */
-void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
-                                VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout) {
-    assert(barriers != NULL && batch != NULL && image != NULL);
-    // TODO Even if stage, access and layout didn't change, we may still need a barrier against WaW hazard.
-    if (stage != image->lastStage || access != image->lastAccess || layout != image->layout) {
-        barriers[batch->barrierCount] = (VkImageMemoryBarrier) {
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .srcAccessMask = image->lastAccess,
-                .dstAccessMask = access,
-                .oldLayout = image->layout,
-                .newLayout = layout,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = image->handle,
-                .subresourceRange = { VKUtil_GetFormatGroup(image->format).aspect, 0, 1, 0, 1 }
-        };
-        batch->barrierCount++;
-        batch->srcStages |= image->lastStage;
-        batch->dstStages |= stage;
-        image->lastStage = stage;
-        image->lastAccess = access;
-        image->layout = layout;
-    }
-}
-
 /**
  * Get Color RGBA components in a suitable for the current render pass.
  */
@@ -890,24 +860,20 @@ VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface) {
     }
     ARRAY_RESIZE(surface->renderPass->usedSurfaces, 0);
 
-
     // Insert barriers to prepare surface for rendering.
     VkImageMemoryBarrier barriers[2];
     VKBarrierBatch barrierBatch = {};
-    VKRenderer_AddImageBarrier(barriers, &barrierBatch, surface->image,
-                               VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                               VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VKImage_AddBarrier(barriers, &barrierBatch, surface->image,
+                       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                       VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     if (surface->stencil != NULL) {
-        VKRenderer_AddImageBarrier(barriers, &barrierBatch, surface->stencil,
-                                   VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                                   VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        VKImage_AddBarrier(barriers, &barrierBatch, surface->stencil,
+                           VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                           VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     }
-    if (barrierBatch.barrierCount > 0) {
-        device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
-                                     0, 0, NULL, 0, NULL, barrierBatch.barrierCount, barriers);
-    }
+    VKRenderer_RecordBarriers(renderer, NULL, NULL, barriers, &barrierBatch);
 
     // If there is a pending clear, record it into render pass.
     if (clear) VKRenderer_BeginRenderPass(surface);
@@ -1003,10 +969,9 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
                     .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
             }};
             VKBarrierBatch barrierBatch = {1, surface->image->lastStage | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
-            VKRenderer_AddImageBarrier(barriers, &barrierBatch, surface->image, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                       VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-            device->vkCmdPipelineBarrier(cb, barrierBatch.srcStages, barrierBatch.dstStages,
-                                         0, 0, NULL, 0, NULL, barrierBatch.barrierCount, barriers);
+            VKImage_AddBarrier(barriers, &barrierBatch, surface->image, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                               VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+            VKRenderer_RecordBarriers(renderer, NULL, NULL, barriers, &barrierBatch);
         }
 
         // Do blit.

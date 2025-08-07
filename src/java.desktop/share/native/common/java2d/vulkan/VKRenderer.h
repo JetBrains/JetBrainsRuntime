@@ -77,12 +77,6 @@ void VKRenderer_FlushDraw(VKSDOps* surface);
 VkCommandBuffer VKRenderer_Record(VKRenderer* renderer);
 
 /**
- * Prepare image barrier info to be executed in batch, if needed.
- */
-void VKRenderer_AddImageBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
-                                VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout);
-
-/**
  * Record barrier batches into the primary command buffer.
  */
 void VKRenderer_RecordBarriers(VKRenderer* renderer,
