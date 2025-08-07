@@ -33,8 +33,6 @@
 
 #define VK_BUFFER_HOST_COHERENT_MEMORY
 
-const size_t VK_BUFFER_CREATE_THRESHOLD = 0xDC000;
-
 static VKMemory VKBuffer_DestroyBuffersOnFailure(VKDevice* device, VKMemory page, uint32_t bufferCount, VKBuffer* buffers) {
     assert(device != NULL && device->allocator != NULL);
     for (uint32_t i = 0; i < bufferCount; i++) {
