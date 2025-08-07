@@ -27,7 +27,8 @@
 #ifndef VKBuffer_h_Included
 #define VKBuffer_h_Included
 
-#include "VKTypes.h"
+#include "VKAllocator.h"
+#include "VKUtil.h"
 
 struct VKBuffer {
     VkBuffer handle;

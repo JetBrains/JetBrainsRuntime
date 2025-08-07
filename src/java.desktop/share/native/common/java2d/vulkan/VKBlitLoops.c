@@ -24,22 +24,15 @@
  * questions.
  */
 
+#include <assert.h>
 #include <string.h>
-#include "jlong.h"
-#include "VKUtil.h"
-#include "VKBlitLoops.h"
-#include "VKSurfaceData.h"
-#include "VKRenderer.h"
 #include "GraphicsPrimitiveMgr.h"
-
-
-#include "Trace.h"
-#include "VKImage.h"
 #include "VKBuffer.h"
+#include "VKImage.h"
 #include "VKDevice.h"
-#include "VKTexturePool.h"
-#include "VKUtil.h"
 #include "VKRenderer.h"
+#include "VKSurfaceData.h"
+#include "VKUtil.h"
 
 #define SRCTYPE_BITS sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_BITS
 
@@ -100,8 +93,7 @@ void VKBlitLoops_IsoBlit(VKSDOps* srcOps, jint filter,
                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     if (srcOps == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-                      "VKBlitLoops_IsoBlit: srcOps is null")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_IsoBlit: srcOps is null");
         return;
     }
 
@@ -147,7 +139,7 @@ static void VKBlitLoops_FindStageBufferMemoryType(VKMemoryRequirements* requirem
 
 void VKBlitLoops_Blit(JNIEnv *env,
                       SurfaceDataOps* src,
-                      jshort srctype, jint hint,
+                      jshort srctype, jint filter,
                       jint sx1, jint sy1,
                       jint sx2, jint sy2,
                       jdouble dx1, jdouble dy1,
@@ -237,7 +229,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
                 VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
             }
 
-            VKRenderer_DrawImage(image, type.format, type.swizzle, hint, SAMPLER_WRAP_BORDER,
+            VKRenderer_DrawImage(image, type.format, type.swizzle, filter, SAMPLER_WRAP_BORDER,
                                  0, 0, (float)sw, (float)sh, (float)dx1, (float)dy1, (float)dx2, (float)dy2);
 
             VKRenderer_FlushMemory(context->surface, buffer.range);
@@ -258,7 +250,7 @@ void VKBlitLoops_Blit(JNIEnv *env,
  */
 void
 VKBlitLoops_SurfaceToSwBlit(JNIEnv *env,
-                            VKSDOps* src, SurfaceDataOps* dst, jint dsttype,
+                            VKSDOps* src, SurfaceDataOps* dst,
                             jint srcx, jint srcy, jint dstx, jint dsty,
                             jint width, jint height)
 {
