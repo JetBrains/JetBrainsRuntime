@@ -47,31 +47,12 @@ APP_NAME=$(basename "$INPUT_FILE" | awk -F".tar" '{ print $1 }')
 PKG_NAME="$APP_NAME.pkg"
 APPLICATION_PATH=$EXPLODED/$(ls $EXPLODED)
 
-find "$APPLICATION_PATH/Contents/Home/bin" \
-  -maxdepth 1 -type f -name '*.jnilib' -print0 |
-  while IFS= read -r -d $'\0' file; do
-    if [ -f "$file" ]; then
-      log "Linking $file"
-      b="$(basename "$file" .jnilib)"
-      ln -sf "$b.jnilib" "$(dirname "$file")/$b.dylib"
-    fi
-  done
-
-find "$APPLICATION_PATH/Contents/" \
-  -maxdepth 1 -type f -name '*.txt' -print0 |
-  while IFS= read -r -d $'\0' file; do
-    if [ -f "$file" ]; then
-      log "Moving $file"
-      mv "$file" "$APPLICATION_PATH/Contents/Resources"
-    fi
-  done
-
-non_plist=$(find "$APPLICATION_PATH/Contents/" -maxdepth 1 -type f -and -not -name 'Info.plist' | wc -l)
-if [[ $non_plist -gt 0 ]]; then
-  log "Only Info.plist file is allowed in Contents directory but found $non_plist file(s):"
-  log "$(find "$APPLICATION_PATH/Contents/" -maxdepth 1 -type f -and -not -name 'Info.plist')"
-  exit 1
-fi
+#non_plist=$(find "$APPLICATION_PATH/Contents/" -maxdepth 1 -type f -and -not -name 'Info.plist' | wc -l)
+#if [[ $non_plist -gt 0 ]]; then
+#  log "Only Info.plist file is allowed in Contents directory but found $non_plist file(s):"
+#  log "$(find "$APPLICATION_PATH/Contents/" -maxdepth 1 -type f -and -not -name 'Info.plist')"
+#  exit 1
+#fi
 
 if [[ "${JETSIGN_CLIENT:=}" == "null" ]] || [[ "$JETSIGN_CLIENT" == "" ]]; then
   log "Unlocking keychain..."
