@@ -67,6 +67,8 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import com.jetbrains.internal.IoOverNio;
 import jdk.internal.access.JavaUtilZipFileAccess;
 import jdk.internal.access.JavaUtilJarAccess;
 import jdk.internal.access.SharedSecrets;
@@ -1611,8 +1613,12 @@ public class ZipFile implements ZipConstants, Closeable {
         static Source get(File file, boolean toDelete, ZipCoder zipCoder) throws IOException {
             final Key key;
             try {
+                java.nio.file.FileSystem fs =
+                        USE_NIO_FOR_ZIP_FILE_ACCESS && IoOverNio.isAllowedInThisThread()
+                                ? FileSystems.getDefault()
+                                : builtInFS;
                 key = new Key(file,
-                        Files.readAttributes(builtInFS.getPath(file.getPath()),
+                        Files.readAttributes(fs.getPath(file.getPath()),
                                 BasicFileAttributes.class), zipCoder.charset());
             } catch (InvalidPathException ipe) {
                 throw new IOException(ipe);
@@ -1649,7 +1655,7 @@ public class ZipFile implements ZipConstants, Closeable {
 
         private Source(Key key, boolean toDelete, ZipCoder zipCoder) throws IOException {
             this.key = key;
-            if (USE_NIO_FOR_ZIP_FILE_ACCESS && VM.isBooted()) {
+            if (USE_NIO_FOR_ZIP_FILE_ACCESS && VM.isBooted() && IoOverNio.isAllowedInThisThread()) {
                 Set<OpenOption> options;
                 if (toDelete) {
                     options = Set.of(StandardOpenOption.READ, StandardOpenOption.DELETE_ON_CLOSE);
