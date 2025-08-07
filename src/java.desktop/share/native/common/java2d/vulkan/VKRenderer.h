@@ -56,7 +56,7 @@ struct VKRenderingContext {
     ARRAY(VKIntVertex) clipSpanVertices;
 };
 
-typedef void (*VKCleanupHandler)(VKDevice *renderer, void* data);
+typedef void (*VKCleanupHandler)(VKDevice* device, void* data);
 
 VKRenderer* VKRenderer_Create(VKDevice* device);
 
@@ -115,14 +115,14 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface);
 VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface);
 
 /**
- * Register a handler to be called at the cleanup phase of the renderer.
+ * Register a handler to be called after the render pass is completed.
  */
-void VKRenderer_ExecOnCleanup(VKRenderPass* renderPass, VKCleanupHandler hnd, void* data);
+void VKRenderer_ExecOnCleanup(VKSDOps* surface, VKCleanupHandler handler, void* data);
 
 /**
- * Register a memory range that will be flushed on render pass reset drawing.
+ * Register a memory range that will be flushed before executing the render pass.
  */
-void VKRenderer_FlushMemoryOnReset(VKRenderPass* renderPass, VkMappedMemoryRange range);
+void VKRenderer_FlushMemory(VKSDOps* surface, VkMappedMemoryRange range);
 
 /**
  * Flush pending render pass and queue surface for presentation (if applicable).
