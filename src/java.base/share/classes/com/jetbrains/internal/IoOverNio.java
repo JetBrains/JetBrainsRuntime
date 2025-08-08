@@ -65,7 +65,7 @@ public class IoOverNio {
     }
 
     public static boolean isAllowedInThisThread() {
-        return ALLOW_IN_THIS_THREAD.get() == null;
+        return IS_ENABLED_IN_GENERAL && ALLOW_IN_THIS_THREAD.get() == null;
     }
 
     /**
