@@ -70,7 +70,6 @@ public class CheckJBRModules {
                     "jdk.jdi",
                     "jdk.jdwp.agent",
                     "jdk.jfr",
-                    "jdk.jsobject",
                     "jdk.localedata",
                     "jdk.management",
                     "jdk.management.agent",
