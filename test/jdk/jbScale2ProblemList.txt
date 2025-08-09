@@ -4,10 +4,10 @@ java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java J
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java JBR-6027 windows-all
 java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/dnd/CustomDragCursorTest.java 8242805,JBR-8932 macosx-all,windows-x64
-java/awt/dnd/DnDAWTLockTest.java JBR-8745 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws
+java/awt/dnd/DnDAWTLockTest.java JBR-8745 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws,linux-6.14.0-1010-aws
 java/awt/dnd/DragOverDropTargetPerformanceTest.java JBR-5799 windows-all
-java/awt/dnd/DragSourceGCrashTest.java JBR-8745 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws
-java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-8745 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws
+java/awt/dnd/DragSourceGCrashTest.java JBR-8745 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws,linux-6.14.0-1010-aws
+java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-8745 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws,linux-6.14.0-1010-aws
 java/awt/Dialog/ChoiceModalDialogTest.java JBR-8724 windows-all
 java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-all
@@ -31,7 +31,7 @@ java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-6090 windows-all
 java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-6090 windows-all
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275,JBR-5799 macosx-all,windows-all
 java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-7299,JBR-8728 linux-all,windows-all
-java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184,JBR-5510,JBR-8725 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws
+java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184,JBR-5510,JBR-8725 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws,linux-6.14.0-1010-aws
 java/awt/Graphics/LineClipTest.java JBR-5071 linux-aarch64
 java/awt/Graphics/NativeWin32Clear.java JBR-8730 windows-all
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,8322653,JBR-5071 windows-all,macosx-all,linux-all
@@ -67,9 +67,9 @@ javax/swing/JButton/bug4490179.java JBR-8925 windows-all
 javax/swing/JFileChooser/JFileChooserSetLocationTest.java JBR-8098 linux-all,windows-all
 javax/swing/JInternalFrame/4202966/IntFrameCoord.java JBR-9006 window-all
 javax/swing/JMenu/bug4342646.java JBR-8727 linux-all,windows-all
-javax/swing/JPopupMenu/6580930/bug6580930.java JBR-5071 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws
+javax/swing/JPopupMenu/6580930/bug6580930.java JBR-5071 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws,linux-6.14.0-1010-aws
 javax/swing/JTable/JTableRightOrientationTest.java JBR-8102 linux-all,windows-all
-javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8747 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws
+javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8747 linux-6.8.0-1028-aws,linux-6.8.0-1029-aws,linux-6.8.0-1030-aws,linux-6.8.0-1031-aws,linux-6.14.0-1010-aws
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all
 
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-6589 windows-all
@@ -103,6 +103,7 @@ java/awt/Checkbox/CheckboxCheckerScalingTest.java nobug generic-all
 java/awt/Checkbox/CheckboxIndicatorSizeTest.java nobug generic-all
 java/awt/Component/SetComponentsBounds/SetComponentsBounds.java nobug generic-all
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java nobug generic-all
+java/awt/dnd/DnDCursorCrashTest.java 8242805,JBR-7966 macosx-all,windows-all,linux-aarch64
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java nobug generic-all
 java/awt/Frame/SetIconImagesCrashTest/SetIconImagesCrashTest.java nobug generic-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java nobug generic-all
