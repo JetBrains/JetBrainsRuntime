@@ -164,8 +164,8 @@ java/awt/Frame/HideMaximized/HideMaximized.java JBR-8310 linux-all
 java/awt/Frame/Iconify/IconifyTest.java JBR-8836 linux-all
 java/awt/Frame/InitialIconifiedTest.java 7144049,8203920 macosx-all,linux-all
 java/awt/Frame/MaximizeUndecoratedTest.java JBR-8064 linux-all
-java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java JBR-7509,JBR-8889 macosx-15.4.1,macosx-15.5,macosx-all
-java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 linux-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
+java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java JBR-7509,JBR-8889 macosx-15.4.1,macosx-15.5,15.6,macosx-all
+java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 linux-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,15.6
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MinimizeUndecoratedTest.java 8330731 linux-all
@@ -1094,7 +1094,7 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128,8253184,JBR-5510,JBR-6515 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java 8013450,8253184 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 8024627,8253184 macosx-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.java JBR-8327 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
+javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.java JBR-8327 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,15.6
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java 8253184 windows-all
 # The next test below is an intermittent failure
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all
@@ -1134,8 +1134,8 @@ javax/swing/JSplitPane/4885629/bug4885629.java JBR-5510 linux-5.18.2-arch1-1
 javax/swing/JTabbedPane/4361477/bug4361477.java JBR-5932 linux-all
 javax/swing/JTabbedPane/8007563/Test8007563.java 8051591 generic-all
 javax/swing/JTabbedPane/4624207/bug4624207.java 8064922,8197552,JBR-6235 macosx-all,windows-all,linux-all 8064922:macosx-all, 8197552:windows-all
-javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java 8253184,JBR-8498 windows-all,linux-5.18.2-arch1-1,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
-javax/swing/JTabbedPane/TestJTabbedPaneBackgroundColor.java JBR-8718 linux-5.18.2-arch1-1,macosx-15.4.1
+javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java 8253184,JBR-8498 windows-all,linux-5.18.2-arch1-1,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,15.6
+javax/swing/JTabbedPane/TestJTabbedPaneBackgroundColor.java JBR-8718 linux-5.18.2-arch1-1,macosx-15.4.1,15.6
 javax/swing/JToggleButton/TestSelectedKey.java JBR-5846 windows-all
 javax/swing/JToolBar/4529206/bug4529206.java JBR-5387 linux-all
 javax/swing/JToolTip/6219960/bug6219960.java 8253184 windows-all
@@ -1307,9 +1307,9 @@ jdk/jfr/startupargs/TestStartDuration.java                      8214685 windows-
 jdk/jfr/jvm/TestDumpOnCrash.java JBR-8780 windows-aarch64
 jdk/jfr/jvm/TestWaste.java                                      8282427 generic-all
 jdk/jfr/api/consumer/recordingstream/TestOnEvent.java           8255404 linux-x64
-jdk/jfr/api/consumer/streaming/TestOutOfProcessMigration.java JBR-8460 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
-jdk/jfr/api/consumer/streaming/TestJVMCrash.java JBR-8459 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
-jdk/jfr/api/consumer/streaming/TestJVMExit.java JBR-8460 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
+jdk/jfr/api/consumer/streaming/TestOutOfProcessMigration.java JBR-8460 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,15.6
+jdk/jfr/api/consumer/streaming/TestJVMCrash.java JBR-8459 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,15.6
+jdk/jfr/api/consumer/streaming/TestJVMExit.java JBR-8460 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,15.6
 
 ############################################################################
 
@@ -1420,7 +1420,7 @@ com/sun/java/accessibility/util/8051626/Bug8051626.java JBR-5767 windows-all
 com/sun/java/swing/plaf/windows/Test8173145.java                                    JBR-4197 windows-all
 com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                              JBR-4197 windows-all
 
-jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
+jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,15.6
 jb/java/awt/event/MouseEvent/MouseMoveEventFallThroughTest.java JBR-8789 windows-all
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/Font/font430.sh                                                         JBR-4956 linux-all
@@ -1529,6 +1529,7 @@ javax/sound/sampled/Mixers/BogusMixers.java JBR-4455 linux-aarch64
 
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5510,8310487 linux-5.18.2-arch1-1,linux-all
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java JBR-5510,JBR-5905 linux-5.18.2-arch1-1,linux-all
+java/awt/Choice/SelectItem/SelectCurrentItemTest.java JBR-8788 windows-all
 java/awt/Choice/SelectNewItemTest/SelectNewItemTest.java 8315733,8322653,8324782 macosx-all
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-5510 linux-5.18.2-arch1-1
 java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java 8049405,JBR-5510 windows-all,linux-all,linux-5.18.2-arch1-1
