@@ -57,7 +57,7 @@ java/awt/Mixing/OpaqueTest.java JBR-5707,JBR-6090 linux-all,windows-all
 java/awt/Mixing/OverlappingButtons.java JBR-5707,JBR-6090 linux-all,windows-all
 java/awt/Mixing/Validating.java JBR-5908,JBR-6090 linux-all,windows-all
 java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-all
-java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-8732 windows-all
+java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-8732,JBR-9207 windows-all,linux-6.15.8-100.fc41.x86_64
 java/awt/Modal/BlockedMouseInputTest2.java JBR-6090 windows-all
 java/awt/Modal/BlockedMouseInputTest3.java JBR-6134 windows-x64
 java/awt/Mouse/MouseEnterExitTest.java JBR-8096 linux-all,windows-all

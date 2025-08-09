@@ -26,8 +26,8 @@ java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.java JBR-8905 windows-x64
 java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-x64
 java/awt/Robot/Delay/InterruptOfDelay.java 8265986,JBR-8148 macosx-all,linux-x64
-java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
-java/awt/Robot/NonEmptyErrorStream.java JBR-5442,JBR-5510 macosx-15.4,macosx-15.5,linux-5.18.2-arch1-1
+java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390,JBR-9209 macosx-all,linux-all,linux-6.15.8-100.fc41.x86_64
+java/awt/Robot/NonEmptyErrorStream.java JBR-5442,JBR-5510 macosx-15.4,macosx-15.5,15.6,linux-5.18.2-arch1-1
 java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
 java/awt/Robot/SpuriousMouseEvents/SpuriousMouseEvents.java JBR-6572 linux-all
 java/awt/TextArea/UsingWithMouse/SelectionAutoscrollTest.java JBR-7822 linux-x64
@@ -37,8 +37,8 @@ java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5
 
 javax/swing/event/FocusEventCauseTest.java JBR-8811 windows-all
 javax/swing/JButton/bug4234034.java JBR-8997 windows-all
-javax/swing/JTextField/4532513/DefaultCaretRequestsFocusTest.java JBR-8330 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
-javax/swing/JTextArea/4514331/TabShiftsFocusToNextComponent.java JBR-8329 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5
+javax/swing/JTextField/4532513/DefaultCaretRequestsFocusTest.java JBR-8330 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,15.6
+javax/swing/JTextArea/4514331/TabShiftsFocusToNextComponent.java JBR-8329 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,15.6
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java JBR-5442 linux-all
 javax/swing/SwingWorker/TestDoneBeforeDoInBackground.java JBR-5442 linux-all
 javax/swing/system/6799345/TestShutdown.java JBR-6020 windows-all
@@ -121,6 +121,8 @@ javax/swing/JComboBox/6559152/bug6559152.java JBR-7783,JBR-8964 linux-x64,window
 javax/swing/JComponent/7154030/bug7154030.java JBR-5510 linux-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5510 linux-all
+javax/swing/JFileChooser/4966171/bug4966171.java JBR-8534 windows-x64
+javax/swing/JFileChooser/FileChooserListenerLeak.java JBR-8534 windows-x64
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java  JBR-5510 linux-all
 javax/swing/JInternalFrame/bug4732229.java JBR-8897 windows-x64

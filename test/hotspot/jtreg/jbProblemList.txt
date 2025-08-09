@@ -140,6 +140,7 @@ runtime/cds/appcds/methodHandles/MethodHandlesInvokersTest.java initial_run gene
 runtime/cds/appcds/methodHandles/MethodHandlesCastFailureTest.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesGeneralTest.java initial_run generic-all
 runtime/cds/CheckDefaultArchiveFile.java JBR-4227 generic-all
+runtime/cds/DeterministicDump.java JBR-9215 macosx-26.0
 runtime/cds/TestCDSVMCrash.java JBR-7316 windows-aarch64
 runtime/jni/daemonDestroy/TestDaemonDestroy.java NOBUG windows-all # Expected to get exit value of [0], exit value is: [-1073741515]
 runtime/jni/terminatedThread/TestTerminatedThread.java 8317789 aix-ppc64
@@ -173,9 +174,10 @@ runtime/cds/appcds/methodHandles/MethodHandlesAsCollectorTest.java initial_run g
 runtime/cds/SharedBaseAddress.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_run generic-all
 
+containers/docker/TestCPUAwareness.java JBR-9163 linux-6.14.0-1010-aws
 containers/docker/TestCPUSets.java JBR-9164 linux-6.14.0-1010-aws
 containers/docker/TestJcmd.java 8278102 linux-all
-containers/docker/TestJcmdWithSideCar.java JBR-9163 linux-6.14.0-1010-aws
+containers/docker/TestJcmdWithSideCar.java JBR-9074 linux-6.14.0-1010-aws
 containers/docker/TestJFREvents.java JBR-9165 linux-6.14.0-1010-aws
 containers/docker/TestLimitsUpdating.java JBR-9166 linux-6.14.0-1010-aws
 containers/docker/TestMemoryAwareness.java 8303470 linux-all
@@ -303,7 +305,7 @@ vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEa
 
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi001/Multi001.java JBR-8545,JBR-8546 windows-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi002/TestDescription.java JBR-8545 windows-all
-vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi003/TestDescription.java 8076494 windows-x64
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi003/TestDescription.java 8076494,JBR-8743 windows-x64,windows-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi004/TestDescription.java JBR-8744 windows-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi005/TestDescription.java 8076494,JBR-8927 windows-x64,windows-aarch64
 
