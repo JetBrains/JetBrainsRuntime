@@ -26,6 +26,7 @@
 package sun.awt.wl;
 
 import java.awt.datatransfer.Transferable;
+import java.util.HashSet;
 
 public class WLDataSource {
     // nativePtr will be reset to 0 after this object receives a "cancelled" event, and is destroyed.
@@ -52,9 +53,20 @@ public class WLDataSource {
 
         try {
             if (data != null) {
+                var mimes = new HashSet<String>();
+
                 long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(data, wlDataTransferer.getFlavorTable());
                 for (long format : formats) {
                     String mime = wlDataTransferer.getNativeForFormat(format);
+                    mimes.add(mime);
+
+                    if (mime.contains("/") && !mime.startsWith("JAVA_DATAFLAVOR")) {
+                        // Qt apps require lowercase spelling of mime types, like text/plain;charset=utf-8
+                        mimes.add(mime.toLowerCase());
+                    }
+                }
+
+                for (var mime : mimes) {
                     offerMimeImpl(nativePtr, mime);
                 }
             }
