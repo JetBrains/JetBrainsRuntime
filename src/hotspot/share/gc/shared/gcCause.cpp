@@ -125,6 +125,9 @@ const char* GCCause::to_string(GCCause::Cause cause) {
     case _last_gc_cause:
       return "ILLEGAL VALUE - last gc cause - ILLEGAL VALUE";
 
+    case _jbr_gc_run:
+      return "JBR full GC";
+
     default:
       return "unknown GCCause";
   }
