@@ -317,3 +317,16 @@ Java_java_lang_System_mapLibraryName(JNIEnv *env, jclass ign, jstring libname)
 
     return (*env)->NewString(env, chars, len);
 }
+
+JNIEXPORT void JNICALL
+Java_java_lang_System__00024_00024jb_00024FullGC(JNIEnv *env, jclass ign)
+{
+    jclass cls = (*env)->FindClass(env, "java/lang/Exception$JB$$FullGC");
+    if (cls != 0) {
+        // Throwing an exception by this name will trigger a full GC with 
+        // a special cause indicating the need to collect as much as possible
+        // for testing purposes.
+        (*env)->ThrowNew(env, cls, NULL);
+    }
+}
+
