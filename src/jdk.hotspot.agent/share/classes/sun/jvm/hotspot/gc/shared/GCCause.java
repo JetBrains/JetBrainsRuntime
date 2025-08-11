@@ -52,6 +52,7 @@ public enum GCCause {
   _g1_periodic_collection ("G1 Periodic Collection"),
 
   _dcmd_gc_run ("Diagnostic Command"),
+  _jbr_gc_run("JBR full GC"),
 
   _shenandoah_stop_vm ("Stopping VM"),
   _shenandoah_allocation_failure_evac ("Allocation Failure During Evacuation"),
