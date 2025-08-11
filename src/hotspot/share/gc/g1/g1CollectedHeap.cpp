@@ -2120,6 +2120,14 @@ bool G1CollectedHeap::try_collect(size_t allocation_word_size,
     // The only path to get here is because of a periodic collection using a Full GC
     // or WhiteBox full gc.
     assert(allocation_word_size == 0, "must be");
+
+    if (cause == GCCause::_jbr_gc_run) {
+      VM_G1CollectForAllocation op(0, // no following allocation
+                                   counters_before.total_collections(),
+                                   cause);
+      VMThread::execute(&op);
+    }
+
     // Schedule a Full GC.
     VM_G1CollectFull op(counters_before.total_collections(),
                         counters_before.total_full_collections(),
