@@ -239,9 +239,9 @@ else ifeq ($(OPENJDK_TARGET_OS), solaris)
 else ifeq ($(OPENJDK_TARGET_OS), windows)
   NUM_CORES := $(NUMBER_OF_PROCESSORS)
   MEMORY_SIZE := $(shell \
-      $(EXPR) `wmic computersystem get totalphysicalmemory -value \
-          | $(GREP) = | $(SED) 's/\\r//g' \
-          | $(CUT) -d "=" -f 2-` / 1024 / 1024 \
+      $(EXPR) `powershell -Command \
+          "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory" \
+          | $(SED) 's/\\r//g' ` / 1024 / 1024 \
   )
 endif
 ifeq ($(NUM_CORES), )
