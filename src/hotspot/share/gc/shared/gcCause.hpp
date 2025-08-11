@@ -70,6 +70,7 @@ class GCCause : public AllStatic {
     _g1_periodic_collection,
 
     _dcmd_gc_run,
+    _jbr_gc_run,
 
     _shenandoah_stop_vm,
     _shenandoah_allocation_failure_evac,
@@ -89,7 +90,8 @@ class GCCause : public AllStatic {
 
   inline static bool is_user_requested_gc(GCCause::Cause cause) {
     return (cause == GCCause::_java_lang_system_gc ||
-            cause == GCCause::_dcmd_gc_run);
+            cause == GCCause::_dcmd_gc_run ||
+            cause == GCCause::_jbr_gc_run);
   }
 
   inline static bool is_serviceability_requested_gc(GCCause::Cause cause) {
@@ -107,7 +109,8 @@ class GCCause : public AllStatic {
   // we absolutely __must__ clear soft refs?
   inline static bool should_clear_all_soft_refs(GCCause::Cause cause) {
     return cause == GCCause::_metadata_GC_clear_soft_refs ||
-           cause == GCCause::_wb_full_gc;
+           cause == GCCause::_wb_full_gc ||
+           cause == GCCause::_jbr_gc_run;
   }
 
   // Return a string describing the GCCause.
