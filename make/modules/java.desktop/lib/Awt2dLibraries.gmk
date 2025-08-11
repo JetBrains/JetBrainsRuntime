@@ -170,10 +170,8 @@ ifeq ($(VULKAN_ENABLED), true)
   LIBAWT_EXTRA_HEADER_DIRS += common/font common/java2d/vulkan common/java2d
   LIBAWT_CFLAGS += $(VULKAN_FLAGS)
   LIBAWT_EXTRA_FILES += $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/AccelTexturePool.c
-  LIBAWT_EXFILES += $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/vulkan/VKStubs.c
   VULKAN_EXCLUDES := vulkan
 else
-  LIBAWT_EXTRA_FILES += $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/vulkan/VKStubs.c
   VULKAN_EXCLUDES := vulkan java2d/vulkan
 endif
 
@@ -293,7 +291,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
             #
     endif
 
-    LIBAWT_XAWT_EXCLUDES := medialib debug wl vulkan
+    LIBAWT_XAWT_EXCLUDES := medialib debug wl $(VULKAN_EXCLUDES)
 
     LIBPIPEWIRE_HEADER_DIRS := \
         $(TOPDIR)/src/$(MODULE)/unix/native/libpipewire/include
@@ -422,8 +420,6 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(VULKAN_FLAGS) \
         $(CUPS_CFLAGS)
 
-    LIBAWT_WLAWT_CXXFLAGS += $(VULKAN_FLAGS)
-
     LIBAWT_WLAWT_LIBS := $(LIBM) -lawt $(WAYLAND_LIBS) $(LIBDL) -ljava -ljvm -lrt
 
     ifeq ($(call isTargetOs, linux), true)
@@ -458,8 +454,6 @@ ifeq ($(call isTargetOs, windows macosx), false)
         DISABLED_WARNINGS_CXX_gcc := undef, \
         DISABLED_WARNINGS_clang := parentheses format undef \
             logical-op-parentheses format-nonliteral int-conversion, \
-        DISABLED_WARNINGS_gcc_VKMemory.cpp := missing-field-initializers implicit-fallthrough parentheses, \
-        DISABLED_WARNINGS_clang_VKMemory.cpp := missing-field-initializers implicit-fallthrough parentheses, \
         LDFLAGS := $(LDFLAGS_JDKLIB) \
             $(call SET_SHARED_LIBRARY_ORIGIN) \
             -L$(INSTALL_LIBRARIES_HERE), \
@@ -576,14 +570,13 @@ ifeq ($(call isTargetOs, windows macosx), false)
       $(TOPDIR)/src/$(MODULE)/$(OPENJDK_TARGET_OS_TYPE)/native/common/awt \
       #
 
-  LIBAWT_HEADLESS_EXCLUDES := medialib wl vulkan
+  LIBAWT_HEADLESS_EXCLUDES := medialib wl $(VULKAN_EXCLUDES)
 
   LIBAWT_HEADLESS_EXTRA_HEADER_DIRS := \
       $(LIBAWT_DEFAULT_HEADER_DIRS) \
       common/awt/debug \
       common/font \
       common/java2d/opengl \
-      common/java2d/vulkan \
       #
 
   LIBAWT_HEADLESS_CFLAGS := $(CUPS_CFLAGS) $(FONTCONFIG_CFLAGS) $(X_CFLAGS) \
