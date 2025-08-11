@@ -22,6 +22,7 @@
  *
  */
 
+#include "gc/shared/gcCause.hpp"
 #include "classfile/classLoaderDataGraph.hpp"
 #include "classfile/stringTable.hpp"
 #include "classfile/symbolTable.hpp"
