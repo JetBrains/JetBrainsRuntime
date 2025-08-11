@@ -1965,6 +1965,13 @@ bool G1CollectedHeap::try_collect(GCCause::Cause cause,
     VMThread::execute(&op);
     return op.gc_succeeded();
   } else {
+    if (cause == GCCause::_jbr_gc_run) {
+      VM_G1CollectForAllocation op(0, // no following allocation
+                                   counters_before.total_collections(),
+                                   cause);
+      VMThread::execute(&op);
+    }
+
     // Schedule a Full GC.
     VM_G1CollectFull op(counters_before.total_collections(),
                         counters_before.total_full_collections(),
