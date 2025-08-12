@@ -67,7 +67,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     public GtkFrameDecoration(WLDecoratedPeer peer, boolean showMinimize, boolean showMaximize) {
         super(peer, showMinimize, showMaximize);
-        nativePtr = nativeCreateDecoration(showMinimize, showMaximize);
+        nativePtr = nativeCreateDecoration(showMinimize, showMaximize, isDarkTheme());
         assert nativePtr != 0;
         int t = nativeGetIntProperty(nativePtr, "gtk-dnd-drag-threshold");
         dndThreshold = t > 0 ? t : 4;
@@ -186,7 +186,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     public void notifyThemeChanged() {
-        nativeSwitchTheme();
+        nativeSwitchTheme(isDarkTheme());
     }
 
     private int getButtonsState() {
@@ -210,9 +210,9 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     private static native void initIDs();
     private static native boolean nativeLoadGTK();
 
-    private native long nativeCreateDecoration(boolean showMinimize, boolean showMaximize);
+    private native long nativeCreateDecoration(boolean showMinimize, boolean showMaximize, boolean isDarkTheme);
     private native void nativeDestroyDecoration(long nativePtr);
-    private native void nativeSwitchTheme();
+    private native void nativeSwitchTheme(boolean isDarkTheme);
     private native void nativePaintTitleBar(long nativePtr, int[] buffer, int width, int height, double scale,
                                             String title, int buttonsState);
     private native int nativeGetIntProperty(long nativePtr, String name);
