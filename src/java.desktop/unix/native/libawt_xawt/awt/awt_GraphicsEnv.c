@@ -1925,7 +1925,7 @@ Java_sun_awt_X11GraphicsDevice_initXrandrExtension
 // ---------------------------------------------------
 // display mode change via XRRSetCrtcConfig
 // ---------------------------------------------------
-
+#if !defined(NO_XRANDR)
 static jint refreshRateFromModeInfo(const XRRModeInfo *modeInfo) {
     if (!modeInfo->hTotal || !modeInfo->vTotal) {
         return 0;
@@ -2209,6 +2209,7 @@ static void xrrChangeDisplayMode(jint screen, jint width, jint height, jint refr
         }
         awt_XRRFreeScreenResources(res);
 }
+#endif
 
 // ---------------------------------------------------
 // display mode change via XRRSetCrtcConfig
