@@ -140,6 +140,9 @@ public class Http2TestExchangeImpl implements Http2TestExchange {
     public void sendResponseHeaders(int rCode, long responseLength,
                                     BiPredicate<CharSequence, CharSequence> insertionPolicy)
             throws IOException {
+        // Do not set Content-Length for 100, and do not set END_STREAM
+        if (rCode == 100) responseLength = 0;
+
         this.responseLength = responseLength;
         if (responseLength !=0 && rCode != 204 && !isHeadRequest()) {
                 long clen = responseLength > 0 ? responseLength : 0;
