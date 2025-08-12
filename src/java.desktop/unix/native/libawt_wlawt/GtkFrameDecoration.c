@@ -137,6 +137,7 @@ typedef gboolean (*gtk_icon_size_lookup_t)(GtkIconSize, gint*, gint*);
 typedef GdkPixbuf* (*gtk_icon_info_load_symbolic_for_context_t)(GtkIconInfo*, GtkStyleContext*, gboolean*, GError**);
 typedef GtkIconInfo* (*gtk_icon_theme_lookup_icon_for_scale_t)(GtkIconTheme*, const gchar*, gint, gint, GtkIconLookupFlags);
 typedef GtkIconTheme* (*gtk_icon_theme_get_default_t)(void);
+typedef GtkSettings* (*gtk_settings_get_default_t)(void);
 typedef GtkSettings* (*gtk_widget_get_settings_t)(GtkWidget*);
 typedef GtkStateFlags (*gtk_style_context_get_state_t)(GtkStyleContext *context);
 typedef GtkStyleContext* (*gtk_widget_get_style_context_t)(GtkWidget*);
@@ -191,7 +192,6 @@ typedef void (*g_object_get_t)(gpointer, const gchar*, ...);
 typedef void (*g_object_set_t)(gpointer, const gchar*, ...);
 typedef void (*g_object_get_property_t)(GObject*, const gchar*, GValue*);
 typedef gboolean (*g_type_check_instance_is_a_t)(void**, GType);
-typedef gboolean (*g_main_context_iteration_t)(GMainContext *context, gboolean);
 
 typedef struct GtkFrameDecorationDescr {
     GtkWidget *window;
@@ -227,6 +227,7 @@ static gtk_offscreen_window_new_t p_gtk_offscreen_window_new;
 static gtk_render_background_t p_gtk_render_background;
 static gtk_render_frame_t p_gtk_render_frame;
 static gtk_render_icon_surface_t p_gtk_render_icon_surface;
+static gtk_settings_get_default_t p_gtk_settings_get_default;
 static gtk_style_context_add_class_t p_gtk_style_context_add_class;
 static gtk_style_context_get_border_t p_gtk_style_context_get_border;
 static gtk_style_context_get_padding_t p_gtk_style_context_get_padding;
@@ -272,7 +273,6 @@ static g_object_get_t p_g_object_get;
 static g_object_set_t p_g_object_set;
 static g_object_get_property_t p_g_object_get_property;
 static g_type_check_instance_is_a_t p_g_type_check_instance_is_a;
-static g_main_context_iteration_t p_g_main_context_iteration;
 
 static void* gtk_handle;
 static void* gdk_handle;
@@ -328,6 +328,7 @@ static jboolean load_gtk(JNIEnv *env) {
     p_gtk_render_background = find_func(env, gtk_handle, "gtk_render_background");
     p_gtk_render_frame = find_func(env, gtk_handle, "gtk_render_frame");
     p_gtk_render_icon_surface = find_func(env, gtk_handle, "gtk_render_icon_surface");
+    p_gtk_settings_get_default = find_func(env, gtk_handle, "gtk_settings_get_default");
     p_gtk_style_context_add_class = find_func(env, gtk_handle, "gtk_style_context_add_class");
     p_gtk_style_context_get_border = find_func(env, gtk_handle, "gtk_style_context_get_border");
     p_gtk_style_context_get = find_func(env, gtk_handle, "gtk_style_context_get");
@@ -372,7 +373,6 @@ static jboolean load_gtk(JNIEnv *env) {
     p_g_object_set = find_func(env, gtk_handle, "g_object_set");
     p_g_object_get_property = find_func(env, gtk_handle, "g_object_get_property");
     p_g_type_check_instance_is_a = find_func(env, gtk_handle, "g_type_check_instance_is_a");
-    p_g_main_context_iteration = find_func(env, gtk_handle, "g_main_context_iteration");
 
     // NB: An error had been thrown in case some function was missing
     return JNI_TRUE;
@@ -561,6 +561,13 @@ static void draw_title_bar(GtkFrameDecorationDescr* decor, cairo_surface_t * sur
     draw_titlebar_buttons(decor, surface, cr, scale, buttonsState);
 }
 
+static void set_theme(jboolean is_dark_theme) {
+    p_g_object_set(p_gtk_settings_get_default(),
+                   "gtk-application-prefer-dark-theme",
+                   is_dark_theme,
+                   NULL);
+}
+
 JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_initIDs(JNIEnv *env, jclass clazz) {
     CHECK_NULL_THROW_IE(env,
                         CloseButtonBoundsFID = (*env)->GetFieldID(env, clazz, "closeButtonBounds", "Ljava/awt/Rectangle;"),
@@ -584,11 +591,13 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeLoadGTK(JNIE
 }
 
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeCreateDecoration
-(JNIEnv *env, jobject obj, jboolean show_minimize, jboolean show_maximize) {
+(JNIEnv *env, jobject obj, jboolean show_minimize, jboolean show_maximize, jboolean is_dark_theme) {
     GtkFrameDecorationDescr *d = calloc(1, sizeof(GtkFrameDecorationDescr));
     CHECK_NULL_THROW_OOME_RETURN(env, d, "Failed to allocate GtkFrameDeocration", 0);
 
     p_gdk_threads_enter();
+
+    set_theme(is_dark_theme);
 
     d->show_minimize = show_minimize;
     d->show_maximize = show_maximize;
@@ -736,8 +745,10 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint(JNIEnv 
     p_gdk_threads_leave();
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeSwitchTheme(JNIEnv *env, jobject obj) {
-    while ((*p_g_main_context_iteration)(NULL, false));
+JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeSwitchTheme(JNIEnv *env, jobject obj, jboolean is_dark_theme) {
+    p_gdk_threads_enter();
+    set_theme(is_dark_theme);
+    p_gdk_threads_leave();
 }
 
 JNIEXPORT jint JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeGetIntProperty
