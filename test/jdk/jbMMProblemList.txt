@@ -26,7 +26,7 @@ java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.java JBR-8905 windows-x64
 java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-x64
 java/awt/Robot/Delay/InterruptOfDelay.java 8265986,JBR-8148 macosx-all,linux-x64
-java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
+java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390,JBR-9209 macosx-all,linux-all,linux-6.15.8-100.fc41.x86_64
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442,JBR-5510 macosx-15.4,macosx-15.5,15.6,linux-5.18.2-arch1-1
 java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
 java/awt/Robot/SpuriousMouseEvents/SpuriousMouseEvents.java JBR-6572 linux-all
@@ -121,6 +121,8 @@ javax/swing/JComboBox/6559152/bug6559152.java JBR-7783,JBR-8964 linux-x64,window
 javax/swing/JComponent/7154030/bug7154030.java JBR-5510 linux-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-5510 linux-all
+javax/swing/JFileChooser/4966171/bug4966171.java JBR-8534 windows-x64
+javax/swing/JFileChooser/FileChooserListenerLeak.java JBR-8534 windows-x64
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java  JBR-5510 linux-all
 javax/swing/JInternalFrame/bug4732229.java JBR-8897 windows-x64
