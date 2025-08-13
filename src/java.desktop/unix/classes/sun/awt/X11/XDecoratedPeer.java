@@ -346,8 +346,8 @@ abstract class XDecoratedPeer extends XWindowPeer {
             if (XWM.getWMID() != XWM.UNITY_COMPIZ_WM) {
                 wm_set_insets = null;
                 Insets in = getWMSetInsets(XAtom.get(ev.get_atom()));
-                if (((XWM.getWMID() == XWM.MUTTER_WM && !isTargetUndecorated() && isVisible())
-                        || (isReparented() && (!isMapped() || getMWMDecorTitleProperty().isPresent()))) &&
+                if (((XWM.getWMID() == XWM.MUTTER_WM || XWM.getWMID() == XWM.KDE2_WM) && !isTargetUndecorated() && isVisible())
+                        || getMWMDecorTitleProperty().isPresent() &&
                         in != null && !copyAndScaleDown(in).equals(dimensions.getInsets())) {
                     handleCorrectInsets(in);
                 }
@@ -907,8 +907,9 @@ abstract class XDecoratedPeer extends XWindowPeer {
     WindowLocation queryXLocation() {
         XContentWindow c = content;
         boolean client = c == null || !content_reconfigured;
-        return new WindowLocation(XlibUtil.translateCoordinates(client ? window : c.getWindow(),
-                XlibWrapper.RootWindow(XToolkit.getDisplay(), getScreenNumber()), 0, 0), client);
+        long wnd = client || isFullScreenExclusiveMode() ? window : c.getWindow();
+        return new WindowLocation(XlibUtil.translateCoordinates(wnd,
+                XlibWrapper.RootWindow(XToolkit.getDisplay(), getScreenNumber()), 0, 0), false);
     }
 
     private void checkShellRectSize(Rectangle shellRect) {
