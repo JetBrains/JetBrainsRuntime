@@ -853,6 +853,9 @@ abstract class XDecoratedPeer extends XWindowPeer {
     }
 
     private void processConfigureEvent(XConfigureEvent xe) {
+        // TODO: limit to mutter? (XWM.getWMID() == XWM.MUTTER_WM)
+        if (isFullScreenExclusiveMode()) content_reconfigured = false;
+
         //Last chance to correct insets
         if (!insets_corrected && getDecorations() != XWindowAttributesData.AWT_DECOR_NONE) {
             long parent = XlibUtil.getParentWindow(window);
@@ -889,6 +892,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
                     : new Dimension(scaleDown(eventDimension.width), scaleDown(eventDimension.height));
             Point newUserLocation = eventLocation.getUserLocation();
             WindowDimensions newDimensions = new WindowDimensions(newUserLocation, newSize, getRealInsets(), false);
+            System.out.printf("New dimensions: %s%n", newDimensions);
             if (insLog.isLoggable(PlatformLogger.Level.FINER)) {
                 insLog.finer("Insets are {0}, new dimensions {1}",
                         getRealInsets(), newDimensions);
