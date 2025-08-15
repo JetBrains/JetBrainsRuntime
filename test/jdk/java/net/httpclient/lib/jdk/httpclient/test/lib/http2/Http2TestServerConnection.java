@@ -323,7 +323,7 @@ public class Http2TestServerConnection {
 
     private static void handshake(String name, SSLSocket sock) throws IOException {
         if (name == null) {
-            sock.getSession(); // awaits handshake completion
+            sock.startHandshake(); // blocks until handshake done
             return;
         } else if (name.equals("localhost")) {
             name = "localhost";
@@ -345,7 +345,7 @@ public class Http2TestServerConnection {
         List<SNIMatcher> list = List.of(matcher);
         params.setSNIMatchers(list);
         sock.setSSLParameters(params);
-        sock.getSession(); // blocks until handshake done
+        sock.startHandshake(); // blocks until handshake done
     }
 
     void closeIncoming() {
