@@ -1,0 +1,4 @@
+javax/swing/JInternalFrame/6647340/bug6647340.java JBR-8323 linux-all
+javax/swing/JMenu/bug4342646.java JBR-8727 linux-all,windows-all
+javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all
+javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8324 linux-all

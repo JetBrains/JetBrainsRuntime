@@ -1,0 +1,20 @@
+java/awt/GraphicsDevice/CloneConfigsTest.java JBR-9024 linux-all
+java/awt/image/DrawImage/EABlitTest.java JBR-9027 linux-all
+java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-9031 linux-all
+java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java linux-x64
+
+javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-7269 linux-all
+javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
+javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
+javax/swing/JInternalFrame/6647340/bug6647340.java JBR-8323 linux-all
+javax/swing/JMenu/bug4342646.java JBR-8727 linux-all
+javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all
+javax/swing/RepaintManager/DisplayListenerLeak/DisplayListenerLeak.java JBR-9100,JBR-9216 linux-all
+javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8324 linux-all
+
+jb/java/awt/wayland/ImageTransformTest.java JBR-8434 linux-all
+jb/java/awt/wayland/RobotGetPixelTest.java JBR-8434 linux-all
+jb/java/awt/wayland/RobotGetPixelsTest.java JBR-8434 linux-all
+jb/java/awt/wayland/VulkanBlitTest.java JBR-9096 linux-all
+jb/java/awt/wayland/VulkanCompositeTest.java JBR-9096 linux-all
+jb/java/awt/wayland/VulkanMaskFillTest.java JBR-8434 linux-all

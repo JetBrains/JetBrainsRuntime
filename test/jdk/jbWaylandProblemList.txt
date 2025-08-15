@@ -1,9 +1,9 @@
+java/awt/event/KeyEvent/FunctionKeyTest.java JBR-7773 linux-all
 java/awt/font/ComplexEmoji.java JBR-5009,JBR-8399 linux-aarch64,linux-x64
 java/awt/FullScreen/SetFullScreenTest.java JBR-8214,JBR-8400 linux-5.18.2-arch1-1,linux-x64
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-8264 linux-x64
 
-java/awt/event/KeyEvent/FunctionKeyTest.java JBR-7773 linux-all
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-7269 linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520 linux-all
@@ -18,8 +18,4 @@ javax/swing/LookAndFeel/8145547/DemandGTK2.sh JBR-8918 linux-all
 javax/swing/text/html/CSS/bug8234913.java JBR-8306 linux-all
 javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8324 linux-all
 
-jb/java/awt/wayland/RobotGetOOBPixelsTest.java JBR-8029 linux-all
-jb/java/awt/wayland/RobotGetPixelTest.java JBR-8029 linux-all
-jb/java/awt/wayland/RobotGetPixelsTest.java JBR-8029 linux-all
-jb/java/awt/wayland/VulkanMaskFillTest.java JBR-8446 linux-aarch64
 jb/javax/swing/Popup/WLPopupMoves.java JBR-8296 linux-all
