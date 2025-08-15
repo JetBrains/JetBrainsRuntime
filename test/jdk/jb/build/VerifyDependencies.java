@@ -37,7 +37,7 @@ import java.io.InputStreamReader;
 
 public class VerifyDependencies {
 
-    static final public String EXPECTED_VERSION_LEGACY = "2.17";
+    static final public String EXPECTED_VERSION_LEGACY = "2.26";
     static final public String EXPECTED_VERSION_VULKAN = "2.28";
 
     static String expectedVersion;
