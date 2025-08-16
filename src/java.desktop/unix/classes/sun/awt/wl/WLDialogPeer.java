@@ -38,15 +38,10 @@ public class WLDialogPeer extends WLDecoratedPeer implements DialogPeer {
     public void setVisible(boolean vis) {
         super.setVisible(vis);
     }
-
+    
     @Override
     public void blockWindows(List<Window> windows) {
 
-    }
-
-    @Override
-    protected void wlSetVisible(boolean v) {
-        // TODO: unimplemented for generic dialogs atm
     }
 
     @Override

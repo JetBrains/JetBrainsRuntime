@@ -42,9 +42,4 @@ class WLCanvasPeer extends WLComponentPeer implements CanvasPeer {
     {
         return gc;
     }
-
-    @Override
-    protected void wlSetVisible(boolean v) {
-        // TODO: unimplemented
-    }
 }
