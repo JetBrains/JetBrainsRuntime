@@ -398,13 +398,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // from notifyConfigured()
         } else {
             performLocked(() -> {
-                if (wlSurface != null) { // may get a "hide" request even though we were never shown
-                    nativeHideFrame(nativePtr);
+                nativeHideFrame(nativePtr);
 
-                    shadow.hide();
-                    wlSurface.dispose();
-                    wlSurface = null;
-                }
+                shadow.hide();
+                wlSurface.dispose();
+                wlSurface = null;
             });
         }
     }
