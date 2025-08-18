@@ -1161,6 +1161,8 @@ postKeyTypedJavaChar(long serial, long timestamp, uint16_t javaChar) {
     fprintf(stderr, "postKeyTypedJavaChar(0x%04x)\n", (int) javaChar);
 #endif
 
+    int javaModifiers = convertXKBModifiersToJavaModifiers(getXKBModifiers());
+
     struct WLKeyEvent event = {
             .serial = serial,
             .timestamp = timestamp,
@@ -1169,7 +1171,8 @@ postKeyTypedJavaChar(long serial, long timestamp, uint16_t javaChar) {
             .keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN,
             .rawCode = 0,
             .extendedKeyCode = 0,
-            .keyChar = javaChar
+            .keyChar = javaChar,
+            .modifiers = javaModifiers,
     };
 
     wlPostKeyEvent(&event);
