@@ -397,7 +397,15 @@ jdk_awt = \
     java/awt \
     com/apple/eawt \
     com/apple/laf \
-    sun/awt
+    sun/awt \
+    -jb/java/awt/wayland/VulkanBlitTest.java \
+    -jb/java/awt/wayland/RobotGetPixelsTest.java \
+    -jb/java/awt/wayland/ImageTransformTest.java \
+    -jb/java/awt/wayland/VulkanGCCompatibilityTest.java \
+    -jb/java/awt/wayland/RobotGetPixelTest.java \
+    -jb/java/awt/wayland/RobotGetOOBPixelsTest.java \
+    -jb/java/awt/wayland/VulkanCompositeTest.java \
+    -jb/java/awt/wayland/VulkanMaskFillTest.java
 
 jdk_2d = \
     javax/print \
@@ -797,14 +805,6 @@ jdk_awt_wayland = \
     :jdk_awt \
     jb/java/awt/wayland \
     jb/java/awt/Focus/ActivateAfterHide.java \
-    -jb/java/awt/wayland/VulkanBlitTest.java \
-    -jb/java/awt/wayland/RobotGetPixelsTest.java \
-    -jb/java/awt/wayland/ImageTransformTest.java \
-    -jb/java/awt/wayland/VulkanGCCompatibilityTest.java \
-    -jb/java/awt/wayland/RobotGetPixelTest.java \
-    -jb/java/awt/wayland/RobotGetOOBPixelsTest.java \
-    -jb/java/awt/wayland/VulkanCompositeTest.java \
-    -jb/java/awt/wayland/VulkanMaskFillTest.java \
     -com/apple/eawt \
     -com/apple/laf \
     -sun/awt \
