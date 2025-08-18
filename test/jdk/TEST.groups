@@ -444,7 +444,9 @@ jdk_editpad = \
      jdk/editpad
 
 jbr_all = \
-     jb
+     jb \
+     -jb/java/awt/vulkan \
+     -jb/java/awt/wayland/vulkan \
 
 jdk_desktop = \
     :jdk_desktop_part1 \
@@ -475,9 +477,6 @@ jdk_desktop_part3 = \
     java/awt/Modal \
     java/awt/datatransfer \
     java/awt/Window
-
-jbr_all = \
-     jb
 
 jbr_desktop_part11 = \
     :jdk_desktop_part1 \
@@ -816,6 +815,7 @@ jdk_since_checks = \
 jdk_awt_wayland = \
     :jdk_awt \
     jb/java/awt/wayland \
+    -jb/java/awt/wayland/vulkan \
     jb/java/awt/Focus/ActivateAfterHide.java \
     -com/apple/eawt \
     -com/apple/laf \
@@ -1067,12 +1067,7 @@ jdk_awt_wayland = \
 
 jdk_swing_wayland= \
     :jdk_swing \
-    jb/javax/swing/Popup/WLPopupAsParent.java \
-    jb/javax/swing/Popup/WLPopupMinSize.java \
-    jb/javax/swing/Popup/WLPopupResize.java \
-    jb/javax/swing/Popup/WLPopupLocation.java \
-    jb/javax/swing/Popup/WLPopupMoves.java \
-    jb/javax/swing/Popup/WLPopupVisibility.java \
+    jb/javax/swing/wayland \
     -com/sun/java/swing/plaf/gtk/TestBackSpaceAction.java \
     -com/sun/java/swing/plaf/gtk/TestFileChooserCtrlASelection.java \
     -com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java \
@@ -1383,3 +1378,19 @@ jdk_swing_wayland= \
 jdk_desktop_wayland = \
     :jdk_awt_wayland \
     :jdk_swing_wayland
+
+# Wayland+Vulkan tests to be executed with -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True
+jdk_awt_wayland_vulkan = \
+    :jdk_awt_wayland \
+    jb/java/awt/wayland/vulkan
+
+jdk_swing_wayland_vulkan = \
+    :jdk_swing_wayland
+
+jdk_desktop_wayland_vulkan = \
+    :jdk_awt_wayland_vulkan \
+    :jdk_swing_wayland_vulkan
+
+# Vulkan tests to be executed with -Dsun.java2d.vulkan=True
+jdk_awt_vulkan = \
+    jb/java/awt/vulkan
