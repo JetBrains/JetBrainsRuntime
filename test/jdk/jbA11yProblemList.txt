@@ -29,6 +29,7 @@ java/awt/ScrollPane/ScrollPaneLimitation.java JBR-8579 windows-x64
 java/awt/ScrollPane/ScrollPaneRemoveAdd.java JBR-8580 windows-x64
 java/awt/TextArea/Mixing/TextAreaMixing.java JBR-8581 windows-x64
 java/awt/TextArea/UsingWithMouse/SelectionAutoscrollTest.java JBR-7822,JBR-8582 linux-all,windows-x64
+java/awt/TextField/GetTextTest/GetTextTest.java JBR-9253 windows-x64
 java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java JBR-6748,JBR-8583 linux-all,windows-x64
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5397,JBR-7378 macosx-all,windows-x64
 java/awt/Window/GrabSequence/GrabSequence.java 6848409,JBR-8584 macosx-all,linux-all,windows-x64
@@ -66,8 +67,9 @@ jb/java/awt/CustomTitleBar/HitTestNonClientArea.java JBR-8861 windows-x64
 jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-9161 windows-x64
 jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-9160 windows-x64
 jb/java/awt/Desktop/AboutHandlerTest.java           nobug macosx-all,linux-all,windows-all
-jb/java/awt/Focus/NewFrameAfterDialogTest.java JBR-7387 windows-x64
 jb/java/awt/Focus/ChainOfPopupsFocusTest.java JBR-8407 windows-x64
+jb/java/awt/Focus/FrameAfterPopup.java JBR-9161 windows-x64
+jb/java/awt/Focus/NewFrameAfterDialogTest.java JBR-7387 windows-x64
 
 # VoiceOver on MacOS
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-5397 macosx-all
@@ -184,6 +186,7 @@ java/awt/hidpi/DrawOnFrameGraphicsTest.java JBR-5505 windows-all
 java/awt/im/4959409/bug4959409.java JBR-5505 windows-all
 java/awt/im/memoryleak/InputContextMemoryLeakTest.java JBR-5505 windows-all
 java/awt/image/VolatileImage/DrawBufImgOp.java
+java/awt/LightweightComponent/MultipleAddNotifyTest/MultipleAddNotifyTest.java JBR-9252 windows-all
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-5505 windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711,JBR-5505 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5510,JBR-5505 macosx-all,linux-5.18.2-arch1-1,windows-all
