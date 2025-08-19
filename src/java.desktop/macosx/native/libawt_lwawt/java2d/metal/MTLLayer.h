@@ -30,9 +30,9 @@
 #include <CoreVideo/CVDisplayLink.h>
 #import "common.h"
 
+/* dev flags to get display stats */
 #define TRACE_DISPLAY_ENABLED   0
 #define TRACE_DISPLAY_CHANGED   0
-
 #define TRACE_DISPLAY_ON        (TRACE_DISPLAY_ENABLED == 1)
 
 @interface MTLLayer : CAMetalLayer

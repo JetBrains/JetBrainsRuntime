@@ -23,6 +23,7 @@
  * questions.
  */
 
+#import <dispatch/dispatch.h>
 #import <sys/sysctl.h>
 #import "PropertiesUtilities.h"
 #import "MTLGraphicsConfig.h"
@@ -39,9 +40,13 @@ static jclass jc_JavaLayer = NULL;
 #define GET_MTL_LAYER_CLASS() \
     GET_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
 
-#define TRACE_DISPLAY   TRACE_DISPLAY_ENABLED
+#define TRACE_DISPLAY_INFO      TRACE_DISPLAY_ENABLED
+#define TRACE_DISPLAY_DETAILS   0
 
-const NSTimeInterval DF_BLIT_FRAME_TIME=1.0/120.0;
+const NSTimeInterval DF_BLIT_FRAME_TIME = 1.0 / 120.0;
+
+// (5/8) ~ 5ms (vs 8ms) to have some time within 1 frame time to blit texture:
+const long TIMEOUT_MS = (((long) (1000.0 * DF_BLIT_FRAME_TIME)) * (1000 * 1000) * 5) / 8;
 
 extern BOOL isColorMatchingEnabled();
 
@@ -54,6 +59,7 @@ BOOL isDisplaySyncEnabled() {
                                                                           withEnv:env];
         syncEnabled = [@"false" isCaseInsensitiveLike:syncEnabledProp] ? NO : YES;
         J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_isDisplaySyncEnabled: %d", syncEnabled);
+        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_isDisplaySyncEnabled: TIMEOUT_MS = %ld microseconds", (TIMEOUT_MS / 1000));
     }
     return (BOOL)syncEnabled;
 }
@@ -165,6 +171,9 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 }
 
 - (void) blitTexture {
+    // rolling mean weight (lerp):
+    static const NSTimeInterval a = 0.25;
+
     if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == NULL || *self.buffer == nil ||
         self.ctx.device == nil)
     {
@@ -189,7 +198,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             [_lock unlock];
         }
         if (skipDrawable) {
-            if (TRACE_DISPLAY) {
+            if (TRACE_DISPLAY_DETAILS) {
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_blitTexture: skip drawable [skip blit] nextDrawableCount = %d",
                               CACurrentMediaTime(), self.nextDrawableCount);
             }
@@ -200,6 +209,9 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         // Perform blit:
         // Decrement redrawCount:
         [self stopRedraw:NO];
+
+        // shared drawable (strong) between async call & main thread for fast path:
+        __block id<CAMetalDrawable> mtlDrawable = nil;
 
         // try-finally block to ensure releasing the CPU fence (abort blit):
         BOOL releaseFence = YES;
@@ -226,16 +238,65 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             }
 
             // Acquire CAMetalDrawable without blocking:
-            const CFTimeInterval beforeDrawableTime = (TRACE_DISPLAY) ? CACurrentMediaTime() : 0.0;
-            const id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
+
+            // Get high priority global concurrent queue:
+            const dispatch_queue_t concurrentQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
+
+            if (concurrentQueue == nil) {
+                J2dTraceLn(J2D_TRACE_ERROR, "MTLLayer.blitTexture: concurrentQueue is null");
+                return;
+            }
+
+            // cancel flag between async call and the main thread:
+            __block long cancelled = 0; // long for padding (flag)
+
+            [self retain];
+            const dispatch_block_t async_block = dispatch_block_create(0, ^{
+                // Wait block current thread up to 1 second (macOS timeout):
+                // may return null if system timeout:
+                id<CAMetalDrawable> newDrawable = [self nextDrawable];
+
+                if (cancelled != 0) {
+                    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cancelled in async_block");
+                } else if (newDrawable != nil) {
+                    // retain the given drawable stored in mtlDrawable variable for the main thread:
+                    [newDrawable retain];
+                    // set the drawable reference for the main thread:
+                    mtlDrawable = newDrawable;
+                }
+                [self release];
+            });
+
+            const CFTimeInterval beforeDrawableTime = (TRACE_DISPLAY_INFO) ? CACurrentMediaTime() : 0.0;
+
+            dispatch_async(concurrentQueue, async_block);
+
+            // returns zero if the dispatch block completed within the specified timeout, or non-zero if the block timed out.
+            // TODO: adjust timeout according to the layer's display rate (see displaylink interval)
+            intptr_t status = dispatch_block_wait(async_block, dispatch_time((dispatch_time_t)NULL, TIMEOUT_MS));
+
+            const CFTimeInterval nextDrawableTime = (TRACE_DISPLAY_INFO) ? CACurrentMediaTime() : 0.0;
+
+            Block_release(async_block);
+
+            if (status != 0) {
+                // signal thread in async_block() waiting on nextDrawable
+                // that its drawable reference should be released and discarded anyway:
+                cancelled = 1;
+
+#if TRACE_DISPLAY_ON
+                const CFTimeInterval nextDrawableTimeout = (nextDrawableTime - beforeDrawableTime);
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_blitTexture: nextDrawable failed (status = %d)"
+                                                 " - nextDrawableTimeout = %.3lf ms ",
+                              CACurrentMediaTime(), status, 1000.0 * nextDrawableTimeout);
+#endif
+                return;
+            }
+
             if (mtlDrawable == nil) {
                 J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null");
                 return;
             }
-            const CFTimeInterval nextDrawableTime = (TRACE_DISPLAY) ? CACurrentMediaTime() : 0.0;
-
-            // rolling mean weight (lerp):
-            static const NSTimeInterval a = 0.25;
 
 #if TRACE_DISPLAY_ON
             const CFTimeInterval nextDrawableLatency = (nextDrawableTime - beforeDrawableTime);
@@ -243,16 +304,19 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 self.avgNextDrawableTime = nextDrawableLatency * a + self.avgNextDrawableTime * (1.0 - a);
             }
             J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                          "[%.6lf] MTLLayer_blitTexture: drawable(%d) presented"
+                          "[%.6lf] MTLLayer_blitTexture: drawable(%d) acquired"
                           " - nextDrawableLatency = %.3lf ms - average = %.3lf ms",
                           CACurrentMediaTime(), mtlDrawable.drawableID,
                           1000.0 * nextDrawableLatency, 1000.0 * self.avgNextDrawableTime
             );
 #endif
+
+            // Note: the main thread retains the drawable reference
+
             // Keep Fence from now:
             releaseFence = NO;
 
-            id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
+            id<MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
             [blitEncoder
                     copyFromTexture:(isDisplaySyncEnabled()) ? (*self.buffer) : (*self.outBuffer)
@@ -265,7 +329,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
             if (@available(macOS 10.15.4, *)) {
                 [self retain];
-                [mtlDrawable addPresentedHandler:^(id <MTLDrawable> drawable) {
+                [mtlDrawable addPresentedHandler:^(id<MTLDrawable> drawable) {
                     // note: called anyway even if drawable.present() not called!
                     const CFTimeInterval presentedTime = drawable.presentedTime;
                     if (presentedTime != 0.0) {
@@ -288,7 +352,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                         if (self.perfCountersEnabled) {
                             [self countFrameDroppedCallback];
                         }
-                        if (TRACE_DISPLAY) {
+                        if (TRACE_DISPLAY_INFO) {
                             const CFTimeInterval now = CACurrentMediaTime();
                             const CFTimeInterval presentedHandlerLatency = (now - nextDrawableTime);
                             J2dRlsTraceLn(J2D_TRACE_VERBOSE,
@@ -303,7 +367,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             }
             // Present drawable:
             NSUInteger drawableId = -1;
-            if (TRACE_DISPLAY) {
+            if (TRACE_DISPLAY_DETAILS) {
                 drawableId = mtlDrawable.drawableID;
                 J2dRlsTraceLn(J2D_TRACE_INFO,
                               "[%.6lf] MTLLayer.blitTexture: layer[%p] present drawable(%d)",
@@ -320,7 +384,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             }
 
             [self retain];
-            [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+            [commandBuf addCompletedHandler:^(id<MTLCommandBuffer> commandbuf) {
                 // free drawable once processed:
                 [self freeDrawableCount];
                 if (@available(macOS 10.15.4, *)) {
@@ -334,12 +398,15 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
             [commandBuf commit];
 
-            if (TRACE_DISPLAY) {
+            if (TRACE_DISPLAY_DETAILS) {
                 J2dRlsTraceLn(J2D_TRACE_INFO,
                               "[%.6lf] MTLLayer.blitTexture: layer[%p] commit with drawable(%d)",
                               CACurrentMediaTime(), self, drawableId);
             }
         } @finally {
+            // release the drawable reference anyway:
+            [mtlDrawable release];
+
             // try-finally block to ensure releasing the CPU fence:
             if (releaseFence) {
                 // free drawable:
@@ -358,14 +425,14 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     [_lock lock];
     --self.nextDrawableCount;
     [_lock unlock];
-    if (TRACE_DISPLAY) {
+    if (TRACE_DISPLAY_DETAILS) {
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_freeDrawableCount: layer[%p] nextDrawableCount = %d",
                       CACurrentMediaTime(), self, self.nextDrawableCount);
     }
 }
 
 - (void) dealloc {
-    if (TRACE_DISPLAY) {
+    if (TRACE_DISPLAY_DETAILS) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer.dealloc: layer[%p]", self);
     }
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
@@ -448,8 +515,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         return;
     }
     // Copy the rendered texture to the output buffer (blit later) using the render command queue:
-    id <MTLCommandBuffer> commandbuf = [self.ctx createCommandBuffer];
-    id <MTLBlitCommandEncoder> blitEncoder = [commandbuf blitCommandEncoder];
+    id<MTLCommandBuffer> commandbuf = [self.ctx createCommandBuffer];
+    id<MTLBlitCommandEncoder> blitEncoder = [commandbuf blitCommandEncoder];
     [blitEncoder
             copyFromTexture:(*self.buffer) sourceSlice:0 sourceLevel:0
                sourceOrigin:MTLOriginMake(0, 0, 0)
@@ -458,7 +525,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
           destinationOrigin:MTLOriginMake(0, 0, 0)];
     [blitEncoder endEncoding];
     [self retain];
-    [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
+    [commandbuf addCompletedHandler:^(id<MTLCommandBuffer> commandBuf) {
         [self startRedraw];
         [self release];
     }];
@@ -469,13 +536,13 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
 
     if (cbwrapper != nil) {
-        id <MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+        id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
 
         [self retain];
-        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
+        [commandbuf addCompletedHandler:^(id<MTLCommandBuffer> commandBuf) {
             [cbwrapper release];
             if (updateDisplay && isDisplaySyncEnabled()) {
-                if (TRACE_DISPLAY) {
+                if (TRACE_DISPLAY_DETAILS) {
                     J2dRlsTraceLn(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_commitCommandBuffer: CompletedHandler", CACurrentMediaTime());
                 }
                 // Ensure layer will be redrawn asap to display new content:
@@ -552,7 +619,7 @@ JNI_COCOA_ENTER(env);
             AWT_ASSERT_APPKIT_THREAD;
             layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer usePerfCounters: perfCountersEnabled];
     }];
-    if (TRACE_DISPLAY) {
+    if (TRACE_DISPLAY_DETAILS) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_nativeCreateLayer: created layer[%p]", layer);
     }
 JNI_COCOA_EXIT(env);
