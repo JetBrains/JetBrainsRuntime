@@ -1381,7 +1381,7 @@ public class Http2TestServerConnection {
         }
     }
 
-    void updateConnectionWindow(int amount) {
+    public void updateConnectionWindow(int amount) {
         System.out.printf("sendWindow (window=%s, amount=%s) is now: %s%n",
                 sendWindow, amount, sendWindow + amount);
         synchronized (this) {
