@@ -397,15 +397,7 @@ jdk_awt = \
     java/awt \
     com/apple/eawt \
     com/apple/laf \
-    sun/awt \
-    -jb/java/awt/wayland/VulkanBlitTest.java \
-    -jb/java/awt/wayland/RobotGetPixelsTest.java \
-    -jb/java/awt/wayland/ImageTransformTest.java \
-    -jb/java/awt/wayland/VulkanGCCompatibilityTest.java \
-    -jb/java/awt/wayland/RobotGetPixelTest.java \
-    -jb/java/awt/wayland/RobotGetOOBPixelsTest.java \
-    -jb/java/awt/wayland/VulkanCompositeTest.java \
-    -jb/java/awt/wayland/VulkanMaskFillTest.java
+    sun/awt
 
 jdk_2d = \
     javax/print \
@@ -435,7 +427,15 @@ jdk_editpad = \
      jdk/editpad
 
 jbr_all = \
-     jb
+     jb \
+     -jb/java/awt/wayland/VulkanBlitTest.java \
+     -jb/java/awt/wayland/RobotGetPixelsTest.java \
+     -jb/java/awt/wayland/ImageTransformTest.java \
+     -jb/java/awt/wayland/VulkanGCCompatibilityTest.java \
+     -jb/java/awt/wayland/RobotGetPixelTest.java \
+     -jb/java/awt/wayland/RobotGetOOBPixelsTest.java \
+     -jb/java/awt/wayland/VulkanCompositeTest.java \
+     -jb/java/awt/wayland/VulkanMaskFillTest.java
 
 jdk_desktop = \
     :jdk_desktop_part1 \
@@ -466,9 +466,6 @@ jdk_desktop_part3 = \
     java/awt/Modal \
     java/awt/datatransfer \
     java/awt/Window
-
-jbr_all = \
-     jb
 
 jbr_desktop_part11 = \
     :jdk_desktop_part1 \
