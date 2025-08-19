@@ -1,3 +1,5 @@
+java/awt/Graphics2D/TextPerf.java.TextPerf JBR-9190 linux-all
+
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all
 javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8324 linux-all
 
