@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Alibaba Group Holding Limited. All Rights Reserved.
+ * Copyright (c) 2023, 2025, Alibaba Group Holding Limited. All Rights Reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@
  * @bug 8312065
  * @summary Socket.connect does not timeout as expected when profiling (i.e. keep receiving signal)
  * @requires (os.family != "windows")
+ * @library /test/lib
+ * @build jtreg.SkippedException
  * @compile NativeThread.java
  * @run main/othervm/native/timeout=120 B8312065
  */
@@ -36,6 +38,8 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.TimeUnit;
+
+import jtreg.SkippedException;
 
 public class B8312065 {
     public static void main(String[] args) throws Exception {
@@ -83,6 +87,8 @@ public class B8312065 {
                 System.out.println("Test FAILED: duration " + duration + " ms, expected >= " + timeoutMillis + " ms");
                 System.exit(1);
             }
+        } catch (java.net.ConnectException e) {
+            throw new SkippedException("Network setup issue, skip this test", e);
         }
     }
 }
