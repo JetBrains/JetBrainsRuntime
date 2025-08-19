@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,15 +21,20 @@
  * questions.
  */
 
+#include <errno.h>
+#include "jvmti.h"
+#include <signal.h>
+#include <stdio.h>
 
-/*
- * @test
- * @requires os.family != "windows" & os.family != "aix"
- *
- * @summary converted from VM testbase runtime/signal/sigusr201.
- * VM testbase keywords: [signal, runtime, linux, macosx]
- *
- * @library /test/lib
- * @run main/native SigTestDriver SIGUSR2
- */
+JNIEXPORT jint JNICALL
+Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
 
+  if (signal(SIGPIPE, SIG_IGN) != SIG_ERR) {
+    printf("changed signal disposition for SIGPIPE to SIG_IGN\n");
+  } else {
+    printf("FAILED to change signal disposition for SIGPIPE to SIG_IGN (%d)\n", errno);
+    return JNI_ERR;
+  }
+
+  return JNI_OK;
+}
