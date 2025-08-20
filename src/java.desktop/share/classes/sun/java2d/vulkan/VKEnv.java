@@ -31,12 +31,11 @@ import sun.util.logging.PlatformLogger;
 import java.awt.Toolkit;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class VKEnv {
 
-    private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.VKInstance");
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.VKEnv");
 
     private static final class Options {
 
@@ -72,42 +71,57 @@ public final class VKEnv {
 
     public static synchronized void init(long nativePtr) {
         if (state > INITIALIZING) return;
-        long platformData = nativePtr == 0 ? 0 : initPlatform(nativePtr);
         int newState = DISABLED;
         if (Options.vulkan) {
-            devices = initNative(platformData);
-            if (devices != null) {
-                newState = ENABLED;
-                if (Options.accelsd) newState |= ACCELSD_BIT;
-                defaultDevice = devices[Options.deviceNumber >= 0 && Options.deviceNumber < devices.length ?
-                        Options.deviceNumber : 0];
-                // Check whether the presentation is supported.
-                for (VKGPU device : devices) {
-                    if (device.hasCap(VKGPU.CAP_PRESENTABLE_BIT) &&
-                            device.getPresentableGraphicsConfigs().findAny().isPresent()) {
-                        newState |= PRESENT_BIT;
-                        break;
+            try {
+                long platformData = nativePtr == 0 ? 0 : initPlatform(nativePtr);
+                devices = initNative(platformData);
+                if (devices != null) {
+                    newState = ENABLED;
+                    if (Options.accelsd) newState |= ACCELSD_BIT;
+                    defaultDevice = devices[Options.deviceNumber >= 0 && Options.deviceNumber < devices.length ?
+                            Options.deviceNumber : 0];
+                    // Check whether the presentation is supported.
+                    for (VKGPU device : devices) {
+                        if (device.hasCap(VKGPU.CAP_PRESENTABLE_BIT) &&
+                                device.getPresentableGraphicsConfigs().findAny().isPresent()) {
+                            newState |= PRESENT_BIT;
+                            break;
+                        }
                     }
-                }
 
-                VKBlitLoops.register();
-                VKMaskFill.register();
-                VKMaskBlit.register();
+                    VKBlitLoops.register();
+                    VKMaskFill.register();
+                    VKMaskBlit.register();
+                }
+            } catch (UnsatisfiedLinkError e) {
+                newState = DISABLED;
+                if (Options.verbose) {
+                    System.err.println("Vulkan backend is not available");
+                    e.printStackTrace(System.err);
+                }
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.warning("Vulkan backend is not available", e);
+                }
             }
         }
         state = newState;
 
         if (Options.verbose || log.isLoggable(PlatformLogger.Level.FINE)) {
-            String message;
+            StringBuilder msg = new StringBuilder("Vulkan rendering enabled: ");
             if (isVulkanEnabled()) {
-                message = "Vulkan rendering enabled: YES" +
-                          "\n  presentation enabled: " + (isPresentationEnabled() ? "YES" : "NO") +
-                          "\n  accelerated surface data enabled: " + (isSurfaceDataAccelerated() ? "YES" : "NO") +
-                          "\n  devices:" + Stream.of(devices).map(d -> (d == defaultDevice ?
-                          "\n    *" : "\n     ") + d.getName()).collect(Collectors.joining());
+                msg.append("YES")
+                        .append("\n  Presentation enabled: ").append(isPresentationEnabled() ? "YES" : "NO")
+                        .append("\n  Accelerated surface data enabled: ").append(isSurfaceDataAccelerated() ? "YES" : "NO")
+                        .append("\n  Devices:");
+                for (int i = 0; i < devices.length; i++) {
+                    VKGPU d = devices[i];
+                    msg.append(d == defaultDevice ? "\n    *" : "\n     ").append(i).append(": ").append(d.getName());
+                }
             } else {
-                message = "Vulkan rendering enabled: NO";
+                msg.append("NO");
             }
+            String message = msg.toString();
             if (Options.verbose) {
                 System.err.println(message);
             }
