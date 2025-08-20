@@ -120,7 +120,8 @@ ifeq ($(call isTargetOs, windows macosx), false)
 endif
 
 ifneq ($(VULKAN_ENABLED), true)
-  EXCLUDES += sun/java2d/vulkan
+  EXCLUDE_FILES += $(filter-out $(TOPDIR)/src/java.desktop/share/classes/sun/java2d/vulkan/VKEnv.java, \
+                                $(wildcard $(TOPDIR)/src/java.desktop/*/classes/sun/java2d/vulkan/*.java))
 endif
 
 # These files do not appear in the build result of the old build. This
