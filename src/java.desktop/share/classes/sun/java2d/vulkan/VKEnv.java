@@ -36,7 +36,7 @@ import java.util.stream.Stream;
 
 public final class VKEnv {
 
-    private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.VKInstance");
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.VKEnv");
 
     private static final class Options {
 
@@ -72,27 +72,38 @@ public final class VKEnv {
 
     public static synchronized void init(long nativePtr) {
         if (state > INITIALIZING) return;
-        long platformData = nativePtr == 0 ? 0 : initPlatform(nativePtr);
         int newState = DISABLED;
         if (Options.vulkan) {
-            devices = initNative(platformData);
-            if (devices != null) {
-                newState = ENABLED;
-                if (Options.accelsd) newState |= ACCELSD_BIT;
-                defaultDevice = devices[Options.deviceNumber >= 0 && Options.deviceNumber < devices.length ?
-                        Options.deviceNumber : 0];
-                // Check whether the presentation is supported.
-                for (VKGPU device : devices) {
-                    if (device.hasCap(VKGPU.CAP_PRESENTABLE_BIT) &&
-                            device.getPresentableGraphicsConfigs().findAny().isPresent()) {
-                        newState |= PRESENT_BIT;
-                        break;
+            try {
+                long platformData = nativePtr == 0 ? 0 : initPlatform(nativePtr);
+                devices = initNative(platformData);
+                if (devices != null) {
+                    newState = ENABLED;
+                    if (Options.accelsd) newState |= ACCELSD_BIT;
+                    defaultDevice = devices[Options.deviceNumber >= 0 && Options.deviceNumber < devices.length ?
+                            Options.deviceNumber : 0];
+                    // Check whether the presentation is supported.
+                    for (VKGPU device : devices) {
+                        if (device.hasCap(VKGPU.CAP_PRESENTABLE_BIT) &&
+                                device.getPresentableGraphicsConfigs().findAny().isPresent()) {
+                            newState |= PRESENT_BIT;
+                            break;
+                        }
                     }
-                }
 
-                VKBlitLoops.register();
-                VKMaskFill.register();
-                VKMaskBlit.register();
+                    VKBlitLoops.register();
+                    VKMaskFill.register();
+                    VKMaskBlit.register();
+                }
+            } catch (UnsatisfiedLinkError e) {
+                newState = DISABLED;
+                if (Options.verbose) {
+                    System.err.println("Vulkan backend is not available");
+                    e.printStackTrace(System.err);
+                }
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.warning("Vulkan backend is not available", e);
+                }
             }
         }
         state = newState;
