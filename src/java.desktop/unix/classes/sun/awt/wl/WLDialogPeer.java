@@ -45,11 +45,6 @@ public class WLDialogPeer extends WLDecoratedPeer implements DialogPeer {
     }
 
     @Override
-    protected void wlSetVisible(boolean v) {
-        // TODO: unimplemented for generic dialogs atm
-    }
-
-    @Override
     public boolean isResizable() {
         return ((Dialog)target).isResizable();
     }
