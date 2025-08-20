@@ -31,7 +31,6 @@ import sun.util.logging.PlatformLogger;
 import java.awt.Toolkit;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class VKEnv {
@@ -109,16 +108,20 @@ public final class VKEnv {
         state = newState;
 
         if (Options.verbose || log.isLoggable(PlatformLogger.Level.FINE)) {
-            String message;
+            StringBuilder msg = new StringBuilder("Vulkan rendering enabled: ");
             if (isVulkanEnabled()) {
-                message = "Vulkan rendering enabled: YES" +
-                          "\n  presentation enabled: " + (isPresentationEnabled() ? "YES" : "NO") +
-                          "\n  accelerated surface data enabled: " + (isSurfaceDataAccelerated() ? "YES" : "NO") +
-                          "\n  devices:" + Stream.of(devices).map(d -> (d == defaultDevice ?
-                          "\n    *" : "\n     ") + d.getName()).collect(Collectors.joining());
+                msg.append("YES")
+                        .append("\n  Presentation enabled: ").append(isPresentationEnabled() ? "YES" : "NO")
+                        .append("\n  Accelerated surface data enabled: ").append(isSurfaceDataAccelerated() ? "YES" : "NO")
+                        .append("\n  Devices:");
+                for (int i = 0; i < devices.length; i++) {
+                    VKGPU d = devices[i];
+                    msg.append(d == defaultDevice ? "\n    *" : "\n     ").append(i).append(": ").append(d.getName());
+                }
             } else {
-                message = "Vulkan rendering enabled: NO";
+                msg.append("NO");
             }
+            String message = msg.toString();
             if (Options.verbose) {
                 System.err.println(message);
             }
