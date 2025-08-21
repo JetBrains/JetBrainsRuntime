@@ -137,7 +137,7 @@ public abstract class VKSurfaceData extends SurfaceData
         }
     }
 
-    protected BufferedImage getSnapshot(int x, int y, int width, int height) {
+    public BufferedImage getSnapshot(int x, int y, int width, int height) {
         BufferedImage image = getFormat().createCompatibleImage(width, height, getTransparency());
         SurfaceData sd = SurfaceData.getPrimarySurfaceData(image);
         Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa, sd.getSurfaceType());
