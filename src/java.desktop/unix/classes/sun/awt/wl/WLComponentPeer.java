@@ -30,12 +30,14 @@ import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.PaintEventDispatcher;
 import sun.awt.SunToolkit;
+import sun.awt.SurfacePixelGrabber;
 import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
+import sun.java2d.vulkan.VKSurfaceData;
 import sun.java2d.wl.WLSurfaceDataExt;
 import sun.java2d.wl.WLSurfaceSizeListener;
 import sun.util.logging.PlatformLogger;
@@ -1614,6 +1616,14 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     Dimension javaUnitsToSurfaceSize(Dimension d) {
         return new Dimension(javaUnitsToSurfaceSize(d.width), javaUnitsToSurfaceSize(d.height));
+    }
+
+    int javaUnitsToBufferUnits(int value) {
+        return (int) Math.floor(value * effectiveScale);
+    }
+
+    int javaSizeToBufferSize(int value) {
+        return (int) Math.ceil(value * effectiveScale);
     }
 
     /**
