@@ -52,10 +52,14 @@ import java.awt.event.TextEvent;
 import java.awt.im.InputContext;
 import java.awt.im.InputMethodRequests;
 import java.awt.image.BufferStrategy;
+import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
+import java.awt.image.Raster;
+import java.awt.image.SampleModel;
 import java.awt.image.VolatileImage;
+import java.awt.image.WritableRaster;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
 import java.awt.peer.LightweightPeer;
@@ -88,6 +92,7 @@ import javax.accessibility.AccessibleStateSet;
 import javax.swing.JComponent;
 import javax.swing.JRootPane;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.AppContext;
 import sun.awt.ComponentFactory;
@@ -98,6 +103,7 @@ import sun.awt.EmbeddedFrame;
 import sun.awt.RequestFocusController;
 import sun.awt.SubRegionShowable;
 import sun.awt.SunToolkit;
+import sun.awt.SurfacePixelGrabber;
 import sun.awt.dnd.SunDropTargetEvent;
 import sun.awt.im.CompositionArea;
 import sun.awt.image.VSyncedBSManager;
@@ -10546,5 +10552,80 @@ public abstract class Component implements ImageObserver, MenuContainer,
             allowNativeActions = false;
         }
         return p.updateCustomTitleBarHitTest(allowNativeActions);
+    }
+
+    @JBRApi.Provides("Screenshoter#getWindowBackbufferArea")
+    private static BufferedImage getWindowBackbufferArea(Window window, int x, int y, int width, int height) {
+        Objects.requireNonNull(window);
+
+        if (x < 0 || y < 0) {
+            throw new IllegalArgumentException("Negative coordinates are not allowed");
+        }
+
+        if (width <= 0 || height <= 0) {
+            throw new IllegalArgumentException("The size must be positive");
+        }
+
+        Image fullBackbuffer = window.getBackBuffer();
+        if (fullBackbuffer == null) {
+            return null;
+        }
+
+        var bufferWidth = fullBackbuffer.getWidth(null);
+        var bufferHeight = fullBackbuffer.getHeight(null);
+        if (x >= width) {
+            throw new IllegalArgumentException(String.format("x coordinate (%d) is out of bounds (%d)", x, bufferWidth));
+        }
+
+        if (y >= height) {
+            throw new IllegalArgumentException(String.format("y coordinate (%d) is out of bounds (%d)", y, bufferHeight));
+        }
+
+        if ((long) x + width > bufferWidth) {
+            width = bufferWidth - x;
+        }
+
+        if ((long) y + height > bufferHeight) {
+            height  = bufferHeight - y;
+        }
+
+        if (fullBackbuffer instanceof BufferedImage bufferedImage) {
+            return bufferedImage.getSubimage(x, y, width, height);
+        } else {
+            ColorModel colorModel = window.getGraphicsConfiguration().getColorModel();
+            SampleModel sampleModel = colorModel.createCompatibleSampleModel(width, height);
+            WritableRaster raster = Raster.createWritableRaster(sampleModel, null);
+            BufferedImage image = new BufferedImage(colorModel, raster, colorModel.isAlphaPremultiplied(), null);
+            image.getGraphics().drawImage(fullBackbuffer,
+                    0, 0, width, height,
+                    x, y, x + width, y + height,
+                    null);
+            return image;
+        }
+    }
+
+    @JBRApi.Provides("Screenshoter#getWindowSurfaceArea")
+    private static BufferedImage getWindowSurfaceArea(Window window, int x, int y, int width, int height) {
+        Objects.requireNonNull(window);
+
+        if (x < 0 || y < 0) {
+            throw new IllegalArgumentException("Negative coordinates are not allowed");
+        }
+
+        if (width <= 0 || height <= 0) {
+            throw new IllegalArgumentException("The size must be positive");
+        }
+
+        ComponentPeer peer = window.peer;
+        if (peer == null || !window.isVisible()) {
+            return null;
+        }
+
+        if (peer instanceof SurfacePixelGrabber spg) {
+            // TODO: translate coordinates, maybe?
+            return spg.getClientAreaSnapshot(x, y, width, height);
+        }
+
+        return null;
     }
 }
