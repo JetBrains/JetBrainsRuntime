@@ -26,19 +26,25 @@
 
 package sun.java2d.wl;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Window;
 import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
 import java.awt.image.Raster;
+import java.awt.image.SampleModel;
+import java.awt.image.WritableRaster;
 import java.util.Objects;
 
 import sun.awt.AWTAccessor;
 import sun.awt.wl.WLComponentPeer;
-import sun.awt.wl.WLGraphicsConfig;
 import sun.awt.wl.WLSMGraphicsConfig;
 import sun.java2d.SurfaceData;
+import sun.java2d.loops.Blit;
+import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.SurfaceType;
 import sun.util.logging.PlatformLogger;
 
@@ -124,16 +130,20 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
         return gc;
     }
 
+    public BufferedImage getSnapshot(int x, int y, int width, int height) {
+        ColorModel colorModel = getColorModel();
+        SampleModel sampleModel = colorModel.createCompatibleSampleModel(width, height);
+        WritableRaster raster = Raster.createWritableRaster(sampleModel, null);
+        BufferedImage image = new BufferedImage(colorModel, raster, colorModel.isAlphaPremultiplied(), null);
+        SurfaceData sd = SurfaceData.getPrimarySurfaceData(image);
+        Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa, sd.getSurfaceType());
+        blit.Blit(this, sd, AlphaComposite.Src, null, x, y, 0, 0, width, height);
+        return image;
+    }
+
     @Override
     public Raster getRaster(int x, int y, int w, int h) {
-        // Can do something like the following:
-        // Raster r = getColorModel().createCompatibleWritableRaster(w, h);
-        // copy surface data to this raster
-        // save a reference to this raster
-        // return r;
-        // then in flush() check if raster was modified and take pixels from there
-        // This is obviously suboptimal and shouldn't be used in performance-critical situations.
-        throw new UnsupportedOperationException("Not implemented yet");
+        return getSnapshot(x, y, w, h).getRaster().createTranslatedChild(x, y);
     }
 
     @Override
