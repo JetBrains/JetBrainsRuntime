@@ -97,7 +97,6 @@ vmTestbase/nsk/jdi/VMOutOfMemoryException/VMOutOfMemoryException001/VMOutOfMemor
 
 gc/arguments/TestNewSizeThreadIncrease.java 0000000 generic-all
 gc/g1/TestSkipRebuildRemsetPhase.java 0000000 generic-all
-runtime/classFileParserBug/TestEmptyBootstrapMethodsAttr.java 8346442 generic-all
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 0000000 generic-all
 runtime/Thread/AsyncExceptionOnMonitorEnter.java 0000000 generic-all
 runtime/Thread/StopAtExit.java 0000000 generic-all
