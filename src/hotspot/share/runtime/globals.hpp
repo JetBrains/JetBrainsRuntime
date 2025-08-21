@@ -2032,8 +2032,11 @@ const int ObjectAlignmentInBytes = 8;
           "core: core HA. Use integrated hotswap-agent-core.jar"            \
           "external: external HA. use external HA, open required JDK "      \
           "modules.")                                                       \
-          constraint(HotswapAgentConstraintFunc, AfterErgo)
-
+          constraint(HotswapAgentConstraintFunc, AfterErgo)                 \
+                                                                            \
+  product(bool, UseClassMetaspaceForAllClasses, false, DIAGNOSTIC,          \
+          "Use the class metaspace for all classes including "              \
+          "abstract and interface classes.")                                \
 
 // end of RUNTIME_FLAGS
 
