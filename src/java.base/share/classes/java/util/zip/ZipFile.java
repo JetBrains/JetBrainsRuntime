@@ -1655,7 +1655,7 @@ public class ZipFile implements ZipConstants, Closeable {
 
         private Source(Key key, boolean toDelete, ZipCoder zipCoder) throws IOException {
             this.key = key;
-            if (USE_NIO_FOR_ZIP_FILE_ACCESS && (IoOverNio.IS_ENABLED_IN_GENERAL ? IoOverNio.isAllowedInThisThread() : VM.isBooted())) {
+            if (USE_NIO_FOR_ZIP_FILE_ACCESS && VM.isBooted() && IoOverNio.isAllowedInThisThread()) {
                 Set<OpenOption> options;
                 if (toDelete) {
                     options = Set.of(StandardOpenOption.READ, StandardOpenOption.DELETE_ON_CLOSE);
