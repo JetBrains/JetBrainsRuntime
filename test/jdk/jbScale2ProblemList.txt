@@ -49,8 +49,8 @@ java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 815
 java/awt/LightweightComponent/MultipleAddNotifyTest/MultipleAddNotifyTest.java JBR-8092,JBR-8873 linux-all,windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711,JBR-6234 linux-all,windows-all,macosx-all
 java/awt/List/TriggerActionEventTest.java JBR-6234 windows-all
-java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5359,JBR-5510,JBR-6090 macosx-all,windows-aarch64,linux-5.18.2-arch1-1,windows-all
-java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5359,JBR-5510,JBR-6090 windows-aarch64,linux-5.18.2-arch1-1,windows-all
+java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5359,JBR-6090 macosx-all,windows-aarch64,windows-all
+java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5359,JBR-6090 windows-aarch64,windows-all
 java/awt/Mixing/LWPopupMenu.java JBR-824,JBR-6134 generic-all,windows-x64
 java/awt/Mixing/MixingOnDialog.java JBR-6134,JBR-6090 windows-x64,windows-all
 java/awt/Mixing/MixingOnShrinkingHWButton.java JBR-6134 windows-x64
