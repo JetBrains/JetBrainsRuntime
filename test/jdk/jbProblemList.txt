@@ -139,6 +139,8 @@ java/awt/FileDialog/8003399/bug8003399.java JBR-6930 windows-all
 java/awt/FileDialog/8017487/bug8017487.java JBR-8144 windows-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
+java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
+java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
 java/awt/Focus/ComponentLostFocusTest.java JBR-7909 generic-all
 java/awt/Focus/EmptyWindowKeyTest.java JBR-7913 windows-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
@@ -148,11 +150,8 @@ java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayout
 java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
 java/awt/Focus/InactiveFocusRace.java 8023263 linux-all
-java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java JBR-7311 linux-x86
-java/awt/Focus/LabelScrollBarFocus.java JBR-8027 linux-all
+java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java JBR-7311 linux-all
 java/awt/Focus/KeyStrokeTest.java JBR-7914 windows-all
-java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
-java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
 java/awt/Focus/LabelScrollBarFocus.java JBR-8027 linux-all,windows-10.0
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 8169110 linux-all
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java JBR-5178 windows-all
@@ -1038,6 +1037,7 @@ javax/swing/JPopupMenu/6987844/bug6987844.java JBR-6718 linux-all,windows-all
 javax/swing/JPopupMenu/8075063/ContextMenuScrollTest.java JBR-6717 linux-all
 javax/swing/JPopupMenu/8173739/TestPopupMenu.java JBR-6959 linux-aarch64
 javax/swing/JPopupMenu/SetInvokerJPopupMenuTest.java JBR-6021 linux-all
+javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java JBR-8571 linux-6.14.0-1011-aws
 javax/swing/JRadioButton/8033699/bug8033699.java 8197552 windows-all
 javax/swing/JRadioButton/8075609/bug8075609.java 8197552,8266085,JBR-5510 windows-all,linux-5.18.2-arch1-1
 javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java 8197552,8266085 windows-all
@@ -1243,8 +1243,9 @@ jdk/jfr/api/consumer/recordingstream/TestOnEvent.java           8255404 linux-x6
 # jdk_internal
 
 jdk/internal/platform/docker/TestDockerBasic.java          JBR-5220 linux-aarch64
-jdk/internal/platform/docker/TestDockerMemoryMetrics.java  JBR-5220 linux-aarch64
+jdk/internal/platform/docker/TestDockerMemoryMetrics.java  JBR-5220 linux-6.14.0-1011-aws
 jdk/internal/platform/docker/TestGetFreeSwapSpaceSize.java JBR-5220 linux-aarch64
+jdk/internal/platform/docker/TestLimitsUpdating.java JBR-9166 linux-6.14.0-1011-aws
 jdk/internal/platform/docker/TestPidsLimit.java 8311539 linux-all
 
 ############################################################################
