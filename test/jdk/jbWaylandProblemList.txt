@@ -3,7 +3,7 @@ java/awt/EventDispatchThread/PreserveDispathThread/PreserveDispatchThread.java J
 java/awt/Graphics2D/ScaledTransform/ScaledTransform.java JBR-9237 linux-all
 java/awt/Graphics2D/TextPerf.java JBR-9190 linux-all
 java/awt/font/ComplexEmoji.java JBR-5009,JBR-8399 linux-aarch64,linux-x64
-java/awt/FullScreen/SetFullScreenTest.java JBR-8214,JBR-8400 linux-5.18.2-arch1-1,linux-x64
+java/awt/FullScreen/SetFullScreenTest.java JBR-8400 linux-x64
 java/awt/image/DrawImage/IncorrectUnmanagedImageSourceOffset.java JBR-9023 linux-all
 java/awt/image/DrawImage/UnmanagedDrawImagePerformance.java JBR-9023 linux-all
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932,JBR-9207 linux-all,linux-6.15.8-100.fc41.x86_64
@@ -17,8 +17,11 @@ javax/swing/JDesktopPane/TestDesktopManagerNPE.java JBR-8449 linux-x64
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-7140 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-7530 linux-all
+javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-9276 linux-6.14.9-arch1-1
 javax/swing/JOptionPane/8081019/bug8081019.java JBR-8275 linux-all
+javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 linux-6.14.9-arch1-1
 javax/swing/JRadioButton/bug4823809.java JBR-7931 linux-all
+javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 linux-6.14.9-arch1-1
 javax/swing/LookAndFeel/8145547/DemandGTK2.sh JBR-8918 linux-all
 javax/swing/text/html/CSS/bug8234913.java JBR-8306 linux-all
 

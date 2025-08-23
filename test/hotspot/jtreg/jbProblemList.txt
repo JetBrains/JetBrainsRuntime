@@ -174,14 +174,14 @@ runtime/cds/appcds/methodHandles/MethodHandlesAsCollectorTest.java initial_run g
 runtime/cds/SharedBaseAddress.java initial_run generic-all
 runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_run generic-all
 
-containers/docker/TestCPUAwareness.java JBR-9163 linux-6.14.0-1010-aws
-containers/docker/TestCPUSets.java JBR-9164 linux-6.14.0-1010-aws
+containers/docker/TestCPUAwareness.java JBR-9163 linux-6.14.0-1010-aws,linux-6.14.0-1011-aws
+containers/docker/TestCPUSets.java JBR-9164 linux-6.14.0-1010-aws,linux-6.14.0-1011-aws
 containers/docker/TestJcmd.java 8278102 linux-all
-containers/docker/TestJcmdWithSideCar.java JBR-9074 linux-6.14.0-1010-aws
-containers/docker/TestJFREvents.java JBR-9165 linux-6.14.0-1010-aws
-containers/docker/TestLimitsUpdating.java JBR-9166 linux-6.14.0-1010-aws
+containers/docker/TestJcmdWithSideCar.java JBR-9074 linux-6.14.0-1010-aws,linux-6.14.0-1011-aws
+containers/docker/TestJFREvents.java JBR-9165 linux-6.14.0-1010-aws,linux-6.14.0-1011-aws
+containers/docker/TestLimitsUpdating.java JBR-9166 linux-6.14.0-1010-aws,linux-6.14.0-1011-aws
 containers/docker/TestMemoryAwareness.java 8303470 linux-all
-containers/docker/TestMisc.java JBR-9167 linux-6.14.0-1010-aws
+containers/docker/TestMisc.java JBR-9167 linux-6.14.0-1010-aws,linux-6.14.0-1011-aws
 containers/docker/TestPids.java 8356277 linux-all
 
 #############################################################################
