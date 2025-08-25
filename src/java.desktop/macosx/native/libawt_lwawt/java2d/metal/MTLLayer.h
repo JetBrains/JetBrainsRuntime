@@ -71,6 +71,8 @@
 - (void) stopRedraw:(MTLContext*)mtlc displayID:(jint)displayID force:(BOOL)force;
 - (void) flushBuffer;
 - (void) commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
+
+- (void) addStatCallback:(int)type value:(double)value;
 - (void) countFramePresentedCallback;
 - (void) countFrameDroppedCallback;
 @end
