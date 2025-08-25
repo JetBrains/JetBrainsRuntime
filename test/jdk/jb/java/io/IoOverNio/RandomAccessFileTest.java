@@ -27,9 +27,12 @@
  * @run junit/othervm
  *      -Djava.nio.file.spi.DefaultFileSystemProvider=testNio.ManglingFileSystemProvider
  *      -Djbr.java.io.use.nio=true
+ *      --add-opens jdk.unsupported/com.sun.nio.file=ALL-UNNAMED
+ *      --add-opens java.base/java.io=ALL-UNNAMED
  *      RandomAccessFileTest
  */
 
+import com.sun.nio.file.ExtendedOpenOption;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -42,10 +45,15 @@ import testNio.ManglingFileSystemProvider;
 import java.io.EOFException;
 import java.io.File;
 import java.io.RandomAccessFile;
+import java.lang.reflect.Field;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Objects;
 
 import static org.junit.Assert.assertEquals;
@@ -266,6 +274,23 @@ public class RandomAccessFileTest {
         try (RandomAccessFile rac = new RandomAccessFile(file, "rw");
              FileLock ignored = rac.getChannel().lock()) {
             assertFalse(file.delete());
+        }
+    }
+
+    /** JBR-9260 */
+    @Test
+    public void testNoShareDelete() throws Exception {
+        // This code should throw no exceptions.
+        File file = temporaryFolder.newFile();
+
+        FileSystems.getDefault().provider().newFileChannel(file.toPath(), EnumSet.of(ExtendedOpenOption.NOSHARE_DELETE)).close();
+
+        {
+            Class<?> cls = RandomAccessFileTest.class.getClassLoader().loadClass("java.io.JbExtendedOpenOptions");
+            Field field = cls.getDeclaredField("NOSHARE_DELETE");
+            field.setAccessible(true);
+            OpenOption option = (OpenOption) field.get(null);
+            FileSystems.getDefault().provider().newFileChannel(file.toPath(), Collections.singleton(option)).close();
         }
     }
 }
