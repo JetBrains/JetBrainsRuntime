@@ -33,8 +33,8 @@ public class StatLong {
     public final String name;
     public long count = 0L;
     public long sum = 0L;
-    public long min = Integer.MAX_VALUE;
-    public long max = Integer.MIN_VALUE;
+    public long min = Long.MAX_VALUE;
+    public long max = Long.MIN_VALUE;
 
     public StatLong(final String name) {
         this.name = name;
@@ -43,8 +43,8 @@ public class StatLong {
     public void reset() {
         count = 0L;
         sum = 0L;
-        min = Integer.MAX_VALUE;
-        max = Integer.MIN_VALUE;
+        min = Long.MAX_VALUE;
+        max = Long.MIN_VALUE;
     }
 
     public void add(final int val) {
