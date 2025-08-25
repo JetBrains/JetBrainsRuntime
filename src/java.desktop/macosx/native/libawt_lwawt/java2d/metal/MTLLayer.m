@@ -226,29 +226,32 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             }
 
             // Acquire CAMetalDrawable without blocking:
-            const CFTimeInterval beforeDrawableTime = (TRACE_DISPLAY) ? CACurrentMediaTime() : 0.0;
+            const CFTimeInterval beforeDrawableTime = CACurrentMediaTime();
             const id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
             if (mtlDrawable == nil) {
                 J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null");
                 return;
             }
-            const CFTimeInterval nextDrawableTime = (TRACE_DISPLAY) ? CACurrentMediaTime() : 0.0;
+            const CFTimeInterval nextDrawableTime = CACurrentMediaTime();
+            const CFTimeInterval nextDrawableLatency = (nextDrawableTime - beforeDrawableTime);
 
             // rolling mean weight (lerp):
             static const NSTimeInterval a = 0.25;
 
-#if TRACE_DISPLAY_ON
-            const CFTimeInterval nextDrawableLatency = (nextDrawableTime - beforeDrawableTime);
             if (nextDrawableLatency > 0.0) {
+                [self addStatCallback:1 value:1000.0 * nextDrawableLatency]; // See MTLLayer.STAT_NAMES[1]
+
+#if TRACE_DISPLAY_ON
                 self.avgNextDrawableTime = nextDrawableLatency * a + self.avgNextDrawableTime * (1.0 - a);
-            }
-            J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                          "[%.6lf] MTLLayer_blitTexture: drawable(%d) presented"
-                          " - nextDrawableLatency = %.3lf ms - average = %.3lf ms",
-                          CACurrentMediaTime(), mtlDrawable.drawableID,
-                          1000.0 * nextDrawableLatency, 1000.0 * self.avgNextDrawableTime
-            );
+
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                              "[%.6lf] MTLLayer_blitTexture: drawable(%d) presented"
+                              " - nextDrawableLatency = %.3lf ms - average = %.3lf ms",
+                              CACurrentMediaTime(), mtlDrawable.drawableID,
+                              1000.0 * nextDrawableLatency, 1000.0 * self.avgNextDrawableTime
+                );
 #endif
+            }
             // Keep Fence from now:
             releaseFence = NO;
 
@@ -389,8 +392,15 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         return;
     }
 
+    const CFTimeInterval beforeMethod = CACurrentMediaTime();
+
     (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_drawInMTLContext);
     CHECK_EXCEPTION();
+
+    const CFTimeInterval drawInMTLContextLatency = (CACurrentMediaTime() - beforeMethod);
+    if (drawInMTLContextLatency > 0.0) {
+        [self addStatCallback:0 value:1000.0 * drawInMTLContextLatency]; // See MTLLayer.STAT_NAMES[0]
+    }
     (*env)->DeleteLocalRef(env, javaLayerLocalRef);
 }
 
@@ -511,6 +521,20 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
     if (javaLayerLocalRef != NULL) {
         (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_countNewFrame);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, javaLayerLocalRef);
+    }
+}
+
+- (void) addStatCallback:(int)type value:(double)value {
+    // attach the current thread to the JVM if necessary, and get an env
+    JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
+    GET_MTL_LAYER_CLASS();
+    DECLARE_METHOD(jm_addStatFrame, jc_JavaLayer, "addStat", "(ID)V");
+
+    jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
+    if (javaLayerLocalRef != NULL) {
+        (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_addStatFrame, (jint)type, (jdouble)value);
         CHECK_EXCEPTION();
         (*env)->DeleteLocalRef(env, javaLayerLocalRef);
     }
