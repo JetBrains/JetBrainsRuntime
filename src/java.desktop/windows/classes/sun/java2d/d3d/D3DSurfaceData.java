@@ -831,11 +831,11 @@ public class D3DSurfaceData extends SurfaceData implements AccelSurface {
             if (sd.getPeer().getTarget() instanceof Window window) {
                 switch (D3DRenderQueue.getFramePresentedStatus()) {
                     case 1:
-                        AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.framesPresentRequested");
+                        AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.framesPresentRequested");
                         break;
                     case 0:
                     default:
-                        AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.framesPresentFailed");
+                        AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.framesPresentFailed");
                 }
             }
         }
