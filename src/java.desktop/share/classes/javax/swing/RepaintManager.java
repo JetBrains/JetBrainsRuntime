@@ -27,10 +27,7 @@ package javax.swing;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 import java.awt.image.VolatileImage;
-import java.awt.peer.WindowPeer;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -42,14 +39,12 @@ import sun.java2d.SunGraphicsEnvironment;
 
 import com.sun.java.swing.SwingUtilities3;
 import java.awt.geom.AffineTransform;
-import java.util.stream.Collectors;
 
 import sun.java2d.SunGraphics2D;
 import sun.java2d.pipe.Region;
 import sun.swing.SwingAccessor;
 import sun.swing.SwingUtilities2;
 import sun.swing.SwingUtilities2.RepaintListener;
-import java.util.stream.Collectors;
 
 /**
  * This class manages repaint requests, allowing the number
@@ -723,7 +718,7 @@ public class RepaintManager
                     .filter(Objects::nonNull)
                     .distinct()
                     .forEach(w -> AWTAccessor.getWindowAccessor()
-                            .bumpCounter(w, "swing.RepaintManager.updateWindows"));
+                            .incrementCounter(w, "swing.RepaintManager.updateWindows"));
 
         if (Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit &&
             sunToolkit.needUpdateWindow()) {
@@ -742,14 +737,14 @@ public class RepaintManager
 
             for (Window window : windows) {
                 AWTAccessor.getWindowAccessor().updateWindow(window);
-                AWTAccessor.getWindowAccessor().bumpCounter(window, "swing.RepaintManager.updateWindows");
+                AWTAccessor.getWindowAccessor().incrementCounter(window, "swing.RepaintManager.updateWindows");
             }
         } else {
             dirtyComponents.keySet().stream()
                     .map(c -> c instanceof Window w ? w : SwingUtilities.getWindowAncestor(c))
                     .filter(Objects::nonNull)
                     .forEach(w -> AWTAccessor.getWindowAccessor()
-                            .bumpCounter(w, "swing.RepaintManager.updateWindows"));
+                            .incrementCounter(w, "swing.RepaintManager.updateWindows"));
         }
     }
 
