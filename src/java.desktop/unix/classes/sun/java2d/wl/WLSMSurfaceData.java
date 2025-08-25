@@ -199,7 +199,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
     private void countNewFrame() {
         // Called from the native code when this surface data has been sent to the Wayland server
         if (target instanceof Window window) {
-            AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.frames");
+            AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.frames");
         }
     }
 
@@ -208,7 +208,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
         // the Wayland server, but that attempt was not successful. This can happen, for example,
         // when those attempts are too frequent.
         if (target instanceof Window window) {
-            AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.framesDropped");
+            AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.framesDropped");
         }
     }
 
