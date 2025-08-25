@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ExtendedOptions {
 
     // maps InternalOption to ExternalOption
-    private static final Map<InternalOption<?>, Wrapper<?>> internalToExternal
+    private static final Map<InternalOption<?>, Wrapper<?>[]> internalToExternal
         = new ConcurrentHashMap<>();
 
     /**
@@ -69,7 +69,18 @@ public final class ExtendedOptions {
 
         private void registerInternal(Object option, T param) {
             Wrapper<T> wrapper = new Wrapper<T>(option, param);
-            internalToExternal.put(this, wrapper);
+            internalToExternal.compute(this, (ignored, oldWrappers) -> {
+                if (oldWrappers == null || oldWrappers.length == 0)
+                    return new Wrapper<?>[] { wrapper };
+                for (Wrapper<?> oldWrapper : oldWrappers) {
+                    if (oldWrapper.option == option)
+                        return oldWrappers;
+                }
+                Wrapper<?>[] newWrappers = new Wrapper<?>[oldWrappers.length + 1];
+                System.arraycopy(oldWrappers, 0, newWrappers, 0, oldWrappers.length);
+                newWrappers[oldWrappers.length] = wrapper;
+                return newWrappers;
+            });
         }
 
         /**
@@ -106,11 +117,14 @@ public final class ExtendedOptions {
          * option.
          */
         public boolean matches(Object option) {
-            Wrapper <?> wrapper = internalToExternal.get(this);
-            if (wrapper == null)
-                return false;
-            else
-                return option == wrapper.option;
+            Wrapper <?> [] wrappers = internalToExternal.get(this);
+            if (wrappers != null) {
+                for (Wrapper<?> wrapper : wrappers) {
+                    if (wrapper.option == option)
+                        return true;
+                }
+            }
+            return false;
         }
 
         /**
@@ -118,11 +132,14 @@ public final class ExtendedOptions {
          */
         @SuppressWarnings("unchecked")
         public T parameter() {
-            Wrapper<?> wrapper = internalToExternal.get(this);
-            if (wrapper == null)
-                return null;
-            else
-                return (T) wrapper.parameter();
+            Wrapper<?> [] wrappers = internalToExternal.get(this);
+            if (wrappers != null) {
+                for (Wrapper<?> wrapper : wrappers) {
+                    if (wrapper.option instanceof WatchEvent.Modifier)
+                        return (T) wrapper.parameter();
+                }
+            }
+            return null;
         }
     }
 
