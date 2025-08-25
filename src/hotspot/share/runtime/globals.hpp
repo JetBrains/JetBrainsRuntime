@@ -1998,6 +1998,10 @@ const int ObjectAlignmentInBytes = 8;
           "(default) disables native heap trimming.")                       \
           range(0, UINT_MAX)                                                \
                                                                             \
+  product(bool, UseThreadsLockThrottleLock, true, DIAGNOSTIC,               \
+          "Use an extra lock during Thread start and exit to alleviate"     \
+          "contention on Threads_lock.")                                    \
+                                                                            \
   product(bool, UseSecondarySupersCache, true, DIAGNOSTIC,                  \
                 "Use secondary supers cache during subtype checks.")        \
                                                                             \
