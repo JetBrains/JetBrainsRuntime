@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OptionalDataException;
+import java.io.PrintStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.lang.annotation.Native;
@@ -53,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EventListener;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
@@ -74,6 +76,7 @@ import sun.awt.AppContext;
 import sun.awt.DebugSettings;
 import sun.awt.SunToolkit;
 import sun.awt.util.IdentityArrayList;
+import sun.java2d.marlin.stats.StatDouble;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
 
@@ -1155,6 +1158,9 @@ public class Window extends Container implements Accessible {
     void doDispose() {
     class DisposeAction implements Runnable {
         public void run() {
+            // Dump stats if needed:
+            AWTAccessor.getWindowAccessor().dumpStats(this, true);
+
             disposing = true;
             try {
                 // Check if this window is the fullscreen window for the
@@ -4155,8 +4161,17 @@ public class Window extends Container implements Accessible {
         return value;
     }
 
+    private final static boolean USE_COUNTERS;
+
     static {
-        String counters = System.getProperty("awt.window.counters");
+        final String counters = System.getProperty("awt.window.counters");
+        USE_COUNTERS = (counters != null);
+
+        final boolean traceAllCounters = USE_COUNTERS && (Objects.equals(counters, "")
+                || Objects.equals(counters, "stderr")
+                || Objects.equals(counters, "stdout"));
+
+        final boolean traceStdErr = USE_COUNTERS && counters.contains("stderr");
 
         AWTAccessor.setWindowAccessor(new AWTAccessor.WindowAccessor() {
             public void updateWindow(Window window) {
@@ -4193,53 +4208,67 @@ public class Window extends Container implements Accessible {
 
             public boolean countersEnabled(Window w) {
                 // May want to selectively enable or disable counters per window
-                return counters != null;
+                return USE_COUNTERS;
             }
 
-            public void bumpCounter(Window w, String counterName) {
+            private final static long NANO_IN_SEC = java.util.concurrent.TimeUnit.SECONDS.toNanos(1);
+
+            public void bumpCounter(final Window w, final String counterName) {
+                if (!USE_COUNTERS) {
+                    return;
+                }
                 Objects.requireNonNull(w);
                 Objects.requireNonNull(counterName);
 
-                PerfCounter newCounter;
-                long curTimeNanos = System.nanoTime();
-                synchronized (w.perfCounters) {
-                    newCounter = w.perfCounters.compute(counterName, (k, v) ->
-                            v == null
-                            ? new PerfCounter(curTimeNanos, 1L)
-                            : new PerfCounter(curTimeNanos, v.value + 1));
-                }
-                PerfCounter prevCounter;
-                synchronized (w.perfCountersPrev) {
-                    prevCounter = w.perfCountersPrev.putIfAbsent(counterName, newCounter);
-                }
-                if (prevCounter != null) {
-                    long nanosInSecond = java.util.concurrent.TimeUnit.SECONDS.toNanos(1);
-                    long timeDeltaNanos = curTimeNanos - prevCounter.updateTimeNanos;
-                    if (timeDeltaNanos > nanosInSecond) {
-                        long valPerSecond = (long) ((double) (newCounter.value - prevCounter.value)
-                                * nanosInSecond / timeDeltaNanos);
-                        boolean traceAllCounters = Objects.equals(counters, "")
-                                || Objects.equals(counters, "stdout")
-                                || Objects.equals(counters, "stderr");
-                        boolean traceEnabled = traceAllCounters || (counters != null && counters.contains(counterName));
-                        if (traceEnabled) {
-                            if (counters.contains("stderr")) {
-                                System.err.println(counterName + " per second: " + valPerSecond);
-                            } else {
-                                System.out.println(counterName + " per second: " + valPerSecond);
+                final long curTimeNanos = System.nanoTime();
+                // use try-catch to avoid throwing runtime exception to native JNI callers !
+                try {
+                    PerfCounter newCounter, prevCounter;
+
+                    synchronized (w.perfCounters) {
+                        newCounter = w.perfCounters.compute(counterName, (k, v) ->
+                                v == null
+                                        ? new PerfCounter(curTimeNanos, 1L)
+                                        : new PerfCounter(curTimeNanos, v.value + 1));
+                    }
+                    synchronized (w.perfCountersPrev) {
+                        prevCounter = w.perfCountersPrev.putIfAbsent(counterName, newCounter);
+                    }
+                    if (prevCounter != null) {
+                        final long timeDeltaNanos = curTimeNanos - prevCounter.updateTimeNanos;
+                        if (timeDeltaNanos > NANO_IN_SEC) {
+                            final double valPerSecond = (double) (newCounter.value - prevCounter.value)
+                                    * NANO_IN_SEC / timeDeltaNanos;
+
+                            synchronized (w.perfCountersPrev) {
+                                w.perfCountersPrev.put(counterName, newCounter);
+                            }
+                            dumpCounter(counterName, valPerSecond);
+
+                            final boolean dump;
+                            synchronized (w.perfStats) {
+                                StatDouble stat = w.perfStats.computeIfAbsent(counterName, StatDouble::new);
+                                stat.add(valPerSecond);
+                                dump = (stat.count() % 10 == 0);
+                                // update global stats (not reset):
+                                stat = w.perfStats.computeIfAbsent(counterName + ".all", StatDouble::new);
+                                stat.add(valPerSecond);
+                            }
+                            // every 10s:
+                            if (dump) {
+                                dumpStats(w, true);
                             }
                         }
-                        if (perfLog.isLoggable(PlatformLogger.Level.FINE)) {
-                            perfLog.fine(counterName + " per second: " + valPerSecond);
-                        }
-                        synchronized (w.perfCountersPrev) {
-                            w.perfCountersPrev.put(counterName, newCounter);
-                        }
                     }
+                } catch (RuntimeException re) {
+                    perfLog.severe("bumpCounter: failed", re);
                 }
             }
 
-            public long getCounter(Window w, String counterName) {
+            public long getCounter(final Window w, final String counterName) {
+                if (!USE_COUNTERS) {
+                    return -1L;
+                }
                 Objects.requireNonNull(w);
                 Objects.requireNonNull(counterName);
 
@@ -4249,7 +4278,10 @@ public class Window extends Container implements Accessible {
                 }
             }
 
-            public long getCounterPerSecond(Window w, String counterName) {
+            public double getCounterPerSecond(final Window w, final String counterName) {
+                if (!USE_COUNTERS) {
+                    return Double.NaN;
+                }
                 Objects.requireNonNull(w);
                 Objects.requireNonNull(counterName);
 
@@ -4259,22 +4291,55 @@ public class Window extends Container implements Accessible {
                 synchronized (w.perfCounters) {
                     newCounter = w.perfCounters.get(counterName);
                 }
-
                 synchronized (w.perfCountersPrev) {
                     prevCounter = w.perfCountersPrev.get(counterName);
                 }
 
                 if (newCounter != null && prevCounter != null) {
-                    long timeDeltaNanos = newCounter.updateTimeNanos - prevCounter.updateTimeNanos;
+                    final long timeDeltaNanos = newCounter.updateTimeNanos - prevCounter.updateTimeNanos;
                     // Note that this time delta will usually be above one second.
-                    if (timeDeltaNanos > 0) {
-                        long nanosInSecond = java.util.concurrent.TimeUnit.SECONDS.toNanos(1);
-                        long valPerSecond = (long) ((double) (newCounter.value - prevCounter.value)
-                                * nanosInSecond / timeDeltaNanos);
-                        return valPerSecond;
+                    if (timeDeltaNanos > 0L) {
+                        return (double) (newCounter.value - prevCounter.value) * NANO_IN_SEC / timeDeltaNanos;
                     }
                 }
-                return -1;
+                return Double.NaN;
+            }
+
+            public void dumpStats(final Window w, final boolean reset) {
+                if (!USE_COUNTERS) {
+                    return;
+                }
+                final PrintStream std = traceStdErr ? System.err : System.out;
+                synchronized (w.perfStats) {
+                    for (StatDouble stat : w.perfStats.values()) {
+                        if (stat.count() != 0) {
+                            final boolean traceEnabled = traceAllCounters || counters.contains(stat.name);
+                            if (traceEnabled) {
+                                std.println(stat);
+                            }
+                            if (perfLog.isLoggable(PlatformLogger.Level.FINE)) {
+                                perfLog.fine("{0}", stat);
+                            }
+                            if (reset && !stat.name.endsWith(".all")) {
+                                stat.reset();
+                            }
+                        }
+                    }
+                }
+            }
+
+            private void dumpCounter(final String counterName, final double valPerSecond) {
+                if (!USE_COUNTERS) {
+                    return;
+                }
+                final boolean traceEnabled = traceAllCounters || counters.contains(counterName);
+                if (traceEnabled) {
+                    final PrintStream std = traceStdErr ? System.err : System.out;
+                    std.printf("%s per second: %.2f\n", counterName, valPerSecond);
+                }
+                if (perfLog.isLoggable(PlatformLogger.Level.FINE)) {
+                    perfLog.fine("{0} per second: {1}", counterName, valPerSecond);
+                }
             }
         }); // WindowAccessor
     } // static
@@ -4283,10 +4348,11 @@ public class Window extends Container implements Accessible {
     @Override
     void updateZOrder() {}
 
-    private record PerfCounter(Long updateTimeNanos, Long value) {}
+    private record PerfCounter(long updateTimeNanos, long value) {}
 
-    private transient final Map<String, PerfCounter> perfCounters = new HashMap<>(4);
-    private transient final Map<String, PerfCounter> perfCountersPrev = new HashMap<>(4);
+    private transient final Map<String, PerfCounter> perfCounters = (USE_COUNTERS) ? new HashMap<>(4) : null;
+    private transient final Map<String, PerfCounter> perfCountersPrev = (USE_COUNTERS) ? new HashMap<>(4) : null;
+    private transient final Map<String, StatDouble> perfStats = (USE_COUNTERS) ? new LinkedHashMap<>(4) : null;
 
 } // class Window
 
