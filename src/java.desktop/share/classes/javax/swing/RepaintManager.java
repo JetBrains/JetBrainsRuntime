@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,6 @@ package javax.swing;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 import java.awt.image.VolatileImage;
 import java.awt.peer.WindowPeer;
 import java.security.AccessControlContext;
@@ -49,7 +47,6 @@ import sun.security.action.GetPropertyAction;
 
 import com.sun.java.swing.SwingUtilities3;
 import java.awt.geom.AffineTransform;
-import java.util.stream.Collectors;
 
 import sun.java2d.SunGraphics2D;
 import sun.java2d.pipe.Region;
@@ -800,7 +797,7 @@ public class RepaintManager
                 .filter(Objects::nonNull)
                 .distinct()
                 .forEach(w -> AWTAccessor.getWindowAccessor()
-                        .bumpCounter(w, "swing.RepaintManager.updateWindows"));
+                        .incrementCounter(w, "swing.RepaintManager.updateWindows"));
 
         if (Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit &&
             sunToolkit.needUpdateWindow())
