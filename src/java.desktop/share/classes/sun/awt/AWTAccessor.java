@@ -332,7 +332,8 @@ public final class AWTAccessor {
         boolean countersEnabled(Window w);
         void bumpCounter(Window w, String counterName);
         long getCounter(Window w, String counterName);
-        long getCounterPerSecond(Window w, String counterName);
+        double getCounterPerSecond(Window w, String counterName);
+        void dumpStats(Window w, boolean reset);
     }
 
     /**
