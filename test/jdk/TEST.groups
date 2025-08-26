@@ -1373,15 +1373,7 @@ jdk_desktop_wayland = \
 # Wayland+Vulkan tests to be executed with -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True
 jdk_awt_wayland_vulkan = \
     :jdk_awt_wayland \
-    :jb/java/awt/wayland/vulkan \
-    jb/java/awt/wayland/VulkanBlitTest.java \
-    jb/java/awt/wayland/RobotGetPixelsTest.java \
-    jb/java/awt/wayland/ImageTransformTest.java \
-    jb/java/awt/wayland/VulkanGCCompatibilityTest.java \
-    jb/java/awt/wayland/RobotGetPixelTest.java \
-    jb/java/awt/wayland/RobotGetOOBPixelsTest.java \
-    jb/java/awt/wayland/VulkanCompositeTest.java \
-    jb/java/awt/wayland/VulkanMaskFillTest.java \
+    :jb/java/awt/wayland/vulkan
 
 jdk_swing_wayland_vulkan = \
     :jdk_swing_wayland
@@ -1392,5 +1384,4 @@ jdk_desktop_wayland_vulkan = \
 
 # Vulkan tests to be executed with -Dsun.java2d.vulkan=True
 jdk_awt_vulkan = \
-    :jb/java/awt/vulkan \
-
+    :jb/java/awt/vulkan
