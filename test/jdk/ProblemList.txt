@@ -840,3 +840,4 @@ java/awt/Modal/NativeDialogToFrontBackTest.java 7188049 windows-all,linux-all
 
 # Mechanically added:
 javax/sound/midi/Soundbanks/ExtraCharInSoundbank.java 8350613 linux-aarch64,linux-x64
+java/net/CookieHandler/B6644726.java 8366103 linux-aarch64,linux-x64,macosx-aarch64,windows-x64
