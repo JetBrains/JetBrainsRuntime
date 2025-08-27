@@ -451,7 +451,14 @@ class ConstantPoolCache: public MetaspaceObj {
 
   Array<ResolvedIndyEntry>* resolved_indy_entries()          { return _resolved_indy_entries; }
   ResolvedIndyEntry* resolved_indy_entry_at(int index) const { return _resolved_indy_entries->adr_at(index); }
-  int resolved_indy_entries_length()                   const { return _resolved_indy_entries->length();      }
+
+  int resolved_indy_entries_length() const {
+    if (_resolved_indy_entries == nullptr) {
+      return 0;
+    }
+    return _resolved_indy_entries->length();
+  }
+
   void print_resolved_indy_entries(outputStream* st)   const {
     for (int i = 0; i < _resolved_indy_entries->length(); i++) {
         _resolved_indy_entries->at(i).print_on(st);
