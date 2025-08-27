@@ -186,3 +186,5 @@ vmTestbase/nsk/monitoring/ThreadMXBean/findMonitorDeadlockedThreads/find006/Test
 # Mechanically added:
 runtime/Thread/TestThreadDumpMonitorContention.java 8361370 windows-x64
 runtime/Thread/StopAtExit.java 8365835 linux-x64
+runtime/Thread/SetPriorityAtExit.java 8365835 linux-x64
+runtime/Thread/SuspendAtExit.java 8365835 linux-x64
