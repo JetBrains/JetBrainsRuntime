@@ -123,8 +123,7 @@ JSDK=$IMAGES_DIR/jdk
 JSDK_MODS_DIR=$IMAGES_DIR/jmods
 JBRSDK_BUNDLE=jbrsdk
 
-where cygpath
-if [ $? -eq 0 ]; then
+if where.exe cygpath; then
   JCEF_PATH="$(cygpath -w $JCEF_PATH | sed 's/\\/\//g')"
 fi
 
