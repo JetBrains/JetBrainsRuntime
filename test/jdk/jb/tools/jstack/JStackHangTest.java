@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
  *       <code>JStackLauncher</code> in a child VM and ensures <code>jstack</code> does not hang.
  * @library /test/lib
  * @compile JStackLauncher.java
- * @run main/othervm -Djdk.attach.vm.streaming=true JStackHangTest
+ * @run main/othervm JStackHangTest
  */
 
 public class JStackHangTest {
