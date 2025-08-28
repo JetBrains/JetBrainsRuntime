@@ -63,7 +63,8 @@ public abstract class HotSpotVirtualMachine extends VirtualMachine {
     static {
         String s = VM.getSavedProperty("jdk.attach.allowAttachSelf");
         ALLOW_ATTACH_SELF = "".equals(s) || Boolean.parseBoolean(s);
-        // For now the default is false.
+        // For now the default is false because it makes jstack hang with
+        // buffer overflow on lengthy outputs, which occur often in automatic tests.
         String s2 = VM.getSavedProperty("jdk.attach.allowStreamingOutput");
         ALLOW_STREAMING_OUTPUT = "".equals(s2) || Boolean.parseBoolean(s2);
     }
