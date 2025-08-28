@@ -56,7 +56,7 @@ function create_image_bundle {
   __root_dir=${__bundle_name}-${JBSDK_VERSION}-windows-x86-${fastdebug_infix}b${build_number}
 
   echo Running jlink ...
-  ${JSDK}/bin/jlink \
+  ${JSDK}/bin/jlink.exe \
     --module-path $__modules_path --no-man-pages --compress=2 \
     $__cds_opt --add-modules $__modules --output $__root_dir || do_exit $?
 
