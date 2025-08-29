@@ -260,7 +260,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
             [_lockDrawable lock];
             @try {
-                c
+                if (self->_nextDrawableRef != nil) {
                     mtlDrawable = self->_nextDrawableRef;
                     self->_nextDrawableRef = nil;
                     if (TRACE_DISPLAY_INFO) {
