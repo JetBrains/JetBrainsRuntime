@@ -329,11 +329,14 @@ public final class AWTAccessor {
          */
         Window[] getOwnedWindows(Window w);
 
+        /* JBR Window counters API */
         boolean countersEnabled(Window w);
         void bumpCounter(Window w, String counterName);
+
         long getCounter(Window w, String counterName);
         double getCounterPerSecond(Window w, String counterName);
-        void dumpStats(Window w, boolean reset);
+
+        void dumpStats(Window w, boolean reset, StringBuilder sb);
     }
 
     /**
