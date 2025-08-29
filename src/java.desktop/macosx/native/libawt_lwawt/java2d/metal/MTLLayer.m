@@ -45,8 +45,8 @@ static jclass jc_JavaLayer = NULL;
 
 const NSTimeInterval DF_BLIT_FRAME_TIME = 1.0 / 120.0;
 
-// (5/8) ~ 5ms (vs 8ms) to have some time within 1 frame time to blit texture:
-const long TIMEOUT_MS = (((long) (1000.0 * DF_BLIT_FRAME_TIME)) * (1000 * 1000) * 5) / 8;
+// ~ 7ms (vs 8ms) to have some time within 1 frame time to blit texture:
+const long TIMEOUT_MS = (((long) (1000.0 * DF_BLIT_FRAME_TIME)) * (1000 * 1000) * 7) / 8;
 
 extern BOOL isColorMatchingEnabled();
 
@@ -116,6 +116,10 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
 @implementation MTLLayer {
     NSLock* _lock;
+    NSLock* _lockDrawable;
+    // shared drawable (strong) between async block (nextDrawable) and the main thread:
+    id<CAMetalDrawable> _nextDrawableRef;
+    CFTimeInterval _drawableTime;
 }
 
 - (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled
@@ -166,7 +170,11 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     self.lastPresentedTime = 0.0;
 #endif
     self.perfCountersEnabled = perfCountersEnabled ? YES : NO;
+    self.asyncNextDrawableRunning = false;
     _lock = [[NSLock alloc] init];
+    _lockDrawable = [[NSLock alloc] init];
+    _nextDrawableRef = nil;
+    _drawableTime = 0.0;
     return self;
 }
 
@@ -210,8 +218,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         // Decrement redrawCount:
         [self stopRedraw:NO];
 
-        // shared drawable (strong) between async call & main thread for fast path:
-        __block id<CAMetalDrawable> mtlDrawable = nil;
+        // Drawable (strong) reference from _nextDrawableRef:
+        id<CAMetalDrawable> mtlDrawable = nil;
 
         // try-finally block to ensure releasing the CPU fence (abort blit):
         BOOL releaseFence = YES;
@@ -231,14 +239,6 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 return;
             }
 
-            id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
-            if (commandBuf == nil) {
-                J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
-                return;
-            }
-
-            // Acquire CAMetalDrawable without blocking:
-
             // Get high priority global concurrent queue:
             const dispatch_queue_t concurrentQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
 
@@ -247,55 +247,94 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 return;
             }
 
-            // cancel flag between async call and the main thread:
-            __block long cancelled = 0; // long for padding (flag)
-
-            [self retain];
-            const dispatch_block_t async_block = dispatch_block_create(0, ^{
-                // Wait block current thread up to 1 second (macOS timeout):
-                // may return null if system timeout:
-                id<CAMetalDrawable> newDrawable = [self nextDrawable];
-
-                if (cancelled != 0) {
-                    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cancelled in async_block");
-                } else if (newDrawable != nil) {
-                    // retain the given drawable stored in mtlDrawable variable for the main thread:
-                    [newDrawable retain];
-                    // set the drawable reference for the main thread:
-                    mtlDrawable = newDrawable;
+            // Acquire CAMetalDrawable without blocking:
+            if (self.asyncNextDrawableRunning) {
+                if (TRACE_DISPLAY_DETAILS) {
+                    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: asyncNextDrawableRunning is true");
                 }
-                [self release];
-            });
-
-            const CFTimeInterval beforeDrawableTime = (TRACE_DISPLAY_INFO) ? CACurrentMediaTime() : 0.0;
-
-            dispatch_async(concurrentQueue, async_block);
-
-            // returns zero if the dispatch block completed within the specified timeout, or non-zero if the block timed out.
-            // TODO: adjust timeout according to the layer's display rate (see displaylink interval)
-            intptr_t status = dispatch_block_wait(async_block, dispatch_time((dispatch_time_t)NULL, TIMEOUT_MS));
-
-            const CFTimeInterval nextDrawableTime = (TRACE_DISPLAY_INFO) ? CACurrentMediaTime() : 0.0;
-
-            Block_release(async_block);
-
-            if (status != 0) {
-                // signal thread in async_block() waiting on nextDrawable
-                // that its drawable reference should be released and discarded anyway:
-                cancelled = 1;
-
-#if TRACE_DISPLAY_ON
-                const CFTimeInterval nextDrawableTimeout = (nextDrawableTime - beforeDrawableTime);
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_blitTexture: nextDrawable failed (status = %d)"
-                                                 " - nextDrawableTimeout = %.3lf ms ",
-                              CACurrentMediaTime(), status, 1000.0 * nextDrawableTimeout);
-#endif
                 return;
             }
 
+            CFTimeInterval beforeDrawableTime = (TRACE_DISPLAY_INFO) ? CACurrentMediaTime() : 0.0;
+            CFTimeInterval nextDrawableTime = 0.0;
+
+            [_lockDrawable lock];
+            @try {
+                c
+                    mtlDrawable = self->_nextDrawableRef;
+                    self->_nextDrawableRef = nil;
+                    if (TRACE_DISPLAY_INFO) {
+                        nextDrawableTime = beforeDrawableTime;
+                        beforeDrawableTime = self->_drawableTime;
+                    }
+                }
+            } @finally {
+                [_lockDrawable unlock];
+            }
+
             if (mtlDrawable == nil) {
-                J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null");
-                return;
+                // set the running flag:
+                self.asyncNextDrawableRunning = true;
+
+                [self retain];
+                const dispatch_block_t async_block = dispatch_block_create(0, ^{
+                    // Wait block current thread up to 1 second (macOS timeout):
+                    // may return null if system timeout:
+                    id<CAMetalDrawable> newDrawable = [self nextDrawable];
+
+                    CFTimeInterval takenDrawableTime = CACurrentMediaTime();
+
+                    if (newDrawable != nil) {
+                        // retain the given drawable stored for the main thread:
+                        [newDrawable retain];
+                        // set the drawable reference for the main thread:
+                        [_lockDrawable lock];
+                        @try {
+                            self->_nextDrawableRef = newDrawable;
+                            self->_drawableTime = takenDrawableTime;
+                        } @finally {
+                            [_lockDrawable unlock];
+                        }
+                    }
+
+                    // free the running flag:
+                    self.asyncNextDrawableRunning = false;
+
+                    [self release];
+                });
+
+                dispatch_async(concurrentQueue, async_block);
+
+                // returns zero if the dispatch block completed within the specified timeout, or non-zero if the block timed out.
+                // TODO: adjust timeout according to the layer's display rate (see displaylink interval)
+                intptr_t status = dispatch_block_wait(async_block, dispatch_time(DISPATCH_TIME_NOW, TIMEOUT_MS));
+
+                nextDrawableTime = (TRACE_DISPLAY_INFO) ? CACurrentMediaTime() : 0.0;
+
+                Block_release(async_block);
+
+                if (status != 0) {
+    #if TRACE_DISPLAY_ON
+                    const CFTimeInterval nextDrawableTimeout = (nextDrawableTime - beforeDrawableTime);
+                    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_blitTexture: nextDrawable failed (status = %d)"
+                                                     " - nextDrawableTimeout = %.3lf ms ",
+                                  CACurrentMediaTime(), status, 1000.0 * nextDrawableTimeout);
+    #endif
+                    return;
+                }
+
+                [_lockDrawable lock];
+                @try {
+                    mtlDrawable = self->_nextDrawableRef;
+                    self->_nextDrawableRef = nil;
+                } @finally {
+                    [_lockDrawable unlock];
+                }
+
+                if (mtlDrawable == nil) {
+                    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null");
+                    return;
+                }
             }
 
 #if TRACE_DISPLAY_ON
@@ -310,6 +349,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                           1000.0 * nextDrawableLatency, 1000.0 * self.avgNextDrawableTime
             );
 #endif
+
+            id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
+            if (commandBuf == nil) {
+                J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
+                return;
+            }
 
             // Note: the main thread retains the drawable reference
 
@@ -442,6 +487,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     self.buffer = NULL;
     self.outBuffer = NULL;
     [_lock release];
+    [_lockDrawable release];
+    [_nextDrawableRef release];
     [super dealloc];
 }
 

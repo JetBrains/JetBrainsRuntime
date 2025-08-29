@@ -54,6 +54,8 @@
 #endif
 @property (readwrite, atomic) BOOL perfCountersEnabled;
 
+@property (readwrite, atomic) BOOL asyncNextDrawableRunning;
+
 - (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled;
 
 - (void) blitTexture;
