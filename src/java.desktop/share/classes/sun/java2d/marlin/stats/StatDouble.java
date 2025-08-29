@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2025 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -32,12 +33,12 @@ import static sun.java2d.marlin.stats.StatLong.trimTo3Digits;
  */
 public final class StatDouble {
     // rolling mean weight (lerp):
-    private final static double EMA_ALPHA = 0.2;
+    private final static double EMA_ALPHA = 0.25;
     private final static double EMA_ONE_MINUS_ALPHA = 1.0 - EMA_ALPHA;
 
     public final String name;
-    private long count;
-    private double min, max, mean, ema_mean, squaredError;
+    private long count, lastLogCount;
+    private double min, max, mean, ema_mean = 0.0, squaredError;
 
     public StatDouble(final String name) {
         this.name = name;
@@ -46,20 +47,12 @@ public final class StatDouble {
 
     public void reset() {
         count = 0L;
+        lastLogCount = 0L;
         min = Double.POSITIVE_INFINITY;
         max = Double.NEGATIVE_INFINITY;
         mean = 0.0;
-        // ema_mean = 0.0;
+        // skip ema_mean = 0.0;
         squaredError = 0.0;
-    }
-
-    public void copy(final StatDouble other) {
-        count = other.count;
-        min = other.min;
-        max = other.max;
-        mean = other.mean;
-        ema_mean = other.ema_mean;
-        squaredError = other.squaredError;
     }
 
     public void add(final double val) {
@@ -76,6 +69,14 @@ public final class StatDouble {
         final double oldMean = mean;
         mean += (val - mean) / count;
         squaredError += (val - mean) * (val - oldMean);
+    }
+
+    public boolean shouldLog() {
+        return (count > lastLogCount);
+    }
+
+    public void updateLastLogCount() {
+        this.lastLogCount = this.count;
     }
 
     public long count() {
@@ -106,14 +107,6 @@ public final class StatDouble {
         return (count != 0L) ? Math.sqrt(variance()) : Double.NaN;
     }
 
-    public double rms() {
-        return (count != 0L) ? (mean() + stddev()) : Double.NaN;
-    }
-
-    public double rawErrorPercent() {
-        return (count != 0L) ? (100.0 * stddev() / mean()) : Double.NaN;
-    }
-
     public double total() {
         return (count != 0L) ? (mean() * count) : Double.NaN;
     }
@@ -123,13 +116,13 @@ public final class StatDouble {
         return toString(new StringBuilder(128)).toString();
     }
 
-    public final StringBuilder toString(final StringBuilder sb) {
+    public StringBuilder toString(final StringBuilder sb) {
         sb.append(name).append('[').append(count);
-        sb.append("] µ: ").append(trimTo3Digits(mean()));
-        sb.append(" σ: ").append(trimTo3Digits(stddev()));
+        sb.append("] sum: ").append(trimTo3Digits(total()));
+        sb.append(" avg: ").append(trimTo3Digits(mean()));
+        sb.append(" stddev: ").append(trimTo3Digits(stddev()));
         sb.append(" ema: ").append(trimTo3Digits(ema()));
-        sb.append(" sum: ").append(trimTo3Digits(total()));
-        sb.append(" [").append(trimTo3Digits(min())).append(" | ").append(trimTo3Digits(max())).append("]");
+        sb.append(" [").append(trimTo3Digits(min())).append(" - ").append(trimTo3Digits(max())).append("]");
         return sb;
     }
 }
