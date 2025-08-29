@@ -356,12 +356,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 return;
             }
 
-            // Note: the main thread retains the drawable reference
+            // Note: the drawable reference is retained
 
             // Keep Fence from now:
             releaseFence = NO;
 
-            id<MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
+            id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
 
             [blitEncoder
                     copyFromTexture:(isDisplaySyncEnabled()) ? (*self.buffer) : (*self.outBuffer)
@@ -374,7 +374,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
             if (@available(macOS 10.15.4, *)) {
                 [self retain];
-                [mtlDrawable addPresentedHandler:^(id<MTLDrawable> drawable) {
+                [mtlDrawable addPresentedHandler:^(id <MTLDrawable> drawable) {
                     // note: called anyway even if drawable.present() not called!
                     const CFTimeInterval presentedTime = drawable.presentedTime;
                     if (presentedTime != 0.0) {
@@ -429,7 +429,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             }
 
             [self retain];
-            [commandBuf addCompletedHandler:^(id<MTLCommandBuffer> commandbuf) {
+            [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
                 // free drawable once processed:
                 [self freeDrawableCount];
                 if (@available(macOS 10.15.4, *)) {
@@ -562,8 +562,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         return;
     }
     // Copy the rendered texture to the output buffer (blit later) using the render command queue:
-    id<MTLCommandBuffer> commandbuf = [self.ctx createCommandBuffer];
-    id<MTLBlitCommandEncoder> blitEncoder = [commandbuf blitCommandEncoder];
+    id <MTLCommandBuffer> commandbuf = [self.ctx createCommandBuffer];
+    id <MTLBlitCommandEncoder> blitEncoder = [commandbuf blitCommandEncoder];
     [blitEncoder
             copyFromTexture:(*self.buffer) sourceSlice:0 sourceLevel:0
                sourceOrigin:MTLOriginMake(0, 0, 0)
@@ -572,7 +572,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
           destinationOrigin:MTLOriginMake(0, 0, 0)];
     [blitEncoder endEncoding];
     [self retain];
-    [commandbuf addCompletedHandler:^(id<MTLCommandBuffer> commandBuf) {
+    [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
         [self startRedraw];
         [self release];
     }];
@@ -583,10 +583,10 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
 
     if (cbwrapper != nil) {
-        id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+        id <MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
 
         [self retain];
-        [commandbuf addCompletedHandler:^(id<MTLCommandBuffer> commandBuf) {
+        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
             [cbwrapper release];
             if (updateDisplay && isDisplaySyncEnabled()) {
                 if (TRACE_DISPLAY_DETAILS) {
