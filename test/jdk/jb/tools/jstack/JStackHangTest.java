@@ -44,9 +44,7 @@ public class JStackHangTest {
 
     public static void main(String[] args) throws Exception {
 
-        ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(
-                "-Djdk.attach.vm.streaming=" + System.getProperty("jdk.attach.vm.streaming"),
-                JStackLauncher.class.getName());
+        ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(JStackLauncher.class.getName());
 
         Process process = ProcessTools.startProcess("Child", pb);
         OutputAnalyzer outputAnalyzer = new OutputAnalyzer(process);
@@ -54,7 +52,7 @@ public class JStackHangTest {
         int returnCode;
 
         if (!process.waitFor(JSTACK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-            System.out.println("jstack did not completed in " + JSTACK_WAIT_TIME + " ms.");
+            System.out.println("jstack did not complete in " + JSTACK_WAIT_TIME + " ms.");
 
             System.out.println("killing all the jstack processes");
             ProcessTools.executeCommand("killall", "-9", "jstack");

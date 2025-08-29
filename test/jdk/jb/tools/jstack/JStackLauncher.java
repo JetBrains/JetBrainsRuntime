@@ -53,7 +53,7 @@ public class JStackLauncher {
     public static void main(String[] args) throws InterruptedException {
         // Create threads with deep stacks
         List<Thread> threads = createManyThreadsWithDeepStacks();
-        System.out.println("jdk.attach.vm.streaming = " + System.getProperty("jdk.attach.vm.streaming"));
+
         // Run jstack against current process
         System.out.println("Starting jstack...");
         try {
