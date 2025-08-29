@@ -3946,6 +3946,7 @@ public class Window extends Container implements Accessible {
         private float getHeight() { return height; }
         private void setHeight(float height) {
             if (height <= 0.0f) throw new IllegalArgumentException("TitleBar height must be positive");
+            if (this.height == height) return;
             this.height = height;
             notifyUpdate();
         }
@@ -3954,13 +3955,17 @@ public class Window extends Container implements Accessible {
         }
         private void putProperties(Map<String, ?> m) {
             if (properties == null) properties = new HashMap<>();
-            properties.putAll(m);
-            notifyUpdate();
+            boolean needsUpdate = false;
+            for (Map.Entry<String, ?> e : m.entrySet()) {
+                Object old = properties.put(e.getKey(), e.getValue());
+                if (!needsUpdate && !Objects.equals(old, e.getValue())) needsUpdate = true;
+            }
+            if (needsUpdate) notifyUpdate();
         }
         private void putProperty(String key, Object value) {
             if (properties == null) properties = new HashMap<>();
-            properties.put(key, value);
-            notifyUpdate();
+            Object old = properties.put(key, value);
+            if (!Objects.equals(old, value)) notifyUpdate();
         }
         private float getLeftInset() { return insets[0]; }
         private float getRightInset() { return insets[1]; }
