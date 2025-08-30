@@ -22,7 +22,7 @@ java/awt/Toolkit/ToolkitPropertyTest/ToolkitPropertyTest_Disable.java JBR-9100 l
 javax/swing/AbstractButton/bug4147740.java JBR-9100 linux-all
 javax/swing/AbstractButton/bug4246045.java JBR-9100 linux-all
 javax/swing/border/Test6981576.java JBR-9100 linux-all
-javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-7269 linux-all
+javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-9031 linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
 javax/swing/GroupLayout/8079640/bug8079640.java JBR-9100 linux-all
 javax/swing/JButton/JButtonPaintNPE/JButtonPaintNPE.java JBR-9100 linux-all
@@ -32,6 +32,7 @@ javax/swing/JComboBox/bug4276920.java JBR-9100 linux-all
 javax/swing/JComboBox/ShowPopupAfterHidePopupTest/ShowPopupAfterHidePopupTest.java JBR-9100 linux-all
 javax/swing/JComboBox/TestComboBoxHeight.java JBR-9100 linux-all
 javax/swing/JComponent/4337267/bug4337267.java JBR-9100 linux-all
+javax/swing/JComponent/6989617/bug6989617.java JBR-8796 linux-all
 javax/swing/JComponent/bug4962718.java JBR-9100 linux-all
 javax/swing/JComponent/bug4979794.java JBR-9100 linux-all
 javax/swing/JEditorPane/4492274/bug4492274.java JBR-9100 linux-all
