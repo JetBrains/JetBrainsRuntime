@@ -139,6 +139,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     private static Boolean sunAwtDisableGtkFileDialogs = null;
 
+    private static final boolean isKDE;
+
     private static native void initIDs(long displayPtr);
 
     static {
@@ -148,6 +150,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             VKEnv.init(display);
             initIDs(display);
         }
+        String desktop = System.getenv("XDG_CURRENT_DESKTOP");
+        isKDE = desktop != null && desktop.toLowerCase().contains("kde");
         initialized = true;
     }
 
@@ -1088,4 +1092,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return WLCursorManager.getInstance();
     }
 
+    public static boolean isKDE() {
+        return isKDE;
+    }
 }
