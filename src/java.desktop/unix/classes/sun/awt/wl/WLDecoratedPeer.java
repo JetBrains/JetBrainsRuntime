@@ -63,7 +63,7 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
                 d = new DefaultFrameDecoration(this, showMinimize, showMaximize);
             }
         } else {
-            if (isGTKAvailable()) {
+            if (!WLToolkit.isKDE() && isGTKAvailable()) {
                 d = new GtkFrameDecoration(this, showMinimize, showMaximize);
             } else {
                 d = new DefaultFrameDecoration(this, showMinimize, showMaximize);
