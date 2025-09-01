@@ -100,7 +100,7 @@ public class TestAlwaysPreTouchStacks {
                 vmArgs.add("-XX:-UseMadvPopulateWrite");
             }
             Collections.addAll(vmArgs, "TestAlwaysPreTouchStacks", "test");
-            ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(vmArgs);
+            ProcessBuilder pb = ProcessTools.createTestJavaProcessBuilder(vmArgs);
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
             output.reportDiagnosticSummary();
 
