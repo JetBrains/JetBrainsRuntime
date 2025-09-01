@@ -332,6 +332,7 @@ public final class AWTAccessor {
         /* JBR Window counters API */
         boolean countersEnabled(Window w);
         void bumpCounter(Window w, String counterName);
+        void bumpCounterMillis(Window w, String counterName, double millis);
 
         long getCounter(Window w, String counterName);
         double getCounterPerSecond(Window w, String counterName);

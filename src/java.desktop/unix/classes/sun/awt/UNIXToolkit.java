@@ -516,6 +516,24 @@ public abstract class UNIXToolkit extends SunToolkit
 
     private static native int isSystemDarkColorScheme();
 
+    // Java-side fallback/theme detector for platforms where native detection is unavailable or incomplete
+    private static int isSystemDarkColorSchemeJava() {
+        // Try native first
+        int nativeRes;
+        try {
+            nativeRes = isSystemDarkColorScheme();
+            if (nativeRes >= 0) return nativeRes;
+        } catch (Throwable ignored) {
+            nativeRes = -1;
+        }
+        // Try KDE kdeglobals-based detection
+        Boolean kdeDark = KDEThemeDetector.detectDarkFromKDEGlobals();
+        if (kdeDark != null) {
+            return kdeDark ? 1 : 0;
+        }
+        return nativeRes; // keep original result (-1) if nothing else worked
+    }
+
     @Override
     public boolean isRunningOnXWayland() {
         return isOnXWayland();
@@ -528,13 +546,23 @@ public abstract class UNIXToolkit extends SunToolkit
     private static native boolean dbusInit();
 
     private void initSystemPropertyWatcher() {
+
+        // Initialize OS_THEME_IS_DARK using Java-side detector as well
+        try {
+            int initial = isSystemDarkColorSchemeJava();
+            if (initial >= 0) {
+                setDesktopProperty(OS_THEME_IS_DARK, initial != 0);
+            }
+        } catch (Throwable t) {
+            // ignore
+        }
         @SuppressWarnings("removal")
         String dbusEnabled = System.getProperty("jbr.dbus.enabled", "true").toLowerCase();
         if (!"true".equals(dbusEnabled) || !dbusInit()) {
             return;
         }
 
-        int initialSystemDarkColorScheme = isSystemDarkColorScheme();
+        int initialSystemDarkColorScheme = isSystemDarkColorSchemeJava();
         if (initialSystemDarkColorScheme >= 0) {
             setDesktopProperty(OS_THEME_IS_DARK, initialSystemDarkColorScheme != 0);
 
@@ -542,7 +570,7 @@ public abstract class UNIXToolkit extends SunToolkit
                     () -> {
                         while (true) {
                             try {
-                                int isSystemDarkColorScheme = isSystemDarkColorScheme();
+                                int isSystemDarkColorScheme = isSystemDarkColorSchemeJava();
                                 if (isSystemDarkColorScheme >= 0) {
                                     setDesktopProperty(OS_THEME_IS_DARK, isSystemDarkColorScheme != 0);
                                 }
@@ -655,6 +683,161 @@ public abstract class UNIXToolkit extends SunToolkit
         invoker.removeWindowFocusListener(waylandWindowFocusListener);
         for (Window ownedWindow : invoker.getOwnedWindows()) {
             ownedWindow.removeWindowFocusListener(waylandWindowFocusListener);
+        }
+    }
+
+    // Modular KDE theme detector reading kdeglobals using XDG directories
+    private static final class KDEThemeDetector {
+        private static final String ENV_XDG_CONFIG_HOME = "XDG_CONFIG_HOME";
+        private static final String ENV_XDG_CONFIG_DIRS = "XDG_CONFIG_DIRS";
+        private static final String DEFAULT_XDG_CONFIG_HOME_SUFFIX = "/.config";
+        private static final String DEFAULT_XDG_CONFIG_DIRS = "/etc/xdg";
+
+        static Boolean detectDarkFromKDEGlobals() {
+            try {
+                String currentDesktop = System.getenv("XDG_CURRENT_DESKTOP");
+                if (currentDesktop == null || !currentDesktop.toLowerCase().contains("kde")) {
+                    return null;
+                }
+
+                // 1) Check user-specific config first: $XDG_CONFIG_HOME or $HOME/.config
+                for (java.nio.file.Path base : getCandidateConfigDirs(true)) {
+                    Boolean v = detectInConfigBase(base);
+                    if (v != null) return v;
+                }
+                // 2) Check system config dirs from XDG_CONFIG_DIRS
+                for (java.nio.file.Path base : getCandidateConfigDirs(false)) {
+                    Boolean v = detectInConfigBase(base);
+                    if (v != null) return v;
+                }
+            } catch (Throwable t) {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("KDEThemeDetector failed: " + t);
+                }
+            }
+            return null;
+        }
+
+        private static Boolean detectInConfigBase(java.nio.file.Path base) throws IOException {
+            if (base == null) return null;
+            java.nio.file.Path kdeglobals = base.resolve("kdeglobals");
+            if (java.nio.file.Files.isRegularFile(kdeglobals)) {
+                // Parse kdeglobals for [General] ColorScheme
+                String schemeName = readIniKey(kdeglobals, "General", "ColorScheme");
+                if (schemeName != null && !schemeName.isEmpty()) {
+                    Boolean byName = isSchemeNameDark(schemeName);
+                    if (byName != null) return byName;
+                    // Try to find scheme file under color-schemes
+                    java.nio.file.Path schemeFile = base.resolve("color-schemes").resolve(schemeName + ".colors");
+                    if (java.nio.file.Files.isRegularFile(schemeFile)) {
+                        Boolean byColors = detectDarkFromSchemeFile(schemeFile);
+                        if (byColors != null) return byColors;
+                    }
+                }
+                // Fallback: try to infer from window background color keys in kdeglobals
+                Boolean byColors = detectDarkFromSchemeFile(kdeglobals);
+                if (byColors != null) return byColors;
+            }
+            return null;
+        }
+
+        private static java.util.List<java.nio.file.Path> getCandidateConfigDirs(boolean user) {
+            java.util.List<java.nio.file.Path> res = new java.util.ArrayList<>();
+            if (user) {
+                String xdgHome = System.getenv(ENV_XDG_CONFIG_HOME);
+                if (xdgHome != null && !xdgHome.trim().isEmpty()) {
+                    res.add(java.nio.file.Paths.get(xdgHome));
+                } else {
+                    String home = System.getProperty("user.home");
+                    if (home != null && !home.trim().isEmpty()) {
+                        res.add(java.nio.file.Paths.get(home + DEFAULT_XDG_CONFIG_HOME_SUFFIX));
+                    }
+                }
+            } else {
+                String dirs = System.getenv(ENV_XDG_CONFIG_DIRS);
+                if (dirs == null || dirs.trim().isEmpty()) {
+                    dirs = DEFAULT_XDG_CONFIG_DIRS;
+                }
+                for (String part : dirs.split(":")) {
+                    if (!part.isEmpty()) res.add(java.nio.file.Paths.get(part));
+                }
+            }
+            return res;
+        }
+
+        private static String readIniKey(java.nio.file.Path file, String section, String key) throws IOException {
+            String current = null;
+            try (java.io.BufferedReader br = java.nio.file.Files.newBufferedReader(file)) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    line = line.trim();
+                    if (line.isEmpty() || line.startsWith("#") || line.startsWith(";")) continue;
+                    if (line.startsWith("[") && line.endsWith("]")) {
+                        current = line.substring(1, line.length() - 1).trim();
+                        continue;
+                    }
+                    if (current != null && current.equals(section)) {
+                        int eq = line.indexOf('=');
+                        if (eq > 0) {
+                            String k = line.substring(0, eq).trim();
+                            if (k.equals(key)) {
+                                return line.substring(eq + 1).trim();
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static Boolean isSchemeNameDark(String name) {
+            String n = name.toLowerCase();
+            if (n.contains("dark")) return Boolean.TRUE;
+            if (n.contains("light")) return Boolean.FALSE;
+            return null;
+        }
+
+        private static Boolean detectDarkFromSchemeFile(java.nio.file.Path file) throws IOException {
+            // Look into standard color groups for background colors to approximate luminance
+            String[] sections = new String[]{
+                    "Colors:Window", "Colors:View", "Colors:Button"
+            };
+            String[] keys = new String[]{
+                    "BackgroundNormal", "BackgroundAlternate"
+            };
+            for (String sec : sections) {
+                for (String key : keys) {
+                    String val = readIniKey(file, sec, key);
+                    if (val != null) {
+                        int[] rgb = parseKDEColor(val);
+                        if (rgb != null) {
+                            double luminance = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255.0;
+                            if (luminance < 0.5) return Boolean.TRUE; // dark
+                            else return Boolean.FALSE; // light
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static int[] parseKDEColor(String val) {
+            // Formats like: R,G,B or R,G,B,A
+            try {
+                String[] parts = val.split(",");
+                if (parts.length < 3) return null;
+                int r = Integer.parseInt(parts[0].trim());
+                int g = Integer.parseInt(parts[1].trim());
+                int b = Integer.parseInt(parts[2].trim());
+                r = clamp(r); g = clamp(g); b = clamp(b);
+                return new int[]{r, g, b};
+            } catch (Exception e) {
+                return null;
+            }
+        }
+
+        private static int clamp(int v) {
+            if (v < 0) return 0; if (v > 255) return 255; return v;
         }
     }
 }

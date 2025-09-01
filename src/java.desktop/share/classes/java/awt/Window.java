@@ -4282,6 +4282,57 @@ public class Window extends Container implements Accessible {
                 }
             }
 
+            public void bumpCounterMillis(final Window w, final String counterName, final double millis) {
+                if (USE_COUNTERS) {
+                    Objects.requireNonNull(w);
+                    Objects.requireNonNull(counterName);
+
+                    if (Double.isNaN(millis) || Double.isInfinite(millis)) {
+                        return;
+                    }
+                    final long inc = Math.round(millis);
+                    if (inc == 0L) {
+                        return;
+                    }
+
+                    final long curTimeNanos = System.nanoTime();
+                    try {
+                        PerfCounter newCounter, prevCounter;
+                        synchronized (w.perfCounters) {
+                            newCounter = w.perfCounters.compute(counterName, (_, v) ->
+                                    v == null
+                                            ? new PerfCounter(curTimeNanos, inc)
+                                            : new PerfCounter(curTimeNanos, v.value + inc));
+                        }
+                        synchronized (w.perfCountersPrev) {
+                            prevCounter = w.perfCountersPrev.putIfAbsent(counterName, newCounter);
+                        }
+                        if (prevCounter != null) {
+                            final long timeDeltaNanos = curTimeNanos - prevCounter.updateTimeNanos;
+                            if (timeDeltaNanos > NANO_IN_SEC) {
+                                final double valPerSecond = (double) (newCounter.value - prevCounter.value)
+                                        * NANO_IN_SEC / timeDeltaNanos;
+
+                                synchronized (w.perfCountersPrev) {
+                                    w.perfCountersPrev.put(counterName, newCounter);
+                                }
+                                synchronized (w.perfStats) {
+                                    StatDouble stat = w.perfStats.computeIfAbsent(counterName, StatDouble::new);
+                                    stat.add(valPerSecond);
+                                    stat = w.perfStats.computeIfAbsent(counterName + STATS_ALL_SUFFIX, StatDouble::new);
+                                    stat.add(valPerSecond);
+                                }
+                                if (TRACE_COUNTERS) {
+                                    dumpCounter(counterName, valPerSecond);
+                                }
+                            }
+                        }
+                    } catch (RuntimeException re) {
+                        perfLog.severe("bumpCounterMillis: failed", re);
+                    }
+                }
+            }
+
             public long getCounter(final Window w, final String counterName) {
                 if (USE_COUNTERS) {
                     Objects.requireNonNull(w);
