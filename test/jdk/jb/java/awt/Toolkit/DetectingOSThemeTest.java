@@ -35,6 +35,7 @@ public class DetectingOSThemeTest {
     private static final String LIGHT_THEME_NAME = "Light";
     private static final String DARK_THEME_NAME = "Dark";
     private static final String UNDEFINED_THEME_NAME = "Undefined";
+    private static boolean isKDE = false;
 
     private static String currentTheme() {
         Boolean val = (Boolean) Toolkit.getDefaultToolkit().getDesktopProperty("awt.os.theme.isDark");
@@ -44,8 +45,14 @@ public class DetectingOSThemeTest {
         return (val) ? DARK_THEME_NAME : LIGHT_THEME_NAME;
     }
 
-    private static void setOsDarkTheme(String val) {
-        try {
+    private static void setOsDarkTheme(String val) throws Exception {
+        if (isKDE) {
+            if (val.equals(DARK_THEME_NAME)) {
+                Runtime.getRuntime().exec("plasma-apply-colorscheme BreezeDark");
+            } else {
+                Runtime.getRuntime().exec("plasma-apply-colorscheme BreezeLight");
+            }
+        } else {
             if (val.equals(DARK_THEME_NAME)) {
                 Runtime.getRuntime().exec("gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark'");
                 Runtime.getRuntime().exec("gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'");
@@ -53,14 +60,13 @@ public class DetectingOSThemeTest {
                 Runtime.getRuntime().exec("gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita'");
                 Runtime.getRuntime().exec("gsettings set org.gnome.desktop.interface color-scheme 'default'");
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
 
     private static String currentTheme = null;
 
     public static void main(String[] args) throws Exception {
+        isKDE = "KDE".equals(System.getenv("XDG_CURRENT_DESKTOP"));
         currentTheme = currentTheme();
         if (currentTheme.equals(UNDEFINED_THEME_NAME)) {
             throw new RuntimeException("Test Failed! Cannot detect current OS theme");
