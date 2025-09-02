@@ -30,7 +30,9 @@ import com.sun.org.apache.xml.internal.dtm.DTM;
 import com.sun.org.apache.xpath.internal.axes.LocPathIterator;
 import com.sun.org.apache.xpath.internal.objects.XObject;
 import com.sun.org.apache.xpath.internal.res.XPATHErrorResources;
+import com.sun.org.apache.xerces.internal.utils.XMLSecurityPropertyManager;
 import java.io.IOException;
+import javax.xml.XMLConstants;
 import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -54,7 +56,7 @@ import org.xml.sax.SAXException;
  * This class contains several utility methods used by XPathImpl and
  * XPathExpressionImpl
  *
- * @LastModified: Jan 2022
+ * @LastModified: June 2025
  */
 class XPathImplUtil {
     XPathFunctionResolver functionResolver;
@@ -67,6 +69,7 @@ class XPathImplUtil {
     boolean featureSecureProcessing = false;
     JdkXmlFeatures featureManager;
     XMLSecurityManager xmlSecMgr;
+    XMLSecurityPropertyManager xmlSecPropMgr;
 
     /**
      * Evaluate an XPath context using the internal XPath engine
@@ -129,7 +132,12 @@ class XPathImplUtil {
             //
             // so we really have to create a fresh DocumentBuilder every time we need one
             // - KK
-            DocumentBuilderFactory dbf = JdkXmlUtils.getDOMFactory(overrideDefaultParser);
+            DocumentBuilderFactory dbf = JdkXmlUtils.getDOMFactory(
+                    overrideDefaultParser, xmlSecMgr, xmlSecPropMgr);
+            if (xmlSecMgr != null && xmlSecMgr.isSecureProcessingSet()) {
+                dbf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING,
+                        xmlSecMgr.isSecureProcessing());
+            }
             return dbf.newDocumentBuilder().parse(source);
         } catch (ParserConfigurationException | SAXException | IOException e) {
             throw new XPathExpressionException (e);
