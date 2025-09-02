@@ -29,6 +29,7 @@ import com.sun.org.apache.xerces.internal.impl.Constants;
 import com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl;
 import com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl;
 import com.sun.org.apache.xerces.internal.util.ParserConfigurationSettings;
+import com.sun.org.apache.xerces.internal.utils.XMLSecurityPropertyManager;
 import com.sun.org.apache.xerces.internal.xni.parser.XMLComponentManager;
 import com.sun.org.apache.xerces.internal.xni.parser.XMLConfigurationException;
 import javax.xml.XMLConstants;
@@ -312,6 +313,21 @@ public class JdkXmlUtils {
      */
     @SuppressWarnings("removal")
     public static DocumentBuilderFactory getDOMFactory(boolean overrideDefaultParser) {
+        return getDOMFactory(overrideDefaultParser, null, null);
+    }
+
+    /**
+     * {@return a DocumentBuilderFactory instance}
+     *
+     * @param overrideDefaultParser a flag indicating whether the system-default
+     * implementation may be overridden. If the system property of the
+     * DOM factory ID is set, override is always allowed.
+     * @param xsm XMLSecurityManager
+     * @param xspm XMLSecurityPropertyManager
+     */
+    @SuppressWarnings("removal")
+    public static DocumentBuilderFactory getDOMFactory(boolean overrideDefaultParser,
+            XMLSecurityManager xsm, XMLSecurityPropertyManager xspm) {
         boolean override = overrideDefaultParser;
         String spDOMFactory = SecuritySupport.getJAXPSystemProperty(DOM_FACTORY_ID);
 
@@ -320,7 +336,7 @@ public class JdkXmlUtils {
         }
         DocumentBuilderFactory dbf
                 = !override
-                        ? new DocumentBuilderFactoryImpl()
+                        ? new DocumentBuilderFactoryImpl(xsm, xspm)
                         : DocumentBuilderFactory.newInstance();
         dbf.setNamespaceAware(true);
         // false is the default setting. This step here is for compatibility
