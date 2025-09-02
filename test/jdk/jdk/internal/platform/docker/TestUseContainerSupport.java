@@ -25,6 +25,7 @@
  * @test
  * @summary UseContainerSupport flag should reflect Metrics being available
  * @requires docker.support
+ * @requires !vm.asan
  * @library /test/lib
  * @modules java.base/jdk.internal.platform
  * @build CheckUseContainerSupport

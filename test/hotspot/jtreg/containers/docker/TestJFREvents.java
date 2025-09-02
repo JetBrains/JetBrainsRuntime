@@ -30,6 +30,7 @@
  *          Also make sure that PIDs are based on value provided by container,
  *          not by the host system.
  * @requires (docker.support & os.maxMemory >= 2g)
+ * @requires !vm.asan
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
