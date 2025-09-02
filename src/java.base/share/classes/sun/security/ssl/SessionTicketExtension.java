@@ -41,7 +41,6 @@ import javax.net.ssl.SSLSessionContext;
 
 import static sun.security.ssl.SSLExtension.CH_SESSION_TICKET;
 import static sun.security.ssl.SSLExtension.SH_SESSION_TICKET;
-import static sun.security.ssl.SignatureScheme.CERTIFICATE_SCOPE;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -356,13 +355,7 @@ final class SessionTicketExtension {
                 return new byte[0];
             }
 
-            if (chc.localSupportedCertSignAlgs == null) {
-                chc.localSupportedCertSignAlgs =
-                        SignatureScheme.getSupportedAlgorithms(
-                                chc.sslConfig,
-                                chc.algorithmConstraints, chc.activeProtocols,
-                                CERTIFICATE_SCOPE);
-            }
+            SignatureScheme.updateHandshakeLocalSupportedAlgs(chc);
 
             return chc.resumingSession.getPskIdentity();
         }
