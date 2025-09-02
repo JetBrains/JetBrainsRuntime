@@ -21,6 +21,7 @@
 package com.sun.org.apache.xpath.internal.jaxp;
 
 import com.sun.org.apache.xalan.internal.res.XSLMessages;
+import com.sun.org.apache.xerces.internal.utils.XMLSecurityPropertyManager;
 import com.sun.org.apache.xpath.internal.res.XPATHErrorResources;
 import javax.xml.XMLConstants;
 import javax.xml.xpath.XPathFactory;
@@ -37,7 +38,7 @@ import jdk.xml.internal.XMLSecurityManager;
  *
  * @author  Ramesh Mandava
  *
- * @LastModified: Jan 2022
+ * @LastModified: June 2025
  */
 public  class XPathFactoryImpl extends XPathFactory {
 
@@ -74,6 +75,7 @@ public  class XPathFactoryImpl extends XPathFactory {
          * The XML security manager
          */
         private XMLSecurityManager _xmlSecMgr;
+        private XMLSecurityPropertyManager _xmlSecPropMgr;
 
         /**
          * javax.xml.xpath.XPathFactory implementation.
@@ -86,6 +88,7 @@ public  class XPathFactoryImpl extends XPathFactory {
             }
             _featureManager = new JdkXmlFeatures(!_isNotSecureProcessing);
             _xmlSecMgr = new XMLSecurityManager(true);
+            _xmlSecPropMgr = new XMLSecurityPropertyManager();
         }
 
         /**
@@ -135,7 +138,7 @@ public  class XPathFactoryImpl extends XPathFactory {
          */
         public javax.xml.xpath.XPath newXPath() {
             return new XPathImpl(xPathVariableResolver, xPathFunctionResolver,
-                    !_isNotSecureProcessing, _featureManager, _xmlSecMgr);
+                    !_isNotSecureProcessing, _featureManager, _xmlSecMgr, _xmlSecPropMgr);
         }
 
         /**
@@ -189,6 +192,7 @@ public  class XPathFactoryImpl extends XPathFactory {
                 if (value && _featureManager != null) {
                     _featureManager.setFeature(JdkXmlFeatures.XmlFeature.ENABLE_EXTENSION_FUNCTION,
                             JdkProperty.State.FSP, false);
+                    _xmlSecMgr.setSecureProcessing(value);
                 }
 
                 // all done processing feature
@@ -346,6 +350,10 @@ public  class XPathFactoryImpl extends XPathFactory {
 
         if (_xmlSecMgr != null &&
                 _xmlSecMgr.setLimit(name, JdkProperty.State.APIPROPERTY, value)) {
+            return;
+        }
+        if (_xmlSecPropMgr != null && _xmlSecPropMgr.find(name) != null &&
+                _xmlSecPropMgr.setValue(name, XMLSecurityPropertyManager.State.APIPROPERTY, value)) {
             return;
         }
 
