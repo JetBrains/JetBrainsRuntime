@@ -29,6 +29,7 @@
  * @key cgroups
  * @summary Test container limits updating as they get updated at runtime without restart
  * @requires docker.support
+ * @requires !vm.asan
  * @library /test/lib
  * @modules java.base/jdk.internal.platform
  * @build LimitUpdateChecker
