@@ -22,7 +22,6 @@ package com.sun.org.apache.xerces.internal.jaxp;
 
 import com.sun.org.apache.xerces.internal.parsers.DOMParser;
 import com.sun.org.apache.xerces.internal.util.SAXMessageFormatter;
-import com.sun.org.apache.xerces.internal.utils.XMLSecurityManager;
 import com.sun.org.apache.xerces.internal.utils.XMLSecurityPropertyManager;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +31,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.validation.Schema;
 import jdk.xml.internal.JdkProperty;
+import jdk.xml.internal.XMLSecurityManager;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
@@ -39,7 +39,7 @@ import org.xml.sax.SAXNotSupportedException;
 /**
  * @author Rajiv Mordani
  * @author Edwin Goei
- * @LastModified: Mar 2023
+ * @LastModified: June 2025
  */
 public class DocumentBuilderFactoryImpl extends DocumentBuilderFactory {
     /** These are DocumentBuilderFactory attributes not DOM attributes */
@@ -54,8 +54,26 @@ public class DocumentBuilderFactoryImpl extends DocumentBuilderFactory {
     private boolean fSecureProcess = true;
 
     // used to verify attributes
-    XMLSecurityManager fSecurityManager = new XMLSecurityManager(true);
-    XMLSecurityPropertyManager fSecurityPropertyMgr = new XMLSecurityPropertyManager();
+    XMLSecurityManager fSecurityManager;
+    XMLSecurityPropertyManager fSecurityPropertyMgr;
+
+    /**
+     * Creates a new {@code DocumentBuilderFactory} instance.
+     */
+    public DocumentBuilderFactoryImpl() {
+        this(null, null);
+    }
+
+    /**
+     * Creates a new {@code DocumentBuilderFactory} instance with a {@code XMLSecurityManager}
+     * and {@code XMLSecurityPropertyManager}.
+     * @param xsm the {@code XMLSecurityManager}
+     * @param xspm the {@code XMLSecurityPropertyManager}
+     */
+    public DocumentBuilderFactoryImpl(XMLSecurityManager xsm, XMLSecurityPropertyManager xspm) {
+        fSecurityManager = (xsm == null) ? new XMLSecurityManager(true) : xsm;
+        fSecurityPropertyMgr = (xspm == null) ? new XMLSecurityPropertyManager() : xspm;
+    }
 
     /**
      * Creates a new instance of a {@link javax.xml.parsers.DocumentBuilder}
