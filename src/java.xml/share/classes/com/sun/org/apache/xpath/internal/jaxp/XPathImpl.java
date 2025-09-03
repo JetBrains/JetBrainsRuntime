@@ -20,6 +20,7 @@
 
 package com.sun.org.apache.xpath.internal.jaxp;
 
+import com.sun.org.apache.xerces.internal.utils.XMLSecurityPropertyManager;
 import com.sun.org.apache.xpath.internal.*;
 import com.sun.org.apache.xpath.internal.objects.XObject;
 import javax.xml.namespace.NamespaceContext;
@@ -47,7 +48,7 @@ import org.xml.sax.InputSource;
  * New methods: evaluateExpression
  * Refactored to share code with XPathExpressionImpl.
  *
- * @LastModified: Jan 2022
+ * @LastModified: June 2025
  */
 public class XPathImpl extends XPathImplUtil implements javax.xml.xpath.XPath {
 
@@ -57,12 +58,13 @@ public class XPathImpl extends XPathImplUtil implements javax.xml.xpath.XPath {
     private NamespaceContext namespaceContext=null;
 
     XPathImpl(XPathVariableResolver vr, XPathFunctionResolver fr) {
-        this(vr, fr, false, new JdkXmlFeatures(false), new XMLSecurityManager(true));
+        this(vr, fr, false, new JdkXmlFeatures(false), new XMLSecurityManager(true),
+                new XMLSecurityPropertyManager());
     }
 
     XPathImpl(XPathVariableResolver vr, XPathFunctionResolver fr,
             boolean featureSecureProcessing, JdkXmlFeatures featureManager,
-            XMLSecurityManager xmlSecMgr) {
+            XMLSecurityManager xmlSecMgr, XMLSecurityPropertyManager xmlSecPropMgr) {
         this.origVariableResolver = this.variableResolver = vr;
         this.origFunctionResolver = this.functionResolver = fr;
         this.featureSecureProcessing = featureSecureProcessing;
@@ -70,6 +72,7 @@ public class XPathImpl extends XPathImplUtil implements javax.xml.xpath.XPath {
         overrideDefaultParser = featureManager.getFeature(
                 JdkXmlFeatures.XmlFeature.JDK_OVERRIDE_PARSER);
         this.xmlSecMgr = xmlSecMgr;
+        this.xmlSecPropMgr = xmlSecPropMgr;
     }
 
 
