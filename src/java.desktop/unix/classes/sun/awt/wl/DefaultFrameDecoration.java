@@ -40,35 +40,44 @@ import java.awt.RenderingHints;
 import java.awt.geom.Ellipse2D;
 
 public class DefaultFrameDecoration extends FullFrameDecorationHelper {
-    private static final int HEIGHT = 30;
+    private static final int BORDER_SIZE = 1;
+    private static final int HEIGHT = 28 + BORDER_SIZE;
     private static final int BUTTON_ICON_SIZE = 4;
-    private static final int BUTTON_CIRCLE_RADIUS = 10;
+    private static final int BUTTON_SIZE = 16;
+    private static final int BUTTONS_RIGHT_PADDING = 7;
+    private static final int BUTTONS_PADDING = 8;
     private static final Font FONT = new Font(Font.DIALOG, Font.BOLD, 12);
-    private static final Color ACTIVE_BACKGROUND = new Color(0xebebeb);
-    private static final Color ACTIVE_BACKGROUND_DARK = new Color(0x222222);
-    private static final Color INACTIVE_BACKGROUND = new Color(0xfafafa);
-    private static final Color INACTIVE_BACKGROUND_DARK = new Color(0x2c2c2c);
+    private static final Color ACTIVE_BACKGROUND = new Color(0xedeeef);
+    private static final Color ACTIVE_BACKGROUND_DARK = new Color(0x31363b);
+    private static final Color INACTIVE_BACKGROUND = new Color(0xdcddde);
+    private static final Color INACTIVE_BACKGROUND_DARK = new Color(0x292d31);
     private static final Color ICON_BACKGROUND = ACTIVE_BACKGROUND;
     private static final Color ICON_BACKGROUND_DARK = ACTIVE_BACKGROUND_DARK;
-    private static final Color ICON_HOVERED_BACKGROUND = new Color(0xd1d1d1);
-    private static final Color ICON_HOVERED_BACKGROUND_DARK = new Color(0x373737);
-    private static final Color ICON_PRESSED_BACKGROUND = new Color(0xc0c0c0);
-    private static final Color ICON_PRESSED_BACKGROUND_DARK = new Color(0x565656);
-    private static final Color ACTIVE_FOREGROUND = Color.darkGray;
-    private static final Color ACTIVE_FOREGROUND_DARK = new Color(0xf7f7f7);
-    private static final Color INACTIVE_FOREGROUND = Color.gray;
-    private static final Color INACTIVE_FOREGROUND_DARK = new Color(0xb5b5b5);
+    private static final Color ICON_HOVERED_BACKGROUND = new Color(0x232629);
+    private static final Color ICON_HOVERED_BACKGROUND_DARK = new Color(0xfcfcfc);
+    private static final Color ICON_HOVERED_FOREGROUND = new Color(0xcacdcf);
+    private static final Color ICON_HOVERED_FOREGROUND_DARK = new Color(0x43484c);
+    private static final Color ICON_PRESSED_BACKGROUND = new Color(0xa6a8ab);
+    private static final Color ICON_PRESSED_BACKGROUND_DARK = new Color(0x6e7175);
+    private static final Color CLOSE_ICON_PRESSED_BACKGROUND = new Color(0x6d2229);
+    private static final Color CLOSE_ICON_PRESSED_BACKGROUND_DARK = new Color(0x6d2229);
+    private static final Color CLOSE_ICON_HOVERED_BACKGROUND = new Color(0xff98a2);
+    private static final Color CLOSE_ICON_HOVERED_INACTIVE_BACKGROUND = new Color(0xda4453);
+    private static final Color CLOSE_ICON_HOVERED_INACTIVE_BACKGROUND_DARK = new Color(0xda4453);
+    private static final Color CLOSE_ICON_HOVERED_BACKGROUND_DARK = new Color(0xff98a2);
+    private static final Color ACTIVE_FOREGROUND = new Color(0x2d3033);
+    private static final Color ACTIVE_FOREGROUND_DARK = new Color(0xf1f1f1);
+    private static final Color INACTIVE_FOREGROUND = ACTIVE_FOREGROUND;
+    private static final Color INACTIVE_FOREGROUND_DARK = ACTIVE_FOREGROUND_DARK;
 
-    private static final Color ACTIVE_BACKGROUND_TOP = new Color(0xfbfbfb);
-    private static final Color ACTIVE_BACKGROUND_TOP_DARK = new Color(0x313131);
-    private static final Color INACTIVE_BACKGROUND_TOP = new Color(0xfefefe);
-    private static final Color INACTIVE_BACKGROUND_TOP_DARK = new Color(0x3a3a3a);
-    private static final Color ACTIVE_BORDER = new Color(0x9e9e9e);
-    private static final Color ACTIVE_BORDER_DARK = new Color(0x080808);
-    private static final Color INACTIVE_BORDER = new Color(0xbcbcbc);
-    private static final Color INACTIVE_BORDER_DARK = new Color(0x121212);
-
-    private static final int BORDER_SIZE = 1;
+    private static final Color ACTIVE_BACKGROUND_TOP = new Color(0xa9abac);
+    private static final Color ACTIVE_BACKGROUND_TOP_DARK = new Color(0x4c565f);
+    private static final Color INACTIVE_BACKGROUND_TOP = new Color(0xb7b8b9);
+    private static final Color INACTIVE_BACKGROUND_TOP_DARK = new Color(0x424952);
+    private static final Color ACTIVE_BORDER = ACTIVE_BACKGROUND_TOP;
+    private static final Color ACTIVE_BORDER_DARK = ACTIVE_BACKGROUND_TOP_DARK;
+    private static final Color INACTIVE_BORDER = INACTIVE_BACKGROUND_TOP;
+    private static final Color INACTIVE_BORDER_DARK = INACTIVE_BACKGROUND_TOP_DARK;
     private static final int SIGNIFICANT_DRAG_DISTANCE = 4;
 
     public DefaultFrameDecoration(WLDecoratedPeer peer, boolean showMinimize, boolean showMaximize) {
@@ -96,64 +105,27 @@ public class DefaultFrameDecoration extends FullFrameDecorationHelper {
         return new Dimension(getButtonSpaceWidth(), HEIGHT);
     }
 
-    private Point getCloseButtonCenter() {
-        int width = peer.getWidth();
-        return width >= HEIGHT ? new Point(width - HEIGHT / 2, HEIGHT / 2) : null;
-    }
-
-    private Point getMaximizeButtonCenter() {
-        if (!hasMaximizeButton()) return null;
-        int width = peer.getWidth();
-        return width >= 2 * HEIGHT ? new Point(width - HEIGHT * 3 / 2, HEIGHT / 2) : null;
-    }
-
-    private Point getMinimizeButtonCenter() {
-        if (!hasMinimizeButton()) return null;
-        int width = peer.getWidth();
-        int buttonSpaceWidth = getButtonSpaceWidth();
-        return width >= buttonSpaceWidth ? new Point(width - buttonSpaceWidth + HEIGHT / 2, HEIGHT / 2) : null;
-    }
-
     @Override
     protected Rectangle getCloseButtonBounds() {
-        int width = peer.getWidth();
-        if (width >= HEIGHT) {
-            return new Rectangle(width - HEIGHT / 2 - BUTTON_CIRCLE_RADIUS,
-                    HEIGHT / 2 - BUTTON_CIRCLE_RADIUS,
-                    BUTTON_CIRCLE_RADIUS * 2,
-                    BUTTON_CIRCLE_RADIUS * 2);
-        } else {
-            return null;
-        }
+        int x = peer.getWidth() - BUTTON_SIZE - BUTTONS_RIGHT_PADDING - BORDER_SIZE;
+        int y = (int) Math.floor((HEIGHT - BUTTON_SIZE + 1f) / 2);
+        return new Rectangle(x, y, BUTTON_SIZE, BUTTON_SIZE);
     }
 
     @Override
     protected Rectangle getMaximizeButtonBounds() {
-        if (!hasMaximizeButton()) return null;
-        int width = peer.getWidth();
-        if (width >= 2 * HEIGHT) {
-            return new Rectangle(width - HEIGHT * 3 / 2 - BUTTON_CIRCLE_RADIUS,
-                    HEIGHT / 2 - BUTTON_CIRCLE_RADIUS,
-                    BUTTON_CIRCLE_RADIUS * 2,
-                    BUTTON_CIRCLE_RADIUS * 2);
-        } else {
-            return null;
-        }
+        int x = peer.getWidth() - BUTTON_SIZE * 2 - BUTTONS_RIGHT_PADDING
+                - BUTTONS_PADDING - BORDER_SIZE;
+        int y = (int) Math.floor((HEIGHT - BUTTON_SIZE + 1f) / 2);
+        return x > 0 ? new Rectangle(x, y, BUTTON_SIZE, BUTTON_SIZE) : null;
     }
 
     @Override
     protected Rectangle getMinimizeButtonBounds() {
-        if (!hasMinimizeButton()) return null;
-        int width = peer.getWidth();
-        int buttonSpaceWidth = getButtonSpaceWidth();
-        if (width >= buttonSpaceWidth) {
-            return new Rectangle(width - buttonSpaceWidth + HEIGHT / 2 - BUTTON_CIRCLE_RADIUS,
-                    HEIGHT / 2 - BUTTON_CIRCLE_RADIUS,
-                    BUTTON_CIRCLE_RADIUS * 2,
-                    BUTTON_CIRCLE_RADIUS * 2);
-        } else {
-            return null;
-        }
+        int x = peer.getWidth() - BUTTON_SIZE * 3 - BUTTONS_RIGHT_PADDING
+                - BUTTONS_PADDING * 2 - BORDER_SIZE;
+        int y = (int) Math.floor((HEIGHT - BUTTON_SIZE + 1f) / 2);
+        return x > 0 ? new Rectangle(x, y, BUTTON_SIZE, BUTTON_SIZE) : null;
     }
 
     @Override
@@ -170,7 +142,7 @@ public class DefaultFrameDecoration extends FullFrameDecorationHelper {
         final int numButtons = 1
                 + (hasMaximizeButton() ? 1 : 0)
                 + (hasMinimizeButton() ? 1 : 0);
-        return numButtons * HEIGHT;
+        return numButtons * BUTTON_SIZE + (numButtons - 1) * BUTTONS_PADDING + BUTTONS_RIGHT_PADDING;
     }
 
     private Color getBackgroundColor(boolean isActive) {
@@ -217,13 +189,33 @@ public class DefaultFrameDecoration extends FullFrameDecorationHelper {
         }
     }
 
+    private Color getButtonForeground(boolean isHovered) {
+        if (isHovered) {
+            return isDarkTheme() ? ICON_HOVERED_FOREGROUND_DARK : ICON_HOVERED_FOREGROUND;
+        } else {
+            return isDarkTheme() ? ACTIVE_FOREGROUND_DARK : ACTIVE_FOREGROUND;
+        }
+    }
+
+    private Color getClosePressedBackground() {
+        return isDarkTheme() ? CLOSE_ICON_PRESSED_BACKGROUND_DARK : CLOSE_ICON_PRESSED_BACKGROUND;
+    }
+
+    private Color getCloseHoveredBackground(boolean isActive) {
+        if (isActive) {
+            return isDarkTheme() ? CLOSE_ICON_HOVERED_BACKGROUND_DARK : CLOSE_ICON_HOVERED_BACKGROUND;
+        } else {
+            return isDarkTheme() ? CLOSE_ICON_HOVERED_INACTIVE_BACKGROUND_DARK : CLOSE_ICON_HOVERED_INACTIVE_BACKGROUND;
+        }
+    }
+
     @Override
     protected void paintBorder(Graphics2D g2d) {
         int width = peer.getWidth();
         int height = peer.getHeight();
         g2d.setColor(getBorderColor(isActive()));
         g2d.setStroke(new BasicStroke(BORDER_SIZE));
-        g2d.drawRect(0, 0, width - BORDER_SIZE, height - BORDER_SIZE);
+        g2d.drawRect(0, 0, width, height);
     }
 
     @Override
@@ -250,17 +242,11 @@ public class DefaultFrameDecoration extends FullFrameDecorationHelper {
             // The title bar
             g.fillRoundRect(0, 0, width, HEIGHT + radius + 1, radius, radius);
 
-            // The top bevel of the title bar
-            g.setColor(getBackgroundTopColor(active));
-            g.drawLine(radius / 2, 1, width - radius / 2, 1);
-            g.drawArc(1, 1, (radius - 1), (radius - 1), 90, 60);
-            g.drawArc(width - radius, 1, (radius - 1), (radius - 1), 45, 45);
-
             // The border
             var oldStroke = g.getStroke();
             g.setColor(getBorderColor(active));
             g.setStroke(new BasicStroke(BORDER_SIZE));
-            g.drawRoundRect(0, 0, width - BORDER_SIZE, HEIGHT + radius + 1, radius, radius);
+            g.drawRoundRect(0, 0, width, HEIGHT + radius + 1, radius, radius);
             g.setStroke(oldStroke);
             g.drawLine(0, HEIGHT - 1, width, HEIGHT - 1);
         } else {
@@ -270,32 +256,35 @@ public class DefaultFrameDecoration extends FullFrameDecorationHelper {
 
             // The top bevel of the title bar
             g.setColor(getBackgroundTopColor(active));
-            g.drawLine(BORDER_SIZE, BORDER_SIZE, width - BORDER_SIZE, BORDER_SIZE);
-            g.drawLine(BORDER_SIZE, BORDER_SIZE, BORDER_SIZE, HEIGHT - BORDER_SIZE);
+            g.drawLine(BORDER_SIZE, BORDER_SIZE, width, BORDER_SIZE);
+            g.drawLine(BORDER_SIZE, BORDER_SIZE, BORDER_SIZE, HEIGHT);
 
             // The border
             var oldStroke = g.getStroke();
             g.setColor(getBorderColor(active));
             g.setStroke(new BasicStroke(BORDER_SIZE));
-            g.drawRect(0, 0, width - BORDER_SIZE, HEIGHT - BORDER_SIZE);
+            g.drawRect(0, 0, width, HEIGHT);
             g.setStroke(oldStroke);
         }
         paintTitle(g, title, foregroundColor, width);
 
-        Point closeButtonCenter = getCloseButtonCenter();
-        if (closeButtonCenter != null) {
-            paintButtonBackground(g, closeButtonCenter, closeButton);
-            paintCloseButton(g, closeButtonCenter, foregroundColor);
+        Rectangle closeButtonBounds = getCloseButtonBounds();
+        if (closeButtonBounds != null) {
+            paintCloseButtonBackground(g, closeButtonBounds, closeButton);
+            Color buttonColor = getButtonForeground(closeButton.hovered);
+            paintCloseButton(g, closeButtonBounds, buttonColor);
         }
-        Point maximizedButtonCenter = getMaximizeButtonCenter();
-        if (maximizedButtonCenter != null) {
-            paintButtonBackground(g, maximizedButtonCenter, maximizeButton);
-            paintMaximizeButton(g, maximizedButtonCenter, foregroundColor);
+        Rectangle maximizedButtonBounds = getMaximizeButtonBounds();
+        if (maximizedButtonBounds != null) {
+            paintButtonBackground(g, maximizedButtonBounds, maximizeButton);
+            Color buttonColor = getButtonForeground(maximizeButton.hovered);
+            paintMaximizeButton(g, maximizedButtonBounds, buttonColor);
         }
-        Point minimizedButtonCenter = getMinimizeButtonCenter();
-        if (minimizedButtonCenter != null) {
-            paintButtonBackground(g, minimizedButtonCenter, minimizeButton);
-            paintMinimizeButton(g, minimizedButtonCenter, foregroundColor);
+        Rectangle minimizedButtonBounds = getMinimizeButtonBounds();
+        if (minimizedButtonBounds != null) {
+            paintButtonBackground(g, minimizedButtonBounds, minimizeButton);
+            Color buttonColor = getButtonForeground(minimizeButton.hovered);
+            paintMinimizeButton(g, minimizedButtonBounds, buttonColor);
         }
         g.setClip(null);
     }
@@ -304,7 +293,7 @@ public class DefaultFrameDecoration extends FullFrameDecorationHelper {
         g.setColor(foregroundColor);
         g.setFont(FONT);
         FontMetrics fm = g.getFontMetrics();
-        int leftMargin = HEIGHT / 2 - BUTTON_CIRCLE_RADIUS; // same as space between close button and right window edge
+        int leftMargin = HEIGHT / 2 - BUTTON_SIZE; // same as space between close button and right window edge
         int availableWidth = width - getButtonSpaceWidth() - leftMargin;
         String text = SwingUtilities2.clipStringIfNecessary(null, fm, title, availableWidth);
         int textWidth = fm.stringWidth(text);
@@ -313,48 +302,60 @@ public class DefaultFrameDecoration extends FullFrameDecorationHelper {
                 (HEIGHT - fm.getHeight()) / 2 + fm.getAscent());
     }
 
-    private void paintButtonBackground(Graphics2D g, Point center, ButtonState state) {
-        if (isActive()) {
+    private void paintCloseButtonBackground(Graphics2D g, Rectangle bounds, ButtonState state) {
+        if (!isActive() && !state.hovered && !state.pressed) return;
+
+        g.setColor(state.pressed ? getClosePressedBackground() :
+                   state.hovered ? getCloseHoveredBackground(isActive()) : getIconBackground());
+        g.fill(new Ellipse2D.Float(bounds.x, bounds.y, bounds.width, bounds.height));
+    }
+
+    private void paintButtonBackground(Graphics2D g, Rectangle bounds, ButtonState state) {
+        if (state.hovered || state.pressed) {
             g.setColor(state.pressed ? getIconPressedBackground() :
                     state.hovered ? getIconHoveredBackground() : getIconBackground());
-            g.fill(new Ellipse2D.Float(center.x - BUTTON_CIRCLE_RADIUS + .5f,
-                    center.y - BUTTON_CIRCLE_RADIUS + .5f,
-                    2 * BUTTON_CIRCLE_RADIUS, 2 * BUTTON_CIRCLE_RADIUS));
+            g.fill(new Ellipse2D.Float(bounds.x, bounds.y, bounds.width, bounds.height));
         }
     }
 
-    private void paintCloseButton(Graphics2D g, Point center, Color foregroundColor) {
+    private static Point centerOf(Rectangle rect) {
+        return new Point((int) Math.floor(rect.x + rect.width / 2f),
+                (int) Math.floor(rect.y + rect.height / 2f));
+    }
+
+    private void paintCloseButton(Graphics2D g, Rectangle bounds, Color foregroundColor) {
         g.setColor(foregroundColor);
+        Point center = centerOf(bounds);
         g.drawLine(center.x - BUTTON_ICON_SIZE, center.y - BUTTON_ICON_SIZE,
                 center.x + BUTTON_ICON_SIZE, center.y + BUTTON_ICON_SIZE);
         g.drawLine(center.x - BUTTON_ICON_SIZE, center.y + BUTTON_ICON_SIZE,
                 center.x + BUTTON_ICON_SIZE, center.y - BUTTON_ICON_SIZE);
     }
 
-    private void paintMaximizeButton(Graphics2D g, Point center, Color foregroundColor) {
+    private void paintMaximizeButton(Graphics2D g, Rectangle bounds, Color foregroundColor) {
         g.setColor(foregroundColor);
+        Point center = centerOf(bounds);
+        int size = BUTTON_ICON_SIZE + 1;
         if (peer.getState() == Frame.MAXIMIZED_BOTH) {
-            g.drawLine(center.x - BUTTON_ICON_SIZE, center.y,
-                    center.x, center.y - BUTTON_ICON_SIZE);
-            g.drawLine(center.x, center.y - BUTTON_ICON_SIZE,
-                    center.x + BUTTON_ICON_SIZE, center.y);
-            g.drawLine(center.x - BUTTON_ICON_SIZE, center.y,
-                    center.x, center.y + BUTTON_ICON_SIZE);
-            g.drawLine(center.x, center.y + BUTTON_ICON_SIZE,
-                    center.x + BUTTON_ICON_SIZE, center.y);
+            g.drawLine(center.x - size, center.y, center.x, center.y - size);
+            g.drawLine(center.x, center.y - size, center.x + size, center.y);
+            g.drawLine(center.x - size, center.y, center.x, center.y + size);
+            g.drawLine(center.x, center.y + size, center.x + size, center.y);
         } else {
-            g.drawLine(center.x - BUTTON_ICON_SIZE, center.y + BUTTON_ICON_SIZE / 2,
-                    center.x, center.y - BUTTON_ICON_SIZE / 2);
-            g.drawLine(center.x, center.y - BUTTON_ICON_SIZE / 2,
-                    center.x + BUTTON_ICON_SIZE, center.y + BUTTON_ICON_SIZE / 2);
+            g.drawLine(center.x - size, (int) (center.y + size / 2f),
+                    center.x, (int) (center.y - size / 2f));
+            g.drawLine(center.x, (int) (center.y - size / 2f),
+                    center.x + size, (int) (center.y + size / 2f));
         }
     }
 
-    private void paintMinimizeButton(Graphics2D g, Point center, Color foregroundColor) {
+    private void paintMinimizeButton(Graphics2D g, Rectangle bounds, Color foregroundColor) {
         g.setColor(foregroundColor);
-        g.drawLine(center.x - BUTTON_ICON_SIZE, center.y - BUTTON_ICON_SIZE / 2,
-                center.x, center.y + BUTTON_ICON_SIZE / 2);
-        g.drawLine(center.x, center.y + BUTTON_ICON_SIZE / 2,
-                center.x + BUTTON_ICON_SIZE, center.y -  BUTTON_ICON_SIZE / 2);
+        Point center = centerOf(bounds);
+        int size = BUTTON_ICON_SIZE + 1;
+        g.drawLine(center.x - size, (int) (center.y - size / 2f),
+                center.x, (int) (center.y + size / 2f));
+        g.drawLine(center.x, (int) (center.y + size / 2f),
+                center.x + size, (int) (center.y - size / 2f));
     }
 }
