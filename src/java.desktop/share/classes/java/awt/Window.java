@@ -4237,13 +4237,13 @@ public class Window extends Container implements Accessible {
 
             private final static long NANO_IN_SEC = java.util.concurrent.TimeUnit.SECONDS.toNanos(1);
 
-            public void bumpCounter(final Window w, final String counterName) {
+            public void incrementCounter(final Window w, final String counterName) {
                 if (USE_COUNTERS) {
                     Objects.requireNonNull(w);
                     Objects.requireNonNull(counterName);
 
                     final long curTimeNanos = System.nanoTime();
-                    // use try-catch to avoid throwing runtime exception to native JNI callers !
+                    // use try-catch to avoid throwing runtime exception to native JNI callers!
                     try {
                         PerfCounter newCounter, prevCounter;
                         synchronized (w.perfCounters) {
@@ -4264,20 +4264,33 @@ public class Window extends Container implements Accessible {
                                 synchronized (w.perfCountersPrev) {
                                     w.perfCountersPrev.put(counterName, newCounter);
                                 }
-                                synchronized (w.perfStats) {
-                                    StatDouble stat = w.perfStats.computeIfAbsent(counterName, StatDouble::new);
-                                    stat.add(valPerSecond);
-                                    // update global stats (no reset):
-                                    stat = w.perfStats.computeIfAbsent(counterName + STATS_ALL_SUFFIX, StatDouble::new);
-                                    stat.add(valPerSecond);
-                                }
+                                addStat(w, counterName, valPerSecond);
                                 if (TRACE_COUNTERS) {
                                     dumpCounter(counterName, valPerSecond);
                                 }
                             }
                         }
                     } catch (RuntimeException re) {
-                        perfLog.severe("bumpCounter: failed", re);
+                        perfLog.severe("incrementCounter: failed", re);
+                    }
+                }
+            }
+
+            public void addStat(final Window w, final String statName, final double value) {
+                if (USE_COUNTERS && Double.isFinite(value)) {
+                    Objects.requireNonNull(w);
+                    Objects.requireNonNull(statName);
+
+                    // use try-catch to avoid throwing runtime exception to native JNI callers!
+                    try {
+                        synchronized (w.perfStats) {
+                            StatDouble stat = w.perfStats.computeIfAbsent(statName, StatDouble::new);
+                            stat.add(value);
+                            stat = w.perfStats.computeIfAbsent(statName + STATS_ALL_SUFFIX, StatDouble::new);
+                            stat.add(value);
+                        }
+                    } catch (RuntimeException re) {
+                        perfLog.severe("addStat: failed", re);
                     }
                 }
             }
