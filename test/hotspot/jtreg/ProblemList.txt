@@ -189,3 +189,4 @@ runtime/Thread/StopAtExit.java 8365835 linux-x64
 runtime/Thread/SetPriorityAtExit.java 8365835 linux-x64
 runtime/Thread/SuspendAtExit.java 8365835 linux-x64
 runtime/Thread/SetNameAtExit.java 8365835 linux-x64
+runtime/8176717/TestInheritFD.java 8347001 linux-x64
