@@ -101,12 +101,17 @@ public final class RenderPerfTest {
 
     private final static String VERSION = "RenderPerfTest 2024.02";
 
+    private static final HashSet<String> ignoredRegexps = new HashSet<>();
+
     private static final HashSet<String> ignoredTests = new HashSet<>();
 
     static {
         // add ignored tests here
         // ignoredTests.add("testMyIgnoredTest");
         ignoredTests.add("testCalibration"); // not from command line
+
+        ignoredRegexps.add("Sw");
+        ignoredRegexps.add("XOR");
     }
 
     private final static String EXEC_MODE_ROBOT = "robot";
@@ -2083,14 +2088,6 @@ public final class RenderPerfTest {
                 }
             }
         }
-        if (testCases.isEmpty()) {
-            for (Method m : RenderPerfTest.class.getDeclaredMethods()) {
-                if (m.getName().startsWith("test") && !ignoredTests.contains(m.getName())) {
-                    testCases.add(m);
-                }
-            }
-            testCases.sort(Comparator.comparing(Method::getName));
-        }
 
         if (help) {
             help();
@@ -2126,6 +2123,43 @@ public final class RenderPerfTest {
             System.out.printf("# FontSizeLarge:              %s\n", TEXT_SIZE_LARGE);
             System.out.print("##############################################################\n");
         }
+
+        if (testCases.isEmpty()) {
+            System.out.println("# No tests selected.");
+
+            if (!ignoredRegexps.isEmpty()) {
+                System.out.print("# Ignored expressions: ");
+                System.out.print(ignoredRegexps);
+                System.out.println();
+            }
+
+            System.out.print("# Ignored tests: ");
+            for (Method m : RenderPerfTest.class.getDeclaredMethods()) {
+                if (m.getName().startsWith("test") && !ignoredTests.contains(m.getName())) {
+                    boolean add = true;
+                    if (!ignoredRegexps.isEmpty()) {
+                        for (final String expr : ignoredRegexps) {
+                            if (m.getName().contains(expr)) {
+                                System.out.printf("%s ", m.getName());
+                                add = false;
+                                break;
+                            }
+                        }
+                        }
+                    if (add) {
+                        testCases.add(m);
+                    }
+                }
+            }
+            System.out.println();
+            testCases.sort(Comparator.comparing(Method::getName));
+        }
+        System.out.println("# Running tests: ");
+        for (Method m : testCases) {
+            System.out.print(m.getName());
+            System.out.print(" ");
+        }
+        System.out.println();
 
         // Graphics Configuration handling:
         final Set<String> fontNames = new LinkedHashSet<>();
@@ -2220,6 +2254,7 @@ public final class RenderPerfTest {
         }
         System.out.println();
 
+        // Run tests:
         final List<RenderPerfTest> instances = new ArrayList<>();
         int retCode = 0;
         try {
