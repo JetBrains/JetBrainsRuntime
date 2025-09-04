@@ -27,6 +27,7 @@
 package sun.java2d.marlin.stats;
 
 import static sun.java2d.marlin.stats.StatLong.trimTo3Digits;
+import static sun.java2d.marlin.stats.StatLong.trimTo5Digits;
 
 /**
  * Statistics on double values
@@ -119,9 +120,9 @@ public final class StatDouble {
     public StringBuilder toString(final StringBuilder sb) {
         sb.append(name).append('[').append(count);
         sb.append("] sum: ").append(trimTo3Digits(total()));
-        sb.append(" avg: ").append(trimTo3Digits(mean()));
-        sb.append(" stddev: ").append(trimTo3Digits(stddev()));
-        sb.append(" ema: ").append(trimTo3Digits(ema()));
+        sb.append(" avg: ").append(trimTo5Digits(mean()));
+        sb.append(" stddev: ").append(trimTo5Digits(stddev()));
+        sb.append(" ema: ").append(trimTo5Digits(ema()));
         sb.append(" [").append(trimTo3Digits(min())).append(" - ").append(trimTo3Digits(max())).append("]");
         return sb;
     }

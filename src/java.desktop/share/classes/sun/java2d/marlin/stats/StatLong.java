@@ -75,7 +75,7 @@ public class StatLong {
     public final StringBuilder toString(final StringBuilder sb) {
         sb.append(name).append('[').append(count);
         sb.append("] sum: ").append(sum).append(" avg: ");
-        sb.append(trimTo3Digits(((double) sum) / count));
+        sb.append(trimTo5Digits(((double) sum) / count));
         sb.append(" [").append(min).append(" - ").append(max).append("]");
         return sb;
     }
@@ -88,6 +88,16 @@ public class StatLong {
      */
     public static double trimTo3Digits(final double value) {
         return Double.isFinite(value) ? ((long) (1e3d * value)) / 1e3d : Double.NaN;
+    }
+
+    /**
+     * Adjust the given double value to keep only 5 decimal digits
+     *
+     * @param value value to adjust
+     * @return double value with only 5 decimal digits
+     */
+    public static double trimTo5Digits(final double value) {
+        return Double.isFinite(value) ? ((long) (1e5d * value)) / 1e5d : Double.NaN;
     }
 }
 

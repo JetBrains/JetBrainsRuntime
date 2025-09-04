@@ -46,7 +46,7 @@ static jclass jc_JavaLayer = NULL;
 const NSTimeInterval DF_BLIT_FRAME_TIME = 1.0 / 120.0;
 
 // ~ 7ms (vs 8ms) to have some time within 1 frame time to blit texture:
-const long TIMEOUT_MS = (((long) (1000.0 * DF_BLIT_FRAME_TIME)) * (1000 * 1000) * 7) / 8;
+const long TIMEOUT_NS = (long) (1000.0 * DF_BLIT_FRAME_TIME * (1000 * 1000) * 7) / 8;
 
 extern BOOL isColorMatchingEnabled();
 
@@ -59,7 +59,7 @@ BOOL isDisplaySyncEnabled() {
                                                                           withEnv:env];
         syncEnabled = [@"false" isCaseInsensitiveLike:syncEnabledProp] ? NO : YES;
         J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_isDisplaySyncEnabled: %d", syncEnabled);
-        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_isDisplaySyncEnabled: TIMEOUT_MS = %ld microseconds", (TIMEOUT_MS / 1000));
+        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_isDisplaySyncEnabled: TIMEOUT = %ld microseconds", (TIMEOUT_NS / 1000));
     }
     return (BOOL)syncEnabled;
 }
@@ -165,9 +165,9 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     }
     self.presentsWithTransaction = NO;
     self.avgBlitFrameTime = DF_BLIT_FRAME_TIME;
+    self.lastPresentedTime = 0.0;
 #if TRACE_DISPLAY_ON
     self.avgNextDrawableTime = 0.0;
-    self.lastPresentedTime = 0.0;
 #endif
     self.perfCountersEnabled = perfCountersEnabled ? YES : NO;
     self.asyncNextDrawableRunning = false;
@@ -284,12 +284,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                         // retain the given drawable stored for the main thread:
                         [newDrawable retain];
                         // set the drawable reference for the main thread:
-                        [_lockDrawable lock];
+                        [self->_lockDrawable lock];
                         @try {
                             self->_nextDrawableRef = newDrawable;
                             self->_drawableTime = takenDrawableTime;
                         } @finally {
-                            [_lockDrawable unlock];
+                            [self->_lockDrawable unlock];
                         }
                     }
 
@@ -299,7 +299,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 });
 
                 // TODO: adjust timeout according to the layer's display rate (see displaylink interval) using tick interval estimate
-                const long asyncTimeout = TIMEOUT_MS; // multiply by 1/60 scale depending on monitor freq (displaySync=true) ?
+                const long asyncTimeout = TIMEOUT_NS; // multiply by 1/60 scale depending on monitor freq (displaySync=true) ?
 
                 dispatch_async(concurrentQueue, async_block);
 
@@ -334,9 +334,10 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             const CFTimeInterval nextDrawableTime = CACurrentMediaTime();
             const CFTimeInterval nextDrawableLatency = (nextDrawableTime - beforeDrawableTime);
 
-            if (nextDrawableLatency > 0.0) {
-                [self addStatCallback:1 value:1000.0 * nextDrawableLatency]; // See MTLLayer.STAT_NAMES[1]
-
+            if (nextDrawableLatency >= 0.0) {
+                if (self.perfCountersEnabled) {
+                    [self addStatCallback:1 value:1000.0 * nextDrawableLatency]; // See MTLLayer.STAT_NAMES[1]
+                }
 #if TRACE_DISPLAY_ON
                 self.avgNextDrawableTime = nextDrawableLatency * a + self.avgNextDrawableTime * (1.0 - a);
 
@@ -348,6 +349,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 );
 #endif
             }
+
             id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
             if (commandBuf == nil) {
                 J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
@@ -376,34 +378,36 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                     // note: called anyway even if drawable.present() not called!
                     const CFTimeInterval presentedTime = drawable.presentedTime;
                     if (presentedTime != 0.0) {
+                        const CFTimeInterval frameInterval = (self.lastPresentedTime != 0.0) ? (presentedTime - self.lastPresentedTime) : -1.0;
+                        self.lastPresentedTime = presentedTime;
+
                         if (self.perfCountersEnabled) {
-                            [self countFramePresentedCallback];
+                            [self incrementCounterCallback:0]; // See MTLLayer.COUNTER_NAMES[0]
+                            if (frameInterval >= 0.0) {
+                                [self addStatCallback:2 value:1000.0 * frameInterval]; // See MTLLayer.STAT_NAMES[2]
+                            }
                         }
 #if TRACE_DISPLAY_ON
-                        const CFTimeInterval now = CACurrentMediaTime();
-                        const CFTimeInterval presentedHandlerLatency = (now - nextDrawableTime);
-                        const CFTimeInterval frameInterval = (self.lastPresentedTime != 0.0) ? (presentedTime - self.lastPresentedTime) : -1.0;
+                        const CFTimeInterval presentedHandlerLatency = (CACurrentMediaTime() - nextDrawableTime);
                         J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                                       "[%.6lf] MTLLayer_blitTexture_PresentedHandler: drawable(%d) presented"
                                       " - presentedHandlerLatency = %.3lf ms frameInterval = %.3lf ms",
                                       CACurrentMediaTime(), drawable.drawableID,
                                       1000.0 * presentedHandlerLatency, 1000.0 * frameInterval
                         );
-                        self.lastPresentedTime = presentedTime;
 #endif
                     } else {
                         if (self.perfCountersEnabled) {
-                            [self countFrameDroppedCallback];
+                            [self incrementCounterCallback:1]; // See MTLLayer.COUNTER_NAMES[1]
                         }
-                        if (TRACE_DISPLAY_INFO) {
-                            const CFTimeInterval now = CACurrentMediaTime();
-                            const CFTimeInterval presentedHandlerLatency = (now - nextDrawableTime);
-                            J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                                          "[%.6lf] MTLLayer_blitTexture_PresentedHandler: drawable(%d) skipped"
-                                          " - presentedHandlerLatency = %.3lf ms",
-                                          CACurrentMediaTime(), drawable.drawableID, 1000.0 * presentedHandlerLatency
-                            );
-                        }
+#if TRACE_DISPLAY_ON
+                        const CFTimeInterval presentedHandlerLatency = (CACurrentMediaTime() - nextDrawableTime);
+                        J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                                      "[%.6lf] MTLLayer_blitTexture_PresentedHandler: drawable(%d) skipped"
+                                      " - presentedHandlerLatency = %.3lf ms",
+                                      CACurrentMediaTime(), drawable.drawableID, 1000.0 * presentedHandlerLatency
+                        );
+#endif
                     }
                     [self release];
                 }];
@@ -501,14 +505,16 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
         return;
     }
 
-    const CFTimeInterval beforeMethod = CACurrentMediaTime();
+    const CFTimeInterval beforeMethod = (self.perfCountersEnabled) ? CACurrentMediaTime() : 0;
 
     (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_drawInMTLContext);
     CHECK_EXCEPTION();
 
-    const CFTimeInterval drawInMTLContextLatency = (CACurrentMediaTime() - beforeMethod);
-    if (drawInMTLContextLatency > 0.0) {
-        [self addStatCallback:0 value:1000.0 * drawInMTLContextLatency]; // See MTLLayer.STAT_NAMES[0]
+    if (self.perfCountersEnabled) {
+        const CFTimeInterval drawInMTLContextLatency = (CACurrentMediaTime() - beforeMethod);
+        if (drawInMTLContextLatency >= 0.0) {
+            [self addStatCallback:0 value:1000.0 * drawInMTLContextLatency]; // See MTLLayer.STAT_NAMES[0]
+        }
     }
     (*env)->DeleteLocalRef(env, javaLayerLocalRef);
 }
@@ -621,15 +627,15 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     }
 }
 
-- (void) countFramePresentedCallback {
+- (void) incrementCounterCallback:(int)type {
     // attach the current thread to the JVM if necessary, and get an env
     JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
     GET_MTL_LAYER_CLASS();
-    DECLARE_METHOD(jm_countNewFrame, jc_JavaLayer, "countNewFrame", "()V");
+    DECLARE_METHOD(jm_incrementCounter, jc_JavaLayer, "incrementCounter", "(I)V");
 
     jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
     if (javaLayerLocalRef != NULL) {
-        (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_countNewFrame);
+        (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_incrementCounter, (jint)type);
         CHECK_EXCEPTION();
         (*env)->DeleteLocalRef(env, javaLayerLocalRef);
     }
@@ -644,20 +650,6 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
     if (javaLayerLocalRef != NULL) {
         (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_addStatFrame, (jint)type, (jdouble)value);
-        CHECK_EXCEPTION();
-        (*env)->DeleteLocalRef(env, javaLayerLocalRef);
-    }
-}
-
-- (void) countFrameDroppedCallback {
-    // attach the current thread to the JVM if necessary, and get an env
-    JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
-    GET_MTL_LAYER_CLASS();
-    DECLARE_METHOD(jm_countDroppedFrame, jc_JavaLayer, "countDroppedFrame", "()V");
-
-    jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
-    if (javaLayerLocalRef != NULL) {
-        (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_countDroppedFrame);
         CHECK_EXCEPTION();
         (*env)->DeleteLocalRef(env, javaLayerLocalRef);
     }

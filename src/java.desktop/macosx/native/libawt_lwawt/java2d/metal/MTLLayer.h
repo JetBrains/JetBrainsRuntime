@@ -47,10 +47,9 @@
 @property (readwrite, assign) int leftInset;
 @property (readwrite, atomic) int redrawCount;
 @property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
-
+@property (readwrite, atomic) CFTimeInterval lastPresentedTime;
 #if TRACE_DISPLAY_ON
 @property (readwrite, atomic) NSTimeInterval avgNextDrawableTime;
-@property (readwrite, atomic) CFTimeInterval lastPresentedTime;
 #endif
 @property (readwrite, atomic) BOOL perfCountersEnabled;
 
@@ -75,8 +74,9 @@
 - (void) commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
 
 - (void) addStatCallback:(int)type value:(double)value;
-- (void) countFramePresentedCallback;
-- (void) countFrameDroppedCallback;
+
+- (void) incrementCounterCallback:(int)type;
+- (void) addStatCallback:(int)type value:(double)value;
 @end
 
 #endif /* MTLLayer_h_Included */

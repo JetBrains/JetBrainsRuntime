@@ -151,11 +151,12 @@ public final class MTLLayer extends CFLayer {
     }
 
     private final static String[] STAT_NAMES = new String[]{
-            "java2d.native.mtlLayer.drawInMTLContext",  // type = 0
-            "java2d.native.mtlLayer.nextDrawable"       // type = 1
+            "java2d.native.mtlLayer.drawInMTLContext",      // type = 0
+            "java2d.native.mtlLayer.nextDrawable",          // type = 1
+            "java2d.native.mtlLayer.frameInterval"          // type = 2
     };
 
-    private void addStat(int type, double value) {
+    private void addStat(final int type, final double value) {
         // Called from the native code when this layer has been presented on screen
         Component target = peer.getTarget();
         if (target instanceof Window window) {
@@ -164,21 +165,17 @@ public final class MTLLayer extends CFLayer {
         }
     }
 
-    private void countNewFrame() {
-        // Called from the native code when this layer has been presented on screen
-        Component target = peer.getTarget();
-        if (target instanceof Window window) {
-            AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.frames");
-        }
-    }
+    private final static String[] COUNTER_NAMES = new String[]{
+            "java2d.native.frames",                     // type = 0
+            "java2d.native.framesDropped"               // type = 1
+    };
 
-    private void countDroppedFrame() {
-        // Called from the native code when an attempt was made to present this layer
-        // on screen, but that attempt was not successful. This can happen, for example,
-        // when those attempts are too frequent.
+    private void incrementCounter(final int type) {
+        // Called from the native code when this layer has been presented on screen or discarded.
         Component target = peer.getTarget();
         if (target instanceof Window window) {
-            AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.framesDropped");
+            AWTAccessor.getWindowAccessor().incrementCounter(window,
+                    ((type >= 0) && (type < COUNTER_NAMES.length)) ? COUNTER_NAMES[type] : "undefined");
         }
     }
 }
