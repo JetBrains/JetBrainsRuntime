@@ -31,6 +31,7 @@
  * @library /test/lib
  * @build jdk.test.lib.NetworkConfiguration
  *        jdk.test.lib.Platform
+ *        jtreg.SkippedException
  * @run main TcpTest -d
  * @run main/othervm -Djdk.net.usePlainSocketImpl TcpTest -d
  */
@@ -38,6 +39,8 @@
 import java.net.*;
 import java.io.*;
 import java.util.concurrent.TimeUnit;
+
+import jtreg.SkippedException;
 
 public class TcpTest extends Tests {
     static ServerSocket server, server1, server2;
@@ -63,12 +66,10 @@ public class TcpTest extends Tests {
     public static void main (String[] args) throws Exception {
         checkDebug(args);
         if (ia4addr == null) {
-            System.out.println ("No IPV4 addresses: exiting test");
-            return;
+            throw new SkippedException("No IPV4 addresses: exiting test");
         }
         if (ia6addr == null) {
-            System.out.println ("No IPV6 addresses: exiting test");
-            return;
+            throw new SkippedException("No IPV6 addresses: exiting test");
         }
         dprintln ("Local Addresses");
         dprintln (ia4addr.toString());
