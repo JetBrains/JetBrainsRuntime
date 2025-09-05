@@ -33,12 +33,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class WLMainSurface extends WLSurface {
-    private final WLWindowPeer peer;
+    private final WLComponentPeer peer;
 
     // Graphics devices this top-level component is visible on
     private final List<WLGraphicsDevice> devices = new ArrayList<>();
 
-    public WLMainSurface(WLWindowPeer peer) {
+    public WLMainSurface(WLComponentPeer peer) {
         this.peer = peer;
     }
 
