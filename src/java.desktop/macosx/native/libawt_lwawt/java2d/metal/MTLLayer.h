@@ -54,6 +54,7 @@
 @property (readwrite, atomic) BOOL perfCountersEnabled;
 
 @property (readwrite, atomic) BOOL asyncNextDrawableRunning;
+@property (readwrite, atomic) BOOL isDrawableAvailable;
 
 - (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled;
 
@@ -66,6 +67,7 @@
                            DY2:(jfloat)dy2;
 - (void) blitCallback;
 - (void) display;
+- (void) haltRedraw;
 - (void) startRedraw;
 - (void) startRedrawIfNeeded;
 - (void) stopRedraw:(BOOL)force;

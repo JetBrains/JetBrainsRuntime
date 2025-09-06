@@ -153,7 +153,8 @@ public final class MTLLayer extends CFLayer {
     private final static String[] STAT_NAMES = new String[]{
             "java2d.native.mtlLayer.drawInMTLContext",      // type = 0
             "java2d.native.mtlLayer.nextDrawable",          // type = 1
-            "java2d.native.mtlLayer.frameInterval"          // type = 2
+            "java2d.native.mtlLayer.frameInterval",         // type = 2
+            "java2d.native.mtlLayer.takenDrawable"          // type = 3
     };
 
     private void addStat(final int type, final double value) {

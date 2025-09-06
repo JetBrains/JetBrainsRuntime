@@ -1079,6 +1079,7 @@ extern void initSamplers(id<MTLDevice> device);
             for (MTLLayer *layer in _layers.allObjects) {
                 if (layer.displayID == displayID) {
                     [_layers removeObject:layer];
+                    [layer haltRedraw];
                 }
             }
         }
@@ -1192,7 +1193,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
         }
         if (_layers.count > 0) {
             for (MTLLayer *layer in _layers) {
-                layer.redrawCount = 0;
+                [layer haltRedraw];
             }
             [_layers removeAllObjects];
         }
