@@ -134,10 +134,11 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     @Override
     public Dimension getMinimumSize() {
         final Dimension parentMinimumSize = super.getMinimumSize();
-        final Dimension decorMinimumSize = getDecoration().getMinimumSize();
+        var d = getDecoration();
+        final Dimension decorMinimumSize = d != null ? d.getMinimumSize() : new Dimension(0, 0);
         final Dimension frameMinimumSize
                 = (decorMinimumSize.getWidth() == 0 && decorMinimumSize.getHeight() == 0)
-                ? new Dimension(1, 1)
+                ? new Dimension(MINIMUM_WIDTH, MINIMUM_HEIGHT)
                 : decorMinimumSize;
         return new Rectangle(parentMinimumSize)
                 .union(new Rectangle(frameMinimumSize))
