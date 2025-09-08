@@ -30,14 +30,12 @@ import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.PaintEventDispatcher;
 import sun.awt.SunToolkit;
-import sun.awt.SurfacePixelGrabber;
 import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
-import sun.java2d.vulkan.VKSurfaceData;
 import sun.java2d.wl.WLSurfaceDataExt;
 import sun.java2d.wl.WLSurfaceSizeListener;
 import sun.util.logging.PlatformLogger;
@@ -90,8 +88,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
     private static final PlatformLogger popupLog = PlatformLogger.getLogger("sun.awt.wl.popup.WLComponentPeer");
 
-    private static final int MINIMUM_WIDTH = 1;
-    private static final int MINIMUM_HEIGHT = 1;
+    protected static final int MINIMUM_WIDTH = 1;
+    protected static final int MINIMUM_HEIGHT = 1;
 
     private final Object stateLock = new Object();
 
@@ -859,8 +857,10 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     public Dimension getMinimumSize() {
-        int shadowSize = (int) Math.ceil(shadow.getSize() * 4);
-        return new Dimension(shadowSize, shadowSize);
+        int shadowSize = shadow != null ? (int) Math.ceil(shadow.getSize() * 4) : 0;
+        return shadowSize == 0
+                ? new Dimension(MINIMUM_WIDTH, MINIMUM_HEIGHT)
+                : new Dimension(shadowSize, shadowSize);
     }
 
     void showWindowMenu(long serial, int x, int y) {
@@ -1756,9 +1756,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     private Dimension constrainSize(int width, int height) {
         Dimension maxBounds = getMaxBufferBounds();
+        Dimension minSize = getMinimumSize();
+        minSize.width = Math.max(MINIMUM_WIDTH, minSize.width);
+        minSize.height = Math.max(MINIMUM_HEIGHT, minSize.height);
         return new Dimension(
-                Math.max(Math.min(width, maxBounds.width), MINIMUM_WIDTH),
-                Math.max(Math.min(height, maxBounds.height), MINIMUM_HEIGHT));
+                Math.max(Math.min(width, maxBounds.width), minSize.width),
+                Math.max(Math.min(height, maxBounds.height), minSize.height));
     }
 
     private Dimension constrainSize(Dimension bounds) {
