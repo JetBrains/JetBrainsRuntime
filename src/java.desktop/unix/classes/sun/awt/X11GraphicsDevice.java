@@ -36,12 +36,7 @@ import java.awt.Rectangle;
 import java.awt.Window;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import sun.awt.image.SurfaceManager;
@@ -51,6 +46,9 @@ import sun.java2d.loops.SurfaceType;
 import sun.awt.X11.XToolkit;
 import sun.java2d.opengl.GLXGraphicsConfig;
 import sun.java2d.pipe.Region;
+import sun.java2d.vulkan.VKEnv;
+import sun.java2d.vulkan.VKGraphicsConfig;
+import sun.java2d.vulkan.X11VKGraphicsConfig;
 import sun.java2d.xr.XRGraphicsConfig;
 
 /**
@@ -265,6 +263,12 @@ public final class X11GraphicsDevice extends GraphicsDevice
 
             boolean glxSupported = X11GraphicsEnvironment.isGLXAvailable();
             boolean xrenderSupported = X11GraphicsEnvironment.isXRenderAvailable();
+            boolean vulkanSupported = VKEnv.isPresentationEnabled();
+            List<VKGraphicsConfig> vulkanPresentableGCs = List.of();
+
+            if (vulkanSupported) {
+                vulkanPresentableGCs = VKEnv.getDevices().flatMap(d -> d.getPresentableGraphicsConfigs()).toList();
+            }
 
             boolean dbeSupported = isDBESupported();
             if (dbeSupported && doubleBufferVisuals == null) {
@@ -274,7 +278,10 @@ public final class X11GraphicsDevice extends GraphicsDevice
             for ( ; i < num; i++) {
                 int visNum = getConfigVisualId(i, screen);
                 int depth = getConfigDepth (i, screen);
-                if (glxSupported) {
+                if (vulkanSupported && !vulkanPresentableGCs.isEmpty()) {
+                    ret[i] = X11VKGraphicsConfig.getConfig(vulkanPresentableGCs.getFirst(), this, visNum);
+                }
+                if (ret[i] == null && glxSupported) {
                     ret[i] = GLXGraphicsConfig.getConfig(this, visNum);
                 }
                 if (ret[i] == null) {
@@ -345,7 +352,16 @@ public final class X11GraphicsDevice extends GraphicsDevice
     private void makeDefaultConfiguration() {
         if (defaultConfig == null) {
             int visNum = getConfigVisualId(0, screen);
-            if (X11GraphicsEnvironment.isGLXAvailable()) {
+
+            boolean vulkanSupported = VKEnv.isPresentationEnabled();
+            if (vulkanSupported) {
+                var vulkanPresentableGCs = VKEnv.getDevices().flatMap(d -> d.getPresentableGraphicsConfigs()).toList();
+                if (!vulkanPresentableGCs.isEmpty()) {
+                    defaultConfig = X11VKGraphicsConfig.getConfig(vulkanPresentableGCs.getFirst(), this, visNum);
+                }
+            }
+
+            if (defaultConfig == null && X11GraphicsEnvironment.isGLXAvailable()) {
                 defaultConfig = GLXGraphicsConfig.getConfig(this, visNum);
                 if (X11GraphicsEnvironment.isGLXVerbose()) {
                     if (defaultConfig != null) {

@@ -1618,7 +1618,9 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         SurfaceData oldData = surfaceData;
         if (oldData != null) {
             surfaceData = graphicsConfig.createSurfaceData(this);
-            oldData.invalidate();
+            if (surfaceData != oldData) {
+                oldData.invalidate();
+            }
         }
     }
 

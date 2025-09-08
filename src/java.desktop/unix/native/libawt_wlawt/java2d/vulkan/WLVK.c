@@ -59,11 +59,11 @@ static VKPlatformData platformData = {
 
 /*
  * Class:     sun_java2d_vulkan_VKEnv
- * Method:    initPlatform
- * Signature: (J)[Lsun/java2d/vulkan/VKDevice;
+ * Method:    initPlatformWayland
+ * Signature: (J)J
  */
 JNIEXPORT jlong JNICALL
-Java_sun_java2d_vulkan_VKEnv_initPlatform(JNIEnv* env, jclass vkenv, jlong nativePtr) {
+Java_sun_java2d_vulkan_VKEnv_initPlatformWayland(JNIEnv* env, jclass vkenv, jlong nativePtr) {
     wl_display = jlong_to_ptr(nativePtr);
     return ptr_to_jlong(&platformData);
 }
@@ -91,7 +91,7 @@ static void WLVK_OnSurfaceResize(VKWinSDOps* surface, VkExtent2D extent) {
 /*
  * Class:     sun_java2d_vulkan_WLVKSurfaceData_WLVKWindowSurfaceData
  * Method:    initOps
- * Signature: (I)V
+ * Signature: (II)V
  */
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_initOps(
         JNIEnv *env, jobject vksd, jint format, jint backgroundRGB) {

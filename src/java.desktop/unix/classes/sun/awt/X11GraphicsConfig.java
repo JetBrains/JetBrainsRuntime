@@ -383,7 +383,6 @@ public class X11GraphicsConfig extends GraphicsConfiguration
      * actions are taken based on the peer's GraphicsConfig, whether it is
      * an X11GraphicsConfig or a GLXGraphicsConfig.
      */
-
     /**
      * Creates a new SurfaceData that will be associated with the given
      * X11ComponentPeer.

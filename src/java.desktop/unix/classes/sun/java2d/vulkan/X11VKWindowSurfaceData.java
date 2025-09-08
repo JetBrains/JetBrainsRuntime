@@ -25,33 +25,36 @@
 
 package sun.java2d.vulkan;
 
-import java.awt.Image;
-import java.awt.Rectangle;
-import java.awt.image.VolatileImage;
-
+import sun.awt.X11ComponentPeer;
 import sun.java2d.SurfaceData;
 
-/**
- * SurfaceData object representing an off-screen buffer
- */
-public class VKOffScreenSurfaceData extends VKSurfaceData {
+import java.awt.*;
 
-    private final Image offscreenImage;
-    private final int userWidth, userHeight; // In logical units.
+public class X11VKWindowSurfaceData extends VKSurfaceData {
+    private Component target;
 
-    private native void initOps(int format);
+    private native void initOps(long windowId, int vkFormat);
 
-    public VKOffScreenSurfaceData(Image image, VKFormat format, int transparency, int type, int width, int height) {
-        super(format, transparency, type);
-        this.userWidth = width;
-        this.userHeight = height;
-        offscreenImage = image;
-        initOps(format.getValue(transparency));
+    public X11VKWindowSurfaceData(X11ComponentPeer peer) {
+        super(((VKGraphicsConfig) peer.getGraphicsConfiguration()).getFormat(), peer.getColorModel().getTransparency(), WINDOW);
+        this.target = (Component)peer.getTarget();
+        this.gc = (VKGraphicsConfig) peer.getGraphicsConfiguration();
+        var bounds = peer.getBounds();
+        this.width = bounds.width;
+        this.height = bounds.height;
+
+        initOps(peer.getWindow(), getFormat().getValue(getTransparency()));
+        configure();
+    }
+
+    // called from native
+    private void onResize() {
+        configure();
     }
 
     @Override
     public SurfaceData getReplacement() {
-        return restoreContents(offscreenImage);
+        return null;
     }
 
     @Override
@@ -64,22 +67,8 @@ public class VKOffScreenSurfaceData extends VKSurfaceData {
         return new Rectangle(width, height);
     }
 
-    /**
-     * Returns destination Image associated with this SurfaceData.
-     */
     @Override
     public Object getDestination() {
-        return offscreenImage;
-    }
-
-    @Override
-    protected int revalidate(VKGraphicsConfig gc) {
-        int result = super.revalidate(gc);
-        if (result != VolatileImage.IMAGE_INCOMPATIBLE) {
-            scale = gc.getFractionalScale();
-            width = (int) Math.ceil(scale * userWidth);
-            height = (int) Math.ceil(scale * userHeight);
-        }
-        return result;
+        return target;
     }
 }

@@ -305,6 +305,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/font \
         common/java2d/opengl \
         common/java2d/x11 \
+        common/java2d/vulkan \
         $(LIBPIPEWIRE_HEADER_DIRS)
 
     LIBAWT_XAWT_CFLAGS += -DXAWT -DXAWT_HACK \

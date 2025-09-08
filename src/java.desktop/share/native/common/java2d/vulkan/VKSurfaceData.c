@@ -62,6 +62,7 @@ void VKSD_ResetSurface(VKSDOps* vksdo) {
         }
         if (vkwinsdo->surface != VK_NULL_HANDLE) {
             VKEnv* vk = VKEnv_GetInstance();
+            fprintf(stderr, ">>>>>>>>>>>>> vkDestroySurfaceKHR\n");
             vk->vkDestroySurfaceKHR(vk->instance, vkwinsdo->surface, NULL);
         }
         vkwinsdo->swapchain = VK_NULL_HANDLE;
@@ -265,8 +266,8 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     VK_IF_ERROR(device->vkCreateSwapchainKHR(device->handle, &createInfoKhr, NULL, &swapchain)) {
         return VK_FALSE;
     }
-    J2dRlsTraceLn5(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): swapchain created, format=%d, presentMode=%d, imageCount=%d, compositeAlpha=%d",
-                   vkwinsdo, format->format, presentMode, imageCount, compositeAlpha);
+    J2dRlsTraceLn7(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): swapchain created, format=%d, presentMode=%d, imageCount=%d, compositeAlpha=%d, width=%u, height=%u",
+                   vkwinsdo, format->format, presentMode, imageCount, compositeAlpha, vkwinsdo->vksdOps.image->extent.width, vkwinsdo->vksdOps.image->extent.height);
     vkwinsdo->resizeCallback(vkwinsdo, vkwinsdo->vksdOps.image->extent);
 
     if (vkwinsdo->swapchain != VK_NULL_HANDLE) {
