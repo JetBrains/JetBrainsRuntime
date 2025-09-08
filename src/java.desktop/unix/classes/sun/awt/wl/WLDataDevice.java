@@ -88,7 +88,7 @@ public class WLDataDevice {
     private static native void dispatchDataSourceQueueImpl(long nativePtr);
     private static native void setSelectionImpl(int protocol, long nativePtr, long dataOfferNativePtr, long serial);
     private static native void startDragImpl(long nativePtr, long dataOfferNativePtr,
-                                             long originSurfaceNativePtr, long iconNativePtr, long serial);
+                                             long originSurfaceNativePtr, long serial);
 
     public boolean isProtocolSupported(int protocol) {
         return isProtocolSupportedImpl(nativePtr, protocol);
@@ -98,8 +98,8 @@ public class WLDataDevice {
         setSelectionImpl(protocol, nativePtr, (source == null) ? 0 : source.getNativePtr(), serial);
     }
 
-    public void startDrag(WLDataSource source, long originSurfaceNativePtr, long iconNativePtr, long serial) {
-        startDragImpl(nativePtr, source.getNativePtr(), originSurfaceNativePtr, iconNativePtr, serial);
+    public void startDrag(WLDataSource source, long originSurfaceNativePtr, long serial) {
+        startDragImpl(nativePtr, source.getNativePtr(), originSurfaceNativePtr, serial);
     }
 
     public WLClipboard getSystemClipboard() {
