@@ -684,7 +684,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint(JNIEnv *env, jobject obj,
-                                                                         jlong ptr, jint width) {
+                                                                         jlong ptr, jint width, jint height) {
     assert (ptr != 0);
     GtkFrameDecorationDescr* decor = jlong_to_ptr(ptr);
 
@@ -713,6 +713,12 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint(JNIEnv 
 
     (*env)->SetIntField(env, obj, TitleBarHeightFID, pref_height);
     (*env)->SetIntField(env, obj, TitleBarMinWidthFID, min_width);
+
+    if (width < min_width || height < pref_height) {
+        // Avoid gtk warnings in case of insufficient space
+        p_gdk_threads_leave();
+        return;
+    }
 
     GtkAllocation ha = {0, 0, width, pref_height};
     p_gtk_widget_size_allocate(decor->titlebar, &ha);
