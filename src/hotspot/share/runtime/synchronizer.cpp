@@ -60,6 +60,7 @@
 #include "utilities/align.hpp"
 #include "utilities/dtrace.hpp"
 #include "utilities/events.hpp"
+#include "utilities/globalCounter.inline.hpp"
 #include "utilities/linkedlist.hpp"
 #include "utilities/preserveException.hpp"
 
