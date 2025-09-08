@@ -76,14 +76,19 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     @Override
     public void paint(Graphics g) {
         // Determine buttons' bounds, etc.
-        nativePrePaint(nativePtr, peer.getWidth());
-        super.paint(g);
+        nativePrePaint(nativePtr, peer.getWidth(), peer.getHeight());
+        if (peer.getWidth() >= titleBarMinWidth && peer.getHeight() >= titleBarHeight) {
+            super.paint(g);
+        }
     }
 
     @Override
     protected void paintTitleBar(Graphics2D g2d) {
         int width = peer.getWidth();
         int height = titleBarHeight;
+
+        assert width >= titleBarMinWidth;
+        assert peer.getHeight() >= titleBarHeight;
 
         double scale = ((WLGraphicsConfig) peer.getGraphicsConfiguration()).getEffectiveScale();
         g2d.setBackground(new Color(0, true));
@@ -217,5 +222,5 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
                                             String title, int buttonsState);
     private native int nativeGetIntProperty(long nativePtr, String name);
     private native void nativeNotifyConfigured(long nativePtr, boolean active, boolean maximized, boolean fullscreen);
-    private native void nativePrePaint(long nativePtr, int width);
+    private native void nativePrePaint(long nativePtr, int width, int height);
 }
