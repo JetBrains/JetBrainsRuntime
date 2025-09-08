@@ -337,7 +337,7 @@ public class disable001 {
             switch (i) {
 
               case 0:
-                     thread1 = debuggee.threadByNameOrThrow(threadName1);
+                     thread1 = debuggee.threadByFieldNameOrThrow(debuggeeClass, threadName1);
 
                      log2("......setting up StepRequest");
                      eventRequest1 = eventRManager.createStepRequest
