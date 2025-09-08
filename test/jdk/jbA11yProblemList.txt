@@ -39,6 +39,7 @@ java/beans/PropertyEditor/6380849/TestPropertyEditor.java JBR-9130 windows-x64
 javax/accessibility/JFileChooserAccessibleDescriptionTest.java JBR-5397,JBR-7379 macosx-all,windows-x64
 javax/accessibility/SlowPanelIteration/SlowPanelIteration.java JBR-870,JBR-5397 windows-x64,linux-x64,macosx-all
 javax/swing/event/FocusEventCauseTest.java JBR-7381 windows-x64
+javax/swing/JButton/4796987/bug4796987.java JBR-9345 windows-x64
 javax/swing/JButton/8151303/PressedIconTest.java JBR-5210,JBR-5397 windows-all,linux-all,macosx-all
 javax/swing/JComboBox/4743225/bug4743225.java JBR-5210,JBR-5397 windows-all,macosx-all
 javax/swing/JComboBox/6559152/bug6559152.java JBR-5397,JBR-7382 macosx-all,windows-x64
@@ -69,6 +70,7 @@ jb/java/awt/CustomTitleBar/MaximizeWindowTest.java JBR-9160 windows-x64
 jb/java/awt/Desktop/AboutHandlerTest.java           nobug macosx-all,linux-all,windows-all
 jb/java/awt/Focus/ChainOfPopupsFocusTest.java JBR-8407 windows-x64
 jb/java/awt/Focus/FrameAfterPopup.java JBR-9161 windows-x64
+jb/java/awt/Focus/MaximizedCustomDecorationsTest.java JBR-9346 windows-x64
 jb/java/awt/Focus/NewFrameAfterDialogTest.java JBR-7387 windows-x64
 
 # VoiceOver on MacOS
@@ -97,9 +99,11 @@ java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java JBR-5397,JBR-5802 maco
 java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-6948 windows-x64
 java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java JBR-5397 macosx-all
 
+javax/swing/JFileChooser/4400728/JFileChooserDefaultDirectoryTest.java JBR-8855 windows-all
 javax/swing/JFileChooser/4524490/bug4524490.java JBR-5397,JBR-5846 macosx-all,windows-all
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-5397,JBR-7413 macosx-all,windows-x64
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880,JBR-5397 windows-all,macosx-all
+javax/swing/JFileChooser/8010718/bug8010718.java JBR-8855 windows-all
 javax/swing/JFileChooser/8013442/Test8013442.java JBR-8534 windows-x64
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949,JBR-5397 linux-all,windows-all,macosx-all
 javax/swing/JLabel/6596966/bug6596966.java 8197552,JBR-5397 windows-all,macosx-all
@@ -129,6 +133,7 @@ javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java JBR-5397 macosx-all
 javax/swing/plaf/aqua/JInternalFrameBorderTest.java JBR-5397 macosx-all
 javax/swing/plaf/basic/BasicMenuUI/4983388/bug4983388.java 8253184,JBR-6727,JBR-5397 windows-all,linux-all,macosx-all
 javax/swing/plaf/basic/BasicRootPaneUI/HiddenDefaultButtonTest.java JBR-7310 windows-x64
+javax/swing/plaf/basic/Test6984643.java JBR-8855 windows-all
 javax/swing/plaf/synth/7158712/bug7158712.java JBR-125,8322653,JBR-5397 linux-all,windows-all,macosx-all
 javax/swing/Popup/TaskbarPositionTest.java 8310689,JBR-5397 windows-all,macosx-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-5397,JBR-6465 macosx-all,windows-all,linux-aarch64

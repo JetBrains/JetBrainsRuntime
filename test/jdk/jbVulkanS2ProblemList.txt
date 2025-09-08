@@ -1,6 +1,8 @@
 java/awt/Graphics2D/TextPerf.java JBR-9190 linux-all
 java/awt/image/DrawImage/IncorrectClipXorModeSW2Surface.java JBR-9216 linux-all
 
+javax/swing/JFileChooser/6520101/bug6520101.java JBR-8434 linux-all
+javax/swing/JMenu/bug4342646.java JBR-8727 linux-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all
 javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8324 linux-all
 

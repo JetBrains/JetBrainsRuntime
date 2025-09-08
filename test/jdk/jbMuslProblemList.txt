@@ -27,7 +27,7 @@ java/awt/Graphics/XORPaint.java#id2 JBR-7373 linux-x64
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java initial_runs generic-all
 java/awt/image/DrawImage/IncorrectManagedImageSourceOffset.java JBR-8240 linux-aarch64
 java/awt/image/DrawImage/IncorrectUnmanagedImageSourceOffset.java JBR-7945 linux-x64
-java/awt/image/DrawImage/SimpleManagedImage.java initial_runs generic-all
+java/awt/image/DrawImage/SimpleManagedImage.java JBR-8769 linux-all
 java/awt/image/DrawImage/SimpleUnmanagedImage.java initial_runs generic-all
 java/awt/image/multiresolution/MenuMultiresolutionIconTest.java JBR-9135 linux-x64
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java JBR-9136 linux-x64

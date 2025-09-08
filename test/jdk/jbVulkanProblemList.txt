@@ -41,6 +41,7 @@ javax/swing/JFileChooser/6489130/bug6489130.java JBR-9100 linux-all
 javax/swing/JFileChooser/DeserializedJFileChooser/DeserializedJFileChooserTest.java JBR-9100 linux-all
 javax/swing/JFileChooser/FileSizeCheck.java JBR-9100 linux-all
 javax/swing/JFileChooser/FileViewNPETest.java JBR-9100 linux-all
+javax/swing/JFormattedTextField/bug4741926.java JBR-9321 linux-6.14.9-arch1-1
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-9100 linux-all
 javax/swing/JFrame/AlwaysOnTop/AlwaysOnTopImeTest.java JBR-9100 linux-all
 javax/swing/JFrame/HangNonVolatileBuffer/HangNonVolatileBuffer.java JBR-9100 linux-all
@@ -50,7 +51,7 @@ javax/swing/JLayer/6824395/bug6824395.java JBR-9100 linux-all
 javax/swing/JLayer/8041982/bug8041982.java JBR-9100 linux-all
 javax/swing/JMenu/8178430/LabelDotTest.java JBR-9100 linux-all
 javax/swing/JPanel/bug4907772.java JBR-9100 linux-all
-javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9100 linux-all
+javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9100,JBR-9277 linux-all,linux-6.14.9-arch1-1
 javax/swing/JProgressBar/8161664/ProgressBarMemoryLeakTest.java JBR-9100 linux-all
 javax/swing/JProgressBar/TestJProgressBarHighlightColor.java JBR-9100 linux-all
 javax/swing/JScrollPane/bug8044371.java JBR-9100 linux-all
@@ -59,7 +60,7 @@ javax/swing/JSlider/TestJSliderRendering.java JBR-9100 linux-all
 javax/swing/JSpinner/8008657/bug8008657.java JBR-9100 linux-all
 javax/swing/JSpinner/bug4656590.java JBR-9100 linux-all
 javax/swing/JSpinner/bug4680204.java JBR-9100 linux-all
-javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9100 linux-all
+javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9100,JBR-9277 linux-all,linux-6.14.9-arch1-1
 javax/swing/JSplitPane/4816114/bug4816114.java JBR-9100 linux-all
 javax/swing/JSplitPane/JSplitPaneTestNegDivSize.java JBR-9100 linux-all
 javax/swing/JTabbedPane/7170310/bug7170310.java JBR-9100 linux-all
@@ -80,6 +81,7 @@ javax/swing/JTextPane/JTextPaneDocumentWrapping.java JBR-9100 linux-all
 javax/swing/JTextPane/TestJTextPaneBackgroundColor.java JBR-9100 linux-all
 javax/swing/JTree/8041705/DefaultTreeCellRendererBorderTest.java JBR-9100 linux-all
 javax/swing/JViewport/7107099/bug7107099.java JBR-9100 linux-all
+javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-9320 linux-6.14.9-arch1-1
 javax/swing/LookAndFeel/8145547/DemandGTK.java JBR-9100 linux-all
 javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-9100 linux-all
 javax/swing/plaf/basic/6866751/bug6866751.java JBR-9100 linux-all
