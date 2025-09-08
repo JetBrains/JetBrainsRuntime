@@ -128,6 +128,7 @@ java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogT
 java/awt/List/PageUPSelectsItemsTest.java JBR-8281 linux-all
 java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java JBR-4880,JBR-8090 windows-all,linux-all
 java/awt/MenuItem/EnableTest.java NOBUG windows-all timeout
+java/awt/Modal/MultipleDialogs/MixOfModalAndNonModalDialogs.java JBR-9317 linux-6.15.8-100.fc41.x86_64
 java/awt/Mouse/EnterExitEvents/DragWindowTest.java 8253184,JBR-5710 windows-all,linux-all
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
 java/awt/TextArea/UsingWithMouse/SelectionAutoscrollTest.java JBR-7779 linux-all

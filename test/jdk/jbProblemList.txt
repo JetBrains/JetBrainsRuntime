@@ -389,6 +389,7 @@ sun/java2d/Disposer/TestDisposerLeak.java JBR-6650 windows-all
 sun/java2d/SunGraphics2D/EmptyClipRenderingTest.java 8144029 macosx-all,linux-all,windows-all
 sun/java2d/SunGraphics2D/DrawImageBilinear.java 8297175 linux-all
 
+java/awt/Graphics/NativeWin32Clear.java JBR-8689 linux-aarch64
 java/awt/Graphics/XORPaint.java#id1 JBR-8642 macosx-aarch64
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354,JBR-9206 macosx-all,windows-all,linux-6.15.8-100.fc41.x86_64
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010 linux-aarch64
@@ -882,6 +883,8 @@ java/nio/channels/DatagramChannel/Promiscuous.java              8144003,JBR-9218
 java/nio/channels/DatagramChannel/PromiscuousIPv6.java JBR-8828,JBR-9218 macosx-x64,linux-6.15.8-100.fc41.x86_64
 java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-all
 
+java/nio/channels/FileChannel/LargeGatheringWrite.java JBR-9316 linux-6.15.8-100.fc41.x86_64
+
 java/nio/channels/Selector/Wakeup.java                          6963118 windows-all
 
 java/nio/file/Files/Misc.java JBR-8969 windows-all
@@ -1365,9 +1368,6 @@ java/awt/TrayIcon/DblClickActionEventTest/DblClickActionEventTest.html 8203867 m
 java/awt/Frame/FrameStateTest/FrameStateTest.html 8203920 macosx-all,linux-all
 javax/swing/SwingUtilities/TestTextPosInPrint.java 8227025 windows-all
 java/awt/print/PrinterJob/ScaledText/ScaledText.java 8231226 macosx-all
-java/awt/font/ComplexEmoji.java JBR-5009 linux-aarch64
-java/awt/font/OutlineTextRendererEmoji.java JBR-5009 linux-aarch64
-java/awt/font/EmojiVariation.java JBR-5009 linux-aarch64
 java/awt/font/TextLayout/TestSinhalaChar.java JBR-5103 generic-all
 javax/swing/JTableHeader/6884066/bug6884066.java JBR-113 windows-all,linux-aarch64
 javax/swing/JTableHeader/6889007/bug6889007.java 8253184,JBR-5387 windows-all,linux-all
@@ -1553,7 +1553,7 @@ javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-6684 generic-all
 jb/java/awt/Focus/BrokenTraversalAWT.java JBR-5799 windows-all
 jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728 linux-all,windows-x64
 jb/java/awt/Focus/ContextMenuAfterPopup.java JBR-5799 windows-all
-jb/java/awt/Focus/FileDialogClosing.java JBR-8309,JBR-9197 macosx-x64,windows-all,macosx-26.0
+jb/java/awt/Focus/FileDialogClosing.java JBR-8309,JBR-9197 macosx-x64,windows-all
 jb/java/awt/Focus/FocusTraversalOrderTest.java JBR-6060 generic-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java JBR-6394 windows-all
