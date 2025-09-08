@@ -25,7 +25,10 @@
 
 package sun.awt.wl;
 
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.datatransfer.Transferable;
+import java.awt.image.BufferedImage;
 import java.util.HashSet;
 
 public class WLDataSource {
@@ -43,6 +46,8 @@ public class WLDataSource {
     private static native void destroyImpl(long nativePtr);
 
     private static native void setDnDActionsImpl(long nativePtr, int actions);
+
+    private static native void setDnDIconImpl(long nativePtr, int width, int height, int offsetX, int offsetY, int[] pixels);
 
     WLDataSource(WLDataDevice dataDevice, int protocol, Transferable data) {
         var wlDataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
@@ -89,6 +94,31 @@ public class WLDataSource {
             throw new IllegalStateException("Native pointer is null");
         }
         setDnDActionsImpl(nativePtr, actions);
+    }
+
+    public void setDnDIcon(Image image, int offsetX, int offsetY) {
+        if (nativePtr == 0) {
+            throw new IllegalStateException("Native pointer is null");
+        }
+
+        int width = image.getWidth(null);
+        int height = image.getHeight(null);
+        int[] pixels = new int[width * height];
+
+        if (image instanceof BufferedImage) {
+            // NOTE: no need to ensure that the BufferedImage is TYPE_INT_ARGB,
+            // getRGB() does pixel format conversion automatically
+            ((BufferedImage) image).getRGB(0, 0, width, height, pixels, 0, width);
+        } else {
+            BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = bufferedImage.createGraphics();
+            g.drawImage(image, 0, 0, null);
+            g.dispose();
+
+            bufferedImage.getRGB(0, 0, width, height, pixels, 0, width);
+        }
+
+        setDnDIconImpl(nativePtr, width, height, offsetX, offsetY, pixels);
     }
 
     public synchronized void destroy() {
