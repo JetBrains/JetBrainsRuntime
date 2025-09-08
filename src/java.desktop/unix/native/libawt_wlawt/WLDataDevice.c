@@ -72,6 +72,9 @@ struct DataSource
         struct wl_data_source *wlDataSource;
         struct zwp_primary_selection_source_v1 *zwpPrimarySelectionSource;
     };
+
+    struct wl_surface* dragIcon;
+    struct wl_buffer* dragIconBuffer;
 };
 
 // native part of WLDataOffer, remains alive until WLDataOffer.destroy() is called
@@ -937,7 +940,7 @@ Java_sun_awt_wl_WLDataDevice_setSelectionImpl(JNIEnv *env,
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLDataDevice_startDragImpl(JNIEnv *env, jclass clazz, jlong dataDeviceNativePtr,
                                            jlong dataSourceNativePtr, jlong wlSurfacePtr,
-                                           jlong iconPtr, jlong serial)
+                                           jlong serial)
 {
     struct DataDevice *dataDevice = jlong_to_ptr(dataDeviceNativePtr);
     assert(dataDevice != NULL);
@@ -946,7 +949,10 @@ Java_sun_awt_wl_WLDataDevice_startDragImpl(JNIEnv *env, jclass clazz, jlong data
     assert(source != NULL);
 
     wl_data_device_start_drag(dataDevice->wlDataDevice, source->wlDataSource, jlong_to_ptr(wlSurfacePtr),
-                              jlong_to_ptr(iconPtr), serial);
+                              source->dragIcon, serial);
+    if (source->dragIcon != NULL) {
+        wl_surface_commit(source->dragIcon);
+    }
 }
 
 JNIEXPORT jlong JNICALL
@@ -1045,6 +1051,14 @@ Java_sun_awt_wl_WLDataSource_destroyImpl(JNIEnv *env, jclass clazz, jlong native
         zwp_primary_selection_source_v1_destroy(source->zwpPrimarySelectionSource);
     }
 
+    if (source->dragIconBuffer) {
+        wl_buffer_destroy(source->dragIconBuffer);
+    }
+
+    if (source->dragIcon) {
+        wl_surface_destroy(source->dragIcon);
+    }
+
     free(source);
 }
 
@@ -1056,6 +1070,61 @@ Java_sun_awt_wl_WLDataSource_setDnDActionsImpl(JNIEnv *env,
 {
     struct DataSource *source = jlong_to_ptr(nativePtr);
     DataSource_setDnDActions(source, actions);
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
+  (JNIEnv * env, jclass clazz, jlong nativePtr, jint width, jint height, jint offsetX, jint offsetY, jintArray pixels)
+{
+    struct DataSource *source = jlong_to_ptr(nativePtr);
+
+    size_t pixelCount = (size_t)((*env)->GetArrayLength(env, pixels));
+    size_t byteSize = pixelCount * 4U;
+    if (byteSize >= INT32_MAX) {
+        return;
+    }
+
+    jint *shmPixels = NULL;
+    struct wl_shm_pool *pool = CreateShmPool(byteSize, "WLDataSource_DragIcon", (void**)&shmPixels, NULL);
+    if (!pool) {
+        return;
+    }
+
+    (*env)->GetIntArrayRegion(env, pixels, 0, pixelCount, shmPixels);
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    // Wayland requires little-endian data
+    for (size_t i = 0; i < pixelCount; i++) {
+        uint32_t value = (uint32_t)shmPixels[i];
+        shmPixels[i] = (jint)((value & 0xFFU) << 24 |
+                              (value & 0xFF00U) << 8 |
+                              (value & 0xFF0000U) >> 8 |
+                              (value & 0xFF000000U) >> 24 & 0xFFU);
+    }
+#endif
+
+    source->dragIconBuffer = wl_shm_pool_create_buffer(pool, 0, width, height, width * 4, WL_SHM_FORMAT_ARGB8888);
+    wl_shm_pool_destroy(pool);
+    if (!source->dragIconBuffer) {
+        return;
+    }
+
+    source->dragIcon = wl_compositor_create_surface(wl_compositor);
+    if (!source->dragIcon) {
+        wl_buffer_destroy(source->dragIconBuffer);
+        source->dragIconBuffer = NULL;
+        return;
+    }
+
+    int wl_compositor_version = wl_compositor_get_version(wl_compositor);
+    if (wl_compositor_version >= 5) {
+        wl_surface_attach(source->dragIcon, source->dragIconBuffer, 0, 0);
+        wl_surface_offset(source->dragIcon, offsetX, offsetY);
+    } else {
+        wl_surface_attach(source->dragIcon, source->dragIconBuffer, offsetX, offsetY);
+    }
+
+    wl_surface_damage_buffer(source->dragIcon, 0, 0, width, height);
+
+    // NOTE: we still need to commit the surface, this is done immediately after start_drag
 }
 
 JNIEXPORT void JNICALL
