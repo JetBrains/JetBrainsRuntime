@@ -115,10 +115,16 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
         source.setDnDActions(waylandActions);
 
+        var dragImage = getDragImage();
+        if (dragImage != null) {
+            var dragImageOffset = getDragImageOffset();
+            source.setDnDIcon(dragImage, dragImageOffset.x, dragImageOffset.y);
+        }
+
         long eventSerial = WLToolkit.getInputState().pointerButtonSerial();
 
         var wlSurface = getComponentWlSurfacePtr();
-        dataDevice.startDrag(source, wlSurface, 0, eventSerial);
+        dataDevice.startDrag(source, wlSurface, eventSerial);
     }
 
     @Override
