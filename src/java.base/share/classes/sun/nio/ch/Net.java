@@ -70,6 +70,9 @@ public class Net {
     // set to true if the fast tcp loopback should be enabled on Windows
     private static final boolean FAST_LOOPBACK;
 
+    // set to true if shut down before close should be enabled on Windows
+    private static final boolean SHUTDOWN_WRITE_BEFORE_CLOSE;
+
     // -- Miscellaneous utilities --
 
     private static final boolean IPV6_AVAILABLE;
@@ -94,6 +97,13 @@ public class Net {
      */
     static boolean useExclusiveBind() {
         return EXCLUSIVE_BIND;
+    }
+
+    /**
+     * Tells whether a TCP connection should be shutdown for writing before closing.
+     */
+    static boolean shouldShutdownWriteBeforeClose() {
+        return SHUTDOWN_WRITE_BEFORE_CLOSE;
     }
 
     /**
@@ -516,6 +526,8 @@ public class Net {
      */
     private static native int isExclusiveBindAvailable();
 
+    private static native boolean shouldShutdownWriteBeforeClose0();
+
     private static native boolean shouldSetBothIPv4AndIPv6Options0();
 
     private static native boolean canIPv6SocketJoinIPv4Group0();
@@ -842,6 +854,7 @@ public class Net {
 
         IPV6_AVAILABLE = isIPv6Available0();
         SO_REUSEPORT_AVAILABLE = isReusePortAvailable0();
+        SHUTDOWN_WRITE_BEFORE_CLOSE = shouldShutdownWriteBeforeClose0();
     }
 
     private static AssertionError shouldNotReachHere() {
