@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, Tencent. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,26 +21,36 @@
  * questions.
  */
 
-/**
+/*
  * @test
- * @bug 8241232
- * @requires vm.flagless
- * @requires vm.jvmci
- * @library /test/lib
- * @run driver TestInvalidTieredStopAtLevel
+ * @bug 8350576
+ * @summary Optimization bails out and hits an assert:
+ *          assert(false) failed: reduction has ctrl or bad vector_input
+ * @run main/othervm -Xbatch -XX:-TieredCompilation
+ *      -XX:CompileCommand=compileonly,compiler.loopopts.LoopReductionHasControlOrBadInput::*
+ *      compiler.loopopts.LoopReductionHasControlOrBadInput
+ * @run main compiler.loopopts.LoopReductionHasControlOrBadInput
+ *
  */
 
-import jdk.test.lib.process.ProcessTools;
+package compiler.loopopts;
 
-public class TestInvalidTieredStopAtLevel {
-    public static void main(String... args) throws Exception {
-        ProcessTools.executeTestJava("-XX:+UnlockExperimentalVMOptions",
-                                     "-XX:+UseJVMCICompiler",
-                                     "-XX:+BootstrapJVMCI",
-                                     "-XX:TieredStopAtLevel=1",
-                                     "-Xcomp")
-                .outputTo(System.out)
-                .errorTo(System.out)
-                .stdoutShouldNotContain("hs_err");
+public class LoopReductionHasControlOrBadInput {
+    static long lFld;
+    static long lArr[] = new long[400];
+
+    static void test() {
+        int i = 1;
+        do {
+            long x = -1;
+            lArr[i] = i;
+            lFld += i | x;
+        } while (++i < 355);
+    }
+
+    public static void main(String[] strArr) {
+        for (int i = 0; i < 100; i++) {
+            test();
+        }
     }
 }
