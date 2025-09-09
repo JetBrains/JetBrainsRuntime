@@ -1079,6 +1079,10 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
 
     size_t pixelCount = (size_t)((*env)->GetArrayLength(env, pixels));
     size_t byteSize = pixelCount * 4U;
+    if (byteSize >= INT32_MAX) {
+        return;
+    }
+
     jint *shmPixels = NULL;
     struct wl_shm_pool *pool = CreateShmPool(byteSize, "WLDataSource_DragIcon", (void**)&shmPixels, NULL);
     if (!pool) {
@@ -1088,12 +1092,12 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
     (*env)->GetIntArrayRegion(env, pixels, 0, pixelCount, shmPixels);
 #if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
     // Wayland requires little-endian data
-    for (int i = 0; i < pixelCount; i++) {
-        jint value = sharedBuffer[i];
-        sharedBuffer[i] = (value & 0xFF) << 24 |
-                          (value & 0xFF00) << 8 |
-                          (value & 0xFF0000) >> 8 |
-                          (value & 0xFF000000) >> 24 & 0xFF;
+    for (size_t i = 0; i < pixelCount; i++) {
+        uint32_t value = (uint32_t)shmPixels[i];
+        shmPixels[i] = (jint)((value & 0xFFU) << 24 |
+                              (value & 0xFF00U) << 8 |
+                              (value & 0xFF0000U) >> 8 |
+                              (value & 0xFF000000U) >> 24 & 0xFFU);
     }
 #endif
 
@@ -1119,7 +1123,6 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
     }
 
     wl_surface_damage_buffer(source->dragIcon, 0, 0, width, height);
-    wl_surface_set_input_region(source->dragIcon, NULL);
 
     // NOTE: we still need to commit the surface, this is done immediately after start_drag
 }

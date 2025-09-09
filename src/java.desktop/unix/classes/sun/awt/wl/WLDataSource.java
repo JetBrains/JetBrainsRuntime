@@ -25,7 +25,8 @@
 
 package sun.awt.wl;
 
-import java.awt.*;
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
 import java.util.HashSet;
@@ -102,14 +103,20 @@ public class WLDataSource {
 
         int width = image.getWidth(null);
         int height = image.getHeight(null);
-
-        BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = bufferedImage.createGraphics();
-        g.drawImage(image, 0, 0, null);
-        g.dispose();
-
         int[] pixels = new int[width * height];
-        bufferedImage.getRGB(0, 0, width, height, pixels, 0, width);
+
+        if (image instanceof BufferedImage) {
+            // NOTE: no need to ensure that the BufferedImage is TYPE_INT_ARGB,
+            // getRGB() does pixel format conversion automatically
+            ((BufferedImage) image).getRGB(0, 0, width, height, pixels, 0, width);
+        } else {
+            BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = bufferedImage.createGraphics();
+            g.drawImage(image, 0, 0, null);
+            g.dispose();
+
+            bufferedImage.getRGB(0, 0, width, height, pixels, 0, width);
+        }
 
         setDnDIconImpl(nativePtr, width, height, offsetX, offsetY, pixels);
     }
