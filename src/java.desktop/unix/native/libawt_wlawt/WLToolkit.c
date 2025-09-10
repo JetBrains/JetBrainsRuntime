@@ -536,7 +536,12 @@ registry_global(void *data, struct wl_registry *wl_registry,
     if (strcmp(interface, wl_shm_interface.name) == 0) {
         wl_shm = wl_registry_bind( wl_registry, name, &wl_shm_interface, 1);
     } else if (strcmp(interface, wl_compositor_interface.name) == 0) {
-        wl_compositor = wl_registry_bind(wl_registry, name, &wl_compositor_interface, (version >= 5) ? 5 : 4);
+#if WL_SURFACE_OFFSET_SINCE_VERSION >= 5
+        uint32_t chosen_version = (version >= 5) ? 5 : 4;
+#else
+        uint32_t chosen_version = 4;
+#endif
+        wl_compositor = wl_registry_bind(wl_registry, name, &wl_compositor_interface, chosen_version);
     } else if (strcmp(interface, wl_subcompositor_interface.name) == 0) {
         wl_subcompositor = wl_registry_bind(wl_registry, name, &wl_subcompositor_interface, 1);
     } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
