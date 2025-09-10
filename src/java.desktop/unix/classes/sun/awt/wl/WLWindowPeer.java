@@ -26,6 +26,7 @@ package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
 import sun.awt.SurfacePixelGrabber;
+import sun.awt.UngrabEvent;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.vulkan.VKSurfaceData;
 import sun.java2d.wl.WLSMSurfaceData;
@@ -53,6 +54,7 @@ import java.lang.ref.WeakReference;
 public class WLWindowPeer extends WLComponentPeer implements WindowPeer, SurfacePixelGrabber {
     private static Font defaultFont;
     private Dialog blocker;
+    private static WLWindowPeer grabbingWindow; // fake, kept for UngrabEvent only
 
     // If this window gets focus from Wayland, we need to transfer focus synthFocusOwner, if any
     private WeakReference<Component> synthFocusOwner = new WeakReference<>(null);
@@ -99,6 +101,8 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
 
     @Override
     protected void wlSetVisible(boolean v) {
+        if (!v) ungrab();
+
         if (v && targetIsWlPopup() && shouldBeFocusedOnShowing()) {
             requestWindowFocus();
         }
@@ -202,6 +206,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
 
     @Override
     public void dispose() {
+        ungrab();
         resetCornerMasks();
         super.dispose();
     }
@@ -239,6 +244,24 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
 
     public void setSyntheticFocusOwner(Component c) {
         synthFocusOwner = new WeakReference<>(c);
+    }
+
+    public void grab() {
+        if (grabbingWindow != null && !isGrabbing()) {
+            grabbingWindow.ungrab();
+        }
+        grabbingWindow = this;
+    }
+
+    public void ungrab() {
+        if (isGrabbing()) {
+            grabbingWindow = null;
+            WLToolkit.postEvent(new UngrabEvent(getTarget()));
+        }
+    }
+
+    private boolean isGrabbing() {
+        return this == grabbingWindow;
     }
 
     @Override
