@@ -86,6 +86,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.Semaphore;
 
@@ -438,6 +439,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         final WLInputState newInputState = inputState.updatedFromKeyboardLeaveEvent(serial, surfacePtr);
         final WLWindowPeer peer = peerFromSurface(surfacePtr);
         if (peer != null && peer.getTarget() instanceof Window window) {
+            ((WLToolkit) Toolkit.getDefaultToolkit()).ungrab(window);
             final WindowEvent winLostFocusEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
             WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
             WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusOwner(null);
@@ -949,15 +951,25 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public void grab(Window w) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.grab()");
+        // There is no input grab in Wayland for client applications, only
+        // the compositor can control grabs. But we need UngrabEvent
+        // for popup/tooltip management, so we do input grab accounting here
+        // and in ungrab() below.
+        Objects.requireNonNull(w);
+
+        var peer = AWTAccessor.getComponentAccessor().getPeer(w);
+        if (peer instanceof WLWindowPeer windowPeer) {
+            windowPeer.grab();
         }
     }
 
     @Override
     public void ungrab(Window w) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.ungrab()");
+        Objects.requireNonNull(w);
+
+        var peer = AWTAccessor.getComponentAccessor().getPeer(w);
+        if (peer instanceof WLWindowPeer windowPeer) {
+            windowPeer.ungrab();
         }
     }
     /**
