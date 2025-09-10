@@ -8,6 +8,7 @@ java/awt/dnd/DnDAWTLockTest.java JBR-8745 linux-all
 java/awt/dnd/DragOverDropTargetPerformanceTest.java JBR-5799 windows-all
 java/awt/dnd/DragSourceGCrashTest.java JBR-8745 linux-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-8745 linux-all
+java/awt/dnd/InterJVMLinkTest.java JBR-9255 linux-6.15.8-100.fc41.x86_64
 java/awt/Dialog/ChoiceModalDialogTest.java JBR-8724 windows-all
 java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-all
@@ -67,7 +68,7 @@ javax/swing/JButton/bug4490179.java JBR-8925 windows-all
 javax/swing/JFileChooser/JFileChooserSetLocationTest.java JBR-8098 linux-all,windows-all
 javax/swing/JInternalFrame/4202966/IntFrameCoord.java JBR-9006 window-all
 javax/swing/JMenu/bug4342646.java JBR-8727 linux-all,windows-all
-javax/swing/JPopupMenu/6580930/bug6580930.java JBR-5071 linux-6.8.0-1033-aws
+javax/swing/JPopupMenu/6580930/bug6580930.java JBR-5071 linux-6.8.0-1033-aws,linux-6.8.0-1036-aws,linux-6.15.8-100.fc41.x86_64
 javax/swing/JTable/JTableRightOrientationTest.java JBR-8102 linux-all,windows-all
 javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8747 linux-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all
@@ -86,6 +87,7 @@ jdk/editpad/EditPadTest.java                                                    
 
 sanity/client/SwingSet/src/ColorChooserDemoTest.java JBR-8354,JBR-8933 linux-all,windows-aarch64,windows-10.0
 sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5510,JBR-6285 linux-5.18.2-arch1-1,linux-all
+sanity/client/SwingSet/src/GridBagLayoutDemoTest.java JBR-6285 linux-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java JBR-6685 linux-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001,JBR-6293 linux-all,windows-all
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,windows-all
@@ -110,7 +112,7 @@ java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java nobug generic-all
 java/awt/Graphics/CopyScaledArea/CopyScaledAreaTest.java nobug generic-all
 java/awt/Graphics/DrawOvalTest.java nobug generic-all
 java/awt/Graphics/XORPaint.java#id1 JBR-8642,nobug macosx-aarch64,windows-all
-java/awt/Graphics/XORPaint.java#id2 JBR-5510,nobug linux-5.18.2-arch1-1,windows-all
+java/awt/Graphics/XORPaint.java#id2 nobug generic-all
 java/awt/Graphics/XORPaint.java#id3 nobug windows-all
 java/awt/Graphics/XORPaint.java#id4 nobug windows-all
 java/awt/Graphics/XORPaint.java#id5 nobug windows-all
@@ -177,6 +179,7 @@ javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7965,JBR-8345 w
 javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-8345 linux-all
 javax/swing/JButton/TestGlyphBreak.java nobug generic-all
 javax/swing/JComboBox/6559152/bug6559152.java JBR-8964 windows-all
+javax/swing/JComboBox/8033069/bug8033069NoScrollBar.java JBR-9342 windows-x64
 javax/swing/JComboBox/DisabledComboBoxFontTestAuto.java nobug generic-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java nobug generic-all
 javax/swing/JInternalFrame/8069348/bug8069348.java nobug generic-all
