@@ -89,9 +89,12 @@ vmTestbase/jit/misctests/JitBug1/JitBug1.java JBR-8801 linux-aarch64,windows-all
 vmTestbase/jit/misctests/Pi/Pi.java JBR-8854 linux-aarch64
 vmTestbase/jit/misctests/t5/t5.java JBR-8854 linux-aarch64
 vmTestbase/jit/misctests/putfield00802/putfield00802.java JBR-8801 linux-aarch64,windows-all
-vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi002/TestDescription.java JBR-8743 windows-all
-vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi003/TestDescription.java JBR-8743 windows-all
-vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi004/TestDescription.java JBR-8743,JBR-8744 windows-all
+
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi001/Multi001.java JBR-8545 windows-aarch64,windows-x64
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi002/TestDescription.java JBR-8927,JBR-8545 windows-aarch64,windows-x64
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi003/TestDescription.java JBR-8927,JBR-8545 windows-aarch64,windows-x64
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi004/TestDescription.java JBR-8927,JBR-8545 windows-aarch64,windows-x64
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi005/TestDescription.java JBR-8927,JBR-8545 windows-aarch64,windows-x64
 
 #############################################################################
 

@@ -36,6 +36,7 @@ java/awt/Window/GrabSequence/GrabSequence.java 6848409,JBR-8584 macosx-all,linux
 javax/accessibility/JFileChooserAccessibleDescriptionTest.java JBR-5397,JBR-7379 macosx-all,windows-x64
 javax/accessibility/SlowPanelIteration/SlowPanelIteration.java JBR-870,JBR-5397 windows-x64,linux-x64,macosx-all
 javax/swing/event/FocusEventCauseTest.java JBR-7381 windows-x64
+javax/swing/JButton/4796987/bug4796987.java JBR-9345 windows-x64
 javax/swing/JButton/8151303/PressedIconTest.java JBR-5210,JBR-5510,JBR-5397 windows-all,linux-all,macosx-all
 javax/swing/JComboBox/4743225/bug4743225.java JBR-5210,JBR-5397 windows-all,macosx-all
 javax/swing/JComboBox/6559152/bug6559152.java JBR-5397,JBR-7382 macosx-all,windows-x64
@@ -57,9 +58,10 @@ javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-7386 windows-x64
 
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-9083 windows-x64
 jb/java/awt/Desktop/AboutHandlerTest.java           nobug macosx-all,linux-all,windows-all
-jb/java/awt/Focus/FrameAfterPopup.java JBR-9161 windows-x64
-jb/java/awt/Focus/NewFrameAfterDialogTest.java JBR-7387 windows-x64
 jb/java/awt/Focus/ChainOfPopupsFocusTest.java JBR-8407 windows-x64
+jb/java/awt/Focus/FrameAfterPopup.java JBR-9161 windows-x64
+jb/java/awt/Focus/MaximizedCustomDecorationsTest.java JBR-9346 windows-x64
+jb/java/awt/Focus/NewFrameAfterDialogTest.java JBR-7387 windows-x64
 
 # VoiceOver on MacOS
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-5397 macosx-all

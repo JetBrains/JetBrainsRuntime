@@ -134,6 +134,7 @@ java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayout
 java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
 java/awt/Focus/InactiveFocusRace.java 8023263,JBR-8586 linux-all,windows-x64
+java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java JBR-7311 linux-6.8.0-1036-aws
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
 java/awt/Focus/LabelScrollBarFocus.java JBR-8027 linux-all
@@ -353,14 +354,9 @@ java/awt/Window/Grab/GrabTest.java 8253184 windows-all
 java/awt/Window/GrabSequence/GrabSequence.java 6848409 macosx-all,linux-all
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux-all
 java/awt/FontClass/FontAccess.java JBR-5225 windows-all
-java/awt/font/ComplexEmoji.java JBR-5009 linux-aarch64
-java/awt/font/Emoji/ComplexEmoji.java JBR-8282 generic-all
-java/awt/font/Emoji/EmojiVariation.java JBR-8716 linux-5.18.2-arch1-1
-java/awt/font/EmojiVariation.java JBR-5009,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
 java/awt/font/FontScaling/StretchedFontTest.java JBR-6225 macosx-all
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8437 linux-aarch64
 java/awt/font/JNICheck/JNICheck.sh JBR-5011 linux-all
-java/awt/font/OutlineTextRendererEmoji.java JBR-5009 linux-aarch64
 java/awt/font/TextLayout/ArabicDiacriticTest.java JBR-6760 linux-i386
 java/awt/font/TextLayout/DecorationBoundsTest.java JBR-6760 linux-i386
 java/awt/font/TextLayout/FormatCharAdvanceTest.java JBR-8289 macosx-all
@@ -397,7 +393,7 @@ sun/java2d/loops/XORClearRect.java JBR-8718 linux-5.18.2-arch1-1
 java/awt/Graphics/GDIResourceExhaustionTest.java JBR-8719 linux-5.18.2-arch1-1
 java/awt/Graphics/NativeWin32Clear.java JBR-8689 linux-aarch64,linux-5.18.2-arch1-1
 java/awt/Graphics/XORPaint.java#id1 JBR-8642 macosx-aarch64
-java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
+java/awt/Graphics/XORPaint.java#id2 JBR-9348 linux-6.15.8-100.fc41.x86_64
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354,JBR-9206 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-6.15.8-100.fc41.x86_64
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010,JBR-5510 linux-aarch64,linux-5.18.2-arch1-1
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 generic-all
@@ -903,6 +899,7 @@ java/nio/channels/DatagramChannel/MulticastSendReceiveTests.java 8144003,JBR-921
 java/nio/channels/DatagramChannel/Promiscuous.java              8144003,JBR-9218 macosx-all,linux-6.15.8-100.fc41.x86_64
 java/nio/channels/DatagramChannel/PromiscuousIPv6.java JBR-8828,JBR-9218 macosx-x64,linux-6.15.8-100.fc41.x86_64
 java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-all
+java/nio/channels/FileChannel/LargeGatheringWrite.java JBR-9316 linux-6.15.8-100.fc41.x86_64
 java/nio/channels/Selector/LotsOfInterrupts.java#virtual JBR-8940 windows-aarch64
 java/nio/channels/Selector/Wakeup.java                          6963118 windows-all
 

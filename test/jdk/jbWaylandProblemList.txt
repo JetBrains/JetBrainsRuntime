@@ -7,18 +7,18 @@ javax/swing/AbstractDocument/bug4549069.java JBR-8267 linux-6.14.0-1010-aws
 javax/swing/JComponent/6989617/bug6989617.java JBR-8796 linux-6.14.0-1010-aws
 javax/swing/JDesktopPane/TestDesktopManagerNPE.java JBR-8449 linux-x64
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
-javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520 linux-all
-javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-8265 linux-all
-javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-8265 linux-all
+javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520,JBR-9320 linux-6.8.0-1036-aws,linux-6.14.9-arch1-1
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-9341 linux-6.8.0-1036-aws,linux-6.14.9-arch1-1
 javax/swing/JEditorPane/bug4325606.java JBR-8267 linux-aarch64
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
-javax/swing/JFormattedTextField/bug4741926.java JBR-7530 linux-all
+javax/swing/JFormattedTextField/bug4741926.java JBR-7530,JBR-9321 linux-all,linux-6.14.9-arch1-1
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-8790 linux-all
 javax/swing/JInternalFrame/bug5009724.java JBR-7087 linux-all
 javax/swing/JMenu/JMenuSelectedColorTest.java JBR-8551 linux-all
+javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 linux-6.14.9-arch1-1
 javax/swing/JPopupMenu/7156657/bug7156657.java JBR-8210 linux-all
-javax/swing/JRadioButton/bug4823809.java JBR-7774 linux-all
 javax/swing/JSlider/TestJSliderRendering.java JBR-8551 linux-all
+javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 linux-6.14.9-arch1-1
 javax/swing/JTabbedPane/6495408/bug6495408.java JBR-8267 linux-aarch64
 javax/swing/JToolTip/TestTooltipBackgroundColor.java JBR-8551 linux-all
 javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-8274 linux-all
@@ -27,4 +27,4 @@ javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8324 linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-8304 linux-all
 
 jb/java/awt/wayland/VulkanMaskFillTest.java JBR-8446 linux-6.8.0-1017-raspi
-jb/javax/swing/Popup/WLPopupMoves.java JBR-8296 linux-all
+jb/javax/swing/wayland/WLPopupMoves.java JBR-8296 linux-all
