@@ -1114,6 +1114,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
         return;
     }
 
+#if WL_SURFACE_OFFSET_SINCE_VERSION >= 5
     int wl_compositor_version = wl_compositor_get_version(wl_compositor);
     if (wl_compositor_version >= 5) {
         wl_surface_attach(source->dragIcon, source->dragIconBuffer, 0, 0);
@@ -1121,6 +1122,9 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
     } else {
         wl_surface_attach(source->dragIcon, source->dragIconBuffer, offsetX, offsetY);
     }
+#else
+    wl_surface_attach(source->dragIcon, source->dragIconBuffer, offsetX, offsetY);
+#endif
 
     wl_surface_damage_buffer(source->dragIcon, 0, 0, width, height);
 
