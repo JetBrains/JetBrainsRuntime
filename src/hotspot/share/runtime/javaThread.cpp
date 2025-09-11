@@ -978,7 +978,6 @@ void JavaThread::cleanup_failed_attach_current_thread(bool is_daemon) {
   }
 
   Threads::remove(this, is_daemon);
-  this->smr_delete();
 }
 
 JavaThread* JavaThread::active() {
