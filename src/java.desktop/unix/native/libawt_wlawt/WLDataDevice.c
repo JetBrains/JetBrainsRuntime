@@ -1073,7 +1073,8 @@ Java_sun_awt_wl_WLDataSource_setDnDActionsImpl(JNIEnv *env,
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
-  (JNIEnv * env, jclass clazz, jlong nativePtr, jint width, jint height, jint offsetX, jint offsetY, jintArray pixels)
+  (JNIEnv * env, jclass clazz, jlong nativePtr, jint scale,
+   jint width, jint height, jint offsetX, jint offsetY, jintArray pixels)
 {
     struct DataSource *source = jlong_to_ptr(nativePtr);
 
@@ -1125,6 +1126,10 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
 #else
     wl_surface_attach(source->dragIcon, source->dragIconBuffer, offsetX, offsetY);
 #endif
+
+    if (scale >= 1) {
+        wl_surface_set_buffer_scale(source->dragIcon, scale);
+    }
 
     wl_surface_damage_buffer(source->dragIcon, 0, 0, width, height);
 
