@@ -47,7 +47,7 @@ public class WLDataSource {
 
     private static native void setDnDActionsImpl(long nativePtr, int actions);
 
-    private static native void setDnDIconImpl(long nativePtr, int width, int height, int offsetX, int offsetY, int[] pixels);
+    private static native void setDnDIconImpl(long nativePtr, int scale, int width, int height, int offsetX, int offsetY, int[] pixels);
 
     WLDataSource(WLDataDevice dataDevice, int protocol, Transferable data) {
         var wlDataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
@@ -96,7 +96,7 @@ public class WLDataSource {
         setDnDActionsImpl(nativePtr, actions);
     }
 
-    public void setDnDIcon(Image image, int offsetX, int offsetY) {
+    public void setDnDIcon(Image image, int scale, int offsetX, int offsetY) {
         if (nativePtr == 0) {
             throw new IllegalStateException("Native pointer is null");
         }
@@ -118,7 +118,7 @@ public class WLDataSource {
             bufferedImage.getRGB(0, 0, width, height, pixels, 0, width);
         }
 
-        setDnDIconImpl(nativePtr, width, height, offsetX, offsetY, pixels);
+        setDnDIconImpl(nativePtr, scale, width, height, offsetX, offsetY, pixels);
     }
 
     public synchronized void destroy() {
