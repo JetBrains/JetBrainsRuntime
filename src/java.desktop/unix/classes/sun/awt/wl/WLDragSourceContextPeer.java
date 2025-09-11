@@ -92,21 +92,33 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         this.dataDevice = dataDevice;
     }
 
-    private long getComponentWlSurfacePtr() {
+    private WLComponentPeer getPeer() {
         var comp = getComponent();
         while (comp != null) {
             var peer = AWTAccessor.getComponentAccessor().getPeer(comp);
             if (peer instanceof WLComponentPeer wlPeer) {
-                return wlPeer.getSurface().getWlSurfacePtr();
+                return wlPeer;
             }
             comp = comp.getParent();
         }
+        return null;
+    }
 
-        return 0;
+    private WLMainSurface getSurface() {
+        WLComponentPeer peer = getPeer();
+        if (peer != null) {
+            return peer.getSurface();
+        }
+        return null;
     }
 
     @Override
     protected void startDrag(Transferable trans, long[] formats, Map<Long, DataFlavor> formatMap) {
+        var mainSurface = getSurface();
+        if (mainSurface == null) {
+            return;
+        }
+
         // formats and formatMap are unused, because WLDataSource already references the same DataTransferer singleton
         var source = new WLDragSource(trans);
 
@@ -118,13 +130,14 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         var dragImage = getDragImage();
         if (dragImage != null) {
             var dragImageOffset = getDragImageOffset();
-            source.setDnDIcon(dragImage, dragImageOffset.x, dragImageOffset.y);
+            source.setDnDIcon(dragImage,
+                    mainSurface.getGraphicsDevice().getDisplayScale(),
+                    dragImageOffset.x, dragImageOffset.y);
         }
 
         long eventSerial = WLToolkit.getInputState().pointerButtonSerial();
 
-        var wlSurface = getComponentWlSurfacePtr();
-        dataDevice.startDrag(source, wlSurface, eventSerial);
+        dataDevice.startDrag(source, mainSurface.getWlSurfacePtr(), eventSerial);
     }
 
     @Override
