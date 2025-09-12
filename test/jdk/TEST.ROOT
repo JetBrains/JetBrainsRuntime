@@ -108,7 +108,7 @@ requires.properties= \
     vm.jvmci \
     vm.jvmci.enabled \
     vm.jvmti \
-    docker.support \
+    container.support \
     systemd.support \
     release.implementor \
     jdk.containerized \
