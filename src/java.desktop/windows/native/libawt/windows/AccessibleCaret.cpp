@@ -22,24 +22,71 @@
  */
 
 #include "AccessibleCaret.h"
+#include "debug_assert.h"       // DASSERT
+#include "sun_awt_windows_AccessibleCaretLocationNotifier.h"
+
+#include <atomic>               // std::atomic
+
 
 /**
  * This class implements Win32 IAccessible interface in a similar way to the system text caret.
-*/
+ */
+
+static std::atomic<AccessibleCaret *> GLOBAL_INSTANCE{nullptr};
+
+AccessibleCaret* AccessibleCaret::getInstanceIfPresent() noexcept {
+    return GLOBAL_INSTANCE.load();
+}
+
+AccessibleCaret* AccessibleCaret::getOrCreateInstance() {
+    bool unused;
+    return AccessibleCaret::getOrCreateInstance(unused);
+}
+
+AccessibleCaret* AccessibleCaret::getOrCreateInstance(bool& instanceIsNew) {
+    instanceIsNew = false;
+
+    AccessibleCaret* result = GLOBAL_INSTANCE.load();
+
+    if (result == nullptr) {
+        AccessibleCaret* newInstance = new AccessibleCaret();
+
+        if (GLOBAL_INSTANCE.compare_exchange_strong(result, newInstance)) {
+            result = newInstance;
+            instanceIsNew = true;
+        } else {
+            DASSERT(result != nullptr);
+            delete newInstance;
+        }
+    }
+
+    DASSERT(result != nullptr);
+    return result;
+}
+
+bool AccessibleCaret::releaseInstanceIfPresent() {
+    AccessibleCaret* instance = GLOBAL_INSTANCE.exchange(nullptr);
+    if (instance != nullptr) {
+        instance->Release();
+        return true;
+    }
+    return false;
+}
+
+
 AccessibleCaret::AccessibleCaret()
     : m_refCount(1), m_x(0), m_y(0), m_width(0), m_height(0) {
     InitializeCriticalSection(&m_caretLocationLock);
 }
 
-AccessibleCaret* AccessibleCaret::createInstance() {
-    return new AccessibleCaret();
-}
-
 AccessibleCaret::~AccessibleCaret() {
     DeleteCriticalSection(&m_caretLocationLock);
-}
 
-std::atomic<AccessibleCaret *> AccessibleCaret::instance{nullptr};
+    // If the destroyed object is being referred by the singleton variable, the latter should be cleared.
+    // This case should never happen, but if it does, it's better not to leave a dangling pointer.
+    AccessibleCaret* self = this;
+    (void)GLOBAL_INSTANCE.compare_exchange_strong(self, nullptr);
+}
 
 
 // IUnknown methods
@@ -240,10 +287,10 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_AccessibleCaretLocationNotifier_upda
     JNIEnv *env, jclass jClass,
     jlong jHwnd, jint x, jint y, jint width, jint height) {
     HWND hwnd = reinterpret_cast<HWND>(jHwnd);
-    AccessibleCaret *caret = AccessibleCaret::instance.load(std::memory_order_acquire);
-    if (caret == nullptr) {
-        caret = AccessibleCaret::createInstance();
-        AccessibleCaret::instance.store(caret, std::memory_order_release);
+
+    bool caretIsNew = false;
+    AccessibleCaret* caret = AccessibleCaret::getOrCreateInstance(caretIsNew);
+    if (caretIsNew) {
         // Notify with Object ID "OBJID_CARET".
         // After that, an assistive tool will send a WM_GETOBJECT message with this ID,
         // and we can return the caret instance.
@@ -261,9 +308,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_AccessibleCaretLocationNotifier_upda
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_AccessibleCaretLocationNotifier_releaseNativeCaret(
     JNIEnv *env, jclass jClass, jlong jHwnd) {
-    AccessibleCaret *caret = AccessibleCaret::instance.exchange(nullptr, std::memory_order_acq_rel);
-    if (caret != nullptr) {
-        caret->Release();
+    if (AccessibleCaret::releaseInstanceIfPresent()) {
         HWND hwnd = reinterpret_cast<HWND>(jHwnd);
         NotifyWinEvent(EVENT_OBJECT_HIDE, hwnd, OBJID_CARET, CHILDID_SELF);
         NotifyWinEvent(EVENT_OBJECT_DESTROY, hwnd, OBJID_CARET, CHILDID_SELF);
