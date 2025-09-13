@@ -49,7 +49,6 @@
 #include "Hashtable.h"
 #include "ComCtl32Util.h"
 #include "math.h"
-#include "AccessibleCaret.h"
 
 #include <Region.h>
 
@@ -2072,32 +2071,6 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           if (::IsWindow(AwtWindow::GetModalBlocker(GetHWnd()))) {
               mr = mrConsume;
           }
-          break;
-      }
-      case WM_GETOBJECT:
-      {
-          // We've got a WM_GETOBJECT message which was likely sent by an assistive tool.
-          // Therefore, we can start generating native caret accessibility events.
-          DWORD objId = static_cast<DWORD>(static_cast<DWORD_PTR>(lParam));
-          if (objId == OBJID_CLIENT) {
-              JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
-              if (env != nullptr) {
-                  jclass cls = env->FindClass("sun/awt/windows/AccessibleCaretLocationNotifier");
-                  if (cls != nullptr) {
-                      jmethodID mid = env->GetStaticMethodID(cls, "startCaretNotifier", "(J)V");
-                      if (mid != nullptr) {
-                          env->CallStaticVoidMethod(cls, mid, reinterpret_cast<jlong>(GetHWnd()));
-                      }
-                  }
-              }
-          } else if (objId == OBJID_CARET) {
-              AccessibleCaret *caret = AccessibleCaret::instance.load(std::memory_order_acquire);
-              if (caret != nullptr) {
-                  retValue = LresultFromObject(IID_IAccessible, wParam, caret);
-                  mr = mrConsume;
-              }
-          }
-          break;
       }
     }
 
