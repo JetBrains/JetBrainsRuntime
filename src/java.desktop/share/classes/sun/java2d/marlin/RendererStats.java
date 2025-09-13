@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,6 @@ import java.security.PrivilegedAction;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-import jdk.internal.misc.InnocuousThread;
 import jdk.internal.ref.CleanerFactory;
 import sun.java2d.marlin.ArrayCacheConst.CacheStats;
 import static sun.java2d.marlin.MarlinUtils.logInfo;
@@ -390,8 +388,16 @@ public final class RendererStats implements MarlinConst {
         private RendererStatsHolder() {
             AccessController.doPrivileged(
                 (PrivilegedAction<Void>) () -> {
-                    final Thread hook = InnocuousThread.newSystemThread("MarlinStatsHook", () -> dump());
-                    hook.setDaemon(true);
+                    final Thread hook = new Thread(
+                        MarlinUtils.getRootThreadGroup(),
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                dump();
+                            }
+                        },
+                        "MarlinStatsHook"
+                    );
                     hook.setContextClassLoader(null);
                     Runtime.getRuntime().addShutdownHook(hook);
 

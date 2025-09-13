@@ -33,6 +33,7 @@ import sun.lwawt.macosx.CFLayer;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.Component;
+import java.awt.GraphicsConfiguration;
 import java.awt.Insets;
 import java.awt.Window;
 
@@ -149,25 +150,11 @@ public class MTLLayer extends CFLayer {
         }
     }
 
-    private final static String[] STAT_NAMES = new String[]{
-            "java2d.native.mtlLayer.drawInMTLContext",  // type = 0
-            "java2d.native.mtlLayer.nextDrawable"       // type = 1
-    };
-
-    private void addStat(int type, double value) {
-        // Called from the native code when this layer has been presented on screen
-        Component target = peer.getTarget();
-        if (target instanceof Window window) {
-            AWTAccessor.getWindowAccessor().addStat(window,
-                    ((type >= 0) && (type < STAT_NAMES.length)) ? STAT_NAMES[type] : "undefined", value);
-        }
-    }
-
     private void countNewFrame() {
         // Called from the native code when this layer has been presented on screen
         Component target = peer.getTarget();
         if (target instanceof Window window) {
-            AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.frames");
+            AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.frames");
         }
     }
 
@@ -177,7 +164,7 @@ public class MTLLayer extends CFLayer {
         // when those attempts are too frequent.
         Component target = peer.getTarget();
         if (target instanceof Window window) {
-            AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.framesDropped");
+            AWTAccessor.getWindowAccessor().bumpCounter(window, "java2d.native.framesDropped");
         }
     }
 }

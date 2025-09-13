@@ -31,18 +31,20 @@ package sun.java2d.marlin.stats;
 public class StatLong {
 
     public final String name;
-    public long count, sum, min, max;
+    public long count = 0L;
+    public long sum = 0L;
+    public long min = Integer.MAX_VALUE;
+    public long max = Integer.MIN_VALUE;
 
     public StatLong(final String name) {
         this.name = name;
-        reset();
     }
 
     public void reset() {
         count = 0L;
         sum = 0L;
-        min = Long.MAX_VALUE;
-        max = Long.MIN_VALUE;
+        min = Integer.MAX_VALUE;
+        max = Integer.MIN_VALUE;
     }
 
     public void add(final int val) {
@@ -76,7 +78,7 @@ public class StatLong {
         sb.append(name).append('[').append(count);
         sb.append("] sum: ").append(sum).append(" avg: ");
         sb.append(trimTo3Digits(((double) sum) / count));
-        sb.append(" [").append(min).append(" - ").append(max).append("]");
+        sb.append(" [").append(min).append(" | ").append(max).append("]");
         return sb;
     }
 
@@ -87,7 +89,7 @@ public class StatLong {
      * @return double value with only 3 decimal digits
      */
     public static double trimTo3Digits(final double value) {
-        return Double.isFinite(value) ? ((long) (1e3d * value)) / 1e3d : Double.NaN;
+        return ((long) (1e3d * value)) / 1e3d;
     }
 }
 
