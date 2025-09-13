@@ -116,7 +116,7 @@
 java/awt/AlphaComposite/WindowAlphaCompositeTest.java JBR-6553 macosx-all
 java/awt/Button/DisabledButtonPress.java JBR-5799 windows-aarch64
 java/awt/Desktop/8064934/bug8064934.java JBR-5764,JBR-5799 windows-all
-java/awt/Debug/DumpOnKey/DumpOnKey.java JBR-5225 windows-all
+java/awt/Debug/DumpOnKey/DumpOnKey.java JBR-5225,JBR-9350 windows-all,macosx-all
 java/awt/event/HierarchyEvent/SpecTest.java JBR-7589 windows-all
 java/awt/event/KeyEvent/CorrectTime/CorrectTime.java JBR-6665 linux-all,windows-all
 java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055,JBR-5906 macosx-all,linux-all
@@ -764,7 +764,7 @@ java/awt/MenuBar/TestNoScreenMenuBar.java 8265987 macosx-all
 
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java JBR-5210 windows-all
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java 8266243,JBR-6632 macosx-all,linux-all
-java/awt/Dialog/ModalDialogPermission/ModalDialogPermission.java JBR-5225 windows-all
+java/awt/Dialog/ModalDialogPermission/ModalDialogPermission.java JBR-5225,JBR-9350 windows-all,macosx-all
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java JBR-5082 linux-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787,8253184 linux-all,windows-all
 java/awt/dnd/DragSourceMotionListenerTest.java 8225131 windows-all
