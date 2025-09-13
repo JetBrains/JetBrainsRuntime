@@ -23,14 +23,16 @@
 
 #ifndef ACCESSIBLECARET_H
 #define ACCESSIBLECARET_H
-#include "jni.h"
+
 #include <oleacc.h>
-#include <atomic>
+#include <windows.h> // ULONG, CRITICAL_SECTION
 
 class AccessibleCaret : public IAccessible {
 public:
-    static AccessibleCaret *createInstance();
-    static std::atomic<AccessibleCaret *> instance;
+    static AccessibleCaret* getInstanceIfPresent() noexcept;
+    static AccessibleCaret* getOrCreateInstance();
+    static AccessibleCaret* getOrCreateInstance(bool& instanceIsNew);
+    static bool releaseInstanceIfPresent();
 
     // IUnknown methods.
     IFACEMETHODIMP_(ULONG) AddRef();
