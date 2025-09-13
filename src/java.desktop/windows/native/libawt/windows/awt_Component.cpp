@@ -2057,7 +2057,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
                   }
               }
           } else if (objId == OBJID_CARET) {
-              AccessibleCaret *caret = AccessibleCaret::instance.load(std::memory_order_acquire);
+              AccessibleCaret *caret = AccessibleCaret::getInstanceIfPresent();
               if (caret != nullptr) {
                   retValue = LresultFromObject(IID_IAccessible, wParam, caret);
                   mr = mrConsume;
