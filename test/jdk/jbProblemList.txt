@@ -1064,7 +1064,7 @@ javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java JBR-5545,JBR-65
 javax/swing/JMenuItem/bug4839464.java JBR-5911 windows-all
 javax/swing/JMenuItem/6249972/bug6249972.java 8197552 windows-all
 javax/swing/JOptionPane/7138665/bug7138665.java JBR-5799 windows-all
-javax/swing/JOptionPane/8081019/bug8081019.java JBR-5767 windows-all
+javax/swing/JOptionPane/8081019/bug8081019.java JBR-5767,JBR-9350 windows-all,macosx-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-8665 linux-6.8.0-1017-raspi
 javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java JBR-8571 linux-all
 javax/swing/JProgressBar/8161664/ProgressBarMemoryLeakTest.java JBR-8926 macosx-x64
