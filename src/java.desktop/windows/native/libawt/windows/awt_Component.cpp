@@ -48,8 +48,8 @@
 #include "awt_Win32GraphicsDevice.h"
 #include "Hashtable.h"
 #include "ComCtl32Util.h"
-#include "math.h"
 #include "AccessibleCaret.h"
+#include "math.h"
 
 #include <Region.h>
 
@@ -2091,7 +2091,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
                   }
               }
           } else if (objId == OBJID_CARET) {
-              AccessibleCaret *caret = AccessibleCaret::instance.load(std::memory_order_acquire);
+              AccessibleCaret *caret = AccessibleCaret::getInstanceIfPresent();
               if (caret != nullptr) {
                   retValue = LresultFromObject(IID_IAccessible, wParam, caret);
                   mr = mrConsume;
