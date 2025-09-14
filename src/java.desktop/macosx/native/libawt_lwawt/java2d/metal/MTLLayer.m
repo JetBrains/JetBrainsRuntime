@@ -239,8 +239,9 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             static const NSTimeInterval a = 0.25;
 
             if (nextDrawableLatency > 0.0) {
-                [self addStatCallback:1 value:1000.0 * nextDrawableLatency]; // See MTLLayer.STAT_NAMES[1]
-
+                if (self.perfCountersEnabled) {
+                    [self addStatCallback:1 value:1000.0 * nextDrawableLatency]; // See MTLLayer.STAT_NAMES[1]
+                }
 #if TRACE_DISPLAY_ON
                 self.avgNextDrawableTime = nextDrawableLatency * a + self.avgNextDrawableTime * (1.0 - a);
 
@@ -399,7 +400,9 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
     const CFTimeInterval drawInMTLContextLatency = (CACurrentMediaTime() - beforeMethod);
     if (drawInMTLContextLatency > 0.0) {
-        [self addStatCallback:0 value:1000.0 * drawInMTLContextLatency]; // See MTLLayer.STAT_NAMES[0]
+        if (self.perfCountersEnabled) {
+            [self addStatCallback:0 value:1000.0 * drawInMTLContextLatency]; // See MTLLayer.STAT_NAMES[0]
+        }
     }
     (*env)->DeleteLocalRef(env, javaLayerLocalRef);
 }
