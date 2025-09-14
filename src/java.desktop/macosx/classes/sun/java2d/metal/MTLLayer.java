@@ -50,12 +50,13 @@ public class MTLLayer extends CFLayer {
     private static native void nativeSetOpaque(long layerPtr, boolean opaque);
 
     private int scale = 1;
+    private final boolean perfCountersEnabled;
 
     public MTLLayer(LWWindowPeer peer) {
         super(0, true);
 
         Window target = (peer != null) ? peer.getTarget() : null;
-        boolean perfCountersEnabled = (target != null) && AWTAccessor.getWindowAccessor().countersEnabled(target);
+        this.perfCountersEnabled = (target != null) && AWTAccessor.getWindowAccessor().countersEnabled(target);
 
         setPtr(nativeCreateLayer(perfCountersEnabled));
         this.peer = peer;
@@ -156,18 +157,22 @@ public class MTLLayer extends CFLayer {
 
     private void addStat(int type, double value) {
         // Called from the native code when this layer has been presented on screen
-        Component target = peer.getTarget();
-        if (target instanceof Window window) {
-            AWTAccessor.getWindowAccessor().addStat(window,
-                    ((type >= 0) && (type < STAT_NAMES.length)) ? STAT_NAMES[type] : "undefined", value);
+        if (perfCountersEnabled && (peer != null)) {
+            final Component target = peer.getTarget();
+            if (target instanceof Window window) {
+                AWTAccessor.getWindowAccessor().addStat(window,
+                        ((type >= 0) && (type < STAT_NAMES.length)) ? STAT_NAMES[type] : "undefined", value);
+            }
         }
     }
 
     private void countNewFrame() {
         // Called from the native code when this layer has been presented on screen
-        Component target = peer.getTarget();
-        if (target instanceof Window window) {
-            AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.frames");
+        if (perfCountersEnabled && (peer != null)) {
+            final Component target = peer.getTarget();
+            if (target instanceof Window window) {
+                AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.frames");
+            }
         }
     }
 
@@ -175,9 +180,11 @@ public class MTLLayer extends CFLayer {
         // Called from the native code when an attempt was made to present this layer
         // on screen, but that attempt was not successful. This can happen, for example,
         // when those attempts are too frequent.
-        Component target = peer.getTarget();
-        if (target instanceof Window window) {
-            AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.framesDropped");
+        if (perfCountersEnabled && (peer != null)) {
+            final Component target = peer.getTarget();
+            if (target instanceof Window window) {
+                AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.framesDropped");
+            }
         }
     }
 }
