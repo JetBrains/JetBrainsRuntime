@@ -4413,7 +4413,7 @@ public class Window extends Container implements Accessible {
             Runtime.getRuntime().addShutdownHook(hook);
 
             if (DUMP_STATS) {
-                final Timer statTimer = new Timer("WindowStats");
+                final Timer statTimer = new Timer("WindowStats", true);
                 statTimer.scheduleAtFixedRate(new TimerTask() {
                     @Override
                     public void run() {
