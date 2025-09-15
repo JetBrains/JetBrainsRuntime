@@ -150,7 +150,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             VKEnv.init(display);
             initIDs(display);
         }
-        String desktop = System.getenv("XDG_CURRENT_DESKTOP");
+
+        @SuppressWarnings("removal")
+        String desktop = AccessController.doPrivileged((PrivilegedAction<String>) ()
+                -> System.getenv("XDG_CURRENT_DESKTOP"));
         isKDE = desktop != null && desktop.toLowerCase().contains("kde");
         initialized = true;
     }
