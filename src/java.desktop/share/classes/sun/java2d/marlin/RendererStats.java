@@ -396,7 +396,7 @@ public final class RendererStats implements MarlinConst {
                     Runtime.getRuntime().addShutdownHook(hook);
 
                     if (USE_DUMP_THREAD) {
-                        final Timer statTimer = new Timer("RendererStats");
+                        final Timer statTimer = new Timer("RendererStats", true);
                         statTimer.scheduleAtFixedRate(new TimerTask() {
                             @Override
                             public void run() {
