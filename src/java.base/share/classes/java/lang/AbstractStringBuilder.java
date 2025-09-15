@@ -1313,8 +1313,8 @@ abstract sealed class AbstractStringBuilder implements Appendable, CharSequence
         ensureCapacityInternal(count + len);
         shift(dstOffset, len);
         count += len;
-        if (s instanceof String) {
-            putStringAt(dstOffset, (String) s, start, end);
+        if (s instanceof String str && str.length() == len) {
+            putStringAt(dstOffset, str);
         } else {
             putCharsAt(dstOffset, s, start, end);
         }
@@ -1739,11 +1739,6 @@ abstract sealed class AbstractStringBuilder implements Appendable, CharSequence
         if (COMPACT_STRINGS && (coder != input.getCoder())) {
             inflate();
         }
-    }
-
-    private void putStringAt(int index, String str, int off, int end) {
-        inflateIfNeededFor(str);
-        str.getBytes(value, off, index, coder, end - off);
     }
 
     private void putStringAt(int index, String str) {
