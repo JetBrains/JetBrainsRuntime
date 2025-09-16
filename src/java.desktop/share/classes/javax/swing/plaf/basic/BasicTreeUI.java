@@ -4319,38 +4319,43 @@ public class BasicTreeUI extends TreeUI
                     updateSize();
                 }
                 else if (treeState.isExpanded(parentPath)) {
-                    // Changed nodes are visible
-                    // Find the minimum index, we only need paint from there
-                    // down.
-                    int minIndex = indices[0];
-                    for (int i = indices.length - 1; i > 0; i--) {
-                        minIndex = Math.min(indices[i], minIndex);
+                    boolean isShowing = tree.isShowing();
+                    TreePath minPath = null;
+                    Rectangle minBounds = null;
+                    if (isShowing) {
+                        // Changed nodes are visible
+                        // Find the minimum index, we only need paint from there
+                        // down.
+                        int minIndex = indices[0];
+                        for (int i = indices.length - 1; i > 0; i--) {
+                            minIndex = Math.min(indices[i], minIndex);
+                        }
+                        Object minChild = treeModel.getChild(
+                                parentPath.getLastPathComponent(), minIndex);
+                        minPath = parentPath.pathByAddingChild(minChild);
+                        minBounds = getPathBounds(tree, minPath);
                     }
-                    Object minChild = treeModel.getChild(
-                            parentPath.getLastPathComponent(), minIndex);
-                    TreePath minPath = parentPath.pathByAddingChild(minChild);
-                    Rectangle minBounds = getPathBounds(tree, minPath);
-
                     // Forward to the treestate
                     treeState.treeNodesChanged(e);
 
                     // Mark preferred size as bogus.
                     updateSize0();
 
-                    // And repaint
-                    Rectangle newMinBounds = getPathBounds(tree, minPath);
-                    if (minBounds == null || newMinBounds == null) {
-                        return;
-                    }
+                    if (isShowing) {
+                        // And repaint
+                        Rectangle newMinBounds = getPathBounds(tree, minPath);
+                        if (minBounds == null || newMinBounds == null) {
+                            return;
+                        }
 
-                    if (indices.length == 1 &&
-                            newMinBounds.height == minBounds.height) {
-                        tree.repaint(0, minBounds.y, tree.getWidth(),
-                                     minBounds.height);
-                    }
-                    else {
-                        tree.repaint(0, minBounds.y, tree.getWidth(),
-                                     tree.getHeight() - minBounds.y);
+                        if (indices.length == 1 &&
+                                newMinBounds.height == minBounds.height) {
+                            tree.repaint(0, minBounds.y, tree.getWidth(),
+                                    minBounds.height);
+                        } else {
+                            tree.repaint(0, minBounds.y, tree.getWidth(),
+                                    tree.getHeight() - minBounds.y);
+                        }
                     }
                 }
                 else {
