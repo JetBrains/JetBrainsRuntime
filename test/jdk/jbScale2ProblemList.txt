@@ -165,6 +165,7 @@ javax/swing/JComboBox/DisabledComboBoxFontTestAuto.java nobug generic-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java nobug generic-all
 javax/swing/JInternalFrame/8069348/bug8069348.java nobug generic-all
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java nobug generic-all
+javax/swing/JInternalFrame/Ctrli.java JBR-9362 windows-all
 javax/swing/JLabel/GetSpanHiDpiBug.java nobug generic-all
 javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java nobug generic-all
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java nobug generic-all
