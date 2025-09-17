@@ -1,6 +1,10 @@
+#
+# Copyright (c) 2005, 2025, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
 # This file identifies the root of the test-suite hierarchy.
 # It also contains test-suite configuration information.
-
+#
 # The list of keywords supported in the entire test suite.  The
 # "intermittent" keyword marks tests known to fail intermittently.
 # The "randomness" keyword marks tests using randomness with test
@@ -72,7 +76,10 @@ requires.extraPropDefns.bootlibs = ../lib/jdk/test/whitebox
 requires.extraPropDefns.libs = \
     ../lib/jdk/test/lib/Platform.java \
     ../lib/jdk/test/lib/Container.java
-requires.extraPropDefns.vmOpts = -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
+requires.extraPropDefns.vmOpts = -XX:+UnlockDiagnosticVMOptions \
+    -XX:+LogVMOutput -XX:-DisplayVMOutput -XX:LogFile=vmprops.flags.final.vm.log \
+    -XX:+PrintFlagsFinal \
+    -XX:+WhiteBoxAPI
 requires.properties= \
     sun.arch.data.model \
     java.runtime.name \
