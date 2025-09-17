@@ -107,9 +107,13 @@ static VkBool32 debugCallback(
     else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) level = J2D_TRACE_WARNING;
     else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) level = J2D_TRACE_ERROR;
 
-    J2dRlsTraceLn(level, pCallbackData->pMessage);
+    J2dRlsTraceLn(level, "[%x]:%s", pCallbackData->messageIdNumber, pCallbackData->pMessage);
 
-    if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+    if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT &&
+        pCallbackData->messageIdNumber != 0x539277af)
+        // Skipping "VkSemaphore is being signaled by VkQueue, but it may still be in use by VkSwapchainKHR"
+        // error for now
+    {
         VK_FATAL_ERROR("Unhandled Vulkan validation error");
     }
     return VK_FALSE;
