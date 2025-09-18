@@ -24,6 +24,7 @@
  * questions.
  */
 
+#include "relative-pointer-unstable-v1.h"
 #ifdef HEADLESS
     #error This file should not be included in headless library
 #endif
@@ -80,6 +81,7 @@ struct gtk_shell1* gtk_shell1 = NULL;
 #endif
 struct wl_keyboard *wl_keyboard; // optional, check for NULL before use
 struct wl_pointer  *wl_pointer; // optional, check for NULL before use
+struct zwp_relative_pointer_manager_v1* relative_pointer_manager; // optional, check for NULL before use
 
 #define MAX_CURSOR_SCALE 100
 struct wl_cursor_theme *cursor_themes[MAX_CURSOR_SCALE] = {NULL};
@@ -128,6 +130,7 @@ static jmethodID dispatchKeyboardKeyEventMID;
 static jmethodID dispatchKeyboardModifiersEventMID;
 static jmethodID dispatchKeyboardEnterEventMID;
 static jmethodID dispatchKeyboardLeaveEventMID;
+static jmethodID dispatchRelativePointerEventMID;
 
 JNIEnv *getEnv() {
     JNIEnv *env;
@@ -465,6 +468,31 @@ static const struct wl_keyboard_listener wl_keyboard_listener = {
 };
 
 static void
+wl_relative_motion(void *data,
+                   struct zwp_relative_pointer_v1 *zwp_relative_pointer_v1,
+                   uint32_t utime_hi,
+                   uint32_t utime_lo,
+                   wl_fixed_t dx,
+                   wl_fixed_t dy,
+                   wl_fixed_t dx_unaccel,
+                   wl_fixed_t dy_unaccel)
+{
+    double ddx = wl_fixed_to_double(dx);
+    double ddy = wl_fixed_to_double(dy);
+    JNIEnv* env = getEnv();
+
+    (*env)->CallStaticVoidMethod(env,
+                                 tkClass,
+                                 dispatchRelativePointerEventMID,
+                                 ddx, ddy);
+    JNU_CHECK_EXCEPTION(env);
+}
+
+static const struct zwp_relative_pointer_v1_listener relative_pointer_listener = {
+    .relative_motion = wl_relative_motion
+};
+
+static void
 wl_seat_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
 {
     const bool has_pointer  = capabilities & WL_SEAT_CAPABILITY_POINTER;
@@ -474,6 +502,14 @@ wl_seat_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
         wl_pointer = wl_seat_get_pointer(wl_seat);
         if (wl_pointer != NULL) {
             wl_pointer_add_listener(wl_pointer, &wl_pointer_listener, NULL);
+            if (relative_pointer_manager != NULL) {
+                struct zwp_relative_pointer_v1* rptr
+                    = zwp_relative_pointer_manager_v1_get_relative_pointer(relative_pointer_manager,
+                                                                           wl_pointer);
+                if (rptr != NULL) {
+                    zwp_relative_pointer_v1_add_listener(rptr, &relative_pointer_listener, NULL);
+                }
+            }
         }
     } else if (!has_pointer && wl_pointer != NULL) {
         wl_pointer_release(wl_pointer);
@@ -564,6 +600,9 @@ registry_global(void *data, struct wl_registry *wl_registry,
         process_new_listener_before_end_of_init();
     } else if (strcmp(interface, xdg_activation_v1_interface.name) == 0) {
         xdg_activation_v1 = wl_registry_bind(wl_registry, name, &xdg_activation_v1_interface, 1);
+    }
+    else if (strcmp(interface, zwp_relative_pointer_manager_v1_interface.name) == 0) {
+        relative_pointer_manager = wl_registry_bind(wl_registry, name, &zwp_relative_pointer_manager_v1_interface, 1);
     }
 #ifdef HAVE_GTK_SHELL1
     else if (strcmp(interface, gtk_shell1_interface.name) == 0) {
@@ -714,6 +753,10 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(dispatchKeyboardModifiersEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                     "dispatchKeyboardModifiersEvent",
                                                                                     "(J)V"),
+                      JNI_FALSE);
+    CHECK_NULL_RETURN(dispatchRelativePointerEventMID = (*env)->GetStaticMethodID(env, tkClass,
+                                                                          "dispatchRelativePointerEvent",
+                                                                          "(DD)V"),
                       JNI_FALSE);
 
     jclass wlgeClass = (*env)->FindClass(env, "sun/awt/wl/WLGraphicsEnvironment");
