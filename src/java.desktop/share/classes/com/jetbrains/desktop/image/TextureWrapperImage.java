@@ -27,7 +27,6 @@ package com.jetbrains.desktop.image;
 
 import sun.awt.image.SurfaceManager;
 import sun.java2d.SurfaceData;
-import sun.java2d.SurfaceManagerFactory;
 
 import java.awt.AlphaComposite;
 import java.awt.GraphicsConfiguration;
@@ -71,7 +70,10 @@ public class TextureWrapperImage extends Image {
     public TextureWrapperImage(GraphicsConfiguration gc, long texture)
             throws UnsupportedOperationException, IllegalArgumentException {
         this.gc = gc;
-        SurfaceManager surfaceManager = SurfaceManagerFactory.getInstance().createTextureWrapperSurfaceManager(gc, this, texture);
+        SurfaceManager surfaceManager;
+        if (gc instanceof SurfaceManager.TextureWrapperFactory factory) {
+            surfaceManager = factory.createTextureWrapperSurfaceManager(gc, this, texture);
+        } else throw new UnsupportedOperationException();
         sd = surfaceManager.getPrimarySurfaceData();
         SurfaceManager.setManager(this, surfaceManager);
     }

@@ -36,8 +36,6 @@ import java.util.Optional;
 
 import sun.awt.HiDPIInfoProvider;
 import sun.java2d.SunGraphicsEnvironment;
-import sun.java2d.SurfaceManagerFactory;
-import sun.java2d.UnixSurfaceManagerFactory;
 import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
@@ -58,7 +56,6 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
 
     static {
         System.loadLibrary("awt");
-        SurfaceManagerFactory.setInstance(new UnixSurfaceManagerFactory());
 
         debugScaleEnabled = SunGraphicsEnvironment.isUIScaleEnabled() && SunGraphicsEnvironment.getDebugScale() >= 1;
 
