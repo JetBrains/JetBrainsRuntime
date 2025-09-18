@@ -295,6 +295,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private static WLInputState inputState = WLInputState.initialState();
     private static WLKeyboard keyboard;
 
+    private static void dispatchRelativePointerEvent(double dx, double dy) {
+        WLMouseInfoPeer.getInstance().accumulatePointerDelta(dx, dy);
+    }
+
     private static void dispatchPointerEvent(WLPointerEvent e) {
         // Invoked from the native code
         assert EventQueue.isDispatchThread();
