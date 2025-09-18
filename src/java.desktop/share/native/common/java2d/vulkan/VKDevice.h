@@ -59,7 +59,6 @@ struct VKDevice {
 
     VKAllocator*     allocator;
     VKRenderer*      renderer;
-    VKTexturePool*   texturePool;
 
     DEVICE_FUNCTION_TABLE(DECL_PFN)
     SWAPCHAIN_DEVICE_FUNCTION_TABLE(DECL_PFN)
