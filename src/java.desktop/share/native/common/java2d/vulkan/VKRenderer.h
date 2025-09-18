@@ -29,6 +29,7 @@
 
 #include "VKTypes.h"
 #include "VKPipelines.h"
+#include "VKTexturePool.h"
 
 #define NO_CLIP ((VkRect2D) {{0, 0}, {0x7FFFFFFFU, 0x7FFFFFFFU}})
 
@@ -147,5 +148,6 @@ void VKRenderer_DrawImage(VKImage* image, VkFormat format,
                           float dx1, float dy1, float dx2, float dy2);
 
 VKRenderingContext* VKRenderer_GetContext();
+VKTexturePool* VKRenderer_GetTexturePool(VKRenderer* );
 
 #endif //VKRenderer_h_Included
