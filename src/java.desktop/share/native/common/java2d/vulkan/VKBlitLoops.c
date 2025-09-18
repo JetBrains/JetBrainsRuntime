@@ -169,7 +169,8 @@ void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint fil
 
             VKDevice* device = context->surface->device;
             BlitSrcType type = decodeSrcType(device, srctype);
-            VKTexturePoolHandle* imageHandle = VKTexturePool_GetTexture(device->texturePool, sw, sh, type.format);
+            VKTexturePoolHandle* imageHandle =
+                    VKTexturePool_GetTexture(VKRenderer_GetTexturePool(device->renderer), sw, sh, type.format);
             VKImage* image = VKTexturePoolHandle_GetTexture(imageHandle);
 
             VkDeviceSize dataSize = sh * sw * srcInfo.pixelStride;
