@@ -749,6 +749,27 @@ public class BasicTreeUI extends TreeUI
     }
 
     /**
+     * A potentially faster version of {@link #getPathBounds(JTree, TreePath)}
+     * which calculates only {@code y} and {@code height}
+     * of the bounding {@code Rectangle}
+     */
+    private Rectangle getVerticalPathBounds(TreePath path) {
+        if (tree == null || treeState == null) {
+            return null;
+        }
+        int rowHeight = treeState.getRowHeight();
+        if (rowHeight <= 0) {
+            return getPathBounds(tree, path);
+        }
+        int row = treeState.getRowForPath(path);
+        if (row < 0) {
+            return null;
+        }
+        return new Rectangle(0, tree.getInsets().top + row * rowHeight,
+                0, rowHeight);
+    }
+
+    /**
       * Returns the path for passed in row.  If row is not visible
       * null is returned.
       */
@@ -4381,17 +4402,21 @@ public class BasicTreeUI extends TreeUI
                     updateSize();
                 }
                 else if (treeState.isExpanded(parentPath)) {
-                    // Changed nodes are visible
-                    // Find the minimum index, we only need paint from there
-                    // down.
-                    int minIndex = indices[0];
-                    for (int i = indices.length - 1; i > 0; i--) {
-                        minIndex = Math.min(indices[i], minIndex);
+                    TreePath minPath = null;
+                    Rectangle minBounds = null;
+                    if (tree.isShowing()) {
+                        // Changed nodes are visible
+                        // Find the minimum index, we only need paint from there
+                        // down.
+                        int minIndex = indices[0];
+                        for (int i = indices.length - 1; i > 0; i--) {
+                            minIndex = Math.min(indices[i], minIndex);
+                        }
+                        Object minChild = treeModel.getChild(
+                                parentPath.getLastPathComponent(), minIndex);
+                        minPath = parentPath.pathByAddingChild(minChild);
+                        minBounds = getVerticalPathBounds(minPath);
                     }
-                    Object minChild = treeModel.getChild(
-                            parentPath.getLastPathComponent(), minIndex);
-                    TreePath minPath = parentPath.pathByAddingChild(minChild);
-                    Rectangle minBounds = getPathBounds(tree, minPath);
 
                     // Forward to the treestate
                     treeState.treeNodesChanged(e);
@@ -4399,20 +4424,19 @@ public class BasicTreeUI extends TreeUI
                     // Mark preferred size as bogus.
                     updateSize0();
 
-                    // And repaint
-                    Rectangle newMinBounds = getPathBounds(tree, minPath);
-                    if (minBounds == null || newMinBounds == null) {
-                        return;
-                    }
-
-                    if (indices.length == 1 &&
-                            newMinBounds.height == minBounds.height) {
-                        tree.repaint(0, minBounds.y, tree.getWidth(),
-                                     minBounds.height);
-                    }
-                    else {
-                        tree.repaint(0, minBounds.y, tree.getWidth(),
-                                     tree.getHeight() - minBounds.y);
+                    if (minBounds != null) {
+                        // And repaint
+                        Rectangle newMinBounds = getVerticalPathBounds(minPath);
+                        if (newMinBounds != null) {
+                            if (indices.length == 1 &&
+                                    newMinBounds.height == minBounds.height) {
+                                tree.repaint(0, minBounds.y, tree.getWidth(),
+                                        minBounds.height);
+                            } else {
+                                tree.repaint(0, minBounds.y, tree.getWidth(),
+                                        tree.getHeight() - minBounds.y);
+                            }
+                        }
                     }
                 }
                 else {
