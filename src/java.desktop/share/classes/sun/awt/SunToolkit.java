@@ -50,6 +50,7 @@ import java.awt.KeyboardFocusManager;
 import java.awt.Label;
 import java.awt.MenuComponent;
 import java.awt.Panel;
+import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.ScrollPane;
 import java.awt.Scrollbar;
@@ -90,6 +91,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.im.InputContext;
 import sun.awt.image.ByteArrayImageSource;
 import sun.awt.image.FileImageSource;
@@ -2080,6 +2082,23 @@ public abstract class SunToolkit extends Toolkit
         return AWTAccessor.getAWTEventAccessor().isSystemGenerated(e);
     }
 
+    @JBRApi.Service
+    @JBRApi.Provides("RelativePointerMovement")
+    public interface RelativePointerMovementInfoProvider {
+        private static RelativePointerMovementInfoProvider create() {
+            var tk = Toolkit.getDefaultToolkit();
+            if (tk instanceof ComponentFactory cf) {
+                var mouseInfoPeer = cf.getMouseInfoPeer();
+                if (mouseInfoPeer instanceof RelativePointerMovementInfoProvider p){
+                    return p;
+                }
+            }
+
+            throw new JBRApi.ServiceNotAvailableException("Service not supported for toolkit " + tk.getClass().getName());
+        }
+
+        Point getAccumulatedMouseDeltaAndReset();
+    }
 } // class SunToolkit
 
 
