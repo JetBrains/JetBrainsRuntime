@@ -94,6 +94,7 @@ typedef struct {
 struct VKRenderer {
     VKDevice*          device;
     VKPipelineContext* pipelineContext;
+    VKTexturePool*     texturePool;
 
     POOL(VkCommandBuffer,   commandBufferPool);
     POOL(VkCommandBuffer,   secondaryCommandBufferPool);
@@ -193,6 +194,9 @@ VKRenderingContext *VKRenderer_GetContext() {
     return &context;
 }
 
+VKTexturePool *VKRenderer_GetTexturePool(VKRenderer* renderer) {
+    return renderer->texturePool;
+}
 /**
  * Helper function for POOL_TAKE macro.
  */
@@ -368,6 +372,12 @@ VKRenderer* VKRenderer_Create(VKDevice* device) {
         return NULL;
     }
 
+    renderer->texturePool = VKTexturePool_InitWithDevice(device);
+    if (!renderer->texturePool) {
+        VKRenderer_Destroy(renderer);
+        return NULL;
+    }
+
     // Create command pool
     // TODO we currently have single command pool with VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
     //      we may need to consider having multiple pools to avoid resetting buffers one-by-one
@@ -438,6 +448,9 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
         device->vkDestroyDescriptorPool(device->handle, renderer->descriptorPools[i], NULL);
     }
     ARRAY_FREE(renderer->descriptorPools);
+
+    VKTexturePool_Dispose(renderer->texturePool);
+
     for (uint32_t i = 0; i < ARRAY_SIZE(renderer->imageDescriptorPools); i++) {
         device->vkDestroyDescriptorPool(device->handle, renderer->imageDescriptorPools[i], NULL);
     }
