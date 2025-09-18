@@ -272,7 +272,6 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
 void VKDevice_Reset(VKDevice* device) {
     if (device == NULL) return;
     VKRenderer_Destroy(device->renderer);
-    VKTexturePool_Dispose(device->texturePool);
     VKAllocator_Destroy(device->allocator);
     ARRAY_FREE(device->enabledExtensions);
     ARRAY_FREE(device->enabledLayers);
@@ -390,13 +389,6 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
     if (!device->renderer) {
         VKDevice_Reset(device);
         JNU_ThrowByName(env, "java/lang/RuntimeException", "Vulkan: Cannot create renderer");
-        return;
-    }
-
-    device->texturePool = VKTexturePool_InitWithDevice(device);
-    if (!device->texturePool) {
-        VKDevice_Reset(device);
-        JNU_ThrowByName(env, "java/lang/RuntimeException", "Vulkan: Cannot create texture pool");
         return;
     }
 }
