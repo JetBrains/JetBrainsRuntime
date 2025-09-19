@@ -35,6 +35,7 @@ import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -296,7 +297,7 @@ public final class PackageTest extends RunnablePackageTest {
                 Files.deleteIfExists(appOutput);
 
                 List<String> expectedArgs = testRun.openFiles(testFiles);
-                TKit.waitForFileCreated(appOutput, 7);
+                TKit.waitForFileCreated(appOutput, Duration.ofSeconds(7), Duration.ofSeconds(3));
 
                 // Wait a little bit after file has been created to
                 // make sure there are no pending writes into it.
