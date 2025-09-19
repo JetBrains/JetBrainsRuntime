@@ -29,6 +29,8 @@ import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 
 import java.awt.Toolkit;
+import java.security.AccessController;
+import sun.security.action.GetPropertyAction;
 
 public class XdgDesktopPortal {
     private static final String METHOD_X11 = "x11";
@@ -62,7 +64,11 @@ public class XdgDesktopPortal {
                     : METHOD_SCREENCAST;
         }
 
-        String m = System.getProperty("awt.robot.screenshotMethod", defaultMethod);
+        @SuppressWarnings("removal")
+        String m = AccessController.doPrivileged(
+                new GetPropertyAction(
+                        "awt.robot.screenshotMethod", defaultMethod
+                ));
 
         if (!METHOD_REMOTE_DESKTOP.equals(m)
                 && !METHOD_SCREENCAST.equals(m)
