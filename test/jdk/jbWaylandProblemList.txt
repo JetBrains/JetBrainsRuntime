@@ -5,7 +5,7 @@ java/awt/Graphics2D/TextPerf.java JBR-9190 linux-all
 java/awt/FullScreen/SetFullScreenTest.java JBR-8400 linux-x64
 java/awt/image/DrawImage/IncorrectUnmanagedImageSourceOffset.java JBR-9023 linux-all
 java/awt/image/DrawImage/UnmanagedDrawImagePerformance.java JBR-9023 linux-all
-java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932,JBR-9207 linux-all,linux-6.15.8-100.fc41.x86_64
+java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932,JBR-9207 linux-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-8295 linux-x64
 
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-7269 linux-all
