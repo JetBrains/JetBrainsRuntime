@@ -11,6 +11,7 @@ java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-8295 linux-x64
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-7269 linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520,JBR-9320 linux-6.8.0-1036-aws,linux-6.14.9-arch1-1
+javax/swing/JComboBox/ShowPopupAfterHidePopupTest/ShowPopupAfterHidePopupTest.java JBR-9384 linux-all
 javax/swing/JComponent/6989617/bug6989617.java JBR-8796 linux-all
 javax/swing/JDesktopPane/TestDesktopManagerNPE.java JBR-8449 linux-x64
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all

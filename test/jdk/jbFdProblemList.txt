@@ -120,7 +120,6 @@ java/awt/Focus/6981400/Test1.java 8029675,JBR-6702 windows-all,macosx-all,linux-
 java/awt/Focus/8013611/JDK8013611.java JBR-7338,JBR-7506 linux-all,windows-all
 java/awt/Focus/8073453/SwingFocusTransitionTest.java JBR-7339 linux-all,windows-all
 java/awt/Focus/8282640/ScrollPaneFocusBugTest.java JBR-7340 linux-all
-java/awt/Focus/ActivateFocusTest.java JBR-7888 linux-all
 java/awt/Focus/ChoiceFocus/ChoiceFocus.java JBR-7341 linux-all
 java/awt/Focus/RollbackFocusFromAnotherWindowTest/RollbackFocusFromAnotherWindowTest.java JBR-8233 linux-x64
 java/awt/Graphics2D/TextPerf.java JBR-8541 linux-all,windows-all

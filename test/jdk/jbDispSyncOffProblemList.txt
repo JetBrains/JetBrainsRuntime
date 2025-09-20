@@ -23,7 +23,7 @@ javax/swing/JFileChooser/8021253/bug8021253.java JBR-6510 macosx-all
 javax/swing/JList/4618767/JListSelectedElementTest.java JBR-6510 macosx-all
 javax/swing/JSplitPane/4164779/JSplitPaneKeyboardNavigationTest.java JBR-6510 macosx-all
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-7247 macosx-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java JBR-8217 macosx-15.6,macosx-15.6.1
+javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java JBR-8217 macosx-15.6,macosx-15.6.1,macosx-15.7
 javax/swing/SwingGraphics/TranslateTest.java JBR-7510 macosx-aarch64
 
 jb/java/awt/CustomTitleBar/FrameNativeControlsTest.java JBR-6998 macosx-all
