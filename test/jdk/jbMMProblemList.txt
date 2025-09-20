@@ -27,7 +27,7 @@ java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510,JBR-544
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184,JBR-5442 windows-all,linux-all
 java/awt/Robot/InfiniteLoopException.java 8342638,JBR-8830 windows-x64,windows-all,linux-all
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390 macosx-all,linux-all
-java/awt/Robot/NonEmptyErrorStream.java JBR-5442,8340330,JBR-5510,JBR-8299 linux-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.4.1,macosx-15.5,macosx-15.6,linux-5.18.2-arch1-1,linux-aarch64
+java/awt/Robot/NonEmptyErrorStream.java JBR-5442,8340330,JBR-5510,JBR-8299 linux-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.4.1,macosx-15.5,macosx-15.6,macosx-15.7,linux-5.18.2-arch1-1,linux-aarch64
 java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
 java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-6065 windows-all
 java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
