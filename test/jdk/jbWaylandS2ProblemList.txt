@@ -10,3 +10,9 @@ javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8324 linux-all
 
 jb/java/awt/wayland/RobotGetPixelTest.java JBR-8434 linux-all
 jb/java/awt/wayland/RobotGetPixelsTest.java JBR-8434 linux-all
+
+#
+# the below tests are not intended to be executed in S2 configurations because
+# the tests contains tags to be launched for various scales including S2
+#
+jb/javax/swing/wayland/WLPopupMoves.java.WLPopupMoves nobug linux-all

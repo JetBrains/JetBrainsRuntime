@@ -266,7 +266,7 @@ java/awt/Mixing/MixingInHwPanel.java 8253184 windows-all
 java/awt/Mixing/NonOpaqueInternalFrame.java 7124549 macosx-all
 java/awt/Mixing/ValidBounds.java 8253184,JBR-5845 windows-all,linux-all
 java/awt/Mixing/Validating.java JBR-5908 linux-all
-java/awt/Focus/ActivateFocusTest.java JBR-7888 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64
+java/awt/Focus/ActivateFocusTest.java JBR-7888 linux-all
 java/awt/Focus/ActivateOnProperAppContextTest.java 8136516 macosx-all
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java 8252772,JBR-5799 linux-all,windows-all
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowRetaining.java 6829264 generic-all
