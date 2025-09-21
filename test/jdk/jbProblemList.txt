@@ -148,7 +148,7 @@ java/awt/Frame/DisposeTest.java JBR-7937,JBR-7938,JBR-8718 macosx-aarch64,window
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MaximizeUndecoratedTest.java JBR-8064 linux-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java JBR-7509 macosx-all
-java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7947 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.4.1,macosx-15.5,macosx-15.6,macosx-15.7
+java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java 8340374,JBR-7947 macosx-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/Frame/InitialIconifiedTest.java 7144049,8203920 macosx-all,linux-all
@@ -329,7 +329,7 @@ java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java 8150540,JBR-3107 wind
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupClickTest.java 8150540,JBR-3107 windows-all,macosx-all,linux-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java 8150540,JBR-3107 windows-all,linux-all
 java/awt/Window/8027025/Test8027025.java 8253184 windows-all
-java/awt/Window/8159168/SetShapeTest.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
+java/awt/Window/8159168/SetShapeTest.java 8253184 windows-all
 java/awt/Window/HandleWindowDestroyTest/HandleWindowDestroyTest.java JBR-6540 macosx-x64
 java/awt/Window/SetWindowLocationByPlatformTest/SetWindowLocationByPlatformTest.java 8253184,JBR-5728 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1
@@ -339,7 +339,7 @@ java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java 80
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java 8253184 windows-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentWindowClick.java 8253184 windows-all
 java/awt/Window/setLocRelativeTo/SetLocationRelativeToTest.java 8253184 windows-all
-java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-5510,JBR-9192 linux-5.18.2-arch1-1,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64
+java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-9192 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-5510,JBR-6463 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java 8222328 windows-all,linux-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/Shaped.java  8222328 windows-all,linux-all,macosx-all
@@ -1214,6 +1214,7 @@ javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-896,JBR-6760 windows-
 javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-5386 windows-all,linux-all
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-521,JBR-6687 windows-all,linux-5.18.2-arch1-1
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
+javax/swing/text/View/8048110/bug8048110.java JBR-9256,JBR-9207 windows-all,linux-6.16.7-100.fc41.x86_64
 javax/swing/text/View/8156217/FPMethodCalledTest.java JBR-5542 linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,8340330 windows-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.4.1,macosx-15.5,macosx-15.6,macosx-15.7
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184,JBR-5510 windows-all,linux-5.18.2-arch1-1

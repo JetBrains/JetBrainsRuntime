@@ -108,7 +108,6 @@ java/awt/Modal/MultipleDialogs/MultipleDialogs4Test.java 8198665,8253184,JBR-551
 java/awt/Paint/PaintNativeOnUpdate.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184,NOBUG windows-all,linux-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java NOBUG linux-all
-java/awt/Window/8159168/SetShapeTest.java 8253184,JBR-5510 windows-all,linux-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5510 linux-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-5510 linux-all
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-5510 windows-all,linux-all
