@@ -55,7 +55,7 @@ public class JStackHangTest {
             System.out.println("jstack did not complete in " + JSTACK_WAIT_TIME + " ms.");
 
             System.out.println("killing all the jstack processes");
-            ProcessTools.executeCommand("killall", "-9", "jstack");
+            ProcessTools.executeCommand("kill", "-9", Long.toString(process.pid()));
             returnCode = CODE_NOT_RETURNED;
 
         } else {
