@@ -37,6 +37,7 @@ import java.awt.event.InputEvent;
 import java.awt.event.InvocationEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowListener;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferStrategy;
 import java.awt.peer.ComponentPeer;
@@ -357,6 +358,8 @@ public final class AWTAccessor {
         double getCounterPerSecond(Window w, String counterName);
 
         void dumpStats(Window w, boolean reset, StringBuilder sb);
+
+        void addWindowListener(Window w, WindowListener listener);
     }
 
     /**
