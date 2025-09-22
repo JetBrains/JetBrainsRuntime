@@ -127,7 +127,7 @@ public class VMProps implements Callable<Map<String, String>> {
         map.put("vm.graal.enabled", this::isGraalEnabled);
         map.put("vm.compiler1.enabled", this::isCompiler1Enabled);
         map.put("vm.compiler2.enabled", this::isCompiler2Enabled);
-        map.put("docker.support", this::dockerSupport);
+        map.put("container.support", this::containerSupport);
         map.put("vm.musl", this::isMusl);
         map.put("release.implementor", this::implementor);
         map.put("jdk.containerized", this::jdkContainerized);
@@ -455,16 +455,16 @@ public class VMProps implements Callable<Map<String, String>> {
     }
 
    /**
-     * A simple check for docker support
+     * A simple check for container support
      *
-     * @return true if docker is supported in a given environment
+     * @return true if container is supported in a given environment
      */
-    protected String dockerSupport() {
-        log("Entering dockerSupport()");
+    protected String containerSupport() {
+        log("Entering containerSupport()");
 
         boolean isSupported = false;
         if (Platform.isLinux()) {
-           // currently docker testing is only supported for Linux,
+           // currently container testing is only supported for Linux,
            // on certain platforms
 
            String arch = System.getProperty("os.arch");
@@ -480,17 +480,17 @@ public class VMProps implements Callable<Map<String, String>> {
            }
         }
 
-        log("dockerSupport(): platform check: isSupported = " + isSupported);
+        log("containerSupport(): platform check: isSupported = " + isSupported);
 
         if (isSupported) {
            try {
-              isSupported = checkDockerSupport();
+              isSupported = checkProgramSupport("checkContainerSupport()", Container.ENGINE_COMMAND);
            } catch (Exception e) {
               isSupported = false;
            }
          }
 
-        log("dockerSupport(): returning isSupported = " + isSupported);
+        log("containerSupport(): returning isSupported = " + isSupported);
         return "" + isSupported;
     }
 
@@ -527,18 +527,17 @@ public class VMProps implements Callable<Map<String, String>> {
                     log("-------------");
                 });
     }
-
-    private boolean checkDockerSupport() throws IOException, InterruptedException {
-        log("checkDockerSupport(): entering");
-        ProcessBuilder pb = new ProcessBuilder("which", Container.ENGINE_COMMAND);
+    private boolean checkProgramSupport(String logString, String cmd) throws IOException, InterruptedException {
+        log(logString + ": entering");
+        ProcessBuilder pb = new ProcessBuilder("which", cmd);
         Map<String, String> logFileNames =
-            redirectOutputToLogFile("checkDockerSupport(): which <container-engine>",
-                                                      pb, "which-container");
+            redirectOutputToLogFile(logString + ": which " + cmd,
+                                                      pb, "which-cmd");
         Process p = pb.start();
         p.waitFor(10, TimeUnit.SECONDS);
         int exitValue = p.exitValue();
 
-        log(String.format("checkDockerSupport(): exitValue = %s, pid = %s", exitValue, p.pid()));
+        log(String.format("%s: exitValue = %s, pid = %s", logString, exitValue, p.pid()));
         if (exitValue != 0) {
             printLogfileContent(logFileNames);
         }
