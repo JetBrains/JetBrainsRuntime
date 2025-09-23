@@ -114,6 +114,8 @@ public class DefaultFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     protected Rectangle getMaximizeButtonBounds() {
+        if (!hasMaximizeButton()) return null;
+
         int x = peer.getWidth() - BUTTON_SIZE * 2 - BUTTONS_RIGHT_PADDING
                 - BUTTONS_PADDING - BORDER_SIZE;
         int y = (int) Math.floor((HEIGHT - BUTTON_SIZE + 1f) / 2);
@@ -122,6 +124,8 @@ public class DefaultFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     protected Rectangle getMinimizeButtonBounds() {
+        if (!hasMinimizeButton()) return null;
+
         int x = peer.getWidth() - BUTTON_SIZE * 3 - BUTTONS_RIGHT_PADDING
                 - BUTTONS_PADDING * 2 - BORDER_SIZE;
         int y = (int) Math.floor((HEIGHT - BUTTON_SIZE + 1f) / 2);
