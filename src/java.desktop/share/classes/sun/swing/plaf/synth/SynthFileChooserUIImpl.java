@@ -692,6 +692,8 @@ public class SynthFileChooserUIImpl extends SynthFileChooserUI {
             ii.depth = directoryComboBoxModel.getDepth(index);
             label.setIcon(ii);
 
+            label.putClientProperty("html.disable", getFileChooser().getClientProperty("html.disable"));
+
             return label;
         }
     }

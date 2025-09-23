@@ -953,6 +953,8 @@ public class MetalFileChooserUI extends BasicFileChooserUI {
             ii.depth = directoryComboBoxModel.getDepth(index);
             setIcon(ii);
 
+            putClientProperty("html.disable", getFileChooser().getClientProperty("html.disable"));
+
             return this;
         }
     }

@@ -398,6 +398,7 @@ public class JFileChooser extends JComponent implements Accessible {
             setFileFilter(getAcceptAllFileFilter());
         }
         enableEvents(AWTEvent.MOUSE_EVENT_MASK);
+        putClientProperty("html.disable", true);
     }
 
     private void installHierarchyListener() {
