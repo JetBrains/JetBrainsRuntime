@@ -22,12 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package javax.swing.text.rtf;
 
-import java.lang.*;
-import java.util.*;
-import java.io.*;
 import java.awt.Color;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.StreamTokenizer;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
@@ -35,7 +39,24 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import javax.swing.text.*;
+import java.util.Dictionary;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Map;
+import java.util.Set;
+import java.util.Vector;
+
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.MutableAttributeSet;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyleContext;
+import javax.swing.text.StyledDocument;
+import javax.swing.text.TabStop;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
@@ -641,7 +662,7 @@ static char[] readCharset(InputStream strm)
     char[] values = new char[256];
     int i;
     StreamTokenizer in = new StreamTokenizer(new BufferedReader(
-            new InputStreamReader(strm, "ISO-8859-1")));
+            new InputStreamReader(strm, ISO_8859_1)));
 
     in.eolIsSignificant(false);
     in.commentChar('#');
