@@ -1394,3 +1394,27 @@ jdk_desktop_wayland_vulkan = \
 # Vulkan tests to be executed with -Dsun.java2d.vulkan=True
 jdk_awt_vulkan = \
     jb/java/awt/vulkan
+
+# Vulkan rendering tests on WLToolkit, to be executed with
+# -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true
+# Make sure that the tests below are green for any Wayland+Vulkan rendering changes.
+# These tests should be executed with the following exclude list: jbRenderWLVKProblemList.txt
+jdk_render_wayland_vulkan = \
+    sun/java2d \
+    java/awt/Graphics \
+    java/awt/Graphics2D \
+    java/awt/AlphaComposite \
+    java/awt/GradientPaint \
+    java/awt/GraphicsConfiguration \
+    java/awt/GraphicsDevice \
+    java/awt/GraphicsEnvironment \
+    java/awt/hidpi \
+    java/awt/image/DrawImage \
+    java/awt/image/VolatileImage \
+    java/awt/Paint \
+    javax/swing/GraphicsConfigNotifier \
+    javax/swing/RepaintManager \
+    jb/java/awt/vulkan \
+    jb/java/awt/wayland/vulkan \
+    -sun/java2d/cmm \
+    -sun/java2d/marlin
