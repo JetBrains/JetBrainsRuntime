@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import java.security.Policy;
 import java.security.ProtectionDomain;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -88,6 +89,8 @@ public class BootstrapLoggerTest {
     }
 
     public static void main(String[] args) throws Exception {
+        Locale savedLocale = Locale.getDefault();
+        Locale.setDefault(Locale.US);
         if (args == null || args.length == 0) {
             args = new String[] { TestCase.SECURE_AND_WAIT.name() };
         }
@@ -373,6 +376,7 @@ public class BootstrapLoggerTest {
                 LogStream.err.println("Not checking executor termination for " + test);
             }
         } finally {
+            Locale.setDefault(savedLocale);
             SimplePolicy.allowAll.set(Boolean.FALSE);
         }
         LogStream.err.println(test.name() + ": PASSED");
