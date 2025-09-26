@@ -82,7 +82,9 @@ public class WindowsCheckBoxMenuItemUI extends BasicCheckBoxMenuItemUI {
                                  int defaultTextIconGap) {
         if (WindowsMenuItemUI.isVistaPainting()) {
             WindowsMenuItemUI.paintMenuItem(accessor, g, c, checkIcon,
-                    arrowIcon, background, foreground, defaultTextIconGap,
+                    arrowIcon, background, foreground,
+                    disabledForeground, acceleratorSelectionForeground,
+                    acceleratorForeground, defaultTextIconGap,
                     menuItem, getPropertyPrefix());
             return;
         }
