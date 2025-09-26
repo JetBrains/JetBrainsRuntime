@@ -443,7 +443,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         final WLInputState newInputState = inputState.updatedFromKeyboardLeaveEvent(serial, surfacePtr);
         final WLWindowPeer peer = peerFromSurface(surfacePtr);
         if (peer != null && peer.getTarget() instanceof Window window) {
-            ((WLToolkit) Toolkit.getDefaultToolkit()).ungrab(window);
             final WindowEvent winLostFocusEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
             WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
             WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusOwner(null);
@@ -973,9 +972,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
         var peer = AWTAccessor.getComponentAccessor().getPeer(w);
         if (peer instanceof WLWindowPeer windowPeer) {
-            windowPeer.ungrab();
+            windowPeer.ungrab(false);
         }
     }
+
     /**
      * Returns if the java.awt.Desktop class is supported on the current
      * desktop.
