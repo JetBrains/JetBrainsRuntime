@@ -25,11 +25,13 @@
  * @test id=actalisauthenticationrootca
  * @bug 8189131
  * @summary Interoperability tests with Actalis CA
+ * Before this test set to manual, the original timeout
+ * value if 180
  * @library /test/lib
  * @build jtreg.SkippedException ValidatePathWithURL CAInterop
  * @run main/othervm/manual -Djava.security.debug=certpath,ocsp
  *  CAInterop actalisauthenticationrootca OCSP
- * @run main/othervm/manual/timeout=180 -Djava.security.debug=certpath,ocsp
+ * @run main/othervm/manual -Djava.security.debug=certpath,ocsp
  *  CAInterop actalisauthenticationrootca CRL
  */
 
