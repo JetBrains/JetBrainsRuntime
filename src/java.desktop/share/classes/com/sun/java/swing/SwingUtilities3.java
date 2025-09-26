@@ -25,27 +25,33 @@
 
 package com.sun.java.swing;
 
-import sun.awt.AppContext;
-import sun.awt.SunToolkit;
-
-import java.util.Collections;
-import java.util.Map;
-import java.util.WeakHashMap;
 import java.applet.Applet;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Insets;
 import java.awt.Rectangle;
+import java.awt.Stroke;
 import java.awt.Window;
+import java.awt.geom.AffineTransform;
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
+
 import javax.swing.ButtonModel;
 import javax.swing.Icon;
 import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.RepaintManager;
+
+import sun.awt.AppContext;
+import sun.awt.SunToolkit;
 import sun.swing.MenuItemLayoutHelper;
 import sun.swing.SwingUtilities2;
+
+import static sun.java2d.pipe.Region.clipRound;
 
 /**
  * A collection of utility methods for Swing.
@@ -122,6 +128,31 @@ public class SwingUtilities3 {
     public static boolean isVsyncRequested(Container rootContainer) {
         assert (rootContainer instanceof Applet) || (rootContainer instanceof Window);
         return Boolean.TRUE == vsyncedMap.get(rootContainer);
+    }
+
+    /**
+     * Returns delegate {@code RepaintManager} for {@code component} hierarchy.
+     */
+    public static RepaintManager getDelegateRepaintManager(Component
+                                                            component) {
+        RepaintManager delegate = null;
+        if (Boolean.TRUE == SunToolkit.targetToAppContext(component)
+                                      .get(DELEGATE_REPAINT_MANAGER_KEY)) {
+            while (delegate == null && component != null) {
+                while (component != null
+                         && ! (component instanceof JComponent)) {
+                    component = component.getParent();
+                }
+                if (component != null) {
+                    delegate = (RepaintManager)
+                        ((JComponent) component)
+                          .getClientProperty(DELEGATE_REPAINT_MANAGER_KEY);
+                    component = component.getParent();
+                }
+
+            }
+        }
+        return delegate;
     }
 
     public static void applyInsets(Rectangle rect, Insets insets) {
@@ -247,27 +278,112 @@ public class SwingUtilities3 {
     }
 
     /**
-     * Returns delegate {@code RepaintManager} for {@code component} hierarchy.
+     * A task which paints an <i>unscaled</i> border after {@code Graphics}
+     * transforms are removed. It's used with the
+     * {@link #paintBorder(Component, Graphics, int, int, int, int, UnscaledBorderPainter)
+     * SwingUtilities3.paintBorder} which manages changing the transforms and calculating
+     * the coordinates and size of the border.
      */
-    public static RepaintManager getDelegateRepaintManager(Component
-                                                            component) {
-        RepaintManager delegate = null;
-        if (Boolean.TRUE == SunToolkit.targetToAppContext(component)
-                                      .get(DELEGATE_REPAINT_MANAGER_KEY)) {
-            while (delegate == null && component != null) {
-                while (component != null
-                         && ! (component instanceof JComponent)) {
-                    component = component.getParent();
-                }
-                if (component != null) {
-                    delegate = (RepaintManager)
-                        ((JComponent) component)
-                          .getClientProperty(DELEGATE_REPAINT_MANAGER_KEY);
-                    component = component.getParent();
-                }
+    @FunctionalInterface
+    public interface UnscaledBorderPainter {
+        /**
+         * Paints the border for the specified component after the
+         * {@code Graphics} transforms are removed.
+         *
+         * <p>
+         * The <i>x</i> and <i>y</i> of the painted border are zero.
+         *
+         * @param c the component for which this border is being painted
+         * @param g the paint graphics
+         * @param w the width of the painted border, in physical pixels
+         * @param h the height of the painted border, in physical pixels
+         * @param scaleFactor the scale that was in the {@code Graphics}
+         *
+         * @see #paintBorder(Component, Graphics, int, int, int, int, UnscaledBorderPainter)
+         * SwingUtilities3.paintBorder
+         * @see javax.swing.border.Border#paintBorder(Component, Graphics, int, int, int, int)
+         * Border.paintBorder
+         */
+        void paintUnscaledBorder(Component c, Graphics g,
+                                 int w, int h,
+                                 double scaleFactor);
+    }
 
+    /**
+     * Paints the border for a component ensuring its sides have consistent
+     * thickness at different scales.
+     * <p>
+     * It performs the following steps:
+     * <ol>
+     *     <li>Reset the scale transform on the {@code Graphics},</li>
+     *     <li>Call {@code painter} to paint the border,</li>
+     *     <li>Restores the transform.</li>
+     * </ol>
+     *
+     * @param c the component for which this border is being painted
+     * @param g the paint graphics
+     * @param x the x position of the painted border
+     * @param y the y position of the painted border
+     * @param w the width of the painted border
+     * @param h the height of the painted border
+     * @param painter the painter object which paints the border after
+     *                the transform on the {@code Graphics} is reset
+     */
+    public static void paintBorder(Component c, Graphics g,
+                                   int x, int y,
+                                   int w, int h,
+                                   UnscaledBorderPainter painter) {
+
+        // Step 1: Reset Transform
+        AffineTransform at = null;
+        Stroke oldStroke = null;
+        boolean resetTransform = false;
+        double scaleFactor = 1;
+
+        int xtranslation = x;
+        int ytranslation = y;
+        int width = w;
+        int height = h;
+
+        if (g instanceof Graphics2D) {
+            Graphics2D g2d = (Graphics2D) g;
+            at = g2d.getTransform();
+            oldStroke = g2d.getStroke();
+            scaleFactor = Math.min(at.getScaleX(), at.getScaleY());
+
+            // if m01 or m10 is non-zero, then there is a rotation or shear,
+            // or if scale=1, skip resetting the transform in these cases.
+            resetTransform = ((at.getShearX() == 0) && (at.getShearY() == 0))
+                    && ((at.getScaleX() > 1) || (at.getScaleY() > 1));
+
+            if (resetTransform) {
+                /* Deactivate the HiDPI scaling transform,
+                 * so we can do paint operations in the device
+                 * pixel coordinate system instead of the logical coordinate system.
+                 */
+                g2d.setTransform(new AffineTransform());
+                double xx = at.getScaleX() * x + at.getTranslateX();
+                double yy = at.getScaleY() * y + at.getTranslateY();
+                xtranslation = clipRound(xx);
+                ytranslation = clipRound(yy);
+                width = clipRound(at.getScaleX() * w + xx) - xtranslation;
+                height = clipRound(at.getScaleY() * h + yy) - ytranslation;
             }
         }
-        return delegate;
+
+        g.translate(xtranslation, ytranslation);
+
+        // Step 2: Call respective paintBorder with transformed values
+        painter.paintUnscaledBorder(c, g, width, height, scaleFactor);
+
+        // Step 3: Restore previous stroke & transform
+        g.translate(-xtranslation, -ytranslation);
+        if (g instanceof Graphics2D) {
+            Graphics2D g2d = (Graphics2D) g;
+            g2d.setStroke(oldStroke);
+            if (resetTransform) {
+                g2d.setTransform(at);
+            }
+        }
     }
 }
