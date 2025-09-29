@@ -227,6 +227,11 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_FILL_PARALLELOGRAM:
             {
+                VKSDOps *surface = VKRenderer_GetContext()->surface;
+                if (surface != NULL && VKRenderer_CheckClipChanged(surface)) {
+                    VKRenderer_FlushRenderPass(surface);
+                }
+
                 jfloat x11 = NEXT_FLOAT(b);
                 jfloat y11 = NEXT_FLOAT(b);
                 jfloat dx21 = NEXT_FLOAT(b);

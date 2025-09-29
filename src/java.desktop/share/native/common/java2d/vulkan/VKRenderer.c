@@ -209,6 +209,10 @@ inline VkBool32 VKRenderer_CheckPoolEntryAvailable(VKRenderer* renderer, void* e
                                                          renderer->readTimestamp >= timestamp);
 }
 
+VkBool32 VKRenderer_CheckClipChanged(VKSDOps *surface) {
+    return surface->renderPass != NULL && surface->renderPass->clipModCount != context.clipModCount;
+}
+
 /**
  * Helper function for POOL_DRAIN_FOR macro.
  */
