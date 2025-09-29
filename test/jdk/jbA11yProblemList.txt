@@ -101,6 +101,7 @@ java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java JBR-5397 macosx-al
 
 javax/swing/JFileChooser/4400728/JFileChooserDefaultDirectoryTest.java JBR-8855 windows-all
 javax/swing/JFileChooser/4524490/bug4524490.java JBR-5397,JBR-5846 macosx-all,windows-all
+javax/swing/JFileChooser/4525475/JFileChooserReadOnlyTest.java JBR-8855 windows-x64
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-5397,JBR-7413 macosx-all,windows-x64
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880,JBR-5397 windows-all,macosx-all
 javax/swing/JFileChooser/8010718/bug8010718.java JBR-8855 windows-all
@@ -176,7 +177,6 @@ java/awt/Component/NativeInLightShow/NativeInLightShow.java JBR-7715 windows-x64
 java/awt/Component/RepaintTest.java JBR-7754 windows-x64
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-x64
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490,JBR-5505 windows-all,linux-all
-java/awt/dnd/DropActionChangedTest.java JBR-6757 windows-x64
 java/awt/dnd/RecognizedActionTest/RecognizedActionTest.java JBR-8037 windows-x64
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-all
 java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916,JBR-5397,JBR-7141 linux-all,macosx-all,windows-all
