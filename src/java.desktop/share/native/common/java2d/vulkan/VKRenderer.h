@@ -149,6 +149,5 @@ void VKRenderer_DrawImage(VKImage* image, VkFormat format,
 
 VKRenderingContext* VKRenderer_GetContext();
 VKTexturePool* VKRenderer_GetTexturePool(VKRenderer* );
-VkBool32 VKRenderer_CheckClipChanged(VKSDOps *surface);
 
 #endif //VKRenderer_h_Included
