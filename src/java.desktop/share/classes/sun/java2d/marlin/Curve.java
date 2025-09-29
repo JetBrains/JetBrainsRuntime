@@ -144,7 +144,9 @@ final class Curve {
     // finds points where the first and second derivative are
     // perpendicular. This happens when g(t) = f'(t)*f''(t) == 0 (where
     // * is a dot product). Unfortunately, we have to solve a cubic.
-    private int perpendiculardfddf(final double[] pts, final int off) {
+    private int perpendiculardfddf(final double[] pts, final int off,
+                                   final double A, final double B)
+    {
         assert pts.length >= off + 4;
 
         // these are the coefficients of some multiple of g(t) (not g(t),
@@ -155,7 +157,7 @@ final class Curve {
         final double c = 2.0d * (dax * cx + day * cy) + dbx * dbx + dby * dby;
         final double d = dbx * cx + dby * cy;
 
-        return Helpers.cubicRootsInAB(a, b, c, d, pts, off, 0.0d, 1.0d);
+        return Helpers.cubicRootsInAB(a, b, c, d, pts, off, A, B);
     }
 
     // Tries to find the roots of the function ROC(t)-w in [0, 1). It uses
@@ -171,35 +173,42 @@ final class Curve {
     // at most 4 sub-intervals of (0,1). ROC has asymptotes at inflection
     // points, so roc-w can have at least 6 roots. This shouldn't be a
     // problem for what we're trying to do (draw a nice looking curve).
-    int rootsOfROCMinusW(final double[] roots, final int off, final double w2, final double err) {
+    int rootsOfROCMinusW(final double[] roots, final int off, final double w2,
+                         final double A, final double B)
+    {
         // no OOB exception, because by now off<=6, and roots.length >= 10
         assert off <= 6 && roots.length >= 10;
 
         int ret = off;
-        final int end = off + perpendiculardfddf(roots, off);
+        final int end = off + perpendiculardfddf(roots, off, A, B);
+        Helpers.isort(roots, off, end);
         roots[end] = 1.0d; // always check interval end points
 
-        double t0 = 0.0d, ft0 = ROCsq(t0) - w2;
+        double t0 = 0.0d;
+        double ft0 = ROCsq(t0) - w2;
+        double t1, ft1;
 
         for (int i = off; i <= end; i++) {
-            double t1 = roots[i], ft1 = ROCsq(t1) - w2;
+            t1 = roots[i];
+            ft1 = ROCsq(t1) - w2;
             if (ft0 == 0.0d) {
                 roots[ret++] = t0;
             } else if (ft1 * ft0 < 0.0d) { // have opposite signs
                 // (ROC(t)^2 == w^2) == (ROC(t) == w) is true because
                 // ROC(t) >= 0 for all t.
-                roots[ret++] = falsePositionROCsqMinusX(t0, t1, w2, err);
+                roots[ret++] = falsePositionROCsqMinusX(t0, t1, ft0, ft1, w2, A); // A = err
             }
             t0 = t1;
             ft0 = ft1;
         }
-
         return ret - off;
     }
 
+    private final static double MAX_ROC_SQ = 1e20;
+
     private static double eliminateInf(final double x) {
-        return (x == Double.POSITIVE_INFINITY ? Double.MAX_VALUE :
-               (x == Double.NEGATIVE_INFINITY ? Double.MIN_VALUE : x));
+        // limit the value of x to avoid numerical problems (smaller step):
+        return (x >= MAX_ROC_SQ) ? MAX_ROC_SQ : x;
     }
 
     // A slight modification of the false position algorithm on wikipedia.
@@ -210,17 +219,18 @@ final class Curve {
     // and turn out. Same goes for the newton's method
     // algorithm in Helpers.java
     private double falsePositionROCsqMinusX(final double t0, final double t1,
+                                            final double ft0, final double ft1,
                                             final double w2, final double err)
     {
         final int iterLimit = 100;
         int side = 0;
-        double t = t1, ft = eliminateInf(ROCsq(t) - w2);
-        double s = t0, fs = eliminateInf(ROCsq(s) - w2);
+        double s = t0, fs = eliminateInf(ft0);
+        double t = t1, ft = eliminateInf(ft1);
         double r = s, fr;
 
-        for (int i = 0; i < iterLimit && Math.abs(t - s) > err * Math.abs(t + s); i++) {
+        for (int i = 0; i < iterLimit && Math.abs(t - s) > err; i++) {
             r = (fs * t - ft * s) / (fs - ft);
-            fr = ROCsq(r) - w2;
+            fr = eliminateInf(ROCsq(r) - w2);
             if (sameSign(fr, ft)) {
                 ft = fr; t = r;
                 if (side < 0) {
@@ -241,7 +251,7 @@ final class Curve {
                 break;
             }
         }
-        return r;
+        return (Math.abs(ft) <= Math.abs(fs)) ? t : s;
     }
 
     private static boolean sameSign(final double x, final double y) {
@@ -257,8 +267,13 @@ final class Curve {
         final double ddx = 2.0d * dax * t + dbx;
         final double ddy = 2.0d * day * t + dby;
         final double dx2dy2 = dx * dx + dy * dy;
-        final double ddx2ddy2 = ddx * ddx + ddy * ddy;
-        final double ddxdxddydy = ddx * dx + ddy * dy;
-        return dx2dy2 * ((dx2dy2 * dx2dy2) / (dx2dy2 * ddx2ddy2 - ddxdxddydy * ddxdxddydy));
+        if (dx2dy2 == 0.0) {
+            return 0.0;
+        }
+        final double dxddyddxdy = dx * ddy - dy * ddx;
+        if (dxddyddxdy == 0.0) {
+            return Double.POSITIVE_INFINITY;
+        }
+        return (dx2dy2 * dx2dy2 * dx2dy2) / (dxddyddxdy * dxddyddxdy); // may return +Infinity if dxddyddxdy = 0
     }
 }
