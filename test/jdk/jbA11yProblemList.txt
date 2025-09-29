@@ -2,6 +2,7 @@ java/awt/Choice/ChoiceHandleMouseEvent_2.java JBR-7174 windows-all
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java JBR-64 windows-all
 java/awt/Choice/SelectItem/SelectCurrentItemTest.java JBR-8333 windows-all
 java/awt/Choice/SelectItem/SelectNewItemTest.java JBR-8387 windows-x64
+java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java JBR-9427 windows-x64
 java/awt/Graphics/XORPaint.java#id0 JBR-7499 windows-x64
 java/awt/Graphics2D/TextPerf.java JBR-8541 windows-x64
 java/awt/grab/SystemMenuTest.java JBR-8944 windows-x64
@@ -43,6 +44,7 @@ javax/swing/JComboBox/6559152/bug6559152.java JBR-5397,JBR-7382 macosx-all,windo
 javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java JBR-5210 windows-all
 javax/swing/JComboBox/bug4996503.java JBR-7412 windows-x64
 javax/swing/JComboBox/EditableComboBoxPopupPos.java JBR-7383 windows-x64
+javax/swing/JFileChooser/4150029/bug4150029.java JBR-9419 windows-x64
 javax/swing/JFileChooser/4847375/bug4847375.java JBR-8855 windows-x64
 javax/swing/JFileChooser/4966171/bug4966171.java JBR-8855 windows-x64
 javax/swing/JFileChooser/FileChooserListenerLeak.java JBR-8855 windows-x64
@@ -61,6 +63,7 @@ jb/java/awt/Desktop/AboutHandlerTest.java           nobug macosx-all,linux-all,w
 jb/java/awt/Focus/ChainOfPopupsFocusTest.java JBR-8407 windows-x64
 jb/java/awt/Focus/FrameAfterPopup.java JBR-9161 windows-x64
 jb/java/awt/Focus/MaximizedCustomDecorationsTest.java JBR-9346 windows-x64
+jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-9426 windows-x64
 jb/java/awt/Focus/NewFrameAfterDialogTest.java JBR-7387 windows-x64
 
 # VoiceOver on MacOS
