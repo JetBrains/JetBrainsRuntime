@@ -36,6 +36,7 @@ import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.loops.SurfaceType;
 import static sun.java2d.pipe.BufferedOpCodes.CONFIGURE_SURFACE;
+import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_SURFACE;
 import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.ParallelogramPipe;
 import sun.java2d.pipe.PixelToParallelogramConverter;
@@ -43,7 +44,6 @@ import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.TextPipe;
 import sun.java2d.pipe.hw.AccelSurface;
 import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
@@ -129,6 +129,28 @@ public abstract class VKSurfaceData extends SurfaceData
             rq.ensureCapacityAndAlignment(12, 4);
             buf.putInt(FLUSH_SURFACE);
             buf.putLong(getNativeOps());
+
+            // this call is expected to complete synchronously, so flush now
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    /**
+     * Disposes the native resources associated with the given VKSurfaceData
+     * (referenced by the pData parameter).  This method is invoked from
+     * the native Dispose() method from the Disposer thread when the
+     * Java-level VKSurfaceData object is about to go away.
+     */
+    static void dispose(long pData) {
+        VKRenderQueue rq = VKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            RenderBuffer buf = rq.getBuffer();
+            rq.ensureCapacityAndAlignment(12, 4);
+            buf.putInt(DISPOSE_SURFACE);
+            buf.putLong(pData);
 
             // this call is expected to complete synchronously, so flush now
             rq.flushNow();
