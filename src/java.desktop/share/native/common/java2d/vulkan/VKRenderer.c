@@ -597,33 +597,46 @@ inline void VKRenderer_FlushDraw(VKSDOps* surface) {
 static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     VKRenderer* renderer = surface->device->renderer;
-    surface->renderPass->state.composite = NO_COMPOSITE;
-    surface->renderPass->state.shader = NO_SHADER;
-    surface->renderPass->transformModCount = 0;
-    surface->renderPass->firstVertex = 0;
-    surface->renderPass->vertexCount = 0;
-    surface->renderPass->vertexBufferWriting = (BufferWritingState) {NULL, 0, VK_FALSE};
-    surface->renderPass->maskFillBufferWriting = (BufferWritingState) {NULL, 0, VK_FALSE};
-    if (ARRAY_SIZE(surface->renderPass->flushRanges) > 0) {
+    VKRenderPass* renderPass = surface->renderPass;
+    renderPass->state.composite = NO_COMPOSITE;
+    renderPass->state.shader = NO_SHADER;
+    renderPass->transformModCount = 0;
+    renderPass->firstVertex = 0;
+    renderPass->vertexCount = 0;
+    renderPass->vertexBufferWriting = (BufferWritingState) { NULL, 0, VK_FALSE };
+    renderPass->maskFillBufferWriting = (BufferWritingState) { NULL, 0, VK_FALSE };
+    if (ARRAY_SIZE(renderPass->flushRanges) > 0) {
         VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle,
-            ARRAY_SIZE(surface->renderPass->flushRanges), surface->renderPass->flushRanges)) {}
-        ARRAY_RESIZE(surface->renderPass->flushRanges, 0);
+            ARRAY_SIZE(renderPass->flushRanges), renderPass->flushRanges)) {}
+        ARRAY_RESIZE(renderPass->flushRanges, 0);
     }
-    size_t vertexBufferCount = ARRAY_SIZE(surface->renderPass->vertexBuffers);
-    size_t maskFillBufferCount = ARRAY_SIZE(surface->renderPass->maskFillBuffers);
-    size_t cleanupQueueCount = ARRAY_SIZE(surface->renderPass->cleanupQueue);
+    size_t vertexBufferCount = ARRAY_SIZE(renderPass->vertexBuffers);
+    size_t maskFillBufferCount = ARRAY_SIZE(renderPass->maskFillBuffers);
+    size_t cleanupQueueCount = ARRAY_SIZE(renderPass->cleanupQueue);
     for (uint32_t i = 0; i < vertexBufferCount; i++) {
-        POOL_RETURN(surface->device->renderer, vertexBufferPool, surface->renderPass->vertexBuffers[i]);
+        POOL_RETURN(renderer, vertexBufferPool, renderPass->vertexBuffers[i]);
     }
     for (uint32_t i = 0; i < maskFillBufferCount; i++) {
-        POOL_RETURN(surface->device->renderer, maskFillBufferPool, surface->renderPass->maskFillBuffers[i]);
+        POOL_RETURN(renderer, maskFillBufferPool, renderPass->maskFillBuffers[i]);
     }
     for (uint32_t i = 0; i < cleanupQueueCount; i++) {
-        POOL_RETURN(surface->device->renderer, cleanupQueue, surface->renderPass->cleanupQueue[i]);
+        POOL_RETURN(renderer, cleanupQueue, renderPass->cleanupQueue[i]);
     }
-    ARRAY_RESIZE(surface->renderPass->vertexBuffers, 0);
-    ARRAY_RESIZE(surface->renderPass->maskFillBuffers, 0);
-    ARRAY_RESIZE(surface->renderPass->cleanupQueue, 0);
+    ARRAY_RESIZE(renderPass->vertexBuffers, 0);
+    ARRAY_RESIZE(renderPass->maskFillBuffers, 0);
+    ARRAY_RESIZE(renderPass->cleanupQueue, 0);
+
+    // Update dependencies on used surfaces.
+    for (uint32_t i = 0, surfaces = (uint32_t) ARRAY_SIZE(renderPass->usedSurfaces); i < surfaces; i++) {
+        VKSDOps* usedSurface = renderPass->usedSurfaces[i];
+        uint32_t newSize = 0, oldSize = (uint32_t) ARRAY_SIZE(usedSurface->dependentSurfaces);
+        for (uint32_t j = 0; j < oldSize; j++) {
+            VKSDOps* s = usedSurface->dependentSurfaces[j];
+            if (s != surface) usedSurface->dependentSurfaces[newSize++] = s;
+        }
+        if (newSize != oldSize) ARRAY_RESIZE(usedSurface->dependentSurfaces, newSize);
+    }
+    ARRAY_RESIZE(renderPass->usedSurfaces, 0);
 }
 
 /**
@@ -877,19 +890,11 @@ VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface) {
     VKRenderer* renderer = device->renderer;
     VkCommandBuffer cb = VKRenderer_Record(renderer);
 
-    // Update dependencies on used surfaces.
+    // Update timestamps on used surfaces.
     surface->lastTimestamp = renderer->writeTimestamp;
     for (uint32_t i = 0, surfaces = (uint32_t) ARRAY_SIZE(surface->renderPass->usedSurfaces); i < surfaces; i++) {
-        VKSDOps* usedSurface = surface->renderPass->usedSurfaces[i];
-        usedSurface->lastTimestamp = renderer->writeTimestamp;
-        uint32_t newSize = 0, oldSize = (uint32_t) ARRAY_SIZE(usedSurface->dependentSurfaces);
-        for (uint32_t j = 0; j < oldSize; j++) {
-            VKSDOps* s = usedSurface->dependentSurfaces[j];
-            if (s != surface) usedSurface->dependentSurfaces[newSize++] = s;
-        }
-        if (newSize != oldSize) ARRAY_RESIZE(usedSurface->dependentSurfaces, newSize);
+        surface->renderPass->usedSurfaces[i]->lastTimestamp = renderer->writeTimestamp;
     }
-    ARRAY_RESIZE(surface->renderPass->usedSurfaces, 0);
 
     // Insert barriers to prepare surface for rendering.
     VkImageMemoryBarrier barriers[2];
