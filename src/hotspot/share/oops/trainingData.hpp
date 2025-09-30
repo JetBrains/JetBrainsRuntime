@@ -96,7 +96,7 @@ public:
 
   // TrainingDataLocker is used to guard read/write operations on non-MT-safe data structures.
   // It supports recursive locking and a read-only mode (in which case no locks are taken).
-  // It is also a part of the TD collection termination protocol (see the "spanshot" field).
+  // It is also a part of the TD collection termination protocol (see the "snapshot" field).
   class TrainingDataLocker {
     static volatile bool _snapshot; // If true we're not allocating new training data
     static int _lock_mode;
@@ -105,7 +105,7 @@ public:
 #if INCLUDE_CDS
       assert(_lock_mode != 0, "Forgot to call TrainingDataLocker::initialize()");
       if (_lock_mode > 0) {
-        TrainingData_lock->lock();
+        TrainingData_lock->lock_without_safepoint_check();
       }
 #endif
     }
@@ -151,6 +151,9 @@ public:
 #if INCLUDE_CDS
       _lock_mode = need_data() ? +1 : -1;   // if -1, we go lock-free
 #endif
+    }
+    static void assert_locked_or_snapshotted() {
+      assert(safely_locked() || _snapshot, "use under TrainingDataLocker or after snapshot");
     }
     static void assert_locked() {
       assert(safely_locked(), "use under TrainingDataLocker");
@@ -338,20 +341,24 @@ private:
     }
 
     int length() const {
+      TrainingDataLocker::assert_locked_or_snapshotted();
       return (_deps_dyn != nullptr ? _deps_dyn->length()
               : _deps   != nullptr ? _deps->length()
               : 0);
     }
     E* adr_at(int i) const {
+      TrainingDataLocker::assert_locked_or_snapshotted();
       return (_deps_dyn != nullptr ? _deps_dyn->adr_at(i)
               : _deps   != nullptr ? _deps->adr_at(i)
               : nullptr);
     }
     E at(int i) const {
+      TrainingDataLocker::assert_locked_or_snapshotted();
       assert(i >= 0 && i < length(), "oob");
       return *adr_at(i);
     }
     bool append_if_missing(E dep) {
+      TrainingDataLocker::assert_can_add();
       if (_deps_dyn == nullptr) {
         _deps_dyn = new GrowableArrayCHeap<E, mtCompiler>(10);
         _deps_dyn->append(dep);
@@ -361,23 +368,27 @@ private:
       }
     }
     bool remove_if_existing(E dep) {
+      TrainingDataLocker::assert_can_add();
       if (_deps_dyn != nullptr) {
         return _deps_dyn->remove_if_existing(dep);
       }
       return false;
     }
     void clear() {
+      TrainingDataLocker::assert_can_add();
       if (_deps_dyn != nullptr)  {
         _deps_dyn->clear();
       }
     }
     void append(E dep) {
+      TrainingDataLocker::assert_can_add();
       if (_deps_dyn == nullptr) {
         _deps_dyn = new GrowableArrayCHeap<E, mtCompiler>(10);
       }
       _deps_dyn->append(dep);
     }
     bool contains(E dep) {
+      TrainingDataLocker::assert_locked();
       for (int i = 0; i < length(); i++) {
         if (dep == at(i)) {
           return true; // found
@@ -593,6 +604,7 @@ public:
       DepList<Record> _data;
     public:
       OptionalReturnType find(const Args&... args) {
+        TrainingDataLocker l;
         ArgumentsType a(args...);
         for (int i = 0; i < _data.length(); i++) {
           if (_data.at(i).arguments() == a) {
@@ -601,8 +613,11 @@ public:
         }
         return OptionalReturnType(false, ReturnType());
       }
-      bool append_if_missing(const ReturnType& result, const Args&... args) {
-        return _data.append_if_missing(Record(result, ArgumentsType(args...)));
+      void append_if_missing(const ReturnType& result, const Args&... args) {
+        TrainingDataLocker l;
+        if (l.can_add()) {
+          _data.append_if_missing(Record(result, ArgumentsType(args...)));
+        }
       }
 #if INCLUDE_CDS
       void remove_unshareable_info() { _data.remove_unshareable_info(); }
