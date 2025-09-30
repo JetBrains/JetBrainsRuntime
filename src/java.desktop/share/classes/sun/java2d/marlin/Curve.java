@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -185,12 +185,12 @@ final class Curve {
         roots[end] = 1.0d; // always check interval end points
 
         double t0 = 0.0d;
-        double ft0 = ROCsq(t0) - w2;
+        double ft0 = eliminateInf(ROCsq(t0) - w2);
         double t1, ft1;
 
         for (int i = off; i <= end; i++) {
             t1 = roots[i];
-            ft1 = ROCsq(t1) - w2;
+            ft1 = eliminateInf(ROCsq(t1) - w2);
             if (ft0 == 0.0d) {
                 roots[ret++] = t0;
             } else if (ft1 * ft0 < 0.0d) { // have opposite signs
@@ -206,9 +206,10 @@ final class Curve {
 
     private final static double MAX_ROC_SQ = 1e20;
 
-    private static double eliminateInf(final double x) {
+    private static double eliminateInf(final double x2) {
         // limit the value of x to avoid numerical problems (smaller step):
-        return (x >= MAX_ROC_SQ) ? MAX_ROC_SQ : x;
+        // must handle NaN and +Infinity:
+        return (x2 <= MAX_ROC_SQ) ? x2 : MAX_ROC_SQ;
     }
 
     // A slight modification of the false position algorithm on wikipedia.
@@ -266,14 +267,9 @@ final class Curve {
         final double dy = t * (t * day + dby) + cy;
         final double ddx = 2.0d * dax * t + dbx;
         final double ddy = 2.0d * day * t + dby;
-        final double dx2dy2 = dx * dx + dy * dy;
-        if (dx2dy2 == 0.0) {
-            return 0.0;
-        }
+        final double dx2dy2 = dx * dx + dy * dy; // positive
         final double dxddyddxdy = dx * ddy - dy * ddx;
-        if (dxddyddxdy == 0.0) {
-            return Double.POSITIVE_INFINITY;
-        }
-        return (dx2dy2 * dx2dy2 * dx2dy2) / (dxddyddxdy * dxddyddxdy); // may return +Infinity if dxddyddxdy = 0
+        // may return +Infinity if dxddyddxdy = 0 or NaN if 0/0:
+        return (dx2dy2 * dx2dy2 * dx2dy2) / (dxddyddxdy * dxddyddxdy); // both positive
     }
 }

@@ -72,13 +72,15 @@ public final class Bug8341381 {
 
     static final boolean SAVE_IMAGE = false;
 
+    static final boolean INTENSIVE = false;
+
     static final double DPI = 96;
     static final float STROKE_WIDTH = 15f;
 
-    /**
-     * delay is 1 frame at 60hz
-     */
+    // delay is 1 frame at 60hz
     static final int DELAY = 16;
+    // off-screen test step (1.0 by default)
+    static final double STEP = (INTENSIVE) ? 1.0 / 117 : 1.0;
 
     // stats:
     static int N_TEST = 0;
@@ -173,11 +175,10 @@ public final class Bug8341381 {
             });
             return;
         } else {
+            out.println("STEP: " + STEP);
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    final double step = 1.0;
-
                     final Context ctx = new Context();
                     final Dimension initialDim = ctx.bugDisplay.getSize(DPI);
 
@@ -188,8 +189,8 @@ public final class Bug8341381 {
                         ctx.paintImage();
 
                         // resize component:
-                        w -= step;
-                        h -= step;
+                        w -= STEP;
+                        h -= STEP;
 
                     } while (ctx.iterate());
                 }
