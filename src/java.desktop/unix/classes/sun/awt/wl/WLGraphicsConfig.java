@@ -38,35 +38,9 @@ import sun.java2d.wl.WLSurfaceSizeListener;
 
 public abstract class WLGraphicsConfig extends GraphicsConfiguration {
     private final WLGraphicsDevice device;
-    private final int x;
-    private final int y;
-    private final int xLogical; // logical (scaled) horizontal location; optional, could be zero
-    private final int yLogical; // logical (scaled) vertical location; optional, could be zero
-    private final int width;
-    private final int height;
-    private final int widthLogical; // logical (scaled) width; optional, could be zero
-    private final int heightLogical;// logical (scaled) height; optional, could be zero
-    private final int displayScale; // as reported by Wayland
-    private final double effectiveScale; // as enforced by Java
 
-    protected WLGraphicsConfig(WLGraphicsDevice device, int x, int y, int xLogical, int yLogical,
-                               int width, int height, int widthLogical, int heightLogical,
-                               int displayScale) {
+    protected WLGraphicsConfig(WLGraphicsDevice device) {
         this.device = device;
-        this.x = x;
-        this.y = y;
-        this.xLogical = xLogical;
-        this.yLogical = yLogical;
-        this.width = width;
-        this.height = height;
-        this.widthLogical = widthLogical;
-        this.heightLogical = heightLogical;
-        this.displayScale = displayScale;
-        this.effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(displayScale);
-    }
-
-    boolean differsFrom(int width, int height, int scale) {
-        return width != this.width || height != this.height || scale != this.displayScale;
     }
 
     @Override
@@ -84,7 +58,7 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public AffineTransform getDefaultTransform() {
-        double scale = effectiveScale;
+        double scale = device.getEffectiveScale();
         return AffineTransform.getScaleInstance(scale, scale);
     }
 
@@ -97,20 +71,18 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public Rectangle getBounds() {
-        return (widthLogical > 0 && heightLogical > 0)
-                ? new Rectangle(xLogical, yLogical, widthLogical, heightLogical)
-                : new Rectangle(x, y, width, height);
+        return device.getBounds();
     }
 
     public Rectangle getRealBounds() {
-        return new Rectangle(x, y, width, height);
+        return device.getRealBounds();
     }
 
     /**
      * Returns the preferred Wayland buffer scale for this display configuration.
      */
     public int getDisplayScale() {
-        return displayScale;
+        return device.getDisplayScale();
     }
 
     /**
@@ -118,7 +90,7 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
      * if overridden with the sun.java2d.uiScale system property.
      */
     public double getEffectiveScale() {
-       return effectiveScale;
+       return device.getEffectiveScale();
     }
 
     public abstract SurfaceType getSurfaceType();
@@ -127,6 +99,7 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public String toString() {
-        return String.format("%dx%d@(%d, %d) %dx scale", width, height, x, y, displayScale);
+        Rectangle bounds = getBounds();
+        return String.format("%dx%d@(%d, %d) %dx scale", bounds.width, bounds.height, bounds.x, bounds.y, getDisplayScale());
     }
 }
