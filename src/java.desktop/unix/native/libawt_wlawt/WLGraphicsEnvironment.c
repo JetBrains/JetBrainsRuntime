@@ -43,8 +43,6 @@ typedef struct WLOutput {
 
     int32_t x;
     int32_t y;
-    int32_t x_logical;
-    int32_t y_logical;
     int32_t width;
     int32_t height;
     int32_t width_logical;
@@ -59,6 +57,8 @@ typedef struct WLOutput {
     char *   make;
     char *   model;
     char *   name;
+
+    bool     offset_known; // whether x and y were set by xdg_output
 } WLOutput;
 
 static jclass geClass;
@@ -83,10 +83,13 @@ wl_output_geometry(
 {
     WLOutput *output = data;
 
-    // TODO: there's also a recommended, but unstable interface xdg_output;
-    //  we may want to switch to that one day.
-    output->x = x;
-    output->y = y;
+    if (!output->offset_known) {
+        // Ubuntu 22.04 has a bug that prevent Mutter from sending out updates to (x, y) in this
+        // geometry event. So we prefer to learn offset from xdg_output that will override
+        // (x, y) from this event.
+        output->x = x;
+        output->y = y;
+    }
     output->subpixel = subpixel;
     output->transform = transform;
     output->width_mm = physical_width;
@@ -161,8 +164,6 @@ NotifyOutputConfigured(WLOutput* output)
                            output->id,
                            output->x,
                            output->y,
-                           output->x_logical,
-                           output->y_logical,
                            output->width,
                            output->height,
                            output->width_logical,
@@ -173,6 +174,8 @@ NotifyOutputConfigured(WLOutput* output)
                            (jint)output->transform,
                            (jint)output->scale);
     JNU_CHECK_EXCEPTION(env);
+
+    output->offset_known = false;
 }
 
 static void
@@ -218,8 +221,12 @@ static void
 zxdg_output_logical_position(void *data, struct zxdg_output_v1 *zxdg_output_v1, int32_t x, int32_t y)
 {
     WLOutput * output = data;
-    output->x_logical = x;
-    output->y_logical = y;
+    output->x = x;
+    output->y = y;
+
+    // Prevent the geometry event from overriding these values with potentially incorrect ones;
+    // see wl_output_geometry().
+    output->offset_known = true;
 }
 
 static void
@@ -257,7 +264,7 @@ WLGraphicsEnvironment_initIDs
     CHECK_NULL_RETURN(
                     notifyOutputConfiguredMID = (*env)->GetMethodID(env, clazz,
                                                                     "notifyOutputConfigured",
-                                                                    "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IIIIIIIIIIIIII)V"),
+                                                                    "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IIIIIIIIIIII)V"),
                     JNI_FALSE);
     CHECK_NULL_RETURN(
                     notifyOutputDestroyedMID = (*env)->GetMethodID(env, clazz,
