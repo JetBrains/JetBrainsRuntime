@@ -2037,9 +2037,6 @@ const int ObjectAlignmentInBytes = 8;
           "modules.")                                                       \
           constraint(HotswapAgentConstraintFunc, AfterErgo)                 \
                                                                             \
-  product(bool, UseClassMetaspaceForAllClasses, false, DIAGNOSTIC,          \
-          "Use the class metaspace for all classes including "              \
-          "abstract and interface classes.")                                \
 
 // end of RUNTIME_FLAGS
 
