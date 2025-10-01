@@ -58,36 +58,16 @@ public class WLSMGraphicsConfig extends WLGraphicsConfig
     private final ColorModel colorModel;
     private final SurfaceType surfaceType;
 
-    private WLSMGraphicsConfig(WLGraphicsDevice device,
-                               int x,
-                               int y,
-                               int xLogical,
-                               int yLogical,
-                               int width,
-                               int height,
-                               int widthLogical,
-                               int heightLogical,
-                               int scale,
-                               boolean translucencyCapable) {
-        super(device, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale);
+    private WLSMGraphicsConfig(WLGraphicsDevice device, boolean translucencyCapable) {
+        super(device);
         this.translucencyCapable = translucencyCapable;
         this.colorModel = colorModelFor(translucencyCapable ? Transparency.TRANSLUCENT : Transparency.OPAQUE);
         // Note: GNOME Shell definitely expects alpha values to be pre-multiplied
         this.surfaceType = translucencyCapable ? SurfaceType.IntArgbPre : SurfaceType.IntRgb;
     }
 
-    public static WLSMGraphicsConfig getConfig(WLGraphicsDevice device,
-                                               int x,
-                                               int y,
-                                               int xLogical,
-                                               int yLogical,
-                                               int width,
-                                               int height,
-                                               int widthLogical,
-                                               int heightLogical,
-                                               int scale,
-                                               boolean translucencyCapable) {
-        var newConfig = new WLSMGraphicsConfig(device, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale, translucencyCapable);
+    public static WLSMGraphicsConfig getConfig(WLGraphicsDevice device, boolean translucencyCapable) {
+        var newConfig = new WLSMGraphicsConfig(device, translucencyCapable);
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("New shared memory config " + newConfig);
         }
