@@ -67,7 +67,7 @@ public class WLMainSurface extends WLSurface {
         // Called from native code whenever the corresponding wl_surface enters an output (monitor)
         synchronized (devices) {
             final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
-            final WLGraphicsDevice gd = ge.notifySurfaceEnteredOutput(peer, wlOutputID);
+            final WLGraphicsDevice gd = ge.deviceWithID(wlOutputID);
             if (gd != null) {
                 devices.add(gd);
             }
@@ -81,7 +81,7 @@ public class WLMainSurface extends WLSurface {
         // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
         synchronized (devices) {
             final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
-            final WLGraphicsDevice gd = ge.notifySurfaceLeftOutput(peer, wlOutputID);
+            final WLGraphicsDevice gd = ge.deviceWithID(wlOutputID);
             if (gd != null) {
                 devices.remove(gd);
             }
