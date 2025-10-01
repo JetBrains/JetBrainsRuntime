@@ -47,11 +47,8 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
 
     private final VKGraphicsConfig offscreenConfig;
 
-    public WLVKGraphicsConfig(VKGraphicsConfig offscreenConfig, WLGraphicsDevice device,
-                              int x, int y, int xLogical, int yLogical,
-                              int width, int height, int widthLogical, int heightLogical,
-                              int scale) {
-        super(device, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale);
+    public WLVKGraphicsConfig(VKGraphicsConfig offscreenConfig, WLGraphicsDevice device) {
+        super(device);
         this.offscreenConfig = offscreenConfig;
     }
 
@@ -65,11 +62,8 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
         return getEffectiveScale();
     }
 
-    public static WLVKGraphicsConfig getConfig(VKGraphicsConfig offscreenConfig, WLGraphicsDevice device,
-                                               int x, int y, int xLogical, int yLogical,
-                                               int width, int height, int widthLogical, int heightLogical,
-                                               int scale) {
-        return new WLVKGraphicsConfig(offscreenConfig, device, x, y, xLogical, yLogical, width, height, widthLogical, heightLogical, scale);
+    public static WLVKGraphicsConfig getConfig(VKGraphicsConfig offscreenConfig, WLGraphicsDevice device) {
+        return new WLVKGraphicsConfig(offscreenConfig, device);
     }
 
     @Override
