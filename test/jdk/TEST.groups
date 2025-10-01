@@ -1031,6 +1031,8 @@ jdk_awt_wayland = \
     -java/awt/MultipleGradientPaint \
     -java/awt/Multiscreen/MouseEventTest/MouseEventTest.java \
     -java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java \
+    -java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java \
+    -java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java \
     -java/awt/Paint/bug8024864.java \
     -java/awt/Paint/ButtonRepaint.java \
     -java/awt/Paint/CheckboxRepaint.java \
@@ -1083,6 +1085,7 @@ jdk_swing_wayland= \
     -javax/swing/DefaultButtonModel/DefaultButtonModelCrashTest.java \
     -javax/swing/dnd/7171812/bug7171812.java \
     -javax/swing/event/FocusEventCauseTest.java \
+    -javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java \
     -javax/swing/JButton/4368790/bug4368790.java \
     -javax/swing/JButton/8151303/PressedIconTest.java \
     -javax/swing/JButton/bug4234034.java \
