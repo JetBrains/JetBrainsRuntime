@@ -1614,7 +1614,7 @@ public class ForkJoinPool extends AbstractExecutorService {
                          tryTerminate(false, false))
                     break;                        // quiescent shutdown
                 else if (rc <= 0 && pred != 0 && phase == (int)c) {
-                    long nc = (UC_MASK & (c - TC_UNIT)) | (SP_MASK & pred);
+                    long nc = (RC_MASK & c) | (TC_MASK & (c - TC_UNIT)) | (SP_MASK & pred);
                     long d = keepAlive + System.currentTimeMillis();
                     LockSupport.parkUntil(this, d);
                     if (ctl == c &&               // drop on timeout if all idle
