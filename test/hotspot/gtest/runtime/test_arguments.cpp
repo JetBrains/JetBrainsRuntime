@@ -23,13 +23,14 @@
 
 #include "precompiled.hpp"
 #include "jvm.h"
-#include "unittest.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/flags/jvmFlag.hpp"
 #include "utilities/align.hpp"
 #include "utilities/globalDefinitions.hpp"
 
 #include <errno.h>
+
+#include "unittest.hpp"
 
 class ArgumentsTest : public ::testing::Test {
 public:
@@ -58,7 +59,7 @@ public:
 
 TEST_F(ArgumentsTest, atojulong) {
   char ullong_max[32];
-  int ret = jio_snprintf(ullong_max, sizeof(ullong_max), JULONG_FORMAT, ULLONG_MAX);
+  int ret = jio_snprintf(ullong_max, sizeof(ullong_max), "%llu", ULLONG_MAX);
   ASSERT_NE(-1, ret);
 
   julong value;
