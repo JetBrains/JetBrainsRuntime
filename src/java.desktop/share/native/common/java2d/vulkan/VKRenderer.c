@@ -178,10 +178,11 @@ static VKRenderingContext context = {
         .surface = NULL,
         .transform = VK_ID_TRANSFORM,
         .transformModCount = 1,
+        .javaColor = 0xFF000000,
+        .xorColor = 0,
         .color = {},
-        .renderColor = {},
-        .composite = ALPHA_COMPOSITE_SRC_OVER,
         .extraAlpha = 1.0f,
+        .composite = ALPHA_COMPOSITE_SRC_OVER,
         .clipModCount = 1,
         .clipRect = NO_CLIP,
         .clipSpanVertices = NULL
@@ -1347,7 +1348,7 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
     if (!VKRenderer_Validate(SHADER_COLOR,
                              fill ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
                                   : VK_PRIMITIVE_TOPOLOGY_LINE_LIST, ALPHA_TYPE_UNKNOWN)) return; // Not ready.
-    RGBA c = VKRenderer_GetRGBA(context.surface, context.renderColor);
+    RGBA c = VKRenderer_GetRGBA(context.surface, context.color);
     /*                   dx21
      *    (p1)---------(p2) |          (p1)------
      *     |\            \  |            |  \    dy21
@@ -1381,7 +1382,7 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
 void VKRenderer_FillSpans(jint spanCount, jint *spans) {
     if (spanCount == 0) return;
     if (!VKRenderer_Validate(SHADER_COLOR, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, ALPHA_TYPE_UNKNOWN)) return; // Not ready.
-    RGBA c = VKRenderer_GetRGBA(context.surface, context.renderColor);
+    RGBA c = VKRenderer_GetRGBA(context.surface, context.color);
 
     jfloat x1 = (float)*(spans++);
     jfloat y1 = (float)*(spans++);
@@ -1430,7 +1431,7 @@ void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
 
     VKMaskFillColorVertex* vs;
     VK_DRAW(vs, 1, 6);
-    RGBA c = VKRenderer_GetRGBA(context.surface, context.renderColor);
+    RGBA c = VKRenderer_GetRGBA(context.surface, context.color);
     int offset = (int) maskState.offset;
     VKMaskFillColorVertex p1 = {x, y, offset, maskscan, c};
     VKMaskFillColorVertex p2 = {x + w, y, offset, maskscan, c};
