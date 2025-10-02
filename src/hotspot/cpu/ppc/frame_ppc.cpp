@@ -114,9 +114,9 @@ bool frame::safe_for_sender(JavaThread *thread) {
       return false;
     }
 
-    abi_minframe* sender_abi = (abi_minframe*) fp;
+    volatile abi_minframe* sender_abi = (abi_minframe*) fp; // May get updated concurrently by deoptimization!
     intptr_t* sender_sp = (intptr_t*) fp;
-    address   sender_pc = (address) sender_abi->lr;;
+    address   sender_pc = (address) sender_abi->lr;
 
     // We must always be able to find a recognizable pc.
     CodeBlob* sender_blob = CodeCache::find_blob_unsafe(sender_pc);
@@ -129,9 +129,20 @@ bool frame::safe_for_sender(JavaThread *thread) {
       return false;
     }
 
+    intptr_t* unextended_sender_sp = is_interpreted_frame() ? (intptr_t*)get_ijava_state()->sender_sp : sender_sp;
+
     // It should be safe to construct the sender though it might not be valid.
 
-    frame sender(sender_sp, sender_pc);
+    // JDK-8339386 is different than the upstream version:
+    // The frame constructor doesn't check sanity of a deopt pc, but determines it.
+    // Other accessors for reading it are not available in 17u.
+    frame sender(sender_sp, sender_pc, unextended_sender_sp);
+    // If the sender is a deoptimized nmethod we need to check if the original pc is valid.
+    nmethod* sender_nm = sender_blob->as_nmethod_or_null();
+    if (sender_nm != nullptr && sender._deopt_state == is_deoptimized) {
+      address orig_pc = sender.pc();
+      if (!sender_nm->insts_contains_inclusive(orig_pc)) return false;
+    }
 
     // Do we have a valid fp?
     address sender_fp = (address) sender.fp();
