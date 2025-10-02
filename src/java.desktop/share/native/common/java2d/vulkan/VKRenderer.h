@@ -39,18 +39,15 @@ struct VKRenderingContext {
     VKTransform     transform;
     uint64_t        transformModCount;
 
-    // We keep this color separately from renderColor,
-    // because we need consistent state when switching between XOR and alpha
-    // composite modes. This variable holds last value set by SET_COLOR, while
-    // renderColor holds color, currently used for drawing, which may have
-    // also been provided by SET_XOR_COMPOSITE.
-    Color           color;
-    Color           renderColor;
-    VKCompositeMode composite;
+    jint  javaColor; // Color set by SET_COLOR
+    jint  xorColor;  // Color set by SET_XOR_COMPOSITE
+    Color color;    // javaColor combined with xorColor, decoded
 
     // Extra alpha is not used when painting with plain color,
-    // in this case color.a already includes it.
+    // in this case color.a already includes it. -1 for logic composites.
     float extraAlpha;
+    VKCompositeMode composite;
+
     uint64_t           clipModCount; // Used to track changes to the clip.
     VkRect2D           clipRect;
     ARRAY(VKIntVertex) clipSpanVertices;
