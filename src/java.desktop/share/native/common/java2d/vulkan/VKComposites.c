@@ -56,7 +56,7 @@ VKComposites VKComposites_Create() {
             .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                               VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT },
         {   .logicOpEnable = VK_TRUE,
-            .logicOp = VK_LOGIC_OP_XOR }, ALPHA_TYPE_PRE_MULTIPLIED });
+            .logicOp = VK_LOGIC_OP_XOR }, ALPHA_TYPE_STRAIGHT });
 
     //                NAME |      SRC_COLOR       |       DST_COLOR      |      SRC_ALPHA       |       DST_ALPHA     ||
     ALPHA_BLEND(     CLEAR , ZERO                 , ZERO                 , ZERO                 , ZERO                );
@@ -138,7 +138,6 @@ void VKComposites_AddState(VKComposites* composites, VKCompositeMode mode, VKCom
     state.blendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     state.blendState.pNext = NULL;
     state.blendState.attachmentCount = 1;
-    state.outAlphaType = ALPHA_TYPE_PRE_MULTIPLIED;
     MAP_AT(composites->map, (VKCompositeDescriptor) { mode, VK_FALSE }) = state;
 
     // Using pre-multiplied alpha is necessary for correct blending,
