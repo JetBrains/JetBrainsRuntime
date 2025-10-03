@@ -403,21 +403,49 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
     assert(device != NULL && pipelines != NULL);
     VkResult result;
 
-    // We want all our pipelines to have same push constant range to ensure common state is compatible between pipelines.
-    VkPushConstantRange pushConstantRange = {
+    // We want all our pipelines to have the same push constant range in vertex shader to ensure a common state is compatible between pipelines.
+    VkPushConstantRange pushConstantRanges[] = {{
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
             .offset = 0,
             .size = sizeof(VKTransform)
-    };
+    }, {
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .offset = sizeof(VKTransform),
+            .size = sizeof(VKCompositeConstants)
+    }};
+
+    // Color pipeline.
     VkPipelineLayoutCreateInfo createInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount = 0,
             .pushConstantRangeCount = 1,
-            .pPushConstantRanges = &pushConstantRange
+            .pPushConstantRanges = pushConstantRanges
     };
     result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->colorPipelineLayout);
     VK_IF_ERROR(result) return result;
 
+    // Mask fill pipeline.
+    VkDescriptorSetLayoutBinding maskBufferLayoutBinding = {
+            .binding = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .pImmutableSamplers = NULL
+    };
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = 1,
+            .pBindings = &maskBufferLayoutBinding
+    };
+    result = device->vkCreateDescriptorSetLayout(device->handle, &descriptorSetLayoutCreateInfo, NULL, &pipelines->maskFillDescriptorSetLayout);
+    VK_IF_ERROR(result) return result;
+
+    createInfo.setLayoutCount = 1;
+    createInfo.pSetLayouts = &pipelines->maskFillDescriptorSetLayout;
+    result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->maskFillPipelineLayout);
+    VK_IF_ERROR(result) return result;
+
+    // Texture pipeline.
     VkDescriptorSetLayoutBinding textureLayoutBinding = {
             .binding = 0,
             .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
@@ -437,29 +465,10 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
         pipelines->textureDescriptorSetLayout,
         pipelines->samplers.descriptorSetLayout
     };
-    createInfo.setLayoutCount = 2;
+    createInfo.setLayoutCount = SARRAY_COUNT_OF(textureDescriptorSetLayouts);
     createInfo.pSetLayouts = textureDescriptorSetLayouts;
+    createInfo.pushConstantRangeCount = SARRAY_COUNT_OF(pushConstantRanges);
     result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->texturePipelineLayout);
-    VK_IF_ERROR(result) return result;
-
-    VkDescriptorSetLayoutBinding maskBufferLayoutBinding = {
-            .binding = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .pImmutableSamplers = NULL
-    };
-    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .bindingCount = 1,
-            .pBindings = &maskBufferLayoutBinding
-    };
-    result = device->vkCreateDescriptorSetLayout(device->handle, &descriptorSetLayoutCreateInfo, NULL, &pipelines->maskFillDescriptorSetLayout);
-    VK_IF_ERROR(result) return result;
-
-    createInfo.setLayoutCount = 1;
-    createInfo.pSetLayouts = &pipelines->maskFillDescriptorSetLayout;
-    result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->maskFillPipelineLayout);
     VK_IF_ERROR(result) return result;
 
     return VK_SUCCESS;
