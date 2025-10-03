@@ -94,6 +94,11 @@ struct VKRenderPassContext {
 };
 
 typedef struct {
+    unsigned int xorColor;
+    float extraAlpha;
+} VKCompositeConstants;
+
+typedef struct {
     int x, y;
 } VKIntVertex;
 
