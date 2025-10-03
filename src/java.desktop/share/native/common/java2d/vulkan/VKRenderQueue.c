@@ -495,7 +495,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_SET_XOR_COMPOSITE:
             {
                 jint xorPixel = NEXT_INT(b);
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                J2dRlsTraceLn1(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_XOR_COMPOSITE(0x%08x)", xorPixel);
                 VKRenderer_GetContext()->xorColor   = xorPixel;
                 VKRenderer_GetContext()->composite  = LOGIC_COMPOSITE_XOR;
