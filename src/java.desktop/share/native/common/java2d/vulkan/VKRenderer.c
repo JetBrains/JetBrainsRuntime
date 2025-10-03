@@ -1471,6 +1471,14 @@ void VKRenderer_DrawImage(VKImage* image, VkFormat format,
     device->vkCmdBindDescriptorSets(surface->renderPass->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     device->renderer->pipelineContext->texturePipelineLayout, 0, 2, descriptorSets, 0, NULL);
 
+    // Push constants.
+    VKCompositeConstants composite = {
+        VKRenderer_GetContext()->xorColor,
+        VKRenderer_GetContext()->extraAlpha
+    };
+    device->vkCmdPushConstants(surface->renderPass->commandBuffer, device->renderer->pipelineContext->texturePipelineLayout,
+                               VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(VKTransform), sizeof(VKCompositeConstants), &composite);
+
     // Add vertices.
     VKTxVertex* vs;
     VK_DRAW(vs, 1, 4);
