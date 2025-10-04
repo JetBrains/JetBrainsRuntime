@@ -24,13 +24,14 @@
  */
 
 #include "sun_awt_wl_im_text_input_unstable_v3_WLInputMethodDescriptorZwpTextInputV3.h"
+#include "WLToolkit.h" // zwp_text_input_manager, zwp_text_input_manager_*
 
 #include <stdbool.h> // bool, true, false
 
 
 static bool checkIfTheImplementationIsAvailable()
 {
-    return false;
+    return (zwp_text_input_manager == NULL) ? false : true;
 }
 
 
