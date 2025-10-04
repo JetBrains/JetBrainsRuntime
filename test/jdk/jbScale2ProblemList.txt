@@ -10,7 +10,7 @@ java/awt/dnd/DragSourceGCrashTest.java JBR-6442 linux-all
 java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
 java/awt/dnd/DroppingVMHangTest.java JBR-9156 linux-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-6442 linux-all
-java/awt/dnd/InterJVMLinkTest.java JBR-9255 linux-6.15.8-100.fc41.x86_64
+java/awt/dnd/InterJVMLinkTest.java JBR-9255 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-6292 windows-all
 java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java JBR-6292 windows-all

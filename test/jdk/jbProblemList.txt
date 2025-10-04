@@ -169,7 +169,7 @@ java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MinimizeUndecoratedTest.java 8330731 linux-all
-java/awt/Frame/MinimumSizeTest.java JBR-8298 linux-6.8.0-1031-aws,linux-6.8.0-1032-aws,linux-6.8.0-1033-aws,linux-6.8.0-1035-aws,linux-6.8.0-1036-aws
+java/awt/Frame/MinimumSizeTest.java JBR-8298 linux-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880,JBR-6683 windows-all,linux-all
 java/awt/dnd/CustomDragCursorTest.java 8242805 macosx-all
@@ -351,7 +351,7 @@ java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java 80
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java 8253184 windows-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentWindowClick.java 8253184 windows-all
 java/awt/Window/setLocRelativeTo/SetLocationRelativeToTest.java 8253184 windows-all
-java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-7312,JBR-9192 macosx-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64
+java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-7312,JBR-9192 macosx-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-6463 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java 8222328 windows-all,linux-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/Shaped.java  8222328 windows-all,linux-all,macosx-all

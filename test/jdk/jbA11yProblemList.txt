@@ -47,6 +47,7 @@ javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java JBR-5210 windows-
 javax/swing/JComboBox/bug4996503.java JBR-7412 windows-x64
 javax/swing/JComboBox/EditableComboBoxPopupPos.java JBR-7383 windows-x64
 javax/swing/JComponent/7154030/bug7154030.java JBR-8384 windows-x64
+javax/swing/JFileChooser/4150029/bug4150029.java JBR-9419 windows-x64
 javax/swing/JFileChooser/4847375/bug4847375.java JBR-8855 windows-x64
 javax/swing/JFileChooser/4966171/bug4966171.java JBR-8855 windows-x64
 javax/swing/JFileChooser/DeserializedJFileChooser/DeserializedJFileChooserTest.java JBR-8855 windows-x64
@@ -71,6 +72,7 @@ jb/java/awt/Desktop/AboutHandlerTest.java           nobug macosx-all,linux-all,w
 jb/java/awt/Focus/ChainOfPopupsFocusTest.java JBR-8407 windows-x64
 jb/java/awt/Focus/FrameAfterPopup.java JBR-9161 windows-x64
 jb/java/awt/Focus/MaximizedCustomDecorationsTest.java JBR-9346 windows-x64
+jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-9426 windows-x64
 jb/java/awt/Focus/NewFrameAfterDialogTest.java JBR-7387 windows-x64
 
 # VoiceOver on MacOS
