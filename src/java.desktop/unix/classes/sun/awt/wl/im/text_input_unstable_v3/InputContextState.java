@@ -46,6 +46,37 @@ final class InputContextState {
     }
 
 
+    /** @return 0 if the input context hasn't entered a surface yet. Otherwise, the native pointer to the surface. */
+    public long getCurrentWlSurfacePtr() {
+        return currentWlSurfacePtr;
+    }
+
+
+    /**
+     * Notifies the InputContext that a set of changes has been sent and committed to the compositor
+     *   via a {@code zwp_text_input_v3::commit} request. The InputContext reacts by incrementing its commit counter.
+     *
+     * @param changes represents the set of changes that have been sent and followed by a 'commit' request.
+     *                Must not be {@code null} (but can be empty, which means only the 'commit' request has been issued).
+     *
+     * @return a new instance of {@link OutgoingBeingCommittedChanges} consisting of
+     *         the passed changes and the new value of the commit counter.
+     *
+     * @throws NullPointerException if {@code changes} is {@code null}.
+     *
+     * @see OutgoingChanges
+     */
+    public OutgoingBeingCommittedChanges syncWithCommittedOutgoingChanges(final OutgoingChanges changes) {
+        Objects.requireNonNull(changes, "changes");
+
+        // zwp_text_input_v3::done natively uses uint32_t for the serial,
+        //   so it can't get greater than 0xFFFFFFFF.
+        this.commitCounter = (this.commitCounter + 1) % 0x100000000L;
+
+        return new OutgoingBeingCommittedChanges(changes, this.commitCounter);
+    }
+
+
     /**
      * This class represents the extended state of an {@code InputContextState} that only exists when the context
      *   is enabled.
