@@ -33,6 +33,7 @@ import java.awt.font.TextAttribute;
 import java.awt.im.InputMethodHighlight;
 import java.awt.im.spi.InputMethod;
 import java.awt.im.spi.InputMethodDescriptor;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -52,7 +53,6 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
     //
     //     This class is directly used by WLToolkit to find and instantiate an InputMethod implementation.
 
-    // TODO: add logging everywhere
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.im.WLInputMethodMetaDescriptor");
 
 
@@ -85,27 +85,48 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
 
 
     public static WLInputMethodMetaDescriptor getInstanceIfAvailableOnPlatform() {
+        final WLInputMethodMetaDescriptor result;
+
         // For now there's only 1 possible implementation of IM,
         //   but if/when there are more, this method will have to choose one of them.
         //   It'll be good if the preferable engine can be chosen via a system property.
 
         final InputMethodDescriptor realImDescriptor = WLInputMethodDescriptorZwpTextInputV3.getInstanceIfAvailableOnPlatform();
         if (realImDescriptor != null) {
-            return new WLInputMethodMetaDescriptor(realImDescriptor);
+            result = new WLInputMethodMetaDescriptor(realImDescriptor);
+        } else {
+            result = null;
         }
-        return null;
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("getInstanceIfAvailableOnPlatform(): result={0}.", result);
+        }
+
+        return result;
     }
 
     /* java.awt.im.spi.InputMethodDescriptor methods section */
 
     @Override
     public Locale[] getAvailableLocales() throws AWTException {
-        return realImDescriptor.getAvailableLocales();
+        final Locale[] result = realImDescriptor.getAvailableLocales();
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("getAvailableLocales(): result={0}, this={1}.", Arrays.toString(result), this);
+        }
+
+        return result;
     }
 
     @Override
     public boolean hasDynamicLocaleList() {
-        return realImDescriptor.hasDynamicLocaleList();
+        final boolean result = realImDescriptor.hasDynamicLocaleList();
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("hasDynamicLocaleList(): result={0}, this={1}.", result, this);
+        }
+
+        return result;
     }
 
     @Override
@@ -120,7 +141,13 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
 
     @Override
     public InputMethod createInputMethod() throws Exception {
-        return realImDescriptor.createInputMethod();
+        final InputMethod result = realImDescriptor.createInputMethod();
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("createInputMethod(): result={0}, this={1}.", result, this);
+        }
+
+        return result;
     }
 
 
