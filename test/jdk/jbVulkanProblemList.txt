@@ -28,7 +28,8 @@ javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-9031 linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
 javax/swing/GroupLayout/8079640/bug8079640.java JBR-9100 linux-all
 javax/swing/JButton/JButtonPaintNPE/JButtonPaintNPE.java JBR-9100 linux-all
-javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-9341 linux-6.8.0-1036-aws,linux-6.14.9-arch1-1
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-9341 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.14.9-arch1-1
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-7928 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws
 javax/swing/JColorChooser/Test4177735.java JBR-9100 linux-all
 javax/swing/JComboBox/8019180/Test8019180.java JBR-9100 linux-all
 javax/swing/JComboBox/bug4276920.java JBR-9100 linux-all
