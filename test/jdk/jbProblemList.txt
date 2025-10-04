@@ -169,7 +169,7 @@ java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MinimizeUndecoratedTest.java 8330731 linux-all
-java/awt/Frame/MinimumSizeTest.java JBR-8298 linux-6.8.0-1031-aws,linux-6.8.0-1032-aws,linux-6.8.0-1033-aws,linux-6.8.0-1035-aws,linux-6.8.0-1036-aws
+java/awt/Frame/MinimumSizeTest.java JBR-8298 linux-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880,JBR-6683 windows-all,linux-all
 java/awt/dnd/CustomDragCursorTest.java 8242805 macosx-all
