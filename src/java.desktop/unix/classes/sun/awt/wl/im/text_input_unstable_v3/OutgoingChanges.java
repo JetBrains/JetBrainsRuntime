@@ -158,4 +158,9 @@ final class OutgoingChanges
 
         return this;
     }
+
+
+    public boolean isEmpty() {
+        return (getEnabledState() == null && getTextChangeCause() == null && getContentTypeHint() == null && getCursorRectangle() == null);
+    }
 }
