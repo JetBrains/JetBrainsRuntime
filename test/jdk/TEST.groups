@@ -1105,7 +1105,6 @@ jdk_awt_wayland = \
     -java/awt/Toolkit/DesktopProperties/rfe4758438.java \
     -java/awt/Toolkit/DynamicLayout/bug7172833.java \
     -java/awt/Toolkit/Headless/GetPrintJob/GetPrintJob.java \
-    -java/awt/Toolkit/Headless/WrappedToolkitTest/WrappedToolkitTest.sh \
     -java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java \
     -java/awt/Toolkit/RealSync/Test.java \
     -java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java \
