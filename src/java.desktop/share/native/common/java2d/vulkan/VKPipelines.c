@@ -145,11 +145,17 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     } ShaderStages;
     ShaderStages stages[count];
     typedef struct {
+        uint32_t inAlphaType, outAlphaType;
+    } SpecializationData;
+    const VkSpecializationMapEntry SPECIALIZATION_ENTRIES[] = {
+        { 0, 0, 4 },
+        { 1, 4, 4 }
+    };
+    typedef struct {
         VkSpecializationInfo info;
-        VkSpecializationMapEntry entries[2];
-        uint64_t data[1];
+        SpecializationData data;
     } Specialization;
-    Specialization specializations[count][2];
+    Specialization specializations[count];
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyStates[count];
     VkPipelineDepthStencilStateCreateInfo depthStencilStates[count];
     VkPipelineDynamicStateCreateInfo dynamicStates[count];
@@ -163,14 +169,15 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
         // - pStages (but stageCount is set to 2)
         // - pVertexInputState
         // - createInfo.layout
-        for (uint32_t j = 0; j < SARRAY_COUNT_OF(specializations[i]); j++) {
-            specializations[i][j].info = (VkSpecializationInfo) {
-                .mapEntryCount = 0,
-                .pMapEntries = specializations[i][j].entries,
-                .dataSize = 0,
-                .pData = specializations[i][j].data
-            };
-        }
+        specializations[i] = (Specialization) {
+            .info = {
+                .mapEntryCount = SARRAY_COUNT_OF(SPECIALIZATION_ENTRIES),
+                .pMapEntries = SPECIALIZATION_ENTRIES,
+                .dataSize = sizeof(SpecializationData),
+                .pData = &specializations[i].data
+            },
+            .data = { descriptors[i].inAlphaType, pipelineInfos[i].outAlphaType }
+        };
         inputAssemblyStates[i] = (VkPipelineInputAssemblyStateCreateInfo) {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
             .topology = descriptors[i].topology
@@ -234,8 +241,8 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     }
 
     // Setup input states.
-    MAKE_INPUT_STATE(COLOR, VKColorVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT);
-    MAKE_INPUT_STATE(MASK_FILL_COLOR, VKMaskFillColorVertex, VK_FORMAT_R32G32B32A32_SINT, VK_FORMAT_R32G32B32A32_SFLOAT);
+    MAKE_INPUT_STATE(PRIMITIVE, VKVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32_UINT);
+    MAKE_INPUT_STATE(MASK_FILL, VKMaskFillVertex, VK_FORMAT_R32G32B32A32_SINT, VK_FORMAT_R32_UINT);
     MAKE_INPUT_STATE(BLIT, VKTxVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32_SFLOAT);
     MAKE_INPUT_STATE(CLIP, VKIntVertex, VK_FORMAT_R32G32_SINT);
 
@@ -243,12 +250,12 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
         // Setup shader-specific pipeline parameters.
         switch (descriptors[i].shader) {
         case SHADER_COLOR:
-            createInfos[i].pVertexInputState = &INPUT_STATE_COLOR;
-            createInfos[i].layout = pipelineContext->colorPipelineLayout;
+            createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
+            createInfos[i].layout = pipelineContext->commonPipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->color_vert, shaders->color_frag }};
             break;
         case SHADER_MASK_FILL_COLOR:
-            createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL_COLOR;
+            createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
             createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->mask_fill_color_vert, shaders->mask_fill_color_frag }};
             break;
@@ -256,15 +263,6 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             createInfos[i].pVertexInputState = &INPUT_STATE_BLIT;
             createInfos[i].layout = pipelineContext->texturePipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->blit_vert, shaders->blit_frag }};
-            // Alpha conversion specialization.
-            uint32_t* spec = (uint32_t*) specializations[i][1].data;
-            spec[0] = descriptors[i].inAlphaType;
-            spec[1] = pipelineInfos[i].outAlphaType;
-            specializations[i][1].info.dataSize = 8;
-            specializations[i][1].entries[0] = (VkSpecializationMapEntry) { 0, 0, 4 };
-            specializations[i][1].entries[1] = (VkSpecializationMapEntry) { 1, 4, 4 };
-            specializations[i][1].info.mapEntryCount = 2;
-            stages[i].createInfos[1].pSpecializationInfo = &specializations[i][1].info;
             break;
         case SHADER_CLIP:
             createInfos[i].pVertexInputState = &INPUT_STATE_CLIP;
@@ -289,6 +287,9 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             break;
         default:
             VK_FATAL_ERROR("Cannot create pipeline, unknown shader requested!");
+        }
+        for (uint32_t j = 0; j < createInfos[i].stageCount; j++) {
+            stages[i].createInfos[j].pSpecializationInfo = &specializations[i].info;
         }
         assert(createInfos[i].pDynamicState->dynamicStateCount <= MAX_DYNAMIC_STATES);
         J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_CreatePipelines: stencilMode=%d, dstOpaque=%d, composite=%d, shader=%d, topology=%d",
@@ -403,7 +404,7 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
     assert(device != NULL && pipelines != NULL);
     VkResult result;
 
-    // We want all our pipelines to have the same push constant range in vertex shader to ensure a common state is compatible between pipelines.
+    // We want all our pipelines to have the same push constant ranges to ensure a common state is compatible between pipelines.
     VkPushConstantRange pushConstantRanges[] = {{
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
             .offset = 0,
@@ -414,14 +415,14 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
             .size = sizeof(VKCompositeConstants)
     }};
 
-    // Color pipeline.
+    // Common pipeline.
     VkPipelineLayoutCreateInfo createInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount = 0,
-            .pushConstantRangeCount = 1,
+            .pushConstantRangeCount = SARRAY_COUNT_OF(pushConstantRanges),
             .pPushConstantRanges = pushConstantRanges
     };
-    result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->colorPipelineLayout);
+    result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->commonPipelineLayout);
     VK_IF_ERROR(result) return result;
 
     // Mask fill pipeline.
@@ -467,7 +468,6 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
     };
     createInfo.setLayoutCount = SARRAY_COUNT_OF(textureDescriptorSetLayouts);
     createInfo.pSetLayouts = textureDescriptorSetLayouts;
-    createInfo.pushConstantRangeCount = SARRAY_COUNT_OF(pushConstantRanges);
     result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->texturePipelineLayout);
     VK_IF_ERROR(result) return result;
 
@@ -513,7 +513,7 @@ void VKPipelines_DestroyContext(VKPipelineContext* pipelineContext) {
 
     VKPipelines_DestroyShaders(device, pipelineContext->shaders);
 
-    device->vkDestroyPipelineLayout(device->handle, pipelineContext->colorPipelineLayout, NULL);
+    device->vkDestroyPipelineLayout(device->handle, pipelineContext->commonPipelineLayout, NULL);
     device->vkDestroyPipelineLayout(device->handle, pipelineContext->texturePipelineLayout, NULL);
     device->vkDestroyDescriptorSetLayout(device->handle, pipelineContext->textureDescriptorSetLayout, NULL);
     device->vkDestroyPipelineLayout(device->handle, pipelineContext->maskFillPipelineLayout, NULL);
