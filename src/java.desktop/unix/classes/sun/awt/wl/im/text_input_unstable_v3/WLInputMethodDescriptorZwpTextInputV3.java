@@ -57,18 +57,7 @@ public final class WLInputMethodDescriptorZwpTextInputV3 implements InputMethodD
     @Override
     public Locale[] getAvailableLocales() throws AWTException {
         ensureIsAvailableOnPlatform();
-
-        // This is how it's implemented in XToolkit.
-        //
-        // A better implementation would be obtaining all currently installed and enabled input sources
-        //   (like on GNOME Settings -> Keyboard -> Input Sources) and mapping them to locales.
-        // However, there seem no universal Wayland API for that, so it seems can't be implemented reliably.
-        //
-        // So leaving as is at the moment.
-        //
-        // TODO: research how to implement this better along with {@link #hasDynamicLocaleList}
-
-        return new Locale[]{ (Locale)initAndGetToolkitStartupLocale().clone() };
+        return getAvailableLocalesInternal();
     }
 
     @Override
@@ -123,6 +112,20 @@ public final class WLInputMethodDescriptorZwpTextInputV3 implements InputMethodD
 
     private volatile static Boolean isAvailableOnPlatform = null;
 
+
+    static Locale[] getAvailableLocalesInternal() {
+        // This is how it's implemented in XToolkit.
+        //
+        // A better implementation would be obtaining all currently installed and enabled input sources
+        //   (like on GNOME Settings -> Keyboard -> Input Sources) and mapping them to locales.
+        // However, there seem no universal Wayland API for that, so it seems can't be implemented reliably.
+        //
+        // So leaving as is at the moment.
+        //
+        // TODO: research how to implement this better along with {@link #hasDynamicLocaleList}
+
+        return new Locale[]{ (Locale)initAndGetToolkitStartupLocale().clone() };
+    }
 
     private static Locale initAndGetToolkitStartupLocale() {
         if (toolkitStartupLocale == null) {

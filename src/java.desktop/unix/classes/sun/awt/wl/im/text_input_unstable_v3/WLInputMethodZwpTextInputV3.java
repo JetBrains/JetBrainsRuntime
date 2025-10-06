@@ -57,26 +57,29 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     protected Component getClientComponent() {
-        // TODO: implement
         return super.getClientComponent();
     }
 
     @Override
     protected boolean haveActiveClient() {
-        // TODO: implement
         return super.haveActiveClient();
     }
 
     @Override
     protected void setAWTFocussedComponent(Component component) {
-        // TODO: implement
+        // NB: think carefully before utilizing this method - most likely what's really needed is
+        //     just getClientComponent.
+        //     There's a difference between the current client component and the focussed component -
+        //       check sun.awt.im.InputContext#currentClientComponent and #awtFocussedComponent respectively.
         super.setAWTFocussedComponent(component);
     }
 
     @Override
     protected boolean supportsBelowTheSpot() {
-        // TODO: implement
-        return super.supportsBelowTheSpot();
+        // It's about whether this IM supports the AWT property "java.awt.im.style" set to "below-the-spot".
+        // If we allowed it to take effect, AWT would be drawing its own preediting/composition window.
+        // The problem is that we can't ask the system to hide its own composition windows due to lack of such API.
+        return false;
     }
 
     @Override
@@ -94,8 +97,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void reconvert() {
-        // TODO: implement
-        super.reconvert();
+        throw new UnsupportedOperationException("The \"text-input-unstable-v3\" protocol doesn't support manual reconvertions");
     }
 
     @Override
@@ -106,8 +108,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public String getNativeInputMethodInfo() {
-        // TODO: implement
-        return "";
+        return wlInputContextState == null ? "" : "zwp_text_input_v3@0x" + Long.toHexString(wlInputContextState.nativeContextPtr);
     }
 
 
@@ -120,30 +121,45 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public boolean setLocale(Locale locale) {
-        // TODO: implement
+        // There's no API to switch between keyboard layouts/input methods/etc.,
+        //   so here's rather an artificial code pretending to switch between the locales claimed to be supported.
+        // In practice it does nothing, but allows keeping the implicit contract between
+        //   this method and InputMethodDescriptor#getAvailableLocales:
+        //   "[...] the list of locales returned is typically
+        //    a subset of the locales for which the corresponding input method's implementation of InputMethod.setLocale
+        //    returns true."
+        final Locale[] supportedLocales = WLInputMethodDescriptorZwpTextInputV3.getAvailableLocalesInternal();
+        if (supportedLocales != null) {
+            for (Locale supportedLocale : supportedLocales) {
+                if (supportedLocale.equals(locale)) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
     @Override
     public Locale getLocale() {
-        // TODO: implement
+        // There's no API for retrieving the current keyboard layout or the language of the input method
         return null;
     }
 
     @Override
     public void setCharacterSubsets(Character.Subset[] subsets) {
-        // TODO: implement
+        // The protocol doesn't support limiting the character set.
     }
 
     @Override
     public void setCompositionEnabled(boolean enable) {
-        // TODO: implement
+        // CInputMethod does the same
+        throw new UnsupportedOperationException("The \"text-input-unstable-v3\" protocol doesn't support adjusting the composition state.");
     }
 
     @Override
     public boolean isCompositionEnabled() {
-        // TODO: implement
-        return false;
+        // CInputMethod does the same
+        throw new UnsupportedOperationException("The \"text-input-unstable-v3\" protocol doesn't provide information about the current composition state.");
     }
 
     @Override
@@ -186,7 +202,14 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void hideWindows() {
-        // TODO: implement
+        // "The method is only called when the input method is inactive."
+        assert(this.awtActivationStatus != AWTActivationStatus.ACTIVATED);
+
+        // The protocol doesn't provide a separate method for hiding the IM window(s),
+        //   but this effect can be achieved by disabling the native context.
+        // Actually, it should have already been disabled (because the IM is inactive),
+        //   so disabling here is performed just in case.
+        wlDisableContextNow();
     }
 
     @Override
@@ -199,7 +222,16 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void endComposition() {
-        // TODO: implement
+        // Deleting the current preedit text
+        awtDispatchIMESafely(JavaPreeditString.EMPTY, JavaCommitString.EMPTY);
+
+        // Ending the composition on the native IM's side: the protocol doesn't provide a separate method for this,
+        //   but we can achieve this by disabling + enabling back the native context.
+
+        wlDisableContextNow();
+        if (wlContextHasToBeEnabled() && wlContextCanBeEnabledNow()) {
+            wlEnableContextNow();
+        }
     }
 
     @Override
@@ -214,7 +246,6 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public Object getControlObject() {
-        // TODO: implement
         return null;
     }
 
@@ -230,8 +261,17 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public String toString() {
-        // TODO: implement
-        return super.toString();
+        final StringBuilder sb = new StringBuilder(1024);
+        sb.append("WLInputMethodZwpTextInputV3@").append(System.identityHashCode(this));
+        sb.append('{');
+        sb.append("awtActivationStatus=").append(awtActivationStatus);
+        sb.append(", awtCurrentClientLatestDispatchedPreeditString=").append(awtCurrentClientLatestDispatchedPreeditString);
+        sb.append(", wlInputContextState=").append(wlInputContextState);
+        sb.append(", wlPendingChanges=").append(wlPendingChanges);
+        sb.append(", wlBeingCommittedChanges=").append(wlBeingCommittedChanges);
+        sb.append(", wlIncomingChanges=").append(wlIncomingChanges);
+        sb.append('}');
+        return sb.toString();
     }
 
 
@@ -962,7 +1002,15 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         wlInputContextState.setEnabledState(null);
 
         try {
-            // TODO: delete or commit the current preedit text in the current client component
+            // Erasing preedit text from the client component
+            if (awtActivationStatus == AWTActivationStatus.ACTIVATED) {
+                final boolean preeditIsEmpty =
+                    (awtCurrentClientLatestDispatchedPreeditString == null)
+                    || awtCurrentClientLatestDispatchedPreeditString.text().isEmpty();
+                if (!preeditIsEmpty) {
+                    awtDispatchIMESafely(JavaPreeditString.EMPTY, JavaCommitString.EMPTY);
+                }
+            }
         } catch (Exception err) {
             if (log.isLoggable(PlatformLogger.Level.WARNING)) {
                 log.warning("wlHandleContextGotDisabled", err);
