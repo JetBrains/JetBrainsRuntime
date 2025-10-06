@@ -39,9 +39,8 @@ struct VKRenderingContext {
     VKTransform     transform;
     uint64_t        transformModCount;
 
-    jint  javaColor; // Color set by SET_COLOR
-    jint  xorColor;  // Color set by SET_XOR_COMPOSITE
-    Color color;    // javaColor combined with xorColor, decoded
+    jint xorColor; // Color set by SET_XOR_COMPOSITE
+    jint color;    // Color set by SET_COLOR, combined with xorColor
 
     // Extra alpha is not used when painting with plain color,
     // in this case color.a already includes it. -1 for logic composites.
