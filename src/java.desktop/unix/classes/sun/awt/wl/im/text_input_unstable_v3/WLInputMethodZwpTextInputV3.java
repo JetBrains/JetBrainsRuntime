@@ -29,7 +29,10 @@ import sun.awt.im.InputMethodAdapter;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
+import java.awt.event.InputMethodEvent;
+import java.awt.font.TextHitInfo;
 import java.awt.im.spi.InputMethodContext;
+import java.text.AttributedString;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
@@ -150,6 +153,11 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         this.awtActivationStatus = AWTActivationStatus.ACTIVATED;
         this.awtNativeImIsExplicitlyDisabled = false;
 
+        if (getClientComponent() != this.awtPreviousClientComponent) {
+            // The if is required to make sure we don't accidentally lose a still actual preedit string
+            this.awtCurrentClientLatestDispatchedPreeditString = null;
+        }
+
         // It may be wrong to invoke this only if awtActivationStatus was DEACTIVATED.
         // E.g. if there was a call chain [activate -> disableInputMethod -> activate].
         // So let's enable the context here regardless of the previous value of awtActivationStatus.
@@ -162,6 +170,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     public void deactivate(boolean isTemporary) {
         final boolean wasActive = (this.awtActivationStatus == AWTActivationStatus.ACTIVATED);
         this.awtActivationStatus = isTemporary ? AWTActivationStatus.DEACTIVATED_TEMPORARILY : AWTActivationStatus.DEACTIVATED;
+        this.awtPreviousClientComponent = getClientComponent();
 
         if (wasActive) {
             wlDisableContextNow();
@@ -190,6 +199,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     public void dispose() {
         awtActivationStatus = AWTActivationStatus.DEACTIVATED;
         awtNativeImIsExplicitlyDisabled = false;
+        awtCurrentClientLatestDispatchedPreeditString = null;
+        awtPreviousClientComponent = null;
         wlDisposeContext();
     }
 
@@ -253,6 +264,16 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     private boolean awtNativeImIsExplicitlyDisabled = false;
     /** {@link #setInputMethodContext(InputMethodContext)} */
     private InputMethodContext awtImContext = null;
+    /**
+     * {@link #awtDispatchIMESafely(JavaPreeditString, JavaCommitString)}.
+     * {@code null} if no preedit strings have been dispatched since latest {@link #activate}.
+     */
+    private JavaPreeditString awtCurrentClientLatestDispatchedPreeditString = null;
+    /**
+     * Holds the value of {@link #getClientComponent()} since the latest {@link #deactivate(boolean)}
+     * It allows to determine whether the focused component has actually changed between the latest deactivate-activate.
+     */
+    private Component awtPreviousClientComponent = null;
 
 
     /* AWT-side methods section */
@@ -275,6 +296,123 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
         // TODO: real implementation
         return new Rectangle(0, 0, 1, 1);
+    }
+
+
+    /** @return {@code true} if a new InputMethodEvent has been successfully made and dispatched, {@code false} otherwise. */
+    private boolean awtDispatchIMESafely(JavaPreeditString preeditString, JavaCommitString commitString) {
+        assert(preeditString != null);
+        assert(commitString != null);
+
+        try {
+            if (awtActivationStatus != AWTActivationStatus.ACTIVATED) {
+                // Supposing an input method shouldn't interact with UI when not activated.
+                return false;
+            }
+
+            final var clientComponent = getClientComponent();
+            if (clientComponent == null) {
+                // Nowhere to dispatch.
+                return false;
+            }
+
+            // Check out https://docs.oracle.com/javase/8/docs/technotes/guides/imf/spec.html#client-somponents
+            //   for the info about "active" and "passive" clients.
+            final var haveActiveClient = clientComponent.getInputMethodRequests() != null;
+
+            // Don't dispatch preedit (a.k.a. composed) text to passive clients.
+            //
+            // The general AWT's IM subsystem creates and shows its own separate window to display
+            //   preedit text if it tries to dispatch to a passive client.
+            // This is done on the assumption that passive clients can't properly handle and/or display preedit text.
+            // See sun.awt.im.InputMethodContext#dispatchInputMethodEvent for more info.
+            //
+            // In our case, when such a window appears, it steals the focus from the system IM popup, thus immediately cancelling
+            //   the preediting session (at least on Wayland iBus).
+            //   Luckily, AWT doesn't display the preediting window if the dispatched preedit text
+            //   is empty (i.e. like there's nothing to display in that window).
+            //
+            // The other potential way to fix this might be to somehow fix sun.awt.im.CompositionArea so that it doesn't
+            //   steal the focus when appears, but even if that worked, it could break smth on other platforms.
+            if (!haveActiveClient) {
+                if (preeditString.cursorBeginCodeUnit() == -1 && preeditString.cursorEndCodeUnit() == -1) {
+                    preeditString = JavaPreeditString.EMPTY_NO_CARET;
+                } else {
+                    preeditString = JavaPreeditString.EMPTY;
+                }
+            }
+
+            final var clientCurrentPreeditText = Objects.requireNonNullElse(this.awtCurrentClientLatestDispatchedPreeditString, JavaPreeditString.EMPTY);
+            if ( commitString.equals(JavaCommitString.EMPTY) &&
+                 preeditString.equals(JavaPreeditString.EMPTY) &&
+                 clientCurrentPreeditText.equals(JavaPreeditString.EMPTY) )
+            {
+                // We suppose it doesn't really make sense to send an InputMethodEvent with no text if
+                //   the current client component has no preedit text.
+                // Moreover, it makes IDEA to show the quick search fields whenever the parent components get focused
+                //   (they're supposed to be shown only when the parent components receive some non-empty text).
+                //   It's purely a bug on IDEA side, but it seems to be easier to work around it here.
+                //   A similar issue: https://youtrack.jetbrains.com/issue/IJPL-148817 .
+                // NB: we shouldn't extend this logic to the cases when clientCurrentPreeditText is not empty
+                //     because in those cases the differences may lie not only in the preedit text, but also in the caret position,
+                //     text attributes and god knows what else.
+                return false;
+            }
+
+            // Theoretically, we might be interested in the following attributes:
+            //   * java.text.AttributedCharacterIterator.Attribute#LANGUAGE             (the language of the text)
+            //   * java.text.AttributedCharacterIterator.Attribute#INPUT_METHOD_SEGMENT (the words inside the text)
+            //   * java.text.AttributedCharacterIterator.Attribute#READING              (how to properly read the text)
+            //   * java.awt.font.TextAttribute#INPUT_METHOD_HIGHLIGHT                   (whether and how to highlight the text)
+            //   * java.awt.font.TextAttribute#INPUT_METHOD_UNDERLINE                   (whether and how to underline the text)
+            //
+            // But the protocol doesn't provide sufficient information to support anything but the last 2 ones.
+            final var imeText = new AttributedString(commitString.text() + preeditString.text());
+            final TextHitInfo imeCaret;
+            if (preeditString.cursorBeginCodeUnit() == -1 && preeditString.cursorEndCodeUnit() == -1) {
+                // "The parameters cursor_begin and cursor_end are counted in bytes relative to the beginning of the submitted text buffer.
+                //  Cursor should be hidden when both are equal to -1."
+                imeCaret = null;
+            } else {
+                final int highlightBeginCodeUnitIndex =
+                    Math.max(0, Math.min(preeditString.cursorBeginCodeUnit(), preeditString.text().length()));
+
+                final int highlightEndCodeUnitIndex =
+                    Math.max(0, Math.min(preeditString.cursorEndCodeUnit(), preeditString.text().length()));
+
+                // Mutter doesn't seem to send preedit_string events with highlighting
+                //   (i.e. they never have cursor_begin != cursor_end) at all.
+                // KWin, however, always uses highlighting. Looking at how it changes when we navigate within the
+                //   preedit text with arrow keys, it becomes clear KWin expects the caret to be put at the end
+                //   of the highlighting and not in the beginning.
+                // That's why highlightEndCodeUnitIndex is used here and not highlightBeginCodeUnitIndex.
+                imeCaret = TextHitInfo.beforeOffset(highlightEndCodeUnitIndex);
+
+                if (highlightEndCodeUnitIndex != highlightBeginCodeUnitIndex) {
+                    // cursor_begin and cursor_end
+                    //  "could be represented by the client as a line if both values are the same,
+                    //   or as a text highlight otherwise"
+
+                    // TODO: support highlighting
+                }
+            }
+
+            this.awtImContext.dispatchInputMethodEvent(
+                InputMethodEvent.INPUT_METHOD_TEXT_CHANGED,
+                imeText.getIterator(),
+                commitString.text().length(),
+                imeCaret,
+                // no recommendation for a visible position within the current preedit text
+                null
+            );
+            this.awtCurrentClientLatestDispatchedPreeditString = preeditString;
+
+            return true;
+        } catch (Exception err) {
+            log.severe("Error occurred during constructing and dispatching a new InputMethodEvent", err);
+        }
+
+        return false;
     }
 
 
@@ -765,11 +903,62 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     private void zwp_text_input_v3_onDone(long doneSerial) {
         assert EventQueue.isDispatchThread();
 
-        if (wlContextHasToBeEnabled() && wlContextCanBeEnabledNow()) {
-            wlEnableContextNow();
-        }
-        if (wlPendingChanges != null && wlInputContextState.getCurrentWlSurfacePtr() != 0 && wlCanSendChangesNow()) {
-            wlSendPendingChangesNow();
+        try {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("zwp_text_input_v3_onDone(doneSerial={0}): this={1}.", doneSerial, this);
+            }
+
+            final var incomingChangesToApply = this.wlIncomingChanges;
+            this.wlIncomingChanges = null;
+
+            if (doneSerial == wlInputContextState.getCommitCounter()) {
+                wlSyncWithAppliedOutgoingChanges();
+            }
+
+            // Processing preedit_string and commit_string events
+
+            // "Values set with this event [...]
+            //  must be applied and reset to initial on the next zwp_text_input_v3.done event.
+            //  The initial value of text is an empty string, and cursor_begin, cursor_end and cursor_hidden are all 0."
+            final JavaPreeditString preeditStringToApply;
+            // "Values set with this event [...]
+            //  must be applied and reset to initial on the next zwp_text_input_v3.done event.
+            //  The initial value of text is an empty string."
+            final JavaCommitString commitStringToApply;
+
+            if (incomingChangesToApply == null) {
+                preeditStringToApply = PropertiesInitials.PREEDIT_STRING;
+                commitStringToApply = PropertiesInitials.COMMIT_STRING;
+            } else {
+                preeditStringToApply = Objects.requireNonNullElse(incomingChangesToApply.getPreeditString(), PropertiesInitials.PREEDIT_STRING);
+                commitStringToApply = Objects.requireNonNullElse(incomingChangesToApply.getCommitString(), PropertiesInitials.COMMIT_STRING);
+            }
+
+            this.wlInputContextState.syncWithAppliedIncomingChanges(preeditStringToApply, commitStringToApply, doneSerial);
+
+            // From the zwp_text_input_v3::done event specification:
+            //   "The application must proceed by evaluating the changes in the following order:
+            //      1. Replace existing preedit string with the cursor.
+            //      2. Delete requested surrounding text.
+            //      3. Insert commit string with the cursor at its end.
+            //      4. Calculate surrounding text to send.
+            //      5. Insert new preedit text in cursor position.
+            //      6. Place cursor inside preedit text."
+            //
+            // Steps 2, 4 are currently not supported (see zwp_text_input_v3_onDeleteSurroundingText for more info),
+            //   and all the other steps seem feasible via just a single properly constructed InputMethodEvent.
+            awtDispatchIMESafely(preeditStringToApply, commitStringToApply);
+
+            // Sending pending changes (if any)
+
+            if (wlContextHasToBeEnabled() && wlContextCanBeEnabledNow()) {
+                wlEnableContextNow();
+            }
+            if (wlPendingChanges != null && wlInputContextState.getCurrentWlSurfacePtr() != 0 && wlCanSendChangesNow()) {
+                wlSendPendingChangesNow();
+            }
+        } catch (Exception err) {
+            log.severe("Failed to handle a zwp_text_input_v3::done event (doneSerial=" + doneSerial + ").", err);
         }
     }
 }
