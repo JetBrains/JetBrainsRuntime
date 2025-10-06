@@ -1,14 +1,12 @@
 #version 450
-
-layout(push_constant) uniform PushConstants {
-    mat2x3 transform;
-} push;
+#extension GL_GOOGLE_include_directive: require
+#include "common.glsl"
 
 layout(location = 0) in  vec2 in_Position;
 layout(location = 1) in  vec2 in_TexCoord;
 layout(location = 0) out vec2 out_TexCoord;
 
 void main() {
-    gl_Position = vec4(vec3(in_Position, 1.0)*push.transform, 0.0, 1.0);
+    gl_Position = transformToDeviceSpace(in_Position);
     out_TexCoord = in_TexCoord;
 }
