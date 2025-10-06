@@ -31,6 +31,7 @@ import sun.util.logging.PlatformLogger;
 import java.awt.*;
 import java.awt.im.spi.InputMethodContext;
 import java.util.Locale;
+import java.util.Objects;
 
 
 final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
@@ -72,7 +73,9 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     protected void stopListening() {
-        // TODO: implement
+        this.awtNativeImIsExplicitlyDisabled = true;
+        wlDisableContextNow();
+
         super.stopListening();
     }
 
@@ -90,7 +93,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void disableInputMethod() {
-        // TODO: implement
+        this.awtNativeImIsExplicitlyDisabled = true;
+        wlDisableContextNow();
     }
 
     @Override
@@ -104,7 +108,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void setInputMethodContext(InputMethodContext context) {
-        // TODO: implement
+        this.awtImContext = context;
     }
 
     @Override
@@ -142,12 +146,25 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void activate() {
-        // TODO: implement
+        this.awtActivationStatus = AWTActivationStatus.ACTIVATED;
+        this.awtNativeImIsExplicitlyDisabled = false;
+
+        // It may be wrong to invoke this only if awtActivationStatus was DEACTIVATED.
+        // E.g. if there was a call chain [activate -> disableInputMethod -> activate].
+        // So let's enable the context here regardless of the previous value of awtActivationStatus.
+        if (wlContextHasToBeEnabled() && wlContextCanBeEnabledNow()) {
+            wlEnableContextNow();
+        }
     }
 
     @Override
     public void deactivate(boolean isTemporary) {
-        // TODO: implement
+        final boolean wasActive = (this.awtActivationStatus == AWTActivationStatus.ACTIVATED);
+        this.awtActivationStatus = isTemporary ? AWTActivationStatus.DEACTIVATED_TEMPORARILY : AWTActivationStatus.DEACTIVATED;
+
+        if (wasActive) {
+            wlDisableContextNow();
+        }
     }
 
     @Override
@@ -157,7 +174,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void removeNotify() {
-        // TODO: implement
+        // "The method is only called when the input method is inactive."
+        assert(this.awtActivationStatus != AWTActivationStatus.ACTIVATED);
+
+        wlDisableContextNow();
     }
 
     @Override
@@ -167,6 +187,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void dispose() {
+        awtActivationStatus = AWTActivationStatus.DEACTIVATED;
+        awtNativeImIsExplicitlyDisabled = false;
         wlDisposeContext();
     }
 
@@ -209,6 +231,49 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     static {
         initIDs();
+    }
+
+
+    /* AWT-side state section */
+
+    // The fields in this section are prefixed with "awt" and aren't supposed to be modified by
+    //   Wayland-related methods (whose names are prefixed with "wl" or "zwp_text_input_v3_"),
+    //   though can be read by them.
+
+    private enum AWTActivationStatus {
+        ACTIVATED,               // #activate()
+        DEACTIVATED,             // #deactivate(false)
+        DEACTIVATED_TEMPORARILY  // #deactivate(true)
+    }
+
+    /** {@link #activate()} / {@link #deactivate(boolean)} */
+    private AWTActivationStatus awtActivationStatus = AWTActivationStatus.DEACTIVATED;
+    /** {@link #stopListening()}, {@link #disableInputMethod()} / {@link #activate()} */
+    private boolean awtNativeImIsExplicitlyDisabled = false;
+    /** {@link #setInputMethodContext(InputMethodContext)} */
+    private InputMethodContext awtImContext = null;
+
+
+    /* AWT-side methods section */
+
+    private static void awtFillWlContentTypeOf(Component component, OutgoingChanges out) {
+        assert(component != null);
+        assert(out != null);
+
+        assert(EventQueue.isDispatchThread());
+
+        // TODO: there's no dedicated AWT/Swing API for that, but we can make a few guesses, e.g.
+        //       (component instanceof JPasswordField) ? ContentPurpose.PASSWORD
+        out.setContentType(ContentHint.NONE.intMask, ContentPurpose.NORMAL);
+    }
+
+    private static Rectangle awtGetWlCursorRectangleOf(Component component) {
+        assert(component != null);
+
+        assert(EventQueue.isDispatchThread());
+
+        // TODO: real implementation
+        return new Rectangle(0, 0, 1, 1);
     }
 
 
@@ -304,7 +369,12 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
         if (changesToSend != null) {
             if (Boolean.TRUE.equals(changesToSend.getEnabledState())) {
-                // TODO: check whether this WLInputMethod is actually activated
+                if (this.awtActivationStatus != AWTActivationStatus.ACTIVATED) {
+                    throw new IllegalStateException("Attempt to enable an input context while the owning WLInputMethodZwpTextInputV3 is not active. WLInputMethodZwpTextInputV3.awtActivationStatus=" + this.awtActivationStatus);
+                }
+                if (this.awtNativeImIsExplicitlyDisabled) {
+                    throw new IllegalStateException("Attempt to enable an input context while it must stay disabled.");
+                }
                 zwp_text_input_v3_enable(wlInputContextState.nativeContextPtr);
             }
 
@@ -352,6 +422,207 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     }
 
 
+    private boolean wlContextHasToBeEnabled() {
+        return awtActivationStatus == AWTActivationStatus.ACTIVATED &&
+               !awtNativeImIsExplicitlyDisabled &&
+               !wlInputContextState.isEnabled();
+    }
+
+    private boolean wlContextCanBeEnabledNow() {
+        return awtActivationStatus == AWTActivationStatus.ACTIVATED &&
+               !awtNativeImIsExplicitlyDisabled &&
+               wlInputContextState.getCurrentWlSurfacePtr() != 0;
+    }
+
+    private void wlEnableContextNow() {
+        // The method's implementation is based on the following assumptions:
+        //   1. Enabling an input context from the "text-input-unstable-v3" protocol's point of view can be done at any moment,
+        //      even when there are committed changes, which the compositor hasn't applied yet,
+        //      i.e. even when (this.wlBeingCommittedChanges != null).
+        //      The protocol specification doesn't seem to contradict this assumption, and otherwise it would significantly
+        //      complicate the machinery of scheduling changes in general and enabling, disabling routines in particular.
+        //   2. Committed 'enable' request comes into effect immediately and doesn't hinder any following requests to be sent
+        //      right after, even though a corresponding 'done' event hasn't been received.
+        //      This assumption has been made because the protocol doesn't specify whether compositors should
+        //      respond to committed 'enable' requests with a 'done' event, and, in practice,
+        //      Mutter responds with a 'done' event while KWin - doesn't.
+        //      The corresponding ticket: https://gitlab.freedesktop.org/wayland/wayland-protocols/-/issues/250.
+
+        if (awtActivationStatus != AWTActivationStatus.ACTIVATED) {
+            throw new IllegalStateException("Attempt to enable an input context while the owning InputMethod is not active. InputMethod=" + this);
+        }
+        if (awtNativeImIsExplicitlyDisabled) {
+            throw new IllegalStateException("Attempt to enable an input context while it must stay disabled");
+        }
+        if (wlInputContextState.getCurrentWlSurfacePtr() == 0) {
+            throw new IllegalStateException("Attempt to enable an input context which hasn't entered any surface");
+        }
+
+        assert(wlContextCanBeEnabledNow());
+
+        // This way we guarantee the context won't accidentally get disabled because such a change has been scheduled earlier.
+        // Anyway we consider any previously scheduled changes outdated because an 'enable' request is supposed to
+        //   reset the state of the input context.
+        wlPendingChanges = null;
+
+        if (wlInputContextState.isEnabled()) {
+            if (wlBeingCommittedChanges == null) {
+                // We can skip sending a new 'enable' request only if there's currently nothing being committed.
+                // This way we can guarantee the context won't accidentally get disabled afterward or
+                //   be keeping outdated state.
+
+                return;
+            }
+        }
+
+        final var changeSet =
+            new OutgoingChanges()
+              .setEnabledState(true)
+              // Just to signal the compositor we're supporting set_text_change_cause API
+              .setTextChangeCause(PropertiesInitials.TEXT_CHANGE_CAUSE)
+              // It's really important not to send null for the cursor rectangle
+              .setCursorRectangle(Objects.requireNonNull(awtGetWlCursorRectangleOf(getClientComponent()),
+                                                         "awtGetWlCursorRectangleOf(getClientComponent())"));
+        awtFillWlContentTypeOf(getClientComponent(), changeSet);
+
+        wlScheduleContextNewChanges(changeSet);
+        assert(wlPendingChanges != null);
+
+        // Pretending there are no committed, but not applied yet changes, so that wlCanSendChangesNow() is true.
+        // We can do that because the assumption #1 and because any previously committed changes get lost when a
+        // 'enable' request is committed:
+        //   "This request resets all state associated with previous enable, disable,
+        //    set_surrounding_text, set_text_change_cause, set_content_type, and set_cursor_rectangle requests [...]"
+        wlBeingCommittedChanges = null;
+
+        assert(wlCanSendChangesNow());
+        wlSendPendingChangesNow();
+
+        // See the assumption #2 above.
+        wlSyncWithAppliedOutgoingChanges();
+    }
+
+    private void wlDisableContextNow() {
+        // The method's implementation is based on the following assumptions:
+        //   1. Disabling an input context from the "text-input-unstable-v3" protocol's point of view can be done at any moment,
+        //      even when there are committed changes, which the compositor hasn't applied yet,
+        //      i.e. even when (this.wlBeingCommittedChanges != null).
+        //      The protocol specification doesn't seem to contradict this assumption, and otherwise it would significantly
+        //      complicate the machinery of scheduling changes in general and enabling, disabling routines in particular.
+        //   2. Committed 'disable' request comes into effect immediately and doesn't hinder any following requests to be sent
+        //      right after, even though a corresponding 'done' event hasn't been received.
+        //      This assumption has been made because the protocol doesn't specify whether compositors should
+        //      respond to committed 'disable' requests with a 'done' event, and, in practice, neither Mutter nor KWin do that.
+        //      The corresponding ticket: https://gitlab.freedesktop.org/wayland/wayland-protocols/-/issues/250.
+
+        // This way we guarantee the context won't accidentally get enabled because such a change has been scheduled earlier.
+        // Anyway we consider any previously scheduled changes outdated because a 'disable' request is supposed to
+        //   reset the state of the input context.
+        wlPendingChanges = null;
+
+        if (wlInputContextState.getCurrentWlSurfacePtr() == 0) {
+            // In this case it doesn't make sense to send any requests:
+            //   "After leave event, compositor must ignore requests from any text input instances until next enter event."
+            // The context is supposed to have been automatically implicitly disabled.
+
+            // Any being committed changes are meaningless, so we can safely "forget" about them.
+            wlBeingCommittedChanges = null;
+
+            if (wlInputContextState.isEnabled()) {
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.warning("wlDisableContextNow(): the input context is marked as enabled although it's not focused on any surface. Explicitly marking it as disabled. wlInputContextState={0}", wlInputContextState);
+                }
+                wlHandleContextGotDisabled();
+            }
+
+            return;
+        }
+
+        if (!wlInputContextState.isEnabled()) {
+            if (wlBeingCommittedChanges == null) {
+                // We can skip sending a new 'disable' request only if there's currently nothing being committed.
+                // This way we can guarantee the context won't accidentally get enabled afterward as a result of
+                //   those changes' processing.
+
+                return;
+            }
+        }
+
+        assert(wlInputContextState.getCurrentWlSurfacePtr() != 0);
+
+        wlScheduleContextNewChanges(new OutgoingChanges().setEnabledState(false));
+        assert(wlPendingChanges != null);
+
+        // Pretending there are no committed, but not applied yet changes, so that wlCanSendChangesNow() is true.
+        // We can do that because the assumption #1 and because any previously committed changes get lost when a
+        // 'disable' request is committed:
+        //   "After an enter event or disable request all state information is invalidated and needs to be resent by the client."
+        wlBeingCommittedChanges = null;
+
+        assert(wlCanSendChangesNow());
+        wlSendPendingChangesNow();
+
+        // See the assumption #2 above.
+        wlSyncWithAppliedOutgoingChanges();
+    }
+
+    private void wlHandleContextGotDisabled() {
+        wlInputContextState.setEnabledState(null);
+
+        try {
+            // TODO: delete or commit the current preedit text in the current client component
+        } catch (Exception err) {
+            if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                log.warning("wlHandleContextGotDisabled", err);
+            }
+        }
+    }
+
+
+    private void wlSyncWithAppliedOutgoingChanges() {
+        final var changesToSyncWith = wlBeingCommittedChanges;
+        wlBeingCommittedChanges = null;
+
+        if (changesToSyncWith == null) {
+            return;
+        }
+
+        if (Boolean.FALSE.equals(changesToSyncWith.changeSet().getEnabledState())) {
+            wlHandleContextGotDisabled();
+        } else if (Boolean.TRUE.equals(changesToSyncWith.changeSet().getEnabledState())) {
+            // 'enable' request
+            // "resets all state associated with previous enable, disable,
+            //  set_surrounding_text, set_text_change_cause, set_content_type, and set_cursor_rectangle requests [...]"
+            // So here we just convert the changeSet to a new StateOfEnabled and apply it.
+
+            wlInputContextState.setEnabledState(new InputContextState.StateOfEnabled(
+                Objects.requireNonNullElse(changesToSyncWith.changeSet().getTextChangeCause(), PropertiesInitials.TEXT_CHANGE_CAUSE),
+                Objects.requireNonNullElse(changesToSyncWith.changeSet().getContentTypeHint(), PropertiesInitials.CONTENT_HINT),
+                Objects.requireNonNullElse(changesToSyncWith.changeSet().getContentTypePurpose(), PropertiesInitials.CONTENT_PURPOSE),
+                changesToSyncWith.changeSet().getCursorRectangle() == null ? PropertiesInitials.CURSOR_RECTANGLE : changesToSyncWith.changeSet().getCursorRectangle()
+            ));
+        } else if (wlInputContextState.isEnabled()) {
+            // The changes are only supposed to update the current StateOfEnabled
+
+            final var currentStateOfEnabled = wlInputContextState.getCurrentStateOfEnabled();
+
+            wlInputContextState.setEnabledState(new InputContextState.StateOfEnabled(
+                // "The value set with this request [...] must be applied and reset to initial at the next zwp_text_input_v3.commit request."
+                Objects.requireNonNullElse(changesToSyncWith.changeSet().getTextChangeCause(), PropertiesInitials.TEXT_CHANGE_CAUSE),
+
+                // "Values set with this request [...] will get applied on the next zwp_text_input_v3.commit request.
+                //  Subsequent attempts to update them may have no effect."
+                currentStateOfEnabled.contentHint(),
+                currentStateOfEnabled.contentPurpose(),
+
+                // "Values set with this request [...] will get applied on the next zwp_text_input_v3.commit request,
+                //  and stay valid until the next committed enable or disable request."
+                changesToSyncWith.changeSet().getCursorRectangle() == null ? currentStateOfEnabled.cursorRectangle() : changesToSyncWith.changeSet().getCursorRectangle()
+            ));
+        }
+    }
+
+
     /* JNI downcalls section */
 
     /** Initializes all static JNI references ({@code jclass}, {@code jmethodID}, etc.) required by this class for functioning. */
@@ -377,6 +648,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     /** Called in response to {@code zwp_text_input_v3::enter} events. */
     private void zwp_text_input_v3_onEnter(long enteredWlSurfacePtr) {
         assert EventQueue.isDispatchThread();
+
+        if (wlContextHasToBeEnabled() && wlContextCanBeEnabledNow()) {
+            wlEnableContextNow();
+        }
     }
 
     /** Called in response to {@code zwp_text_input_v3::leave} events. */
@@ -403,6 +678,9 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     private void zwp_text_input_v3_onDone(long doneSerial) {
         assert EventQueue.isDispatchThread();
 
+        if (wlContextHasToBeEnabled() && wlContextCanBeEnabledNow()) {
+            wlEnableContextNow();
+        }
         if (wlPendingChanges != null && wlInputContextState.getCurrentWlSurfacePtr() != 0 && wlCanSendChangesNow()) {
             wlSendPendingChangesNow();
         }
