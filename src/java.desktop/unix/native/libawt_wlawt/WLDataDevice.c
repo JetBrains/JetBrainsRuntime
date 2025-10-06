@@ -345,22 +345,18 @@ DataOffer_create(struct DataDevice *dataDevice, enum DataTransferProtocol protoc
     }
 
     offer->javaObject = globalRef;
+    offer->protocol = protocol;
 
     if (protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
         struct wl_data_offer *wlDataOffer = waylandObject;
-
-        wl_data_offer_add_listener(wlDataOffer, &wlDataOfferListener, offer);
-
         offer->wlDataOffer = wlDataOffer;
-        offer->protocol = DATA_TRANSFER_PROTOCOL_WAYLAND;
+        wl_data_offer_add_listener(wlDataOffer, &wlDataOfferListener, offer);
     }
 
     if (protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
         struct zwp_primary_selection_offer_v1 *zwpPrimarySelectionOffer = waylandObject;
-
-        zwp_primary_selection_offer_v1_add_listener(zwpPrimarySelectionOffer, &zwpPrimarySelectionOfferListener, offer);
         offer->zwpPrimarySelectionOffer = zwpPrimarySelectionOffer;
-        offer->protocol = DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION;
+        zwp_primary_selection_offer_v1_add_listener(zwpPrimarySelectionOffer, &zwpPrimarySelectionOfferListener, offer);
     }
 
     return offer;
@@ -984,36 +980,53 @@ Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, jobject javaObject, jlong d
         protocol = DATA_TRANSFER_PROTOCOL_WAYLAND;
     }
 
+    dataSource->protocol = protocol;
+
     if (protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
-        struct wl_data_source *wlDataSource = wl_data_device_manager_create_data_source(wl_ddm);
+        // To avoid race conditions when setting the dispatch queue,
+        // it's necessary to do this dance with wl_proxy_create_wrapper.
+        // See the docs for wl_proxy_create_wrapper for more details
+
+        struct wl_data_device_manager* dmWrapper = wl_proxy_create_wrapper(wl_ddm);
+        struct wl_data_source *wlDataSource = NULL;
+
+        if (dmWrapper != NULL) {
+            wl_proxy_set_queue((struct wl_proxy *) dmWrapper, dataDevice->dataSourceQueue);
+            wlDataSource = wl_data_device_manager_create_data_source(dmWrapper);
+            wl_proxy_wrapper_destroy(dmWrapper);
+        }
+
         if (wlDataSource == NULL) {
             free(dataSource);
             JNU_ThrowByName(env, "java/awt/AWTError", "Wayland error creating wl_data_source proxy");
             return 0;
         }
 
-        wl_proxy_set_queue((struct wl_proxy *) wlDataSource, dataDevice->dataSourceQueue);
-        wl_data_source_add_listener(wlDataSource, &wl_data_source_listener, dataSource);
-
-        dataSource->protocol = DATA_TRANSFER_PROTOCOL_WAYLAND;
         dataSource->wlDataSource = wlDataSource;
+
+        wl_data_source_add_listener(wlDataSource, &wl_data_source_listener, dataSource);
     }
 
     if (protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
-        struct zwp_primary_selection_source_v1 *zwpPrimarySelectionSource =
-                zwp_primary_selection_device_manager_v1_create_source(zwp_selection_dm);
+        struct zwp_primary_selection_device_manager_v1 *dmWrapper = wl_proxy_create_wrapper(zwp_selection_dm);
+        struct zwp_primary_selection_source_v1 *zwpPrimarySelectionSource = NULL;
+
+        if (dmWrapper != NULL) {
+            wl_proxy_set_queue((struct wl_proxy *) dmWrapper, dataDevice->dataSourceQueue);
+            zwpPrimarySelectionSource = zwp_primary_selection_device_manager_v1_create_source(dmWrapper);
+            wl_proxy_wrapper_destroy(dmWrapper);
+        }
+
         if (zwpPrimarySelectionSource == NULL) {
             free(dataSource);
             JNU_ThrowByName(env, "java/awt/AWTError", "Wayland error creating zwp_primary_selection_source_v1 proxy");
             return 0;
         }
 
-        wl_proxy_set_queue((struct wl_proxy *) zwpPrimarySelectionSource, dataDevice->dataSourceQueue);
+        dataSource->zwpPrimarySelectionSource = zwpPrimarySelectionSource;
+
         zwp_primary_selection_source_v1_add_listener(zwpPrimarySelectionSource,
                                                      &zwp_primary_selection_source_v1_listener, dataSource);
-
-        dataSource->protocol = DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION;
-        dataSource->zwpPrimarySelectionSource = zwpPrimarySelectionSource;
     }
 
     return ptr_to_jlong(dataSource);
