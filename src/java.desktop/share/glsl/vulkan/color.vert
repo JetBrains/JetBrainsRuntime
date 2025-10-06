@@ -1,14 +1,12 @@
 #version 450
-
-layout(push_constant) uniform PushConstants {
-    mat2x3 transform;
-} push;
+#extension GL_GOOGLE_include_directive: require
+#include "common.glsl"
 
 layout(location = 0) in vec2 in_Position;
-layout(location = 1) in vec4 in_Color;
+layout(location = 1) in uint in_Color;
 layout(location = 0) out flat vec4 out_Color;
 
 void main() {
-    gl_Position = vec4(vec3(in_Position, 1)*push.transform, 0.0, 1.0);
-    out_Color = in_Color;
+    gl_Position = transformToDeviceSpace(in_Position);
+    out_Color = convertAlpha(decodeColor(in_Color));
 }
