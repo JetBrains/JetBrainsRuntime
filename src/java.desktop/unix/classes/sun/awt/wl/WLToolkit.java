@@ -882,12 +882,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     public boolean enableInputMethodsForTextComponent() {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.enableInputMethodsForTextComponent()");
-        }
-
-        // TODO: implement
-
         return true;
     }
 

@@ -885,8 +885,6 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             return;
         }
 
-        // TODO: make sure the current AWT component belongs to the surface wlInputContextState.getCurrentWlSurfacePtr()
-
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer("wlSendPendingChangesNow(): sending the change set {0}. this={1}.", changesToSend, this);
         }
