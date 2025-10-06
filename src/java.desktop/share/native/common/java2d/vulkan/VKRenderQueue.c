@@ -93,9 +93,8 @@
 #define OFFSET_XFORM   sun_java2d_vulkan_VKBlitLoops_OFFSET_XFORM
 #define OFFSET_ISOBLIT sun_java2d_vulkan_VKBlitLoops_OFFSET_ISOBLIT
 
-static void updateColor() {
-    VKRenderingContext* context = VKRenderer_GetContext();
-    context->color = VKUtil_DecodeJavaColor(context->javaColor ^ context->xorColor, ALPHA_TYPE_STRAIGHT);
+static void applyXor() {
+    VKRenderer_GetContext()->color ^= VKRenderer_GetContext()->xorColor;
 }
 
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
@@ -481,10 +480,10 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint   flags      = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_ALPHA_COMPOSITE(%d, %f, %d)", rule, extraAlpha, flags);
+                applyXor();
                 VKRenderer_GetContext()->xorColor   = 0;
                 VKRenderer_GetContext()->composite  = (VKCompositeMode) rule;
                 VKRenderer_GetContext()->extraAlpha = extraAlpha;
-                updateColor();
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_XOR_COMPOSITE:
@@ -492,20 +491,21 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint xorPixel = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_XOR_COMPOSITE(0x%08x)", xorPixel);
+                applyXor();
                 VKRenderer_GetContext()->xorColor   = xorPixel;
                 VKRenderer_GetContext()->composite  = LOGIC_COMPOSITE_XOR;
                 VKRenderer_GetContext()->extraAlpha = -1.0f;
-                updateColor();
+                applyXor();
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_RESET_COMPOSITE:
             {
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: RESET_COMPOSITE");
+                applyXor();
                 VKRenderer_GetContext()->xorColor   = 0;
                 VKRenderer_GetContext()->composite  = ALPHA_COMPOSITE_SRC;
                 VKRenderer_GetContext()->extraAlpha = 1.0f;
-                updateColor();
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_TRANSFORM:
@@ -650,15 +650,9 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_COLOR:
             {
-                VKRenderer_GetContext()->javaColor = NEXT_INT(b);
-                updateColor();
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: SET_COLOR(0x%08x)", VKRenderer_GetContext()->javaColor);
-                J2dTraceLn(J2D_TRACE_VERBOSE, // Print color values with straight alpha for convenience.
-                    "    srgb={%.3f, %.3f, %.3f, %.3f}",
-                    VKUtil_GetRGBA(VKRenderer_GetContext()->color, ALPHA_TYPE_STRAIGHT).r,
-                    VKUtil_GetRGBA(VKRenderer_GetContext()->color, ALPHA_TYPE_STRAIGHT).g,
-                    VKUtil_GetRGBA(VKRenderer_GetContext()->color, ALPHA_TYPE_STRAIGHT).b,
-                    VKUtil_GetRGBA(VKRenderer_GetContext()->color, ALPHA_TYPE_STRAIGHT).a);
+                VKRenderer_GetContext()->color = NEXT_INT(b);
+                applyXor();
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: SET_COLOR(0x%08x)", VKRenderer_GetContext()->color);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_GRADIENT_PAINT:
