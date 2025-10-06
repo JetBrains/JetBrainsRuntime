@@ -29,9 +29,12 @@ import sun.awt.wl.im.text_input_unstable_v3.WLInputMethodDescriptorZwpTextInputV
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
+import java.awt.font.TextAttribute;
+import java.awt.im.InputMethodHighlight;
 import java.awt.im.spi.InputMethod;
 import java.awt.im.spi.InputMethodDescriptor;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 
@@ -51,6 +54,34 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
 
     // TODO: add logging everywhere
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.im.WLInputMethodMetaDescriptor");
+
+
+    /** @see sun.awt.wl.WLToolkit#mapInputMethodHighlight(InputMethodHighlight) */
+    public static Map<TextAttribute, ?> mapInputMethodHighlight(final InputMethodHighlight highlight) {
+        // NB: The implementation is supposed to produce results exactly equal to XToolkit's implementation
+        //     for better visual consistency.
+
+        if (highlight == null)
+            return null;
+
+        switch (highlight.getState()) {
+            case InputMethodHighlight.RAW_TEXT -> {
+                if (highlight.isSelected())
+                    return imHighlightMapSelectedRawText;
+                else
+                    return imHighlightMapUnselectedRawText;
+            }
+
+            case InputMethodHighlight.CONVERTED_TEXT -> {
+                if (highlight.isSelected())
+                    return imHighlightMapSelectedConvertedText;
+                else
+                    return imHighlightMapUnselectedConvertedText;
+            }
+        }
+
+        return null;
+    }
 
 
     public static WLInputMethodMetaDescriptor getInstanceIfAvailableOnPlatform() {
@@ -102,6 +133,26 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
 
 
     /* Implementation details section */
+
+    /**
+     * The values are copied from XToolkit's implementation for better visual consistency with AWT on X11.
+     *
+     * @see #mapInputMethodHighlight(InputMethodHighlight)
+     * @see sun.awt.X11InputMethodBase
+     */
+    private final static Map<TextAttribute, ?> imHighlightMapUnselectedRawText = Map.of(
+        TextAttribute.WEIGHT, TextAttribute.WEIGHT_BOLD
+    );
+    private final static Map<TextAttribute, ?> imHighlightMapUnselectedConvertedText = Map.of(
+        TextAttribute.INPUT_METHOD_UNDERLINE, TextAttribute.UNDERLINE_LOW_ONE_PIXEL
+    );
+    private final static Map<TextAttribute, ?> imHighlightMapSelectedRawText = Map.of(
+        TextAttribute.SWAP_COLORS, TextAttribute.SWAP_COLORS_ON
+    );
+    private final static Map<TextAttribute, ?> imHighlightMapSelectedConvertedText = Map.of(
+        TextAttribute.SWAP_COLORS, TextAttribute.SWAP_COLORS_ON
+    );
+
 
     private final InputMethodDescriptor realImDescriptor;
 

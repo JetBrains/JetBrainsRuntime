@@ -30,7 +30,9 @@ import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
 import java.awt.event.InputMethodEvent;
+import java.awt.font.TextAttribute;
 import java.awt.font.TextHitInfo;
+import java.awt.im.InputMethodHighlight;
 import java.awt.im.spi.InputMethodContext;
 import java.text.AttributedString;
 import java.util.Arrays;
@@ -373,6 +375,9 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 // "The parameters cursor_begin and cursor_end are counted in bytes relative to the beginning of the submitted text buffer.
                 //  Cursor should be hidden when both are equal to -1."
                 imeCaret = null;
+
+                // Only basic highlighting
+                awtInstallIMHighlightingInto(imeText, commitString.text().length(), preeditString.text().length(), 0, 0);
             } else {
                 final int highlightBeginCodeUnitIndex =
                     Math.max(0, Math.min(preeditString.cursorBeginCodeUnit(), preeditString.text().length()));
@@ -384,16 +389,24 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 //   (i.e. they never have cursor_begin != cursor_end) at all.
                 // KWin, however, always uses highlighting. Looking at how it changes when we navigate within the
                 //   preedit text with arrow keys, it becomes clear KWin expects the caret to be put at the end
-                //   of the highlighting and not in the beginning.
+                //   of the highlighting and not at the beginning.
                 // That's why highlightEndCodeUnitIndex is used here and not highlightBeginCodeUnitIndex.
                 imeCaret = TextHitInfo.beforeOffset(highlightEndCodeUnitIndex);
 
-                if (highlightEndCodeUnitIndex != highlightBeginCodeUnitIndex) {
-                    // cursor_begin and cursor_end
-                    //  "could be represented by the client as a line if both values are the same,
-                    //   or as a text highlight otherwise"
-
-                    // TODO: support highlighting
+                // cursor_begin and cursor_end
+                //  "could be represented by the client as a line if both values are the same,
+                //   or as a text highlight otherwise"
+                if (highlightEndCodeUnitIndex == highlightBeginCodeUnitIndex) {
+                    // Only basic highlighting
+                    awtInstallIMHighlightingInto(imeText, commitString.text().length(), preeditString.text().length(), 0, 0);
+                } else {
+                    // Basic + the special highlighting mentioned above
+                    awtInstallIMHighlightingInto(
+                        imeText,
+                        commitString.text().length(),
+                        preeditString.text().length(),
+                        highlightBeginCodeUnitIndex, highlightEndCodeUnitIndex
+                    );
                 }
             }
 
@@ -413,6 +426,95 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         }
 
         return false;
+    }
+
+    private void awtInstallIMHighlightingInto(
+        final AttributedString imText,
+        final int preeditTextBegin,
+        final int preeditTextLength,
+        int specialPreeditHighlightingBegin,
+        int specialPreeditHighlightingEnd
+    ) {
+        if (preeditTextLength < 1) {
+            return;
+        }
+
+        // NB: about InputMethodHighlight.*_RAW_TEXT_HIGHLIGHT vs InputMethodHighlight.*_CONVERTED_TEXT_HIGHLIGHT.
+        //     The documentation says that CONVERTED should be used to highlight
+        //     already converted text (e.g. hanzi in case of pinyin->hanzi conversion),
+        //     and RAW for text before the conversion gets applied (e.g. pinyin in case of pinyin->hanzi conversion).
+        //
+        //     There's a problem: whether a preedit string is converted or not depends on the used IM engine.
+        //     For example, the Windows's and macOS's system IM engines send non-converted preedit text.
+        //     On Linuxes there are many engines: iBus, fcitx5, SCIM, etc:
+        //       * IBus sends converted preedit text (and changes it if the user chooses a different conversion's candidate).
+        //       * fcitx5 sends non-converted preedit text (i.e. behaves like Windows and macOS).
+        //     We don't know if the preedit text is converted or not (the protocol doesn't provide such information),
+        //       so we can't decide in general which highlighting style to use to look more native and consistent with
+        //       other apps in the system.
+        //
+        //     TODO: a possible partial solution could be trying to determine what IM engine is being used
+        //           (e.g. via environment variables).
+        //     For now we're adjusting to iBus, because it seems to be the most widespread engine.
+        final InputMethodHighlight IM_BASIC_HIGHLIGHTING = InputMethodHighlight.UNSELECTED_CONVERTED_TEXT_HIGHLIGHT;
+        // I'm not sure if the "text highlight" mentioned in zwp_text_input_v3::preedit_string means the text
+        //   should look selected.
+        final InputMethodHighlight IM_SPECIAL_HIGHLIGHTING = InputMethodHighlight.SELECTED_CONVERTED_TEXT_HIGHLIGHT;
+
+        if (specialPreeditHighlightingBegin == specialPreeditHighlightingEnd) {
+            // Only basic highlighting.
+
+            imText.addAttribute(
+               TextAttribute.INPUT_METHOD_HIGHLIGHT,
+               IM_BASIC_HIGHLIGHTING,
+               preeditTextBegin, preeditTextBegin + preeditTextLength
+            );
+
+            return;
+        }
+
+        // Basic + special highlighting.
+
+        if (specialPreeditHighlightingEnd < specialPreeditHighlightingBegin) {
+            final var swapTemp = specialPreeditHighlightingEnd;
+            specialPreeditHighlightingEnd = specialPreeditHighlightingBegin;
+            specialPreeditHighlightingBegin = swapTemp;
+        }
+
+        assert(specialPreeditHighlightingBegin >= 0);
+        assert(specialPreeditHighlightingEnd <= preeditTextLength);
+
+        //    v
+        // |BASIC+SPECIAL...|
+        //    ^
+        if (specialPreeditHighlightingBegin > 0) {
+            imText.addAttribute(
+                TextAttribute.INPUT_METHOD_HIGHLIGHT,
+                IM_BASIC_HIGHLIGHTING,
+                preeditTextBegin,
+                preeditTextBegin + specialPreeditHighlightingBegin
+            );
+        }
+
+        // |...SPECIAL...|
+        imText.addAttribute(
+            TextAttribute.INPUT_METHOD_HIGHLIGHT,
+            IM_SPECIAL_HIGHLIGHTING,
+            preeditTextBegin + specialPreeditHighlightingBegin,
+            preeditTextBegin + specialPreeditHighlightingEnd
+        );
+
+        //               v
+        // |...SPECIAL+BASIC|
+        //               ^
+        if (specialPreeditHighlightingEnd < preeditTextLength) {
+            imText.addAttribute(
+                TextAttribute.INPUT_METHOD_HIGHLIGHT,
+                IM_BASIC_HIGHLIGHTING,
+                preeditTextBegin + specialPreeditHighlightingEnd,
+                preeditTextBegin + preeditTextLength
+            );
+        }
     }
 
 
