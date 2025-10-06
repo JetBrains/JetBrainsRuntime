@@ -25,7 +25,9 @@
 
 package sun.awt.wl.im.text_input_unstable_v3;
 
+import sun.awt.AWTAccessor;
 import sun.awt.im.InputMethodAdapter;
+import sun.awt.wl.WLComponentPeer;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
@@ -87,8 +89,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void notifyClientWindowChange(Rectangle location) {
-        // TODO: implement
-        super.notifyClientWindowChange(location);
+        awtClientComponentCaretPositionTracker.onIMNotifyClientWindowChange(location);
     }
 
     @Override
@@ -147,7 +148,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void dispatchEvent(AWTEvent event) {
-        // TODO: implement
+        awtClientComponentCaretPositionTracker.onIMDispatchEvent(event);
     }
 
     @Override
@@ -166,6 +167,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         if (wlContextHasToBeEnabled() && wlContextCanBeEnabledNow()) {
             wlEnableContextNow();
         }
+
+        this.awtClientComponentCaretPositionTracker.startTracking(getClientComponent());
     }
 
     @Override
@@ -173,6 +176,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         final boolean wasActive = (this.awtActivationStatus == AWTActivationStatus.ACTIVATED);
         this.awtActivationStatus = isTemporary ? AWTActivationStatus.DEACTIVATED_TEMPORARILY : AWTActivationStatus.DEACTIVATED;
         this.awtPreviousClientComponent = getClientComponent();
+
+        this.awtClientComponentCaretPositionTracker.stopTrackingCurrentComponent();
 
         if (wasActive) {
             wlDisableContextNow();
@@ -203,6 +208,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         awtNativeImIsExplicitlyDisabled = false;
         awtCurrentClientLatestDispatchedPreeditString = null;
         awtPreviousClientComponent = null;
+        awtClientComponentCaretPositionTracker.stopTrackingCurrentComponent();
         wlDisposeContext();
     }
 
@@ -276,6 +282,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      * It allows to determine whether the focused component has actually changed between the latest deactivate-activate.
      */
     private Component awtPreviousClientComponent = null;
+    private final ClientComponentCaretPositionTracker awtClientComponentCaretPositionTracker = new ClientComponentCaretPositionTracker(this);
 
 
     /* AWT-side methods section */
@@ -291,13 +298,153 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         out.setContentType(ContentHint.NONE.intMask, ContentPurpose.NORMAL);
     }
 
+    /**
+     *  @return the location of the caret inside {@code component} in the format
+     *          compatible with {@code zwp_text_input_v3::set_cursor_rectangle} API;
+     */
     private static Rectangle awtGetWlCursorRectangleOf(Component component) {
-        assert(component != null);
+        assert EventQueue.isDispatchThread();
 
+        Rectangle result = null;
+
+        if (component.isShowing()) {
+            Rectangle caretOnComponent = awtGetCaretOf(component);
+            if (caretOnComponent == null) {
+                // Fallback: the component's left-bottom corner
+                var componentVisibleBounds = awtGetVisibleRectOf(component);
+                if (componentVisibleBounds == null) {
+                    caretOnComponent = new Rectangle(0, component.getHeight() - 1, 1, 1);
+                } else {
+                    caretOnComponent = new Rectangle(
+                        componentVisibleBounds.x,
+                        componentVisibleBounds.y + componentVisibleBounds.height - 1,
+                        1,
+                        1
+                    );
+                }
+            }
+
+            result = awtConvertRectOnComponentToRectOnWlSurface(component, caretOnComponent);
+        }
+
+        if (result == null) {
+            result = new Rectangle(0, 0, 1, 1);
+        }
+
+        return result;
+    }
+
+    /**
+     * @return the location of the caret inside {@code visibleComponent} in the latter's coordinate system;
+     *         or {@code null} if the location couldn't be determined.
+     * @throws IllegalArgumentException if {@code visibleComponent} is {@code null} or isn't showing on the screen.
+     */
+    private static Rectangle awtGetCaretOf(Component visibleComponent) {
         assert(EventQueue.isDispatchThread());
 
-        // TODO: real implementation
-        return new Rectangle(0, 0, 1, 1);
+        if (!Objects.requireNonNull(visibleComponent, "visibleComponent").isShowing()) {
+            throw new IllegalArgumentException("visibleComponent must be showing");
+        }
+
+        // Trying the standard API for obtaining the location of the cursor
+        final var imr = visibleComponent.getInputMethodRequests();
+        if (imr != null) {
+            final Rectangle caretOnScreen = imr.getTextLocation(null);
+            if (caretOnScreen != null) {
+                final Point caretPos = caretOnScreen.getLocation();
+                javax.swing.SwingUtilities.convertPointFromScreen(caretPos, visibleComponent);
+
+                // Clamping within the component's visible bounds
+                Rectangle componentVisibleBounds = awtGetVisibleRectOf(visibleComponent);
+                if (componentVisibleBounds == null) {
+                    componentVisibleBounds = new Rectangle(0, 0, visibleComponent.getWidth(), visibleComponent.getHeight());
+                }
+
+                caretOnScreen.width = Math.max(1, Math.min(caretOnScreen.width, componentVisibleBounds.width));
+                caretOnScreen.height = Math.max(1, Math.min(caretOnScreen.height, componentVisibleBounds.height));
+
+                caretPos.x = Math.max(
+                    componentVisibleBounds.x - caretOnScreen.width,
+                    Math.min(caretPos.x + caretOnScreen.width, componentVisibleBounds.x + componentVisibleBounds.width) - caretOnScreen.width
+                );
+                caretPos.y = Math.max(
+                    componentVisibleBounds.y - caretOnScreen.height,
+                    Math.min(caretPos.y + caretOnScreen.height, componentVisibleBounds.y + componentVisibleBounds.height) - caretOnScreen.height
+                );
+
+                return new Rectangle(caretPos.x, caretPos.y, caretOnScreen.width, caretOnScreen.height);
+            }
+        }
+
+        return null;
+    }
+
+    private static Rectangle awtGetVisibleRectOf(final Component component) {
+        assert(EventQueue.isDispatchThread());
+
+        if (component instanceof javax.swing.JComponent jComponent) {
+            return jComponent.getVisibleRect();
+        }
+        return null;
+    }
+
+    /**
+     * @return a rectangle equal to {@code rectOnComponent} but in the coordinate system of
+     *         a {@code wl_surface} containing {@code component};
+     *         or {@code null} if the rectangle couldn't be determined.
+     */
+    private static Rectangle awtConvertRectOnComponentToRectOnWlSurface(Component component, Rectangle rectOnComponent) {
+        assert(EventQueue.isDispatchThread());
+
+        Objects.requireNonNull(component, "component");
+
+        final var wlSurfaceComponent = awtGetWlSurfaceComponentOf(component);
+        if (wlSurfaceComponent == null) {
+            assert !component.isShowing() : "Failed to find a peered parent for a component being shown";
+            if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                log.warning("awtConvertRectOnComponentToRectOnWlSurface: failed to find a peered parent for {0}.", component);
+            }
+            return null;
+        }
+        final var wlSurfaceComponentPeer = AWTAccessor.getComponentAccessor().getPeer(wlSurfaceComponent);
+        if ( !(wlSurfaceComponentPeer instanceof WLComponentPeer wlSurface) ) {
+            assert false : String.format("A peered component has a peer of an unexpected type: [%s]. The component: [%s]", wlSurfaceComponentPeer, wlSurfaceComponent);
+            if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                log.warning("awtConvertRectOnComponentToRectOnWlSurface: a peered component has a peer of an unexpected type: [{0}]. The component: [{1}].", wlSurfaceComponentPeer, wlSurfaceComponent);
+            }
+            return null;
+        }
+
+        final var componentRelPos = WLComponentPeer.getRelativeLocation(component, wlSurfaceComponent);
+        if (componentRelPos == null) {
+            assert false : String.format("Failed to determine the relative position of [%s] inside its peered ancestor [%s]", component, wlSurfaceComponent);
+            if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                log.warning("awtConvertRectOnComponentToRectOnWlSurface: failed to determine the relative position of [{0}] inside its peered ancestor [{1}].", component, wlSurfaceComponent);
+            }
+            return null;
+        }
+
+        final var result = rectOnComponent.getBounds();
+        // AWT-like coordinates on 'component' to AWT-like coordinates on the wl_surface.
+        result.translate(componentRelPos.x, componentRelPos.y);
+
+        // AWT-like coordinates on the wl_surface to wl_surface-like coordinates on the wl_surface.
+        result.x = wlSurface.javaUnitsToSurfaceUnits(result.x);
+        result.y = wlSurface.javaUnitsToSurfaceUnits(result.y);
+        result.width = wlSurface.javaUnitsToSurfaceSize(result.width);
+        result.height = wlSurface.javaUnitsToSurfaceSize(result.height);
+
+        return result;
+    }
+
+    /**
+     * @return {@code component} if it's a heavyweight component peered by a {@code wl_surface};
+     *         or its closest ancestor meeting these requirements.
+     */
+    private static Window awtGetWlSurfaceComponentOf(Component component) {
+        assert EventQueue.isDispatchThread();
+
+        return WLComponentPeer.getToplevelFor(component);
     }
 
 
@@ -874,6 +1021,59 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         return wlIncomingChanges;
     }
 
+    /** Called by {@link ClientComponentCaretPositionTracker} */
+    boolean wlUpdateCursorRectangle(final boolean forceUpdate) {
+        assert(EventQueue.isDispatchThread());
+
+        if (wlInputContextState.getCurrentWlSurfacePtr() == 0) {
+            return false;
+        }
+        final var contextStateOfEnabled = wlInputContextState.getCurrentStateOfEnabled();
+        if (contextStateOfEnabled == null) {
+            // Equal to !wlInputContextState.isEnabled()
+            return false;
+        }
+
+        final var currentClient = getClientComponent();
+        if (currentClient == null) {
+            return false;
+        }
+
+        final Rectangle newCursorRectangle;
+        try {
+            newCursorRectangle = awtGetWlCursorRectangleOf(currentClient);
+        } catch (Exception err) {
+            if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                log.warning(String.format("Failed to obtain the caret position inside %s.", currentClient), err);
+            }
+            return false;
+        }
+
+        final boolean newCursorRectangleDiffers =
+            (wlBeingCommittedChanges != null && wlBeingCommittedChanges.changeSet().getCursorRectangle() != null)
+            ? !wlBeingCommittedChanges.changeSet().getCursorRectangle().equals(newCursorRectangle)
+            : !Objects.equals(contextStateOfEnabled.cursorRectangle(), newCursorRectangle);
+
+        if ( newCursorRectangle != null && (forceUpdate || newCursorRectangleDiffers) ) {
+            wlScheduleContextNewChanges(new OutgoingChanges().setCursorRectangle(newCursorRectangle));
+            if (wlCanSendChangesNow()) {
+                wlSendPendingChangesNow();
+            }
+
+            return true;
+        }
+
+        // Dismiss the outdated data.
+        if (wlPendingChanges != null && wlPendingChanges.getCursorRectangle() != null) {
+            wlPendingChanges.setCursorRectangle(null);
+            if (wlPendingChanges.isEmpty()) {
+                wlPendingChanges = null;
+            }
+        }
+
+        return false;
+    }
+
 
     /* JNI downcalls section */
 
@@ -1038,6 +1238,38 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
             this.wlInputContextState.syncWithAppliedIncomingChanges(preeditStringToApply, commitStringToApply, doneSerial);
 
+            // The deferring is needed to break the following infinite loop:
+            //   +------------------------------------------------+
+            //   |...                                             |
+            //   |                                                | 8
+            //   |zwp_text_input_v3::preedit_text(<the-same-data>)<----------+
+            //   |                                                |          |
+            //   |zwp_text_input_v3::done(...)                    |          |
+            //   +-------+----------------------------------------+          |
+            //          1|                                                   |
+            //           v                                           +-------+------------------------------------+
+            //    awtDispatchIMESafely(...)                          |zwp_text_input_v3::set_cursor_rectangle(...)|
+            //          2|                                           |                                            |
+            //           v                                           |zwp_text_input_v3::commit()                 |
+            //    the component deletes its current composed text    +-------^------------------------------------+
+            //           |                                                   |
+            //          3|                                                   |
+            //   +-------v---------------------------------------+ 4         |
+            //   |the component fires a new caret position update|----------->
+            //   +-------+---------------------------------------+           |
+            //          5|                                                   |
+            //           v                                                   |
+            //    the component inserts the new composed text                |
+            //           |            (equal to the previous)                |
+            //          6|                                                   |
+            //   +-------v---------------------------------------+ 7         |
+            //   |the component fires a new caret position update|-----------+
+            //   +-----------------------------------------------+
+            final boolean doDeferCaretPositionUpdates = !this.awtClientComponentCaretPositionTracker.areUpdatesDeferred();
+            if (doDeferCaretPositionUpdates) {
+                this.awtClientComponentCaretPositionTracker.deferUpdates();
+            }
+
             // From the zwp_text_input_v3::done event specification:
             //   "The application must proceed by evaluating the changes in the following order:
             //      1. Replace existing preedit string with the cursor.
@@ -1049,7 +1281,16 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             //
             // Steps 2, 4 are currently not supported (see zwp_text_input_v3_onDeleteSurroundingText for more info),
             //   and all the other steps seem feasible via just a single properly constructed InputMethodEvent.
+            //
+            // TODO: unconditional dispatching of the text makes it impossible for the caret to leave the component's
+            //       visible area, which would be useful for scrolling.
             awtDispatchIMESafely(preeditStringToApply, commitStringToApply);
+
+            if (doDeferCaretPositionUpdates) {
+                // invokeLater is needed to handle a case when the client component decides to post the caret updates
+                //   to the EventQueue instead of dispatching them right away (IDK if it happens in practice).
+                EventQueue.invokeLater(() -> this.awtClientComponentCaretPositionTracker.resumeUpdates(false));
+            }
 
             // Sending pending changes (if any)
 
