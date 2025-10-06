@@ -31,7 +31,7 @@
 #include "primary-selection-unstable-v1.h"
 #include "viewporter.h"
 #include "relative-pointer-unstable-v1.h"
-
+#include "text-input-unstable-v3.h"
 #include "jvm_md.h"
 #include "jni_util.h"
 
@@ -69,6 +69,8 @@ extern struct wl_data_device_manager *wl_ddm;
 extern struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm; // optional, check for NULL before use
 extern struct zxdg_output_manager_v1 *zxdg_output_manager_v1; // optional, check for NULL before use
 extern struct zwp_relative_pointer_manager_v1* relative_pointer_manager;
+extern struct zwp_text_input_manager_v3 *zwp_text_input_manager; // optional, check for NULL before use
+
 JNIEnv *getEnv();
 
 int wlFlushToServer(JNIEnv* env);
