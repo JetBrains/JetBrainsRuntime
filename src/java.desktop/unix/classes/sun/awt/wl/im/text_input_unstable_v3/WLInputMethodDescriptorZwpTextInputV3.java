@@ -25,6 +25,7 @@
 
 package sun.awt.wl.im.text_input_unstable_v3;
 
+import sun.awt.wl.WLToolkit;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
@@ -39,36 +40,71 @@ public final class WLInputMethodDescriptorZwpTextInputV3 implements InputMethodD
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.im.text_input_unstable_v3.WLInputMethodDescriptorZwpTextInputV3");
 
 
+    public static boolean isAvailableOnPlatform() {
+        return initAndGetIsAvailableOnPlatform();
+    }
+
+    public static WLInputMethodDescriptorZwpTextInputV3 getInstanceIfAvailableOnPlatform() {
+        if (!isAvailableOnPlatform()) {
+            return null;
+        }
+        return new WLInputMethodDescriptorZwpTextInputV3();
+    }
+
+
     /* java.awt.im.spi.InputMethodDescriptor methods section */
 
     @Override
     public Locale[] getAvailableLocales() throws AWTException {
-        // TODO: implement
-        throw new UnsupportedOperationException("Not implemented");
+        ensureIsAvailableOnPlatform();
+
+        // This is how it's implemented in XToolkit.
+        //
+        // A better implementation would be obtaining all currently installed and enabled input sources
+        //   (like on GNOME Settings -> Keyboard -> Input Sources) and mapping them to locales.
+        // However, there seem no universal Wayland API for that, so it seems can't be implemented reliably.
+        //
+        // So leaving as is at the moment.
+        //
+        // TODO: research how to implement this better along with {@link #hasDynamicLocaleList}
+
+        return new Locale[]{ (Locale)initAndGetToolkitStartupLocale().clone() };
     }
 
     @Override
     public boolean hasDynamicLocaleList() {
-        // TODO: implement
-        throw new UnsupportedOperationException("Not implemented");
+        // Since the return value of {@link #getAvailableLocales()} doesn't currently change over time,
+        //   it doesn't make sense to return true here.
+        return false;
     }
 
     @Override
     public String getInputMethodDisplayName(Locale inputLocale, Locale displayLanguage) {
-        // TODO: implement
-        throw new UnsupportedOperationException("Not implemented");
+        assert isAvailableOnPlatform();
+
+        // This is how it's implemented in all other Toolkits.
+        //
+        // We ignore the input locale.
+        // When displaying for the default locale, rely on the localized AWT properties;
+        //   for any other locale, fall back to English.
+        String name = "System Input Methods";
+        if (Locale.getDefault().equals(displayLanguage)) {
+            name = Toolkit.getProperty("AWT.HostInputMethodDisplayName", name);
+        }
+        return name;
     }
 
     @Override
     public Image getInputMethodIcon(Locale inputLocale) {
-        // TODO: implement
-        throw new UnsupportedOperationException("Not implemented");
+        return null;
     }
 
     @Override
     public InputMethod createInputMethod() throws Exception {
-        // TODO: implement
-        throw new UnsupportedOperationException("Not implemented");
+        // NB: we should avoid returning null from this method because the calling code isn't really ready to get null
+
+        ensureIsAvailableOnPlatform();
+        return new WLInputMethodZwpTextInputV3();
     }
 
 
@@ -76,10 +112,70 @@ public final class WLInputMethodDescriptorZwpTextInputV3 implements InputMethodD
 
     @Override
     public String toString() {
-        // TODO: implement
-        return super.toString();
+        return String.format("WLInputMethodDescriptorZwpTextInputV3@%d", System.identityHashCode(this));
     }
 
 
     /* Implementation details section */
+
+    /** Used as the return value for {@link #getAvailableLocales()}. */
+    private volatile static Locale toolkitStartupLocale = null;
+
+    private volatile static Boolean isAvailableOnPlatform = null;
+
+
+    private static Locale initAndGetToolkitStartupLocale() {
+        if (toolkitStartupLocale == null) {
+            synchronized (WLInputMethodDescriptorZwpTextInputV3.class) {
+                if (toolkitStartupLocale == null) {
+                    toolkitStartupLocale = WLToolkit.getStartupLocale();
+                }
+            }
+        }
+        return toolkitStartupLocale;
+    }
+
+    private static boolean initAndGetIsAvailableOnPlatform() {
+        if (isAvailableOnPlatform == null) {
+            synchronized (WLInputMethodDescriptorZwpTextInputV3.class) {
+                try {
+                    if (isAvailableOnPlatform == null) {
+                        isAvailableOnPlatform = checkIfAvailableOnPlatform();
+                    }
+                } catch (Exception err) {
+                    if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                        log.warning("Failed to check whether the IM protocol is supported on the system", err);
+                    }
+                    isAvailableOnPlatform = false;
+                }
+            }
+        }
+        return isAvailableOnPlatform;
+    }
+
+    private static void ensureIsAvailableOnPlatform() throws AWTException {
+        if (!isAvailableOnPlatform()) {
+            throw new AWTException("sun.awt.wl.im.text_input_unstable_v3.WLInputMethodZwpTextInputV3 is not supported on this system");
+        }
+    }
+
+
+    private WLInputMethodDescriptorZwpTextInputV3() {
+        assert isAvailableOnPlatform();
+
+        initAndGetToolkitStartupLocale();
+    }
+
+
+    /* JNI downcalls section */
+
+    /**
+     * This method checks if {@link WLInputMethodZwpTextInputV3} can function on this system.
+     * Basically, it means the Wayland compositor supports a minimal sufficient subset of the required protocols
+     *   (currently the set only includes the "text-input-unstable-v3" protocol).
+     *
+     * @return true if {@link WLInputMethodZwpTextInputV3} can function on this system, false otherwise.
+     * @see <a href="https://wayland.app/protocols/text-input-unstable-v3">text-input-unstable-v3</a>
+     */
+    private static native boolean checkIfAvailableOnPlatform();
 }

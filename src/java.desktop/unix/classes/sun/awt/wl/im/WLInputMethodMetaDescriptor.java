@@ -25,12 +25,14 @@
 
 package sun.awt.wl.im;
 
+import sun.awt.wl.im.text_input_unstable_v3.WLInputMethodDescriptorZwpTextInputV3;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
 import java.awt.im.spi.InputMethod;
 import java.awt.im.spi.InputMethodDescriptor;
 import java.util.Locale;
+import java.util.Objects;
 
 
 /**
@@ -51,36 +53,43 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.im.WLInputMethodMetaDescriptor");
 
 
+    public static WLInputMethodMetaDescriptor getInstanceIfAvailableOnPlatform() {
+        // For now there's only 1 possible implementation of IM,
+        //   but if/when there are more, this method will have to choose one of them.
+        //   It'll be good if the preferable engine can be chosen via a system property.
+
+        final InputMethodDescriptor realImDescriptor = WLInputMethodDescriptorZwpTextInputV3.getInstanceIfAvailableOnPlatform();
+        if (realImDescriptor != null) {
+            return new WLInputMethodMetaDescriptor(realImDescriptor);
+        }
+        return null;
+    }
+
     /* java.awt.im.spi.InputMethodDescriptor methods section */
 
     @Override
     public Locale[] getAvailableLocales() throws AWTException {
-        // TODO: implement
-        throw new UnsupportedOperationException("Not implemented");
+        return realImDescriptor.getAvailableLocales();
     }
 
     @Override
     public boolean hasDynamicLocaleList() {
-        // TODO: implement
-        throw new UnsupportedOperationException("Not implemented");
+        return realImDescriptor.hasDynamicLocaleList();
     }
 
     @Override
     public String getInputMethodDisplayName(Locale inputLocale, Locale displayLanguage) {
-        // TODO: implement
-        throw new UnsupportedOperationException("Not implemented");
+        return realImDescriptor.getInputMethodDisplayName(inputLocale, displayLanguage);
     }
 
     @Override
     public Image getInputMethodIcon(Locale inputLocale) {
-        // TODO: implement
-        throw new UnsupportedOperationException("Not implemented");
+        return realImDescriptor.getInputMethodIcon(inputLocale);
     }
 
     @Override
     public InputMethod createInputMethod() throws Exception {
-        // TODO: implement
-        throw new UnsupportedOperationException("Not implemented");
+        return realImDescriptor.createInputMethod();
     }
 
 
@@ -88,10 +97,15 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
 
     @Override
     public String toString() {
-        // TODO: implement
-        return super.toString();
+        return String.format("WLInputMethodMetaDescriptor@%d[realImDescriptor=%s]", System.identityHashCode(this), realImDescriptor);
     }
 
 
     /* Implementation details section */
+
+    private final InputMethodDescriptor realImDescriptor;
+
+    private WLInputMethodMetaDescriptor(InputMethodDescriptor realImDescriptor) {
+        this.realImDescriptor = Objects.requireNonNull(realImDescriptor, "realImDescriptor");
+    }
 }
