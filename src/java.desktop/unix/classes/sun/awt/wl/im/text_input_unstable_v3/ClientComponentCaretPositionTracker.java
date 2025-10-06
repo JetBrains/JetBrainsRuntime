@@ -48,7 +48,6 @@ import java.util.Objects;
  */
 class ClientComponentCaretPositionTracker implements ComponentListener, CaretListener, TextListener
 {
-    // TODO: add logging everywhere
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.im.text_input_unstable_v3.ClientComponentCaretPositionTracker");
 
 
@@ -59,6 +58,13 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
     public void startTracking(final Component component) {
         assert(EventQueue.isDispatchThread());
+
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer(
+                String.format("startTracking(component=%s): im=%s, this=%s.", component, getOwnerIm(), this),
+                new Throwable("Stacktrace")
+            );
+        }
 
         stopTrackingCurrentComponent();
 
@@ -81,6 +87,10 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
                 tc.addTextListener(this);
                 isTextListenerInstalled = true;
             }
+
+            if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+                log.finest("startTracking(...): updated this={0}.", this);
+            }
         } catch (Exception err) {
             stopTrackingCurrentComponent();
             throw err;
@@ -89,6 +99,10 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
     public void stopTrackingCurrentComponent() {
         assert(EventQueue.isDispatchThread());
+
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer(String.format("stopTrackingCurrentComponent(): this=%s.", this), new Throwable("Stacktrace"));
+        }
 
         final Component trackedComponentStrong = getTrackedComponentIfTracking();
         if (trackedComponentStrong == null) {
@@ -166,11 +180,19 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     public void deferUpdates() {
         assert(EventQueue.isDispatchThread());
 
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer(String.format("deferUpdates(): this=%s.", this), new Throwable("Stacktrace"));
+        }
+
         updatesAreDeferred = true;
     }
 
     public void resumeUpdates(final boolean discardDeferredUpdates) {
         assert(EventQueue.isDispatchThread());
+
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer(String.format("resumeUpdates(%b): this=%s.", discardDeferredUpdates, this), new Throwable("Stacktrace"));
+        }
 
         if (getTrackedComponentIfTracking() == null) return;
 
@@ -194,6 +216,10 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     /** This method is intended to be called from the owning IM's {@link java.awt.im.spi.InputMethod#dispatchEvent(AWTEvent)}. */
     public void onIMDispatchEvent(AWTEvent event) {
         assert(EventQueue.isDispatchThread());
+
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("onIMDispatchEvent(event={0}): this={1}.", event, this);
+        }
 
         final int eventId = event.getID();
 
@@ -219,6 +245,10 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     /** This method is intended to be called from the owning IM's {@link java.awt.im.spi.InputMethod#notifyClientWindowChange(Rectangle)}. */
     public void onIMNotifyClientWindowChange(Rectangle location) {
         assert(EventQueue.isDispatchThread());
+
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("onIMNotifyClientWindowChange(location={0}): this={1}.", location, this);
+        }
 
         if (location != null) {
             // null means the window has become iconified or invisible, so no need to try to update the caret position.
@@ -266,6 +296,23 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     }
 
 
+    /* java.lang.Object methods section */
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder(1024);
+        sb.append("ClientComponentCaretPositionTracker@").append(System.identityHashCode(this));
+        sb.append('{');
+        sb.append("isCaretListenerInstalled=").append(isCaretListenerInstalled);
+        sb.append(", isTextListenerInstalled=").append(isTextListenerInstalled);
+        sb.append(", lastKnownClientWindowBounds=").append(lastKnownClientWindowBounds);
+        sb.append(", updatesAreDeferred=").append(updatesAreDeferred);
+        sb.append(", hasDeferredUpdates=").append(hasDeferredUpdates);
+        sb.append(", trackedComponent=").append(trackedComponent == null ? "null" : trackedComponent.get());
+        sb.append('}');
+        return sb.toString();
+    }
+
+
     /* Implementation details */
 
     private final WeakReference<WLInputMethodZwpTextInputV3> im;
@@ -295,6 +342,10 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     }
 
     private void updateNotify() {
+        if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+            log.finest(String.format("updateNotify(): this=%s.", this), new Throwable("Stacktrace"));
+        }
+
         if (getTrackedComponentIfTracking() == null) return;
 
         if (updatesAreDeferred) {

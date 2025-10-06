@@ -36,7 +36,6 @@ import java.util.Locale;
 
 public final class WLInputMethodDescriptorZwpTextInputV3 implements InputMethodDescriptor {
 
-    // TODO: add logging everywhere
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.im.text_input_unstable_v3.WLInputMethodDescriptorZwpTextInputV3");
 
 
@@ -93,7 +92,14 @@ public final class WLInputMethodDescriptorZwpTextInputV3 implements InputMethodD
         // NB: we should avoid returning null from this method because the calling code isn't really ready to get null
 
         ensureIsAvailableOnPlatform();
-        return new WLInputMethodZwpTextInputV3();
+
+        final var result = new WLInputMethodZwpTextInputV3();
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("createInputMethod(): result={0}.", result);
+        }
+
+        return result;
     }
 
 
@@ -135,6 +141,11 @@ public final class WLInputMethodDescriptorZwpTextInputV3 implements InputMethodD
                 }
             }
         }
+
+        if (log.isLoggable(PlatformLogger.Level.CONFIG)) {
+            log.config("initAndGetToolkitStartupLocale(): toolkitStartupLocale={0}.", toolkitStartupLocale);
+        }
+
         return toolkitStartupLocale;
     }
 
@@ -153,6 +164,11 @@ public final class WLInputMethodDescriptorZwpTextInputV3 implements InputMethodD
                 }
             }
         }
+
+        if (log.isLoggable(PlatformLogger.Level.CONFIG)) {
+            log.config("initAndGetIsAvailableOnPlatform(): isAvailableOnPlatform={0}.", isAvailableOnPlatform);
+        }
+
         return isAvailableOnPlatform;
     }
 

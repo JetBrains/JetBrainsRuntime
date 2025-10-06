@@ -44,7 +44,6 @@ import java.util.Objects;
 
 final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
-    // TODO: add logging everywhere
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.im.text_input_unstable_v3.WLInputMethodZwpTextInputV3");
 
 
@@ -84,6 +83,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     protected void stopListening() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("stopListening(): this={0}.", this);
+        }
+
         this.awtNativeImIsExplicitlyDisabled = true;
         wlDisableContextNow();
 
@@ -92,6 +95,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void notifyClientWindowChange(Rectangle location) {
+        if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+            log.finest("notifyClientWindowChange(location={0}): this={1}.", location, this);
+        }
+
         awtClientComponentCaretPositionTracker.onIMNotifyClientWindowChange(location);
     }
 
@@ -102,6 +109,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void disableInputMethod() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("disableInputMethod(): this={0}.", this);
+        }
+
         this.awtNativeImIsExplicitlyDisabled = true;
         wlDisableContextNow();
     }
@@ -116,6 +127,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void setInputMethodContext(InputMethodContext context) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("setInputMethodContext(context={0}): this={1}.", context, this);
+        }
+
         this.awtImContext = context;
     }
 
@@ -164,11 +179,19 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void dispatchEvent(AWTEvent event) {
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("dispatchEvent(event={0}): this={1}.", event, this);
+        }
+
         awtClientComponentCaretPositionTracker.onIMDispatchEvent(event);
     }
 
     @Override
     public void activate() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("activate(): this={0}.", this);
+        }
+
         this.awtActivationStatus = AWTActivationStatus.ACTIVATED;
         this.awtNativeImIsExplicitlyDisabled = false;
 
@@ -189,6 +212,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void deactivate(boolean isTemporary) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("deactivate(isTemporary={0}): this={1}.", isTemporary, this);
+        }
+
         final boolean wasActive = (this.awtActivationStatus == AWTActivationStatus.ACTIVATED);
         this.awtActivationStatus = isTemporary ? AWTActivationStatus.DEACTIVATED_TEMPORARILY : AWTActivationStatus.DEACTIVATED;
         this.awtPreviousClientComponent = getClientComponent();
@@ -202,6 +229,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void hideWindows() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("hideWindows(): this={0}.", this);
+        }
+
         // "The method is only called when the input method is inactive."
         assert(this.awtActivationStatus != AWTActivationStatus.ACTIVATED);
 
@@ -214,6 +245,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void removeNotify() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("removeNotify(): this={0}.", this);
+        }
+
         // "The method is only called when the input method is inactive."
         assert(this.awtActivationStatus != AWTActivationStatus.ACTIVATED);
 
@@ -222,6 +257,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void endComposition() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("endComposition(): this={0}.", this);
+        }
+
         // Deleting the current preedit text
         awtDispatchIMESafely(JavaPreeditString.EMPTY, JavaCommitString.EMPTY);
 
@@ -236,6 +275,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void dispose() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("dispose(): this={0}.", this);
+        }
+
         awtActivationStatus = AWTActivationStatus.DEACTIVATED;
         awtNativeImIsExplicitlyDisabled = false;
         awtCurrentClientLatestDispatchedPreeditString = null;
@@ -364,11 +407,19 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 }
             }
 
+            if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+                log.finest("awtGetWlCursorRectangleOf(component={0}): caretOnComponent={1}.", component, caretOnComponent);
+            }
+
             result = awtConvertRectOnComponentToRectOnWlSurface(component, caretOnComponent);
         }
 
         if (result == null) {
             result = new Rectangle(0, 0, 1, 1);
+        }
+
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("awtGetWlCursorRectangleOf(component={0}): result={1}.", component, result);
         }
 
         return result;
@@ -490,18 +541,36 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** @return {@code true} if a new InputMethodEvent has been successfully made and dispatched, {@code false} otherwise. */
     private boolean awtDispatchIMESafely(JavaPreeditString preeditString, JavaCommitString commitString) {
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("awtDispatchIMESafely(preeditString={0}, commitString={1}): this={2}.", preeditString, commitString, this);
+        }
+
         assert(preeditString != null);
         assert(commitString != null);
 
         try {
             if (awtActivationStatus != AWTActivationStatus.ACTIVATED) {
                 // Supposing an input method shouldn't interact with UI when not activated.
+
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("awtDispatchIMESafely(preeditString={0}, commitString={1}): ignoring an attempt to dispatch a new InputMethodEvent from an inactive InputMethod={2}.",
+                             preeditString, commitString, this);
+                }
+
                 return false;
             }
 
             final var clientComponent = getClientComponent();
             if (clientComponent == null) {
                 // Nowhere to dispatch.
+
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.warning(
+                        "awtDispatchIMESafely(preeditString={0}, commitString={1}): can't dispatch a new InputMethodEvent because there's no client component to dispatch to, although this InputMethod is active. this={2}.",
+                        preeditString, commitString, this
+                    );
+                }
+
                 return false;
             }
 
@@ -545,6 +614,12 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 // NB: we shouldn't extend this logic to the cases when clientCurrentPreeditText is not empty
                 //     because in those cases the differences may lie not only in the preedit text, but also in the caret position,
                 //     text attributes and god knows what else.
+
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("awtDispatchIMESafely(preeditString={0}, commitString={1}): ignoring a redundant attempt to dispatch a new empty InputMethodEvent to a component with no preedit text. this={2}.",
+                            preeditString, commitString, this);
+                }
+
                 return false;
             }
 
@@ -597,6 +672,23 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 }
             }
 
+            if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+                log.finest(
+                    "awtDispatchIMESafely(...): dispatching an InputMethodEvent equal to {0}. this={1}.",
+                    // the parameters of this fictitious IME must be synchronized with what's actually dispatched below
+                    new InputMethodEvent(
+                        clientComponent,
+                        InputMethodEvent.INPUT_METHOD_TEXT_CHANGED,
+                        imeText.getIterator(),
+                        commitString.text().length(),
+                        imeCaret,
+                        null
+                    ),
+                    this
+                );
+            }
+
+            // NB: keep the parameters passed here synchronized with what's logged above.
             this.awtImContext.dispatchInputMethodEvent(
                 InputMethodEvent.INPUT_METHOD_TEXT_CHANGED,
                 imeText.getIterator(),
@@ -846,6 +938,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      * @see #wlCanSendChangesNow()
      */
     private void wlScheduleContextNewChanges(final OutgoingChanges newOutgoingChanges) {
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("wlScheduleContextNewChanges(): scheduling the new change set {0}. this={1}.", newOutgoingChanges, this);
+        }
+
         if (newOutgoingChanges == null) {
             return;
         }
@@ -867,6 +963,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     }
 
     private void wlEnableContextNow() {
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer(String.format("wlEnableContextNow(): this=%s.", this), new Throwable("Stacktrace"));
+        }
+
         // The method's implementation is based on the following assumptions:
         //   1. Enabling an input context from the "text-input-unstable-v3" protocol's point of view can be done at any moment,
         //      even when there are committed changes, which the compositor hasn't applied yet,
@@ -903,6 +1003,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 // This way we can guarantee the context won't accidentally get disabled afterward or
                 //   be keeping outdated state.
 
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("wlEnableContextNow(): ignoring an attempt to enable an already enabled input context. this={0}.", this);
+                }
+
                 return;
             }
         }
@@ -935,6 +1039,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     }
 
     private void wlDisableContextNow() {
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer(String.format("wlDisableContextNow(): this=%s.", this), new Throwable("Stacktrace"));
+        }
+
         // The method's implementation is based on the following assumptions:
         //   1. Disabling an input context from the "text-input-unstable-v3" protocol's point of view can be done at any moment,
         //      even when there are committed changes, which the compositor hasn't applied yet,
@@ -967,6 +1075,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 wlHandleContextGotDisabled();
             }
 
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("wlDisableContextNow(): ignoring an attempt to enable an input context that isn't focused on any wl_surface. this={0}.", this);
+            }
+
             return;
         }
 
@@ -975,6 +1087,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 // We can skip sending a new 'disable' request only if there's currently nothing being committed.
                 // This way we can guarantee the context won't accidentally get enabled afterward as a result of
                 //   those changes' processing.
+
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("wlDisableContextNow(): ignoring an attempt to disable an already disabled input context. this={0}.", this);
+                }
 
                 return;
             }
@@ -999,6 +1115,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     }
 
     private void wlHandleContextGotDisabled() {
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("wlHandleContextGotDisabled(): this={0}.", this);
+        }
+
         wlInputContextState.setEnabledState(null);
 
         try {
@@ -1020,6 +1140,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
 
     private void wlSyncWithAppliedOutgoingChanges() {
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("wlSyncWithAppliedOutgoingChanges(): this={0}.", this);
+        }
+
         final var changesToSyncWith = wlBeingCommittedChanges;
         wlBeingCommittedChanges = null;
 
@@ -1060,6 +1184,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 changesToSyncWith.changeSet().getCursorRectangle() == null ? currentStateOfEnabled.cursorRectangle() : changesToSyncWith.changeSet().getCursorRectangle()
             ));
         }
+
+        if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+            log.finest("wlSyncWithAppliedOutgoingChanges(): updated this={0}.", this);
+        }
     }
 
     private IncomingChanges wlGetIncomingChanges() {
@@ -1072,6 +1200,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     /** Called by {@link ClientComponentCaretPositionTracker} */
     boolean wlUpdateCursorRectangle(final boolean forceUpdate) {
         assert(EventQueue.isDispatchThread());
+
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("wlUpdateCursorRectangle(): forceUpdate={0}, this={1}.", forceUpdate, this);
+        }
 
         if (wlInputContextState.getCurrentWlSurfacePtr() == 0) {
             return false;
@@ -1101,6 +1233,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             (wlBeingCommittedChanges != null && wlBeingCommittedChanges.changeSet().getCursorRectangle() != null)
             ? !wlBeingCommittedChanges.changeSet().getCursorRectangle().equals(newCursorRectangle)
             : !Objects.equals(contextStateOfEnabled.cursorRectangle(), newCursorRectangle);
+
+        if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+            log.finest("wlUpdateCursorRectangle(): newCursorRectangle={0}, newCursorRectangleDiffers={1}.", newCursorRectangle, newCursorRectangleDiffers);
+        }
 
         if ( newCursorRectangle != null && (forceUpdate || newCursorRectangleDiffers) ) {
             wlScheduleContextNewChanges(new OutgoingChanges().setCursorRectangle(newCursorRectangle));
@@ -1314,6 +1450,12 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             //   |the component fires a new caret position update|-----------+
             //   +-----------------------------------------------+
             final boolean doDeferCaretPositionUpdates = !this.awtClientComponentCaretPositionTracker.areUpdatesDeferred();
+
+            if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+                log.finest("zwp_text_input_v3_onDone(...): doDeferCaretPositionUpdates={0}, preeditStringToApply={1}, commitStringToApply={2}.",
+                           doDeferCaretPositionUpdates, preeditStringToApply, commitStringToApply);
+            }
+
             if (doDeferCaretPositionUpdates) {
                 this.awtClientComponentCaretPositionTracker.deferUpdates();
             }
