@@ -351,7 +351,7 @@ java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java 80
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java 8253184 windows-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentWindowClick.java 8253184 windows-all
 java/awt/Window/setLocRelativeTo/SetLocationRelativeToTest.java 8253184 windows-all
-java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-7312,JBR-9192 macosx-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64
+java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java JBR-7312,JBR-9192 macosx-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184,JBR-6463 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java 8222328 windows-all,linux-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/Shaped.java  8222328 windows-all,linux-all,macosx-all
@@ -770,6 +770,8 @@ java/awt/Dialog/ModalDialogPermission/ModalDialogPermission.java JBR-5225 window
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java JBR-5082 linux-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787,8253184 linux-all,windows-all
 java/awt/dnd/DragSourceMotionListenerTest.java 8225131 windows-all
+java/awt/event/SequencedEvent/MultipleContextsFunctionalTest.java 8305061 macosx-x64
+
 
 ############################################################################
 

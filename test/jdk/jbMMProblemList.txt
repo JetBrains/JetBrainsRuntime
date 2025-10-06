@@ -112,6 +112,7 @@ javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java nobug linux
 javax/swing/JButton/8151303/PressedIconTest.java JBR-5210 windows-all,linux-all
 javax/swing/JComboBox/6559152/bug6559152.java JBR-7783,JBR-8964 linux-x64,windows-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184 windows-all,linux-all
+javax/swing/JFileChooser/4400728/JFileChooserDefaultDirectoryTest.java JBR-8534 windows-x64
 javax/swing/JFileChooser/4847375/bug4847375.java JBR-8534 windows-x64
 javax/swing/JFileChooser/4966171/bug4966171.java JBR-8534 windows-x64
 javax/swing/JFileChooser/8010718/bug8010718.java JBR-8534 windows-x64
