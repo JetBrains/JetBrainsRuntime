@@ -268,7 +268,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         return false;
     }
 
-    private static Window getToplevelFor(Component component) {
+    public static Window getToplevelFor(Component component) {
         Container container = component instanceof Container c ? c : component.getParent();
         for (Container p = container; p != null; p = p.getParent()) {
             if (p instanceof Window window && !isWlPopup(window)) {
@@ -285,7 +285,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 : c.getParent();
     }
 
-    static Point getRelativeLocation(Component c, Window toplevel) {
+    public static Point getRelativeLocation(Component c, Window toplevel) {
         Objects.requireNonNull(c);
 
         if (toplevel == null) {
@@ -1590,7 +1590,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
      * Converts a value in the Java coordinate system into the Wayland
      * surface-local coordinate system.
      */
-    int javaUnitsToSurfaceUnits(int value) {
+    public final int javaUnitsToSurfaceUnits(int value) {
         if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
             return value;
         } else {
@@ -1600,7 +1600,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
-    int javaUnitsToSurfaceSize(int value) {
+    public final int javaUnitsToSurfaceSize(int value) {
         if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
             return value;
         } else {
