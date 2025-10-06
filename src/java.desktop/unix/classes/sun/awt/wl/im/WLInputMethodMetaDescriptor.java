@@ -87,19 +87,23 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
     public static WLInputMethodMetaDescriptor getInstanceIfAvailableOnPlatform() {
         final WLInputMethodMetaDescriptor result;
 
-        // For now there's only 1 possible implementation of IM,
-        //   but if/when there are more, this method will have to choose one of them.
-        //   It'll be good if the preferable engine can be chosen via a system property.
-
-        final InputMethodDescriptor realImDescriptor = WLInputMethodDescriptorZwpTextInputV3.getInstanceIfAvailableOnPlatform();
-        if (realImDescriptor != null) {
-            result = new WLInputMethodMetaDescriptor(realImDescriptor);
-        } else {
+        if (!ENABLE_NATIVE_IM_SUPPORT) {
             result = null;
+        } else {
+            // For now there's only 1 possible implementation of IM,
+            //   but if/when there are more, this method will have to choose one of them.
+            //   It'll be good if the preferable engine can be chosen via a system property.
+
+            final InputMethodDescriptor realImDescriptor = WLInputMethodDescriptorZwpTextInputV3.getInstanceIfAvailableOnPlatform();
+            if (realImDescriptor != null) {
+                result = new WLInputMethodMetaDescriptor(realImDescriptor);
+            } else {
+                result = null;
+            }
         }
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("getInstanceIfAvailableOnPlatform(): result={0}.", result);
+            log.fine("getInstanceIfAvailableOnPlatform(): result={0}, ENABLE_NATIVE_IM_SUPPORT={1}.", result, ENABLE_NATIVE_IM_SUPPORT);
         }
 
         return result;
@@ -179,6 +183,25 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
     private final static Map<TextAttribute, ?> imHighlightMapSelectedConvertedText = Map.of(
         TextAttribute.SWAP_COLORS, TextAttribute.SWAP_COLORS_ON
     );
+
+    /**
+     * This flag allows disabling ALL integrations with native IMs. The idea is to allow users to disable
+     *   unnecessary for them functionality if they face any problems because of it.
+     * Therefore, if it's {@code false}, the Toolkit code shouldn't use (directly or indirectly)
+     *   any of Wayland's input methods-related APIs (e.g. the "text-input" protocol).
+     */
+    private final static boolean ENABLE_NATIVE_IM_SUPPORT;
+
+    static {
+        boolean enableNativeImSupportInitializer = true;
+        try {
+            enableNativeImSupportInitializer = Boolean.parseBoolean(System.getProperty("sun.awt.wl.im.enabled", "true"));
+        } catch (Exception err) {
+            log.severe("Failed to read the value of the system property \"sun.awt.wl.im.enabled\". Assuming the default value(=true).", err);
+        }
+
+        ENABLE_NATIVE_IM_SUPPORT = enableNativeImSupportInitializer;
+    }
 
 
     private final InputMethodDescriptor realImDescriptor;
