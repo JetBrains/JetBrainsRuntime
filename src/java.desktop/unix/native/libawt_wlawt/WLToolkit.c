@@ -90,6 +90,8 @@ struct wl_data_device_manager *wl_ddm = NULL;
 struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm = NULL; // optional, check for NULL before use
 struct zxdg_output_manager_v1 *zxdg_output_manager_v1 = NULL; // optional, check for NULL before use
 
+struct zwp_text_input_manager_v3 *zwp_text_input_manager = NULL; // optional, check for NULL before use
+
 static uint32_t num_of_outstanding_sync = 0;
 
 // This group of definitions corresponds to declarations from awt.h
@@ -620,6 +622,14 @@ registry_global(void *data, struct wl_registry *wl_registry,
         if (zxdg_output_manager_v1 != NULL) {
             WLOutputXdgOutputManagerBecameAvailable();
             process_new_listener_before_end_of_init();
+        }
+    } else if (strcmp(interface, zwp_text_input_manager_v3_interface.name) == 0) {
+        // If the requested version is higher than the provided one by the compositor,
+        //   the event loop may shut down as soon as it gets launched (wl_display_dispatch will return -1),
+        //   so let's protect from this since the component being obtained is not vital for work.
+        const uint32_t versionToBind = 1;
+        if (versionToBind <= version) {
+            zwp_text_input_manager = wl_registry_bind(wl_registry, name, &zwp_text_input_manager_v3_interface, versionToBind);
         }
     }
 
