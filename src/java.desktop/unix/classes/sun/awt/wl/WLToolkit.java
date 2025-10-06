@@ -35,6 +35,7 @@ import sun.awt.PeerEvent;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.datatransfer.DataTransferer;
+import sun.awt.wl.im.WLInputMethodMetaDescriptor;
 import sun.java2d.vulkan.VKEnv;
 import sun.java2d.vulkan.VKRenderQueue;
 import sun.util.logging.PlatformLogger;
@@ -777,13 +778,27 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return 16777216; // 24 bits per pixel, 8 bits per channel
     }
 
+    /**
+     * {@link java.awt.event.InputMethodEvent#getText()} can contain attributes which provide AWT/Swing with additional useful information
+     *   (e.g. a language of the text).
+     *
+     * One kind of the possible attributes is {@link InputMethodHighlight}. It informs AWT/Swing that some parts of
+     *   the text are in different states of the text composing process, hence they should look differently from the others.
+     *   However, it doesn't tell how exactly they should look; this choice is left to Toolkit's implementations,
+     *   or more precisely implementations of this method.
+     *
+     * @param highlight a state of a part of InputMethodEvent's text
+     *
+     * @return a collection of {@link TextAttribute}s (with their corresponding values as documented) informing how exactly
+     *         such text should look or {@code null} if a mapping can't be provided.
+     *
+     * @see Toolkit#mapInputMethodHighlight(InputMethodHighlight)
+     */
     @Override
-    public Map<TextAttribute, ?> mapInputMethodHighlight( InputMethodHighlight highlight) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.mapInputMethodHighlight()");
-        }
-        return null;
+    public Map<TextAttribute, ?> mapInputMethodHighlight(InputMethodHighlight highlight) {
+        return WLInputMethodMetaDescriptor.mapInputMethodHighlight(highlight);
     }
+
     @Override
     public boolean getLockingKeyState(int key) {
         return switch (key) {
@@ -843,10 +858,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     public InputMethodDescriptor getInputMethodAdapterDescriptor() {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.getInputMethodAdapterDescriptor()");
-        }
-        return null;
+        return WLInputMethodMetaDescriptor.getInstanceIfAvailableOnPlatform();
     }
 
     /**
@@ -855,9 +867,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     public boolean enableInputMethodsForTextComponent() {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.enableInputMethodsForTextComponent()");
-        }
         return true;
     }
 
