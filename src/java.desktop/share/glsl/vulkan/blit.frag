@@ -1,10 +1,9 @@
 #version 450
 #extension GL_GOOGLE_include_directive: require
-#define ALPHA_TYPE_SPEC_INDEX 0
-#include "alpha_type.glsl"
+#include "common.glsl"
 
 layout(push_constant) uniform PushConstants {
-    layout(offset = 32) // sizeof(VKTransform)
+    mat2x3 _; // Offset
     uint  xorColor;
     float extraAlpha;
 } push;
