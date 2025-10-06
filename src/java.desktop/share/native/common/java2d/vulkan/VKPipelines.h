@@ -72,7 +72,7 @@ typedef struct {
  */
 struct VKPipelineContext {
     VKDevice*                   device;
-    VkPipelineLayout            colorPipelineLayout;
+    VkPipelineLayout            commonPipelineLayout;
     VkDescriptorSetLayout       textureDescriptorSetLayout;
     VkPipelineLayout            texturePipelineLayout;
     VkDescriptorSetLayout       maskFillDescriptorSetLayout;
@@ -104,8 +104,8 @@ typedef struct {
 
 typedef struct {
     float x, y;
-    RGBA color;
-} VKColorVertex;
+    unsigned int data;
+} VKVertex;
 
 typedef struct {
     float px, py;
@@ -114,8 +114,8 @@ typedef struct {
 
 typedef struct {
     int x, y, maskOffset, maskScanline;
-    RGBA color;
-} VKMaskFillColorVertex;
+    unsigned int data;
+} VKMaskFillVertex;
 
 VKPipelineContext* VKPipelines_CreateContext(VKDevice* device);
 void VKPipelines_DestroyContext(VKPipelineContext* pipelines);
