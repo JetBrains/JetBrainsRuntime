@@ -178,9 +178,8 @@ static VKRenderingContext context = {
         .surface = NULL,
         .transform = VK_ID_TRANSFORM,
         .transformModCount = 1,
-        .javaColor = 0xFF000000,
         .xorColor = 0,
-        .color = {},
+        .color = 0xFF000000,
         .extraAlpha = 1.0f,
         .composite = ALPHA_COMPOSITE_SRC_OVER,
         .clipModCount = 1,
@@ -222,7 +221,7 @@ static VkBool32 VKRenderer_CheckPoolDrain(void* pool, void* entry) {
     return VK_FALSE;
 }
 
-#define VERTEX_BUFFER_SIZE (128 * 1024) // 128KiB - enough to draw 910 quads (6 verts) with VKColorVertex.
+#define VERTEX_BUFFER_SIZE (128 * 1024) // 128KiB - enough to draw 1820 quads (6 verts) with VKVertex.
 #define VERTEX_BUFFER_PAGE_SIZE (1 * 1024 * 1024) // 1MiB - fits 8 buffers.
 static void VKRenderer_FindVertexBufferMemoryType(VKMemoryRequirements* requirements) {
     VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
@@ -1168,7 +1167,7 @@ static void VKRenderer_ValidateTransform() {
         // Push the transform into shader.
         surface->device->vkCmdPushConstants(
                 renderPass->commandBuffer,
-                surface->device->renderer->pipelineContext->colorPipelineLayout, // TODO what if our pipeline layout differs?
+                surface->device->renderer->pipelineContext->commonPipelineLayout,
                 VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VKTransform), &transform
         );
     }
@@ -1347,8 +1346,7 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
 {
     if (!VKRenderer_Validate(SHADER_COLOR,
                              fill ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
-                                  : VK_PRIMITIVE_TOPOLOGY_LINE_LIST, ALPHA_TYPE_UNKNOWN)) return; // Not ready.
-    RGBA c = VKRenderer_GetRGBA(context.surface, context.color);
+                                  : VK_PRIMITIVE_TOPOLOGY_LINE_LIST, ALPHA_TYPE_STRAIGHT)) return; // Not ready.
     /*                   dx21
      *    (p1)---------(p2) |          (p1)------
      *     |\            \  |            |  \    dy21
@@ -1359,12 +1357,12 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
      *                              dy21    \ |
      *                                  -----(p3)
      */
-    VKColorVertex p1 = {x11, y11, c};
-    VKColorVertex p2 = {x11 + dx21, y11 + dy21, c};
-    VKColorVertex p3 = {x11 + dx21 + dx12, y11 + dy21 + dy12, c};
-    VKColorVertex p4 = {x11 + dx12, y11 + dy12, c};
+    VKVertex p1 = {x11, y11, context.color};
+    VKVertex p2 = {x11 + dx21, y11 + dy21, context.color};
+    VKVertex p3 = {x11 + dx21 + dx12, y11 + dy21 + dy12, context.color};
+    VKVertex p4 = {x11 + dx12, y11 + dy12, context.color};
 
-    VKColorVertex* vs;
+    VKVertex* vs;
     VK_DRAW(vs, 1, fill ? 6 : 8);
     uint32_t i = 0;
     vs[i++] = p1;
@@ -1381,19 +1379,18 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
 
 void VKRenderer_FillSpans(jint spanCount, jint *spans) {
     if (spanCount == 0) return;
-    if (!VKRenderer_Validate(SHADER_COLOR, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, ALPHA_TYPE_UNKNOWN)) return; // Not ready.
-    RGBA c = VKRenderer_GetRGBA(context.surface, context.color);
+    if (!VKRenderer_Validate(SHADER_COLOR, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, ALPHA_TYPE_STRAIGHT)) return; // Not ready.
 
     jfloat x1 = (float)*(spans++);
     jfloat y1 = (float)*(spans++);
     jfloat x2 = (float)*(spans++);
     jfloat y2 = (float)*(spans++);
-    VKColorVertex p1 = {x1, y1, c};
-    VKColorVertex p2 = {x2, y1, c};
-    VKColorVertex p3 = {x2, y2, c};
-    VKColorVertex p4 = {x1, y2, c};
+    VKVertex p1 = {x1, y1, context.color};
+    VKVertex p2 = {x2, y1, context.color};
+    VKVertex p3 = {x2, y2, context.color};
+    VKVertex p4 = {x1, y2, context.color};
 
-    VKColorVertex* vs;
+    VKVertex* vs;
     VK_DRAW(vs, 1, 6);
     vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
 
@@ -1411,7 +1408,7 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans) {
 void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
                          jint maskoff, jint maskscan, jint masklen, uint8_t *mask) {
     if (!VKRenderer_Validate(SHADER_MASK_FILL_COLOR,
-                             VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, ALPHA_TYPE_UNKNOWN)) return; // Not ready.
+                             VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, ALPHA_TYPE_STRAIGHT)) return; // Not ready.
     // maskoff is the offset from the beginning of mask,
     // it's the same as x and y offset within a tile (maskoff % maskscan, maskoff / maskscan).
     // maskscan is the number of bytes in a row/
@@ -1429,14 +1426,13 @@ void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
         *((char *)maskState.data) = (char)0xFF;
     }
 
-    VKMaskFillColorVertex* vs;
+    VKMaskFillVertex* vs;
     VK_DRAW(vs, 1, 6);
-    RGBA c = VKRenderer_GetRGBA(context.surface, context.color);
     int offset = (int) maskState.offset;
-    VKMaskFillColorVertex p1 = {x, y, offset, maskscan, c};
-    VKMaskFillColorVertex p2 = {x + w, y, offset, maskscan, c};
-    VKMaskFillColorVertex p3 = {x + w, y + h, offset, maskscan, c};
-    VKMaskFillColorVertex p4 = {x, y + h, offset, maskscan, c};
+    VKMaskFillVertex p1 = {x, y, offset, maskscan, context.color};
+    VKMaskFillVertex p2 = {x + w, y, offset, maskscan, context.color};
+    VKMaskFillVertex p3 = {x + w, y + h, offset, maskscan, context.color};
+    VKMaskFillVertex p4 = {x, y + h, offset, maskscan, context.color};
     // Always keep p1 as provoking vertex for correct origin calculation in vertex shader.
     vs[0] = p1; vs[1] = p3; vs[2] = p2;
     vs[3] = p1; vs[4] = p3; vs[5] = p4;
