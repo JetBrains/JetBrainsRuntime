@@ -80,6 +80,8 @@ typedef struct VKBuffer VKBuffer;
 typedef struct VKImage VKImage;
 typedef struct VKSDOps VKSDOps;
 typedef struct VKWinSDOps VKWinSDOps;
+typedef struct VKWinSDCleanupQueue VKWinSDCleanupQueue;
+typedef struct VKWinSDPresentOp VKWinSDPresentOp;
 
 typedef const char* pchar;
 

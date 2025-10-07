@@ -57,11 +57,16 @@ struct VKDevice {
     ARRAY(jint)          supportedFormats;
     jint caps;
 
+    // hasSwapchainMaintenance1 is an implementation detail,
+    // so it's not in caps
+    bool hasSwapchainMaintenance1;
+
     VKAllocator*     allocator;
     VKRenderer*      renderer;
 
     DEVICE_FUNCTION_TABLE(DECL_PFN)
     SWAPCHAIN_DEVICE_FUNCTION_TABLE(DECL_PFN)
+    SWAPCHAIN_MAINTENANCE_1_DEVICE_FUNCTION_TABLE(DECL_PFN)
 };
 
 #endif //VKDevice_h_Included

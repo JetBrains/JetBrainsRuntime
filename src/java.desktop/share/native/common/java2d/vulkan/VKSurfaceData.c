@@ -49,17 +49,165 @@ static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
     }
 }
 
+static void VKSD_DrainCleanupQueue(VKWinSDOps* win, VKWinSDCleanupQueue* cleanup) {
+    VKDevice* device = win->swapchainDevice;
+    VKRenderer* renderer = device->renderer;
+
+    for (size_t i = 0; i < ARRAY_SIZE(cleanup->swapchains); ++i) {
+        device->vkDestroySwapchainKHR(device->handle, cleanup->swapchains[i], NULL);
+    }
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKSD_DrainCleanupQueue(%p): destroyed %zu swapchains", win, ARRAY_SIZE(cleanup->swapchains));
+    ARRAY_FREE(cleanup->swapchains);
+
+    for (size_t i = 0; i < ARRAY_SIZE(cleanup->semaphoreIds); ++i) {
+        VKRenderer_ReleaseSharedSemaphore(renderer, cleanup->semaphoreIds[i]);
+    }
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKSD_DrainCleanupQueue(%p): released %zu semaphores", win, ARRAY_SIZE(cleanup->semaphoreIds));
+    ARRAY_FREE(cleanup->semaphoreIds);
+}
+
+static void VKSD_MergeCleanupQueue(VKWinSDCleanupQueue* dest, VKWinSDCleanupQueue* src) {
+    for (size_t i = 0; i < ARRAY_SIZE(src->swapchains); ++i) {
+        ARRAY_PUSH_BACK(dest->swapchains) = src->swapchains[i];
+    }
+    ARRAY_FREE(src->swapchains);
+
+    for (size_t i = 0; i < ARRAY_SIZE(src->semaphoreIds); ++i) {
+        ARRAY_PUSH_BACK(dest->semaphoreIds) = src->semaphoreIds[i];
+    }
+    ARRAY_FREE(src->semaphoreIds);
+}
+
+void VKSD_DestroyRetiredSwapchains(VKWinSDOps* win) {
+    VKDevice* device = win->swapchainDevice;
+    VKRenderer* renderer = device->renderer;
+
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKSD_DestroyRetiredSwapchains(%p): %zu presents pending", win, RING_BUFFER_SIZE(win->pendingPresents));
+    for (VKWinSDPresentOp* present = RING_BUFFER_FRONT(win->pendingPresents);
+         present != NULL; present = RING_BUFFER_NEXT(win->pendingPresents, present)) {
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "  %u: [imageIndex = %u, waitFence = %p, presentSem = %u, sems = %zu, swapchains = %zu]",
+            (uint32_t)(present - &win->pendingPresents->CARR_elem),
+            present->imageIndex,
+            present->waitFence,
+            present->presentSemaphoreId,
+            ARRAY_SIZE(present->cleanup.semaphoreIds),
+            ARRAY_SIZE(present->cleanup.swapchains)
+        );
+    }
+
+    while (RING_BUFFER_SIZE(win->pendingPresents) > 0) {
+        VKWinSDPresentOp* present = RING_BUFFER_FRONT(win->pendingPresents);
+        if (present->waitFence == VK_NULL_HANDLE) {
+            if (present->imageIndex == UINT32_MAX) {
+                // this dummy present has been moved elsewhere
+                RING_BUFFER_POP_FRONT(win->pendingPresents);
+                continue;
+            } else {
+                break;
+            }
+        }
+        VkResult status = device->vkGetFenceStatus(device->handle, present->waitFence);
+        if (status != VK_SUCCESS) {
+            break;
+        }
+        device->vkResetFences(device->handle, 1, &present->waitFence);
+        ARRAY_PUSH_BACK(win->fencePool) = present->waitFence;
+        VKSD_DrainCleanupQueue(win, &present->cleanup);
+        if (present->presentSemaphoreId != 0) {
+            VKRenderer_ReleaseSharedSemaphore(renderer, present->presentSemaphoreId);
+        }
+        RING_BUFFER_POP_FRONT(win->pendingPresents);
+    }
+}
+
+static void VKSD_RetireSwapchain(VKWinSDOps* win) {
+    VKDevice* device = win->swapchainDevice;
+    VKRenderer* renderer = device->renderer;
+
+    VKSD_DestroyRetiredSwapchains(win);
+
+    if (win->swapchain == VK_NULL_HANDLE) {
+        return;
+    }
+
+    // Collect all presents from the old swapchain without an associated waitFence
+    for (VKWinSDPresentOp* present = RING_BUFFER_FRONT(win->pendingPresents);
+         present != NULL; present = RING_BUFFER_NEXT(win->pendingPresents, present)) {
+        if (present->waitFence == VK_NULL_HANDLE && present->imageIndex != UINT32_MAX) {
+            VKSD_MergeCleanupQueue(&win->pendingCleanup, &present->cleanup);
+            if (present->presentSemaphoreId != 0) {
+                ARRAY_PUSH_BACK(win->pendingCleanup.semaphoreIds) = present->presentSemaphoreId;
+                present->presentSemaphoreId = 0;
+            }
+
+            // Mark the present as unused, it will be skipped
+            present->imageIndex = UINT32_MAX;
+        }
+    }
+
+    ARRAY_PUSH_BACK(win->pendingCleanup.swapchains) = win->swapchain;
+    win->swapchain = VK_NULL_HANDLE;
+
+    if (!device->hasSwapchainMaintenance1) {
+        if (ARRAY_SIZE(win->pendingCleanup.swapchains) >= 3) {
+            // Without VK_EXT_swapchain_maintenance1, retired swapchains can accumulate indefinitely,
+            // since to be sure when one can be destroyed, we first need to successfully acquire
+            // imageCount + 1 images from a later one, which might be problematic if the user resizes
+            // the window constantly. The problem is even worse when the application doesn't redraw
+            // the window every frame. It's better to do a wait idle here, to avoid accumulating even
+            // more useless swapchains. It might not be technically spec-compliant, but it's still better
+            // than having unbounded memory usage for swapchain objects.
+            J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKSD_RetireSwapchains(%p): wait idle to cleanup %zu swapchains",
+                    win, ARRAY_SIZE(win->pendingCleanup.swapchains));
+            device->vkQueueWaitIdle(device->queue);
+            VKSD_DrainCleanupQueue(win, &win->pendingCleanup);
+        }
+    }
+}
+
+void VKSD_RegisterPresent(VKWinSDOps* win, VkFence presentFence, uint32_t imageIndex, uint32_t presentSemaphoreId) {
+    VKWinSDPresentOp* present = &RING_BUFFER_PUSH_BACK(win->pendingPresents);
+    *present = (VKWinSDPresentOp){0};
+
+    present->imageIndex = imageIndex;
+    present->presentSemaphoreId = presentSemaphoreId;
+    present->waitFence = presentFence;
+    VKSD_MergeCleanupQueue(&present->cleanup, &win->pendingCleanup);
+    VKSD_DestroyRetiredSwapchains(win);
+}
+
 void VKSD_ResetSurface(VKSDOps* vksdo) {
     VKSD_ResetImageSurface(vksdo);
 
     // Release VKWinSDOps resources, if applicable.
     if (vksdo->drawableType == VKSD_WINDOW) {
         VKWinSDOps* vkwinsdo = (VKWinSDOps*) vksdo;
-        ARRAY_FREE(vkwinsdo->swapchainImages);
-        vkwinsdo->swapchainImages = NULL;
-        if (vkwinsdo->vksdOps.device != NULL && vkwinsdo->swapchain != VK_NULL_HANDLE) {
-            vkwinsdo->vksdOps.device->vkDestroySwapchainKHR(vkwinsdo->vksdOps.device->handle, vkwinsdo->swapchain, NULL);
+        VKDevice* device = vkwinsdo->swapchainDevice;
+
+        for (VKWinSDPresentOp* present = RING_BUFFER_FRONT(vkwinsdo->pendingPresents);
+             present != NULL; present = RING_BUFFER_NEXT(vkwinsdo->pendingPresents, present)) {
+            if (present->waitFence != VK_NULL_HANDLE) {
+                device->vkWaitForFences(device->handle, 1, &present->waitFence, VK_TRUE, UINT64_MAX);
+            }
         }
+        if (vkwinsdo->swapchain != VK_NULL_HANDLE) {
+            if (!device->hasSwapchainMaintenance1) {
+                device->vkQueueWaitIdle(device->queue);
+            }
+            VKSD_RetireSwapchain(vkwinsdo);
+            VKSD_DestroyRetiredSwapchains(vkwinsdo);
+            VKSD_DrainCleanupQueue(vkwinsdo, &vkwinsdo->pendingCleanup);
+        }
+
+        ARRAY_FREE(vkwinsdo->swapchainImages);
+
+        RING_BUFFER_FREE(vkwinsdo->pendingPresents);
+        for (size_t i = 0; i < ARRAY_SIZE(vkwinsdo->fencePool); ++i) {
+            device->vkDestroyFence(device->handle, vkwinsdo->fencePool[i], NULL);
+        }
+        ARRAY_FREE(vkwinsdo->fencePool);
+
+        vkwinsdo->swapchainImages = NULL;
         if (vkwinsdo->surface != VK_NULL_HANDLE) {
             VKEnv* vk = VKEnv_GetInstance();
             vk->vkDestroySurfaceKHR(vk->instance, vkwinsdo->surface, NULL);
@@ -243,7 +391,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     else if (imageCount < capabilities.minImageCount) imageCount = capabilities.minImageCount;
 
     VkSwapchainKHR swapchain;
-    VkSwapchainCreateInfoKHR createInfoKhr = {
+    VkSwapchainCreateInfoKHR swapchainCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .surface = vkwinsdo->surface,
             .minImageCount = imageCount,
@@ -262,7 +410,26 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
             .oldSwapchain = vkwinsdo->swapchainDevice == device ? vkwinsdo->swapchain : NULL
     };
 
-    VK_IF_ERROR(device->vkCreateSwapchainKHR(device->handle, &createInfoKhr, NULL, &swapchain)) {
+    VkSwapchainPresentModesCreateInfoEXT presentModesCreateInfo;
+
+    if (device->hasSwapchainMaintenance1) {
+        // It's recommended to use VkSwapchainPresentModesCreateInfoEXT to
+        // announce support for swapchainMaintenance1
+        presentModesCreateInfo = (VkSwapchainPresentModesCreateInfoEXT) {
+            .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT,
+            .pNext = NULL,
+            .presentModeCount = 1,
+            .pPresentModes = &swapchainCreateInfo.presentMode,
+        };
+        swapchainCreateInfo.pNext = &presentModesCreateInfo;
+
+        // Defer memory allocations for swapchain images for more efficient swapchain recreation.
+        // Note that it's only safe if the renderer doesn't create image views
+        // for swapchain images prematurely (until they have been acquired).
+        swapchainCreateInfo.flags |= VK_SWAPCHAIN_CREATE_DEFERRED_MEMORY_ALLOCATION_BIT_EXT;
+    }
+
+    VK_IF_ERROR(device->vkCreateSwapchainKHR(device->handle, &swapchainCreateInfo, NULL, &swapchain)) {
         return VK_FALSE;
     }
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): swapchain created, format=%d, presentMode=%d, imageCount=%d, compositeAlpha=%d",
@@ -270,10 +437,8 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     vkwinsdo->resizeCallback(vkwinsdo, vkwinsdo->vksdOps.image->extent);
 
     if (vkwinsdo->swapchain != VK_NULL_HANDLE) {
-        // Destroy old swapchain.
-        // TODO is it possible that old swapchain is still being presented, can we destroy it right now?
-        device->vkDestroySwapchainKHR(vkwinsdo->swapchainDevice->handle, vkwinsdo->swapchain, NULL);
-        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): old swapchain destroyed", vkwinsdo);
+        VKSD_RetireSwapchain(vkwinsdo);
+        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): old swapchain retired", vkwinsdo);
     }
     vkwinsdo->swapchain = swapchain;
     vkwinsdo->swapchainDevice = device;
