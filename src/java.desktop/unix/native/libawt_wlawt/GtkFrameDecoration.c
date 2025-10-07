@@ -643,8 +643,19 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
     jint pixel_width = ceil(width * scale);
     jint pixel_height = ceil(height * scale);
 
+    jboolean is_copy = JNI_FALSE;
+    const char *title_c_str = "";
+    if (title) {
+        title_c_str = JNU_GetStringPlatformChars(env, title, &is_copy);
+        if (!title_c_str)
+            return;
+    }
+
     unsigned char *buffer = (*env)->GetPrimitiveArrayCritical(env, dest, 0);
     if (!buffer) {
+        if (is_copy) {
+            JNU_ReleaseStringPlatformChars(env, title, title_c_str);
+        }
         JNU_ThrowOutOfMemoryError(env, "Could not get image buffer");
         return;
     }
@@ -660,18 +671,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
 
     cairo_t *cr = p_cairo_create(surface);
 
-    jboolean is_copy = JNI_FALSE;
-    const char *title_c_str = "";
-    if (title) {
-        title_c_str = JNU_GetStringPlatformChars(env, title, &is_copy);
-        if (!title_c_str)
-            return;
-    }
     draw_title_bar(decor, surface, cr, width, height, scale, title_c_str, buttonsState);
-
-    if (is_copy) {
-        JNU_ReleaseStringPlatformChars(env, title, title_c_str);
-    }
 
     // Make sure pixels have been flush into the underlying buffer
     p_cairo_surface_flush(surface);
@@ -679,6 +679,11 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
     p_gdk_threads_leave();
 
     (*env)->ReleasePrimitiveArrayCritical(env, dest, buffer, 0);
+
+    if (is_copy) {
+        JNU_ReleaseStringPlatformChars(env, title, title_c_str);
+    }
+
     p_cairo_destroy(cr);
     p_cairo_surface_destroy(surface);
 }
