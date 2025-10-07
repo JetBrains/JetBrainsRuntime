@@ -60,6 +60,18 @@ struct VKSDOps {
 typedef void (*VKWinSD_SurfaceResizeCallback)(VKWinSDOps* surface, VkExtent2D extent);
 typedef void (*VKWinSD_SurfaceInitCallback)(VKWinSDOps* surface, void* data);
 
+struct VKWinSDCleanupQueue {
+    ARRAY(VkSwapchainKHR) swapchains;
+    ARRAY(uint32_t)       semaphoreIds;
+};
+
+struct VKWinSDPresentOp {
+    uint32_t            imageIndex;
+    uint32_t            presentSemaphoreId;
+    VkFence             waitFence;
+    VKWinSDCleanupQueue cleanup;
+};
+
 /**
  * The VKWinSDOps structure describes a native Vulkan surface connected with a window.
  */
@@ -71,6 +83,15 @@ struct VKWinSDOps {
     VKDevice*      swapchainDevice;
     VkExtent2D     swapchainExtent;
     VKWinSD_SurfaceResizeCallback resizeCallback;
+
+    // New presentations are pushed to the back of the ring buffer,
+    // and they are popped from the front of the ring buffer
+    RING_BUFFER(VKWinSDPresentOp) pendingPresents;
+
+    // Resources to cleanup after the next submitted present will be done
+    VKWinSDCleanupQueue pendingCleanup;
+
+    ARRAY(VkFence)     fencePool;
 };
 
 /**
@@ -112,5 +133,15 @@ VkBool32 VKSD_ConfigureImageSurfaceStencil(VKSDOps* vksdo);
  * VKSD_ConfigureImageSurface must have been called before.
  */
 VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo);
+
+/**
+ * Associate latest retired resources with a new presentation.
+ */
+void VKSD_RegisterPresent(VKWinSDOps* win, VkFence presentFence, uint32_t imageIndex, uint32_t presentSemaphoreId);
+
+/**
+ * Destroy retired swapchains for a given window surface.
+ */
+void VKSD_DestroyRetiredSwapchains(VKWinSDOps* win);
 
 #endif /* VKSurfaceData_h_Included */

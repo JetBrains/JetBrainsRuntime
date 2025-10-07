@@ -150,4 +150,6 @@ void VKRenderer_DrawImage(VKImage* image, VkFormat format,
 VKRenderingContext* VKRenderer_GetContext();
 VKTexturePool* VKRenderer_GetTexturePool(VKRenderer* );
 
+void VKRenderer_ReleaseSharedSemaphore(VKRenderer* renderer, uint32_t id);
+
 #endif //VKRenderer_h_Included

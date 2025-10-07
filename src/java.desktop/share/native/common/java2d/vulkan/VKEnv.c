@@ -170,6 +170,8 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
     VKNamedEntry* extensions = NULL;
     DEF_NAMED_ENTRY(extensions, PLATFORM_SURFACE_EXTENSION);
     DEF_NAMED_ENTRY(extensions, VK_KHR_SURFACE_EXTENSION);
+    DEF_NAMED_ENTRY(extensions, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION);
+    DEF_NAMED_ENTRY(extensions, VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION);
 #ifdef DEBUG
     DEF_NAMED_ENTRY(extensions, VK_EXT_DEBUG_UTILS_EXTENSION);
 #endif
@@ -186,7 +188,15 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
 
     // Check presentation support.
     VkBool32 presentationSupported = PLATFORM_SURFACE_EXTENSION.found && VK_KHR_SURFACE_EXTENSION.found;
-    if (!presentationSupported) PLATFORM_SURFACE_EXTENSION.found = VK_KHR_SURFACE_EXTENSION.found = NULL;
+    if (!presentationSupported) {
+        PLATFORM_SURFACE_EXTENSION.found = NULL;
+        VK_KHR_SURFACE_EXTENSION.found = NULL;
+        VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION.found = NULL;
+        VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION.found = NULL;
+    }
+
+    bool hasGetSurfaceCaps2 = presentationSupported && VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION.found;
+    bool hasSurfaceMaintenance1 = hasGetSurfaceCaps2 && VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION.found;
 
     // Configure validation
     void *pNext = NULL;
@@ -274,6 +284,25 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
         }
     }
     J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Presentation supported = %s", presentationSupported ? "true" : "false");
+
+    if (hasGetSurfaceCaps2) {
+        bool missingGetSurfaceCaps2Api = false;
+        GET_SURFACE_CAPABILITIES_2_INSTANCE_FUNCTION_TABLE(CHECK_PROC_ADDR, missingGetSurfaceCaps2Api, vkGetInstanceProcAddr, vk->instance, vk->)
+        if (missingGetSurfaceCaps2Api) {
+            hasGetSurfaceCaps2 = false;
+            hasSurfaceMaintenance1 = false;
+            J2dRlsTraceLn(J2D_TRACE_WARNING, "Vulkan: Optional API is missing:");
+            GET_SURFACE_CAPABILITIES_2_INSTANCE_FUNCTION_TABLE(LOG_MISSING_PFN, vk->)
+        }
+    }
+
+    vk->hasGetSurfaceCaps2 = hasGetSurfaceCaps2;
+    vk->hasSurfaceMaintenance1 = hasSurfaceMaintenance1;
+
+    if (presentationSupported) {
+        J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: VK_KHR_get_surface_capabilities2 supported = %s", hasGetSurfaceCaps2 ? "true" : "false");
+        J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: VK_EXT_surface_maintenance1 supported = %s", hasSurfaceMaintenance1 ? "true" : "false");
+    }
 
     vk->composites = VKComposites_Create();
 

@@ -319,6 +319,29 @@ static inline size_t CARR_ring_buffer_push_back(void* data) {
     &(P)[(CARR_RING_BUFFER_T(P)->tail+CARR_RING_BUFFER_T(P)->capacity-1) % CARR_RING_BUFFER_T(P)->capacity].CARR_elem)
 
 /**
+ * Get pointer to the next element from a pointer to any element of the ring buffer,
+ * or NULL if the element is at tail.
+ * @param P ring buffer, must not be empty
+ * @param E pointer to an element, must not be NULL
+ * @return pointer to the next element, or NULL if E is tail
+ */
+#define RING_BUFFER_NEXT(P, E) \
+    CARR_RING_BUFFER_GUARD((P), ((RING_BUFFER_BACK(P) == (E)) ? NULL : \
+    (&(P)[((E) + 1 - &(P)->CARR_elem) % CARR_RING_BUFFER_T(P)->capacity].CARR_elem)))
+
+/**
+ * Get pointer to the previous element from a pointer to any element of the ring buffer,
+ * or NULL if the element is at head.
+ * @param P ring buffer, must not be empty
+ * @param E pointer to an element, must not be NULL
+ * @return pointer to the previous element, or NULL if E is head
+ */
+#define RING_BUFFER_PREV(P, E) \
+    CARR_RING_BUFFER_GUARD((P), ((RING_BUFFER_FRONT(P) == (E)) ? NULL : \
+    (&(P)[((E) + CARR_RING_BUFFER_T(P)->capacity - 1 - &(P)->CARR_elem) \
+     % CARR_RING_BUFFER_T(P)->capacity].CARR_elem)))
+
+/**
  * Move beginning of the ring buffer forward (remove first element).
  * @param P ring buffer
  */

@@ -88,6 +88,11 @@ typedef struct {
     void* data;
 } VKCleanupEntry;
 
+typedef struct {
+    VkSemaphore semaphore;
+    uint32_t refcount;
+} VKSharedSemaphore;
+
 /**
  * Renderer attached to the device.
  */
@@ -96,15 +101,17 @@ struct VKRenderer {
     VKPipelineContext* pipelineContext;
     VKTexturePool*     texturePool;
 
-    POOL(VkCommandBuffer,   commandBufferPool);
-    POOL(VkCommandBuffer,   secondaryCommandBufferPool);
-    POOL(VkSemaphore,       semaphorePool);
-    POOL(VKBuffer,          vertexBufferPool);
-    POOL(VKTexelBuffer,     maskFillBufferPool);
-    POOL(VKCleanupEntry,    cleanupQueue);
-    ARRAY(VKMemory)         bufferMemoryPages;
-    ARRAY(VkDescriptorPool) descriptorPools;
-    ARRAY(VkDescriptorPool) imageDescriptorPools;
+    POOL(VkCommandBuffer,    commandBufferPool);
+    POOL(VkCommandBuffer,    secondaryCommandBufferPool);
+    POOL(VkSemaphore,        semaphorePool);
+    POOL(VKBuffer,           vertexBufferPool);
+    POOL(VKTexelBuffer,      maskFillBufferPool);
+    POOL(VKCleanupEntry,     cleanupQueue);
+    ARRAY(VKMemory)          bufferMemoryPages;
+    ARRAY(VkDescriptorPool)  descriptorPools;
+    ARRAY(VkDescriptorPool)  imageDescriptorPools;
+    ARRAY(VKSharedSemaphore) sharedSemaphores;
+    ARRAY(uint32_t)          sharedSemaphoresFreeIndices;
 
     /**
      * Last known timestamp reached by GPU execution. Resources with equal or less timestamp may be safely reused.
@@ -125,7 +132,9 @@ struct VKRenderer {
     } wait;
 
     struct PendingPresentation {
+        ARRAY(VKWinSDOps*)    windows;
         ARRAY(VkSwapchainKHR) swapchains;
+        ARRAY(VkFence)        fences;
         ARRAY(uint32_t)       indices;
         ARRAY(VkResult)       results;
     } pendingPresentation;
@@ -338,6 +347,43 @@ static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
     return semaphore;
 }
 
+static uint32_t VKRenderer_CreateSharedSemaphore(VKRenderer* renderer, uint32_t refcount, VkSemaphore* outSemaphore) {
+    VKDevice* device = renderer->device;
+    VkSemaphore semaphore = VK_NULL_HANDLE;
+    POOL_TAKE(renderer, semaphorePool, semaphore);
+    if (semaphore == VK_NULL_HANDLE) {
+        VkSemaphoreCreateInfo createInfo = {
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+                .flags = 0,
+        };
+        VK_IF_ERROR(device->vkCreateSemaphore(device->handle, &createInfo, NULL, &semaphore)) {
+            return 0;
+        }
+    }
+
+    uint32_t resultIndex = 0;
+    if (ARRAY_SIZE(renderer->sharedSemaphoresFreeIndices) > 0) {
+        resultIndex = ARRAY_LAST(renderer->sharedSemaphoresFreeIndices);
+        ARRAY_RESIZE(renderer->sharedSemaphoresFreeIndices, ARRAY_SIZE(renderer->sharedSemaphoresFreeIndices) - 1);
+    } else {
+        resultIndex = ARRAY_SIZE(renderer->sharedSemaphores);
+        ARRAY_PUSH_BACK(renderer->sharedSemaphores) = (VKSharedSemaphore){0};
+    }
+
+    renderer->sharedSemaphores[resultIndex].semaphore = semaphore;
+    renderer->sharedSemaphores[resultIndex].refcount = refcount;
+
+    if (outSemaphore != VK_NULL_HANDLE) {
+        *outSemaphore = semaphore;
+    }
+
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+            "VKRenderer_CreateSharedSemaphore(%p): created shared semaphore %u with refcount %u",
+            renderer, resultIndex + 1, refcount);
+
+    return resultIndex + 1;
+}
+
 /**
  * Wait till the GPU execution reached a given timestamp.
  */
@@ -456,13 +502,25 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
     }
     ARRAY_FREE(renderer->imageDescriptorPools);
 
+    for (uint32_t i = 0; i < ARRAY_SIZE(renderer->sharedSemaphores); ++i) {
+        VkSemaphore semaphore = renderer->sharedSemaphores[i].semaphore;
+        if (semaphore != VK_NULL_HANDLE) {
+            device->vkDestroySemaphore(device->handle, semaphore, NULL);
+            renderer->sharedSemaphores[i].semaphore = VK_NULL_HANDLE;
+        }
+    }
+
     device->vkDestroySemaphore(device->handle, renderer->timelineSemaphore, NULL);
     device->vkDestroyCommandPool(device->handle, renderer->commandPool, NULL);
     ARRAY_FREE(renderer->wait.semaphores);
     ARRAY_FREE(renderer->wait.stages);
+    ARRAY_FREE(renderer->pendingPresentation.windows);
     ARRAY_FREE(renderer->pendingPresentation.swapchains);
+    ARRAY_FREE(renderer->pendingPresentation.fences);
     ARRAY_FREE(renderer->pendingPresentation.indices);
     ARRAY_FREE(renderer->pendingPresentation.results);
+    ARRAY_FREE(renderer->sharedSemaphores);
+    ARRAY_FREE(renderer->sharedSemaphoresFreeIndices);
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKRenderer_Destroy(%p)", renderer);
     free(renderer);
 }
@@ -506,7 +564,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
     if (renderer == NULL) return;
     VKRenderer_CleanupPendingResources(renderer);
     VKDevice* device = renderer->device;
-    size_t pendingPresentations = ARRAY_SIZE(renderer->pendingPresentation.swapchains);
+    size_t pendingPresentations = ARRAY_SIZE(renderer->pendingPresentation.windows);
 
     // Submit pending command buffer and semaphores.
     // Even if there are no commands to be sent, we can submit pending semaphores for presentation synchronization.
@@ -518,17 +576,25 @@ void VKRenderer_Flush(VKRenderer* renderer) {
     }
     uint64_t signalSemaphoreValues[] = {renderer->writeTimestamp, 0};
     renderer->writeTimestamp++;
+
+    uint32_t presentSemaphoreId = 0;
+    VkSemaphore presentSemaphore = VK_NULL_HANDLE;
+    uint32_t signalSemaphoreCount = 1;
+    if (pendingPresentations > 0) {
+        presentSemaphoreId = VKRenderer_CreateSharedSemaphore(renderer, pendingPresentations, &presentSemaphore);
+        ++signalSemaphoreCount;
+    }
+
     VkSemaphore semaphores[] = {
             renderer->timelineSemaphore,
-            // We add a presentation semaphore after timestamp increment, so it will be released one step later
-            pendingPresentations > 0 ? VKRenderer_AddPendingSemaphore(renderer) : VK_NULL_HANDLE
+            presentSemaphore,
     };
     VkTimelineSemaphoreSubmitInfo timelineSemaphoreSubmitInfo = {
             .sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO,
             .waitSemaphoreValueCount = 0,
             .pWaitSemaphoreValues = NULL,
-            .signalSemaphoreValueCount = pendingPresentations > 0 ? 2 : 1,
-            .pSignalSemaphoreValues = signalSemaphoreValues
+            .signalSemaphoreValueCount = signalSemaphoreCount,
+            .pSignalSemaphoreValues = signalSemaphoreValues,
     };
     VkSubmitInfo submitInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -538,8 +604,8 @@ void VKRenderer_Flush(VKRenderer* renderer) {
             .pWaitDstStageMask = renderer->wait.stages,
             .commandBufferCount = renderer->commandBuffer != VK_NULL_HANDLE ? 1 : 0,
             .pCommandBuffers = &renderer->commandBuffer,
-            .signalSemaphoreCount = pendingPresentations > 0 ? 2 : 1,
-            .pSignalSemaphores = semaphores
+            .signalSemaphoreCount = signalSemaphoreCount,
+            .pSignalSemaphores = semaphores,
     };
     VK_IF_ERROR(device->vkQueueSubmit(device->queue, 1, &submitInfo, VK_NULL_HANDLE)) VK_UNHANDLED_ERROR();
     renderer->commandBuffer = VK_NULL_HANDLE;
@@ -552,19 +618,42 @@ void VKRenderer_Flush(VKRenderer* renderer) {
         VkPresentInfoKHR presentInfo = {
                 .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                 .waitSemaphoreCount = 1,
-                .pWaitSemaphores = &semaphores[1],
+                .pWaitSemaphores = &presentSemaphore,
                 .swapchainCount = pendingPresentations,
                 .pSwapchains = renderer->pendingPresentation.swapchains,
                 .pImageIndices = renderer->pendingPresentation.indices,
                 .pResults = renderer->pendingPresentation.results
         };
+        VkSwapchainPresentFenceInfoEXT presentFenceInfo;
+        if (device->hasSwapchainMaintenance1 &&
+                ARRAY_SIZE(renderer->pendingPresentation.fences) == pendingPresentations) {
+            presentFenceInfo = (VkSwapchainPresentFenceInfoEXT) {
+                .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT,
+                .pNext = NULL,
+                .swapchainCount = pendingPresentations,
+                .pFences = renderer->pendingPresentation.fences,
+            };
+            presentInfo.pNext = &presentFenceInfo;
+        }
         VkResult presentResult = device->vkQueuePresentKHR(device->queue, &presentInfo);
         if (presentResult != VK_SUCCESS) {
             // TODO check individual result codes in renderer->pendingPresentation.results
             // TODO possible suboptimal conditions
             VK_IF_ERROR(presentResult) {}
         }
+        for (size_t i = 0; i < pendingPresentations; ++i) {
+            VKWinSDOps* win = renderer->pendingPresentation.windows[i];
+            VkFence presentFence = VK_NULL_HANDLE;
+            if (device->hasSwapchainMaintenance1 &&
+                ARRAY_SIZE(renderer->pendingPresentation.fences) == pendingPresentations) {
+                presentFence = renderer->pendingPresentation.fences[i];
+            }
+            uint32_t imageIndex = renderer->pendingPresentation.indices[i];
+            VKSD_RegisterPresent(win, presentFence, imageIndex, presentSemaphoreId);
+        }
+        ARRAY_RESIZE(renderer->pendingPresentation.windows, 0);
         ARRAY_RESIZE(renderer->pendingPresentation.swapchains, 0);
+        ARRAY_RESIZE(renderer->pendingPresentation.fences, 0);
         ARRAY_RESIZE(renderer->pendingPresentation.indices, 0);
     }
     J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Flush(%p): buffers=%d, presentations=%d",
@@ -960,6 +1049,32 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
         VkCommandBuffer cb = VKRenderer_Record(renderer);
         surface->lastTimestamp = renderer->writeTimestamp;
 
+        VkFence acquireFence = VK_NULL_HANDLE;
+        VkFence presentFence = VK_NULL_HANDLE;
+
+        {
+            VkFence fence = VK_NULL_HANDLE;
+            if (ARRAY_SIZE(win->fencePool) > 0) {
+                fence = ARRAY_LAST(win->fencePool);
+                ARRAY_RESIZE(win->fencePool, ARRAY_SIZE(win->fencePool) - 1);
+            } else {
+                VkFenceCreateInfo fenceCreateInfo = {
+                    .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+                    .pNext = NULL,
+                    .flags = 0,
+                };
+                VK_IF_ERROR(device->vkCreateFence(device->handle, &fenceCreateInfo, NULL, &fence)) {
+                    VK_UNHANDLED_ERROR();
+                }
+            }
+
+            if (device->hasSwapchainMaintenance1) {
+                presentFence = fence;
+            } else {
+                acquireFence = fence;
+            }
+        }
+
         // Acquire swapchain image.
         VkSemaphore acquireSemaphore = VKRenderer_AddPendingSemaphore(renderer);
         ARRAY_PUSH_BACK(renderer->wait.semaphores) = acquireSemaphore;
@@ -967,10 +1082,37 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
 
         uint32_t imageIndex;
         VkResult acquireImageResult = device->vkAcquireNextImageKHR(device->handle, win->swapchain, UINT64_MAX,
-                                                                    acquireSemaphore, VK_NULL_HANDLE, &imageIndex);
+                                                                    acquireSemaphore, acquireFence, &imageIndex);
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_FlushSurface(%p): vkAcquireNextImageKHR, result = %d, acquireFence = %p, imageIndex = %u",
+                surface, acquireImageResult, acquireFence, imageIndex);
         if (acquireImageResult != VK_SUCCESS) {
             // TODO possible suboptimal conditions
             VK_IF_ERROR(acquireImageResult) {}
+        }
+
+        if (acquireFence != VK_NULL_HANDLE) {
+            // If there exists a previous acquire fence for the same image index,
+            // it can now be used to destroy swapchain resources for all
+            // retired swapchains created until now.
+            for (VKWinSDPresentOp* present = RING_BUFFER_BACK(win->pendingPresents);
+                 present != NULL; present = RING_BUFFER_PREV(win->pendingPresents, present)) {
+                if (present->waitFence == VK_NULL_HANDLE && present->imageIndex == imageIndex) {
+                    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_FlushSurface(%p): associated fence for imageIndex %u",
+                            surface, imageIndex);
+                    present->waitFence = acquireFence;
+                    acquireFence = VK_NULL_HANDLE;
+                    break;
+                }
+            }
+            if (acquireFence != VK_NULL_HANDLE) {
+                // no previous present, insert an empty present to clean up this fence
+                RING_BUFFER_PUSH_BACK(win->pendingPresents) = (VKWinSDPresentOp) {
+                    .imageIndex = UINT32_MAX,
+                    .presentSemaphoreId = 0,
+                    .waitFence = acquireFence,
+                    .cleanup = (VKWinSDCleanupQueue){0},
+                };
+            }
         }
 
         // Insert barriers to prepare both main (src) and swapchain (dst) images for blit.
@@ -1023,7 +1165,11 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
         }
 
         // Add pending presentation request.
+        ARRAY_PUSH_BACK(renderer->pendingPresentation.windows) = win;
         ARRAY_PUSH_BACK(renderer->pendingPresentation.swapchains) = win->swapchain;
+        if (device->hasSwapchainMaintenance1) {
+            ARRAY_PUSH_BACK(renderer->pendingPresentation.fences) = presentFence;
+        }
         ARRAY_PUSH_BACK(renderer->pendingPresentation.indices) = imageIndex;
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_FlushSurface(%p): queued for presentation", surface);
     }
@@ -1490,5 +1636,25 @@ void VKRenderer_AddSurfaceDependency(VKSDOps* src, VKSDOps* dst) {
     }
     if (ARRAY_SIZE(dst->renderPass->usedSurfaces) == 0 || ARRAY_LAST(dst->renderPass->usedSurfaces) != src) {
         ARRAY_PUSH_BACK(dst->renderPass->usedSurfaces) = src;
+    }
+}
+
+void VKRenderer_ReleaseSharedSemaphore(VKRenderer* renderer, uint32_t id) {
+    VKDevice* device = renderer->device;
+    if (id != 0) {
+        VKSharedSemaphore* semaphore = &renderer->sharedSemaphores[id - 1];
+        if (semaphore->refcount > 0) {
+            --semaphore->refcount;
+            if (semaphore->refcount == 0) {
+                if (semaphore->semaphore != VK_NULL_HANDLE) {
+                    J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                            "VKRenderer_ReleaseSharedSemaphore(%p): releasing shared semaphore %u",
+                            renderer, id);
+                    POOL_INSERT(renderer, semaphorePool, semaphore->semaphore);
+                    semaphore->semaphore = VK_NULL_HANDLE;
+                }
+                ARRAY_PUSH_BACK(renderer->sharedSemaphoresFreeIndices) = id - 1;
+            }
+        }
     }
 }
