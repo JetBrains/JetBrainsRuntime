@@ -34,13 +34,11 @@
 #include <assert.h>         // assert
 
 
-static bool checkIfTheImplementationIsAvailable()
-{
+static bool checkIfTheImplementationIsAvailable() {
     return (zwp_text_input_manager == NULL) ? false : true;
 }
 
-static struct
-{
+static struct {
     jclass wlInputMethodClass;
 
     /// `sun.awt.wl.im.text_input_unstable_v3.WLInputMethodZwpTextInputV3#zwp_text_input_v3_onEnter`
@@ -83,8 +81,7 @@ static const struct zwp_text_input_v3_listener IMContext_zwp_text_input_v3_liste
  * `IMContext` and `WLInputMethodZwpTextInputV3` are related in a 1:1 ratio - an instance of `WLInputMethodZwpTextInputV3` holds no more than 1
  * instance of `IMContext` and an instance of `IMContext` only belongs to 1 instance of `WLInputMethodZwpTextInputV3`.
  */
-struct IMContext
-{
+struct IMContext {
     /// A global reference to the instance of `sun.awt.wl.im.text_input_unstable_v3.WLInputMethodZwpTextInputV3` owning this instance of `IMContext`.
     jobject wlInputMethodOwner;
 
@@ -101,8 +98,7 @@ struct IMContext
  *         In this case a corresponding exception of class `java.awt.AWTException` or of an unchecked exception class
  *         will be raised in @p env
  */
-static struct IMContext* IMContext_Create(JNIEnv * const env, jobject wlInputMethodOwnerRefToCopy)
-{
+static struct IMContext* IMContext_Create(JNIEnv * const env, jobject wlInputMethodOwnerRefToCopy) {
     struct wl_seat * const wlSeat = wl_seat;
     struct zwp_text_input_manager_v3 * const textInputManager = zwp_text_input_manager;
 
@@ -177,8 +173,7 @@ failure:
 }
 
 /// Destroys the context previously created by IMContext_Create
-static void IMContext_Destroy(JNIEnv * const env, struct IMContext * const imContext)
-{
+static void IMContext_Destroy(JNIEnv * const env, struct IMContext * const imContext) {
     assert(env != NULL);
     assert(imContext != NULL);
 
@@ -421,15 +416,13 @@ static void IMContext_zwp_text_input_v3_onDone(
 // =============================================== JNI downcalls section ==============================================
 
 JNIEXPORT jboolean JNICALL
-Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodDescriptorZwpTextInputV3_checkIfAvailableOnPlatform(JNIEnv * const env, const jclass clazz)
-{
+Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodDescriptorZwpTextInputV3_checkIfAvailableOnPlatform(JNIEnv * const env, const jclass clazz) {
     return checkIfTheImplementationIsAvailable() ? JNI_TRUE : JNI_FALSE;
 }
 
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_initIDs(JNIEnv * const env, const jclass clazz)
-{
+Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_initIDs(JNIEnv * const env, const jclass clazz) {
     CHECK_NULL_THROW_OOME(
         env,
         jniIDs.wlInputMethodClass = (*env)->NewGlobalRef(env, clazz),
@@ -494,8 +487,7 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_initIDs
 
 
 JNIEXPORT jlong JNICALL
-Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_createNativeContext(JNIEnv * const env, const jobject self)
-{
+Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_createNativeContext(JNIEnv * const env, const jobject self) {
     struct IMContext *result = NULL;
 
     if (!checkIfTheImplementationIsAvailable())
