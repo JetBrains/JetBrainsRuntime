@@ -138,7 +138,7 @@ java/awt/Robot/HiDPIScreenCapture/ScreenCaptureResolutionTest.java nobug generic
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java nobug generic-all
 java/awt/Robot/ScreenCaptureRobotTest.java#id1 nobug generic-all
 java/awt/Toolkit/ScreenInsetsDPIVariation/ScreenInsetsDPIVariation.java nobug generic-all
-java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720,JBR-6931 windows-all,linux-aarch64,linux-6.16.7-100.fc41.x86_64
+java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720,JBR-6931 windows-all,linux-aarch64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 java/awt/Window/8159168/SetShapeTest.java nobug generic-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java nobug generic-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java nobug generic-all
