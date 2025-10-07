@@ -199,6 +199,12 @@ static void IMContext_Destroy(JNIEnv * const env, struct IMContext * const imCon
 // The IMContext_zwp_text_input_v3_on* callbacks are supposed to be as a thin bridge to
 // `WLInputMethodZwpTextInputV3`'s JNI upcalls as possible in terms of contained logic.
 // Generally they should only invoke the corresponding upcalls with the received parameters.
+//
+// Exceptions after making JNI upcalls to WLInputMethodZwpTextInputV3 are checked (via JNU_CHECK_EXCEPTION),
+//   but not suppressed on a purpose: all the corresponding Java methods already handles any java.lang.Exception.
+//   So if an exception leaves any of those methods, it's something really strange and it's better to let WLToolkit
+//   get to know about it rather than log and try to continue the normal path.
+//   The checks are just made to suppress -Xcheck:jni warnings.
 
 static void IMContext_zwp_text_input_v3_onEnter(
     void * const ctx,
@@ -218,6 +224,7 @@ static void IMContext_zwp_text_input_v3_onEnter(
     }
 
     (*env)->CallVoidMethod(env, imContext->wlInputMethodOwner, jniIDs.mID_tiOnEnter, ptr_to_jlong(surface));
+    JNU_CHECK_EXCEPTION(env);
 }
 
 static void IMContext_zwp_text_input_v3_onLeave(
@@ -238,6 +245,7 @@ static void IMContext_zwp_text_input_v3_onLeave(
     }
 
     (*env)->CallVoidMethod(env, imContext->wlInputMethodOwner, jniIDs.mID_tiOnLeave, ptr_to_jlong(surface));
+    JNU_CHECK_EXCEPTION(env);
 }
 
 static void IMContext_zwp_text_input_v3_onPreeditString(
@@ -299,6 +307,7 @@ static void IMContext_zwp_text_input_v3_onPreeditString(
         (jint)cursorBeginUtf8Byte,
         (jint)cursorEndUtf8Byte
     );
+    JNU_CHECK_EXCEPTION(env);
 }
 
 static void IMContext_zwp_text_input_v3_onCommitString(
@@ -351,6 +360,7 @@ static void IMContext_zwp_text_input_v3_onCommitString(
     }
 
     (*env)->CallVoidMethod(env, imContext->wlInputMethodOwner, jniIDs.mID_tiOnCommitString, commitStringUtf8Bytes);
+    JNU_CHECK_EXCEPTION(env);
 }
 
 static void IMContext_zwp_text_input_v3_onDeleteSurroundingText(
@@ -382,6 +392,7 @@ static void IMContext_zwp_text_input_v3_onDeleteSurroundingText(
        (jlong)numberOfUtf8BytesBeforeToDelete,
        (jlong)numberOfUtf8BytesAfterToDelete
     );
+    JNU_CHECK_EXCEPTION(env);
 }
 
 static void IMContext_zwp_text_input_v3_onDone(
@@ -402,6 +413,7 @@ static void IMContext_zwp_text_input_v3_onDone(
     }
 
     (*env)->CallVoidMethod(env, imContext->wlInputMethodOwner, jniIDs.mID_tiOnDone, (jlong)serial);
+    JNU_CHECK_EXCEPTION(env);
 }
 // ============================================= END of IMContext section =============================================
 
