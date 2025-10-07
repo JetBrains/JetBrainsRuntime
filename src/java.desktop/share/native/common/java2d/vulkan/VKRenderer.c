@@ -1295,10 +1295,18 @@ VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, Alph
             J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating clip");
             surface->device->vkCmdSetScissor(renderPass->commandBuffer, 0, 1, &context.clipRect);
             if (clipChanged) {
+                VKStencilMode stencilMode = STENCIL_MODE_NONE;
                 if (ARRAY_SIZE(context.clipSpanVertices) > 0) {
                     VKRenderer_SetupStencil();
-                    renderPass->state.stencilMode = STENCIL_MODE_ON;
-                } else renderPass->state.stencilMode = surface->stencil != NULL ? STENCIL_MODE_OFF : STENCIL_MODE_NONE;
+                    stencilMode = STENCIL_MODE_ON;
+                } else if (surface->stencil != NULL) {
+                    stencilMode = STENCIL_MODE_OFF;
+                }
+                // Reset the pipeline when changing stencil mode.
+                if (renderPass->state.stencilMode != stencilMode) {
+                    renderPass->state.shader = NO_SHADER;
+                }
+                renderPass->state.stencilMode = stencilMode;
             }
         }
         // Validate current composite.
