@@ -60,9 +60,12 @@ struct VKEnv {
 
     VKPlatformData* platformData;
     VkBool32 presentationSupported;
+    bool hasGetSurfaceCaps2;
+    bool hasSurfaceMaintenance1;
 
     INSTANCE_FUNCTION_TABLE(DECL_PFN)
     SURFACE_INSTANCE_FUNCTION_TABLE(DECL_PFN)
+    GET_SURFACE_CAPABILITIES_2_INSTANCE_FUNCTION_TABLE(DECL_PFN)
     DEBUG_INSTANCE_FUNCTION_TABLE(DECL_PFN)
 };
 
