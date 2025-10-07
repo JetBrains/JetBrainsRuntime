@@ -494,7 +494,7 @@ void VKAllocator_Free(VKAllocator* allocator, VKMemory memory) {
         if ((pair->offset << 1U) == handle.offset) pair->firstFree = 1;
         else pair->secondFree = 1;
         VkBool32 cleared = VKAllocator_PushFreeBlockPair(data, pair, handle.pair, handle.level);
-        J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE2,
                       "VKAllocator_Free: shared, level=%d, blockSize=%d, memoryType=%d",
                       handle.level, BLOCK_SIZE << handle.level, data->memoryType);
         // If page is empty and not the last created, release it.
@@ -517,7 +517,7 @@ void VKAllocator_Free(VKAllocator* allocator, VKMemory memory) {
         }
     } else {
         // Release dedicated allocation.
-        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKAllocator_Free: dedicated, level=%d, blockSize=%d", handle.level, BLOCK_SIZE << handle.level);
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE2, "VKAllocator_Free: dedicated, level=%d, blockSize=%d", handle.level, BLOCK_SIZE << handle.level);
         VKAllocator_FreePage(allocator, page, handle.page);
     }
 }
