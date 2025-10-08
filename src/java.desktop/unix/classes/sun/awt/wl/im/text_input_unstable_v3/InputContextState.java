@@ -191,7 +191,7 @@ final class InputContextState {
      */
     private JavaPreeditString latestAppliedPreeditString = PropertiesInitials.PREEDIT_STRING;
     /**
-     * The latest preedit string applied as a result of the latest {@code zwp_text_input_v3::done} event received.
+     * The latest commit string applied as a result of the latest {@code zwp_text_input_v3::done} event received.
      * Must never be {@code null} ; if a {@code zwp_text_input_v3::done} event wasn't preceded by a
      * {@code zwp_text_input_v3::commit_string} event, the field should be set to {@link PropertiesInitials#COMMIT_STRING}.
      */
