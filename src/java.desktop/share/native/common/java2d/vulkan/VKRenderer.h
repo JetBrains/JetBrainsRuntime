@@ -36,16 +36,14 @@
 struct VKRenderingContext {
     VKSDOps*        surface;
 
-    VKTransform     transform;
-    uint64_t        transformModCount;
-
-    jint xorColor; // Color set by SET_XOR_COMPOSITE
-    jint color;    // Color set by SET_COLOR, combined with xorColor
-
-    // Extra alpha is not used when painting with plain color,
-    // in this case color.a already includes it. -1 for logic composites.
-    float extraAlpha;
     VKCompositeMode composite;
+    AlphaType       inAlphaType;
+    VKShader        shader;
+    VKShaderVariant shaderVariant;
+    unsigned int    vertexData;
+    VKPushConstants constants;
+    uint64_t        constantsModCount;
+    uint64_t        transformModCount;
 
     uint64_t           clipModCount; // Used to track changes to the clip.
     VkRect2D           clipRect;
@@ -59,7 +57,7 @@ VKRenderer* VKRenderer_Create(VKDevice* device);
 /**
  * Setup pipeline for drawing. Returns FALSE if the surface is not yet ready for drawing.
  */
-VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, AlphaType inAlphaType);
+VkBool32 VKRenderer_Validate(VKShader shader, VKShaderVariant shaderVariant, VkPrimitiveTopology topology, AlphaType inAlphaType);
 
 /**
  * Record commands into the primary command buffer (outside of a render pass).
