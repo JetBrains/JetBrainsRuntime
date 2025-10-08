@@ -30,7 +30,13 @@ import sun.awt.im.InputMethodAdapter;
 import sun.awt.wl.WLComponentPeer;
 import sun.util.logging.PlatformLogger;
 
-import java.awt.*;
+import java.awt.AWTEvent;
+import java.awt.AWTException;
+import java.awt.Component;
+import java.awt.EventQueue;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Window;
 import java.awt.event.InputMethodEvent;
 import java.awt.font.TextAttribute;
 import java.awt.font.TextHitInfo;

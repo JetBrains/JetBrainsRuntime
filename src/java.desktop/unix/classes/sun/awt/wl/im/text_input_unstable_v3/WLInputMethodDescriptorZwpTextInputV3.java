@@ -28,7 +28,9 @@ package sun.awt.wl.im.text_input_unstable_v3;
 import sun.awt.wl.WLToolkit;
 import sun.util.logging.PlatformLogger;
 
-import java.awt.*;
+import java.awt.AWTException;
+import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.im.spi.InputMethod;
 import java.awt.im.spi.InputMethodDescriptor;
 import java.util.Locale;

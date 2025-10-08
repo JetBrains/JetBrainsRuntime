@@ -28,7 +28,8 @@ package sun.awt.wl.im;
 import sun.awt.wl.im.text_input_unstable_v3.WLInputMethodDescriptorZwpTextInputV3;
 import sun.util.logging.PlatformLogger;
 
-import java.awt.*;
+import java.awt.AWTException;
+import java.awt.Image;
 import java.awt.font.TextAttribute;
 import java.awt.im.InputMethodHighlight;
 import java.awt.im.spi.InputMethod;

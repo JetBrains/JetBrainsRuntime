@@ -25,7 +25,7 @@
 
 package sun.awt.wl.im.text_input_unstable_v3;
 
-import java.awt.*;
+import java.awt.Rectangle;
 
 
 interface PropertiesInitials {
