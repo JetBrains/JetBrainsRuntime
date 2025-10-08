@@ -36,12 +36,25 @@
  * Shader programs.
  */
 typedef enum {
+    // Base shaders.
     SHADER_COLOR,
-    SHADER_MASK_FILL_COLOR,
+    SHADER_GRADIENT,
     SHADER_BLIT,
     SHADER_CLIP,
-    NO_SHADER = 0x7FFFFFFF
+    NO_SHADER = 0x7FFFFFFF,
+    // Mask modifier bit (MASK_FILL & MASK_BLIT).
+    SHADER_MASK = ~NO_SHADER
 } VKShader;
+
+/**
+ * Shader variant.
+ * It is used to specialize shader behavior, and its meaning varies with each particular shader.
+ */
+typedef enum {
+    SHADER_VARIANT_GRADIENT_CLAMP = 0,
+    SHADER_VARIANT_GRADIENT_CYCLE = 1,
+    NO_SHADER_VARIANT = 0x7FFFFFFF
+} VKShaderVariant;
 
 typedef enum {
     STENCIL_MODE_NONE = 0, // No stencil attachment.
@@ -59,12 +72,14 @@ typedef struct {
     AlphaType           inAlphaType : 1;
     VKCompositeMode     composite;
     VKShader            shader;
+    VKShaderVariant     shaderVariant;
     VkPrimitiveTopology topology;
 } VKPipelineDescriptor;
 
 typedef struct {
-    VkPipeline pipeline;
-    AlphaType  outAlphaType;
+    VkPipeline       pipeline;
+    VkPipelineLayout layout;
+    AlphaType        outAlphaType;
 } VKPipelineInfo;
 
 /**
@@ -97,6 +112,29 @@ typedef struct {
     unsigned int xorColor;
     float extraAlpha;
 } VKCompositeConstants;
+
+typedef struct {
+    RGBA c0, c1;
+    float p0, p1, p3;
+} VKGradientPaintConstants;
+
+typedef union {
+    // The minimum guaranteed size of push constants is 128 bytes.
+    alignas(32) // The maximum alignment for built-in glsl types is 32 bytes (dvec4).
+    char data[(128 - sizeof(VKTransform) - sizeof(VKCompositeConstants)) / 32 * 32];
+    VKGradientPaintConstants gradientPaint;
+} VKShaderConstants;
+#define MAX_SHADER_CONSTANTS_SIZE 96 // We expect 96 bytes
+typedef char VKShaderConstantsCheckOffset[sizeof(VKShaderConstants) == MAX_SHADER_CONSTANTS_SIZE ? 1 : -1]; // Verify.
+
+typedef struct {
+    VKTransform transform;
+    VKCompositeConstants composite;
+    VKShaderConstants shader;
+} VKPushConstants;
+typedef char VKPushConstantsCheckSize[sizeof(VKPushConstants) <= 128 ? 1 : -1]; // We should not exceed 128 bytes.
+static const uint32_t PUSH_CONSTANTS_OFFSET = (uintptr_t) &((VKPushConstants*) NULL)->composite;
+static const uint32_t PUSH_CONSTANTS_SIZE = sizeof(VKPushConstants) - PUSH_CONSTANTS_OFFSET;
 
 typedef struct {
     int x, y;
