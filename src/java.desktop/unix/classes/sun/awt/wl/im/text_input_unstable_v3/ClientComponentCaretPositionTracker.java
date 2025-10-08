@@ -254,8 +254,6 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
         if (location != null) {
             // null means the window has become iconified or invisible, so no need to try to update the caret position.
 
-            final boolean forceUpdate = lastKnownClientWindowBounds == null;
-
             lastKnownClientWindowBounds = location;
 
             updateNotify();
