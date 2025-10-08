@@ -1590,7 +1590,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
      * Converts a value in the Java coordinate system into the Wayland
      * surface-local coordinate system.
      */
-    public int javaUnitsToSurfaceUnits(int value) {
+    public final int javaUnitsToSurfaceUnits(int value) {
         if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
             return value;
         } else {
@@ -1600,7 +1600,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
-    public int javaUnitsToSurfaceSize(int value) {
+    public final int javaUnitsToSurfaceSize(int value) {
         if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
             return value;
         } else {
