@@ -25,7 +25,7 @@
 
 #include "sun_awt_wl_im_text_input_unstable_v3_WLInputMethodDescriptorZwpTextInputV3.h"
 #include "sun_awt_wl_im_text_input_unstable_v3_WLInputMethodZwpTextInputV3.h"
-#include "WLToolkit.h"      // wl_seat, zwp_text_input_*
+#include "WLToolkit.h"      // wl_seat, zwp_text_input_*, uint[...]_t, int[...]_t
 #include "JNIUtilities.h"
 
 #include <stdbool.h>        // bool, true, false
