@@ -48,7 +48,7 @@ public final class VKEnv {
 
         @SuppressWarnings("removal")
         private static final boolean accelsd = vulkan && "true".equalsIgnoreCase(AccessController.doPrivileged(
-                (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.accelsd", "")));
+                (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.accelsd", "true")));
 
         @SuppressWarnings("removal")
         private static final int deviceNumber = !vulkan ? 0 : AccessController.doPrivileged(
