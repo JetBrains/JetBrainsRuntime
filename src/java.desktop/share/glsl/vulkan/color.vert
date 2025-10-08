@@ -8,5 +8,5 @@ layout(location = 0) out flat vec4 out_Color;
 
 void main() {
     gl_Position = transformToDeviceSpace(in_Position);
-    out_Color = convertAlpha(decodeColor(in_Color));
+    out_Color = convertAlpha(decodeColor(in_Color)); // No need to APPLY_COMPOSITE - it was already done on the host.
 }
