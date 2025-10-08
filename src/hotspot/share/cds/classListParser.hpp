@@ -134,7 +134,8 @@ private:
 
   ClassListParser(const char* file, ParseMode _parse_mode);
   ~ClassListParser();
-  objArrayOop get_specified_interfaces(TRAPS);
+  GrowableArray<InstanceKlass*> get_specified_interfaces();
+  void check_supertype_obstruction(int specified_supertype_id, const InstanceKlass* specified_supertype, TRAPS);
 
 public:
   static int parse_classlist(const char* classlist_path, ParseMode parse_mode, TRAPS);
