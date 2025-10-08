@@ -164,6 +164,7 @@ struct VKRenderPass {
     BufferWritingState maskFillBufferWriting;
 
     VKPipelineDescriptor state;
+    uint64_t             constantsModCount; // Just a tag to detect when constants were changed.
     uint64_t             transformModCount; // Just a tag to detect when transform was changed.
     uint64_t             clipModCount; // Just a tag to detect when clip was changed.
     VkBool32             pendingFlush    : 1;
@@ -176,12 +177,17 @@ struct VKRenderPass {
 // which is only called from queue flusher thread, no need for synchronization.
 static VKRenderingContext context = {
         .surface = NULL,
-        .transform = VK_ID_TRANSFORM,
-        .transformModCount = 1,
-        .xorColor = 0,
-        .color = 0xFF000000,
-        .extraAlpha = 1.0f,
         .composite = ALPHA_COMPOSITE_SRC_OVER,
+        .inAlphaType = ALPHA_TYPE_UNKNOWN,
+        .shader = NO_SHADER,
+        .shaderVariant = NO_SHADER_VARIANT,
+        .vertexData = 0,
+        .constantsModCount = 1,
+        .transformModCount = 1,
+        .constants = {
+            .transform = VK_ID_TRANSFORM,
+            .composite = { 0, 1.0f }
+        },
         .clipModCount = 1,
         .clipRect = NO_CLIP,
         .clipSpanVertices = NULL
@@ -600,6 +606,7 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     VKRenderPass* renderPass = surface->renderPass;
     renderPass->state.composite = NO_COMPOSITE;
     renderPass->state.shader = NO_SHADER;
+    renderPass->constantsModCount = 0;
     renderPass->transformModCount = 0;
     renderPass->firstVertex = 0;
     renderPass->vertexCount = 0;
@@ -724,6 +731,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
                 .composite = NO_COMPOSITE,
                 .shader = NO_SHADER
             },
+            .constantsModCount = 0,
             .transformModCount = 0,
             .clipModCount = 0,
             .pendingFlush = VK_FALSE,
@@ -1127,7 +1135,7 @@ static uint32_t VKRenderer_AllocateVertices(uint32_t primitives, uint32_t vertic
  * This function can invalidate drawing state, always call it before VK_DRAW.
  */
 static BufferWritingState VKRenderer_AllocateMaskFillBytes(uint32_t size) {
-    assert(size > 0);
+    // assert(size > 0); // size can be 0 when binding the buffer without allocating any data.
     assert(size <= MASK_FILL_BUFFER_SIZE);
     VKSDOps* surface = VKRenderer_GetContext()->surface;
     BufferWritingState state = VKRenderer_AllocateBufferData(
@@ -1163,12 +1171,31 @@ static void VKRenderer_ValidateTransform() {
                 0.0f, 2.0f / (float) surface->image->extent.height, -1.0f
         };
         // Combine it with user transform.
-        VKUtil_ConcatenateTransform(&transform, &context->transform);
+        VKUtil_ConcatenateTransform(&transform, &context->constants.transform);
         // Push the transform into shader.
         surface->device->vkCmdPushConstants(
                 renderPass->commandBuffer,
                 surface->device->renderer->pipelineContext->commonPipelineLayout,
                 VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VKTransform), &transform
+        );
+    }
+}
+
+static void VKRenderer_ValidateConstants() {
+    VKRenderingContext* context = VKRenderer_GetContext();
+    assert(context->surface != NULL);
+    VKSDOps* surface = context->surface;
+    VKRenderPass* renderPass = surface->renderPass;
+    // Update constants, ignoring clip and color shaders.
+    if (renderPass->constantsModCount != context->constantsModCount &&
+        renderPass->state.shader != SHADER_CLIP && renderPass->state.shader != SHADER_COLOR) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_ValidateConstants: updating constants");
+        VKRenderer_FlushDraw(surface);
+        renderPass->constantsModCount = context->constantsModCount;
+        surface->device->vkCmdPushConstants(
+                renderPass->commandBuffer,
+                surface->device->renderer->pipelineContext->commonPipelineLayout,
+                VK_SHADER_STAGE_FRAGMENT_BIT, PUSH_CONSTANTS_OFFSET, PUSH_CONSTANTS_SIZE, &context->constants.composite
         );
     }
 }
@@ -1209,6 +1236,7 @@ static void VKRenderer_SetupStencil() {
             .inAlphaType = ALPHA_TYPE_UNKNOWN,
             .composite = NO_COMPOSITE,
             .shader = SHADER_CLIP,
+            .shaderVariant = NO_SHADER_VARIANT,
             .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
         }).pipeline);
     // Reset vertex buffer binding.
@@ -1253,7 +1281,7 @@ void VKRenderer_RecordBarriers(VKRenderer* renderer,
 /**
  * Setup pipeline for drawing. Returns FALSE if surface is not yet ready for drawing.
  */
-VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, AlphaType inAlphaType) {
+VkBool32 VKRenderer_Validate(VKShader shader, VKShaderVariant shaderVariant, VkPrimitiveTopology topology, AlphaType inAlphaType) {
     assert(context.surface != NULL);
     VKSDOps* surface = context.surface;
 
@@ -1322,6 +1350,7 @@ VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, Alph
 
     // Validate current pipeline.
     if (renderPass->state.shader != shader ||
+        renderPass->state.shaderVariant != shaderVariant ||
         renderPass->state.topology != topology ||
         renderPass->state.inAlphaType != inAlphaType) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Validate: updating pipeline, old=%d, new=%d",
@@ -1329,6 +1358,7 @@ VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, Alph
         VKRenderer_FlushDraw(surface);
         VkCommandBuffer cb = renderPass->commandBuffer;
         renderPass->state.shader = shader;
+        renderPass->state.shaderVariant = shaderVariant;
         renderPass->state.topology = topology;
         renderPass->state.inAlphaType = inAlphaType;
         VKPipelineInfo pipelineInfo = VKPipelines_GetPipelineInfo(renderPass->context, renderPass->state);
@@ -1336,8 +1366,24 @@ VkBool32 VKRenderer_Validate(VKShader shader, VkPrimitiveTopology topology, Alph
         surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineInfo.pipeline);
         renderPass->vertexBufferWriting.bound = VK_FALSE;
         renderPass->maskFillBufferWriting.bound = VK_FALSE;
+
+        // If pipeline uses mask fill layout, but the shader is not actually a MASK one, that must be a generic-layout pipeline.
+        // In that case, we need to bind a mask buffer, even if we won't ever use it.
+        // We could use VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT or nullDescriptor, but those require
+        // optional features or extensions, so don't bother for now...
+        // TODO this is ugly, do something with it.
+        if (pipelineInfo.layout == surface->device->renderer->pipelineContext->maskFillPipelineLayout && !(shader & SHADER_MASK)) {
+            VKRenderer_AllocateMaskFillBytes(0);
+        }
     }
+
+    VKRenderer_ValidateConstants();
     return VK_TRUE;
+}
+
+static VkBool32 VKRenderer_ValidatePaint(VKShader shaderModifier, VkBool32 fill) {
+    return VKRenderer_Validate(context.shader | shaderModifier, context.shaderVariant,
+        fill ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : VK_PRIMITIVE_TOPOLOGY_LINE_LIST, context.inAlphaType);
 }
 
 // Drawing operations.
@@ -1350,11 +1396,9 @@ void VKRenderer_RenderRect(VkBool32 fill, jint x, jint y, jint w, jint h) {
 void VKRenderer_RenderParallelogram(VkBool32 fill,
                                     jfloat x11, jfloat y11,
                                     jfloat dx21, jfloat dy21,
-                                    jfloat dx12, jfloat dy12)
-{
-    if (!VKRenderer_Validate(SHADER_COLOR,
-                             fill ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
-                                  : VK_PRIMITIVE_TOPOLOGY_LINE_LIST, ALPHA_TYPE_STRAIGHT)) return; // Not ready.
+                                    jfloat dx12, jfloat dy12) {
+    if (!VKRenderer_ValidatePaint(0, fill)) return; // Not ready.
+
     /*                   dx21
      *    (p1)---------(p2) |          (p1)------
      *     |\            \  |            |  \    dy21
@@ -1365,10 +1409,10 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
      *                              dy21    \ |
      *                                  -----(p3)
      */
-    VKVertex p1 = {x11, y11, context.color};
-    VKVertex p2 = {x11 + dx21, y11 + dy21, context.color};
-    VKVertex p3 = {x11 + dx21 + dx12, y11 + dy21 + dy12, context.color};
-    VKVertex p4 = {x11 + dx12, y11 + dy12, context.color};
+    VKVertex p1 = {x11, y11, context.vertexData};
+    VKVertex p2 = {x11 + dx21, y11 + dy21, context.vertexData};
+    VKVertex p3 = {x11 + dx21 + dx12, y11 + dy21 + dy12, context.vertexData};
+    VKVertex p4 = {x11 + dx12, y11 + dy12, context.vertexData};
 
     VKVertex* vs;
     VK_DRAW(vs, 1, fill ? 6 : 8);
@@ -1387,16 +1431,16 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
 
 void VKRenderer_FillSpans(jint spanCount, jint *spans) {
     if (spanCount == 0) return;
-    if (!VKRenderer_Validate(SHADER_COLOR, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, ALPHA_TYPE_STRAIGHT)) return; // Not ready.
+    if (!VKRenderer_ValidatePaint(0, VK_TRUE)) return; // Not ready.
 
     jfloat x1 = (float)*(spans++);
     jfloat y1 = (float)*(spans++);
     jfloat x2 = (float)*(spans++);
     jfloat y2 = (float)*(spans++);
-    VKVertex p1 = {x1, y1, context.color};
-    VKVertex p2 = {x2, y1, context.color};
-    VKVertex p3 = {x2, y2, context.color};
-    VKVertex p4 = {x1, y2, context.color};
+    VKVertex p1 = {x1, y1, context.vertexData};
+    VKVertex p2 = {x2, y1, context.vertexData};
+    VKVertex p3 = {x2, y2, context.vertexData};
+    VKVertex p4 = {x1, y2, context.vertexData};
 
     VKVertex* vs;
     VK_DRAW(vs, 1, 6);
@@ -1415,8 +1459,8 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans) {
 
 void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
                          jint maskoff, jint maskscan, jint masklen, uint8_t *mask) {
-    if (!VKRenderer_Validate(SHADER_MASK_FILL_COLOR,
-                             VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, ALPHA_TYPE_STRAIGHT)) return; // Not ready.
+    if (!VKRenderer_ValidatePaint(SHADER_MASK, VK_TRUE)) return; // Not ready.
+
     // maskoff is the offset from the beginning of mask,
     // it's the same as x and y offset within a tile (maskoff % maskscan, maskoff / maskscan).
     // maskscan is the number of bytes in a row/
@@ -1437,10 +1481,10 @@ void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
     VKMaskFillVertex* vs;
     VK_DRAW(vs, 1, 6);
     int offset = (int) maskState.offset;
-    VKMaskFillVertex p1 = {x, y, offset, maskscan, context.color};
-    VKMaskFillVertex p2 = {x + w, y, offset, maskscan, context.color};
-    VKMaskFillVertex p3 = {x + w, y + h, offset, maskscan, context.color};
-    VKMaskFillVertex p4 = {x, y + h, offset, maskscan, context.color};
+    VKMaskFillVertex p1 = {x, y, offset, maskscan, context.vertexData};
+    VKMaskFillVertex p2 = {x + w, y, offset, maskscan, context.vertexData};
+    VKMaskFillVertex p3 = {x + w, y + h, offset, maskscan, context.vertexData};
+    VKMaskFillVertex p4 = {x, y + h, offset, maskscan, context.vertexData};
     // Always keep p1 as provoking vertex for correct origin calculation in vertex shader.
     vs[0] = p1; vs[1] = p3; vs[2] = p2;
     vs[3] = p1; vs[4] = p3; vs[5] = p4;
@@ -1474,14 +1518,6 @@ void VKRenderer_DrawImage(VKImage* image, VkFormat format,
     };
     device->vkCmdBindDescriptorSets(surface->renderPass->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     device->renderer->pipelineContext->texturePipelineLayout, 0, 2, descriptorSets, 0, NULL);
-
-    // Push constants.
-    VKCompositeConstants composite = {
-        VKRenderer_GetContext()->xorColor,
-        VKRenderer_GetContext()->extraAlpha
-    };
-    device->vkCmdPushConstants(surface->renderPass->commandBuffer, device->renderer->pipelineContext->texturePipelineLayout,
-                               VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(VKTransform), sizeof(VKCompositeConstants), &composite);
 
     // Add vertices.
     VKTxVertex* vs;
