@@ -49,6 +49,7 @@ static size_t pipelineDescriptorHash(const void* ptr) {
     hash(&h, d->inAlphaType);
     hash(&h, d->composite);
     hash(&h, d->shader);
+    hash(&h, d->shaderVariant);
     hash(&h, d->topology);
     return (size_t) h;
 }
@@ -59,6 +60,7 @@ static bool pipelineDescriptorEquals(const void* ap, const void* bp) {
            a->inAlphaType == b->inAlphaType &&
              a->composite == b->composite &&
                 a->shader == b->shader &&
+         a->shaderVariant == b->shaderVariant &&
               a->topology == b->topology;
 }
 
@@ -145,11 +147,13 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     } ShaderStages;
     ShaderStages stages[count];
     typedef struct {
-        uint32_t inAlphaType, outAlphaType;
+        uint32_t inAlphaType, outAlphaType, shaderVariant, shaderModifier;
     } SpecializationData;
     const VkSpecializationMapEntry SPECIALIZATION_ENTRIES[] = {
-        { 0, 0, 4 },
-        { 1, 4, 4 }
+        { 0,  0, 4 },
+        { 1,  4, 4 },
+        { 2,  8, 4 },
+        { 3, 12, 4 }
     };
     typedef struct {
         VkSpecializationInfo info;
@@ -176,7 +180,11 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
                 .dataSize = sizeof(SpecializationData),
                 .pData = &specializations[i].data
             },
-            .data = { descriptors[i].inAlphaType, pipelineInfos[i].outAlphaType }
+            .data = {
+                descriptors[i].inAlphaType, pipelineInfos[i].outAlphaType, (uint32_t) descriptors[i].shaderVariant,
+                (descriptors[i].composite == LOGIC_COMPOSITE_XOR ? 1 : 0) |
+                (descriptors[i].shader & SHADER_MASK ? 2 : 0)
+            }
         };
         inputAssemblyStates[i] = (VkPipelineInputAssemblyStateCreateInfo) {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -248,16 +256,26 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
 
     for (uint32_t i = 0; i < count; i++) {
         // Setup shader-specific pipeline parameters.
-        switch (descriptors[i].shader) {
+        switch ((int) descriptors[i].shader) {
         case SHADER_COLOR:
             createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
             createInfos[i].layout = pipelineContext->commonPipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->color_vert, shaders->color_frag }};
             break;
-        case SHADER_MASK_FILL_COLOR:
+        case SHADER_COLOR | SHADER_MASK:
             createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
             createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->mask_fill_color_vert, shaders->mask_fill_color_frag }};
+            break;
+        case SHADER_GRADIENT:
+            createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
+            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->primitive_vert, shaders->gradient_frag }};
+            break;
+        case SHADER_GRADIENT | SHADER_MASK:
+            createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
+            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_frag }};
             break;
         case SHADER_BLIT:
             createInfos[i].pVertexInputState = &INPUT_STATE_BLIT;
@@ -304,6 +322,7 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKPipelines_CreatePipelines: created %d pipelines", count);
     for (uint32_t i = 0; i < count; i++) {
         pipelineInfos[i].pipeline = pipelines[i];
+        pipelineInfos[i].layout = createInfos[i].layout;
         MAP_AT(renderPassContext->pipelines, descriptors[i]) = pipelineInfos[i];
     }
     return pipelineInfos[0];
@@ -411,8 +430,8 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
             .size = sizeof(VKTransform)
     }, {
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .offset = sizeof(VKTransform),
-            .size = sizeof(VKCompositeConstants)
+            .offset = PUSH_CONSTANTS_OFFSET,
+            .size = PUSH_CONSTANTS_SIZE
     }};
 
     // Common pipeline.
