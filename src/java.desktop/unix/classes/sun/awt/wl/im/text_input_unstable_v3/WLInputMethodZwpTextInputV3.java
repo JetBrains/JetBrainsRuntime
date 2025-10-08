@@ -36,6 +36,7 @@ import java.awt.font.TextAttribute;
 import java.awt.font.TextHitInfo;
 import java.awt.im.InputMethodHighlight;
 import java.awt.im.spi.InputMethodContext;
+import java.lang.ref.WeakReference;
 import java.text.AttributedString;
 import java.util.Arrays;
 import java.util.Locale;
@@ -196,7 +197,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         this.awtActivationStatus = AWTActivationStatus.ACTIVATED;
         this.awtNativeImIsExplicitlyDisabled = false;
 
-        if (getClientComponent() != this.awtPreviousClientComponent) {
+        if (getClientComponent() != getPreviousClientComponent()) {
             // The if is required to make sure we don't accidentally lose a still actual preedit string
             this.awtCurrentClientLatestDispatchedPreeditString = null;
         }
@@ -219,7 +220,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
         final boolean wasActive = (this.awtActivationStatus == AWTActivationStatus.ACTIVATED);
         this.awtActivationStatus = isTemporary ? AWTActivationStatus.DEACTIVATED_TEMPORARILY : AWTActivationStatus.DEACTIVATED;
-        this.awtPreviousClientComponent = getClientComponent();
+        this.awtPreviousClientComponent = new WeakReference<>(getClientComponent());
 
         this.awtClientComponentCaretPositionTracker.stopTrackingCurrentComponent();
 
@@ -364,8 +365,9 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     /**
      * Holds the value of {@link #getClientComponent()} since the latest {@link #deactivate(boolean)}
      * It allows to determine whether the focused component has actually changed between the latest deactivate-activate.
+     * Use {@link #getPreviousClientComponent()} to read the field.
      */
-    private Component awtPreviousClientComponent = null;
+    private WeakReference<Component> awtPreviousClientComponent = null;
     private final ClientComponentCaretPositionTracker awtClientComponentCaretPositionTracker = new ClientComponentCaretPositionTracker(this);
 
 
@@ -537,6 +539,11 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         assert EventQueue.isDispatchThread();
 
         return WLComponentPeer.getToplevelFor(component);
+    }
+
+
+    private Component getPreviousClientComponent() {
+        return awtPreviousClientComponent == null ? null : awtPreviousClientComponent.get();
     }
 
 
