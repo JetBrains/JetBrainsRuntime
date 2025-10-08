@@ -431,8 +431,7 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_initIDs
 
     jniIDs.mID_tiOnEnter =
         (*env)->GetMethodID(env, jniIDs.wlInputMethodClass, "zwp_text_input_v3_onEnter", "(J)V");
-    if (jniIDs.mID_tiOnEnter == NULL)
-    {
+    if (jniIDs.mID_tiOnEnter == NULL) {
         // DeleteGlobalRef is one of the few JNI functions that are safe to call while there's a pending exception
         (*env)->DeleteGlobalRef(env, jniIDs.wlInputMethodClass);
         (void)memset(&jniIDs, 0, sizeof(jniIDs));
@@ -441,8 +440,7 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_initIDs
 
     jniIDs.mID_tiOnLeave =
         (*env)->GetMethodID(env, jniIDs.wlInputMethodClass, "zwp_text_input_v3_onLeave", "(J)V");
-    if (jniIDs.mID_tiOnLeave == NULL)
-    {
+    if (jniIDs.mID_tiOnLeave == NULL) {
         (*env)->DeleteGlobalRef(env, jniIDs.wlInputMethodClass);
         (void)memset(&jniIDs, 0, sizeof(jniIDs));
         return;
@@ -450,8 +448,7 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_initIDs
 
     jniIDs.mID_tiOnPreeditString =
         (*env)->GetMethodID(env, jniIDs.wlInputMethodClass, "zwp_text_input_v3_onPreeditString", "([BII)V");
-    if (jniIDs.mID_tiOnPreeditString == NULL)
-    {
+    if (jniIDs.mID_tiOnPreeditString == NULL) {
         (*env)->DeleteGlobalRef(env, jniIDs.wlInputMethodClass);
         (void)memset(&jniIDs, 0, sizeof(jniIDs));
         return;
@@ -459,8 +456,7 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_initIDs
 
     jniIDs.mID_tiOnCommitString =
         (*env)->GetMethodID(env, jniIDs.wlInputMethodClass, "zwp_text_input_v3_onCommitString", "([B)V");
-    if (jniIDs.mID_tiOnCommitString == NULL)
-    {
+    if (jniIDs.mID_tiOnCommitString == NULL) {
         (*env)->DeleteGlobalRef(env, jniIDs.wlInputMethodClass);
         (void)memset(&jniIDs, 0, sizeof(jniIDs));
         return;
@@ -468,8 +464,7 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_initIDs
 
     jniIDs.mID_tiOnDeleteSurroundingText =
         (*env)->GetMethodID(env, jniIDs.wlInputMethodClass, "zwp_text_input_v3_onDeleteSurroundingText", "(JJ)V");
-    if (jniIDs.mID_tiOnDeleteSurroundingText == NULL)
-    {
+    if (jniIDs.mID_tiOnDeleteSurroundingText == NULL) {
         (*env)->DeleteGlobalRef(env, jniIDs.wlInputMethodClass);
         (void)memset(&jniIDs, 0, sizeof(jniIDs));
         return;
@@ -477,8 +472,7 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_initIDs
 
     jniIDs.mID_tiOnDone =
         (*env)->GetMethodID(env, jniIDs.wlInputMethodClass, "zwp_text_input_v3_onDone", "(J)V");
-    if (jniIDs.mID_tiOnDone == NULL)
-    {
+    if (jniIDs.mID_tiOnDone == NULL) {
         (*env)->DeleteGlobalRef(env, jniIDs.wlInputMethodClass);
         (void)memset(&jniIDs, 0, sizeof(jniIDs));
         return;
@@ -490,8 +484,7 @@ JNIEXPORT jlong JNICALL
 Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_createNativeContext(JNIEnv * const env, const jobject self) {
     struct IMContext *result = NULL;
 
-    if (!checkIfTheImplementationIsAvailable())
-    {
+    if (!checkIfTheImplementationIsAvailable()) {
         JNU_ThrowByName(env, "java/awt/AWTException", "sun.awt.wl.im.text_input_unstable_v3.WLInputMethodZwpTextInputV3 is not supported on this system");
         return 0;
     }
