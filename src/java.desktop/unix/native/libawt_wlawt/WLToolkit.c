@@ -616,7 +616,7 @@ registry_global(void *data, struct wl_registry *wl_registry,
         // If the requested version is higher than the provided one by the compositor,
         //   the event loop may shut down as soon as it gets launched (wl_display_dispatch will return -1),
         //   so let's protect from this since the component being obtained is not vital for work.
-        const uint32_t versionToBind = (uint32_t)zwp_text_input_manager_v3_interface.version;
+        const uint32_t versionToBind = 1;
         if (versionToBind <= version) {
             zwp_text_input_manager = wl_registry_bind(wl_registry, name, &zwp_text_input_manager_v3_interface, versionToBind);
         }
