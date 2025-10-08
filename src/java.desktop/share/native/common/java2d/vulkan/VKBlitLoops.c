@@ -113,7 +113,7 @@ void VKBlitLoops_IsoBlit(VKSDOps* srcOps, jint filter,
                                                                   VK_COMPONENT_SWIZZLE_ONE);
     VKPackedSwizzle swizzle = srcOpaque ? OPAQUE_SWIZZLE : 0;
 
-    if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) return;
+    if (!VKRenderer_Validate(SHADER_BLIT, NO_SHADER_VARIANT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) return;
     VKRenderer_DrawImage(srcOps->image, srcOps->image->format, swizzle, filter, SAMPLER_WRAP_BORDER,
                          (float)sx1, (float)sy1, (float)sx2, (float)sy2, (float)dx1, (float)dy1, (float)dx2, (float)dy2);
     VKRenderer_AddSurfaceDependency(srcOps, context->surface);
@@ -165,7 +165,7 @@ void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint fil
 
             // Need to validate render pass early, as image may not yet be configured.
             AlphaType alphaType = getSrcAlphaType(srctype);
-            if (!VKRenderer_Validate(SHADER_BLIT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) return;
+            if (!VKRenderer_Validate(SHADER_BLIT, NO_SHADER_VARIANT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) return;
 
             VKDevice* device = context->surface->device;
             BlitSrcType type = decodeSrcType(device, srctype);
