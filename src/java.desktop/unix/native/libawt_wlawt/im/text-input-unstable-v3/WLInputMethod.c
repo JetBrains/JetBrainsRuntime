@@ -243,6 +243,62 @@ static void IMContext_zwp_text_input_v3_onLeave(
     JNU_CHECK_EXCEPTION(env);
 }
 
+
+/**
+ * Converts a UTF-8 string to a Java byte array, throwing an OutOfMemoryError if the allocation fails. Another kind
+ * of exceptions may also appear, according to the implementation of 'NewByteArray' and 'SetByteArrayRegion'.
+ * Regardless of the returned value, always check 'env->ExceptionCheck()' after each call of this function.
+ *
+ * @param utf8Str UTF-8 string to convert.
+ * @param utf8StrSizeInBytes size of the UTF-8 string in bytes, or a negative value to ask the function to
+ *                           calculate it manually.
+ * @param env JNI environment. Mustn't be NULL.
+ * @param oomMessage message to use in the OutOfMemoryError exception if it appears. Mustn't be NULL.
+ *
+ * @return a local JNI reference to a Java byte array or NULL if 'utf8Str' is NULL,
+ *                                                            an exception occurred,
+ *                                                            or 'NewByteArray' returned NULL for some other reason.
+ */
+static jbyteArray utf8StrToJByteArrayOrThrowOOM(
+    const char * const utf8Str,
+    ssize_t utf8StrSizeInBytes,
+    JNIEnv * const env,
+    const char * const oomMessage
+) {
+    jbyteArray result = NULL;
+
+    assert(env != NULL);
+    assert(oomMessage != NULL);
+
+    if (utf8Str == NULL) {
+        return NULL;
+    }
+
+    if (utf8StrSizeInBytes < 0) {
+        // Let's believe there's a trailing NUL codepoint (otherwise we can't calculate the string's size), and
+        //   there are no NUL codepoints in the middle, though it's possible in general for UTF-8.
+        utf8StrSizeInBytes = (ssize_t)(strlen(utf8Str) + 1);
+    }
+
+    result = (*env)->NewByteArray(env, (jsize)utf8StrSizeInBytes);
+    if (result == NULL) {
+        if ((*env)->ExceptionCheck(env) == JNI_FALSE) {
+            JNU_ThrowOutOfMemoryError(env, oomMessage);
+        }
+    } else {
+        (*env)->SetByteArrayRegion(
+            env,
+            result,
+            0,
+            (jsize)utf8StrSizeInBytes,
+            (const jbyte*)utf8Str
+        );
+    }
+
+    return result;
+}
+
+
 static void IMContext_zwp_text_input_v3_onPreeditString(
     void * const ctx,
     struct zwp_text_input_v3 * const textInput,
@@ -263,32 +319,15 @@ static void IMContext_zwp_text_input_v3_onPreeditString(
         return;
     }
 
-    if (preeditStringUtf8 != NULL) {
-        // Theoretically, a UTF-8 string may:
-        // * Contain a NUL codepoint somewhere in the middle
-        // * Not contain NUL codepoint at all
-        //
-        // But since the zwp_text_input_v3::preedit_string event doesn't provide the length of the string separately,
-        //   the only thing we can do here is to believe that there's a trailing NUL codepoint and
-        //   there are no NUL codepoints in the middle.
-        const size_t preeditStringUtf8SizeInBytes = strlen(preeditStringUtf8) + 1;
-
-        preeditStringUtf8Bytes = (*env)->NewByteArray(env, (jsize)preeditStringUtf8SizeInBytes);
-        if (preeditStringUtf8Bytes == NULL) {
-            if ((*env)->ExceptionCheck(env) == JNI_FALSE) {
-                JNU_ThrowOutOfMemoryError(env, "IMContext_zwp_text_input_v3_onPreeditString: failed to allocate a new byte array");
-            }
-            return;
-        }
-
-        (*env)->SetByteArrayRegion(
-            env,
-            preeditStringUtf8Bytes,
-            0,
-            (jsize)preeditStringUtf8SizeInBytes,
-            (const jbyte*)preeditStringUtf8
-        );
-    }
+    // may still be NULL
+    preeditStringUtf8Bytes = utf8StrToJByteArrayOrThrowOOM(
+        preeditStringUtf8,
+        // the zwp_text_input_v3::preedit_string event doesn't provide the length or size of the string separately,
+        //   asking the function to manually calculate it.
+        -1,
+        env,
+        "IMContext_zwp_text_input_v3_onPreeditString: failed to allocate a new Java byte array"
+    );
 
     if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
         return;
@@ -323,32 +362,15 @@ static void IMContext_zwp_text_input_v3_onCommitString(
         return;
     }
 
-    if (commitStringUtf8 != NULL) {
-        // Theoretically, a UTF-8 string may:
-        // * Contain a NUL codepoint somewhere in the middle
-        // * Not contain NUL codepoints at all
-        //
-        // But since the zwp_text_input_v3::commit_string event doesn't provide the length of the string separately,
-        //   the only thing we can do here is to believe that there's a trailing NUL codepoint and
-        //   there are no NUL codepoints in the middle.
-        const size_t commitStringUtf8SizeInBytes = strlen(commitStringUtf8) + 1;
-
-        commitStringUtf8Bytes = (*env)->NewByteArray(env, (jsize)commitStringUtf8SizeInBytes);
-        if (commitStringUtf8Bytes == NULL) {
-            if ((*env)->ExceptionCheck(env) == JNI_FALSE) {
-                JNU_ThrowOutOfMemoryError(env, "IMContext_zwp_text_input_v3_onCommitString: failed to allocate a new byte array");
-            }
-            return;
-        }
-
-        (*env)->SetByteArrayRegion(
-            env,
-            commitStringUtf8Bytes,
-            0,
-            (jsize)commitStringUtf8SizeInBytes,
-            (const jbyte*)commitStringUtf8
-        );
-    }
+    // may still be NULL
+    commitStringUtf8Bytes = utf8StrToJByteArrayOrThrowOOM(
+        commitStringUtf8,
+        // the zwp_text_input_v3::commit_string event doesn't provide the length or size of the string separately,
+        //   asking the function to manually calculate it.
+        -1,
+        env,
+        "IMContext_zwp_text_input_v3_onCommitString: failed to allocate a new Java byte array"
+    );
 
     if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
         return;
