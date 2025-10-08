@@ -62,7 +62,7 @@ typedef uint16_t VKPackedSwizzle;
  */
 typedef struct {
     float m00, m01, m02;
-    float m10 __attribute__((aligned(16))), m11, m12;
+    float m10, m11, m12;
 } VKTransform;
 
 VK_DEFINE_NON_DISPATCHABLE_HANDLE(VKMemory);
