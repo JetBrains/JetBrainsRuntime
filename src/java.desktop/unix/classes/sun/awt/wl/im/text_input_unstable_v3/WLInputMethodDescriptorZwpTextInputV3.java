@@ -36,6 +36,7 @@ import java.util.Locale;
 
 public final class WLInputMethodDescriptorZwpTextInputV3 implements InputMethodDescriptor {
 
+    // See java.text.MessageFormat for the formatting syntax
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.im.text_input_unstable_v3.WLInputMethodDescriptorZwpTextInputV3");
 
 

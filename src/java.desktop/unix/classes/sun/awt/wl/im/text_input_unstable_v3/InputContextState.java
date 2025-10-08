@@ -156,8 +156,8 @@ final class InputContextState {
         final StringBuilder sb = new StringBuilder(512);
         sb.append("InputContextState@").append(System.identityHashCode(this));
         sb.append('{');
-        sb.append("nativeContextPtr=").append(nativeContextPtr);
-        sb.append(", currentWlSurfacePtr=").append(currentWlSurfacePtr);
+        sb.append("nativeContextPtr=0x").append(Long.toHexString(nativeContextPtr));
+        sb.append(", currentWlSurfacePtr=0x").append(Long.toHexString(currentWlSurfacePtr));
         sb.append(", commitCounter=").append(commitCounter);
         sb.append(", latestDoneSerial=").append(latestDoneSerial);
         sb.append(", stateOfEnabled=").append(stateOfEnabled);

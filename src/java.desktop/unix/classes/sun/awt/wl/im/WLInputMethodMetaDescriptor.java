@@ -53,6 +53,7 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
     //
     //     This class is directly used by WLToolkit to find and instantiate an InputMethod implementation.
 
+    // See java.text.MessageFormat for the formatting syntax
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.im.WLInputMethodMetaDescriptor");
 
 
