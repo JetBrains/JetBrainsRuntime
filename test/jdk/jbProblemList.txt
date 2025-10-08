@@ -770,8 +770,6 @@ java/awt/Dialog/ModalDialogPermission/ModalDialogPermission.java JBR-5225 window
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java JBR-5082 linux-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787,8253184 linux-all,windows-all
 java/awt/dnd/DragSourceMotionListenerTest.java 8225131 windows-all
-java/awt/event/SequencedEvent/MultipleContextsFunctionalTest.java 8305061 macosx-x64
-
 
 ############################################################################
 
