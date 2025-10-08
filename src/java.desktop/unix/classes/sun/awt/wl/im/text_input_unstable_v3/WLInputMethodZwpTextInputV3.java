@@ -303,13 +303,6 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /* java.lang.Object methods section */
 
-    @SuppressWarnings("removal")
-    @Override
-    protected void finalize() throws Throwable {
-        dispose();
-        super.finalize();
-    }
-
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder(1024);
