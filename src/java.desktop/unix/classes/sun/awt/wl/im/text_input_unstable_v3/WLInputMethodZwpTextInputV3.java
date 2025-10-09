@@ -26,6 +26,7 @@
 package sun.awt.wl.im.text_input_unstable_v3;
 
 import sun.awt.AWTAccessor;
+import sun.awt.SunToolkit;
 import sun.awt.im.InputMethodAdapter;
 import sun.awt.wl.WLComponentPeer;
 import sun.util.logging.PlatformLogger;
@@ -205,7 +206,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
         if (getClientComponent() != getPreviousClientComponent()) {
             // The if is required to make sure we don't accidentally lose a still actual preedit string
-            this.awtCurrentClientLatestDispatchedPreeditString = null;
+            this.awtCurrentClientLatestPostedPreeditString = null;
         }
 
         // It may be wrong to invoke this only if awtActivationStatus was DEACTIVATED.
@@ -270,7 +271,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         }
 
         // Deleting the current preedit text
-        awtDispatchIMESafely(JavaPreeditString.EMPTY, JavaCommitString.EMPTY);
+        awtPostIMESafely(JavaPreeditString.EMPTY, JavaCommitString.EMPTY);
 
         // Ending the composition on the native IM's side: the protocol doesn't provide a separate method for this,
         //   but we can achieve this by disabling + enabling back the native context.
@@ -289,7 +290,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
         awtActivationStatus = AWTActivationStatus.DEACTIVATED;
         awtNativeImIsExplicitlyDisabled = false;
-        awtCurrentClientLatestDispatchedPreeditString = null;
+        awtCurrentClientLatestPostedPreeditString = null;
         awtPreviousClientComponent = null;
         awtClientComponentCaretPositionTracker.stopTrackingCurrentComponent();
         wlDisposeContext();
@@ -309,7 +310,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         sb.append("WLInputMethodZwpTextInputV3@").append(System.identityHashCode(this));
         sb.append('{');
         sb.append("awtActivationStatus=").append(awtActivationStatus);
-        sb.append(", awtCurrentClientLatestDispatchedPreeditString=").append(awtCurrentClientLatestDispatchedPreeditString);
+        sb.append(", awtCurrentClientLatestPostedPreeditString=").append(awtCurrentClientLatestPostedPreeditString);
         sb.append(", wlInputContextState=").append(wlInputContextState);
         sb.append(", wlPendingChanges=").append(wlPendingChanges);
         sb.append(", wlBeingCommittedChanges=").append(wlBeingCommittedChanges);
@@ -357,10 +358,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     /** {@link #setInputMethodContext(InputMethodContext)} */
     private InputMethodContext awtImContext = null;
     /**
-     * {@link #awtDispatchIMESafely(JavaPreeditString, JavaCommitString)}.
-     * {@code null} if no preedit strings have been dispatched since latest {@link #activate}.
+     * {@link #awtPostIMESafely(JavaPreeditString, JavaCommitString)}.
+     * {@code null} if no preedit strings have been posted since latest {@link #activate}.
      */
-    private JavaPreeditString awtCurrentClientLatestDispatchedPreeditString = null;
+    private JavaPreeditString awtCurrentClientLatestPostedPreeditString = null;
     /**
      * Holds the value of {@link #getClientComponent()} since the latest {@link #deactivate(boolean)}
      * It allows to determine whether the focused component has actually changed between the latest deactivate-activate.
@@ -546,10 +547,14 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     }
 
 
-    /** @return {@code true} if a new InputMethodEvent has been successfully made and dispatched, {@code false} otherwise. */
-    private boolean awtDispatchIMESafely(JavaPreeditString preeditString, JavaCommitString commitString) {
+    // Although we wouldn't break any AWT/Swing rules,
+    //   we can't dispatch InputMethodEvents synchronously instead of posting them to the event queue.
+    // This is because IntelliJ can't properly handle InputEvents that go around the event queue directly to a component.
+    // See TODO: link to the ticket for more info.
+    /** @return {@code true} if a new InputMethodEvent has been successfully made and posted, {@code false} otherwise. */
+    private boolean awtPostIMESafely(JavaPreeditString preeditString, JavaCommitString commitString) {
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
-            log.finer("awtDispatchIMESafely(preeditString={0}, commitString={1}): this={2}.", preeditString, commitString, this);
+            log.finer("awtPostIMESafely(preeditString={0}, commitString={1}): this={2}.", preeditString, commitString, this);
         }
 
         assert(preeditString != null);
@@ -560,7 +565,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 // Supposing an input method shouldn't interact with UI when not activated.
 
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                    log.fine("awtDispatchIMESafely(preeditString={0}, commitString={1}): ignoring an attempt to dispatch a new InputMethodEvent from an inactive InputMethod={2}.",
+                    log.fine("awtPostIMESafely(preeditString={0}, commitString={1}): ignoring an attempt to post a new InputMethodEvent from an inactive InputMethod={2}.",
                              preeditString, commitString, this);
                 }
 
@@ -573,7 +578,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
                 if (log.isLoggable(PlatformLogger.Level.WARNING)) {
                     log.warning(
-                        "awtDispatchIMESafely(preeditString={0}, commitString={1}): can''t dispatch a new InputMethodEvent because there''s no client component to dispatch to, although this InputMethod is active. this={2}.",
+                        "awtPostIMESafely(preeditString={0}, commitString={1}): can''t post a new InputMethodEvent because there''s no client component to dispatch to, although this InputMethod is active. this={2}.",
                         preeditString, commitString, this
                     );
                 }
@@ -607,7 +612,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 }
             }
 
-            final var clientCurrentPreeditText = Objects.requireNonNullElse(this.awtCurrentClientLatestDispatchedPreeditString, JavaPreeditString.EMPTY);
+            final var clientCurrentPreeditText = Objects.requireNonNullElse(this.awtCurrentClientLatestPostedPreeditString, JavaPreeditString.EMPTY);
             if ( commitString.equals(JavaCommitString.EMPTY) &&
                  preeditString.equals(JavaPreeditString.EMPTY) &&
                  clientCurrentPreeditText.equals(JavaPreeditString.EMPTY) )
@@ -623,8 +628,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 //     text attributes and god knows what else.
 
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                    log.fine("awtDispatchIMESafely(preeditString={0}, commitString={1}): ignoring a redundant attempt to dispatch a new empty InputMethodEvent to a component with no preedit text. this={2}.",
-                            preeditString, commitString, this);
+                    log.fine("awtPostIMESafely(preeditString={0}, commitString={1}): ignoring a redundant attempt to post a new empty InputMethodEvent to a component with no preedit text. this={2}.",
+                             preeditString, commitString, this);
                 }
 
                 return false;
@@ -679,24 +684,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 }
             }
 
-            if (log.isLoggable(PlatformLogger.Level.FINEST)) {
-                log.finest(
-                    "awtDispatchIMESafely(...): dispatching an InputMethodEvent equal to {0}. this={1}.",
-                    // the parameters of this fictitious IME must be synchronized with what's actually dispatched below
-                    new InputMethodEvent(
-                        clientComponent,
-                        InputMethodEvent.INPUT_METHOD_TEXT_CHANGED,
-                        imeText.getIterator(),
-                        commitString.text().length(),
-                        imeCaret,
-                        null
-                    ),
-                    this
-                );
-            }
-
-            // NB: keep the parameters passed here synchronized with what's logged above.
-            this.awtImContext.dispatchInputMethodEvent(
+            final InputMethodEvent ime = new InputMethodEvent(
+                clientComponent,
                 InputMethodEvent.INPUT_METHOD_TEXT_CHANGED,
                 imeText.getIterator(),
                 commitString.text().length(),
@@ -704,11 +693,20 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 // no recommendation for a visible position within the current preedit text
                 null
             );
-            this.awtCurrentClientLatestDispatchedPreeditString = preeditString;
+
+            if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+                log.finest(
+                    String.format("awtPostIMESafely(...): posting a new InputMethodEvent=%s. this=%s.", ime, this),
+                    new Throwable("Stacktrace")
+                );
+            }
+
+            SunToolkit.postEvent(SunToolkit.targetToAppContext(clientComponent), ime);
+            this.awtCurrentClientLatestPostedPreeditString = preeditString;
 
             return true;
         } catch (Exception err) {
-            log.severe("Error occurred during constructing and dispatching a new InputMethodEvent.", err);
+            log.severe("Error occurred during constructing or posting a new InputMethodEvent.", err);
         }
 
         return false;
@@ -1130,10 +1128,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             // Erasing preedit text from the client component
             if (awtActivationStatus == AWTActivationStatus.ACTIVATED) {
                 final boolean preeditIsEmpty =
-                    (awtCurrentClientLatestDispatchedPreeditString == null)
-                    || awtCurrentClientLatestDispatchedPreeditString.text().isEmpty();
+                    (awtCurrentClientLatestPostedPreeditString == null)
+                    || awtCurrentClientLatestPostedPreeditString.text().isEmpty();
                 if (!preeditIsEmpty) {
-                    awtDispatchIMESafely(JavaPreeditString.EMPTY, JavaCommitString.EMPTY);
+                    awtPostIMESafely(JavaPreeditString.EMPTY, JavaCommitString.EMPTY);
                 }
             }
         } catch (Exception err) {
@@ -1437,7 +1435,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             //   +-------+----------------------------------------+          |
             //          1|                                                   |
             //           v                                           +-------+------------------------------------+
-            //    awtDispatchIMESafely(...)                          |zwp_text_input_v3::set_cursor_rectangle(...)|
+            //    awtPostIMESafely(...)                              |zwp_text_input_v3::set_cursor_rectangle(...)|
             //          2|                                           |                                            |
             //           v                                           |zwp_text_input_v3::commit()                 |
             //    the component deletes its current composed text    +-------^------------------------------------+
@@ -1479,12 +1477,14 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             //
             // TODO: unconditional dispatching of the text makes it impossible for the caret to leave the component's
             //       visible area, which would be useful for scrolling.
-            awtDispatchIMESafely(preeditStringToApply, commitStringToApply);
+            awtPostIMESafely(preeditStringToApply, commitStringToApply);
 
             if (doDeferCaretPositionUpdates) {
                 // invokeLater is needed to handle a case when the client component decides to post the caret updates
                 //   to the EventQueue instead of dispatching them right away (IDK if it happens in practice).
-                EventQueue.invokeLater(() -> {
+                // Nested invokeLater is needed because the IME event hasn't been dispatched yet (only posted).
+                // This way we guarantee that all UI activities associated with it are finished before resuming.
+                EventQueue.invokeLater(() -> EventQueue.invokeLater(() -> {
                     try {
                         this.awtClientComponentCaretPositionTracker.resumeUpdates(false);
                     } catch (Exception err) {
@@ -1494,7 +1494,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                             err
                         );
                     }
-                });
+                }));
             }
 
             // Sending pending changes (if any)
