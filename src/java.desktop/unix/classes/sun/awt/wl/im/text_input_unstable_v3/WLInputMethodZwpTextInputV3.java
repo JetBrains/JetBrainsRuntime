@@ -1484,7 +1484,17 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             if (doDeferCaretPositionUpdates) {
                 // invokeLater is needed to handle a case when the client component decides to post the caret updates
                 //   to the EventQueue instead of dispatching them right away (IDK if it happens in practice).
-                EventQueue.invokeLater(() -> this.awtClientComponentCaretPositionTracker.resumeUpdates(false));
+                EventQueue.invokeLater(() -> {
+                    try {
+                        this.awtClientComponentCaretPositionTracker.resumeUpdates(false);
+                    } catch (Exception err) {
+                        log.severe(
+                            String.format("zwp_text_input_v3_onDone(doneSerial=%d): ClientComponentCaretPositionTracker.resumeUpdates() failed. this=%s.",
+                                          doneSerial, this),
+                            err
+                        );
+                    }
+                });
             }
 
             // Sending pending changes (if any)
