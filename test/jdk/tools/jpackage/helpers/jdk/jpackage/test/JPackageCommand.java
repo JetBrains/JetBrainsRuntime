@@ -59,7 +59,7 @@ import jdk.jpackage.test.Functional.ThrowingSupplier;
  * anything. The simplest is to compile test application and pack in a jar for
  * use on jpackage command line.
  */
-public final class JPackageCommand extends CommandArguments<JPackageCommand> {
+public class JPackageCommand extends CommandArguments<JPackageCommand> {
 
     public JPackageCommand() {
         prerequisiteActions = new Actions();
@@ -791,7 +791,7 @@ public final class JPackageCommand extends CommandArguments<JPackageCommand> {
                 .createExecutor()
                 .execute(expectedExitCode);
 
-        if (result.exitCode == 0) {
+        if (result.exitCode() == 0) {
             executeVerifyActions();
         }
 
