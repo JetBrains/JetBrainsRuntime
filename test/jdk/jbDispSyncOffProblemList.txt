@@ -20,7 +20,7 @@ javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-7146 macosx-12.7.
 javax/swing/JSplitPane/4820080/JSplitPaneDragColorTest.java JBR-7247 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucent.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java JBR-7146 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
-javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.java JBR-8327 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,macosx-15.6,macosx-15.7,macosx-26.0
+javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.java JBR-8327 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,macosx-15.6,macosx-15.7,macosx-15.7.1,macosx-26.0
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-7146 macosx-all
 javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464 macosx-12.7.4,macosx-12.7.5,macosx-12.7.6
 javax/swing/SwingGraphics/TranslateTest.java JBR-7510 macosx-aarch64
