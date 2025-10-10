@@ -26,7 +26,6 @@
 package sun.awt.wl.im;
 
 import sun.awt.wl.im.text_input_unstable_v3.WLInputMethodDescriptorZwpTextInputV3;
-import sun.security.action.GetPropertyAction;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.AWTException;
@@ -35,7 +34,6 @@ import java.awt.font.TextAttribute;
 import java.awt.im.InputMethodHighlight;
 import java.awt.im.spi.InputMethod;
 import java.awt.im.spi.InputMethodDescriptor;
-import java.security.AccessController;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
@@ -199,11 +197,7 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
     static {
         boolean enableNativeImSupportInitializer = true;
         try {
-            @SuppressWarnings("removal") // still needed for JBR21
-            final boolean enableNativeImSupportPropertyValue = Boolean.parseBoolean(
-                AccessController.doPrivileged(new GetPropertyAction("sun.awt.wl.im.enabled", "true"))
-            );
-            enableNativeImSupportInitializer = enableNativeImSupportPropertyValue;
+            enableNativeImSupportInitializer = Boolean.parseBoolean(System.getProperty("sun.awt.wl.im.enabled", "true"));
         } catch (Exception err) {
             log.severe("Failed to read the value of the system property \"sun.awt.wl.im.enabled\". Assuming the default value(=true).", err);
         }
