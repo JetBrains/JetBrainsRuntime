@@ -391,7 +391,7 @@ sun/java2d/SunGraphics2D/DrawImageBilinear.java 8297175 linux-all
 
 java/awt/Graphics/NativeWin32Clear.java JBR-8689 linux-aarch64
 java/awt/Graphics/XORPaint.java#id1 JBR-8642 macosx-aarch64
-java/awt/Graphics/XORPaint.java#id2 JBR-9348 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64
+java/awt/Graphics/XORPaint.java#id2 JBR-9348 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 java/awt/Graphics2D/CopyAreaOOB.java JBR-5354,JBR-9206 macosx-all,windows-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010 linux-aarch64
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 generic-all
@@ -770,6 +770,7 @@ java/awt/Dialog/ModalDialogPermission/ModalDialogPermission.java JBR-5225 window
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java JBR-5082 linux-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787,8253184 linux-all,windows-all
 java/awt/dnd/DragSourceMotionListenerTest.java 8225131 windows-all
+java/awt/event/SequencedEvent/MultipleContextsFunctionalTest.java 8305061 macosx-x64
 
 ############################################################################
 
@@ -874,6 +875,7 @@ javax/net/ssl/SSLSocket/Tls13PacketSize.java 8354235 windows-all
 
 # jdk_nio
 
+java/nio/channels/AsyncCloseAndInterrupt.java 8368290 macosx-26.0
 java/nio/channels/AsynchronousSocketChannel/StressLoopback.java JBR-8817 windows-aarch64
 
 java/nio/channels/DatagramChannel/AdaptorMulticasting.java      8144003,JBR-8455,JBR-8456,8308807,JBR-9219 macosx-all,aix-ppc64,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
@@ -883,6 +885,7 @@ java/nio/channels/DatagramChannel/ManySourcesAndTargets.java    8264385 macosx-a
 java/nio/channels/DatagramChannel/MulticastSendReceiveTests.java 8144003,JBR-9218 macosx-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 java/nio/channels/DatagramChannel/Promiscuous.java              8144003,JBR-9218 macosx-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 java/nio/channels/DatagramChannel/PromiscuousIPv6.java JBR-8828,JBR-9218 macosx-x64,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
+java/nio/channels/DatagramChannel/SendReceiveMaxSize.java JBR-9447 linux-6.14.0-1013-aws,linux-6.14.0-1014-aws
 java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-all
 
 java/nio/channels/FileChannel/LargeGatheringWrite.java JBR-9316 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
@@ -1021,7 +1024,7 @@ javax/swing/plaf/windows/WindowsRootPaneUI/WrongAltProcessing/WrongAltProcessing
 javax/swing/Box/TestBoxFiller.java JBR-5210 windows-all
 javax/swing/DataTransfer/bug4655513.java JBR-8849 windows-all
 javax/swing/DefaultButtonModel/DefaultButtonModelCrashTest.java JBR-5210,JBR-5799 windows-all
-javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-5210 windows-all
+javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-5210,JBR-9273 windows-all,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 javax/swing/JButton/4368790/bug4368790.java JBR-5210 windows-all
 javax/swing/JButton/4659800/SpaceKeyActivatesButton.java JBR-4949 linux-all,windows-all
 javax/swing/JButton/8151303/PressedIconTest.java JBR-5210 windows-all
