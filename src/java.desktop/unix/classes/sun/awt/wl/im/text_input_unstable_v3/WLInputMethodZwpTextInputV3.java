@@ -550,7 +550,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     // Although we wouldn't break any AWT/Swing rules,
     //   we can't dispatch InputMethodEvents synchronously instead of posting them to the event queue.
     // This is because IntelliJ can't properly handle InputEvents that go around the event queue directly to a component.
-    // See TODO: link to the ticket for more info.
+    // See https://youtrack.jetbrains.com/issue/IJPL-212367 for more info.
     /** @return {@code true} if a new InputMethodEvent has been successfully made and posted, {@code false} otherwise. */
     private boolean awtPostIMESafely(JavaPreeditString preeditString, JavaCommitString commitString) {
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
