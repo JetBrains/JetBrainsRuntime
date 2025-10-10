@@ -58,7 +58,7 @@ gc/stress/gcold/TestGCOldWithShenandoah.java#aggressive JBR-8563 windows-aarch64
 
 # :hotspot_runtime
 
-runtime/ErrorHandling/AccessZeroNKlassHitsProtectionZone.java#coh_no_cds JBR-6616 windows-aarch64
+runtime/ErrorHandling/AccessZeroNKlassHitsProtectionZone.java#coh_no_cds JBR-6616,JBR-9488 windows-aarch64,macosx-26.0
 runtime/ErrorHandling/AccessZeroNKlassHitsProtectionZone.java#no_coh_cds JBR-6616 windows-aarch64
 runtime/ErrorHandling/AccessZeroNKlassHitsProtectionZone.java#no_coh_no_cds JBR-6616 windows-aarch64
 runtime/ErrorHandling/ErrorFileOverwriteTest.java JBR-8524 windows-aarch64
