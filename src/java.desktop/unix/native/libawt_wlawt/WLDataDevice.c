@@ -34,7 +34,6 @@
 #include "sun_awt_wl_WLDataOffer.h"
 #include "wayland-client-protocol.h"
 
-
 // Types
 
 enum DataTransferProtocol
@@ -272,9 +271,6 @@ static struct DataOffer *
 DataOffer_create(struct DataDevice *dataDevice, enum DataTransferProtocol protocol, void *waylandObject);
 
 static void
-DataOffer_destroy(struct DataOffer *offer);
-
-static void
 DataOffer_receive(struct DataOffer *offer, const char *mime, int fd);
 
 static void
@@ -334,7 +330,7 @@ DataOffer_create(struct DataDevice *dataDevice, enum DataTransferProtocol protoc
         return NULL;
     }
 
-    // Cleared in DataOffer_destroy
+    // Cleared in DataOffer.destroy()
     jobject globalRef = (*env)->NewGlobalRef(env, obj);
 
     EXCEPTION_CLEAR(env);
@@ -360,29 +356,6 @@ DataOffer_create(struct DataDevice *dataDevice, enum DataTransferProtocol protoc
     }
 
     return offer;
-}
-
-static void
-DataOffer_destroy(struct DataOffer *offer)
-{
-    if (offer == NULL) {
-        return;
-    }
-
-    if (offer->javaObject != NULL) {
-        JNIEnv *env = getEnv();
-        assert(env != NULL);
-        (*env)->DeleteGlobalRef(env, offer->javaObject);
-        offer->javaObject = NULL;
-    }
-
-    if (offer->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
-        wl_data_offer_destroy(offer->wlDataOffer);
-    } else if (offer->protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
-        zwp_primary_selection_offer_v1_destroy(offer->zwpPrimarySelectionOffer);
-    }
-
-    free(offer);
 }
 
 static void
@@ -1053,11 +1026,6 @@ Java_sun_awt_wl_WLDataSource_destroyImpl(JNIEnv *env, jclass clazz, jlong native
         return;
     }
 
-    if (source->javaObject != NULL) {
-        (*env)->DeleteGlobalRef(env, source->javaObject);
-        source->javaObject = NULL;
-    }
-
     if (source->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
         wl_data_source_destroy(source->wlDataSource);
     } else if (source->protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
@@ -1070,6 +1038,11 @@ Java_sun_awt_wl_WLDataSource_destroyImpl(JNIEnv *env, jclass clazz, jlong native
 
     if (source->dragIcon) {
         wl_surface_destroy(source->dragIcon);
+    }
+
+    if (source->javaObject != NULL) {
+        (*env)->DeleteGlobalRef(env, source->javaObject);
+        source->javaObject = NULL;
     }
 
     free(source);
@@ -1152,8 +1125,25 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLDataOffer_destroyImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
 {
+    assert(env != NULL);
     struct DataOffer *offer = jlong_to_ptr(nativePtr);
-    DataOffer_destroy(offer);
+
+    if (offer == NULL) {
+        return;
+    }
+
+    if (offer->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
+        wl_data_offer_destroy(offer->wlDataOffer);
+    } else if (offer->protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
+        zwp_primary_selection_offer_v1_destroy(offer->zwpPrimarySelectionOffer);
+    }
+
+    if (offer->javaObject != NULL) {
+        (*env)->DeleteGlobalRef(env, offer->javaObject);
+        offer->javaObject = NULL;
+    }
+
+    free(offer);
 }
 
 JNIEXPORT void JNICALL
