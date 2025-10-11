@@ -118,6 +118,10 @@ public class TrueTypeFont extends FileFont {
 
     private static final short US_LCID = 0x0409;  // US English - default
 
+    public static final Pattern DIGITS_PATTERN = Pattern.compile("\\d+");
+    public static final Pattern LEADING_ZEROS_PATTERN = Pattern.compile("^0*");
+
+
     private static Map<String, Short> lcidMap;
 
     static class DirectoryEntry {
@@ -1110,8 +1114,11 @@ public class TrueTypeFont extends FileFont {
             return "0";
         }
         // removing leading zeros and hex parts from version e.g. 00010.002.0ab12.300.040 -> 10.2.300.40
-        String res = Arrays.stream(matcher.group().split("\\.")).filter(s -> s.matches("\\d+")).
-                map(s -> (s.replaceFirst("^0*", ""))).map(s -> s.isEmpty() ? "0" : s).collect(Collectors.joining("."));
+        String res = Arrays.stream(matcher.group().split("\\."))
+                .filter(s -> DIGITS_PATTERN.matcher(s).matches())
+                .map(s -> LEADING_ZEROS_PATTERN.matcher(s).replaceFirst(""))
+                .map(s -> s.isEmpty() ? "0" : s)
+                .collect(Collectors.joining("."));
         return !res.isEmpty() ? res : "0";
     }
 
