@@ -64,6 +64,7 @@ BOOL isDisplaySyncEnabled() {
                                     [NSNull null], @"anchorPoint",
                                     [NSNull null], @"bounds",
                                     [NSNull null], @"contents",
+                                    [NSNull null], @"cornerRadius",
                                     [NSNull null], @"contentsScale",
                                     [NSNull null], @"onOrderIn",
                                     [NSNull null], @"onOrderOut",
