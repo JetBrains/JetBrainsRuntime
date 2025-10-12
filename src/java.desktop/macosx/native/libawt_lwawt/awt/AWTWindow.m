@@ -75,6 +75,19 @@ BOOL isColorMatchingEnabled() {
     return (BOOL)colorMatchingEnabled;
 }
 
+BOOL isWindowAnimationEnabled() {
+    static int windowAnimationEnabled = -1;
+    if (windowAnimationEnabled == -1) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (env == NULL) return NO;
+        NSString* windowAnimationEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"apple.awt.window.animation"
+                                                                                     withEnv:env];
+        windowAnimationEnabled = [@"true" isCaseInsensitiveLike:windowAnimationEnabledProp] ? YES : NO;
+        J2dRlsTraceLn(J2D_TRACE_INFO, "AWTWindow_windowAnimationEnabled: %d", windowAnimationEnabled);
+    }
+    return (BOOL)windowAnimationEnabled;
+}
+
 @interface NSTitlebarAccessoryViewController (Private)
 - (void)_setHidden:(BOOL)h animated:(BOOL)a;
 @end
@@ -605,6 +618,10 @@ AWT_ASSERT_APPKIT_THREAD;
     if (self.nsWindow == nil) return nil; // no hope either
     [self.nsWindow release]; // the property retains the object already
 
+    if (!isWindowAnimationEnabled()
+        && (self.nsWindow.animationBehavior != NSWindowAnimationBehaviorNone)) {
+        self.nsWindow.animationBehavior = NSWindowAnimationBehaviorNone;
+    }
     if (isColorMatchingEnabled()) {
         // Supported by both OpenGL & Metal pipelines
         // Tell the system we have an sRGB backing store
@@ -3008,8 +3025,6 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetRoundedCor
 
     NSWindow *w = (NSWindow *)jlong_to_ptr(windowPtr);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-        w.hasShadow = YES;
-        w.contentView.wantsLayer = YES;
         w.contentView.layer.cornerRadius = radius;
         w.contentView.layer.masksToBounds = YES;
         w.contentView.layer.opaque = NO;
@@ -3024,11 +3039,11 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativeSetRoundedCor
             w.contentView.layer.borderWidth = borderWidth;
             w.contentView.layer.borderColor = color.CGColor;
         }
+        w.contentView.wantsLayer = YES;
 
         w.backgroundColor = NSColor.clearColor;
         w.opaque = NO;
-        // remove corner radius animation
-        [w.contentView.layer removeAllAnimations];
+        w.hasShadow = YES;
         [w invalidateShadow];
     }];
 
