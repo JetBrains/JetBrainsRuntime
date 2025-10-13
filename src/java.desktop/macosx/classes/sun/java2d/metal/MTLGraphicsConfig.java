@@ -31,7 +31,6 @@ import sun.awt.CGraphicsEnvironment;
 import sun.awt.image.OffScreenImage;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.SurfaceManager;
-import sun.awt.image.TextureWrapperSurfaceManager;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
@@ -49,7 +48,6 @@ import java.awt.BufferCapabilities;
 import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.GraphicsConfiguration;
 import java.awt.Image;
 import java.awt.ImageCapabilities;
 import java.awt.Rectangle;
@@ -71,7 +69,7 @@ import static sun.java2d.pipe.hw.ContextCapabilities.*;
 import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_BIOP_SHADER;
 
 public final class MTLGraphicsConfig extends CGraphicsConfig
-        implements AccelGraphicsConfig, SurfaceManager.Factory, SurfaceManager.TextureWrapperFactory
+        implements AccelGraphicsConfig, SurfaceManager.Factory
 {
     private static ImageCapabilities imageCaps = new MTLImageCaps();
 
@@ -381,12 +379,5 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     public VolatileSurfaceManager createVolatileManager(SunVolatileImage image,
                                                         Object context) {
         return new MTLVolatileSurfaceManager(image, context);
-    }
-
-    @Override
-    public SurfaceManager createTextureWrapperSurfaceManager(
-            GraphicsConfiguration gc, Image image, long texture) {
-        SurfaceData sd = MTLSurfaceData.createData(this, image, texture);
-        return new TextureWrapperSurfaceManager(sd);
     }
 }
