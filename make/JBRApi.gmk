@@ -40,13 +40,13 @@ else ifeq ($(call isBuildOsEnv, windows.wsl1 windows.wsl2), true)
 else
     M2_REPO := $(HOME)/.m2/repository
 endif
-M2_ARTIFACT := $(M2_REPO)/com/jetbrains/jbr-api/SNAPSHOT
+M2_ARTIFACT := $(M2_REPO)/org/jetbrains/runtime/jbr-api/SNAPSHOT
 M2_POM_CONTENT := \
     <?xml version="1.0" encoding="UTF-8"?> \
     <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" \
         xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"> \
       <modelVersion>4.0.0</modelVersion> \
-      <groupId>com.jetbrains</groupId> \
+      <groupId>org.jetbrains.runtime</groupId> \
       <artifactId>jbr-api</artifactId> \
       <version>SNAPSHOT</version> \
     </project> \
@@ -65,7 +65,8 @@ jbr-api:
 	    $(MKDIR) -p $(M2_ARTIFACT); \
 	    $(ECHO) '$(M2_POM_CONTENT)' > $(M2_ARTIFACT)/$(ARTIFACT_NAME).pom; \
 	    $(CP) "$(JBR_API_DIR)/out/$(ARTIFACT_NAME).jar" "$(M2_ARTIFACT)"; \
-	    $(ECHO) "Installed into local Maven repository as com.jetbrains:jbr-api:SNAPSHOT"; \
+	    $(ECHO) "Installed into local Maven repository as org.jetbrains.runtime:jbr-api:SNAPSHOT"; \
+	    cd "$(M2_ARTIFACT)" && sha256sum --binary "$(ARTIFACT_NAME).jar"; \
 	else \
 	    $(ECHO) "No Maven repository found at $(M2_REPO) - skipping local installation"; \
 	fi
