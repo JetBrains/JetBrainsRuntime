@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -48,6 +49,10 @@ import sun.java2d.loops.SurfaceType;
 import sun.awt.X11.XToolkit;
 import sun.java2d.opengl.GLXGraphicsConfig;
 import sun.java2d.pipe.Region;
+import sun.java2d.vulkan.VKEnv;
+import sun.java2d.vulkan.VKGPU;
+import sun.java2d.vulkan.VKGraphicsConfig;
+import sun.java2d.vulkan.X11VKGraphicsConfig;
 import sun.java2d.xr.XRGraphicsConfig;
 
 /**
@@ -264,6 +269,12 @@ public final class X11GraphicsDevice extends GraphicsDevice
             boolean glxSupported = X11GraphicsEnvironment.isGLXAvailable();
             boolean xrenderSupported = X11GraphicsEnvironment.isXRenderAvailable();
 
+            List<VKGraphicsConfig> vulkanGCs = List.of();
+
+            if (VKEnv.isPresentationEnabled()) {
+                vulkanGCs = VKEnv.getDevices().flatMap(VKGPU::getPresentableGraphicsConfigs).toList();
+            }
+
             boolean dbeSupported = isDBESupported();
             if (dbeSupported && doubleBufferVisuals == null) {
                 doubleBufferVisuals = new HashSet<>();
@@ -272,7 +283,10 @@ public final class X11GraphicsDevice extends GraphicsDevice
             for ( ; i < num; i++) {
                 int visNum = getConfigVisualId(i, screen);
                 int depth = getConfigDepth (i, screen);
-                if (glxSupported) {
+                if (!vulkanGCs.isEmpty()) {
+                    ret[i] = X11VKGraphicsConfig.getConfig(vulkanGCs.getFirst(), this, visNum);
+                }
+                if (ret[i] == null && glxSupported) {
                     ret[i] = GLXGraphicsConfig.getConfig(this, visNum);
                 }
                 if (ret[i] == null) {
@@ -343,7 +357,13 @@ public final class X11GraphicsDevice extends GraphicsDevice
     private void makeDefaultConfiguration() {
         if (defaultConfig == null) {
             int visNum = getConfigVisualId(0, screen);
-            if (X11GraphicsEnvironment.isGLXAvailable()) {
+            if (VKEnv.isPresentationEnabled()) {
+                List<VKGraphicsConfig> vulkanGCs = VKEnv.getDevices().flatMap(VKGPU::getPresentableGraphicsConfigs).toList();
+                if (!vulkanGCs.isEmpty()) {
+                    defaultConfig = X11VKGraphicsConfig.getConfig(vulkanGCs.getFirst(), this, visNum);
+                }
+            }
+            if (defaultConfig == null && X11GraphicsEnvironment.isGLXAvailable()) {
                 defaultConfig = GLXGraphicsConfig.getConfig(this, visNum);
                 if (X11GraphicsEnvironment.isGLXVerbose()) {
                     if (defaultConfig != null) {

@@ -42,6 +42,8 @@ import sun.awt.SunToolkit;
 import sun.awt.X11GraphicsDevice;
 import sun.awt.X11GraphicsEnvironment;
 import sun.java2d.pipe.Region;
+import sun.java2d.vulkan.X11VKGraphicsConfig;
+import sun.java2d.vulkan.X11VKWindowSurfaceData;
 import sun.util.logging.PlatformLogger;
 
 import javax.swing.JPopupMenu;

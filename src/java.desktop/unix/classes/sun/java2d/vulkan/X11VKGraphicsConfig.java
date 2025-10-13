@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, JetBrains s.r.o.. All rights reserved.
+ * Copyright 2025 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,30 +25,32 @@
 
 package sun.java2d.vulkan;
 
+import sun.awt.X11ComponentPeer;
+import sun.awt.X11GraphicsConfig;
+import sun.awt.X11GraphicsDevice;
+import sun.java2d.SurfaceData;
 
 import java.awt.BufferCapabilities;
+import java.awt.Component;
 import java.awt.ImageCapabilities;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
+import java.awt.image.VolatileImage;
 
-import sun.awt.wl.WLComponentPeer;
-import sun.awt.wl.WLGraphicsConfig;
-import sun.awt.wl.WLGraphicsDevice;
-import sun.java2d.SurfaceData;
-import sun.java2d.loops.SurfaceType;
-import sun.java2d.wl.WLSurfaceSizeListener;
-import sun.util.logging.PlatformLogger;
-
-public final class WLVKGraphicsConfig extends WLGraphicsConfig
-        implements VKGraphicsConfig {
-    private static final PlatformLogger log =
-            PlatformLogger.getLogger("sun.java2d.vulkan.WLVKGraphicsConfig");
-
+public class X11VKGraphicsConfig extends X11GraphicsConfig implements VKGraphicsConfig {
+    private final X11GraphicsDevice device;
+    private final int visual;
     private final VKGraphicsConfig offscreenConfig;
 
-    public WLVKGraphicsConfig(VKGraphicsConfig offscreenConfig, WLGraphicsDevice device) {
-        super(device);
+    protected X11VKGraphicsConfig(VKGraphicsConfig offscreenConfig, X11GraphicsDevice device, int visual) {
+        super(device, visual, 0, 0, false);
+        this.device = device;
+        this.visual = visual;
         this.offscreenConfig = offscreenConfig;
+    }
+
+    public static X11VKGraphicsConfig getConfig(VKGraphicsConfig offscreenConfig, X11GraphicsDevice device, int visual) {
+        return new X11VKGraphicsConfig(offscreenConfig, device, visual);
     }
 
     @Override
@@ -58,38 +59,35 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
     }
 
     @Override
-    public double getFractionalScale() {
-        return getEffectiveScale();
-    }
-
-    public static WLVKGraphicsConfig getConfig(VKGraphicsConfig offscreenConfig, WLGraphicsDevice device) {
-        return new WLVKGraphicsConfig(offscreenConfig, device);
-    }
-
-    @Override
     public BufferedImage createCompatibleImage(int width, int height) {
         return VKGraphicsConfig.super.createCompatibleImage(width, height);
     }
+
     @Override
     public BufferedImage createCompatibleImage(int width, int height, int transparency) {
         return VKGraphicsConfig.super.createCompatibleImage(width, height, transparency);
     }
+
     @Override
     public ColorModel getColorModel() {
         return VKGraphicsConfig.super.getColorModel();
     }
+
     @Override
     public ColorModel getColorModel(int transparency) {
         return VKGraphicsConfig.super.getColorModel(transparency);
     }
+
     @Override
     public BufferCapabilities getBufferCapabilities() {
         return VKGraphicsConfig.super.getBufferCapabilities();
     }
+
     @Override
     public ImageCapabilities getImageCapabilities() {
         return VKGraphicsConfig.super.getImageCapabilities();
     }
+
     @Override
     public boolean isTranslucencyCapable() {
         return VKGraphicsConfig.super.isTranslucencyCapable();
@@ -97,20 +95,18 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
 
     @Override
     public String toString() {
-        return "WLVKGraphicsConfig[" + descriptorString() + ", " + getDevice().getIDstring() + "]";
+        return "X11VKGraphicsConfig[" + descriptorString() + ", " + getDevice().getIDstring() + "]";
     }
 
     @Override
-    public SurfaceData createSurfaceData(WLComponentPeer peer) {
-        return new WLVKWindowSurfaceData(peer);
+    public SurfaceData createSurfaceData(X11ComponentPeer peer) {
+        return new X11VKWindowSurfaceData(peer);
     }
 
     @Override
-    public SurfaceData createSurfaceData(WLSurfaceSizeListener sl, int width, int height) {
-        return new WLVKWindowSurfaceData(sl, width, height, this);
-    }
-
-    public SurfaceType getSurfaceType() {
-        return SurfaceType.IntArgb;
+    public void flip(X11ComponentPeer peer, Component target, VolatileImage xBackBuffer, int x1, int y1, int x2, int y2, BufferCapabilities.FlipContents flipAction) {
+        if (peer.getSurfaceData() instanceof X11VKWindowSurfaceData surfaceData) {
+            surfaceData.commit();
+        }
     }
 }

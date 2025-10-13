@@ -153,6 +153,7 @@ import sun.awt.util.PerformanceLogger;
 import sun.awt.util.ThreadGroupUtils;
 import sun.font.FontConfigManager;
 import sun.java2d.SunGraphicsEnvironment;
+import sun.java2d.vulkan.VKEnv;
 import sun.print.PrintJob2D;
 import sun.util.logging.PlatformLogger;
 
@@ -509,6 +510,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             device = (X11GraphicsDevice) localEnv.getDefaultScreenDevice();
             display = device.getDisplay();
             setupModifierMap();
+            VKEnv.init(VKEnv.initPlatformX11(getDisplay()));
             initIDs();
             setBackingStoreType();
         }

@@ -292,6 +292,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
 }
 
 static void VKSD_OnDispose(JNIEnv* env, SurfaceDataOps* ops) {
+    VKSDOps* vksdOps = (VKSDOps*)ops;
     JNU_CallStaticMethodByName(env, NULL, "sun/java2d/vulkan/VKSurfaceData", "dispose", "(J)V", ptr_to_jlong(ops));
 }
 

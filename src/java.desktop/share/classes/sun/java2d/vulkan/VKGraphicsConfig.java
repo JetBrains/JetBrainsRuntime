@@ -71,7 +71,7 @@ public interface VKGraphicsConfig extends AccelGraphicsConfig,
         return getOffscreenConfig().getFormat();
     }
 
-    default double getScale() {
+    default double getFractionalScale() {
         return 1;
     }
 

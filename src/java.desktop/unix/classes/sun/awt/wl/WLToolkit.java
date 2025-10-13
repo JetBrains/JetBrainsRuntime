@@ -147,7 +147,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         if (!GraphicsEnvironment.isHeadless()) {
             keyboard = new WLKeyboard();
             long display = WLDisplay.getInstance().getDisplayPtr();
-            VKEnv.init(display);
+            VKEnv.init(VKEnv.initPlatformWayland(display));
             initIDs(display);
         }
         String desktop = System.getenv("XDG_CURRENT_DESKTOP");
