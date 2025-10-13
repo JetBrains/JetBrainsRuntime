@@ -1,4 +1,5 @@
 import com.jetbrains.desktop.SharedTextures;
+import com.jetbrains.desktop.SharedTexturesService;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -31,8 +32,8 @@ public class SharedTexturesTest {
         BufferedImage originalImage = createImage();
         byte[] bytes = getPixelData(originalImage);
 
-        SharedTextures sharedTexturesService = SharedTextures.create();
-        Asserts.assertEquals(sharedTexturesService.getTextureType(), SharedTextures.METAL_TEXTURE_TYPE);
+        SharedTextures sharedTexturesService = new SharedTexturesService();
+        Asserts.assertEquals(sharedTexturesService.getTextureType(), SharedTexturesService.METAL_TEXTURE_TYPE);
 
         BufferedImage bufferedImageContent;
         BufferedImage volatileImageContent;
