@@ -81,7 +81,7 @@ javax/swing/JTextPane/JTextPaneDocumentWrapping.java JBR-9100 linux-all
 javax/swing/JTextPane/TestJTextPaneBackgroundColor.java JBR-9100 linux-all
 javax/swing/JTree/8041705/DefaultTreeCellRendererBorderTest.java JBR-9100 linux-all
 javax/swing/JViewport/7107099/bug7107099.java JBR-9100 linux-all
-javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-9320 linux-6.14.9-arch1-1
+javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520,JBR-9320 linux-aarch64,linux-6.14.9-arch1-1
 javax/swing/LookAndFeel/8145547/DemandGTK.java JBR-9100 linux-all
 javax/swing/LookAndFeel/8145547/DemandGTK3.sh JBR-9100 linux-all
 javax/swing/plaf/basic/6866751/bug6866751.java JBR-9100 linux-all
