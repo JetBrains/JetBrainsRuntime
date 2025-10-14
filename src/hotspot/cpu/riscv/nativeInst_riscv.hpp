@@ -377,14 +377,7 @@ class NativeDeoptInstruction: public NativeInstruction {
   address instruction_address() const       { return addr_at(instruction_offset); }
   address next_instruction_address() const  { return addr_at(instruction_size); }
 
-  void verify();
-
-  static bool is_deopt_at(address instr) {
-    assert(instr != nullptr, "");
-    uint32_t value = Assembler::ld_instr(instr);
-    // 0xc0201073 encodes CSRRW x0, instret, x0
-    return value == 0xc0201073;
-  }
+  static bool is_deopt_at(address instr);
 
   // MT-safe patching
   static void insert(address code_pos);
