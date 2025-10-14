@@ -25,57 +25,71 @@
 
 package com.jetbrains.desktop;
 
+import com.jetbrains.desktop.image.TextureWrapperImage;
 import com.jetbrains.desktop.image.TextureWrapperSurfaceManager;
 import com.jetbrains.exported.JBRApi;
 import sun.awt.image.SurfaceManager;
 import sun.java2d.SurfaceData;
-import sun.java2d.metal.MTLGraphicsConfig;
-import sun.java2d.metal.MTLTextureWrapperSurfaceData;
-import sun.java2d.opengl.CGLGraphicsConfig;
-import sun.java2d.opengl.CGLGraphicsConfigExt;
-import sun.java2d.opengl.CGLTextureWrapperSurfaceData;
 
-import java.awt.*;
+import sun.java2d.opengl.*;
+
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
+import java.awt.Image;
 
 @JBRApi.Service
 @JBRApi.Provides("SharedTextures")
-public class SharedTexturesService extends SharedTextures {
-    public SharedTexturesService() {
+public class SharedTextures {
+    public final static int METAL_TEXTURE_TYPE = 1;
+    public final static int OPENGL_TEXTURE_TYPE = 2;
+
+    public static SharedTextures create() {
+        return new SharedTextures();
+    }
+
+    private SharedTextures() {}
+
+    public Image wrapTexture(GraphicsConfiguration gc, long texture) {
+        return new TextureWrapperImage(gc, texture);
     }
 
     public int getTextureType(GraphicsConfiguration gc) {
-        if (gc instanceof MTLGraphicsConfig) {
-            return METAL_TEXTURE_TYPE;
-        } else if (gc instanceof CGLGraphicsConfig) {
+        if (gc instanceof GLXGraphicsConfig) {
             return OPENGL_TEXTURE_TYPE;
         }
 
         return 0;
     }
 
-    @Override
-    protected SurfaceManager createSurfaceManager(GraphicsConfiguration gc, Image image, long texture) {
+    @Deprecated
+    public int getTextureType() {
+        GraphicsConfiguration gc = GraphicsEnvironment
+                .getLocalGraphicsEnvironment()
+                .getDefaultScreenDevice()
+                .getDefaultConfiguration();
+        return getTextureType(gc);
+    }
+
+    public long[] getOpenGLContextInfo(GraphicsConfiguration gc) {
+        if (gc instanceof GLXGraphicsConfig glxGraphicsConfig) {
+            return new long[] {
+                    GLXGraphicsConfigExt.getSharedContext(),
+                    GLXGraphicsConfigExt.getAwtDisplay(),
+                    GLXGraphicsConfigExt.getFBConfig(glxGraphicsConfig),
+            };
+        }
+
+        throw new UnsupportedOperationException("Unsupported graphics configuration: " + gc);
+    }
+
+    static SurfaceManager createSurfaceManager(GraphicsConfiguration gc, Image image, long texture) {
         SurfaceData sd;
-        if (gc instanceof MTLGraphicsConfig mtlGraphicsConfig) {
-            sd = new MTLTextureWrapperSurfaceData(mtlGraphicsConfig, image, texture);
-        } else if (gc instanceof CGLGraphicsConfig cglGraphicsConfig) {
-            sd = new CGLTextureWrapperSurfaceData(cglGraphicsConfig, image, texture);
+        if (gc instanceof GLXGraphicsConfig glxGraphicsConfig) {
+            sd = new GLXTextureWrapperSurfaceData(glxGraphicsConfig, image, texture);
         } else {
             throw new UnsupportedOperationException("Unsupported graphics configuration: " + gc);
         }
 
         return new TextureWrapperSurfaceManager(sd);
-    }
-
-    @Override
-    public long[] getOpenGLContextInfo(GraphicsConfiguration gc) {
-        if (gc instanceof CGLGraphicsConfig cglGraphicsConfig) {
-            return new long[] {
-                    CGLGraphicsConfigExt.getSharedContext(),
-                    CGLGraphicsConfigExt.getPixelFormat()
-            };
-        }
-
-        throw new UnsupportedOperationException("Unsupported graphics configuration: " + gc);
     }
 }

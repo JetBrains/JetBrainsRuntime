@@ -23,40 +23,16 @@
  * questions.
  */
 
-package com.jetbrains.desktop.image;
+package sun.java2d.opengl;
 
-import sun.awt.image.SurfaceManager;
-import sun.java2d.SurfaceData;
-
-import java.awt.GraphicsConfiguration;
-import java.awt.ImageCapabilities;
-
-
-public class TextureWrapperSurfaceManager extends SurfaceManager {
-    private SurfaceData sd;
-
-    public TextureWrapperSurfaceManager(SurfaceData sd) {
-        this.sd = sd;
+public class GLXGraphicsConfigExt {
+    public static long getFBConfig(GLXGraphicsConfig config) {
+        return getFBConfig(config.getNativeConfigInfo());
     }
 
-    @Override
-    public SurfaceData getPrimarySurfaceData() {
-        return sd;
-    }
+    public native static long getAwtDisplay();
 
-    @Override
-    public SurfaceData restoreContents() {
-        return sd;
-    }
+    public native static long getSharedContext();
 
-    @Override
-    public ImageCapabilities getCapabilities(GraphicsConfiguration gc) {
-        return new ImageCapabilities(true);
-    }
-
-    @Override
-    public synchronized void flush() {
-        sd.flush();
-        sd = null;
-    }
+    private static native long getFBConfig(long pNativeConfigInfo);
 }

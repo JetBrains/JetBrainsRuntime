@@ -23,40 +23,55 @@
  * questions.
  */
 
-package com.jetbrains.desktop.image;
+package sun.java2d.opengl;
 
-import sun.awt.image.SurfaceManager;
 import sun.java2d.SurfaceData;
 
-import java.awt.GraphicsConfiguration;
-import java.awt.ImageCapabilities;
+import java.awt.*;
+import java.awt.image.ColorModel;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+public class GLXTextureWrapperSurfaceData extends GLXSurfaceData {
+    private final Image image;
 
-public class TextureWrapperSurfaceManager extends SurfaceManager {
-    private SurfaceData sd;
+    public GLXTextureWrapperSurfaceData(GLXGraphicsConfig gc, Image image, long textureId) {
+        super(null, gc, ColorModel.getRGBdefault(), RT_TEXTURE);
+        this.image = image;
 
-    public TextureWrapperSurfaceManager(SurfaceData sd) {
-        this.sd = sd;
+        OGLRenderQueue rq = OGLRenderQueue.getInstance();
+        AtomicBoolean success = new AtomicBoolean(false);
+        rq.lock();
+        try {
+            OGLContext.setScratchSurface(gc);
+            rq.flushAndInvokeNow(() -> success.set(OGLSurfaceDataExt.initWithTexture(this, textureId)));
+        } finally {
+            rq.unlock();
+        }
+
+        if (!success.get()) {
+            throw new IllegalArgumentException("Failed to init the surface data");
+        }
     }
 
     @Override
-    public SurfaceData getPrimarySurfaceData() {
-        return sd;
+    public SurfaceData getReplacement() {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public SurfaceData restoreContents() {
-        return sd;
+    public Rectangle getBounds() {
+        return getNativeBounds();
     }
 
     @Override
-    public ImageCapabilities getCapabilities(GraphicsConfiguration gc) {
-        return new ImageCapabilities(true);
+    public Object getDestination() {
+        return null;
     }
 
     @Override
-    public synchronized void flush() {
-        sd.flush();
-        sd = null;
+    public void flush() {
+        // reset the texture id first to avoid the texture deallocation
+        OGLSurfaceDataExt.resetTextureId(this);
+        super.flush();
     }
 }
