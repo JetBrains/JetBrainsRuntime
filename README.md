@@ -152,7 +152,7 @@ $ sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list https://package
 $ sudo apt update
 $ sudo apt-get -y install openjdk-21-jdk file zip unzip autoconf make build-essential libx11-dev libxext-dev libxrender-dev \
        libxtst-dev libxt-dev libxrandr-dev libcups2-dev libfontconfig1-dev libasound2-dev libspeechd-dev libwayland-dev \
-       libxkbcommon-x11-0 vulkan-sdk vulkan-utility-libraries-dev
+       libxkbcommon-x11-0 libdbus-1-dev vulkan-sdk vulkan-utility-libraries-dev
 ```
 
 Then run the following:
