@@ -88,6 +88,7 @@ typedef struct _GLXCtxInfo {
 
 jboolean GLXGC_IsGLXAvailable(jboolean glxRecommended);
 VisualID GLXGC_FindBestVisual(JNIEnv *env, jint screen);
+GLXContext GLXGC_GetSharedContext();
 
 #endif /* HEADLESS */
 

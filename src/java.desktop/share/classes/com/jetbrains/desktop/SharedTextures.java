@@ -32,12 +32,24 @@ import java.awt.*;
 
 public abstract class SharedTextures {
     public final static int METAL_TEXTURE_TYPE = 1;
+    public final static int OPENGL_TEXTURE_TYPE = 2;
 
-    public abstract int getTextureType();
+    @Deprecated
+    public int getTextureType() {
+        GraphicsConfiguration gc = GraphicsEnvironment
+                .getLocalGraphicsEnvironment()
+                .getDefaultScreenDevice()
+                .getDefaultConfiguration();
+        return getTextureType(gc);
+    }
+
+    public abstract int getTextureType(GraphicsConfiguration gc);
 
     public final Image wrapTexture(GraphicsConfiguration gc, long texture) {
         return new TextureWrapperImage((img) -> createSurfaceManager(gc, img, texture));
     }
+
+    public abstract long[] getOpenGLContextInfo(GraphicsConfiguration gc);
 
     protected abstract SurfaceManager createSurfaceManager(GraphicsConfiguration gc, Image image, long texture);
 }
