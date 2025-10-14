@@ -43,8 +43,8 @@ public abstract class CGLSurfaceData extends OGLSurfaceData {
                                 long pPeerData, long layerPtr, int xoff,
                                 int yoff, boolean isOpaque);
 
-    private CGLSurfaceData(CGLLayer layer, CGLGraphicsConfig gc,
-                           ColorModel cm, int type, int width, int height) {
+    protected CGLSurfaceData(CGLLayer layer, CGLGraphicsConfig gc,
+                             ColorModel cm, int type, int width, int height) {
         super(gc, cm, type);
         // TEXTURE shouldn't be scaled, it is used for managed BufferedImages.
         scale = type == TEXTURE ? 1 : gc.getDevice().getScaleFactor();

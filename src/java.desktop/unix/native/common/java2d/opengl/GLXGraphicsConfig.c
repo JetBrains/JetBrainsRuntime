@@ -435,6 +435,10 @@ GLXGC_FindBestVisual(JNIEnv *env, jint screen)
     return visualid;
 }
 
+GLXContext GLXGC_GetSharedContext() {
+    return sharedContext;
+}
+
 /**
  * Creates a scratch pbuffer, which can be used to make a context current
  * for extension queries, etc.
