@@ -154,7 +154,7 @@ void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint fil
     }
     if (srcInfo.bounds.x2 > srcInfo.bounds.x1 && srcInfo.bounds.y2 > srcInfo.bounds.y1) {
         src->GetRasInfo(env, src, &srcInfo);
-        if (srcInfo.rasBase) {
+        while (srcInfo.rasBase) {
             if (srcInfo.bounds.x1 != sx1) dx1 += (srcInfo.bounds.x1 - sx1) * (dx2 - dx1) / (sx2 - sx1);
             if (srcInfo.bounds.y1 != sy1) dy1 += (srcInfo.bounds.y1 - sy1) * (dy2 - dy1) / (sy2 - sy1);
             if (srcInfo.bounds.x2 != sx2) dx2 += (srcInfo.bounds.x2 - sx2) * (dx2 - dx1) / (sx2 - sx1);
@@ -165,13 +165,17 @@ void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint fil
 
             // Need to validate render pass early, as image may not yet be configured.
             AlphaType alphaType = getSrcAlphaType(srctype);
-            if (!VKRenderer_Validate(SHADER_BLIT, NO_SHADER_VARIANT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) return;
+            if (!VKRenderer_Validate(SHADER_BLIT, NO_SHADER_VARIANT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) break;
 
             VKDevice* device = context->surface->device;
             BlitSrcType type = decodeSrcType(device, srctype);
             VKTexturePoolHandle* imageHandle =
                     VKTexturePool_GetTexture(VKRenderer_GetTexturePool(device->renderer), sw, sh, type.format);
             VKImage* image = VKTexturePoolHandle_GetTexture(imageHandle);
+            if (!image) {
+                J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_Blit: could not get texture from the pool");
+                break;
+            }
 
             VkDeviceSize dataSize = sh * sw * srcInfo.pixelStride;
             VKBuffer buffer;
@@ -232,7 +236,9 @@ void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint fil
             VKRenderer_ExecOnCleanup(context->surface, VKBlitLoops_DisposeTexture, imageHandle);
             VKRenderer_ExecOnCleanup(context->surface, VKBlitLoops_DisposeBuffer, buffer.handle);
             VKRenderer_ExecOnCleanup(context->surface, VKBlitLoops_DisposeMemory, page);
-        } else {
+            break;
+        }
+        if (!srcInfo.rasBase) {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_Blit: could not get raster info");
         }
         SurfaceData_InvokeRelease(env, src, &srcInfo);
