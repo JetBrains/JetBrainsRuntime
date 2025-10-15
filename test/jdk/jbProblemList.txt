@@ -198,7 +198,7 @@ java/awt/Focus/ChildWindowFocusTest/ChildWindowFocusTest.java JBR-5545 linux-all
 java/awt/Focus/ChoiceFocus/ChoiceFocus.java 8169103 windows-all,macosx-all
 java/awt/Focus/ClearGlobalFocusOwnerTest/ClearGlobalFocusOwnerTest.java JBR-5907 linux-all
 java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java 8198618,JBR-814 macosx-all,linux-all
-java/awt/Focus/CloseDialogActivateOwnerTest/CloseDialogActivateOwnerTest.java JBR-5225 windows-all
+java/awt/Focus/CloseDialogActivateOwnerTest/CloseDialogActivateOwnerTest.java JBR-5225,JBR-8275 windows-all,linux-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252,JBR-5178,JBR-6750 macosx-all,windows-all,linux-all
 java/awt/Focus/ConsumedTabKeyTest.java JBR-5833 windows-all
 java/awt/Focus/ContainerFocusAutoTransferTest/ContainerFocusAutoTransferTest.java JBR-8556 linux-aarch64
@@ -1498,6 +1498,7 @@ jb/javax/swing/JDialog/JDialog392.java JBR-4941 macosx-all,linux-all
 jb/javax/swing/JDialog/JDialog705.java JBR-4934 generic-all
 jb/javax/swing/JEditorPane/ZeroMargin.java JBR-2256 generic-all
 jb/javax/swing/JPopupMenu/JPopupMenuOutOfWindowTest.java JBR-6682 windows-all,linux-all
+jb/javax/swing/wayland/WLPopupMoves.java JBR-9163 linux-6.14.0-1014-aws
 
 jb/java/awt/Window/BackgroundWindowOrderOnSpaceChange.java JBR-6486 macosx-all
 jb/java/awt/Window/ModalDialogAndPopup.java JBR-4984 macosx-all
