@@ -253,6 +253,10 @@ JNIEXPORT jlong JNICALL Java_SharedTexturesTest_createTexture
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+#ifndef GL_UNSIGNED_INT_8_8_8_8
+#define GL_UNSIGNED_INT_8_8_8_8 0x8035
+#endif
+
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
                  GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, (const void*)pixels);
     check_gl_error(env, "glTexImage2D");
@@ -271,6 +275,6 @@ JNIEXPORT void JNICALL Java_SharedTexturesTest_disposeTexture
         (JNIEnv *env, jclass clazz, jlong texture) {
     if (gTextureType == OPENGL_TEXTURE_TYPE) {
         GLuint texId = (GLuint)texture;
-        glDeleteTextures(1, &texId);\
+        glDeleteTextures(1, &texId);
     }
 }

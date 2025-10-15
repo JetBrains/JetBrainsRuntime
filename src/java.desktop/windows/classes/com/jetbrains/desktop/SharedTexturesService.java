@@ -39,35 +39,13 @@ import java.awt.Image;
 
 @JBRApi.Service
 @JBRApi.Provides("SharedTextures")
-public class SharedTextures {
-    public final static int METAL_TEXTURE_TYPE = 1;
-    public final static int OPENGL_TEXTURE_TYPE = 2;
-
-    public static SharedTextures create() {
-        return new SharedTextures();
-    }
-
-    private SharedTextures() {}
-
-    public Image wrapTexture(GraphicsConfiguration gc, long texture) {
-        return new TextureWrapperImage(gc, texture);
-    }
-
+public class SharedTexturesService extends SharedTextures {
     public int getTextureType(GraphicsConfiguration gc) {
         if (gc instanceof WGLGraphicsConfig) {
             return OPENGL_TEXTURE_TYPE;
         }
 
         return 0;
-    }
-
-    @Deprecated
-    public int getTextureType() {
-        GraphicsConfiguration gc = GraphicsEnvironment
-                .getLocalGraphicsEnvironment()
-                .getDefaultScreenDevice()
-                .getDefaultConfiguration();
-        return getTextureType(gc);
     }
 
     public long[] getOpenGLContextInfo(GraphicsConfiguration gc) {
@@ -81,7 +59,8 @@ public class SharedTextures {
         throw new UnsupportedOperationException("Unsupported graphics configuration: " + gc);
     }
 
-    static SurfaceManager createSurfaceManager(GraphicsConfiguration gc, Image image, long texture) {
+    @Override
+    public SurfaceManager createSurfaceManager(GraphicsConfiguration gc, Image image, long texture) {
         SurfaceData sd;
         if (gc instanceof WGLGraphicsConfig wglGraphicsConfig) {
             sd = new WGLTextureWrapperSurfaceData(wglGraphicsConfig, image, texture);
