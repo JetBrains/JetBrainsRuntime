@@ -254,7 +254,7 @@ JNIEXPORT jlong JNICALL Java_SharedTexturesTest_createTexture
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pixels);
+                 GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, (const void*)pixels);
     check_gl_error(env, "glTexImage2D");
 
     (*env)->ReleaseByteArrayElements(env, byteArray, pixels, JNI_ABORT);

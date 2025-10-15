@@ -1,5 +1,7 @@
 #include <jni.h>
 
+#include "jni_util.h"
+
 #include "sun_java2d_opengl_GLXGraphicsConfigExt.h"
 
 #include "GLXGraphicsConfig.h"

@@ -28,14 +28,13 @@ package sun.java2d.opengl;
 import sun.java2d.SurfaceData;
 
 import java.awt.*;
-import java.awt.image.ColorModel;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class GLXTextureWrapperSurfaceData extends GLXSurfaceData {
     private final Image image;
 
     public GLXTextureWrapperSurfaceData(GLXGraphicsConfig gc, Image image, long textureId) {
-        super(null, gc, ColorModel.getRGBdefault(), RT_TEXTURE);
+        super(null, gc, gc.getColorModel(TRANSLUCENT), RT_TEXTURE);
         this.image = image;
 
         OGLRenderQueue rq = OGLRenderQueue.getInstance();
@@ -65,7 +64,7 @@ public class GLXTextureWrapperSurfaceData extends GLXSurfaceData {
 
     @Override
     public Object getDestination() {
-        return null;
+        return image;
     }
 
     @Override
