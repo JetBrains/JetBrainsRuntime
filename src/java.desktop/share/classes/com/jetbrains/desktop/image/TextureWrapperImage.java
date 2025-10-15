@@ -37,6 +37,7 @@ import java.awt.ImageCapabilities;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
+import java.util.function.Function;
 
 /**
  * This class is a wrapper for a GPU texture-based image.
@@ -51,31 +52,14 @@ import java.awt.image.ImageProducer;
  * the surface flushing.
  */
 public class TextureWrapperImage extends Image {
-    final GraphicsConfiguration gc;
     final SurfaceData sd;
     final static ImageCapabilities capabilities = new ImageCapabilities(true);
 
-    /**
-     * Constructs a TextureWrapperImage instance with the specified graphics configuration
-     * and a texture.
-     *
-     * @param gc the graphics configuration
-     * @param texture the texture that will be wrapped by this instance.
-     *                Platform-specific details:
-     *                macOS (with the Metal rendering pipeline) - a pointer to an MTLTexture object is expected
-     *
-     * @throws UnsupportedOperationException if the current pipeline is not supported
-     * @throws IllegalArgumentException if the texture cannot be wrapped
-     */
-    public TextureWrapperImage(GraphicsConfiguration gc, long texture)
+    public TextureWrapperImage(Function<Image, SurfaceManager> surfaceManagerFactory)
             throws UnsupportedOperationException, IllegalArgumentException {
-        this.gc = gc;
-        SurfaceManager surfaceManager;
-        if (gc instanceof SurfaceManager.TextureWrapperFactory factory) {
-            surfaceManager = factory.createTextureWrapperSurfaceManager(gc, this, texture);
-        } else throw new UnsupportedOperationException();
-        sd = surfaceManager.getPrimarySurfaceData();
-        SurfaceManager.setManager(this, surfaceManager);
+        SurfaceManager sm = surfaceManagerFactory.apply(this);
+        sd = sm.getPrimarySurfaceData();
+        SurfaceManager.setManager(this, sm);
     }
 
     @Override

@@ -26,52 +26,18 @@
 package com.jetbrains.desktop;
 
 import com.jetbrains.desktop.image.TextureWrapperImage;
-import com.jetbrains.exported.JBRApi;
-import sun.awt.SunToolkit;
+import sun.awt.image.SurfaceManager;
 
-import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsEnvironment;
-import java.awt.Image;
+import java.awt.*;
 
-@JBRApi.Service
-@JBRApi.Provides("SharedTextures")
-public class SharedTextures {
+public abstract class SharedTextures {
     public final static int METAL_TEXTURE_TYPE = 1;
 
-    private final int textureType;
+    public abstract int getTextureType();
 
-    public static SharedTextures create() {
-        return new SharedTextures();
+    public final Image wrapTexture(GraphicsConfiguration gc, long texture) {
+        return new TextureWrapperImage((img) -> createSurfaceManager(gc, img, texture));
     }
 
-    private SharedTextures() {
-        textureType = getTextureTypeImpl();
-        if (textureType == 0) {
-            throw new JBRApi.ServiceNotAvailableException();
-        }
-    }
-
-    public int getTextureType() {
-        return textureType;
-    }
-
-    public Image wrapTexture(GraphicsConfiguration gc, long texture) {
-        return new TextureWrapperImage(gc, texture);
-    }
-
-    private static int getTextureTypeImpl() {
-        GraphicsConfiguration gc = GraphicsEnvironment
-                .getLocalGraphicsEnvironment()
-                .getDefaultScreenDevice()
-                .getDefaultConfiguration();
-        try {
-            if (SunToolkit.isInstanceOf(gc, "sun.java2d.metal.MTLGraphicsConfig")) {
-                return METAL_TEXTURE_TYPE;
-            }
-        } catch (Exception e) {
-            throw new InternalError("Unexpected exception during reflection", e);
-        }
-
-        return 0;
-    }
+    protected abstract SurfaceManager createSurfaceManager(GraphicsConfiguration gc, Image image, long texture);
 }
