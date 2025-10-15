@@ -847,3 +847,4 @@ java/awt/Checkbox/CheckboxNullLabelTest.java 8340870 windows-all
 java/awt/dnd/WinMoveFileToShellTest.java 8341665 windows-all
 java/awt/Focus/MinimizeNonfocusableWindowTest.java 8024487 windows-all
 java/awt/Menu/MenuVisibilityTest.java 8161110 macosx-all
+java/awt/Cursor/CursorDragTest/ListDragCursor.java 7177297 macosx-all
