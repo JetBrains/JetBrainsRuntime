@@ -95,7 +95,6 @@ compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
 
 compiler/runtime/Test8168712.java 8211769,8211771 generic-ppc64,generic-ppc64le,linux-s390x
 compiler/linkage/TestLinkageErrorInGenerateOopMap.java JBR-8524 windows-aarch64
-compiler/loopopts/TestUnreachableInnerLoop.java 8288981 linux-s390x
 
 compiler/rtm/locking/TestRTMAbortRatio.java 8183263 generic-x64,generic-i586
 compiler/rtm/locking/TestRTMAbortThreshold.java 8183263 generic-x64,generic-i586
@@ -116,7 +115,6 @@ compiler/c2/irTests/TestDuplicateBackedge.java 8318904 generic-all
 compiler/codecache/jmx/PoolsIndependenceTest.java 8264632 macosx-all
 
 compiler/vectorapi/reshape/TestVectorReinterpret.java 8320897 aix-ppc64,linux-ppc64le
-compiler/vectorapi/VectorLogicalOpIdentityTest.java 8302459 linux-x64,windows-x64
 compiler/vectorapi/VectorRebracket128Test.java 8330538 generic-all
 
 compiler/jvmci/TestUncaughtErrorInCompileMethod.java 8309073 generic-all
@@ -152,12 +150,6 @@ gc/TestAllocHumongousFragment.java#aggressive 8298781 generic-all
 gc/TestAllocHumongousFragment.java#iu-aggressive 8298781 generic-all
 gc/TestAllocHumongousFragment.java#g1 8298781 generic-all
 gc/TestAllocHumongousFragment.java#static 8298781 generic-all
-gc/TestAlwaysPreTouchBehavior.java#ParallelCollector 8334513 generic-all
-gc/TestAlwaysPreTouchBehavior.java#SerialCollector 8334513 generic-all
-gc/TestAlwaysPreTouchBehavior.java#Shenandoah 8334513 generic-all
-gc/TestAlwaysPreTouchBehavior.java#G1 8334513 generic-all
-gc/TestAlwaysPreTouchBehavior.java#Z 8334513 generic-all
-gc/TestAlwaysPreTouchBehavior.java#Epsilon 8334513 generic-all
 gc/stress/gclocker/TestExcessGCLockerCollections.java 8229120 generic-all
 gc/shenandoah/oom/TestAllocOutOfMemory.java#large 8344312 linux-ppc64le
 gc/shenandoah/TestEvilSyncBug.java#generational 8345501 generic-all
@@ -172,7 +164,6 @@ runtime/jni/terminatedThread/TestTerminatedThread.java 8317789 aix-ppc64
 runtime/cds/CheckDefaultArchiveFile.java JBR-4227 generic-all
 runtime/cds/SharedBaseAddress.java#id2 JBR-9078 windows-aarch64
 runtime/cds/SharedBaseAddress.java#id3 JBR-9078 windows-aarch64
-runtime/handshake/HandshakeSuspendExitTest.java 8318631 generic-all
 runtime/modules/ClassLoaderNoUnnamedModuleTest.java JBR-8516 windows-aarch64
 runtime/Monitor/SyncOnValueBasedClassTest.java 8340995,JBR-8517 linux-s390x,windows-aarch64
 runtime/os/TestTracePageSizes.java#no-options 8267460 linux-aarch64
@@ -182,7 +173,7 @@ runtime/os/TestTracePageSizes.java#G1 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#Parallel 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#Serial 8267460 linux-aarch64
 runtime/os/windows/TestAvailableProcessors.java JBR-8182 windows-all
-runtime/ErrorHandling/CreateCoredumpOnCrash.java 8267433,JBR-7917,JBR-8528 macosx-x64,macosx-all,windows-aarch64
+runtime/ErrorHandling/CreateCoredumpOnCrash.java JBR-7917,JBR-8528 macosx-all,windows-aarch64
 runtime/Safepoint/TestAbortOnVMOperationTimeout.java JBR-8524 windows-aarch64
 runtime/Safepoint/TestAbortVMOnSafepointTimeout.java JBR-8524 windows-aarch64
 runtime/StackGuardPages/TestStackGuardPages.java 8303612 linux-all 8293452
@@ -191,7 +182,6 @@ runtime/stringtable/StringTableCorruptionTest.java JBR-8524 windows-aarch64
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315,JBR-6289 linux-ppc64le,windows-aarch64
 runtime/ErrorHandling/TestAbortVmOnException.java JBR-8514 windows-aarch64
 runtime/ErrorHandling/UncaughtNativeExceptionTest.java JBR-8515 windows-aarch64
-runtime/NMT/CheckForProperDetailStackTrace.java 8347002 linux-all
 runtime/NMT/MallocLimitTest.java#compiler-limit-fatal JBR-8524 windows-aarch64
 runtime/NMT/MallocLimitTest.java#global-limit-fatal JBR-8524 windows-aarch64
 runtime/NMT/MallocLimitTest.java#multi-limit JBR-8524 windows-aarch64
@@ -229,8 +219,6 @@ runtime/cds/TestCDSVMCrash.java JBR-6616 windows-aarch64
 runtime/cds/TestDefaultArchiveLoading.java#coops_nocoh JBR-6616 windows-aarch64
 runtime/cds/TestDefaultArchiveLoading.java#nocoops_nocoh JBR-6616 windows-aarch64
 runtime/cds/appcds/methodHandles/MethodHandlesSpreadArgumentsTest.java initial_run generic-all
-
-sources/TestNoNULL.java JBR-8419 generic-all
 
 #############################################################################
 

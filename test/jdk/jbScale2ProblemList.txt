@@ -32,7 +32,7 @@ java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-6090 windows-all
 java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-6090 windows-all
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275,JBR-5799 macosx-all,windows-all
 java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-7299,JBR-8728 linux-all,windows-all
-java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184,JBR-5510,JBR-8725 macosx-all,windows-all,linux-5.18.2-arch1-1,linux-6.8.0-all
+java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184,JBR-8725 macosx-all,windows-all,linux-6.8.0-all
 java/awt/Graphics/LineClipTest.java JBR-9386 linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 java/awt/Graphics/NativeWin32Clear.java JBR-8730 windows-all
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,8322653,JBR-5071 windows-all,macosx-all,linux-all
@@ -45,9 +45,9 @@ java/awt/List/TriggerActionEventTest.java JBR-6234 windows-all
 java/awt/MenuItem/SetLabelTest.java JBR-8731 windows-all
 java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-10.0
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-8732,JBR-9207 windows-all,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
-java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5510,JBR-6134 macosx-all,linux-5.18.2-arch1-1,windows-all
-java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java JBR-5510,JBR-6234 linux-5.18.2-arch1-1,windows-all
-java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5510,JBR-6134 linux-5.18.2-arch1-1,windows-all
+java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-6134 macosx-all,windows-all
+java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java JBR-6234 windows-all
+java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-6134 windows-all
 java/awt/Mixing/MixingOnDialog.java JBR-6134 windows-all
 java/awt/Modal/BlockedMouseInputTest2.java JBR-6090 windows-all
 java/awt/Mouse/MouseEnterExitTest.java JBR-8096 linux-all,windows-all
