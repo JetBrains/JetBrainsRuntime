@@ -32,6 +32,7 @@ import jdk.jpackage.test.Annotations.Test;
 import jdk.jpackage.test.CfgFile;
 import jdk.jpackage.test.Executor;
 import jdk.jpackage.test.JPackageCommand;
+import jdk.jpackage.test.LauncherVerifier;
 import jdk.jpackage.test.TKit;
 
 /**
@@ -68,11 +69,9 @@ public class Win8365790Test {
                 .addArguments("--arguments", mainOutputFile.toString())
                 .addArguments("--arguments", Long.toString(Duration.ofSeconds(TETS_APP_AUTOCLOSE_TIMEOUT_SECONDS).getSeconds()));
 
-        new AdditionalLauncher("probe") {
-            @Override
-            protected void verify(JPackageCommand cmd) {
-            }
-        }.addJavaOptions("-Djpackage.test.trace-file=" + probeTraceFile.toString())
+        new AdditionalLauncher("probe")
+                .withoutVerifyActions(LauncherVerifier.Action.values())
+                .addJavaOptions("-Djpackage.test.trace-file=" + probeTraceFile.toString())
                 .addDefaultArguments(probeOutputFile.toString(), Long.toString(Duration.ofSeconds(TETS_APP_AUTOCLOSE_TIMEOUT_SECONDS).getSeconds()))
                 .applyTo(cmd);
 
