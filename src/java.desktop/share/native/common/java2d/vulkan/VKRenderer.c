@@ -976,9 +976,12 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
         uint32_t imageIndex;
         VkResult acquireImageResult = device->vkAcquireNextImageKHR(device->handle, win->swapchain, UINT64_MAX,
                                                                     acquireSemaphore, VK_NULL_HANDLE, &imageIndex);
-        if (acquireImageResult != VK_SUCCESS) {
-            // TODO possible suboptimal conditions
-            VK_IF_ERROR(acquireImageResult) {}
+        if (acquireImageResult != VK_SUCCESS && acquireImageResult != VK_SUBOPTIMAL_KHR) {
+            VK_IF_ERROR(acquireImageResult) {
+                // Failed, try again later.
+                surface->renderPass->pendingFlush = VK_TRUE;
+                return;
+            }
         }
 
         // Insert barriers to prepare both main (src) and swapchain (dst) images for blit.
