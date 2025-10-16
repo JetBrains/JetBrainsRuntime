@@ -74,8 +74,6 @@ gc/shenandoah/mxbeans/TestChurnNotifications.java#iu initial_run linux-x64
 
 compiler/ciReplay/TestSAServer.java 8029528 generic-all
 compiler/compilercontrol/jcmd/ClearDirectivesFileStackTest.java 8225370 generic-all
-compiler/gcbarriers/UnsafeIntrinsicsTest.java#ZGenerationalDebug 8334475 windows-aarch64
-compiler/jvmci/compilerToVM/GetFlagValueTest.java 8204459 generic-all
 
 compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
 
@@ -114,7 +112,6 @@ gc/epsilon/TestMemoryMXBeans.java 8206434 generic-all
 gc/g1/humongousObjects/objectGraphTest/TestObjectGraphAfterGC.java 8156755 generic-all
 gc/g1/logging/TestG1LoggingFailure.java 8169634 generic-all
 gc/g1/humongousObjects/TestHeapCounters.java 8178918 generic-all
-gc/stress/gclocker/TestExcessGCLockerCollections.java 8229120 generic-all
 gc/stress/gclocker/TestGCLockerWithParallel.java 8180622 generic-all
 gc/stress/gclocker/TestGCLockerWithG1.java 8180622 generic-all
 gc/stress/gclocker/TestGCLockerWithShenandoah.java#aggressive JBR-8797 linux-all
@@ -156,7 +153,6 @@ runtime/os/TestTracePageSizes.java#G1 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#Parallel 8267460 linux-aarch64
 runtime/os/TestTracePageSizes.java#Serial 8267460 linux-aarch64
 runtime/os/windows/TestAvailableProcessors.java JBR-8182 windows-all
-runtime/ErrorHandling/CreateCoredumpOnCrash.java 8267433,initial_run macosx-x64,windows-aarch64
 runtime/CompressedOops/CompressedClassPointers.java 8305765 generic-all
 runtime/StackGuardPages/TestStackGuardPagesNative.java 8303612 linux-all
 runtime/ErrorHandling/TestDwarf.java 8305489 linux-all
@@ -202,22 +198,21 @@ serviceability/dcmd/gc/RunFinalizationTest.java 8227120 linux-all,windows-x64,ai
 
 serviceability/sa/ClhsdbJstackXcompStress.java initial_run windows-all
 
-serviceability/sa/ClhsdbCDSCore.java 8294316,8267433,initial_run macosx-x64,generic-aarch64
 serviceability/sa/ClhsdbCDSJstackPrintAll.java initial_run windows-aarch64
 serviceability/sa/ClhsdbFindPC.java#id1 initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#id2 initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#id3 initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#no-xcomp-process 8269881 generic-all 8277079
-serviceability/sa/ClhsdbFindPC.java#xcomp-core 8294316,8267433,JBR-6259 macosx-x64,windows-aarch64
-serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8294316,8267433,JBR-6259 macosx-x64,linux_aarch64,windows-aarch64
+serviceability/sa/ClhsdbFindPC.java#xcomp-core JBR-6259 windows-aarch64
+serviceability/sa/ClhsdbFindPC.java#no-xcomp-core JBR-6259 windows-aarch64
 
 serviceability/sa/ClhsdbJdis.java initial_run windows-aarch64
 serviceability/sa/ClhsdbJstack.java#id0 JBR-8573 windows-aarch64
 serviceability/sa/ClhsdbJstack.java#id1 initial_run windows-aarch64
-serviceability/sa/ClhsdbPmap.java#core 8294316,8267433,JBR-6259 macosx-x64,windows-aarch64
+serviceability/sa/ClhsdbPmap.java#core JBR-6259 windows-aarch64
 serviceability/sa/ClhsdbPmap.java#id1 initial_run generic-all
 serviceability/sa/ClhsdbPrintAs.java initial_run generic-all
-serviceability/sa/ClhsdbPstack.java#core 8294316,8267433,JBR-6259 macosx-x64,windows-aarch64
+serviceability/sa/ClhsdbPstack.java#core JBR-6259 windows-aarch64
 serviceability/sa/ClhsdbPstack.java#id1 initial_run generic-aarch64
 serviceability/sa/ClhsdbSource.java initial_run windows-aarch64
 serviceability/sa/ClhsdbWhere.java initial_run windows-aarch64
@@ -281,9 +276,6 @@ vmTestbase/nsk/jvmti/scenarios/sampling/SP04/sp04t001/TestDescription.java initi
 vmTestbase/nsk/jvmti/scenarios/sampling/SP04/sp04t002/TestDescription.java initial_run windows-x64
 vmTestbase/nsk/jvmti/scenarios/sampling/SP05/sp05t003/TestDescription.java initial_run generic-all
 
-vmTestbase/gc/gctests/LargeObjects/large003/TestDescription.java 8307788 generic-all
-vmTestbase/gc/gctests/LargeObjects/large004/TestDescription.java 8307788 generic-all
-vmTestbase/gc/gctests/LargeObjects/large005/TestDescription.java 8307788 generic-all
 vmTestbase/gc/lock/jni/jnilock002/TestDescription.java 8192647 generic-all
 
 vmTestbase/jit/escape/LockCoarsening/LockCoarsening001.java 8148743 generic-all
@@ -307,8 +299,8 @@ vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEa
 
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi001/Multi001.java JBR-8545,JBR-8546 windows-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi002/TestDescription.java JBR-8545 windows-all
-vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi003/TestDescription.java 8076494,JBR-8743 windows-x64,windows-all
-vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi004/TestDescription.java JBR-8744 windows-all
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi003/TestDescription.java 8076494,JBR-8545 windows-x64,windows-all
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi004/TestDescription.java JBR-8927 windows-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi005/TestDescription.java 8076494,JBR-8927 windows-x64,windows-aarch64
 
 vmTestbase/nsk/stress/thread/thread008.java initial_run windows-all
