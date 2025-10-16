@@ -43,13 +43,13 @@ java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,8324782,JBR-4199 
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720,8324782,JBR-6090,JBR-4199,JBR-8574 windows-all,macosx-all,linux-all
 
 java/awt/Graphics/LineClipTest.java                                                 JBR-5071 linux-all
-java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071,JBR-5359 linux-all,windows-aarch64
+java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071, linux-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050,JBR-5071 windows-all,macosx-all,linux-all
 java/awt/LightweightComponent/MultipleAddNotifyTest/MultipleAddNotifyTest.java JBR-8092,JBR-8873 linux-all,windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711,JBR-6234 linux-all,windows-all,macosx-all
 java/awt/List/TriggerActionEventTest.java JBR-6234 windows-all
-java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5359,JBR-6090 macosx-all,windows-aarch64,windows-all
-java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5359,JBR-6090 windows-aarch64,windows-all
+java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-6090 macosx-all,windows-all
+java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-6090 windows-all
 java/awt/Mixing/LWPopupMenu.java JBR-824,JBR-6134 generic-all,windows-x64
 java/awt/Mixing/MixingOnDialog.java JBR-6134,JBR-6090 windows-x64,windows-all
 java/awt/Mixing/MixingOnShrinkingHWButton.java JBR-6134 windows-x64

@@ -1,17 +1,12 @@
 java/awt/event/KeyEvent/FunctionKeyTest.java JBR-7773 linux-all
-java/awt/EventDispatchThread/PreserveDispathThread/PreserveDispatchThread.java JBR-9237 linux-all
-java/awt/Graphics2D/ScaledTransform/ScaledTransform.java JBR-9237 linux-all
 java/awt/Graphics2D/TextPerf.java JBR-9190 linux-all
 java/awt/FullScreen/SetFullScreenTest.java JBR-8400 linux-x64
-java/awt/image/DrawImage/IncorrectUnmanagedImageSourceOffset.java JBR-9023 linux-all
-java/awt/image/DrawImage/UnmanagedDrawImagePerformance.java JBR-9023 linux-all
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932,JBR-9207 linux-all,linux-6.15.8-100.fc41.x86_64
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-8295 linux-x64
 
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-7269 linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520,JBR-9320 linux-aarch64,linux-6.14.9-arch1-1
-javax/swing/JComboBox/ShowPopupAfterHidePopupTest/ShowPopupAfterHidePopupTest.java JBR-9384 linux-all
 javax/swing/JComponent/6989617/bug6989617.java JBR-8796 linux-all
 javax/swing/JDesktopPane/TestDesktopManagerNPE.java JBR-8449 linux-x64
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
@@ -21,7 +16,5 @@ javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-9276 li
 javax/swing/JOptionPane/8081019/bug8081019.java JBR-8275 linux-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 linux-6.14.9-arch1-1
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 linux-6.14.9-arch1-1
-javax/swing/LookAndFeel/8145547/DemandGTK2.sh JBR-8918 linux-all
-javax/swing/text/html/CSS/bug8234913.java JBR-8306 linux-all
 
 jb/javax/swing/Popup/WLPopupMoves.java JBR-8296 linux-all

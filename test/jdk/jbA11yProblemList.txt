@@ -58,7 +58,7 @@ javax/swing/JInternalFrame/Test6505027.java         nobug macosx-all,linux-all,w
 javax/swing/JMenuBar/MenuBarRTLBug.java JBR-7385 windows-x64
 javax/swing/JPopupMenu/4634626/bug4634626.java      nobug macosx-all,linux-all,windows-all
 javax/swing/JPopupMenu/4966112/bug4966112.java      nobug macosx-all,linux-all,windows-all
-javax/swing/JPopupMenu/6415145/bug6415145.java 8197552,JBR-5397 macosx-all,windows-all
+javax/swing/JPopupMenu/6415145/bug6415145.java JBR-5397 macosx-all
 javax/swing/JPopupMenu/JPopupMenuFocusStealTest.java JBR-9067 windows-x64
 javax/swing/JTree/4518432/JTreeNodeCopyPasteTest.java JBR-5397,JBR-8335 macosx-all,windows-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-7386 windows-x64
