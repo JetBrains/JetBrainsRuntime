@@ -183,7 +183,7 @@ JNI_COCOA_ENTER(env);
         (*env)->DeleteLocalRef(env, graphicsEnv);
         CHECK_EXCEPTION();
     }
-JNI_COCOA_EXIT(env);
+JNI_COCOA_EXIT();
 }
 
 /*

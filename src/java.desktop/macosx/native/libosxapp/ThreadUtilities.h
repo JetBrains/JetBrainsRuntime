@@ -130,6 +130,9 @@ do {                                  \
 /* bit flag to coalesce CGDisplayReconfigureCallbacks */
 #define MAIN_CALLBACK_CGDISPLAY_RECONFIGURE  1
 
+/* Get AWT's NSUncaughtExceptionHandler */
+JNIEXPORT NSUncaughtExceptionHandler* GetAWTUncaughtExceptionHandler(void);
+
 @interface RunLoopCallbackQueue : NSObject
 
 @property(readwrite, atomic) u_long coalesingflags;

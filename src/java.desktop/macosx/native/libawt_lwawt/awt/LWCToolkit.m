@@ -28,6 +28,7 @@
 #import <objc/runtime.h>
 #import <Cocoa/Cocoa.h>
 #import <Security/AuthSession.h>
+#import <ExceptionHandling/NSExceptionHandler.h>
 
 #import "JNIUtilities.h"
 #import "LWCToolkit.h"
@@ -67,6 +68,14 @@
 #define PWM_TRANSITION_PERIOD   (10.000)
 
 #define TRACE_RUN_LOOP  0
+
+#ifdef DEBUG
+    #define TEST_NATIVE_EXCEPTION 1
+#else
+    #define TEST_NATIVE_EXCEPTION 0
+    // force enabling exception tracing tests:
+    // #define TEST_NATIVE_EXCEPTION 1
+#endif
 
 int gNumberOfButtons;
 jint* gButtonDownMasks;
@@ -203,18 +212,23 @@ static BOOL inDoDragDropLoop;
 }
 
 - (void)perform {
-    JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
-    DECLARE_CLASS(sjc_Runnable, "java/lang/Runnable");
-    DECLARE_METHOD(jm_Runnable_run, sjc_Runnable, "run", "()V");
-    (*env)->CallVoidMethod(env, self.runnable, jm_Runnable_run);
-    CHECK_EXCEPTION();
-    [self release];
+    @try {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        DECLARE_CLASS(sjc_Runnable, "java/lang/Runnable");
+        DECLARE_METHOD(jm_Runnable_run, sjc_Runnable, "run", "()V");
+        (*env)->CallVoidMethod(env, self.runnable, jm_Runnable_run);
+        CHECK_EXCEPTION();
+        if (TEST_NATIVE_EXCEPTION) TEST_RAISE_EXCEPTION(@"runnable = %p", self.runnable);
+    }
+    @finally {
+        [self release];
+    }
 }
 @end
 
 void setBusy(BOOL busy) {
     AWT_ASSERT_APPKIT_THREAD;
-
+    JNI_COCOA_ENTER();
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     DECLARE_CLASS(jc_AWTAutoShutdown, "sun/awt/AWTAutoShutdown");
 
@@ -225,7 +239,9 @@ void setBusy(BOOL busy) {
         DECLARE_STATIC_METHOD(jm_notifyFreeMethod, jc_AWTAutoShutdown, "notifyToolkitThreadFree", "()V");
         (*env)->CallStaticVoidMethod(env, jc_AWTAutoShutdown, jm_notifyFreeMethod);
     }
-     CHECK_EXCEPTION();
+    CHECK_EXCEPTION();
+    if (TEST_NATIVE_EXCEPTION) TEST_RAISE_EXCEPTION(@"busy = %d", busy);
+    JNI_COCOA_EXIT();
 }
 
 static void setUpAWTAppKit(BOOL installObservers)
@@ -269,17 +285,12 @@ static void setUpAWTAppKit(BOOL installObservers)
     DECLARE_STATIC_METHOD(jsm_installToolkitThreadInJava, jc_LWCToolkit, "installToolkitThreadInJava", "()V");
     (*env)->CallStaticVoidMethod(env, jc_LWCToolkit, jsm_installToolkitThreadInJava);
     CHECK_EXCEPTION();
-
+    if (0 && TEST_NATIVE_EXCEPTION) TEST_RAISE_EXCEPTION(@"installObservers = %d", installObservers);
 }
 
 BOOL isSWTInWebStart(JNIEnv* env) {
     NSString *swtWebStart = [PropertiesUtilities javaSystemPropertyForKey:@"com.apple.javaws.usingSWT" withEnv:env];
     return [@"true" isCaseInsensitiveLike:swtWebStart];
-}
-
-static void AWT_NSUncaughtExceptionHandler(NSException *exception) {
-    NSLog(@"Apple AWT Internal Exception: %@", [exception description]);
-    NSLog(@"trace: %@", [exception callStackSymbols]);
 }
 
 @interface AWTStarter : NSObject
@@ -374,14 +385,16 @@ static void AWT_NSUncaughtExceptionHandler(NSException *exception) {
             if (delegate != nil) {
                 OSXAPP_SetApplicationDelegate(delegate);
             }
+            // Intercept any exception to let NSApplicationAWT handle them:
+            NSExceptionHandler* exceptionHandler = [NSExceptionHandler defaultExceptionHandler];
+            exceptionHandler.exceptionHandlingMask = NSLogAndHandleEveryExceptionMask;
+            [exceptionHandler setDelegate:[NSApplicationAWT sharedApplication]];
         }];
     }
 }
 
 + (void)starter:(BOOL)wasOnMainThread headless:(BOOL)headless {
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
-    // Add the exception handler of last resort
-    NSSetUncaughtExceptionHandler(AWT_NSUncaughtExceptionHandler);
 
     // Headless mode trumps either ordinary AWT or SWT-in-AWT mode.  Declare us a daemon and return.
     if (headless) {
@@ -893,6 +906,9 @@ JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_LWCToolkit_initIDs
 (JNIEnv *env, jclass klass) {
 
+    // Add the exception handler of last resort:
+    GetAWTUncaughtExceptionHandler();
+
     JNI_COCOA_ENTER(env);
 
     gNumberOfButtons = sun_lwawt_macosx_LWCToolkit_BUTTONS;
@@ -903,6 +919,8 @@ Java_sun_lwawt_macosx_LWCToolkit_initIDs
     CHECK_NULL(getButtonDownMasksID);
     jintArray obj = (jintArray)(*env)->CallStaticObjectMethod(env, inputEventClazz, getButtonDownMasksID);
     CHECK_EXCEPTION();
+    if (TEST_NATIVE_EXCEPTION) TEST_RAISE_EXCEPTION(@"getButtonDownMasksID");
+
     jint * tmp = (*env)->GetIntArrayElements(env, obj, NULL);
     CHECK_NULL(tmp);
 

@@ -26,6 +26,7 @@
 #import "NSApplicationAWT.h"
 
 #import <objc/runtime.h>
+#import <ExceptionHandling/NSExceptionHandler.h>
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
 
 #import "PropertiesUtilities.h"
@@ -124,8 +125,19 @@ AWT_ASSERT_APPKIT_THREAD;
 
     // Set user defaults to not try to parse application arguments.
     NSUserDefaults * defs = [NSUserDefaults standardUserDefaults];
-    NSDictionary * noOpenDict = [NSDictionary dictionaryWithObject:@"NO" forKey:@"NSTreatUnknownArgumentsAsOpen"];
-    [defs registerDefaults:noOpenDict];
+
+    BOOL shouldCrashOnExceptions = NO;
+#if defined(DEBUG)
+    shouldCrashOnExceptions = YES;
+#endif
+    // TODO: use system property or fast debug !!
+
+    NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:
+                            (shouldCrashOnExceptions ? @"YES" : @"NO"), @"NSApplicationCrashOnExceptions",
+                            @"NO", @"NSTreatUnknownArgumentsAsOpen",
+                            nil];
+
+    [defs registerDefaults:dict];
 
     // Fix up the dock icon now that we are registered with CAS and the Dock.
     [self setDockIconWithEnv:env];
@@ -513,6 +525,39 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
     kill([processInfo processIdentifier], SIGILL);
 }
 
+- (void) reportException:(NSException *)exception {
+    @autoreleasepool {
+        NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
+        [info appendString:
+                [NSString stringWithFormat:
+                        @"ReportException in NSApplicationAWT:\n %@\n",
+                        exception]];
+
+        NSArray<NSString*> *stack = [exception callStackSymbols];
+
+        for (NSUInteger i = 0; i < stack.count; i++) {
+            [info appendString:stack[i]];
+            [info appendString:@"\n"];
+        }
+        NSLog(@"%@", info);
+
+        // Call the exception handler of last resort too:
+        // TODO: unify the output of the two handlers !!
+        // GetAWTUncaughtExceptionHandler()(exception);
+    }
+    // may abort or crash
+    [super reportException:exception];
+}
+
+// --- NSExceptionHandlerDelegate additions ---
+
+- (BOOL)exceptionHandler:(NSExceptionHandler *)sender shouldLogException:(NSException *)exception mask:(NSUInteger)aMask {
+    return NO;
+}
+
+- (BOOL)exceptionHandler:(NSExceptionHandler *)sender shouldHandleException:(NSException *)exception mask:(NSUInteger)aMask {
+    return YES;
+}
 @end
 
 

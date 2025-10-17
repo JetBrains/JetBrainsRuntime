@@ -63,6 +63,8 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
     private static final PlatformLogger logger =
             PlatformLogger.getLogger(CGraphicsEnvironment.class.getName());
 
+    private static final boolean TEST_NATIVE_EXCEPTION = false;
+
     @Native private final static int MTL_SUPPORTED = 0;
     @Native private final static int MTL_NO_DEVICE = 1;
     @Native private final static int MTL_NO_SHADER_LIB = 2;
@@ -208,6 +210,9 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
             CGraphicsDevice gd = devices.get(displayId);
             log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
         }
+        if (TEST_NATIVE_EXCEPTION) {
+            throw new RuntimeException("TEST _displayReconfiguration");
+        }
     }
 
     /**
@@ -229,6 +234,9 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         }
         if (logger.isLoggable(PlatformLogger.Level.FINE)) {
             logger.fine("_displayReconfigurationFinished(): exit");
+        }
+        if (TEST_NATIVE_EXCEPTION) {
+            throw new RuntimeException("TEST _displayReconfigurationFinished");
         }
     }
 
