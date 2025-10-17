@@ -741,8 +741,7 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     DECLARE_CLASS_RETURN(jc_CPlatformView, "sun/lwawt/macosx/CPlatformView", NULL);
     DECLARE_FIELD_RETURN(jf_Peer, jc_CPlatformView, "peer", "Lsun/lwawt/LWWindowPeer;", NULL);
     if ((env == NULL) || (m_cPlatformView == NULL)) {
-        NSLog(@"Apple AWT : Error AWTView:awtComponent given bad parameters.");
-        NSLog(@"%@",[NSThread callStackSymbols]);
+        NSAPP_AWT_LOG_MESSAGE(@"Apple AWT: Error AWTView:awtComponent given bad parameters.");
         return NULL;
     }
 
@@ -755,8 +754,7 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     DECLARE_CLASS_RETURN(jc_LWWindowPeer, "sun/lwawt/LWWindowPeer", NULL);
     DECLARE_FIELD_RETURN(jf_Target, jc_LWWindowPeer, "target", "Ljava/awt/Component;", NULL);
     if (peer == NULL) {
-        NSLog(@"Apple AWT : Error AWTView:awtComponent got null peer from CPlatformView");
-        NSLog(@"%@",[NSThread callStackSymbols]);
+        NSAPP_AWT_LOG_MESSAGE(@"Apple AWT: Error AWTView:awtComponent got null peer from CPlatformView");
         return NULL;
     }
     jobject comp = (*env)->GetObjectField(env, peer, jf_Target);
