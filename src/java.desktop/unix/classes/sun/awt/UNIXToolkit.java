@@ -50,6 +50,9 @@ import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import jdk.internal.misc.InnocuousThread;
 import sun.awt.X11.XBaseWindow;
@@ -523,8 +526,6 @@ public abstract class UNIXToolkit extends SunToolkit
 
     private static final String OS_THEME_IS_DARK = "awt.os.theme.isDark";
 
-    private static Thread systemPropertyWatcher = null;
-
     private static native boolean dbusInit();
 
     private void initSystemPropertyWatcher() {
@@ -538,22 +539,22 @@ public abstract class UNIXToolkit extends SunToolkit
         if (initialSystemDarkColorScheme >= 0) {
             setDesktopProperty(OS_THEME_IS_DARK, initialSystemDarkColorScheme != 0);
 
-            systemPropertyWatcher = InnocuousThread.newThread("SystemPropertyWatcher",
-                    () -> {
-                        while (true) {
-                            try {
-                                int isSystemDarkColorScheme = isSystemDarkColorScheme();
-                                if (isSystemDarkColorScheme >= 0) {
-                                    setDesktopProperty(OS_THEME_IS_DARK, isSystemDarkColorScheme != 0);
-                                }
+            ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
+                var thread = InnocuousThread.newThread("SystemPropertyWatcher", r);
+                thread.setDaemon(true);
+                return thread;
 
-                                Thread.sleep(1000);
-                            } catch (Exception ignored) {
-                            }
-                        }
-                    });
-            systemPropertyWatcher.setDaemon(true);
-            systemPropertyWatcher.start();
+            });
+
+            executor.scheduleAtFixedRate(() -> {
+                try {
+                    int isSystemDarkColorScheme = isSystemDarkColorScheme();
+                    if (isSystemDarkColorScheme >= 0) {
+                        setDesktopProperty(OS_THEME_IS_DARK, isSystemDarkColorScheme != 0);
+                    }
+                } catch (Exception ignored) {
+                }
+            }, 0, 1, TimeUnit.SECONDS);
         }
     }
 
