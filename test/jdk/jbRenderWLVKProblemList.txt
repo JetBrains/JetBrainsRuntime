@@ -25,7 +25,6 @@ java/awt/Graphics/DrawOvalTest.java
 java/awt/Graphics/XORPaint.java#id2
 java/awt/GraphicsDevice/CloneConfigsTest.java
 sun/java2d/pipe/InterpolationQualityTest.java
-java/awt/image/VolatileImage/DrawBufImgOp.java
 java/awt/image/VolatileImage/GradientPaints.java
 java/awt/image/VolatileImage/TransparentVImage.java
 java/awt/image/DrawImage/BlitRotateClippedArea.java
