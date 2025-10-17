@@ -811,9 +811,11 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
     if (count != 0) {
         for (NSUInteger i = 0; i < count; i++) {
             void (^blockCopy)(void) = (void (^)())[self.queue objectAtIndex: i];
-
-            // invoke callback:
-            [ThreadUtilities invokeBlockCopy:blockCopy];
+            // handle any exception:
+            JNI_COCOA_ENTER();
+                // invoke callback:
+                [ThreadUtilities invokeBlockCopy:blockCopy];
+            JNI_COCOA_EXIT();
         }
         // reset queue anyway:
         [self reset];
