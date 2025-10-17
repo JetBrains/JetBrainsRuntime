@@ -89,6 +89,33 @@ static const int TRACE_BLOCKING_FLAGS = 0;
 /* RunLoop traceability identifier generators */
 static atomic_long mainThreadActionId = 0L;
 
+// --- AWT's NSUncaughtExceptionHandler ---
+static NSUncaughtExceptionHandler* _previousNSUncaughtExceptionHandler = nil;
+
+static void AWT_NSUncaughtExceptionHandler(NSException* exception) {
+    NSLog(@"Apple AWT Internal Exception: %@\ntrace: %@",
+          [exception description], [exception callStackSymbols]);
+    // call previous exception handler (may abort):
+    if (_previousNSUncaughtExceptionHandler != nil) {
+        _previousNSUncaughtExceptionHandler(exception);
+    }
+}
+
+/* Get AWT's NSUncaughtExceptionHandler */
+NSUncaughtExceptionHandler* GetAWTUncaughtExceptionHandler(void) {
+    static NSUncaughtExceptionHandler* _uncaughtExceptionHandler;
+    static dispatch_once_t oncePredicate;
+
+    dispatch_once(&oncePredicate, ^{
+        NSLog(@"Initializing Apple AWT Internal Exception Handler ---");
+        // get previous uncaught exception handler:
+        _previousNSUncaughtExceptionHandler = NSGetUncaughtExceptionHandler();
+        _uncaughtExceptionHandler = AWT_NSUncaughtExceptionHandler;
+        NSSetUncaughtExceptionHandler(_uncaughtExceptionHandler);
+    });
+    return _uncaughtExceptionHandler;
+}
+
 static inline void doLog(JNIEnv* env, const char *formatMsg, ...) {
     if (enableTracingNSLog) {
         va_list args;
@@ -111,7 +138,6 @@ static inline void doLog(JNIEnv* env, const char *formatMsg, ...) {
         va_end(args);
     }
 }
-
 
 static inline void attachCurrentThread(void** env) {
     if ([NSThread isMainThread]) {
@@ -254,8 +280,12 @@ AWT_ASSERT_APPKIT_THREAD;
  * Note : if waiting cross-thread, possibly the stack allocated copy is accessible ?
  */
 + (void)invokeBlockCopy:(void (^)(void))blockCopy {
-    blockCopy();
-    Block_release(blockCopy);
+    @try {
+        blockCopy();
+    }
+    @finally {
+        Block_release(blockCopy);
+    }
 }
 
 + (NSString*)getCaller:(NSString*)prefixSymbol {
@@ -781,6 +811,7 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
     if (count != 0) {
         for (NSUInteger i = 0; i < count; i++) {
             void (^blockCopy)(void) = (void (^)())[self.queue objectAtIndex: i];
+
             // invoke callback:
             [ThreadUtilities invokeBlockCopy:blockCopy];
         }

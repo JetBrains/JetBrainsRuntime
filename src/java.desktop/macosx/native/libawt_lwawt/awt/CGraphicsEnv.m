@@ -116,7 +116,7 @@ static void displaycb_handle
 (CGDirectDisplayID displayId, CGDisplayChangeSummaryFlags flags, void *userInfo)
 {
 AWT_ASSERT_APPKIT_THREAD;
-JNI_COCOA_ENTER(env);
+JNI_COCOA_ENTER();
 
     if (TRACE_DISPLAY_CALLBACKS) {
         NSLog(@"CGraphicsEnv::displaycb_handle(displayId: %d, flags: %d, userInfo: %p)",
@@ -184,7 +184,7 @@ JNI_COCOA_ENTER(env);
         (*env)->DeleteLocalRef(env, graphicsEnv);
         CHECK_EXCEPTION();
     }
-JNI_COCOA_EXIT(env);
+JNI_COCOA_EXIT();
 }
 
 /*
