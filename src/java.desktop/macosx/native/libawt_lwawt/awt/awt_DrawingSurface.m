@@ -49,6 +49,7 @@ JNIEXPORT JAWT_DrawingSurfaceInfo* JNICALL awt_DrawingSurface_GetDrawingSurfaceI
     DECLARE_METHOD_RETURN(jm_getPointer, jc_PlatformComponent, "getPointer", "()J", NULL);
     AWTSurfaceLayers *surfaceLayers = jlong_to_ptr((*env)->CallLongMethod(env, platformComponent, jm_getPointer));
     // REMIND: assert(surfaceLayers)
+    CHECK_EXCEPTION();
 
     dsi->platformInfo = surfaceLayers;
     dsi->ds = ds;
