@@ -72,9 +72,9 @@
 #ifdef DEBUG
     #define TEST_NATIVE_EXCEPTION 1
 #else
-    #define TEST_NATIVE_EXCEPTION 0
     // force enabling exception tracing tests:
     // #define TEST_NATIVE_EXCEPTION 1
+    #define TEST_NATIVE_EXCEPTION 0
 #endif
 
 int gNumberOfButtons;

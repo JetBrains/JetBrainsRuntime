@@ -47,6 +47,18 @@ static QueuingApplicationDelegate * qad = nil;
 // Flag used to indicate to the Plugin2 event synthesis code to do a postEvent instead of sendEvent
 BOOL postEventDuringEventSynthesis = NO;
 
+BOOL isAWTCrashOnException() {
+    static int awtCrashOnException = -1;
+    if (awtCrashOnException == -1) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (env == NULL) return NO;
+        NSString* awtCrashOnExceptionProp = [PropertiesUtilities javaSystemPropertyForKey:@"apple.awt.crashOnException"
+                                                                                     withEnv:env];
+        awtCrashOnException = [@"true" isCaseInsensitiveLike:awtCrashOnExceptionProp] ? YES : NO;
+    }
+    return (BOOL)awtCrashOnException;
+}
+
 /**
  * Subtypes of NSApplicationDefined, which are used for custom events.
  */
@@ -130,7 +142,9 @@ AWT_ASSERT_APPKIT_THREAD;
 #if defined(DEBUG)
     shouldCrashOnExceptions = YES;
 #endif
-    // TODO: use system property or fast debug !!
+    if (!shouldCrashOnExceptions) {
+        shouldCrashOnExceptions = isAWTCrashOnException();
+    }
 
     NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:
                             (shouldCrashOnExceptions ? @"YES" : @"NO"), @"NSApplicationCrashOnExceptions",
@@ -530,7 +544,7 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
         NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
         [info appendString:
                 [NSString stringWithFormat:
-                        @"ReportException in NSApplicationAWT:\n %@\n",
+                        @"Exception report in NSApplicationAWT:\n %@\n",
                         exception]];
 
         NSArray<NSString*> *stack = [exception callStackSymbols];
