@@ -41,7 +41,24 @@ JNIEXPORT @interface NSApplicationAWT : NSApplication {
 - (void) waitForDummyEvent:(double) timeout;
 
 + (void) runAWTLoopWithApp:(NSApplication*)app;
-+ (void)logException:(NSException *)exception forProcess:(NSProcessInfo*)processInfo;
++ (void) interruptAWTLoop;
+
++ (BOOL) isNSApplicationAWT;
++ (NSApplicationAWT*) sharedApplicationAWT;
+
+- (void) reportException:(NSException *)exception;
+- (void) reportException:(NSException *)exception uncaught:(BOOL)uncaught
+                    file:(const char*)file line:(int)line function:(const char*)function;
+
++ (void) logException:(NSException *)exception;
++ (void) logException:(NSException *)exception
+                 file:(const char*)file line:(int)line function:(const char*)function;
++ (void) logException:(NSException *)exception prefix:(NSString *)prefix
+                 file:(const char*)file line:(int)line function:(const char*)function;
+
++ (void) logMessage:(NSString *)message;
++ (void) logMessage:(NSString *)message
+               file:(const char*)file line:(int)line function:(const char*)function;
 
 @end
 
@@ -53,4 +70,3 @@ JNIEXPORT @interface NSApplicationAWT : NSApplication {
 @end
 
 JNIEXPORT void OSXAPP_SetApplicationDelegate(id <NSApplicationDelegate> delegate);
-
