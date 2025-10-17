@@ -1338,6 +1338,7 @@ static void treeNodeExpandedCollapsedImpl(
         const jobject cAccessibleGlobal = (*env)->NewGlobalRef(env, cAccessible);
 
         if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+            (*env)->ExceptionDescribe(env);
             if (cAccessibleGlobal != NULL) {
                 (*env)->DeleteGlobalRef(env, cAccessibleGlobal);
             }
@@ -1526,7 +1527,7 @@ void nativeAnnounceAppKit(
 
     JNIEnv* const env = [ThreadUtilities getJNIEnv];
     if (env == NULL) { // unlikely
-        NSLog(@"%s: failed to get JNIEnv instance\n%@\n", __func__, [NSThread callStackSymbols]);
+        NSAPP_AWT_LOG_MESSAGE(@"Failed to get JNIEnv instance");
         return; // I believe it's dangerous to go on announcing in that case
     }
 
