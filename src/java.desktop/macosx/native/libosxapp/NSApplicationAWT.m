@@ -26,6 +26,7 @@
 #import "NSApplicationAWT.h"
 
 #import <objc/runtime.h>
+#import <ExceptionHandling/NSExceptionHandler.h>
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
 
 #import "PropertiesUtilities.h"
@@ -37,6 +38,17 @@
  * Declare library specific JNI_Onload entry if static build
  */
 DEF_STATIC_JNI_OnLoad
+
+/* may be worth to use system properties ? */
+#define MAX_RETRY_WRITE_EXCEPTION   3
+#define MAX_WRITE_EXCEPTION         50
+#define MAX_LOGGED_EXCEPTION        1000
+
+#define JBR_ERR_PID_FILE            @"%@/jbr_err_pid%d.log"
+/** JBR file pattern with extra count parameter (see MAX_WRITE_EXCEPTION) */
+#define JBR_ERR_PID_FILE_COUNT      @"%@/jbr_err_pid%d-%02d.log"
+
+#define NO_FILE_LINE_FUNCTION_ARGS file:nil line:0 function:nil
 
 static BOOL sUsingDefaultNIB = YES;
 static NSString *SHARED_FRAMEWORK_BUNDLE = @"/System/Library/Frameworks/JavaVM.framework";
@@ -123,9 +135,14 @@ AWT_ASSERT_APPKIT_THREAD;
     [NSBundle loadNibFile:defaultNibFile externalNameTable: [NSDictionary dictionaryWithObject:self forKey:@"NSOwner"] withZone:nil];
 
     // Set user defaults to not try to parse application arguments.
-    NSUserDefaults * defs = [NSUserDefaults standardUserDefaults];
-    NSDictionary * noOpenDict = [NSDictionary dictionaryWithObject:@"NO" forKey:@"NSTreatUnknownArgumentsAsOpen"];
-    [defs registerDefaults:noOpenDict];
+    NSDictionary *defaults = [NSDictionary dictionaryWithObjectsAndKeys:
+                                 (shouldCrashOnException() ? @"YES" : @"NO"), @"NSApplicationCrashOnExceptions",
+                                 @"NO", @"NSTreatUnknownArgumentsAsOpen",
+                                 /* fix for JBR-3127 Modal dialogs invoked from modal or floating dialogs are opened in full screen */
+                                 @"NO", @"NSWindowAllowsImplicitFullScreen",
+                                 nil];
+
+    [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
 
     // Fix up the dock icon now that we are registered with CAS and the Dock.
     [self setDockIconWithEnv:env];
@@ -156,9 +173,6 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 
     [super finishLaunching];
-
-    // fix for JBR-3127 Modal dialogs invoked from modal or floating dialogs are opened in full screen
-    [defs setBool:NO forKey:@"NSWindowAllowsImplicitFullScreen"];
 
     // temporary possibility to load deprecated NSJavaVirtualMachine (just for testing)
     // todo: remove when completely tested on BigSur
@@ -319,8 +333,6 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 + (void) runAWTLoopWithApp:(NSApplication*)app {
-    NSAutoreleasePool *pool = [NSAutoreleasePool new];
-
     // Define the special Critical RunLoop mode to ensure action executed ASAP:
     [[NSRunLoop currentRunLoop] addPort:[NSPort port] forMode:[ThreadUtilities criticalRunLoopMode]];
 
@@ -328,19 +340,35 @@ AWT_ASSERT_APPKIT_THREAD;
     [[NSRunLoop currentRunLoop] addPort:[NSPort port] forMode:[ThreadUtilities javaRunLoopMode]];
 
     do {
+        NSAutoreleasePool *pool = [NSAutoreleasePool new];
         @try {
             [app run];
-        } @catch (NSException* e) {
-            NSLog(@"Apple AWT Startup Exception: %@", [e description]);
-            NSLog(@"Apple AWT Startup Exception callstack: %@", [e callStackSymbols]);
-            NSLog(@"Apple AWT Restarting Native Event Thread");
+        } @catch (NSException *exception) {
+            NSLog(@"Apple AWT runAWTLoop Exception: %@\nCallstack: %@",
+                [exception description], [exception callStackSymbols]);
 
-            [app stop:app];
+            // interrupt the run loop now:
+            [NSApplicationAWT interruptAWTLoop];
+        } @ finally {
+            [pool drain];
         }
     } while (YES);
-
-    [pool drain];
 }
+
+/*
+ * Thread-safe:
+ * stop the shared application (run loop [NSApplication run])
+ * and restart it
+ */
++ (void) interruptAWTLoop {
+    NSLog(@"Apple AWT Restarting Native Event Thread...");
+    NSApplication *app = [NSApplicationAWT sharedApplication];
+    // mark the current run loop [NSApplication run] to be stopped:
+    [app stop:app];
+    // send event to interrupt the run loop now (after the current event is processed):
+    [app abortModal];
+}
+
 
 - (BOOL)usingDefaultNib {
     return sUsingDefaultNIB;
@@ -380,27 +408,34 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
 // NSTimeInterval has microseconds precision
 #define TS_EQUAL(ts1, ts2) (fabs((ts1) - (ts2)) < 1e-6)
 
-- (void)sendEvent:(NSEvent *)event
-{
-    if ([event type] == NSApplicationDefined
-            && TS_EQUAL([event timestamp], dummyEventTimestamp)
-            && (short)[event subtype] == NativeSyncQueueEvent
-            && [event data1] == NativeSyncQueueEvent
-            && [event data2] == NativeSyncQueueEvent) {
-        [seenDummyEventLock lockWhenCondition:NO];
-        [seenDummyEventLock unlockWithCondition:YES];
-    } else if ([event type] == NSApplicationDefined
-               && (short)[event subtype] == ExecuteBlockEvent
-               && [event data1] != 0 && [event data2] == ExecuteBlockEvent) {
-        void (^block)() = (void (^)()) [event data1];
-        block();
-        [block release];
-    } else if ([event type] == NSEventTypeKeyUp && ([event modifierFlags] & NSCommandKeyMask)) {
-        // Cocoa won't send us key up event when releasing a key while Cmd is down,
-        // so we have to do it ourselves.
-        [[self keyWindow] sendEvent:event];
-    } else {
-        [super sendEvent:event];
+- (void)sendEvent:(NSEvent *)event {
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    @try {
+        if ([event type] == NSApplicationDefined
+                && TS_EQUAL([event timestamp], dummyEventTimestamp)
+                && (short)[event subtype] == NativeSyncQueueEvent
+                && [event data1] == NativeSyncQueueEvent
+                && [event data2] == NativeSyncQueueEvent) {
+            [seenDummyEventLock lockWhenCondition:NO];
+            [seenDummyEventLock unlockWithCondition:YES];
+        } else if ([event type] == NSApplicationDefined
+                   && (short)[event subtype] == ExecuteBlockEvent
+                   && [event data1] != 0 && [event data2] == ExecuteBlockEvent) {
+            void (^block)() = (void (^)()) [event data1];
+            block();
+            [block release];
+        } else if ([event type] == NSEventTypeKeyUp && ([event modifierFlags] & NSCommandKeyMask)) {
+            // Cocoa won't send us key up event when releasing a key while Cmd is down,
+            // so we have to do it ourselves.
+            [[self keyWindow] sendEvent:event];
+        } else {
+            [super sendEvent:event];
+        }
+    } @catch (NSException *exception) {
+        // report exception to the NSApplicationAWT exception handler:
+        NSAPP_AWT_REPORT_EXCEPTION(exception, NO);
+    } @finally {
+        [pool drain];
     }
 }
 
@@ -413,19 +448,23 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
 {
     void (^copy)() = [block copy];
     NSInteger encode = (NSInteger) copy;
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    NSEvent* event = [NSEvent otherEventWithType: NSApplicationDefined
-                                        location: NSMakePoint(0,0)
-                                   modifierFlags: 0
-                                       timestamp: 0
-                                    windowNumber: 0
-                                         context: nil
-                                         subtype: ExecuteBlockEvent
-                                           data1: encode
-                                           data2: ExecuteBlockEvent];
 
-    [NSApp postEvent: event atStart: NO];
-    [pool drain];
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    @try {
+        NSEvent* event = [NSEvent otherEventWithType: NSApplicationDefined
+                                            location: NSMakePoint(0,0)
+                                       modifierFlags: 0
+                                           timestamp: 0
+                                        windowNumber: 0
+                                             context: nil
+                                             subtype: ExecuteBlockEvent
+                                               data1: encode
+                                               data2: ExecuteBlockEvent];
+
+        [NSApp postEvent: event atStart: NO];
+    } @finally {
+        [pool drain];
+    }
 }
 
 - (void)postDummyEvent:(bool)useCocoa {
@@ -433,86 +472,272 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
     dummyEventTimestamp = [NSProcessInfo processInfo].systemUptime;
 
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    NSEvent* event = [NSEvent otherEventWithType: NSApplicationDefined
-                                        location: NSMakePoint(0,0)
-                                   modifierFlags: 0
-                                       timestamp: dummyEventTimestamp
-                                    windowNumber: 0
-                                         context: nil
-                                         subtype: NativeSyncQueueEvent
-                                           data1: NativeSyncQueueEvent
-                                           data2: NativeSyncQueueEvent];
-    if (useCocoa) {
-        [NSApp postEvent:event atStart:NO];
-    } else {
-        ProcessSerialNumber psn;
-        GetCurrentProcess(&psn);
-        CGEventPostToPSN(&psn, [event CGEvent]);
+    @try {
+        NSEvent* event = [NSEvent otherEventWithType: NSApplicationDefined
+                                            location: NSMakePoint(0,0)
+                                       modifierFlags: 0
+                                           timestamp: dummyEventTimestamp
+                                        windowNumber: 0
+                                             context: nil
+                                             subtype: NativeSyncQueueEvent
+                                               data1: NativeSyncQueueEvent
+                                               data2: NativeSyncQueueEvent];
+        if (useCocoa) {
+            [NSApp postEvent:event atStart:NO];
+        } else {
+            ProcessSerialNumber psn;
+            GetCurrentProcess(&psn);
+            CGEventPostToPSN(&psn, [event CGEvent]);
+        }
+    } @finally {
+        [pool drain];
     }
-    [pool drain];
 }
 
 - (void)waitForDummyEvent:(double)timeout {
     bool unlock = true;
-    if (timeout >= 0) {
-        double sec = timeout / 1000;
-        unlock = [seenDummyEventLock lockWhenCondition:YES
-                               beforeDate:[NSDate dateWithTimeIntervalSinceNow:sec]];
-    } else {
-        [seenDummyEventLock lockWhenCondition:YES];
+    @try {
+        if (timeout >= 0) {
+            double sec = timeout / 1000;
+            unlock = [seenDummyEventLock lockWhenCondition:YES
+                                   beforeDate:[NSDate dateWithTimeIntervalSinceNow:sec]];
+        } else {
+            [seenDummyEventLock lockWhenCondition:YES];
+        }
+        if (unlock) {
+            [seenDummyEventLock unlock];
+        }
+    } @finally {
+        [seenDummyEventLock release];
+        seenDummyEventLock = nil;
     }
-    if (unlock) {
-        [seenDummyEventLock unlock];
-    }
-    [seenDummyEventLock release];
-
-    seenDummyEventLock = nil;
 }
 
-//Provide info from unhandled ObjectiveC exceptions
-+ (void)logException:(NSException *)exception forProcess:(NSProcessInfo*)processInfo {
+// Provide helper methods to get the shared NSApplicationAWT instance
++ (BOOL) isNSApplicationAWT {
+    return [NSApp isKindOfClass:[NSApplicationAWT class]];
+}
+
++ (NSApplicationAWT*) sharedApplicationAWT {
+    return [NSApplicationAWT isNSApplicationAWT] ? (NSApplicationAWT*)[NSApplication sharedApplication] : nil;
+}
+
+// Provide info from unhandled ObjectiveC exceptions
+
+/*
+ * Handle all exceptions handled by NSApplication.
+ *
+ * Note: depending on the userDefaults.NSApplicationCrashOnExceptions (YES/ NO) flag,
+ *       (set in finishLaunching), calling with crash or not the JVM.
+ */
+- (void) reportException:(NSException *)exception {
+    [self reportException:exception uncaught:NO NO_FILE_LINE_FUNCTION_ARGS];
+}
+
+- (void) _crashOnException:(NSException *)exception {
+    [self crashOnException:exception uncaught:NO withEnv:[ThreadUtilities getJNIEnvUncached] NO_FILE_LINE_FUNCTION_ARGS];
+}
+
+// implementation (internals)
+- (void) reportException:(NSException *)exception uncaught:(BOOL)uncaught
+                    file:(const char*)file line:(int)line function:(const char*)function
+{
+    @autoreleasepool {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (shouldCrashOnException()) {
+            // calling [super reportException:exception] will cause a crash
+            // so _crashOnException:exception will be then called but losing details.
+            // Use the direct approach (full details):
+            [self crashOnException:exception uncaught:uncaught withEnv:env
+                              file:file line:line function:function];
+        } else {
+            NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
+            [NSApplicationAWT logException:exception uncaught:uncaught forProcess:[NSProcessInfo processInfo]
+                                   withEnv:env prefix:@"Reported " to:info file:file line:line function:function];
+
+            // interrupt the run loop now:
+            [NSApplicationAWT interruptAWTLoop];
+        }
+    }
+}
+
+- (void) crashOnException:(NSException *)exception uncaught:(BOOL)uncaught withEnv:(JNIEnv *)env
+                     file:(const char*)file line:(int)line function:(const char*)function
+{
     @autoreleasepool {
         NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
-        [info appendString:
-                [NSString stringWithFormat:
-                        @"Exception in NSApplicationAWT:\n %@\n",
-                        exception]];
+        [NSApplicationAWT logException:exception uncaught:uncaught forProcess:[NSProcessInfo processInfo]
+                               withEnv:env prefix:@"Crash: " to:info file:file line:line function:function];
 
-        NSArray<NSString *> *stack = [exception callStackSymbols];
+        if (shouldCrashOnException()) {
+            // Use JNU_Fatal macro to trigger JVM fatal error with the esception information and generate hs_err_ file
+            JNU_Fatal(env, __FILE__, __LINE__, [info UTF8String]); \
+        }
+    }
+}
 
-        for (NSUInteger i = 0; i < stack.count; i++) {
-            [info appendString:stack[i]];
-            [info appendString:@"\n"];
+// log exception methods
++ (void) logException:(NSException *)exception {
+    [NSApplicationAWT logException:exception NO_FILE_LINE_FUNCTION_ARGS];
+}
+
++ (void) logException:(NSException *)exception
+                 file:(const char*)file line:(int)line function:(const char*)function
+{
+    [NSApplicationAWT logException:exception prefix:@"Log: "
+                              file:file line:line function:function];
+}
+
++ (void) logException:(NSException *)exception prefix:(NSString *)prefix
+                 file:(const char*)file line:(int)line function:(const char*)function
+{
+    @autoreleasepool {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
+        [NSApplicationAWT logException:exception uncaught:NO forProcess:[NSProcessInfo processInfo]
+                               withEnv:env prefix:prefix to:info
+                                  file:file line:line function:function];
+    }
+}
+
++ (void) logException:(NSException *)exception uncaught:(BOOL)uncaught forProcess:(NSProcessInfo *)processInfo
+              withEnv:(JNIEnv *)env prefix:(NSString *)prefix to:(NSMutableString *)info
+                 file:(const char*)file line:(int)line function:(const char*)function
+{
+    static int loggedException  = 0;
+    static int writtenException = 0;
+
+    if (loggedException < MAX_LOGGED_EXCEPTION) {
+        [NSApplicationAWT toString:exception uncaught:uncaught prefix:prefix to:info
+                              file:file line:line function:function];
+
+        [NSApplicationAWT logMessage:info withEnv:env];
+
+        if (++loggedException == MAX_LOGGED_EXCEPTION) {
+            NSLog(@"Stop logging follow-up exceptions (max %d logged exceptions reached)",
+                  MAX_LOGGED_EXCEPTION);
         }
 
-        NSLog(@"%@", info);
+        if (writtenException < MAX_WRITE_EXCEPTION) {
+            const NSString *homePath = [processInfo environment][@"HOME"];
+            if (homePath != nil) {
+                const int processID = [processInfo processIdentifier];
+                const NSString *fileName = [NSString stringWithFormat:JBR_ERR_PID_FILE, homePath, processID];
 
-        int processID = [processInfo processIdentifier];
-        NSDictionary *env = [[NSProcessInfo processInfo] environment];
-        NSString *homePath = env[@"HOME"];
-        if (homePath != nil) {
-            NSString *fileName =
-                    [NSString stringWithFormat:@"%@/jbr_err_pid%d.log",
-                                               homePath, processID];
+                BOOL available = NO;
+                int retry = 0;
+                NSString *realFileName = nil;
+                int count = 0;
+                do {
+                    realFileName = (count == 0) ? fileName :
+                            [NSString stringWithFormat:JBR_ERR_PID_FILE_COUNT, homePath, processID, count];
 
-            if (![[NSFileManager defaultManager] fileExistsAtPath:fileName]) {
-                [info writeToFile:fileName
-                       atomically:YES
-                         encoding:NSUTF8StringEncoding
-                            error:NULL];
+                    available = ![[NSFileManager defaultManager] fileExistsAtPath:realFileName];
+
+                    if (available) {
+                        NSLog(@"Writing exception to '%@'...", realFileName);
+                        // write the exception atomatically to the file:
+                        if ([info writeToFile:realFileName
+                                    atomically:YES
+                                      encoding:NSUTF8StringEncoding
+                                         error:NULL])
+                        {
+                            if (++writtenException == MAX_WRITE_EXCEPTION) {
+                                NSLog(@"Stop writing follow-up exceptions (max %d written exceptions reached)",
+                                      MAX_WRITE_EXCEPTION);
+                            }
+                        } else {
+                            if (++retry >= MAX_RETRY_WRITE_EXCEPTION) {
+                                NSLog(@"Failed to write exception to '%@' after %d retries", realFileName,
+                                      MAX_RETRY_WRITE_EXCEPTION);
+                                break;
+                            }
+                            // retry few times:
+                            available = NO;
+                        }
+                    }
+                    count++;
+                } while (!available);
             }
         }
     }
 }
 
-- (void)_crashOnException:(NSException *)exception {
-    NSProcessInfo *processInfo = [NSProcessInfo processInfo];
-    [NSApplicationAWT logException:exception
-                        forProcess:processInfo];
-    // Use SIGILL to generate hs_err_ file as well
-    kill([processInfo processIdentifier], SIGILL);
++ (void) logMessage:(NSString *)message {
+    [NSApplicationAWT logMessage:message NO_FILE_LINE_FUNCTION_ARGS];
 }
 
++ (void) logMessage:(NSString *)message
+               file:(const char*)file line:(int)line function:(const char*)function
+{
+    @autoreleasepool {
+        [NSApplicationAWT logMessage:message
+                    callStackSymbols:[NSThread callStackSymbols]
+                             withEnv:[ThreadUtilities getJNIEnvUncached]
+                            file:file line:line function:function];
+    }
+}
+
++ (void) logMessage:(NSString *)message callStackSymbols:(NSArray<NSString *> *)callStackSymbols withEnv:(JNIEnv *)env
+               file:(const char*)file line:(int)line function:(const char*)function
+{
+    NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
+    [NSApplicationAWT toString:message callStackSymbols:callStackSymbols to:info
+                          file:file line:line function:function];
+
+    [NSApplicationAWT logMessage:info withEnv:env];
+}
+
++ (void) logMessage:(NSString *)info withEnv:(JNIEnv *)env {
+    // Always log to the console first:
+    NSLog(@"%@", info);
+    // Send to PlatformLogger too:
+    lwc_plog(env, "%s", info.UTF8String);
+}
+
++ (void) toString:(NSException *)exception uncaught:(BOOL)uncaught prefix:(NSString *)prefix to:(NSMutableString *)info
+             file:(const char*)file line:(int)line function:(const char*)function
+{
+    const char* uncaughtMark = (uncaught) ? "Uncaught " : "";
+
+    NSString *header = (file != nil) ?
+            [NSString stringWithFormat: @"%@%sException (%s:%d %s):\n%@\n", prefix, uncaughtMark, file, line, function, exception]
+          : [NSString stringWithFormat: @"%@%sException (unknown):\n%@\n", prefix, uncaughtMark, exception];
+    [info appendString:header];
+
+    [NSApplicationAWT toString:[exception callStackSymbols] to:info];
+}
+
++ (void) toString:(NSString *)message callStackSymbols:(NSArray<NSString *> *)callStackSymbols to:(NSMutableString *)info
+             file:(const char*)file line:(int)line function:(const char*)function
+{
+    NSString *header = (file != nil) ?
+            [NSString stringWithFormat: @"%@ (%s:%d %s):\n", message, file, line, function]
+          : [NSString stringWithFormat: @"%@ (unknown):\n", message];
+    [info appendString:header];
+
+    [NSApplicationAWT toString:callStackSymbols to:info];
+}
+
++ (void) toString:(NSArray<NSString *> *)callStackSymbols to:(NSMutableString *)info
+{
+    for (NSUInteger i = 0; i < callStackSymbols.count; i++) {
+        [info appendFormat:@"  %@\n", callStackSymbols[i]];
+    }
+}
+
+// --- NSExceptionHandlerDelegate category to handle all exceptions ---
+- (BOOL) exceptionHandler:(NSExceptionHandler *)sender
+    shouldHandleException:(NSException *)exception mask:(NSUInteger)aMask {
+    /* handle all exception types to invoke reportException:exception */
+    return YES;
+}
+
+- (BOOL) exceptionHandler:(NSExceptionHandler *)sender
+       shouldLogException:(NSException *)exception mask:(NSUInteger)aMask {
+    /* disable default logging (stderr) */
+    return NO;
+}
 @end
 
 
