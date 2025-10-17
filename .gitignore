@@ -12,6 +12,8 @@ nbproject/private/
 .recommenders/
 test/nashorn/script/external
 test/nashorn/lib
+test/jdk/performance/client/RenderPerfTest/build/
+test/jdk/performance/client/RenderPerfTest/dist/
 NashornProfile.txt
 **/JTreport/**
 **/JTwork/**
