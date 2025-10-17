@@ -569,9 +569,7 @@ Java_sun_java2d_metal_MTLLayer_nativeCreateLayer
 (JNIEnv *env, jobject obj, jboolean perfCountersEnabled)
 {
     __block MTLLayer *layer = nil;
-
-JNI_COCOA_ENTER(env);
-
+    JNI_COCOA_ENTER(env);
     jobject javaLayer = (*env)->NewWeakGlobalRef(env, obj);
 
     // Wait and ensure main thread creates the MTLLayer instance now:
@@ -583,8 +581,7 @@ JNI_COCOA_ENTER(env);
     if (TRACE_DISPLAY) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_nativeCreateLayer: created layer[%p]", layer);
     }
-JNI_COCOA_EXIT(env);
-
+    JNI_COCOA_EXIT(env);
     return ptr_to_jlong(layer);
 }
 
@@ -593,6 +590,7 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLLayer_validate
 (JNIEnv *env, jclass cls, jlong layerPtr, jobject surfaceData)
 {
+    JNI_COCOA_ENTER(env);
     MTLLayer *layer = OBJC(layerPtr);
 
     if (surfaceData != NULL) {
@@ -644,6 +642,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.ctx = NULL;
         [layer stopRedraw:YES];
     }
+    JNI_COCOA_EXIT(env);
 }
 
 JNIEXPORT void JNICALL
@@ -688,7 +687,6 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
         }
         return;
     }
-
     [layer blitTexture];
     JNI_COCOA_EXIT(env);
 }
@@ -698,13 +696,11 @@ Java_sun_java2d_metal_MTLLayer_nativeSetOpaque
 (JNIEnv *env, jclass cls, jlong layerPtr, jboolean opaque)
 {
     JNI_COCOA_ENTER(env);
-
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     // Ensure main thread changes the MTLLayer instance later:
     [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // critical
                                           block:^(){
         [layer setOpaque:(opaque == JNI_TRUE)];
     }];
-
     JNI_COCOA_EXIT(env);
 }
