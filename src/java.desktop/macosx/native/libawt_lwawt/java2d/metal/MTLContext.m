@@ -1087,7 +1087,8 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* nowTime, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext) {
-    JNI_COCOA_ENTER();
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+    JNI_COCOA_ENTER(env);
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext_mtlDisplayLinkCallback: ctx=%p", displayLinkContext);
 
         MTLDisplayLinkState *dlState = (__bridge MTLDisplayLinkState*) displayLinkContext;
@@ -1130,7 +1131,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
 
         [ThreadUtilities performOnMainThread:@selector(redraw:) on:mtlc withObject:@(displayID)
                                waitUntilDone:NO useJavaModes:NO]; // critical
-    JNI_COCOA_EXIT();
+    JNI_COCOA_EXIT(env);
     return kCVReturnSuccess;
 }
 
