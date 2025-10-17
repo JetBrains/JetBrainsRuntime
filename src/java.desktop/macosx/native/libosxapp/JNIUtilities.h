@@ -203,6 +203,14 @@
     } \
 };
 
+#define TEST_RAISE_EXCEPTION(message, ...) {                                         \
+    [NSException raise:NSGenericException                                            \
+                 format:@"RAISE_EXCEPTION in %s:%d %s : %@",                         \
+                            __FILE__, __LINE__, __FUNCTION__,                        \
+                            [NSString stringWithFormat:message, ##__VA_ARGS__]       \
+    ];                                                                               \
+}
+
 #define CHECK_EXCEPTION() CHECK_EXCEPTION_IN_ENV(env)
 
 #define CHECK_EXCEPTION_NULL_RETURN(x, y) \
