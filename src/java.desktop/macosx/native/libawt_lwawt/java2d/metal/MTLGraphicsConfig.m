@@ -37,6 +37,7 @@ void
 MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLGC_DestroyMTLGraphicsConfig");
+    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
     JNI_COCOA_ENTER(env);
     __block MTLGraphicsConfigInfo *mtlinfo = (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
     if (mtlinfo == NULL) {
