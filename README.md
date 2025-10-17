@@ -162,6 +162,15 @@ $ BOOT_JDK=/usr/lib/jvm/java-21-openjdk-amd64 ./jb/project/tools/linux/scripts/m
 ```
 This will build the release configuration under `./build/linux-x86_64-server-release/`.
 
+#### Java ATK Wrapper
+
+To enable [Java ATK Wrapper](https://wiki.gnome.org/Accessibility/JavaAtkWrapper):
+1. Install the necessary libraries and headers with:
+```
+$ sudo apt-get install libatspi2.0-dev libatk1.0-dev libglib2.0-dev libatk-bridge2.0-dev
+```
+2. Run `configure` using `--enable-java-atk-wrapper`
+
 ### Windows
 <a name="build-windows"></a>
 Install the following:
