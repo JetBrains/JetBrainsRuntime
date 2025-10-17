@@ -102,6 +102,7 @@ JNI_COCOA_ENTER(env);
     // Pass the data to drop target:
     @try {
         (*env)->CallVoidMethod(env, jthis, newDataMethod, jformat, jdropdata); // AWT_THREADING Safe (!appKit)
+        CHECK_EXCEPTION();
     } @catch (NSException *ex) {
         DLog2(@"[CDropTargetContextPeer startTransfer]: exception in newData() for %d.\n", (NSInteger) jdroptarget);
         (*env)->DeleteGlobalRef(env, jdropdata);
