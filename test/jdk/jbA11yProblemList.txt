@@ -10,7 +10,7 @@ java/awt/List/TriggerActionEventTest.java JBR-7621 windows-all
 java/awt/Paint/PaintNativeOnUpdate.java JBR-5397,JBR-7415 macosx-all,windows-x64
 java/awt/PopupMenu/PopupMenuLocation.java JBR-5397,JBR-7375 macosx-all,windows-x64
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java JBR-5397,JBR-6092 macosx-all,windows-x64
-java/awt/Robot/NonEmptyErrorStream.java JBR-5510,JBR-7375 linux-5.18.2-arch1-1,windows-x64
+java/awt/Robot/NonEmptyErrorStream.java JBR-7375 windows-x64
 java/awt/Robot/RobotWheelTest/RobotWheelTest.java JBR-5397,JBR-7377 macosx-all,windows-x64
 java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java JBR-5397,JBR-7531 macosx-all,windows-x64
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5397,JBR-7378 macosx-all,windows-x64
@@ -18,7 +18,7 @@ java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java JBR-5397,JBR-
 javax/accessibility/JFileChooserAccessibleDescriptionTest.java JBR-5397,JBR-7379 macosx-all,windows-x64
 javax/accessibility/SlowPanelIteration/SlowPanelIteration.java JBR-870,JBR-5397 windows-x64,linux-x64,macosx-all
 javax/swing/event/FocusEventCauseTest.java JBR-7381 windows-x64
-javax/swing/JButton/8151303/PressedIconTest.java JBR-5210,JBR-5510,JBR-5397 windows-all,linux-all,macosx-all
+javax/swing/JButton/8151303/PressedIconTest.java JBR-5210,JBR-5397 windows-all,macosx-all
 javax/swing/JComboBox/4743225/bug4743225.java JBR-5210,JBR-5397 windows-all,macosx-all
 javax/swing/JComboBox/6559152/bug6559152.java JBR-5397,JBR-7382 macosx-all,windows-x64
 javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java JBR-5210 windows-all
@@ -28,7 +28,7 @@ javax/swing/JInternalFrame/Test6505027.java         nobug macosx-all,linux-all,w
 javax/swing/JMenuBar/MenuBarRTLBug.java JBR-7385 windows-x64
 javax/swing/JPopupMenu/4634626/bug4634626.java      nobug macosx-all,linux-all,windows-all
 javax/swing/JPopupMenu/4966112/bug4966112.java      nobug macosx-all,linux-all,windows-all
-javax/swing/JPopupMenu/6415145/bug6415145.java 8197552,JBR-5397 macosx-all,windows-all
+javax/swing/JPopupMenu/6415145/bug6415145.java JBR-5397 macosx-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-7386 windows-x64
 
 jb/java/awt/Desktop/AboutHandlerTest.java           nobug macosx-all,linux-all,windows-all
@@ -63,16 +63,16 @@ javax/swing/JFileChooser/4524490/bug4524490.java JBR-5397,JBR-5846 macosx-all,wi
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-5397,JBR-7413 macosx-all,windows-x64
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880,JBR-5397 windows-all,macosx-all
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949,JBR-5397 linux-all,windows-all,macosx-all
-javax/swing/JLabel/6596966/bug6596966.java 8197552,JBR-5397 windows-all,macosx-all
+javax/swing/JLabel/6596966/bug6596966.java JBR-5397 macosx-all
 javax/swing/JList/4618767/JListSelectedElementTest.java JBR-4955,JBR-5397 windows-all,macosx-all
 javax/swing/JList/6462008/bug6462008.java JBR-5397,JBR-6773 macosx-all,windows-all
-javax/swing/JMenu/4213634/bug4213634.java 8197552,JBR-5397 windows-all,macosx-all
-javax/swing/JMenu/4515762/bug4515762.java 8197552,JBR-5397 windows-all,macosx-all
+javax/swing/JMenu/4213634/bug4213634.java JBR-5397 macosx-all
+javax/swing/JMenu/4515762/bug4515762.java JBR-5397 macosx-all
 javax/swing/JMenu/4692443/bug4692443.java JBR-5397,JBR-6093 macosx-all,windows-all
 javax/swing/JMenu/6470128/bug6470128.java 8253184,JBR-6307,JBR-5397 windows-all,linux-all,macosx-all
 javax/swing/JMenuBar/4750590/bug4750590.java JBR-5397,JBR-6094 macosx-all,windows-all
 javax/swing/JMenuItem/4171437/bug4171437.java JBR-5397,JBR-6112 macosx-all,windows-all
-javax/swing/JMenuItem/6249972/bug6249972.java 8197552,JBR-5397 windows-all,macosx-all
+javax/swing/JMenuItem/6249972/bug6249972.java JBR-5397 macosx-all
 javax/swing/JMenuItem/JMenuItemSetAcceleratorTest.java JBR-5397 macosx-all
 javax/swing/JPopupMenu/4458079/bug4458079.java JBR-5397 macosx-all
 javax/swing/JPopupMenu/4634626/bug4634626.java 8253184,JBR-5397 windows-all,macosx-all
@@ -94,7 +94,7 @@ javax/swing/plaf/basic/BasicRootPaneUI/HiddenDefaultButtonTest.java JBR-7310 win
 javax/swing/plaf/synth/7158712/bug7158712.java JBR-125,8322653,JBR-5397 linux-all,windows-all,macosx-all
 javax/swing/Popup/TaskbarPositionTest.java 8310689,JBR-5397 windows-all,macosx-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java JBR-5397,JBR-6465 macosx-all,windows-all,linux-aarch64
-sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5397,8212240,JBR-5510,JBR-6285,8253184 macosx-all,linux-all,windows-all
+sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5397,8212240,JBR-6285,8253184 macosx-all,windows-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java JBR-5397 macosx-all
 sun/java2d/DirectX/OnScreenRenderingResizeTest/OnScreenRenderingResizeTest.java JBR-5397 macosx-all
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5397 macosx-all
@@ -115,7 +115,7 @@ javax/swing/JComboBox/8033069/bug8033069ScrollBar.java JBR-5397 macosx-all
 javax/swing/JComboBox/8182031/ComboPopupTest.java 8253184,JBR-5397 windows-all,macosx-all
 javax/swing/JComboBox/JComboBoxPopupMenuEventTest.java JBR-5397 macosx-all
 javax/swing/JComboBox/JComboBoxWithTitledBorderTest.java JBR-5397 macosx-all
-javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-5510,JBR-6283,JBR-5397 windows-all,linux-5.18.2-arch1-1,macosx-all
+javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-6283,JBR-5397 windows-all,macosx-all
 javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-5397 macosx-all
 
 # Windows (ZoomText, NVDA, or JAWS is enabled during testing)
@@ -125,8 +125,8 @@ java/awt/Choice/ChoiceFreezeTest.java JBR-6952 windows-x64
 java/awt/Choice/ChoiceMouseEventOutbounds.java TBD windows-x64
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857,JBR-5505 macosx-all,windows-all
 java/awt/Choice/NonFocusablePopupMenuTest.java JBR-7961 windows-x64
-java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java JBR-5510,8310487,JBR-6950 linux-5.18.2-arch1-1,linux-all,windows-x64
-java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java JBR-5510,JBR-5905 linux-5.18.2-arch1-1,linux-all,windows-x64
+java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java 8310487,JBR-6950 linux-all,windows-x64
+java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java JBR-5905 linux-all,windows-x64
 java/awt/Component/NativeInLightShow/NativeInLightShow.java JBR-7715 windows-x64
 java/awt/Component/RepaintTest.java JBR-7754 windows-x64
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-x64
@@ -148,8 +148,8 @@ java/awt/im/4959409/bug4959409.java JBR-5505 windows-all
 java/awt/im/memoryleak/InputContextMemoryLeakTest.java JBR-5505 windows-all
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-5505 windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711,JBR-5505 windows-all,linux-all
-java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5510,JBR-5505 macosx-all,linux-5.18.2-arch1-1,windows-all
-java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5510,JBR-5505 linux-5.18.2-arch1-1,windows-all
+java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5505 macosx-all,windows-all
+java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5505 windows-all
 java/awt/Mixing/MixingOnDialog.java JBR-5505 windows-all
 java/awt/Mixing/MixingOnShrinkingHWButton.java JBR-5505 windows-all
 java/awt/Mixing/OpaqueTest.java JBR-5707,JBR-5505 linux-all,windows-all
