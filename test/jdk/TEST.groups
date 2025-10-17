@@ -1170,7 +1170,7 @@ jdk_swing_wayland= \
     -javax/swing/JFileChooser/8041694/bug8041694.java \
     -javax/swing/JFileChooser/ShellFolderQueries/ShellFolderQueriesSecurityManagerTest.java \
     -javax/swing/JFileChooser/JFileChooserFontReset.java \
-    -javax/swing/JFileChooser/JFileChooserSetLocationTest.java
+    -javax/swing/JFileChooser/JFileChooserSetLocationTest.java \
     -javax/swing/JFileChooser/TABTestONFCExit.java \
     -javax/swing/JFormattedTextField/bug4863121.java \
     -javax/swing/JFrame/4962534/bug4962534.java \
