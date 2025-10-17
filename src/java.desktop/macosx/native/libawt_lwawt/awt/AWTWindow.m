@@ -2234,6 +2234,7 @@ JNI_COCOA_ENTER(env);
         DECLARE_METHOD_RETURN(jm_isIgnoreMouseEvents, jc_Window, "isIgnoreMouseEvents", "()Z", 0);
         isIgnoreMouseEvents = (*env)->CallBooleanMethod(env, awtWindow, jm_isIgnoreMouseEvents) == JNI_TRUE ? YES : NO;
         (*env)->DeleteLocalRef(env, awtWindow);
+        CHECK_EXCEPTION();
     }
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
 

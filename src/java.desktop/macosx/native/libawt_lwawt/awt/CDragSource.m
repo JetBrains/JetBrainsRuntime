@@ -241,9 +241,8 @@ static BOOL                sNeedsEnter;
         GET_DT_CLASS_RETURN(NULL);
         DECLARE_METHOD_RETURN(convertDataMethod, DataTransfererClass, "convertData", "(Ljava/lang/Object;Ljava/awt/datatransfer/Transferable;JLjava/util/Map;Z)[B", NULL);
         data = (*env)->CallObjectMethod(env, transferer, convertDataMethod, fComponent, fTransferable, format, fFormatMap, (jboolean) TRUE);
+        CHECK_EXCEPTION();
     }
-    CHECK_EXCEPTION();
-
     return data;
 }
 
