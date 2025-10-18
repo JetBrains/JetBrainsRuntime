@@ -52,7 +52,9 @@ import jdk.jpackage.test.Annotations.Test;
  * @library /test/jdk/tools/jpackage/helpers
  * @build jdk.jpackage.test.*
  * @compile IconTest.java
- * @run main/othervm/timeout=540 -Xmx512m jdk.jpackage.test.Main
+ * @run main/othervm/timeout=540 -Xmx512m
+ *  --add-opens jdk.jpackage/jdk.jpackage.internal=ALL-UNNAMED
+ *  jdk.jpackage.test.Main
  *  --jpt-run=IconTest
  */
 

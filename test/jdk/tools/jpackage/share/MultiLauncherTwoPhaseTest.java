@@ -47,7 +47,9 @@ import jdk.jpackage.test.JPackageCommand;
  * @key jpackagePlatformPackage
  * @build jdk.jpackage.test.*
  * @compile MultiLauncherTwoPhaseTest.java
- * @run main/othervm/timeout=360 -Xmx512m jdk.jpackage.test.Main
+ * @run main/othervm/timeout=360 -Xmx512m
+ *  --add-opens jdk.jpackage/jdk.jpackage.internal=ALL-UNNAMED
+ *  jdk.jpackage.test.Main
  *  --jpt-run=MultiLauncherTwoPhaseTest
  */
 
