@@ -1,4 +1,6 @@
 java/awt/Graphics2D/TextPerf.java JBR-9190 linux-all
+java/awt/image/DrawImage/BlitRotateClippedArea.java JBR-9026 linux-all
+java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-9097 linux-x64
 
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-9031 linux-all

@@ -110,6 +110,7 @@ sun/awt/font/TestArabicHebrew.java JBR-8826 linux-all
 
 jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728 linux-aarch64
 jb/java/awt/Focus/PopupIncomingFocusTest.java initial_runs generic-all
+jb/java/awt/Toolkit/DetectingOSThemeTest.java JBR-9088 linux-all
 jb/java/awt/wayland/VulkanBlitTest.java JBR-8394 linux-all
 jb/java/awt/wayland/VulkanCompositeTest.java JBR-8394 linux-all
 jb/java/awt/Window/ZOrderOnModalDialogActivation.java initial_runs generic-all

@@ -218,7 +218,7 @@ java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.j
 java/awt/Frame/SetMinimumSizeTest/SetMinimumSizeTest2.java JBR-5210 windows-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java JBR-5210,JBR-6126 windows-all,ResizeableResourceHashtable,macosx-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184 macosx-all,windows-all
-java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java JBR-4880 windows-all
+java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java JBR-4880,JBR-9499 windows-all,linux-all
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java 8168646 generic-all
 java/awt/MenuBar/8007006/bug8007006.java JBR-9213 macosx-26.0
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-9207 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
@@ -415,7 +415,7 @@ java/awt/Clipboard/PasteNullToTextComponentsTest.java 8234140 macosx-all,windows
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java JBR-64 windows-all
 java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java JBR-5799 windows-all
 java/awt/Choice/ChoiceFocusLostTest.java JBR-5799 windows-x64
-java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java JBR-5210 windows-all
+java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java 8366852,JBR-5210 macosx-all,windows-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857 macosx-all
 java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-6284 linux-all
 java/awt/Choice/InsertRemoveTest.java JBR-8494 linux-5.15.0-1084-aws
@@ -1043,11 +1043,12 @@ javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-8270 linux-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184 windows-all
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949 linux-all,windows-all
-javax/swing/JLabel/6596966/bug6596966.java JBR-9195 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
+javax/swing/JLabel/6596966/bug6596966.java JBR-9195,JBR-9507 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64,windows-10.0
 javax/swing/JLabel/7004134/bug7004134.java JBR-5437 linux-all
 javax/swing/JLabel/bug4822331.java JBR-7422 windows-10.0
 javax/swing/JList/4618767/JListSelectedElementTest.java JBR-4955 windows-all
 javax/swing/JList/6462008/bug6462008.java JBR-6773 windows-all
+javax/swing/JMenu/4213634/bug4213634.java JBR-9496 windows-10.0
 javax/swing/JMenu/4692443/bug4692443.java JBR-6093 windows-all
 javax/swing/JMenu/6470128/bug6470128.java 8253184,JBR-6307 windows-all,linux-all
 javax/swing/JMenu/6538132/bug6538132.java JBR-894 windows-all
@@ -1114,10 +1115,11 @@ javax/swing/JEditorPane/bug4714674.java JBR-5810 windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java JBR-912 windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest.java JBR-912 windows-all
 javax/swing/JFileChooser/4524490/bug4524490.java JBR-5846 windows-all
+javax/swing/JFileChooser/6396844/TwentyThousandTest.java 8198003 generic-all
 javax/swing/JFileChooser/8021253/bug8021253.java JBR-107 windows-all
 javax/swing/JFileChooser/8041694/bug8041694.java JBR-5210 windows-all
-javax/swing/JFileChooser/6396844/TwentyThousandTest.java 8198003 generic-all
 javax/swing/JFileChooser/8062561/bug8062561.java JBR-5808 windows-all
+javax/swing/JFileChooser/8194044/FileSystemRootTest.java 8327236 windows-all
 javax/swing/JFormattedTextField/bug4863121.java JBR-7424 windows-10.0
 javax/swing/JFrame/8016356/bug8016356.java JBR-108 windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106,JBR-6999 macosx-aarch64,windows-x64,macosx-x64
@@ -1184,7 +1186,6 @@ java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184 windows-all
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java JBR-5802 windows-all
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-9209 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 java/awt/Robot/MultiScreenRobotPosition/MultiScreenRobotPosition.java JBR-830 windows-all
-javax/swing/SwingGraphics/TranslateTest.java JBR-7470 linux-all
 
 native_sanity/simplenativelauncher/ProgramTest.java JBR-5287 windows-all
 
@@ -1223,7 +1224,7 @@ tools/jlink/plugins/VendorInfoPluginsTest.java JBR-8783 windows-aarch64
 tools/jpackage/share/AddLauncherTest.java#id1 JBR-8701 windows-all
 tools/jpackage/share/IconTest.java JBR-8701 windows-all
 tools/jpackage/share/MultiNameTwoPhaseTest.java JBR-8860 linux-all
-tools/jpackage/share/ServiceTest.java JBR-9191 linux-x64
+tools/jpackage/share/ServiceTest.java JBR-9191 linux-all
 tools/jpackage/windows/Win8301247Test.java JBR-8708 windows-all
 tools/launcher/Arrrghs.java JBR-8466 generic-all
 tools/launcher/ChangeDataModel.java JBR-8467 generic-all
