@@ -27,6 +27,7 @@ java/awt/Focus/ModalExcludedWindowClickTest/ModalExcludedWindowClickTest.java JB
 java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.java 8194753,JBR-6090 linux-all,macosx-all,windows-x64
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275,JBR-5799 macosx-all,windows-all
 java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-7299,JBR-8728 linux-all,windows-all
+java/awt/Focus/RequestFocusAndHideTest/RequestFocusAndHideTest.java JBR-8431 linux-aarch64
 java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java JBR-6089 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JBR-6090 windows-all
 java/awt/Frame/DisabledParentOfToplevel.java JBR-8818 windows-x64
@@ -226,12 +227,13 @@ sun/java2d/pipe/InterpolationQualityTest.java nobug generic-all
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-6287 windows-all
 
 jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728 linux-all,windows-x64
-jb/java/awt/Focus/FileDialogClosing.java JBR-8309,JBR-5799 macosx-x64,windows-all
+jb/java/awt/Focus/FileDialogClosing.java JBR-8309,JBR-5799 macosx-all,windows-all
 jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-5799 windows-all
 jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
 jb/java/awt/Focus/PopupFromMenuTest.java JBR-5799 windows-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java                                       JBR-2651 generic-all
 jb/java/awt/Focus/RequestFocusInParent.java                                         JBR-5715 windows-all
 jb/java/awt/Focus/SecondLevelPopupTest.java                                         JBR-6090 windows-all
+jb/java/awt/Font/TextLayout/DrawTest.java JBR-6558 windows-all
 jb/java/awt/Window/UndecoratedDialogInTransientsChain.java                          JBR-6090 windows-all
 jdk/editpad/EditPadTest.java                                                        JBR-5712 windows-all
