@@ -893,6 +893,7 @@ java/nio/channels/FileChannel/LargeGatheringWrite.java JBR-9316 linux-6.15.8-100
 java/nio/channels/Selector/Wakeup.java                          6963118 windows-all
 
 java/nio/file/Files/Misc.java JBR-8969 windows-all
+java/nio/file/FileStore/Basic.java JBR-9500 linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 java/nio/file/WatchService/JNIChecks.java JBR-8457 generic-all
 java/nio/file/WatchService/WithSecurityManager.java                                 nobug macosx-all
 
@@ -1558,7 +1559,7 @@ javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java JBR-6684 generic-all
 jb/java/awt/Focus/BrokenTraversalAWT.java JBR-5799 windows-all
 jb/java/awt/Focus/ComplexFocusSequence.java JBR-6728 linux-all,windows-x64
 jb/java/awt/Focus/ContextMenuAfterPopup.java JBR-5799 windows-all
-jb/java/awt/Focus/FileDialogClosing.java JBR-8309,JBR-9197 macosx-x64,windows-all
+jb/java/awt/Focus/FileDialogClosing.java JBR-8309,JBR-9197 macosx-all,windows-all
 jb/java/awt/Focus/FocusTraversalOrderTest.java JBR-6060 generic-all
 jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-5799 windows-all
 jb/java/awt/Focus/TitleBarClickTest.java JBR-6394 windows-all
