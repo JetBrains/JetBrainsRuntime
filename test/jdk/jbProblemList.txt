@@ -415,7 +415,7 @@ java/awt/Clipboard/PasteNullToTextComponentsTest.java 8234140 macosx-all,windows
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java JBR-64 windows-all
 java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java JBR-5799 windows-all
 java/awt/Choice/ChoiceFocusLostTest.java JBR-5799 windows-x64
-java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java JBR-5210 windows-all
+java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java 8366852,JBR-5210 macosx-all,windows-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-6857 macosx-all
 java/awt/Choice/ChoiceGeneratesItemEvents.java JBR-6284 linux-all
 java/awt/Choice/InsertRemoveTest.java JBR-8494 linux-5.15.0-1084-aws
@@ -1047,6 +1047,7 @@ javax/swing/JLabel/7004134/bug7004134.java JBR-5437 linux-all
 javax/swing/JLabel/bug4822331.java JBR-7422 windows-10.0
 javax/swing/JList/4618767/JListSelectedElementTest.java JBR-4955 windows-all
 javax/swing/JList/6462008/bug6462008.java JBR-6773 windows-all
+javax/swing/JMenu/4213634/bug4213634.java JBR-9496 windows-10.0
 javax/swing/JMenu/4692443/bug4692443.java JBR-6093 windows-all
 javax/swing/JMenu/6470128/bug6470128.java 8253184,JBR-6307 windows-all,linux-all
 javax/swing/JMenu/6538132/bug6538132.java JBR-894 windows-all
@@ -1183,7 +1184,6 @@ java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8253184 windows-all
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java JBR-5802 windows-all
 java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-9209 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 java/awt/Robot/MultiScreenRobotPosition/MultiScreenRobotPosition.java JBR-830 windows-all
-javax/swing/SwingGraphics/TranslateTest.java JBR-7470 linux-all
 
 native_sanity/simplenativelauncher/ProgramTest.java JBR-5287 windows-all
 
