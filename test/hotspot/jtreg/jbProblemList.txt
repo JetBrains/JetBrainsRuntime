@@ -155,6 +155,7 @@ runtime/os/TestTracePageSizes.java#Serial 8267460 linux-aarch64
 runtime/os/windows/TestAvailableProcessors.java JBR-8182 windows-all
 runtime/CompressedOops/CompressedClassPointers.java 8305765 generic-all
 runtime/StackGuardPages/TestStackGuardPagesNative.java 8303612 linux-all
+runtime/ErrorHandling/CreateCoredumpOnCrash.java JBR-8528 windows-aarch64
 runtime/ErrorHandling/TestDwarf.java 8305489 linux-all
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315,JBR-6289 linux-ppc64le,windows-aarch64
 runtime/ErrorHandling/UncaughtNativeExceptionTest.java 8338353 windows-aarch64
@@ -198,6 +199,7 @@ serviceability/dcmd/gc/RunFinalizationTest.java 8227120 linux-all,windows-x64,ai
 
 serviceability/sa/ClhsdbJstackXcompStress.java initial_run windows-all
 
+serviceability/sa/ClhsdbCDSCore.java JBR-6259 windows-aarch64
 serviceability/sa/ClhsdbCDSJstackPrintAll.java initial_run windows-aarch64
 serviceability/sa/ClhsdbFindPC.java#id1 initial_run generic-all
 serviceability/sa/ClhsdbFindPC.java#id2 initial_run generic-all

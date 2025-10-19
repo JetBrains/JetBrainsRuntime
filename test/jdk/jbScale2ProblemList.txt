@@ -73,6 +73,7 @@ javax/swing/event/FocusEventCauseTest.java JBR-8811 windows-all
 javax/swing/InputVerifier/bug4774166.java JBR-8735 windows-all
 javax/swing/JComponent/7154030/bug7154030.java JBR-6134 windows-x64
 javax/swing/JEditorPane/bug4694598.java JBR-9129 windows-x64
+javax/swing/JFileChooser/JFileChooserSetLocationTest.java JBR-8098 linux-all,windows-all
 javax/swing/JMenu/bug4342646.java JBR-8727 linux-all,windows-all
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      JBR-5071 linux-all
 javax/swing/JSlider/6848475/bug6848475.java JBR-7329,JBR-7472 windows-all
