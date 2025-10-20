@@ -34,7 +34,7 @@ import java.util.concurrent.CountDownLatch;
  * @requires os.family == "linux"
  * @summary Verifies that Vulkan mask fill works
  * @modules java.desktop/sun.java2d.vulkan:+open
- * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true VulkanMaskFillTest
+ * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True VulkanMaskFillTest
  */
 
 
@@ -58,9 +58,6 @@ public class VulkanMaskFillTest {
         }
         if (!VKEnv.isVulkanEnabled()) {
             throw new Error("Vulkan not enabled");
-        }
-        if (!VKEnv.isSurfaceDataAccelerated()) {
-            throw new Error("Accelerated surface data not enabled");
         }
 
         final Robot robot = new Robot();
