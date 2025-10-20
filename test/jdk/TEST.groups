@@ -1399,7 +1399,7 @@ jdk_awt_vulkan = \
     jb/java/awt/vulkan
 
 # Vulkan rendering tests on WLToolkit, to be executed with
-# -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true
+# -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True
 # Make sure that the tests below are green for any Wayland+Vulkan rendering changes.
 # These tests should be executed with the following exclude list: jbRenderWLVKProblemList.txt
 jdk_render_wayland_vulkan = \
