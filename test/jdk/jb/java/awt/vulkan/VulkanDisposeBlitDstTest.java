@@ -40,7 +40,7 @@ import java.lang.ref.WeakReference;
  * @library /test/lib
  * @summary Verifies that disposal of blit destination image doesn't crash the process.
  * @modules java.desktop/sun.java2d.vulkan:+open java.desktop/sun.java2d:+open java.desktop/sun.awt.image:+open
- * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=true VulkanDisposeBlitDstTest
+ * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.leOptimizations=true VulkanDisposeBlitDstTest
  */
 
 
@@ -48,9 +48,6 @@ public class VulkanDisposeBlitDstTest {
     public static void main(String[] args) throws Exception {
         if (!VKEnv.isVulkanEnabled()) {
             throw new Error("Vulkan not enabled");
-        }
-        if (!VKEnv.isSurfaceDataAccelerated()) {
-            throw new Error("Accelerated surface data not enabled");
         }
 
         VKGraphicsConfig gc = VKEnv.getDevices().findFirst().get().getOffscreenGraphicsConfigs().findFirst().get();
