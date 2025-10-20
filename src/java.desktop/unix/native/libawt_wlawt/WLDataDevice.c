@@ -26,6 +26,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
@@ -42,6 +43,9 @@ enum DataTransferProtocol
     DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION = sun_awt_wl_WLDataDevice_DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION,
 };
 
+struct DataSource;
+struct DataOffer;
+
 // native part of WLDataDevice, one instance per seat
 // seat's wl_data_device and zwp_primary_selection_device_v1 have user pointers to this struct
 struct DataDevice
@@ -53,12 +57,20 @@ struct DataDevice
     struct wl_event_queue *dataSourceQueue;
     struct wl_data_device *wlDataDevice;
     struct zwp_primary_selection_device_v1 *zwpPrimarySelectionDevice;
+
+    pthread_mutex_t sourceDelMutex;
+    struct DataSource* sourceDelQueue;
+
+    pthread_mutex_t offerDelMutex;
+    struct DataOffer* offerDelQueue;
 };
 
 // native part of WLDataSource, remains alive until WLDataSource.destroy() is called
 // pointer to this structure is the wl_data_source's (zwp_primary_selection_source_v1's) user pointer
 struct DataSource
 {
+    struct DataDevice* dataDevice;
+
     enum DataTransferProtocol protocol;
     // global reference to the corresponding WLDataSource object
     // destroyed in WLDataSource.destroy()
@@ -74,12 +86,16 @@ struct DataSource
 
     struct wl_surface* dragIcon;
     struct wl_buffer* dragIconBuffer;
+
+    struct DataSource* nextDel;
 };
 
 // native part of WLDataOffer, remains alive until WLDataOffer.destroy() is called
 // pointer to this structure is the wl_data_offer's (zwp_primary_selection_offer_v1's) user pointer
 struct DataOffer
 {
+    struct DataDevice* dataDevice;
+
     enum DataTransferProtocol protocol;
     // global reference to the corresponding WLDataOffer object
     // destroyed in WLDataOffer.destroy()
@@ -92,6 +108,8 @@ struct DataOffer
         struct wl_data_offer *wlDataOffer;
         struct zwp_primary_selection_offer_v1 *zwpPrimarySelectionOffer;
     };
+
+    struct DataOffer* nextDel;
 };
 
 // Java refs
@@ -313,9 +331,12 @@ static struct DataOffer *
 DataOffer_create(struct DataDevice *dataDevice, enum DataTransferProtocol protocol, void *waylandObject)
 {
     struct DataOffer *offer = calloc(1, sizeof(struct DataOffer));
+
     if (offer == NULL) {
         return NULL;
     }
+
+    offer->dataDevice = dataDevice;
 
     JNIEnv *env = getEnv();
     assert(env != NULL);
@@ -429,6 +450,68 @@ DataOffer_callSelectionHandler(struct DataDevice *dataDevice, struct DataOffer *
 
     (*env)->CallVoidMethod(env, dataDevice->javaObject, wlDataDeviceHandleSelectionMID, offerObject, protocol);
     EXCEPTION_CLEAR(env);
+}
+
+static void
+DataDevice_drainSourceDeletionQueue(struct DataDevice *dataDevice, JNIEnv* env) {
+    pthread_mutex_lock(&dataDevice->sourceDelMutex);
+
+    struct DataSource* source = dataDevice->sourceDelQueue;
+
+    while (source != NULL) {
+        if (source->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
+            wl_data_source_destroy(source->wlDataSource);
+        } else if (source->protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
+            zwp_primary_selection_source_v1_destroy(source->zwpPrimarySelectionSource);
+        }
+
+        if (source->dragIconBuffer) {
+            wl_buffer_destroy(source->dragIconBuffer);
+        }
+
+        if (source->dragIcon) {
+            wl_surface_destroy(source->dragIcon);
+        }
+
+        if (source->javaObject != NULL) {
+            (*env)->DeleteGlobalRef(env, source->javaObject);
+        }
+
+        struct DataSource* next = source->nextDel;
+        free(source);
+        source = next;
+    }
+
+    dataDevice->sourceDelQueue = NULL;
+
+    pthread_mutex_unlock(&dataDevice->sourceDelMutex);
+}
+
+static void
+DataDevice_drainOfferDeletionQueue(struct DataDevice *dataDevice, JNIEnv* env) {
+    pthread_mutex_lock(&dataDevice->offerDelMutex);
+
+    struct DataOffer* offer = dataDevice->offerDelQueue;
+
+    while (offer != NULL) {
+        if (offer->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
+            wl_data_offer_destroy(offer->wlDataOffer);
+        } else if (offer->protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
+            zwp_primary_selection_offer_v1_destroy(offer->zwpPrimarySelectionOffer);
+        }
+
+        if (offer->javaObject != NULL) {
+            (*env)->DeleteGlobalRef(env, offer->javaObject);
+        }
+
+        struct DataOffer* next = offer->nextDel;
+        free(offer);
+        offer = next;
+    }
+
+    dataDevice->offerDelQueue = NULL;
+
+    pthread_mutex_unlock(&dataDevice->offerDelMutex);
 }
 
 // Event handlers
@@ -793,6 +876,9 @@ Java_sun_awt_wl_WLDataDevice_initNative(JNIEnv *env, jobject obj, jlong wlSeatPt
         return 0;
     }
 
+    pthread_mutex_init(&dataDevice->sourceDelMutex, NULL);
+    pthread_mutex_init(&dataDevice->offerDelMutex, NULL);
+
     dataDevice->javaObject = (*env)->NewGlobalRef(env, obj);
     if ((*env)->ExceptionCheck(env)) {
         goto error_cleanup;
@@ -834,7 +920,10 @@ Java_sun_awt_wl_WLDataDevice_initNative(JNIEnv *env, jobject obj, jlong wlSeatPt
 
     return ptr_to_jlong(dataDevice);
 
-    error_cleanup:
+error_cleanup:
+    pthread_mutex_destroy(&dataDevice->sourceDelMutex);
+    pthread_mutex_destroy(&dataDevice->offerDelMutex);
+
     if (dataDevice->dataSourceQueue != NULL) {
         wl_event_queue_destroy(dataDevice->dataSourceQueue);
     }
@@ -881,6 +970,7 @@ Java_sun_awt_wl_WLDataDevice_dispatchDataSourceQueueImpl(JNIEnv *env, jclass cla
     assert(dataDevice != NULL);
 
     while (wl_display_dispatch_queue(wl_display, dataDevice->dataSourceQueue) != -1) {
+        DataDevice_drainSourceDeletionQueue(dataDevice, env);
     }
 }
 
@@ -924,27 +1014,36 @@ Java_sun_awt_wl_WLDataDevice_startDragImpl(JNIEnv *env, jclass clazz, jlong data
     }
 }
 
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLDataDevice_performDeletionsOnEDTImpl(JNIEnv *env, jclass clazz, jlong dataDeviceNativePtr) {
+    struct DataDevice *dataDevice = jlong_to_ptr(dataDeviceNativePtr);
+    assert(dataDevice != NULL);
+    DataDevice_drainOfferDeletionQueue(dataDevice, env);
+}
+
 JNIEXPORT jlong JNICALL
 Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, jobject javaObject, jlong dataDeviceNativePtr, jint protocol)
 {
     struct DataDevice *dataDevice = jlong_to_ptr(dataDeviceNativePtr);
     assert(dataDevice != NULL);
 
-    struct DataSource *dataSource = calloc(1, sizeof(struct DataSource));
+    struct DataSource *source = calloc(1, sizeof(struct DataSource));
 
-    if (dataSource == NULL) {
+    if (source == NULL) {
         JNU_ThrowOutOfMemoryError(env, "Failed to allocate DataSource");
         return 0;
     }
 
+    source->dataDevice = dataDevice;
+
     // cleaned up in WLDataSource.destroy()
-    dataSource->javaObject = (*env)->NewGlobalRef(env, javaObject);
+    source->javaObject = (*env)->NewGlobalRef(env, javaObject);
     if ((*env)->ExceptionCheck(env)) {
-        free(dataSource);
+        free(source);
         return 0;
     }
-    if (dataSource->javaObject == NULL) {
-        free(dataSource);
+    if (source->javaObject == NULL) {
+        free(source);
         JNU_ThrowInternalError(env, "Failed to create a reference to WLDataSource");
         return 0;
     }
@@ -953,7 +1052,7 @@ Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, jobject javaObject, jlong d
         protocol = DATA_TRANSFER_PROTOCOL_WAYLAND;
     }
 
-    dataSource->protocol = protocol;
+    source->protocol = protocol;
 
     if (protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
         // To avoid race conditions when setting the dispatch queue,
@@ -970,14 +1069,14 @@ Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, jobject javaObject, jlong d
         }
 
         if (wlDataSource == NULL) {
-            free(dataSource);
+            free(source);
             JNU_ThrowByName(env, "java/awt/AWTError", "Wayland error creating wl_data_source proxy");
             return 0;
         }
 
-        dataSource->wlDataSource = wlDataSource;
+        source->wlDataSource = wlDataSource;
 
-        wl_data_source_add_listener(wlDataSource, &wl_data_source_listener, dataSource);
+        wl_data_source_add_listener(wlDataSource, &wl_data_source_listener, source);
     }
 
     if (protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
@@ -991,18 +1090,18 @@ Java_sun_awt_wl_WLDataSource_initNative(JNIEnv *env, jobject javaObject, jlong d
         }
 
         if (zwpPrimarySelectionSource == NULL) {
-            free(dataSource);
+            free(source);
             JNU_ThrowByName(env, "java/awt/AWTError", "Wayland error creating zwp_primary_selection_source_v1 proxy");
             return 0;
         }
 
-        dataSource->zwpPrimarySelectionSource = zwpPrimarySelectionSource;
+        source->zwpPrimarySelectionSource = zwpPrimarySelectionSource;
 
         zwp_primary_selection_source_v1_add_listener(zwpPrimarySelectionSource,
-                                                     &zwp_primary_selection_source_v1_listener, dataSource);
+                                                     &zwp_primary_selection_source_v1_listener, source);
     }
 
-    return ptr_to_jlong(dataSource);
+    return ptr_to_jlong(source);
 }
 
 JNIEXPORT void JNICALL
@@ -1026,26 +1125,13 @@ Java_sun_awt_wl_WLDataSource_destroyImpl(JNIEnv *env, jclass clazz, jlong native
         return;
     }
 
-    if (source->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
-        wl_data_source_destroy(source->wlDataSource);
-    } else if (source->protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
-        zwp_primary_selection_source_v1_destroy(source->zwpPrimarySelectionSource);
-    }
+    assert(source->dataDevice != NULL);
+    struct DataDevice* dataDevice = source->dataDevice;
 
-    if (source->dragIconBuffer) {
-        wl_buffer_destroy(source->dragIconBuffer);
-    }
-
-    if (source->dragIcon) {
-        wl_surface_destroy(source->dragIcon);
-    }
-
-    if (source->javaObject != NULL) {
-        (*env)->DeleteGlobalRef(env, source->javaObject);
-        source->javaObject = NULL;
-    }
-
-    free(source);
+    pthread_mutex_lock(&dataDevice->sourceDelMutex);
+    source->nextDel = dataDevice->sourceDelQueue;
+    dataDevice->sourceDelQueue = source;
+    pthread_mutex_unlock(&dataDevice->sourceDelMutex);
 }
 
 JNIEXPORT void JNICALL
@@ -1132,18 +1218,13 @@ Java_sun_awt_wl_WLDataOffer_destroyImpl(JNIEnv *env, jclass clazz, jlong nativeP
         return;
     }
 
-    if (offer->protocol == DATA_TRANSFER_PROTOCOL_WAYLAND) {
-        wl_data_offer_destroy(offer->wlDataOffer);
-    } else if (offer->protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) {
-        zwp_primary_selection_offer_v1_destroy(offer->zwpPrimarySelectionOffer);
-    }
+    assert(offer->dataDevice != NULL);
+    struct DataDevice* dataDevice = offer->dataDevice;
 
-    if (offer->javaObject != NULL) {
-        (*env)->DeleteGlobalRef(env, offer->javaObject);
-        offer->javaObject = NULL;
-    }
-
-    free(offer);
+    pthread_mutex_lock(&dataDevice->offerDelMutex);
+    offer->nextDel = dataDevice->offerDelQueue;
+    dataDevice->offerDelQueue = offer;
+    pthread_mutex_unlock(&dataDevice->offerDelMutex);
 }
 
 JNIEXPORT void JNICALL
