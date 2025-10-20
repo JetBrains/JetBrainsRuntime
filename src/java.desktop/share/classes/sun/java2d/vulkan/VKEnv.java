@@ -47,8 +47,9 @@ public final class VKEnv {
         private static final boolean verbose = "True".equals(vulkanProperty);
 
         @SuppressWarnings("removal")
-        private static final boolean accelsd = vulkan && "true".equalsIgnoreCase(AccessController.doPrivileged(
-                (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.accelsd", "true")));
+        @Deprecated(forRemoval = true)
+        private static final String accelsd = AccessController.doPrivileged(
+                (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.accelsd"));
 
         @SuppressWarnings("removal")
         private static final int deviceNumber = !vulkan ? 0 : AccessController.doPrivileged(
@@ -78,7 +79,10 @@ public final class VKEnv {
                 devices = initNative(platformData);
                 if (devices != null) {
                     newState = ENABLED;
-                    if (Options.accelsd) newState |= ACCELSD_BIT;
+                    if (Options.accelsd == null || Options.accelsd.equalsIgnoreCase("true")) {
+                        if (Options.accelsd != null) System.err.println("Warning: sun.java2d.vulkan.accelsd is deprecated and will soon be removed.");
+                        newState |= ACCELSD_BIT;
+                    }
                     defaultDevice = devices[Options.deviceNumber >= 0 && Options.deviceNumber < devices.length ?
                             Options.deviceNumber : 0];
                     // Check whether the presentation is supported.
