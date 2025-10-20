@@ -31,7 +31,6 @@ rendering_options:
   -opengl # OpenGL pipeline (windows, linux, macOS)
   -metal  # Metal pipeline (macOS)
   -vulkan # Vulkan pipeline (WLToolkit)
-  -accelsd # Vulkan full acceleration (WLToolkit, Vulkan)
   -tk tk_name # AWT toolkit (linux: WLToolkit|XToolkit)
   -scale # UI scale
   -N num # Number of iterations (JVM runs)
@@ -47,9 +46,6 @@ while [ $# -ge 1 ] ; do
       shift
         ;;
     -vulkan) J2D_OPTS=$J2D_OPTS" -Dsun.java2d.vulkan=true"    
-      shift  
-        ;;
-    -accelsd) J2D_OPTS=$J2D_OPTS" -Dsun.java2d.vulkan.accelsd=true"
       shift
         ;;
     -tk) shift
