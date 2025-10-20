@@ -36,7 +36,7 @@ import java.io.IOException;
  * @requires os.family == "linux"
  * @summary Verifies Vulkan graphics config compatibility
  * @modules java.desktop/sun.java2d.vulkan:+open
- * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true VulkanGCCompatibilityTest
+ * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True VulkanGCCompatibilityTest
  */
 
 
@@ -84,9 +84,6 @@ public class VulkanGCCompatibilityTest {
         }
         if (!VKEnv.isVulkanEnabled()) {
             throw new Error("Vulkan not enabled");
-        }
-        if (!VKEnv.isSurfaceDataAccelerated()) {
-            throw new Error("Accelerated surface data not enabled");
         }
 
         final GraphicsConfiguration[] configs =
