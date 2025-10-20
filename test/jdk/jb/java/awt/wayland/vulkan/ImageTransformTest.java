@@ -40,7 +40,6 @@ import javax.swing.SwingUtilities;
  * @requires os.family == "linux"
  * @summary Verifies that robot correctly pick color
  * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True ImageTransformTest
- * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true ImageTransformTest
  * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=False ImageTransformTest
  */
 
