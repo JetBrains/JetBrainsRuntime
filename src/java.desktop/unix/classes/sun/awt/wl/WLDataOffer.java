@@ -61,7 +61,7 @@ public class WLDataOffer {
     }
 
     // after calling destroy(), this object enters an invalid state and needs to be deleted
-    public void destroy() {
+    public synchronized void destroy() {
         if (nativePtr != 0) {
             destroyImpl(nativePtr);
             nativePtr = 0;
