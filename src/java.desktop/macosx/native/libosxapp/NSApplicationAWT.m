@@ -495,23 +495,25 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
     seenDummyEventLock = nil;
 }
 
-//Provide info from unhandled ObjectiveC exceptions
-+ (void)logException:(NSException *)exception forProcess:(NSProcessInfo*)processInfo {
+// Provide info from unhandled ObjectiveC exceptions
++ (void)logException:(NSException*)exception to:(NSMutableString*)info {
+    [info appendString:
+              [NSString stringWithFormat:
+              @"Exception in NSApplicationAWT:\n %@\n",
+              exception]];
+
+    NSArray<NSString*> *stack = [exception callStackSymbols];
+    for (NSUInteger i = 0; i < stack.count; i++) {
+        [info appendString:stack[i]];
+        [info appendString:@"\n"];
+    }
+    NSLog(@"%@", info);
+}
+
++ (void)logException:(NSException*)exception forProcess:(NSProcessInfo*)processInfo {
     @autoreleasepool {
         NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
-        [info appendString:
-                [NSString stringWithFormat:
-                        @"Exception in NSApplicationAWT:\n %@\n",
-                        exception]];
-
-        NSArray<NSString *> *stack = [exception callStackSymbols];
-
-        for (NSUInteger i = 0; i < stack.count; i++) {
-            [info appendString:stack[i]];
-            [info appendString:@"\n"];
-        }
-
-        NSLog(@"%@", info);
+        [self logException:exception to:info];
 
         int processID = [processInfo processIdentifier];
         NSDictionary *env = [[NSProcessInfo processInfo] environment];
@@ -522,6 +524,7 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
                                                homePath, processID];
 
             if (![[NSFileManager defaultManager] fileExistsAtPath:fileName]) {
+                NSLog(@"Writing exception to '%@'...", fileName);
                 [info writeToFile:fileName
                        atomically:YES
                          encoding:NSUTF8StringEncoding
@@ -539,32 +542,16 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
     kill([processInfo processIdentifier], SIGILL);
 }
 
-- (void) reportException:(NSException *)exception {
+- (void) reportException:(NSException*)exception {
     @autoreleasepool {
         NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
-        [info appendString:
-                [NSString stringWithFormat:
-                        @"Exception report in NSApplicationAWT:\n %@\n",
-                        exception]];
-
-        NSArray<NSString*> *stack = [exception callStackSymbols];
-
-        for (NSUInteger i = 0; i < stack.count; i++) {
-            [info appendString:stack[i]];
-            [info appendString:@"\n"];
-        }
-        NSLog(@"%@", info);
-
-        // Call the exception handler of last resort too:
-        // TODO: unify the output of the two handlers !!
-        // GetAWTUncaughtExceptionHandler()(exception);
+        [NSApplicationAWT logException:exception to:info];
     }
     // may abort or crash
     [super reportException:exception];
 }
 
 // --- NSExceptionHandlerDelegate additions ---
-
 - (BOOL)exceptionHandler:(NSExceptionHandler *)sender shouldLogException:(NSException *)exception mask:(NSUInteger)aMask {
     return NO;
 }
