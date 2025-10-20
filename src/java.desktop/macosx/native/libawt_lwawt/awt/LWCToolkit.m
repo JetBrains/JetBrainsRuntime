@@ -69,14 +69,6 @@
 
 #define TRACE_RUN_LOOP  0
 
-#ifdef DEBUG
-    #define TEST_NATIVE_EXCEPTION 1
-#else
-    // force enabling exception tracing tests:
-    // #define TEST_NATIVE_EXCEPTION 1
-    #define TEST_NATIVE_EXCEPTION 0
-#endif
-
 int gNumberOfButtons;
 jint* gButtonDownMasks;
 int lcdSubPixelPosSupported;
@@ -218,7 +210,6 @@ static BOOL inDoDragDropLoop;
         DECLARE_METHOD(jm_Runnable_run, sjc_Runnable, "run", "()V");
         (*env)->CallVoidMethod(env, self.runnable, jm_Runnable_run);
         CHECK_EXCEPTION();
-        if (TEST_NATIVE_EXCEPTION) TEST_RAISE_EXCEPTION(@"runnable = %p", self.runnable);
     }
     @finally {
         [self release];
@@ -240,7 +231,6 @@ void setBusy(BOOL busy) {
         (*env)->CallStaticVoidMethod(env, jc_AWTAutoShutdown, jm_notifyFreeMethod);
     }
     CHECK_EXCEPTION();
-    if (TEST_NATIVE_EXCEPTION) TEST_RAISE_EXCEPTION(@"busy = %d", busy);
     JNI_COCOA_EXIT();
 }
 
@@ -285,7 +275,6 @@ static void setUpAWTAppKit(BOOL installObservers)
     DECLARE_STATIC_METHOD(jsm_installToolkitThreadInJava, jc_LWCToolkit, "installToolkitThreadInJava", "()V");
     (*env)->CallStaticVoidMethod(env, jc_LWCToolkit, jsm_installToolkitThreadInJava);
     CHECK_EXCEPTION();
-    if (0 && TEST_NATIVE_EXCEPTION) TEST_RAISE_EXCEPTION(@"installObservers = %d", installObservers);
 }
 
 BOOL isSWTInWebStart(JNIEnv* env) {
@@ -919,7 +908,6 @@ Java_sun_lwawt_macosx_LWCToolkit_initIDs
     CHECK_NULL(getButtonDownMasksID);
     jintArray obj = (jintArray)(*env)->CallStaticObjectMethod(env, inputEventClazz, getButtonDownMasksID);
     CHECK_EXCEPTION();
-    if (TEST_NATIVE_EXCEPTION) TEST_RAISE_EXCEPTION(@"getButtonDownMasksID");
 
     jint * tmp = (*env)->GetIntArrayElements(env, obj, NULL);
     CHECK_NULL(tmp);

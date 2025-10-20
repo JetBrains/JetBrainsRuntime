@@ -203,6 +203,15 @@
     } \
 };
 
+/*
+ * Use this macro to raise an NSException.
+ * The message is a printf-style format string.
+ * The arguments are the arguments to the format string.
+ *
+ * ONLY FOR DEBUGGING PURPOSES.
+ * for example:
+ * TEST_RAISE_EXCEPTION(@"LWCToolkit.setBusy: busy = %d", busy);
+ */
 #define TEST_RAISE_EXCEPTION(message, ...) {                                         \
     [NSException raise:NSGenericException                                            \
                  format:@"RAISE_EXCEPTION in %s:%d %s : %@",                         \
