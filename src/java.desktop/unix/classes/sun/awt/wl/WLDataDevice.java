@@ -89,6 +89,7 @@ public class WLDataDevice {
     private static native void setSelectionImpl(int protocol, long nativePtr, long dataOfferNativePtr, long serial);
     private static native void startDragImpl(long nativePtr, long dataOfferNativePtr,
                                              long originSurfaceNativePtr, long serial);
+    private static native void performDeletionsOnEDTImpl(long nativePtr);
 
     public boolean isProtocolSupported(int protocol) {
         return isProtocolSupportedImpl(nativePtr, protocol);
@@ -244,6 +245,10 @@ public class WLDataDevice {
             result |= DND_MOVE;
         }
         return result;
+    }
+
+    public void performDeletionsOnEDT() {
+        performDeletionsOnEDTImpl(nativePtr);
     }
 
     // Event handlers, called from native on the EDT
