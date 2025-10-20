@@ -37,10 +37,10 @@ import java.io.IOException;
  * @requires os.family == "linux"
  * @summary Verifies composites in opaque and translucent modes.
  * @modules java.desktop/sun.java2d.vulkan:+open
- * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=true VulkanCompositeTest TRANSLUCENT
- * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=true VulkanCompositeTest OPAQUE
- * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=false VulkanCompositeTest TRANSLUCENT
- * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=false VulkanCompositeTest OPAQUE
+ * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.leOptimizations=true VulkanCompositeTest TRANSLUCENT
+ * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.leOptimizations=true VulkanCompositeTest OPAQUE
+ * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.leOptimizations=false VulkanCompositeTest TRANSLUCENT
+ * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.leOptimizations=false VulkanCompositeTest OPAQUE
  */
 
 
@@ -104,9 +104,6 @@ public class VulkanCompositeTest {
     public static void main(String[] args) throws IOException {
         if (!VKEnv.isVulkanEnabled()) {
             throw new Error("Vulkan not enabled");
-        }
-        if (!VKEnv.isSurfaceDataAccelerated()) {
-            throw new Error("Accelerated surface data not enabled");
         }
 
         boolean hasAlpha;
