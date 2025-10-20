@@ -32,8 +32,7 @@ import java.util.concurrent.CountDownLatch;
  * @test
  * @requires os.family == "linux"
  * @summary Verifies that robot correctly pick color
- * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true ClipRenderTest
- * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=false ClipRenderTest
+ * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True ClipRenderTest
  * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=False ClipRenderTest
  */
 
