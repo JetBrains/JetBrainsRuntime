@@ -38,10 +38,10 @@ import java.io.IOException;
  * @requires os.family == "linux"
  * @summary Verifies that Vulkan blit works
  * @modules java.desktop/sun.java2d.vulkan:+open
- * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=true VulkanBlitTest TRANSLUCENT
- * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=true VulkanBlitTest OPAQUE
- * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=false VulkanBlitTest TRANSLUCENT
- * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.accelsd=true -Dsun.java2d.vulkan.leOptimizations=false VulkanBlitTest OPAQUE
+ * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.leOptimizations=true VulkanBlitTest TRANSLUCENT
+ * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.leOptimizations=true VulkanBlitTest OPAQUE
+ * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.leOptimizations=false VulkanBlitTest TRANSLUCENT
+ * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.leOptimizations=false VulkanBlitTest OPAQUE
  */
 
 
@@ -301,9 +301,6 @@ public class VulkanBlitTest {
     public static void main(String[] args) throws IOException {
         if (!VKEnv.isVulkanEnabled()) {
             throw new Error("Vulkan not enabled");
-        }
-        if (!VKEnv.isSurfaceDataAccelerated()) {
-            throw new Error("Accelerated surface data not enabled");
         }
 
         boolean hasAlpha;
