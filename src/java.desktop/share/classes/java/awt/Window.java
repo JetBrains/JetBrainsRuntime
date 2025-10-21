@@ -4547,11 +4547,6 @@ public class Window extends Container implements Accessible {
                 }
             }
 
-            @Override
-            public void addWindowListener(Window w, WindowListener listener) {
-                w.addWindowListener(listener);
-            }
-
             private static void dumpCounter(final String counterName, final double valPerSecond) {
                 if (USE_COUNTERS) {
                     doLog(String.format("%s per second: %.2f", counterName, valPerSecond),
