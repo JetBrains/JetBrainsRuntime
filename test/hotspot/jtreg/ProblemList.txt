@@ -191,3 +191,5 @@ runtime/Thread/SetPriorityAtExit.java 8365835 linux-x64
 runtime/Thread/SuspendAtExit.java 8365835 linux-x64
 runtime/Thread/SetNameAtExit.java 8365835 linux-x64
 runtime/8176717/TestInheritFD.java 8347001 linux-x64
+vmTestbase/nsk/jdi/stress/serial/mixed002/TestDescription.java 8291514 macosx-aarch64
+serviceability/jvmti/RedefineClasses/ClassVersionAfterRedefine.java 8369953 linux-aarch64,linux-x64,macosx-aarch64,windows-x64
