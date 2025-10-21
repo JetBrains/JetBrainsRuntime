@@ -10,6 +10,7 @@ java/awt/Focus/TemporaryLostComponentDeadlock.java JBR-5734 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java nobug macosx-all,linux-all,windows-all
 java/awt/List/NofocusListDblClickTest/NofocusListDblClickTest.java nobug macosx-all,linux-all,windows-all
 java/awt/List/TriggerActionEventTest.java JBR-7621 windows-all
+java/awt/MenuItem/SetLabelTest.java JBR-9520 windows-x64
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-8996 windows-x64
 java/awt/Modal/BlockedMouseInputTest.java JBR-8406 windows-x64
 java/awt/Modal/BlockedMouseInputTest2.java JBR-8406 windows-x64
@@ -59,6 +60,7 @@ javax/swing/JTree/4518432/JTreeNodeCopyPasteTest.java JBR-5397,JBR-8939 macosx-a
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-7386 windows-x64
 
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-9083 windows-x64
+jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-9519 windows-x64
 jb/java/awt/Desktop/AboutHandlerTest.java           nobug macosx-all,linux-all,windows-all
 jb/java/awt/Focus/ChainOfPopupsFocusTest.java JBR-8407 windows-x64
 jb/java/awt/Focus/FrameAfterPopup.java JBR-9161 windows-x64
