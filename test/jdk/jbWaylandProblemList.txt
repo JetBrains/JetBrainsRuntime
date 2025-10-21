@@ -5,9 +5,9 @@ java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
 javax/swing/JComponent/6989617/bug6989617.java JBR-8796 linux-6.14.0-1010-aws,linux-6.14.0-1012-aws,linux-6.14.0-1014-aws
 javax/swing/JDesktopPane/TestDesktopManagerNPE.java JBR-8449 linux-x64
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
-javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520,JBR-9320 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.14.9-arch1-1
-javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-9341 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.14.9-arch1-1
-javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-7928,JBR-9341 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.14.9-arch1-1
+javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520,JBR-9320 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.8.0-1040-aws,linux-6.14.9-arch1-1
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-9341 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.8.0-1040-aws,linux-6.14.9-arch1-1
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-7928,JBR-9341 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.8.0-1040-aws,linux-6.14.9-arch1-1
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-7530,JBR-9321 linux-all,linux-6.14.9-arch1-1
 javax/swing/JFormattedTextField/TestSelectedTextBackgroundColor.java JBR-8790 linux-all
