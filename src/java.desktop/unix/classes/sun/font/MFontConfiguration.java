@@ -27,8 +27,6 @@ package sun.font;
 
 import sun.awt.FontConfiguration;
 import sun.awt.X11FontManager;
-import sun.font.FontUtilities;
-import sun.font.SunFontManager;
 import sun.util.logging.PlatformLogger;
 
 import java.io.File;
@@ -169,7 +167,9 @@ public class MFontConfiguration extends FontConfiguration {
                      * For Ubuntu the ID is "Ubuntu".
                      */
                     Properties props = new Properties();
-                    props.load(new FileInputStream(f));
+                    try (FileInputStream fis = new FileInputStream(f)) {
+                        props.load(fis);
+                    }
                     osName = props.getProperty("DISTRIB_ID");
                     osVersion =  props.getProperty("DISTRIB_RELEASE");
                 }
