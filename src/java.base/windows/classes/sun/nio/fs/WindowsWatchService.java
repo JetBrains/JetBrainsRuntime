@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 
 import jdk.internal.misc.Unsafe;
+import jdk.internal.util.ArraysSupport;
 
 import static sun.nio.fs.WindowsNativeDispatcher.*;
 import static sun.nio.fs.WindowsConstants.*;
@@ -284,9 +285,26 @@ class WindowsWatchService
         private static final short OFFSETOF_FILENAMELENGTH  = 8;
         private static final short OFFSETOF_FILENAME        = 12;
 
-        // size of per-directory buffer for events (FIXME - make this configurable)
-        // Need to be less than 4*16384 = 65536. DWORD align.
-        private static final int CHANGES_BUFFER_SIZE    = 16 * 1024;
+        // size of per-directory buffer for events
+        // Need to be less than 4*16384 = 65536 when monitoring a directory over the network. DWORD align.
+        private static final int DEFAULT_CHANGES_BUFFER_SIZE = 16 * 1024;
+        static final int CHANGES_BUFFER_SIZE;
+        static {
+            String rawValue = System.getProperty(
+                "jdk.nio.file.WatchService.bufferSizeToRetrieveEventsPerDirectory",
+                String.valueOf(DEFAULT_CHANGES_BUFFER_SIZE));
+            int intValue;
+            try {
+                // Clamp to size of per-directory buffer used to retrieve events.
+                intValue = Math.clamp(
+                    Long.decode(rawValue),
+                    1,
+                    ArraysSupport.SOFT_MAX_ARRAY_LENGTH);
+            } catch (NumberFormatException e) {
+                intValue = DEFAULT_CHANGES_BUFFER_SIZE;
+            }
+            CHANGES_BUFFER_SIZE = intValue;
+        }
 
         private final WindowsFileSystem fs;
         private final WindowsWatchService watcher;
