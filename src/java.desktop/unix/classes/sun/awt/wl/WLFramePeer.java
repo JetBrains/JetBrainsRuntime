@@ -26,7 +26,6 @@
 package sun.awt.wl;
 
 import java.awt.*;
-import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.peer.FramePeer;
 import sun.awt.AWTAccessor;
@@ -43,12 +42,6 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
         super(target, target.isUndecorated(),
                 Toolkit.getDefaultToolkit().isFrameStateSupported(Frame.ICONIFIED),
                 Toolkit.getDefaultToolkit().isFrameStateSupported(Frame.MAXIMIZED_BOTH));
-        AWTAccessor.getWindowAccessor().addWindowListener(target, new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                getFrame().removeNotify();
-            }
-        });
     }
 
     @Override
