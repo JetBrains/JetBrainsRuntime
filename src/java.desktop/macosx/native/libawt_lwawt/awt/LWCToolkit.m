@@ -210,8 +210,7 @@ static BOOL inDoDragDropLoop;
         DECLARE_METHOD(jm_Runnable_run, sjc_Runnable, "run", "()V");
         (*env)->CallVoidMethod(env, self.runnable, jm_Runnable_run);
         CHECK_EXCEPTION();
-    }
-    @finally {
+    } @finally {
         [self release];
     }
 }
@@ -908,7 +907,6 @@ Java_sun_lwawt_macosx_LWCToolkit_initIDs
     CHECK_NULL(getButtonDownMasksID);
     jintArray obj = (jintArray)(*env)->CallStaticObjectMethod(env, inputEventClazz, getButtonDownMasksID);
     CHECK_EXCEPTION();
-
     jint * tmp = (*env)->GetIntArrayElements(env, obj, NULL);
     CHECK_NULL(tmp);
 

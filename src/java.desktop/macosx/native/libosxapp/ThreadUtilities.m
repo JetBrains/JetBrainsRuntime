@@ -107,7 +107,6 @@ NSUncaughtExceptionHandler* GetAWTUncaughtExceptionHandler(void) {
     static dispatch_once_t oncePredicate;
 
     dispatch_once(&oncePredicate, ^{
-        NSLog(@"Initializing Apple AWT Internal Exception Handler ---");
         // get previous uncaught exception handler:
         _previousNSUncaughtExceptionHandler = NSGetUncaughtExceptionHandler();
         _uncaughtExceptionHandler = AWT_NSUncaughtExceptionHandler;
