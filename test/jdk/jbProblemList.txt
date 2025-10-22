@@ -358,7 +358,7 @@ java/awt/Clipboard/GetAltContentsTest/SystemClipboardTest.java 8234140 macosx-al
 java/awt/Clipboard/ImageTransferTest.java 8030710 generic-all
 java/awt/Clipboard/NoDataConversionFailureTest.java 8234140 macosx-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210 windows-all
-java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210,JBR-9444 windows-all,linux-6.14.0-1013-aws
+java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210,JBR-9444 windows-all,linux-6.14.0-1013-aws,linux-6.14.0-1014-aws
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
