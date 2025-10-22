@@ -47,7 +47,7 @@ static QueuingApplicationDelegate * qad = nil;
 // Flag used to indicate to the Plugin2 event synthesis code to do a postEvent instead of sendEvent
 BOOL postEventDuringEventSynthesis = NO;
 
-BOOL isAWTCrashOnException() {
+static BOOL isAWTCrashOnException() {
     static int awtCrashOnException = -1;
     if (awtCrashOnException == -1) {
         JNIEnv *env = [ThreadUtilities getJNIEnvUncached];

@@ -107,7 +107,6 @@ NSUncaughtExceptionHandler* GetAWTUncaughtExceptionHandler(void) {
     static dispatch_once_t oncePredicate;
 
     dispatch_once(&oncePredicate, ^{
-        NSLog(@"Initializing Apple AWT Internal Exception Handler ---");
         // get previous uncaught exception handler:
         _previousNSUncaughtExceptionHandler = NSGetUncaughtExceptionHandler();
         _uncaughtExceptionHandler = AWT_NSUncaughtExceptionHandler;
@@ -138,6 +137,7 @@ static inline void doLog(JNIEnv* env, const char *formatMsg, ...) {
         va_end(args);
     }
 }
+
 
 static inline void attachCurrentThread(void** env) {
     if ([NSThread isMainThread]) {
@@ -282,8 +282,7 @@ AWT_ASSERT_APPKIT_THREAD;
 + (void)invokeBlockCopy:(void (^)(void))blockCopy {
     @try {
         blockCopy();
-    }
-    @finally {
+    } @finally {
         Block_release(blockCopy);
     }
 }
@@ -813,8 +812,8 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
             void (^blockCopy)(void) = (void (^)())[self.queue objectAtIndex: i];
             // handle any exception:
             JNI_COCOA_ENTER();
-                // invoke callback:
-                [ThreadUtilities invokeBlockCopy:blockCopy];
+            // invoke callback:
+            [ThreadUtilities invokeBlockCopy:blockCopy];
             JNI_COCOA_EXIT();
         }
         // reset queue anyway:
