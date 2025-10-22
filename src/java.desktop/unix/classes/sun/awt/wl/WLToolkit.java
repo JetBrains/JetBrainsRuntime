@@ -255,7 +255,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                     WLToolkit.awtLock();
                     try {
                         dispatchEventsOnEDT();
-                        dataDevice.performDeletionsOnEDT();
+                        if (dataDevice != null) {
+                            dataDevice.performDeletionsOnEDT();
+                        }
                     } finally {
                         eventsQueued.release();
                         WLToolkit.awtUnlock();
