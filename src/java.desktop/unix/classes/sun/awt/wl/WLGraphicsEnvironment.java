@@ -58,12 +58,24 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
     private final List<WLGraphicsDevice> devices = new ArrayList<>(5);
 
     static {
-        System.loadLibrary("awt");
+        loadAWT();
 
         debugScaleEnabled = SunGraphicsEnvironment.isUIScaleEnabled() && SunGraphicsEnvironment.getDebugScale() >= 1;
 
         // Make sure the toolkit is loaded because otherwise this GE is going to be empty
         WLToolkit.isInitialized();
+    }
+
+    @SuppressWarnings("removal")
+    private static void loadAWT() {
+        java.security.AccessController.doPrivileged(
+                new java.security.PrivilegedAction<Void>() {
+                    public Void run() {
+                        System.loadLibrary("awt");
+                        return null;
+                    }
+                }
+        );
     }
 
     private WLGraphicsEnvironment() {
