@@ -40,7 +40,9 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     private final boolean showMaximize;
     private final boolean showMinimize;
 
-    private final static String decorationPreference = System.getProperty("sun.awt.wl.WindowDecorationStyle");
+    @SuppressWarnings("removal")
+    private final static String decorationPreference = java.security.AccessController.doPrivileged(
+            new sun.security.action.GetPropertyAction("sun.awt.wl.WindowDecorationStyle"));
 
     public WLDecoratedPeer(Window target, boolean isUndecorated, boolean showMinimize, boolean showMaximize) {
         super(target);

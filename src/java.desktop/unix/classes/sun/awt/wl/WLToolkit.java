@@ -196,12 +196,17 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         System.setProperty(extraButtons, String.valueOf(areExtraMouseButtonsEnabled));
     }
 
+    @SuppressWarnings("removal")
     static String getApplicationID() {
         // Do not cache the properties as the application might want to change
         // them at run time. Might also consider using JComponent's client property
         // for per-window app ID
-        String appID = System.getProperty("awt.app.id");
-        return appID != null ? appID : System.getProperty("sun.java.command");
+        String appID = java.security.AccessController.doPrivileged(
+                new sun.security.action.GetPropertyAction("awt.app.id"));
+        return appID != null
+                ? appID
+                : java.security.AccessController.doPrivileged(
+                        new sun.security.action.GetPropertyAction("sun.java.command"));
     }
 
     public static boolean isToolkitThread() {
