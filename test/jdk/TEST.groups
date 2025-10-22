@@ -871,6 +871,7 @@ jdk_awt_wayland = \
     -java/awt/datatransfer/UnicodeTransferTest/UnicodeTransferTest.java \
     -java/awt/Debug \
     -java/awt/Dialog \
+    -java/awt/FullScreen/DisplayModeNoRefreshTest.java \
     -java/awt/dnd \
     -java/awt/EmbeddedFrame \
     -java/awt/event \
