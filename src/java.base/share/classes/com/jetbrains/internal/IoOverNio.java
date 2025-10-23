@@ -159,5 +159,84 @@ public class IoOverNio {
      * <p>
      * The problem was found with the test {@code jtreg:test/jdk/java/io/FileDescriptor/Sharing.java}.
      */
-    public static final ThreadLocal<Closeable> PARENT_FOR_FILE_CHANNEL_IMPL = new ThreadLocal<>();
+    public static class ParentForFileChannelImplHolder {
+        private static final ThreadLocal<Closeable> holder = new ThreadLocal<>();
+
+        private ParentForFileChannelImplHolder() {}
+
+        public static Closeable get() {
+            return holder.get();
+        }
+
+        public static void set(Closeable parent) {
+            RecursionGuard.ensureActive();
+            holder.set(parent);
+        }
+
+        public static void remove() {
+            RecursionGuard.ensureActive();
+            holder.remove();
+        }
+    }
+
+    /**
+     * <p>With java.io over java.nio backend, it's possible that some code invokes file system operations while
+     * already executing a similar operation. An example is when a classloader uses {@link FileSystems#getDefault()}
+     * during class loading. Such cases break usage of {@link ParentForFileChannelImplHolder}.</p>
+     *
+     * <p>This class is to be used around places that can hypothetically access {@link ParentForFileChannelImplHolder}
+     * recursively.</p>
+     */
+    public static class RecursionGuard implements Closeable {
+        private static final ThreadLocal<RecursionGuard> HEAD = new ThreadLocal<>();
+
+        private final RecursionGuard parent;
+        private final Object label;
+        private final ThreadLocalCloseable additionalClosable;
+
+        /**
+         * @param label A unique object for a specific method. The object is used for reference equality.
+         *              A static string or a reference to a class is a good candidate.
+         */
+        public static RecursionGuard create(Object label) {
+            ThreadLocalCloseable additionalClosable = null;
+            for (var guard = HEAD.get(); guard != null; guard = guard.parent) {
+                if (guard.label == label) {
+                    additionalClosable = disableInThisThread();
+                    break;
+                }
+            }
+            var result = new RecursionGuard(HEAD.get(), label, additionalClosable);
+            HEAD.set(result);
+            return result;
+        }
+
+        private RecursionGuard(RecursionGuard parent, Object label, ThreadLocalCloseable additionalClosable) {
+            this.parent = parent;
+            this.label = label;
+            this.additionalClosable = additionalClosable;
+        }
+
+        public static void ensureActive() {
+            if (HEAD.get() == null) {
+                throw new Error("RecursionGuard is not installed");
+            }
+        }
+
+        @Override
+        public void close() {
+            HEAD.set(parent);
+            if (additionalClosable != null) {
+                additionalClosable.close();
+            }
+        }
+    }
+
+    /**
+     * Intended only for suppressing warnings about unused variables.
+     */
+    @SuppressWarnings("unused")
+    public static void blackhole(Object any) {
+        // Nothing here.
+    }
 }
