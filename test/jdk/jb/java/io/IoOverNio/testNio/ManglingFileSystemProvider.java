@@ -23,19 +23,12 @@
 
 package testNio;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
-import java.nio.file.AccessDeniedException;
-import java.nio.file.AccessMode;
-import java.nio.file.CopyOption;
-import java.nio.file.DirectoryStream;
-import java.nio.file.FileStore;
-import java.nio.file.FileSystem;
-import java.nio.file.LinkOption;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributeView;
@@ -48,6 +41,7 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ManglingFileSystemProvider extends FileSystemProvider {
     public static final String extraContent = "3x7r4";
@@ -168,6 +162,7 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
 
     @Override
     public FileChannel newFileChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+        triggerSporadicFileAccess();
         return new ManglingFileChannel(defaultProvider.newFileChannel(unwrap(path), options, attrs));
     }
 
@@ -178,11 +173,13 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
 
     @Override
     public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+        triggerSporadicFileAccess();
         return new ManglingDirectoryStream(manglingFs, (ManglingPath) dir, defaultProvider.newDirectoryStream(unwrap(dir), filter));
     }
 
     @Override
     public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
+        triggerSporadicFileAccess();
         if (prohibitFileTreeModifications) {
             throw new AccessDeniedException(dir.toString(), null, "Test: All file tree modifications are prohibited");
         }
@@ -191,6 +188,7 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
 
     @Override
     public void delete(Path path) throws IOException {
+        triggerSporadicFileAccess();
         if (prohibitFileTreeModifications) {
             throw new AccessDeniedException(path.toString(), null, "Test: All file tree modifications are prohibited");
         }
@@ -199,6 +197,7 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
 
     @Override
     public void copy(Path source, Path target, CopyOption... options) throws IOException {
+        triggerSporadicFileAccess();
         if (prohibitFileTreeModifications) {
             throw new AccessDeniedException(source.toString(), null, "Test: All file tree modifications are prohibited");
         }
@@ -209,6 +208,7 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
 
     @Override
     public void move(Path source, Path target, CopyOption... options) throws IOException {
+        triggerSporadicFileAccess();
         if (prohibitFileTreeModifications) {
             throw new AccessDeniedException(source.toString(), null, "Test: All file tree modifications are prohibited");
         }
@@ -219,6 +219,7 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
 
     @Override
     public boolean isSameFile(Path path, Path path2) throws IOException {
+        triggerSporadicFileAccess();
         Path source2 = unwrap(path);
         Path target2 = unwrap(path2);
         return defaultProvider.isSameFile(source2, target2);
@@ -226,16 +227,19 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
 
     @Override
     public boolean isHidden(Path path) throws IOException {
+        triggerSporadicFileAccess();
         return defaultProvider.isHidden(unwrap(path));
     }
 
     @Override
     public FileStore getFileStore(Path path) throws IOException {
+        triggerSporadicFileAccess();
         return defaultProvider.getFileStore(unwrap(path));
     }
 
     @Override
     public void checkAccess(Path path, AccessMode... modes) throws IOException {
+        triggerSporadicFileAccess();
         defaultProvider.checkAccess(unwrap(path), modes);
         if (denyAccessToEverything) {
             throw new AccessDeniedException(path.toString(), null, "Test: No access rules to anything");
@@ -244,11 +248,13 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
 
     @Override
     public <V extends FileAttributeView> V getFileAttributeView(Path path, Class<V> type, LinkOption... options) {
+        triggerSporadicFileAccess();
         return wrap(defaultProvider.getFileAttributeView(unwrap(path), type, options));
     }
 
     @Override
     public <A extends BasicFileAttributes> A readAttributes(Path path, Class<A> type, LinkOption... options) throws IOException {
+        triggerSporadicFileAccess();
         return wrap(defaultProvider.readAttributes(unwrap(path), type, options));
     }
 
@@ -259,6 +265,7 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
 
     @Override
     public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
+        triggerSporadicFileAccess();
         if (prohibitFileTreeModifications) {
             throw new AccessDeniedException(path.toString(), null, "Test: All file tree modifications are prohibited");
         }
@@ -267,11 +274,13 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
 
     @Override
     public boolean exists(Path path, LinkOption... options) {
+        triggerSporadicFileAccess();
         return defaultProvider.exists(unwrap(path), options);
     }
 
     @Override
     public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
+        triggerSporadicFileAccess();
         if (prohibitFileTreeModifications) {
             throw new AccessDeniedException(link.toString(), null, "Test: All file tree modifications are prohibited");
         }
@@ -302,5 +311,27 @@ public class ManglingFileSystemProvider extends FileSystemProvider {
             return (V) new ManglingBasicFileAttributeView(basicView);
         }
         return view;
+    }
+
+    private static final AtomicLong counter = new AtomicLong();
+
+    static void triggerSporadicFileAccess() {
+        if (FileSystems.getDefault() != null) {
+            try {
+                var tempFile = new File(System.getProperty("java.io.tmpdir"), "test.tmp." + counter.incrementAndGet());
+                try {
+                    try (var out = new java.io.FileOutputStream(tempFile)) {
+                        out.write(1);
+                    }
+                    try (var in = new java.io.FileInputStream(tempFile)) {
+                        in.read();
+                    }
+                } finally {
+                    tempFile.delete();
+                }
+            } catch (Exception e) {
+                throw new Error(e);
+            }
+        }
     }
 }
