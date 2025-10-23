@@ -131,7 +131,7 @@ public class FileChannelImpl
         this.writable = writable;
         this.direct = direct;
         if (parent == null) {
-            parent = IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.get();
+            parent = IoOverNio.ParentForFileChannelImplHolder.get();
         }
         this.parent = parent;
         if (direct) {
