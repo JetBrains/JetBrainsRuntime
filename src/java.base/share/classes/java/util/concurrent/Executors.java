@@ -846,6 +846,13 @@ public class Executors {
             super.shutdown();
             cleanable.clean();  // unregisters the cleanable
         }
+
+        @Override
+        public List<Runnable> shutdownNow() {
+            List<Runnable> unexecuted = super.shutdownNow();
+            cleanable.clean();  // unregisters the cleanable
+            return unexecuted;
+        }
     }
 
     /**
