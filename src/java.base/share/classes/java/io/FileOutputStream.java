@@ -225,46 +225,49 @@ public class FileOutputStream extends OutputStream
         }
         this.path = file.getPath();
 
-        java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
-        useNio = path != null && nioFs != null;
-        if (useNio) {
-            Path nioPath = nioFs.getPath(path);
+        try (var guard = IoOverNio.RecursionGuard.create(FileOutputStream.class)) {
+            IoOverNio.blackhole(guard);
+            java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
+            useNio = path != null && nioFs != null;
+            if (useNio) {
+                Path nioPath = nioFs.getPath(path);
 
-            // java.io backend doesn't open DOS hidden files for writing, but java.nio.file opens.
-            // This code mimics the old behavior.
-            if (nioFs.getSeparator().equals("\\")) {
-                DosFileAttributes attrs = null;
-                try {
-                    var view = Files.getFileAttributeView(nioPath, DosFileAttributeView.class);
-                    if (view != null) {
-                        attrs = view.readAttributes();
+                // java.io backend doesn't open DOS hidden files for writing, but java.nio.file opens.
+                // This code mimics the old behavior.
+                if (nioFs.getSeparator().equals("\\")) {
+                    DosFileAttributes attrs = null;
+                    try {
+                        var view = Files.getFileAttributeView(nioPath, DosFileAttributeView.class);
+                        if (view != null) {
+                            attrs = view.readAttributes();
+                        }
+                    } catch (IOException | UnsupportedOperationException _) {
+                        // Windows paths without DOS attributes? Not a problem in this case.
                     }
-                } catch (IOException | UnsupportedOperationException _) {
-                    // Windows paths without DOS attributes? Not a problem in this case.
+                    if (attrs != null && (attrs.isHidden() || attrs.isDirectory())) {
+                        throw new FileNotFoundException(file.getPath() + " (Access is denied)");
+                    }
                 }
-                if (attrs != null && (attrs.isHidden() || attrs.isDirectory())) {
-                    throw new FileNotFoundException(file.getPath() + " (Access is denied)");
-                }
+
+                Set<OpenOption> options = append
+                        ? Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+                        : Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
+                        this, nioFs, file, nioPath, options, channelCleanable);
+                channel = bundle.channel();
+                fd = bundle.fd();
+                externalChannelHolder = bundle.externalChannelHolder();
+            } else {
+                this.fd = new FileDescriptor();
+                fd.attach(this);
+
+                open(this.path, append);
+                FileCleanable.register(fd);   // open sets the fd, register the cleanup
+                externalChannelHolder = null;
             }
-
-            Set<OpenOption> options = append
-                    ? Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
-                    : Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
-                    this, nioFs, file, nioPath, options, channelCleanable);
-            channel = bundle.channel();
-            fd = bundle.fd();
-            externalChannelHolder = bundle.externalChannelHolder();
-        } else {
-            this.fd = new FileDescriptor();
-            fd.attach(this);
-
-            open(this.path, append);
-            FileCleanable.register(fd);   // open sets the fd, register the cleanup
-            externalChannelHolder = null;
-        }
-        if (DEBUG.writeTraces()) {
-            System.err.printf("Created a FileOutputStream for %s%n", file);
+            if (DEBUG.writeTraces()) {
+                System.err.printf("Created a FileOutputStream for %s%n", file);
+            }
         }
     }
 
