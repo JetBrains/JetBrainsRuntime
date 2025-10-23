@@ -49,16 +49,19 @@ public class ManglingFileSystem extends FileSystem {
 
     @Override
     public void close() throws IOException {
+        ManglingFileSystemProvider.triggerSporadicFileAccess();
         provider.defaultFs.close();
     }
 
     @Override
     public boolean isOpen() {
+        ManglingFileSystemProvider.triggerSporadicFileAccess();
         return provider.defaultFs.isOpen();
     }
 
     @Override
     public boolean isReadOnly() {
+        ManglingFileSystemProvider.triggerSporadicFileAccess();
         return provider.defaultFs.isReadOnly();
     }
 
@@ -69,6 +72,7 @@ public class ManglingFileSystem extends FileSystem {
 
     @Override
     public Iterable<Path> getRootDirectories() {
+        ManglingFileSystemProvider.triggerSporadicFileAccess();
         Iterable<Path> delegateRoots = provider.defaultFs.getRootDirectories();
         List<Path> result = new ArrayList<>();
         for (Path delegateRoot : delegateRoots) {
@@ -86,11 +90,13 @@ public class ManglingFileSystem extends FileSystem {
 
     @Override
     public Iterable<FileStore> getFileStores() {
+        ManglingFileSystemProvider.triggerSporadicFileAccess();
         return provider.defaultFs.getFileStores();
     }
 
     @Override
     public Set<String> supportedFileAttributeViews() {
+        ManglingFileSystemProvider.triggerSporadicFileAccess();
         return provider.defaultFs.supportedFileAttributeViews();
     }
 
