@@ -231,11 +231,11 @@ uint G1FullGCCompactionPoint::find_contiguous_before(G1HeapRegion* hr, uint num_
 }
 
 HeapWord* G1FullGCCompactionPoint::forward_compact_top(size_t size) {
-  assert(_current_region != NULL, "Must have been initialized");
+  assert(_current_region != nullptr, "Must have been initialized");
   // Ensure the object fit in the current region.
   while (!object_will_fit(size)) {
     if (!_compaction_region_iterator.has_next()) {
-      return NULL;
+      return nullptr;
     }
     switch_region();
   }
@@ -243,7 +243,7 @@ HeapWord* G1FullGCCompactionPoint::forward_compact_top(size_t size) {
 }
 
 void G1FullGCCompactionPoint::forward_dcevm(oop object, size_t size, bool force_forward) {
-  assert(_current_region != NULL, "Must have been initialized");
+  assert(_current_region != nullptr, "Must have been initialized");
 
   // Ensure the object fit in the current region.
   while (!object_will_fit(size)) {

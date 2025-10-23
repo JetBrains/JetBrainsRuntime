@@ -218,7 +218,7 @@ intptr_t jfieldIDWorkaround::encode_klass_hash(Klass* k, int offset) {
     DEBUG_ONLY(NoSafepointVerifier nosafepoint;)
 
     if (AllowEnhancedClassRedefinition) {
-      while (field_klass->old_version() != NULL) {
+      while (field_klass->old_version() != nullptr) {
         field_klass = field_klass->old_version();
       }
     }
@@ -242,7 +242,7 @@ bool jfieldIDWorkaround::klass_hash_ok(Klass* k, jfieldID id) {
   intptr_t klass_hash = (as_uint >> klass_shift) & klass_mask;
 
   if (AllowEnhancedClassRedefinition) {
-    while (k->old_version() != NULL) {
+    while (k->old_version() != nullptr) {
       k = k->old_version();
     }
   }

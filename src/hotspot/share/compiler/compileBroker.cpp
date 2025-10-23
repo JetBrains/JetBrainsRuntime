@@ -2353,7 +2353,7 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
       }
       if (AllowEnhancedClassRedefinition) {
         // Skip redefined methods
-        if (task->method()->is_old() || task->method()->method_holder()->new_version() != NULL) {
+        if (task->method()->is_old() || task->method()->method_holder()->new_version() != nullptr) {
           ci_env.record_method_not_compilable("redefined method", true);
         } else {
           comp->compile_method(&ci_env, target, osr_bci, true, directive);

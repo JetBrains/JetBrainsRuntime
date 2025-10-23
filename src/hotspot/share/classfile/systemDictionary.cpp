@@ -1360,7 +1360,7 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* ol
 
   ClassLoaderData* loader_data = k->class_loader_data();
   assert(loader_data->class_loader() == class_loader(), "they must be the same");
-  bool is_redefining = (old_klass != NULL);
+  bool is_redefining = (old_klass != nullptr);
 
   // Bootstrap and other parallel classloaders don't acquire a lock,
   // they use placeholder token.
@@ -1487,7 +1487,7 @@ InstanceKlass* SystemDictionary::find_or_define_helper(Symbol* class_name, Handl
     }
   }
 
-  define_instance_class(k, NULL, class_loader, THREAD);
+  define_instance_class(k, nullptr, class_loader, THREAD);
 
   // definer must notify any waiting threads
   {
@@ -1527,7 +1527,7 @@ InstanceKlass* SystemDictionary::find_or_define_instance_class(Symbol* class_nam
 
 // (DCEVM) - remove from klass hierarchy
 void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
-    assert(k != NULL, "just checking");
+    assert(k != nullptr, "just checking");
 
   // remove receiver from sibling list
   k->remove_from_sibling_list();
