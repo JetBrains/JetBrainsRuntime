@@ -166,6 +166,7 @@ public class ManglingPath implements Path {
 
     @Override
     public Path toRealPath(LinkOption... options) throws IOException {
+        ManglingFileSystemProvider.triggerSporadicFileAccess();
         return new ManglingPath(fileSystem, delegate.toRealPath(options));
     }
 
