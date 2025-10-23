@@ -156,37 +156,40 @@ public class FileInputStream extends InputStream
         }
         path = file.getPath();
 
-        java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
-        Path nioPath = null;
-        if (nioFs != null && path != null) {
-            try {
-                nioPath = nioFs.getPath(path);
-                isRegularFile = Files.isRegularFile(nioPath);
-            } catch (InvalidPathException _) {
-                // Nothing.
+        try (var guard = IoOverNio.RecursionGuard.create(FileInputStream.class)) {
+            IoOverNio.blackhole(guard);
+            java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
+            Path nioPath = null;
+            if (nioFs != null && path != null) {
+                try {
+                    nioPath = nioFs.getPath(path);
+                    isRegularFile = Files.isRegularFile(nioPath);
+                } catch (InvalidPathException _) {
+                    // Nothing.
+                }
             }
-        }
 
-        // Two significant differences between the legacy java.io and java.nio.files:
-        // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
-        // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
-        useNio = nioPath != null && isRegularFile == Boolean.TRUE;
+            // Two significant differences between the legacy java.io and java.nio.files:
+            // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
+            // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
+            useNio = nioPath != null && isRegularFile == Boolean.TRUE;
 
-        if (useNio) {
-            var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
-                    this, nioFs, file, nioPath, Set.of(StandardOpenOption.READ), channelCleanable);
-            channel = bundle.channel();
-            fd = bundle.fd();
-            externalChannelHolder = bundle.externalChannelHolder();
-        } else {
-            fd = new FileDescriptor();
-            fd.attach(this);
-            open(path);
-            FileCleanable.register(fd);       // open set the fd, register the cleanup
-            externalChannelHolder = null;
-        }
-        if (DEBUG.writeTraces()) {
-            System.err.printf("Created a FileInputStream for %s%n", file);
+            if (useNio) {
+                var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
+                        this, nioFs, file, nioPath, Set.of(StandardOpenOption.READ), channelCleanable);
+                channel = bundle.channel();
+                fd = bundle.fd();
+                externalChannelHolder = bundle.externalChannelHolder();
+            } else {
+                fd = new FileDescriptor();
+                fd.attach(this);
+                open(path);
+                FileCleanable.register(fd);       // open set the fd, register the cleanup
+                externalChannelHolder = null;
+            }
+            if (DEBUG.writeTraces()) {
+                System.err.printf("Created a FileInputStream for %s%n", file);
+            }
         }
     }
 

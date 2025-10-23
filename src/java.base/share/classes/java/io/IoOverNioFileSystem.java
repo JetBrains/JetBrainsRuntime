@@ -273,10 +273,10 @@ class IoOverNioFileSystem extends FileSystem {
         try {
             // This tricky thread local variable allows specifying an argument for sun.nio.ch.FileChannelImpl.<init>
             // which is not present in the NIO public API and which is not easy to specify another way.
-            IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(owner);
+            IoOverNio.ParentForFileChannelImplHolder.set(owner);
             return initializeStreamsUsingNio0(owner, nioFs, file, nioPath, optionsForChannel, channelCleanable);
         } finally {
-            IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
+            IoOverNio.ParentForFileChannelImplHolder.remove();
         }
     }
 
@@ -876,7 +876,8 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public boolean delete(File f) {
-        try {
+        try (var guard = IoOverNio.RecursionGuard.create("IoOverNioFileSystem.delete")) {
+            IoOverNio.blackhole(guard);
             boolean result = delete0(f, true);
             if (DEBUG.writeTraces()) {
                 System.err.printf("IoOverNioFileSystem.delete(%s) = %b%n", f, result);
