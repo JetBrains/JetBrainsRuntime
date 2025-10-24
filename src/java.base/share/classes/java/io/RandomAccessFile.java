@@ -258,8 +258,7 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
     }
 
     private RandomAccessFile(File file, String mode, boolean openAndDelete)
-        throws FileNotFoundException
-    {
+        throws FileNotFoundException {
         String name = (file != null ? file.getPath() : null);
         int imode = -1;
 
@@ -284,9 +283,9 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             imode |= O_TEMPORARY;
         if (imode < 0)
             throw new IllegalArgumentException("Illegal mode \"" + mode
-                                               + "\" must be one of "
-                                               + "\"r\", \"rw\", \"rws\","
-                                               + " or \"rwd\"");
+                    + "\" must be one of "
+                    + "\"r\", \"rw\", \"rws\","
+                    + " or \"rwd\"");
         @SuppressWarnings("removal")
         SecurityManager security = System.getSecurityManager();
         if (security != null) {
@@ -302,47 +301,48 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
             throw new FileNotFoundException("Invalid file path");
         }
         path = name;
-        FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
-        Path nioPath = null;
-        if (nioFs != null) {
-            try {
-                nioPath = nioFs.getPath(path);
-            } catch (InvalidPathException ignored) {
-                // Nothing.
+        try (var guard = IoOverNio.RecursionGuard.create(RandomAccessFile.class)) {
+            IoOverNio.blackhole(guard);
+            FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
+            Path nioPath = null;
+            if (nioFs != null) {
+                try {
+                    nioPath = nioFs.getPath(path);
+                } catch (InvalidPathException ignored) {
+                    // Nothing.
+                }
             }
-        }
 
-        // Two significant differences between the legacy java.io and java.nio.files:
-        // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
-        // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
-        boolean isRegularFile;
-        try {
-            isRegularFile = nioPath != null &&
-                    Files.readAttributes(nioPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).isRegularFile();
-        }
-        catch (NoSuchFileException ignored) {
-            isRegularFile = true;
-        }
-        catch (IOException ignored) {
-            isRegularFile = false;
-        }
+            // Two significant differences between the legacy java.io and java.nio.files:
+            // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
+            // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
+            boolean isRegularFile;
+            try {
+                isRegularFile = nioPath != null &&
+                        Files.readAttributes(nioPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).isRegularFile();
+            } catch (NoSuchFileException ignored) {
+                isRegularFile = true;
+            } catch (IOException ignored) {
+                isRegularFile = false;
+            }
 
-        useNio = nioPath != null && isRegularFile;
-        if (useNio) {
-            var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
-                    this, nioFs, file, nioPath, optionsForChannel(imode), channelCleanable);
-            channel = bundle.channel();
-            fd = bundle.fd();
-            externalChannelHolder = bundle.externalChannelHolder();
-        } else {
-            fd = new FileDescriptor();
-            fd.attach(this);
-            open(name, imode);
-            FileCleanable.register(fd);   // open sets the fd, register the cleanup
-            externalChannelHolder = null;
-        }
-        if (DEBUG.writeTraces()) {
-            System.err.printf("Created a RandomAccessFile for %s%n", file);
+            useNio = nioPath != null && isRegularFile;
+            if (useNio) {
+                var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
+                        this, nioFs, file, nioPath, optionsForChannel(imode), channelCleanable);
+                channel = bundle.channel();
+                fd = bundle.fd();
+                externalChannelHolder = bundle.externalChannelHolder();
+            } else {
+                fd = new FileDescriptor();
+                fd.attach(this);
+                open(name, imode);
+                FileCleanable.register(fd);   // open sets the fd, register the cleanup
+                externalChannelHolder = null;
+            }
+            if (DEBUG.writeTraces()) {
+                System.err.printf("Created a RandomAccessFile for %s%n", file);
+            }
         }
     }
 
