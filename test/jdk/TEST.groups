@@ -851,6 +851,7 @@ jdk_awt_wayland = \
     -java/awt/Debug \
     -java/awt/Dialog \
     -java/awt/dnd \
+    -java/awt/event/ClickEventsTest.java \
     -java/awt/event/ComponentEvent/ComponentItemEventTest.java \
     -java/awt/event/ComponentEvent/ListItemEventsTest.java \
     -java/awt/event/ComponentEvent/MovedResizedTardyEventTest/MovedResizedTardyEventTest.java \
@@ -884,6 +885,8 @@ jdk_awt_wayland = \
     -java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java \
     -java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java \
     -java/awt/event/MouseEvent/DisabledComponents/DisabledComponentsTest.java \
+    -java/awt/event/MouseEvent/DragMouseEventTest.java \
+    -java/awt/event/MouseEvent/DragToLightweightTest.java \
     -java/awt/event/MouseEvent/EnterAsGrabbedEvent/EnterAsGrabbedEvent.java \
     -java/awt/event/MouseEvent/EventTimeInFuture/EventTimeInFuture.java \
     -java/awt/event/MouseEvent/FrameMouseEventAbsoluteCoordsTest/FrameMouseEventAbsoluteCoordsTest.java \
@@ -891,6 +894,10 @@ jdk_awt_wayland = \
     -java/awt/event/MouseEvent/MouseButtonsTest/MouseButtonsTest.java \
     -java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java \
     -java/awt/event/MouseEvent/MouseEnterExitTest.java \
+    -java/awt/event/MouseEvent/MouseEventsDuringDrag.java \
+    -java/awt/event/MouseEvent/MouseEnterTest.java \
+    -java/awt/event/MouseEvent/MouseModifierTest.java \
+    -java/awt/event/MouseEvent/MouseRButTest.java \
     -java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java \
     -java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.java \
     -java/awt/event/MouseEvent/SmoothWheel/SmoothWheel.java \
@@ -903,6 +910,7 @@ jdk_awt_wayland = \
     -java/awt/event/SequencedEvent/MultipleContextsFunctionalTest.java \
     -java/awt/event/StressTest/MouseAndKeyEventStressTest.java \
     -java/awt/event/TextEvent \
+    -java/awt/event/WindowActivatedEventTest.java \
     -java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java \
     -java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.java \
     -java/awt/EventDispatchThread/PropertyPermissionOnEDT/PropertyPermissionOnEDT.java \
@@ -1284,6 +1292,8 @@ jdk_swing_wayland= \
     -javax/swing/JTable/6777378/bug6777378.java \
     -javax/swing/JTable/7055065/bug7055065.java \
     -javax/swing/JTable/8236907/LastVisibleRow.java \
+    -javax/swing/JTable/bug4222153.java \
+    -javax/swing/JTable/Tab.java \
     -javax/swing/JTable/TestJTableGridReset.java \
     -javax/swing/JTableHeader/4473075/bug4473075.java \
     -javax/swing/JTableHeader/6884066/bug6884066.java \
@@ -1311,6 +1321,7 @@ jdk_swing_wayland= \
     -javax/swing/JTree/6505523/bug6505523.java \
     -javax/swing/JTree/6578666/bug6578666.java \
     -javax/swing/JTree/8003400/Test8003400.java \
+    -javax/swing/JTree/bug4618767.java \
     -javax/swing/JTree/TestTreeBackgroundColor.java \
     -javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucent.java \
     -javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java \
