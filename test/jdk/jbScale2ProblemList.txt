@@ -158,6 +158,9 @@ java/awt/image/multiresolution/MultiResolutionIcon/MultiResIconTest.java nobug g
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java nobug generic-all
 java/awt/image/multiresolution/MultiResolutionTrayIconTest/MultiResolutionTrayIconTest.java nobug generic-all
 java/awt/image/multiresolution/MultiresolutionIconTest.java nobug generic-all
+
+javax/accessibility/AccessibilityProvider/basic.sh nobug generic-all # the test does not receive any options
+
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java nobug generic-all
 javax/swing/GraphicsConfigNotifier/TestSingleScreenGConfigNotify.java nobug generic-all
 javax/swing/JButton/8151303/PressedIconTest.java nobug generic-all
