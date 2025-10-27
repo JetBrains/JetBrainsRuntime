@@ -1032,7 +1032,7 @@ javax/swing/JButton/8151303/PressedIconTest.java JBR-5210 windows-all
 javax/swing/JButton/bug4323121.java JBR-8924 windows-all
 javax/swing/JButton/bug4490179.java JBR-8925 windows-all
 javax/swing/JButton/PressedButtonRightClickTest.java JBR-5210 windows-all
-javax/swing/JButton/TestMnemonicAction.java JBR-6508 windows-all,linux-all
+javax/swing/JButton/TestMnemonicAction.java JBR-6508 windows-all,linux-all,macosx-all
 javax/swing/JColorChooser/Test6524757.java JBR-5210 windows-all
 javax/swing/JColorChooser/Test6827032.java JBR-5210 windows-all
 javax/swing/JComboBox/4199622/bug4199622.java JBR-6751 winows-x64

@@ -1156,6 +1156,7 @@ jdk_swing_wayland= \
     -javax/swing/JEditorPane/4666101/JEditorPaneNavigationTest.java \
     -javax/swing/JEditorPane/6917744/bug6917744.java \
     -javax/swing/JEditorPane/8195095/ImageViewTest.java \
+    -javax/swing/JEditorPane/bug4325606.java \
     -javax/swing/JEditorPane/bug4694598.java \
     -javax/swing/JEditorPane/TestBrowserBGColor.java \
     -javax/swing/JFileChooser/4150029/bug4150029.java \
