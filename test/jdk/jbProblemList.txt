@@ -888,6 +888,7 @@ java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-
 
 java/nio/channels/FileChannel/LargeGatheringWrite.java JBR-9316 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 
+java/nio/channels/Selector/DeferredClose/DeferredCloseTest.java JBR-9546 windows-all
 java/nio/channels/Selector/Wakeup.java                          6963118 windows-all
 
 java/nio/file/Files/Misc.java JBR-8969 windows-all
@@ -1117,6 +1118,7 @@ javax/swing/JEditorPane/bug4714674.java JBR-5810 windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java JBR-912 windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest.java JBR-912 windows-all
 javax/swing/JFileChooser/4524490/bug4524490.java JBR-5846 windows-all
+javax/swing/JFileChooser/4847375/bug4847375.java JBR-8397 windows-all
 javax/swing/JFileChooser/6396844/TwentyThousandTest.java 8198003 generic-all
 javax/swing/JFileChooser/8021253/bug8021253.java JBR-107 windows-all
 javax/swing/JFileChooser/8041694/bug8041694.java JBR-5210 windows-all
@@ -1290,6 +1292,7 @@ jdk/incubator/vector/LoadJsvmlTest.java                         8305390 windows-
 # jdk_jfr
 
 jdk/jfr/event/compiler/TestCodeSweeper.java                     8225209 generic-all
+jdk/jfr/event/oldobject/TestShenandoah.java                     8342951 generic-all
 jdk/jfr/event/runtime/TestDumpReason.java  JBR-8780 windows-aarch64
 jdk/jfr/event/runtime/TestShutdownEvent.java JBR-8781 windows-aarch64
 jdk/jfr/jvm/TestDumpOnCrash.java JBR-8780 windows-aarch64
