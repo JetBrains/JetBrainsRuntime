@@ -13,18 +13,25 @@ and bugfixes not yet present in OpenJDK.
 > the [OpenJDK master](https://github.com/openjdk/jdk/tree/master) branch.
 >
  Release builds are based on these branches:
- * [jbr11](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr11) (JDK 11)
- * [jbr17](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr17) (JDK 17)
+ * [jbr25](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr25) (JDK 25)
  * [jbr21](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr21) (JDK 21)
-
+ * [jbr17](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr17) (JDK 17)
+ * [jbr11](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr11) (JDK 11)
+ 
 Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. The full list
 can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntime/releases).
+
+## Releases based on JDK 25
+
+| IDE Version | Latest JBR                                                                                              | Date Released |
+|-------------|---------------------------------------------------------------------------------------------------------|---------------|
+| 2025.3      | [25-b176.4](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25b176.4)            | 23-Oct-2025   |
 
 ## Releases based on JDK 21
 
 | IDE Version | Latest JBR                                                                                              | Date Released |
 |-------------|---------------------------------------------------------------------------------------------------------|---------------|
-| 2025.3      | [21.0.8-b1163.62](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.8b1163.62)| 20-Oct-2025   |
+| 2025.3      | [21.0.8-b1163.69](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.8b1163.69)| 27-Oct-2025   |
 | 2025.2      | [21.0.8-b1038.73](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.8b1038.73)| 13-Oct-2025   |
 | 2025.1      | [21.0.7-b895.130](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.7b895.130)| 15-May-2025   |
 | 2024.3      | [21.0.6-b631.52](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.7b631.52)  | 15-May-2025   |
