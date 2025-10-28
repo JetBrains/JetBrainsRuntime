@@ -311,11 +311,11 @@ static const struct SymbolicHotKey defaultSymbolicHotKeys[] = {
     [Shortcut_FullScreenTileRight] = { "FullScreenTileRight", "Windows: Full-Screen Tile Right", YES, 65535, 65535, 0, 15, 4 },
 };
 
-static const int numSymbolicHotkeys = sizeof(defaultSymbolicHotKeys) / sizeof(defaultSymbolicHotKeys[0]);
+#define NUM_SYMBOLIC_HOTKEYS (sizeof(defaultSymbolicHotKeys) / sizeof(defaultSymbolicHotKeys[0]))
 
 static struct SystemHotkeyState {
     bool symbolicHotkeysFilled;
-    struct SymbolicHotKey currentSymbolicHotkeys[numSymbolicHotkeys];
+    struct SymbolicHotKey currentSymbolicHotkeys[NUM_SYMBOLIC_HOTKEYS];
 
     bool initialized;
     bool enabled;
@@ -398,7 +398,7 @@ static void visitServicesShortcut(Visitor visitorBlock, NSString * key_equivalen
     visitorBlock(-1, keyChar.UTF8String, modifiers, desc.UTF8String, -1, NULL);
 }
 
-static void readAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymbolicHotkeys]) {
+static void readAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[NUM_SYMBOLIC_HOTKEYS]) {
     // Called from the main thread
 
     @try {
@@ -425,7 +425,7 @@ static void readAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymbolicHo
             return;
         }
 
-        memcpy(hotkeys, defaultSymbolicHotKeys, numSymbolicHotkeys * sizeof(struct SymbolicHotKey));
+        memcpy(hotkeys, defaultSymbolicHotKeys, NUM_SYMBOLIC_HOTKEYS * sizeof(struct SymbolicHotKey));
 
         for (id keyObj in hkObj) {
             if (![keyObj isKindOfClass:[NSString class]]) {
@@ -438,7 +438,7 @@ static void readAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymbolicHo
             int uid = [hkNumber intValue];
 
             // Ignore hotkeys out of range, as well as 0, which is the "invalid value" for intValue
-            if (uid <= 0 || uid >= numSymbolicHotkeys) {
+            if (uid <= 0 || uid >= NUM_SYMBOLIC_HOTKEYS) {
                 continue;
             }
 
@@ -512,7 +512,7 @@ static void readAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymbolicHo
 }
 
 static void updateAppleSymbolicHotkeysCache() {
-    struct SymbolicHotKey hotkeys[numSymbolicHotkeys];
+    struct SymbolicHotKey hotkeys[NUM_SYMBOLIC_HOTKEYS];
     readAppleSymbolicHotkeys(hotkeys);
 
     pthread_mutex_lock(&state.mutex);
@@ -521,10 +521,10 @@ static void updateAppleSymbolicHotkeysCache() {
     pthread_mutex_unlock(&state.mutex);
 }
 
-static void iterateAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymbolicHotkeys], Visitor visitorBlock) {
+static void iterateAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[NUM_SYMBOLIC_HOTKEYS], Visitor visitorBlock) {
     const NSOperatingSystemVersion macOSVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
 
-    for (int uid = 0; uid < numSymbolicHotkeys; ++uid) {
+    for (int uid = 0; uid < NUM_SYMBOLIC_HOTKEYS; ++uid) {
         struct SymbolicHotKey* hotkey = &hotkeys[uid];
 
         if (!hotkey->enabled) {
@@ -646,12 +646,12 @@ static bool ensureInitializedAndEnabled() {
     return true;
 }
 
-static void readAppleSymbolicHotkeysCached(struct SymbolicHotKey hotkeys[numSymbolicHotkeys]) {
-    memset(hotkeys, 0, sizeof(struct SymbolicHotKey) * numSymbolicHotkeys);
+static void readAppleSymbolicHotkeysCached(struct SymbolicHotKey hotkeys[NUM_SYMBOLIC_HOTKEYS]) {
+    memset(hotkeys, 0, sizeof(struct SymbolicHotKey) * NUM_SYMBOLIC_HOTKEYS);
 
     pthread_mutex_lock(&state.mutex);
     if (state.symbolicHotkeysFilled) {
-        memcpy(hotkeys, state.currentSymbolicHotkeys, sizeof(struct SymbolicHotKey) * numSymbolicHotkeys);
+        memcpy(hotkeys, state.currentSymbolicHotkeys, sizeof(struct SymbolicHotKey) * NUM_SYMBOLIC_HOTKEYS);
     }
     pthread_mutex_unlock(&state.mutex);
 }
@@ -661,7 +661,7 @@ static void readSystemHotkeysImpl(Visitor visitorBlock) {
         return;
     }
 
-    struct SymbolicHotKey hotkeys[numSymbolicHotkeys];
+    struct SymbolicHotKey hotkeys[NUM_SYMBOLIC_HOTKEYS];
     readAppleSymbolicHotkeysCached(hotkeys);
 
     iterateAppleSymbolicHotkeys(hotkeys, visitorBlock);
