@@ -818,7 +818,6 @@ java/awt/Modal/WsDisabledStyle/CloseBlocker/CloseBlocker.java 7187741 linux-all,
 java/awt/xembed/server/TestXEmbedServerJava.java 8001150,8004031 generic-all
 java/awt/Modal/PrintDialogsTest/PrintDialogsTest.java 8068378 generic-all
 java/awt/dnd/DnDFileGroupDescriptor/DnDFileGroupDescriptor.html 8080185 macosx-all,linux-all
-java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java 8162380 generic-all
 java/awt/image/VolatileImage/VolatileImageConfigurationTest.java 8171069 macosx-all,linux-all
 java/awt/Modal/InvisibleParentTest/InvisibleParentTest.java 8172245 linux-all
 java/awt/Frame/FrameStateTest/FrameStateTest.java 8203920 macosx-all,linux-all
