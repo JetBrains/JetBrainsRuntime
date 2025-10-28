@@ -116,7 +116,8 @@ static void displaycb_handle
 (CGDirectDisplayID displayId, CGDisplayChangeSummaryFlags flags, void *userInfo)
 {
 AWT_ASSERT_APPKIT_THREAD;
-JNI_COCOA_ENTER();
+JNIEnv *env = [ThreadUtilities getJNIEnv];
+JNI_COCOA_ENTER(env);
 
     if (TRACE_DISPLAY_CALLBACKS) {
         NSLog(@"CGraphicsEnv::displaycb_handle(displayId: %d, flags: %d, userInfo: %p)",
@@ -152,7 +153,6 @@ JNI_COCOA_ENTER();
                                                      block:^()
         {
             @try {
-                JNIEnv *env = [ThreadUtilities getJNIEnv];
                 jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
                 if (graphicsEnv == NULL) return; // ref already GC'd
                 DECLARE_CLASS(jc_CGraphicsEnvironment, "sun/awt/CGraphicsEnvironment");
@@ -173,7 +173,6 @@ JNI_COCOA_ENTER();
 
     // braces to reduce variable scope
     {
-        JNIEnv *env = [ThreadUtilities getJNIEnv];
         jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
         if (graphicsEnv == NULL) return; // ref already GC'd
         DECLARE_CLASS(jc_CGraphicsEnvironment, "sun/awt/CGraphicsEnvironment");
@@ -184,7 +183,7 @@ JNI_COCOA_ENTER();
         (*env)->DeleteLocalRef(env, graphicsEnv);
         CHECK_EXCEPTION();
     }
-JNI_COCOA_EXIT();
+JNI_COCOA_EXIT(env);
 }
 
 /*

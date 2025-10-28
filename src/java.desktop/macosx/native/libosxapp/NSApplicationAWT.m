@@ -356,9 +356,9 @@ AWT_ASSERT_APPKIT_THREAD;
     do {
         @try {
             [app run];
-        } @catch (NSException* e) {
-            NSLog(@"Apple AWT Startup Exception: %@", [e description]);
-            NSLog(@"Apple AWT Startup Exception callstack: %@", [e callStackSymbols]);
+        } @catch (NSException* exception) {
+            NSLog(@"Apple AWT Startup Exception: %@\nCallstack: %@",
+                [exception description], [exception callStackSymbols]);
             NSLog(@"Apple AWT Restarting Native Event Thread");
 
             [app stop:app];
@@ -408,6 +408,7 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
 
 - (void)sendEvent:(NSEvent *)event
 {
+    JNI_COCOA_ENTER()
     if ([event type] == NSApplicationDefined
             && TS_EQUAL([event timestamp], dummyEventTimestamp)
             && (short)[event subtype] == NativeSyncQueueEvent
@@ -428,6 +429,8 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
     } else {
         [super sendEvent:event];
     }
+    /* report a fatal failure if any exception was raised: */
+    JNI_COCOA_EXIT_FATAL("NSApplicationAWT.sendEvent failed");
 }
 
 /*

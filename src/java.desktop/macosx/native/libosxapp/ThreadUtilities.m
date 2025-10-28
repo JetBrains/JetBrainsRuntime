@@ -93,8 +93,8 @@ static atomic_long mainThreadActionId = 0L;
 static NSUncaughtExceptionHandler* _previousNSUncaughtExceptionHandler = nil;
 
 static void AWT_NSUncaughtExceptionHandler(NSException* exception) {
-    NSLog(@"Apple AWT Internal Exception: %@\ntrace: %@",
-          [exception description], [exception callStackSymbols]);
+    NSLog(@"Apple AWT Internal Exception: %@\nCallstack: %@",
+        [exception description], [exception callStackSymbols]);
     // call previous exception handler (may abort):
     if (_previousNSUncaughtExceptionHandler != nil) {
         _previousNSUncaughtExceptionHandler(exception);
@@ -221,9 +221,13 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 + (JNIEnv*)getJNIEnvUncached {
-    JNIEnv *env = NULL;
-    attachCurrentThread((void **)&env);
-    return env;
+    if ([NSThread isMainThread] && (appKitEnv != NULL)) {
+        return appKitEnv;
+    } else {
+        JNIEnv *env = NULL;
+        attachCurrentThread((void **)&env);
+        return env;
+    }
 }
 
 + (void)detachCurrentThread {
@@ -284,6 +288,10 @@ AWT_ASSERT_APPKIT_THREAD;
         blockCopy();
     } @finally {
         Block_release(blockCopy);
+#if (CHECK_PENDING_EXCEPTION == 1)
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        __JNI_CHECK_PENDING_EXCEPTION(env);
+#endif
     }
 }
 
@@ -729,17 +737,27 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 #pragma clang diagnostic pop
         va_end(args);
 
+        BOOL logged = NO;
         const jstring javaString = (*env)->NewStringUTF(env, buf);
-        if ((*env)->ExceptionCheck(env)) {
-            // fallback:
-            NSLog(@"%s\n", buf); \
-        } else {
-            JNU_CHECK_EXCEPTION(env);
+
+        if ((javaString != NULL) && (*env)->ExceptionCheck(env) == JNI_FALSE) {
+            // call PlatformLogger.warning(javaString):
             (*env)->CallVoidMethod(env, loggerObject, midWarn, javaString);
-            CHECK_EXCEPTION();
-            return;
+
+            // derived from CHECK_EXCEPTION but NO NSException raised:
+            if ((*env)->ExceptionCheck(env)) {
+                // fallback:
+                (*(env))->ExceptionDescribe(env);
+                NSLog(@"%@", [NSThread callStackSymbols]);
+            } else {
+                logged = YES;
+            }
         }
         (*env)->DeleteLocalRef(env, javaString);
+        if (!logged) {
+            // fallback:
+            NSLog(@"%s\n", buf);
+        }
     }
 }
 
@@ -808,13 +826,16 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 - (void)processQueuedCallbacks {
     const NSUInteger count = [self.queue count];
     if (count != 0) {
+#if (CHECK_PENDING_EXCEPTION == 1)
+        JNIEnv *env = [ThreadUtilities getJNIEnv];
+#endif
         for (NSUInteger i = 0; i < count; i++) {
             void (^blockCopy)(void) = (void (^)())[self.queue objectAtIndex: i];
             // handle any exception:
             JNI_COCOA_ENTER();
             // invoke callback:
             [ThreadUtilities invokeBlockCopy:blockCopy];
-            JNI_COCOA_EXIT();
+            JNI_COCOA_EXIT(env); // do not crash (appKit will be corrupted)
         }
         // reset queue anyway:
         [self reset];

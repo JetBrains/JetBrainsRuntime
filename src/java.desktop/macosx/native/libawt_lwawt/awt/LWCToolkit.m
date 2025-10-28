@@ -218,8 +218,8 @@ static BOOL inDoDragDropLoop;
 
 void setBusy(BOOL busy) {
     AWT_ASSERT_APPKIT_THREAD;
-    JNI_COCOA_ENTER();
     JNIEnv *env = [ThreadUtilities getJNIEnv];
+    JNI_COCOA_ENTER(env);
     DECLARE_CLASS(jc_AWTAutoShutdown, "sun/awt/AWTAutoShutdown");
 
     if (busy) {
@@ -230,7 +230,7 @@ void setBusy(BOOL busy) {
         (*env)->CallStaticVoidMethod(env, jc_AWTAutoShutdown, jm_notifyFreeMethod);
     }
     CHECK_EXCEPTION();
-    JNI_COCOA_EXIT();
+    JNI_COCOA_EXIT(env);
 }
 
 static void setUpAWTAppKit(BOOL installObservers)
