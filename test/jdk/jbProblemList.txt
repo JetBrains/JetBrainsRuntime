@@ -163,6 +163,7 @@ java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509 generic
 java/awt/Frame/HideMaximized/HideMaximized.java JBR-8310 linux-all
 java/awt/Frame/Iconify/IconifyTest.java JBR-8836 linux-all
 java/awt/Frame/InitialIconifiedTest.java 7144049,8203920 macosx-all,linux-all
+java/awt/Frame/InitialMaximizedTest/InitialMaximizedTest.java JBR-8093 macosx-all
 java/awt/Frame/MaximizeUndecoratedTest.java JBR-8064 linux-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java JBR-7509,JBR-8889 macosx-15.4.1,macosx-15.5,macosx-15.6,macosx-15.6.1,macosx-15.7,macosx-all
 java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java JBR-7786,JBR-7947 linux-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,macosx-15.6,macosx-15.6.1,macosx-15.7,macosx-26.0
@@ -830,9 +831,9 @@ java/lang/management/MemoryMXBean/Pending.java                  8158837 generic-
 java/lang/management/MemoryMXBean/PendingAllGC.sh               8158837 generic-all
 java/lang/management/ThreadMXBean/ThreadMXBeanStateTest.java    8247426 generic-all
 
-sun/management/jdp/JdpDefaultsTest.java                         8241865 linux-aarch64,macosx-all
-sun/management/jdp/JdpJmxRemoteDynamicPortTest.java             8241865 macosx-all
-sun/management/jdp/JdpSpecificAddressTest.java                  8241865 macosx-all
+sun/management/jdp/JdpDefaultsTest.java                         8241865,JBR-9229 linux-aarch64,macosx-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
+sun/management/jdp/JdpJmxRemoteDynamicPortTest.java             8241865,JBR-9229 macosx-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
+sun/management/jdp/JdpSpecificAddressTest.java                  8241865,JBR-9229 macosx-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64
 
 sun/management/jmxremote/bootstrap/RmiBootstrapTest.java#id0 JBR-8507 windows-all
 sun/management/jmxremote/bootstrap/RmiBootstrapTest.java#id1 JBR-8507 windows-all
