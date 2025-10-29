@@ -143,7 +143,7 @@ java/awt/Focus/ComponentLostFocusTest.java JBR-7909 generic-all
 java/awt/Focus/EmptyWindowKeyTest.java JBR-7913 windows-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java JBR-5178 windows-all
-java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java JBR-5809,JBR-9214 linux-all,macosx-26.0
+java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java JBR-5809 linux-all
 java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayoutTraversalTest.java JBR-5210 windows-all
 java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
