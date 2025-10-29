@@ -52,6 +52,7 @@ import sun.awt.X11.XToolkit;
 import sun.java2d.opengl.GLXGraphicsConfig;
 import sun.java2d.pipe.Region;
 import sun.java2d.xr.XRGraphicsConfig;
+import sun.security.action.GetPropertyAction;
 
 /**
  * This is an implementation of a GraphicsDevice object for a single
@@ -404,10 +405,11 @@ public final class X11GraphicsDevice extends GraphicsDevice
      *   - the Xrandr extension is present
      *   - the necessary Xrandr functions were loaded successfully
      */
+    @SuppressWarnings("removal")
     private static synchronized boolean isXrandrExtensionSupported() {
         if (xrandrExtSupported == null) {
             boolean useOldConfigDisplayMode =
-                    Boolean.getBoolean("awt.x11useOldConfigDisplayMode");
+                    GetPropertyAction.privilegedGetBooleanProp("awt.x11useOldConfigDisplayMode", false, null);
             xrandrExtSupported = initXrandrExtension(useOldConfigDisplayMode);
         }
         return xrandrExtSupported;
