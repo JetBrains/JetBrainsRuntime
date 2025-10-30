@@ -58,6 +58,9 @@
 #define PRAGMA_STRINGOP_TRUNCATION_IGNORED PRAGMA_DISABLE_GCC_WARNING("-Wstringop-truncation")
 #endif
 
+#define PRAGMA_NONNULL_IGNORED \
+  PRAGMA_DISABLE_GCC_WARNING("-Wnonnull")
+
 #if defined(__clang_major__) && \
       (__clang_major__ >= 4 || \
       (__clang_major__ >= 3 && __clang_minor__ >= 1)) || \
