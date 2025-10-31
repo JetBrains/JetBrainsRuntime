@@ -505,8 +505,7 @@ static void readAppleSymbolicHotkeys(struct SymbolicHotKey hotkeys[numSymbolicHo
             hotkeys[uid].key = p1 == nil ? 0xFFFF : [p1 intValue];
             hotkeys[uid].modifiers = p2 == nil ? 0 : [p2 intValue];
         }
-    }
-    @catch (NSException *exception) {
+    } @catch (NSException *exception) {
         NSLog(@"readCachedAppleSymbolicHotkeys: catched exception, reason '%@'", exception.reason);
     }
 }
@@ -623,8 +622,7 @@ static void readPbsHotkeys(Visitor visitorBlock) {
             }
             visitServicesShortcut(visitorBlock, defParams.key_equivalent, key);
         }
-    }
-    @catch (NSException *exception) {
+    } @catch (NSException *exception) {
         NSLog(@"readPbsHotkeys: catched exception, reason '%@'", exception.reason);
     }
 }

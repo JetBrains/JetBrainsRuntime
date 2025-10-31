@@ -67,7 +67,7 @@ static jclass sjc_CAccessibility = NULL;
     jobject axComponent = (*env)->CallStaticObjectMethod(env, sjc_CAccessibility,
                                                              sjm_getCurrentAccessiblePopupMenu,
                                                              fAccessible, fComponent);
-
+    CHECK_EXCEPTION();
     CommonComponentAccessibility *currentElement = [CommonComponentAccessibility createWithAccessible:axComponent
                                                             withEnv:env withView:self->fView isCurrent:YES];
 

@@ -83,7 +83,7 @@ BOOL MTLLayer_isM2CPU() {
 BOOL MTLLayer_isSpansDisplays() {
     static int spansDisplays = -1;
     if (spansDisplays == -1) {
-        NSUserDefaults * defaults = [NSUserDefaults standardUserDefaults];
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
         NSDictionary<NSString*,id> *spaces = [defaults persistentDomainForName:@"com.apple.spaces"];
         spansDisplays = [(NSNumber*)[spaces valueForKey:@"spans-displays"] intValue];
         J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_isSpansDisplays: %d", spansDisplays);

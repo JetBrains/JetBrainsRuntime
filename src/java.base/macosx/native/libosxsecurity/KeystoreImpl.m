@@ -355,6 +355,7 @@ static void addIdentitiesToKeystore(JNIEnv *env, jobject keyStore, jmethodID jm_
             jlong nativeKeyRef = ptr_to_jlong(privateKeyRef);
             (*env)->CallVoidMethod(env, keyStore, jm_createKeyEntry, alias, creationDate, nativeKeyRef, certRefArray, javaCertArray);
             if ((*env)->ExceptionCheck(env)) {
+                (*env)->ExceptionDescribe(env);
                 goto errOut;
             }
         }
@@ -453,6 +454,7 @@ static bool createTrustedCertEntry(JNIEnv *env,  jobject keyStore,
     jlong nativeRef = ptr_to_jlong(certRef);
     (*env)->CallVoidMethod(env, keyStore, jm_createTrustedCertEntry, alias, inputTrust, nativeRef, creationDate, certData);
     if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
         return false;
     }
     return true;

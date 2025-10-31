@@ -74,8 +74,11 @@ traceLine(JNIEnv* env, const char* fmt, ...)
         free(buf);
         va_end(vargs);
 
-        jboolean ignoreException;
-        JNU_CallStaticMethodByName(env, &ignoreException, "sun/nio/fs/MacOSXWatchService", "traceLine", "(Ljava/lang/String;)V", text);
+        jboolean exc;
+        JNU_CallStaticMethodByName(env, &exc, "sun/nio/fs/MacOSXWatchService", "traceLine", "(Ljava/lang/String;)V", text);
+        if ((*env)->ExceptionCheck(env)) {
+            (*env)->ExceptionDescribe(env);
+        }
     }
 }
 
@@ -145,7 +148,11 @@ callback(__unused ConstFSEventStreamRef streamRef,
         callJavaCallback(env, (jlong)streamRef, javaEventPathsArray, (jlong)&eventFlags[eventIndex]);
 
         if ((*env)->ExceptionCheck(env)) {
-            if (tracingEnabled) (*env)->ExceptionDescribe(env);
+            if (tracingEnabled) {
+                (*env)->ExceptionDescribe(env);
+            } else {
+                (*env)->ExceptionClear(env);
+            }
         }
 
         if (localFramePushed) {

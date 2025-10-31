@@ -41,8 +41,19 @@ JNIEXPORT @interface NSApplicationAWT : NSApplication {
 - (void) waitForDummyEvent:(double) timeout;
 
 + (void) runAWTLoopWithApp:(NSApplication*)app;
-+ (void)logException:(NSException*)exception to:(NSMutableString*)info;
-+ (void)logException:(NSException*)exception forProcess:(NSProcessInfo*)processInfo;
++ (void) interruptAWTLoop;
+
++ (BOOL) isNSApplicationAWT;
++ (NSApplicationAWT*) sharedApplicationAWT;
+
+- (void) reportException:(NSException *)exception;
+- (void) reportException:(NSException *)exception uncaught:(BOOL)uncaught
+                    file:(const char*)file line:(int)line function:(const char*)function;
+
++ (void) logException:(NSException *)exception;
++ (void) logException:(NSException *)exception
+                 file:(const char*)file line:(int)line function:(const char*)function;
+
 
 @end
 

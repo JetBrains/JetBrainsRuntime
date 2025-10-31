@@ -1339,6 +1339,7 @@ static void treeNodeExpandedCollapsedImpl(
         const jobject cAccessibleGlobal = (*env)->NewGlobalRef(env, cAccessible);
 
         if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+            (*env)->ExceptionDescribe(env);
             if (cAccessibleGlobal != NULL) {
                 (*env)->DeleteGlobalRef(env, cAccessibleGlobal);
             }

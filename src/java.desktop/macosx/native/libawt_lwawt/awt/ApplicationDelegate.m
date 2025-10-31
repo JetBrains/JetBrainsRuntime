@@ -126,7 +126,7 @@ AWT_ASSERT_APPKIT_THREAD;
     BOOL isApplicationOwner = NO;
     if (NSApp != nil) {
         if ([NSApp isMemberOfClass:[NSApplication class]] && overrideDelegate) shouldInstall = YES;
-        if ([NSApp isKindOfClass:[NSApplicationAWT class]]) {
+        if ([NSApplicationAWT isNSApplicationAWT]) {
             shouldInstall = YES;
             isApplicationOwner = YES;
         }
@@ -213,7 +213,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
     // Prep for about and preferences menu
     BOOL usingDefaultNib = YES;
-    if ([NSApp isKindOfClass:[NSApplicationAWT class]]) {
+    if ([NSApplicationAWT isNSApplicationAWT]) {
         usingDefaultNib = [NSApp usingDefaultNib];
     }
     if (!usingDefaultNib) return self;
@@ -354,10 +354,10 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 // Open file handler
-- (void)application:(NSApplication *)theApplication openFiles:(NSArray *)fileNames {
+- (void)application:(NSApplication *)app openFiles:(NSArray *)fileNames {
 AWT_ASSERT_APPKIT_THREAD;
     if (!fHandlesDocumentTypes) {
-        [theApplication replyToOpenOrPrint:NSApplicationDelegateReplyCancel];
+        [app replyToOpenOrPrint:NSApplicationDelegateReplyCancel];
         return;
     }
 
@@ -380,7 +380,7 @@ AWT_ASSERT_APPKIT_THREAD;
     (*env)->DeleteLocalRef(env, jFileNamesArray);
     (*env)->DeleteLocalRef(env, jSearchString);
 
-    [theApplication replyToOpenOrPrint:NSApplicationDelegateReplySuccess];
+    [app replyToOpenOrPrint:NSApplicationDelegateReplySuccess];
 }
 
 // Print handler
@@ -433,7 +433,7 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 // ReOpen app handler
-- (BOOL)applicationShouldHandleReopen:(NSApplication *)theApplication hasVisibleWindows:(BOOL)flag {
+- (BOOL)applicationShouldHandleReopen:(NSApplication *)app hasVisibleWindows:(BOOL)flag {
     [ApplicationDelegate _notifyJava:com_apple_eawt__AppEventHandler_NOTIFY_REOPEN_APP];
     return YES;
 }

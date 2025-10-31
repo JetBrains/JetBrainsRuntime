@@ -290,8 +290,8 @@ static BOOL sSetupHelpMenu = NO;
     AWT_ASSERT_APPKIT_THREAD;
     CMenu *theNewMenu = (CMenu*)[args objectAtIndex:0];
     jint index = [(NSNumber*)[args objectAtIndex:1] intValue];
-    NSApplication *theApp = [NSApplication sharedApplication];
-    NSMenu *theMainMenu = [theApp mainMenu];
+    NSApplication *app = [NSApplication sharedApplication];
+    NSMenu *theMainMenu = [app mainMenu];
     NSMenu *menuToAdd = [theNewMenu menu];
 
     if ([theMainMenu indexOfItemWithSubmenu:menuToAdd] == -1) {
@@ -332,8 +332,8 @@ static BOOL sSetupHelpMenu = NO;
 
 - (void) nativeDeleteMenu_OnAppKitThread:(id)indexObj {
     AWT_ASSERT_APPKIT_THREAD;
-    NSApplication *theApp = [NSApplication sharedApplication];
-    NSMenu *theMainMenu = [theApp mainMenu];
+    NSApplication *app = [NSApplication sharedApplication];
+    NSMenu *theMainMenu = [app mainMenu];
     jint menuToRemove = [(NSNumber *)indexObj intValue];
     NSInteger nsMenuToRemove = [self javaIndexToNSMenuIndex_OnAppKitThread:menuToRemove];
 
@@ -359,7 +359,7 @@ static BOOL sSetupHelpMenu = NO;
             if (sDefaultHelpMenu == nil) {
                 // If we are embedded, don't make a help menu.
                 // TODO(cpc): we don't have NSApplicationAWT yet...
-                //if (![NSApp isKindOfClass:[NSApplicationAWT class]]) {
+                //if (![NSApplicationAWT isNSApplicationAWT]) {
                 //    sSetupHelpMenu = YES;
                 //    return;
                 //}

@@ -538,7 +538,6 @@ static inline void doDrawGlyphsPipe_getGlyphVectorLengthAndAlloc
         if (glyphs == NULL || uniChars == NULL || advances == NULL)
         {
             (*env)->DeleteLocalRef(env, glyphsArray);
-            [NSException raise:NSMallocException format:@"%s-%s:%d", __FILE__, __FUNCTION__, __LINE__];
             if (glyphs)
             {
                 free(glyphs);
@@ -551,6 +550,7 @@ static inline void doDrawGlyphsPipe_getGlyphVectorLengthAndAlloc
             {
                 free(advances);
             }
+            [NSException raise:NSMallocException format:@"%s-%s:%d", __FILE__, __FUNCTION__, __LINE__];
             return;
         }
 

@@ -540,7 +540,6 @@ Java_sun_awt_CGraphicsDevice_nativeGetDisplayModes
                 (*env)->SetObjectArrayElement(env, jreturnArray, n, oneMode);
                 if ((*env)->ExceptionCheck(env)) {
                     (*env)->ExceptionDescribe(env);
-                    (*env)->ExceptionClear(env);
                     continue;
                 }
                 (*env)->DeleteLocalRef(env, oneMode);

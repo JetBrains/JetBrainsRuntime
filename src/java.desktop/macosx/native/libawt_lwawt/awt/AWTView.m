@@ -741,8 +741,8 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     DECLARE_CLASS_RETURN(jc_CPlatformView, "sun/lwawt/macosx/CPlatformView", NULL);
     DECLARE_FIELD_RETURN(jf_Peer, jc_CPlatformView, "peer", "Lsun/lwawt/LWWindowPeer;", NULL);
     if ((env == NULL) || (m_cPlatformView == NULL)) {
-        NSLog(@"Apple AWT : Error AWTView:awtComponent given bad parameters.");
-        NSLog(@"%@",[NSThread callStackSymbols]);
+        NSLog(@"Apple AWT : Error AWTView:awtComponent given bad parameters.\n%@",
+              [NSThread callStackSymbols]);
         return NULL;
     }
 
@@ -755,8 +755,8 @@ static void debugPrintNSEvent(NSEvent* event, const char* comment) {
     DECLARE_CLASS_RETURN(jc_LWWindowPeer, "sun/lwawt/LWWindowPeer", NULL);
     DECLARE_FIELD_RETURN(jf_Target, jc_LWWindowPeer, "target", "Ljava/awt/Component;", NULL);
     if (peer == NULL) {
-        NSLog(@"Apple AWT : Error AWTView:awtComponent got null peer from CPlatformView");
-        NSLog(@"%@",[NSThread callStackSymbols]);
+        NSLog(@"Apple AWT : Error AWTView:awtComponent got null peer from CPlatformView\n%@",
+              [NSThread callStackSymbols]);
         return NULL;
     }
     jobject comp = (*env)->GetObjectField(env, peer, jf_Target);
@@ -1624,8 +1624,12 @@ static jclass jc_CInputMethod = NULL;
     }
     static double debugScale = -2.0;
     if (debugScale == -2.0) { // default debugScale value in SGE is -1.0
-        debugScale = JNU_CallStaticMethodByName(env, NULL, "sun/java2d/SunGraphicsEnvironment",
+        jboolean exc;
+        debugScale = JNU_CallStaticMethodByName(env, &exc, "sun/java2d/SunGraphicsEnvironment",
                                                 "getDebugScale", "()D").d;
+        if (exc) {
+            (*env)->ExceptionDescribe(env);
+        }
     }
 
     if (self.window.backingScaleFactor > 0 && debugScale < 0) {

@@ -121,10 +121,10 @@
     } copy]];
 }
 
-- (void)application:(NSApplication *)theApplication openFiles:(NSArray *)fileNames
+- (void)application:(NSApplication *)app openFiles:(NSArray *)fileNames
 {
     [self.queue addObject:[^(){
-        [self.realDelegate application:theApplication openFiles:fileNames];
+        [self.realDelegate application:app openFiles:fileNames];
     } copy]];
 }
 
@@ -149,10 +149,10 @@
     } copy]];
 }
 
-- (BOOL)applicationShouldHandleReopen:(NSApplication *)theApplication hasVisibleWindows:(BOOL)flag
+- (BOOL)applicationShouldHandleReopen:(NSApplication *)app hasVisibleWindows:(BOOL)flag
 {
     [self.queue addObject:[^(){
-        [self.realDelegate applicationShouldHandleReopen:theApplication hasVisibleWindows:flag];
+        [self.realDelegate applicationShouldHandleReopen:app hasVisibleWindows:flag];
     } copy]];
     return YES;
 }
@@ -232,4 +232,3 @@
 }
 
 @end
-

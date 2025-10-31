@@ -338,15 +338,17 @@ JNI_COCOA_ENTER(env);
         }
 
         if ((*env)->CallBooleanMethod(env, returnValue, jm_listContains, localeObj) == JNI_FALSE) {
-            if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+            if ((*env)->ExceptionCheck(env)) {
+                (*env)->ExceptionDescribe(env);
+            }
             (*env)->CallBooleanMethod(env, returnValue, jm_listAdd, localeObj);
         }
-        if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
-
+        if ((*env)->ExceptionCheck(env)) {
+            (*env)->ExceptionDescribe(env);
+        }
         (*env)->DeleteLocalRef(env, localeObj);
     }
     [selectableArray release];
 JNI_COCOA_EXIT(env);
     return returnValue;
 }
-
