@@ -260,8 +260,13 @@ MTLSD_SetNativeDimensions(JNIEnv *env, BMTLSDOps *mtlsdo,
     }
 
     JNU_SetFieldByName(env, NULL, sdObject, "nativeWidth", "I", width);
-    if (!((*env)->ExceptionCheck(env))) {
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
+    } else {
         JNU_SetFieldByName(env, NULL, sdObject, "nativeHeight", "I", height);
+        if ((*env)->ExceptionCheck(env)) {
+            (*env)->ExceptionDescribe(env);
+        }
     }
 
     (*env)->DeleteLocalRef(env, sdObject);
@@ -303,8 +308,12 @@ MTLSD_Delete(JNIEnv *env, BMTLSDOps *bmtlsdo)
 void
 MTLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
 {
-    JNU_CallStaticMethodByName(env, NULL, "sun/java2d/metal/MTLSurfaceData",
+    jboolean exc;
+    JNU_CallStaticMethodByName(env, &exc, "sun/java2d/metal/MTLSurfaceData",
                                "dispose", "(J)V", ptr_to_jlong(ops));
+    if (exc) {
+        (*env)->ExceptionDescribe(env);
+    }
 }
 
 /**

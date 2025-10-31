@@ -138,7 +138,6 @@ static jobjectArray CreateJavaFilenameArray(JNIEnv *env, NSArray *filenameArray)
     jobject jfilenameArray = (*env)->NewObjectArray(env, filenameCount, stringClazz, NULL);
     if ((*env)->ExceptionCheck(env)) {
         (*env)->ExceptionDescribe(env);
-        (*env)->ExceptionClear(env);
         return nil;
     }
     if (!jfilenameArray) {
@@ -158,7 +157,6 @@ static jobjectArray CreateJavaFilenameArray(JNIEnv *env, NSArray *filenameArray)
         jstring string = (*env)->NewStringUTF(env, stringBytes);
         if ((*env)->ExceptionCheck(env)) {
             (*env)->ExceptionDescribe(env);
-            (*env)->ExceptionClear(env);
             continue;
         }
         if (!string) {
@@ -170,7 +168,6 @@ static jobjectArray CreateJavaFilenameArray(JNIEnv *env, NSArray *filenameArray)
         (*env)->SetObjectArrayElement(env, jfilenameArray, i, string);
         if ((*env)->ExceptionCheck(env)) {
             (*env)->ExceptionDescribe(env);
-            (*env)->ExceptionClear(env);
             continue;
         }
 

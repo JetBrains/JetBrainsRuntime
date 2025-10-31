@@ -29,6 +29,7 @@
 #import "JNIUtilities.h"
 #import "PropertiesUtilities.h"
 #import "ThreadUtilities.h"
+#import "NSApplicationAWT.h"
 
 
 #define RUN_BLOCK_IF(COND, block)   \
@@ -39,6 +40,39 @@
 
 /* See LWCToolkit.APPKIT_THREAD_NAME */
 #define MAIN_THREAD_NAME    "AppKit Thread"
+
+// Global CrashOnException handling flags used by:
+// - UncaughtExceptionHandler
+// - NSApplicationAWT _crashOnException:(NSException *)exception
+static BOOL isAWTCrashOnException() {
+    static int awtCrashOnException = -1;
+    if (awtCrashOnException == -1) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (env == NULL) return NO;
+        NSString* awtCrashOnExceptionProp = [PropertiesUtilities javaSystemPropertyForKey:@"apple.awt.crashOnException"
+                                                                                     withEnv:env];
+        awtCrashOnException = [@"true" isCaseInsensitiveLike:awtCrashOnExceptionProp] ? YES : NO;
+    }
+    return (BOOL)awtCrashOnException;
+}
+
+BOOL shouldCrashOnException() {
+    static int crashOnException = -1;
+    if (crashOnException == -1) {
+        BOOL shouldCrashOnException = NO;
+#if defined(DEBUG)
+        shouldCrashOnException = YES;
+#endif
+        if (!shouldCrashOnException) {
+            shouldCrashOnException = isAWTCrashOnException();
+        }
+        crashOnException = shouldCrashOnException;
+        if (crashOnException) {
+            NSLog(@"WARNING: shouldCrashOnException ENABLED");
+        }
+    }
+    return (BOOL)crashOnException;
+}
 
 /* Returns the MainThread latency threshold in milliseconds
  * used to detect slow operations that may cause high latencies or delays.
@@ -92,11 +126,15 @@ static atomic_long mainThreadActionId = 0L;
 // --- AWT's NSUncaughtExceptionHandler ---
 static NSUncaughtExceptionHandler* _previousNSUncaughtExceptionHandler = nil;
 
-static void AWT_NSUncaughtExceptionHandler(NSException* exception) {
+static void AWT_NSUncaughtExceptionHandler(NSException *exception) {
     NSLog(@"Apple AWT Internal Exception: %@\nCallstack: %@",
         [exception description], [exception callStackSymbols]);
-    // call previous exception handler (may abort):
-    if (_previousNSUncaughtExceptionHandler != nil) {
+
+    // report exception to the NSApplicationAWT exception handler:
+    NSAPP_AWT_REPORT_EXCEPTION(exception, YES);
+
+    // skip previous exception handler to avoid crashing process:
+    if (false && _previousNSUncaughtExceptionHandler != nil) {
         _previousNSUncaughtExceptionHandler(exception);
     }
 }
@@ -155,6 +193,62 @@ static inline void attachCurrentThread(void** env) {
 static long eventDispatchThreadPtr = (long)nil;
 static BOOL _blockingEventDispatchThread = NO;
 static BOOL _blockingMainThread = NO;
+
+// Empty block optimization using 1 single instance and avoid Block_copy macro
+
++ (void (^)()) GetEmptyBlock {
+    static id _emptyBlock = nil;
+    if (_emptyBlock == nil) {
+        _emptyBlock = ^(){};
+    }
+    return _emptyBlock;
+}
+
++ (BOOL) IsEmptyBlock:(void (^)())block {
+    return (block == [ThreadUtilities GetEmptyBlock]);
+}
+
+#define Custom_Block_copy(block) ( ([ThreadUtilities IsEmptyBlock:block]) ? block : Block_copy(block) )
+
+/*
+ * When running a block where either we don't wait, or it needs to run on another thread
+ * we need to copy it from stack to heap, use the copy in the call and release after use.
+ * Do this only when we must because it could be expensive.
+ * Note : if waiting cross-thread, possibly the stack allocated copy is accessible ?
+ */
++ (void)invokeBlockCopy:(void (^)(void))blockCopy {
+    if (![ThreadUtilities IsEmptyBlock:blockCopy]) {
+        @try {
+            blockCopy();
+        } @finally {
+            Block_release(blockCopy);
+#if (CHECK_PENDING_EXCEPTION == 1)
+            __JNI_CHECK_PENDING_EXCEPTION([ThreadUtilities getJNIEnvUncached]);
+#endif
+        }
+    }
+}
+
+// Exception handling bridge
++ (void) reportException:(NSException *)exception {
+    [[NSApplicationAWT sharedApplicationAWT] reportException:exception];
+}
+
++ (void) reportException:(NSException *)exception uncaught:(BOOL)uncaught
+                    file:(const char*)file line:(int)line function:(const char*)function
+{
+    [[NSApplicationAWT sharedApplicationAWT] reportException:exception uncaught:uncaught file:file line:line function:function];
+}
+
++ (void) logException:(NSException *)exception {
+    [NSApplicationAWT logException:exception];
+}
+
++ (void) logException:(NSException *)exception
+                 file:(const char*)file line:(int)line function:(const char*)function
+{
+    [NSApplicationAWT logException:exception file:file line:line function:function];
+}
 
 static BOOL isEventDispatchThread() {
     return (long)[NSThread currentThread] == eventDispatchThreadPtr;
@@ -276,24 +370,6 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 }
 
-/*
- * When running a block where either we don't wait, or it needs to run on another thread
- * we need to copy it from stack to heap, use the copy in the call and release after use.
- * Do this only when we must because it could be expensive.
- * Note : if waiting cross-thread, possibly the stack allocated copy is accessible ?
- */
-+ (void)invokeBlockCopy:(void (^)(void))blockCopy {
-    @try {
-        blockCopy();
-    } @finally {
-        Block_release(blockCopy);
-#if (CHECK_PENDING_EXCEPTION == 1)
-        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-        __JNI_CHECK_PENDING_EXCEPTION(env);
-#endif
-    }
-}
-
 + (NSString*)getCaller:(NSString*)prefixSymbol {
     const NSArray<NSString*> *symbols = NSThread.callStackSymbols;
 
@@ -335,7 +411,7 @@ AWT_ASSERT_APPKIT_THREAD;
 {
     RUN_BLOCK_IF([NSThread isMainThread], block);
 
-    [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
+    [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Custom_Block_copy(block)
                            waitUntilDone:NO useJavaModes:useJavaModes];
 }
 
@@ -357,7 +433,7 @@ AWT_ASSERT_APPKIT_THREAD;
 {
     RUN_BLOCK_IF([NSThread isMainThread] && wait, block);
 
-    [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
+    [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Custom_Block_copy(block)
                            waitUntilDone:wait useJavaModes:useJavaModes];
 }
 
@@ -831,14 +907,14 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
         for (NSUInteger i = 0; i < count; i++) {
             NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
             @try {
-                void (^blockCopy)(void) = (void (^)())[self.queue objectAtIndex: i];
+                void (^blockCopy)(void) = (void (^)()) [self.queue objectAtIndex:i];
                 // invoke callback:
                 [ThreadUtilities invokeBlockCopy:blockCopy];
             } @catch (NSException *exception) {
-                // handle any exception to avoid crashing the main run loop:
-                NSLog(@"Apple AWT Cocoa Exception: %@", [exception description]);
-                NSLog(@"Apple AWT Cocoa Exception callstack: %@", [exception callStackSymbols]);
+                // report exception to the NSApplicationAWT exception handler:
+                NSAPP_AWT_REPORT_EXCEPTION(exception, NO);
             } @finally {
+                __JNI_CHECK_PENDING_EXCEPTION(env);
                 [pool drain];
             }
         }

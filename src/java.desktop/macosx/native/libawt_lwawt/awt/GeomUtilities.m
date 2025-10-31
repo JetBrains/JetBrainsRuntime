@@ -56,9 +56,13 @@ NSRect JavaToNSRect(JNIEnv *env, jobject rect) {
     DECLARE_METHOD_RETURN(jm_rect_getWidth, sjc_Rectangle2D, "getWidth", "()D", NSZeroRect);
     DECLARE_METHOD_RETURN(jm_rect_getHeight, sjc_Rectangle2D, "getHeight", "()D", NSZeroRect);
     jdouble x = (*env)->CallDoubleMethod(env, rect, jm_rect_getX); CHECK_EXCEPTION();
+    CHECK_EXCEPTION();
     jdouble y = (*env)->CallDoubleMethod(env, rect, jm_rect_getY); CHECK_EXCEPTION();
+    CHECK_EXCEPTION();
     jdouble w = (*env)->CallDoubleMethod(env, rect, jm_rect_getWidth); CHECK_EXCEPTION();
+    CHECK_EXCEPTION();
     jdouble h = (*env)->CallDoubleMethod(env, rect, jm_rect_getHeight); CHECK_EXCEPTION();
+    CHECK_EXCEPTION();
     return NSMakeRect(x, y, w, h);
 }
 
@@ -75,7 +79,9 @@ NSPoint JavaToNSPoint(JNIEnv *env, jobject point) {
     DECLARE_METHOD_RETURN(jm_pt_getX, sjc_Point2D, "getX", "()D", NSZeroPoint);
     DECLARE_METHOD_RETURN(jm_pt_getY, sjc_Point2D, "getY", "()D", NSZeroPoint);
     jdouble x = (*env)->CallDoubleMethod(env, point, jm_pt_getX); CHECK_EXCEPTION();
+    CHECK_EXCEPTION();
     jdouble y = (*env)->CallDoubleMethod(env, point, jm_pt_getY); CHECK_EXCEPTION();
+    CHECK_EXCEPTION();
     return NSMakePoint(x, y);
 }
 
@@ -92,7 +98,9 @@ NSSize JavaToNSSize(JNIEnv *env, jobject dimension) {
     DECLARE_METHOD_RETURN(jm_sz_getWidth, sjc_Dimension2D, "getWidth", "()D", NSZeroSize);
     DECLARE_METHOD_RETURN(jm_sz_getHeight, sjc_Dimension2D, "getHeight", "()D", NSZeroSize);
     jdouble w = (*env)->CallDoubleMethod(env, dimension, jm_sz_getWidth); CHECK_EXCEPTION();
+    CHECK_EXCEPTION();
     jdouble h = (*env)->CallDoubleMethod(env, dimension, jm_sz_getHeight); CHECK_EXCEPTION();
+    CHECK_EXCEPTION();
     return NSMakeSize(w, h);
 }
 

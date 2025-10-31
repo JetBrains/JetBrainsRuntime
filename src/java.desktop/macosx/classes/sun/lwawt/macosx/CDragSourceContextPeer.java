@@ -442,7 +442,7 @@ public final class CDragSourceContextPeer extends SunDragSourceContextPeer {
             postDragSourceDragEvent(targetActions, modifiers, x, y,
                     DISPATCH_MOUSE_MOVED);
         } catch (Exception e) {
-            throw new InvalidDnDOperationException("Failed to handle DragMouseMoved event");
+            throw new InvalidDnDOperationException("Failed to handle DragMouseMoved event: " + e);
         }
     }
 

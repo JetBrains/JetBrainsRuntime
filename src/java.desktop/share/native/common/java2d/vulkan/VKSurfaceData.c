@@ -292,7 +292,11 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
 }
 
 static void VKSD_OnDispose(JNIEnv* env, SurfaceDataOps* ops) {
-    JNU_CallStaticMethodByName(env, NULL, "sun/java2d/vulkan/VKSurfaceData", "dispose", "(J)V", ptr_to_jlong(ops));
+    jboolean exc;
+    JNU_CallStaticMethodByName(env, &exc, "sun/java2d/vulkan/VKSurfaceData", "dispose", "(J)V", ptr_to_jlong(ops));
+    if (exc) {
+        (*env)->ExceptionDescribe(env);
+    }
 }
 
 JNIEXPORT VKSDOps* VKSD_CreateSurface(JNIEnv* env, jobject vksd, jint type, jint format, jint backgroundRGB,
@@ -348,4 +352,3 @@ JNIEXPORT void VKSD_InitWindowSurface(JNIEnv* env, jobject vksd, VKWinSD_Surface
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps(JNIEnv* env, jobject vksd, jint format) {
     VKSD_CreateSurface(env, vksd, VKSD_RT_TEXTURE, format, 0, NULL);
 }
-

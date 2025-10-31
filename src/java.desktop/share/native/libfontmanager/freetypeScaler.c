@@ -266,10 +266,13 @@ Java_sun_font_FreetypeFontScaler_initIDs(
     invalidateScalerMID =
         (*env)->GetMethodID(env, FFSClass, "invalidateScaler", "()V");
 
-    jboolean ignoreException;
-    debugFonts = JNU_CallStaticMethodByName(env, &ignoreException,
+    jboolean exc;
+    debugFonts = JNU_CallStaticMethodByName(env, &exc,
                                             "sun/font/FontUtilities",
                                             "debugFonts", "()Z").z;
+    if (exc) {
+        (*env)->ExceptionDescribe(env);
+    }
     getDefaultToolkitMID =
         (*env)->GetStaticMethodID(env, TKClass, "getDefaultToolkit",
                                   "()Ljava/awt/Toolkit;");

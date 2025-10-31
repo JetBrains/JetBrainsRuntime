@@ -51,27 +51,35 @@ OGLGC_DestroyOGLGraphicsConfig(jlong pConfigInfo)
         return;
     }
 
-    OGLContext *oglc = (OGLContext*)cglinfo->context;
-    if (oglc != NULL) {
-        OGLContext_DestroyContextResources(oglc);
+    OGLContext *oglc = nil;
+    CGLCtxInfo *ctxinfo = nil;
+    NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
+    @try {
+        oglc = (OGLContext*)cglinfo->context;
+        if (oglc != NULL) {
+            OGLContext_DestroyContextResources(oglc);
 
-        CGLCtxInfo *ctxinfo = (CGLCtxInfo *)oglc->ctxInfo;
-        if (ctxinfo != NULL) {
-            NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
-            [NSOpenGLContext clearCurrentContext];
-            [ctxinfo->context clearDrawable];
-            [ctxinfo->context release];
-            if (ctxinfo->scratchSurface != 0) {
-                [ctxinfo->scratchSurface release];
+            ctxinfo = (CGLCtxInfo *)oglc->ctxInfo;
+            if (ctxinfo != NULL) {
+                [NSOpenGLContext clearCurrentContext];
+                [ctxinfo->context clearDrawable];
+                [ctxinfo->context release];
+                if (ctxinfo->scratchSurface != 0) {
+                    [ctxinfo->scratchSurface release];
+                }
             }
-            [pool drain];
+        }
+    } @finally {
+        [pool drain];
+        if (ctxinfo != NULL) {
             free(ctxinfo);
             oglc->ctxInfo = NULL;
         }
-        cglinfo->context = NULL;
+        if (oglc != NULL) {
+            cglinfo->context = NULL;
+        }
+        free(cglinfo);
     }
-
-    free(cglinfo);
 }
 
 /**
@@ -117,18 +125,18 @@ Java_sun_java2d_opengl_CGLGraphicsConfig_initCGL
  */
 JNIEXPORT jlong JNICALL
 Java_sun_java2d_opengl_CGLGraphicsConfig_getCGLConfigInfo
-    (JNIEnv *env, jclass cglgc)
+    (JNIEnv *envUnused, jclass cglgc)
 {
+    __block JNIEnv *env = nil;
     __block jlong ret = 0L;
-    JNI_COCOA_ENTER(env);
+    JNI_COCOA_ENTER();
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
-
-        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-
         J2dRlsTraceLn(J2D_TRACE_INFO, "CGLGraphicsConfig_getCGLConfigInfo");
 
-        NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
+        env = [ThreadUtilities getJNIEnvUncached];
 
+        NSAutoreleasePool* poolBlock = [[NSAutoreleasePool alloc] init];
+    @try {
         if (sharedContext == NULL) {
 
             NSOpenGLPixelFormatAttribute attrs[] = {
@@ -320,9 +328,10 @@ Java_sun_java2d_opengl_CGLGraphicsConfig_getCGLConfigInfo
 
         [NSOpenGLContext clearCurrentContext];
         ret = ptr_to_jlong(cglinfo);
-        [pool drain];
 
-    }];
+    } @finally {
+        [poolBlock drain];
+    } }];
     JNI_COCOA_EXIT(env);
     return ret;
 }

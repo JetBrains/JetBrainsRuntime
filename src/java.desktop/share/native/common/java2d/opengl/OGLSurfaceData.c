@@ -665,11 +665,15 @@ OGLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
     OGLSDOps *oglsdo = (OGLSDOps *)ops;
     jobject graphicsConfig = oglsdo->graphicsConfig;
 
-    JNU_CallStaticMethodByName(env, NULL, "sun/java2d/opengl/OGLSurfaceData",
+    jboolean exc;
+    JNU_CallStaticMethodByName(env, &exc, "sun/java2d/opengl/OGLSurfaceData",
                                "dispose",
                                "(JLsun/java2d/opengl/OGLGraphicsConfig;)V",
                                ptr_to_jlong(ops), graphicsConfig);
     (*env)->DeleteGlobalRef(env, graphicsConfig);
+    if (exc) {
+        (*env)->ExceptionDescribe(env);
+    }
     oglsdo->graphicsConfig = NULL;
 }
 

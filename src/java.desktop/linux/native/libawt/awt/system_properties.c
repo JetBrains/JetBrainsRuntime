@@ -65,9 +65,12 @@ static void printError(const char* fmt, ...) {
         free(buf);
         va_end(vargs);
 
-        jboolean ignoreException;
-        JNU_CallStaticMethodByName(env, &ignoreException, "sun/awt/UNIXToolkit", "printError",
+        jboolean exc;
+        JNU_CallStaticMethodByName(env, &exc, "sun/awt/UNIXToolkit", "printError",
                                    "(Ljava/lang/String;)V", text);
+        if (exc) {
+            (*env)->ExceptionDescribe(env);
+        }
     }
 }
 

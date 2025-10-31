@@ -109,6 +109,7 @@ subpixelResolutionY:(jint)subpixelResolutionY {
         goto cleanup;                                                   \
     }                                                                   \
     if ((*env)->ExceptionCheck(env)) {                                  \
+        (*env)->ExceptionDescribe(env);                                 \
         goto cleanup;                                                   \
     }
 
@@ -429,6 +430,9 @@ static bool addBitmapRenderData(JNIEnv *env, AWTStrike *awtStrike,
             (*env)->CallVoidMethod(env, result, GlyphRenderDataAddBitmap,
                                    m00, m10, m01, m11, m02, m12,
                                    width, height, pitch, 0, array);
+            if ((*env)->ExceptionCheck(env)) {
+                (*env)->ExceptionDescribe(env);
+            }
             success = true;
         }
         CGImageRelease(image);

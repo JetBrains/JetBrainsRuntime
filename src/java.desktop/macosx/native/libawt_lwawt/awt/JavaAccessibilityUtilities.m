@@ -364,7 +364,11 @@ void JavaAccessibilityRaiseIllegalParameterTypeException(const char *functionNam
 static void _JavaAccessibilityRaiseException(NSString *reason, SInt32 errorCode)
 {
     JavaAccessibilityLogError(reason);
-    [[NSException exceptionWithName:NSAccessibilityException reason:reason userInfo:[NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithInt:errorCode], NSAccessibilityErrorCodeExceptionInfo, nil]] raise];
+    [[NSException exceptionWithName:NSAccessibilityException reason:reason
+                           userInfo:[NSDictionary dictionaryWithObjectsAndKeys:
+                                        [NSNumber numberWithInt:errorCode], NSAccessibilityErrorCodeExceptionInfo,
+                                        nil]
+    ] raise];
 }
 
 static void JavaAccessibilityLogError(NSString *message)
