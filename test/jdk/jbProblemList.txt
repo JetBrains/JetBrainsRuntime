@@ -1573,7 +1573,7 @@ jb/java/awt/Focus/TitleBarClickTest.java JBR-6394 linux-5.18.2-arch1-1,windows-a
 
 com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java JBR-6749 linux-x64
 java/awt/Choice/ChoiceStaysOpenedOnTAB.java JBR-5510 linux-5.18.2-arch1-1
-java/awt/Graphics/NativeWin32Clear.java JBR-8689 linux-5.18.2-arch1-1,linux-aarch64
+java/awt/Graphics/NativeWin32Clear.java JBR-8689 linux-all
 java/awt/Graphics/XORPaint.java#id1 JBR-8642 macosx-aarch64
 java/awt/Graphics/XORPaint.java#id2 JBR-5510 linux-5.18.2-arch1-1
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureGtkTest.java JBR-5510 linux-5.18.2-arch1-1
