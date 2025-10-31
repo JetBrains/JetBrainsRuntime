@@ -845,7 +845,6 @@ jdk_awt_wayland = \
     -java/awt/Component/SetEnabledPerformance \
     -java/awt/ComponentOrientation \
     -java/awt/Container \
-    -java/awt/Cursor/MultiResolutionCursorTest/MultiResolutionCursorTest.java \
     -java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java \
     -java/awt/datatransfer/ClipboardInterVMTest/ClipboardInterVMTest.java \
     -java/awt/datatransfer/ConstructFlavoredObjectTest/ConstructFlavoredObjectTest.java \
