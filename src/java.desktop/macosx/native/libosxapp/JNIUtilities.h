@@ -28,6 +28,7 @@
 
 #include "jni.h"
 #include "jni_util.h"
+#include "ThreadUtilities.h"
 
 #import <Cocoa/Cocoa.h>
 
@@ -228,19 +229,17 @@
     }
 
 #define __JNI_LOG_EXCEPTION(exception) \
-     NSLog(@"Apple AWT Cocoa Exception (%s:%d %s): %@\nCallstack: %@", \
-         __FILE__, __LINE__, __FUNCTION__, \
-         [exception description], [exception callStackSymbols])
+     NSAPP_AWT_LOG_EXCEPTION_PREFIX(exception, @"Apple AWT Cocoa Exception");
 
 #if (CHECK_PENDING_EXCEPTION == 1)
- #define __JNI_CHECK_PENDING_EXCEPTION(env) \
-      @try { \
-          CHECK_EXCEPTION_IN_ENV(env); \
-      } @catch (NSException *exception) { \
-          __JNI_LOG_EXCEPTION(exception); \
-      }
+    #define __JNI_CHECK_PENDING_EXCEPTION(env) \
+        @try { \
+            CHECK_EXCEPTION_IN_ENV(env); \
+        } @catch (NSException *exception) { \
+            __JNI_LOG_EXCEPTION(exception); \
+        }
 #else
- #define __JNI_CHECK_PENDING_EXCEPTION(env) {}
+    #define __JNI_CHECK_PENDING_EXCEPTION(env) {}
 #endif
 
 /* Create a pool and initiate a try block to catch any exception */
@@ -265,33 +264,10 @@
  */
 #define JNI_COCOA_EXIT_WITH_ACTION(env, action) \
  } @catch (NSException *exception) { \
-     { action; }; \
      __JNI_LOG_EXCEPTION(exception); \
+     { action; }; \
  } @finally { \
      __JNI_CHECK_PENDING_EXCEPTION(env); \
-     [pool drain]; \
- }
-
-/* Report a fatal error and terminate the application if any exception was raised.
- * This is used to report a fatal error that is not recoverable ands make a crash report.
- */
-#define JNI_COCOA_EXIT_FATAL(message) \
- } @catch (NSException *exception) { \
-     __JNI_LOG_EXCEPTION(exception); \
-     /* like JNI_COCOA_EXIT_WITH_ACTION */ \
-     /* always perform the clean up action after logging the exception */ \
-     /* exception is available to the action block */ \
-     NSMutableString *info = [[[NSMutableString alloc] init] autorelease]; \
-     [info appendString: \
-               [NSString stringWithFormat: @"%s:\n %@\n", (message), exception]]; \
-     NSArray<NSString*> *stack = [exception callStackSymbols]; \
-     for (NSUInteger i = 0; i < stack.count; i++) { \
-         [info appendString:stack[i]]; \
-         [info appendString:@"\n"]; \
-     } \
-     JNU_Fatal([ThreadUtilities getJNIEnvUncached], __FILE__, __LINE__, [info UTF8String]); \
- } @finally { \
-     __JNI_CHECK_PENDING_EXCEPTION([ThreadUtilities getJNIEnvUncached]); \
      [pool drain]; \
  }
 
