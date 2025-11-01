@@ -211,15 +211,23 @@ class UpdateKlassDcevm : public StackObj {
   InstanceKlass* _new_klass;
   InstanceKlass* _old_klass;
   bool _replaced;
+  bool _check_old;
 public:
-  UpdateKlassDcevm(InstanceKlass* new_klass, InstanceKlass* old_klass) :
+  UpdateKlassDcevm(InstanceKlass* new_klass, InstanceKlass* old_klass, bool check_old) :
     _new_klass(new_klass),
     _old_klass(old_klass),
-    _replaced(false) {
+    _replaced(false),
+    _check_old(check_old) {
   }
 
   void operator()(InstanceKlass** old_table_value) {
-    assert(*old_table_value == _old_klass, "should be old class");
+    InstanceKlass* table_class = *old_table_value;
+    assert(!_check_old || table_class == _old_klass, "should be old class");
+    assert(table_class->class_loader_data() == _new_klass->class_loader_data(), "Must be same class loader");
+    if (!_check_old && table_class->new_version() != nullptr) {
+      ResourceMark rm;
+      log_debug(redefine, class, redefine, metadata)("Updating old class from doit() %s", table_class->name()->as_C_string());
+    }
     *old_table_value = _new_klass;
     _replaced = true;
   }
@@ -230,10 +238,12 @@ public:
 };
 
 // (DCEVM) replace old_class by new class in dictionary
-bool Dictionary::update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass) {
-  UpdateKlassDcevm found(k, old_klass);
+bool Dictionary::update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass, bool check_old) {
+  UpdateKlassDcevm found(k, old_klass, check_old);
 
   DictionaryLookup lookup(class_name);
+  // (DCEVM): old_klass is replaced with the new one in UpdateKlassDcevm::operator(),
+  // which is invoked when class_name is found in the dictionary.
   bool exists = _table->get(current, lookup, found);
   return exists && found.get_replaced();
 }

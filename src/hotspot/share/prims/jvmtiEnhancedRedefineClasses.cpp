@@ -62,7 +62,6 @@
 #include "utilities/bitMap.inline.hpp"
 #include "prims/jvmtiThreadState.inline.hpp"
 #include "utilities/events.hpp"
-#include "oops/constantPool.inline.hpp"
 #if INCLUDE_G1GC
 #include "gc/g1/g1CollectedHeap.hpp"
 #endif
@@ -695,6 +694,16 @@ void VM_EnhancedRedefineClasses::doit() {
     new_class->old_version()->set_new_version(new_class);
   }
 
+  // Update Dictionaries to ensure all references contain the new class versions.
+  // During load_new_class_versions(), another thread may have loaded an old version, so this pass replaces
+  // any remaining old ones.
+  for (int i = 0; i < _new_classes->length(); i++) {
+    InstanceKlass* new_class = _new_classes->at(i);
+    InstanceKlass* old_class = InstanceKlass::cast(new_class->old_version());
+    Symbol *name_h = new_class->name();
+    ClassLoaderDataGraph::dictionary_classes_do_update_klass(Thread::current(), name_h, new_class, old_class, false);
+  }
+
   for (int i = 0; i < _new_classes->length(); i++) {
     Klass* new_class = _new_classes->at(i);
     redefine_single_class(current, _new_classes->at(i));
@@ -917,7 +926,7 @@ void VM_EnhancedRedefineClasses::doit() {
     }
   }
   log_trace(redefine, class, redefine, metadata)("calling check_class");
-  ClassLoaderData::the_null_class_loader_data()->dictionary()->classes_do_safepoint(check_class);
+  ClassLoaderDataGraph::dictionary_classes_do_classes_do_safepoint(check_class);
 #ifdef PRODUCT
   }
 #endif
