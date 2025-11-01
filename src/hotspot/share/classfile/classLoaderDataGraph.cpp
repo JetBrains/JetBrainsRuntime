@@ -352,16 +352,6 @@ void ClassLoaderDataGraph::verify_dictionary() {
   }
 }
 
-// (DCEVM) - iterate over dict classes
-void ClassLoaderDataGraph::dictionary_classes_do(KlassClosure* klass_closure) {
-  ClassLoaderDataGraphIterator iter;
-  while (ClassLoaderData* cld = iter.get_next()) {
-    if (cld->dictionary() != nullptr) {
-      cld->dictionary()->classes_do(klass_closure);
-    }
-  }
-}
-
 // (DCEVM) rollback redefined classes
 void ClassLoaderDataGraph::rollback_redefinition() {
   ClassLoaderDataGraphIterator iter;

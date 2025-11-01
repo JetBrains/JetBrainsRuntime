@@ -253,6 +253,11 @@ bool jfieldIDWorkaround::klass_hash_ok(Klass* k, jfieldID id) {
     if ((k->identity_hash() & klass_mask) == klass_hash)
       return true;
     k = k->super();
+    if (AllowEnhancedClassRedefinition) {
+      while (k->old_version() != nullptr) {
+        k = k->old_version();
+      }
+    }
   } while (k != nullptr);
   return false;
 }

@@ -219,7 +219,9 @@ public:
   }
 
   void operator()(InstanceKlass** old_table_value) {
-    assert(*old_table_value == _old_klass, "should be old class");
+    // update_class is called :
+    // 1. From load_new_class_versions when the new version of a class is parsed
+    // 2. From redefinition doit() to make sure that all entries are updated to new versions
     *old_table_value = _new_klass;
     _replaced = true;
   }

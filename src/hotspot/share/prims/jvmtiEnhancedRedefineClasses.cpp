@@ -62,7 +62,6 @@
 #include "utilities/bitMap.inline.hpp"
 #include "prims/jvmtiThreadState.inline.hpp"
 #include "utilities/events.hpp"
-#include "oops/constantPool.inline.hpp"
 #if INCLUDE_G1GC
 #include "gc/g1/g1CollectedHeap.hpp"
 #endif
@@ -689,6 +688,13 @@ void VM_EnhancedRedefineClasses::doit() {
   // MetadataOnStackMark md_on_stack(true);
   HandleMark hm(current);   // make sure any handles created are deleted
                            // before the stack walk again.
+
+  // Update all classes in the ClassLoaderDataGraph again to ensure that entries in Dictionary point to the new class versions
+  for (int i = 0; i < _new_classes->length(); i++) {
+    InstanceKlass* new_class = _new_classes->at(i);
+    Symbol *name_h = new_class->name();
+    bool ok = ClassLoaderDataGraph::dictionary_classes_do_update_klass(Thread::current(), name_h, new_class, InstanceKlass::cast(new_class->old_version()));
+  }
 
   for (int i = 0; i < _new_classes->length(); i++) {
     Klass *new_class = _new_classes->at(i);
