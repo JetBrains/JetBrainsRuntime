@@ -432,6 +432,9 @@ protected:
   const Klass* newest_version() const    { return _new_version == nullptr ? this : _new_version->newest_version(); }
         Klass* newest_version()          { return _new_version == nullptr ? this : _new_version->newest_version(); }
 
+  const Klass* oldest_version() const    { return _old_version == nullptr ? this : _old_version->oldest_version(); }
+  Klass* oldest_version()                { return _old_version == nullptr ? this : _old_version->oldest_version(); }
+
   const Klass* active_version() const   { return _new_version == nullptr || _new_version->is_redefining() ? this : _new_version->active_version(); }
         Klass* active_version()         { return _new_version == nullptr || _new_version->is_redefining() ? this : _new_version->active_version(); }
 
