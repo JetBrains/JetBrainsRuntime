@@ -1313,6 +1313,7 @@ jdk/incubator/vector/LoadJsvmlTest.java                         8305390 windows-
 # jdk_jfr
 
 jdk/jfr/event/compiler/TestCodeSweeper.java                     8225209 generic-all
+jdk/jfr/event/oldobject/TestShenandoah.java                     8342951 generic-all
 jdk/jfr/event/runtime/TestDumpReason.java  JBR-8780 windows-aarch64
 jdk/jfr/event/runtime/TestShutdownEvent.java JBR-8781 windows-aarch64
 jdk/jfr/startupargs/TestStartName.java                          8214685 windows-x64
