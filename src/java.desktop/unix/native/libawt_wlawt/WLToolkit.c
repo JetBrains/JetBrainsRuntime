@@ -407,6 +407,7 @@ wl_keyboard_leave(void *data, struct wl_keyboard *wl_keyboard,
                   uint32_t serial, struct wl_surface *surface)
 {
     JNIEnv* env = getEnv();
+    wlHandleKeyboardLeave();
     (*env)->CallStaticVoidMethod(env,
                                  tkClass,
                                  dispatchKeyboardLeaveEventMID,
