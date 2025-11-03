@@ -104,7 +104,7 @@ typedef enum {
  */
 typedef struct {
     VkFormat              aliases[FORMAT_ALIAS_COUNT];
-    unsigned int          bytes;
+    uint32_t              bytes;
     VkImageAspectFlagBits aspect;
 } FormatGroup;
 
