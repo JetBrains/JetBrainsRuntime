@@ -43,6 +43,7 @@ struct WLKeyEvent {
     int modifiers;
 };
 
+void wlHandleKeyboardLeave(void);
 void wlSetKeymap(const char* serializedKeymap);
 void wlSetKeyState(long serial, long timestamp, uint32_t keycode, bool isPressed);
 void wlSetRepeatInfo(int charsPerSecond, int delayMillis);
