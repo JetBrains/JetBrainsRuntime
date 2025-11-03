@@ -22,6 +22,8 @@
 // questions.
 
 #include <assert.h>
+#include <stdbool.h>
+
 #include "VKUtil.h"
 #include "VKEnv.h"
 #include "VKPipelines.h"

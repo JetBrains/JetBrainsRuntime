@@ -24,6 +24,8 @@
 #ifndef VKPipelines_h_Included
 #define VKPipelines_h_Included
 
+#include <stddef.h>
+
 #include "VKComposites.h"
 #include "VKSamplers.h"
 #include "VKTypes.h"
@@ -118,9 +120,17 @@ typedef struct {
     float p0, p1, p3;
 } VKGradientPaintConstants;
 
+#if defined(_MSC_VER)
+#define ALIGNAS(n) __declspec(align(n))
+#else
+#include <stdalign.h>
+    #define ALIGNAS(n) alignas(n)
+#endif
+
+
 typedef union {
     // The minimum guaranteed size of push constants is 128 bytes.
-    alignas(32) // The maximum alignment for built-in glsl types is 32 bytes (dvec4).
+    ALIGNAS(32) // The maximum alignment for built-in glsl types is 32 bytes (dvec4).
     char data[(128 - sizeof(VKTransform) - sizeof(VKCompositeConstants)) / 32 * 32];
     VKGradientPaintConstants gradientPaint;
 } VKShaderConstants;
@@ -133,8 +143,7 @@ typedef struct {
     VKShaderConstants shader;
 } VKPushConstants;
 typedef char VKPushConstantsCheckSize[sizeof(VKPushConstants) <= 128 ? 1 : -1]; // We should not exceed 128 bytes.
-static const uint32_t PUSH_CONSTANTS_OFFSET = (uintptr_t) &((VKPushConstants*) NULL)->composite;
-static const uint32_t PUSH_CONSTANTS_SIZE = sizeof(VKPushConstants) - PUSH_CONSTANTS_OFFSET;
+static const uint32_t PUSH_CONSTANTS_SIZE = sizeof(VKPushConstants) - offsetof(VKPushConstants, composite);
 
 typedef struct {
     int x, y;
