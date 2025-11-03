@@ -38,6 +38,7 @@
 #include <java_awt_event_KeyEvent.h>
 #include <jni_util.h>
 #include <stdlib.h>
+#include <string.h>
 
 //#define WL_KEYBOARD_DEBUG
 
@@ -50,21 +51,36 @@ extern JNIEnv *getEnv();
 #define XKB_MOD_NAME_NUM        "Mod2"
 #define XKB_MOD_NAME_LOGO       "Mod4"
 
-#define XKB_SHIFT_MASK (1 << 0)
-#define XKB_CAPS_LOCK_MASK (1 << 1)
-#define XKB_CTRL_MASK (1 << 2)
-#define XKB_ALT_MASK (1 << 3)
-#define XKB_NUM_LOCK_MASK (1 << 4)
-#define XKB_MOD3_MASK (1 << 5)
-#define XKB_META_MASK (1 << 6)
-#define XKB_MOD5_MASK (1 << 7)
+enum {
+    XKB_MOD_INDEX_SHIFT     = 0, // Shift
+    XKB_MOD_INDEX_CAPS_LOCK = 1, // Lock
+    XKB_MOD_INDEX_CTRL      = 2, // Control
+    XKB_MOD_INDEX_ALT       = 3, // Mod1
+    XKB_MOD_INDEX_NUM_LOCK  = 4, // Mod2
+    XKB_MOD_INDEX_LEVEL5    = 5, // Mod3
+    XKB_MOD_INDEX_SUPER     = 6, // Mod4
+    XKB_MOD_INDEX_LEVEL3    = 7, // Mod5
+};
+
+#define NUM_XKB_MODS 8
+
+enum {
+    XKB_SHIFT_MASK     = 1 << XKB_MOD_INDEX_SHIFT,
+    XKB_CAPS_LOCK_MASK = 1 << XKB_MOD_INDEX_CAPS_LOCK,
+    XKB_CTRL_MASK      = 1 << XKB_MOD_INDEX_CTRL,
+    XKB_ALT_MASK       = 1 << XKB_MOD_INDEX_ALT,
+    XKB_NUM_LOCK_MASK  = 1 << XKB_MOD_INDEX_NUM_LOCK,
+    XKB_LEVEL5_MASK    = 1 << XKB_MOD_INDEX_LEVEL5,
+    XKB_SUPER_MASK     = 1 << XKB_MOD_INDEX_SUPER,
+    XKB_LEVEL3_MASK    = 1 << XKB_MOD_INDEX_LEVEL3,
+};
+
 
 #define XKB_LED_NAME_CAPS       "Caps Lock"
 #define XKB_LED_NAME_NUM        "Num Lock"
 #define XKB_LED_NAME_SCROLL     "Scroll Lock"
 
 #define MAX_COMPOSE_UTF8_LENGTH 256
-
 
 typedef uint32_t xkb_keycode_t;
 typedef uint32_t xkb_keysym_t;
@@ -206,6 +222,8 @@ static struct WLKeyboardState {
     struct xkb_compose_state *composeState;
 
     bool asciiCapable;
+
+    int modsHeldCount[NUM_XKB_MODS];
 
     // Remap F13-F24 to proper XKB keysyms (and therefore to proper Java keycodes)
     bool remapExtraKeycodes;
@@ -885,7 +903,7 @@ static const struct ExtraKeycodeToKeysymMapItem {
         {190 /* KEY_F20 */, 0xffd1 /* XKB_KEY_F20 */ },
         {191 /* KEY_F21 */, 0xffd2 /* XKB_KEY_F21 */ },
         {192 /* KEY_F22 */, 0xffd3 /* XKB_KEY_F22 */ },
-        {193 /* KEY_F23 */, 0xffd4 /* XKB_KEY_F23 */},
+        {193 /* KEY_F23 */, 0xffd4 /* XKB_KEY_F23 */ },
         {194 /* KEY_F24 */, 0xffd5 /* XKB_KEY_F24 */ },
         {0,                 0}
 };
@@ -931,6 +949,23 @@ static const struct DeadKeysymValuesMapItem {
         {0xfe6f /* XKB_KEY_dead_currency */,         0,                                0x00a4 /* CURRENCY SIGN */ },
         {0xfe8c /* XKB_KEY_dead_greek */,            0,                                0x00b5 /* MICRO SIGN */ },
         {0,                                          0,                                0}
+};
+
+static const struct ModifierKeysymsMapItem {
+    xkb_keysym_t keysym;
+    xkb_mod_index_t mod;
+} modifierKeysymsMap[] = {
+    { 0xffe1 /* XKB_KEY_Shift_L */,          XKB_MOD_INDEX_SHIFT  },
+    { 0xffe2 /* XKB_KEY_Shift_R */,          XKB_MOD_INDEX_SHIFT  },
+    { 0xffe3 /* XKB_KEY_Control_L */,        XKB_MOD_INDEX_CTRL   },
+    { 0xffe4 /* XKB_KEY_Control_R */,        XKB_MOD_INDEX_CTRL   },
+    { 0xffe9 /* XKB_KEY_Alt_L */,            XKB_MOD_INDEX_ALT    },
+    { 0xffea /* XKB_KEY_Alt_R */,            XKB_MOD_INDEX_ALT    },
+    { 0xffeb /* XKB_KEY_Super_L */,          XKB_MOD_INDEX_SUPER  },
+    { 0xffec /* XKB_KEY_Super_R */,          XKB_MOD_INDEX_SUPER  },
+    { 0xfe03 /* XKB_KEY_ISO_Level3_Shift */, XKB_MOD_INDEX_LEVEL3 },
+    { 0xfe11 /* XKB_KEY_ISO_Level5_Shift */, XKB_MOD_INDEX_LEVEL5 },
+    { 0, 0 },
 };
 
 static xkb_layout_index_t
@@ -1086,9 +1121,19 @@ isFunctionKeysym(xkb_keysym_t keysym) {
     return keysym >= 0xff00 && keysym <= 0xffff;
 }
 
-static unsigned
+static xkb_mod_mask_t
 getXKBModifiers(void) {
     return xkb.state_serialize_mods(keyboard.state, XKB_STATE_MODS_EFFECTIVE);
+}
+
+static int
+getKeysymModifier(xkb_keysym_t keysym) {
+    for (const struct ModifierKeysymsMapItem* it = modifierKeysymsMap; it->keysym != 0; ++it) {
+        if (it->keysym == keysym) {
+            return (int)it->mod;
+        }
+    }
+    return -1;
 }
 
 static int
@@ -1107,9 +1152,9 @@ convertXKBModifiersToJavaModifiers(xkb_mod_mask_t mask) {
         result |= java_awt_event_InputEvent_ALT_DOWN_MASK;
     }
 
-    if ((mask & XKB_META_MASK) != 0) {
-        result |= java_awt_event_InputEvent_META_DOWN_MASK;
-    }
+    // NOTE: we do not set META_DOWN_MASK, the xkb "meta" modifier is the same as alt, 
+    // the xkb "super" modifier (the Windows key) doesn't set META_DOWN_MASK on XToolkit,
+    // so for consistency neither do we.
 
     return result;
 }
@@ -1156,12 +1201,10 @@ convertKeysymToJavaCode(xkb_keysym_t keysym, int *javaKeyCode, int *javaKeyLocat
 
 // Posts one UTF-16 code unit as a KEY_TYPED event
 static void
-postKeyTypedJavaChar(long serial, long timestamp, uint16_t javaChar) {
+postKeyTypedJavaChar(long serial, long timestamp, int javaModifiers, uint16_t javaChar) {
 #ifdef WL_KEYBOARD_DEBUG
     fprintf(stderr, "postKeyTypedJavaChar(0x%04x)\n", (int) javaChar);
 #endif
-
-    int javaModifiers = convertXKBModifiersToJavaModifiers(getXKBModifiers());
 
     struct WLKeyEvent event = {
             .serial = serial,
@@ -1180,7 +1223,7 @@ postKeyTypedJavaChar(long serial, long timestamp, uint16_t javaChar) {
 
 // Posts one Unicode code point as KEY_TYPED events
 static void
-postKeyTypedCodepoint(long serial, long timestamp, uint32_t codePoint) {
+postKeyTypedCodepoint(long serial, long timestamp, int javaModifiers, uint32_t codePoint) {
     if (codePoint >= 0x10000) {
         // break the codepoint into surrogates
 
@@ -1189,10 +1232,10 @@ postKeyTypedCodepoint(long serial, long timestamp, uint32_t codePoint) {
         uint16_t highSurrogate = (uint16_t) (0xD800 + ((codePoint >> 10) & 0x3ff));
         uint16_t lowSurrogate = (uint16_t) (0xDC00 + (codePoint & 0x3ff));
 
-        postKeyTypedJavaChar(serial, timestamp, highSurrogate);
-        postKeyTypedJavaChar(serial, timestamp, lowSurrogate);
+        postKeyTypedJavaChar(serial, timestamp, javaModifiers, highSurrogate);
+        postKeyTypedJavaChar(serial, timestamp, javaModifiers, lowSurrogate);
     } else {
-        postKeyTypedJavaChar(serial, timestamp, (uint16_t) codePoint);
+        postKeyTypedJavaChar(serial, timestamp, javaModifiers, (uint16_t) codePoint);
     }
 }
 
@@ -1214,6 +1257,7 @@ postKeyTypedEvents(long serial, long timestamp, const char *string) {
     fprintf(stderr, "\")\n");
 #endif
 
+    int javaModifiers = convertXKBModifiersToJavaModifiers(getXKBModifiers());
     const uint8_t *utf8 = (const uint8_t *) string;
     uint32_t curCodePoint = 0;
     int remaining = 0;
@@ -1234,13 +1278,13 @@ postKeyTypedEvents(long serial, long timestamp, const char *string) {
             // a single codepoint in range U+0000 to U+007F
             remaining = 0;
             curCodePoint = 0;
-            postKeyTypedCodepoint(serial, timestamp, *ptr & 0x7f);
+            postKeyTypedCodepoint(serial, timestamp, javaModifiers, *ptr & 0x7f);
         } else if ((*ptr & 0xc0) == 0x80) {
             // continuation byte
             curCodePoint = (curCodePoint << 6u) | (uint32_t) (*ptr & 0x3f);
             --remaining;
             if (remaining == 0) {
-                postKeyTypedCodepoint(serial, timestamp, curCodePoint);
+                postKeyTypedCodepoint(serial, timestamp, javaModifiers, curCodePoint);
                 curCodePoint = 0;
             }
         } else {
@@ -1331,6 +1375,14 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
     xkb_keysym_t actualKeysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_ACTIVE_STATE);
     xkb_keysym_t noModsKeysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_ACTIVE_LAYOUT);
     xkb_keysym_t qwertyKeysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_QWERTY);
+    int keysymModifier = getKeysymModifier(actualKeysym);
+
+    if (!isRepeat && keysymModifier >= 0 && keysymModifier < NUM_XKB_MODS) {
+        keyboard.modsHeldCount[keysymModifier] += isPressed ? 1 : -1;
+        if (keyboard.modsHeldCount[keysymModifier] < 0) {
+            keyboard.modsHeldCount[keysymModifier] = 0;
+        }
+    }
 
 #ifdef WL_KEYBOARD_DEBUG
     char buf[256];
@@ -1357,6 +1409,18 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
     int javaKeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
     xkb_keysym_t reportedKeysym = noModsKeysym;
     xkb_mod_mask_t modifiers = getXKBModifiers();
+
+    // Java expects key presses for modifier keys to come with modifier mask already updated.
+    // Wayland sends the modifier event *after* key press/release event.
+    // Patch the modifiers here.
+    if (keysymModifier >= 0 && keysymModifier < NUM_XKB_MODS) {
+        bool anyPressed = keyboard.modsHeldCount[keysymModifier] > 0;
+        if (anyPressed) {
+            modifiers |= (1U << keysymModifier);
+        } else {
+            modifiers &= ~(1U << keysymModifier);
+        }
+    }
 
     bool reportQwerty = keyboard.reportNonAsciiAsQwerty && !keyboard.asciiCapable && qwertyKeysym <= 0x7f;
 
@@ -1555,6 +1619,11 @@ Java_sun_awt_wl_WLKeyboard_isNumLockPressed(JNIEnv *env, jobject instance) {
 }
 
 void
+wlHandleKeyboardLeave(void) {
+    memset(keyboard.modsHeldCount, 0, sizeof keyboard.modsHeldCount);
+}
+
+void
 wlSetKeymap(const char *serializedKeymap) {
     struct xkb_keymap *newKeymap = xkb.keymap_new_from_string(
             keyboard.context, serializedKeymap, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
@@ -1578,6 +1647,7 @@ wlSetKeymap(const char *serializedKeymap) {
     keyboard.state = newState;
     keyboard.tmpState = newTmpState;
     keyboard.keymap = newKeymap;
+
     onKeyboardLayoutChanged();
 }
 
