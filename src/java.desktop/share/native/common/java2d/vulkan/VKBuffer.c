@@ -240,7 +240,7 @@ VKBuffer *VKBuffer_CreateFromRaster(VKDevice *device,
                                         VkPipelineStageFlags stage,
                                         VkAccessFlags access)
 {
-    uint32_t dataSize = info.w * info.h * info.pixelStride;
+    size_t dataSize = info.w * info.h * info.pixelStride;
     VKBuffer *buffer = VKBuffer_Create(device, dataSize,
                                        VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
@@ -273,7 +273,7 @@ VKBuffer *VKBuffer_CreateFromRaster(VKDevice *device,
     device->vkUnmapMemory(device->handle, buffer->range.memory);
     {
         VkBufferMemoryBarrier barrier;
-        VKBarrierBatch barrierBatch = {};
+        VKBarrierBatch barrierBatch = { 0 };
         VKBuffer_AddBarrier(&barrier, &barrierBatch, buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, stage, access);
         VKRenderer_RecordBarriers(device->renderer, &barrier, &barrierBatch, NULL, NULL);
     }

@@ -33,7 +33,14 @@
 #include "VKRenderer.h"
 #include "VKTexturePool.h"
 
-#define CAP_PRESENTABLE_BIT sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable:4146)
+#endif
+static const unsigned int CAP_PRESENTABLE_BIT = sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #if !defined(__BYTE_ORDER__) || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define VK_LITTLE_ENDIAN
@@ -178,7 +185,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
 
     // Query supported formats.
     J2dRlsTraceLn(J2D_TRACE_INFO, "    Supported device formats:");
-    VKSampledSrcTypes sampledSrcTypes = {{}};
+    VKSampledSrcTypes sampledSrcTypes = {{ 0 }};
     VKSampledSrcType* SRCTYPE_4BYTE = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_4BYTE];
     VKSampledSrcType* SRCTYPE_3BYTE = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_3BYTE];
     VKSampledSrcType* SRCTYPE_565 = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_565];
