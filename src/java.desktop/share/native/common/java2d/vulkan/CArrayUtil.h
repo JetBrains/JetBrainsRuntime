@@ -512,7 +512,19 @@ bool CARR_hash_map_linear_probing_rehash(CARR_MAP_LAYOUT_ARGS, void** handle, CA
 
 #else // LINUX
 
-#define MAP(KEY_TYPE, VALUE_TYPE) void*; // implement me
+// implement me:
+
+#define MAP(KEY_TYPE, VALUE_TYPE) struct {KEY_TYPE *keys; VALUE_TYPE *vals;} *
+#define MAP_FREE(P) ((void)0)
+#define HASH_MAP_REHASH(P, ...) ((void)0)
+#define MAP_AT(P, ...) (*(P->vals))
+#define MAP_FIND(P, ...) (P->vals)
+
+#define ARRAY(TYPE) TYPE*
+#define ARRAY_FREE(P) ((void)0)
+#define ARRAY_SIZE(P) 0
+#define ARRAY_LAST(P) *P
+#define ARRAY_PUSH_BACK(P) (*(__typeof__(P))0, &(P)[0])[0]
 
 #endif // not LINUX
 
