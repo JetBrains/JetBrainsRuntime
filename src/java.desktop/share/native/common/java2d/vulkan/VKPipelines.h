@@ -118,9 +118,17 @@ typedef struct {
     float p0, p1, p3;
 } VKGradientPaintConstants;
 
+#if defined(_MSC_VER)
+#define ALIGNAS(n) __declspec(align(n))
+#else
+#include <stdalign.h>
+    #define ALIGNAS(n) alignas(n)
+#endif
+
+
 typedef union {
     // The minimum guaranteed size of push constants is 128 bytes.
-    alignas(32) // The maximum alignment for built-in glsl types is 32 bytes (dvec4).
+    ALIGNAS(32) // The maximum alignment for built-in glsl types is 32 bytes (dvec4).
     char data[(128 - sizeof(VKTransform) - sizeof(VKCompositeConstants)) / 32 * 32];
     VKGradientPaintConstants gradientPaint;
 } VKShaderConstants;
