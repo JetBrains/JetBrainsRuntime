@@ -583,3 +583,43 @@ JNI_COCOA_ENTER(env);
 JNI_COCOA_EXIT(env);
     return ret;
 }
+
+/*
+ * Class:     sun_awt_CGraphicsDevice
+ * Method:    nativeGetDisplayConfiguration
+ * Signature: (Lsun/awt/CGraphicsDevice$DisplayConfiguration;)V
+ */
+JNIEXPORT void JNICALL
+Java_sun_awt_CGraphicsDevice_nativeGetDisplayConfiguration
+(JNIEnv *env, jclass class, jobject config) {
+AWT_ASSERT_APPKIT_THREAD;
+JNI_COCOA_ENTER(env);
+
+    DECLARE_CLASS(jc_DisplayConfiguration, "sun/awt/CGraphicsDevice$DisplayConfiguration");
+    DECLARE_METHOD(jc_DisplayConfiguration_addDescriptor, jc_DisplayConfiguration, "addDescriptor", "(IIIIID)V");
+
+    NSArray *screens = [NSScreen screens];
+    for (NSScreen *screen in screens) {
+        NSDictionary *screenInfo = [screen deviceDescription];
+        NSNumber *screenID = [screenInfo objectForKey:@"NSScreenNumber"];
+
+        jint displayID = [screenID unsignedIntValue];
+        jdouble scale = 1.0;
+        if ([screen respondsToSelector:@selector(backingScaleFactor)]) {
+            scale = [screen backingScaleFactor];
+        }
+        NSRect frame = [screen frame];
+        NSRect visibleFrame = [screen visibleFrame];
+        // Convert between Cocoa's coordinate system and Java.
+        jint bottom = visibleFrame.origin.y - frame.origin.y;
+        jint top = frame.size.height - visibleFrame.size.height - bottom;
+        jint left = visibleFrame.origin.x - frame.origin.x;
+        jint right = frame.size.width - visibleFrame.size.width - left;
+
+        (*env)->CallVoidMethod(env, config, jc_DisplayConfiguration_addDescriptor,
+            displayID, top, left, bottom, right, scale);
+        CHECK_EXCEPTION();
+    }
+
+JNI_COCOA_EXIT(env);
+}
