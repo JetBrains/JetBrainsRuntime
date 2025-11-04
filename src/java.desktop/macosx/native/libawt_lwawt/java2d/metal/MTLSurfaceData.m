@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -257,13 +257,8 @@ MTLSD_SetNativeDimensions(JNIEnv *env, BMTLSDOps *mtlsdo,
     }
 
     JNU_SetFieldByName(env, NULL, sdObject, "nativeWidth", "I", width);
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionDescribe(env);
-    } else {
+    if (!((*env)->ExceptionOccurred(env))) {
         JNU_SetFieldByName(env, NULL, sdObject, "nativeHeight", "I", height);
-        if ((*env)->ExceptionCheck(env)) {
-            (*env)->ExceptionDescribe(env);
-        }
     }
 
     (*env)->DeleteLocalRef(env, sdObject);
@@ -304,12 +299,8 @@ MTLSD_Delete(JNIEnv *env, BMTLSDOps *bmtlsdo)
 void
 MTLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
 {
-    jboolean exc;
-    JNU_CallStaticMethodByName(env, &exc, "sun/java2d/metal/MTLSurfaceData",
+    JNU_CallStaticMethodByName(env, NULL, "sun/java2d/metal/MTLSurfaceData",
                                "dispose", "(J)V", ptr_to_jlong(ops));
-    if (exc) {
-        (*env)->ExceptionDescribe(env);
-    }
 }
 
 /**
