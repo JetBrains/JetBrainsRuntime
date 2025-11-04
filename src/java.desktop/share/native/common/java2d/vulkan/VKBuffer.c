@@ -240,7 +240,7 @@ VKBuffer *VKBuffer_CreateFromRaster(VKDevice *device,
                                         VkPipelineStageFlags stage,
                                         VkAccessFlags access)
 {
-    uint32_t dataSize = info.w * info.h * info.pixelStride;
+    size_t dataSize = info.w * info.h * info.pixelStride;
     VKBuffer *buffer = VKBuffer_Create(device, dataSize,
                                        VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |

@@ -33,7 +33,14 @@
 #include "VKRenderer.h"
 #include "VKTexturePool.h"
 
-#define CAP_PRESENTABLE_BIT sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable:4146)
+#endif
+static const unsigned int CAP_PRESENTABLE_BIT = sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #if !defined(__BYTE_ORDER__) || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define VK_LITTLE_ENDIAN
