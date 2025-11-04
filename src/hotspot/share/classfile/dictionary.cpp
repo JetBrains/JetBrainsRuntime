@@ -234,10 +234,8 @@ bool Dictionary::update_klass(Thread* current, Symbol* class_name, InstanceKlass
   UpdateKlassDcevm found(k, old_klass);
 
   DictionaryLookup lookup(class_name);
-  InstanceKlass* result = nullptr;
-  bool needs_rehashing = false;
-  bool ret = _table->insert_get(current, lookup, old_klass, found);
-  return ret || found.get_replaced();
+  bool exists = _table->get(current, lookup, found);
+  return exists && found.get_replaced();
 }
 
 class RollBackDcevm : public StackObj {
