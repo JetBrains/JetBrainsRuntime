@@ -70,7 +70,7 @@ public final class CGraphicsDevice extends GraphicsDevice
     private DisplayMode originalMode;
     private DisplayMode initialMode;
 
-    public CGraphicsDevice(final int displayID) {
+    public CGraphicsDevice(final int displayID, DisplayConfiguration config) {
         this.displayID = displayID;
         this.initialMode = getDisplayMode();
         StringBuilder errorMessage = new StringBuilder();
@@ -94,7 +94,7 @@ public final class CGraphicsDevice extends GraphicsDevice
         }
 
         // [JBR] we don't call displayChanged after creating a device, so call it here.
-        displayChanged();
+        updateDevice(config);
     }
 
     int getDisplayID() {
@@ -177,8 +177,6 @@ public final class CGraphicsDevice extends GraphicsDevice
         yResolution = nativeGetYResolution(displayID);
         isMirroring = nativeIsMirroring(displayID);
         bounds = nativeGetBounds(displayID).getBounds(); //does integer rounding
-        screenInsets = nativeGetScreenInsets(displayID);
-        initScaleFactor();
         resizeFSWindow(getFullScreenWindow(), bounds);
         //TODO configs?
     }
@@ -186,11 +184,12 @@ public final class CGraphicsDevice extends GraphicsDevice
     /**
      * @return false if display parameters were changed, so we need to recreate the device.
      */
-    boolean updateDevice() {
+    boolean updateDevice(DisplayConfiguration config) {
         int s = scale;
         double xr = xResolution, yr = yResolution;
         boolean m = isMirroring;
         var b = bounds;
+        updateDisplayParameters(config);
         displayChanged();
         return s == scale && xr == xResolution && yr == yResolution && m == isMirroring && b.equals(bounds);
     }
@@ -368,23 +367,6 @@ public final class CGraphicsDevice extends GraphicsDevice
         }
     }
 
-    private void initScaleFactor() {
-        int _scale = scale;
-        if (SunGraphicsEnvironment.isUIScaleEnabled()) {
-            double debugScale = SunGraphicsEnvironment.getDebugScale();
-            scale = (int) (debugScale >= 1
-                    ? Math.round(debugScale)
-                    : nativeGetScaleFactor(displayID));
-        } else {
-            scale = 1;
-        }
-        if (_scale != scale && logger.isLoggable(PlatformLogger.Level.FINE)) {
-            logger.fine("current scale = " + _scale + ", new scale = " + scale + " (" + this + ")");
-        }
-    }
-
-    private static native double nativeGetScaleFactor(int displayID);
-
     private static native void nativeResetDisplayMode();
 
     private static native void nativeSetDisplayMode(int displayID, int w, int h, int bpp, int refrate);
@@ -398,8 +380,6 @@ public final class CGraphicsDevice extends GraphicsDevice
     private static native double nativeGetYResolution(int displayID);
 
     private static native boolean nativeIsMirroring(int displayID);
-
-    private static native Insets nativeGetScreenInsets(int displayID);
 
     private static native Rectangle2D nativeGetBounds(int displayID);
 
