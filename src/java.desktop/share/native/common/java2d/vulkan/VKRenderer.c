@@ -185,11 +185,11 @@ static VKRenderingContext context = {
         .constantsModCount = 1,
         .transformModCount = 1,
         .constants = {
-            .transform = VK_ID_TRANSFORM,
+            .transform = /*VK_ID_TRANSFORM*/ {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
             .composite = { 0, 1.0f }
         },
         .clipModCount = 1,
-        .clipRect = NO_CLIP,
+        .clipRect = /*NO_CLIP*/ {{0, 0}, {0x7FFFFFFFU, 0x7FFFFFFFU}},
         .clipSpanVertices = NULL
 };
 
@@ -1198,7 +1198,7 @@ static void VKRenderer_ValidateConstants() {
         surface->device->vkCmdPushConstants(
                 renderPass->commandBuffer,
                 surface->device->renderer->pipelineContext->commonPipelineLayout,
-                VK_SHADER_STAGE_FRAGMENT_BIT, PUSH_CONSTANTS_OFFSET, PUSH_CONSTANTS_SIZE, &context->constants.composite
+                VK_SHADER_STAGE_FRAGMENT_BIT, offsetof(VKPushConstants, composite), PUSH_CONSTANTS_SIZE, &context->constants.composite
         );
     }
 }

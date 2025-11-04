@@ -192,8 +192,8 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
             .topology = descriptors[i].topology
         };
-        static const VkViewport viewport = {};
-        static const VkRect2D scissor = {};
+        static const VkViewport viewport = { 0 };
+        static const VkRect2D scissor = { 0 };
         static const VkPipelineViewportStateCreateInfo viewportState = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
             .viewportCount = 1,
@@ -286,14 +286,14 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             break;
         case SHADER_CLIP:
             createInfos[i].pVertexInputState = &INPUT_STATE_CLIP;
-            static const VkStencilOpState CLIP_STENCIL_OP = {
-                .failOp = VK_STENCIL_OP_REPLACE,
-                .passOp = VK_STENCIL_OP_REPLACE,
-                .compareOp = VK_COMPARE_OP_NEVER,
-                .compareMask = 0U,
-                .writeMask = 0xFFFFFFFFU,
-                .reference = CLIP_STENCIL_INCLUDE_VALUE
-            };
+            #define CLIP_STENCIL_OP { \
+                .failOp = VK_STENCIL_OP_REPLACE,\
+                .passOp = VK_STENCIL_OP_REPLACE, \
+                .compareOp = VK_COMPARE_OP_NEVER, \
+                .compareMask = 0U, \
+                .writeMask = 0xFFFFFFFFU, \
+                .reference = CLIP_STENCIL_INCLUDE_VALUE \
+            }
             static const VkPipelineDepthStencilStateCreateInfo CLIP_STENCIL_STATE = {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
                 .stencilTestEnable = VK_TRUE,
@@ -432,7 +432,7 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
             .size = sizeof(VKTransform)
     }, {
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .offset = PUSH_CONSTANTS_OFFSET,
+            .offset = offsetof(VKPushConstants, composite),
             .size = PUSH_CONSTANTS_SIZE
     }};
 
