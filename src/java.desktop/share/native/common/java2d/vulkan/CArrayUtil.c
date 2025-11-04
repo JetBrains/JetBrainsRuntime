@@ -1,3 +1,5 @@
+#ifndef _WIN32
+
 #include <memory.h>
 #include <stddef.h>
 #include "CArrayUtil.h"
@@ -380,3 +382,5 @@ bool CARR_hash_map_linear_probing_rehash(CARR_MAP_LAYOUT_ARGS, void** handle, CA
     *handle = context.new_data;
     return true;
 }
+
+#endif // _WIN32

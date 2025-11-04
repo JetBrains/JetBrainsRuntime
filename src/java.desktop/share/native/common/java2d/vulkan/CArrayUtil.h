@@ -1,6 +1,8 @@
 #ifndef C_ARRAY_UTIL_H
 #define C_ARRAY_UTIL_H
 
+#ifdef LINUX
+
 #include <malloc.h>
 #include <stdalign.h>
 #include <stdbool.h>
@@ -507,5 +509,12 @@ bool CARR_hash_map_linear_probing_rehash(CARR_MAP_LAYOUT_ARGS, void** handle, CA
  * @param P map
  */
 #define MAP_FREE(P) ((P) == NULL ? 0 : CARR_MAP_DISPATCH((P), free, (P)), (void)((P) = NULL))
+
+#else // LINUX
+
+#define MAP(KEY_TYPE, VALUE_TYPE) void*; // implement me
+
+#endif // not LINUX
+
 
 #endif // C_ARRAY_UTIL_H
