@@ -34,18 +34,21 @@ import java.awt.Window;
 import java.awt.geom.Rectangle2D;
 import java.awt.peer.WindowPeer;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.MacOSFlags;
 import sun.java2d.metal.MTLGraphicsConfig;
 import sun.java2d.opengl.CGLGraphicsConfig;
+import sun.lwawt.macosx.CThreading;
 import sun.util.logging.PlatformLogger;
 
 import static java.awt.peer.ComponentPeer.SET_BOUNDS;
 
 public final class CGraphicsDevice extends GraphicsDevice
-        implements DisplayChangedListener, DisplayParametersChangedListener {
+        implements DisplayChangedListener {
 
     private static final PlatformLogger logger = PlatformLogger.getLogger(CGraphicsDevice.class.getName());
     /**
@@ -192,20 +195,33 @@ public final class CGraphicsDevice extends GraphicsDevice
         return s == scale && xr == xResolution && yr == yResolution && m == isMirroring && b.equals(bounds);
     }
 
-    public void displayParametersChanged() {
-        Insets newScreenInsets = nativeGetScreenInsets(displayID);
-        if (!newScreenInsets.equals(screenInsets)) {
+    public void updateDisplayParameters(DisplayConfiguration config) {
+        Descriptor desc = config.getDescriptor(displayID);
+        if (desc == null) return;
+        if (!desc.screenInsets.equals(screenInsets)) {
             if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                 logger.fine("Screen insets for display(" + displayID + ") changed " +
                         "[top="  + screenInsets.top + ",left=" + screenInsets.left +
                         ",bottom=" + screenInsets.bottom + ",right=" + screenInsets.right +
-                        "]->[top="  + newScreenInsets.top + ",left=" + newScreenInsets.left +
-                        ",bottom=" + newScreenInsets.bottom + ",right=" + newScreenInsets.right +
+                        "]->[top="  + desc.screenInsets.top + ",left=" + desc.screenInsets.left +
+                        ",bottom=" + desc.screenInsets.bottom + ",right=" + desc.screenInsets.right +
                         "]");
             }
-            screenInsets = newScreenInsets;
+            screenInsets = desc.screenInsets;
+        }
+        int newScale = 1;
+        if (SunGraphicsEnvironment.isUIScaleEnabled()) {
+            double debugScale = SunGraphicsEnvironment.getDebugScale();
+            newScale = (int) (debugScale >= 1 ? Math.round(debugScale) : (int) desc.scale);
+        }
+        if (newScale != scale) {
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("Scale for display(" + displayID + ") changed " + scale + "->" + newScale);
+            }
+            scale = newScale;
         }
     }
+
     @Override
     public void paletteChanged() {
         // devices do not need to react to this event.
@@ -386,4 +402,36 @@ public final class CGraphicsDevice extends GraphicsDevice
     private static native Insets nativeGetScreenInsets(int displayID);
 
     private static native Rectangle2D nativeGetBounds(int displayID);
+
+    private static native void nativeGetDisplayConfiguration(DisplayConfiguration config);
+
+    public static final class DisplayConfiguration {
+        private final Map<Integer, Descriptor> map = new HashMap<>();
+        private void addDescriptor(int displayID, int top, int left, int bottom, int right, double scale) {
+            map.put(displayID, new Descriptor(new Insets(top, left, bottom, right), scale));
+        }
+        public Descriptor getDescriptor(int displayID) {
+            return map.get(displayID);
+        }
+        public static DisplayConfiguration get() {
+            try {
+                return CThreading.executeOnAppKit(() -> {
+                    DisplayConfiguration config = new DisplayConfiguration();
+                    nativeGetDisplayConfiguration(config);
+                    return config;
+                });
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private static final class Descriptor {
+        private final Insets screenInsets;
+        private final double scale;
+        private Descriptor(Insets screenInsets, double scale) {
+            this.screenInsets = screenInsets;
+            this.scale = scale;
+        }
+    }
 }
