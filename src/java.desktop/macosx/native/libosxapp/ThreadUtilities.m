@@ -254,8 +254,11 @@ AWT_ASSERT_APPKIT_THREAD;
  * Note : if waiting cross-thread, possibly the stack allocated copy is accessible ?
  */
 + (void)invokeBlockCopy:(void (^)(void))blockCopy {
-    blockCopy();
-    Block_release(blockCopy);
+    @try {
+        blockCopy();
+    } @finally {
+        Block_release(blockCopy);
+    }
 }
 
 + (NSString*)getCaller:(NSString*)prefixSymbol {
@@ -780,9 +783,18 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
     const NSUInteger count = [self.queue count];
     if (count != 0) {
         for (NSUInteger i = 0; i < count; i++) {
-            void (^blockCopy)(void) = (void (^)())[self.queue objectAtIndex: i];
-            // invoke callback:
-            [ThreadUtilities invokeBlockCopy:blockCopy];
+            NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+            @try {
+                void (^blockCopy)(void) = (void (^)())[self.queue objectAtIndex: i];
+                // invoke callback:
+                [ThreadUtilities invokeBlockCopy:blockCopy];
+            } @catch (NSException *exception) {
+                // handle any exception to avoid crashing the main run loop:
+                NSLog(@"Apple AWT Cocoa Exception: %@", [exception description]);
+                NSLog(@"Apple AWT Cocoa Exception callstack: %@", [exception callStackSymbols]);
+            } @finally {
+                [pool drain];
+            }
         }
         // reset queue anyway:
         [self reset];
