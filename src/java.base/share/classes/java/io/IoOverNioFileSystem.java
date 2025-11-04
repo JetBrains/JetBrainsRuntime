@@ -272,17 +272,17 @@ class IoOverNioFileSystem extends FileSystem {
             Path nioPath,
             Set<OpenOption> optionsForChannel,
             NioChannelCleanable channelCleanable) throws FileNotFoundException {
-        var oldOwner = IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.get();
+        var oldOwner = IoOverNio.ParentForFileChannelImplHolder.get();
         try {
             // This tricky thread local variable allows specifying an argument for sun.nio.ch.FileChannelImpl.<init>
             // which is not present in the NIO public API and which is not easy to specify another way.
-            IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(owner);
+            IoOverNio.ParentForFileChannelImplHolder.set(owner);
             return initializeStreamsUsingNio0(owner, nioFs, file, nioPath, optionsForChannel, channelCleanable);
         } finally {
             if (oldOwner != null) {
-                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.set(oldOwner);
+                IoOverNio.ParentForFileChannelImplHolder.set(oldOwner);
             } else {
-                IoOverNio.PARENT_FOR_FILE_CHANNEL_IMPL.remove();
+                IoOverNio.ParentForFileChannelImplHolder.remove();
             }
         }
     }
