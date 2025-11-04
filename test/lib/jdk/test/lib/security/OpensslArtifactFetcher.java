@@ -23,12 +23,14 @@
 
 package jdk.test.lib.security;
 
+import java.io.File;
+
 import java.nio.file.Path;
 import jdk.test.lib.Platform;
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.artifacts.Artifact;
 import jdk.test.lib.artifacts.ArtifactResolver;
-import jtreg.SkippedException;
+import jdk.test.lib.artifacts.ArtifactResolverException;
 
 public class OpensslArtifactFetcher {
 
@@ -48,7 +50,6 @@ public class OpensslArtifactFetcher {
            and return that path, if download fails then return null.
      *
      * @return openssl binary path of the current version
-     * @throws SkippedException if a valid version of OpenSSL cannot be found
      */
     public static String getOpensslPath() {
         String path = getOpensslFromSystemProp(OPENSSL_BUNDLE_VERSION);
@@ -75,16 +76,7 @@ public class OpensslArtifactFetcher {
                 path = fetchOpenssl(MACOSX_AARCH64.class);
             }
         }
-
-        if (!verifyOpensslVersion(path, OPENSSL_BUNDLE_VERSION)) {
-            String exMsg = "Can't find the version: "
-                    + OpensslArtifactFetcher.getTestOpensslBundleVersion()
-                    + " of openssl binary on this machine, please install"
-                    + " and set openssl path with property 'test.openssl.path'";
-            throw new SkippedException(exMsg);
-        } else {
-            return path;
-        }
+        return verifyOpensslVersion(path, OPENSSL_BUNDLE_VERSION) ? path : null;
     }
 
     private static String getOpensslFromSystemProp(String version) {
@@ -120,9 +112,23 @@ public class OpensslArtifactFetcher {
     }
 
     private static String fetchOpenssl(Class<?> clazz) {
-        return ArtifactResolver.fetchOne(clazz)
-            .resolve("openssl").resolve("bin").resolve("openssl")
-                .toString();
+        String path = null;
+        try {
+            path = ArtifactResolver.resolve(clazz).entrySet().stream()
+                    .findAny().get().getValue() + File.separator + "openssl"
+                    + File.separator + "bin" + File.separator + "openssl";
+            System.out.println("path: " + path);
+        } catch (ArtifactResolverException e) {
+            Throwable cause = e.getCause();
+            if (cause == null) {
+                System.out.println("Cannot resolve artifact, "
+                        + "please check if JIB jar is present in classpath.");
+            } else {
+                throw new RuntimeException("Fetch artifact failed: " + clazz
+                        + "\nPlease make sure the artifact is available.", e);
+            }
+        }
+        return path;
     }
 
     // retrieve the provider directory path from <OPENSSL_HOME>/bin/openssl
