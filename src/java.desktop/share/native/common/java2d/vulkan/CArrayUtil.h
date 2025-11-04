@@ -13,6 +13,11 @@ for (size_t i = 0; i < SIZE1; ++i) {            \
 #define DECL_ARRAY_2D(TYPE, NAME, SIZE1, SIZE2) TYPE NAME[SIZE1, SIZE2]
 #endif
 
+#define CARR_MIN(a,b) (((a)<(b))?(a):(b))
+#define CARR_MAX(a,b) (((a)>(b))?(a):(b))
+
+#define SARRAY_COUNT_OF(STATIC_ARRAY) (sizeof(STATIC_ARRAY)/sizeof((STATIC_ARRAY)[0]))
+
 #ifdef LINUX
 
 #include <malloc.h>
@@ -30,9 +35,6 @@ for (size_t i = 0; i < SIZE1; ++i) {            \
 #endif
 
 // === Allocation helpers ===
-
-#define CARR_MIN(a,b) (((a)<(b))?(a):(b))
-#define CARR_MAX(a,b) (((a)>(b))?(a):(b))
 
 static inline bool CARR_handle_alloc(bool CARR_result, bool CARR_force) {
     if (CARR_result || !CARR_force) return CARR_result;
@@ -217,7 +219,6 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
 /**
  * Compile-time length of the static array.
  */
-#define SARRAY_COUNT_OF(STATIC_ARRAY) (sizeof(STATIC_ARRAY)/sizeof((STATIC_ARRAY)[0]))
 
 // === Ring buffers ===
 
@@ -531,12 +532,31 @@ bool CARR_hash_map_linear_probing_rehash(CARR_MAP_LAYOUT_ARGS, void** handle, CA
 #define HASH_MAP_REHASH(P, ...) ((void)0)
 #define MAP_AT(P, ...) (*(P->vals))
 #define MAP_FIND(P, ...) (P->vals)
+#define MAP_NEXT_KEY(P, ...) (P->keys)
+//#define MAP_RESOLVE(P, ...) (P->keys)
+//#define MAP_RESOLVE_OR_INSERT(P, ...) (P->keys)
+//#define MAP_REMOVE(P, ...) (P->keys)
+//#define MAP_ENSURE_EXTRA_CAPACITY(P, ...) ((void)0)
+//#define MAP_TRY_ENSURE_EXTRA_CAPACITY(P, ...) (true)
+//#define MAP_CLEAR(P) ((void)0)
+//#define MAP_SIZE(P) 0
+//#define MAP_LAST(P) *P
+//#define MAP_PUSH_BACK(P) (*(__typeof__(P))0, &(P)->keys[0])[0]
 
 #define ARRAY(TYPE) TYPE*
 #define ARRAY_FREE(P) ((void)0)
 #define ARRAY_SIZE(P) 0
-#define ARRAY_LAST(P) *P
-#define ARRAY_PUSH_BACK(P) (*(__typeof__(P))0, &(P)[0])[0]
+#define ARRAY_LAST(P) (*P)
+#define ARRAY_PUSH_BACK(P) (P[0])
+#define ARRAY_RESIZE(P, ...) ((void)0)
+#define ARRAY_ENSURE_CAPACITY(P, ...) ((void)0)
+
+#define RING_BUFFER(TYPE) TYPE*
+#define RING_BUFFER_FREE(P) ((void)0)
+#define RING_BUFFER_FRONT(P) P
+#define RING_BUFFER_PUSH_FRONT(P) (*P)
+#define RING_BUFFER_PUSH_BACK(P) (*P)
+#define RING_BUFFER_POP_FRONT(P) ((void)0)
 
 #endif // not LINUX
 
