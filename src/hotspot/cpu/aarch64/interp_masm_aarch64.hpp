@@ -292,6 +292,8 @@ class InterpreterMacroAssembler: public MacroAssembler {
     set_last_Java_frame(esp, rfp, (address) pc(), rscratch1);
     MacroAssembler::_call_Unimplemented(call_site);
   }
+
+  void verify_field_offset(Register reg) NOT_DEBUG_RETURN;
 };
 
 #endif // CPU_AARCH64_INTERP_MASM_AARCH64_HPP
