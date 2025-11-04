@@ -27,6 +27,7 @@ package com.apple.eawt;
 
 import java.awt.EventQueue;
 import java.awt.Frame;
+import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.desktop.AboutEvent;
 import java.awt.desktop.AboutHandler;
@@ -65,8 +66,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import sun.awt.AppContext;
+import sun.awt.CGraphicsDevice;
 import sun.awt.SunToolkit;
-import sun.java2d.SunGraphicsEnvironment;
 import sun.util.logging.PlatformLogger;
 
 final class _AppEventHandler {
@@ -275,9 +276,14 @@ final class _AppEventHandler {
                     logger.fine("NOTIFY_SCREEN_CHANGE_PARAMETERS");
                 }
                 if (AppContext.getAppContext() != null) {
-                    EventQueue.invokeLater(
-                            () -> ((SunGraphicsEnvironment) GraphicsEnvironment.
-                                    getLocalGraphicsEnvironment()).displayParametersChanged());
+                    CGraphicsDevice.DisplayConfiguration displayConfiguration = CGraphicsDevice.DisplayConfiguration.get();
+                    EventQueue.invokeLater(() -> {
+                        for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+                            if (gd instanceof CGraphicsDevice) {
+                                ((CGraphicsDevice) gd).updateDisplayParameters(displayConfiguration);
+                            }
+                        }
+                    });
                 }
                 break;
             default:
