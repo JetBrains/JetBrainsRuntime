@@ -251,6 +251,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         Map<Integer, CGraphicsDevice> old = new HashMap<>(devices);
         devices.clear();
         mainDisplayID = getMainDisplayID();
+        CGraphicsDevice.DisplayConfiguration config = CGraphicsDevice.DisplayConfiguration.get();
 
         // initialization of the graphics device may change list of displays on
         // hybrid systems via an activation of discrete video.
@@ -258,7 +259,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         // of displays, and then recheck the main display again.
         if (!old.containsKey(mainDisplayID)) {
             try {
-                old.put(mainDisplayID, new CGraphicsDevice(mainDisplayID));
+                old.put(mainDisplayID, new CGraphicsDevice(mainDisplayID, config));
             } catch (IllegalStateException e) {
                 if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                     logger.fine("Unable to initialize graphics device for displayID=" +
@@ -274,13 +275,13 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         }
         for (int id : displayIDs) {
             old.compute(id, (i, d) -> {
-                if (d != null && d.updateDevice()) {
+                if (d != null && d.updateDevice(config)) {
                     // Device didn't change -> reuse
                     devices.put(i, d);
                     return null;
                 } else {
                     // Device changed -> create new
-                    devices.put(i, new CGraphicsDevice(i));
+                    devices.put(i, new CGraphicsDevice(i, config));
                     return d;
                 }
             });
