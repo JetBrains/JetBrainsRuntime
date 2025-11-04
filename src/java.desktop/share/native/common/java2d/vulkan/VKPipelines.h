@@ -24,6 +24,8 @@
 #ifndef VKPipelines_h_Included
 #define VKPipelines_h_Included
 
+#include <stddef.h>
+
 #include "VKComposites.h"
 #include "VKSamplers.h"
 #include "VKTypes.h"
@@ -141,8 +143,7 @@ typedef struct {
     VKShaderConstants shader;
 } VKPushConstants;
 typedef char VKPushConstantsCheckSize[sizeof(VKPushConstants) <= 128 ? 1 : -1]; // We should not exceed 128 bytes.
-static const uint32_t PUSH_CONSTANTS_OFFSET = (uintptr_t) &((VKPushConstants*) NULL)->composite;
-static const uint32_t PUSH_CONSTANTS_SIZE = sizeof(VKPushConstants) - PUSH_CONSTANTS_OFFSET;
+static const uint32_t PUSH_CONSTANTS_SIZE = sizeof(VKPushConstants) - offsetof(VKPushConstants, composite);
 
 typedef struct {
     int x, y;
