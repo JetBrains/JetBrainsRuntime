@@ -50,11 +50,11 @@ struct VKDevice {
     VkPhysicalDeviceType type;
     VkDeviceSize         nonCoherentAtomSize;
     uint32_t             queueFamily;
-    ARRAY(pchar)         enabledLayers;
-    ARRAY(pchar)         enabledExtensions;
+    pchar_array_t         enabledLayers;
+    pchar_array_t         enabledExtensions;
     VkQueue              queue;
     VKSampledSrcTypes    sampledSrcTypes;
-    ARRAY(jint)          supportedFormats;
+    jint_array_t          supportedFormats;
     jint caps;
 
     VKAllocator*     allocator;
