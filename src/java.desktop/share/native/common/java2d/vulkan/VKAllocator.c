@@ -227,10 +227,10 @@ static uint32_t VKAllocator_AllocatePage(VKAllocator* alloc, uint32_t memoryType
     Page* page;
     if (alloc->freePageIndex != NO_PAGE_INDEX) {
         index = alloc->freePageIndex;
-        page = &alloc->pages[index];
+        page = &alloc->pages.data[index];
         alloc->freePageIndex = page->nextFreePage;
     } else {
-        index = ARRAY_SIZE(alloc->pages);
+        index = alloc->pages.size;
         VK_RUNTIME_ASSERT(index < MAX_PAGES);
         ARRAY_PUSH_BACK(alloc->pages) = (Page) {};
         page = &ARRAY_LAST(alloc->pages);
@@ -272,7 +272,7 @@ static uint32_t VKAllocator_PopFreeBlockPair(SharedPageData* data, uint32_t leve
     uint32_t pairIndex = data->freeLevelIndices[level];
     if (pairIndex != 0) {
         // Pop existing free block pair.
-        BlockPair pair = data->blockPairs[pairIndex-1];
+        BlockPair pair = data->blockPairs.data[pairIndex-1];
         assert(pair.firstFree ^ pair.secondFree); // Only one must be free.
         data->freeLevelIndices[level] = pair.nextFree;
         return pairIndex;
@@ -282,15 +282,15 @@ static uint32_t VKAllocator_PopFreeBlockPair(SharedPageData* data, uint32_t leve
         BlockPair* pair;
         if (data->freeBlockPairIndex != 0) {
             pairIndex = data->freeBlockPairIndex;
-            pair = &data->blockPairs[pairIndex-1];
+            pair = &data->blockPairs.data[pairIndex-1];
             data->freeBlockPairIndex = pair->nextFree;
         } else {
             ARRAY_PUSH_BACK(data->blockPairs) = (BlockPair) {};
-            pairIndex = ARRAY_SIZE(data->blockPairs);
-            pair = &data->blockPairs[pairIndex-1];
+            pairIndex = data->blockPairs.size;
+            pair = &data->blockPairs.data[pairIndex-1];
         }
         // Subdivide parent block.
-        BlockPair* parent = &data->blockPairs[parentIndex-1];
+        BlockPair* parent = &data->blockPairs.data[parentIndex-1];
         assert(parent->firstFree || parent->secondFree);
         *pair = (BlockPair) {
                 .offset     = parent->offset,
@@ -320,7 +320,7 @@ static VkBool32 VKAllocator_PushFreeBlockPair(SharedPageData* data, BlockPair* p
         // Merge.
         uint32_t parentIndex = pair->parent;
         assert(parentIndex != 0);
-        BlockPair* parent = &data->blockPairs[parentIndex-1];
+        BlockPair* parent = &data->blockPairs.data[parentIndex-1];
         if (pair->offset == parent->offset) {
             assert(!parent->firstFree);
             parent->firstFree = 1;
@@ -333,14 +333,14 @@ static VkBool32 VKAllocator_PushFreeBlockPair(SharedPageData* data, BlockPair* p
             data->freeLevelIndices[level] = pair->nextFree;
         } else {
             assert(data->freeLevelIndices[level] != 0);
-            BlockPair* b = &data->blockPairs[data->freeLevelIndices[level]-1];
+            BlockPair* b = &data->blockPairs.data[data->freeLevelIndices[level]-1];
             for (;;) {
                 if (b->nextFree == pairIndex) {
                     b->nextFree = pair->nextFree;
                     break;
                 }
                 assert(b->nextFree != 0);
-                b = &data->blockPairs[b->nextFree-1];
+                b = &data->blockPairs.data[b->nextFree-1];
             }
         }
         // Return block pair struct to pool.
@@ -394,7 +394,7 @@ static AllocationResult VKAllocator_AllocateForResource(VKMemoryRequirements* re
         SharedPageData* data;
         uint32_t pairIndex;
         while (pageIndex != NO_PAGE_INDEX) {
-            page = &alloc->pages[pageIndex];
+            page = &alloc->pages.data[pageIndex];
             data = page->sharedPageData;
             pairIndex = VKAllocator_PopFreeBlockPair(data, level);
             if (pairIndex != 0) break;
@@ -407,7 +407,7 @@ static AllocationResult VKAllocator_AllocateForResource(VKMemoryRequirements* re
             else if (pageLevel > MAX_BLOCK_LEVEL) pool->allocationLevelTracker = (pageLevel = MAX_BLOCK_LEVEL) * 2 + 1;
             pageIndex = VKAllocator_AllocatePage(alloc, memoryType, BLOCK_SIZE << pageLevel, VK_NULL_HANDLE, VK_NULL_HANDLE);
             if (pageIndex == NO_PAGE_INDEX) return (AllocationResult) {{0}, VK_NULL_HANDLE};
-            page = &alloc->pages[pageIndex];
+            page = &alloc->pages.data[pageIndex];
             data = page->sharedPageData = (SharedPageData*) calloc(1, sizeof(SharedPageData));
             VK_RUNTIME_ASSERT(page->sharedPageData);
             data->memoryType = memoryType;
@@ -425,7 +425,7 @@ static AllocationResult VKAllocator_AllocateForResource(VKMemoryRequirements* re
             assert(pairIndex != 0);
         }
         // Take the block.
-        BlockPair* pair = &data->blockPairs[pairIndex-1];
+        BlockPair* pair = &data->blockPairs.data[pairIndex-1];
         result.handle.page = pageIndex;
         result.handle.pair = pairIndex;
         // No need to check alignment, all blocks are aligned on their size.
@@ -442,7 +442,7 @@ static AllocationResult VKAllocator_AllocateForResource(VKMemoryRequirements* re
         // Dedicated allocation.
         uint32_t pageIndex = VKAllocator_AllocatePage(alloc, memoryType, size, image, buffer);
         if (pageIndex == NO_PAGE_INDEX) return (AllocationResult) {{0}, VK_NULL_HANDLE};
-        Page* page = &alloc->pages[pageIndex];
+        Page* page = &alloc->pages.data[pageIndex];
         page->dedicatedSize = size;
         return (AllocationResult) {
                 .handle = {
@@ -486,11 +486,11 @@ void VKAllocator_Free(VKAllocator* allocator, VKMemory memory) {
     assert(allocator != NULL);
     if (memory == VK_NULL_HANDLE) return;
     MemoryHandle handle = { .value = (uint64_t) memory };
-    Page* page = &allocator->pages[handle.page];
+    Page* page = &allocator->pages.data[handle.page];
     if (handle.pair != 0) {
         // Return block into shared page.
         SharedPageData* data = page->sharedPageData;
-        BlockPair* pair = &data->blockPairs[handle.pair-1];
+        BlockPair* pair = &data->blockPairs.data[handle.pair-1];
         if ((pair->offset << 1U) == handle.offset) pair->firstFree = 1;
         else pair->secondFree = 1;
         VkBool32 cleared = VKAllocator_PushFreeBlockPair(data, pair, handle.pair, handle.level);
@@ -502,14 +502,14 @@ void VKAllocator_Free(VKAllocator* allocator, VKMemory memory) {
             Pool* pool = &allocator->pools[data->memoryType];
             if (pool->sharedPagesIndex != handle.page) {
                 assert(pool->sharedPagesIndex != NO_PAGE_INDEX);
-                Page* p = &allocator->pages[pool->sharedPagesIndex];
+                Page* p = &allocator->pages.data[pool->sharedPagesIndex];
                 for (;;) {
                     if (p->sharedPageData->nextPageIndex == handle.page) {
                         p->sharedPageData->nextPageIndex = data->nextPageIndex;
                         break;
                     }
                     assert(p->sharedPageData->nextPageIndex != 0);
-                    p = &allocator->pages[p->sharedPageData->nextPageIndex];
+                    p = &allocator->pages.data[p->sharedPageData->nextPageIndex];
                 }
                 VKAllocator_FreePage(allocator, page, handle.page);
                 free(data);
@@ -527,7 +527,7 @@ VkMappedMemoryRange VKAllocator_GetMemoryRange(VKAllocator* allocator, VKMemory 
     MemoryHandle handle = { .value = (uint64_t) memory };
     return (VkMappedMemoryRange) {
             .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-            .memory = allocator->pages[handle.page].memory,
+            .memory = allocator->pages.data[handle.page].memory,
             .offset = handle.offset * BLOCK_SIZE,
             .size   = handle.level == 31 ? VK_WHOLE_SIZE : BLOCK_SIZE << handle.level
     };
@@ -535,7 +535,7 @@ VkMappedMemoryRange VKAllocator_GetMemoryRange(VKAllocator* allocator, VKMemory 
 void* VKAllocator_Map(VKAllocator* allocator, VKMemory memory) {
     assert(allocator != NULL && memory != VK_NULL_HANDLE);
     MemoryHandle handle = { .value = (uint64_t) memory };
-    Page* page = &allocator->pages[handle.page];
+    Page* page = &allocator->pages.data[handle.page];
     void *p;
     if (handle.pair != 0) {
         if (page->sharedPageData->mappedData == NULL) {
@@ -553,7 +553,7 @@ void* VKAllocator_Map(VKAllocator* allocator, VKMemory memory) {
 void VKAllocator_Unmap(VKAllocator* allocator, VKMemory memory) {
     assert(allocator != NULL && memory != VK_NULL_HANDLE);
     MemoryHandle handle = { .value = (uint64_t) memory };
-    Page* page = &allocator->pages[handle.page];
+    Page* page = &allocator->pages.data[handle.page];
     if (handle.pair == 0) allocator->device->vkUnmapMemory(allocator->device->handle, page->memory);
 }
 void VKAllocator_Flush(VKAllocator* allocator, VKMemory memory, VkDeviceSize offset, VkDeviceSize size) {
@@ -593,13 +593,13 @@ void VKAllocator_Destroy(VKAllocator* allocator) {
     for (uint32_t i = 0; i < VK_MAX_MEMORY_TYPES; i++) {
         uint32_t pageIndex;
         while ((pageIndex = allocator->pools[i].sharedPagesIndex) != NO_PAGE_INDEX) {
-            Page* page = &allocator->pages[pageIndex];
+            Page* page = &allocator->pages.data[pageIndex];
             SharedPageData* data = page->sharedPageData;
 #ifdef DEBUG
             // Check that all shared allocations were freed.
             for (uint32_t j = MAX_BLOCK_LEVEL;; j--) {
                 if (data->freeLevelIndices[j] != 0) {
-                    BlockPair* pair = &data->blockPairs[data->freeLevelIndices[j]-1];
+                    BlockPair* pair = &data->blockPairs.data[data->freeLevelIndices[j]-1];
                     if (pair->parent == 0) break;
                     else VK_FATAL_ERROR("VKAllocator_Destroy: leaked memory in shared page");
                 }
