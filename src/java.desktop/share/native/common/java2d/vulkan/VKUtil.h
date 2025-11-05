@@ -24,6 +24,7 @@
 #ifndef VKUtil_h_Included
 #define VKUtil_h_Included
 #include <stdlib.h>
+#include <stdalign.h>
 #include <Trace.h>
 #include "awt.h"
 #include "jni_util.h"
@@ -67,6 +68,9 @@ static inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessa
 
 #define C_ARRAY_UTIL_ALLOCATION_FAILED() VK_FATAL_ERROR("CArrayUtil allocation failed")
 #include "CArrayUtil.h"
+
+typedef ARRAY(pchar) pchar_array_t;
+typedef ARRAY(jint) jint_array_t;
 
 #define VK_ID_TRANSFORM ((VKTransform)\
     {1.0f, 0.0f, 0.0f,                \
