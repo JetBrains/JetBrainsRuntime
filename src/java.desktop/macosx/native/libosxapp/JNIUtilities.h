@@ -28,18 +28,15 @@
 
 #include "jni.h"
 #include "jni_util.h"
-#include "ThreadUtilities.h"
 
 #import <Cocoa/Cocoa.h>
-
-/* Define to 1 to check for pending exceptions in JNI_COCOA_EXIT */
-#define CHECK_PENDING_EXCEPTION 0
 
 /********        LOGGING SUPPORT    *********/
 
 #define LOG_NULL(dst_var, name) \
    if (dst_var == NULL) { \
-       NSLog(@"Bad JNI lookup %s\n%@", name, [NSThread callStackSymbols]); \
+       NSLog(@"Bad JNI lookup %s\n", name); \
+       NSLog(@"%@",[NSThread callStackSymbols]); \
        if ([NSThread isMainThread] == NO) { \
            if (!(*env)->ExceptionCheck(env)) { \
               JNU_ThrowInternalError(env, "Bad JNI Lookup"); \
@@ -189,36 +186,22 @@
 #define CHECK_EXCEPTION_IN_ENV(env) { \
     jthrowable exc = (*(env))->ExceptionOccurred(env); \
     if (exc != NULL) { \
-        if ([NSThread isMainThread]) { \
+        if ([NSThread isMainThread] == YES) { \
             if (getenv("JNU_APPKIT_TRACE")) { \
                 (*(env))->ExceptionDescribe(env); \
-                NSLog(@"%@", [NSThread callStackSymbols]); \
+                NSLog(@"%@",[NSThread callStackSymbols]); \
+              } else { \
+                  (*(env))->ExceptionClear(env); \
               } \
-        } \
-        (*env)->ExceptionClear(env); \
+         }  \
         if (getenv("JNU_NO_COCOA_EXCEPTION") == NULL) {\
             [NSException raise:NSGenericException \
                         format:@"%@", ThrowableToNSString(env, exc)]; \
+        } else { \
+            (*(env))->ExceptionClear(env); \
         } \
     } \
-}
-
-/*
- * Use this macro to raise an NSException.
- * The message is a printf-style format string.
- * The arguments are the arguments to the format string.
- *
- * ONLY FOR DEBUGGING PURPOSES.
- * for example:
- * TEST_RAISE_EXCEPTION(@"LWCToolkit.setBusy: busy = %d", busy);
- */
-#define TEST_RAISE_EXCEPTION(message, ...) {                                         \
-    [NSException raise:NSGenericException                                            \
-                 format:@"RAISE_EXCEPTION in (%s:%d %s): %@",                        \
-                            __FILE__, __LINE__, __FUNCTION__,                        \
-                            [NSString stringWithFormat:message, ##__VA_ARGS__]       \
-    ];                                                                               \
-}
+};
 
 #define CHECK_EXCEPTION() CHECK_EXCEPTION_IN_ENV(env)
 
@@ -226,21 +209,7 @@
     CHECK_EXCEPTION(); \
     if ((x) == NULL) { \
        return y; \
-    }
-
-#define __JNI_LOG_EXCEPTION(exception) \
-     NSAPP_AWT_LOG_EXCEPTION_PREFIX(exception, @"Apple AWT Cocoa Exception");
-
-#if (CHECK_PENDING_EXCEPTION == 1)
-    #define __JNI_CHECK_PENDING_EXCEPTION(env) \
-        @try { \
-            CHECK_EXCEPTION_IN_ENV(env); \
-        } @catch (NSException *exception) { \
-            __JNI_LOG_EXCEPTION(exception); \
-        }
-#else
-    #define __JNI_CHECK_PENDING_EXCEPTION(env) {}
-#endif
+    };
 
 /* Create a pool and initiate a try block to catch any exception */
 #define JNI_COCOA_ENTER(env) \
@@ -252,24 +221,28 @@
  * And ensure we drain the auto-release pool.
  */
 #define JNI_COCOA_EXIT(env) \
- } @catch (NSException *exception) { \
-     __JNI_LOG_EXCEPTION(exception); \
- } @finally { \
-     __JNI_CHECK_PENDING_EXCEPTION(env); \
+ } \
+ @catch (NSException *e) {  \
+     NSLog(@"Apple AWT Cocoa Exception: %@", [e description]); \
+     NSLog(@"Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]); \
+ } \
+ @finally { \
      [pool drain]; \
- }
+ };
 
 /* Same as above but adds a clean up action.
  * Requires that whatever is being cleaned up is in scope.
  */
 #define JNI_COCOA_EXIT_WITH_ACTION(env, action) \
- } @catch (NSException *exception) { \
-     __JNI_LOG_EXCEPTION(exception); \
+ } \
+ @catch (NSException *e) { \
      { action; }; \
- } @finally { \
-     __JNI_CHECK_PENDING_EXCEPTION(env); \
+     NSLog(@"Apple AWT Cocoa Exception: %@", [e description]); \
+     NSLog(@"Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]); \
+ } \
+ @finally { \
      [pool drain]; \
- }
+ };
 
 /********        STRING CONVERSION SUPPORT    *********/
 
