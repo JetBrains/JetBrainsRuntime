@@ -1152,6 +1152,10 @@ convertXKBModifiersToJavaModifiers(xkb_mod_mask_t mask) {
         result |= java_awt_event_InputEvent_ALT_DOWN_MASK;
     }
 
+    // NOTE: we do not set META_DOWN_MASK, the xkb "meta" modifier is the same as alt, 
+    // the xkb "super" modifier (the Windows key) doesn't set META_DOWN_MASK on XToolkit,
+    // so for consistency neither do we.
+
     return result;
 }
 
@@ -1406,6 +1410,18 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
     xkb_keysym_t reportedKeysym = noModsKeysym;
     xkb_mod_mask_t modifiers = getXKBModifiers();
 
+    // Java expects key presses for modifier keys to come with modifier mask already updated.
+    // Wayland sends the modifier event *after* key press/release event.
+    // Patch the modifiers here.
+    if (keysymModifier >= 0 && keysymModifier < NUM_XKB_MODS) {
+        bool anyPressed = keyboard.modsHeldCount[keysymModifier] > 0;
+        if (anyPressed) {
+            modifiers |= (1U << keysymModifier);
+        } else {
+            modifiers &= ~(1U << keysymModifier);
+        }
+    }
+
     bool reportQwerty = keyboard.reportNonAsciiAsQwerty && !keyboard.asciiCapable && qwertyKeysym <= 0x7f;
 
     if (isFunctionKeysym(actualKeysym) && actualKeysym != noModsKeysym) {
@@ -1434,20 +1450,7 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
         }
     }
 
-    // Java expects key presses for modifier keys to come with modifier mask already updated.
-    // Wayland sends the modifier event *after* key press/release event.
-    // Patch the modifiers here.
-    xkb_mod_mask_t patchedModifiers = modifiers;
-    if (keysymModifier >= 0 && keysymModifier < NUM_XKB_MODS) {
-        bool anyPressed = keyboard.modsHeldCount[keysymModifier] > 0;
-        if (anyPressed) {
-            patchedModifiers |= (1U << keysymModifier);
-        } else {
-            patchedModifiers &= ~(1U << keysymModifier);
-        }
-    }
-
-    int javaModifiers = convertXKBModifiersToJavaModifiers(patchedModifiers);
+    int javaModifiers = convertXKBModifiersToJavaModifiers(modifiers);
 
 #ifdef WL_KEYBOARD_DEBUG
     fprintf(stderr, "handleKey: javaKeyCode = %d\n", javaKeyCode);
