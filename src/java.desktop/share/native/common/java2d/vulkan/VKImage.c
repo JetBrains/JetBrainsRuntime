@@ -142,7 +142,7 @@ void VKImage_LoadBuffer(VKDevice* device, VKImage* image, VKBuffer* buffer,
 void VKImage_Destroy(VKDevice* device, VKImage* image) {
     assert(device != NULL && device->allocator != NULL);
     if (image == NULL) return;
-    if (image->viewMap != NULL) {
+    if (image->viewMap.size != 0) {
         for (const VKImageViewKey* k = NULL; (k = MAP_NEXT_KEY(image->viewMap, k)) != NULL;) {
             const VKImageViewInfo* viewInfo = MAP_FIND(image->viewMap, *k);
             if (viewInfo->descriptorSet != VK_NULL_HANDLE) {
@@ -150,8 +150,8 @@ void VKImage_Destroy(VKDevice* device, VKImage* image) {
             }
             device->vkDestroyImageView(device->handle, viewInfo->view, NULL);
         }
-        MAP_FREE(image->viewMap);
     }
+    MAP_FREE(image->viewMap);
     device->vkDestroyImage(device->handle, image->handle, NULL);
     VKAllocator_Free(device->allocator, image->memory);
     free(image);
