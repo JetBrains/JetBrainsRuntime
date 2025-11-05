@@ -62,7 +62,7 @@ static const char* mtlOpToStr(uint op);
     BOOL sync = NO;                                                     \
     jint opcode = -1;                                                   \
     const NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];   \
-    @try {
+    @try
 
 /*
  * Derived from JNI_COCOA_EXIT(env):
@@ -70,18 +70,23 @@ static const char* mtlOpToStr(uint op);
  * If there is a Java exception that has been thrown that should escape.
  * And ensure we drain the auto-release pool.
  */
-#define RENDER_LOOP_EXIT(env, className) \
-    } @catch (NSException *exception) {                                                 \
+#define RENDER_LOOP_EXIT(env, className)                                                \
+    @catch (NSException *e) {                                                           \
         lwc_plog(env, "%s_flushBuffer: Failed opcode=%s op=%s dstType=%s ctx=%p",       \
             className, mtlOpCodeToStr(opcode), mtlOpToStr(mtlPreviousOp),               \
             mtlDstTypeToStr(DST_TYPE(dstOps)), mtlc);                                   \
+        char* str = [NSString stringWithFormat:@"%@", [e description]].UTF8String;  \
+        lwc_plog(env, "%s_flushBuffer Exception: %s", className, str);                  \
+        str = [NSString stringWithFormat:@"%@", [e callStackSymbols]].UTF8String;       \
+        lwc_plog(env, "%s_flushBuffer callstack: %s", className, str);                  \
         /* Finally (JetBrains Runtime only) report this message to JVM crash log: */    \
         JNU_LOG_EVENT(env, "%s_flushBuffer: Failed opcode=%s op=%s dstType=%s ctx=%p",  \
             className, mtlOpCodeToStr(opcode), mtlOpToStr(mtlPreviousOp),               \
             mtlDstTypeToStr(DST_TYPE(dstOps)), mtlc);                                   \
-        /* report exception to the NSApplicationAWT exception handler: */               \
-        NSAPP_AWT_REPORT_EXCEPTION(exception, NO);                                      \
-    } @finally {                                                                        \
+        /* report fatal failure to make a crash report: */                              \
+        JNU_Fatal(env, __FILE__, __LINE__, "flushBuffer failed");                       \
+    }                                                                                   \
+    @finally {                                                                          \
         /* flush GPU state before draining pool: */                                     \
         MTLRenderQueue_reset(mtlc, sync);                                               \
         [pool drain];                                                                   \
@@ -172,7 +177,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
 
     // Handle any NSException thrown:
     RENDER_LOOP_ENTER(env)
-
+    {
         while (b < end) {
             opcode = NEXT_INT(b);
 
@@ -953,7 +958,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     return;
             }
         } // while op
-
+    }
     RENDER_LOOP_EXIT(env, "MTLRenderQueue");
 }
 
