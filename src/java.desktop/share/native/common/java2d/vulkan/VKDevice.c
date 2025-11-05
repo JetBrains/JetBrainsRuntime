@@ -53,7 +53,7 @@ static const char* physicalDeviceTypeString(VkPhysicalDeviceType type) {
 }
 
 static VkBool32 VKDevice_CheckAndAddFormat(VKEnv* vk, VkPhysicalDevice physicalDevice,
-                                           ARRAY(jint)* supportedFormats, VkFormat format, const char* name) {
+                                           jint_array_t* supportedFormats, VkFormat format, const char* name) {
     VkFormatProperties formatProperties;
     vk->vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
     static const VkFormatFeatureFlags SAMPLED_FLAGS = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
@@ -100,7 +100,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     VK_IF_ERROR(vk->vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, allExtensions)) return;
 
     // Check API version.
-    ARRAY(pchar) errors = NULL;
+    pchar_array_t errors = {0};
     jint caps = 0;
     J2dRlsTraceLn(J2D_TRACE_INFO, "%s (%d.%d.%d, %s)",
                   (const char *) deviceProperties2.properties.deviceName,
@@ -183,10 +183,10 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     VKSampledSrcType* SRCTYPE_3BYTE = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_3BYTE];
     VKSampledSrcType* SRCTYPE_565 = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_565];
     VKSampledSrcType* SRCTYPE_555 = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_555];
-    ARRAY(jint) supportedFormats = NULL;
+    jint_array_t supportedFormats = {0};
 #define CHECK_AND_ADD_FORMAT(FORMAT) VKDevice_CheckAndAddFormat(vk, physicalDevice, &supportedFormats, FORMAT, #FORMAT)
     if (CHECK_AND_ADD_FORMAT(VK_FORMAT_B8G8R8A8_UNORM) && SRCTYPE_4BYTE->format == VK_FORMAT_UNDEFINED) {
-        supportedFormats[0] |= CAP_PRESENTABLE_BIT; // TODO Check presentation support.
+        supportedFormats.data[0] |= CAP_PRESENTABLE_BIT; // TODO Check presentation support.
         *SRCTYPE_4BYTE = (VKSampledSrcType) { VK_FORMAT_B8G8R8A8_UNORM, {
             VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_A }};
     }
@@ -238,7 +238,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     }
 
     // Check found errors.
-    if (errors != NULL) {
+    if (errors.size != 0) {
         J2dRlsTraceLn(J2D_TRACE_WARNING, "    Device is not supported:");
         VKCapabilityUtil_LogErrors(J2D_TRACE_WARNING, errors);
         ARRAY_FREE(errors);
@@ -264,7 +264,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         .enabledLayers = VKNamedEntry_CollectNames(layers),
         .enabledExtensions = VKNamedEntry_CollectNames(extensions),
         .sampledSrcTypes = sampledSrcTypes,
-        .supportedFormats = supportedFormats,
+        .supportedFormats = { .as_untyped = supportedFormats.as_untyped },
         .caps = caps
     };
 }
@@ -333,10 +333,10 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
         .flags = 0,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueCreateInfo,
-        .enabledLayerCount = ARRAY_SIZE(device->enabledLayers),
-        .ppEnabledLayerNames = (const char *const *) device->enabledLayers,
-        .enabledExtensionCount = ARRAY_SIZE(device->enabledExtensions),
-        .ppEnabledExtensionNames = (const char *const *) device->enabledExtensions,
+        .enabledLayerCount = device->enabledLayers.size,
+        .ppEnabledLayerNames = (const char *const *) device->enabledLayers.data,
+        .enabledExtensionCount = device->enabledExtensions.size,
+        .ppEnabledExtensionNames = (const char *const *) device->enabledExtensions.data,
         .pEnabledFeatures = &features10
     };
 
