@@ -450,19 +450,19 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint count = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_SHAPE_CLIP_SPANS");
-                size_t offset = ARRAY_SIZE(VKRenderer_GetContext()->clipSpanVertices);
+                size_t offset = VKRenderer_GetContext()->clipSpanVertices.size;
                 ARRAY_RESIZE(VKRenderer_GetContext()->clipSpanVertices, offset + count * 6);
                 for (jint i = 0; i < count; i++) {
                     jint x1 = NEXT_INT(b);
                     jint y1 = NEXT_INT(b);
                     jint x2 = NEXT_INT(b);
                     jint y2 = NEXT_INT(b);
-                    VKRenderer_GetContext()->clipSpanVertices[offset + i * 6 + 0] = (VKIntVertex) {x1, y1};
-                    VKRenderer_GetContext()->clipSpanVertices[offset + i * 6 + 1] = (VKIntVertex) {x2, y1};
-                    VKRenderer_GetContext()->clipSpanVertices[offset + i * 6 + 2] = (VKIntVertex) {x2, y2};
-                    VKRenderer_GetContext()->clipSpanVertices[offset + i * 6 + 3] = (VKIntVertex) {x2, y2};
-                    VKRenderer_GetContext()->clipSpanVertices[offset + i * 6 + 4] = (VKIntVertex) {x1, y2};
-                    VKRenderer_GetContext()->clipSpanVertices[offset + i * 6 + 5] = (VKIntVertex) {x1, y1};
+                    VKRenderer_GetContext()->clipSpanVertices.data[offset + i * 6 + 0] = (VKIntVertex) {x1, y1};
+                    VKRenderer_GetContext()->clipSpanVertices.data[offset + i * 6 + 1] = (VKIntVertex) {x2, y1};
+                    VKRenderer_GetContext()->clipSpanVertices.data[offset + i * 6 + 2] = (VKIntVertex) {x2, y2};
+                    VKRenderer_GetContext()->clipSpanVertices.data[offset + i * 6 + 3] = (VKIntVertex) {x2, y2};
+                    VKRenderer_GetContext()->clipSpanVertices.data[offset + i * 6 + 4] = (VKIntVertex) {x1, y2};
+                    VKRenderer_GetContext()->clipSpanVertices.data[offset + i * 6 + 5] = (VKIntVertex) {x1, y1};
                 }
                 VKRenderer_GetContext()->clipModCount++;
             }
@@ -804,7 +804,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
 
     // Flush all pending GPU work
     VKEnv* vk = VKEnv_GetInstance();
-    for (uint32_t i = 0; i < ARRAY_SIZE(vk->devices); i++) {
-        VKRenderer_Flush(vk->devices[i].renderer);
+    for (uint32_t i = 0; i < vk->devices.size; i++) {
+        VKRenderer_Flush(vk->devices.data[i].renderer);
     }
 }
