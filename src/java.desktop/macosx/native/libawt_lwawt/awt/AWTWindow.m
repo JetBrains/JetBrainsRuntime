@@ -232,9 +232,10 @@ AWT_NS_WINDOW_IMPLEMENTATION
         };
         void (*_objc_msgSendSuper)(struct objc_super *, SEL) = (void *)&objc_msgSendSuper; //cast our pointer so the compiler can sort out the ABI
         (*_objc_msgSendSuper)(&mySuper, @selector(_changeJustMain));
-    } @catch (NSException *exception) {
+    } @catch (NSException *ex) {
         NSLog(@"WARNING: suppressed exception from _changeJustMain (workaround for JBR-2562)");
-        NSAPP_AWT_LOG_EXCEPTION(exception);
+        NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+        [NSApplicationAWT logException:ex forProcess:processInfo];
     }
 }
 
@@ -1058,9 +1059,10 @@ AWT_ASSERT_APPKIT_THREAD;
     NSRect frame;
     @try {
         frame = ConvertNSScreenRect(env, [self.nsWindow frame]);
-    } @catch (NSException *exception) {
+    } @catch (NSException *e) {
         NSLog(@"WARNING: suppressed exception from ConvertNSScreenRect() in [AWTWindow _deliverMoveResizeEvent]");
-        NSAPP_AWT_LOG_EXCEPTION(exception);
+        NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+        [NSApplicationAWT logException:e forProcess:processInfo];
         return;
     }
 
@@ -1394,9 +1396,7 @@ AWT_ASSERT_APPKIT_THREAD;
         jobject target = (*env)->GetObjectField(env, platformWindow, jf_target);
         if (target) {
             h = (CGFloat) (*env)->CallFloatMethod(env, target, jm_internalCustomTitleBarHeight);
-            if ((*env)->ExceptionCheck(env)) {
-                (*env)->ExceptionDescribe(env);
-            } else {
+            if (!(*env)->ExceptionCheck(env)) {
                 self.customTitleBarControlsVisible = (BOOL) (*env)->CallBooleanMethod(env, target, jm_internalCustomTitleBarControlsVisible);
             }
             (*env)->DeleteLocalRef(env, target);
@@ -1565,8 +1565,8 @@ AWT_ASSERT_APPKIT_THREAD;
                     GET_CPLATFORM_WINDOW_CLASS();
                     DECLARE_METHOD(jm_deliverNCMouseDown, jc_CPlatformWindow, "deliverNCMouseDown", "()V");
                     (*env)->CallVoidMethod(env, platformWindow, jm_deliverNCMouseDown);
-                    (*env)->DeleteLocalRef(env, platformWindow);
                     CHECK_EXCEPTION();
+                    (*env)->DeleteLocalRef(env, platformWindow);
                 }
             }
         }
@@ -2234,7 +2234,6 @@ JNI_COCOA_ENTER(env);
         DECLARE_METHOD_RETURN(jm_isIgnoreMouseEvents, jc_Window, "isIgnoreMouseEvents", "()Z", 0);
         isIgnoreMouseEvents = (*env)->CallBooleanMethod(env, awtWindow, jm_isIgnoreMouseEvents) == JNI_TRUE ? YES : NO;
         (*env)->DeleteLocalRef(env, awtWindow);
-        CHECK_EXCEPTION();
     }
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
 
