@@ -379,6 +379,7 @@ AWT_ASSERT_APPKIT_THREAD;
             [ThreadUtilities resetTraceContext];
         }
     }
+    doLog([ThreadUtilities getJNIEnvUncached], "setAppkitThreadGroup: exit");
 }
 
 + (NSString*)getCaller:(NSString*)prefixSymbol {
