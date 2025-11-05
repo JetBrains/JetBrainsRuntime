@@ -26,17 +26,19 @@
 #endif
 
 #include "WLKeyboard.h"
+
 #include "WLToolkit.h"
 #include "java_awt_event_InputEvent.h"
+#include "sun_awt_wl_WLKeyboard.h"
+#include "java_awt_event_KeyEvent.h"
 
-#include <sun_awt_wl_WLKeyboard.h>
+#include <jni_util.h>
+
+#include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbcommon-compose.h>
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <dlfcn.h>
-
-#include <java_awt_event_KeyEvent.h>
-#include <jni_util.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -50,6 +52,9 @@ extern JNIEnv *getEnv();
 #define XKB_MOD_NAME_ALT        "Mod1"
 #define XKB_MOD_NAME_NUM        "Mod2"
 #define XKB_MOD_NAME_LOGO       "Mod4"
+#define XKB_LED_NAME_CAPS       "Caps Lock"
+#define XKB_LED_NAME_NUM        "Num Lock"
+#define XKB_LED_NAME_SCROLL     "Scroll Lock"
 
 enum {
     XKB_MOD_INDEX_SHIFT     = 0, // Shift
@@ -75,121 +80,7 @@ enum {
     XKB_LEVEL3_MASK    = 1 << XKB_MOD_INDEX_LEVEL3,
 };
 
-
-#define XKB_LED_NAME_CAPS       "Caps Lock"
-#define XKB_LED_NAME_NUM        "Num Lock"
-#define XKB_LED_NAME_SCROLL     "Scroll Lock"
-
 #define MAX_COMPOSE_UTF8_LENGTH 256
-
-typedef uint32_t xkb_keycode_t;
-typedef uint32_t xkb_keysym_t;
-typedef uint32_t xkb_layout_index_t;
-typedef uint32_t xkb_layout_mask_t;
-typedef uint32_t xkb_level_index_t;
-typedef uint32_t xkb_mod_index_t;
-typedef uint32_t xkb_mod_mask_t;
-typedef uint32_t xkb_led_index_t;
-typedef uint32_t xkb_led_mask_t;
-
-enum xkb_keysym_flags {
-    XKB_KEYSYM_NO_FLAGS = 0,
-    XKB_KEYSYM_CASE_INSENSITIVE = (1 << 0)
-};
-
-enum xkb_context_flags {
-    XKB_CONTEXT_NO_FLAGS = 0,
-    XKB_CONTEXT_NO_DEFAULT_INCLUDES = (1 << 0),
-    XKB_CONTEXT_NO_ENVIRONMENT_NAMES = (1 << 1),
-    XKB_CONTEXT_NO_SECURE_GETENV = (1 << 2)
-};
-
-enum xkb_log_level {
-    XKB_LOG_LEVEL_CRITICAL = 10,
-    XKB_LOG_LEVEL_ERROR = 20,
-    XKB_LOG_LEVEL_WARNING = 30,
-    XKB_LOG_LEVEL_INFO = 40,
-    XKB_LOG_LEVEL_DEBUG = 50
-};
-
-enum xkb_keymap_compile_flags {
-    XKB_KEYMAP_COMPILE_NO_FLAGS = 0
-};
-
-enum xkb_keymap_format {
-    XKB_KEYMAP_FORMAT_TEXT_V1 = 1
-};
-
-enum xkb_key_direction {
-    XKB_KEY_UP,
-    XKB_KEY_DOWN
-};
-
-enum xkb_state_component {
-    XKB_STATE_MODS_DEPRESSED = (1 << 0),
-    XKB_STATE_MODS_LATCHED = (1 << 1),
-    XKB_STATE_MODS_LOCKED = (1 << 2),
-    XKB_STATE_MODS_EFFECTIVE = (1 << 3),
-    XKB_STATE_LAYOUT_DEPRESSED = (1 << 4),
-    XKB_STATE_LAYOUT_LATCHED = (1 << 5),
-    XKB_STATE_LAYOUT_LOCKED = (1 << 6),
-    XKB_STATE_LAYOUT_EFFECTIVE = (1 << 7),
-    XKB_STATE_LEDS = (1 << 8)
-};
-
-enum xkb_state_match {
-    XKB_STATE_MATCH_ANY = (1 << 0),
-    XKB_STATE_MATCH_ALL = (1 << 1),
-    XKB_STATE_MATCH_NON_EXCLUSIVE = (1 << 16)
-};
-
-enum xkb_consumed_mode {
-    XKB_CONSUMED_MODE_XKB,
-    XKB_CONSUMED_MODE_GTK
-};
-
-enum xkb_compose_compile_flags {
-    XKB_COMPOSE_COMPILE_NO_FLAGS = 0
-};
-
-enum xkb_compose_format {
-    XKB_COMPOSE_FORMAT_TEXT_V1 = 1
-};
-
-enum xkb_compose_state_flags {
-    XKB_COMPOSE_STATE_NO_FLAGS = 0
-};
-
-enum xkb_compose_status {
-    XKB_COMPOSE_NOTHING,
-    XKB_COMPOSE_COMPOSING,
-    XKB_COMPOSE_COMPOSED,
-    XKB_COMPOSE_CANCELLED
-};
-
-enum xkb_compose_feed_result {
-    XKB_COMPOSE_FEED_IGNORED,
-    XKB_COMPOSE_FEED_ACCEPTED
-};
-
-
-struct xkb_context;
-struct xkb_keymap;
-struct xkb_state;
-
-struct xkb_rule_names {
-    const char *rules;
-    const char *model;
-    const char *layout;
-    const char *variant;
-    const char *options;
-};
-
-struct xkb_compose_table;
-struct xkb_compose_state;
-
-typedef void
-(*xkb_keymap_key_iter_t)(struct xkb_keymap *keymap, xkb_keycode_t key, void *data);
 
 static jclass keyRepeatManagerClass; // sun.awt.wl.WLKeyboard.KeyRepeatManager
 static jmethodID setRepeatInfoMID;   // sun.awt.wl.WLKeyboard.KeyRepeatManager.setRepeatInfo
@@ -240,394 +131,6 @@ static struct WLKeyboardState {
     // behavior of setting it to the key code of the key on the QWERTY layout.
     bool reportJavaKeyCodeForActiveLayout;
 } keyboard;
-
-// Symbols for runtime linking with libxkbcommon
-static struct {
-    int (*keysym_get_name)(xkb_keysym_t keysym, char *buffer, size_t size);
-
-    xkb_keysym_t (*keysym_from_name)(const char *name, enum xkb_keysym_flags flags);
-
-    int (*keysym_to_utf8)(xkb_keysym_t keysym, char *buffer, size_t size);
-
-    uint32_t (*keysym_to_utf32)(xkb_keysym_t keysym);
-
-    xkb_keysym_t (*keysym_to_upper)(xkb_keysym_t ks);
-
-    xkb_keysym_t (*keysym_to_lower)(xkb_keysym_t ks);
-
-    struct xkb_context *(*context_new)(enum xkb_context_flags flags);
-
-    struct xkb_context *(*context_ref)(struct xkb_context *context);
-
-    void (*context_unref)(struct xkb_context *context);
-
-    void (*context_set_user_data)(struct xkb_context *context, void *user_data);
-
-    void *(*context_get_user_data)(struct xkb_context *context);
-
-    int (*context_include_path_append)(struct xkb_context *context, const char *path);
-
-    int (*context_include_path_append_default)(struct xkb_context *context);
-
-    int (*context_include_path_reset_defaults)(struct xkb_context *context);
-
-    void (*context_include_path_clear)(struct xkb_context *context);
-
-    unsigned int (*context_num_include_paths)(struct xkb_context *context);
-
-    const char *(*context_include_path_get)(struct xkb_context *context, unsigned int index);
-
-    void (*context_set_log_level)(struct xkb_context *context,
-                                  enum xkb_log_level level);
-
-    enum xkb_log_level (*context_get_log_level)(struct xkb_context *context);
-
-    void (*context_set_log_verbosity)(struct xkb_context *context, int verbosity);
-
-    int (*context_get_log_verbosity)(struct xkb_context *context);
-
-    void (*context_set_log_fn)(struct xkb_context *context,
-                               void (*log_fn)(struct xkb_context *context,
-                                              enum xkb_log_level level,
-                                              const char *format, va_list args));
-
-    struct xkb_keymap *(*keymap_new_from_names)(struct xkb_context *context,
-                                                const struct xkb_rule_names *names,
-                                                enum xkb_keymap_compile_flags flags);
-
-    struct xkb_keymap *(*keymap_new_from_file)(struct xkb_context *context, FILE *file,
-                                               enum xkb_keymap_format format,
-                                               enum xkb_keymap_compile_flags flags);
-
-    struct xkb_keymap *(*keymap_new_from_string)(struct xkb_context *context, const char *string,
-                                                 enum xkb_keymap_format format,
-                                                 enum xkb_keymap_compile_flags flags);
-
-    struct xkb_keymap *(*keymap_new_from_buffer)(struct xkb_context *context, const char *buffer,
-                                                 size_t length, enum xkb_keymap_format format,
-                                                 enum xkb_keymap_compile_flags flags);
-
-    struct xkb_keymap *(*keymap_ref)(struct xkb_keymap *keymap);
-
-    void (*keymap_unref)(struct xkb_keymap *keymap);
-
-    char *(*keymap_get_as_string)(struct xkb_keymap *keymap,
-                                  enum xkb_keymap_format format);
-
-    xkb_keycode_t (*keymap_min_keycode)(struct xkb_keymap *keymap);
-
-    xkb_keycode_t (*keymap_max_keycode)(struct xkb_keymap *keymap);
-
-    void (*keymap_key_for_each)(struct xkb_keymap *keymap, xkb_keymap_key_iter_t iter,
-                                void *data);
-
-    const char *(*keymap_key_get_name)(struct xkb_keymap *keymap, xkb_keycode_t key);
-
-    xkb_keycode_t (*keymap_key_by_name)(struct xkb_keymap *keymap, const char *name);
-
-    xkb_mod_index_t (*keymap_num_mods)(struct xkb_keymap *keymap);
-
-    const char *(*keymap_mod_get_name)(struct xkb_keymap *keymap, xkb_mod_index_t idx);
-
-    xkb_mod_index_t (*keymap_mod_get_index)(struct xkb_keymap *keymap, const char *name);
-
-    xkb_layout_index_t (*keymap_num_layouts)(struct xkb_keymap *keymap);
-
-    const char *(*keymap_layout_get_name)(struct xkb_keymap *keymap, xkb_layout_index_t idx);
-
-    xkb_layout_index_t (*keymap_layout_get_index)(struct xkb_keymap *keymap, const char *name);
-
-    xkb_led_index_t (*keymap_num_leds)(struct xkb_keymap *keymap);
-
-    const char *(*keymap_led_get_name)(struct xkb_keymap *keymap, xkb_led_index_t idx);
-
-    xkb_led_index_t (*keymap_led_get_index)(struct xkb_keymap *keymap, const char *name);
-
-    xkb_layout_index_t (*keymap_num_layouts_for_key)(struct xkb_keymap *keymap, xkb_keycode_t key);
-
-    xkb_level_index_t (*keymap_num_levels_for_key)(struct xkb_keymap *keymap, xkb_keycode_t key,
-                                                   xkb_layout_index_t layout);
-
-    int
-    (*keymap_key_get_syms_by_level)(struct xkb_keymap *keymap,
-                                    xkb_keycode_t key,
-                                    xkb_layout_index_t layout,
-                                    xkb_level_index_t level,
-                                    const xkb_keysym_t **syms_out);
-
-    int (*keymap_key_repeats)(struct xkb_keymap *keymap, xkb_keycode_t key);
-
-    struct xkb_state *(*state_new)(struct xkb_keymap *keymap);
-
-    struct xkb_state *(*state_ref)(struct xkb_state *state);
-
-    void (*state_unref)(struct xkb_state *state);
-
-    struct xkb_keymap *(*state_get_keymap)(struct xkb_state *state);
-
-    enum xkb_state_component (*state_update_key)(struct xkb_state *state, xkb_keycode_t key,
-                                                 enum xkb_key_direction direction);
-
-    enum xkb_state_component (*state_update_mask)(struct xkb_state *state,
-                                                  xkb_mod_mask_t depressed_mods,
-                                                  xkb_mod_mask_t latched_mods,
-                                                  xkb_mod_mask_t locked_mods,
-                                                  xkb_layout_index_t depressed_layout,
-                                                  xkb_layout_index_t latched_layout,
-                                                  xkb_layout_index_t locked_layout);
-
-    int (*state_key_get_syms)(struct xkb_state *state, xkb_keycode_t key,
-                              const xkb_keysym_t **syms_out);
-
-    int (*state_key_get_utf8)(struct xkb_state *state, xkb_keycode_t key,
-                              char *buffer, size_t size);
-
-    uint32_t (*state_key_get_utf32)(struct xkb_state *state, xkb_keycode_t key);
-
-    xkb_keysym_t (*state_key_get_one_sym)(struct xkb_state *state, xkb_keycode_t key);
-
-    xkb_layout_index_t (*state_key_get_layout)(struct xkb_state *state, xkb_keycode_t key);
-
-    xkb_level_index_t (*state_key_get_level)(struct xkb_state *state, xkb_keycode_t key,
-                                             xkb_layout_index_t layout);
-
-    xkb_mod_mask_t (*state_serialize_mods)(struct xkb_state *state,
-                                           enum xkb_state_component components);
-
-    xkb_layout_index_t (*state_serialize_layout)(struct xkb_state *state,
-                                                 enum xkb_state_component components);
-
-    int (*state_mod_name_is_active)(struct xkb_state *state, const char *name,
-                                    enum xkb_state_component type);
-
-    int (*state_mod_names_are_active)(struct xkb_state *state,
-                                      enum xkb_state_component type,
-                                      enum xkb_state_match match,
-                                      ...);
-
-    int (*state_mod_index_is_active)(struct xkb_state *state, xkb_mod_index_t idx,
-                                     enum xkb_state_component type);
-
-    int (*state_mod_indices_are_active)(struct xkb_state *state,
-                                        enum xkb_state_component type,
-                                        enum xkb_state_match match,
-                                        ...);
-
-    xkb_mod_mask_t (*state_key_get_consumed_mods2)(struct xkb_state *state, xkb_keycode_t key,
-                                                   enum xkb_consumed_mode mode);
-
-    xkb_mod_mask_t (*state_key_get_consumed_mods)(struct xkb_state *state, xkb_keycode_t key);
-
-    int (*state_mod_index_is_consumed2)(struct xkb_state *state,
-                                        xkb_keycode_t key,
-                                        xkb_mod_index_t idx,
-                                        enum xkb_consumed_mode mode);
-
-    int (*state_mod_index_is_consumed)(struct xkb_state *state, xkb_keycode_t key,
-                                       xkb_mod_index_t idx);
-
-    xkb_mod_mask_t
-    (*state_mod_mask_remove_consumed)(struct xkb_state *state, xkb_keycode_t key,
-                                      xkb_mod_mask_t mask);
-
-    int (*state_layout_name_is_active)(struct xkb_state *state, const char *name,
-                                       enum xkb_state_component type);
-
-    int (*state_layout_index_is_active)(struct xkb_state *state,
-                                        xkb_layout_index_t idx,
-                                        enum xkb_state_component type);
-
-    int (*state_led_name_is_active)(struct xkb_state *state, const char *name);
-
-    int (*state_led_index_is_active)(struct xkb_state *state, xkb_led_index_t idx);
-
-    struct xkb_compose_table *
-    (*compose_table_new_from_locale)(struct xkb_context *context,
-                                     const char *locale,
-                                     enum xkb_compose_compile_flags flags);
-
-    struct xkb_compose_table *
-    (*compose_table_new_from_file)(struct xkb_context *context,
-                                   FILE *file,
-                                   const char *locale,
-                                   enum xkb_compose_format format,
-                                   enum xkb_compose_compile_flags flags);
-
-    struct xkb_compose_table *
-    (*compose_table_new_from_buffer)(struct xkb_context *context,
-                                     const char *buffer, size_t length,
-                                     const char *locale,
-                                     enum xkb_compose_format format,
-                                     enum xkb_compose_compile_flags flags);
-
-    struct xkb_compose_table *
-    (*compose_table_ref)(struct xkb_compose_table *table);
-
-    void
-    (*compose_table_unref)(struct xkb_compose_table *table);
-
-    struct xkb_compose_state *
-    (*compose_state_new)(struct xkb_compose_table *table,
-                         enum xkb_compose_state_flags flags);
-
-    struct xkb_compose_state *
-    (*compose_state_ref)(struct xkb_compose_state *state);
-
-    void
-    (*compose_state_unref)(struct xkb_compose_state *state);
-
-    struct xkb_compose_table *
-    (*compose_state_get_compose_table)(struct xkb_compose_state *state);
-
-    enum xkb_compose_feed_result
-    (*compose_state_feed)(struct xkb_compose_state *state,
-                          xkb_keysym_t keysym);
-
-    void
-    (*compose_state_reset)(struct xkb_compose_state *state);
-
-    enum xkb_compose_status
-    (*compose_state_get_status)(struct xkb_compose_state *state);
-
-    int (*compose_state_get_utf8)(struct xkb_compose_state *state,
-                                  char *buffer, size_t size);
-
-    xkb_keysym_t
-    (*compose_state_get_one_sym)(struct xkb_compose_state *state);
-} xkb;
-
-static inline void
-clearDLError(void) {
-    (void) dlerror();
-}
-
-static void *
-xkbcommonBindSym(JNIEnv *env, void *handle, const char *sym_name) {
-    clearDLError();
-    void *addr = dlsym(handle, sym_name);
-    if (!addr) {
-        const char *errorMessage = dlerror();
-        JNU_ThrowByName(env, "java/lang/UnsatisfiedLinkError", errorMessage);
-    }
-
-    return addr;
-}
-
-#define BIND_XKB_SYM(name)                                      \
-    do {                                                        \
-        xkb.name = xkbcommonBindSym(env, handle, "xkb_" #name); \
-        if (!xkb.name) return false;                            \
-    } while (0)
-
-static bool
-xkbcommonLoad(JNIEnv *env) {
-    void *handle = dlopen(JNI_LIB_NAME("xkbcommon"), RTLD_LAZY | RTLD_LOCAL);
-    if (!handle) {
-        handle = dlopen(VERSIONED_JNI_LIB_NAME("xkbcommon", "0"), RTLD_LAZY | RTLD_LOCAL);
-    }
-    if (!handle) {
-        JNU_ThrowByNameWithMessageAndLastError(env, "java/lang/UnsatisfiedLinkError",
-                                               JNI_LIB_NAME("xkbcommon"));
-        return false;
-    }
-
-    // These symbols are present in libxkbcommon 0.8.2, which is a version
-    // distributed with Debian 9, the oldest supported Debian release at the time of writing
-    // The following symbols are missing compared to libxkbcommon 1.5.0:
-    //   - xkb_utf32_to_keysym
-    //   - xkb_keymap_key_get_mods_for_level
-
-    BIND_XKB_SYM(keysym_get_name);
-    BIND_XKB_SYM(keysym_from_name);
-    BIND_XKB_SYM(keysym_to_utf8);
-    BIND_XKB_SYM(keysym_to_utf32);
-    BIND_XKB_SYM(keysym_to_upper);
-    BIND_XKB_SYM(keysym_to_lower);
-    BIND_XKB_SYM(context_new);
-    BIND_XKB_SYM(context_ref);
-    BIND_XKB_SYM(context_unref);
-    BIND_XKB_SYM(context_set_user_data);
-    BIND_XKB_SYM(context_get_user_data);
-    BIND_XKB_SYM(context_include_path_append);
-    BIND_XKB_SYM(context_include_path_append_default);
-    BIND_XKB_SYM(context_include_path_reset_defaults);
-    BIND_XKB_SYM(context_include_path_clear);
-    BIND_XKB_SYM(context_num_include_paths);
-    BIND_XKB_SYM(context_include_path_get);
-    BIND_XKB_SYM(context_set_log_level);
-    BIND_XKB_SYM(context_get_log_level);
-    BIND_XKB_SYM(context_set_log_verbosity);
-    BIND_XKB_SYM(context_get_log_verbosity);
-    BIND_XKB_SYM(context_set_log_fn);
-    BIND_XKB_SYM(keymap_new_from_names);
-    BIND_XKB_SYM(keymap_new_from_file);
-    BIND_XKB_SYM(keymap_new_from_string);
-    BIND_XKB_SYM(keymap_new_from_buffer);
-    BIND_XKB_SYM(keymap_ref);
-    BIND_XKB_SYM(keymap_unref);
-    BIND_XKB_SYM(keymap_get_as_string);
-    BIND_XKB_SYM(keymap_min_keycode);
-    BIND_XKB_SYM(keymap_max_keycode);
-    BIND_XKB_SYM(keymap_key_for_each);
-    BIND_XKB_SYM(keymap_key_get_name);
-    BIND_XKB_SYM(keymap_key_by_name);
-    BIND_XKB_SYM(keymap_num_mods);
-    BIND_XKB_SYM(keymap_mod_get_name);
-    BIND_XKB_SYM(keymap_mod_get_index);
-    BIND_XKB_SYM(keymap_num_layouts);
-    BIND_XKB_SYM(keymap_layout_get_name);
-    BIND_XKB_SYM(keymap_layout_get_index);
-    BIND_XKB_SYM(keymap_num_leds);
-    BIND_XKB_SYM(keymap_led_get_name);
-    BIND_XKB_SYM(keymap_led_get_index);
-    BIND_XKB_SYM(keymap_num_layouts_for_key);
-    BIND_XKB_SYM(keymap_num_levels_for_key);
-    BIND_XKB_SYM(keymap_key_get_syms_by_level);
-    BIND_XKB_SYM(keymap_key_repeats);
-    BIND_XKB_SYM(state_new);
-    BIND_XKB_SYM(state_ref);
-    BIND_XKB_SYM(state_unref);
-    BIND_XKB_SYM(state_get_keymap);
-    BIND_XKB_SYM(state_update_key);
-    BIND_XKB_SYM(state_update_mask);
-    BIND_XKB_SYM(state_key_get_syms);
-    BIND_XKB_SYM(state_key_get_utf8);
-    BIND_XKB_SYM(state_key_get_utf32);
-    BIND_XKB_SYM(state_key_get_one_sym);
-    BIND_XKB_SYM(state_key_get_layout);
-    BIND_XKB_SYM(state_key_get_level);
-    BIND_XKB_SYM(state_serialize_mods);
-    BIND_XKB_SYM(state_serialize_layout);
-    BIND_XKB_SYM(state_mod_name_is_active);
-    BIND_XKB_SYM(state_mod_names_are_active);
-    BIND_XKB_SYM(state_mod_index_is_active);
-    BIND_XKB_SYM(state_mod_indices_are_active);
-    BIND_XKB_SYM(state_key_get_consumed_mods2);
-    BIND_XKB_SYM(state_key_get_consumed_mods);
-    BIND_XKB_SYM(state_mod_index_is_consumed2);
-    BIND_XKB_SYM(state_mod_index_is_consumed);
-    BIND_XKB_SYM(state_mod_mask_remove_consumed);
-    BIND_XKB_SYM(state_layout_name_is_active);
-    BIND_XKB_SYM(state_layout_index_is_active);
-    BIND_XKB_SYM(state_led_name_is_active);
-    BIND_XKB_SYM(state_led_index_is_active);
-    BIND_XKB_SYM(compose_table_new_from_locale);
-    BIND_XKB_SYM(compose_table_new_from_file);
-    BIND_XKB_SYM(compose_table_new_from_buffer);
-    BIND_XKB_SYM(compose_table_ref);
-    BIND_XKB_SYM(compose_table_unref);
-    BIND_XKB_SYM(compose_state_new);
-    BIND_XKB_SYM(compose_state_ref);
-    BIND_XKB_SYM(compose_state_unref);
-    BIND_XKB_SYM(compose_state_get_compose_table);
-    BIND_XKB_SYM(compose_state_feed);
-    BIND_XKB_SYM(compose_state_reset);
-    BIND_XKB_SYM(compose_state_get_status);
-    BIND_XKB_SYM(compose_state_get_utf8);
-    BIND_XKB_SYM(compose_state_get_one_sym);
-
-    return true;
-}
 
 static const struct KeysymToJavaKeycodeMapItem {
     xkb_keysym_t keysym;
@@ -970,9 +473,9 @@ static const struct ModifierKeysymsMapItem {
 
 static xkb_layout_index_t
 getKeyboardLayoutIndex(void) {
-    xkb_layout_index_t num = xkb.keymap_num_layouts(keyboard.keymap);
+    xkb_layout_index_t num = xkb_keymap_num_layouts(keyboard.keymap);
     for (xkb_layout_index_t i = 0; i < num; ++i) {
-        if (xkb.state_layout_index_is_active(keyboard.state, i, XKB_STATE_LAYOUT_EFFECTIVE)) {
+        if (xkb_state_layout_index_is_active(keyboard.state, i, XKB_STATE_LAYOUT_EFFECTIVE)) {
             return i;
         }
     }
@@ -1010,14 +513,14 @@ onKeyboardLayoutChanged(void) {
     xkb_layout_index_t layoutIndex = getKeyboardLayoutIndex();
 
 #ifdef WL_KEYBOARD_DEBUG
-    fprintf(stderr, "onKeyboardLayoutChanged: %s\n", xkb.keymap_layout_get_name(keyboard.keymap, layoutIndex));
+    fprintf(stderr, "onKeyboardLayoutChanged: %s\n", xkb_keymap_layout_get_name(keyboard.keymap, layoutIndex));
 #endif
 
     // bitmask of the latin letters encountered in the layout
     uint32_t latin_letters_seen = 0;
     int latin_letters_seen_count = 0;
-    xkb_keycode_t min_keycode = xkb.keymap_min_keycode(keyboard.keymap);
-    xkb_keycode_t max_keycode = xkb.keymap_max_keycode(keyboard.keymap);
+    xkb_keycode_t min_keycode = xkb_keymap_min_keycode(keyboard.keymap);
+    xkb_keycode_t max_keycode = xkb_keymap_max_keycode(keyboard.keymap);
     if (max_keycode > 255) {
         // All keys that we are interested in should lie within this range.
         // The other keys are usually something like XFLaunch* or something of this sort.
@@ -1027,11 +530,11 @@ onKeyboardLayoutChanged(void) {
     }
 
     for (xkb_keycode_t keycode = min_keycode; keycode <= max_keycode; ++keycode) {
-        uint32_t num_levels = xkb.keymap_num_levels_for_key(keyboard.keymap, keycode, layoutIndex);
+        uint32_t num_levels = xkb_keymap_num_levels_for_key(keyboard.keymap, keycode, layoutIndex);
 
         for (uint32_t lvl = 0; lvl < num_levels; ++lvl) {
             const xkb_keysym_t *syms;
-            int n_syms = xkb.keymap_key_get_syms_by_level(keyboard.keymap, keycode, layoutIndex, lvl, &syms);
+            int n_syms = xkb_keymap_key_get_syms_by_level(keyboard.keymap, keycode, layoutIndex, lvl, &syms);
             if (n_syms == 1 && syms[0] >= 'a' && syms[0] <= 'z') {
                 int idx = (int) syms[0] - 'a';
                 if (!(latin_letters_seen & (1 << idx))) {
@@ -1104,13 +607,13 @@ translateKeycodeToKeysym(uint32_t keycode, enum TranslateKeycodeType type) {
         } else {
             state = keyboard.tmpState;
             group = getKeyboardLayoutIndex();
-            numLock = xkb.state_mod_name_is_active(keyboard.state, XKB_MOD_NAME_NUM, XKB_STATE_MODS_EFFECTIVE) == 1;
+            numLock = xkb_state_mod_name_is_active(keyboard.state, XKB_MOD_NAME_NUM, XKB_STATE_MODS_EFFECTIVE) == 1;
         }
 
-        xkb.state_update_mask(state, 0, 0, numLock ? XKB_NUM_LOCK_MASK : 0, 0, 0, group);
+        xkb_state_update_mask(state, 0, 0, numLock ? XKB_NUM_LOCK_MASK : 0, 0, 0, group);
     }
 
-    return xkb.state_key_get_one_sym(state, xkbKeycode);
+    return xkb_state_key_get_one_sym(state, xkbKeycode);
 }
 
 static bool
@@ -1123,7 +626,7 @@ isFunctionKeysym(xkb_keysym_t keysym) {
 
 static xkb_mod_mask_t
 getXKBModifiers(void) {
-    return xkb.state_serialize_mods(keyboard.state, XKB_STATE_MODS_EFFECTIVE);
+    return xkb_state_serialize_mods(keyboard.state, XKB_STATE_MODS_EFFECTIVE);
 }
 
 static int
@@ -1183,7 +686,7 @@ convertKeysymToJavaCode(xkb_keysym_t keysym, int *javaKeyCode, int *javaKeyLocat
         }
     }
 
-    uint32_t codepoint = xkb.keysym_to_utf32(keysym);
+    uint32_t codepoint = xkb_keysym_to_utf32(keysym);
     if (codepoint != 0) {
         if (javaKeyCode) {
             // This might not be an actual Java extended key code,
@@ -1296,7 +799,7 @@ postKeyTypedEvents(long serial, long timestamp, const char *string) {
 
 static uint16_t
 getJavaKeyCharForKeycode(xkb_keycode_t xkbKeycode) {
-    uint32_t codepoint = xkb.state_key_get_utf32(keyboard.state, xkbKeycode);
+    uint32_t codepoint = xkb_state_key_get_utf32(keyboard.state, xkbKeycode);
     if (codepoint == 0 || codepoint >= 0xffff) {
         return java_awt_event_KeyEvent_CHAR_UNDEFINED;
     }
@@ -1309,9 +812,9 @@ handleKeyTypeNoCompose(long serial, long timestamp, xkb_keycode_t xkbKeycode) {
 #ifdef WL_KEYBOARD_DEBUG
     fprintf(stderr, "handleKeyTypeNoCompose: xkbKeycode = %d\n", xkbKeycode);
 #endif
-    int bufSize = xkb.state_key_get_utf8(keyboard.state, xkbKeycode, NULL, 0) + 1;
+    int bufSize = xkb_state_key_get_utf8(keyboard.state, xkbKeycode, NULL, 0) + 1;
     char buf[bufSize];
-    xkb.state_key_get_utf8(keyboard.state, xkbKeycode, buf, bufSize);
+    xkb_state_key_get_utf8(keyboard.state, xkbKeycode, buf, bufSize);
     postKeyTypedEvents(serial, timestamp, buf);
 }
 
@@ -1321,36 +824,36 @@ handleKeyType(long serial, long timestamp, xkb_keycode_t xkbKeycode) {
 #ifdef WL_KEYBOARD_DEBUG
     fprintf(stderr, "handleKeyType(xkbKeycode = %d)\n", xkbKeycode);
 #endif
-    xkb_keysym_t keysym = xkb.state_key_get_one_sym(keyboard.state, xkbKeycode);
+    xkb_keysym_t keysym = xkb_state_key_get_one_sym(keyboard.state, xkbKeycode);
 
 #ifdef WL_KEYBOARD_DEBUG
     char buf[256];
-    xkb.keysym_get_name(keysym, buf, sizeof buf);
+    xkb_keysym_get_name(keysym, buf, sizeof buf);
     fprintf(stderr, "handleKeyType: keysym = %d (%s)\n", keysym, buf);
 #endif
 
     if (!keyboard.composeState ||
-        (xkb.compose_state_feed(keyboard.composeState, keysym) == XKB_COMPOSE_FEED_IGNORED)) {
+        (xkb_compose_state_feed(keyboard.composeState, keysym) == XKB_COMPOSE_FEED_IGNORED)) {
         handleKeyTypeNoCompose(serial, timestamp, xkbKeycode);
         return;
     }
 
-    switch (xkb.compose_state_get_status(keyboard.composeState)) {
+    switch (xkb_compose_state_get_status(keyboard.composeState)) {
         case XKB_COMPOSE_NOTHING:
-            xkb.compose_state_reset(keyboard.composeState);
+            xkb_compose_state_reset(keyboard.composeState);
             handleKeyTypeNoCompose(serial, timestamp, xkbKeycode);
             break;
         case XKB_COMPOSE_COMPOSING:
             break;
         case XKB_COMPOSE_COMPOSED: {
             char buf[MAX_COMPOSE_UTF8_LENGTH];
-            xkb.compose_state_get_utf8(keyboard.composeState, buf, sizeof buf);
+            xkb_compose_state_get_utf8(keyboard.composeState, buf, sizeof buf);
             postKeyTypedEvents(serial, timestamp, buf);
-            xkb.compose_state_reset(keyboard.composeState);
+            xkb_compose_state_reset(keyboard.composeState);
             break;
         }
         case XKB_COMPOSE_CANCELLED:
-            xkb.compose_state_reset(keyboard.composeState);
+            xkb_compose_state_reset(keyboard.composeState);
             break;
     }
 }
@@ -1370,8 +873,8 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
     JNIEnv *env = getEnv();
 
     xkb_keycode_t xkbKeycode = keycode + 8;
-    bool keyRepeats = xkb.keymap_key_repeats(keyboard.keymap, xkbKeycode);
-    xkb_mod_mask_t consumedModifiers = xkb.state_key_get_consumed_mods2(keyboard.state, xkbKeycode, XKB_CONSUMED_MODE_GTK);
+    bool keyRepeats = xkb_keymap_key_repeats(keyboard.keymap, xkbKeycode);
+    xkb_mod_mask_t consumedModifiers = xkb_state_key_get_consumed_mods2(keyboard.state, xkbKeycode, XKB_CONSUMED_MODE_GTK);
     xkb_keysym_t actualKeysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_ACTIVE_STATE);
     xkb_keysym_t noModsKeysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_ACTIVE_LAYOUT);
     xkb_keysym_t qwertyKeysym = translateKeycodeToKeysym(keycode, TRANSLATE_USING_QWERTY);
@@ -1386,11 +889,11 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
 
 #ifdef WL_KEYBOARD_DEBUG
     char buf[256];
-    xkb.keysym_get_name(actualKeysym, buf, sizeof buf);
+    xkb_keysym_get_name(actualKeysym, buf, sizeof buf);
     fprintf(stderr, "handleKey: actualKeysym = %d (%s)\n", actualKeysym, buf);
-    xkb.keysym_get_name(noModsKeysym, buf, sizeof buf);
+    xkb_keysym_get_name(noModsKeysym, buf, sizeof buf);
     fprintf(stderr, "handleKey: noModsKeysym = %d (%s)\n", noModsKeysym, buf);
-    xkb.keysym_get_name(qwertyKeysym, buf, sizeof buf);
+    xkb_keysym_get_name(qwertyKeysym, buf, sizeof buf);
     fprintf(stderr, "handleKey: qwertyKeysym = %d (%s)\n", qwertyKeysym, buf);
 #endif
 
@@ -1486,39 +989,34 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
 
 static void
 freeXKB(void) {
-    xkb.compose_state_unref(keyboard.composeState);
+    xkb_compose_state_unref(keyboard.composeState);
     keyboard.composeState = NULL;
 
-    xkb.compose_table_unref(keyboard.composeTable);
+    xkb_compose_table_unref(keyboard.composeTable);
     keyboard.composeTable = NULL;
 
-    xkb.state_unref(keyboard.tmpQwertyState);
+    xkb_state_unref(keyboard.tmpQwertyState);
     keyboard.tmpQwertyState = NULL;
 
-    xkb.keymap_unref(keyboard.qwertyKeymap);
+    xkb_keymap_unref(keyboard.qwertyKeymap);
     keyboard.qwertyKeymap = NULL;
 
-    xkb.state_unref(keyboard.tmpState);
+    xkb_state_unref(keyboard.tmpState);
     keyboard.tmpState = NULL;
 
-    xkb.state_unref(keyboard.state);
+    xkb_state_unref(keyboard.state);
     keyboard.state = NULL;
 
-    xkb.keymap_unref(keyboard.keymap);
+    xkb_keymap_unref(keyboard.keymap);
     keyboard.keymap = NULL;
 
-    xkb.context_unref(keyboard.context);
+    xkb_context_unref(keyboard.context);
     keyboard.context = NULL;
 }
 
 static bool
 initXKB(JNIEnv *env) {
-    if (!xkbcommonLoad(env)) {
-        // xkbcommonLoad has thrown
-        return false;
-    }
-
-    keyboard.context = xkb.context_new(XKB_CONTEXT_NO_FLAGS);
+    keyboard.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
     if (!keyboard.context) {
         JNU_ThrowInternalError(env, "Failed to create an XKB context");
@@ -1533,24 +1031,24 @@ initXKB(JNIEnv *env) {
             .options = ""
     };
 
-    keyboard.qwertyKeymap = xkb.keymap_new_from_names(keyboard.context, &qwertyRuleNames, 0);
+    keyboard.qwertyKeymap = xkb_keymap_new_from_names(keyboard.context, &qwertyRuleNames, 0);
     if (!keyboard.qwertyKeymap) {
         freeXKB();
         JNU_ThrowInternalError(getEnv(), "Failed to create XKB layout 'us'");
         return false;
     }
 
-    keyboard.tmpQwertyState = xkb.state_new(keyboard.qwertyKeymap);
+    keyboard.tmpQwertyState = xkb_state_new(keyboard.qwertyKeymap);
     if (!keyboard.tmpQwertyState) {
         freeXKB();
         JNU_ThrowInternalError(getEnv(), "Failed to create XKB state");
         return false;
     }
 
-    keyboard.composeTable = xkb.compose_table_new_from_locale(keyboard.context, getComposeLocale(),
+    keyboard.composeTable = xkb_compose_table_new_from_locale(keyboard.context, getComposeLocale(),
                                                               XKB_COMPOSE_COMPILE_NO_FLAGS);
     if (keyboard.composeTable) {
-        keyboard.composeState = xkb.compose_state_new(keyboard.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
+        keyboard.composeState = xkb_compose_state_new(keyboard.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
     }
 
     return true;
@@ -1599,7 +1097,7 @@ Java_sun_awt_wl_WLKeyboard_handleKeyRepeat(JNIEnv *env, jobject instance, jlong 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLKeyboard_cancelCompose(JNIEnv *env, jobject instance) {
     if (keyboard.composeState) {
-        xkb.compose_state_reset(keyboard.composeState);
+        xkb_compose_state_reset(keyboard.composeState);
     }
 }
 
@@ -1625,7 +1123,7 @@ wlHandleKeyboardLeave(void) {
 
 void
 wlSetKeymap(const char *serializedKeymap) {
-    struct xkb_keymap *newKeymap = xkb.keymap_new_from_string(
+    struct xkb_keymap *newKeymap = xkb_keymap_new_from_string(
             keyboard.context, serializedKeymap, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
 
     if (!newKeymap) {
@@ -1633,16 +1131,16 @@ wlSetKeymap(const char *serializedKeymap) {
         return;
     }
 
-    struct xkb_state *newState = xkb.state_new(newKeymap);
-    struct xkb_state *newTmpState = xkb.state_new(newKeymap);
+    struct xkb_state *newState = xkb_state_new(newKeymap);
+    struct xkb_state *newTmpState = xkb_state_new(newKeymap);
     if (!newState || !newTmpState) {
         JNU_ThrowInternalError(getEnv(), "Failed to create XKB state");
         return;
     }
 
-    xkb.keymap_unref(keyboard.keymap);
-    xkb.state_unref(keyboard.state);
-    xkb.state_unref(keyboard.tmpState);
+    xkb_keymap_unref(keyboard.keymap);
+    xkb_state_unref(keyboard.state);
+    xkb_state_unref(keyboard.tmpState);
 
     keyboard.state = newState;
     keyboard.tmpState = newTmpState;
@@ -1667,7 +1165,7 @@ void
 wlSetModifiers(uint32_t depressed, uint32_t latched, uint32_t locked, uint32_t group) {
     xkb_layout_index_t oldLayoutIndex = getKeyboardLayoutIndex();
 
-    xkb.state_update_mask(keyboard.state, depressed, latched, locked, 0, 0, group);
+    xkb_state_update_mask(keyboard.state, depressed, latched, locked, 0, 0, group);
 
     if (group != oldLayoutIndex) {
         onKeyboardLayoutChanged();
