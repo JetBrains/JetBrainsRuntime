@@ -28,7 +28,6 @@
 #import <objc/runtime.h>
 #import <Cocoa/Cocoa.h>
 #import <Security/AuthSession.h>
-#import <ExceptionHandling/NSExceptionHandler.h>
 
 #import "JNIUtilities.h"
 #import "LWCToolkit.h"
@@ -204,22 +203,19 @@ static BOOL inDoDragDropLoop;
 }
 
 - (void)perform {
-    @try {
-        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-        DECLARE_CLASS(sjc_Runnable, "java/lang/Runnable");
-        DECLARE_METHOD(jm_Runnable_run, sjc_Runnable, "run", "()V");
-        (*env)->CallVoidMethod(env, self.runnable, jm_Runnable_run);
-        CHECK_EXCEPTION();
-    } @finally {
-        [self release];
-    }
+    JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
+    DECLARE_CLASS(sjc_Runnable, "java/lang/Runnable");
+    DECLARE_METHOD(jm_Runnable_run, sjc_Runnable, "run", "()V");
+    (*env)->CallVoidMethod(env, self.runnable, jm_Runnable_run);
+    CHECK_EXCEPTION();
+    [self release];
 }
 @end
 
 void setBusy(BOOL busy) {
     AWT_ASSERT_APPKIT_THREAD;
+
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    JNI_COCOA_ENTER(env);
     DECLARE_CLASS(jc_AWTAutoShutdown, "sun/awt/AWTAutoShutdown");
 
     if (busy) {
@@ -229,8 +225,7 @@ void setBusy(BOOL busy) {
         DECLARE_STATIC_METHOD(jm_notifyFreeMethod, jc_AWTAutoShutdown, "notifyToolkitThreadFree", "()V");
         (*env)->CallStaticVoidMethod(env, jc_AWTAutoShutdown, jm_notifyFreeMethod);
     }
-    CHECK_EXCEPTION();
-    JNI_COCOA_EXIT(env);
+     CHECK_EXCEPTION();
 }
 
 static void setUpAWTAppKit(BOOL installObservers)
@@ -274,11 +269,17 @@ static void setUpAWTAppKit(BOOL installObservers)
     DECLARE_STATIC_METHOD(jsm_installToolkitThreadInJava, jc_LWCToolkit, "installToolkitThreadInJava", "()V");
     (*env)->CallStaticVoidMethod(env, jc_LWCToolkit, jsm_installToolkitThreadInJava);
     CHECK_EXCEPTION();
+
 }
 
 BOOL isSWTInWebStart(JNIEnv* env) {
     NSString *swtWebStart = [PropertiesUtilities javaSystemPropertyForKey:@"com.apple.javaws.usingSWT" withEnv:env];
     return [@"true" isCaseInsensitiveLike:swtWebStart];
+}
+
+static void AWT_NSUncaughtExceptionHandler(NSException *exception) {
+    NSLog(@"Apple AWT Internal Exception: %@", [exception description]);
+    NSLog(@"trace: %@", [exception callStackSymbols]);
 }
 
 @interface AWTStarter : NSObject
@@ -373,73 +374,70 @@ BOOL isSWTInWebStart(JNIEnv* env) {
             if (delegate != nil) {
                 OSXAPP_SetApplicationDelegate(delegate);
             }
-            // Intercept any exception to let NSApplicationAWT handle them:
-            NSExceptionHandler* exceptionHandler = [NSExceptionHandler defaultExceptionHandler];
-            exceptionHandler.exceptionHandlingMask = NSLogAndHandleEveryExceptionMask;
-            [exceptionHandler setDelegate:[NSApplication sharedApplication]];
         }];
     }
 }
 
 + (void)starter:(BOOL)wasOnMainThread headless:(BOOL)headless {
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
-    @try {
-        // Headless mode trumps either ordinary AWT or SWT-in-AWT mode.  Declare us a daemon and return.
-        if (headless) {
-            // Note that we don't install run loop observers in headless mode
-            // because we don't need them (see 7174704)
-            if (!forceEmbeddedMode) {
-                setUpAWTAppKit(false);
-            }
-            [AWTStarter markAppAsDaemon];
-            return;
+    // Add the exception handler of last resort
+    NSSetUncaughtExceptionHandler(AWT_NSUncaughtExceptionHandler);
+
+    // Headless mode trumps either ordinary AWT or SWT-in-AWT mode.  Declare us a daemon and return.
+    if (headless) {
+        // Note that we don't install run loop observers in headless mode
+        // because we don't need them (see 7174704)
+        if (!forceEmbeddedMode) {
+            setUpAWTAppKit(false);
         }
-
-        if (forceEmbeddedMode) {
-            AWT_STARTUP_LOG(@"in SWT or SWT/WebStart mode");
-
-            // Init a default NSApplication instance instead of the NSApplicationAWT.
-            // Note that [NSApp isRunning] will return YES after that, though
-            // this behavior isn't specified anywhere. We rely on that.
-            NSApplicationLoad();
-        }
-
-        // This will create a NSApplicationAWT for standalone AWT programs, unless there is
-        //  already a NSApplication instance. If there is already a NSApplication instance,
-        //  and -[NSApplication isRunning] returns YES, AWT is embedded inside another
-        //  AppKit Application.
-        NSApplication *app = [NSApplicationAWT sharedApplication];
-        isEmbedded = ![NSApplicationAWT isNSApplicationAWT];
-
-        if (!isEmbedded) {
-            // Install run loop observers and set the AppKit Java thread name
-            setUpAWTAppKit(true);
-        }
-
-        // AWT gets to this point BEFORE NSApplicationDidFinishLaunchingNotification is sent.
-        if (![app isRunning]) {
-            AWT_STARTUP_LOG(@"+[AWTStarter startAWT]: ![app isRunning]");
-            // This is where the AWT AppKit thread parks itself to process events.
-            [NSApplicationAWT runAWTLoopWithApp:app];
-        } else {
-            // We're either embedded, or showing a splash screen
-            if (isEmbedded) {
-                AWT_STARTUP_LOG(@"running embedded");
-
-                // We don't track if the runloop is busy, so set it free to let AWT finish when it needs
-                setBusy(NO);
-            } else {
-                AWT_STARTUP_LOG(@"running after showing a splash screen");
-            }
-
-            // Signal so that JNI_OnLoad can proceed.
-            if (!wasOnMainThread) [AWTStarter appKitIsRunning:nil];
-
-            // Proceed to exit this call as there is no reason to run the NSApplication event loop.
-        }
-    } @finally {
-        [pool drain];
+        [AWTStarter markAppAsDaemon];
+        return;
     }
+
+    if (forceEmbeddedMode) {
+        AWT_STARTUP_LOG(@"in SWT or SWT/WebStart mode");
+
+        // Init a default NSApplication instance instead of the NSApplicationAWT.
+        // Note that [NSApp isRunning] will return YES after that, though
+        // this behavior isn't specified anywhere. We rely on that.
+        NSApplicationLoad();
+    }
+
+    // This will create a NSApplicationAWT for standalone AWT programs, unless there is
+    //  already a NSApplication instance. If there is already a NSApplication instance,
+    //  and -[NSApplication isRunning] returns YES, AWT is embedded inside another
+    //  AppKit Application.
+    NSApplication *app = [NSApplicationAWT sharedApplication];
+    isEmbedded = ![NSApp isKindOfClass:[NSApplicationAWT class]];
+
+    if (!isEmbedded) {
+        // Install run loop observers and set the AppKit Java thread name
+        setUpAWTAppKit(true);
+    }
+
+    // AWT gets to this point BEFORE NSApplicationDidFinishLaunchingNotification is sent.
+    if (![app isRunning]) {
+        AWT_STARTUP_LOG(@"+[AWTStarter startAWT]: ![app isRunning]");
+        // This is where the AWT AppKit thread parks itself to process events.
+        [NSApplicationAWT runAWTLoopWithApp: app];
+    } else {
+        // We're either embedded, or showing a splash screen
+        if (isEmbedded) {
+            AWT_STARTUP_LOG(@"running embedded");
+
+            // We don't track if the runloop is busy, so set it free to let AWT finish when it needs
+            setBusy(NO);
+        } else {
+            AWT_STARTUP_LOG(@"running after showing a splash screen");
+        }
+
+        // Signal so that JNI_OnLoad can proceed.
+        if (!wasOnMainThread) [AWTStarter appKitIsRunning:nil];
+
+        // Proceed to exit this call as there is no reason to run the NSApplication event loop.
+    }
+
+    [pool drain];
 }
 
 @end
@@ -454,8 +452,9 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_nativeSyncQueue
 {
     long currentEventNum = [AWTToolkit getEventCount];
 
-    NSApplicationAWT* app = [NSApplicationAWT sharedApplicationAWT];
-    if (app != nil) {
+    NSApplication* sharedApp = [NSApplication sharedApplication];
+    if ([sharedApp isKindOfClass:[NSApplicationAWT class]]) {
+        NSApplicationAWT* theApp = (NSApplicationAWT*)sharedApp;
         // We use two different API to post events to the application,
         //  - [NSApplication postEvent]
         //  - CGEventPost(), see CRobot.m
@@ -466,30 +465,25 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_nativeSyncQueue
 
         // If the native drag is in progress, skip native sync.
         if (!AWTToolkit.inDoDragDropLoop) {
-            @try {
-                [app postDummyEvent:false];
-            } @finally {
-                [app waitForDummyEvent:timeout / 2.0];
-            }
+            [theApp postDummyEvent:false];
+            [theApp waitForDummyEvent:timeout / 2.0];
         }
-        // test the condition again as inDoDragDropLoop may have changed?
         if (!AWTToolkit.inDoDragDropLoop) {
-            @try {
-                [app postDummyEvent:true];
-            } @finally {
-                [app waitForDummyEvent:timeout / 2.0];
-            }
+            [theApp postDummyEvent:true];
+            [theApp waitForDummyEvent:timeout / 2.0];
         }
+
     } else {
         // could happen if we are embedded inside SWT application,
         // in this case just spin a single empty block through
         // the event loop to give it a chance to process pending events
-        [ThreadUtilities performOnMainThreadWaiting:YES block:[ThreadUtilities GetEmptyBlock]];
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^(){}];
     }
 
     if (([AWTToolkit getEventCount] - currentEventNum) != 0) {
         return JNI_TRUE;
     }
+
     return JNI_FALSE;
 }
 
@@ -502,7 +496,7 @@ JNIEXPORT void JNICALL Java_sun_lwawt_macosx_LWCToolkit_flushNativeSelectors
 (JNIEnv *env, jclass clz)
 {
 JNI_COCOA_ENTER(env);
-    [ThreadUtilities performOnMainThreadWaiting:YES block:[ThreadUtilities GetEmptyBlock]];
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^(){}];
 JNI_COCOA_EXIT(env);
 }
 
@@ -899,9 +893,6 @@ JNIEXPORT void JNICALL
 Java_sun_lwawt_macosx_LWCToolkit_initIDs
 (JNIEnv *env, jclass klass) {
 
-    // Add the exception handler of last resort:
-    GetAWTUncaughtExceptionHandler();
-
     JNI_COCOA_ENTER(env);
 
     gNumberOfButtons = sun_lwawt_macosx_LWCToolkit_BUTTONS;
@@ -923,7 +914,8 @@ Java_sun_lwawt_macosx_LWCToolkit_initIDs
         return;
     }
 
-    for (int i = 0; i < gNumberOfButtons; i++) {
+    int i;
+    for (i = 0; i < gNumberOfButtons; i++) {
         gButtonDownMasks[i] = tmp[i];
     }
 
