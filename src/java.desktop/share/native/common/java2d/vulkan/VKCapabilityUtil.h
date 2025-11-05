@@ -70,17 +70,17 @@ static void VKNamedEntry_Match(VKNamedEntry* list, pchar all, uint32_t count, si
     }
 }
 
-static ARRAY(pchar) VKNamedEntry_CollectNames(const VKNamedEntry* list) {
-    ARRAY(pchar) result = NULL;
+static pchar_array_t VKNamedEntry_CollectNames(const VKNamedEntry* list) {
+    pchar_array_t result = {0};
     for (; list != NULL; list = list->next) {
         if (list->found) ARRAY_PUSH_BACK(result) = list->name;
     }
     return result;
 }
 
-static void VKCapabilityUtil_LogErrors(int level, ARRAY(pchar) errors) {
-    for (uint32_t i = 0; i < ARRAY_SIZE(errors); i++) {
-        J2dRlsTraceLn(level, "        %s", errors[i]);
+static void VKCapabilityUtil_LogErrors(int level, pchar_array_t errors) {
+    for (uint32_t i = 0; i < errors.size; i++) {
+        J2dRlsTraceLn(level, "        %s", errors.data[i]);
     }
 }
 
