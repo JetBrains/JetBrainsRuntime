@@ -68,9 +68,9 @@ void VKDevice_Reset(VKDevice* device);
 static void VKEnv_Destroy(VKEnv* vk) {
     if (vk == NULL) return;
 
-    if (vk->devices != NULL) {
-        for (uint32_t i = 0; i < ARRAY_SIZE(vk->devices); i++) {
-            VKDevice_Reset(&vk->devices[i]);
+    if (vk->devices.size != 0) {
+        for (uint32_t i = 0; i < vk->devices.size; i++) {
+            VKDevice_Reset(&vk->devices.data[i]);
         }
         ARRAY_FREE(vk->devices);
     }
@@ -161,7 +161,7 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
     VKNamedEntry_LogAll("instance extensions", allExtensions[0].extensionName, extensionCount, sizeof(VkExtensionProperties));
 
     // Check API version.
-    ARRAY(pchar) errors = NULL;
+    pchar_array_t errors = {0};
     if (apiVersion < REQUIRED_VULKAN_VERSION) ARRAY_PUSH_BACK(errors) = "Unsupported API version";
 
     // Check layers.
@@ -184,7 +184,7 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
     VKNamedEntry_LogFound(extensions);
 
     // Check found errors.
-    if (errors != NULL) {
+    if (errors.size != 0) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "    Vulkan is not supported:");
         VKCapabilityUtil_LogErrors(J2D_TRACE_ERROR, errors);
         ARRAY_FREE(errors);
@@ -228,8 +228,8 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
         .presentationSupported = presentationSupported
     };
 
-    ARRAY(pchar) enabledLayers = VKNamedEntry_CollectNames(layers);
-    ARRAY(pchar) enabledExtensions = VKNamedEntry_CollectNames(extensions);
+    pchar_array_t enabledLayers = VKNamedEntry_CollectNames(layers);
+    pchar_array_t enabledExtensions = VKNamedEntry_CollectNames(extensions);
 
     VkApplicationInfo applicationInfo = {
             .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -246,10 +246,10 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
             .pNext = pNext,
             .flags = 0,
             .pApplicationInfo = &applicationInfo,
-            .enabledLayerCount = ARRAY_SIZE(enabledLayers),
-            .ppEnabledLayerNames = enabledLayers,
-            .enabledExtensionCount = ARRAY_SIZE(enabledExtensions),
-            .ppEnabledExtensionNames = enabledExtensions
+            .enabledLayerCount = enabledLayers.size,
+            .ppEnabledLayerNames = enabledLayers.data,
+            .enabledExtensionCount = enabledExtensions.size,
+            .ppEnabledExtensionNames = enabledExtensions.data
     };
 
     VK_IF_ERROR(vkCreateInstance(&instanceCreateInfo, NULL, &vk->instance)) {
@@ -320,7 +320,7 @@ static VkBool32 VKEnv_FindDevices(VKEnv* vk) {
     for (uint32_t i = 0; i < count; i++) {
         VKDevice_CheckAndAdd(vk, physicalDevices[i]);
     }
-    if (ARRAY_SIZE(vk->devices) == 0) {
+    if (vk->devices.size == 0) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: No compatible device found");
         return JNI_FALSE;
     }
@@ -332,17 +332,17 @@ static jobjectArray createJavaGPUs(JNIEnv *env, VKEnv* vk) {
     if (deviceClass == NULL) return NULL;
     jmethodID deviceConstructor = (*env)->GetMethodID(env, deviceClass, "<init>", "(JLjava/lang/String;II[I)V");
     if (deviceConstructor == NULL) return NULL;
-    jobjectArray deviceArray = (*env)->NewObjectArray(env, ARRAY_SIZE(vk->devices), deviceClass, NULL);
+    jobjectArray deviceArray = (*env)->NewObjectArray(env, vk->devices.size, deviceClass, NULL);
     if (deviceArray == NULL) return NULL;
-    for (uint32_t i = 0; i < ARRAY_SIZE(vk->devices); i++) {
-        jstring name = JNU_NewStringPlatform(env, vk->devices[i].name);
+    for (uint32_t i = 0; i < vk->devices.size; i++) {
+        jstring name = JNU_NewStringPlatform(env, vk->devices.data[i].name);
         if (name == NULL) return NULL;
-        jintArray supportedFormats = (*env)->NewIntArray(env, ARRAY_SIZE(vk->devices[i].supportedFormats));
+        jintArray supportedFormats = (*env)->NewIntArray(env, vk->devices.data[i].supportedFormats.size);
         if (supportedFormats == NULL) return NULL;
-        (*env)->SetIntArrayRegion(env, supportedFormats, 0, ARRAY_SIZE(vk->devices[i].supportedFormats), vk->devices[i].supportedFormats);
+        (*env)->SetIntArrayRegion(env, supportedFormats, 0, vk->devices.data[i].supportedFormats.size, vk->devices.data[i].supportedFormats.data);
         jobject device = (*env)->NewObject(env, deviceClass, deviceConstructor,
-                                           ptr_to_jlong(&vk->devices[i]), name, vk->devices[i].type,
-                                           vk->devices[i].caps, supportedFormats);
+                                           ptr_to_jlong(&vk->devices.data[i]), name, vk->devices.data[i].type,
+                                           vk->devices.data[i].caps, supportedFormats);
         if (device == NULL) return NULL;
         (*env)->SetObjectArrayElement(env, deviceArray, i, device);
     }
