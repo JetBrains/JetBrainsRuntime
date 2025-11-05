@@ -525,8 +525,8 @@ void VKPipelines_DestroyContext(VKPipelineContext* pipelineContext) {
     VKDevice* device = pipelineContext->device;
     assert(device != NULL);
 
-    for (uint32_t i = 0; i < ARRAY_SIZE(pipelineContext->renderPassContexts); i++) {
-        VKPipelines_DestroyRenderPassContext(pipelineContext->renderPassContexts[i]);
+    for (uint32_t i = 0; i < pipelineContext->renderPassContexts.size; i++) {
+        VKPipelines_DestroyRenderPassContext(pipelineContext->renderPassContexts.data[i]);
     }
     ARRAY_FREE(pipelineContext->renderPassContexts);
 
@@ -546,9 +546,9 @@ void VKPipelines_DestroyContext(VKPipelineContext* pipelineContext) {
 
 VKRenderPassContext* VKPipelines_GetRenderPassContext(VKPipelineContext* pipelineContext, VkFormat format) {
     assert(pipelineContext != NULL && pipelineContext->device != NULL);
-    for (uint32_t i = 0; i < ARRAY_SIZE(pipelineContext->renderPassContexts); i++) {
-        if (pipelineContext->renderPassContexts[i]->format == format) {
-            return pipelineContext->renderPassContexts[i];
+    for (uint32_t i = 0; i < pipelineContext->renderPassContexts.size; i++) {
+        if (pipelineContext->renderPassContexts.data[i]->format == format) {
+            return pipelineContext->renderPassContexts.data[i];
         }
     }
     // Not found, create.
