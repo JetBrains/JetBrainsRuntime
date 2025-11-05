@@ -1,10 +1,51 @@
+/*
+ * Copyright 2025 JetBrains s.r.o.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 #ifndef C_ARRAY_UTIL_H
 #define C_ARRAY_UTIL_H
+
+#if defined(_MSC_VER)
+#define DECL_ARRAY(TYPE, NAME, SIZE) TYPE* NAME = (TYPE*) _alloca(sizeof(TYPE) * SIZE)
+#define DECL_ARRAY_2D(TYPE, NAME, SIZE1, SIZE2) \
+TYPE **NAME = _alloca(sizeof(TYPE*) * SIZE1);   \
+for (size_t i = 0; i < SIZE1; ++i) {            \
+    NAME[i] = _alloca(sizeof(TYPE) * SIZE2);    \
+}
+#else
+#define DECL_ARRAY(TYPE, NAME, SIZE) TYPE NAME[SIZE]
+#define DECL_ARRAY_2D(TYPE, NAME, SIZE1, SIZE2) TYPE NAME[SIZE1, SIZE2]
+#endif
+
+#define CARR_MIN(a,b) (((a)<(b))?(a):(b))
+#define CARR_MAX(a,b) (((a)>(b))?(a):(b))
+
+#define SARRAY_COUNT_OF(STATIC_ARRAY) (sizeof(STATIC_ARRAY)/sizeof((STATIC_ARRAY)[0]))
 
 #include <malloc.h>
 #include <stdalign.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 // C_ARRAY_UTIL_ALLOCATION_FAILED is called when allocation fails.
 // Default implementation calls abort().
@@ -16,6 +57,12 @@
 #endif
 
 // === Allocation helpers ===
+
+// Silence MSVC warnings with the extra cast
+#define CARR_LARGEST_POWER_OF_2_DIVISOR(x) ((x) & (size_t)(-(ptrdiff_t)(x)))
+
+#define CARR_ALIGNMENT_FOR_TYPE(x) CARR_LARGEST_POWER_OF_2_DIVISOR(sizeof(x))
+#define CARR_ALIGNMENT_FOR_EXPR(x) CARR_LARGEST_POWER_OF_2_DIVISOR(sizeof(x))
 
 #define CARR_MIN(a,b) (((a)<(b))?(a):(b))
 #define CARR_MAX(a,b) (((a)>(b))?(a):(b))
@@ -91,7 +138,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @param CAPACITY capacity of the array
  * @return pointer to the allocated array, or NULL
  */
-#define ARRAY_ALLOC(T, CAPACITY) ((T*)CARR_array_alloc(alignof(T), sizeof(T), CAPACITY))
+#define ARRAY_ALLOC(T, CAPACITY) ((T*)CARR_array_alloc(CARR_ALIGNMENT_FOR_TYPE(T), sizeof(T), CAPACITY))
 
 /**
  * @param P array
@@ -115,7 +162,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * Deallocate the vector
  * @param P array
  */
-#define ARRAY_FREE(P) ((void)CARR_array_realloc((void**)&(P), alignof(*(P)), sizeof(*(P)), 0))
+#define ARRAY_FREE(P) ((void)CARR_array_realloc((void**)&(P), CARR_ALIGNMENT_FOR_EXPR(*(P)), sizeof(*(P)), 0))
 
 /**
  * Apply function to the array elements
@@ -152,7 +199,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @return true if the operation succeeded
  */
 #define ARRAY_TRY_ENSURE_CAPACITY(P, CAPACITY) \
-    CARR_array_ensure_capacity((void**)&(P), alignof(*(P)), sizeof(*(P)), (CAPACITY), false)
+    CARR_array_ensure_capacity((void**)&(P), CARR_ALIGNMENT_FOR_EXPR(*(P)), sizeof(*(P)), (CAPACITY), false)
 
 /**
  * Ensure array capacity. Array is implicitly initialized when necessary.
@@ -161,7 +208,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @param CAPACITY required capacity of the array
  */
 #define ARRAY_ENSURE_CAPACITY(P, CAPACITY) \
-    ((void)CARR_array_ensure_capacity((void**)&(P), alignof(*(P)), sizeof(*(P)), (CAPACITY), true))
+    ((void)CARR_array_ensure_capacity((void**)&(P), CARR_ALIGNMENT_FOR_EXPR(*(P)), sizeof(*(P)), (CAPACITY), true))
 
 /**
  * Shrink capacity of the array to its size.
@@ -170,7 +217,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @return the array
  * @return true if the operation succeeded
  */
-#define ARRAY_SHRINK_TO_FIT(P) CARR_array_realloc((void**)&(P), alignof(*(P)), sizeof(*(P)), ARRAY_SIZE(P))
+#define ARRAY_SHRINK_TO_FIT(P) CARR_array_realloc((void**)&(P), CARR_ALIGNMENT_FOR_EXPR(*(P)), sizeof(*(P)), ARRAY_SIZE(P))
 
 /**
  * Resize an array. Array is implicitly initialized when necessary.
@@ -180,7 +227,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @return true if the operation succeeded
  */
 #define ARRAY_TRY_RESIZE(P, SIZE) \
-    CARR_array_resize((void**)&(P), alignof(*(P)), sizeof(*(P)), (SIZE), false)
+    CARR_array_resize((void**)&(P), CARR_ALIGNMENT_FOR_EXPR(*(P)), sizeof(*(P)), (SIZE), false)
 
 /**
  * Resize an array. Array is implicitly initialized when necessary.
@@ -189,7 +236,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @param SIZE required size of the array
  */
 #define ARRAY_RESIZE(P, SIZE) \
-    ((void)CARR_array_resize((void**)&(P), alignof(*(P)), sizeof(*(P)), (SIZE), true))
+    ((void)CARR_array_resize((void**)&(P), CARR_ALIGNMENT_FOR_EXPR(*(P)), sizeof(*(P)), (SIZE), true))
 
 /**
  * Add element to the end of the array. Array is implicitly initialized when necessary.
@@ -198,7 +245,7 @@ static inline void CARR_array_push_back(void** handle, size_t alignment, size_t 
  * @return dereferenced pointer to the inserted element
  */
 #define ARRAY_PUSH_BACK(P) \
-    (*(CARR_array_push_back((void**)&(P), alignof(*(P)), sizeof(*(P))), (P) + ARRAY_SIZE(P) - 1))
+    (*(CARR_array_push_back((void**)&(P), CARR_ALIGNMENT_FOR_EXPR(*(P)), sizeof(*(P))), (P) + ARRAY_SIZE(P) - 1))
 
 /**
  * Compile-time length of the static array.
@@ -273,7 +320,7 @@ static inline size_t CARR_ring_buffer_push_back(void* data) {
  * @return true if the operation succeeded
  */
 #define RING_BUFFER_TRY_ENSURE_CAN_PUSH(P) CARR_RING_BUFFER_GUARD((P), \
-    CARR_ring_buffer_ensure_can_push((void**)&(P), alignof(*(P)), sizeof(*(P)), false))
+    CARR_ring_buffer_ensure_can_push((void**)&(P), CARR_ALIGNMENT_FOR_EXPR(*(P)), sizeof(*(P)), false))
 
 /**
  * Ensure enough capacity to push an element into ring buffer. Implicitly initializes when buffer is NULL.
@@ -281,7 +328,7 @@ static inline size_t CARR_ring_buffer_push_back(void* data) {
  * @param P ring buffer
  */
 #define RING_BUFFER_ENSURE_CAN_PUSH(P) CARR_RING_BUFFER_GUARD((P), \
-    (void)CARR_ring_buffer_ensure_can_push((void**)&(P), alignof(*(P)), sizeof(*(P)), true))
+    (void)CARR_ring_buffer_ensure_can_push((void**)&(P), CARR_ALIGNMENT_FOR_EXPR(*(P)), sizeof(*(P)), true))
 
 /**
  * Add element to the beginning of the ring buffer. Implicitly initializes when buffer is NULL.
@@ -337,7 +384,7 @@ static inline size_t CARR_ring_buffer_push_back(void* data) {
  * @param P ring buffer
  */
 #define RING_BUFFER_FREE(P) CARR_RING_BUFFER_GUARD((P), \
-    (void)CARR_ring_buffer_realloc((void**)&(P), alignof(*(P)), sizeof(*(P)), 0))
+    (void)CARR_ring_buffer_realloc((void**)&(P), CARR_ALIGNMENT_FOR_EXPR(*(P)), sizeof(*(P)), 0))
 
 // === Maps ===
 
@@ -347,8 +394,8 @@ typedef size_t (*CARR_hash_fp)(const void* data);
 #define CARR_MAP_LAYOUT_ARGS size_t key_alignment, size_t key_size, size_t value_alignment, size_t value_size
 #define CARR_MAP_LAYOUT_PASS key_alignment, key_size, value_alignment, value_size
 #define CARR_MAP_LAYOUT(P)                                                         \
-    alignof((P)->CARR_keys[0].CARR_key[0]), sizeof((P)->CARR_keys[0].CARR_key[0]), \
-    alignof((P)->CARR_values[0].CARR_value[0]), sizeof((P)->CARR_values[0].CARR_value[0])
+    CARR_ALIGNMENT_FOR_EXPR((P)->CARR_key_struct.CARR_key[0]), sizeof((P)->CARR_key_struct.CARR_key[0]), \
+    CARR_ALIGNMENT_FOR_EXPR((P)->CARR_value_struct.CARR_value[0]), sizeof((P)->CARR_value_struct.CARR_value[0])
 
 typedef const void* (*CARR_map_dispatch_next_key_fp)(CARR_MAP_LAYOUT_ARGS, const void* data, const void* key_slot);
 typedef void* (*CARR_map_dispatch_find_fp)(CARR_MAP_LAYOUT_ARGS,
@@ -368,11 +415,11 @@ typedef struct {
 } CARR_map_dispatch_t;
 
 #define CARR_MAP_KEY_PTR(P, ...) \
-    (&((true ? NULL : (P))->CARR_keys[((uintptr_t)(__VA_ARGS__) / sizeof((P)->CARR_keys[0]) - 1)].CARR_key[0]))
+    (&((&((true ? NULL : (P))->CARR_key_struct))[(uintptr_t)(__VA_ARGS__) / sizeof((P)->CARR_key_struct) - 1].CARR_key[0]))
 #define CARR_MAP_VALUE_PTR(P, ...) \
-    (&((true ? NULL : (P))->CARR_values[((uintptr_t)(__VA_ARGS__) / sizeof((P)->CARR_values[0]) - 1)].CARR_value[0]))
+    (&((&((true ? NULL : (P))->CARR_value_struct))[(uintptr_t)(__VA_ARGS__) / sizeof((P)->CARR_value_struct) - 1].CARR_value[0]))
 #define CARR_MAP_KEY_GUARD(P, ...) \
-    (true ? (__VA_ARGS__) : &(P)->CARR_keys[0].CARR_key[0]) // Guard against wrong key types.
+    (true ? (__VA_ARGS__) : &(P)->CARR_key_struct.CARR_key[0]) // Guard against wrong key types.
 #define CARR_MAP_DISPATCH(P, NAME, ...) \
     (((const CARR_map_dispatch_t**)(P))[-1]->NAME(CARR_MAP_LAYOUT(P), __VA_ARGS__))
 
@@ -385,9 +432,9 @@ bool CARR_hash_map_linear_probing_rehash(CARR_MAP_LAYOUT_ARGS, void** handle, CA
  * @param KEY_TYPE type of the map key.
  * @param VALUE_TYPE type of the map value.
  */
-#define MAP(KEY_TYPE, VALUE_TYPE) union {                                \
-    struct { char CARR_dummy; const KEY_TYPE CARR_key[]; } CARR_keys[1]; \
-    struct { char CARR_dummy; VALUE_TYPE CARR_value[]; } CARR_values[1]; \
+#define MAP(KEY_TYPE, VALUE_TYPE) union {             \
+    struct { char CARR_dummy; const KEY_TYPE CARR_key[]; } CARR_key_struct; \
+    struct { char CARR_dummy; VALUE_TYPE CARR_value[]; } CARR_value_struct;   \
 }*
 
 /**
