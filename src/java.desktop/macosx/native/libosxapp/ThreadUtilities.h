@@ -130,30 +130,6 @@ do {                                  \
 /* bit flag to coalesce CGDisplayReconfigureCallbacks */
 #define MAIN_CALLBACK_CGDISPLAY_RECONFIGURE  1
 
-/* log given message (with thread call stack) */
-#define NSAPP_AWT_LOG_MESSAGE(message) \
-    [ThreadUtilities logMessage:message file:__FILE__ line:__LINE__ function:__FUNCTION__]
-
-/* log given exception (ignored or explicitely muted) */
-#define NSAPP_AWT_LOG_EXCEPTION(exception) \
-    [ThreadUtilities logException:exception file:__FILE__ line:__LINE__ function:__FUNCTION__]
-
-#define NSAPP_AWT_LOG_EXCEPTION_PREFIX(exception, prefixValue) \
-    [ThreadUtilities logException:exception prefix:prefixValue file:__FILE__ line:__LINE__ function:__FUNCTION__]
-
-/* report the given exception (ignored or explicitely muted), may crash the JVM (JNU_Fatal) */
-#define NSAPP_AWT_REPORT_EXCEPTION(exception, uncaughtFlag) \
-    [ThreadUtilities reportException:exception uncaught:uncaughtFlag file:__FILE__ line:__LINE__ function:__FUNCTION__]
-
-/* CFRelease wrapper that ignores NULL argument */
-JNIEXPORT void CFRelease_even_NULL(CFTypeRef cf);
-
-/* Return true if uncaught exceptions should crash JVM (JNU_Fatal) */
-BOOL shouldCrashOnException();
-
-/* Get AWT's NSUncaughtExceptionHandler */
-JNIEXPORT NSUncaughtExceptionHandler* GetAWTUncaughtExceptionHandler(void);
-
 @interface RunLoopCallbackQueue : NSObject
 
 @property(readwrite, atomic) u_long coalesingflags;
@@ -204,25 +180,8 @@ __attribute__((visibility("default")))
  */
 @property (class, nonatomic, readonly) BOOL blockingEventDispatchThread;
 
-+ (void (^)()) GetEmptyBlock;
-
-+ (void) reportException:(NSException *)exception;
-+ (void) reportException:(NSException *)exception uncaught:(BOOL)uncaught
-                    file:(const char*)file line:(int)line function:(const char*)function;
-
-+ (void) logException:(NSException *)exception;
-+ (void) logException:(NSException *)exception
-                 file:(const char*)file line:(int)line function:(const char*)function;
-+ (void) logException:(NSException *)exception prefix:(NSString *)prefix
-                 file:(const char*)file line:(int)line function:(const char*)function;
-
-+ (void) logMessage:(NSString *)message;
-+ (void) logMessage:(NSString *)message
-               file:(const char*)file line:(int)line function:(const char*)function;
-
 + (JNIEnv*)getJNIEnv;
 + (JNIEnv*)getJNIEnvUncached;
-
 + (void)detachCurrentThread;
 + (void)setAppkitThreadGroup:(jobject)group;
 + (void)setApplicationOwner:(BOOL)owner;

@@ -116,7 +116,6 @@ static void displaycb_handle
 (CGDirectDisplayID displayId, CGDisplayChangeSummaryFlags flags, void *userInfo)
 {
 AWT_ASSERT_APPKIT_THREAD;
-JNIEnv *env = [ThreadUtilities getJNIEnv];
 JNI_COCOA_ENTER(env);
 
     if (TRACE_DISPLAY_CALLBACKS) {
@@ -153,6 +152,7 @@ JNI_COCOA_ENTER(env);
                                                      block:^()
         {
             @try {
+                JNIEnv *env = [ThreadUtilities getJNIEnv];
                 jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
                 if (graphicsEnv == NULL) return; // ref already GC'd
                 DECLARE_CLASS(jc_CGraphicsEnvironment, "sun/awt/CGraphicsEnvironment");
@@ -173,6 +173,7 @@ JNI_COCOA_ENTER(env);
 
     // braces to reduce variable scope
     {
+        JNIEnv *env = [ThreadUtilities getJNIEnv];
         jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
         if (graphicsEnv == NULL) return; // ref already GC'd
         DECLARE_CLASS(jc_CGraphicsEnvironment, "sun/awt/CGraphicsEnvironment");
