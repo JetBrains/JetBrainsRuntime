@@ -223,12 +223,6 @@ void JavaCT_DrawGlyphVector
 // Using the Quartz Surface Data context, draw a hot-substituted character run
 void JavaCT_DrawTextUsingQSD(JNIEnv *env, const QuartzSDOps *qsdo, const AWTStrike *strike, const jchar *chars, const jsize length)
 {
-    NSAttributedString *attribString = nil;
-    CTTypesetterRef typeSetterRef = NULL;
-    CTLineRef lineRef = NULL;
-
-JNI_COCOA_ENTER(env);
-
     CGContextRef cgRef = qsdo->cgRef;
 
     AWTFont *awtFont = strike->fAWTFont;
@@ -257,18 +251,20 @@ JNI_COCOA_ENTER(env);
 
     CTTypesetterRef typeSetterRef = CTTypesetterCreateWithAttributedStringAndOptions((CFAttributedStringRef) attribString, (CFDictionaryRef) ctsDictionaryFor(nsFont, JRSFontStyleUsesFractionalMetrics(strike->fStyle)));
     */
-    attribString = [[NSAttributedString alloc]
+    NSAttributedString *attribString = [[NSAttributedString alloc]
         initWithString:string
         attributes:ctsDictionaryFor(nsFont, JRSFontStyleUsesFractionalMetrics(strike->fStyle))];
 
-    typeSetterRef = CTTypesetterCreateWithAttributedString((CFAttributedStringRef) attribString);
+    CTTypesetterRef typeSetterRef = CTTypesetterCreateWithAttributedString((CFAttributedStringRef) attribString);
 
     CFRange range = {0, length};
-    lineRef = CTTypesetterCreateLine(typeSetterRef, range);
+    CTLineRef lineRef = CTTypesetterCreateLine(typeSetterRef, range);
 
     CTLineDraw(lineRef, cgRef);
 
-JNI_COCOA_EXIT_WITH_ACTION(env, ( [attribString release], CFRelease_even_NULL(lineRef), CFRelease_even_NULL(typeSetterRef) ) );
+    [attribString release];
+    CFRelease(lineRef);
+    CFRelease(typeSetterRef);
 }
 
 
@@ -284,15 +280,15 @@ static void DrawTextContext
         return;
     }
 
-JNI_COCOA_ENTER(env);
-
     qsdo->BeginSurface(env, qsdo, SD_Text);
     if (qsdo->cgRef == NULL)
     {
+        qsdo->FinishSurface(env, qsdo);
         return;
     }
 
     CGContextRef cgRef = qsdo->cgRef;
+
 
     CGContextSaveGState(cgRef);
     JRSFontSetRenderingStyleOnContext(cgRef, strike->fStyle);
@@ -307,7 +303,7 @@ JNI_COCOA_ENTER(env);
 
     CGContextRestoreGState(cgRef);
 
-JNI_COCOA_RENDERER_EXIT(env);
+    qsdo->FinishSurface(env, qsdo);
 }
 
 #pragma mark --- Glyph Vector Pipeline ---
@@ -532,34 +528,40 @@ static inline void doDrawGlyphsPipe_getGlyphVectorLengthAndAlloc
         CGSize advances[length];
         doDrawGlyphsPipe_fillGlyphAndAdvanceBuffers(env, qsdo, strike, gVector, glyphs, uniChars, advances, length, glyphsArray);
     }
-    else {
-        CGGlyph *glyphs  = NULL;
-        int *uniChars    = NULL;
-        CGSize *advances = NULL;
-        @try {
-            // otherwise, we should malloc and free buffers for this large run
-            glyphs   = (CGGlyph *)malloc(sizeof(CGGlyph) * length);
-            uniChars = (int *)    malloc(sizeof(int) * length);
-            advances = (CGSize *) malloc(sizeof(CGSize) * length);
+    else
+    {
+        // otherwise, we should malloc and free buffers for this large run
+        CGGlyph *glyphs = (CGGlyph *)malloc(sizeof(CGGlyph) * length);
+        int *uniChars = (int *)malloc(sizeof(int) * length);
+        CGSize *advances = (CGSize *)malloc(sizeof(CGSize) * length);
 
-            if ((glyphs == NULL) || (uniChars == NULL) || (advances == NULL)) {
-                [NSException raise:NSMallocException format:@"allocation failure (%s:%d %s)", __FILE__, __LINE__, __FUNCTION__];
-            } else {
-                doDrawGlyphsPipe_fillGlyphAndAdvanceBuffers(env, qsdo, strike, gVector, glyphs, uniChars, advances, length, glyphsArray);
-            }
-        } @finally {
-            if (glyphs != NULL) {
+        if (glyphs == NULL || uniChars == NULL || advances == NULL)
+        {
+            (*env)->DeleteLocalRef(env, glyphsArray);
+            [NSException raise:NSMallocException format:@"%s-%s:%d", __FILE__, __FUNCTION__, __LINE__];
+            if (glyphs)
+            {
                 free(glyphs);
             }
-            if (uniChars != NULL) {
+            if (uniChars)
+            {
                 free(uniChars);
             }
-            if (advances != NULL) {
+            if (advances)
+            {
                 free(advances);
             }
-            (*env)->DeleteLocalRef(env, glyphsArray);
+            return;
         }
+
+        doDrawGlyphsPipe_fillGlyphAndAdvanceBuffers(env, qsdo, strike, gVector, glyphs, uniChars, advances, length, glyphsArray);
+
+        free(glyphs);
+        free(uniChars);
+        free(advances);
     }
+
+    (*env)->DeleteLocalRef(env, glyphsArray);
 }
 
 // Setup and save the state of the CGContext, and apply any java.awt.Font transforms to the context.
