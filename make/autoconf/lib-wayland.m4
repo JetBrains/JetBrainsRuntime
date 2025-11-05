@@ -40,11 +40,22 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       [specify the root directory for the wayland protocols xml files])])
   AC_ARG_WITH(gtk-shell1-protocol, [AS_HELP_STRING([--with-gtk-shell1-protocol],
       [specify the path to the gtk-shell1 Wayland protocol xml file])])
+  AC_ARG_WITH(xkbcommon, [AS_HELP_STRING([--with-xkbcommon],
+      [specify prefix directory for the xkbcommon package
+      (expecting the headers under PATH/include)])])
+  AC_ARG_WITH(xkbcommon-include, [AS_HELP_STRING([--with-xkbcommon-include],
+      [specify directory for the xkbcommon include files])])
+  AC_ARG_WITH(xkbcommon-lib, [AS_HELP_STRING([--with-xkbcommon-lib],
+      [specify directory for the xkbcommon library files])])
 
   if test "x$NEEDS_LIB_WAYLAND" = xfalse; then
     if (test "x${with_wayland}" != x && test "x${with_wayland}" != xno) || \
         (test "x${with_wayland_include}" != x && test "x${with_wayland_include}" != xno); then
       AC_MSG_WARN([[wayland not used, so --with-wayland[-*] is ignored]])
+    fi
+    if (test "x${with_xkbcommon}" != x && test "x${with_xkbcommon}" != xno) || \
+        (test "x${with_xkbcommon_include}" != x && test "x${with_xkbcommon_include}" != xno); then
+      AC_MSG_WARN([[wayland not used, so --with-xkbcommon[-*] is ignored]])
     fi
     WAYLAND_CFLAGS=
     WAYLAND_LIBS=
@@ -54,6 +65,9 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     WAYLAND_DEFINES=
     if test "x${with_wayland}" = xno || test "x${with_wayland_include}" = xno; then
       AC_MSG_ERROR([It is not possible to disable the use of wayland. Remove the --without-wayland option.])
+    fi
+    if test "x${with_xkbcommon}" = xno || test "x${with_xkbcommon_include}" = xno; then
+      AC_MSG_ERROR([It is not possible to disable the use of xkbcommon. Remove the --without-xkbcommon option.])
     fi
 
     if test "x${with_wayland}" != x; then
@@ -121,7 +135,52 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       HELP_MSG_MISSING_DEPENDENCY([wayland])
       AC_MSG_ERROR([Could not find wayland! $HELP_MSG ])
     fi
-    WAYLAND_CFLAGS="${WAYLAND_INCLUDES} ${WAYLAND_DEFINES}"
+
+    XKBCOMMON_FOUND=no
+    XKBCOMMON_INCLUDES=
+    XKBCOMMON_LIBS=-lxkbcommon
+    if test "x${with_xkbcommon}" != x; then
+      AC_MSG_CHECKING([for xkbcommon headers])
+      if test -s "${with_xkbcommon}/include/xkbcommon/xkbcommon.h" &&
+         test -s "${with_xkbcommon}/include/xkbcommon/xkbcommon-compose.h"; then
+        XKBCOMMON_INCLUDES="-I${with_xkbcommon}/include"
+        XKBCOMMON_LIBS="-L${with_xkbcommon}/lib ${XKBCOMMON_LIBS}"
+
+        XKBCOMMON_FOUND=yes
+        AC_MSG_RESULT([$XKBCOMMON_FOUND])
+      else
+        AC_MSG_ERROR([Can't find 'include/xkbcommon/xkbcommon.h' and 'include/xkbcommon/xkbcommon-compose.h' under ${with_xkbcommon} given with the --with-xkbcommon option.])
+      fi
+    fi
+    if test "x${with_xkbcommon_include}" != x; then
+      AC_MSG_CHECKING([for xkbcommon headers])
+      if test -s "${with_xkbcommon_include}/xkbcommon/xkbcommon.h" &&
+         test -s "${with_xkbcommon_include}/xkbcommon/xkbcommon-compose.h"; then
+        XKBCOMMON_INCLUDES="-I${with_xkbcommon_include}"
+        XKBCOMMON_FOUND=yes
+        AC_MSG_RESULT([$XKBCOMMON_FOUND])
+      else
+        AC_MSG_ERROR([Can't find 'include/xkbcommon/xkbcommon.h' and 'include/xkbcommon/xkbcommon-compose.h' under ${with_xkbcommon_include} given with the --with-xkbcommon-include option.])
+      fi
+    fi
+    if test "x${with_xkbcommon_lib}" != x; then
+      XKBCOMMON_LIBS="-L${with_xkbcommon_lib} ${XKBCOMMON_LIBS}"
+    fi
+
+    if test "x${XKBCOMMON_FOUND}" != xyes; then
+      AC_CHECK_HEADERS([xkbcommon/xkbcommon.h xkbcommon/xkbcommon-compose.h],
+          [ XKBCOMMON_FOUND=yes ],
+          [ XKBCOMMON_FOUND=no; break ]
+      )
+    fi
+
+    if test "x$XKBCOMMON_FOUND" != xyes; then
+      HELP_MSG_MISSING_DEPENDENCY([xkbcommon])
+      AC_MSG_ERROR([Could not find xkbcommon! $HELP_MSG ])
+    fi
+
+    WAYLAND_LIBS="${WAYLAND_LIBS} ${XKBCOMMON_LIBS}"
+    WAYLAND_CFLAGS="${WAYLAND_INCLUDES} ${XKBCOMMON_INCLUDES} ${WAYLAND_DEFINES}"
   fi
   AC_SUBST(WAYLAND_CFLAGS)
   AC_SUBST(WAYLAND_LIBS)
