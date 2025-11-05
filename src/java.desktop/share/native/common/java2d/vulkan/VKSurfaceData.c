@@ -56,7 +56,6 @@ void VKSD_ResetSurface(VKSDOps* vksdo) {
     if (vksdo->drawableType == VKSD_WINDOW) {
         VKWinSDOps* vkwinsdo = (VKWinSDOps*) vksdo;
         ARRAY_FREE(vkwinsdo->swapchainImages);
-        vkwinsdo->swapchainImages = NULL;
         if (vkwinsdo->vksdOps.device != NULL && vkwinsdo->swapchain != VK_NULL_HANDLE) {
             vkwinsdo->vksdOps.device->vkDestroySwapchainKHR(vkwinsdo->vksdOps.device->handle, vkwinsdo->swapchain, NULL);
         }
@@ -285,7 +284,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     }
     ARRAY_RESIZE(vkwinsdo->swapchainImages, swapchainImageCount);
     VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, vkwinsdo->swapchain,
-                                             &swapchainImageCount, vkwinsdo->swapchainImages)) {
+                                             &swapchainImageCount, vkwinsdo->swapchainImages.data)) {
         return VK_FALSE;
     }
     return VK_TRUE;
