@@ -29,7 +29,6 @@
 #import "JNIUtilities.h"
 #import "PropertiesUtilities.h"
 #import "ThreadUtilities.h"
-#import "NSApplicationAWT.h"
 
 
 #define RUN_BLOCK_IF(COND, block)   \
@@ -40,45 +39,6 @@
 
 /* See LWCToolkit.APPKIT_THREAD_NAME */
 #define MAIN_THREAD_NAME    "AppKit Thread"
-
-void CFRelease_even_NULL(CFTypeRef cf) {
-    if (cf != NULL) {
-        CFRelease(cf);
-    }
-}
-
-// Global CrashOnException handling flags used by:
-// - UncaughtExceptionHandler
-// - NSApplicationAWT _crashOnException:(NSException *)exception
-static BOOL isAWTCrashOnException() {
-    static int awtCrashOnException = -1;
-    if (awtCrashOnException == -1) {
-        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-        if (env == NULL) return NO;
-        NSString* awtCrashOnExceptionProp = [PropertiesUtilities javaSystemPropertyForKey:@"apple.awt.crashOnException"
-                                                                                     withEnv:env];
-        awtCrashOnException = [@"true" isCaseInsensitiveLike:awtCrashOnExceptionProp] ? YES : NO;
-    }
-    return (BOOL)awtCrashOnException;
-}
-
-BOOL shouldCrashOnException() {
-    static int crashOnException = -1;
-    if (crashOnException == -1) {
-        BOOL shouldCrashOnException = NO;
-#if defined(DEBUG)
-        shouldCrashOnException = YES;
-#endif
-        if (!shouldCrashOnException) {
-            shouldCrashOnException = isAWTCrashOnException();
-        }
-        crashOnException = shouldCrashOnException;
-        if (crashOnException) {
-            NSLog(@"WARNING: shouldCrashOnException ENABLED");
-        }
-    }
-    return (BOOL)crashOnException;
-}
 
 /* Returns the MainThread latency threshold in milliseconds
  * used to detect slow operations that may cause high latencies or delays.
@@ -129,24 +89,6 @@ static const int TRACE_BLOCKING_FLAGS = 0;
 /* RunLoop traceability identifier generators */
 static atomic_long mainThreadActionId = 0L;
 
-// --- AWT's NSUncaughtExceptionHandler ---
-static void AWT_NSUncaughtExceptionHandler(NSException *exception) {
-    // report exception to the NSApplicationAWT exception handler:
-    NSAPP_AWT_REPORT_EXCEPTION(exception, YES);
-}
-
-/* Get AWT's NSUncaughtExceptionHandler */
-NSUncaughtExceptionHandler* GetAWTUncaughtExceptionHandler(void) {
-    static NSUncaughtExceptionHandler* _awtUncaughtExceptionHandler;
-    static dispatch_once_t oncePredicate;
-
-    dispatch_once(&oncePredicate, ^{
-        _awtUncaughtExceptionHandler = AWT_NSUncaughtExceptionHandler;
-        NSSetUncaughtExceptionHandler(_awtUncaughtExceptionHandler);
-    });
-    return _awtUncaughtExceptionHandler;
-}
-
 static inline void doLog(JNIEnv* env, const char *formatMsg, ...) {
     if (enableTracingNSLog) {
         va_list args;
@@ -188,78 +130,6 @@ static inline void attachCurrentThread(void** env) {
 static long eventDispatchThreadPtr = (long)nil;
 static BOOL _blockingEventDispatchThread = NO;
 static BOOL _blockingMainThread = NO;
-
-// Empty block optimization using 1 single instance and avoid Block_copy macro
-
-+ (void (^)()) GetEmptyBlock {
-    static id _emptyBlock = nil;
-    if (_emptyBlock == nil) {
-        _emptyBlock = ^(){};
-    }
-    return _emptyBlock;
-}
-
-+ (BOOL) IsEmptyBlock:(void (^)())block {
-    return (block == [ThreadUtilities GetEmptyBlock]);
-}
-
-#define Custom_Block_copy(block) ( ([ThreadUtilities IsEmptyBlock:block]) ? block : Block_copy(block) )
-
-/*
- * When running a block where either we don't wait, or it needs to run on another thread
- * we need to copy it from stack to heap, use the copy in the call and release after use.
- * Do this only when we must because it could be expensive.
- * Note : if waiting cross-thread, possibly the stack allocated copy is accessible ?
- */
-+ (void)invokeBlockCopy:(void (^)(void))blockCopy {
-    if (![ThreadUtilities IsEmptyBlock:blockCopy]) {
-        @try {
-            blockCopy();
-        } @finally {
-            Block_release(blockCopy);
-#if (CHECK_PENDING_EXCEPTION == 1)
-            __JNI_CHECK_PENDING_EXCEPTION([ThreadUtilities getJNIEnvUncached]);
-#endif
-        }
-    }
-}
-
-// Exception handling bridge
-+ (void) reportException:(NSException *)exception {
-    [[NSApplicationAWT sharedApplicationAWT] reportException:exception];
-}
-
-+ (void) reportException:(NSException *)exception uncaught:(BOOL)uncaught
-                    file:(const char*)file line:(int)line function:(const char*)function
-{
-    [[NSApplicationAWT sharedApplicationAWT] reportException:exception uncaught:uncaught file:file line:line function:function];
-}
-
-+ (void) logException:(NSException *)exception {
-    [NSApplicationAWT logException:exception];
-}
-
-+ (void) logException:(NSException *)exception
-                 file:(const char*)file line:(int)line function:(const char*)function
-{
-    [NSApplicationAWT logException:exception file:file line:line function:function];
-}
-
-+ (void) logException:(NSException *)exception prefix:(NSString *)prefix
-                 file:(const char*)file line:(int)line function:(const char*)function
-{
-    [NSApplicationAWT logException:exception prefix:prefix file:file line:line function:function];
-}
-
-+ (void) logMessage:(NSString *)message {
-    [NSApplicationAWT logMessage:message];
-}
-
-+ (void) logMessage:(NSString *)message
-               file:(const char*)file line:(int)line function:(const char*)function
-{
-    [NSApplicationAWT logMessage:message file:file line:line function:function];
-}
 
 static BOOL isEventDispatchThread() {
     return (long)[NSThread currentThread] == eventDispatchThreadPtr;
@@ -325,13 +195,9 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 + (JNIEnv*)getJNIEnvUncached {
-    if ([NSThread isMainThread] && (appKitEnv != NULL)) {
-        return appKitEnv;
-    } else {
-        JNIEnv *env = NULL;
-        attachCurrentThread((void **)&env);
-        return env;
-    }
+    JNIEnv *env = NULL;
+    attachCurrentThread((void **)&env);
+    return env;
 }
 
 + (void)detachCurrentThread {
@@ -379,7 +245,17 @@ AWT_ASSERT_APPKIT_THREAD;
             [ThreadUtilities resetTraceContext];
         }
     }
-    doLog([ThreadUtilities getJNIEnvUncached], "setAppkitThreadGroup: exit");
+}
+
+/*
+ * When running a block where either we don't wait, or it needs to run on another thread
+ * we need to copy it from stack to heap, use the copy in the call and release after use.
+ * Do this only when we must because it could be expensive.
+ * Note : if waiting cross-thread, possibly the stack allocated copy is accessible ?
+ */
++ (void)invokeBlockCopy:(void (^)(void))blockCopy {
+    blockCopy();
+    Block_release(blockCopy);
 }
 
 + (NSString*)getCaller:(NSString*)prefixSymbol {
@@ -423,7 +299,7 @@ AWT_ASSERT_APPKIT_THREAD;
 {
     RUN_BLOCK_IF([NSThread isMainThread], block);
 
-    [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Custom_Block_copy(block)
+    [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
                            waitUntilDone:NO useJavaModes:useJavaModes];
 }
 
@@ -445,7 +321,7 @@ AWT_ASSERT_APPKIT_THREAD;
 {
     RUN_BLOCK_IF([NSThread isMainThread] && wait, block);
 
-    [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Custom_Block_copy(block)
+    [ThreadUtilities performOnMainThread:@selector(invokeBlockCopy:) on:self withObject:Block_copy(block)
                            waitUntilDone:wait useJavaModes:useJavaModes];
 }
 
@@ -815,7 +691,7 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
     if (midWarn != NULL) {
         va_list args;
         va_start(args, formatMsg);
-        /* formatted message can be large (stack trace) => 16 kb buffer size */
+        /* formatted message can be large (stack trace ?) => 16 kb */
         const int bufSize = 16 * 1024;
         char buf[bufSize];
 #pragma clang diagnostic push
@@ -824,29 +700,17 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 #pragma clang diagnostic pop
         va_end(args);
 
-        BOOL logged = NO;
         const jstring javaString = (*env)->NewStringUTF(env, buf);
-
-        if ((javaString != NULL) && (*env)->ExceptionCheck(env) == JNI_FALSE) {
-            // call PlatformLogger.warning(javaString):
+        if ((*env)->ExceptionCheck(env)) {
+            // fallback:
+            NSLog(@"%s\n", buf); \
+        } else {
+            JNU_CHECK_EXCEPTION(env);
             (*env)->CallVoidMethod(env, loggerObject, midWarn, javaString);
-
-            // derived from CHECK_EXCEPTION but NO NSException raised:
-            if ((*env)->ExceptionCheck(env)) {
-                // fallback:
-                (*(env))->ExceptionDescribe(env);
-                // note: [NSApplicationAWT logMessage:message] is not used
-                // to avoid reentrancy issues.
-                 NSLog(@"%@", [NSThread callStackSymbols]);
-            } else {
-                logged = YES;
-            }
+            CHECK_EXCEPTION();
+            return;
         }
         (*env)->DeleteLocalRef(env, javaString);
-        if (!logged) {
-            // fallback:
-            NSLog(@"%s\n", buf);
-        }
     }
 }
 
@@ -915,22 +779,10 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 - (void)processQueuedCallbacks {
     const NSUInteger count = [self.queue count];
     if (count != 0) {
-#if (CHECK_PENDING_EXCEPTION == 1)
-        JNIEnv *env = [ThreadUtilities getJNIEnv];
-#endif
         for (NSUInteger i = 0; i < count; i++) {
-            NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-            @try {
-                void (^blockCopy)(void) = (void (^)()) [self.queue objectAtIndex:i];
-                // invoke callback:
-                [ThreadUtilities invokeBlockCopy:blockCopy];
-            } @catch (NSException *exception) {
-                // report exception to the NSApplicationAWT exception handler:
-                NSAPP_AWT_REPORT_EXCEPTION(exception, NO);
-            } @finally {
-                __JNI_CHECK_PENDING_EXCEPTION(env);
-                [pool drain];
-            }
+            void (^blockCopy)(void) = (void (^)())[self.queue objectAtIndex: i];
+            // invoke callback:
+            [ThreadUtilities invokeBlockCopy:blockCopy];
         }
         // reset queue anyway:
         [self reset];
