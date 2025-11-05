@@ -126,7 +126,7 @@ AWT_ASSERT_APPKIT_THREAD;
     BOOL isApplicationOwner = NO;
     if (NSApp != nil) {
         if ([NSApp isMemberOfClass:[NSApplication class]] && overrideDelegate) shouldInstall = YES;
-        if ([NSApplicationAWT isNSApplicationAWT]) {
+        if ([NSApp isKindOfClass:[NSApplicationAWT class]]) {
             shouldInstall = YES;
             isApplicationOwner = YES;
         }
@@ -213,7 +213,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
     // Prep for about and preferences menu
     BOOL usingDefaultNib = YES;
-    if ([NSApplicationAWT isNSApplicationAWT]) {
+    if ([NSApp isKindOfClass:[NSApplicationAWT class]]) {
         usingDefaultNib = [NSApp usingDefaultNib];
     }
     if (!usingDefaultNib) return self;
