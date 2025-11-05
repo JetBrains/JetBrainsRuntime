@@ -48,7 +48,7 @@ static bool equals(const void* ap, const void* bp) {
 
 VKComposites VKComposites_Create() {
     const VKCompositeMode NEXT_FREE_MODE = ALPHA_COMPOSITE_GROUP + 1;
-    VKComposites composites = { NULL };
+    VKComposites composites = {0};
     HASH_MAP_REHASH(composites.map, linear_probing, &equals, &hash, NEXT_FREE_MODE + 1, 10, 0.75);
 
     VKComposites_AddState(&composites, LOGIC_COMPOSITE_XOR, (VKCompositeState) {
