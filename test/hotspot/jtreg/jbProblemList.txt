@@ -321,7 +321,7 @@ vmTestbase/nsk/jvmti/scenarios/sampling/SP05/sp05t003/TestDescription.java initi
 vmTestbase/jit/escape/LockCoarsening/LockCoarsening001.java 8148743 generic-all
 vmTestbase/jit/escape/LockCoarsening/LockCoarsening002.java 8208259 generic-all
 
-vmTestbase/jit/misctests/fpustack/GraphApplet.java linux-x64
+vmTestbase/jit/misctests/fpustack/GraphApplet.java JBR-9588 macosx-all
 vmTestbase/jit/misctests/JitBug1/JitBug1.java JBR-8801 linux-aarch64
 vmTestbase/jit/misctests/putfield00802/putfield00802.java JBR-8801 linux-aarch64,windows-all
 
@@ -335,7 +335,7 @@ vmTestbase/vm/mlvm/meth/stress/compiler/deoptimize/Test.java#id1 8324756 generic
 
 vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
 
-vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi001/Multi001.java JBR-8545 windows-aarch64
+vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi001/Multi001.java JBR-8545 windows-aarch64,windows-x64
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi002/TestDescription.java JBR-8927,JBR-8545 windows-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi003/TestDescription.java JBR-8927,JBR-8545 windows-all
 vmTestbase/nsk/monitoring/ThreadMXBean/ThreadInfo/Multi/Multi004/TestDescription.java JBR-8927 windows-all
