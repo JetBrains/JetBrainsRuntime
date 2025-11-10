@@ -112,6 +112,13 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     NSLock* _lock;
 }
 
++ (NSUInteger) getDrawableId:(id<MTLDrawable>)mtlDrawable {
+    if (@available(macOS 10.15.4, *)) {
+        return [mtlDrawable drawableID];
+    }
+    return -1;
+}
+
 - (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled
 {
     AWT_ASSERT_APPKIT_THREAD;
@@ -249,7 +256,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             J2dRlsTraceLn4(J2D_TRACE_VERBOSE,
                            "[%.6lf] MTLLayer_blitTexture: drawable(%d) presented"
                            " - nextDrawableLatency = %.3lf ms - average = %.3lf ms",
-                           CACurrentMediaTime(), mtlDrawable.drawableID,
+                           CACurrentMediaTime(), [MTLLayer getDrawableId:mtlDrawable],
                            1000.0 * nextDrawableLatency, 1000.0 * self.avgNextDrawableTime
             );
 #endif
@@ -284,7 +291,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                         J2dRlsTraceLn4(J2D_TRACE_VERBOSE,
                                        "[%.6lf] MTLLayer_blitTexture_PresentedHandler: drawable(%d) presented"
                                        " - presentedHandlerLatency = %.3lf ms frameInterval = %.3lf ms",
-                                       CACurrentMediaTime(), drawable.drawableID,
+                                       CACurrentMediaTime(), [MTLLayer getDrawableId:drawable],
                                        1000.0 * presentedHandlerLatency, 1000.0 * frameInterval
                         );
                         self.lastPresentedTime = presentedTime;
@@ -299,7 +306,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                             J2dRlsTraceLn3(J2D_TRACE_VERBOSE,
                                            "[%.6lf] MTLLayer_blitTexture_PresentedHandler: drawable(%d) skipped"
                                            " - presentedHandlerLatency = %.3lf ms",
-                                           CACurrentMediaTime(), drawable.drawableID, 1000.0 * presentedHandlerLatency
+                                           CACurrentMediaTime(), [MTLLayer getDrawableId:drawable],
+                                           1000.0 * presentedHandlerLatency
                             );
                         }
                     }
@@ -309,7 +317,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             // Present drawable:
             NSUInteger drawableId = -1;
             if (TRACE_DISPLAY) {
-                drawableId = mtlDrawable.drawableID;
+                drawableId = [MTLLayer getDrawableId:mtlDrawable];
                 J2dRlsTraceLn3(J2D_TRACE_INFO,
                                "[%.6lf] MTLLayer.blitTexture: layer[%p] present drawable(%d)",
                                CACurrentMediaTime(), self, drawableId);
