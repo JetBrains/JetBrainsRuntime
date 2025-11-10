@@ -262,8 +262,7 @@ configurations (for example, `release` and `fastdebug`), supply the `--conf <con
 Then open the git root directory as a project in IDEA.
 
 ## Contributing
-We are happy to receive your pull requests!
-Before you submit one, please sign our [Contributor License Agreement (CLA)](https://www.jetbrains.com/agreements/cla/).
+Please contribute your changes through [OpenJDK](https://dev.java/contribute/openjdk/).
 
 ## Resources
 * [JetBrains Runtime on GitHub](https://github.com/JetBrains/JetBrainsRuntime).
