@@ -405,6 +405,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // will finally appear on screen after we post a PaintEvent
             // from notifyConfigured()
         } else {
+            System.out.printf("hide() for %s on %s\n", target, Thread.currentThread().getName());
+            (new Exception()).printStackTrace(System.out);
             performLocked(() -> {
                 if (wlSurface != null) { // may get a "hide" request even though we were never shown
                     nativeHideFrame(nativePtr);
@@ -932,6 +934,9 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             nativeDisposeFrame(nativePtr);
             nativePtr = 0;
             if (wlSurface != null) {
+                System.out.printf("Dispose for %s on %s\n", target, Thread.currentThread().getName());
+                (new Exception()).printStackTrace(System.out);
+
                 wlSurface.dispose();
                 wlSurface = null;
             }
@@ -1679,6 +1684,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             changeSizeToConfigured(newSurfaceWidth, newSurfaceHeight);
         }
 
+        System.out.printf("notifyConfigured() for %s on %s\n", target, Thread.currentThread().getName());
+        (new Exception()).printStackTrace(System.out);
         if (!wlSurface.hasSurfaceData()) {
             wlSurface.associateWithSurfaceData(surfaceData);
         }
