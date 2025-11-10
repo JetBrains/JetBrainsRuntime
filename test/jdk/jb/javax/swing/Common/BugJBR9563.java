@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
    @run main BugJBR9563
 */
 public class BugJBR9563 {
+
     public static void main(String[] args) throws Exception {
         CountDownLatch windowOpened = new CountDownLatch(1);
         AtomicReference<JFrame> frameRef = new AtomicReference<>();
@@ -76,24 +77,31 @@ public class BugJBR9563 {
             Assert(f != null, "Frame is not captured");
 
 
-            Set<String> threadsAfterRendering = getCurrentThreads();
+            Set<String> threadsAfterRendering = getCurrentThreads()
+                    .stream()
+                    .map(t -> t.threadId() + " " + t.getName())
+                    .collect(Collectors.toSet());
             System.out.println("Threads after rendering: " + threadsAfterRendering);
-
-            Callable<Boolean> task = () -> {
-                System.out.println("Check threads state...");
-                Set<String> threads = getCurrentThreads();
-                List<String> newThreads = threads.stream().filter(it -> !threadsAfterRendering.contains(it)).toList();
-
-                System.out.println("New threads list: " + newThreads);
-                return newThreads.isEmpty();
-            };
 
             List<Boolean> results = Collections.synchronizedList(new ArrayList<>());
 
             for (int i = 0; i < 10; i++) {
                 System.out.println("Check threads state...");
-                Set<String> threads = getCurrentThreads();
-                List<String> newThreads = threads.stream().filter(it -> !threadsAfterRendering.contains(it)).toList();
+                List<Thread> threads = getCurrentThreads();
+                List<Thread> threadsWoTimerQueue = threads
+                        .stream().filter(it -> !it.getName().equals("TimerQueue")).toList();
+
+                Assert(threads.size() - threadsWoTimerQueue.size() <= 1, "More than 1 TimerQueue thread found");
+
+                Set<String> threadIdNames = threadsWoTimerQueue
+                        .stream()
+                        .map(t -> t.threadId() + " " + t.getName())
+                        .collect(Collectors.toSet());
+
+                List<String> newThreads = threadIdNames
+                        .stream()
+                        .filter(it -> !threadsAfterRendering.contains(it))
+                        .toList();
 
                 System.out.println("New threads list: " + newThreads);
 
@@ -117,14 +125,9 @@ public class BugJBR9563 {
         }
     }
 
-    private static Set<String> getCurrentThreads() {
-        Map<Thread, StackTraceElement[]> allThreads = Thread.getAllStackTraces();
-
-        return allThreads
-                .keySet()
-                .stream()
-                .map(t -> t.threadId() + " " + t.getName())
-                .collect(Collectors.toSet());
+    private static List<Thread> getCurrentThreads() {
+        Map<Thread, StackTraceElement[]> threadsMap = Thread.getAllStackTraces();
+        return threadsMap.keySet().stream().toList();
     }
 
     private static void Assert(boolean condition, String str) {
