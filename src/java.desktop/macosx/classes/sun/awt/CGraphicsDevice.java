@@ -415,7 +415,7 @@ public final class CGraphicsDevice extends GraphicsDevice
         }
         public static DisplayConfiguration get() {
             try {
-                return CThreading.executeOnAppKit(() -> {
+                return CThreading.privilegedExecuteOnAppKit(() -> {
                     DisplayConfiguration config = new DisplayConfiguration();
                     nativeGetDisplayConfiguration(config);
                     return config;
