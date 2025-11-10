@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1994, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -344,12 +344,10 @@ public final class String
             return;
         }
         if (COMPACT_STRINGS) {
-            byte[] val = StringLatin1.toBytes(codePoints, offset, count);
-            if (val != null) {
-                this.coder = LATIN1;
-                this.value = val;
-                return;
-            }
+            byte[] val = StringUTF16.compress(codePoints, offset, count);
+            this.coder = StringUTF16.coderFromArrayLen(val, count);
+            this.value = val;
+            return;
         }
         this.coder = UTF16;
         this.value = StringUTF16.toBytes(codePoints, offset, count);
@@ -541,47 +539,43 @@ public final class String
                     this.coder = LATIN1;
                     return;
                 }
-                int sl = offset + length;
-                byte[] dst = new byte[length];
-                if (dp > 0) {
-                    System.arraycopy(bytes, offset, dst, 0, dp);
-                    offset += dp;
-                }
-                while (offset < sl) {
-                    int b1 = bytes[offset++];
+                // Decode with a stable copy, to be the result if the decoded length is the same
+                byte[] latin1 = Arrays.copyOfRange(bytes, offset, offset + length);
+                int sp = dp;            // first dp bytes are already in the copy
+                while (sp < length) {
+                    int b1 = latin1[sp++];
                     if (b1 >= 0) {
-                        dst[dp++] = (byte)b1;
+                        latin1[dp++] = (byte)b1;
                         continue;
                     }
-                    if ((b1 & 0xfe) == 0xc2 && offset < sl) { // b1 either 0xc2 or 0xc3
-                        int b2 = bytes[offset];
+                    if ((b1 & 0xfe) == 0xc2 && sp < length) { // b1 either 0xc2 or 0xc3
+                        int b2 = latin1[sp];
                         if (b2 < -64) { // continuation bytes are always negative values in the range -128 to -65
-                            dst[dp++] = (byte)decode2(b1, b2);
-                            offset++;
+                            latin1[dp++] = (byte)decode2(b1, b2);
+                            sp++;
                             continue;
                         }
                     }
                     // anything not a latin1, including the REPL
                     // we have to go with the utf16
-                    offset--;
+                    sp--;
                     break;
                 }
-                if (offset == sl) {
-                    if (dp != dst.length) {
-                        dst = Arrays.copyOf(dst, dp);
+                if (sp == length) {
+                    if (dp != latin1.length) {
+                        latin1 = Arrays.copyOf(latin1, dp);
                     }
-                    this.value = dst;
+                    this.value = latin1;
                     this.coder = LATIN1;
                     return;
                 }
-                byte[] buf = StringUTF16.newBytesFor(length);
-                StringLatin1.inflate(dst, 0, buf, 0, dp);
-                dst = buf;
-                dp = decodeUTF8_UTF16(bytes, offset, sl, dst, dp, true);
+                byte[] utf16 = StringUTF16.newBytesFor(length);
+                StringLatin1.inflate(latin1, 0, utf16, 0, dp);
+                dp = decodeUTF8_UTF16(latin1, sp, length, utf16, dp, true);
                 if (dp != length) {
-                    dst = Arrays.copyOf(dst, dp << 1);
+                    utf16 = Arrays.copyOf(utf16, dp << 1);
                 }
-                this.value = dst;
+                this.value = utf16;
                 this.coder = UTF16;
             } else { // !COMPACT_STRINGS
                 byte[] dst = StringUTF16.newBytesFor(length);
@@ -653,12 +647,10 @@ public final class String
                 char[] ca = new char[en];
                 int clen = ad.decode(bytes, offset, length, ca);
                 if (COMPACT_STRINGS) {
-                    byte[] bs = StringUTF16.compress(ca, 0, clen);
-                    if (bs != null) {
-                        value = bs;
-                        coder = LATIN1;
-                        return;
-                    }
+                    byte[] val = StringUTF16.compress(ca, 0, clen);;
+                    this.coder = StringUTF16.coderFromArrayLen(val, clen);
+                    this.value = val;
+                    return;
                 }
                 coder = UTF16;
                 value = StringUTF16.toBytes(ca, 0, clen);
@@ -684,12 +676,10 @@ public final class String
                 throw new Error(x);
             }
             if (COMPACT_STRINGS) {
-                byte[] bs = StringUTF16.compress(ca, 0, caLen);
-                if (bs != null) {
-                    value = bs;
-                    coder = LATIN1;
-                    return;
-                }
+                byte[] val = StringUTF16.compress(ca, 0, caLen);
+                this.coder = StringUTF16.coderFromArrayLen(val, caLen);
+                this.value = val;
+                return;
             }
             coder = UTF16;
             value = StringUTF16.toBytes(ca, 0, caLen);
@@ -827,10 +817,9 @@ public final class String
             throw new IllegalArgumentException(x);
         }
         if (COMPACT_STRINGS) {
-            byte[] bs = StringUTF16.compress(ca, 0, caLen);
-            if (bs != null) {
-                return new String(bs, LATIN1);
-            }
+            byte[] val = StringUTF16.compress(ca, 0, caLen);
+            byte coder = StringUTF16.coderFromArrayLen(val, caLen);
+            return new String(val, coder);
         }
         return new String(StringUTF16.toBytes(ca, 0, caLen), UTF16);
     }
@@ -4750,15 +4739,18 @@ public final class String
     }
 
     /*
-     * Package private constructor. Trailing Void argument is there for
+     * Private constructor. Trailing Void argument is there for
      * disambiguating it against other (public) constructors.
      *
      * Stores the char[] value into a byte[] that each byte represents
      * the8 low-order bits of the corresponding character, if the char[]
      * contains only latin1 character. Or a byte[] that stores all
      * characters in their byte sequences defined by the {@code StringUTF16}.
+     *
+     * <p> The contents of the string are unspecified if the character array
+     * is modified during string construction.
      */
-    String(char[] value, int off, int len, Void sig) {
+    private String(char[] value, int off, int len, Void sig) {
         if (len == 0) {
             this.value = "".value;
             this.coder = "".coder;
@@ -4766,11 +4758,9 @@ public final class String
         }
         if (COMPACT_STRINGS) {
             byte[] val = StringUTF16.compress(value, off, len);
-            if (val != null) {
-                this.value = val;
-                this.coder = LATIN1;
-                return;
-            }
+            this.coder = StringUTF16.coderFromArrayLen(val, len);
+            this.value = val;
+            return;
         }
         this.coder = UTF16;
         this.value = StringUTF16.toBytes(value, off, len);
@@ -4779,6 +4769,9 @@ public final class String
     /*
      * Package private constructor. Trailing Void argument is there for
      * disambiguating it against other (public) constructors.
+     *
+     * <p> The contents of the string are unspecified if the {@code StringBuilder}
+     * is modified during string construction.
      */
     String(AbstractStringBuilder asb, Void sig) {
         byte[] val = asb.getValue();
@@ -4789,12 +4782,9 @@ public final class String
         } else {
             // only try to compress val if some characters were deleted.
             if (COMPACT_STRINGS && asb.maybeLatin1) {
-                byte[] buf = StringUTF16.compress(val, 0, length);
-                if (buf != null) {
-                    this.coder = LATIN1;
-                    this.value = buf;
-                    return;
-                }
+                this.value = StringUTF16.compress(val, 0, length);
+                this.coder = StringUTF16.coderFromArrayLen(this.value, length);
+                return;
             }
             this.coder = UTF16;
             this.value = Arrays.copyOfRange(val, 0, length << 1);
