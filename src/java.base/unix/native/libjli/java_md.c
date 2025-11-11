@@ -144,9 +144,6 @@ typedef enum awt_toolkit {
     TK_WAYLAND = 2
 } awt_toolkit;
 
-// TODO when wayland support will be fully implemented change to TK_UNKNOWN
-// currently wayland support is not Production-Ready ready so default awt toolkit is X11
-// wayland could be chosen manually via passing -Dawt.toolkit.name=WLToolkit argument
 static awt_toolkit _awt_toolkit = TK_X11;
 
 /*
@@ -759,33 +756,48 @@ CallJavaMainInNewThread(jlong stack_size, void* args) {
 /* Coarse estimation of number of digits assuming the worst case is a 64-bit pid. */
 #define MAX_PID_STR_SZ   20
 
+#ifdef __linux
 static char*
-getToolkitNameByEnv() {
-    if (_awt_toolkit == TK_UNKNOWN) {
-        char *xdg_session_type = getenv("XDG_SESSION_TYPE");
-        if (xdg_session_type != NULL && strcmp(xdg_session_type, "wayland") == 0) {
-            _awt_toolkit = TK_WAYLAND;
-        } else if (xdg_session_type != NULL && strcmp(xdg_session_type, "x11") == 0) {
-            _awt_toolkit = TK_X11;
-        } else if (getenv("DISPLAY") != NULL) {
-            _awt_toolkit = TK_X11;
-        } else if (getenv("WAYLAND_DISPLAY") != NULL) {
-            _awt_toolkit = TK_WAYLAND;
+GetToolkitName(void) {
+    if (_awt_toolkit == TK_UNKNOWN) { // Prefer WLToolkit, then XToolkit
+        void* libwayland = dlopen(VERSIONED_JNI_LIB_NAME("wayland-client", "0"), RTLD_LAZY | RTLD_LOCAL);
+        if (!libwayland) {
+            // Fallback to any development version available on the system
+            libwayland = dlopen(JNI_LIB_NAME("wayland-client"), RTLD_LAZY | RTLD_LOCAL);
+        }
+        if (libwayland) {
+            typedef void* (*wl_display_connect_t)(const char*);
+            typedef void (*wl_display_disconnect_t)(void*);
+
+            wl_display_connect_t fp_wl_display_connect = dlsym(libwayland, "wl_display_connect");
+            wl_display_disconnect_t fp_wl_display_disconnect = dlsym(libwayland, "wl_display_disconnect");
+
+            if (fp_wl_display_connect && fp_wl_display_disconnect) {
+                void* display = fp_wl_display_connect(NULL);
+                if (display) {
+                    _awt_toolkit = TK_WAYLAND;
+                    fp_wl_display_disconnect(display);
+                }
+            }
+            dlclose(libwayland);
         }
     }
     return _awt_toolkit == TK_WAYLAND ? "WLToolkit" : "XToolkit";
 }
+#endif // __linux
 
 int
 JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
         int argc, char **argv,
         int mode, char *what, int ret)
 {
-    char *toolkit_name = getToolkitNameByEnv();
+#ifdef  __linux
+    char *toolkit_name = GetToolkitName();
     size_t toolkit_name_size = JLI_StrLen("-Dawt.toolkit.name=") + JLI_StrLen(toolkit_name) + 1;
     char *toolkit_option = (char *)JLI_MemAlloc(toolkit_name_size);
     snprintf(toolkit_option, toolkit_name_size, "-Dawt.toolkit.name=%s", toolkit_name);
     AddOption(toolkit_option, NULL);
+#endif // __linux
 
     ShowSplashScreen();
     return ContinueInNewThread(ifn, threadStackSize, argc, argv, mode, what, ret);
@@ -806,7 +818,10 @@ RegisterThread()
 jboolean
 ProcessPlatformOption(const char *arg)
 {
-    if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=WLToolkit") == 0) {
+    if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=auto") == 0) {
+        _awt_toolkit = TK_UNKNOWN;
+        return JNI_TRUE;
+    } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=WLToolkit") == 0) {
         _awt_toolkit = TK_WAYLAND;
         return JNI_TRUE;
     } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=XToolkit") == 0) {
