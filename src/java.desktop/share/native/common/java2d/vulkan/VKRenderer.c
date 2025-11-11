@@ -185,11 +185,11 @@ static VKRenderingContext context = {
         .constantsModCount = 1,
         .transformModCount = 1,
         .constants = {
-            .transform = VK_ID_TRANSFORM,
+            .transform = /*VK_ID_TRANSFORM*/ {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
             .composite = { 0, 1.0f }
         },
         .clipModCount = 1,
-        .clipRect = NO_CLIP,
+        .clipRect = /*NO_CLIP*/ {{0, 0}, {0x7FFFFFFFU, 0x7FFFFFFFU}},
         .clipSpanVertices = { .as_untyped = {0} }
 };
 
@@ -240,7 +240,7 @@ static VKBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
     POOL_TAKE(renderer, vertexBufferPool, buffer);
     if (buffer.handle != VK_NULL_HANDLE) return buffer;
     uint32_t bufferCount = VERTEX_BUFFER_PAGE_SIZE / VERTEX_BUFFER_SIZE;
-    VKBuffer buffers[bufferCount];
+    DECL_ARRAY(VKBuffer, buffers,bufferCount);
     VKMemory page = VKBuffer_CreateBuffers(renderer->device, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                            VKRenderer_FindVertexBufferMemoryType,
                                            VERTEX_BUFFER_SIZE, VERTEX_BUFFER_PAGE_SIZE, &bufferCount, buffers);
@@ -262,12 +262,12 @@ static VKTexelBuffer VKRenderer_GetMaskFillBuffer(VKRenderer* renderer) {
     POOL_TAKE(renderer, maskFillBufferPool, buffer);
     if (buffer.buffer.handle != VK_NULL_HANDLE) return buffer;
     uint32_t bufferCount = MASK_FILL_BUFFER_PAGE_SIZE / MASK_FILL_BUFFER_SIZE;
-    VKBuffer buffers[bufferCount];
+    DECL_ARRAY(VKBuffer, buffers, bufferCount);
     VKMemory page = VKBuffer_CreateBuffers(renderer->device, VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
                                            VKRenderer_FindMaskFillBufferMemoryType,
                                            MASK_FILL_BUFFER_SIZE, MASK_FILL_BUFFER_PAGE_SIZE, &bufferCount, buffers);
     VK_RUNTIME_ASSERT(page);
-    VKTexelBuffer texelBuffers[bufferCount];
+    DECL_ARRAY(VKTexelBuffer, texelBuffers, bufferCount);
     VkDescriptorPool descriptorPool = VKBuffer_CreateTexelBuffers(
             renderer->device, VK_FORMAT_R8_UNORM, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
             renderer->pipelineContext->maskFillDescriptorSetLayout, bufferCount, buffers, texelBuffers);
@@ -297,7 +297,7 @@ static VkDescriptorSet VKRenderer_AllocateImageDescriptorSet(VKRenderer* rendere
 }
 void VKRenderer_CreateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool* descriptorPool, VkDescriptorSet* set) {
     VKDevice* device = renderer->device;
-    for (int i = renderer->imageDescriptorPools.size - 1; i >= 0; i--) {
+    for (size_t i = renderer->imageDescriptorPools.size; i-- > 0; ) {
         *set = VKRenderer_AllocateImageDescriptorSet(renderer, renderer->imageDescriptorPools.data[i]);
         if (*set != VK_NULL_HANDLE) {
             *descriptorPool = renderer->imageDescriptorPools.data[i];
@@ -615,7 +615,7 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     renderPass->maskFillBufferWriting = (BufferWritingState) { NULL, 0, VK_FALSE };
     if (renderPass->flushRanges.size > 0) {
         VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle,
-            renderPass->flushRanges.size, renderPass->flushRanges.data)) {}
+            (uint32_t)renderPass->flushRanges.size, renderPass->flushRanges.data)) {}
         ARRAY_RESIZE(renderPass->flushRanges, 0);
     }
     size_t vertexBufferCount = renderPass->vertexBuffers.size;
@@ -1199,7 +1199,7 @@ static void VKRenderer_ValidateConstants() {
         surface->device->vkCmdPushConstants(
                 renderPass->commandBuffer,
                 surface->device->renderer->pipelineContext->commonPipelineLayout,
-                VK_SHADER_STAGE_FRAGMENT_BIT, PUSH_CONSTANTS_OFFSET, PUSH_CONSTANTS_SIZE, &context->constants.composite
+                VK_SHADER_STAGE_FRAGMENT_BIT, offsetof(VKPushConstants, composite), PUSH_CONSTANTS_SIZE, &context->constants.composite
         );
     }
 }
@@ -1247,7 +1247,7 @@ static void VKRenderer_SetupStencil() {
     renderPass->vertexBufferWriting.bound = VK_FALSE;
 
     // Rasterize clip spans.
-    uint32_t primitiveCount = context->clipSpanVertices.size / 3;
+    uint32_t primitiveCount = (uint32_t)(context->clipSpanVertices.size / 3);
     VKIntVertex* vs;
     for (uint32_t primitivesDrawn = 0; primitivesDrawn < primitiveCount;) {
         uint32_t currentDraw = VK_DRAW(vs, primitiveCount - primitivesDrawn, 3);

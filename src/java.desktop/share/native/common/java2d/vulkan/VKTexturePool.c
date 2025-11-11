@@ -26,7 +26,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#elif
+#else
 #include <pthread.h>
 #endif
 
@@ -79,7 +79,7 @@ static void VKTexturePool_FindImageMemoryType(VKMemoryRequirements* requirements
     VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_ALL_MEMORY_PROPERTIES);
 }
 
-#elif
+#else
 
 ATexturePoolLockPrivPtr* VKTexturePoolLock_initImpl(void) {
     pthread_mutex_t *l = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));

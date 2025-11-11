@@ -17,7 +17,7 @@ static VkBool32 WinVK_InitFunctions(VKEnv* vk, PFN_vkGetInstanceProcAddr vkGetIn
     VkBool32 missingAPI = JNI_FALSE;
     PLATFORM_FUNCTION_TABLE(CHECK_PROC_ADDR, missingAPI, vkGetInstanceProcAddr, vk->instance,)
     if (missingAPI) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Required API is missing:")
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Required API is missing:");
         PLATFORM_FUNCTION_TABLE(LOG_MISSING_PFN,)
     }
     return !missingAPI;
