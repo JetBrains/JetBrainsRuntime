@@ -2022,6 +2022,11 @@ const int ObjectAlignmentInBytes = 8;
              "Allow enhanced class redefinition beyond swapping method "    \
              "bodies")                                                      \
                                                                             \
+  product(bool, TieredRedefinition, false,                                  \
+             "Perform tiered class redefinition: try standard HotSwap "     \
+             "first and fall back to enhanced redefinition "                \
+             "on unsupported error")                                        \
+                                                                            \
   product(ccstr, HotswapAgent, "disabled",                                  \
           "Specify HotswapAgent image to be used."                          \
           "disabled: hotswap agent is disabled (default)"                   \

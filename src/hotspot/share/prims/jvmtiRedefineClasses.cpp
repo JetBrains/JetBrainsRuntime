@@ -3707,6 +3707,10 @@ void VM_RedefineClasses::set_new_constant_pool(
 // Adjust cpools and vtables closure
 void VM_RedefineClasses::AdjustAndCleanMetadata::do_klass(Klass* k) {
 
+  if (AllowEnhancedClassRedefinition && k->new_version() != nullptr) {
+    return;
+  }
+
   // This is a very busy routine. We don't want too much tracing
   // printed out.
   bool trace_name_printed = false;
@@ -4458,6 +4462,11 @@ void VM_RedefineClasses::increment_class_counter(InstanceKlass* ik) {
 
 void VM_RedefineClasses::CheckClass::do_klass(Klass* k) {
   bool no_old_methods = true;  // be optimistic
+
+  if (AllowEnhancedClassRedefinition && k->new_version() != nullptr) {
+    // Old class redefined by enhanced redefinition may have obsolete entries
+    return;
+  }
 
   // Both array and instance classes have vtables.
   // a vtable should never contain old or obsolete methods
