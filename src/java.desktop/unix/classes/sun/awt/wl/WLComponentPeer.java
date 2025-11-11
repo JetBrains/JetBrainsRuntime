@@ -409,6 +409,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                     shadow.hide();
                     wlSurface.dispose();
                     wlSurface = null;
+
+                    ((WLToolkit) Toolkit.getDefaultToolkit()).flush();
                 }
             });
         }
