@@ -1334,24 +1334,24 @@ void VMError::report(outputStream* st, bool _verbose) {
     NativeHeapTrimmer::print_state(st);
     st->cr();
 
-  STEP("JNI global references")
-  st->print_cr("JNI global refs:");
-  JNIHandles::print_on_unsafe(st);
-  JNIHandles::print_memory_usage_on(st);
+  STEP_IF("JNI global references", _verbose)
+    st->print_cr("JNI global refs:");
+    JNIHandles::print_on_unsafe(st);
+    JNIHandles::print_memory_usage_on(st);
 
   STEP_IF("Process memory usage", _verbose)
   print_process_memory_usage(st);
 
-  STEP("OOME stack traces")
-  st->print_cr("OOME stack traces (most recent first):");
-  print_oome_stacks(st);
+  STEP_IF("OOME stack traces", _verbose)
+    st->print_cr("OOME stack traces (most recent first):");
+    print_oome_stacks(st);
 
-  STEP("Classloader stats")
-  st->print_cr("Classloader memory used:");
-  FREE_C_HEAP_ARRAY(void*, _ballast_memory);
-  _ballast_memory = nullptr;
-  print_classloaders_stats(st);
-  print_dup_classes(st); // do it separately in case we're low on memory
+  STEP_IF("Classloader stats", _verbose)
+    st->print_cr("Classloader memory used:");
+    FREE_C_HEAP_ARRAY(void*, _ballast_memory);
+    _ballast_memory = nullptr;
+    print_classloaders_stats(st);
+    print_dup_classes(st); // do it separately in case we're low on memory
 
   STEP_IF("printing system", _verbose)
     st->print_cr("---------------  S Y S T E M  ---------------");
