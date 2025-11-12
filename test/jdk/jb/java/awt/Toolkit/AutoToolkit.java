@@ -22,6 +22,7 @@
  * questions.
  */
 
+import java.awt.GraphicsEnvironment;
 import java.awt.Toolkit;
 
 /*
@@ -43,9 +44,18 @@ public class AutoToolkit {
         String tkName = tk.getClass().getName();
         tkName = tkName.substring(tkName.lastIndexOf('.') + 1);
         boolean expectWayland = System.getenv("WAYLAND_DISPLAY") != null;
+        boolean isHeadless = GraphicsEnvironment.isHeadless();
 
         System.out.printf("Started with -Dawt.toolkit.name=%s, got %s; Toolkit.getDefaultToolkit() == %s%n",
                 toolkitProp, toolkitReal, tkName);
+
+        if (isHeadless) {
+            if (!tkName.equals("HeadlessToolkit")) {
+                throw new RuntimeException("Expected HeadlessToolkit because we are in the headless mode, got " + tkName);
+            }
+            System.out.println("Test PASSED");
+            return;
+        }
 
         switch (toolkitProp) {
             case "auto" -> {
