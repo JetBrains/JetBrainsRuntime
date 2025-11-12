@@ -98,11 +98,11 @@ javax/swing/JFileChooser/4524490/bug4524490.java JBR-5397,JBR-5846 macosx-all,wi
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-5397,JBR-7413 macosx-all,windows-x64
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880,JBR-5397 windows-all,macosx-all
 javax/swing/JLabel/4138746/JLabelMnemonicsTest.java JBR-4949,JBR-5397 linux-all,windows-all,macosx-all
-javax/swing/JLabel/6596966/bug6596966.java JBR-5397 macosx-all
+javax/swing/JLabel/6596966/bug6596966.java JBR-5397,JBR-9507 macosx-all,windows-10.0
 javax/swing/JList/4618767/JListSelectedElementTest.java JBR-4955,JBR-5397 windows-all,macosx-all
 javax/swing/JList/6462008/bug6462008.java JBR-5397,JBR-6773 macosx-all,windows-all
-javax/swing/JMenu/4213634/bug4213634.java JBR-5397 macosx-all
-javax/swing/JMenu/4515762/bug4515762.java JBR-5397 macosx-all
+javax/swing/JMenu/4213634/bug4213634.java JBR-5397,JBR-8056 macosx-all,windows-all
+javax/swing/JMenu/4515762/bug4515762.java JBR-5397,JBR-9513 macosx-all,windows-10.0
 javax/swing/JMenu/4692443/bug4692443.java JBR-5397,JBR-6093 macosx-all,windows-all
 javax/swing/JMenu/6470128/bug6470128.java 8253184,JBR-6307,JBR-5397 windows-all,linux-all,macosx-all
 javax/swing/JMenuBar/4750590/bug4750590.java JBR-5397,JBR-6094 macosx-all,windows-all
