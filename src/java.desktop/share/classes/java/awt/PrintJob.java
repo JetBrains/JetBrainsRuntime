@@ -46,8 +46,6 @@ public abstract class PrintJob {
      * The page is sent to the printer when the graphics
      * object is disposed.  This graphics object will also implement
      * the PrintGraphics interface.
-     * If {@code PrintJob.end()} has been called, this method will
-     * return {@code null}.
      * @see PrintGraphics
      * @return the graphics context for printing the next page
      */
