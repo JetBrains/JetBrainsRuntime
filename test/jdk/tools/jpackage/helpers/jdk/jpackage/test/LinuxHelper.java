@@ -26,6 +26,7 @@ import static java.util.Collections.unmodifiableSortedSet;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
+import static jdk.jpackage.test.AdditionalLauncher.getAdditionalLauncherProperties;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -559,7 +560,14 @@ public final class LinuxHelper {
         TKit.assertTrue(mandatoryKeys.isEmpty(), String.format(
                 "Check for missing %s keys in the file", mandatoryKeys));
 
-        final var launcherDescription = LauncherVerifier.launcherDescription(cmd, launcherName);
+        final String launcherDescription;
+        if (cmd.name().equals(launcherName) || predefinedAppImage.isPresent()) {
+            launcherDescription = Optional.ofNullable(cmd.getArgumentValue("--description")).orElseGet(cmd::name);
+        } else {
+            launcherDescription = getAdditionalLauncherProperties(cmd, launcherName).findProperty("description").or(() -> {
+                return Optional.ofNullable(cmd.getArgumentValue("--description"));
+            }).orElseGet(cmd::name);
+        }
 
         for (var e : List.of(
                 Map.entry("Type", "Application"),

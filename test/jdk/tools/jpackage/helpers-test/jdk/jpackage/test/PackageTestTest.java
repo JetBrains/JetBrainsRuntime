@@ -351,8 +351,7 @@ public class PackageTestTest extends JUnitAdapter {
                     }
 
                     @Override
-                    public JPackageCommand verifyIsOfType(Set<PackageType> types) {
-                        return this;
+                    public void verifyIsOfType(PackageType ... types) {
                     }
 
                     @Override

@@ -275,9 +275,10 @@ public class AddLauncherTest {
         if (withPredefinedAppImage) {
             new PackageTest().addInitializer(cmd -> {
                 cmd.setArgumentValue("--name", "Bar");
-                // Should not have impact on launcher descriptions, but it does.
+                // Should not have impact of launcher descriptions, but it does.
                 cmd.setArgumentValue("--description", "Installer");
-            }).usePredefinedAppImage(target.cmd().orElseThrow()).mutate(addLinuxShortcuts()).run(Action.CREATE_AND_UNPACK);
+                cmd.removeArgumentWithValue("--input").setArgumentValue("--app-image", target.cmd().orElseThrow().outputBundle());
+            }).mutate(addLinuxShortcuts()).run(Action.CREATE_AND_UNPACK);
         }
     }
 

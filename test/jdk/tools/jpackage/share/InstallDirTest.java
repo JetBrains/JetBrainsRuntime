@@ -34,6 +34,8 @@ import jdk.jpackage.test.JPackageStringBundle;
 import jdk.jpackage.test.PackageTest;
 import jdk.jpackage.test.PackageType;
 import jdk.jpackage.test.RunnablePackageTest.Action;
+import jdk.jpackage.test.TKit;
+import jdk.jpackage.test.TKit.TextStreamVerifier;
 
 /**
  * Test --install-dir parameter. Output of the test should be
@@ -111,9 +113,9 @@ public class InstallDirTest {
         .run();
     }
 
-    record TestSpec(Path installDir, boolean runtimeInstaller) {
+    record DmgTestSpec(Path installDir, boolean runtimeInstaller) {
 
-        TestSpec {
+        DmgTestSpec {
             Objects.requireNonNull(installDir);
         }
 
@@ -133,8 +135,8 @@ public class InstallDirTest {
                 return this;
             }
 
-            TestSpec create() {
-                return new TestSpec(installDir, runtimeInstaller);
+            DmgTestSpec create() {
+                return new DmgTestSpec(installDir, runtimeInstaller);
             }
 
             private Path installDir;
@@ -152,7 +154,7 @@ public class InstallDirTest {
         }
 
         void run() {
-            final var test = new PackageTest().ignoreBundleOutputDir();
+            final var test = new PackageTest().forTypes(PackageType.MAC_DMG).ignoreBundleOutputDir();
             if (runtimeInstaller) {
                 test.addInitializer(cmd -> {
                     cmd.removeArgumentWithValue("--input");
@@ -162,33 +164,33 @@ public class InstallDirTest {
             }
 
             test.addInitializer(JPackageCommand::setFakeRuntime).addInitializer(cmd -> {
-                cmd.setArgumentValue("--install-dir", installDir);
+                cmd.addArguments("--install-dir", installDir);
             }).run(Action.CREATE_AND_UNPACK);
         }
     }
 
     @Test(ifOS = OperatingSystem.MACOS)
     @ParameterSupplier
-    public static void testMac(TestSpec testSpec) {
+    public static void testDmg(DmgTestSpec testSpec) {
         testSpec.run();
     }
 
-    public static List<Object[]> testMac() {
+    public static List<Object[]> testDmg() {
         return Stream.of(
-                TestSpec.build().acceptedInstallDir("/foo"),
-                TestSpec.build().acceptedInstallDir("/foo/bar"),
-                TestSpec.build().acceptedInstallDir("/foo").runtimeInstaller(),
-                TestSpec.build().acceptedInstallDir("/foo/bar").runtimeInstaller(),
+                DmgTestSpec.build().acceptedInstallDir("/foo"),
+                DmgTestSpec.build().acceptedInstallDir("/foo/bar"),
+                DmgTestSpec.build().acceptedInstallDir("/foo").runtimeInstaller(),
+                DmgTestSpec.build().acceptedInstallDir("/foo/bar").runtimeInstaller(),
 
-                TestSpec.build().acceptedInstallDir("/Library/Java/JavaVirtualMachines"),
-                TestSpec.build().acceptedInstallDir("/Applications").runtimeInstaller(),
+                DmgTestSpec.build().acceptedInstallDir("/Library/Java/JavaVirtualMachines"),
+                DmgTestSpec.build().acceptedInstallDir("/Applications").runtimeInstaller(),
 
-                TestSpec.build().acceptedInstallDir("/Applications"),
-                TestSpec.build().acceptedInstallDir("/Applications/foo/bar/buz"),
+                DmgTestSpec.build().acceptedInstallDir("/Applications"),
+                DmgTestSpec.build().acceptedInstallDir("/Applications/foo/bar/buz"),
 
-                TestSpec.build().runtimeInstaller().acceptedInstallDir("/Library/Java/JavaVirtualMachines"),
-                TestSpec.build().runtimeInstaller().acceptedInstallDir("/Library/Java/JavaVirtualMachines/foo/bar/buz")
-        ).map(TestSpec.Builder::create).map(testSpec -> {
+                DmgTestSpec.build().runtimeInstaller().acceptedInstallDir("/Library/Java/JavaVirtualMachines"),
+                DmgTestSpec.build().runtimeInstaller().acceptedInstallDir("/Library/Java/JavaVirtualMachines/foo/bar/buz")
+        ).map(DmgTestSpec.Builder::create).map(testSpec -> {
             return new Object[] { testSpec };
         }).toList();
     }

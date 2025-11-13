@@ -165,7 +165,7 @@ public final class AdditionalLauncher {
 
     public void applyTo(JPackageCommand cmd) {
         cmd.addPrerequisiteAction(this::initialize);
-        cmd.addVerifyAction(createVerifierAsConsumer(), JPackageCommand.ActionRole.LAUNCHER_VERIFIER);
+        cmd.addVerifyAction(createVerifierAsConsumer());
     }
 
     public void applyTo(PackageTest test) {

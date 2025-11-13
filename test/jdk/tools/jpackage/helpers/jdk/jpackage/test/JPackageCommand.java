@@ -28,16 +28,13 @@ import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
-import static java.util.stream.Collectors.toCollection;
 import static jdk.jpackage.test.AdditionalLauncher.forEachAdditionalLauncher;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -51,7 +48,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -60,7 +56,6 @@ import java.util.regex.Pattern;
 import java.util.spi.ToolProvider;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 import jdk.jpackage.internal.util.function.ThrowingConsumer;
 import jdk.jpackage.internal.util.function.ThrowingFunction;
 import jdk.jpackage.internal.util.function.ThrowingRunnable;
@@ -90,6 +85,7 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         ignoreDefaultRuntime = cmd.ignoreDefaultRuntime;
         ignoreDefaultVerbose = cmd.ignoreDefaultVerbose;
         this.immutable = immutable;
+        dmgInstallDir = cmd.dmgInstallDir;
         prerequisiteActions = new Actions(cmd.prerequisiteActions);
         verifyActions = new Actions(cmd.verifyActions);
         standardAsserts = cmd.standardAsserts;
@@ -167,6 +163,11 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
             return defaultValueSupplier.apply(this);
         }
         return null;
+    }
+
+    public String getArgumentValue(String argName,
+            Function<JPackageCommand, String> defaultValueSupplier) {
+        return getArgumentValue(argName, defaultValueSupplier, v -> v);
     }
 
     public <T> T getArgumentValue(String argName,
@@ -331,33 +332,14 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         return this;
     }
 
-    public JPackageCommand usePredefinedAppImage(Path predefinedAppImagePath) {
-        return setArgumentValue("--app-image", Objects.requireNonNull(predefinedAppImagePath))
-                .removeArgumentWithValue("--input");
-    }
-
     JPackageCommand addPrerequisiteAction(ThrowingConsumer<JPackageCommand> action) {
         prerequisiteActions.add(action);
         return this;
     }
 
     JPackageCommand addVerifyAction(ThrowingConsumer<JPackageCommand> action) {
-        return addVerifyAction(action, ActionRole.DEFAULT);
-    }
-
-    enum ActionRole {
-        DEFAULT,
-        LAUNCHER_VERIFIER,
-        ;
-    }
-
-    JPackageCommand addVerifyAction(ThrowingConsumer<JPackageCommand> action, ActionRole actionRole) {
-        verifyActions.add(action, actionRole);
+        verifyActions.add(action);
         return this;
-    }
-
-    Stream<ThrowingConsumer<JPackageCommand>> getVerifyActionsWithRole(ActionRole actionRole) {
-        return verifyActions.actionsWithRole(actionRole);
     }
 
     /**
@@ -568,7 +550,11 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         }
 
         if (TKit.isOSX()) {
-            return MacHelper.getInstallationDirectory(this);
+            if (packageType() == PackageType.MAC_DMG && dmgInstallDir != null) {
+                return dmgInstallDir;
+            } else {
+                return MacHelper.getInstallationDirectory(this);
+            }
         }
 
         throw TKit.throwUnknownPlatformError();
@@ -690,11 +676,10 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         return Collections.unmodifiableList(names);
     }
 
-    JPackageCommand verifyNotRuntime() {
+    private void verifyNotRuntime() {
         if (isRuntime()) {
-            throw new UnsupportedOperationException("Java runtime packaging");
+            throw new IllegalArgumentException("Java runtime packaging");
         }
-        return this;
     }
 
     /**
@@ -1227,52 +1212,6 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
                 MacHelper.verifyUnsignedBundleSignature(cmd);
             }
         }),
-        PREDEFINED_APP_IMAGE_COPY(cmd -> {
-            Optional.ofNullable(cmd.getArgumentValue("--app-image")).filter(_ -> {
-                return !TKit.isOSX() || !MacHelper.signPredefinedAppImage(cmd);
-            }).map(Path::of).ifPresent(predefinedAppImage -> {
-
-                TKit.trace(String.format(
-                        "Check contents of the predefined app image [%s] copied verbatim",
-                        predefinedAppImage));
-
-                var outputAppImageDir = cmd.pathToUnpackedPackageFile(cmd.appInstallationDirectory());
-
-                try (var walk = Files.walk(predefinedAppImage)) {
-                    var filteredWalk = walk;
-                    if (!cmd.expectAppImageFile()) {
-                        var appImageFile = AppImageFile.getPathInAppImage(predefinedAppImage);
-                        // Exclude ".jpackage.xml" as it should no be in the output bundle.
-                        var pred = Predicate.<Path>isEqual(appImageFile).negate();
-                        if (TKit.isOSX()) {
-                            // On MacOS exclude files that can be signed as their digests change.
-                            pred = pred.and(path -> {
-                                return MacHelper.isVerbatimCopyFromPredefinedAppImage(cmd, path);
-                            });
-                        }
-
-                        filteredWalk = walk.filter(pred);
-                    }
-
-                    var verbatimPaths = filteredWalk.collect(toCollection(TreeSet::new));
-
-                    // Remove nonempty directories from the collection of paths copied verbatim.
-                    verbatimPaths.removeAll(verbatimPaths.stream().map(Path::getParent).toList());
-
-                    verbatimPaths.forEach(ThrowingConsumer.toConsumer(p -> {
-                        if (Files.isDirectory(p, LinkOption.NOFOLLOW_LINKS)) {
-                            TKit.assertDirectoryExists(p);
-                        } else {
-                            TKit.assertSameFileContent(p, outputAppImageDir.resolve(predefinedAppImage.relativize(p)));
-                        }
-                    }));
-                } catch (IOException ex) {
-                    throw new UncheckedIOException(ex);
-                }
-
-                TKit.trace("Done");
-            });
-        })
         ;
 
         StandardAssert(Consumer<JPackageCommand> action) {
@@ -1281,7 +1220,9 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
 
         private static JPackageCommand convertFromRuntime(JPackageCommand cmd) {
             var copy = cmd.createMutableCopy();
+            copy.immutable = false;
             copy.removeArgumentWithValue("--runtime-image");
+            copy.dmgInstallDir = cmd.appInstallationDirectory();
             if (!copy.hasArgument("--name")) {
                 copy.addArguments("--name", cmd.nameFromRuntimeImage().orElseThrow());
             }
@@ -1499,35 +1440,29 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         return getPrintableCommandLine();
     }
 
-    public final JPackageCommand verifyIsOfType(PackageType ... types) {
-        return verifyIsOfType(Set.of(types));
+    public void verifyIsOfType(Collection<PackageType> types) {
+        verifyIsOfType(types.toArray(PackageType[]::new));
     }
 
-    public final JPackageCommand verifyIsOfType(Iterable<PackageType> types) {
-        return verifyIsOfType(StreamSupport.stream(types.spliterator(), false).collect(toSet()));
-    }
-
-    public JPackageCommand verifyIsOfType(Set<PackageType> types) {
-        Objects.requireNonNull(types);
+    public void verifyIsOfType(PackageType ... types) {
+        final var typesSet = Stream.of(types).collect(Collectors.toSet());
         if (!hasArgument("--type")) {
             if (!isImagePackageType()) {
-                if ((TKit.isLinux() && types.equals(PackageType.LINUX)) || (TKit.isWindows() && types.equals(PackageType.WINDOWS))) {
-                    return this;
+                if ((TKit.isLinux() && typesSet.equals(PackageType.LINUX)) || (TKit.isWindows() && typesSet.equals(PackageType.WINDOWS))) {
+                    return;
                 }
 
-                if (TKit.isOSX() && types.equals(PackageType.MAC)) {
-                    return this;
+                if (TKit.isOSX() && typesSet.equals(PackageType.MAC)) {
+                    return;
                 }
-            } else if (types.equals(Set.of(PackageType.IMAGE))) {
-                return this;
+            } else if (typesSet.equals(Set.of(PackageType.IMAGE))) {
+                return;
             }
         }
 
-        if (!types.contains(packageType())) {
-            throw new UnsupportedOperationException(String.format("Unsupported operation for type [%s]", packageType().getType()));
+        if (!typesSet.contains(packageType())) {
+            throw new IllegalArgumentException("Unexpected type");
         }
-
-        return this;
     }
 
     public CfgFile readLauncherCfgFile() {
@@ -1623,47 +1558,18 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         }
 
         void add(ThrowingConsumer<JPackageCommand> action) {
-            add(action, ActionRole.DEFAULT);
-        }
-
-        void add(ThrowingConsumer<JPackageCommand> action, ActionRole role) {
+            Objects.requireNonNull(action);
             verifyMutable();
-            actions.add(new Action(action, role));
-        }
-
-        Stream<ThrowingConsumer<JPackageCommand>> actionsWithRole(ActionRole role) {
-            Objects.requireNonNull(role);
-            return actions.stream().filter(action -> {
-                return Objects.equals(action.role(), role);
-            }).map(Action::impl);
-        }
-
-        private static final class Action implements Consumer<JPackageCommand> {
-
-            Action(ThrowingConsumer<JPackageCommand> impl, ActionRole role) {
-                this.impl = Objects.requireNonNull(impl);
-                this.role = Objects.requireNonNull(role);
-            }
-
-            ActionRole role() {
-                return role;
-            }
-
-            ThrowingConsumer<JPackageCommand> impl() {
-                return impl;
-            }
-
-            @Override
-            public void accept(JPackageCommand cmd) {
-                if (!executed) {
-                    executed = true;
-                    ThrowingConsumer.toConsumer(impl).accept(cmd);
+            actions.add(new Consumer<JPackageCommand>() {
+                @Override
+                public void accept(JPackageCommand t) {
+                    if (!executed) {
+                        executed = true;
+                        ThrowingConsumer.toConsumer(action).accept(t);
+                    }
                 }
-            }
-
-            private final ActionRole role;
-            private final ThrowingConsumer<JPackageCommand> impl;
-            private boolean executed;
+                private boolean executed;
+            });
         }
 
         @Override
@@ -1672,7 +1578,7 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
             actions.forEach(action -> action.accept(JPackageCommand.this));
         }
 
-        private final List<Action> actions;
+        private final List<Consumer<JPackageCommand>> actions;
     }
 
     private Boolean withToolProvider;
@@ -1683,6 +1589,7 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
     private boolean ignoreDefaultRuntime;
     private boolean ignoreDefaultVerbose;
     private boolean immutable;
+    private Path dmgInstallDir;
     private final Actions prerequisiteActions;
     private final Actions verifyActions;
     private Path executeInDirectory;

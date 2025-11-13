@@ -107,7 +107,10 @@ public class PostImageScriptTest {
                     });
                 }
                 case EXTERNAL_APP_IMAGE -> {
-                    test.usePredefinedAppImage(appImageCmd);
+                    test.addInitializer(cmd -> {
+                        cmd.removeArgumentWithValue("--input");
+                        cmd.addArguments("--app-image", appImageCmd.outputBundle());
+                    });
                 }
             }
 

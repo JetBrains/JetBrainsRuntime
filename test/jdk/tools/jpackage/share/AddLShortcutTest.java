@@ -196,22 +196,27 @@ public class AddLShortcutTest {
         // and applies shortcut configuration to the main launcher in the native packaging jpackage command.
         //
 
-        var appImageCmd = JPackageCommand.helloAppImage()
-                .setArgumentValue("--name", "foo")
-                .setFakeRuntime();
+        Path[] predefinedAppImage = new Path[1];
 
-        for (var i = 1; i != cfgs.length; ++i) {
-            var al = new AdditionalLauncher("launcher-" + i);
-            cfgs[i].applyToAdditionalLauncher(al);
-            al.withoutVerifyActions(Action.EXECUTE_LAUNCHER).applyTo(appImageCmd);
-        }
+        new PackageTest().addRunOnceInitializer(() -> {
+            var cmd = JPackageCommand.helloAppImage()
+                    .setArgumentValue("--name", "foo")
+                    .setFakeRuntime();
 
-        new PackageTest()
-        .addRunOnceInitializer(appImageCmd::execute)
-        .usePredefinedAppImage(appImageCmd)
-        .addInitializer(cmd -> {
+            for (var i = 1; i != cfgs.length; ++i) {
+                var al = new AdditionalLauncher("launcher-" + i);
+                cfgs[i].applyToAdditionalLauncher(al);
+                al.withoutVerifyActions(Action.EXECUTE_LAUNCHER).applyTo(cmd);
+            }
+
+            cmd.execute();
+
+            predefinedAppImage[0] = cmd.outputBundle();
+        }).addInitializer(cmd -> {
             cfgs[0].applyToMainLauncher(cmd);
+            cmd.removeArgumentWithValue("--input");
             cmd.setArgumentValue("--name", "AddLShortcutDir2Test");
+            cmd.addArguments("--app-image", predefinedAppImage[0]);
         }).run(RunnablePackageTest.Action.CREATE_AND_UNPACK);
     }
 
@@ -232,15 +237,20 @@ public class AddLShortcutTest {
             shortcutArgs.add(startupDirectory.asStringValue());
         }
 
-        var appImageCmd = JPackageCommand.helloAppImage()
-                .setArgumentValue("--name", "foo")
-                .setFakeRuntime();
+        Path[] predefinedAppImage = new Path[1];
 
-        new PackageTest()
-        .addRunOnceInitializer(appImageCmd::execute)
-        .usePredefinedAppImage(appImageCmd)
-        .addInitializer(cmd -> {
+        new PackageTest().addRunOnceInitializer(() -> {
+            var cmd = JPackageCommand.helloAppImage()
+                    .setArgumentValue("--name", "foo")
+                    .setFakeRuntime();
+
+            cmd.execute();
+
+            predefinedAppImage[0] = cmd.outputBundle();
+        }).addInitializer(cmd -> {
+            cmd.removeArgumentWithValue("--input");
             cmd.setArgumentValue("--name", "AddLShortcutDir3Test");
+            cmd.addArguments("--app-image", predefinedAppImage[0]);
             cmd.ignoreDefaultVerbose(true);
         }).addInitializer(cmd -> {
             cmd.addArguments(shortcutArgs);

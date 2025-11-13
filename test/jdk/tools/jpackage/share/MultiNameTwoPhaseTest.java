@@ -22,12 +22,13 @@
  */
 
 import java.nio.file.Path;
-import jdk.jpackage.test.Annotations.Parameter;
-import jdk.jpackage.test.Annotations.Test;
-import jdk.jpackage.test.JPackageCommand;
+import java.io.IOException;
 import jdk.jpackage.test.PackageTest;
 import jdk.jpackage.test.PackageType;
 import jdk.jpackage.test.TKit;
+import jdk.jpackage.test.Annotations.Test;
+import jdk.jpackage.test.Annotations.Parameter;
+import jdk.jpackage.test.JPackageCommand;
 
 /**
  * Test creation of packages in tho phases with different names.
@@ -57,7 +58,9 @@ public class MultiNameTwoPhaseTest {
     @Parameter({"MultiNameTest", ""})
     @Parameter({"", "MultiNameTestInstaller"})
     @Parameter({"", ""})
-    public static void test(String appName, String installName) {
+    public static void test(String... testArgs) throws IOException {
+        String appName = testArgs[0];
+        String installName = testArgs[1];
 
         Path appimageOutput = TKit.createTempDirectory("appimage");
 
@@ -71,8 +74,9 @@ public class MultiNameTwoPhaseTest {
         PackageTest packageTest = new PackageTest()
                 .addRunOnceInitializer(() -> appImageCmd.execute())
                 .addBundleDesktopIntegrationVerifier(true)
-                .usePredefinedAppImage(appImageCmd)
                 .addInitializer(cmd -> {
+                    cmd.addArguments("--app-image", appImageCmd.outputBundle());
+                    cmd.removeArgumentWithValue("--input");
                     cmd.removeArgumentWithValue("--name");
                     if (!installName.isEmpty()) {
                         cmd.addArguments("--name", installName);
