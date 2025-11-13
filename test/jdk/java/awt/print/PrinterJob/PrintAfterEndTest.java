@@ -21,10 +21,10 @@
  * questions.
  */
 
-/*
+/**
  * @test
  * @key printer
- * @bug 8370141 8370637
+ * @bug 8370141
  * @summary No crash when printing after job completed.
  * @run main PrintAfterEndTest
  */
