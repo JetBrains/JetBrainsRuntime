@@ -65,16 +65,12 @@ public class GifBuilder {
     /**
      * This creates a sample gif image based on a series of FrameDescriptions,
      * and the calls {@link GifComparison#run(URL)}
-     *
-     * @param frameDir an optional directory to write all frames as PNGs to.
-     *                 See {@link GifComparison#run(URL, File)}
      */
-    public static void test(FrameDescription[] frameDescriptions,
-                            File frameDir)
+    public static void test(FrameDescription... frameDescriptions)
             throws Throwable {
         File file = createTestFile(frameDescriptions);
         try {
-            GifComparison.run(file.toURI().toURL(), frameDir);
+            GifComparison.run(file.toURI().toURL());
         } finally {
             file.delete();
         }
