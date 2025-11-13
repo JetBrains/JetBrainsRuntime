@@ -42,7 +42,7 @@ class G1SurvivorRegions {
 public:
   G1SurvivorRegions();
 
-  void add(G1HeapRegion* hr);
+  uint add(G1HeapRegion* hr);
 
   void convert_to_eden();
 

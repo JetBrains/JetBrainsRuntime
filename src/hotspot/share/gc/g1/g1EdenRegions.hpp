@@ -41,10 +41,10 @@ private:
 public:
   G1EdenRegions() : _length(0), _used_bytes(0), _regions_on_node() { }
 
-  void add(G1HeapRegion* hr) {
+  uint add(G1HeapRegion* hr) {
     assert(hr->is_eden(), "must be");
     _length++;
-    _regions_on_node.add(hr);
+    return _regions_on_node.add(hr);
   }
 
   void clear() {
