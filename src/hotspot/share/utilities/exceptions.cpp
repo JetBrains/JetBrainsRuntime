@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -440,6 +440,7 @@ void Exceptions::wrap_dynamic_exception(bool is_indy, JavaThread* THREAD) {
       // Pass through an Error, including BootstrapMethodError, any other form
       // of linkage error, or say ThreadDeath/OutOfMemoryError
       if (ls != NULL) {
+        ResourceMark rm(THREAD);
         ls->print_cr("bootstrap method invocation wraps BSME around " INTPTR_FORMAT, p2i((void *)exception));
         exception->print_on(ls);
       }
@@ -448,6 +449,7 @@ void Exceptions::wrap_dynamic_exception(bool is_indy, JavaThread* THREAD) {
 
     // Otherwise wrap the exception in a BootstrapMethodError
     if (ls != NULL) {
+      ResourceMark rm(THREAD);
       ls->print_cr("%s throws BSME for " INTPTR_FORMAT, is_indy ? "invokedynamic" : "dynamic constant", p2i((void *)exception));
       exception->print_on(ls);
     }
