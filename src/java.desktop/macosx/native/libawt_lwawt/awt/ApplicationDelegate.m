@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -244,9 +244,11 @@ AWT_ASSERT_APPKIT_THREAD;
     NSBundle *bundle = [NSBundle mainBundle];
     fHandlesDocumentTypes = [bundle objectForInfoDictionaryKey:@"CFBundleDocumentTypes"] != nil || [bundle _hasEAWTOverride:@"DocumentHandler"];
     fHandlesURLTypes = [bundle objectForInfoDictionaryKey:@"CFBundleURLTypes"] != nil || [bundle _hasEAWTOverride:@"URLHandler"];
-    fOpenURLHandlerInstalled = NO;
     if (fHandlesURLTypes) {
-        [self _installOpenURLHandler];
+        [[NSAppleEventManager sharedAppleEventManager] setEventHandler:self
+                                                           andSelector:@selector(_handleOpenURLEvent:withReplyEvent:)
+                                                         forEventClass:kInternetEventClass
+                                                            andEventID:kAEGetURL];
     }
 
     // By HIG, Preferences are not available unless there is a handler. By default in Mac OS X,
@@ -306,19 +308,9 @@ static jclass sjc_AppEventHandler = NULL;
 #define GET_APPEVENTHANDLER_CLASS_RETURN(ret) \
     GET_CLASS_RETURN(sjc_AppEventHandler, "com/apple/eawt/_AppEventHandler", ret);
 
-- (void)_installOpenURLHandler {
-AWT_ASSERT_APPKIT_THREAD;
-    if (fOpenURLHandlerInstalled) return;
-
-    [[NSAppleEventManager sharedAppleEventManager] setEventHandler:self
-                                                       andSelector:@selector(_handleOpenURLEvent:withReplyEvent:)
-                                                     forEventClass:kInternetEventClass
-                                                        andEventID:kAEGetURL];
-
-    fOpenURLHandlerInstalled = YES;
-}
-
 - (void)_handleOpenURLEvent:(NSAppleEventDescriptor *)openURLEvent withReplyEvent:(NSAppleEventDescriptor *)replyEvent {
+    if (!fHandlesURLTypes) return;
+
     NSString *url = [[openURLEvent paramDescriptorForKeyword:keyDirectObject] stringValue];
     [ApplicationDelegate _openURL:url];
 
@@ -644,24 +636,6 @@ JNI_COCOA_ENTER(env);
     // Force initialization to happen on AppKit thread!
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         [ApplicationDelegate sharedDelegate];
-    }];
-JNI_COCOA_EXIT(env);
-}
-
-/*
- * Class:     com_apple_eawt_Application
- * Method:    nativeInstallOpenURLEventHandler
- * Signature: ()V
- */
-JNIEXPORT void JNICALL Java_com_apple_eawt_Application_nativeInstallOpenURLEventHandler
-(JNIEnv *env, jclass clz)
-{
-JNI_COCOA_ENTER(env);
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
-        ApplicationDelegate *delegate = [ApplicationDelegate sharedDelegate];
-            if (delegate != nil) {
-                [delegate _installOpenURLHandler];
-            }
     }];
 JNI_COCOA_EXIT(env);
 }
