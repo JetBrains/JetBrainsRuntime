@@ -570,8 +570,18 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
     }
 
     public boolean isFakeRuntime(String msg) {
-        Path runtimeDir = appRuntimeDirectory();
+        if (isFakeRuntime()) {
+            // Fake runtime
+            Path runtimeDir = appRuntimeDirectory();
+            TKit.trace(String.format(
+                    "%s because application runtime directory [%s] is incomplete",
+                    msg, runtimeDir));
+            return true;
+        }
+        return false;
+    }
 
+    private boolean isFakeRuntime() {
         final Collection<Path> criticalRuntimeFiles;
         if (TKit.isWindows()) {
             criticalRuntimeFiles = WindowsHelper.CRITICAL_RUNTIME_FILES;
@@ -583,16 +593,9 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
             throw TKit.throwUnknownPlatformError();
         }
 
-        if (!criticalRuntimeFiles.stream().anyMatch(v -> {
-            return runtimeDir.resolve(v).toFile().exists();
-        })) {
-            // Fake runtime
-            TKit.trace(String.format(
-                    "%s because application runtime directory [%s] is incomplete",
-                    msg, runtimeDir));
-            return true;
-        }
-        return false;
+        Path runtimeDir = appRuntimeDirectory();
+        return !criticalRuntimeFiles.stream().map(runtimeDir::resolve).allMatch(
+                Files::exists);
     }
 
     public boolean canRunLauncher(String msg) {
@@ -654,6 +657,13 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
     public JPackageCommand ignoreDefaultRuntime(boolean v) {
         verifyMutable();
         ignoreDefaultRuntime = v;
+        return this;
+    }
+
+    public JPackageCommand ignoreFakeRuntime() {
+        if (isFakeRuntime()) {
+            ignoreDefaultRuntime(true);
+        }
         return this;
     }
 
@@ -876,7 +886,7 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         if (isRuntime()) {
             return null;
         }
-        return ThrowingFunction.toFunction(CfgFile::readFromFile).apply(
+        return ThrowingFunction.toFunction(CfgFile::load).apply(
                 appLauncherCfgPath(launcherName));
     }
 
