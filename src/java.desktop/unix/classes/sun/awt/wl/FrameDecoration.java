@@ -26,7 +26,6 @@ package sun.awt.wl;
 
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Insets;
 import java.awt.Point;
@@ -130,5 +129,7 @@ public abstract class FrameDecoration {
         return null;
     }
 
+    public abstract void notifyNativeWindowCreated(long nativePtr);
+    public abstract void notifyNativeWindowToBeHidden(long nativePtr);
     public abstract void dispose();
 }
