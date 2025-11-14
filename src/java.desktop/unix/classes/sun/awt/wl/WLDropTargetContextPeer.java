@@ -70,7 +70,7 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
         int dropAction = 0;
 
         if (hasTarget() && event != MouseEvent.MOUSE_EXITED) {
-            dropAction = currentOffer.getSelectedAction();
+            dropAction = WLDataDevice.waylandActionsToJava(currentOffer.getSelectedAction());
         }
 
         postDropTargetEvent(
@@ -115,17 +115,20 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
             return;
         }
 
-        int actions = 0;
+        int javaActions = 0;
         if (hasTarget()) {
-            actions = WLDataDevice.javaActionsToWayland(getTargetActions());
+            javaActions = getTargetActions();
         }
 
-        int preferredAction = SunDragSourceContextPeer.convertModifiersToDropAction(WLToolkit.getInputState().getModifiers(), actions);
+        int javaPreferredAction = SunDragSourceContextPeer.convertModifiersToDropAction(WLToolkit.getInputState().getModifiers(), javaActions);
 
-        if (actions != lastActions || preferredAction != lastPreferredAction) {
-            currentOffer.setDnDActions(actions, preferredAction);
-            lastActions = actions;
-            lastPreferredAction = preferredAction;
+        int waylandActions = WLDataDevice.javaActionsToWayland(javaActions);
+        int waylandPreferredAction = WLDataDevice.javaActionsToWayland(javaPreferredAction);
+
+        if (waylandActions != lastActions || waylandPreferredAction != lastPreferredAction) {
+            currentOffer.setDnDActions(waylandActions, waylandPreferredAction);
+            lastActions = waylandActions;
+            lastPreferredAction = waylandPreferredAction;
         }
     }
 
