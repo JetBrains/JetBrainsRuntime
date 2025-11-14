@@ -40,10 +40,37 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     private final boolean showMaximize;
     private final boolean showMinimize;
 
-    private final static String decorationPreference = System.getProperty("sun.awt.wl.WindowDecorationStyle");
+    private enum DecorationTypePreference {
+        DEFAULT, // The default decorations painted purely in Java
+        GTK,     // Decorations are painted with the help of GTK (if available)
+        SERVER;  // Wayland server-side decorations (if available)
+    }
+
+    private static final DecorationTypePreference decorationType = determineDecorationPreferenceType();
+
+    private static DecorationTypePreference determineDecorationPreferenceType() {
+        String decorationPreference = System.getProperty("sun.awt.wl.WindowDecorationStyle");
+        if (decorationPreference != null) {
+            if ("builtin".equals(decorationPreference)) {
+                return DecorationTypePreference.DEFAULT;
+            } else if ("gtk".equals(decorationPreference) && isGTKAvailable()) {
+                return DecorationTypePreference.GTK;
+            } else if ("server".equals(decorationPreference) && WLToolkit.isSSDAvailable()) {
+                return DecorationTypePreference.SERVER;
+            } else {
+                return DecorationTypePreference.DEFAULT;
+            }
+        } else {
+            if (!WLToolkit.isKDE() && isGTKAvailable()) {
+                return DecorationTypePreference.GTK;
+            } else {
+                return DecorationTypePreference.DEFAULT;
+            }
+        }
+    }
 
     public WLDecoratedPeer(Window target, boolean isUndecorated, boolean showMinimize, boolean showMaximize) {
-        super(target);
+        super(target, decorationType != DecorationTypePreference.SERVER);
         this.isUndecorated = isUndecorated;
         this.showMinimize = showMinimize;
         this.showMaximize = showMaximize;
@@ -54,20 +81,12 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
         FrameDecoration d;
         if (isUndecorated) {
             d = new MinimalFrameDecoration(this);
-        } else if (decorationPreference != null) {
-            if ("builtin".equals(decorationPreference)) {
-                d = new DefaultFrameDecoration(this, showMinimize, showMaximize);
-            } else if ("gtk".equals(decorationPreference) && isGTKAvailable()) {
-                d = new GtkFrameDecoration(this, showMinimize, showMaximize);
-            } else {
-                d = new DefaultFrameDecoration(this, showMinimize, showMaximize);
-            }
         } else {
-            if (!WLToolkit.isKDE() && isGTKAvailable()) {
-                d = new GtkFrameDecoration(this, showMinimize, showMaximize);
-            } else {
-                d = new DefaultFrameDecoration(this, showMinimize, showMaximize);
-            }
+            d = switch (decorationType) {
+                case DecorationTypePreference.DEFAULT -> new DefaultFrameDecoration(this, showMinimize, showMaximize);
+                case DecorationTypePreference.GTK -> new GtkFrameDecoration(this, showMinimize, showMaximize);
+                case DecorationTypePreference.SERVER -> new ServerSideFrameDecoration(this);
+            };
         }
         return d;
     }
@@ -84,9 +103,7 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
         }
     }
 
-    public abstract boolean isResizable();
     public abstract boolean isInteractivelyResizable();
-
     public abstract boolean isFrameStateSupported(int state);
     public abstract void setState(int newState);
     public abstract int getState();
@@ -229,5 +246,15 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     public void dispose() {
         getDecoration().dispose();
         super.dispose();
+    }
+
+    @Override
+    protected void notifyNativeWindowCreated(long nativePtr) {
+        decoration.notifyNativeWindowCreated(nativePtr);
+    }
+
+    @Override
+    protected void notifyNativeWindowToBeHidden(long nativePtr) {
+        decoration.notifyNativeWindowToBeHidden(nativePtr);
     }
 }
