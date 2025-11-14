@@ -387,6 +387,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                     WLRobotPeer.setLocationOfWLSurface(wlSurface, xNative, yNative);
                 }
 
+                nativeWindowCreated(nativePtr);
+
                 shadow.createSurface();
 
                 // From xdg-shell.xml: "After creating a role-specific object and
@@ -404,6 +406,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         } else {
             performLocked(() -> {
                 if (wlSurface != null) { // may get a "hide" request even though we were never shown
+                    nativeWindowToBeHidden(nativePtr);
+
                     nativeHideFrame(nativePtr);
 
                     shadow.hide();
@@ -414,6 +418,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 }
             });
         }
+    }
+
+    protected void nativeWindowCreated(long nativePtr) {
+    }
+
+    protected void nativeWindowToBeHidden(long nativePtr) {
     }
 
     /**

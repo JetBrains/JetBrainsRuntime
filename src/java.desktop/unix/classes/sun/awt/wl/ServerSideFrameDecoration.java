@@ -1,5 +1,5 @@
 /*
- * Copyright 2022, 2025, JetBrains s.r.o.
+ * Copyright 2022-2025 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,12 @@ import java.awt.Insets;
 import java.awt.Rectangle;
 
 /**
- * The frame decorations that add nothing to the frame itself but make
- * the frame interactively resizable, if/when allowed.
+ * TODO
  */
-public class MinimalFrameDecoration extends FrameDecoration {
+public class ServerSideFrameDecoration extends FrameDecoration {
+    private long nativeDecorPtr;
 
-    public MinimalFrameDecoration(WLDecoratedPeer peer) {
+    public ServerSideFrameDecoration(WLDecoratedPeer peer) {
         super(peer);
     }
 
@@ -56,12 +56,11 @@ public class MinimalFrameDecoration extends FrameDecoration {
 
     @Override
     public void paint(Graphics g) {
-        // Nothing to paint
+        // Nothing to paint here, the Wayland server provides all the painting
     }
 
     @Override
     public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
-        // All property intentionally ignored
     }
 
     @Override
@@ -76,14 +75,22 @@ public class MinimalFrameDecoration extends FrameDecoration {
 
     @Override
     public void nativeWindowCreated(long nativePtr) {
+        if (!peer.targetIsWlPopup()) {
+            nativeDecorPtr = createToplevelDecorationImpl(nativePtr);
+        }
     }
 
     @Override
     public void nativeWindowToBeHidden(long nativePtr) {
+        disposeImpl(nativeDecorPtr);
+        nativeDecorPtr = 0;
     }
 
     @Override
     public void dispose() {
-        // Nothing to dispose
+        // Native resources must have been already disposed when the window was hidden
     }
+
+    private native long createToplevelDecorationImpl(long nativeFramePtr);
+    private native void disposeImpl(long nativeDecorPtr);
 }

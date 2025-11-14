@@ -59,6 +59,8 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
                 d = new DefaultFrameDecoration(this, showMinimize, showMaximize);
             } else if ("gtk".equals(decorationPreference) && isGTKAvailable()) {
                 d = new GtkFrameDecoration(this, showMinimize, showMaximize);
+            } else if ("server".equals(decorationPreference) && WLToolkit.isSSDAvailable()) {
+                d = new ServerSideFrameDecoration(this);
             } else {
                 d = new DefaultFrameDecoration(this, showMinimize, showMaximize);
             }
@@ -229,5 +231,15 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     public void dispose() {
         getDecoration().dispose();
         super.dispose();
+    }
+
+    @Override
+    protected void nativeWindowCreated(long nativePtr) {
+        decoration.nativeWindowCreated(nativePtr);
+    }
+
+    @Override
+    protected void nativeWindowToBeHidden(long nativePtr) {
+        decoration.nativeWindowToBeHidden(nativePtr);
     }
 }

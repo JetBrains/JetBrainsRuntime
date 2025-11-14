@@ -130,5 +130,7 @@ public abstract class FrameDecoration {
         return null;
     }
 
+    public abstract void nativeWindowCreated(long nativePtr);
+    public abstract void nativeWindowToBeHidden(long nativePtr);
     public abstract void dispose();
 }
