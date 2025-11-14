@@ -75,6 +75,14 @@ public class MinimalFrameDecoration extends FrameDecoration {
     }
 
     @Override
+    public void notifyNativeWindowCreated(long nativePtr) {
+    }
+
+    @Override
+    public void notifyNativeWindowToBeHidden(long nativePtr) {
+    }
+
+    @Override
     public void dispose() {
         // Nothing to dispose
     }
