@@ -61,7 +61,14 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
         @Override
         protected synchronized void handleDnDAction(int action) {
-            this.action = action;
+            // This if statement is a workaround for a KWin bug.
+            // KWin 6.5.1 may send an additional action(0) after dnd_drop_performed().
+            // Spec says that after dnd_drop_performed(), no further action() events will be sent,
+            // except for maybe action(dnd_ask), but since we do not announce support for dnd_ask,
+            // we don't need to worry about it.
+            if (!didSucceed) {
+                this.action = action;
+            }
         }
 
         @Override
