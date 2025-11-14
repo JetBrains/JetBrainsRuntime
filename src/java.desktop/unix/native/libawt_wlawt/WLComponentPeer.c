@@ -35,6 +35,7 @@
 #include "WLRobotPeer.h"
 #include "WLGraphicsEnvironment.h"
 
+#include "xdg-decoration-unstable-v1.h"
 #ifdef WAKEFIELD_ROBOT
 #include "wakefield.h"
 #endif
@@ -544,6 +545,29 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeShowWindowMenu
     if (frame->toplevel) {
         xdg_toplevel_show_window_menu(frame->xdg_toplevel, wl_seat, serial, x, y);
         wlFlushToServer(env);
+    }
+}
+
+JNIEXPORT jlong JNICALL Java_sun_awt_wl_ServerSideFrameDecoration_createToplevelDecorationImpl
+        (JNIEnv *env, jobject obj, jlong ptr)
+{
+    struct WLFrame *frame = jlong_to_ptr(ptr);
+    if (frame->toplevel) {
+        struct zxdg_toplevel_decoration_v1 * decor = zxdg_decoration_manager_v1_get_toplevel_decoration(
+            xdg_decoration_manager, frame->xdg_toplevel);
+        zxdg_toplevel_decoration_v1_set_mode(decor, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+        return ptr_to_jlong(decor);
+    }
+
+    return 0;
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_ServerSideFrameDecoration_disposeImpl
+        (JNIEnv *env, jobject obj, jlong ptr)
+{
+    struct zxdg_toplevel_decoration_v1 * decor = jlong_to_ptr(ptr);
+    if (decor) {
+        zxdg_toplevel_decoration_v1_destroy(decor);
     }
 }
 

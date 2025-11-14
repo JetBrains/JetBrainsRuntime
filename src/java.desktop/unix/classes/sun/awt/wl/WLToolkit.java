@@ -1094,6 +1094,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
+    /**
+     * @return true if xdg-decoration-unstable-v1 is supported and false otherwise.
+     */
+    public static boolean isSSDAvailable() {
+        return isSSDAvailableImpl();
+    }
+
+    private static native boolean isSSDAvailableImpl();
+
     private native int readEvents();
     private native void dispatchEventsOnEDT();
     private native void flushImpl();
