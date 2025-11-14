@@ -1,5 +1,5 @@
 /*
- * Copyright 2022, 2025, JetBrains s.r.o.
+ * Copyright 2022-2025 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,17 @@ import java.awt.Insets;
 import java.awt.Rectangle;
 
 /**
- * The frame decorations that add nothing to the frame itself but make
- * the frame interactively resizable, if/when allowed.
+ * Decorations based on the xdg-decoration-unstable-v1 protocol.
+ * Supported iff WLToolkit.isSSDAvailable().
+ *
+ * The decoration itself is added by the server on a surface separate from the window itself,
+ * so the window acts as if it is undecorated. For example, there are no insets, no special
+ * repainting is done, etc.
  */
-public class MinimalFrameDecoration extends FrameDecoration {
+public class ServerSideFrameDecoration extends FrameDecoration {
+    private long nativeDecorPtr;
 
-    public MinimalFrameDecoration(WLDecoratedPeer peer) {
+    public ServerSideFrameDecoration(WLDecoratedPeer peer) {
         super(peer);
     }
 
@@ -56,12 +61,11 @@ public class MinimalFrameDecoration extends FrameDecoration {
 
     @Override
     public void paint(Graphics g) {
-        // Nothing to paint
+        // Nothing to paint here, the Wayland server provides all the painting
     }
 
     @Override
     public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
-        // All property intentionally ignored
     }
 
     @Override
@@ -76,14 +80,25 @@ public class MinimalFrameDecoration extends FrameDecoration {
 
     @Override
     public void notifyNativeWindowCreated(long nativePtr) {
+        if (!peer.targetIsWlPopup()) {
+            nativeDecorPtr = createToplevelDecorationImpl(nativePtr);
+        }
     }
 
     @Override
     public void notifyNativeWindowToBeHidden(long nativePtr) {
+        if (nativeDecorPtr != 0) {
+            disposeImpl(nativeDecorPtr);
+            nativeDecorPtr = 0;
+        }
     }
 
     @Override
     public void dispose() {
-        // Nothing to dispose
+        // Native resources must have been already disposed when the window was hidden
+        assert nativeDecorPtr == 0;
     }
+
+    private native long createToplevelDecorationImpl(long nativeFramePtr);
+    private native void disposeImpl(long nativeDecorPtr);
 }
