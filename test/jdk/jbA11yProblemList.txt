@@ -22,6 +22,7 @@ java/awt/PopupMenu/PopupMenuLocation.java JBR-5397,JBR-7375 macosx-all,windows-x
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java JBR-5397,JBR-6092 macosx-all,windows-x64
 java/awt/Robot/NonEmptyErrorStream.java JBR-7375 windows-x64
 java/awt/Robot/RobotWheelTest/RobotWheelTest.java JBR-5397,JBR-7377 macosx-all,windows-x64
+java/awt/Scrollbar/ScrollbarCtrlClickTest.java JBR-9684 windows-x64
 java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java JBR-5397,JBR-7531 macosx-all,windows-x64
 java/awt/ScrollPane/ScrollPaneLimitation.java JBR-8579 windows-x64
 java/awt/ScrollPane/ScrollPaneRemoveAdd.java JBR-8580 windows-x64
@@ -61,7 +62,9 @@ javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-7386 windows-x64
 
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-9083 windows-x64
 jb/java/awt/CustomTitleBar/MaximizedWindowFocusTest.java JBR-9519 windows-x64
+jb/java/awt/CustomTitleBar/MouseEventsOnClientArea.java JBR-9159 windows-x64
 jb/java/awt/Desktop/AboutHandlerTest.java           nobug macosx-all,linux-all,windows-all
+jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-9687 windows-x64
 jb/java/awt/Focus/ChainOfPopupsFocusTest.java JBR-8407 windows-x64
 jb/java/awt/Focus/FrameAfterPopup.java JBR-9161 windows-x64
 jb/java/awt/Focus/MaximizedCustomDecorationsTest.java JBR-9346 windows-x64
