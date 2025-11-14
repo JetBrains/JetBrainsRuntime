@@ -295,6 +295,14 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
     }
 
     @Override
+    public void notifyNativeWindowCreated(long nativePtr) {
+    }
+
+    @Override
+    public void notifyNativeWindowToBeHidden(long nativePtr) {
+    }
+
+    @Override
     public void dispose() {
         WLToolkit.getDefaultToolkit().removePropertyChangeListener("awt.os.theme.isDark", pcl);
     }

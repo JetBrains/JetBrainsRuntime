@@ -76,6 +76,7 @@ struct wl_seat     *wl_seat = NULL;
 struct wl_keyboard *wl_keyboard; // optional, check for NULL before use
 struct wl_pointer  *wl_pointer; // optional, check for NULL before use
 struct zwp_relative_pointer_manager_v1* relative_pointer_manager; // optional, check for NULL before use
+struct zxdg_decoration_manager_v1* xdg_decoration_manager; // optional, check for NULL before use
 
 #define MAX_CURSOR_SCALE 100
 struct wl_cursor_theme *cursor_themes[MAX_CURSOR_SCALE] = {NULL};
@@ -621,6 +622,8 @@ registry_global(void *data, struct wl_registry *wl_registry,
         if (versionToBind <= version) {
             zwp_text_input_manager = wl_registry_bind(wl_registry, name, &zwp_text_input_manager_v3_interface, versionToBind);
         }
+    } else if (strcmp(interface, zxdg_decoration_manager_v1_interface.name) == 0) {
+        xdg_decoration_manager = wl_registry_bind(wl_registry, name, &zxdg_decoration_manager_v1_interface, 1);
     }
 
 #ifdef WAKEFIELD_ROBOT
@@ -891,6 +894,13 @@ Java_sun_awt_wl_WLToolkit_initIDs(JNIEnv *env, jclass clazz, jlong displayPtr)
     finalizeInit(env);
 
     checkInterfacesPresent(env);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_wl_WLToolkit_isSSDAvailableImpl
+  (JNIEnv *env, jobject cls)
+{
+    return xdg_decoration_manager != NULL;
 }
 
 JNIEXPORT void JNICALL
