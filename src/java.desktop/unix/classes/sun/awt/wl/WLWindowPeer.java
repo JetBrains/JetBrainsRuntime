@@ -77,7 +77,11 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
     }
 
     public WLWindowPeer(Window target) {
-        super(target);
+        this(target, true);
+    }
+
+    public WLWindowPeer(Window target, boolean dropShadow) {
+        super(target, dropShadow);
 
         if (!target.isFontSet()) {
             target.setFont(getDefaultFont());
