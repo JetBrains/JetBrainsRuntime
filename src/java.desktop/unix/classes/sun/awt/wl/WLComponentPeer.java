@@ -113,6 +113,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private boolean repositionPopup = false; // protected by stateLock
     private boolean resizePending = false; // protected by stateLock
 
+    @SuppressWarnings("removal")
+    private static final boolean shadowEnabled = Boolean.parseBoolean(
+                java.security.AccessController.doPrivileged(
+                        new sun.security.action.GetPropertyAction("sun.awt.wl.Shadow", "true")));
+
     static {
         initIDs();
     }
@@ -121,6 +126,10 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
      * Standard peer constructor, with corresponding Component
      */
     WLComponentPeer(Component target) {
+        this(target, true);
+    }
+
+    protected WLComponentPeer(Component target, boolean dropShadow) {
         this.target = target;
         this.background = target.getBackground();
         Dimension size = constrainSize(target.getBounds().getSize());
@@ -135,17 +144,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             log.fine("WLComponentPeer: target=" + target + " with size=" + wlSize);
         }
 
-        @SuppressWarnings("removal")
-        boolean shadowEnabled = Boolean.parseBoolean(
-                java.security.AccessController.doPrivileged(
-                        new sun.security.action.GetPropertyAction("sun.awt.wl.Shadow", "true")));
-        if (shadowEnabled) {
+        if (dropShadow && shadowEnabled) {
             shadow = new ShadowImpl(targetIsWlPopup() ? ShadowImage.POPUP_SHADOW_SIZE : ShadowImage.WINDOW_SHADOW_SIZE);
         } else {
             shadow = new NilShadow();
         }
-        // TODO
-        // setup parent window for target
     }
 
     int getDisplayScale() {
@@ -390,6 +393,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                     WLRobotPeer.setLocationOfWLSurface(wlSurface, xNative, yNative);
                 }
 
+                notifyNativeWindowCreated(nativePtr);
+
                 shadow.createSurface();
 
                 // From xdg-shell.xml: "After creating a role-specific object and
@@ -407,6 +412,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         } else {
             performLocked(() -> {
                 if (wlSurface != null) { // may get a "hide" request even though we were never shown
+                    notifyNativeWindowToBeHidden(nativePtr);
+
                     nativeHideFrame(nativePtr);
 
                     shadow.hide();
@@ -415,6 +422,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 }
             });
         }
+    }
+
+    protected void notifyNativeWindowCreated(long nativePtr) {
+    }
+
+    protected void notifyNativeWindowToBeHidden(long nativePtr) {
     }
 
     /**
@@ -443,6 +456,10 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         shadow.updateSurfaceData();
     }
 
+    public boolean isResizable() {
+        return true;
+    }
+
     @Override
     public void updateSurfaceSize() {
         assert SunToolkit.isAWTLockHeldByCurrentThread();
@@ -463,9 +480,15 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
         wlSurface.updateSurfaceSize(surfaceWidth, surfaceHeight);
         nativeSetWindowGeometry(nativePtr, 0, 0, surfaceWidth, surfaceHeight);
-        nativeSetMinimumSize(nativePtr, surfaceMinSize.width, surfaceMinSize.height);
-        if (surfaceMaxSize != null) {
-            nativeSetMaximumSize(nativePtr, surfaceMaxSize.width, surfaceMaxSize.height);
+        if (isResizable()) {
+            nativeSetMinimumSize(nativePtr, surfaceMinSize.width, surfaceMinSize.height);
+            if (surfaceMaxSize != null) {
+                nativeSetMaximumSize(nativePtr, surfaceMaxSize.width, surfaceMaxSize.height);
+            }
+        } else {
+            // Prevent SSD from resizing windows that are not meant to be resizeable
+            nativeSetMinimumSize(nativePtr, surfaceWidth, surfaceHeight);
+            nativeSetMaximumSize(nativePtr, surfaceWidth, surfaceHeight);
         }
 
         if (popupNeedsReposition()) {
