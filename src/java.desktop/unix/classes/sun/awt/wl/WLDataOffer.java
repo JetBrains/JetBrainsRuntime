@@ -68,7 +68,7 @@ public class WLDataOffer {
         }
     }
 
-    public byte[] receiveData(String mime) throws IOException  {
+    public synchronized byte[] receiveData(String mime) throws IOException  {
         int fd;
 
         if (nativePtr == 0) {
@@ -86,7 +86,7 @@ public class WLDataOffer {
         }
     }
 
-    public void accept(long serial, String mime) {
+    public synchronized void accept(long serial, String mime) {
         if (nativePtr == 0) {
             throw new IllegalStateException("nativePtr is 0");
         }
@@ -94,15 +94,17 @@ public class WLDataOffer {
         acceptImpl(nativePtr, serial, mime);
     }
 
-    public void finishDnD() {
+    public synchronized void finishDnD() {
         if (nativePtr == 0) {
             throw new IllegalStateException("nativePtr is 0");
         }
 
-        finishDnDImpl(nativePtr);
+        if (selectedAction != 0) {
+            finishDnDImpl(nativePtr);
+        }
     }
 
-    public void setDnDActions(int actions, int preferredAction) {
+    public synchronized void setDnDActions(int actions, int preferredAction) {
         if (nativePtr == 0) {
             throw new IllegalStateException("nativePtr is 0");
         }
