@@ -864,6 +864,7 @@ public:
   void verify_oop_relocations();
 
   bool has_evol_metadata();
+  bool has_evol_metadata_dcevm();
 
   Method* attached_method(address call_pc);
   Method* attached_method_before_pc(address pc);
