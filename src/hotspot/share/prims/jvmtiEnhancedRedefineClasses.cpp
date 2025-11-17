@@ -2224,8 +2224,8 @@ void VM_EnhancedRedefineClasses::flush_dependent_code() {
 
   // All dependencies have been recorded from startup or this is a second or
   // subsequent use of RedefineClasses
-  // FIXME: for now, deoptimize all!
-  if (0 && JvmtiExport::all_dependencies_are_recorded()) {
+  bool instance_modified = (_max_redefinition_flags & Klass::ModifyInstances) != 0;
+  if (JvmtiExport::all_dependencies_are_recorded() /*&& !instance_modified*/) {
     CodeCache::mark_dependents_for_evol_deoptimization(&deopt_scope);
     log_debug(redefine, class, nmethod)("Marked dependent nmethods for deopt");
   } else {
