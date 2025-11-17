@@ -548,6 +548,7 @@ JNI_COCOA_ENTER(env);
 
         (*env)->CallVoidMethod(env, config, jc_DisplayConfiguration_addDescriptor,
             displayID, top, left, bottom, right, scale);
+        CHECK_EXCEPTION();
     }
 
 JNI_COCOA_EXIT(env);
