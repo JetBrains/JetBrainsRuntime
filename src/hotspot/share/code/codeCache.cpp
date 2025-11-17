@@ -1308,9 +1308,16 @@ void CodeCache::mark_dependents_for_evol_deoptimization(DeoptimizationScope* deo
     // Walk all alive nmethods to check for old Methods.
     // This includes methods whose inline caches point to old methods, so
     // inline cache clearing is unnecessary.
-    if (nm->has_evol_metadata()) {
-      deopt_scope->mark(nm);
-      add_to_old_table(nm);
+    if (AllowEnhancedClassRedefinition) {
+      if (nm->has_evol_metadata_dcevm()) {
+        deopt_scope->mark(nm);
+        add_to_old_table(nm);
+      }
+    } else {
+      if (nm->has_evol_metadata()) {
+        deopt_scope->mark(nm);
+        add_to_old_table(nm);
+      }
     }
   }
 }

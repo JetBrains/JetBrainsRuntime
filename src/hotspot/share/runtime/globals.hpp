@@ -2030,6 +2030,10 @@ const int ObjectAlignmentInBytes = 8;
              "Allow enhanced class redefinition beyond swapping method "    \
              "bodies")                                                      \
                                                                             \
+  product(bool, OptimizeCodeFlush, false,                                   \
+          "Optimize code flush after enhanced class redefinition "          \
+          "by invalidating only affected code")                             \
+                                                                            \
   product(ccstr, HotswapAgent, "disabled",                                  \
           "Specify HotswapAgent image to be used."                          \
           "disabled: hotswap agent is disabled (default)"                   \

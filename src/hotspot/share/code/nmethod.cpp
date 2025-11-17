@@ -84,6 +84,8 @@
 #if INCLUDE_JVMCI
 #include "jvmci/jvmciRuntime.hpp"
 #endif
+#include "interpreter/bytecodeStream.hpp"
+#include "oops/constantPool.inline.hpp"
 
 #ifdef DTRACE_ENABLED
 
@@ -1013,6 +1015,96 @@ bool nmethod::has_evol_metadata() {
              compile_id());
   }
   return check_evol.has_evol_dependency();
+}
+
+class HasEvolDependencyDcevm : public MetadataClosure {
+  bool _has_evolv_dependency;
+
+  static bool is_evol_klass(Klass* k) {
+    return k != nullptr && k->new_version() != nullptr;
+  }
+
+  static bool is_evol_method(Method* m) {
+    return m->is_old() || is_evol_klass(m->method_holder());
+  }
+
+  static bool method_uses_evol_instance_fields(Method* m) {
+    ConstantPool* cp = m->constants();
+    if (cp->cache() == nullptr) {
+      return false;
+    }
+    bool is_rewritten = m->method_holder()->is_rewritten();
+    if (!is_rewritten) {
+      return false;
+    }
+    methodHandle mh(Thread::current(), m);
+    BytecodeStream bcs(mh);
+    while (bcs.next() != Bytecodes::_illegal) {
+      Bytecodes::Code java_code = bcs.code();
+
+      if (java_code == Bytecodes::_getfield || java_code == Bytecodes::_putfield
+          || java_code == Bytecodes::_getstatic || java_code == Bytecodes::_putstatic) {
+        int index = bcs.get_index_u2();
+        assert(index >= 0 && index < cp->resolved_field_entries_length(), "index out of bounds");
+        ResolvedFieldEntry* fe = cp->resolved_field_entry_at(index);
+        if (fe != nullptr) {
+          InstanceKlass *holder = fe->field_holder();
+          if (holder != nullptr && holder->new_version() != nullptr) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+ public:
+  HasEvolDependencyDcevm() : _has_evolv_dependency(false) {}
+  void do_metadata(Metadata* md) {
+    if (md->is_method()) {
+      Method* method = (Method*)md;
+      if (is_evol_method(method)) {
+        _has_evolv_dependency = true;
+      } else if (method_uses_evol_instance_fields(method)) {
+        _has_evolv_dependency = true;
+      }
+    } else if (md->is_klass()) {
+      Klass* klass = ((Klass*)md);
+      if (klass->new_version() != nullptr) {
+        _has_evolv_dependency = true;
+      }
+    } else if (md->is_constantPool()) {
+      ConstantPool* cp = (ConstantPool*)md;
+      if (cp->pool_holder()->new_version() != nullptr) {
+        _has_evolv_dependency = true;
+      }
+    }
+  }
+  bool has_evolv_dependency() const { return _has_evolv_dependency; }
+};
+
+// (DCEVM)
+bool nmethod::has_evol_metadata_dcevm() {
+  // Check:
+  // - metadata in relocIter
+  // - nmethod that has reference to old methods.
+  // - nmethod with reference to field of redefined class
+  // - metadata is redefined class
+  // - metadata is constant pool of redefined class
+  HasEvolDependencyDcevm check_evol;
+  metadata_do(&check_evol);
+
+  bool has_evol_dependency = check_evol.has_evolv_dependency();
+  if (has_evol_dependency && log_is_enabled(Debug, redefine, class, nmethod)) {
+    ResourceMark rm;
+    log_debug(redefine, class, nmethod)
+    ("DCEVM Found evol dependency of nmethod %s.%s(%s) compile_id=%d compiler=%s on in nmethod metadata",
+            _method->method_holder()->external_name(),
+            _method->name()->as_C_string(),
+            _method->signature()->as_C_string(),
+            compile_id(),
+            is_compiled_by_c1() ? "c1" : (is_compiled_by_c2() ? "c2" : "unknown"));
+  }
+  return has_evol_dependency;;
 }
 
 int nmethod::total_size() const {
