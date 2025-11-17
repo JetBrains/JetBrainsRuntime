@@ -107,6 +107,9 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
 
     @Override
     protected void doDropDone(boolean success, int dropAction, boolean isLocal) {
+        if (success && currentOffer != null) {
+            currentOffer.finishDnD();
+        }
         reset();
     }
 
