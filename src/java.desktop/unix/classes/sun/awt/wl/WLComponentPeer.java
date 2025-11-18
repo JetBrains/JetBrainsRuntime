@@ -113,6 +113,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private boolean repositionPopup = false; // protected by stateLock
     private boolean resizePending = false; // protected by stateLock
 
+    private static final boolean shadowEnabled = Boolean.parseBoolean(System.getProperty("sun.awt.wl.Shadow", "true"));
+
     static {
         initIDs();
     }
@@ -121,6 +123,10 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
      * Standard peer constructor, with corresponding Component
      */
     WLComponentPeer(Component target) {
+        this(target, true);
+    }
+
+    protected WLComponentPeer(Component target, boolean dropShadow) {
         this.target = target;
         this.background = target.getBackground();
         Dimension size = constrainSize(target.getBounds().getSize());
@@ -135,14 +141,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             log.fine("WLComponentPeer: target=" + target + " with size=" + wlSize);
         }
 
-        boolean shadowEnabled = Boolean.parseBoolean(System.getProperty("sun.awt.wl.Shadow", "true"));
-        if (shadowEnabled) {
+        if (dropShadow && shadowEnabled) {
             shadow = new ShadowImpl(targetIsWlPopup() ? ShadowImage.POPUP_SHADOW_SIZE : ShadowImage.WINDOW_SHADOW_SIZE);
         } else {
             shadow = new NilShadow();
         }
-        // TODO
-        // setup parent window for target
     }
 
     int getDisplayScale() {
@@ -452,6 +455,10 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         shadow.updateSurfaceData();
     }
 
+    public boolean isResizable() {
+        return true;
+    }
+
     @Override
     public void updateSurfaceSize() {
         assert SunToolkit.isAWTLockHeldByCurrentThread();
@@ -472,9 +479,15 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
         wlSurface.updateSurfaceSize(surfaceWidth, surfaceHeight);
         nativeSetWindowGeometry(nativePtr, 0, 0, surfaceWidth, surfaceHeight);
-        nativeSetMinimumSize(nativePtr, surfaceMinSize.width, surfaceMinSize.height);
-        if (surfaceMaxSize != null) {
-            nativeSetMaximumSize(nativePtr, surfaceMaxSize.width, surfaceMaxSize.height);
+        if (isResizable()) {
+            nativeSetMinimumSize(nativePtr, surfaceMinSize.width, surfaceMinSize.height);
+            if (surfaceMaxSize != null) {
+                nativeSetMaximumSize(nativePtr, surfaceMaxSize.width, surfaceMaxSize.height);
+            }
+        } else {
+            // Prevent SSD from resizing windows that are not meant to be resizeable
+            nativeSetMinimumSize(nativePtr, surfaceWidth, surfaceHeight);
+            nativeSetMaximumSize(nativePtr, surfaceWidth, surfaceHeight);
         }
 
         if (popupNeedsReposition()) {
