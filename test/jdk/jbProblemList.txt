@@ -276,6 +276,7 @@ java/awt/LightweightComponent/LightweightDragTest.java JBR-6557 windows-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050,JBR-8313 windows-all,macosx-all,linux-all
 java/awt/LightweightComponent/MultipleAddNotifyTest/MultipleAddNotifyTest.java JBR-8092 linux-all
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-8146 windows-x64
+java/awt/List/SetBackgroundTest/SetBackgroundTest.java JBR-6509 generic-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java JBR-6633 linux-all,windows-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.java 8073636,JBR-4211 macosx-all,linux-all
 java/awt/EventDispatchThread/PropertyPermissionOnEDT/PropertyPermissionOnEDT.java JBR-5225 windows-all
