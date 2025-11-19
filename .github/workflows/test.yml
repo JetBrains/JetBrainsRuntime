@@ -132,6 +132,13 @@ jobs:
           echo '/usr/local/opt/make/libexec/gnubin' >> $GITHUB_PATH
         if: runner.os == 'macOS'
 
+      # Fixes JDK-8336451
+      - name: 'Update /etc/hosts on macos'
+        run: |
+          echo -e "127.0.0.1     $(hostname -f) $(hostname -s)" | sudo tee -a /etc/hosts
+          echo -e "" | sudo tee -a /etc/hosts
+        if: runner.os == 'macOS'
+
       - name: 'Set PATH'
         id: path
         run: |
