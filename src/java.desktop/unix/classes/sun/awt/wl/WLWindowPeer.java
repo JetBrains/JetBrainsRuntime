@@ -179,7 +179,6 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
 
     @Override
     public void updateIconImages() {
-        // TODO: allow removing icon
         List<Image> iconImages = getWindow().getIconImages();
         if (iconImages == null || iconImages.isEmpty()) {
             setIcon(0, null);
