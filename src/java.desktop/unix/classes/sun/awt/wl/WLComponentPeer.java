@@ -898,6 +898,10 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         performLocked(() -> nativeShowWindowMenu(serial, nativePtr, xNative, yNative));
     }
 
+    void setIcon(int size, int[] pixels) {
+        performLocked(() -> nativeSetIcon(nativePtr, size, pixels));
+    }
+
     @Override
     public ColorModel getColorModel() {
         GraphicsConfiguration graphicsConfig = target.getGraphicsConfiguration();
@@ -1161,6 +1165,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private native void nativeSetMinimumSize(long ptr, int width, int height);
     private native void nativeSetMaximumSize(long ptr, int width, int height);
     private native void nativeShowWindowMenu(long serial, long ptr, int x, int y);
+    private native void nativeSetIcon(long ptr, int size, int[] pixels);
 
     static long getNativePtrFor(Component component) {
         final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
