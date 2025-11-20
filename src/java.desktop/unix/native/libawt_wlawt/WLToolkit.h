@@ -33,7 +33,7 @@
 #include "relative-pointer-unstable-v1.h"
 #include "text-input-unstable-v3.h"
 #include "xdg-decoration-unstable-v1.h"
-
+#include "xdg-toplevel-icon-v1.h"
 #include "jvm_md.h"
 #include "jni_util.h"
 
@@ -73,6 +73,7 @@ extern struct zxdg_output_manager_v1 *zxdg_output_manager_v1; // optional, check
 extern struct zwp_relative_pointer_manager_v1* relative_pointer_manager;
 extern struct zwp_text_input_manager_v3 *zwp_text_input_manager; // optional, check for NULL before use
 extern struct zxdg_decoration_manager_v1* xdg_decoration_manager; // optional, check for NULL before use
+extern struct xdg_toplevel_icon_manager_v1 *xdg_toplevel_icon_manager; // optional, check for NULL before use
 
 JNIEnv *getEnv();
 
