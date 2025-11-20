@@ -33,6 +33,7 @@ WAYLAND_BASIC_PROTOCOL_FILES := \
         $(WAYLAND_PROTOCOLS_ROOT)/stable/viewporter/viewporter.xml \
         $(WAYLAND_PROTOCOLS_ROOT)/stable/xdg-shell/xdg-shell.xml \
         $(WAYLAND_PROTOCOLS_ROOT)/staging/xdg-activation/xdg-activation-v1.xml \
+        $(WAYLAND_PROTOCOLS_ROOT)/staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml \
         $(WAYLAND_PROTOCOLS_ROOT)/unstable/primary-selection/primary-selection-unstable-v1.xml \
         $(WAYLAND_PROTOCOLS_ROOT)/unstable/xdg-output/xdg-output-unstable-v1.xml \
         $(WAYLAND_PROTOCOLS_ROOT)/unstable/relative-pointer/relative-pointer-unstable-v1.xml \
