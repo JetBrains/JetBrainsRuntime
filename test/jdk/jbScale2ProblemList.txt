@@ -181,8 +181,8 @@ javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7965,JBR-8345 w
 javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-8345 linux-all
 javax/swing/JButton/TestGlyphBreak.java nobug generic-all
 javax/swing/JComboBox/6559152/bug6559152.java JBR-8964 windows-all
-javax/swing/JComboBox/8033069/bug8033069ScrollBar.java JBR-9583 windows-x64
-javax/swing/JComboBox/8033069/bug8033069NoScrollBar.java JBR-9342 windows-x64
+javax/swing/JComboBox/8033069/bug8033069ScrollBar.java JBR-9583 windows-all
+javax/swing/JComboBox/8033069/bug8033069NoScrollBar.java JBR-9583 windows-all
 javax/swing/JComboBox/DisabledComboBoxFontTestAuto.java nobug generic-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java nobug generic-all
 javax/swing/JInternalFrame/8069348/bug8069348.java nobug generic-all
