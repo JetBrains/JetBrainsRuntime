@@ -39,7 +39,9 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dialog;
 import java.awt.Font;
+import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
+import java.awt.Image;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
@@ -51,6 +53,7 @@ import java.awt.image.BufferedImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;
 import java.lang.ref.WeakReference;
+import java.util.List;
 
 public class WLWindowPeer extends WLComponentPeer implements WindowPeer, SurfacePixelGrabber {
     private static Font defaultFont;
@@ -180,7 +183,38 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
 
     @Override
     public void updateIconImages() {
-        // No support for this from Wayland, icon is a desktop integration feature.
+        List<Image> iconImages = getWindow().getIconImages();
+        if (iconImages == null || iconImages.isEmpty()) {
+            setIcon(0, null);
+            return;
+        }
+
+        Image image = iconImages.stream()
+                .filter(x -> x.getWidth(null) > 0 && x.getHeight(null) > 0)
+                .filter(x -> x.getWidth(null) == x.getHeight(null))
+                .max((a, b) -> Integer.compare(a.getWidth(null), b.getWidth(null)))
+                .orElse(null);
+        if (image == null) {
+            return;
+        }
+
+        int width = image.getWidth(null);
+        int height = image.getHeight(null);
+        int size = width;
+
+        BufferedImage bufferedImage;
+        if (image instanceof BufferedImage && ((BufferedImage) image).getType() == BufferedImage.TYPE_INT_ARGB) {
+            bufferedImage = (BufferedImage) image;
+        } else {
+            bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = bufferedImage.createGraphics();
+            g.drawImage(image, 0, 0, null);
+            g.dispose();
+        }
+
+        int[] pixels = new int[width * height];
+        bufferedImage.getRGB(0, 0, width, height, pixels, 0, width);
+        setIcon(size, pixels);
     }
 
     @Override
