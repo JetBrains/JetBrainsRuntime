@@ -84,6 +84,7 @@ import java.awt.peer.WindowPeer;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -141,6 +142,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private static Boolean sunAwtDisableGtkFileDialogs = null;
 
     private static final boolean isKDE;
+
+    // NOTE: xdg_toplevel_icon_v1 is pretty much only supported on KDE, and KWin always sends 96px as the icon size,
+    // regardless of the display resolution, scale, or anything else.
+    // TODO: this is currently unused
+    private static final java.util.List<Integer> preferredIconSizes = new ArrayList<>();
 
     private static native void initIDs(long displayPtr);
 
@@ -1119,5 +1125,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     public static boolean isKDE() {
         return isKDE;
+    }
+
+    // called from native
+    private static void handleToplevelIconSize(int size) {
+        preferredIconSizes.add(size);
     }
 }
