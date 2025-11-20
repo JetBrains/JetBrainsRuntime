@@ -1104,7 +1104,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     final void activate() {
         // "The serial can come from an input or focus event."
-        long serial = getSerialForActivaction();
+        long serial = getSerialForActivation();
         if (serial != 0) {
             performLocked(() -> {
                 long surface = WLToolkit.getInputState().surfaceForKeyboardInput();
@@ -1117,8 +1117,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
-    private static long getSerialForActivaction() {
-        long serial = WLToolkit.getInputState().keyboardEnterSerial(); // a focus event
+    private static long getSerialForActivation() {
+        long serial = WLToolkit.isKDE() ? 0 : WLToolkit.getInputState().keyboardEnterSerial(); // a focus event
         if (serial == 0) { // may have just left one surface and not yet entered another
             serial = WLToolkit.getInputState().keySerial(); // an input event
         }
