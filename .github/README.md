@@ -32,7 +32,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 | IDE Version | Latest JBR                                                                                              | Date Released |
 |-------------|---------------------------------------------------------------------------------------------------------|---------------|
 | 2025.3      | [21.0.8-b1163.69](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.8b1163.69)| 27-Oct-2025   |
-| 2025.2      | [21.0.9-b1038.75](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.9b1038.75)| 02-Nov-2025   |
+| 2025.2      | [21.0.9-b1038.76](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.9b1038.76)| 19-Nov-2025   |
 | 2025.1      | [21.0.9-b895.147](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.9b895.147)| 02-Nov-2025   |
 | 2024.3      | [21.0.6-b631.52](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.7b631.52)  | 15-May-2025   |
 | 2024.2      | [21.0.4-b509.40](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.7b509.40)  | 15-May-2025   |
