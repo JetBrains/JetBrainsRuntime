@@ -184,7 +184,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
-    boolean isVisible() {
+    final boolean isVisible() {
         WLToolkit.awtLock();
         try {
             return wlSurface != null && visible;
@@ -1661,6 +1661,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
                           boolean active, boolean maximized, boolean fullscreen) {
         assert SunToolkit.isAWTLockHeldByCurrentThread();
+
+        if (!isVisible()) {
+            // We can still get a "configured" event from a surface we've just destroyed; ignore it.
+            return;
+        }
 
         // NB: The width and height, as well as X and Y arguments, specify the size and the location
         //     of the window in surface-local coordinates.
