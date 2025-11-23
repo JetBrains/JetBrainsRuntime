@@ -52,6 +52,8 @@ import java.util.stream.Collectors;
 import jdk.internal.module.Modules;
 import jdk.internal.vm.annotation.IntrinsicCandidate;
 
+import com.jetbrains.exported.JBRApi;
+
 /*
  * Copyright 2003 Wily Technology, Inc.
  */
@@ -682,5 +684,83 @@ public class InstrumentationImpl implements Instrumentation {
             StackWalker w = AccessController.doPrivileged(pa);
             walker = w;
         }
+    }
+
+    @JBRApi.Provided("Hotswap.Listener")
+    private interface HotswapListener {
+        void onClassesRedefined();
+    }
+
+    private static List<HotswapListener> hotswapListeners;
+    private static final Object hotswapLock = new Object();
+
+    @JBRApi.Provides("Hotswap#addListener")
+    private static void addHotswapListener(HotswapListener l) {
+        if (l == null) {
+            return;
+        }
+        synchronized(hotswapLock) {
+            if (hotswapListeners == null) {
+                hotswapListeners = new ArrayList<>();
+            }
+            if (indexOfHotswapListenerLocked(l) == -1) {
+                hotswapListeners.add(l);
+            }
+        }
+    }
+
+    @JBRApi.Provides("Hotswap#removeListener")
+    private static boolean removeHotswapListener(HotswapListener l) {
+        if (l == null) {
+            return false;
+        }
+        synchronized(hotswapLock) {
+            if (hotswapListeners == null) {
+                return false;
+            }
+
+            int index = indexOfHotswapListenerLocked(l);
+            if (index >= 0) {
+                hotswapListeners.remove(index);
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    public static void callHotswapOnClassesRedefined() {
+        List<HotswapListener> copy;
+        synchronized(hotswapLock) {
+            if (hotswapListeners == null)
+                return;
+            copy = new ArrayList<>(hotswapListeners);
+        }
+        for (HotswapListener l: copy) {
+            try {
+                l.onClassesRedefined();
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
+        }
+    }
+
+    private static int indexOfHotswapListenerLocked(HotswapListener l) {
+        if (hotswapListeners == null || l == null) {
+            return -1;
+        }
+        Object unproxied = ((com.jetbrains.exported.JBRApiSupport.Proxy) l).$getProxyTarget();
+        if (unproxied != null) {
+            for (int i=0; i<hotswapListeners.size(); i++) {
+                HotswapListener hl = hotswapListeners.get(i);
+                // 'hl' is a proxy whose equals() delegates to its underlying target.
+                // Compare against the unwrapped proxy target of 'l' (not the proxy itself),
+                // otherwise equals() may not match the original listener instance.
+                if (hl.equals(unproxied)) {
+                    return i;
+                }
+            }
+        }
+        return -1;
     }
 }
