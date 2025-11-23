@@ -513,6 +513,51 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
   return error;
 } /* end RetransformClasses */
 
+static void JBR_call_hotswap_on_classes_redefined() {
+  JavaThread* thread = JavaThread::current();
+  if (thread == nullptr) {
+    return;
+  }
+
+  JNIEnv* env = thread->jni_environment();
+  if (env == nullptr) {
+    return;
+  }
+
+  static jclass instrumentationImplClass = nullptr;
+  static jmethodID callHotswapOnClassesRedefinedMID = nullptr;
+
+  if (instrumentationImplClass == nullptr) {
+    jclass cls = env->FindClass("sun/instrument/InstrumentationImpl");
+    if (cls == nullptr) {
+      if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+      }
+      return;
+    }
+    instrumentationImplClass = (jclass)env->NewGlobalRef(cls);
+    env->DeleteLocalRef(cls);
+
+    callHotswapOnClassesRedefinedMID = env->GetStaticMethodID(
+            instrumentationImplClass,
+            "callHotswapOnClassesRedefined",
+            "()V"
+    );
+    if (callHotswapOnClassesRedefinedMID == nullptr) {
+      if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+      }
+      return;
+    }
+  }
+
+  env->CallStaticVoidMethod(instrumentationImplClass, callHotswapOnClassesRedefinedMID);
+
+  if (env->ExceptionCheck()) {
+    env->ExceptionClear();
+  }
+}
+
 
 // class_count - pre-checked to be greater than or equal to 0
 // class_definitions - pre-checked for null
@@ -543,6 +588,8 @@ JvmtiEnv::RedefineClasses(jint class_count, const jvmtiClassDefinition* class_de
     event.set_classCount(class_count);
     event.set_redefinitionId(op_id);
     event.commit();
+
+    JBR_call_hotswap_on_classes_redefined();
   }
   return error;
 } /* end RedefineClasses */

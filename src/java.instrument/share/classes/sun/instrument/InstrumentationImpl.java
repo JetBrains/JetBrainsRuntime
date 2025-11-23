@@ -52,6 +52,8 @@ import java.util.stream.Collectors;
 import jdk.internal.module.Modules;
 import jdk.internal.vm.annotation.IntrinsicCandidate;
 
+import com.jetbrains.exported.JBRApi;
+
 /*
  * Copyright 2003 Wily Technology, Inc.
  */
@@ -681,6 +683,51 @@ public class InstrumentationImpl implements Instrumentation {
             @SuppressWarnings("removal")
             StackWalker w = AccessController.doPrivileged(pa);
             walker = w;
+        }
+    }
+
+    @JBRApi.Provided("Hotswap.Listener")
+    private interface HotswapListener {
+        void onClassesRedefined();
+    }
+
+    private static volatile List<HotswapListener> hotswapListeners;
+    private static final Object hotswapLock = new Object();
+
+    @JBRApi.Provides("Hotswap#addListener")
+    private static void addListener(HotswapListener l) {
+        synchronized(hotswapLock) {
+            if (hotswapListeners == null) {
+                hotswapListeners = new ArrayList<>();
+            }
+            // 'l' is a proxy, but contains() uses equals(), which is delegated
+            // to the underlying listener, so duplicate checks still work.
+            if (!hotswapListeners.contains(l)) {
+                hotswapListeners.add(l);
+            }
+        }
+    }
+
+    @JBRApi.Provides("Hotswap#removeListener")
+    private static boolean removeListener(HotswapListener l) {
+        synchronized(hotswapLock) {
+            return hotswapListeners.remove(l);
+        }
+    }
+
+    public static void callHotswapOnClassesRedefined() {
+        List<HotswapListener> copy = null;
+        synchronized(hotswapLock) {
+            if (hotswapListeners == null)
+                return;
+            copy = new ArrayList<>(hotswapListeners);
+        }
+        for (HotswapListener l: copy) {
+            try {
+                l.onClassesRedefined();
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
         }
     }
 }
