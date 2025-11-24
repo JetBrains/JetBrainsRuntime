@@ -399,6 +399,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 // without any buffer attached"
                 shadow.commitSurface();
                 wlSurface.commit();
+                if (!isWlPopup && target.getParent() != null) activate();
 
                 ((WLToolkit) Toolkit.getDefaultToolkit()).flush();
             });
