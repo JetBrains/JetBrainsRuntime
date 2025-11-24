@@ -399,6 +399,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 // without any buffer attached"
                 shadow.commitSurface();
                 wlSurface.commit();
+                if (!isWlPopup && target.getParent() != null) activate();
 
                 ((WLToolkit) Toolkit.getDefaultToolkit()).flush();
             });
@@ -1115,15 +1116,20 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     private static long getSerialForActivation() {
-        long serial = WLToolkit.isKDE() ? 0 : WLToolkit.getInputState().keyboardEnterSerial(); // a focus event
-        if (serial == 0) { // may have just left one surface and not yet entered another
-            serial = WLToolkit.getInputState().keySerial(); // an input event
-        }
-        if (serial == 0) {
-            // The pointer button serial seems to not work with Mutter, but may work
-            // with other implementations, so let's keep it as an input event serial
-            // of the last resort.
-            serial = WLToolkit.getInputState().pointerButtonSerial();
+        long serial;
+        if (WLToolkit.isKDE()) {
+            serial = WLToolkit.getInputState().latestInputSerial();
+        } else {
+            serial = WLToolkit.getInputState().keyboardEnterSerial(); // a focus event
+            if (serial == 0) { // may have just left one surface and not yet entered another
+                serial = WLToolkit.getInputState().keySerial(); // an input event
+            }
+            if (serial == 0) {
+                // The pointer button serial seems to not work with Mutter but may work
+                // with other implementations, so let's keep it as an input event serial
+                // of the last resort.
+                serial = WLToolkit.getInputState().pointerButtonSerial();
+            }
         }
         return serial;
     }
