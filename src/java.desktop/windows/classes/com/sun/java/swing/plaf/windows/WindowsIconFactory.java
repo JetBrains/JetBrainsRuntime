@@ -882,8 +882,15 @@ public class WindowsIconFactory implements Serializable
                     }
                 }
                 if (icon != null) {
-                    icon.paintIcon(c, g, x + VistaMenuItemCheckIconFactory.getIconWidth(),
-                                   y + OFFSET);
+                    if (WindowsGraphicsUtils.isLeftToRight(c)) {
+                        icon.paintIcon(c, g,
+                                       x + VistaMenuItemCheckIconFactory.getIconWidth(),
+                                       y + OFFSET);
+                    } else {
+                        icon.paintIcon(c, g,
+                                       x - VistaMenuItemCheckIconFactory.getIconWidth() + 2 * OFFSET,
+                                       y + OFFSET);
+                    }
                 }
             }
             private static WindowsMenuItemUIAccessor getAccessor(
