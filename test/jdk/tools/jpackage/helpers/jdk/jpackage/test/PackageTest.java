@@ -27,6 +27,7 @@ import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -270,7 +271,7 @@ public final class PackageTest extends RunnablePackageTest {
                 TKit.trace(String.format("Use desktop to open [%s] file",
                         testFile));
                 Desktop.getDesktop().open(testFile.toFile());
-                TKit.waitForFileCreated(appOutput, 7);
+                TKit.waitForFileCreated(appOutput, Duration.ofSeconds(7), Duration.ofSeconds(3));
 
                 List<String> expectedArgs = new ArrayList<>(List.of(
                         faLauncherDefaultArgs));
