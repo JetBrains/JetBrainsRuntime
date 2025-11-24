@@ -10,6 +10,7 @@ java/awt/Toolkit/AWTThreadingTest.java              nobug macosx-all,linux-all,w
 java/awt/Toolkit/AWTThreadingCMenuTest.java         nobug macosx-all,linux-all,windows-all
 java/awt/Focus/TemporaryLostComponentDeadlock.java JBR-5734 windows-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java nobug macosx-all,linux-all,windows-all
+java/awt/Label/ContainerValidateTest.java JBR-9696 windows-x64
 java/awt/List/NofocusListDblClickTest/NofocusListDblClickTest.java nobug macosx-all,linux-all,windows-all
 java/awt/List/TriggerActionEventTest.java JBR-7621 windows-all
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-8996 windows-x64
@@ -53,6 +54,7 @@ javax/swing/JFileChooser/4966171/bug4966171.java JBR-8855 windows-x64
 javax/swing/JFileChooser/DeserializedJFileChooser/DeserializedJFileChooserTest.java JBR-8855 windows-x64
 javax/swing/JFileChooser/FileChooserListenerLeak.java JBR-8855 windows-x64
 javax/swing/JFileChooser/JFileChooserFontReset.java  JBR-8855 windows-x64
+javax/swing/JFileChooser/JFileChooserSetLocationTest.java JBR-9702 windows-x64
 javax/swing/JInternalFrame/bug4732229.java JBR-9131  windows-x64
 javax/swing/JInternalFrame/Test6505027.java         nobug macosx-all,linux-all,windows-all
 javax/swing/JMenuBar/MenuBarRTLBug.java JBR-7385 windows-x64
