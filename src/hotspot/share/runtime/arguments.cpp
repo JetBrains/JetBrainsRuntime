@@ -22,6 +22,10 @@
  *
  */
 
+#ifdef __linux
+#include <dlfcn.h>
+#endif
+
 #include "cds/aotLogging.hpp"
 #include "cds/cds_globals.hpp"
 #include "cds/cdsConfig.hpp"
@@ -3833,6 +3837,34 @@ void Arguments::set_compact_headers_flags() {
 #endif
 }
 
+#ifdef __linux
+static const char * get_toolkit_name() {
+  const char * toolkit_name = "XToolkit";
+  void* libwayland = dlopen(VERSIONED_JNI_LIB_NAME("wayland-client", "0"), RTLD_LAZY | RTLD_LOCAL);
+  if (!libwayland) {
+    // Fallback to any development version available on the system
+    libwayland = dlopen(JNI_LIB_NAME("wayland-client"), RTLD_LAZY | RTLD_LOCAL);
+  }
+  if (libwayland) {
+    typedef void* (*wl_display_connect_t)(const char*);
+    typedef void (*wl_display_disconnect_t)(void*);
+
+    wl_display_connect_t fp_wl_display_connect = (wl_display_connect_t) dlsym(libwayland, "wl_display_connect");
+    wl_display_disconnect_t fp_wl_display_disconnect = (wl_display_disconnect_t) dlsym(libwayland, "wl_display_disconnect");
+
+    if (fp_wl_display_connect && fp_wl_display_disconnect) {
+      void* display = fp_wl_display_connect(NULL);
+      if (display) {
+        toolkit_name = "WLToolkit";
+        fp_wl_display_disconnect(display);
+      }
+    }
+    dlclose(libwayland);
+  }
+  return toolkit_name;
+}
+#endif
+
 jint Arguments::apply_ergo() {
   // Set flags based on ergonomics.
   jint result = set_ergonomics_flags();
@@ -3902,6 +3934,17 @@ jint Arguments::apply_ergo() {
     log_info(verification)("Turning on remote verification because local verification is on");
     FLAG_SET_DEFAULT(BytecodeVerificationRemote, true);
   }
+
+#ifdef __linux
+  // Replace -Dawt.toolkit.name=auto with either XToolkit (the default) or
+  // WLToolkit, if we are able to connect to the Wayland server.
+  const char* toolkit_name = PropertyList_get_value(_system_properties, "awt.toolkit.name");
+  if (toolkit_name && strcmp(toolkit_name, "auto") == 0) {
+    const char* toolkit_name = get_toolkit_name();
+    PropertyList_unique_add(&_system_properties, "awt.toolkit.name", toolkit_name,
+                            AddProperty, WriteableProperty, ExternalProperty);
+  }
+#endif
 
 #ifndef PRODUCT
   if (!LogVMOutput && FLAG_IS_DEFAULT(LogVMOutput)) {
