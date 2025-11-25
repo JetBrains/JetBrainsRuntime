@@ -24,6 +24,7 @@ java/awt/Robot/NonEmptyErrorStream.java JBR-7375 windows-x64
 java/awt/Robot/RobotWheelTest/RobotWheelTest.java JBR-5397,JBR-7377 macosx-all,windows-x64
 java/awt/Scrollbar/ScrollbarCtrlClickTest.java JBR-9684 windows-x64
 java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java JBR-5397,JBR-7531 macosx-all,windows-x64
+java/awt/Scrollbar/UnitIncrementTest.java JBR-9712 windows-x64
 java/awt/ScrollPane/ScrollPaneLimitation.java JBR-8579 windows-x64
 java/awt/ScrollPane/ScrollPaneRemoveAdd.java JBR-8580 windows-x64
 java/awt/TextArea/Mixing/TextAreaMixing.java JBR-8581 windows-x64
@@ -49,6 +50,7 @@ javax/swing/JComboBox/EditableComboBoxPopupPos.java JBR-7383 windows-x64
 javax/swing/JFileChooser/4150029/bug4150029.java JBR-9419 windows-x64
 javax/swing/JFileChooser/4847375/bug4847375.java JBR-8855 windows-x64
 javax/swing/JFileChooser/4966171/bug4966171.java JBR-8855 windows-x64
+javax/swing/JFileChooser/bug4759934.java JBR-9711 windows-x64
 javax/swing/JFileChooser/FileChooserListenerLeak.java JBR-8855 windows-x64
 javax/swing/JFileChooser/JFileChooserFontReset.java JBR-8855 windows-x64
 javax/swing/JInternalFrame/Test6505027.java         nobug macosx-all,linux-all,windows-all
