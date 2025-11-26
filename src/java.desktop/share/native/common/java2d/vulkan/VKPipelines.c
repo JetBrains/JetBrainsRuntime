@@ -34,7 +34,7 @@
 #undef SHADER_ENTRY
 #undef BYTECODE_END
 
-inline void hash(uint32_t* result, int i) { // Good for hashing enums.
+static void hash(uint32_t* result, int i) { // Good for hashing enums.
     uint32_t x = (uint32_t) i;
     x = ((x >> 16U) ^ x) * 0x45d9f3bU;
     x = ((x >> 16U) ^ x) * 0x45d9f3bU;
