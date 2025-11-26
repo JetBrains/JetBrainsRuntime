@@ -54,11 +54,9 @@ $(eval $(call SetupJavaCompilation, BUILD_TEST_LIB_JAR, \
     JAR := $(TEST_LIB_SUPPORT)/test-lib.jar, \
     DISABLED_WARNINGS := try deprecation rawtypes unchecked serial cast removal preview, \
     JAVAC_FLAGS := --add-exports java.base/sun.security.util=ALL-UNNAMED \
-        --add-exports java.base/jdk.internal.classfile=ALL-UNNAMED \
-        --add-exports java.base/jdk.internal.classfile.attribute=ALL-UNNAMED \
-        --add-exports java.base/jdk.internal.classfile.constantpool=ALL-UNNAMED \
-        --add-exports java.base/jdk.internal.classfile.java.lang.constant=ALL-UNNAMED \
         --add-exports java.base/jdk.internal.module=ALL-UNNAMED \
+        --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED \
+        --add-exports java.base/jdk.internal.org.objectweb.asm.commons=ALL-UNNAMED \
         --enable-preview, \
 ))
 
