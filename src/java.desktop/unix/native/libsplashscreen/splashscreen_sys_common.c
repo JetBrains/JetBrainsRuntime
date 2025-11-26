@@ -38,7 +38,7 @@
 #include <unistd.h>
 
 const int POLL_EVENT_TIMEOUT = 50;
-const int CURSOR_UPDATE_TIME = 50;
+const unsigned CURSOR_UPDATE_TIME = 50;
 
 void SplashEventLoop(Splash * splash);
 bool SplashCreateWindow(Splash * splash);
