@@ -206,7 +206,7 @@ VKTexturePool *VKRenderer_GetTexturePool(VKRenderer* renderer) {
 /**
  * Helper function for POOL_TAKE macro.
  */
-inline VkBool32 VKRenderer_CheckPoolEntryAvailable(VKRenderer* renderer, void* entry) {
+static VkBool32 VKRenderer_CheckPoolEntryAvailable(VKRenderer* renderer, void* entry) {
     if (entry == NULL) return VK_FALSE;
     uint64_t timestamp = *((uint64_t*) entry);
     return renderer->readTimestamp >= timestamp ||
@@ -580,14 +580,14 @@ void VKRenderer_Flush(VKRenderer* renderer) {
 /**
  * Get Color RGBA components in a format suitable for the current render pass.
  */
-inline RGBA VKRenderer_GetRGBA(VKSDOps* surface, Color color) {
+static RGBA VKRenderer_GetRGBA(VKSDOps* surface, Color color) {
     return VKUtil_GetRGBA(color, surface->renderPass->outAlphaType);
 }
 
 /**
  * Record draw command, if there are any pending vertices in the vertex buffer
  */
-inline void VKRenderer_FlushDraw(VKSDOps* surface) {
+static void VKRenderer_FlushDraw(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     if (surface->renderPass->vertexCount > 0) {
         assert(surface->renderPass->pendingCommands);
