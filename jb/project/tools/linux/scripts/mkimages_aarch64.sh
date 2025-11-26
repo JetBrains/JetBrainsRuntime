@@ -27,6 +27,12 @@ JCEF_PATH=${JCEF_PATH:=./jcef_linux_aarch64}
 function do_configure {
 
   GTK_SHELL_PATH=/gtk-shell.xml
+  WAYLAND_PROTOCOLS_PATH=/opt/wayland-protocols
+  WITH_WAYLAND_PROTOCOLS=
+
+  if [ -e "$WAYLAND_PROTOCOLS_PATH" ]; then
+    WITH_WAYLAND_PROTOCOLS="--with-wayland-protocols=$WAYLAND_PROTOCOLS_PATH"
+  fi
 
   if [ ! -e $GTK_SHELL_PATH ]; then
     echo $GTK_SHELL_PATH" does not exist"
@@ -54,6 +60,7 @@ function do_configure {
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
     $WITH_BUNDLED_FREETYPE \
+    $WITH_WAYLAND_PROTOCOLS \
     || do_exit $?
 }
 
