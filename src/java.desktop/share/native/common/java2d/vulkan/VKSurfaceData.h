@@ -87,7 +87,7 @@ JNIEXPORT VKSDOps* VKSD_CreateSurface(JNIEnv* env, jobject vksd, jint drawableTy
  */
 JNIEXPORT void VKSD_InitWindowSurface(JNIEnv *env, jobject vksd, VKWinSD_SurfaceInitCallback initCallback, void* data);
 
-inline VkBool32 VKSD_IsOpaque(VKSDOps* vksdo) {
+static inline VkBool32 VKSD_IsOpaque(VKSDOps* vksdo) {
     return vksdo->drawableFormat & VKSD_FORMAT_OPAQUE_BIT ? VK_TRUE : VK_FALSE;
 }
 
