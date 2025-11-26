@@ -67,6 +67,7 @@ class JfrThreadLocal {
   volatile jint _entering_suspend_flag;
   mutable volatile int _critical_section;
   u2 _vthread_epoch;
+  mutable u2 _generation;
   bool _vthread_excluded;
   bool _jvm_thread_excluded;
   bool _vthread;
@@ -271,6 +272,9 @@ class JfrThreadLocal {
   bool is_included() const;
   static bool is_excluded(const Thread* thread);
   static bool is_included(const Thread* thread);
+
+  // Serialization state.
+  bool should_write() const;
 
   static Arena* dcmd_arena(JavaThread* jt);
 
