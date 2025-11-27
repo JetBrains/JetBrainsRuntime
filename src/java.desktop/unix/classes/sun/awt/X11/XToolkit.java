@@ -1992,10 +1992,15 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         awtLock();
         try {
             if (numberOfButtons == 0) {
-                if (XdgDesktopPortal.isRemoteDesktop()
-                        && ScreencastHelper.isAvailable()) {
-                    numberOfButtons = 3;
-                } else {
+                // The commented-out code is introduced in 8351907 and causes inability to use
+                //   any mouse extra buttons under XWayland GNOME of version >= 47,
+                //   thus causing JBR-9713, JBR-9714, JBR-9715.
+                // Please don't enable it back until a proper fix appears in OpenJDK.
+                //
+                //if (XdgDesktopPortal.isRemoteDesktop()
+                //        && ScreencastHelper.isAvailable()) {
+                //    numberOfButtons = 3;
+                //} else {
                     numberOfButtons = getNumberOfButtonsImpl();
                     numberOfButtons = (numberOfButtons > MAX_BUTTONS_SUPPORTED) ? MAX_BUTTONS_SUPPORTED : numberOfButtons;
                     //4th and 5th buttons are for wheel and shouldn't be reported as buttons.
@@ -2007,7 +2012,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                     } else if (numberOfButtons == 4 || numberOfButtons == 5) {
                         numberOfButtons = 3;
                     }
-                }
+                //}
             }
             //Assume don't have to re-query the number again and again.
             return numberOfButtons;
