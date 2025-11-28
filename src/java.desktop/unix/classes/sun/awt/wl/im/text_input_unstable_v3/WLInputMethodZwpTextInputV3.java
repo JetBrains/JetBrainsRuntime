@@ -699,6 +699,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                     String.format("awtPostIMESafely(...): posting a new InputMethodEvent=%s. this=%s.", ime, this),
                     new Throwable("Stacktrace")
                 );
+
+                // JBR-9719: reset ime's text iterator after logging
+                final var textIterToReset = ime.getText();
+                if (textIterToReset != null) textIterToReset.first();
             }
 
             SunToolkit.postEvent(SunToolkit.targetToAppContext(clientComponent), ime);
