@@ -358,7 +358,7 @@ java/awt/Clipboard/GetAltContentsTest/SystemClipboardTest.java 8234140 macosx-al
 java/awt/Clipboard/ImageTransferTest.java 8030710 generic-all
 java/awt/Clipboard/NoDataConversionFailureTest.java 8234140 macosx-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210 windows-all
-java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210,JBR-9444 windows-all,linux-6.14.0-1013-aws,linux-6.14.0-1014-aws
+java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
@@ -937,6 +937,7 @@ javax/swing/JPopupMenu/6495920/bug6495920.java JBR-6928 linux-all
 javax/swing/JPopupMenu/6515446/bug6515446.java JBR-6531 linux-all
 javax/swing/JPopupMenu/6544309/bug6544309.java JBR-6532 windows-all,linux-all
 javax/swing/JPopupMenu/8173739/TestPopupMenu.java JBR-6959 linux-aarch64
+javax/swing/JRadioButton/8033699/bug8033699.java JBR-9511 windows-10.0
 javax/swing/JRadioButton/8075609/bug8075609.java 8266085 windows-all
 javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java 8266085 windows-all
 javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java 8266085 windows-all
