@@ -83,7 +83,6 @@ import java.awt.peer.TrayIconPeer;
 import java.awt.peer.WindowPeer;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -174,29 +173,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             toolkitSystemThread.start();
 
             dataDevice = new WLDataDevice(0); // TODO: for multiseat support pass wl_seat pointer here
-
-            registerShutdownHook();
         } else {
             dataDevice = null;
         }
-    }
-
-    private void registerShutdownHook() {
-        Runnable r = () -> {
-            ArrayList<WLWindowPeer> livePeers;
-            synchronized (wlSurfaceToPeerMap) {
-                livePeers = new ArrayList<>(wlSurfaceToPeerMap.values());
-            }
-            livePeers.forEach(p -> {
-                Component target = p.getTarget();
-                if (target.isDisplayable()) {
-                    target.removeNotify();
-                }
-            });
-        };
-        Thread shutdownThread = InnocuousThread.newSystemThread("WLToolkit-Shutdown-Thread", r);
-        shutdownThread.setDaemon(true);
-        Runtime.getRuntime().addShutdownHook(shutdownThread);
     }
 
     public static synchronized boolean getSunAwtDisableGtkFileDialogs() {
