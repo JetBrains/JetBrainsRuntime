@@ -450,10 +450,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     void updateSurfaceData() {
-        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
-                getGraphicsConfiguration(), getBufferWidth(), getBufferHeight(), getDisplayScale());
+        performLocked(() -> {
+            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
+                    getGraphicsConfiguration(), getBufferWidth(), getBufferHeight(), getDisplayScale());
 
-        shadow.updateSurfaceData();
+            shadow.updateSurfaceData();
+        });
     }
 
     public boolean isResizable() {
@@ -1063,9 +1065,10 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                     log.fine(String.format("%s is updating buffer to %dx%d pixels", this, getBufferWidth(), getBufferHeight()));
                 }
             }
-            updateSurfaceData();
-            postPaintEvent();
         }
+
+        updateSurfaceData();
+        postPaintEvent();
 
         // Not sure what would need to have changed in Wayland's graphics configuration
         // to warrant destroying the peer and creating a new one from scratch.
