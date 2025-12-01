@@ -133,8 +133,16 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         }
 
         // Logical size comes from an optional protocol, so take the data from the main one, if absent
-        if (widthLogical == 0) widthLogical = width;
-        if (heightLogical == 0) heightLogical = height;
+        if (widthLogical <= 0) widthLogical = width;
+        if (heightLogical <= 0) heightLogical = height;
+
+        // Physical size may be absent for virtual outputs.
+        if (widthMm <= 0 || heightMm <= 0) {
+            // Assume a 92 DPI display
+            widthMm = (int) Math.ceil(25.4 * width / 92.0);
+            heightMm = (int) Math.ceil(25.4 * height / 92.0);
+        }
+
         String humanID = deviceNameFrom(name, make, model);
 
         WLGraphicsDevice gd = deviceWithID(wlID);
