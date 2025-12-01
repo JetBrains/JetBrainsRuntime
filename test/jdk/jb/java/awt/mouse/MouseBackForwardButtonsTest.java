@@ -91,24 +91,65 @@ public class MouseBackForwardButtonsTest extends JFrame {
         mouseButtonsTextArea.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                int button = e.getButton();
-                if (button == MouseEvent.BUTTON1) {
-                    mouseButtonsTextArea.append("-->Left mouse button pressed.\n");
-                } else if (button == MouseEvent.BUTTON2) {
-                    mouseButtonsTextArea.append("-->Middle mouse button pressed.\n");
-                } else if (button == MouseEvent.BUTTON3) {
-                    mouseButtonsTextArea.append("-->Right mouse button pressed.\n");
-                } else if (button == 4) { // Check for button 4
-                    mouseButtonsTextArea.append("-->Mouse button 4 (Back) pressed.\n");
-                } else if (button == 5) { // Check for button 5
-                    mouseButtonsTextArea.append("-->Mouse button 5 (Forward) pressed.\n");
+                final int button = e.getButton();
+
+                // On X11, ButtonPress/ButtonRelease native events use the following button indices for different buttons:
+                //   1: left mouse button
+                //   2: middle mouse button (the primary wheel)
+                //   3: right mouse button
+                //   4, 5: rotations of the primary mouse wheel (depending on the rotation direction)
+                //   6, 7: rotations of the secondary mouse wheel (it's usually used for horizontal scrolling)
+                //   >= 8: all extra buttons
+                //
+                // XToolkit handles them as the following:
+                //   1, 2, 3: mapped to MouseEvent as-is
+                //   4, 5: mapped to MouseWheelEvent
+                //   >= 6: mapped to MouseEvent with the button set to 2 less
+                //
+                // In other words, MouseEvent.getButton() under XToolkit means the following:
+                //   1, 2, 3: left mouse button, middle mouse button, right mouse button respectively
+                //   4, 5: rotations of the secondary mouse wheel
+                //   >= 6: extra buttons
+                if ("sun.awt.X11.XToolkit".equals(Toolkit.getDefaultToolkit().getClass().getName())) {
+                    if (button == MouseEvent.BUTTON1) {
+                        mouseButtonsTextArea.append("-->Left mouse button pressed.\n");
+                    } else if (button == MouseEvent.BUTTON2) {
+                        mouseButtonsTextArea.append("-->Middle mouse button pressed.\n");
+                    } else if (button == MouseEvent.BUTTON3) {
+                        mouseButtonsTextArea.append("-->Right mouse button pressed.\n");
+                    } else if (button == 4) {
+                        mouseButtonsTextArea.append("-->Horizontal scrolling (direction 1).\n");
+                    } else if (button == 5) {
+                        mouseButtonsTextArea.append("-->Horizontal scrolling (direction 2).\n");
+                    } else if (button == 6) {
+                        mouseButtonsTextArea.append("-->Mouse button 6 (Back) pressed.\n");
+                    } else if (button == 7) {
+                        mouseButtonsTextArea.append("-->Mouse button 7 (Forward) pressed.\n");
+                    } else {
+                        mouseButtonsTextArea.append("Other mouse button pressed: " + button + "\n");
+                    }
                 } else {
-                    mouseButtonsTextArea.append("Other mouse button pressed: " + button + "\n");
+                    if (button == MouseEvent.BUTTON1) {
+                        mouseButtonsTextArea.append("-->Left mouse button pressed.\n");
+                    } else if (button == MouseEvent.BUTTON2) {
+                        mouseButtonsTextArea.append("-->Middle mouse button pressed.\n");
+                    } else if (button == MouseEvent.BUTTON3) {
+                        mouseButtonsTextArea.append("-->Right mouse button pressed.\n");
+                    } else if (button == 4) { // Check for button 4
+                        mouseButtonsTextArea.append("-->Mouse button 4 (Back) pressed.\n");
+                    } else if (button == 5) { // Check for button 5
+                        mouseButtonsTextArea.append("-->Mouse button 5 (Forward) pressed.\n");
+                    } else {
+                        mouseButtonsTextArea.append("Other mouse button pressed: " + button + "\n");
+                    }
                 }
             }
         });
         mouseButtonsTextArea.setEditable(false);
-        add(mouseButtonsTextArea, BorderLayout.CENTER);
+
+        final JScrollPane mouseButtonTextAreaScrollPane = new JScrollPane(mouseButtonsTextArea, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+
+        add(mouseButtonTextAreaScrollPane, BorderLayout.CENTER);
 
         final JPanel southContainer = new JPanel(new BorderLayout());
         JButton failTestButton = new JButton("FAIL");
