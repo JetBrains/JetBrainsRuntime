@@ -47,7 +47,7 @@ import java.util.stream.IntStream;
  * @key jfr
  * @summary Verifies that corresponding JFR events are emitted in case of inlining.
  * @requires vm.hasJFR
- *
+ * @requires vm.compMode == "Xmixed"
  * @requires vm.opt.Inline == true | vm.opt.Inline == null
  * @library /test/lib
  * @modules java.base/jdk.internal.org.objectweb.asm
