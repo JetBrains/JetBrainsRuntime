@@ -320,7 +320,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         if (what.getMinY() >= where.getMaxY()) {
             what.y -= what.getMinY() - where.getMaxY();
         }
-        assert what.intersects(where);
+        assert what.intersects(where) : String.format("Failed to move %s to overlap %s", what, where);
     }
 
     Point nativeLocationForPopup(Window popup, Component popupParent, Window toplevel) {
@@ -387,7 +387,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             boolean isUnconstrained = isPopupPositionUnconstrained();
 
             performLocked(() -> {
-                assert wlSurface == null;
+                assert wlSurface == null : "Invisible window already has a Wayland surface attached";
                 wlSurface = new WLMainSurface((WLWindowPeer) this);
                 long wlSurfacePtr = wlSurface.getWlSurfacePtr();
                 if (isWlPopup) {
@@ -477,7 +477,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     @Override
     public void updateSurfaceSize() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         // Note: must be called after a buffer of proper size has been attached to the surface,
         // but the surface has not yet been committed. Otherwise, the sizes will get out of sync,
         // which may result in visual artifacts.
@@ -910,7 +910,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         //  a button press, key press, or touch down event."
         // So 'serial' must appertain to such an event.
 
-        assert serial != 0;
+        assert serial != 0 : "The serial number of the event requesting the window menu must be non-zero";
 
         int xNative = javaUnitsToSurfaceUnits(x);
         int yNative = javaUnitsToSurfaceUnits(y);
@@ -970,7 +970,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         WLToolkit.targetDisposedPeer(target, this);
 
         performLocked(() -> {
-            assert !isVisible();
+            assert !isVisible() : "Disposed window must have been already hidden";
 
             nativeDisposeFrame(nativePtr);
             nativePtr = 0;
@@ -1373,7 +1373,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             }
 
             if (verticalMWERoundRotations != 0 || verticalMWEPreciseRotations != 0) {
-                assert(verticalMWEScrollAmount > 0);
+                assert verticalMWEScrollAmount > 0
+                        : String.format("Vertical scrolling event has negative scroll amount: %d", verticalMWEScrollAmount);
 
                 final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
                         MouseEvent.MOUSE_WHEEL,
@@ -1392,7 +1393,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             }
 
             if (horizontalMWERoundRotations != 0 || horizontalMWEPreciseRotations != 0) {
-                assert(horizontalMWEScrollAmount > 0);
+                assert horizontalMWEScrollAmount > 0
+                        : String.format("Horizontal scrolling event has negative scroll amount: %d", horizontalMWEScrollAmount);;
 
                 final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
                         MouseEvent.MOUSE_WHEEL,
@@ -1603,7 +1605,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         // "This request must be used in response to some sort of user action like a button press,
         //  key press, or touch down event. The passed serial is used to determine the type
         //  of interactive move (touch, pointer, etc)."
-        assert serial != 0;
+        assert serial != 0 : "The serial number of the event requesting the drag must be non-zero";
 
         performLocked(() -> nativeStartDrag(serial, nativePtr));
     }
@@ -1612,7 +1614,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         // "This request must be used in response to some sort of user action like a button press,
         //  key press, or touch down event. The passed serial is used to determine the type
         //  of interactive resize (touch, pointer, etc)."
-        assert serial != 0;
+        assert serial != 0 : "The serial number of the event requesting the resize must be non-zero";
 
         performLocked(() -> nativeStartResize(serial, nativePtr, edges));
     }
@@ -1692,7 +1694,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
                           boolean active, boolean maximized, boolean fullscreen) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
         // NB: The width and height, as well as X and Y arguments, specify the size and the location
         //     of the window in surface-local coordinates.
@@ -1773,12 +1775,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     void notifyPopupDone() {
-        assert(targetIsWlPopup());
+        assert targetIsWlPopup() : "This method must be invoked only for popups";
         target.setVisible(false);
     }
 
     void checkIfOnNewScreen() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
         if (wlSurface == null) return;
         final WLGraphicsDevice newDevice = wlSurface.getGraphicsDevice();
@@ -2023,7 +2025,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
         @Override
         public void updateSurfaceSize() {
-            assert SunToolkit.isAWTLockHeldByCurrentThread();
+            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
             shadowSurface.updateSurfaceSize(shadowWlSize.getSurfaceWidth(), shadowWlSize.getSurfaceHeight());
         }
@@ -2035,8 +2037,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
 
         public void createSurface() {
-            assert shadowSurface == null;
-            assert SunToolkit.isAWTLockHeldByCurrentThread();
+            assert shadowSurface == null : "The shadow surface must not be created twice";
+            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
             int shadowOffset = -javaUnitsToSurfaceUnits(shadowSize);
             shadowSurface = new WLSubSurface(wlSurface, shadowOffset, shadowOffset);
@@ -2044,13 +2046,13 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
         public void commitSurface() {
             assert shadowSurface != null;
-            assert SunToolkit.isAWTLockHeldByCurrentThread();
+            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
             shadowSurface.commit();
         }
 
         public void dispose() {
-            assert SunToolkit.isAWTLockHeldByCurrentThread();
+            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
             if (shadowSurface != null) {
                 shadowSurface.dispose();
@@ -2065,7 +2067,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
 
         public void hide() {
-            assert SunToolkit.isAWTLockHeldByCurrentThread();
+            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
             if (shadowSurface != null) {
                 shadowSurface.dispose();
@@ -2074,7 +2076,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
 
         public void updateSurfaceData() {
-            assert SunToolkit.isAWTLockHeldByCurrentThread();
+            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
             needsRepaint = true;
             SurfaceData.convertTo(WLSurfaceDataExt.class, shadowSurfaceData).revalidate(
@@ -2082,7 +2084,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
 
         public void paint() {
-            assert SunToolkit.isAWTLockHeldByCurrentThread();
+            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
             if (!needsRepaint) {
                 return;
@@ -2108,7 +2110,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
         public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
             assert shadowSurface != null;
-            assert SunToolkit.isAWTLockHeldByCurrentThread();
+            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
             needsRepaint |= active ^ isActive;
 
