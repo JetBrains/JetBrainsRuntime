@@ -57,7 +57,7 @@ public class WLSurface {
     }
 
     public void dispose() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
         if (isValid) {
             hide();
@@ -67,7 +67,7 @@ public class WLSurface {
     }
 
     public void hide() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         assertIsValid();
 
         if (surfaceData == null) return;
@@ -85,14 +85,14 @@ public class WLSurface {
     }
 
     public boolean hasSurfaceData() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         assertIsValid();
 
         return surfaceData != null;
     }
 
     public void associateWithSurfaceData(SurfaceData data) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         Objects.requireNonNull(data);
         assertIsValid();
 
@@ -103,7 +103,7 @@ public class WLSurface {
     }
 
     public void commit() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         assertIsValid();
 
         nativeCommitWlSurface(nativePtr);
@@ -115,28 +115,28 @@ public class WLSurface {
      * @return a pointer to wl_surface native object
      */
     public long getWlSurfacePtr() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         assertIsValid();
 
         return wlSurfacePtr;
     }
 
     protected long getNativePtr() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         assertIsValid();
 
         return nativePtr;
     }
 
     public void setSize(int width, int height) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         assertIsValid();
 
         nativeSetSize(nativePtr, width, height);
     }
 
     public void setOpaqueRegion(int x, int y, int width, int height) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         assertIsValid();
 
         nativeSetOpaqueRegion(nativePtr, x, y, width, height);
@@ -151,7 +151,7 @@ public class WLSurface {
     }
 
     public void updateSurfaceSize(int surfaceWidth, int surfaceHeight) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         assertIsValid();
 
         setSize(surfaceWidth, surfaceHeight);
