@@ -51,26 +51,6 @@ public class AtkAction {
         }
     }
 
-    private static String keyStrokeToShortcut(KeyStroke keyStroke) {
-        String keybinding = "";
-
-        if (keyStroke.getModifiers() != 0) {
-            // a String describing the extended modifier keys and mouse buttons, such as "Shift", "Button1", or "Ctrl+Shift"
-            String modString = KeyEvent.getModifiersExText(keyStroke.getModifiers());
-            keybinding += modString;
-        }
-        if (keyStroke.getModifiers() != 0 && keyStroke.getKeyCode() != 0) {
-            keybinding += "+";
-        }
-        if (keyStroke.getKeyCode() != 0) {
-            // a String describing the keyCode, such as "HOME", "F1" or "A".
-            String keyString = KeyEvent.getKeyText(keyStroke.getKeyCode());
-            keybinding += keyString;
-        }
-
-        return keybinding;
-    }
-
     // JNI upcalls section
 
     private static AtkAction create_atk_action(AccessibleContext ac) {

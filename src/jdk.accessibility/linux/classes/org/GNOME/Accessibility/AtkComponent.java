@@ -101,40 +101,6 @@ public class AtkComponent {
         return null;
     }
 
-    // Return the position of the parent relative to the coordinate type
-    public static Point getParentOrigin(AccessibleContext ac, AccessibleComponent acc_component, int coord_type) {
-        assert EventQueue.isDispatchThread();
-
-        if (coord_type == AtkCoordType.PARENT)
-            return new Point(0, 0);
-
-        Accessible parent = ac.getAccessibleParent();
-        if (parent == null)
-            return null;
-        AccessibleContext parent_ac = parent.getAccessibleContext();
-        if (parent_ac == null)
-            return null;
-        AccessibleComponent parent_component = parent_ac.getAccessibleComponent();
-        if (parent_component == null)
-            return null;
-
-        if (coord_type == AtkCoordType.SCREEN) {
-            return parent_component.getLocationOnScreen();
-        }
-
-        if (coord_type == AtkCoordType.WINDOW) {
-            Point window_origin = getWindowLocation(ac);
-            if (window_origin == null)
-                return null;
-            Point parent_origin = parent_component.getLocationOnScreen();
-            if (parent_origin == null)
-                return null;
-            parent_origin.translate(-window_origin.x, -window_origin.y);
-            return parent_origin;
-        }
-        return null;
-    }
-
     // JNI upcalls section
 
     private static AtkComponent create_atk_component(AccessibleContext ac) {

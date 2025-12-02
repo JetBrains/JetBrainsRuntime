@@ -311,7 +311,6 @@ public class AtkTable {
     }
 
     private int[] get_selected_columns() {
-        int[] d = new int[0];
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return null;
@@ -322,7 +321,6 @@ public class AtkTable {
     }
 
     private int[] get_selected_rows() {
-        int[] d = new int[0];
         AccessibleTable acc_table = _acc_table.get();
         if (acc_table == null)
             return null;
