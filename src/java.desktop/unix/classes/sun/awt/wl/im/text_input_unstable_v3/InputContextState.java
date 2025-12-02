@@ -40,7 +40,7 @@ final class InputContextState {
 
 
     public InputContextState(long nativeContextPtr) {
-        assert(nativeContextPtr != 0);
+        assert nativeContextPtr != 0 : "Cannot create an input context from a NULL pointer";
 
         this.nativeContextPtr = nativeContextPtr;
     }
