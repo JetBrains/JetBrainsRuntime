@@ -53,7 +53,7 @@ public class WLDataSource {
         var wlDataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
 
         nativePtr = initNative(dataDevice.getNativePtr(), protocol);
-        assert nativePtr != 0; // should've already thrown in native
+        assert nativePtr != 0 : "Failed to initialize the native part of the source"; // should've already thrown in native
         this.data = data;
 
         try {

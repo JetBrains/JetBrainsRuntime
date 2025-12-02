@@ -71,7 +71,7 @@ public final class WLInputMethodDescriptorZwpTextInputV3 implements InputMethodD
 
     @Override
     public String getInputMethodDisplayName(Locale inputLocale, Locale displayLanguage) {
-        assert isAvailableOnPlatform();
+        assert isAvailableOnPlatform() : "IM must be available on the platform";
 
         // This is how it's implemented in all other Toolkits.
         //
@@ -183,7 +183,7 @@ public final class WLInputMethodDescriptorZwpTextInputV3 implements InputMethodD
 
 
     private WLInputMethodDescriptorZwpTextInputV3() {
-        assert isAvailableOnPlatform();
+        assert isAvailableOnPlatform() : "IM must be available on the platform";
 
         initAndGetToolkitStartupLocale();
     }
