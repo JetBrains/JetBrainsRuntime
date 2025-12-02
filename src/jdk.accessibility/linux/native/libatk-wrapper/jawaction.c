@@ -218,7 +218,7 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
         return FALSE;
     }
 
-    JAW_GET_ACTION(action, FALSE);
+    JAW_GET_ACTION(action, FALSE); // create global JNI reference `jobject atk_action`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -273,7 +273,7 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
         return 0;
     }
 
-    JAW_GET_ACTION(action, 0);
+    JAW_GET_ACTION(action, 0); // create global JNI reference `jobject atk_action`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -325,7 +325,7 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         return NULL;
     }
 
-    JAW_GET_ACTION(action, NULL);
+    JAW_GET_ACTION(action, NULL); // create global JNI reference `jobject atk_action`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -398,7 +398,7 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
         return FALSE;
     }
 
-    JAW_GET_ACTION(action, FALSE);
+    JAW_GET_ACTION(action, FALSE); // create global JNI reference `jobject atk_action`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -450,7 +450,7 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         return NULL;
     }
 
-    JAW_GET_ACTION(action, NULL);
+    JAW_GET_ACTION(action, NULL); // create global JNI reference `jobject atk_action`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(

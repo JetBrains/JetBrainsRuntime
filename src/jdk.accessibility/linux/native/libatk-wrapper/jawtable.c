@@ -324,7 +324,7 @@ static gint jaw_table_get_index_at(AtkTable *table, gint row, gint column) {
         return 0;
     }
 
-    JAW_GET_TABLE(table, 0);
+    JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -379,7 +379,7 @@ static gint jaw_table_get_column_at_index(AtkTable *table, gint index) {
         return 0;
     }
 
-    JAW_GET_TABLE(table, 0);
+    JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -434,7 +434,7 @@ static gint jaw_table_get_row_at_index(AtkTable *table, gint index) {
         return 0;
     }
 
-    JAW_GET_TABLE(table, 0);
+    JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -484,7 +484,7 @@ static gint jaw_table_get_n_columns(AtkTable *table) {
         return 0;
     }
 
-    JAW_GET_TABLE(table, 0);
+    JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -534,7 +534,7 @@ static gint jaw_table_get_n_rows(AtkTable *table) {
         return 0;
     }
 
-    JAW_GET_TABLE(table, 0);
+    JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -589,7 +589,7 @@ static gint jaw_table_get_column_extent_at(AtkTable *table, gint row,
         return 0;
     }
 
-    JAW_GET_TABLE(table, 0);
+    JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -643,7 +643,7 @@ static gint jaw_table_get_row_extent_at(AtkTable *table, gint row,
         return 0;
     }
 
-    JAW_GET_TABLE(table, 0);
+    JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -694,7 +694,7 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
         return 0;
     }
 
-    JAW_GET_TABLE(table, NULL);
+    JAW_GET_TABLE(table, NULL); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -757,7 +757,7 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
         return NULL;
     }
 
-    JAW_GET_TABLE(table, NULL);
+    JAW_GET_TABLE(table, NULL); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -826,7 +826,7 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
         return NULL;
     }
 
-    JAW_GET_TABLE(table, NULL);
+    JAW_GET_TABLE(table, NULL); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -895,7 +895,7 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
         return NULL;
     }
 
-    JAW_GET_TABLE(table, NULL);
+    JAW_GET_TABLE(table, NULL); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -959,7 +959,7 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
         return NULL;
     }
 
-    JAW_GET_TABLE(table, NULL);
+    JAW_GET_TABLE(table, NULL); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -1021,7 +1021,7 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
         return NULL;
     }
 
-    JAW_GET_TABLE(table, NULL);
+    JAW_GET_TABLE(table, NULL); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(

@@ -160,7 +160,7 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
         return NULL;
     }
 
-    JAW_GET_HYPERTEXT(hypertext, NULL);
+    JAW_GET_HYPERTEXT(hypertext, NULL); // create global JNI reference `jobject atk_hypertext`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -221,7 +221,7 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
         return 0;
     }
 
-    JAW_GET_HYPERTEXT(hypertext, 0);
+    JAW_GET_HYPERTEXT(hypertext, 0); // create global JNI reference `jobject atk_hypertext`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -275,7 +275,7 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
         return -1;
     }
 
-    JAW_GET_HYPERTEXT(hypertext, -1);
+    JAW_GET_HYPERTEXT(hypertext, -1); // create global JNI reference `jobject atk_hypertext`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(

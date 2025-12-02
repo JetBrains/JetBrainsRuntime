@@ -173,7 +173,7 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
         return FALSE;
     }
 
-    JAW_GET_SELECTION(selection, FALSE);
+    JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -226,7 +226,7 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
         return FALSE;
     }
 
-    JAW_GET_SELECTION(selection, FALSE);
+    JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -282,7 +282,7 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
         return NULL;
     }
 
-    JAW_GET_SELECTION(selection, NULL);
+    JAW_GET_SELECTION(selection, NULL); // create global JNI reference `jobject atk_selection`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -349,7 +349,7 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
         return 0;
     }
 
-    JAW_GET_SELECTION(selection, 0);
+    JAW_GET_SELECTION(selection, 0); // create global JNI reference `jobject atk_selection`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -403,7 +403,7 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
         return FALSE;
     }
 
-    JAW_GET_SELECTION(selection, FALSE);
+    JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -458,7 +458,7 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
         return FALSE;
     }
 
-    JAW_GET_SELECTION(selection, FALSE);
+    JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -510,7 +510,7 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
         return FALSE;
     }
 
-    JAW_GET_SELECTION(selection, FALSE);
+    JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(

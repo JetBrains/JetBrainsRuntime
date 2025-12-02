@@ -171,7 +171,7 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
         return NULL;
     }
 
-    JAW_GET_HYPERLINK(atk_hyperlink, NULL);
+    JAW_GET_HYPERLINK(atk_hyperlink, NULL); // create global JNI reference `jobject jhyperlink`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(

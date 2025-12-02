@@ -266,7 +266,7 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
     }
 
     g_value_unset(value);
-    JAW_GET_VALUE(obj, );
+    JAW_GET_VALUE(obj, ); // create global JNI reference `jobject atk_value`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -327,7 +327,7 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
         return;
     }
 
-    JAW_GET_VALUE(obj, );
+    JAW_GET_VALUE(obj, ); // create global JNI reference `jobject atk_value`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(

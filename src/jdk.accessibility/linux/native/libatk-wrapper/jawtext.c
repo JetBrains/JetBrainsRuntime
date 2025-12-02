@@ -324,7 +324,7 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
         return NULL;
     }
 
-    JAW_GET_TEXT(text, NULL);
+    JAW_GET_TEXT(text, NULL); // create global JNI reference `jobject atk_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -450,7 +450,7 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    JAW_GET_TEXT(text, NULL);
+    JAW_GET_TEXT(text, NULL); // create global JNI reference `jobject atk_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -521,7 +521,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    JAW_GET_TEXT(text, NULL);
+    JAW_GET_TEXT(text, NULL); // create global JNI reference `jobject atk_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -593,7 +593,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    JAW_GET_TEXT(text, NULL);
+    JAW_GET_TEXT(text, NULL); // create global JNI reference `jobject atk_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -696,7 +696,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    JAW_GET_TEXT(text, NULL);
+    JAW_GET_TEXT(text, NULL); // create global JNI reference `jobject atk_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -1123,7 +1123,7 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
         return NULL;
     }
 
-    JAW_GET_TEXT(text, NULL);
+    JAW_GET_TEXT(text, NULL); // create global JNI reference `jobject atk_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(

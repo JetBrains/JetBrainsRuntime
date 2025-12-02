@@ -173,7 +173,7 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
         return;
     }
 
-    JAW_GET_EDITABLETEXT(text, );
+    JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -222,7 +222,7 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
         return;
     }
 
-    JAW_GET_EDITABLETEXT(text, );
+    JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -273,7 +273,7 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
         return;
     }
 
-    JAW_GET_EDITABLETEXT(text, );
+    JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -316,7 +316,7 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
         return;
     }
 
-    JAW_GET_EDITABLETEXT(text, );
+    JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -359,7 +359,7 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
         return;
     }
 
-    JAW_GET_EDITABLETEXT(text, );
+    JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -401,7 +401,7 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
         return;
     }
 
-    JAW_GET_EDITABLETEXT(text, );
+    JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -455,7 +455,7 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
         return FALSE;
     }
 
-    JAW_GET_EDITABLETEXT(text, FALSE);
+    JAW_GET_EDITABLETEXT(text, FALSE); // create global JNI reference `jobject atk_editable_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(

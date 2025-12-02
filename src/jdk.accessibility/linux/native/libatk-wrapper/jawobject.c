@@ -289,7 +289,7 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
         return ATK_OBJECT(atk_get_root());
     }
 
-    JAW_GET_OBJECT(atk_obj, NULL);
+    JAW_GET_OBJECT(atk_obj, NULL);  // create global JNI reference `jobject ac`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -356,7 +356,7 @@ static void jaw_object_set_parent(AtkObject *atk_obj, AtkObject *parent) {
         return;
     }
 
-    JAW_GET_OBJECT(atk_obj, );
+    JAW_GET_OBJECT(atk_obj, );  // create global JNI reference `jobject ac`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -440,7 +440,7 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
         }
     }
 
-    JAW_GET_OBJECT(atk_obj, NULL);
+    JAW_GET_OBJECT(atk_obj, NULL);  // create global JNI reference `jobject ac`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -517,7 +517,7 @@ static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
         return;
     }
 
-    JAW_GET_OBJECT(atk_obj, );
+    JAW_GET_OBJECT(atk_obj, ); // create global JNI reference `jobject ac`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -571,7 +571,7 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
         return NULL;
     }
 
-    JAW_GET_OBJECT(atk_obj, NULL);
+    JAW_GET_OBJECT(atk_obj, NULL); // create global JNI reference `jobject ac`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -645,7 +645,7 @@ static void jaw_object_set_description(AtkObject *atk_obj,
         return;
     }
 
-    JAW_GET_OBJECT(atk_obj, );
+    JAW_GET_OBJECT(atk_obj, ); // create global JNI reference `jobject ac`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -698,7 +698,7 @@ static gint jaw_object_get_n_children(AtkObject *atk_obj) {
         return 0;
     }
 
-    JAW_GET_OBJECT(atk_obj, 0);
+    JAW_GET_OBJECT(atk_obj, 0); // create global JNI reference `jobject ac`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -755,7 +755,7 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
                                             atk_obj);
     }
 
-    JAW_GET_OBJECT(atk_obj, -1);
+    JAW_GET_OBJECT(atk_obj, -1); // create global JNI reference `jobject ac`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -811,7 +811,7 @@ static AtkRole jaw_object_get_role(AtkObject *atk_obj) {
         return atk_obj->role;
     }
 
-    JAW_GET_OBJECT(atk_obj, ATK_ROLE_INVALID);
+    JAW_GET_OBJECT(atk_obj, ATK_ROLE_INVALID); // create global JNI reference `jobject ac`
     AtkRole role = jaw_util_get_atk_role_from_AccessibleContext(ac);
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
 
@@ -889,7 +889,7 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
         return NULL;
     }
 
-    JAW_GET_OBJECT(atk_obj, NULL);
+    JAW_GET_OBJECT(atk_obj, NULL); // create global JNI reference `jobject ac`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -974,7 +974,7 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
         return NULL;
     }
 
-    JAW_GET_OBJECT(atk_obj, NULL);
+    JAW_GET_OBJECT(atk_obj, NULL); // create global JNI reference `jobject ac`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -1047,7 +1047,7 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         return NULL;
     }
 
-    JAW_GET_OBJECT(atk_obj, NULL);
+    JAW_GET_OBJECT(atk_obj, NULL); // create global JNI reference `jobject ac`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 20) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -1203,7 +1203,7 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
         return NULL;
     }
 
-    JAW_GET_OBJECT(atk_obj, NULL);
+    JAW_GET_OBJECT(atk_obj, NULL); // create global JNI reference `jobject ac`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(

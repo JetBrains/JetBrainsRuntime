@@ -173,7 +173,7 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
         return;
     }
 
-    JAW_GET_IMAGE(image, );
+    JAW_GET_IMAGE(image, ); // create global JNI reference `jobject atk_image`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -242,7 +242,7 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
         return NULL;
     }
 
-    JAW_GET_IMAGE(image, NULL);
+    JAW_GET_IMAGE(image, NULL); // create global JNI reference `jobject atk_image`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -301,7 +301,7 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
         return;
     }
 
-    JAW_GET_IMAGE(image, );
+    JAW_GET_IMAGE(image, ); // create global JNI reference `jobject atk_image`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(

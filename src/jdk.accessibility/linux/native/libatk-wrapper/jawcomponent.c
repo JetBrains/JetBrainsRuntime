@@ -208,7 +208,7 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
         return FALSE;
     }
 
-    JAW_GET_COMPONENT(component, FALSE);
+    JAW_GET_COMPONENT(component, FALSE); // create global JNI reference `jobject atk_component`
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
@@ -266,7 +266,7 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
         return NULL;
     }
 
-    JAW_GET_COMPONENT(component, NULL);
+    JAW_GET_COMPONENT(component, NULL); // create global JNI reference `jobject atk_component`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -349,7 +349,7 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
     (*width) = -1;
     (*height) = -1;
 
-    JAW_GET_COMPONENT(component, );
+    JAW_GET_COMPONENT(component, ); // create global JNI reference `jobject atk_component`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -447,7 +447,7 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
         return FALSE;
     }
 
-    JAW_GET_COMPONENT(component, FALSE);
+    JAW_GET_COMPONENT(component, FALSE); // create global JNI reference `jobject atk_component`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -499,7 +499,7 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
         return FALSE;
     }
 
-    JAW_GET_COMPONENT(component, FALSE);
+    JAW_GET_COMPONENT(component, FALSE); // create global JNI reference `jobject atk_component`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -551,7 +551,7 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
         return 0;
     }
 
-    JAW_GET_COMPONENT(component, 0);
+    JAW_GET_COMPONENT(component, 0); // create global JNI reference `jobject atk_component`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(

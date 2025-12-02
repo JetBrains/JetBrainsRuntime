@@ -171,7 +171,7 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
         return NULL;
     }
 
-    JAW_GET_TABLECELL(cell, NULL);
+    JAW_GET_TABLECELL(cell, NULL); // create global JNI reference `jobject jatk_table_cell`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -434,7 +434,7 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
         return NULL;
     }
 
-    JAW_GET_TABLECELL(cell, NULL);
+    JAW_GET_TABLECELL(cell, NULL); // create global JNI reference `jobject jatk_table_cell`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -511,7 +511,7 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
         return NULL;
     }
 
-    JAW_GET_TABLECELL(cell, NULL);
+    JAW_GET_TABLECELL(cell, NULL); // create global JNI reference `jobject jatk_table_cell`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
