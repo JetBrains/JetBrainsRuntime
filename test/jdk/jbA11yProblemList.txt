@@ -53,6 +53,7 @@ javax/swing/JFileChooser/4966171/bug4966171.java JBR-8855 windows-x64
 javax/swing/JFileChooser/bug4759934.java JBR-9711 windows-x64
 javax/swing/JFileChooser/FileChooserListenerLeak.java JBR-8855 windows-x64
 javax/swing/JFileChooser/JFileChooserFontReset.java JBR-8855 windows-x64
+javax/swing/JFileChooser/JFileChooserSetLocationTest.java JBR-9702 windows-x64
 javax/swing/JInternalFrame/Test6505027.java         nobug macosx-all,linux-all,windows-all
 javax/swing/JMenuBar/MenuBarRTLBug.java JBR-7385 windows-x64
 javax/swing/JPopupMenu/4634626/bug4634626.java      nobug macosx-all,linux-all,windows-all
