@@ -481,7 +481,7 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     for (int i = 0; i < length; i++) {
         jobject jac = (*jniEnv)->GetObjectArrayElement(jniEnv, ja_ac, i);
         JawImpl *jaw_impl = jaw_impl_find_instance(jniEnv, jac);
-        if (!jaw_impl) {
+        if (jaw_impl) {
             g_ptr_array_add(result, jaw_impl);
 
             // FIXME: is it true that the caller is responsible for freeing not
@@ -560,7 +560,7 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
     for (int i = 0; i < length; i++) {
         jobject jac = (*jniEnv)->GetObjectArrayElement(jniEnv, ja_ac, i);
         JawImpl *jaw_impl = jaw_impl_find_instance(jniEnv, jac);
-        if (!jaw_impl) {
+        if (jaw_impl) {
             g_ptr_array_add(result, jaw_impl);
 
             // FIXME: is it true that the caller is responsible for freeing not

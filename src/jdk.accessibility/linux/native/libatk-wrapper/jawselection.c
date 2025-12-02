@@ -424,7 +424,7 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
 
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (!jniEnv) {
+    if (!classAtkSelection) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;

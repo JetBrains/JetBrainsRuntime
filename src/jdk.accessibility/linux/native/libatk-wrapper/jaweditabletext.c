@@ -265,7 +265,7 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
                               (jint)*position);
 
     *position = *position + length;
-    atk_text_set_caret_offset(ATK_TEXT(jaw_obj), *position);
+    atk_text_set_caret_offset(ATK_TEXT(text), *position);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
