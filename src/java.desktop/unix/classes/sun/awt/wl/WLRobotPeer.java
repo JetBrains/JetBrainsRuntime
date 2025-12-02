@@ -171,7 +171,7 @@ public class WLRobotPeer implements RobotPeer {
     static Point getLocationOfWLSurface(WLSurface wlSurface) {
         checkExtensionPresent();
 
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
         final long wlSurfacePtr = wlSurface.getWlSurfacePtr();
         // The native implementation allows for just one such request at a time
