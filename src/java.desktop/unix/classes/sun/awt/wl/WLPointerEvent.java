@@ -217,37 +217,37 @@ class WLPointerEvent {
     }
 
     public long getSurface() {
-        assert hasSurface();
+        assert hasSurface() : "The event must have a valid surface";
         return surface;
     }
 
     public long getSerial() {
-        assert hasSerial();
+        assert hasSerial() : "The event must have a valid serial";
         return serial;
     }
 
     public long getTimestamp() {
-        assert hasTimestamp();
+        assert hasTimestamp() : "The event must have a valid timestamp";
         return timestamp;
     }
 
     public int getSurfaceX() {
-        assert hasCoordinates();
+        assert hasCoordinates() : "The event must have valid coordinates";
         return surface_x;
     }
 
     public int getSurfaceY() {
-        assert hasCoordinates();
+        assert hasCoordinates() : "The event must have valid coordinates";
         return surface_y;
     }
 
     public int getButtonCode() {
-        assert hasButtonEvent();
+        assert hasButtonEvent() : "Must have a button event to get the button code";
         return buttonCode;
     }
 
     public boolean getIsButtonPressed() {
-        assert hasButtonEvent();
+        assert hasButtonEvent() : "Must have a button event to get the button state";
         return isButtonPressed;
     }
 
@@ -270,12 +270,12 @@ class WLPointerEvent {
     }
 
     public double getXAxisVectorValue() {
-        assert xAxisHasVectorValue();
+        assert xAxisHasVectorValue() : "Must have an X axis vector value";
         return xAxis_vectorValue;
     }
 
     public int getXAxisSteps120Value() {
-        assert xAxisHasSteps120Value();
+        assert xAxisHasSteps120Value() : "Must have an X axis steps120 value";
         return xAxis_steps120Value;
     }
 
@@ -298,12 +298,12 @@ class WLPointerEvent {
     }
 
     public double getYAxisVectorValue() {
-        assert yAxisHasVectorValue();
+        assert yAxisHasVectorValue()  : "Must have an Y axis vector value";
         return yAxis_vectorValue;
     }
 
     public int getYAxisSteps120Value() {
-        assert yAxisHasSteps120Value();
+        assert yAxisHasSteps120Value(): "Must have an Y axis steps120 value";
         return yAxis_steps120Value;
     }
 
