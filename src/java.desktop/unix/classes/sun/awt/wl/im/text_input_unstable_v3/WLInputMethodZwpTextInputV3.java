@@ -243,7 +243,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         }
 
         // "The method is only called when the input method is inactive."
-        assert(this.awtActivationStatus != AWTActivationStatus.ACTIVATED);
+        assert this.awtActivationStatus != AWTActivationStatus.ACTIVATED : "The method is called when the IM is active";
 
         // The protocol doesn't provide a separate method for hiding the IM window(s),
         //   but this effect can be achieved by disabling the native context.
@@ -259,7 +259,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         }
 
         // "The method is only called when the input method is inactive."
-        assert(this.awtActivationStatus != AWTActivationStatus.ACTIVATED);
+        assert this.awtActivationStatus != AWTActivationStatus.ACTIVATED : "The method is called when the IM is active";
 
         wlDisableContextNow();
     }
@@ -374,10 +374,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     /* AWT-side methods section */
 
     private static void awtFillWlContentTypeOf(Component component, OutgoingChanges out) {
-        assert(component != null);
-        assert(out != null);
+        assert component != null : "Component must not be null";
+        assert out != null : "OutgoingChanges must not be null";
 
-        assert(EventQueue.isDispatchThread());
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         // TODO: there's no dedicated AWT/Swing API for that, but we can make a few guesses, e.g.
         //       (component instanceof JPasswordField) ? ContentPurpose.PASSWORD
@@ -389,7 +389,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      *          compatible with {@code zwp_text_input_v3::set_cursor_rectangle} API;
      */
     private static Rectangle awtGetWlCursorRectangleOf(Component component) {
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         Rectangle result = null;
 
@@ -434,7 +434,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      * @throws IllegalArgumentException if {@code visibleComponent} is {@code null} or isn't showing on the screen.
      */
     private static Rectangle awtGetCaretOf(Component visibleComponent) {
-        assert(EventQueue.isDispatchThread());
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         if (!Objects.requireNonNull(visibleComponent, "visibleComponent").isShowing()) {
             throw new IllegalArgumentException("visibleComponent must be showing");
@@ -474,7 +474,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     }
 
     private static Rectangle awtGetVisibleRectOf(final Component component) {
-        assert(EventQueue.isDispatchThread());
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         if (component instanceof javax.swing.JComponent jComponent) {
             return jComponent.getVisibleRect();
@@ -488,7 +488,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      *         or {@code null} if the rectangle couldn't be determined.
      */
     private static Rectangle awtConvertRectOnComponentToRectOnWlSurface(Component component, Rectangle rectOnComponent) {
-        assert(EventQueue.isDispatchThread());
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         Objects.requireNonNull(component, "component");
 
@@ -536,7 +536,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      *         or its closest ancestor meeting these requirements.
      */
     private static Window awtGetWlSurfaceComponentOf(Component component) {
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         return WLComponentPeer.getToplevelFor(component);
     }
@@ -557,8 +557,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             log.finer("awtPostIMESafely(preeditString={0}, commitString={1}): this={2}.", preeditString, commitString, this);
         }
 
-        assert(preeditString != null);
-        assert(commitString != null);
+        assert preeditString != null : "Pre-edit string must be present";
+        assert commitString != null : "Commit string must be present";
 
         try {
             if (awtActivationStatus != AWTActivationStatus.ACTIVATED) {
@@ -769,8 +769,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             specialPreeditHighlightingBegin = swapTemp;
         }
 
-        assert(specialPreeditHighlightingBegin >= 0);
-        assert(specialPreeditHighlightingEnd <= preeditTextLength);
+        assert specialPreeditHighlightingBegin >= 0 : "specialPreeditHighlightingBegin is invalid";
+        assert specialPreeditHighlightingEnd <= preeditTextLength : "specialPreeditHighlightingEnd is out of range";
 
         //    v
         // |BASIC+SPECIAL...|
@@ -827,10 +827,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     // The methods in this section implement the core logic of working with the "text-input-unstable-v3" protocol.
 
     private void wlInitializeContext() throws AWTException {
-        assert(wlInputContextState == null);
-        assert(wlPendingChanges == null);
-        assert(wlBeingCommittedChanges == null);
-        assert(wlIncomingChanges == null);
+        assert wlInputContextState == null : "Must not initialize input context twice";
+        assert wlPendingChanges == null : "Must not initialize pending changes twice";
+        assert wlBeingCommittedChanges == null : "Must not initialize being-committed changes twice";
+        assert wlIncomingChanges == null : "Must not initialize incoming changes twice";
 
         long nativeCtxPtr = 0;
 
@@ -878,7 +878,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      *   followed by a {@code zwp_text_input_v3::commit} request.
      */
     private void wlSendPendingChangesNow() {
-        assert(wlCanSendChangesNow());
+        assert wlCanSendChangesNow() : "Must be able to send pending changes now";
 
         final OutgoingChanges changesToSend = wlPendingChanges;
         wlPendingChanges = null;
@@ -997,7 +997,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             throw new IllegalStateException("Attempt to enable an input context which hasn't entered any surface");
         }
 
-        assert(wlContextCanBeEnabledNow());
+        assert wlContextCanBeEnabledNow() : "Can't enable InputContext";
 
         // This way we guarantee the context won't accidentally get disabled because such a change has been scheduled earlier.
         // Anyway we consider any previously scheduled changes outdated because an 'enable' request is supposed to
@@ -1029,7 +1029,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         awtFillWlContentTypeOf(getClientComponent(), changeSet);
 
         wlScheduleContextNewChanges(changeSet);
-        assert(wlPendingChanges != null);
+        assert wlPendingChanges != null : "Must have non-empty pending changes";
 
         // Pretending there are no committed, but not applied yet changes, so that wlCanSendChangesNow() is true.
         // We can do that because the assumption #1 and because any previously committed changes get lost when a
@@ -1038,7 +1038,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         //    set_surrounding_text, set_text_change_cause, set_content_type, and set_cursor_rectangle requests [...]"
         wlBeingCommittedChanges = null;
 
-        assert(wlCanSendChangesNow());
+        assert wlCanSendChangesNow() : "Must be able to send pending changes now";
         wlSendPendingChangesNow();
 
         // See the assumption #2 above.
@@ -1103,10 +1103,10 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             }
         }
 
-        assert(wlInputContextState.getCurrentWlSurfacePtr() != 0);
+        assert wlInputContextState.getCurrentWlSurfacePtr() != 0 : "InputContext must have a valid current surface pointer";
 
         wlScheduleContextNewChanges(new OutgoingChanges().setEnabledState(false));
-        assert(wlPendingChanges != null);
+        assert wlPendingChanges != null : "Must have non-empty pending changes";
 
         // Pretending there are no committed, but not applied yet changes, so that wlCanSendChangesNow() is true.
         // We can do that because the assumption #1 and because any previously committed changes get lost when a
@@ -1114,7 +1114,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         //   "After an enter event or disable request all state information is invalidated and needs to be resent by the client."
         wlBeingCommittedChanges = null;
 
-        assert(wlCanSendChangesNow());
+        assert wlCanSendChangesNow() : "Must be able to send pending changes now";
         wlSendPendingChangesNow();
 
         // See the assumption #2 above.
@@ -1206,7 +1206,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called by {@link ClientComponentCaretPositionTracker} */
     boolean wlUpdateCursorRectangle(final boolean forceUpdate) {
-        assert(EventQueue.isDispatchThread());
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer("wlUpdateCursorRectangle(): forceUpdate={0}, this={1}.", forceUpdate, this);
@@ -1290,7 +1290,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::enter} events. */
     private void zwp_text_input_v3_onEnter(long enteredWlSurfacePtr) {
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1312,7 +1312,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::leave} events. */
     private void zwp_text_input_v3_onLeave(long leftWlSurfacePtr) {
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1335,7 +1335,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::preedit_string} events. */
     private void zwp_text_input_v3_onPreeditString(byte[] preeditStrUtf8, int cursorBeginUtf8Byte, int cursorEndUtf8Byte) {
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1355,7 +1355,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::commit_string} events. */
     private void zwp_text_input_v3_onCommitString(byte[] commitStrUtf8) {
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1375,7 +1375,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::delete_surrounding_text} events. */
     private void zwp_text_input_v3_onDeleteSurroundingText(long numberOfUtf8BytesBeforeToDelete, long numberOfUtf8BytesAfterToDelete) {
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         // TODO: support the surrounding text API (set_surrounding_text + set_text_change_cause | delete_surrounding text)
         //       at least for particular cases.
@@ -1394,7 +1394,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::done} events. */
     private void zwp_text_input_v3_onDone(long doneSerial) {
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
