@@ -387,7 +387,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWindow
 
 static struct xdg_positioner *
 newPositioner
-        (jint width, jint height, jint offsetX, jint offsetY)
+        (jint width, jint height, jint offsetX, jint offsetY, jboolean isUnconstrained)
 {
     struct xdg_positioner *xdg_positioner = xdg_wm_base_create_positioner(xdg_wm_base);
     CHECK_NULL_RETURN(xdg_positioner, NULL);
@@ -400,10 +400,15 @@ newPositioner
     xdg_positioner_set_offset(xdg_positioner, 0, 0);
     xdg_positioner_set_anchor(xdg_positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
     xdg_positioner_set_gravity(xdg_positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
-    xdg_positioner_set_constraint_adjustment(xdg_positioner,
-        XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y
-        | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X
-        | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y);
+    if (isUnconstrained) {
+        xdg_positioner_set_constraint_adjustment(xdg_positioner,
+                                                 XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_NONE);
+    } else {
+        xdg_positioner_set_constraint_adjustment(xdg_positioner,
+                                                 XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y
+                                                 | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X
+                                                 | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y);
+    }
     return xdg_positioner;
 }
 
@@ -411,7 +416,8 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeCreatePopup
         (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr, jlong wlSurfacePtr,
          jint width, jint height,
-         jint offsetX, jint offsetY)
+         jint offsetX, jint offsetY,
+         jboolean isUnconstrained)
 {
     struct WLFrame *frame = (struct WLFrame *) ptr;
     struct WLFrame *parentFrame = (struct WLFrame*) parentPtr;
@@ -423,7 +429,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreatePopup
     frame->toplevel = JNI_FALSE;
 
     assert(parentFrame);
-    struct xdg_positioner *xdg_positioner = newPositioner(width, height, offsetX, offsetY);
+    struct xdg_positioner *xdg_positioner = newPositioner(width, height, offsetX, offsetY, isUnconstrained);
     CHECK_NULL(xdg_positioner);
     JNU_RUNTIME_ASSERT(env, parentFrame->toplevel, "Popup's parent surface must be a toplevel");
     frame->xdg_popup = xdg_surface_get_popup(frame->xdg_surface, parentFrame->xdg_surface, xdg_positioner);
@@ -436,13 +442,14 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeRepositionWLPopup
         (JNIEnv *env, jobject obj, jlong ptr,
          jint width, jint height,
-         jint offsetX, jint offsetY)
+         jint offsetX, jint offsetY,
+         jboolean isUnconstrained)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     assert (!frame->toplevel);
 
     if (wl_proxy_get_version((struct wl_proxy *)xdg_wm_base) >= 3) {
-        struct xdg_positioner *xdg_positioner = newPositioner(width, height, offsetX, offsetY);
+        struct xdg_positioner *xdg_positioner = newPositioner(width, height, offsetX, offsetY, isUnconstrained);
         CHECK_NULL(xdg_positioner);
         static int token = 42; // This will be received by xdg_popup_repositioned(); unused for now.
         xdg_popup_reposition(frame->xdg_popup, xdg_positioner, token++);
