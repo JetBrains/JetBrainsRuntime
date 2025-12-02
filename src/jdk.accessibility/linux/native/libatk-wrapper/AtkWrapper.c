@@ -819,6 +819,7 @@ static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
         return NULL;
     }
     gchar *result = g_strdup(nativeStr);
+    (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, nativeStr);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
@@ -1546,8 +1547,10 @@ static gboolean key_dispatch_handler(gpointer p) {
                                                           jfidString);
         if (jstr) {
             event->length = (gint)(*jniEnv)->GetStringLength(jniEnv, jstr);
-            event->string =
-                (gchar *)(*jniEnv)->GetStringUTFChars(jniEnv, jstr, 0);
+            const gchar *tmp_string =
+                (const gchar *)(*jniEnv)->GetStringUTFChars(jniEnv, jstr, 0);
+            event->string = g_strdup(tmp_string);
+            (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, tmp_string);
         }
     }
 
