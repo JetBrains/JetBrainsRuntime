@@ -95,9 +95,6 @@ gpointer jaw_selection_data_init(jobject ac) {
         return NULL;
     }
 
-    SelectionData *data = g_new0(SelectionData, 1);
-    JAW_CHECK_NULL(data, NULL);
-
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
 
@@ -128,6 +125,7 @@ gpointer jaw_selection_data_init(jobject ac) {
         return NULL;
     }
 
+    SelectionData *data = g_new0(SelectionData, 1);
     data->atk_selection = (*jniEnv)->NewGlobalRef(jniEnv, jatk_selection);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

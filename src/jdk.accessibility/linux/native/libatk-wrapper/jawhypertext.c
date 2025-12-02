@@ -81,8 +81,6 @@ gpointer jaw_hypertext_data_init(jobject ac) {
         return NULL;
     }
 
-    HypertextData *data = g_new0(HypertextData, 1);
-
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
 
@@ -113,6 +111,7 @@ gpointer jaw_hypertext_data_init(jobject ac) {
         return NULL;
     }
 
+    HypertextData *data = g_new0(HypertextData, 1);
     data->atk_hypertext = (*jniEnv)->NewGlobalRef(jniEnv, jatk_hypertext);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

@@ -126,14 +126,13 @@ gpointer jaw_component_data_init(jobject ac) {
         return NULL;
     }
 
-    ComponentData *data = g_new0(ComponentData, 1);
-
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
+
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
-        return 0;
+        return NULL;
     }
 
     jclass classComponent =
@@ -156,6 +155,8 @@ gpointer jaw_component_data_init(jobject ac) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
+
+    ComponentData *data = g_new0(ComponentData, 1);
     data->atk_component = (*jniEnv)->NewGlobalRef(jniEnv, jatk_component);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -171,10 +172,13 @@ void jaw_component_data_finalize(gpointer p) {
         return;
     }
 
-    ComponentData *data = (ComponentData *)p;
-
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, );
+
+    ComponentData *data = (ComponentData *)p;
+    if (!data) {
+        return;
+    }
 
     if (data->atk_component) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_component);

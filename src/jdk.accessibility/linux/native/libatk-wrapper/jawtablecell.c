@@ -105,8 +105,6 @@ gpointer jaw_table_cell_data_init(jobject ac) {
         return NULL;
     }
 
-    TableCellData *data = g_new0(TableCellData, 1);
-
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
     jclass classTableCell =
@@ -120,6 +118,8 @@ gpointer jaw_table_cell_data_init(jobject ac) {
     jobject jatk_table_cell =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classTableCell, jmid, ac);
     JAW_CHECK_NULL(jatk_table_cell, NULL);
+
+    TableCellData *data = g_new0(TableCellData, 1);
     data->atk_table_cell = (*jniEnv)->NewGlobalRef(jniEnv, jatk_table_cell);
 
     return data;

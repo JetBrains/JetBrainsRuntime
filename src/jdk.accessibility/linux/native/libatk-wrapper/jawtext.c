@@ -164,8 +164,6 @@ gpointer jaw_text_data_init(jobject ac) {
         return NULL;
     }
 
-    TextData *data = g_new0(TextData, 1);
-
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
@@ -194,6 +192,7 @@ gpointer jaw_text_data_init(jobject ac) {
         return NULL;
     }
 
+    TextData *data = g_new0(TextData, 1);
     data->atk_text = (*jniEnv)->NewGlobalRef(jniEnv, jatk_text);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

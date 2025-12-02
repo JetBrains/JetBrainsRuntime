@@ -105,8 +105,6 @@ gpointer jaw_editable_text_data_init(jobject ac) {
         return NULL;
     }
 
-    EditableTextData *data = g_new0(EditableTextData, 1);
-
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
 
@@ -136,6 +134,8 @@ gpointer jaw_editable_text_data_init(jobject ac) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
+
+    EditableTextData *data = g_new0(EditableTextData, 1);
     data->atk_editable_text =
         (*jniEnv)->NewGlobalRef(jniEnv, jatk_editable_text);
 

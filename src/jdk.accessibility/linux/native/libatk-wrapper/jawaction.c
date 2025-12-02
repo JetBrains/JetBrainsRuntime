@@ -111,8 +111,6 @@ gpointer jaw_action_data_init(jobject ac) {
         return NULL;
     }
 
-    ActionData *data = g_new0(ActionData, 1);
-
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
@@ -142,6 +140,7 @@ gpointer jaw_action_data_init(jobject ac) {
         return NULL;
     }
 
+    ActionData *data = g_new0(ActionData, 1);
     data->atk_action = (*jniEnv)->NewGlobalRef(jniEnv, jatk_action);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

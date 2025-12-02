@@ -153,8 +153,6 @@ gpointer jaw_table_data_init(jobject ac) {
         return NULL;
     }
 
-    TableData *data = g_new0(TableData, 1);
-
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
 
@@ -184,6 +182,8 @@ gpointer jaw_table_data_init(jobject ac) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
+
+    TableData *data = g_new0(TableData, 1);
     data->atk_table = (*jniEnv)->NewGlobalRef(jniEnv, jatk_table);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

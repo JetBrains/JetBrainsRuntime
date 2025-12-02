@@ -72,8 +72,6 @@ gpointer jaw_value_data_init(jobject ac) {
         return NULL;
     }
 
-    ValueData *data = g_new0(ValueData, 1);
-
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
@@ -101,6 +99,8 @@ gpointer jaw_value_data_init(jobject ac) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
+
+    ValueData *data = g_new0(ValueData, 1);
     data->atk_value = (*jniEnv)->NewGlobalRef(jniEnv, jatk_value);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

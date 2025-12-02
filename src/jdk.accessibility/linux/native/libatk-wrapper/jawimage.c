@@ -94,8 +94,6 @@ gpointer jaw_image_data_init(jobject ac) {
         return NULL;
     }
 
-    ImageData *data = g_new0(ImageData, 1);
-
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
 
@@ -128,6 +126,7 @@ gpointer jaw_image_data_init(jobject ac) {
         return NULL;
     }
 
+    ImageData *data = g_new0(ImageData, 1);
     data->atk_image = (*jniEnv)->NewGlobalRef(jniEnv, jatk_image);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
