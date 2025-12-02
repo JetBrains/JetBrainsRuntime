@@ -48,7 +48,7 @@ class WLKeyboard {
         // called from native code
         void setRepeatInfo(int charsPerSecond, int delayMillis) {
             // this function receives (0, 0) when key repeat is disabled
-            assert EventQueue.isDispatchThread();
+            assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
             this.delayBeforeRepeatMillis = delayMillis;
             if (charsPerSecond > 0) {
                 this.delayBetweenRepeatMillis = (int) (1000.0 / charsPerSecond);
@@ -64,7 +64,7 @@ class WLKeyboard {
         }
 
         void cancelRepeat() {
-            assert EventQueue.isDispatchThread();
+            assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
             if (currentRepeatTask != null) {
                 currentRepeatTask.cancel();
                 currentRepeatTask = null;
@@ -74,7 +74,7 @@ class WLKeyboard {
 
         // called from native code
         void stopRepeat(int keycode) {
-            assert EventQueue.isDispatchThread();
+            assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
             if (currentRepeatKeycode == keycode) {
                 cancelRepeat();
             }
@@ -82,7 +82,7 @@ class WLKeyboard {
 
         // called from native code
         void startRepeat(long serial, long timestamp, int keycode) {
-            assert EventQueue.isDispatchThread();
+            assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
             cancelRepeat();
             if (keycode == 0 || !isRepeatEnabled()) {
                 return;
@@ -123,7 +123,7 @@ class WLKeyboard {
     public native boolean isNumLockPressed();
 
     public void onLostFocus() {
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
         keyRepeatManager.cancelRepeat();
         cancelCompose();
     }
