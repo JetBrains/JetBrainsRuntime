@@ -88,6 +88,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
     private static final PlatformLogger popupLog = PlatformLogger.getLogger("sun.awt.wl.popup.WLComponentPeer");
 
+    public static final String POPUP_POSITION_UNCONSTRAINED_CLIENT_PROPERTY = "wlawt.popup_position_unconstrained";
+
     protected static final int MINIMUM_WIDTH = 1;
     protected static final int MINIMUM_HEIGHT = 1;
 
@@ -351,6 +353,18 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         return popupBounds.getLocation();
     }
 
+    private boolean isPopupPositionUnconstrained() {
+        if (SunToolkit.isInstanceOf(target, "javax.swing.RootPaneContainer")) {
+            javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer) target).getRootPane();
+            Object prop = rootpane.getClientProperty(POPUP_POSITION_UNCONSTRAINED_CLIENT_PROPERTY);
+            if (prop instanceof Boolean booleanProp) {
+                return booleanProp;
+            }
+        }
+
+        return false;
+    }
+
     protected void wlSetVisible(boolean v) {
         // TODO: this whole method should be moved to WLWindowPeer
         synchronized (getStateLock()) {
@@ -370,6 +384,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                     : Frame.NORMAL;
             boolean isMaximized = (state & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH;
             boolean isMinimized = (state & Frame.ICONIFIED) == Frame.ICONIFIED;
+            boolean isUnconstrained = isPopupPositionUnconstrained();
 
             performLocked(() -> {
                 assert wlSurface == null;
@@ -381,7 +396,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                     Window toplevel = getToplevelFor(popupParent);
                     Point nativeLocation = nativeLocationForPopup(popup, popupParent, toplevel);
                     nativeCreatePopup(nativePtr, getNativePtrFor(toplevel), wlSurfacePtr,
-                            thisWidth, thisHeight, nativeLocation.x, nativeLocation.y);
+                            thisWidth, thisHeight, nativeLocation.x, nativeLocation.y, isUnconstrained);
                 } else {
                     nativeCreateWindow(nativePtr, getParentNativePtr(target), wlSurfacePtr,
                             isModal, isMaximized, isMinimized, title, WLToolkit.getApplicationID());
@@ -500,7 +515,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
             final Window toplevel = getToplevelFor(popupParent);
             Point nativeLocation = nativeLocationForPopup(popup, popupParent, toplevel);
-            nativeRepositionWLPopup(nativePtr, surfaceWidth, surfaceHeight, nativeLocation.x, nativeLocation.y);
+            boolean isUnconstrained = isPopupPositionUnconstrained();
+            nativeRepositionWLPopup(nativePtr, surfaceWidth, surfaceHeight, nativeLocation.x, nativeLocation.y, isUnconstrained);
         }
     }
 
@@ -1150,12 +1166,14 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                                                 String title, String appID);
 
     protected native void nativeCreatePopup(long ptr, long parentPtr, long wlSurfacePtr,
-                                              int width, int height,
-                                              int offsetX, int offsetY);
+                                            int width, int height,
+                                            int offsetX, int offsetY,
+                                            boolean isUnconstrained);
 
     protected native void nativeRepositionWLPopup(long ptr,
                                                   int width, int height,
-                                                  int offsetX, int offsetY);
+                                                  int offsetX, int offsetY,
+                                                  boolean isUnconstrained);
     protected native void nativeHideFrame(long ptr);
 
     protected native void nativeDisposeFrame(long ptr);
