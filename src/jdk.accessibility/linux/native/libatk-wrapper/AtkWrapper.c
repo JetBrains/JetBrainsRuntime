@@ -385,6 +385,11 @@ static gboolean focus_notify_handler(gpointer p) {
     JAW_CHECK_NULL(para, FALSE);
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    if (!atk_obj) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
+
     atk_object_notify_state_change(atk_obj, ATK_STATE_FOCUSED, 1);
 
     queue_free_callback_para(para);
@@ -415,8 +420,12 @@ static gboolean window_open_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
+
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
-    JAW_CHECK_NULL(atk_obj, FALSE);
+    if (!atk_obj) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
 
     gboolean is_toplevel = para->is_toplevel;
 
@@ -471,8 +480,12 @@ static gboolean window_close_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
+
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
-    JAW_CHECK_NULL(atk_obj, FALSE);
+    if (!atk_obj) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
 
     gboolean is_toplevel = para->is_toplevel;
 
@@ -528,8 +541,12 @@ static gboolean window_minimize_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
+
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
-    JAW_CHECK_NULL(atk_obj, FALSE);
+    if (!atk_obj) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
 
     g_signal_emit_by_name(atk_obj, "minimize");
 
@@ -562,7 +579,11 @@ static gboolean window_maximize_handler(gpointer p) {
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
-    JAW_CHECK_NULL(atk_obj, FALSE);
+    
+    if (!atk_obj) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
 
     g_signal_emit_by_name(atk_obj, "maximize");
 
@@ -594,8 +615,12 @@ static gboolean window_restore_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
+
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
-    JAW_CHECK_NULL(atk_obj, FALSE);
+    if (!atk_obj) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
 
     g_signal_emit_by_name(atk_obj, "restore");
 
@@ -627,8 +652,12 @@ static gboolean window_activate_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
+
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
-    JAW_CHECK_NULL(atk_obj, FALSE);
+    if (!atk_obj) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
 
     g_signal_emit_by_name(atk_obj, "activate");
 
@@ -660,8 +689,12 @@ static gboolean window_deactivate_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
+
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
-    JAW_CHECK_NULL(atk_obj, FALSE);
+    if (!atk_obj) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
 
     g_signal_emit_by_name(atk_obj, "deactivate");
 
@@ -693,8 +726,12 @@ static gboolean window_state_change_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
+
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
-    JAW_CHECK_NULL(atk_obj, FALSE);
+    if (!atk_obj) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
 
     g_signal_emit_by_name(atk_obj, "state-change", 0, 0);
 
@@ -801,10 +838,16 @@ static gboolean signal_emit_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
+
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    if (!jniEnv) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
+
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("Failed to create a new local reference frame");
+        queue_free_callback_para(para);
         return FALSE;
     }
 
@@ -1194,7 +1237,13 @@ static gboolean object_state_change_handler(gpointer p) {
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
 
-    atk_object_notify_state_change(ATK_OBJECT(para->jaw_impl), para->atk_state,
+    AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    if (!atk_obj) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
+
+    atk_object_notify_state_change(atk_obj, para->atk_state,
                                    para->state_value);
 
     queue_free_callback_para(para);
@@ -1231,8 +1280,12 @@ static gboolean component_added_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
+
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
-    JAW_CHECK_NULL(atk_obj, FALSE);
+    if (!atk_obj) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
 
     if (atk_object_get_role(atk_obj) == ATK_ROLE_TOOL_TIP) {
         atk_object_notify_state_change(atk_obj, ATK_STATE_SHOWING, 1);
@@ -1263,14 +1316,13 @@ static gboolean component_removed_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
-    AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
-    JAW_CHECK_NULL(atk_obj, FALSE);
 
-    if (atk_obj == NULL) {
-        JAW_DEBUG_I("atk_obj == NULL");
+    AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
+    if (!atk_obj) {
         queue_free_callback_para(para);
-        return G_SOURCE_REMOVE;
+        return FALSE;
     }
+
     if (atk_object_get_role(atk_obj) == ATK_ROLE_TOOL_TIP)
         atk_object_notify_state_change(atk_obj, ATK_STATE_SHOWING, FALSE);
     queue_free_callback_para(para);
@@ -1302,16 +1354,14 @@ static gboolean bounds_changed_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
+
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
-    JAW_CHECK_NULL(atk_obj, FALSE);
+    if (!atk_obj) {
+        queue_free_callback_para(para);
+        return FALSE;
+    }
 
     AtkRectangle rect;
-
-    if (atk_obj == NULL) {
-        JAW_DEBUG_I("atk_obj == NULL");
-        queue_free_callback_para(para);
-        return G_SOURCE_REMOVE;
-    }
     rect.x = -1;
     rect.y = -1;
     rect.width = -1;
