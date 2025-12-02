@@ -192,7 +192,6 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
 }
 
 typedef struct _CallbackPara {
-    jobject ac;
     jobject global_ac;
     JawImpl *jaw_impl;
     JawImpl *child_impl;
@@ -815,7 +814,7 @@ static gboolean signal_emit_handler(gpointer p) {
     if (para->signal_id ==
         org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED) {
         pthread_mutex_lock(&jaw_vdc_dup_mutex);
-        if ((*jniEnv)->IsSameObject(jniEnv, jaw_vdc_last_ac, para->ac)) {
+        if ((*jniEnv)->IsSameObject(jniEnv, jaw_vdc_last_ac, para->global_ac)) {
             /* So we will be sending the visible data changed event. If any
              * other comes, we will want to send it  */
             jaw_vdc_last_ac = NULL;
@@ -1121,7 +1120,6 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     }
     jobjectArray global_args =
         (jobjectArray)(*jniEnv)->NewGlobalRef(jniEnv, args);
-    para->ac = jAccContext;
     para->signal_id = (gint)id;
     para->args = global_args;
 
