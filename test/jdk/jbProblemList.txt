@@ -128,7 +128,7 @@ java/awt/event/StressTest/MouseAndKeyEventStressTest.java JBR-6479 generic-all
 java/awt/FileDialog/8003399/bug8003399.java JBR-6930 windows-all
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
 java/awt/Focus/EmptyWindowKeyTest.java JBR-7913 windows-all
-java/awt/Focus/FocusKeepTest.java JBR-9487 linux-6.8.0-1040-aws
+java/awt/Focus/FocusKeepTest.java JBR-9487 linux-6.8.0-1040-aws,linux-6.8.0-1043-aws
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java JBR-5178 windows-all
 java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java JBR-5809 linux-all
@@ -136,7 +136,7 @@ java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayout
 java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
 java/awt/Focus/InactiveFocusRace.java 8023263,JBR-8586 linux-all,windows-x64
-java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java JBR-7311 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.8.0-1040-aws
+java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java JBR-7311 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.8.0-1040-aws,linux-6.8.0-1043-aws
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
 java/awt/Focus/LabelScrollBarFocus.java JBR-8027 linux-all
@@ -584,7 +584,7 @@ java/awt/Modal/ModalFocusTransferTests/FocusTransferWDFNonModal1Test.java 825318
 java/awt/Modal/ModalFocusTransferTests/FocusTransferWDFNonModal2Test.java 8253184,8196432 windows-all,linux-all
 java/awt/Modal/ModalFocusTransferTests/FocusTransferWDFNonModal3Test.java 8253184 windows-all
 java/awt/Modal/ModalInternalFrameTest/ModalInternalFrameTest.java 8253184,JBR-6302 windows-all,linux-all
-java/awt/Modal/MultipleDialogs/MixOfModalAndNonModalDialogs.java JBR-9317 linux-6.16.7-100.fc41.x86_64,linux-linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64
+java/awt/Modal/MultipleDialogs/MixOfModalAndNonModalDialogs.java JBR-9317 linux-6.16.7-100.fc41.x86_64,linux-linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.8-200.fc42.aarch64
 java/awt/Modal/MultipleDialogs/MultipleDialogs1Test.java 8198665,8253184 macosx-all,windows-all
 java/awt/Modal/MultipleDialogs/MultipleDialogs2Test.java 8198665,8253184 macosx-all,windows-all
 java/awt/Modal/MultipleDialogs/MultipleDialogs3Test.java 8198665,8253184 macosx-all,windows-all,linux-all
