@@ -128,10 +128,10 @@ public class WLGraphicsDevice extends GraphicsDevice {
                              int widthLogical, int heightLogical,
                              int widthMm, int heightMm,
                              int displayScale) {
-        assert width > 0 && height > 0;
-        assert widthLogical > 0 && heightLogical > 0;
-        assert widthMm > 0 && heightMm > 0;
-        assert displayScale > 0;
+        assert width > 0 && height > 0 : String.format("Invalid device size: %dx%d", width, height);
+        assert widthLogical > 0 && heightLogical > 0 : String.format("Invalid logical device size: %dx%d", widthLogical, heightLogical);
+        assert widthMm > 0 && heightMm > 0 : String.format("Invalid physical device size: %dx%d", widthMm, heightMm);
+        assert displayScale > 0 : String.format("Invalid display scale: %d", displayScale);
 
         this.wlID = id;
         this.name = name;
@@ -176,10 +176,10 @@ public class WLGraphicsDevice extends GraphicsDevice {
                              int widthLogical, int heightLogical,
                              int widthMm, int heightMm,
                              int scale) {
-        assert width > 0 && height > 0;
-        assert widthLogical > 0 && heightLogical > 0;
-        assert widthMm > 0 && heightMm > 0;
-        assert scale > 0;
+        assert width > 0 && height > 0 : String.format("Invalid device size: %dx%d", width, height);
+        assert widthLogical > 0 && heightLogical > 0 : String.format("Invalid logical device size: %dx%d", widthLogical, heightLogical);
+        assert widthMm > 0 && heightMm > 0 : String.format("Invalid physical device size: %dx%d", widthMm, heightMm);
+        assert scale > 0 : String.format("Invalid display scale: %d", scale);
 
         this.name = name;
         this.x = x;
