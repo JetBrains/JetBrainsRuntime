@@ -91,7 +91,7 @@ public class WLMainSurface extends WLSurface {
     }
 
     public void activateByAnotherSurface(long serial, long activatingSurfacePtr) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread();
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         assertIsValid();
 
         nativeActivate(getNativePtr(), serial, activatingSurfacePtr);
