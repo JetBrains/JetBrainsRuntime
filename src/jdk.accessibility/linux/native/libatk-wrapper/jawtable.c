@@ -799,10 +799,14 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
         return NULL;
     }
 
-    if (data->description != NULL && data->jstrDescription != NULL) {
-        (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
-                                         data->description);
+    if (data->jstrDescription != NULL) {
+        if (data->description != NULL) {
+            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
+                                             data->description);
+            data->description = NULL;
+        }
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
+        data->jstrDescription = NULL;
     }
 
     data->jstrDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
@@ -867,10 +871,14 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
         return NULL;
     }
 
-    if (data->description != NULL && data->jstrDescription != NULL) {
-        (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
-                                         data->description);
+    if (data->jstrDescription != NULL) {
+        if (data->description != NULL) {
+            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
+                                             data->description);
+            data->description = NULL;
+        }
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
+        data->jstrDescription = NULL;
     }
 
     data->jstrDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);

@@ -208,8 +208,10 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
         if (jaw_hyperlink->uri != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_hyperlink->jstrUri,
                                              jaw_hyperlink->uri);
+            jaw_hyperlink->uri = NULL;
         }
         (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jstrUri);
+        jaw_hyperlink->jstrUri = NULL;
     }
 
     jaw_hyperlink->jstrUri = (*jniEnv)->NewGlobalRef(jniEnv, jstr);

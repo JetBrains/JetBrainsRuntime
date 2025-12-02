@@ -285,8 +285,10 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
         if (data->image_description != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrImageDescription,
                                              data->image_description);
+            data->image_description = NULL;
         }
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrImageDescription);
+        data->jstrImageDescription = NULL;
     }
 
     data->jstrImageDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
