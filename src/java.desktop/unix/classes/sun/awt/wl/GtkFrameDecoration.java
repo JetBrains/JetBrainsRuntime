@@ -68,7 +68,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     public GtkFrameDecoration(WLDecoratedPeer peer, boolean showMinimize, boolean showMaximize) {
         super(peer, showMinimize, showMaximize);
         nativePtr = nativeCreateDecoration(showMinimize, showMaximize, isDarkTheme());
-        assert nativePtr != 0;
+        assert nativePtr != 0 : "Failed to create the native part of the decoration";
         int t = nativeGetIntProperty(nativePtr, "gtk-dnd-drag-threshold");
         dndThreshold = t > 0 ? t : 4;
     }
@@ -87,8 +87,8 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
         int width = peer.getWidth();
         int height = titleBarHeight;
 
-        assert width >= titleBarMinWidth;
-        assert peer.getHeight() >= titleBarHeight;
+        assert width >= titleBarMinWidth : "The frame width is too small to display the title bar";
+        assert peer.getHeight() >= titleBarHeight : "The frame height is too small to display the title bar";
 
         double scale = ((WLGraphicsConfig) peer.getGraphicsConfiguration()).getEffectiveScale();
         g2d.setBackground(new Color(0, true));
