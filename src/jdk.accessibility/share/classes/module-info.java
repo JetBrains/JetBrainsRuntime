@@ -30,11 +30,8 @@
  * @since 9
  */
 module jdk.accessibility {
-    requires java.base;
-
     requires transitive java.desktop;
 
     exports com.sun.java.accessibility.util;
-    exports org.GNOME.Accessibility;
 }
 

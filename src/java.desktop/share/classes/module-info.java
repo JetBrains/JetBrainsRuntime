@@ -118,9 +118,6 @@ module java.desktop {
         jdk.accessibility,
         jdk.unsupported.desktop;
 
-    exports sun.awt.util to
-            jdk.accessibility;
-
     exports java.awt.dnd.peer to jdk.unsupported.desktop;
     exports sun.awt.dnd to jdk.unsupported.desktop;
     exports sun.swing to jdk.unsupported.desktop;
