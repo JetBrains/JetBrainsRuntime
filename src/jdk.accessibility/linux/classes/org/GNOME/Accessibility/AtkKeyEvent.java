@@ -43,8 +43,8 @@ public class AtkKeyEvent {
     // Symbols mapped to X11 keysym names
     private static HashMap<String, String> nonAlphaNumericMap = null;
 
-    public static final int ATK_KEY_EVENT_PRESSED = 0;
-    public static final int ATK_KEY_EVENT_RELEASED = 1;
+    private static final int ATK_KEY_EVENT_PRESSED = 0;
+    private static final int ATK_KEY_EVENT_RELEASED = 1;
 
     private int type;
     private boolean isShiftKeyDown = false;

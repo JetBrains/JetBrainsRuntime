@@ -40,7 +40,7 @@ public class AtkComponent {
         this._acc_component = new WeakReference<AccessibleComponent>(ac.getAccessibleComponent());
     }
 
-    public static Point getWindowLocation(AccessibleContext ac) {
+    private static Point getWindowLocation(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
 
         while (ac != null) {
