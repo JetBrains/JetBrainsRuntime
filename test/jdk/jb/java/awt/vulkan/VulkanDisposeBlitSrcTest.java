@@ -36,7 +36,6 @@ import java.lang.ref.WeakReference;
 
 /*
  * @test
- * @requires os.family == "linux"
  * @library /test/lib
  * @summary Verifies that disposal of blit source image doesn't crash the process.
  * @modules java.desktop/sun.java2d.vulkan:+open java.desktop/sun.java2d:+open java.desktop/sun.awt.image:+open
