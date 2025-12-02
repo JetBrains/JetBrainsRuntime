@@ -172,18 +172,23 @@ void jaw_component_data_finalize(gpointer p) {
         return;
     }
 
-    JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, );
-
     ComponentData *data = (ComponentData *)p;
     if (!data) {
         return;
     }
 
-    if (data->atk_component) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_component);
-        data->atk_component = NULL;
+    JNIEnv *jniEnv = jaw_util_get_jni_env();
+
+    if (!jniEnv) {
+        g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
+    } else {
+        if (data->atk_component) {
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_component);
+            data->atk_component = NULL;
+        }
     }
+
+    g_free(data);
 }
 
 /**

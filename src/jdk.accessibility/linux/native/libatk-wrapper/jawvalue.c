@@ -117,15 +117,22 @@ void jaw_value_data_finalize(gpointer p) {
     }
 
     ValueData *data = (ValueData *)p;
-    JAW_CHECK_NULL(data, );
+    if (!data) {
+        return;
+    }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, );
 
-    if (data->atk_value) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_value);
-        data->atk_value = NULL;
+    if (!jniEnv) {
+        g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
+    } else {
+        if (data->atk_value) {
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_value);
+            data->atk_value = NULL;
+        }
     }
+
+    g_free(data);
 }
 
 static void private_get_g_value_from_java_number(JNIEnv *jniEnv,

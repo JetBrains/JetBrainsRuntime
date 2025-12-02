@@ -157,46 +157,52 @@ void jaw_action_data_finalize(gpointer p) {
     }
 
     ActionData *data = (ActionData *)p;
-    JNIEnv *jniEnv = jaw_util_get_jni_env();
-
-    if (!jniEnv || !data) {
+    if (!data) {
         return;
     }
 
-    if (data->jstrLocalizedName != NULL) {
-        if (data->localized_name != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrLocalizedName,
-                                             data->localized_name);
-            data->localized_name = NULL;
+    JNIEnv *jniEnv = jaw_util_get_jni_env();
+
+    if (!jniEnv) {
+        g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
+    } else {
+        if (data->jstrLocalizedName != NULL) {
+            if (data->localized_name != NULL) {
+                (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrLocalizedName,
+                                                 data->localized_name);
+                data->localized_name = NULL;
+            }
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrLocalizedName);
+            data->jstrLocalizedName = NULL;
         }
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrLocalizedName);
-        data->jstrLocalizedName = NULL;
+
+        if (data->jstrActionDescription != NULL) {
+            if (data->action_description != NULL) {
+                (*jniEnv)->ReleaseStringUTFChars(
+                    jniEnv, data->jstrActionDescription, data->action_description);
+                data->action_description = NULL;
+            }
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionDescription);
+            data->jstrActionDescription = NULL;
+        }
+
+        if (data->jstrActionKeybinding != NULL) {
+            if (data->action_keybinding != NULL) {
+                (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrActionKeybinding,
+                                                 data->action_keybinding);
+                data->action_keybinding = NULL;
+            }
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionKeybinding);
+            data->jstrActionKeybinding = NULL;
+        }
+
+        if (data->atk_action != NULL) {
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_action);
+            data->atk_action = NULL;
+        }
     }
 
-    if (data->jstrActionDescription != NULL) {
-        if (data->action_description != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(
-                jniEnv, data->jstrActionDescription, data->action_description);
-            data->action_description = NULL;
-        }
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionDescription);
-        data->jstrActionDescription = NULL;
-    }
-
-    if (data->jstrActionKeybinding != NULL) {
-        if (data->action_keybinding != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrActionKeybinding,
-                                             data->action_keybinding);
-            data->action_keybinding = NULL;
-        }
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionKeybinding);
-        data->jstrActionKeybinding = NULL;
-    }
-
-    if (data->atk_action != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_action);
-        data->atk_action = NULL;
-    }
+    g_free(data);
 }
 
 /**

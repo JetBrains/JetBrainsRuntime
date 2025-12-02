@@ -200,23 +200,31 @@ void jaw_table_data_finalize(gpointer p) {
     }
 
     TableData *data = (TableData *)p;
-    JAW_CHECK_NULL(data, );
-    JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, );
+    if (!data) {
+        return;
+    }
 
-    if (data->jstrDescription != NULL) {
-        if (data->description != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
-                                             data->description);
-            data->description = NULL;
+    JNIEnv *jniEnv = jaw_util_get_jni_env();
+
+    if (!jniEnv) {
+        g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
+    } else {
+        if (data->jstrDescription != NULL) {
+            if (data->description != NULL) {
+                (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
+                                                 data->description);
+                data->description = NULL;
+            }
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
+            data->jstrDescription = NULL;
         }
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
-        data->jstrDescription = NULL;
+        if (data->atk_table) {
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_table);
+            data->atk_table = NULL;
+        }
     }
-    if (data->atk_table) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_table);
-        data->atk_table = NULL;
-    }
+
+    g_free(data);
 }
 
 /**

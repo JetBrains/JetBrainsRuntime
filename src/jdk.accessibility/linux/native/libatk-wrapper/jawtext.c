@@ -209,24 +209,32 @@ void jaw_text_data_finalize(gpointer p) {
     }
 
     TextData *data = (TextData *)p;
-    JAW_CHECK_NULL(data, );
+    if (!data) {
+        return;
+    }
+
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, );
 
-    if (data->jstrText != NULL) {
-        if (data->text != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrText,
-                                             data->text);
-            data->text = NULL;
+    if (!jniEnv) {
+        g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
+    } else {
+        if (data->jstrText != NULL) {
+            if (data->text != NULL) {
+                (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrText,
+                                                 data->text);
+                data->text = NULL;
+            }
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrText);
+            data->jstrText = NULL;
         }
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrText);
-        data->jstrText = NULL;
+
+        if (data->atk_text != NULL) {
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_text);
+            data->atk_text = NULL;
+        }
     }
 
-    if (data->atk_text != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_text);
-        data->atk_text = NULL;
-    }
+    g_free(data);
 }
 
 static gchar *private_jaw_text_get_gtext_from_jstr(JNIEnv *jniEnv,

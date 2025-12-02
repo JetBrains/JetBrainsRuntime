@@ -143,24 +143,32 @@ void jaw_image_data_finalize(gpointer p) {
     }
 
     ImageData *data = (ImageData *)p;
-    JAW_CHECK_NULL(data, );
+    if (!data) {
+        return;
+    }
+
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, );
 
-    if (data->jstrImageDescription != NULL) {
-        if (data->image_description != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrImageDescription,
-                                             data->image_description);
-            data->image_description = NULL;
+    if (!jniEnv) {
+        g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
+    } else {
+        if (data->jstrImageDescription != NULL) {
+            if (data->image_description != NULL) {
+                (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrImageDescription,
+                                                 data->image_description);
+                data->image_description = NULL;
+            }
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrImageDescription);
+            data->jstrImageDescription = NULL;
         }
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrImageDescription);
-        data->jstrImageDescription = NULL;
+
+        if (data->atk_image) {
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_image);
+            data->atk_image = NULL;
+        }
     }
 
-    if (data->atk_image) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_image);
-        data->atk_image = NULL;
-    }
+    g_free(data);
 }
 
 static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
