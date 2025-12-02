@@ -77,7 +77,8 @@ public class WLDataOffer {
 
         fd = openReceivePipe(nativePtr, mime);
 
-        assert(fd != -1); // Otherwise an exception should be thrown from native code
+        // Otherwise an exception should be thrown from native code
+        assert fd != -1 : "An invalid file descriptor received from the native code";
 
         FileDescriptor javaFD = new FileDescriptor();
         jdk.internal.access.SharedSecrets.getJavaIOFileDescriptorAccess().set(javaFD, fd);
