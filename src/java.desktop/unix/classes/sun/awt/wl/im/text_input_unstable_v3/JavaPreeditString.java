@@ -82,8 +82,8 @@ record JavaPreeditString(String text, int cursorBeginCodeUnit, int cursorEndCode
         }
 
         if (resultText == null) {
-            assert(fixedCursorBeginUtf8Byte == 0);
-            assert(fixedCursorEndUtf8Byte == 0);
+            assert fixedCursorBeginUtf8Byte == 0 : "Cursor begin byte must be zero for an empty string";
+            assert fixedCursorEndUtf8Byte == 0 : "Cursor end byte must be zero for an empty string";
 
             return JavaPreeditString.EMPTY;
         }
