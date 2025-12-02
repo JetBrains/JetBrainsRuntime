@@ -242,7 +242,9 @@ record WLInputState(WLPointerEvent eventWithSurface,
                                                         WLPointerEvent newEventWithTimestamp,
                                                         WLPointerEvent newEventWithPosition) {
         if (pointerEvent.hasButtonEvent() && pointerEvent.getIsButtonPressed() && newEventWithSurface != null) {
-            assert newEventWithTimestamp != null && newEventWithPosition != null;
+            assert newEventWithTimestamp != null && newEventWithPosition != null
+                    : "Events with timestamp and position are both required to be present";
+
             int clickCount = 1;
             final boolean pressedSameButton = pointerButtonPressedEvent != null
                     && pointerEvent.getButtonCode() == pointerButtonPressedEvent.linuxCode;
