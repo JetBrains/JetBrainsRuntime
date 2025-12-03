@@ -134,6 +134,7 @@ class InstanceKlass: public Klass {
   friend class JVMCIVMStructs;
   friend class ClassFileParser;
   friend class CompileReplay;
+  friend class FieldStream;
 
  public:
   static const KlassKind Kind = InstanceKlassKind;
