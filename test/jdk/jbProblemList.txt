@@ -358,7 +358,7 @@ java/awt/Clipboard/GetAltContentsTest/SystemClipboardTest.java 8234140 macosx-al
 java/awt/Clipboard/ImageTransferTest.java 8030710 generic-all
 java/awt/Clipboard/NoDataConversionFailureTest.java 8234140 macosx-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210 windows-all
-java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
+java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210,JBR-9444 windows-all,linux-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
@@ -994,7 +994,8 @@ javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java JBR-788 window
 javax/swing/JInternalFrame/6647340/bug6647340.java 8253184 windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java JBR-788 windows-all,linux-all
 javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java JBR-5539 windows-all
-javax/swing/JInternalFrame/Test6325652.java JBR-6111 windows-all
+javax/swing/JInternalFrame/JInternalFrameTest.java JBR-9193 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.8-200.fc42.aarch64
+javax/swing/JInternalFrame/Test6325652.java JBR-9194 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.8-200.fc42.aarch64
 javax/swing/JInternalFrame/Test6505027.java JBR-5954 linux-all,osx-all
 javax/swing/JInternalFrame/Test6802868.java 8253184 windows-all
 javax/swing/JPopupMenu/4634626/bug4634626.java 8253184 windows-all
