@@ -234,8 +234,10 @@ static AtkObject *jaw_util_get_root(void) {
     JAW_DEBUG_C("");
     static JawToplevel *root = NULL;
 
-    root = g_object_new(JAW_TYPE_TOPLEVEL, NULL);
-    atk_object_initialize(ATK_OBJECT(root), NULL);
+    if (root == NULL) {
+        root = g_object_new(JAW_TYPE_TOPLEVEL, NULL);
+        atk_object_initialize(ATK_OBJECT(root), NULL);
+    }
 
     return ATK_OBJECT(root);
 }
