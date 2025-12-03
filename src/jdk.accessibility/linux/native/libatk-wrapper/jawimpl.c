@@ -194,6 +194,7 @@ JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
 
     JawObject *jaw_obj = JAW_OBJECT(jaw_impl);
     if (jaw_obj == NULL) {
+        g_object_unref(G_OBJECT(jaw_impl));
         (*jniEnv)->DeleteGlobalRef(jniEnv, temp_ref);
         return NULL;
     }
