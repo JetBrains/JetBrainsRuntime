@@ -1439,8 +1439,8 @@ static gboolean key_dispatch_handler(gpointer p) {
     }
 
     jint type = (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidType);
-    if (!type) {
-        // Unknown event type: clean up and exit
+    if (type == -1) {
+        g_warning("%s: Unknown key event type (-1) received; cleaning up and removing source", G_STRFUNC);
         g_free(event);
         queue_free_callback_para_event(para);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -1478,7 +1478,7 @@ static gboolean key_dispatch_handler(gpointer p) {
     } else if (type == type_released) {
         event->type = ATK_KEY_EVENT_RELEASE;
     } else {
-        // Unknown event type: clean up and exit
+        g_warning("%s: Unknown key event type (%d) received; cleaning up and removing source", G_STRFUNC, type);
         g_free(event);
         queue_free_callback_para_event(para);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);

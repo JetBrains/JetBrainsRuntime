@@ -46,7 +46,7 @@ public class AtkKeyEvent {
     private static final int ATK_KEY_EVENT_PRESSED = 0;
     private static final int ATK_KEY_EVENT_RELEASED = 1;
 
-    private int type;
+    private int type = -1;
     private boolean isShiftKeyDown = false;
     private boolean isCtrlKeyDown = false;
     private boolean isAltKeyDown = false;
@@ -113,13 +113,13 @@ public class AtkKeyEvent {
         switch (e.getID()) {
             case KeyEvent.KEY_PRESSED:
             case KeyEvent.KEY_TYPED:
-                type = ATK_KEY_EVENT_PRESSED;
+                type = ATK_KEY_EVENT_PRESSED; // 0
                 break;
             case KeyEvent.KEY_RELEASED:
-                type = ATK_KEY_EVENT_RELEASED;
+                type = ATK_KEY_EVENT_RELEASED; // 1
                 break;
             default:
-                type = ATK_KEY_EVENT_PRESSED;
+                type = ATK_KEY_EVENT_PRESSED; // 0
         }
 
         //modifiers

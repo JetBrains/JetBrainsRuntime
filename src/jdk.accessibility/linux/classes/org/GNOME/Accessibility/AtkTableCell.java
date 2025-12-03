@@ -35,9 +35,9 @@ public class AtkTableCell {
         _ac = new WeakReference<AccessibleContext>(ac);
         _acc_pt = null;
         row = -1;
-        rowSpan = -1;
+        rowSpan = 0; // number of rows occupied by this table cell
         column = -1;
-        columnSpan = -1;
+        columnSpan = 0; // number of columns occupied by this table cell
         Accessible parent = ac.getAccessibleParent();
         if (parent == null) {
             return;

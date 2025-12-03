@@ -253,14 +253,30 @@ static void getPosition(JNIEnv *jniEnv, jobject jatk_table_cell,
 
     jfieldID id_row =
         (*jniEnv)->GetFieldID(jniEnv, classAtkTableCell, "row", "I");
-    JAW_CHECK_NULL(id_row, );
+    if (id_row == NULL) {
+        g_warning("%s: Failed to get field ID for 'row'", G_STRFUNC);
+        return;
+    }
+
     jfieldID id_column =
         (*jniEnv)->GetFieldID(jniEnv, classAtkTableCell, "column", "I");
-    JAW_CHECK_NULL(id_column, );
+    if (id_column == NULL) {
+        g_warning("%s: Failed to get field ID for 'column'", G_STRFUNC);
+        return;
+    }
+
     jint jrow = (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, id_row);
-    JAW_CHECK_NULL(jrow, );
+    if (jrow == -1) {
+        g_warning("%s: Invalid row value (-1) retrieved", G_STRFUNC);
+        return;
+    }
+
     jint jcolumn = (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, id_column);
-    JAW_CHECK_NULL(jcolumn, );
+    if (jcolumn == -1) {
+        g_warning("%s: Invalid column value (-1) retrieved", G_STRFUNC);
+        return;
+    }
+
     (*row) = (gint)jrow;
     (*column) = (gint)jcolumn;
 }
@@ -311,7 +327,12 @@ static void getRowSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
 
     jint jrow_span =
         (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, id_row_span);
-    JAW_CHECK_NULL(jrow_span, );
+    if (jrow_span == -1) {
+        g_warning("%s: Invalid row span value (-1) retrieved", G_STRFUNC);
+        return;
+    if (jrow_span < 0) {
+        g_warning("%s: Invalid column span value (%d) retrieved", G_STRFUNC, jrow_span);
+    }
 
     // clean up:
     // id_row_span is regular C pointer type, jrow_span is a primitive type
@@ -331,7 +352,12 @@ static void getColumnSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
 
     jint jcolumn_span =
         (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, id_column_span);
-    JAW_CHECK_NULL(jcolumn_span, );
+    if (jcolumn_span == -1) {
+        g_warning("%s: Invalid column span value (-1) retrieved", G_STRFUNC);
+        return;
+    if (jcolumn_span < 0) {
+        g_warning("%s: Invalid column span value (%d) retrieved", G_STRFUNC, jcolumn_span);
+    }
 
     // clean up:
     // id_row_span is regular C pointer type, jrow_span is a primitive type
@@ -400,7 +426,7 @@ static gint jaw_table_cell_get_row_span(AtkTableCell *cell) {
         return 0;
     }
 
-    gint row_span = -1;
+    gint row_span = 0;
     jclass classAtkTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     if (!classAtkTableCell) {
@@ -434,7 +460,7 @@ static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
         return 0;
     }
 
-    gint column_span = -1;
+    gint column_span = 0;
     jclass classAtkTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     if (!classAtkTableCell) {
