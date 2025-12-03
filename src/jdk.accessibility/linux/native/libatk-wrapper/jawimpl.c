@@ -183,28 +183,26 @@ JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
 
     JawImpl *jaw_impl;
 
-    jobject temp_ref = (*jniEnv)->NewGlobalRef(jniEnv, ac);
-    guint tflag = jaw_util_get_tflag_from_jobj(jniEnv, temp_ref);
+    guint tflag = jaw_util_get_tflag_from_jobj(jniEnv, ac);
 
     jaw_impl = (JawImpl *)g_object_new(JAW_TYPE_IMPL(tflag), NULL);
     if (jaw_impl == NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, temp_ref);
+        (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         return NULL;
     }
 
     JawObject *jaw_obj = JAW_OBJECT(jaw_impl);
     if (jaw_obj == NULL) {
         g_object_unref(G_OBJECT(jaw_impl));
-        (*jniEnv)->DeleteGlobalRef(jniEnv, temp_ref);
+        (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         return NULL;
     }
 
-    jobject weak_ref = (*jniEnv)->NewWeakGlobalRef(jniEnv, temp_ref);
+    jobject weak_ref = (*jniEnv)->NewWeakGlobalRef(jniEnv, ac);
     jaw_obj->acc_context = weak_ref;
     jaw_obj->storedData = g_hash_table_new(g_str_hash, g_str_equal);
     aggregate_interface(jniEnv, jaw_obj, tflag);
     atk_object_initialize(ATK_OBJECT(jaw_impl), NULL);
-    (*jniEnv)->DeleteGlobalRef(jniEnv, temp_ref);
 
     return jaw_impl;
 }
