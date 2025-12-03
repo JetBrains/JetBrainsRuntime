@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2004, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@
  * @bug 8133632
  * @summary javax.net.ssl.SSLEngine does not properly handle received
  *      SSL fatal alerts
- *
+ * @library /test/lib
  * @run main/othervm EngineCloseOnAlert
  */
 
@@ -37,6 +37,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.security.*;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
+import jdk.test.lib.security.SecurityUtils;
 
 public class EngineCloseOnAlert {
 
@@ -65,6 +66,8 @@ public class EngineCloseOnAlert {
     }
 
     public static void main(String[] args) throws Exception {
+        // Re-enable TLS_RSA_* since test depends on it.
+        SecurityUtils.removeFromDisabledTlsAlgs("TLS_RSA_*");
         int failed = 0;
         List<TestCase> testMatrix = new LinkedList<TestCase>() {{
             add(clientReceivesAlert);
