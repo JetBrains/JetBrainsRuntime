@@ -272,9 +272,6 @@ public final class PackageTest extends RunnablePackageTest {
     PackageTest addHelloAppFileAssociationsVerifier(FileAssociations fa) {
         Objects.requireNonNull(fa);
 
-        // Setup test app to have valid jpackage command line before running the check.
-        addHelloAppInitializer(null);
-
         forTypes(LINUX, () -> {
             LinuxHelper.addFileAssociationsVerifier(this, fa);
         });
