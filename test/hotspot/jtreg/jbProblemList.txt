@@ -188,10 +188,10 @@ serviceability/jvmti/vthread/CarrierThreadEventNotification/CarrierThreadEventNo
 serviceability/dcmd/gc/RunFinalizationTest.java 8227120 generic-all
 
 serviceability/sa/ClhsdbCDSCore.java              8318754 macosx-aarch64
-serviceability/sa/ClhsdbFindPC.java#xcomp-core    8318754,JBR-6259 macosx-aarch64,windows-aarch64
-serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8318754,JBR-6259 macosx-aarch64,linux_aarch64,windows-aarch64
-serviceability/sa/ClhsdbPmap.java#core            8318754,JBR-6259 macosx-aarch64,windows-aarch64
-serviceability/sa/ClhsdbPstack.java#core          8318754,JBR-6259 macosx-aarch64,windows-aarch64
+serviceability/sa/ClhsdbFindPC.java#xcomp-core    8318754 macosx-aarch64
+serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8318754 macosx-aarch64
+serviceability/sa/ClhsdbPmap.java#core            8318754 macosx-aarch64
+serviceability/sa/ClhsdbPstack.java#core          8318754 macosx-aarch64
 serviceability/sa/TestJmapCore.java               8318754 macosx-aarch64
 serviceability/sa/TestJmapCoreMetaspace.java      8318754 macosx-aarch64
 
