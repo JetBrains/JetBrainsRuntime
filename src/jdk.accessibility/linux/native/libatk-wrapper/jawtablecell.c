@@ -106,7 +106,10 @@ gpointer jaw_table_cell_data_init(jobject ac) {
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, NULL);
+    if (!jniEnv) {
+        g_warning("%s: jniEnv is NULL", G_STRFUNC);
+        return NULL;
+    }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
@@ -244,43 +247,70 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
     return ATK_OBJECT(jaw_impl);
 }
 
-static void getPosition(JNIEnv *jniEnv, jobject jatk_table_cell,
-                        jclass classAtkTableCell, gint *row, gint *column) {
+/**
+ * getPosition:
+ * @jniEnv: JNI environment pointer.
+ * @jatk_table_cell: a Java object implementing the AtkTableCell interface.
+ * @classAtkTableCell: the Java class of @jatk_table_cell.
+ * @row: (out): return location for the zero-based row index of the cell.
+ * @column: (out): return location for the zero-based column index of the cell.
+ *
+ * Retrieves the row and column index of the cell.
+ * If the operation succeeds, the values of @row and @column are updated.
+ * If it fails, the output arguments are left unchanged.
+ *
+ * Returns: %TRUE if successful; %FALSE otherwise.
+ */
+static gboolean getPosition(JNIEnv *jniEnv, jobject jatk_table_cell,
+                            jclass classAtkTableCell, gint *row, gint *column) {
     if (!jniEnv || !row || !column) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
-        return;
+        return FALSE;
     }
 
     jfieldID id_row =
         (*jniEnv)->GetFieldID(jniEnv, classAtkTableCell, "row", "I");
     if (id_row == NULL) {
         g_warning("%s: Failed to get field ID for 'row'", G_STRFUNC);
-        return;
+        return FALSE;
     }
 
     jfieldID id_column =
         (*jniEnv)->GetFieldID(jniEnv, classAtkTableCell, "column", "I");
     if (id_column == NULL) {
         g_warning("%s: Failed to get field ID for 'column'", G_STRFUNC);
-        return;
+        return FALSE;
     }
 
     jint jrow = (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, id_row);
-    if (jrow == -1) {
-        g_warning("%s: Invalid row value (-1) retrieved", G_STRFUNC);
-        return;
+    if (jrow < 0) {
+        g_warning("%s: Invalid row value (%d) retrieved", G_STRFUNC, jrow);
+        return FALSE;
     }
 
     jint jcolumn = (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, id_column);
-    if (jcolumn == -1) {
-        g_warning("%s: Invalid column value (-1) retrieved", G_STRFUNC);
-        return;
+    if (jcolumn < 0) {
+        g_warning("%s: Invalid column value (%d) retrieved", G_STRFUNC, jcolumn);
+        return FALSE;
     }
 
     (*row) = (gint)jrow;
     (*column) = (gint)jcolumn;
+    return TRUE;
 }
 
+/**
+ * jaw_table_cell_get_position:
+ * @cell: an #AtkTableCell.
+ * @row: (out): the row of the given cell.
+ * @column: (out): the column of the given cell.
+ *
+ * Retrieves the tabular position of this cell.
+ *
+ * Returns: %TRUE if successful; %FALSE otherwise.
+ *
+ * Since: 2.12
+ */
 static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
                                             gint *column) {
     if (!cell || !row || !column) {
@@ -306,7 +336,11 @@ static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
         return FALSE;
     }
 
-    getPosition(jniEnv, jatk_table_cell, classAtkTableCell, row, column);
+    if (!getPosition(jniEnv, jatk_table_cell, classAtkTableCell, row, column)) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -314,57 +348,97 @@ static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
     return TRUE;
 }
 
-static void getRowSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
-                       jclass classAtkTableCell, gint *row_span) {
+/**
+ * getRowSpan:
+ * @jniEnv: JNI environment pointer.
+ * @jatk_table_cell: a Java object implementing the AtkTableCell interface.
+ * @classAtkTableCell: the Java class of @jatk_table_cell.
+ * @row_span: (out): return location for the row-span value.
+ *
+ * Retrieves the `rowSpan` field from a Java ATK table cell object.
+ * On success, the value is stored in @row_span.
+ * On failure, @row_span is left unchanged.
+ *
+ * Returns: %TRUE if the value was successfully retrieved; %FALSE otherwise.
+ */
+static gboolean getRowSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
+                           jclass classAtkTableCell, gint *row_span) {
     if (!jniEnv || !row_span) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
-        return;
+        return FALSE;
     }
 
     jfieldID id_row_span =
         (*jniEnv)->GetFieldID(jniEnv, classAtkTableCell, "rowSpan", "I");
-    JAW_CHECK_NULL(id_row_span, );
+    if (!id_row_span) {
+        return FALSE;
+    }
 
     jint jrow_span =
         (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, id_row_span);
-    if (jrow_span == -1) {
-        g_warning("%s: Invalid row span value (-1) retrieved", G_STRFUNC);
-        return;
     if (jrow_span < 0) {
-        g_warning("%s: Invalid column span value (%d) retrieved", G_STRFUNC, jrow_span);
+        g_warning("%s: Invalid row span value (%d) retrieved", G_STRFUNC, jrow_span);
+        return FALSE;
     }
 
-    // clean up:
-    // id_row_span is regular C pointer type, jrow_span is a primitive type
-
     (*row_span) = (gint)jrow_span;
+    return TRUE;
 }
 
-static void getColumnSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
-                          jclass classAtkTableCell, gint *column_span) {
+/**
+ * getColumnSpan:
+ * @jniEnv: a valid JNI environment pointer.
+ * @jatk_table_cell: a Java object implementing the AtkTableCell interface.
+ * @classAtkTableCell: the Java class of @jatk_table_cell.
+ * @column_span: (out): return location for the column-span value.
+ *
+ * Retrieves the `columnSpan` field from a Java ATK table cell object.
+ * On success, the value is stored in @column_span.
+ * On failure, @column_span is left unchanged.
+ *
+ * Returns: %TRUE if the column span value was successfully retrieved and
+ *          stored in @column_span; %FALSE on error.
+ */
+static gboolean getColumnSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
+                              jclass classAtkTableCell, gint *column_span) {
     if (!jniEnv || !column_span) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
-        return;
+        return FALSE;
     }
     jfieldID id_column_span =
         (*jniEnv)->GetFieldID(jniEnv, classAtkTableCell, "columnSpan", "I");
-    JAW_CHECK_NULL(id_column_span, );
+    if (!id_column_span) {
+        return FALSE;
+    }
 
     jint jcolumn_span =
         (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, id_column_span);
-    if (jcolumn_span == -1) {
-        g_warning("%s: Invalid column span value (-1) retrieved", G_STRFUNC);
-        return;
     if (jcolumn_span < 0) {
         g_warning("%s: Invalid column span value (%d) retrieved", G_STRFUNC, jcolumn_span);
+        return FALSE;
     }
 
-    // clean up:
-    // id_row_span is regular C pointer type, jrow_span is a primitive type
-
     (*column_span) = (gint)jcolumn_span;
+    return TRUE;
 }
 
+/**
+ * jaw_table_cell_get_row_column_span:
+ * @cell: an #AtkTableCell.
+ * @row: (out): the row index of the given cell.
+ * @column: (out): the column index of the given cell.
+ * @row_span: (out): the number of rows occupied by this cell.
+ * @column_span: (out): the number of columns occupied by this cell.
+ *
+ * Gets the row and column indexes and span of this cell accessible.
+ *
+ * Note: Even if the function returns %FALSE, some of the output arguments
+ *       may have been partially updated before the failure occurred.
+ *
+ * Returns: %TRUE if successful; %FALSE otherwise.
+ *
+ * Since: 2.12
+ */
 static gboolean jaw_table_cell_get_row_column_span(AtkTableCell *cell,
                                                    gint *row, gint *column,
                                                    gint *row_span,
@@ -396,9 +470,23 @@ static gboolean jaw_table_cell_get_row_column_span(AtkTableCell *cell,
         return FALSE;
     }
 
-    getPosition(jniEnv, jatk_table_cell, classAtkTableCell, row, column);
-    getRowSpan(jniEnv, jatk_table_cell, classAtkTableCell, row_span);
-    getColumnSpan(jniEnv, jatk_table_cell, classAtkTableCell, column_span);
+    if (!getPosition(jniEnv, jatk_table_cell, classAtkTableCell, row, column)) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
+
+    if (!getRowSpan(jniEnv, jatk_table_cell, classAtkTableCell, row_span)) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
+
+    if (!getColumnSpan(jniEnv, jatk_table_cell, classAtkTableCell, column_span)) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return FALSE;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -406,6 +494,17 @@ static gboolean jaw_table_cell_get_row_column_span(AtkTableCell *cell,
     return TRUE;
 }
 
+/**
+ * jaw_table_cell_get_row_span:
+ * @cell: (nullable): an #AtkTableCell instance
+ *
+ * Returns the number of rows occupied by this cell accessible.
+ *
+ * Returns: (type gint):
+ *     A gint representing the number of rows occupied by this cell, or 0 if the cell does not implement this method.
+ *
+ * Since: 2.12
+ */
 static gint jaw_table_cell_get_row_span(AtkTableCell *cell) {
     JAW_DEBUG_C("%p", cell);
 
@@ -434,12 +533,30 @@ static gint jaw_table_cell_get_row_span(AtkTableCell *cell) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
-    getRowSpan(jniEnv, jatk_table_cell, classAtkTableCell, &row_span);
+
+    if (!getRowSpan(jniEnv, jatk_table_cell, classAtkTableCell, &row_span)) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return 0;
+    }
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     return row_span;
 }
 
+/**
+ * jaw_table_cell_get_column_span:
+ * @cell: (nullable): an #AtkTableCell instance
+ *
+ * Returns the number of columns occupied by this table cell.
+ *
+ * Returns: (type gint):
+ *     A gint representing the number of columns occupied by this cell,
+ *     or 0 if the cell does not implement this method.
+ *
+ * Since: 2.12
+ */
 static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
     JAW_DEBUG_C("%p", cell);
 
@@ -468,7 +585,12 @@ static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
-    getColumnSpan(jniEnv, jatk_table_cell, classAtkTableCell, &column_span);
+
+    if (!getColumnSpan(jniEnv, jatk_table_cell, classAtkTableCell, &column_span)) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return 0;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -520,18 +642,24 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    jobjectArray ja_ac = (jobjectArray)(*jniEnv)->CallObjectMethod(
+    jobjectArray columnHeaders = (jobjectArray)(*jniEnv)->CallObjectMethod(
         jniEnv, jatk_table_cell, jmid);
-    if (!ja_ac) {
+    if (!columnHeaders) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
-    jsize length = (*jniEnv)->GetArrayLength(jniEnv, ja_ac);
+    jsize length = (*jniEnv)->GetArrayLength(jniEnv, columnHeaders);
     GPtrArray *result = g_ptr_array_sized_new((guint)length);
+    if (!result) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
+
     for (int i = 0; i < length; i++) {
-        jobject jac = (*jniEnv)->GetObjectArrayElement(jniEnv, ja_ac, i);
+        jobject jac = (*jniEnv)->GetObjectArrayElement(jniEnv, columnHeaders, i);
         JawImpl *jaw_impl = jaw_impl_find_instance(jniEnv, jac);
         if (jaw_impl) {
             g_ptr_array_add(result, jaw_impl);
@@ -597,20 +725,23 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    jobjectArray ja_ac = (jobjectArray)(*jniEnv)->CallObjectMethod(
+    jobjectArray rowHeaders = (jobjectArray)(*jniEnv)->CallObjectMethod(
         jniEnv, jatk_table_cell, jmid);
-    if (!ja_ac) {
+    if (!rowHeaders) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
-    jsize length = (*jniEnv)->GetArrayLength(jniEnv, ja_ac);
+    jsize length = (*jniEnv)->GetArrayLength(jniEnv, rowHeaders);
     GPtrArray *result = g_ptr_array_sized_new((guint)length);
-    JAW_CHECK_NULL(result, NULL);
+    if (!result) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+    }
 
     for (int i = 0; i < length; i++) {
-        jobject jac = (*jniEnv)->GetObjectArrayElement(jniEnv, ja_ac, i);
+        jobject jac = (*jniEnv)->GetObjectArrayElement(jniEnv, rowHeaders, i);
         JawImpl *jaw_impl = jaw_impl_find_instance(jniEnv, jac);
         if (jaw_impl) {
             g_ptr_array_add(result, jaw_impl);
