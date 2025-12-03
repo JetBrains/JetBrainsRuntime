@@ -1142,6 +1142,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
             /* We have already queued to send one and nothing happened in
              * between, this one is really useless */
             pthread_mutex_unlock(&jaw_vdc_dup_mutex);
+            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
         jaw_vdc_last_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
@@ -1150,6 +1151,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
 
     if (!jAccContext) {
         JAW_DEBUG_I("jAccContext == NULL");
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
@@ -1160,6 +1162,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     CallbackPara *para = alloc_callback_para(jniEnv, global_ac);
     if (para == NULL) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, global_ac);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobjectArray global_args =

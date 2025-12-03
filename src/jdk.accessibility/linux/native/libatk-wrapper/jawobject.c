@@ -901,7 +901,11 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
     }
 
     AtkStateSet *state_set = jaw_obj->state_set;
-    JAW_CHECK_NULL(state_set, NULL);
+    if (!state_set) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     atk_state_set_clear_states(state_set);
 
     jclass atkObject =

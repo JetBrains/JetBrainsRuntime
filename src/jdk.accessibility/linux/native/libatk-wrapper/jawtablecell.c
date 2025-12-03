@@ -107,20 +107,38 @@ gpointer jaw_table_cell_data_init(jobject ac) {
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
+
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
+        return NULL;
+    }
+
     jclass classTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
-    JAW_CHECK_NULL(classTableCell, NULL);
+    if (!classTableCell) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classTableCell, "create_atk_table_cell",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkTableCell;");
-    JAW_CHECK_NULL(jmid, NULL);
+    if (!jmid) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     jobject jatk_table_cell =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classTableCell, jmid, ac);
-    JAW_CHECK_NULL(jatk_table_cell, NULL);
+    if (!jatk_table_cell) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     TableCellData *data = g_new0(TableCellData, 1);
     data->atk_table_cell = (*jniEnv)->NewGlobalRef(jniEnv, jatk_table_cell);
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data;
 }
@@ -220,6 +238,7 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
 
+    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
@@ -255,6 +274,13 @@ static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
 
     JAW_DEBUG_C("%p, %p, %p", cell, row, column);
     JAW_GET_TABLECELL(cell, FALSE);
+
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
+        return FALSE;
+    }
 
     jclass classAtkTableCell =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");

@@ -241,6 +241,7 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
 
     // If a valid reference exists, return the existing JawImpl instance
     if (reference != -1) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return (JawImpl *)reference;
     }
 

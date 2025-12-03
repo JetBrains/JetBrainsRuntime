@@ -305,10 +305,10 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
         return;
     }
 
+    private_get_g_value_from_java_number(jniEnv, jnumber, value);
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
-    private_get_g_value_from_java_number(jniEnv, jnumber, value);
 }
 
 /**

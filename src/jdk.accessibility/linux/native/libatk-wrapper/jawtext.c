@@ -902,6 +902,7 @@ static gint jaw_text_get_character_count(AtkText *text) {
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkText,

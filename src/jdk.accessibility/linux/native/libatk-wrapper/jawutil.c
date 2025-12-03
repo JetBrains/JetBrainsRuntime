@@ -275,13 +275,30 @@ guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
         return -1;
     }
 
+    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
+        return -1;
+    }
+
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
-    JAW_CHECK_NULL(atkObject, -1);
+    if (!atkObject) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return -1;
+    }
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, atkObject, "get_tflag_from_obj", "(Ljava/lang/Object;)I");
-    JAW_CHECK_NULL(jmid, -1);
-    return (guint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, jObj);
+    if (!jmid) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return -1;
+    }
+    guint result =
+        (guint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, jObj);
+
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+
+    return result;
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserve) {
@@ -563,6 +580,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     }
 
     if (jaw_util_is_java_acc_role(jniEnv, ac_role, "HYPERLINK")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_LINK;
     }
 
