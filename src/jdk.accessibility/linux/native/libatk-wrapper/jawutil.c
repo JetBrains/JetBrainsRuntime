@@ -684,7 +684,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
             "AccessibleContext;");
         if (!jmidgap) {
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            return ATK_ROLE_UNKNOWN;
+            return ATK_ROLE_RADIO_BUTTON;
         }
 
         jobject jparent = (*jniEnv)->CallStaticObjectMethod(
@@ -698,7 +698,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
             jniEnv, atkObject, jmidgar, jparent); // must be deleted
         if (!parent_role) {
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            return ATK_ROLE_UNKNOWN;
+            return ATK_ROLE_RADIO_BUTTON;
         }
         if (jaw_util_is_java_acc_role(jniEnv, parent_role, "MENU")) {
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
