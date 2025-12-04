@@ -442,13 +442,11 @@ static gboolean window_open_handler(gpointer p) {
 
     if (is_toplevel) {
         gint n = jaw_toplevel_add_window(JAW_TOPLEVEL(atk_get_root()), atk_obj);
-
-        g_object_notify(G_OBJECT(atk_get_root()), "accessible-name");
-
-        g_signal_emit_by_name(ATK_OBJECT(atk_get_root()),
-                              "children-changed::add", n, atk_obj);
-
-        g_signal_emit_by_name(atk_obj, "create");
+        if (n != -1) {
+            g_object_notify(G_OBJECT(atk_get_root()), "accessible-name");
+            g_signal_emit_by_name(ATK_OBJECT(atk_get_root()), "children-changed::add", n, atk_obj);
+            g_signal_emit_by_name(atk_obj, "create");
+        }
     }
 
     queue_free_callback_para(para);
@@ -503,13 +501,12 @@ static gboolean window_close_handler(gpointer p) {
     if (is_toplevel) {
         gint n =
             jaw_toplevel_remove_window(JAW_TOPLEVEL(atk_get_root()), atk_obj);
-
-        g_object_notify(G_OBJECT(atk_get_root()), "accessible-name");
-
-        g_signal_emit_by_name(ATK_OBJECT(atk_get_root()),
-                              "children-changed::remove", n, atk_obj);
-
-        g_signal_emit_by_name(atk_obj, "destroy");
+        if (n != -1) {
+            g_object_notify(G_OBJECT(atk_get_root()), "accessible-name");
+            g_signal_emit_by_name(ATK_OBJECT(atk_get_root()),
+                                  "children-changed::remove", n, atk_obj);
+            g_signal_emit_by_name(atk_obj, "destroy");
+        }
     }
 
     queue_free_callback_para(para);

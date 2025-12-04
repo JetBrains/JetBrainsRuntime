@@ -284,9 +284,10 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
         return NULL;
     }
 
-    if (jaw_toplevel_get_child_index(JAW_TOPLEVEL(atk_get_root()), atk_obj) !=
-        -1) {
-        return ATK_OBJECT(atk_get_root());
+    AtkObject *root = atk_get_root();
+    int toplevel_child_index = jaw_toplevel_get_child_index(JAW_TOPLEVEL(root), atk_obj);
+    if (toplevel_child_index != -1) {
+        return ATK_OBJECT(root);
     }
 
     JAW_GET_OBJECT(atk_obj, NULL);  // create global JNI reference `jobject ac`
@@ -749,10 +750,9 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
         return -1;
     }
 
-    if (jaw_toplevel_get_child_index(JAW_TOPLEVEL(atk_get_root()), atk_obj) !=
-        -1) {
-        return jaw_toplevel_get_child_index(JAW_TOPLEVEL(atk_get_root()),
-                                            atk_obj);
+    int toplevel_child_index = jaw_toplevel_get_child_index(JAW_TOPLEVEL(atk_get_root()), atk_obj);
+    if (toplevel_child_index != -1) {
+        return toplevel_child_index;
     }
 
     JAW_GET_OBJECT(atk_obj, -1); // create global JNI reference `jobject ac`
