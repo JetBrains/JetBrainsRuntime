@@ -418,14 +418,14 @@ public class AtkText {
     private char get_character_at_offset(int offset) {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
-            return ' ';
+            return '\0';
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             String str = acc_text.getAtIndex(AccessibleText.CHARACTER, offset);
             if (str == null || str.length() == 0)
-                return ' ';
+                return '\0';
             return str.charAt(0);
-        }, ' ');
+        }, '\0');
     }
 
     private int get_caret_offset() {
