@@ -473,6 +473,19 @@ public class AtkText {
         }, 0);
     }
 
+    /**
+     * Gets the offset of the character located at coordinates @x and @y. @x and @y
+     * are interpreted as being relative to the screen or this widget's window
+     * depending on @coords.
+     *
+     * @param x int screen x-position of character
+     * @param y int screen y-position of character
+     * @param coord_type int specify whether coordinates are relative to the screen or
+     *                   widget window
+     *
+     * @return the offset to the character which is located at the specified
+     *         @x and @y coordinates or -1 in case of failure.
+     */
     private int get_offset_at_point(int x, int y, int coord_type) {
         AccessibleContext ac = _ac.get();
         if (ac == null)
@@ -524,17 +537,24 @@ public class AtkText {
         }, null);
     }
 
-    public int get_n_selections() {
+    /**
+     * Gets the number of selected regions.
+     *
+     * @param text an #AtkText
+     *
+     * @return The number of selected regions, or -1 in the case of failure.
+     */
+    private int get_n_selections() {
         AccessibleText acc_text = _acc_text.get();
         if (acc_text == null)
-            return 0;
+            return -1;
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             String str = acc_text.getSelectedText();
             if (str != null && str.length() > 0)
                 return 1;
-            return 0;
-        }, 0);
+            return -1;
+        }, -1);
     }
 
     private StringSequence get_selection() {
@@ -561,6 +581,7 @@ public class AtkText {
             return false;
 
         return AtkUtil.invokeInSwingAndWait(() -> {
+            // Java AccessibleText only supports a single selection, so reject if one already exists
             if (acc_edt_text == null || get_n_selections() > 0)
                 return false;
 

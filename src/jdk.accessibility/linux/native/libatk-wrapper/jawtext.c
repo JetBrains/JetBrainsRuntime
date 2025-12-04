@@ -416,7 +416,7 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
     }
     jchar jcharacter =
         (*jniEnv)->CallCharMethod(jniEnv, atk_text, jmid, (jint)offset);
-    if (!jcharacter) {
+    if (jcharacter == '\0') {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
@@ -536,7 +536,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
-        return 0;
+        return NULL;
     }
 
     jclass classAtkText =
@@ -608,7 +608,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
-        return 0;
+        return NULL;
     }
 
     jclass classAtkText =
@@ -711,7 +711,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
-        return 0;
+        return NULL;
     }
 
     jclass classAtkText =
@@ -941,10 +941,10 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
 
     if (!text) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
-        return 0;
+        return -1;
     }
 
-    JAW_GET_TEXT(text, 0);
+    JAW_GET_TEXT(text, -1);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -952,7 +952,7 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
             atk_text); // deleting ref that was created in JAW_GET_TEXT
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
-        return 0;
+        return -1;
     }
 
     jclass classAtkText =
@@ -960,14 +960,14 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
     if (!classAtkText) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
+        return -1;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkText,
                                             "get_offset_at_point", "(III)I");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
+        return -1;
     }
     jint joffset = (*jniEnv)->CallIntMethod(jniEnv, atk_text, jmid, (jint)x,
                                             (jint)y, (jint)coords);
@@ -1067,10 +1067,10 @@ static gint jaw_text_get_n_selections(AtkText *text) {
 
     if (!text) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
-        return 0;
+        return -1;
     }
 
-    JAW_GET_TEXT(text, 0);
+    JAW_GET_TEXT(text, -1);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -1078,7 +1078,7 @@ static gint jaw_text_get_n_selections(AtkText *text) {
             atk_text); // deleting ref that was created in JAW_GET_TEXT
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
-        return 0;
+        return -1;
     }
 
     jclass classAtkText =
@@ -1086,14 +1086,14 @@ static gint jaw_text_get_n_selections(AtkText *text) {
     if (!classAtkText) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
+        return -1;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkText, "get_n_selections", "()I");
     if (!jmid) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
+        return -1;
     }
     jint jselections = (*jniEnv)->CallIntMethod(jniEnv, atk_text, jmid);
 
