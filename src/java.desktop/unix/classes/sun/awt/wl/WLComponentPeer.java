@@ -368,27 +368,65 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     protected void wlSetVisible(boolean v) {
         // TODO: this whole method should be moved to WLWindowPeer
         synchronized (getStateLock()) {
-            if (this.visible == v) return;
-
-            this.visible = v;
+            // TODO: make sure visibility state cannot be changed midway through this method
+            if (visible == v) return;
         }
         if (v) {
-            String title = getTitle();
-            boolean isWlPopup = targetIsWlPopup();
-            int thisWidth = javaUnitsToSurfaceSize(getWidth());
-            int thisHeight = javaUnitsToSurfaceSize(getHeight());
-            boolean isModal = targetIsModal();
+            show();
+            synchronized (getStateLock()) {
+                // Consider the window visible only if show() fully succeeds.
+                visible = true;
+            }
+        } else {
+            synchronized (getStateLock()) {
+                // Hiding is presumed to succeed even if an error occurs in the process
+                // in the sense that a subsequent request to hide() will not do anything useful.
+                visible = false;
+            }
+            hide();
+        }
+    }
 
-            int state = (target instanceof Frame frame)
-                    ? frame.getExtendedState()
-                    : Frame.NORMAL;
-            boolean isMaximized = (state & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH;
-            boolean isMinimized = (state & Frame.ICONIFIED) == Frame.ICONIFIED;
-            boolean isUnconstrained = isPopupPositionUnconstrained();
+    private void hide() {
+        performLocked(() -> {
+            if (wlSurface != null) { // may get a "hide" request even though we were never shown
+                try {
+                    notifyNativeWindowToBeHidden(nativePtr);
+                    nativeHideFrame(nativePtr);
+                    shadow.hide();
+                } finally {
+                    WLMainSurface s = wlSurface;
+                    // A null surface is the primary tell that the window is not being shown
+                    wlSurface = null;
+                    s.dispose();
+                }
+            }
+        });
+    }
 
-            performLocked(() -> {
-                assert wlSurface == null : "Invisible window already has a Wayland surface attached";
-                wlSurface = new WLMainSurface((WLWindowPeer) this);
+    private void show() {
+        String title = getTitle();
+        boolean isWlPopup = targetIsWlPopup();
+        int thisWidth = javaUnitsToSurfaceSize(getWidth());
+        int thisHeight = javaUnitsToSurfaceSize(getHeight());
+        boolean isModal = targetIsModal();
+
+        int state = (target instanceof Frame frame)
+                ? frame.getExtendedState()
+                : Frame.NORMAL;
+        boolean isMaximized = (state & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH;
+        boolean isMinimized = (state & Frame.ICONIFIED) == Frame.ICONIFIED;
+        boolean isUnconstrained = isPopupPositionUnconstrained();
+
+        performLocked(() -> {
+            assert wlSurface == null : "Invisible window already has a Wayland surface attached";
+
+            wlSurface = new WLMainSurface((WLWindowPeer) this);
+
+            // Need to keep track of the construction stage in order to release resources
+            // properly in case of an error during the construction.
+            int stage = 0;
+            try {
                 long wlSurfacePtr = wlSurface.getWlSurfacePtr();
                 if (isWlPopup) {
                     Window popup = (Window) target;
@@ -397,17 +435,21 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                     Point nativeLocation = nativeLocationForPopup(popup, popupParent, toplevel);
                     nativeCreatePopup(nativePtr, getNativePtrFor(toplevel), wlSurfacePtr,
                             thisWidth, thisHeight, nativeLocation.x, nativeLocation.y, isUnconstrained);
+                    stage = 1;
                 } else {
                     nativeCreateWindow(nativePtr, getParentNativePtr(target), wlSurfacePtr,
                             isModal, isMaximized, isMinimized, title, WLToolkit.getApplicationID());
+                    stage = 1;
                     int xNative = javaUnitsToSurfaceUnits(target.getX());
                     int yNative = javaUnitsToSurfaceUnits(target.getY());
                     WLRobotPeer.setLocationOfWLSurface(wlSurface, xNative, yNative);
                 }
 
                 notifyNativeWindowCreated(nativePtr);
+                stage = 2;
 
                 shadow.createSurface();
+                stage = 3;
 
                 // From xdg-shell.xml: "After creating a role-specific object and
                 // setting it up, the client must perform an initial commit
@@ -417,24 +459,31 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 if (!isWlPopup && target.getParent() != null) activate();
 
                 ((WLToolkit) Toolkit.getDefaultToolkit()).flush();
-            });
-            configureWLSurface();
-            // Now wait for the sequence of configure events and the window
-            // will finally appear on screen after we post a PaintEvent
-            // from notifyConfigured()
-        } else {
-            performLocked(() -> {
-                if (wlSurface != null) { // may get a "hide" request even though we were never shown
-                    notifyNativeWindowToBeHidden(nativePtr);
-
-                    nativeHideFrame(nativePtr);
-
-                    shadow.hide();
-                    wlSurface.dispose();
+            } catch (Throwable t) {
+                try {
+                    if (log.isLoggable(Level.WARNING)) {
+                        log.fine("Failed to show " + target + " with " + t);
+                    }
+                    if (stage >= 3) {
+                        shadow.hide();
+                    }
+                    if (stage >= 2) {
+                        notifyNativeWindowToBeHidden(nativePtr);
+                    }
+                    if (stage >= 1) {
+                        nativeHideFrame(nativePtr);
+                    }
+                } finally {
+                    // Make sure the window stays hidden in case of an error.
                     wlSurface = null;
                 }
-            });
-        }
+                throw t;
+            }
+        });
+        configureWLSurface();
+        // Now wait for the sequence of configure events and the window
+        // will finally appear on screen after we post a PaintEvent
+        // from notifyConfigured()
     }
 
     protected void notifyNativeWindowCreated(long nativePtr) {
